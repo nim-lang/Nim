@@ -1,6 +1,9 @@
 discard """
   output: '''
-100 0
+100
+0
+float32
+float32
 '''
 """
 
@@ -72,7 +75,7 @@ block tgeneric1:
 
   proc print[T](heap: PBinHeap[T]) =
     for i in countup(0, heap.last):
-      stdout.write($heap.heap[i].data, " ")
+      stdout.write($heap.heap[i].data, "\n")
 
   var heap: PBinHeap[int]
 
@@ -109,3 +112,15 @@ block tgeneric4:
       newSeq result.free, 0
 
   var x = newIDGen[int]()
+
+block tgeneric5:
+  # bug #12528
+  proc foo[T](a: T; b: T) =
+    echo T
+
+  foo(0.0'f32, 0.0)
+
+  proc bar[T](a: T; b: T = 0.0) =
+    echo T
+
+  bar(0.0'f32)

@@ -1,7 +1,7 @@
 discard """
+  errormsg: "'threadFunc' is not GC-safe"
   file: "tthreadanalysis2.nim"
   line: 37
-  errormsg: "'threadFunc' is not GC-safe"
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
@@ -49,4 +49,3 @@ proc main =
   joinThreads(thr)
 
 main()
-

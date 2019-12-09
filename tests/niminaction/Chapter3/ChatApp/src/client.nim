@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import os, threadpool, asyncdispatch, asyncnet
 import protocol
 

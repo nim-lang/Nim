@@ -10,21 +10,19 @@
 ## This file implements the new evaluation engine for Nim code.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-const
-  debugEchoCode = false
-  traceCode = debugEchoCode
-
 import ast except getstr
 
 import
-  strutils, astalgo, msgs, vmdef, vmgen, nimsets, types, passes,
+  strutils, msgs, vmdef, vmgen, nimsets, types, passes,
   parser, vmdeps, idents, trees, renderer, options, transf, parseutils,
-  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl
+  vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
+  modulegraphs, sighashes, int128
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
 
-from modulegraphs import ModuleGraph, PPassContext
+const
+  traceCode = defined(nimVMDebug)
 
 when hasFFI:
   import evalffi
@@ -65,22 +63,27 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       return
     stackTraceAux(c, x.next, x.comesFrom, recursionLimit-1)
     var info = c.debug[pc]
-    # we now use the same format as in system/except.nim
-    var s = substr(toFilename(c.config, info), 0)
-    # this 'substr' prevents a strange corruption. XXX This needs to be
-    # investigated eventually but first attempts to fix it broke everything
-    # see the araq-wip-fixed-writebarrier branch.
+    # we now use a format similar to the one in lib/system/excpt.nim
+    var s = ""
+    # todo: factor with quotedFilename
+    if optExcessiveStackTrace in c.config.globalOptions:
+      s = toFullPath(c.config, info)
+    else:
+      s = toFilename(c.config, info)
     var line = toLinenumber(info)
+    var col = toColumn(info)
     if line > 0:
-      add(s, '(')
-      add(s, $line)
-      add(s, ')')
+      s.add('(')
+      s.add($line)
+      s.add(", ")
+      s.add($(col + ColOffset))
+      s.add(')')
     if x.prc != nil:
-      for k in 1..max(1, 25-s.len): add(s, ' ')
-      add(s, x.prc.name.s)
+      for k in 1..max(1, 25-s.len): s.add(' ')
+      s.add(x.prc.name.s)
     msgWriteln(c.config, s)
 
-proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
+proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
                 msg: string, lineInfo: TLineInfo) =
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
@@ -88,12 +91,19 @@ proc stackTrace(c: PCtx, tos: PStackFrame, pc: int,
   if c.mode == emRepl: globalError(c.config, lineInfo, msg)
   else: localError(c.config, lineInfo, msg)
 
-proc stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
-  stackTrace(c, tos, pc, msg, c.debug[pc])
+template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
+                    msg: string, lineInfo: TLineInfo) =
+  stackTraceImpl(c, tos, pc, msg, lineInfo)
+  return
+
+template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
+  stackTraceImpl(c, tos, pc, msg, c.debug[pc])
+  return
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
   stackTrace(c, tos, c.exceptionInstr, "unhandled exception: " &
-             c.currentExceptionA.sons[3].skipColon.strVal)
+             c.currentExceptionA[3].skipColon.strVal &
+             " [" & c.currentExceptionA[2].skipColon.strVal & "]")
 
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
@@ -146,7 +156,7 @@ proc createStrKeepNode(x: var TFullReg; keepNode=true) =
     x.node = newNode(nkStrLit)
     # It not only hackey, it is also wrong for tgentemplate. The primary
     # cause of bugs like these is that the VM does not properly distinguish
-    # between variable defintions (var foo = e) and variable updates (foo = e).
+    # between variable definitions (var foo = e) and variable updates (foo = e).
 
 include vmhooks
 
@@ -190,9 +200,9 @@ proc copyValue(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, sonsLen(src))
-    for i in countup(0, sonsLen(src) - 1):
-      result.sons[i] = copyValue(src.sons[i])
+    newSeq(result.sons, src.len)
+    for i in 0..<src.len:
+      result[i] = copyValue(src[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
   if x.kind != y.kind:
@@ -206,10 +216,26 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkRegisterAddr: x.regAddr = y.regAddr
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
+proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
+  if x.kind != y.kind:
+    myreset(x)
+    x.kind = y.kind
+  case x.kind
+  of rkNone: discard
+  of rkInt: x.intVal = y.intVal
+  of rkFloat: x.floatVal = y.floatVal
+  of rkNode: x.node = y.node
+  of rkRegisterAddr: x.regAddr = y.regAddr
+  of rkNodeAddr: x.nodeAddr = y.nodeAddr
+
 proc writeField(n: var PNode, x: TFullReg) =
   case x.kind
   of rkNone: discard
-  of rkInt: n.intVal = x.intVal
+  of rkInt:
+    if n.kind == nkNilLit:
+      n[].reset
+      n.kind = nkIntLit # ideally, `nkPtrLit`
+    n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
   of rkNode: n = copyValue(x.node)
   of rkRegisterAddr: writeField(n, x.regAddr[])
@@ -249,64 +275,101 @@ proc pushSafePoint(f: PStackFrame; pc: int) =
   f.safePoints.add(pc)
 
 proc popSafePoint(f: PStackFrame) =
-  # XXX this needs a proper fix!
-  if f.safePoints.len > 0:
-    discard f.safePoints.pop()
+  discard f.safePoints.pop()
 
-proc cleanUpOnException(c: PCtx; tos: PStackFrame):
-                                              tuple[pc: int, f: PStackFrame] =
-  let raisedType = c.currentExceptionA.typ.skipTypes(abstractPtrs)
-  var f = tos
-  while true:
-    while f.safePoints.len == 0:
-      f = f.next
-      if f.isNil: return (-1, nil)
-    var pc2 = f.safePoints[f.safePoints.high]
+type
+  ExceptionGoto = enum
+    ExceptionGotoHandler,
+    ExceptionGotoFinally,
+    ExceptionGotoUnhandled
 
-    var nextExceptOrFinally = -1
-    if c.code[pc2].opcode == opcExcept:
-      nextExceptOrFinally = pc2 + c.code[pc2].regBx - wordExcess
-      inc pc2
-    while c.code[pc2].opcode == opcExcept:
-      let excIndex = c.code[pc2].regBx-wordExcess
-      let exceptType = if excIndex > 0: c.types[excIndex].skipTypes(
-                          abstractPtrs)
-                       else: nil
-      #echo typeToString(exceptType), " ", typeToString(raisedType)
-      if exceptType.isNil or inheritanceDiff(raisedType, exceptType) <= 0:
-        # mark exception as handled but keep it in B for
-        # the getCurrentException() builtin:
-        c.currentExceptionB = c.currentExceptionA
-        c.currentExceptionA = nil
-        # execute the corresponding handler:
-        while c.code[pc2].opcode == opcExcept: inc pc2
-        discard f.safePoints.pop
-        return (pc2, f)
-      inc pc2
-      if c.code[pc2].opcode != opcExcept and nextExceptOrFinally >= 0:
-        # we're at the end of the *except list*, but maybe there is another
-        # *except branch*?
-        pc2 = nextExceptOrFinally+1
-        if c.code[pc2].opcode == opcExcept:
-          nextExceptOrFinally = pc2 + c.code[pc2].regBx - wordExcess
+proc findExceptionHandler(c: PCtx, f: PStackFrame, exc: PNode):
+    tuple[why: ExceptionGoto, where: int] =
+  let raisedType = exc.typ.skipTypes(abstractPtrs)
 
-    if nextExceptOrFinally >= 0:
-      pc2 = nextExceptOrFinally
-    if c.code[pc2].opcode == opcFinally:
-      # execute the corresponding handler, but don't quit walking the stack:
-      discard f.safePoints.pop
-      return (pc2+1, f)
-    # not the right one:
-    discard f.safePoints.pop
+  while f.safePoints.len > 0:
+    var pc = f.safePoints.pop()
+
+    var matched = false
+    var pcEndExcept = pc
+
+    # Scan the chain of exceptions starting at pc.
+    # The structure is the following:
+    # pc - opcExcept, <end of this block>
+    #      - opcExcept, <pattern1>
+    #      - opcExcept, <pattern2>
+    #        ...
+    #      - opcExcept, <patternN>
+    #      - Exception handler body
+    #    - ... more opcExcept blocks may follow
+    #    - ... an optional opcFinally block may follow
+    #
+    # Note that the exception handler body already contains a jump to the
+    # finally block or, if that's not present, to the point where the execution
+    # should continue.
+    # Also note that opcFinally blocks are the last in the chain.
+    while c.code[pc].opcode == opcExcept:
+      # Where this Except block ends
+      pcEndExcept = pc + c.code[pc].regBx - wordExcess
+      inc pc
+
+      # A series of opcExcept follows for each exception type matched
+      while c.code[pc].opcode == opcExcept:
+        let excIndex = c.code[pc].regBx - wordExcess
+        let exceptType =
+          if excIndex > 0: c.types[excIndex].skipTypes(abstractPtrs)
+          else: nil
+
+        # echo typeToString(exceptType), " ", typeToString(raisedType)
+
+        # Determine if the exception type matches the pattern
+        if exceptType.isNil or inheritanceDiff(raisedType, exceptType) <= 0:
+          matched = true
+          break
+
+        inc pc
+
+      # Skip any further ``except`` pattern and find the first instruction of
+      # the handler body
+      while c.code[pc].opcode == opcExcept:
+        inc pc
+
+      if matched:
+        break
+
+      # If no handler in this chain is able to catch this exception we check if
+      # the "parent" chains are able to. If this chain ends with a `finally`
+      # block we must execute it before continuing.
+      pc = pcEndExcept
+
+    # Where the handler body starts
+    let pcBody = pc
+
+    if matched:
+      return (ExceptionGotoHandler, pcBody)
+    elif c.code[pc].opcode == opcFinally:
+      # The +1 here is here because we don't want to execute it since we've
+      # already pop'd this statepoint from the stack.
+      return (ExceptionGotoFinally, pc + 1)
+
+  return (ExceptionGotoUnhandled, 0)
 
 proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
-  for s in f.safePoints:
-    var pc = s
+  # Walk up the chain of safepoints and return the PC of the first `finally`
+  # block we find or -1 if no such block is found.
+  # Note that the safepoint is removed once the function returns!
+  result = -1
+
+  # Traverse the stack starting from the end in order to execute the blocks in
+  # the intended order
+  for i in 1..f.safePoints.len:
+    var pc = f.safePoints[^i]
+    # Skip the `except` blocks
     while c.code[pc].opcode == opcExcept:
-      pc = pc + c.code[pc].regBx - wordExcess
+      pc += c.code[pc].regBx - wordExcess
     if c.code[pc].opcode == opcFinally:
-      return pc
-  return -1
+      discard f.safePoints.pop
+      return pc + 1
 
 proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
   if desttyp.kind == tyString:
@@ -319,12 +382,12 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     of tyEnum:
       let n = styp.n
       let x = src.intVal.int
-      if x <% n.len and (let f = n.sons[x].sym; f.position == x):
+      if x <% n.len and (let f = n[x].sym; f.position == x):
         dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
       else:
         for i in 0..<n.len:
-          if n.sons[i].kind != nkSym: internalError(c.config, "opConv for enum")
-          let f = n.sons[i].sym
+          if n[i].kind != nkSym: internalError(c.config, "opConv for enum")
+          let f = n[i].sym
           if f.position == x:
             dest.node.strVal = if f.ast.isNil: f.name.s else: f.ast.strVal
             return
@@ -355,7 +418,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
     else:
       internalError(c.config, "cannot convert to string " & desttyp.typeToString)
   else:
-    case skipTypes(desttyp, abstractRange).kind
+    case skipTypes(desttyp, abstractVarRange).kind
     of tyInt..tyInt64:
       if dest.kind != rkInt:
         myreset(dest); dest.kind = rkInt
@@ -364,7 +427,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = int(src.floatVal)
       else:
         dest.intVal = src.intVal
-      if dest.intVal < firstOrd(c.config, desttyp) or dest.intVal > lastOrd(c.config, desttyp):
+      if toInt128(dest.intVal) < firstOrd(c.config, desttyp) or toInt128(dest.intVal) > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
       if dest.kind != rkInt:
@@ -375,12 +438,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       else:
         let srcDist = (sizeof(src.intVal) - srctyp.size) * 8
         let destDist = (sizeof(dest.intVal) - desttyp.size) * 8
-        when system.cpuEndian == bigEndian:
-          dest.intVal = (src.intVal shr srcDist) shl srcDist
-          dest.intVal = (dest.intVal shr destDist) shl destDist
-        else:
-          dest.intVal = (src.intVal shl srcDist) shr srcDist
-          dest.intVal = (dest.intVal shl destDist) shr destDist
+
+        var value = cast[BiggestUInt](src.intVal)
+        value = (value shl srcDist) shr srcDist
+        value = (value shl destDist) shr destDist
+        dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
       if dest.kind != rkFloat:
         myreset(dest); dest.kind = rkFloat
@@ -389,6 +451,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.floatVal = toBiggestFloat(src.intVal)
       else:
         dest.floatVal = src.floatVal
+    of tyObject:
+      if srctyp.skipTypes(abstractVarRange).kind != tyObject:
+        internalError(c.config, "invalid object-to-object conversion")
+      # A object-to-object conversion is essentially a no-op
+      moveConst(dest, src)
     else:
       asgnComplex(dest, src)
 
@@ -408,34 +475,20 @@ template handleJmpBack() {.dirty.} =
   dec(c.loopIterations)
 
 proc recSetFlagIsRef(arg: PNode) =
-  arg.flags.incl(nfIsRef)
-  for i in 0 ..< arg.safeLen:
-    arg.sons[i].recSetFlagIsRef
+  if arg.kind notin {nkStrLit..nkTripleStrLit}:
+    arg.flags.incl(nfIsRef)
+  for i in 0..<arg.safeLen:
+    arg[i].recSetFlagIsRef
 
 proc setLenSeq(c: PCtx; node: PNode; newLen: int; info: TLineInfo) =
-  # FIXME: this doesn't attempt to solve incomplete
-  # support of tyPtr, tyRef in VM.
   let typ = node.typ.skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
-  let typeEntry = typ.sons[0].skipTypes(abstractInst+{tyRange}-{tyTypeDesc})
-  let typeKind = case typeEntry.kind
-                 of tyUInt..tyUInt64: nkUIntLit
-                 of tyRange, tyEnum, tyBool, tyChar, tyInt..tyInt64: nkIntLit
-                 of tyFloat..tyFloat128: nkFloatLit
-                 of tyString: nkStrLit
-                 of tyObject: nkObjConstr
-                 of tySequence: nkNilLit
-                 of tyProc, tyTuple: nkTupleConstr
-                 else: nkEmpty
-
   let oldLen = node.len
   setLen(node.sons, newLen)
   if oldLen < newLen:
-    # TODO: This is still not correct for tyPtr, tyRef default value
-    for i in oldLen ..< newLen:
-      node.sons[i] = newNodeI(typeKind, info)
+    for i in oldLen..<newLen:
+      node[i] = getNullValue(typ[0], info, c.config)
 
 const
-  errIndexOutOfBounds = "index out of bounds"
   errNilAccess = "attempt to access a nil address"
   errOverOrUnderflow = "over- or underflow"
   errConstantDivisionByZero = "division by zero"
@@ -448,6 +501,9 @@ const
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
+  # Used to keep track of where the execution is resumed.
+  var savedPC = -1
+  var savedFrame: PStackFrame
   var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
@@ -455,41 +511,66 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     #{.computedGoto.}
     let instr = c.code[pc]
     let ra = instr.regA
-    #if c.traceActive:
+
     when traceCode:
-      echo "PC ", pc, " ", c.code[pc].opcode, " ra ", ra, " rb ", instr.regB, " rc ", instr.regC
-    #  message(c.config, c.debug[pc], warnUser, "Trace")
+      template regDescr(name, r): string =
+        let kind = if r < regs.len: $regs[r].kind else: ""
+        let ret = name & ": " & $r & " " & $kind
+        alignLeft(ret, 15)
+      echo "PC:$pc $opcode $ra $rb $rc" % [
+        "pc", $pc, "opcode", alignLeft($c.code[pc].opcode, 15),
+        "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
+        "rc", regDescr("rc", instr.regC)]
 
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
-      # XXX perform any cleanup actions
-      pc = tos.comesFrom
-      tos = tos.next
-      let retVal = regs[0]
-      if tos.isNil:
-        #echo "RET ", retVal.rendertree
-        return retVal
+      let newPc = c.cleanUpOnReturn(tos)
+      # Perform any cleanup action before returning
+      if newPc < 0:
+        pc = tos.comesFrom
+        tos = tos.next
+        let retVal = regs[0]
+        if tos.isNil:
+          return retVal
 
-      move(regs, tos.slots)
-      assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
-      if c.code[pc].opcode == opcIndCallAsgn:
-        regs[c.code[pc].regA] = retVal
-        #echo "RET2 ", retVal.rendertree, " ", c.code[pc].regA
+        move(regs, tos.slots)
+        assert c.code[pc].opcode in {opcIndCall, opcIndCallAsgn}
+        if c.code[pc].opcode == opcIndCallAsgn:
+          regs[c.code[pc].regA] = retVal
+      else:
+        savedPC = pc
+        savedFrame = tos
+        # The -1 is needed because at the end of the loop we increment `pc`
+        pc = newPc - 1
     of opcYldYoid: assert false
     of opcYldVal: assert false
     of opcAsgnInt:
       decodeB(rkInt)
       regs[ra].intVal = regs[rb].intVal
-    of opcAsgnStr:
-      decodeBC(rkNode)
-      createStrKeepNode regs[ra], rc != 0
-      regs[ra].node.strVal = regs[rb].node.strVal
     of opcAsgnFloat:
       decodeB(rkFloat)
       regs[ra].floatVal = regs[rb].floatVal
+    of opcCastFloatToInt32:
+      let rb = instr.regB
+      ensureKind(rkInt)
+      regs[ra].intVal = cast[int32](float32(regs[rb].floatVal))
+    of opcCastFloatToInt64:
+      let rb = instr.regB
+      ensureKind(rkInt)
+      regs[ra].intVal = cast[int64](regs[rb].floatVal)
+    of opcCastIntToFloat32:
+      let rb = instr.regB
+      ensureKind(rkFloat)
+      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+    of opcCastIntToFloat64:
+      let rb = instr.regB
+      ensureKind(rkFloat)
+      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
+    of opcFastAsgnComplex:
+      fastAsgnComplex(regs[ra], regs[instr.regB])
     of opcAsgnRef:
       asgnRef(regs[ra], regs[instr.regB])
     of opcNodeToReg:
@@ -516,7 +597,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # a = b[c]
       decodeBC(rkNode)
       if regs[rc].intVal > high(int):
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
       if src.kind in {nkStrLit..nkTripleStrLit}:
@@ -524,11 +605,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = newNodeI(nkCharLit, c.debug[pc])
           regs[ra].node.intVal = src.strVal[idx].ord
         else:
-          stackTrace(c, tos, pc, errIndexOutOfBounds)
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.strVal.len-1))
       elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
-        regs[ra].node = src.sons[idx]
+        regs[ra].node = src[idx]
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+    of opcLdArrAddr:
+      # a = addr(b[c])
+      decodeBC(rkNodeAddr)
+      if regs[rc].intVal > high(int):
+        stackTrace(c, tos, pc, formatErrorIndexBound(regs[rc].intVal, high(int)))
+      let idx = regs[rc].intVal.int
+      let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
+      if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
+        regs[ra].nodeAddr = addr src.sons[idx]
+      else:
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -538,7 +630,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif idx == s.len and optLaxStrings in c.config.options:
         regs[ra].intVal = 0
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, s.len-1))
     of opcWrArr:
       # a[b] = c
       decodeBC(rkNode)
@@ -548,11 +640,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if idx <% arr.strVal.len:
           arr.strVal[idx] = chr(regs[rc].intVal)
         else:
-          stackTrace(c, tos, pc, errIndexOutOfBounds)
+          stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.strVal.len-1))
       elif idx <% arr.len:
-        writeField(arr.sons[idx], regs[rc])
+        writeField(arr[idx], regs[rc])
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.len-1))
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
@@ -561,29 +653,45 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of nkEmpty..nkNilLit:
         stackTrace(c, tos, pc, errNilAccess)
       of nkObjConstr:
-        let n = src.sons[rc + 1].skipColon
+        let n = src[rc + 1].skipColon
         regs[ra].node = n
       else:
-        let n = src.sons[rc]
+        let n = src[rc]
         regs[ra].node = n
+    of opcLdObjAddr:
+      # a = addr(b.c)
+      decodeBC(rkNodeAddr)
+      let src = if regs[rb].kind == rkNode: regs[rb].node else: regs[rb].nodeAddr[]
+      case src.kind
+      of nkEmpty..nkNilLit:
+        stackTrace(c, tos, pc, errNilAccess)
+      of nkObjConstr:
+        let n = src.sons[rc + 1]
+        if n.kind == nkExprColonExpr:
+          regs[ra].nodeAddr = addr n.sons[1]
+        else:
+          regs[ra].nodeAddr = addr src.sons[rc + 1]
+      else:
+        regs[ra].nodeAddr = addr src.sons[rc]
     of opcWrObj:
       # a.b = c
       decodeBC(rkNode)
+      assert regs[ra].node != nil
       let shiftedRb = rb + ord(regs[ra].node.kind == nkObjConstr)
       let dest = regs[ra].node
       if dest.kind == nkNilLit:
         stackTrace(c, tos, pc, errNilAccess)
-      elif dest.sons[shiftedRb].kind == nkExprColonExpr:
-        writeField(dest.sons[shiftedRb].sons[1], regs[rc])
+      elif dest[shiftedRb].kind == nkExprColonExpr:
+        writeField(dest[shiftedRb][1], regs[rc])
       else:
-        writeField(dest.sons[shiftedRb], regs[rc])
+        writeField(dest[shiftedRb], regs[rc])
     of opcWrStrIdx:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       if idx <% regs[ra].node.strVal.len:
         regs[ra].node.strVal[idx] = chr(regs[rc].intVal)
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, regs[ra].node.strVal.len-1))
     of opcAddrReg:
       decodeB(rkRegisterAddr)
       regs[ra].regAddr = addr(regs[rb])
@@ -608,7 +716,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
         if regs[rb].node.kind == nkRefTy:
-          regs[ra].node = regs[rb].node.sons[0]
+          regs[ra].node = regs[rb].node[0]
         else:
           ensureKind(rkNode)
           regs[ra].node = regs[rb].node
@@ -634,7 +742,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[ra].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        assert nfIsRef in regs[ra].node.flags
         regs[ra].node[] = regs[rc].regToNode[]
         regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
@@ -699,20 +806,20 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       let b = regs[rb].regToNode
       if not inSet(regs[ra].node, b):
-        addSon(regs[ra].node, copyTree(b))
+        regs[ra].node.add copyTree(b)
     of opcInclRange:
       decodeBC(rkNode)
       var r = newNode(nkRange)
       r.add regs[rb].regToNode
       r.add regs[rc].regToNode
-      addSon(regs[ra].node, r.copyTree)
+      regs[ra].node.add r.copyTree
     of opcExcl:
       decodeB(rkNode)
       var b = newNodeIT(nkCurly, regs[ra].node.info, regs[ra].node.typ)
-      addSon(b, regs[rb].regToNode)
+      b.add regs[rb].regToNode
       var r = diffSets(c.config, regs[ra].node, b)
       discardSons(regs[ra].node)
-      for i in countup(0, sonsLen(r) - 1): addSon(regs[ra].node, r.sons[i])
+      for i in 0..<r.len: regs[ra].node.add r[i]
     of opcCard:
       decodeB(rkInt)
       regs[ra].intVal = nimsets.cardSet(c.config, regs[rb].node)
@@ -752,7 +859,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].floatVal = regs[rb].floatVal / regs[rc].floatVal
     of opcShrInt:
       decodeBC(rkInt)
-      regs[ra].intVal = regs[rb].intVal shr regs[rc].intVal
+      let b = cast[uint64](regs[rb].intVal)
+      let c = cast[uint64](regs[rc].intVal)
+      let a = cast[int64](b shr c)
+      regs[ra].intVal = a
     of opcShlInt:
       decodeBC(rkInt)
       regs[ra].intVal = regs[rb].intVal shl regs[rc].intVal
@@ -903,11 +1013,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal.add getstr(regs[i])
     of opcAddStrCh:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].intVal.chr)
     of opcAddStrStr:
       decodeB(rkNode)
-      #createStrKeepNode regs[ra]
       regs[ra].node.strVal.add(regs[rb].node.strVal)
     of opcAddSeqElem:
       decodeB(rkNode)
@@ -917,13 +1025,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, errNilAccess)
     of opcGetImpl:
       decodeB(rkNode)
-      let a = regs[rb].node
+      var a = regs[rb].node
+      if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcGetImplTransf:
+      decodeB(rkNode)
+      let a = regs[rb].node
+      if a.kind == nkSym:
+        regs[ra].node =
+          if a.sym.ast.isNil:
+            newNode(nkNilLit)
+          else:
+            let ast = a.sym.ast.shallowCopy
+            for i in 0..<a.sym.ast.len:
+              ast[i] = a.sym.ast[i]
+            ast[bodyPos] = transformBody(c.graph, a.sym, cache=true)
+            ast.copyTree()
     of opcSymOwner:
       decodeB(rkNode)
       let a = regs[rb].node
@@ -933,6 +1055,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.flags.incl nfIsRef
       else:
         stackTrace(c, tos, pc, "node is not a symbol")
+    of opcSymIsInstantiationOf:
+      decodeBC(rkInt)
+      let a = regs[rb].node
+      let b = regs[rc].node
+      if a.kind == nkSym and a.sym.kind in skProcKinds and
+         b.kind == nkSym and b.sym.kind in skProcKinds:
+        regs[ra].intVal =
+          if sfFromGeneric in a.sym.flags and a.sym.owner == b.sym: 1
+          else: 0
+      else:
+        stackTrace(c, tos, pc, "node is not a proc symbol")
     of opcEcho:
       let rb = instr.regB
       if rb == 1:
@@ -980,23 +1113,30 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rc = instr.regC
       let bb = regs[rb].node
       let isClosure = bb.kind == nkTupleConstr
-      let prc = if not isClosure: bb.sym else: bb.sons[0].sym
+      let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
-                 currentException: c.currentExceptionB,
+                 currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
-      elif sfImportc in prc.flags:
-        if allowFFI notin c.features:
-          globalError(c.config, c.debug[pc], "VM not allowed to do FFI")
+      elif importcCond(prc):
+        if compiletimeFFI notin c.config.features:
+          globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
         # we pass 'tos.slots' instead of 'regs' so that the compiler can keep
         # 'regs' in a register:
         when hasFFI:
-          let prcValue = c.globals.sons[prc.position-1]
+          if prc.position - 1 < 0:
+            globalError(c.config, c.debug[pc],
+              "VM call invalid: prc.position: " & $prc.position)
+          let prcValue = c.globals[prc.position-1]
           if prcValue.kind == nkEmpty:
             globalError(c.config, c.debug[pc], "cannot run " & prc.name.s)
-          let newValue = callForeignFunction(prcValue, prc.typ, tos.slots,
+          var slots2: TNodeSeq
+          slots2.setLen(tos.slots.len)
+          for i in 0..<tos.slots.len:
+            slots2[i] = regToNode(tos.slots[i])
+          let newValue = callForeignFunction(c.config, prcValue, prc.typ, slots2,
                                              rb+1, rc-1, c.debug[pc])
           if newValue.kind != nkEmpty:
             assert instr.opcode == opcIndCallAsgn
@@ -1011,13 +1151,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         #echo "new pc ", newPc, " calling: ", prc.name.s
         var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
         newSeq(newFrame.slots, prc.offset+ord(isClosure))
-        if not isEmptyType(prc.typ.sons[0]) or prc.kind == skMacro:
-          putIntoReg(newFrame.slots[0], getNullValue(prc.typ.sons[0], prc.info, c.config))
-        for i in 1 .. rc-1:
+        if not isEmptyType(prc.typ[0]):
+          putIntoReg(newFrame.slots[0], getNullValue(prc.typ[0], prc.info, c.config))
+        for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
           newFrame.slots[rc].kind = rkNode
-          newFrame.slots[rc].node = regs[rb].node.sons[1]
+          newFrame.slots[rc].node = regs[rb].node[1]
         tos = newFrame
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
@@ -1030,11 +1170,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                             c.module
         var macroCall = newNodeI(nkCall, c.debug[pc])
         macroCall.add(newSymNode(prc))
-        for i in 1 .. rc-1:
+        for i in 1..rc-1:
           let node = regs[rb+i].regToNode
           node.info = c.debug[pc]
           macroCall.add(node)
-        var a = evalTemplate(macroCall, prc, genSymOwner, c.config)
+        var a = evalTemplate(macroCall, prc, genSymOwner, c.config, c.cache)
         if a.kind == nkStmtList and a.len == 1: a = a[0]
         a.recSetFlagIsRef
         ensureKind(rkNode)
@@ -1061,8 +1201,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       # we know the next instruction is a 'fjmp':
       let branch = c.constants[instr.regBx-wordExcess]
       var cond = false
-      for j in countup(0, sonsLen(branch) - 2):
-        if overlap(regs[ra].regToNode, branch.sons[j]):
+      for j in 0..<branch.len - 1:
+        if overlap(regs[ra].regToNode, branch[j]):
           cond = true
           break
       assert c.code[pc+1].opcode == opcFJmp
@@ -1078,44 +1218,62 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       tos.pushSafePoint(pc + rbx)
       assert c.code[pc+rbx].opcode in {opcExcept, opcFinally}
     of opcExcept:
-      # just skip it; it's followed by a jump;
-      # we'll execute in the 'raise' handler
-      let rbx = instr.regBx - wordExcess - 1 # -1 for the following 'inc pc'
-      inc pc, rbx
-      while c.code[pc+1].opcode == opcExcept:
-        let rbx = c.code[pc+1].regBx - wordExcess - 1
-        inc pc, rbx
-      #assert c.code[pc+1].opcode in {opcExcept, opcFinally}
-      if c.code[pc+1].opcode != opcFinally:
-        # in an except handler there is no active safe point for the 'try':
-        tos.popSafePoint()
+      # This opcode is never executed, it only holds information for the
+      # exception handling routines.
+      doAssert(false)
     of opcFinally:
-      # just skip it; it's followed by the code we need to execute anyway
+      # Pop the last safepoint introduced by a opcTry. This opcode is only
+      # executed _iff_ no exception was raised in the body of the `try`
+      # statement hence the need to pop the safepoint here.
+      doAssert(savedPC < 0)
       tos.popSafePoint()
     of opcFinallyEnd:
-      if c.currentExceptionA != nil:
-        # we are in a cleanup run:
-        let (newPc, newTos) = cleanUpOnException(c, tos)
-        if newPc-1 < 0:
-          bailOut(c, tos)
-          return
-        pc = newPc-1
-        if tos != newTos:
-          tos = newTos
+      # The control flow may not resume at the next instruction since we may be
+      # raising an exception or performing a cleanup.
+      if savedPC >= 0:
+        pc = savedPC - 1
+        savedPC = -1
+        if tos != savedFrame:
+          tos = savedFrame
           move(regs, tos.slots)
     of opcRaise:
-      let raised = regs[ra].node
+      let raised =
+        # Empty `raise` statement - reraise current exception
+        if regs[ra].kind == rkNone:
+          c.currentExceptionA
+        else:
+          regs[ra].node
       c.currentExceptionA = raised
+      # Set the `name` field of the exception
+      c.currentExceptionA[2].skipColon.strVal = c.currentExceptionA.typ.sym.name.s
       c.exceptionInstr = pc
-      let (newPc, newTos) = cleanUpOnException(c, tos)
-      # -1 because of the following 'inc'
-      if newPc-1 < 0:
+
+      var frame = tos
+      var jumpTo = findExceptionHandler(c, frame, raised)
+      while jumpTo.why == ExceptionGotoUnhandled and not frame.next.isNil:
+        frame = frame.next
+        jumpTo = findExceptionHandler(c, frame, raised)
+
+      case jumpTo.why:
+      of ExceptionGotoHandler:
+        # Jump to the handler, do nothing when the `finally` block ends.
+        savedPC = -1
+        pc = jumpTo.where - 1
+        if tos != frame:
+          tos = frame
+          move(regs, tos.slots)
+      of ExceptionGotoFinally:
+        # Jump to the `finally` block first then re-jump here to continue the
+        # traversal of the exception chain
+        savedPC = pc
+        savedFrame = tos
+        pc = jumpTo.where - 1
+        if tos != frame:
+          tos = frame
+          move(regs, tos.slots)
+      of ExceptionGotoUnhandled:
+        # Nobody handled this exception, error out.
         bailOut(c, tos)
-        return
-      pc = newPc-1
-      if tos != newTos:
-        tos = newTos
-        move(regs, tos.slots)
     of opcNew:
       ensureKind(rkNode)
       let typ = c.types[instr.regBx - wordExcess]
@@ -1130,8 +1288,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node = newNodeI(nkBracket, c.debug[pc])
       regs[ra].node.typ = typ
       newSeq(regs[ra].node.sons, count)
-      for i in 0 ..< count:
-        regs[ra].node.sons[i] = getNullValue(typ.sons[0], c.debug[pc], c.config)
+      for i in 0..<count:
+        regs[ra].node[i] = getNullValue(typ[0], c.debug[pc], c.config)
     of opcNewStr:
       decodeB(rkNode)
       regs[ra].node = newNodeI(nkStrLit, c.debug[pc])
@@ -1146,7 +1304,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].node = getNullValue(typ, c.debug[pc], c.config)
       # opcLdNull really is the gist of the VM's problems: should it load
       # a fresh null to  regs[ra].node  or to regs[ra].node[]? This really
-      # depends on whether regs[ra] represents the variable itself or wether
+      # depends on whether regs[ra] represents the variable itself or whether
       # it holds the indirection! Due to the way registers are re-used we cannot
       # say for sure here! --> The codegen has to deal with it
       # via 'genAsgnPatch'.
@@ -1161,7 +1319,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].intVal = 0
     of opcLdConst:
       let rb = instr.regBx - wordExcess
-      let cnst = c.constants.sons[rb]
+      let cnst = c.constants[rb]
       if fitsRegister(cnst.typ):
         myreset(regs[ra])
         putIntoReg(regs[ra], cnst)
@@ -1170,7 +1328,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = cnst
     of opcAsgnConst:
       let rb = instr.regBx - wordExcess
-      let cnst = c.constants.sons[rb]
+      let cnst = c.constants[rb]
       if fitsRegister(cnst.typ):
         putIntoReg(regs[ra], cnst)
       else:
@@ -1179,11 +1337,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcLdGlobal:
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNode)
-      regs[ra].node = c.globals.sons[rb]
+      regs[ra].node = c.globals[rb]
     of opcLdGlobalAddr:
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNodeAddr)
-      regs[ra].nodeAddr = addr(c.globals.sons[rb])
+      regs[ra].nodeAddr = addr(c.globals[rb])
     of opcRepr:
       decodeB(rkNode)
       createStr regs[ra]
@@ -1191,9 +1349,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcQuit:
       if c.mode in {emRepl, emStaticExpr, emStaticStmt}:
         message(c.config, c.debug[pc], hintQuitCalled)
-        msgQuit(int8(getOrdValue(regs[ra].regToNode)))
+        msgQuit(int8(toInt(getOrdValue(regs[ra].regToNode, onError = toInt128(1)))))
       else:
         return TFullReg(kind: rkNone)
+    of opcInvalidField:
+      stackTrace(c, tos, pc, errFieldXNotFound & regs[ra].node.strVal)
     of opcSetLenStr:
       decodeB(rkNode)
       #createStrKeepNode regs[ra]
@@ -1201,7 +1361,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcOf:
       decodeBC(rkInt)
       let typ = c.types[regs[rc].intVal.int]
-      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) >= 0)
+      regs[ra].intVal = ord(inheritanceDiff(regs[rb].node.typ, typ) <= 0)
     of opcIs:
       decodeBC(rkInt)
       let t1 = regs[rb].node.typ.skipTypes({tyTypeDesc})
@@ -1215,8 +1375,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let newLen = regs[rb].intVal.int
       if regs[ra].node.isNil: stackTrace(c, tos, pc, errNilAccess)
       else: c.setLenSeq(regs[ra].node, newLen, c.debug[pc])
-    of opcReset:
-      internalError(c.config, c.debug[pc], "too implement")
     of opcNarrowS:
       decodeB(rkInt)
       let min = -(1.BiggestInt shl (rb-1))
@@ -1226,6 +1384,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNarrowU:
       decodeB(rkInt)
       regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
+    of opcSignExtend:
+      # like opcNarrowS, but no out of range possible
+      decodeB(rkInt)
+      let imm = 64 - rb
+      regs[ra].intVal = ashr(regs[ra].intVal shl imm, imm)
     of opcIsNil:
       decodeB(rkInt)
       let node = regs[rb].node
@@ -1234,15 +1397,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # reference with the value `nil`, so `isNil` should be false!
         (node.kind == nkNilLit and nfIsRef notin node.flags) or
         (not node.typ.isNil and node.typ.kind == tyProc and
-          node.typ.callConv == ccClosure and node.sons[0].kind == nkNilLit and
-          node.sons[1].kind == nkNilLit))
+          node.typ.callConv == ccClosure and node[0].kind == nkNilLit and
+          node[1].kind == nkNilLit))
     of opcNBindSym:
       # cannot use this simple check
       # if dynamicBindSym notin c.config.features:
 
       # bindSym with static input
       decodeBx(rkNode)
-      regs[ra].node = copyTree(c.constants.sons[rbx])
+      regs[ra].node = copyTree(c.constants[rbx])
       regs[ra].node.flags.incl nfIsRef
     of opcNDynBindSym:
       # experimental bindSym
@@ -1252,7 +1415,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
-                currentException: c.currentExceptionB,
+                currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
       callback(args)
       regs[ra].node.flags.incl nfIsRef
@@ -1260,35 +1423,44 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkNode)
       let idx = regs[rc].intVal.int
       let src = regs[rb].node
-      if src.kind notin {nkEmpty..nkNilLit} and idx <% src.len:
-        regs[ra].node = src.sons[idx]
+      if src.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot get child of node kind: n" & $src.kind)
+      elif idx >=% src.len:
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        regs[ra].node = src[idx]
     of opcNSetChild:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
       var dest = regs[ra].node
-      if dest.kind notin {nkEmpty..nkNilLit} and idx <% dest.len:
-        dest.sons[idx] = regs[rc].node
+      if nfSem in dest.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif dest.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot set child of node kind: n" & $dest.kind)
+      elif idx >=% dest.len:
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, dest.len-1))
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        dest[idx] = regs[rc].node
     of opcNAdd:
       decodeBC(rkNode)
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit}:
-        u.add(regs[rc].node)
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif u.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        u.add(regs[rc].node)
       regs[ra].node = u
     of opcNAddMultiple:
       decodeBC(rkNode)
       let x = regs[rc].node
       var u = regs[rb].node
-      if u.kind notin {nkEmpty..nkNilLit}:
-        # XXX can be optimized:
-        for i in 0..<x.len: u.add(x.sons[i])
+      if nfSem in u.flags and allowSemcheckedAstModification notin c.config.legacyFeatures:
+        stackTrace(c, tos, pc, "typechecked nodes may not be modified")
+      elif u.kind in {nkEmpty..nkNilLit}:
+        stackTrace(c, tos, pc, "cannot add to node kind: n" & $u.kind)
       else:
-        stackTrace(c, tos, pc, "cannot add to node kind: " & $u.kind)
+        for i in 0..<x.len: u.add(x[i])
       regs[ra].node = u
     of opcNKind:
       decodeB(rkInt)
@@ -1305,9 +1477,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNIntVal:
       decodeB(rkInt)
       let a = regs[rb].node
-      case a.kind
-      of nkCharLit..nkUInt64Lit: regs[ra].intVal = a.intVal
-      else: stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
+      if a.kind in {nkCharLit..nkUInt64Lit}:
+        regs[ra].intVal = a.intVal
+      elif a.kind == nkSym and a.sym.kind == skEnumField:
+        regs[ra].intVal = a.sym.position
+      else:
+        stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
     of opcNFloatVal:
       decodeB(rkFloat)
       let a = regs[rb].node
@@ -1328,10 +1503,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = copyNode(a)
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "ident")
+    of opcNodeId:
+      decodeB(rkInt)
+      when defined(useNodeIds):
+        regs[ra].intVal = regs[rb].node.id
+      else:
+        regs[ra].intVal = -1
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC
-      case rc:
+      case rc
       of 0:
         # getType opcode:
         ensureKind(rkNode)
@@ -1368,12 +1549,33 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].node = opMapTypeImplToAst(c.cache, regs[rb].node.sym.typ, c.debug[pc])
         else:
           stackTrace(c, tos, pc, "node has no type")
+    of opcNGetSize:
+      decodeBImm(rkInt)
+      let n = regs[rb].node
+      case imm
+      of 0: # size
+        if n.typ == nil:
+          stackTrace(c, tos, pc, "node has no type")
+        else:
+          regs[ra].intVal = getSize(c.config, n.typ)
+      of 1: # align
+        if n.typ == nil:
+          stackTrace(c, tos, pc, "node has no type")
+        else:
+          regs[ra].intVal = getAlign(c.config, n.typ)
+      else: # offset
+        if n.kind != nkSym:
+          stackTrace(c, tos, pc, "node is not a symbol")
+        elif n.sym.kind != skField:
+          stackTrace(c, tos, pc, "symbol is not a field (nskField)")
+        else:
+          regs[ra].intVal = n.sym.offset
     of opcNStrVal:
       decodeB(rkNode)
       createStr regs[ra]
       let a = regs[rb].node
       case a.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of nkStrLit..nkTripleStrLit:
         regs[ra].node.strVal = a.strVal
       of nkCommentStmt:
         regs[ra].node.strVal = a.comment
@@ -1383,23 +1585,34 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.strVal = a.sym.name.s
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "strVal")
+    of opcNSigHash:
+      decodeB(rkNode)
+      createStr regs[ra]
+      if regs[rb].node.kind != nkSym:
+        stackTrace(c, tos, pc, "node is not a symbol")
+      else:
+        regs[ra].node.strVal = $sigHash(regs[rb].node.sym)
     of opcSlurp:
       decodeB(rkNode)
       createStr regs[ra]
       regs[ra].node.strVal = opSlurp(regs[rb].node.strVal, c.debug[pc],
                                      c.module, c.config)
     of opcGorge:
-      when defined(nimcore):
-        decodeBC(rkNode)
-        inc pc
-        let rd = c.code[pc].regA
-
-        createStr regs[ra]
-        regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
-                                      regs[rc].node.strVal, regs[rd].node.strVal,
-                                      c.debug[pc], c.config)[0]
+      decodeBC(rkNode)
+      inc pc
+      let rd = c.code[pc].regA
+      createStr regs[ra]
+      if defined(nimsuggest) or c.config.cmd == cmdCheck:
+        discard "don't run staticExec for 'nim suggest'"
+        regs[ra].node.strVal = ""
       else:
-        globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
+        when defined(nimcore):
+          regs[ra].node.strVal = opGorge(regs[rb].node.strVal,
+                                        regs[rc].node.strVal, regs[rd].node.strVal,
+                                        c.debug[pc], c.config)[0]
+        else:
+          regs[ra].node.strVal = ""
+          globalError(c.config, c.debug[pc], "VM is not built with 'gorge' support")
     of opcNError, opcNWarning, opcNHint:
       decodeB(rkNode)
       let a = regs[ra].node
@@ -1422,11 +1635,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
         c.errorFlag = error
-      elif sonsLen(ast) != 1:
+      elif ast.len != 1:
         c.errorFlag = formatMsg(c.config, c.debug[pc], errGenerated,
           "expected expression, but got multiple statements")
       else:
-        regs[ra].node = ast.sons[0]
+        regs[ra].node = ast[0]
     of opcParseStmtToAst:
       decodeB(rkNode)
       var error: string
@@ -1467,15 +1680,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
-      let aNode = regs[rb].node
-      let bNode = regs[rc].node
-      # these are cstring to prevent string copy, and cmpIgnoreStyle from
-      # takes cstring arguments
+      var aNode = regs[rb].node
+      var bNode = regs[rc].node
+      # Skipping both, `nkPostfix` and `nkAccQuoted` for both
+      # arguments.  `nkPostfix` exists only to tag exported symbols
+      # and therefor it can be safely skipped. Nim has no postfix
+      # operator. `nkAccQuoted` is used to quote an identifier that
+      # wouldn't be allowed to use in an unquoted context.
+      if aNode.kind == nkPostfix:
+        aNode = aNode[1]
+      if aNode.kind == nkAccQuoted:
+        aNode = aNode[0]
+      if bNode.kind == nkPostfix:
+        bNode = bNode[1]
+      if bNode.kind == nkAccQuoted:
+        bNode = bNode[0]
+      # These vars are of type `cstring` to prevent unnecessary string copy.
       var aStrVal: cstring = nil
       var bStrVal: cstring = nil
       # extract strVal from argument ``a``
       case aNode.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of nkStrLit..nkTripleStrLit:
         aStrVal = aNode.strVal.cstring
       of nkIdent:
         aStrVal = aNode.ident.s.cstring
@@ -1487,7 +1712,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         discard
       # extract strVal from argument ``b``
       case bNode.kind
-      of {nkStrLit..nkTripleStrLit}:
+      of nkStrLit..nkTripleStrLit:
         bStrVal = bNode.strVal.cstring
       of nkIdent:
         bStrVal = bNode.ident.s.cstring
@@ -1497,10 +1722,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         bStrVal = bNode[0].sym.name.s.cstring
       else:
         discard
-      # set result
       regs[ra].intVal =
         if aStrVal != nil and bStrVal != nil:
-          ord(idents.cmpIgnoreStyle(aStrVal,bStrVal,high(int)) == 0)
+          ord(idents.cmpIgnoreStyle(aStrVal, bStrVal, high(int)) == 0)
         else:
           0
 
@@ -1513,9 +1737,13 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node.ident = getIdent(c.cache, regs[rb].node.strVal)
         regs[ra].node.flags.incl nfIsRef
     of opcSetType:
+      let typ = c.types[instr.regBx - wordExcess]
       if regs[ra].kind != rkNode:
-        internalError(c.config, c.debug[pc], "cannot set type")
-      regs[ra].node.typ = c.types[instr.regBx - wordExcess]
+        let temp = regToNode(regs[ra])
+        ensureKind(rkNode)
+        regs[ra].node = temp
+        regs[ra].node.info = c.debug[pc]
+      regs[ra].node.typ = typ
     of opcConv:
       let rb = instr.regB
       inc pc
@@ -1535,8 +1763,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let srctyp = c.types[c.code[pc].regBx - wordExcess]
 
       when hasFFI:
-        let dest = fficast(regs[rb], desttyp)
-        asgnRef(regs[ra], dest)
+        let dest = fficast(c.config, regs[rb].node, desttyp)
+        # todo: check whether this is correct
+        # asgnRef(regs[ra], dest)
+        putIntoReg(regs[ra], dest)
       else:
         globalError(c.config, c.debug[pc], "cannot evaluate cast")
     of opcNSetIntVal:
@@ -1545,6 +1775,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if dest.kind in {nkCharLit..nkUInt64Lit} and
          regs[rb].kind in {rkInt}:
         dest.intVal = regs[rb].intVal
+      elif dest.kind == nkSym and dest.sym.kind == skEnumField:
+        stackTrace(c, tos, pc, "`intVal` cannot be changed for an enum symbol.")
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "intVal")
     of opcNSetFloatVal:
@@ -1615,7 +1847,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNDel:
       decodeBC(rkNode)
       let bb = regs[rb].intVal.int
-      for i in countup(0, regs[rc].intVal.int-1):
+      for i in 0..<regs[rc].intVal.int:
         delSon(regs[ra].node, bb)
     of opcGenSym:
       decodeBC(rkNode)
@@ -1634,25 +1866,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].intVal = getOrDefault(c.graph.cacheCounters, destKey)
     of opcNccInc:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let by = regs[instr.regB].intVal
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let by = regs[rc].intVal
       let v = getOrDefault(g.cacheCounters, destKey)
       g.cacheCounters[destKey] = v+by
       recordInc(c, c.debug[pc], destKey, by)
     of opcNcsAdd:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let val = regs[instr.regB].node
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
-        # newNodeI(nkStmtList, c.debug[pc])
       else:
         g.cacheSeqs[destKey].add val
       recordAdd(c, c.debug[pc], destKey, val)
     of opcNcsIncl:
       let g = c.graph
-      let destKey = regs[ra].node.strVal
-      let val = regs[instr.regB].node
+      declBC()
+      let destKey = regs[rb].node.strVal
+      let val = regs[rc].node
       if not contains(g.cacheSeqs, destKey):
         g.cacheSeqs[destKey] = newTree(nkStmtList, val)
       else:
@@ -1676,7 +1910,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if contains(g.cacheSeqs, destKey) and idx <% g.cacheSeqs[destKey].len:
         regs[ra].node = g.cacheSeqs[destKey][idx.int]
       else:
-        stackTrace(c, tos, pc, errIndexOutOfBounds)
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, g.cacheSeqs[destKey].len-1))
     of opcNctPut:
       let g = c.graph
       let destKey = regs[ra].node.strVal
@@ -1734,7 +1968,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var typ = regs[rb].node.typ
       internalAssert c.config, typ != nil
-      while typ.kind == tyTypeDesc and typ.len > 0: typ = typ.sons[0]
+      while typ.kind == tyTypeDesc and typ.len > 0: typ = typ[0]
       createStr regs[ra]
       regs[ra].node.strVal = typ.typeToString(preferExported)
     of opcMarshalLoad:
@@ -1751,16 +1985,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       when not defined(nimNoNilSeqs):
         if regs[ra].node.strVal.isNil: regs[ra].node.strVal = newStringOfCap(1000)
       storeAny(regs[ra].node.strVal, typ, regs[rb].regToNode, c.config)
-    of opcToNarrowInt:
-      decodeBC(rkInt)
-      let mask = (1'i64 shl rc) - 1 # 0xFF
-      let signbit = 1'i64 shl (rc - 1) # 0x80
-      let toggle = mask - signbit # 0x7F
-      # algorithm: -((i8 and 0xFF) xor 0x7F) + 0x7F
-      # mask off higher bits.
-      # uses two's complement to sign-extend integer.
-      # reajust integer into desired range.
-      regs[ra].intVal = -((regs[rb].intVal and mask) xor toggle) + toggle
 
     inc pc
 
@@ -1783,8 +2007,8 @@ proc execProc*(c: PCtx; sym: PSym; args: openArray[PNode]): PNode =
       newSeq(tos.slots, maxSlots)
 
       # setup parameters:
-      if not isEmptyType(sym.typ.sons[0]) or sym.kind == skMacro:
-        putIntoReg(tos.slots[0], getNullValue(sym.typ.sons[0], sym.info, c.config))
+      if not isEmptyType(sym.typ[0]) or sym.kind == skMacro:
+        putIntoReg(tos.slots[0], getNullValue(sym.typ[0], sym.info, c.config))
       # XXX We could perform some type checking here.
       for i in 1..<sym.typ.len:
         putIntoReg(tos.slots[i], args[i-1])
@@ -1810,7 +2034,7 @@ proc evalExpr*(c: PCtx, n: PNode): PNode =
 
 proc getGlobalValue*(c: PCtx; s: PSym): PNode =
   internalAssert c.config, s.kind in {skLet, skVar} and sfGlobal in s.flags
-  result = c.globals.sons[s.position-1]
+  result = c.globals[s.position-1]
 
 include vmops
 
@@ -1823,14 +2047,12 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   #var c = newEvalContext(module, emRepl)
-  #c.features = {allowCast, allowFFI, allowInfiniteLoops}
+  #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())
 
   # XXX produce a new 'globals' environment here:
   setupGlobalCtx(module, graph)
   result = PCtx graph.vm
-  when hasFFI:
-    PCtx(graph.vm).features = {allowFFI, allowCast}
 
 proc myProcess(c: PPassContext, n: PNode): PNode =
   let c = PCtx(c)
@@ -1850,6 +2072,7 @@ const evalPass* = makePass(myOpen, myProcess, myClose)
 proc evalConstExprAux(module: PSym;
                       g: ModuleGraph; prc: PSym, n: PNode,
                       mode: TEvalMode): PNode =
+  if g.config.errorCounter > 0: return n
   let n = transformExpr(g, module, n)
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
@@ -1862,7 +2085,7 @@ proc evalConstExprAux(module: PSym;
   when debugEchoCode: c.echoCode start
   var tos = PStackFrame(prc: prc, comesFrom: 0, next: nil)
   newSeq(tos.slots, c.prc.maxSlots)
-  #for i in 0 ..< c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
+  #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
 
@@ -1878,16 +2101,33 @@ proc evalStaticStmt*(module: PSym; g: ModuleGraph; e: PNode, prc: PSym) =
 proc setupCompileTimeVar*(module: PSym; g: ModuleGraph; n: PNode) =
   discard evalConstExprAux(module, g, nil, n, emStaticStmt)
 
+proc prepareVMValue(arg: PNode): PNode =
+  ## strip nkExprColonExpr from tuple values recurively. That is how
+  ## they are expected to be stored in the VM.
+
+  # Early abort without copy. No transformation takes place.
+  if arg.kind in nkLiterals:
+    return arg
+
+  result = copyNode(arg)
+  if arg.kind == nkTupleConstr:
+    for child in arg:
+      if child.kind == nkExprColonExpr:
+        result.add prepareVMValue(child[1])
+      else:
+        result.add prepareVMValue(child)
+  else:
+    for child in arg:
+      result.add prepareVMValue(child)
+
 proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   case typ.kind
   of tyStatic:
-    putIntoReg(result, x)
-  of tyTypeDesc:
-    putIntoReg(result, x)
+    putIntoReg(result, prepareVMValue(x))
   else:
     result.kind = rkNode
     var n = x
-    if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n.sons[1]
+    if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
     n = n.canonValue
     n.flags.incl nfIsRef
     n.typ = x.typ
@@ -1895,16 +2135,24 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
-  for i in 0 ..< gp.len:
+  for i in 0..<gp.len:
     let genericParam = gp[i].sym
     let posInCall = macroSym.typ.len + i
-    yield (genericParam, call[posInCall])
+    if posInCall < call.len:
+      yield (genericParam, call[posInCall])
 
 # to prevent endless recursion in macro instantiation
 const evalMacroLimit = 1000
 
+proc errorNode(owner: PSym, n: PNode): PNode =
+  result = newNodeI(nkEmpty, n.info)
+  result.typ = newType(tyError, owner)
+  result.typ.flags.incl tfCheckedForDestructor
+
 proc evalMacroCall*(module: PSym; g: ModuleGraph;
                     n, nOrig: PNode, sym: PSym): PNode =
+  if g.config.errorCounter > 0: return errorNode(module, n)
+
   # XXX globalError() is ugly here, but I don't know a better solution for now
   inc(g.config.evalMacroCounter)
   if g.config.evalMacroCounter > evalMacroLimit:
@@ -1918,8 +2166,9 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
 
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
+  let oldMode = c.mode
+  c.mode = emStaticStmt
   c.comesFromHeuristic.line = 0'u16
-
   c.callsite = nOrig
   let start = genProc(c, sym)
 
@@ -1939,27 +2188,23 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
 
   # setup parameters:
   for i in 1..<sym.typ.len:
-    tos.slots[i] = setupMacroParam(n.sons[i], sym.typ.sons[i])
+    tos.slots[i] = setupMacroParam(n[i], sym.typ[i])
 
   let gp = sym.ast[genericParamsPos]
-  for i in 0 ..< gp.len:
-    if sfImmediate notin sym.flags:
-      let idx = sym.typ.len + i
-      if idx < n.len:
-        tos.slots[idx] = setupMacroParam(n.sons[idx], gp[i].sym.typ)
-      else:
-        dec(g.config.evalMacroCounter)
-        c.callsite = nil
-        localError(c.config, n.info, "expected " & $gp.len &
-                   " generic parameter(s)")
-    elif gp[i].sym.typ.kind in {tyStatic, tyTypeDesc}:
+  for i in 0..<gp.len:
+    let idx = sym.typ.len + i
+    if idx < n.len:
+      tos.slots[idx] = setupMacroParam(n[idx], gp[i].sym.typ)
+    else:
       dec(g.config.evalMacroCounter)
       c.callsite = nil
-      globalError(c.config, n.info, "static[T] or typedesc nor supported for .immediate macros")
+      localError(c.config, n.info, "expected " & $gp.len &
+                 " generic parameter(s)")
   # temporary storage:
-  #for i in L ..< maxSlots: tos.slots[i] = newNode(nkEmpty)
+  #for i in L..<maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.line < 0: result.info = n.info
   if cyclicTree(result): globalError(c.config, n.info, "macro produced a cyclic tree")
   dec(g.config.evalMacroCounter)
   c.callsite = nil
+  c.mode = oldMode

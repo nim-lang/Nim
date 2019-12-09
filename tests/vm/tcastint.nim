@@ -1,7 +1,8 @@
 discard """
-  file: "tcastint.nim"
   output: "OK"
 """
+
+import macros
 
 type
   Dollar = distinct int
@@ -113,8 +114,194 @@ proc test() =
     doAssert(not compiles(cast[uint32](I8)))
     doAssert(not compiles(cast[uint64](I8)))
 
+const prerecordedResults = [
+  # cast to char
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  "\128", "\127",
+  "\0", "\255",
+  "\0", "\255",
+  "\0", "\255",
+  # cast to uint8
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  "128", "127",
+  "0", "255",
+  "0", "255",
+  "0", "255",
+  # cast to uint16
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "65535",
+  "0", "65535",
+  "65408", "127",
+  "32768", "32767",
+  "0", "65535",
+  "0", "65535",
+  # cast to uint32
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "4294967295",
+  "0", "4294967295",
+  "4294967168", "127",
+  "4294934528", "32767",
+  "2147483648", "2147483647",
+  "0", "4294967295",
+  # cast to uint64
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "4294967295",
+  "0", "18446744073709551615",
+  "18446744073709551488", "127",
+  "18446744073709518848", "32767",
+  "18446744071562067968", "2147483647",
+  "9223372036854775808", "9223372036854775807",
+  # cast to int8
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "-128", "127",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  # cast to int16
+  "0", "255",
+  "0", "255",
+  "0", "-1",
+  "0", "-1",
+  "0", "-1",
+  "-128", "127",
+  "-32768", "32767",
+  "0", "-1",
+  "0", "-1",
+  # cast to int32
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "-1",
+  "0", "-1",
+  "-128", "127",
+  "-32768", "32767",
+  "-2147483648", "2147483647",
+  "0", "-1",
+  # cast to int64
+  "0", "255",
+  "0", "255",
+  "0", "65535",
+  "0", "4294967295",
+  "0", "-1",
+  "-128", "127",
+  "-32768", "32767",
+  "-2147483648", "2147483647",
+  "-9223372036854775808", "9223372036854775807",
+]
+
+proc free_integer_casting() =
+  # cast from every integer type to every type and ensure same
+  # behavior in vm and execution time.
+  macro bar(arg: untyped) =
+    result = newStmtList()
+    var i = 0
+    for it1 in arg:
+      let typA = it1[0]
+      for it2 in arg:
+        let lowB = it2[1]
+        let highB = it2[2]
+        let castExpr1 = nnkCast.newTree(typA, lowB)
+        let castExpr2 = nnkCast.newTree(typA, highB)
+        let lit1 = newLit(prerecordedResults[i*2])
+        let lit2 = newLit(prerecordedResults[i*2+1])
+        result.add quote do:
+          doAssert($(`castExpr1`) == `lit1`)
+          doAssert($(`castExpr2`) == `lit2`)
+        i += 1
+
+  bar([
+    (char, '\0', '\255'),
+    (uint8, 0'u8, 0xff'u8),
+    (uint16, 0'u16, 0xffff'u16),
+    (uint32, 0'u32, 0xffffffff'u32),
+    (uint64, 0'u64, 0xffffffffffffffff'u64),
+    (int8,  0x80'i8, 0x7f'i8),
+    (int16, 0x8000'i16, 0x7fff'i16),
+    (int32, 0x80000000'i32, 0x7fffffff'i32),
+    (int64, 0x8000000000000000'i64, 0x7fffffffffffffff'i64)
+  ])
+
+proc test_float_cast =
+
+  const
+    exp_bias = 1023'i64
+    exp_shift = 52
+    exp_mask = 0x7ff'i64 shl exp_shift
+    mantissa_mask = 0xfffffffffffff'i64
+
+  let f = 8.0
+  let fx = cast[int64](f)
+  let exponent = ((fx and exp_mask) shr exp_shift) - exp_bias
+  let mantissa = fx and mantissa_mask
+  doAssert(exponent == 3, $exponent)
+  doAssert(mantissa == 0, $mantissa)
+
+  # construct 2^N float, where N is integer
+  let x = -2'i64
+  let xx = (x + exp_bias) shl exp_shift
+  let xf = cast[float](xx)
+  doAssert(xf == 0.25, $xf)
+
+proc test_float32_cast =
+
+  const
+    exp_bias = 127'i32
+    exp_shift = 23
+    exp_mask = 0x7f800000'i32
+    mantissa_mask = 0x007ffff'i32
+
+  let f = -0.5'f32
+  let fx = cast[int32](f)
+  let exponent = ((fx and exp_mask) shr exp_shift) - exp_bias
+  let mantissa = fx and mantissa_mask
+  doAssert(exponent == -1, $exponent)
+  doAssert(mantissa == 0, $mantissa)
+
+  # construct 2^N float32 where N is integer
+  let x = 4'i32
+  let xx = (x + exp_bias) shl exp_shift
+  let xf = cast[float32](xx)
+  doAssert(xf == 16.0'f32, $xf)
+
+proc test_float32_castB() =
+  let a: float32 = -123.125
+  let b = cast[int32](a)
+  let c = cast[uint32](a)
+  doAssert b == -1024049152
+  doAssert cast[uint64](b) == 18446744072685502464'u64
+  doAssert c == 3270918144'u32
+  # ensure the unused bits in the internal representation don't have
+  # any surprising content.
+  doAssert cast[uint64](c) == 3270918144'u64
+
 test()
+test_float_cast()
+test_float32_cast()
+free_integer_casting()
+test_float32_castB()
 static:
   test()
+  test_float_cast()
+  test_float32_cast()
+  free_integer_casting()
+  test_float32_castB()
 
 echo "OK"

@@ -1,5 +1,4 @@
 discard """
-  file: "tsubrange2.nim"
   outputsub: "value out of range: 50 [RangeError]"
   exitcode: "1"
 """
@@ -14,4 +13,3 @@ var
   r: TRange
   y = 50
 p y
-

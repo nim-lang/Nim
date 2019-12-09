@@ -64,7 +64,9 @@ proc reprStrAux(result: var string, s: cstring, len: int) =
 
 proc reprStr(s: string): string {.compilerRtl.} =
   result = ""
-  if cast[pointer](s).isNil:
+  var sIsNil = false
+  asm """`sIsNil` = `s` === null"""
+  if sIsNil: # cast[pointer](s).isNil:
     # Handle nil strings here because they don't have a length field in js
     # TODO: check for null/undefined before generating call to length in js?
     # Also: c backend repr of a nil string is <pointer>"", but repr of an

@@ -295,4 +295,4 @@ create table anon207(
   anon209 varchar(30) not null,
   anon204 varchar(30) default null,
   anon70 int not null  references anon40(anon41));
-
+select * from anon207 where anon41 in (1, 2, 3);

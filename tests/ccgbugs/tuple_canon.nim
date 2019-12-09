@@ -1,4 +1,9 @@
-
+discard """
+output: '''
+vidx 18
+0,0
+'''
+"""
 
 # bug #4626
 var foo: (int, array[1, int]) # Tuple must be of length > 1
@@ -7,8 +12,7 @@ foo = bar                     # No error if assigned directly
 
 # bug #2250
 
-import
-    math, strutils
+import math
 
 type
     Meters = float

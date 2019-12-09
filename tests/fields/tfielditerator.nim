@@ -104,9 +104,7 @@ block titerator2:
   for key, val in fieldPairs(x):
     echo key, ": ", val
 
-  var co: TMyCaseObj
-  co.myDisc = enC
-  co.c = 'Z'
+  var co = TMyCaseObj(myDisc: enC, c: 'Z')
   for key, val in fieldPairs(co):
     echo key, ": ", val
 

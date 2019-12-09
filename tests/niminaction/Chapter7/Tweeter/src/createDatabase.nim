@@ -1,3 +1,7 @@
+discard """
+output: "Database created successfully!"
+"""
+
 import database
 
 var db = newDatabase()

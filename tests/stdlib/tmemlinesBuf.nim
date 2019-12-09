@@ -1,6 +1,15 @@
+discard """
+output: "15"
+disabled: "appveyor"
+"""
+
 import memfiles
-var inp = memfiles.open("readme.txt")
+var inp = memfiles.open("tests/stdlib/tmemlinesBuf.nim")
 var buffer: TaintedString = ""
+var lineCount = 0
 for line in lines(inp, buffer):
-  echo("#" & line & "#")
+  lineCount += 1
+
 close(inp)
+
+echo lineCount

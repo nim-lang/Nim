@@ -222,7 +222,7 @@ template cacheImpl(procName, cacheName, resultType, body: untyped) {.dirty.} =
 
 template checkFile(path: untyped) {.dirty.} =
   if not existsFile(path):
-    errors.add("File missing: "& path)
+    errors.add("File missing: " & path)
 
 cacheImpl newSprite, SpriteSheets, PSpriteSheet:
   result.file = filename
@@ -231,7 +231,7 @@ cacheImpl newSprite, SpriteSheets, PSpriteSheet:
     result.frameh = strutils.parseInt(matches[1])
     checkFile("data/gfx"/result.file)
   else:
-    errors.add "Bad file: "&filename&" must be in format name_WxH.png"
+    errors.add "Bad file: " & filename & " must be in format name_WxH.png"
     return
 
 cacheImpl newSound, SoundCache, PSoundRecord:
@@ -314,10 +314,10 @@ proc validateSettings*(settings: JsonNode, errors: var seq[string]): bool =
     else:
       var id = 0
       for i in items.items:
-        if i.kind != JArray: errors.add("Item #$1 is not an array"% $id)
+        if i.kind != JArray: errors.add("Item #$1 is not an array" % $id)
         elif i.len != 3: errors.add("($1) Item record should have 3 fields"%($id))
         elif i[0].kind != JString or i[1].kind != JString or i[2].kind != JObject:
-          errors.add("($1) Item should be in form [name, type, {item: data}]"% $id)
+          errors.add("($1) Item should be in form [name, type, {item: data}]" % $id)
           result = false
         inc id
 
@@ -332,10 +332,10 @@ proc loadSettings*(rawJson: string, errors: var seq[string]): bool =
   try:
     settings = parseJson(rawJson)
   except JsonParsingError:
-    errors.add("JSON parsing error: "& getCurrentExceptionMsg())
+    errors.add("JSON parsing error: " & getCurrentExceptionMsg())
     return
   except:
-    errors.add("Unknown exception: "& getCurrentExceptionMsg())
+    errors.add("Unknown exception: " & getCurrentExceptionMsg())
     return
   if not validateSettings(settings, errors):
     return
@@ -378,7 +378,7 @@ proc loadSettings*(rawJson: string, errors: var seq[string]): bool =
     inc vID
     if itm.kind == Projectile:
       if itm.bullet.isNil:
-        errors.add("Projectile #$1 has no bullet!"% $vID)
+        errors.add("Projectile #$1 has no bullet!" % $vID)
       elif itm.bullet.id == -1:
         ## this item has an anonymous bullet, fix the ID and name
         itm.bullet.id = bID

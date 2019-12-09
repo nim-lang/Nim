@@ -2,6 +2,7 @@
 discard """
   output: '''occupied ok: true
 total ok: true'''
+  disabled: "true"
 """
 
 import strutils, data

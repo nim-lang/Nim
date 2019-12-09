@@ -9,7 +9,7 @@ operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'is' | 'isnot' | 'in' | 'notin' | 'of'
          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 prefixOperator = operator
-optInd = COMMENT?
+optInd = COMMENT? IND?
 optPar = (IND{>} | IND{=})?
 simpleExpr = arrowExpr (OP0 optInd arrowExpr)* pragma?
 arrowExpr = assignExpr (OP1 optInd assignExpr)*
@@ -85,17 +85,19 @@ paramListColon = paramList? (':' optInd typeDesc)?
 doBlock = 'do' paramListArrow pragmas? colcom stmt
 procExpr = 'proc' paramListColon pragmas? ('=' COMMENT? stmt)?
 distinct = 'distinct' optInd typeDesc
+forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
+forExpr = forStmt
 expr = (blockExpr
       | ifExpr
       | whenExpr
       | caseExpr
+      | forExpr
       | tryExpr)
       / simpleExpr
 typeKeyw = 'var' | 'out' | 'ref' | 'ptr' | 'shared' | 'tuple'
          | 'proc' | 'iterator' | 'distinct' | 'object' | 'enum'
 primary = typeKeyw typeDescK
         /  prefixOperator* identOrLiteral primarySuffix*
-        / 'static' primary
         / 'bind' primary
 typeDesc = simpleExpr
 typeDefAux = simpleExpr
@@ -142,12 +144,11 @@ tryExpr = 'try' colcom stmt &(optInd 'except'|'finally')
            (optInd 'except' exprList colcom stmt)*
            (optInd 'finally' colcom stmt)?
 exceptBlock = 'except' colcom stmt
-forStmt = 'for' (identWithPragma ^+ comma) 'in' expr colcom stmt
 blockStmt = 'block' symbol? colcom stmt
 blockExpr = 'block' symbol? colcom stmt
 staticStmt = 'static' colcom stmt
 deferStmt = 'defer' colcom stmt
-asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLE_STR_LIT)
+asmStmt = 'asm' pragma? (STR_LIT | RSTR_LIT | TRIPLESTR_LIT)
 genericParam = symbol (comma symbol)* (colon expr)? ('=' optInd expr)?
 genericParamList = '[' optInd
   genericParam ^* (comma/semicolon) optPar ']'

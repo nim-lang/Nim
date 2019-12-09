@@ -1,5 +1,4 @@
 discard """
-  file: "tasyncdial.nim"
   output: '''
 OK AF_INET
 OK AF_INET6
@@ -11,7 +10,7 @@ import
   nativesockets, os, asyncdispatch
 
 proc setupServerSocket(hostname: string, port: Port, domain: Domain): AsyncFD =
-  ## Creates a socket, binds it to the specified address, and starts listening for connecitons.
+  ## Creates a socket, binds it to the specified address, and starts listening for connections.
   ## Registers the descriptor with the dispatcher of the current thread
   ## Raises OSError in case of an error.
   let fd = newNativeSocket(domain)

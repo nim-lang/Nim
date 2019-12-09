@@ -1,6 +1,6 @@
 discard """
+  errormsg: "invalid type: 'openArray[int]' for result"
   line: 6
-  errormsg: "invalid type: 'openarray[int]' for result"
 """
 
 proc foo(a: openArray[int]):auto = a

@@ -20,7 +20,7 @@ proc callNimsuggest() =
   let cl = parseCmdLine("nimsuggest --tester temp000.nim")
   var p = startProcess(command=cl[0], args=cl[1 .. ^1],
                        options={poStdErrToStdOut, poUsePath,
-                       poInteractive, poDemon})
+                       poInteractive, poDaemon})
   let outp = p.outputStream
   let inp = p.inputStream
   var report = ""

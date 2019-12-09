@@ -1,13 +1,10 @@
 discard """
   output: '''TBar2
 TFoo
-16
-12
-16
-12'''
+'''
 """
 
-## XXX this output needs to be adapated for VCC which produces different results.
+## XXX this output needs to be adapted for VCC which produces different results.
 
 # It turned out that it's hard to generate correct for these two test cases at
 # the same time.
@@ -66,29 +63,6 @@ var dd = makeDesktop()
 var aa = makeWindow()
 
 thisCausesError(dd, aa)
-
-# bug #4763
-type
-  testObject_1 = object
-    size: int32
-    value: int64
-
-  testObject_2 {.packed.} = object
-    size: int32
-    value: int64
-
-  testObject_3[T] = object
-    size: int32
-    value: T
-
-  testObject_4 {.packed.} [T] = object
-    size: int32
-    value: T
-
-echo sizeof(testObject_1)
-echo sizeof(testObject_2)
-echo sizeof(testObject_3[int64])
-echo sizeof(testObject_4[int64])
 
 # bug  #5892
 type

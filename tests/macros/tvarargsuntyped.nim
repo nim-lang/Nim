@@ -3,7 +3,9 @@ discard """
 (left: 2, r: 7, x: 8, height: 4, s: test, width: 3, y: 9, top: 1, g: 7, b: 8)
 (left: 2, r: 7, x: 8, height: 4, s: text, width: 3, y: 9, top: 1, g: 7, b: 8)
 (left: 2, r: 7, x: 8, height: 4, s: text, width: 3, y: 9, top: 4, g: 7, b: 8)
-(left: 2, r: 7, x: 8, height: 4, s: test, width: 3, y: 9, top: 1, g: 7, b: 8)'''
+(left: 2, r: 7, x: 8, height: 4, s: test, width: 3, y: 9, top: 1, g: 7, b: 8)
+10
+hello 18.0'''
 """
 
 import macros
@@ -78,3 +80,29 @@ let width: cint = 3
 let height: cint = 4
 
 bar(rect(top, left, width, height), "test", point(8, 9), color(7,7,8))
+
+
+# bug #10075
+
+import macros
+
+proc convert_hidden_stdconv(args: NimNode): NimNode =
+  var n = args
+  while n.len == 1 and n[0].kind == nnkHiddenStdConv:
+    n = n[0][1]
+  return n
+
+macro t2(s: int, v: varargs[untyped]): untyped =
+  let v = convert_hidden_stdconv(v)
+  echo v.treeRepr
+  let (v1, v2) = (v[0], v[1])
+  quote do:
+    echo `v1`, " ", `v2`
+
+template t1(s: int, v: varargs[typed]) =
+  #static:
+  #   dumpTree v
+  echo s
+  t2(s, v)
+
+t1(10, "hello", 18.0)

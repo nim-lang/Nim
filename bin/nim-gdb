@@ -3,6 +3,9 @@
 # Exit if anything fails
 set -e
 
+which nim > /dev/null || (echo "nim not in PATH"; exit 1)
+which gdb > /dev/null || (echo "gdb not in PATH"; exit 1)
+
 # Find out where the pretty printer Python module is
 NIM_SYSROOT=$(dirname $(dirname $(readlink -e $(which nim))))
 GDB_PYTHON_MODULE_PATH="$NIM_SYSROOT/tools/nim-gdb.py"

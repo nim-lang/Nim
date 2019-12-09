@@ -21,7 +21,7 @@ ttmpl(1)
 ttmpl[int](1) #<- crash case #1
 
 tproc[int]()
-discard tproc[int]
+let _ = tproc[int]
 ttmpl[int]()  #<- crash case #2
 ttmpl[int]    #<- crash case #3
 

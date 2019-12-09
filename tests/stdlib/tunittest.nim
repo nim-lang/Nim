@@ -50,7 +50,6 @@ test "unittest multiple requires":
 import math, random
 from strutils import parseInt
 proc defectiveRobot() =
-  randomize()
   case random(1..4)
   of 1: raise newException(OSError, "CANNOT COMPUTE!")
   of 2: discard parseInt("Hello World!")

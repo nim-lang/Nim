@@ -1,6 +1,6 @@
 discard """
-  file: "tslices.nim"
-  output: '''456456
+output: '''
+456456
 456456
 456456
 Zugr5nd
@@ -56,4 +56,3 @@ echo mystr
 var s = "abcdef"
 s[1 .. ^2] = "xyz"
 assert s == "axyzf"
-

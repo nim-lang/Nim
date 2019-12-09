@@ -1,5 +1,6 @@
 discard """
-  output: '''true'''
+  output: "turn_destroy_into_finalizer works"
+  joinable: false
 """
 
 type
@@ -17,6 +18,9 @@ proc main =
   for i in 1..50_000:
     new(r)
     r.id = i
-  echo destroyed > 30_000
+  if destroyed > 30_000:
+    echo "turn_destroy_into_finalizer works"
+  else:
+    echo "turn_destroy_into_finalizer failed: ", destroyed
 
 main()

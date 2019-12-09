@@ -1,5 +1,4 @@
 discard """
-  file: "tassert.nim"
   outputsub: "assertion failure!this shall be always written"
   exitcode: "1"
 """
@@ -19,5 +18,3 @@ finally:
   system.write(stdout, "this shall be always written")
 
 assert(false) #OUT assertion failure!this shall be always written
-
-

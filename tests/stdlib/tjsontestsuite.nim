@@ -1,3 +1,7 @@
+discard """
+disabled: true
+"""
+
 ## JSON tests based on https://github.com/nst/JSONTestSuite
 
 import unittest,

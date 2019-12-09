@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 
 var
   e = "abc"
@@ -14,5 +18,5 @@ template test_in(a, b, c: untyped): bool {.dirty.} =
   var result {.gensym.}: bool = false
   false
 
-when isMainModule:
+when true:
   assert test_in(ret2, "test", str_val)

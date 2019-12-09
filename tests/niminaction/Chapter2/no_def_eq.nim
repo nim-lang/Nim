@@ -1,6 +1,6 @@
 discard """
-  line: 16
   errormsg: "type mismatch"
+  line: 16
 """
 
 type

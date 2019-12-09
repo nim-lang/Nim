@@ -1,17 +1,16 @@
 discard """
-  file: "ttables.nim"
-  output: '''
-done
+output: '''
+done tableadds
 And we get here
-true
-true
-true
-true
+1
+2
+3
 '''
+joinable: false
 """
-import hashes, sequtils, tables
+import hashes, sequtils, tables, algorithm
 
-
+# test should not be joined because it takes too long.
 block tableadds:
   proc main =
     var tab = newTable[string, string]()
@@ -19,7 +18,7 @@ block tableadds:
       tab.add "key", "value " & $i
 
   main()
-  echo "done"
+  echo "done tableadds"
 
 
 block tcounttable:
@@ -119,8 +118,7 @@ block thashes:
       newTable[uint32, string](),
       newTable[uint64, string](),
     )
-
-  echo "true"
+  echo "1"
 
 
 block tindexby:
@@ -144,7 +142,7 @@ block tindexby:
   tbl2.add("bar", elem1)
   tbl2.add("baz", elem2)
   doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
-  
+
 
 block tableconstr:
   # Test if the new table constructor syntax works:
@@ -188,7 +186,7 @@ block ttables2:
 
 
   run1()
-  echo "true"
+  echo "2"
 
 
 block tablesref:
@@ -235,7 +233,7 @@ block tablesref:
       for y in 0..1:
         assert t[(x,y)] == $x & $y
     assert($t ==
-      "{(x: 0, y: 1): \"01\", (x: 0, y: 0): \"00\", (x: 1, y: 0): \"10\", (x: 1, y: 1): \"11\"}")
+      "{(x: 1, y: 1): \"11\", (x: 0, y: 0): \"00\", (x: 0, y: 1): \"01\", (x: 1, y: 0): \"10\"}")
 
   block tableTest2:
     var t = newTable[string, float]()
@@ -276,22 +274,30 @@ block tablesref:
   block countTableTest1:
     var s = data.toTable
     var t = newCountTable[string]()
-    for k in s.keys: t.inc(k)
-    for k in t.keys: assert t[k] == 1
-    t.inc("90", 3)
-    t.inc("12", 2)
-    t.inc("34", 1)
+    var r = newCountTable[string]()
+    for x in [t, r]:
+      for k in s.keys:
+        x.inc(k)
+        assert x[k] == 1
+      x.inc("90", 3)
+      x.inc("12", 2)
+      x.inc("34", 1)
     assert t.largest()[0] == "90"
 
     t.sort()
-    var i = 0
-    for k, v in t.pairs:
-      case i
-      of 0: assert k == "90" and v == 4
-      of 1: assert k == "12" and v == 3
-      of 2: assert k == "34" and v == 2
-      else: break
-      inc i
+    r.sort(SortOrder.Ascending)
+    var ps1 = toSeq t.pairs
+    var ps2 = toSeq r.pairs
+    ps2.reverse()
+    for ps in [ps1, ps2]:
+      var i = 0
+      for (k, v) in ps:
+        case i
+        of 0: assert k == "90" and v == 4
+        of 1: assert k == "12" and v == 3
+        of 2: assert k == "34" and v == 2
+        else: break
+        inc i
 
   block SyntaxTest:
     var x = newTable[int, string]({:})
@@ -310,12 +316,19 @@ block tablesref:
     var t = newOrderedTable[string, int](2)
     for key, val in items(data): t[key] = val
     for key, val in items(data): assert t[key] == val
-    t.sort(proc (x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key))
+    proc cmper(x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key)
+    t.sort(cmper)
     var i = 0
     # `pairs` needs to yield in sorted order:
     for key, val in pairs(t):
       doAssert key == sorteddata[i][0]
       doAssert val == sorteddata[i][1]
+      inc(i)
+    t.sort(cmper, order=SortOrder.Descending)
+    i = 0
+    for key, val in pairs(t):
+      doAssert key == sorteddata[high(data)-i][0]
+      doAssert val == sorteddata[high(data)-i][1]
       inc(i)
 
     # check that lookup still works:
@@ -327,7 +340,7 @@ block tablesref:
   block anonZipTest:
     let keys = @['a','b','c']
     let values = @[1, 2, 3]
-    doAssert "{'a': 1, 'b': 2, 'c': 3}" == $ toTable zip(keys, values)
+    doAssert "{'c': 3, 'a': 1, 'b': 2}" == $ toTable zip(keys, values)
 
   block clearTableTest:
     var t = newTable[string, float]()
@@ -355,21 +368,4 @@ block tablesref:
     assert t.len() == 0
 
   orderedTableSortTest()
-  echo "true"
-
-
-block tablesref2:
-  proc TestHashIntInt() =
-    var tab = newTable[int,int]()
-    for i in 1..1_000_000:
-      tab[i] = i
-    for i in 1..1_000_000:
-      var x = tab[i]
-      if x != i : echo "not found ", i
-
-  proc run1() =         # occupied Memory stays constant, but
-    for i in 1 .. 50:   # aborts at run: 44 on win32 with 3.2GB with out of memory
-      TestHashIntInt()
-
-  run1()
-  echo "true"
+  echo "3"

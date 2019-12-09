@@ -1,3 +1,7 @@
+discard """
+output: "90"
+"""
+
 
 when false:
   template lock(a, b: ptr Lock; body: stmt) =

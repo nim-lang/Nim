@@ -1,7 +1,5 @@
 discard """
-  file: "tcollections.nim"
-  output: '''
-'''
+  output: ""
 """
 
 import deques, sequtils

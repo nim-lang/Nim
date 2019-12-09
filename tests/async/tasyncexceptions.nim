@@ -1,7 +1,6 @@
 discard """
-  file: "tasyncexceptions.nim"
-  exitcode: 1
   outputsub: "Error: unhandled exception: foobar"
+  exitcode: 1
 """
 import asyncdispatch
 
@@ -28,7 +27,7 @@ proc serve() {.async.} =
     var fut = await accept()
     await processClient(fut)
 
-when isMainModule:
+when true:
   proc main =
     var fut = serve()
     fut.callback =

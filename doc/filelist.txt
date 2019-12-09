@@ -37,8 +37,8 @@ pragmas         semantic checking of pragmas
 
 idents          implements a general mapping from identifiers to an internal
                 representation (``PIdent``) that is used so that a simple
-                id-comparison suffices to say whether two Nim identifiers
-                are equivalent
+                id-comparison suffices to establish whether two Nim
+                identifiers are equivalent
 ropes           implements long strings represented as trees for
                 lazy evaluation; used mainly by the code generators
 

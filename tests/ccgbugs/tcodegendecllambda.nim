@@ -1,6 +1,7 @@
 discard """
   targets: "c cpp js"
   ccodecheck: "'HELLO'"
+  action: compile
 """
 
 when defined(JS):

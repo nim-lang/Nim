@@ -170,6 +170,30 @@ block tshallowseq:
   xxx()
 
 
+block tshallowemptyseq:
+  proc test() =
+    var nilSeq: seq[int] = @[]
+    var emptySeq: seq[int] = newSeq[int]()
+    block:
+      var t = @[1,2,3]
+      shallow(nilSeq)
+      t = nilSeq
+      doAssert t == @[]
+    block:
+      var t = @[1,2,3]
+      shallow(emptySeq)
+      t = emptySeq
+      doAssert t == @[]
+    block:
+      var t = @[1,2,3]
+      shallowCopy(t, nilSeq)
+      doAssert t == @[]
+    block:
+      var t = @[1,2,3]
+      shallowCopy(t, emptySeq)
+      doAssert t == @[]
+  test()
+
 
 import strutils
 block ttoseq:
@@ -179,3 +203,4 @@ block ttoseq:
     stdout.write(x)
   var y: type("a b c".split)
   y = "xzy"
+  stdout.write("\n")

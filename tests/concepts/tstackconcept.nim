@@ -1,6 +1,6 @@
 discard """
 output: "20\n10"
-msg: '''
+nimout: '''
 INFERRED int
 VALUE TYPE int
 VALUE TYPE NAME INT

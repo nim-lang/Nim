@@ -1,7 +1,8 @@
 discard """
-  file: "tsets.nim"
-  output: '''Ha ein F ist in s!
-false'''
+output: '''
+Ha ein F ist in s!
+false
+'''
 """
 # Test the handling of sets
 
@@ -168,7 +169,7 @@ type
     warnFieldXNotSupported, warnCommentXIgnored,
     warnNilStatement, warnTypelessParam,
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
-    warnEachIdentIsTuple, warnShadowIdent,
+    warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnUser,
@@ -195,8 +196,7 @@ type
 
 var
   gNotes*: TNoteKinds = {low(TNoteKind)..high(TNoteKind)} -
-                        {warnShadowIdent, warnUninit,
-                         warnProveField, warnProveIndex, warnGcUnsafe}
+                        {warnUninit, warnProveField, warnProveIndex, warnGcUnsafe}
 
 
 #import compiler.msgs
@@ -206,6 +206,10 @@ echo warnUninit in gNotes
 # 7555
 doAssert {-1.int8, -2, -2}.card == 2
 doAssert {1, 2, 2, 3..5, 4..6}.card == 6
+
+# merely test the alias
+doAssert {-1.int8, -2, -2}.len == 2
+doAssert {1, 2, 2, 3..5, 4..6}.len == 6
 
 type Foo = enum
   Foo1 = 0

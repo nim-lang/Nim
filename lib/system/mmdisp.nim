@@ -37,13 +37,12 @@ type
   ByteArray = UncheckedArray[byte]
   PByte = ptr ByteArray
   PString = ptr string
-{.deprecated: [TByteArray: ByteArray].}
 
 # Page size of the system; in most cases 4096 bytes. For exotic OS or
 # CPU this needs to be changed:
 const
   PageShift = when defined(cpu16): 8 else: 12 # \
-    # my tests showed no improvments for using larger page sizes.
+    # my tests showed no improvements for using larger page sizes.
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
@@ -63,7 +62,7 @@ const
 
 proc raiseOutOfMem() {.noinline.} =
   if outOfMemHook != nil: outOfMemHook()
-  echo("out of memory")
+  cstderr.rawWrite("out of memory")
   quit(1)
 
 when defined(boehmgc):
@@ -73,6 +72,8 @@ when defined(boehmgc):
   proc boehmGCincremental {.
     importc: "GC_enable_incremental", boehmGC.}
   proc boehmGCfullCollect {.importc: "GC_gcollect", boehmGC.}
+  proc boehmGC_set_all_interior_pointers(flag: cint) {.
+    importc: "GC_set_all_interior_pointers", boehmGC.}
   proc boehmAlloc(size: int): pointer {.importc: "GC_malloc", boehmGC.}
   proc boehmAllocAtomic(size: int): pointer {.
     importc: "GC_malloc_atomic", boehmGC.}
@@ -98,6 +99,8 @@ when defined(boehmgc):
     ## Return the total number of bytes allocated in this process.
     ## Never decreases.
 
+  proc boehmRegisterFinalizer(obj, ff, cd, off, ocd: pointer) {.importc: "GC_register_finalizer", boehmGC.}
+
   proc allocAtomic(size: int): pointer =
     result = boehmAllocAtomic(size)
     zeroMem(result, size)
@@ -109,8 +112,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
-    proc realloc(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc realloc(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc dealloc(p: pointer) = boehmDealloc(p)
 
@@ -119,8 +122,8 @@ when defined(boehmgc):
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = allocShared(size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = boehmRealloc(p, newsize)
+    proc reallocShared(p: pointer, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = boehmDealloc(p)
 
@@ -149,13 +152,21 @@ when defined(boehmgc):
     proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() =
+    when defined(boehmNoIntPtr):
+      # See #12286
+      boehmGC_set_all_interior_pointers(0)
     boehmGCinit()
     when hasThreadSupport:
       boehmGC_allow_register_threads()
 
+  proc boehmgc_finalizer(obj: pointer, typedFinalizer: (proc(x: pointer) {.cdecl.})) =
+    typedFinalizer(obj)
+
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     if ntfNoRefs in typ.flags: result = allocAtomic(size)
     else: result = alloc(size)
+    if typ.finalizer != nil:
+      boehmRegisterFinalizer(result, boehmgc_finalizer, typ.finalizer, nil, nil)
   proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
     result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
     cast[PGenericSeq](result).len = len
@@ -171,8 +182,8 @@ when defined(boehmgc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -226,6 +237,8 @@ elif defined(gogc):
   proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
   proc writebarrierptr(dest: PPointer, src: pointer) {.importc: "writebarrierptr", codegenDecl:"$1 $2$3 __asm__ (\"main.Atomic_store_pointer\");\n$1 $2$3", dynlib: goLib.}
 
+  proc `$`*(x: uint64): string {.noSideEffect, raises: [].}
+
   proc GC_getStatistics(): string =
     var mstats = goMemStats()
     result = "[GC] total allocated memory: " & $(mstats.total_alloc) & "\n" &
@@ -259,7 +272,7 @@ elif defined(gogc):
     result = goMalloc(size.uint)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    raise newException(Exception, "not implemented")
+    doAssert false, "not implemented"
 
   proc dealloc(p: pointer) =
     discard
@@ -327,8 +340,8 @@ elif defined(gogc):
     writebarrierptr(dest, src)
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     writebarrierptr(dest, src)
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    writebarrierptr(dest, src)
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -417,8 +430,8 @@ elif defined(nogc) and defined(useMalloc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   type
     MemRegion = object
@@ -474,8 +487,8 @@ elif defined(nogc):
     dest[] = src
   proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
     dest[] = src
-  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline.} =
-    dest[] = src
+  proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
+    deprecated: "old compiler compat".} = asgnRef(dest, src)
 
   var allocator {.rtlThreadVar.}: MemRegion
   instantiateForRegion(allocator)
@@ -494,13 +507,18 @@ else:
   elif defined(gcRegions):
     # XXX due to bootstrapping reasons, we cannot use  compileOption("gc", "stack") here
     include "system/gc_regions"
-  elif defined(gcMarkAndSweep) or defined(gcDestructors):
+  elif defined(nimV2) or usesDestructors:
+    var allocator {.rtlThreadVar.}: MemRegion
+    instantiateForRegion(allocator)
+    when defined(gcHooks):
+      include "system/gc_hooks"
+  elif defined(gcMarkAndSweep):
     # XXX use 'compileOption' here
     include "system/gc_ms"
   else:
     include "system/gc"
 
-when not declared(nimNewSeqOfCap) and not defined(gcDestructors):
+when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
     when defined(gcRegions):
       let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize

@@ -1,13 +1,12 @@
 discard """
-  file: "tasynctry.nim"
-  exitcode: 0
-  output: '''
+output: '''
 Generic except: Test
 Specific except
 Multiple idents in except
 Multiple except branches
 Multiple except branches 2
 '''
+targets: "c"
 """
 import asyncdispatch, strutils
 

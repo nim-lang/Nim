@@ -59,11 +59,11 @@ when defined(builtinOverflow):
     proc mulIntOverflow(a, b: int, c: var int): bool {.
       importc: "__builtin_smul_overflow", nodecl, nosideeffect.}
 
-  proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
+  proc addInt64(a, b: int64): int64 {.compilerproc, inline.} =
     if addInt64Overflow(a, b, result):
       raiseOverflow()
 
-  proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
+  proc subInt64(a, b: int64): int64 {.compilerproc, inline.} =
     if subInt64Overflow(a, b, result):
       raiseOverflow()
 
@@ -71,13 +71,13 @@ when defined(builtinOverflow):
     if mulInt64Overflow(a, b, result):
       raiseOverflow()
 else:
-  proc addInt64(a, b: int64): int64 {.compilerProc, inline.} =
+  proc addInt64(a, b: int64): int64 {.compilerproc, inline.} =
     result = a +% b
     if (result xor a) >= int64(0) or (result xor b) >= int64(0):
       return result
     raiseOverflow()
 
-  proc subInt64(a, b: int64): int64 {.compilerProc, inline.} =
+  proc subInt64(a, b: int64): int64 {.compilerproc, inline.} =
     result = a -% b
     if (result xor a) >= int64(0) or (result xor not b) >= int64(0):
       return result
@@ -126,29 +126,29 @@ else:
       return result
     raiseOverflow()
 
-proc negInt64(a: int64): int64 {.compilerProc, inline.} =
+proc negInt64(a: int64): int64 {.compilerproc, inline.} =
   if a != low(int64): return -a
   raiseOverflow()
 
-proc absInt64(a: int64): int64 {.compilerProc, inline.} =
+proc absInt64(a: int64): int64 {.compilerproc, inline.} =
   if a != low(int64):
     if a >= 0: return a
     else: return -a
   raiseOverflow()
 
-proc divInt64(a, b: int64): int64 {.compilerProc, inline.} =
+proc divInt64(a, b: int64): int64 {.compilerproc, inline.} =
   if b == int64(0):
     raiseDivByZero()
   if a == low(int64) and b == int64(-1):
     raiseOverflow()
   return a div b
 
-proc modInt64(a, b: int64): int64 {.compilerProc, inline.} =
+proc modInt64(a, b: int64): int64 {.compilerproc, inline.} =
   if b == int64(0):
     raiseDivByZero()
   return a mod b
 
-proc absInt(a: int): int {.compilerProc, inline.} =
+proc absInt(a: int): int {.compilerproc, inline.} =
   if a != low(int):
     if a >= 0: return a
     else: return -a
@@ -164,7 +164,7 @@ const
 when asmVersion and not defined(gcc) and not defined(llvm_gcc):
   # assembler optimized versions for compilers that
   # have an intel syntax assembler:
-  proc addInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc addInt(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     # a in eax, and b in edx
     asm """
         mov eax, ecx
@@ -175,7 +175,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         ret
     """
 
-  proc subInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc subInt(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     asm """
         mov eax, ecx
         sub eax, edx
@@ -185,7 +185,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         ret
     """
 
-  proc negInt(a: int): int {.compilerProc, asmNoStackFrame.} =
+  proc negInt(a: int): int {.compilerproc, asmNoStackFrame.} =
     asm """
         mov eax, ecx
         neg eax
@@ -195,32 +195,46 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
         ret
     """
 
-  proc divInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc divInt(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     asm """
-        mov eax, ecx
-        mov ecx, edx
-        xor edx, edx
-        idiv ecx
-        jno  theEnd
-        call `raiseOverflow`
-      theEnd:
+        test  edx, edx
+        jne   L_NOT_ZERO
+        call  `raiseDivByZero`
+      L_NOT_ZERO:
+        cmp   ecx, 0x80000000
+        jne   L_DO_DIV
+        cmp   edx, -1
+        jne   L_DO_DIV
+        call  `raiseOverflow`
+      L_DO_DIV:
+        mov   eax, ecx
+        mov   ecx, edx
+        cdq
+        idiv  ecx
         ret
     """
 
-  proc modInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc modInt(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     asm """
-        mov eax, ecx
-        mov ecx, edx
-        xor edx, edx
-        idiv ecx
-        jno theEnd
-        call `raiseOverflow`
-      theEnd:
-        mov eax, edx
+        test  edx, edx
+        jne   L_NOT_ZERO
+        call  `raiseDivByZero`
+      L_NOT_ZERO:
+        cmp   ecx, 0x80000000
+        jne   L_DO_DIV
+        cmp   edx, -1
+        jne   L_DO_DIV
+        call  `raiseOverflow`
+      L_DO_DIV:
+        mov   eax, ecx
+        mov   ecx, edx
+        cdq
+        idiv  ecx
+        mov   eax, edx
         ret
     """
 
-  proc mulInt(a, b: int): int {.compilerProc, asmNoStackFrame.} =
+  proc mulInt(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     asm """
         mov eax, ecx
         mov ecx, edx
@@ -233,7 +247,7 @@ when asmVersion and not defined(gcc) and not defined(llvm_gcc):
     """
 
 elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
-  proc addInt(a, b: int): int {.compilerProc, inline.} =
+  proc addInt(a, b: int): int {.compilerproc, inline.} =
     # don't use a pure proc here!
     asm """
       "addl %%ecx, %%eax\n"
@@ -247,7 +261,7 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
     #/* Intel syntax here */
     #".att_syntax"
 
-  proc subInt(a, b: int): int {.compilerProc, inline.} =
+  proc subInt(a, b: int): int {.compilerproc, inline.} =
     asm """ "subl %%ecx,%%eax\n"
             "jno 1\n"
             "call _raiseOverflow\n"
@@ -256,7 +270,7 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
            :"a"(`a`), "c"(`b`)
     """
 
-  proc mulInt(a, b: int): int {.compilerProc, inline.} =
+  proc mulInt(a, b: int): int {.compilerproc, inline.} =
     asm """  "xorl %%edx, %%edx\n"
              "imull %%ecx\n"
              "jno 1\n"
@@ -267,7 +281,7 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
             :"%edx"
     """
 
-  proc negInt(a: int): int {.compilerProc, inline.} =
+  proc negInt(a: int): int {.compilerproc, inline.} =
     asm """ "negl %%eax\n"
             "jno 1\n"
             "call _raiseOverflow\n"
@@ -276,7 +290,7 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
            :"a"(`a`)
     """
 
-  proc divInt(a, b: int): int {.compilerProc, inline.} =
+  proc divInt(a, b: int): int {.compilerproc, inline.} =
     asm """  "xorl %%edx, %%edx\n"
              "idivl %%ecx\n"
              "jno 1\n"
@@ -287,7 +301,7 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
             :"%edx"
     """
 
-  proc modInt(a, b: int): int {.compilerProc, inline.} =
+  proc modInt(a, b: int): int {.compilerproc, inline.} =
     asm """  "xorl %%edx, %%edx\n"
              "idivl %%ecx\n"
              "jno 1\n"
@@ -300,42 +314,42 @@ elif false: # asmVersion and (defined(gcc) or defined(llvm_gcc)):
     """
 
 when not declared(addInt) and defined(builtinOverflow):
-  proc addInt(a, b: int): int {.compilerProc, inline.} =
+  proc addInt(a, b: int): int {.compilerproc, inline.} =
     if addIntOverflow(a, b, result):
       raiseOverflow()
 
 when not declared(subInt) and defined(builtinOverflow):
-  proc subInt(a, b: int): int {.compilerProc, inline.} =
+  proc subInt(a, b: int): int {.compilerproc, inline.} =
     if subIntOverflow(a, b, result):
       raiseOverflow()
 
 when not declared(mulInt) and defined(builtinOverflow):
-  proc mulInt(a, b: int): int {.compilerProc, inline.} =
+  proc mulInt(a, b: int): int {.compilerproc, inline.} =
     if mulIntOverflow(a, b, result):
       raiseOverflow()
 
 # Platform independent versions of the above (slower!)
 when not declared(addInt):
-  proc addInt(a, b: int): int {.compilerProc, inline.} =
+  proc addInt(a, b: int): int {.compilerproc, inline.} =
     result = a +% b
     if (result xor a) >= 0 or (result xor b) >= 0:
       return result
     raiseOverflow()
 
 when not declared(subInt):
-  proc subInt(a, b: int): int {.compilerProc, inline.} =
+  proc subInt(a, b: int): int {.compilerproc, inline.} =
     result = a -% b
     if (result xor a) >= 0 or (result xor not b) >= 0:
       return result
     raiseOverflow()
 
 when not declared(negInt):
-  proc negInt(a: int): int {.compilerProc, inline.} =
+  proc negInt(a: int): int {.compilerproc, inline.} =
     if a != low(int): return -a
     raiseOverflow()
 
 when not declared(divInt):
-  proc divInt(a, b: int): int {.compilerProc, inline.} =
+  proc divInt(a, b: int): int {.compilerproc, inline.} =
     if b == 0:
       raiseDivByZero()
     if a == low(int) and b == -1:
@@ -343,7 +357,7 @@ when not declared(divInt):
     return a div b
 
 when not declared(modInt):
-  proc modInt(a, b: int): int {.compilerProc, inline.} =
+  proc modInt(a, b: int): int {.compilerproc, inline.} =
     if b == 0:
       raiseDivByZero()
     return a mod b
@@ -369,7 +383,7 @@ when not declared(mulInt):
   # the only one that can lose catastrophic amounts of information, it's the
   # native int product that must have overflowed.
   #
-  proc mulInt(a, b: int): int {.compilerProc.} =
+  proc mulInt(a, b: int): int {.compilerproc.} =
     var
       resAsFloat, floatProd: float
 
@@ -398,7 +412,7 @@ when not declared(mulInt):
 proc raiseFloatInvalidOp {.noinline.} =
   sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
 
-proc nanCheck(x: float64) {.compilerProc, inline.} =
+proc nanCheck(x: float64) {.compilerproc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
 proc raiseFloatOverflow(x: float64) {.noinline.} =
@@ -407,5 +421,5 @@ proc raiseFloatOverflow(x: float64) {.noinline.} =
   else:
     sysFatal(FloatUnderflowError, "FPU operations caused an underflow")
 
-proc infCheck(x: float64) {.compilerProc, inline.} =
+proc infCheck(x: float64) {.compilerproc, inline.} =
   if x != 0.0 and x*0.5 == x: raiseFloatOverflow(x)

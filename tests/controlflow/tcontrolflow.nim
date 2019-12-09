@@ -85,13 +85,13 @@ block tnestif:
   if x == 0:
       write(stdout, "i == 0")
       if y == 0:
-          write(stdout, x)
+          writeLine(stdout, x)
       else:
-          write(stdout, y)
+          writeLine(stdout, y)
   elif x == 1:
-      write(stdout, "i == 1")
+      writeLine(stdout, "i == 1")
   elif x == 2:
-      write(stdout, "i == 2")
+      writeLine(stdout, "i == 2")
   else:
-      write(stdout, "looks like Python")
+      writeLine(stdout, "looks like Python")
   #OUT i == 2

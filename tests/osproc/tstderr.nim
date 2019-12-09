@@ -1,10 +1,15 @@
 discard """
-  output: '''--------------------------------------
+  output: '''
+start tstderr
+--------------------------------------
 to stderr
 to stderr
 --------------------------------------
 '''
 """
+
+echo "start tstderr"
+
 import osproc, os, streams
 
 const filename = "ta_out".addFileExt(ExeExt)

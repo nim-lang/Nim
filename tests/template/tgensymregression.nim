@@ -15,7 +15,7 @@ template mathPerComponent(op: untyped): untyped =
 mathPerComponent(`***`)
 # bug #5285
 when true:
-  if isMainModule:
+  if true:
     var v1: array[3, float64]
     var v2: array[3, float64]
     echo repr(v1 *** v2)
@@ -70,3 +70,21 @@ macro makeProc(): typed =
 makeProc()
 
 someProc()
+
+# bug #12193
+import macros, strutils
+
+macro gen(T: typedesc): untyped =
+  let typeSym = getTypeImpl(T)[1]
+  let param = genSym(nskParam, "s")
+  let value = nnkBracketExpr.newTree(param, newIntLitNode(0))
+  result = newProc(
+    name = ident"pack",
+    params = [typeSym,
+      newIdentDefs(param, nnkBracketExpr.newTree(ident"seq", ident"string"))],
+    body = newStmtList(newCall(typeSym, newCall(bindSym"parseInt", value))),
+    procType = nnkTemplateDef)
+  echo repr result
+
+gen(int)
+let i = pack(@["2"])

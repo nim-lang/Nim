@@ -1,5 +1,4 @@
 discard """
-  file: "tstring.nim"
   output: "OK"
 """
 const characters = "abcdefghijklmnopqrstuvwxyz"

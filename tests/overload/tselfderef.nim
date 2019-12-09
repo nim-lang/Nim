@@ -1,7 +1,10 @@
+discard """
+action: compile
+"""
+
 # bug #4671
 {.experimental.}
 {.this: self.}
-
 type
   SomeObj = object
     f: int

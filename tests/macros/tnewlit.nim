@@ -5,6 +5,14 @@ type
     a : int
     b : string
 
+  RefObject = ref object
+    x: int
+
+  RegularObject = object
+    x: int
+
+  ObjectRefAlias = ref RegularObject
+
 macro test_newLit_MyType: untyped =
   let mt = MyType(a: 123, b:"foobar")
   result = newLit(mt)
@@ -147,3 +155,40 @@ block:
   # x needs to be of type seq[string]
   var x = test_newLit_empty_seq_string
   x.add("xyz")
+
+type
+  MyEnum = enum
+    meA
+    meB
+
+macro test_newLit_Enum: untyped =
+  result = newLit(meA)
+
+block:
+  let tmp: MyEnum = meA
+  doAssert tmp == test_newLit_Enum
+
+macro test_newLit_set: untyped =
+  let myset = {MyEnum.low .. MyEnum.high}
+  result = newLit(myset)
+
+block:
+  let tmp: set[MyEnum] = {MyEnum.low .. MyEnum.high}
+  doAssert tmp == test_newLit_set
+
+macro test_newLit_ref_object: untyped =
+  var x = RefObject(x: 10)
+  return newLit(x)
+
+block:
+  let x = test_newLit_ref_object()
+  doAssert $(x[]) == "(x: 10)"
+
+macro test_newLit_object_ref_alias: untyped =
+  var x = ObjectRefAlias(x: 10)
+  return newLit(x)
+
+block:
+  let x = test_newLit_object_ref_alias()
+  doAssert $(x[]) == "(x: 10)"
+

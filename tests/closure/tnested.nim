@@ -1,6 +1,5 @@
 discard """
-  file: "tnested.nim"
-  output: '''
+output: '''
 foo88
 23 24foo 88
 foo88

@@ -10,29 +10,38 @@
 ## Implements type sanity checking for ASTs resulting from macros. Lots of
 ## room for improvement here.
 
-import ast, astalgo, msgs, types, options
+import ast, msgs, types, options
 
 proc ithField(n: PNode, field: var int): PSym =
   result = nil
   case n.kind
   of nkRecList:
-    for i in countup(0, sonsLen(n) - 1):
-      result = ithField(n.sons[i], field)
+    for i in 0..<n.len:
+      result = ithField(n[i], field)
       if result != nil: return
   of nkRecCase:
-    if n.sons[0].kind != nkSym: return
-    result = ithField(n.sons[0], field)
+    if n[0].kind != nkSym: return
+    result = ithField(n[0], field)
     if result != nil: return
-    for i in countup(1, sonsLen(n) - 1):
-      case n.sons[i].kind
+    for i in 1..<n.len:
+      case n[i].kind
       of nkOfBranch, nkElse:
-        result = ithField(lastSon(n.sons[i]), field)
+        result = ithField(lastSon(n[i]), field)
         if result != nil: return
       else: discard
   of nkSym:
     if field == 0: result = n.sym
     else: dec(field)
   else: discard
+
+proc ithField(t: PType, field: var int): PSym =
+  var base = t[0]
+  while base != nil:
+    let b = skipTypes(base, skipPtrs)
+    result = ithField(b.n, field)
+    if result != nil: return result
+    base = b[0]
+  result = ithField(t.n, field)
 
 proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
   let x = t.skipTypes(abstractInst+{tyRange})
@@ -42,20 +51,20 @@ proc annotateType*(n: PNode, t: PType; conf: ConfigRef) =
   of nkObjConstr:
     let x = t.skipTypes(abstractPtrs)
     n.typ = t
-    for i in 1 ..< n.len:
+    for i in 1..<n.len:
       var j = i-1
-      let field = x.n.ithField(j)
+      let field = x.ithField(j)
       if field.isNil:
         globalError conf, n.info, "invalid field at index " & $i
       else:
-        internalAssert(conf, n.sons[i].kind == nkExprColonExpr)
-        annotateType(n.sons[i].sons[1], field.typ, conf)
+        internalAssert(conf, n[i].kind == nkExprColonExpr)
+        annotateType(n[i][1], field.typ, conf)
   of nkPar, nkTupleConstr:
     if x.kind == tyTuple:
       n.typ = t
-      for i in 0 ..< n.len:
+      for i in 0..<n.len:
         if i >= x.len: globalError conf, n.info, "invalid field at index " & $i
-        else: annotateType(n.sons[i], x.sons[i], conf)
+        else: annotateType(n[i], x[i], conf)
     elif x.kind == tyProc and x.callConv == ccClosure:
       n.typ = t
     else:

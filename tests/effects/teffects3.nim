@@ -1,6 +1,6 @@
 discard """
-  line: 18
   errormsg: "type mismatch"
+  line: 18
 """
 
 type
@@ -16,4 +16,3 @@ proc raiser(): int {.tags: [TObj, WriteIoEffect].} =
 
 var o: TObjB
 o.fn = raiser
-

@@ -11,7 +11,7 @@
 
 import
   intsets, ast, astalgo, idents, semdata, types, msgs, options,
-  renderer, wordrecg, idgen, nimfix/prettybase, lineinfos, strutils
+  renderer, nimfix/prettybase, lineinfos, strutils
 
 proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope)
 
@@ -36,11 +36,11 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
   of nkAccQuoted:
     case n.len
     of 0: handleError(n, origin)
-    of 1: result = considerQuotedIdent(c, n.sons[0], origin)
+    of 1: result = considerQuotedIdent(c, n[0], origin)
     else:
       var id = ""
       for i in 0..<n.len:
-        let x = n.sons[i]
+        let x = n[i]
         case x.kind
         of nkIdent: id.add(x.ident.s)
         of nkSym: id.add(x.sym.name.s)
@@ -49,7 +49,7 @@ proc considerQuotedIdent*(c: PContext; n: PNode, origin: PNode = nil): PIdent =
       result = getIdent(c.cache, id)
   of nkOpenSymChoice, nkClosedSymChoice:
     if n[0].kind == nkSym:
-      result = n.sons[0].sym.name
+      result = n[0].sym.name
     else:
       handleError(n, origin)
   else:
@@ -89,7 +89,7 @@ proc skipAlias*(s: PSym; n: PNode; conf: ConfigRef): PSym =
       prettybase.replaceDeprecated(conf, n.info, s, result)
     else:
       message(conf, n.info, warnDeprecated, "use " & result.name.s & " instead; " &
-              s.name.s)
+              s.name.s & " is deprecated")
 
 proc localSearchInScope*(c: PContext, s: PIdent): PSym =
   result = strTableGet(c.currentScope.symbols, s)
@@ -105,7 +105,7 @@ when declared(echo):
     var i = 0
     for scope in walkScopes(c.currentScope):
       echo "scope ", i
-      for h in 0 .. high(scope.symbols.data):
+      for h in 0..high(scope.symbols.data):
         if scope.symbols.data[h] != nil:
           echo scope.symbols.data[h].name.s
       if i == limit: break
@@ -124,7 +124,7 @@ proc errorSym*(c: PContext, n: PNode): PSym =
   ## creates an error symbol to avoid cascading errors (for IDE support)
   var m = n
   # ensure that 'considerQuotedIdent' can't fail:
-  if m.kind == nkDotExpr: m = m.sons[1]
+  if m.kind == nkDotExpr: m = m[1]
   let ident = if m.kind in {nkIdent, nkSym, nkAccQuoted}:
       considerQuotedIdent(c, m)
     else:
@@ -150,7 +150,7 @@ type
 
 proc getSymRepr*(conf: ConfigRef; s: PSym): string =
   case s.kind
-  of skProc, skFunc, skMethod, skConverter, skIterator:
+  of routineKinds, skType:
     result = getProcHeader(conf, s)
   else:
     result = s.name.s
@@ -168,13 +168,13 @@ proc ensureNoMissingOrUnusedSymbols(c: PContext; scope: PScope) =
         localError(c.config, s.info, "implementation of '$1' expected" %
             getSymRepr(c.config, s))
       inc missingImpls
-    elif {sfUsed, sfExported} * s.flags == {} and optHints in s.options:
-      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam}:
+    elif {sfUsed, sfExported} * s.flags == {}:
+      if s.kind notin {skForVar, skParam, skMethod, skUnknown, skGenericParam, skEnumField}:
         # XXX: implicit type params are currently skTypes
         # maybe they can be made skGenericParam as well.
         if s.typ != nil and tfImplicitTypeParam notin s.typ.flags and
            s.typ.kind != tyGenericParam:
-          message(c.config, s.info, hintXDeclaredButNotUsed, getSymRepr(c.config, s))
+          message(c.config, s.info, hintXDeclaredButNotUsed, s.name.s)
     s = nextIter(it, scope.symbols)
 
 proc wrongRedefinition*(c: PContext; info: TLineInfo, s: string;
@@ -190,7 +190,7 @@ proc addDecl*(c: PContext, sym: PSym, info: TLineInfo) =
     wrongRedefinition(c, info, sym.name.s, conflict.info)
 
 proc addDecl*(c: PContext, sym: PSym) =
-  let conflict = c.currentScope.addUniqueSym(sym)
+  let conflict = strTableInclReportConflict(c.currentScope.symbols, sym, true)
   if conflict != nil:
     wrongRedefinition(c, sym.info, sym.name.s, conflict.info)
 
@@ -233,7 +233,7 @@ proc addInterfaceOverloadableSymAt*(c: PContext, scope: PScope, sym: PSym) =
   addInterfaceDeclAux(c, sym)
 
 when defined(nimfix):
-  # when we cannot find the identifier, retry with a changed identifer:
+  # when we cannot find the identifier, retry with a changed identifier:
   proc altSpelling(x: PIdent): PIdent =
     case x.s[0]
     of 'A'..'Z': result = getIdent(toLowerAscii(x.s[0]) & x.s.substr(1))
@@ -255,9 +255,10 @@ proc errorUseQualifier*(c: PContext; info: TLineInfo; s: PSym) =
   var candidate = initIdentIter(ti, c.importTable.symbols, s.name)
   var i = 0
   while candidate != nil:
-    if i == 0: err.add " --use "
-    else: err.add " or "
-    err.add candidate.owner.name.s & "." & candidate.name.s
+    if i == 0: err.add " -- use one of the following:\n"
+    else: err.add "\n"
+    err.add "  " & candidate.owner.name.s & "." & candidate.name.s
+    err.add ": " & typeToString(candidate.typ)
     candidate = nextIdentIter(ti, c.importTable.symbols)
     inc i
   localError(c.config, info, errGenerated, err)
@@ -325,29 +326,29 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       errorUseQualifier(c, n.info, n.sym)
   of nkDotExpr:
     result = nil
-    var m = qualifiedLookUp(c, n.sons[0], (flags*{checkUndeclared})+{checkModule})
+    var m = qualifiedLookUp(c, n[0], (flags*{checkUndeclared})+{checkModule})
     if m != nil and m.kind == skModule:
       var ident: PIdent = nil
-      if n.sons[1].kind == nkIdent:
-        ident = n.sons[1].ident
-      elif n.sons[1].kind == nkAccQuoted:
-        ident = considerQuotedIdent(c, n.sons[1])
+      if n[1].kind == nkIdent:
+        ident = n[1].ident
+      elif n[1].kind == nkAccQuoted:
+        ident = considerQuotedIdent(c, n[1])
       if ident != nil:
         if m == c.module:
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
           result = strTableGet(m.tab, ident).skipAlias(n, c.config)
         if result == nil and checkUndeclared in flags:
-          fixSpelling(n.sons[1], ident, searchInScopes)
-          errorUndeclaredIdentifier(c, n.sons[1].info, ident.s)
-          result = errorSym(c, n.sons[1])
-      elif n.sons[1].kind == nkSym:
-        result = n.sons[1].sym
+          fixSpelling(n[1], ident, searchInScopes)
+          errorUndeclaredIdentifier(c, n[1].info, ident.s)
+          result = errorSym(c, n[1])
+      elif n[1].kind == nkSym:
+        result = n[1].sym
       elif checkUndeclared in flags and
-           n.sons[1].kind notin {nkOpenSymChoice, nkClosedSymChoice}:
-        localError(c.config, n.sons[1].info, "identifier expected, but got: " &
-                   renderTree(n.sons[1]))
-        result = errorSym(c, n.sons[1])
+           n[1].kind notin {nkOpenSymChoice, nkClosedSymChoice}:
+        localError(c.config, n[1].info, "identifier expected, but got: " &
+                   renderTree(n[1]))
+        result = errorSym(c, n[1])
   else:
     result = nil
   when false:
@@ -371,13 +372,13 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
     o.mode = oimDone
   of nkDotExpr:
     o.mode = oimOtherModule
-    o.m = qualifiedLookUp(c, n.sons[0], {checkUndeclared, checkModule})
+    o.m = qualifiedLookUp(c, n[0], {checkUndeclared, checkModule})
     if o.m != nil and o.m.kind == skModule:
       var ident: PIdent = nil
-      if n.sons[1].kind == nkIdent:
-        ident = n.sons[1].ident
-      elif n.sons[1].kind == nkAccQuoted:
-        ident = considerQuotedIdent(c, n.sons[1], n)
+      if n[1].kind == nkIdent:
+        ident = n[1].ident
+      elif n[1].kind == nkAccQuoted:
+        ident = considerQuotedIdent(c, n[1], n)
       if ident != nil:
         if o.m == c.module:
           # a module may access its private members:
@@ -387,12 +388,12 @@ proc initOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
         else:
           result = initIdentIter(o.it, o.m.tab, ident).skipAlias(n, c.config)
       else:
-        noidentError(c.config, n.sons[1], n)
-        result = errorSym(c, n.sons[1])
+        noidentError(c.config, n[1], n)
+        result = errorSym(c, n[1])
   of nkClosedSymChoice, nkOpenSymChoice:
     o.mode = oimSymChoice
     if n[0].kind == nkSym:
-      result = n.sons[0].sym
+      result = n[0].sym
     else:
       o.mode = oimDone
       return nil
@@ -429,8 +430,8 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
   of oimOtherModule:
     result = nextIdentIter(o.it, o.m.tab).skipAlias(n, c.config)
   of oimSymChoice:
-    if o.symChoiceIndex < sonsLen(n):
-      result = n.sons[o.symChoiceIndex].sym
+    if o.symChoiceIndex < n.len:
+      result = n[o.symChoiceIndex].sym
       incl(o.inSymChoice, result.id)
       inc o.symChoiceIndex
     elif n.kind == nkOpenSymChoice:
@@ -438,19 +439,19 @@ proc nextOverloadIter*(o: var TOverloadIter, c: PContext, n: PNode): PSym =
       o.mode = oimSymChoiceLocalLookup
       o.scope = c.currentScope
       result = firstIdentExcluding(o.it, o.scope.symbols,
-                                   n.sons[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+                                   n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
       while result == nil:
         o.scope = o.scope.parent
         if o.scope == nil: break
         result = firstIdentExcluding(o.it, o.scope.symbols,
-                                     n.sons[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+                                     n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
   of oimSymChoiceLocalLookup:
     result = nextIdentExcluding(o.it, o.scope.symbols, o.inSymChoice).skipAlias(n, c.config)
     while result == nil:
       o.scope = o.scope.parent
       if o.scope == nil: break
       result = firstIdentExcluding(o.it, o.scope.symbols,
-                                   n.sons[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
+                                   n[0].sym.name, o.inSymChoice).skipAlias(n, c.config)
 
   when false:
     if result != nil and result.kind == skStub: loadStub(result)

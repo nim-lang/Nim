@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid declaration order; cannot attach 'step' to method defined here: tmapper.nim(22, 7)"
+  errormsg: "invalid declaration order; cannot attach 'step' to method defined here: tmapper.nim(22, 8)"
   line: 25
 """
 

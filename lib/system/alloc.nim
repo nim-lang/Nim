@@ -20,7 +20,7 @@ template track(op, address, size) =
 # Each chunk starts at an address that is divisible by the page size.
 
 const
-  InitialMemoryRequest = 128 * PageSize # 0.5 MB
+  nimMinHeapPages {.intdefine.} = 128 # 0.5 MB
   SmallChunkSize = PageSize
   MaxFli = 30
   MaxLog2Sli = 5 # 32, this cannot be increased without changing 'uint32'
@@ -38,7 +38,7 @@ type
   Trunk = object
     next: PTrunk         # all nodes are connected with this pointer
     key: int             # start address at bit 0
-    bits: array[0..IntsPerTrunk-1, int] # a bit vector
+    bits: array[0..IntsPerTrunk-1, uint] # a bit vector
 
   TrunkBuckets = array[0..255, PTrunk]
   IntSet = object
@@ -137,10 +137,10 @@ const
   ]
 
 proc msbit(x: uint32): int {.inline.} =
-  let a = if x <= 0xff_ff:
+  let a = if x <= 0xff_ff'u32:
             (if x <= 0xff: 0 else: 8)
           else:
-            (if x <= 0xff_ff_ff: 16 else: 24)
+            (if x <= 0xff_ff_ff'u32: 16 else: 24)
   result = int(fsLookupTable[byte(x shr a)]) + a
 
 proc lsbit(x: uint32): int {.inline.} =
@@ -223,10 +223,6 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   mat() = b
   setBit(sl, a.slBitmap[fl])
   setBit(fl, a.flBitmap)
-
-{.push stack_trace: off.}
-proc initAllocator() = discard "nothing to do anymore"
-{.pop.}
 
 proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   inc(a.currMem, bytes)
@@ -336,21 +332,21 @@ proc contains(s: IntSet, key: int): bool =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
-    result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
+    result = (t.bits[u shr IntShift] and (uint(1) shl (u and IntMask))) != 0
   else:
     result = false
 
 proc incl(a: var MemRegion, s: var IntSet, key: int) =
   var t = intSetPut(a, s, key shr TrunkShift)
   var u = key and TrunkMask
-  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
+  t.bits[u shr IntShift] = t.bits[u shr IntShift] or (uint(1) shl (u and IntMask))
 
 proc excl(s: var IntSet, key: int) =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
     t.bits[u shr IntShift] = t.bits[u shr IntShift] and not
-        (1 shl (u and IntMask))
+        (uint(1) shl (u and IntMask))
 
 iterator elements(t: IntSet): int {.inline.} =
   # while traversing it is forbidden to change the set!
@@ -588,8 +584,8 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)
   if result == nil:
-    if size < InitialMemoryRequest:
-      result = requestOsChunks(a, InitialMemoryRequest)
+    if size < nimMinHeapPages * PageSize:
+      result = requestOsChunks(a, nimMinHeapPages * PageSize)
       splitChunk(a, result, size)
     else:
       result = requestOsChunks(a, size)
@@ -988,7 +984,7 @@ when defined(nimTypeNames):
 
 # ---------------------- thread memory region -------------------------------
 
-template instantiateForRegion(allocator: untyped) =
+template instantiateForRegion(allocator: untyped) {.dirty.} =
   {.push stackTrace: off.}
 
   when defined(fulldebug):
@@ -1010,7 +1006,7 @@ template instantiateForRegion(allocator: untyped) =
   proc dealloc(p: pointer) =
     dealloc(allocator, p)
 
-  proc realloc(p: pointer, newsize: Natural): pointer =
+  proc realloc(p: pointer, newSize: Natural): pointer =
     result = realloc(allocator, p, newSize)
 
   when false:
@@ -1058,17 +1054,16 @@ template instantiateForRegion(allocator: untyped) =
     else:
       dealloc(p)
 
-  proc reallocShared(p: pointer, newsize: Natural): pointer =
+  proc reallocShared(p: pointer, newSize: Natural): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
-      result = realloc(sharedHeap, p, newsize)
+      result = realloc(sharedHeap, p, newSize)
       releaseSys(heapLock)
     else:
       result = realloc(p, newSize)
 
   when hasThreadSupport:
-
-    template sharedMemStatsShared(v: int) {.immediate.} =
+    template sharedMemStatsShared(v: int) =
       acquireSys(heapLock)
       result = v
       releaseSys(heapLock)

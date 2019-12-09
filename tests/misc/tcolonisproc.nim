@@ -1,3 +1,9 @@
+discard """
+output: '''
+1
+2
+'''
+"""
 
 proc p(a, b: int, c: proc ()) =
   c()

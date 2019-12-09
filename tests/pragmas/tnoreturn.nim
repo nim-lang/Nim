@@ -1,5 +1,6 @@
 discard """
 ccodeCheck: "\\i @'__attribute__((noreturn))' .*"
+action: compile
 """
 
 proc noret1*(i: int) {.noreturn.} =

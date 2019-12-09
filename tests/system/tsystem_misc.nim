@@ -30,6 +30,20 @@ discard """
 '''
 """
 
+
+block:
+  const a2 = $(int)
+  const a3 = $int
+  doAssert a2 == "int"
+  doAssert a3 == "int"
+
+  proc fun[T: typedesc](t: T) =
+    const a2 = $(t)
+    const a3 = $t
+    doAssert a2 == "int"
+    doAssert a3 == "int"
+  fun(int)
+
 # check high/low implementations
 doAssert high(int) > low(int)
 doAssert high(int8) > low(int8)
@@ -98,6 +112,18 @@ doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, 0))
 doAssertRaises(IndexError):
   foo(toOpenArray(arrNeg, -1, -3))
+doAssertRaises(Exception):
+  raise newException(Exception, "foo")
+
+block:
+  var didThrow = false
+  try:
+    doAssertRaises(IndexError): # should fail since it's wrong exception
+      raise newException(FieldError, "foo")
+  except AssertionError:
+    # ok, throwing was correct behavior
+    didThrow = true
+  doAssert didThrow
 
 type seqqType = ptr UncheckedArray[int]
 let qData = cast[seqqType](addr seqq[0])
@@ -122,3 +148,39 @@ let a = @[1, 2, 3]
 
 # a.boundedOpenArray(1, 2).foo()  # Works
 echo a.boundedOpenArray(1, 2).len # Internal compiler error
+
+block: # `$`*[T: tuple|object](x: T)
+  doAssert $(foo1:0, bar1:"a") == """(foo1: 0, bar1: "a")"""
+  doAssert $(foo1:0, ) == """(foo1: 0)"""
+  doAssert $(0, "a") == """(0, "a")"""
+  doAssert $(0, ) == "(0,)"
+  type Foo = object
+    x:int
+    x2:float
+  doAssert $Foo(x:2) == "(x: 2, x2: 0.0)"
+  doAssert $() == "()"
+
+# this is a call indirection to prevent `toInt` to be resolved at compile time.
+proc testToInt(arg: float64, a: int, b: BiggestInt) =
+  doAssert toInt(arg) == a
+  doAssert toBiggestInt(arg) == b
+
+testToInt(0.45, 0, 0)    # should round towards 0
+testToInt(-0.45, 0, 0)   # should round towards 0
+testToInt(0.5, 1, 1)     # should round away from 0
+testToInt(-0.5, -1, -1)  # should round away from 0
+testToInt(13.37, 13, 13)    # should round towards 0
+testToInt(-13.37, -13, -13) # should round towards 0
+testToInt(7.8, 8, 8)     # should round away from 0
+testToInt(-7.8, -8, -8)  # should round away from 0
+
+# test min/max for correct NaN handling
+
+proc testMinMax(a,b: float32) =
+  doAssert max(float32(a),float32(b)) == 0'f32
+  doAssert min(float32(a),float32(b)) == 0'f32
+  doAssert max(float64(a),float64(b)) == 0'f64
+  doAssert min(float64(a),float64(b)) == 0'f64
+
+testMinMax(0.0, NaN)
+testMinMax(NaN, 0.0)

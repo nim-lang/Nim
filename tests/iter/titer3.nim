@@ -1,5 +1,4 @@
 discard """
-  file: "titer3.nim"
   output: '''1231
 4
 6

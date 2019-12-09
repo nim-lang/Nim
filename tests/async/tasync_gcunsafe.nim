@@ -1,7 +1,7 @@
 discard """
+  errormsg: "'anotherGCSafeAsyncProcIter' is not GC-safe as it calls 'asyncGCUnsafeProc'"
   cmd: "nim c --threads:on $file"
   file: "asyncmacro.nim"
-  errormsg: "'anotherGCSafeAsyncProcIter' is not GC-safe as it calls 'asyncGCUnsafeProc'"
 """
 
 assert compileOption("threads"), "this test will not do anything useful without --threads:on"

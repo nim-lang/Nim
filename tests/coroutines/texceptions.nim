@@ -1,3 +1,8 @@
+discard """
+  target: "c"
+  disabled: true
+"""
+
 import coro
 var
   stackCheckValue = 1100220033
@@ -10,6 +15,7 @@ proc testExceptions(id: int, sleep: float) =
     numbers.add(id)
     raise (ref ValueError)()
   except:
+    suspend(sleep)
     numbers.add(id)
     suspend(sleep)
     numbers.add(id)
@@ -18,6 +24,6 @@ proc testExceptions(id: int, sleep: float) =
 
 start(proc() = testExceptions(1, 0.01))
 start(proc() = testExceptions(2, 0.011))
-run()
+coro.run()
 doAssert(stackCheckValue == 1100220033, "Thread stack got corrupted")
 doAssert(numbers == @[1, 2, 1, 2, 1, 2, 1, 2, 1, 2], "Coroutines executed in incorrect order")

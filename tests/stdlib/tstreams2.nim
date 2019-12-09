@@ -1,5 +1,4 @@
 discard """
-  file: "tstreams2.nim"
   output: '''fs is: nil'''
 """
 import streams

@@ -51,7 +51,7 @@ async                          dom96
 strutils                       araq
 sequtils                       dom96, araq
 times                          GULPF
-os, ospaths                    dom96, araq
+os                             dom96, araq
 re                             araq
 nre                            flaviu
 math, fenv                     krux02, cooldome

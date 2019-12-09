@@ -17,7 +17,7 @@ template unless*(condition: untyped; body: untyped) {.dirty.} =
   if not condition:
     body
 
-when isMainModule:
+when false:
   proc dumpSeq[T](x: seq[T]) =
     for index, item in x.pairs:
       echo index, " ", item

@@ -16,7 +16,7 @@ type
     variables: seq[VarItem]
     children: seq[VarScope]
 
-when isMainModule:
+when true:
   var scope1 = VarScope(
     variables: newSeq[VarItem](),
     children: newSeq[VarScope]()

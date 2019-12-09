@@ -22,7 +22,7 @@ proc matchStackTrace(actualEntries: openarray[StackTraceEntry], expected: string
     var line: int
     if not scanf(l, "$s$w.nim($i) $w", filename, line, procname):
       doAssert(false, "Wrong expected stack trace")
-    checkEqual($actualEntries[i].filename, filename & ".nim", "file name")
+    checkEqual(actualEntries[i].filename.`$`.split('/')[^1], filename & ".nim", "file name")
     if line != 0:
       checkEqual(actualEntries[i].line, line, "line number")
     checkEqual($actualEntries[i].procname, procname, "proc name")
@@ -66,7 +66,7 @@ template verifyStackTrace*(expectedStackTrace: string, body: untyped) =
 
 
 
-when isMainModule:
+when true:
 # <-- Align with line 70 in the text editor
   block:
     proc bar() =

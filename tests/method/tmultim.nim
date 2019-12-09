@@ -4,9 +4,12 @@ collide: unit, thing
 collide: unit, thing
 collide: thing, unit
 collide: thing, thing
-collide: unit, thing | collide: unit, thing | collide: thing, unit | 
+collide: unit, thing |
+collide: unit, thing |
+collide: thing, unit |
 do nothing
 '''
+  joinable: false
 """
 
 
@@ -55,10 +58,10 @@ method collide(a, b: Thing) {.base, inline.} =
   quit "to override!"
 
 method collide[T](a: Thing, b: Unit[T]) {.inline.} =
-  write stdout, "collide: thing, unit | "
+  echo "collide: thing, unit |"
 
 method collide[T](a: Unit[T], b: Thing) {.inline.} =
-  write stdout, "collide: unit, thing | "
+  echo "collide: unit, thing |"
 
 proc test(a, b: Thing) {.inline.} =
   collide(a, b)
@@ -69,7 +72,6 @@ var
 collide(bbb, Thing(ccc))
 test(bbb, ccc)
 collide(aaa, bbb)
-echo ""
 
 
 

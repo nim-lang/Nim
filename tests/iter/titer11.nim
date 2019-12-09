@@ -1,6 +1,6 @@
 discard """
-  file: "titer11.nim"
-  output: '''[
+output: '''
+[
 1
 2
 3

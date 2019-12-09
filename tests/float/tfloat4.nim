@@ -1,9 +1,8 @@
 discard """
-  file: "tfloat4.nim"
   output: "passed all tests."
-  exitcode: 0
 """
-import math, strutils
+
+import strutils
 
 proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", varargs.}
 

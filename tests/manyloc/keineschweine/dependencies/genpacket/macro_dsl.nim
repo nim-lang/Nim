@@ -50,7 +50,7 @@ macro `?`(a: untyped): untyped =
   result = ($a[1].ident)[0].lit
 ## echo(?F,?a,?t,?t,?y)
 
-when isMainModule:
+when false:
   macro foo(x: untyped) =
     result = newNimNode(nnkStmtList)
     result.add(newNimNode(nnkCall).und(!!"echo", "Hello thar".lit))

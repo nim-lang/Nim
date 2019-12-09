@@ -1,3 +1,6 @@
+discard """
+action: compile
+"""
 
 # bug #3669
 
@@ -10,4 +13,3 @@ type
 
 var g: G[string]
 echo g.rnodes["foo"]
-

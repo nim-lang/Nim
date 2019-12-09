@@ -18,6 +18,21 @@ from input .nim files and projects, as well as HTML and LaTeX from input RST
 dependencies (``import``), any top-level documentation comments (##), and
 exported symbols (*), including procedures, types, and variables.
 
+Quick start
+-----------
+
+Generate HTML documentation for a file:
+
+::
+  nim doc <filename>.nim
+
+Generate HTML documentation for a whole project:
+
+::
+  # delete any htmldocs/*.idx file before starting
+  nim doc --project --index:on --git.url:<url> --git.commit:<tag> <main_filename>.nim
+  nim buildIndex -o:htmldocs/theindex.html htmldocs
+
 
 Documentation Comments
 ----------------------
@@ -117,6 +132,7 @@ Output::
   {
     "orig": "docgen_sample.nim",
     "nimble": "",
+    "moduleDescription": "This module is a sample",
     "entries": [
       {
         "name": "helloWorld",
@@ -185,22 +201,26 @@ file.
 See source switch
 -----------------
 
+The ``docSeeSrcUrl`` switch is deprecated. Use:
+
 ::
-  nim doc2 --docSeeSrcUrl:txt filename.nim
+  nim doc2 --git.url:<url> filename.nim
 
-When you pass the ``docSeeSrcUrl`` switch to docgen, after each documented item
-in your source code the hyper link *See source* will appear pointing to the
-implementation of that item on a GitHub repository. You can click the link to
-see the implementation of the item.
+With the ``git.url`` switch the *See source* hyperlink will appear below each
+documented item in your source code pointing to the implementation of that
+item on a GitHub repository.
+You can click the link to see the implementation of the item.
 
-If you want to reuse this feature in your own documentation you will have to
-modify ``config/nimdoc.cfg`` to contain a ``doc.item.seesrc`` value with a
-hyper link to your own code repository. As you will see by the comments in that
-file, the value ``txt`` passed on the command line will be used in the HTML
-template along others like ``$path`` and ``$line``.
+The ``git.commit`` switch overrides the hardcoded `devel` branch in config/nimdoc.cfg.
+This is useful to link to a different branch e.g. `--git.commit:master`,
+or to a tag e.g. `--git.commit:1.2.3` or a commit.
 
-In the case of Nim's own documentation, the ``txt`` value is just a commit
-hash to append to a formatted URL to https://github.com/Araq/Nim. The
+Source URLs are generated as `href="${url}/tree/${commit}/${path}#L${line}"` by default and this compatible with GitHub but not with GitLab.
+
+You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value with a hyperlink to your own code repository.
+
+In the case of Nim's own documentation, the ``commit`` value is just a commit
+hash to append to a formatted URL to https://github.com/nim-lang/Nim. The
 ``tools/nimweb.nim`` helper queries the current git commit hash during doc
 generation, but since you might be working on an unpublished repository, it
 also allows specifying a ``githash`` value in ``web/website.ini`` to force a
@@ -230,7 +250,7 @@ HTML anchor generation
 ======================
 
 When you run the ``rst2html`` command, all sections in the RST document will
-get an anchor you can hyper link to. Usually you can guess the anchor lower
+get an anchor you can hyperlink to. Usually you can guess the anchor lower
 casing the section title and replacing spaces with dashes, and in any case you
 can get it from the table of contents. But when you run the ``doc`` or ``doc2``
 commands to generate API documentation, some symbol get one or two anchors at
@@ -248,7 +268,7 @@ will be their unquoted value after removing parameters, return types and
 pragmas. The plain name allows short and nice linking of symbols which works
 unless you have a module with collisions due to overloading.
 
-If you hyper link a plain name symbol and there are other matches on the same
+If you hyperlink a plain name symbol and there are other matches on the same
 HTML file, most browsers will go to the first one. To differentiate the rest,
 you will need to use the complex name. A complex name for a callable type is
 made up from several parts:
@@ -275,35 +295,37 @@ The relationship of type to suffix is made by the proc ``complexName`` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
 symbols in the `system module <system.html>`_.
 
-* ``type SignedInt = int | int8 | int16 | int32 | int64`` **=>**
-  `#SignedInt <system.html#SignedInt>`_
+* ``type SomeSignedInt = int | int8 | int16 | int32 | int64`` **=>**
+  `#SomeSignedInt <system.html#SomeSignedInt>`_
 * ``var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}`` **=>**
   `#globalRaiseHook <system.html#globalRaiseHook>`_
 * ``const NimVersion = "0.0.0"`` **=>**
   `#NimVersion <system.html#NimVersion>`_
 * ``proc getTotalMem(): int {.rtl, raises: [], tags: [].}`` **=>**
-  `#getTotalMem, <system.html#getTotalMem,>`_
+  `#getTotalMem, <system.html#getTotalMem>`_
 * ``proc len[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}`` **=>**
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
   `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
-* ``template newException[](exceptn: type; message: string): expr`` **=>**
-  `#newException.t,type,string
-  <system.html#newException.t,type,string>`_
+* ``template newException[](exceptn: typedesc; message: string;
+    parentException: ref Exception = nil): untyped`` **=>**
+  `#newException.t,typedesc,string,ref.Exception
+  <system.html#newException.t,typedesc,string,ref.Exception>`_
 
 
 Index (idx) file format
 =======================
 
 Files with the ``.idx`` extension are generated when you use the `Index
-switch`_ along with commands to generate documentation from source or text
-files. You can programatically generate indices with the `setIndexTerm()
-<rstgen.html#setIndexTerm>`_ and `writeIndexFile()
-<rstgen.html#writeIndexFile>`_ procs. The purpose of ``idx`` files is to hold
-the interesting symbols and their HTML references so they can be later
-concatenated into a big index file with `mergeIndexes()
-<rstgen.html#mergeIndexes>`_.  This section documents the file format in
-detail.
+switch <#related-options-index-switch>`_ along with commands to generate
+documentation from source or text files. You can programatically generate
+indices with the `setIndexTerm()
+<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
+The purpose of ``idx`` files is to hold the interesting symbols and their HTML
+references so they can be later concatenated into a big index file with
+`mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
+the file format in detail.
 
 Index files are line oriented and tab separated (newline and tab characters
 have to be escaped). Each line represents a record with at least two fields,
@@ -312,14 +334,14 @@ columns is:
 
 1. Mandatory term being indexed. Terms can include quoting according to
    Nim's rules (eg. \`^\`).
-2. Base filename plus anchor hyper link (eg.
+2. Base filename plus anchor hyperlink (eg.
    ``algorithm.html#*,int,SortOrder``).
-3. Optional human readable string to display as hyper link. If the value is not
-   present or is the empty string, the hyper link will be rendered
+3. Optional human readable string to display as hyperlink. If the value is not
+   present or is the empty string, the hyperlink will be rendered
    using the term. Prefix whitespace indicates that this entry is
    not for an API symbol but for a TOC entry.
-4. Optional title or description of the hyper link. Browsers usually display
-   this as a tooltip after hovering a moment over the hyper link.
+4. Optional title or description of the hyperlink. Browsers usually display
+   this as a tooltip after hovering a moment over the hyperlink.
 
 The index generation tools try to differentiate between documentation
 generated from ``.nim`` files and documentation generated from ``.txt`` or
@@ -348,7 +370,7 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-`Nim Compiler User Guide <nimc.html#command-line-switches>`_
+`Nim Compiler User Guide <nimc.html#compiler-usage-command-line-switches>`_
 
 `RST Quick Reference
 <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_

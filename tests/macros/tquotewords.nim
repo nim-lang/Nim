@@ -1,5 +1,4 @@
 discard """
-  file: "tquotewords.nim"
   output: "thisanexample"
 """
 # Test an idea I recently had:

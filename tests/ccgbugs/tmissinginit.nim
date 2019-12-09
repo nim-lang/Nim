@@ -27,4 +27,4 @@ echo bug()[0]
 echo bug()[0]
 echo bug()[0]
 
-when isMainModule: test()
+test()

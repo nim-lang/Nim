@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  output: "DONE: tostring.nim"
 """
 
 doAssert "@[23, 45]" == $(@[23, 45])
@@ -115,3 +115,6 @@ block:
   var s: string
   s.addQuoted a2
   doAssert s == "\"fo\\\"o2\""
+
+
+echo "DONE: tostring.nim"

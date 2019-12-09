@@ -1,7 +1,7 @@
 discard """
+  errormsg: "attempt to redefine: 'color'"
   file: "tparameterizedparent3.nim"
   line: 13
-  errormsg: "attempt to redefine: 'color'"
 """
 # bug #5264
 type

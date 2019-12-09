@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 import dom
 
 type

@@ -24,9 +24,8 @@ proc weird(json_params: Table) =
   sort(f, system.cmp[int])
   outp(f)
 
-when isMainModule:
-  var t = @[3, 2, 1]
-  sort(t, system.cmp[int])
-  outp(t)
-  works()
-  weird(initTable[string, JsonNode]())
+var t = @[3, 2, 1]
+sort(t, system.cmp[int])
+outp(t)
+works()
+weird(initTable[string, JsonNode]())

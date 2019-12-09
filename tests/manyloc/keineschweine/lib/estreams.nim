@@ -26,7 +26,7 @@ proc newBuffer*(pkt: PPacket): PBuffer =
   copyMem(addr result.data[0], pkt.data, pkt.dataLength)
 proc toPacket*(buffer: PBuffer; flags: TPacketFlag): PPacket =
   buffer.data.setLen buffer.pos
-  result = createPacket(cstring(buffer.data), buffer.pos, flags)
+  result = createPacket(cstring(buffer.data), cast[csize_t](buffer.pos), flags)
 
 proc isDirty*(buffer: PBuffer): bool {.inline.} =
   result = (buffer.pos != 0)
@@ -106,7 +106,7 @@ proc readChar*(buffer: PBuffer): char {.inline.} = return readInt8(buffer).char
 proc readBool*(buffer: PBuffer): bool {.inline.} = return readInt8(buffer).bool
 
 
-when isMainModule:
+when false:
   var b = newBuffer(100)
   var str = "hello there"
   b.write str
@@ -118,5 +118,3 @@ when isMainModule:
   echo "flushed"
   b.writeC([1,2,3])
   echo(repr(b))
-
-

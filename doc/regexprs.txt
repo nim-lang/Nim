@@ -80,13 +80,13 @@ meta character     meaning
 ``|``              start of alternative branch
 ``(``              start subpattern
 ``)``              end subpattern
-``?``              extends the meaning of ``(``
-                   also 0 or 1 quantifier
-                   also quantifier minimizer
-``*``              0 or more quantifier
-``+``              1 or more quantifier
-                   also "possessive quantifier"
 ``{``              start min/max quantifier
+``?``              extends the meaning of ``(``
+                   | also 0 or 1 quantifier (equal to ``{0,1}``)
+                   | also quantifier minimizer
+``*``              0 or more quantifier (equal to ``{0,}``)
+``+``              1 or more quantifier (equal to ``{1,}``)
+                   | also "possessive quantifier"
 ==============     ============================================================
 
 

@@ -1,5 +1,4 @@
 discard """
-  file: "twinasyncrw.nim"
   output: "5000"
 """
 when defined(windows):
@@ -47,7 +46,7 @@ when defined(windows):
           success = false
       it = it.ai_next
 
-    dealloc(aiList)
+    freeAddrInfo(aiList)
     if not success:
       retFuture.fail(newException(OSError, osErrorMsg(lastError)))
     return retFuture
@@ -204,11 +203,11 @@ when defined(windows):
       add(result, c)
 
   proc sendMessages(client: AsyncFD) {.async.} =
-    for i in 0 .. <messagesToSend:
+    for i in 0 ..< messagesToSend:
       await winSend(client, "Message " & $i & "\c\L")
 
   proc launchSwarm(port: Port) {.async.} =
-    for i in 0 .. <swarmSize:
+    for i in 0 ..< swarmSize:
       var sock = newNativeSocket()
       setBlocking(sock, false)
 

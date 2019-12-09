@@ -260,7 +260,7 @@ proc update*(m: PMessageArea) =
       m.texts.add messageProto.copy()
   elif m.texts.len > m.sizeVisible:
     echo "cutting ", m.texts.len - m.sizeVisible, " fields"
-    for i in m.sizeVisible.. < m.texts.len:
+    for i in m.sizeVisible ..< m.texts.len:
       m.texts.pop().destroy()
   let nmsgs = m.messages.len()
   if m.sizeVisible == 0 or nmsgs == 0:

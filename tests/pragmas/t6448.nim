@@ -1,6 +1,7 @@
 discard """
-  line: 9
   errormsg: '''ambiguous call; both foobar.async'''
+  line: 10
+  disabled: "32bit"
 """
 
 import foobar
@@ -9,7 +10,7 @@ import asyncdispatch, macros
 proc bar() {.async.} =
   echo 42
 
-proc foo() {.async.} = 
+proc foo() {.async.} =
   await bar()
 
 asyncCheck foo()

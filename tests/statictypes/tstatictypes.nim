@@ -8,6 +8,7 @@ output: '''
 16
 b is 2 times a
 17
+['\x00', '\x00', '\x00', '\x00']
 '''
 """
 
@@ -116,3 +117,52 @@ block:
     Tensor[B: static[Backend]; T] = object
 
     BackProp[B: static[Backend],T] = proc (gradient: Tensor[B,T]): Tensor[B,T]
+
+# https://github.com/nim-lang/Nim/issues/10073
+block:
+  proc foo[N: static int](x: var int,
+                          y: int,
+                          z: static int,
+                          arr: array[N, int]): auto =
+    var t1 = (a: x, b: y, c: z, d: N)
+    var t2 = (x, y, z, N)
+    doAssert t1 == t2
+    result = t1
+
+  var y = 20
+  var x = foo(y, 10, 15, [1, 2, 3])
+  doAssert x == (20, 10, 15, 3)
+
+# #7609
+block:
+  type
+    Coord[N: static[int]] = tuple[col, row: range[0'i8 .. (N.int8-1)]]
+    Point[N: static[int]] = range[0'i16 .. N.int16 * N.int16 - 1]
+
+# https://github.com/nim-lang/Nim/issues/10339
+block:
+  type
+    MicroKernel = object
+      a: float
+      b: int
+
+  macro extractA(ukernel: static MicroKernel): untyped =
+    result = newLit ukernel.a
+
+  proc tFunc[ukernel: static MicroKernel]() =
+    const x = ukernel.extractA
+    doAssert x == 5.5
+
+  const uk = MicroKernel(a: 5.5, b: 1)
+  tFunc[uk]()
+
+
+# bug #7258
+type
+  StringValue*[LEN: static[Natural]] = array[LEN+Natural(2),char]
+  StringValue16* = StringValue[2]
+
+var
+  s: StringValue16
+
+echo s

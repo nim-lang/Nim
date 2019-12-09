@@ -41,7 +41,8 @@ proc lift1[A, B](f: proc(a: A): B, r: RandomVar[A]): ClosureVar[B] =
 
   return inner
 
-when isMainModule:
+
+proc main() =
   proc sq(x: float): float = x * x
 
   let
@@ -59,3 +60,4 @@ when isMainModule:
   echo rng.sample(u)
   echo rng.sample(t)
 
+main()

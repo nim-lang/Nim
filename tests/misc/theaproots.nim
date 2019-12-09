@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 type
   Bar = object
     x: int

@@ -1,7 +1,7 @@
 discard """
+  errormsg: "type mismatch"
   file: "trefs.nim"
   line: 20
-  errormsg: "type mismatch"
 """
 # test for ref types (including refs to procs)
 
@@ -18,6 +18,3 @@ var p: TProc
 p = foo
 write(stdout, "success!")
 p = wrongfoo  #ERROR_MSG type mismatch
-
-
-

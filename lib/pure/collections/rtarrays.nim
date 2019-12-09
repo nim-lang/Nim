@@ -10,16 +10,17 @@
 
 ## Module that implements a fixed length array whose size
 ## is determined at runtime. Note: This is not ready for other people to use!
+##
+## Unstable API.
 
 const
   ArrayPartSize = 10
 
 type
-  RtArray*[T] = object  ##
+  RtArray*[T] = object ##
     L: Natural
     spart: seq[T]
     apart: array[ArrayPartSize, T]
-  UncheckedArray* {.unchecked.}[T] = array[0, T]
 
 template usesSeqPart(x): untyped = x.L > ArrayPartSize
 

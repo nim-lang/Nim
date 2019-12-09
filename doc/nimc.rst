@@ -17,7 +17,7 @@ Introduction
 
 This document describes the usage of the *Nim compiler*
 on the different supported platforms. It is not a definition of the Nim
-programming language (therefore is the `manual <manual.html>`_).
+programming language (which is covered in the `manual <manual.html>`_).
 
 Nim is free software; it is licensed under the
 `MIT License <http://www.opensource.org/licenses/mit-license.php>`_.
@@ -62,8 +62,6 @@ SmallLshouldNotBeUsed            The letter 'l' should not be used as an
                                  identifier.
 EachIdentIsTuple                 The code contains a confusing ``var``
                                  declaration.
-ShadowIdent                      A local variable shadows another local
-                                 variable of an outer scope.
 User                             Some user defined warning.
 ==========================       ============================================
 
@@ -116,7 +114,8 @@ Level  Description
 =====  ============================================
 0      Minimal output level for the compiler.
 1      Displays compilation of all the compiled files, including those imported
-       by other modules or through the `compile pragma<#compile-pragma>`_.
+       by other modules or through the `compile pragma
+       <manual.html#implementation-specific-pragmas-compile-pragma>`_.
        This is the default level.
 2      Displays compilation statistics, enumerates the dynamic
        libraries that will be loaded by the final binary and dumps to
@@ -132,10 +131,11 @@ Compile time symbols
 
 Through the ``-d:x`` or ``--define:x`` switch you can define compile time
 symbols for conditional compilation. The defined switches can be checked in
-source code with the `when statement <manual.html#when-statement>`_ and
-`defined proc <system.html#defined>`_. The typical use of this switch is to
-enable builds in release mode (``-d:release``) where certain safety checks are
-omitted for better performance. Another common use is the ``-d:ssl`` switch to
+source code with the `when statement
+<manual.html#statements-and-expressions-when-statement>`_ and
+`defined proc <system.html#defined,untyped>`_. The typical use of this switch is
+to enable builds in release mode (``-d:release``) where optimizations are
+enabled for better performance. Another common use is the ``-d:ssl`` switch to
 activate SSL sockets.
 
 Additionally, you may pass a value along with the symbol: ``-d:x=y``
@@ -145,6 +145,9 @@ to override symbols during build time.
 
 Compile time symbols are completely **case insensitive** and underscores are
 ignored too. ``--define:FOO`` and ``--define:foo`` are identical.
+
+Compile time symbols starting with the ``nim`` prefix are reserved for the
+implementation and should not be used elsewhere.
 
 
 Configuration files
@@ -171,6 +174,10 @@ The default build of a project is a `debug build`:idx:. To compile a
 
   nim c -d:release myproject.nim
 
+ To compile a `dangerous release build`:idx: define the ``danger`` symbol::
+
+  nim c -d:danger myproject.nim
+
 
 Search path handling
 --------------------
@@ -192,9 +199,8 @@ directory structure looks like this::
   other.nim
 
 And ``main`` imports ``x``, ``foo/x`` is imported. If ``other`` imports ``x``
-then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match and so the compiler
-should reject it. Currently however this check is not implemented and instead
-the first matching file is used.
+then both ``$lib/x.nim`` and ``$lib/bar/x.nim`` match but ``$lib/x.nim`` is used
+as it is the first match.
 
 
 Generated C code directory
@@ -208,13 +214,10 @@ The generated files that Nim produces all go into a subdirectory called
 
 The ``_r`` suffix is used for release builds, ``_d`` is for debug builds.
 
-This makes it easy to delete all
-generated files. Files generated in this directory follow a naming logic which
-you can read about in the `Nim Backend Integration document
-<backends.html#nimcache-naming-logic>`_.
+This makes it easy to delete all generated files.
 
 The ``--nimcache``
-`compiler switch <nimc.html#command-line-switches>`_ can be used to
+`compiler switch <#compiler-usage-command-line-switches>`_ can be used to
 to change the ``nimcache`` directory.
 
 However, the generated C code is not platform independent. C code generated for
@@ -260,6 +263,90 @@ configuration file should contain something like::
   arm.linux.gcc.path = "/usr/bin"
   arm.linux.gcc.exe = "arm-linux-gcc"
   arm.linux.gcc.linkerexe = "arm-linux-gcc"
+
+Cross compilation for Windows
+=============================
+
+To cross compile for Windows from Linux or macOS using the MinGW-w64 toolchain::
+
+  nim c -d:mingw myproject.nim
+
+Use ``--cpu:i386`` or ``--cpu:amd64`` to switch the CPU architecture.
+
+The MinGW-w64 toolchain can be installed as follows::
+
+  Ubuntu: apt install mingw-w64
+  CentOS: yum install mingw32-gcc | mingw64-gcc - requires EPEL
+  OSX: brew install mingw-w64
+
+
+Cross compilation for Android
+=============================
+
+There are two ways to compile for Android: terminal programs (Termux) and with
+the NDK (Android Native Development Kit).
+
+First one is to treat Android as a simple Linux and use
+`Termux <https://wiki.termux.com>`_ to connect and run the Nim compiler
+directly on android as if it was Linux. These programs are console only
+programs that can't be distributed in the Play Store.
+
+Use regular ``nim c`` inside termux to make Android terminal programs.
+
+Normal Android apps are written in Java, to use Nim inside an Android app
+you need a small Java stub that calls out to a native library written in
+Nim using the `NDK <https://developer.android.com/ndk>`_. You can also use
+`native-acitivty <https://developer.android.com/ndk/samples/sample_na>`_
+to have the Java stub be auto generated for you.
+
+Use ``nim c -c --cpu:arm --os:android -d:androidNDK --noMain:on`` to
+generate the C source files you need to include in your Android Studio
+project. Add the generated C files to CMake build script in your Android
+project. Then do the final compile with Android Studio which uses Gradle
+to call CMake to compile the project.
+
+Because Nim is part of a library it can't have its own c style ``main()``
+so you would need to define your own ``android_main`` and init the Java
+environment, or use a library like SDL2 or GLFM to do it. After the Android
+stuff is done, it's very important to call ``NimMain()`` in order to
+initialize Nim's garbage collector and to run the top level statements
+of your program.
+
+.. code-block:: Nim
+
+  proc NimMain() {.importc.}
+  proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
+    NimMain() # initialize garbage collector memory, types and stack
+
+
+Cross compilation for iOS
+=========================
+
+To cross compile for iOS you need to be on a MacOS computer and use XCode.
+Normal languages for iOS development are Swift and Objective C. Both of these
+use LLVM and can be compiled into object files linked together with C, C++
+or Objective C code produced by Nim.
+
+Use ``nim c -c --os:ios --noMain:on`` to generate C files and include them in
+your XCode project. Then you can use XCode to compile, link, package and
+sign everything.
+
+Because Nim is part of a library it can't have its own c style ``main()`` so you
+would need to define `main` that calls ``autoreleasepool`` and
+``UIApplicationMain`` to do it, or use a library like SDL2 or GLFM. After
+the iOS setup is done, it's very important to call ``NimMain()`` in order to
+initialize Nim's garbage collector and to run the top level statements
+of your program.
+
+.. code-block:: Nim
+
+  proc NimMain() {.importc.}
+  proc glfmMain*(display: ptr GLFMDisplay) {.exportc.} =
+    NimMain() # initialize garbage collector memory, types and stack
+
+Note: XCodes "make clean" gets confused about the genreated nim.c files,
+so you need to clean those files manually to do a clean build.
+
 
 Cross compilation for Nintendo Switch
 =====================================
@@ -331,19 +418,21 @@ complete list.
 ======================   =========================================================
 Define                   Effect
 ======================   =========================================================
-``release``              Turns off runtime checks and turns on the optimizer.
-``useWinAnsi``           Modules like ``os`` and ``osproc`` use the Ansi versions
-                         of the Windows API. The default build uses the Unicode
-                         version.
+``release``              Turns on the optimizer.
+                         More aggressive optimizations are possible, eg:
+                         ``--passC:-ffast-math`` (but see issue #10305)
+``danger``               Turns off all runtime checks and turns on the optimizer.
 ``useFork``              Makes ``osproc`` use ``fork`` instead of ``posix_spawn``.
 ``useNimRtl``            Compile and link against ``nimrtl.dll``.
 ``useMalloc``            Makes Nim use C's `malloc`:idx: instead of Nim's
-                         own memory manager, ableit prefixing each allocation with
+                         own memory manager, albeit prefixing each allocation with
                          its size to support clearing memory on reallocation.
-                         This only works with ``gc:none``.
+                         This only works with ``gc:none`` and
+                         with ``--newruntime``.
 ``useRealtimeGC``        Enables support of Nim's GC for *soft* realtime
                          systems. See the documentation of the `gc <gc.html>`_
                          for further information.
+``logGC``                Enable GC logging to stdout.
 ``nodejs``               The JS target is actually ``node.js``.
 ``ssl``                  Enables OpenSSL support for the sockets module.
 ``memProfiler``          Enables memory profiling for the native GC.
@@ -395,47 +484,6 @@ the generated C contains code to ensure that proper stack traces with line
 number information are given if the program crashes or an uncaught exception
 is raised.
 
-Hot code reloading
-------------------
-**Note:** At the moment hot code reloading is supported only in
-JavaScript projects.
-
-The `hotCodeReloading`:idx: option enables special compilation mode where changes in
-the code can be applied automatically to a running program. The code reloading
-happens at the granularity of an individual module. When a module is reloaded,
-Nim will preserve the state of all global variables which are initialized with
-a standard variable declaration in the code. All other top level code will be
-executed repeatedly on each reload. If you want to prevent this behavior, you
-can guard a block of code with the ``once`` construct:
-
-.. code-block:: Nim
-  var settings = initTable[string, string]()
-
-  once:
-    myInit()
-
-    for k, v in loadSettings():
-      settings[k] = v
-
-If you want to reset the state of a global variable on each reload, just
-re-assign a value anywhere within the top-level code:
-
-.. code-block:: Nim
-  var lastReload: Time
-
-  lastReload = now()
-  resetProgramState()
-
-**Known limitations:** In the JavaScript target, global variables using the
-``codegenDecl`` pragma will be re-initialized on each reload. Please guard the
-initialization with a `once` block to work-around this.
-
-**Usage in JavaScript projects:**
-
-Once your code is compiled for hot reloading, you can use a framework such
-as `LiveReload <http://livereload.com/>` or `BrowserSync <https://browsersync.io/>`
-to implement the actual reloading behavior in your project.
-
 
 DynlibOverride
 ==============
@@ -456,7 +504,7 @@ Backend language options
 The typical compiler usage involves using the ``compile`` or ``c`` command to
 transform a ``.nim`` file into one or more ``.c`` files which are then
 compiled with the platform's C compiler into a static binary. However there
-are other commands to compile to C++, Objective-C or Javascript. More details
+are other commands to compile to C++, Objective-C or JavaScript. More details
 can be read in the `Nim Backend Integration document <backends.html>`_.
 
 

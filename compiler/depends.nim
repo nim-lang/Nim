@@ -10,8 +10,7 @@
 # This module implements a dependency file generator.
 
 import
-  os, options, ast, astalgo, msgs, ropes, idents, passes, modulepaths,
-  pathutils
+  options, ast, ropes, idents, passes, modulepaths, pathutils
 
 from modulegraphs import ModuleGraph, PPassContext
 
@@ -26,7 +25,7 @@ type
     dotGraph: Rope
 
 proc addDependencyAux(b: Backend; importing, imported: string) =
-  addf(b.dotGraph, "$1 -> \"$2\";$n", [rope(importing), rope(imported)])
+  b.dotGraph.addf("$1 -> \"$2\";$n", [rope(importing), rope(imported)])
   # s1 -> s2_4[label="[0-9]"];
 
 proc addDotDependency(c: PPassContext, n: PNode): PNode =
@@ -35,14 +34,14 @@ proc addDotDependency(c: PPassContext, n: PNode): PNode =
   let b = Backend(g.graph.backend)
   case n.kind
   of nkImportStmt:
-    for i in countup(0, sonsLen(n) - 1):
-      var imported = getModuleName(g.config, n.sons[i])
+    for i in 0..<n.len:
+      var imported = getModuleName(g.config, n[i])
       addDependencyAux(b, g.module.name.s, imported)
   of nkFromStmt, nkImportExceptStmt:
-    var imported = getModuleName(g.config, n.sons[0])
+    var imported = getModuleName(g.config, n[0])
     addDependencyAux(b, g.module.name.s, imported)
   of nkStmtList, nkBlockStmt, nkStmtListExpr, nkBlockExpr:
-    for i in countup(0, sonsLen(n) - 1): discard addDotDependency(c, n.sons[i])
+    for i in 0..<n.len: discard addDotDependency(c, n[i])
   else:
     discard
 

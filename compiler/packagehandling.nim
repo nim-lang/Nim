@@ -29,9 +29,6 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
       for file in walkFiles(d / "*.nimble"):
         result = file.splitFile.name
         break packageSearch
-      for file in walkFiles(d / "*.babel"):
-        result = file.splitFile.name
-        break packageSearch
   # we also store if we didn't find anything:
   when not defined(nimNoNilSeqs):
     if result.isNil: result = ""
@@ -41,10 +38,21 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     dec parents
     if parents <= 0: break
 
+proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
+  # Convert `path` so that 2 modules with same name
+  # in different directory get different name and they can be
+  # placed in a directory.
+  # foo-#head/../bar becomes @foo-@hhead@s..@sbar
+  result = "@m" & relativeTo(path, conf.projectPath).string.multiReplace({$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
+
+proc demanglePackageName*(path: string): string =
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
+
 proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   let x = getPackageName(conf, path.string)
-  if x.len == 0:
-    result = path
-  else:
-    let (p, file, ext) = path.splitFile
+  let (p, file, ext) = path.splitFile
+  if x == "stdlib":
+    # Hot code reloading now relies on 'stdlib_system' names etc.
     result = p / RelativeFile((x & '_' & file) & ext)
+  else:
+    result = p / RelativeFile(fakePackageName(conf, path))

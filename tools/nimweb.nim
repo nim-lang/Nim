@@ -71,7 +71,7 @@ proc initConfigData(c: var TConfigData) =
       c.gitCommit = output.strip
   c.quotations = initTable[string, tuple[quote, author: string]]()
 
-include "website.tmpl"
+include "website.nimf"
 
 # ------------------------- configuration file -------------------------------
 

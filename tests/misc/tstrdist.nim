@@ -23,4 +23,4 @@ proc editDistance(a, b: string): int =
       c[(i-1)*n + (j-1)] = min(x,min(y,z))
   return c[n*m]
 
-write(stdout, editDistance("abc", "abd"))
+doAssert editDistance("abc", "abd") == 3
