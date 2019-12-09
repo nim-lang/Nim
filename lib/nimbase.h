@@ -269,8 +269,16 @@ __AVR__
 #  define HAVE_STDINT_H
 #endif
 
+#if (!defined(HAVE_STDINT_H) && defined(__cplusplus) && (__cplusplus >= 201103))
+#  define HAVE_CSTDINT
+#endif
+
+
 /* wrap all Nim typedefs into namespace Nim */
 #ifdef USE_NIM_NAMESPACE
+#ifdef HAVE_CSTDINT
+#include <cstdint>
+#endif
 namespace USE_NIM_NAMESPACE {
 #endif
 
@@ -306,38 +314,40 @@ namespace USE_NIM_NAMESPACE {
                               the generated code does not rely on it anymore */
 #endif
 
-//#if defined(__BORLANDC__) || defined(__DMC__) \
-//   || defined(__WATCOMC__) || defined(_MSC_VER)
-//typedef signed char NI8;
-//typedef signed short int NI16;
-//typedef signed int NI32;
-//typedef __int64 NI64;
-///* XXX: Float128? */
-//typedef unsigned char NU8;
-//typedef unsigned short int NU16;
-//typedef unsigned int NU32;
-//typedef unsigned __int64 NU64;
-//#elif defined(HAVE_STDINT_H)
-//#  include <stdint.h>
-//typedef int8_t NI8;
-//typedef int16_t NI16;
-//typedef int32_t NI32;
-//typedef int64_t NI64;
-//typedef uint8_t NU8;
-//typedef uint16_t NU16;
-//typedef uint32_t NU32;
-//typedef uint64_t NU64;
-//#elif (defined(__cplusplus) && (__cplusplus >= 201103))
-//#  include <cstdint>
-//typedef std::int8_t NI8;
-//typedef std::int16_t NI16;
-//typedef std::int32_t NI32;
-//typedef std::int64_t NI64;
-//typedef std::uint8_t NU8;
-//typedef std::uint16_t NU16;
-//typedef std::uint32_t NU32;
-//typedef std::uint64_t NU64;
-//#else
+#if defined(__BORLANDC__) || defined(__DMC__) \
+   || defined(__WATCOMC__) || defined(_MSC_VER)
+typedef signed char NI8;
+typedef signed short int NI16;
+typedef signed int NI32;
+typedef __int64 NI64;
+/* XXX: Float128? */
+typedef unsigned char NU8;
+typedef unsigned short int NU16;
+typedef unsigned int NU32;
+typedef unsigned __int64 NU64;
+#elif defined(HAVE_STDINT_H)
+#  include <stdint.h>
+typedef int8_t NI8;
+typedef int16_t NI16;
+typedef int32_t NI32;
+typedef int64_t NI64;
+typedef uint8_t NU8;
+typedef uint16_t NU16;
+typedef uint32_t NU32;
+typedef uint64_t NU64;
+#elif defined(HAVE_CSTDINT)
+#ifndef USE_NIM_NAMESPACE
+#  include <cstdint>
+#endif
+typedef std::int8_t NI8;
+typedef std::int16_t NI16;
+typedef std::int32_t NI32;
+typedef std::int64_t NI64;
+typedef std::uint8_t NU8;
+typedef std::uint16_t NU16;
+typedef std::uint32_t NU32;
+typedef std::uint64_t NU64;
+#else
 /* Unknown compiler/version, do our best */
 #ifdef __INT8_TYPE__
 typedef __INT8_TYPE__ NI8;
@@ -380,7 +390,7 @@ typedef __UINT64_TYPE__ NU64;
 #else
 typedef unsigned long long int NU64;
 #endif
-//#endif
+#endif
 
 #ifdef NIM_INTBITS
 #  if NIM_INTBITS == 64
