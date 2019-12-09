@@ -449,7 +449,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efAllowDestructor})
       if def.typ.kind == tyProc and def.kind == nkSym:
-        if def.sym.kind == skMacro or def.sym.kind == skTemplate:
+        if def.sym.kind in {skMacro, skTemplate}:
           localError(c.config, def.info, errCannotAssignMacroSymbol % [
                           if def.sym.kind == skMacro: "macro" else: "template",
                           def.sym.name.s, a[0].ident.s])
@@ -592,7 +592,7 @@ proc semConst(c: PContext, n: PNode): PNode =
     # don't evaluate here since the type compatibility check below may add a converter
     var def = semExprWithType(c, a[^1])
     if def.typ.kind == tyProc and def.kind == nkSym:
-      if def.sym.kind == skMacro or def.sym.kind == skTemplate:
+      if def.sym.kind in {skMacro, skTemplate}:
         localError(c.config, def.info, errCannotAssignMacroSymbol % [
           if def.sym.kind == skMacro: "macro" else: "template",
           def.sym.name.s, a[0].ident.s])
