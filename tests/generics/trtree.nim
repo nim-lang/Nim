@@ -220,7 +220,7 @@ proc sortPlus[T](a: var openArray[T], ax: var T, cmp: proc (x, y: T): int {.clos
   a.sort(cmp, order)
 
 # R*TREE procs
-proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var Node[M, D, RT, LT] | var Leaf[M, D, RT, LT]; lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
+proc rstarSplit[M, D: Dim; RT, LT](t: RStarTree[M, D, RT, LT]; n: var (Node[M, D, RT, LT] | Leaf[M, D, RT, LT]); lx: L[D, RT, LT] | N[M, D, RT, LT]): type(n) =
   type NL = type(lx)
   var nBest: type(n)
   new nBest
