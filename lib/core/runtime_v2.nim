@@ -250,9 +250,11 @@ proc nimDecRefIsLastCyclicStatic(p: pointer; desc: PNimType): bool {.compilerRtl
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
       result = true
+      #cprintf("[DESTROY] %p %s\n", p, desc.name)
     else:
       dec cell.rc, rcIncrement
       if cell.color == colYellow: traceCycle(cell, desc)
+      #cprintf("[DeCREF] %p %s %ld\n", p, desc.name, cell.rc)
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
