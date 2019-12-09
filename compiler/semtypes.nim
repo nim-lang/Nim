@@ -1207,6 +1207,26 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       hasDefault = a[^1].kind != nkEmpty
 
     if hasType:
+      # bug #8887
+      proc checkVarSyntax(a: PNode, contains: var (bool, bool)) =
+        for i in 1 ..< a.len:
+          if a[i].kind == nkVarTy:
+            contains[0] = true
+          if a[i].kind != nkVarTy:
+            contains[1] = true
+          if a[i].kind == nkInfix:
+            checkVarSyntax(a[i], contains)
+      if a[^2].kind == nkInfix:
+        var contains: tuple[var_type: bool, non_var_type: bool]
+        checkVarSyntax(a[^2], contains)
+        if contains[0] and contains[1]:
+            localError(c.config, n[1][0].info,
+              "'$1' cannot be both 'var' and 'non-var'" % n[1][0].ident.s)
+        elif contains[0]:
+          localError(c.config, n[1][0].info,
+            "'$1' uses wrong syntax for a var typeclass; " % n[1][0].ident.s &
+            "the syntax is 'var (T1 | T2)'; not 'var T1 | var T2'" )
+
       typ = semParamType(c, a[^2], constraint)
       let sym = getCurrOwner(c)
       var owner = sym.owner
