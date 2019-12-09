@@ -213,9 +213,9 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     assert splitPath("usr/local/bin/") == ("usr/local/bin", "")
     assert splitPath("/bin/") == ("/bin", "")
     when (NimMajor, NimMinor) <= (1, 0):
-        assert splitPath("/bin") == ("", "bin")
+      assert splitPath("/bin") == ("", "bin")
     else:
-        assert splitPath("/bin") == ("/", "bin")
+      assert splitPath("/bin") == ("/", "bin")
     assert splitPath("bin") == ("", "bin")
     assert splitPath("") == ("", "")
 
