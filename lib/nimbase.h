@@ -278,6 +278,8 @@ __AVR__
 #ifdef USE_NIM_NAMESPACE
 #ifdef HAVE_CSTDINT
 #include <cstdint>
+#else
+#include <stdint.h>
 #endif
 namespace USE_NIM_NAMESPACE {
 #endif
@@ -326,7 +328,9 @@ typedef unsigned short int NU16;
 typedef unsigned int NU32;
 typedef unsigned __int64 NU64;
 #elif defined(HAVE_STDINT_H)
+#ifndef USE_NIM_NAMESPACE
 #  include <stdint.h>
+#endif
 typedef int8_t NI8;
 typedef int16_t NI16;
 typedef int32_t NI32;
