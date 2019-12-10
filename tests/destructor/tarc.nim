@@ -82,6 +82,16 @@ proc inheritanceBug(param: string) =
   s[0] = B(more: "a" & param)
   s[1] = B(more: "a" & param)
 
+
+type
+  PAsyncHttpServer = ref object
+    value: string
+
+proc serve(server: PAsyncHttpServer) = discard
+
+proc leakObjConstr =
+  serve(PAsyncHttpServer(value: "asdas"))
+
 let startMem = getOccupiedMem()
 take3()
 tlazyList()
@@ -89,4 +99,5 @@ inheritanceBug("whatever")
 mkManyLeaks()
 tsimpleClosureIterator()
 tleakingNewStmt()
+leakObjConstr()
 echo getOccupiedMem() - startMem
