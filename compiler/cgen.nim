@@ -945,11 +945,12 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     # assignment this is not good enough! The only pattern we allow for
     # is 'finally: result = x'
     result = InitSkippable
-    for it in n:
-      if it.kind == nkFinally:
-        result = allPathsAsgnResult(it.lastSon)
+    allPathsInBranch(n[0])
+    for i in 1..<n.len:
+      if n[i].kind == nkFinally:
+        result = allPathsAsgnResult(n[i].lastSon)
       else:
-        allPathsInBranch(it.lastSon)
+        allPathsInBranch(n[i].lastSon)
   else:
     for i in 0..<n.safeLen:
       allPathsInBranch(n[i])
