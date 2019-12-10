@@ -140,6 +140,40 @@ template decodeBx(k: untyped) {.dirty.} =
 template move(a, b: untyped) {.dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
+proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: bool): bool =
+  # nim bug: `isAssign: static bool` doesn't work, giving odd compiler error
+  template fun(field, T, rkind) =
+    if isAssign:
+      cast[ptr T](address)[] = T(r.field)
+    else:
+      # ensureKind(rkind)
+      if r.kind != rkind:
+        myreset(r)
+        r.kind = rkind
+      let val = cast[ptr T](address)[]
+      when T is SomeInteger:
+        r.field = BiggestInt(val)
+      else:
+        r.field = val
+    return true
+
+  ## see also typeinfo.getBiggestInt
+  case typ.kind
+  of tyInt: fun(intVal, int, rkInt)
+  of tyInt8: fun(intVal, int8, rkInt)
+  of tyInt16: fun(intVal, int16, rkInt)
+  of tyInt32: fun(intVal, int32, rkInt)
+  of tyInt64: fun(intVal, int64, rkInt)
+  of tyUInt: fun(intVal, uint, rkInt)
+  of tyUInt8: fun(intVal, uint8, rkInt)
+  of tyUInt16: fun(intVal, uint16, rkInt)
+  of tyUInt32: fun(intVal, uint32, rkInt)
+  of tyUInt64: fun(intVal, uint64, rkInt) # checkme: differs from typeinfo.getBiggestInt
+  of tyFloat: fun(floatVal, float, rkFloat)
+  of tyFloat32: fun(floatVal, float32, rkFloat)
+  of tyFloat64: fun(floatVal, float64, rkFloat)
+  else: return false
+
 proc createStrKeepNode(x: var TFullReg; keepNode=true) =
   if x.node.isNil or not keepNode:
     x.node = newNode(nkStrLit)
@@ -242,6 +276,11 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
+  if dest.kind == rkNode and n.kind == nkIntLit:
+    # use `nkPtrLit` once this becomes a thing
+    dest.node = n
+    return
+
   case n.kind
   of nkStrLit..nkTripleStrLit:
     dest.kind = rkNode
@@ -567,6 +606,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       ensureKind(rkFloat)
       regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
+    of opcCastPtrToInt:
+      let rb = instr.regB
+      ensureKind(rkInt)
+      if regs[rb].kind != rkNode:
+        stackTrace(c, tos, pc, "opcCastPtrToInt: regs[rb].kind: " & $regs[rb].kind)
+      regs[ra].intVal = cast[int](regs[rb].node.intVal)
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcFastAsgnComplex:
@@ -651,7 +696,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let src = regs[rb].node
       case src.kind
       of nkEmpty..nkNilLit:
-        stackTrace(c, tos, pc, errNilAccess)
+        # TODO: for nkPtrLit, use something like: derefPtrToReg(src.intVal + offsetof(src.typ, rc), typ_field, regs[ra], isAssign = false)
+        # where we compute the offset in bytes for field rc
+        stackTrace(c, tos, pc, errNilAccess & " " & $("kind", src.kind, "typ", typeToString(src.typ), "rc", rc))
       of nkObjConstr:
         let n = src[rc + 1].skipColon
         regs[ra].node = n
@@ -718,10 +765,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
         else:
-          ensureKind(rkNode)
-          regs[ra].node = regs[rb].node
+          let node = regs[rb].node
+          let typ = node.typ
+          if node.kind == nkIntLit:
+            var typ2 = typ
+            if typ.kind == tyPtr:
+              typ2 = typ2[0]
+            if not derefPtrToReg(node.intVal, typ2, regs[ra], isAssign = false):
+              # tyObject not supported in this context
+              stackTrace(c, tos, pc, "opcLdDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
+          else:
+            ## eg: typ.kind = tyObject
+            ensureKind(rkNode)
+            regs[ra].node = regs[rb].node
       else:
-        stackTrace(c, tos, pc, errNilAccess)
+        stackTrace(c, tos, pc, errNilAccess & " kind: " & $regs[rb].kind)
     of opcWrDeref:
       # a[] = c; b unused
       let ra = instr.regA
@@ -742,8 +800,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       of rkNode:
         if regs[ra].node.kind == nkNilLit:
           stackTrace(c, tos, pc, errNilAccess)
-        regs[ra].node[] = regs[rc].regToNode[]
-        regs[ra].node.flags.incl nfIsRef
+        let node = regs[ra].node
+        let typ = node.typ
+        if node.kind == nkIntLit: # IMPROVE: use a flag?
+          var typ2 = typ
+          if typ.kind == tyPtr:
+            typ2 = typ2[0]
+          if not derefPtrToReg(node.intVal, typ2, regs[rc], isAssign = true):
+            stackTrace(c, tos, pc, "opcWrDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
+        else:
+          regs[ra].node[] = regs[rc].regToNode[]
+          regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
@@ -1338,6 +1405,26 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNode)
       regs[ra].node = c.globals[rb]
+    of opcLdGlobalDeref:
+      let rb = instr.regBx - wordExcess - 1
+      let node = c.globals[rb]
+      let typ = node.typ
+      doAssert node.kind == nkIntLit, $(node.kind)
+      if typ.kind == tyPtr:
+        ensureKind(rkNode)
+        # checkme: nkPtrTy ? nkPtrLit?
+        regs[ra].node = newNodeIT(nkIntLit, node.info, typ)
+        regs[ra].node.intVal = cast[ptr int](node.intVal)[]
+      elif not derefPtrToReg(node.intVal, typ, regs[ra], isAssign = false):
+        stackTrace(c, tos, pc, "opcLdDeref unsupported ptr type: " & $(typeToString(typ), typ[0].kind))
+    of opcLdGlobalAddrDeref:
+      let rb = instr.regBx - wordExcess - 1
+      let node = c.globals[rb]
+      let typ = node.typ
+      var node2 = newNodeIT(nkIntLit, node.info, typ)
+      node2.intVal = node.intVal
+      ensureKind(rkNode)
+      regs[ra].node = node2
     of opcLdGlobalAddr:
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNodeAddr)

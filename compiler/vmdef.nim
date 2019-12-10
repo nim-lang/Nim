@@ -63,6 +63,7 @@ type
     opcCastIntToFloat64,    # int and float must be of the same byte size
     opcCastFloatToInt32,    # int and float must be of the same byte size
     opcCastFloatToInt64,    # int and float must be of the same byte size
+    opcCastPtrToInt,
     opcFastAsgnComplex,
     opcNodeToReg,
 
@@ -169,6 +170,8 @@ type
     opcAsgnConst, # dest = copy(constants[Bx])
     opcLdGlobal,  # dest = globals[Bx]
     opcLdGlobalAddr, # dest = addr(globals[Bx])
+    opcLdGlobalDeref, # dest = globals[Bx][]
+    opcLdGlobalAddrDeref, # globals[Bx][] = ...
 
     opcLdImmInt,  # dest = immediate value
     opcNBindSym, opcNDynBindSym,

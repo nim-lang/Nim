@@ -699,6 +699,8 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
   if lib.name == nil: internalError(m.config, "loadDynamicLib")
 
 proc mangleDynLibProc(sym: PSym): Rope =
+  if sym.loc.r != nil:
+    return sym.loc.r # should that be `rope($sym.loc.r)`? (see comment below)
   # we have to build this as a single rope in order not to trip the
   # optimization in genInfixCall
   if sfCompilerProc in sym.flags:

@@ -885,8 +885,13 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastFloatToInt64, dest, tmp)
       # narrowing for 64 bits not needed (no extended sign bits available).
     c.freeTemp(tmp)
+  elif src.kind == tyPtr and dst.kind == tyInt:
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    c.gABC(n, opcCastPtrToInt, dest, tmp)
+    c.freeTemp(tmp)
   else:
-    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size")
+    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size " & $(src.kind, dst.kind))
 
 proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)
@@ -1624,17 +1629,24 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   assert card(flags * {gfNodeAddr, gfNode}) < 2
   let s = n.sym
   if s.isGlobal:
-    if sfCompileTime in s.flags or c.mode == emRepl or importcCondVar(s):
+    let isImportcVar = importcCondVar(s)
+    if sfCompileTime in s.flags or c.mode == emRepl or isImportcVar:
       discard
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if importcCond(s) or importcCondVar(s): c.importcSym(n.info, s)
+      if importcCond(s) or isImportcVar: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
+
     if gfNodeAddr in flags:
-      c.gABx(n, opcLdGlobalAddr, dest, s.position)
+      if isImportcVar:
+        c.gABx(n, opcLdGlobalAddrDeref, dest, s.position)
+      else:
+        c.gABx(n, opcLdGlobalAddr, dest, s.position)
+    elif isImportcVar:
+      c.gABx(n, opcLdGlobalDeref, dest, s.position)
     elif fitsRegister(s.typ) and gfNode notin flags:
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
