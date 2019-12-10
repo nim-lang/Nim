@@ -277,12 +277,13 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
      localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
          "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-type ProcessMode = enum
-  normal
-  consumed
-  sinkArg
+type
+  ProcessMode = enum
+    normal
+    consumed
+    sinkArg
 
-proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode
+proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
@@ -295,14 +296,14 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result.add genWasMoved(tmp, c)
   if hasDestructor(n.typ):
     var m = genCopy(c, tmp, n)
-    m.add p(n, c)
+    m.add p(n, c, normal)
     result.add m
     if isLValue(n) and not isClosureEnv(n):
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "use 'move($1)' to prevent it") % $n)
   else:
-    result.add newTree(nkAsgn, tmp, p(n, c))
+    result.add newTree(nkAsgn, tmp, p(n, c, normal))
   result.add tmp
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
@@ -330,7 +331,7 @@ template handleNested(n: untyped, processCall: untyped) =
     if n.len == 0: return n
     result = copyNode(n)
     for i in 0..<n.len-1:
-      result.add p(n[i], c)
+      result.add p(n[i], c, normal)
     template node: untyped = n[^1]
     result.add processCall
   of nkBlockStmt, nkBlockExpr:
@@ -344,34 +345,34 @@ template handleNested(n: untyped, processCall: untyped) =
       var branch = copyNode(son)
       if son.kind in {nkElifBranch, nkElifExpr}:
         template node: untyped = son[1]
-        branch.add p(son[0], c) #The condition
-        branch.add if node.typ == nil: p(node, c) #noreturn
+        branch.add p(son[0], c, normal) #The condition
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
                    else: processCall
       else:
         template node: untyped = son[0]
-        branch.add if node.typ == nil: p(node, c) #noreturn
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
                    else: processCall
       result.add branch
   of nkCaseStmt:
     result = copyNode(n)
-    result.add p(n[0], c)
+    result.add p(n[0], c, normal)
     for i in 1..<n.len:
       var branch: PNode
       if n[i].kind == nkOfBranch:
         branch = n[i] # of branch conditions are constants
         template node: untyped = n[i][^1]
-        branch[^1] = if node.typ == nil: p(node, c) #noreturn
+        branch[^1] = if node.typ == nil: p(node, c, normal) #noreturn
                      else: processCall
       elif n[i].kind in {nkElifBranch, nkElifExpr}:
         branch = copyNode(n[i])
-        branch.add p(n[i][0], c) #The condition
+        branch.add p(n[i][0], c, normal) #The condition
         template node: untyped = n[i][1]
-        branch.add if node.typ == nil: p(node, c) #noreturn
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
                    else: processCall
       else:
         branch = copyNode(n[i])
         template node: untyped = n[i][0]
-        branch.add if node.typ == nil: p(node, c) #noreturn
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
                    else: processCall
       result.add branch
   of nkWhen: # This should be a "when nimvm" node.
@@ -436,7 +437,7 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
-proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
+proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt, nkWhen}:
     handleNested(n): p(node, c, mode)
   elif mode == sinkArg:
@@ -476,14 +477,29 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
   else:
     case n.kind
     of nkBracket, nkObjConstr, nkTupleConstr, nkClosure:
+      # Let C(x) be the construction, 'x' the vector of arguments.
+      # C(x) either owns 'x' or it doesn't.
+      # If C(x) owns its data, we must consume C(x).
+      # If it doesn't own the data, it's harmful to destroy it (double frees etc).
+      # We have the freedom to choose whether it owns it or not so we are smart about it
+      # and we say, "if passed to a sink we demand C(x) to own its data"
+      # otherwise we say "C(x) is just some temporary storage, it doesn't own anything,
+      # don't destroy it"
+      # but if C(x) is a ref it MUST own its data since we must destroy it
+      # so then we have no choice but to use 'sinkArg'.
+      let isRefConstr = n.kind == nkObjConstr and n.typ.skipTypes(abstractInst).kind == tyRef
+      let m = if isRefConstr: sinkArg
+              elif mode == normal: normal
+              else: sinkArg
+
       result = copyTree(n)
       for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
-        let m = if mode == normal: normal
-                else: sinkArg
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, m)
         else:
           result[i] = p(n[i], c, m)
+      if mode == normal and isRefConstr:
+        result = ensureDestruction(result, c)
     of nkCallKinds:
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
@@ -537,7 +553,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
           var itCopy = copyNode(it)
           for j in 0..<it.len-1:
             itCopy.add it[j]
-          itCopy.add p(it[^1], c)
+          itCopy.add p(it[^1], c, normal)
           v.add itCopy
           result.add v
     of nkAsgn, nkFastAsgn:
@@ -557,13 +573,13 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
     of nkRaiseStmt:
       if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
         if n[0].kind in nkCallKinds:
-          let call = p(n[0], c)
+          let call = p(n[0], c, normal)
           result = copyNode(n)
           result.add call
         else:
           let tmp = getTemp(c, n[0].typ, n.info)
           var m = genCopyNoCheck(c, tmp, n[0])
-          m.add p(n[0], c)
+          m.add p(n[0], c, normal)
           result = newTree(nkStmtList, genWasMoved(tmp, c), m)
           var toDisarm = n[0]
           if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
@@ -579,8 +595,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode = normal): PNode =
     of nkWhileStmt:
       result = copyNode(n)
       inc c.inLoop
-      result.add p(n[0], c)
-      result.add p(n[1], c)
+      result.add p(n[0], c, normal)
+      result.add p(n[1], c, normal)
       dec c.inLoop
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
@@ -733,7 +749,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
 
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
-  let body = p(n, c)
+  let body = p(n, c, normal)
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
