@@ -215,6 +215,7 @@ proc addField*(obj: PType; s: PSym; cache: IdentCache) =
   assert t.kind != tyTyped
   propagateToOwner(obj, t)
   field.position = obj.n.len
+  field.flags = s.flags * {sfCursor}
   obj.n.add newSymNode(field)
   fieldCheck()
 

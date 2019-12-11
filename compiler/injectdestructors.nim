@@ -422,7 +422,8 @@ proc cycleCheck(n: PNode; c: var Con) =
   var field: PNode = nil
   while true:
     if x.kind == nkDotExpr:
-      if field == nil: field = x[1]
+      field = x[1]
+      if field.kind == nkSym and sfCursor in field.sym.flags: return
       x = x[0]
     elif x.kind in {nkBracketExpr, nkCheckedFieldExpr, nkDerefExpr, nkHiddenDeref}:
       x = x[0]
