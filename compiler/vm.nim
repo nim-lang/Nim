@@ -802,15 +802,17 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           stackTrace(c, tos, pc, errNilAccess)
         let node = regs[ra].node
         let typ = node.typ
-        if node.kind == nkIntLit: # IMPROVE: use a flag?
+        if nfIsRef in node.flags:
+          regs[ra].node[] = regs[rc].regToNode[]
+          regs[ra].node.flags.incl nfIsRef
+        else:
+          # IMPROVE: use a new flag analog to nfIsRef, say nfIsPtr
+          assert node.kind == nkIntLit, $(node.kind)
           var typ2 = typ
           if typ.kind == tyPtr:
             typ2 = typ2[0]
           if not derefPtrToReg(node.intVal, typ2, regs[rc], isAssign = true):
             stackTrace(c, tos, pc, "opcWrDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
-        else:
-          regs[ra].node[] = regs[rc].regToNode[]
-          regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
