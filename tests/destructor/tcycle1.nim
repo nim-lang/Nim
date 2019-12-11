@@ -1,5 +1,5 @@
 discard """
-  outputsub: "MEM 0"
+  output: "MEM 0"
   cmd: "nim c --gc:arc $file"
 """
 
