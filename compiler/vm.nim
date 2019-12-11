@@ -276,10 +276,14 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
-  if dest.kind == rkNode and n.kind == nkIntLit:
-    # use `nkPtrLit` once this becomes a thing
-    dest.node = n
-    return
+  if n.kind == nkIntLit:
+    # IMPROVE; use `nkPtrLit` once this becomes a thing
+    if dest.kind == rkNode:
+      dest.node = n
+      return
+    elif n.typ.kind == tyPtr:
+      dest = TFullReg(kind: rkNode, node: n)
+      return
 
   case n.kind
   of nkStrLit..nkTripleStrLit:
@@ -765,6 +769,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
         else:
+          # TODO: nfIsPtr
           let node = regs[rb].node
           let typ = node.typ
           if node.kind == nkIntLit:
@@ -802,17 +807,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           stackTrace(c, tos, pc, errNilAccess)
         let node = regs[ra].node
         let typ = node.typ
-        if nfIsRef in node.flags:
-          regs[ra].node[] = regs[rc].regToNode[]
-          regs[ra].node.flags.incl nfIsRef
-        else:
-          # IMPROVE: use a new flag analog to nfIsRef, say nfIsPtr
+        if nfIsPtr in node.flags or typ.kind == tyPtr: # IMPROVE
           assert node.kind == nkIntLit, $(node.kind)
           var typ2 = typ
           if typ.kind == tyPtr:
             typ2 = typ2[0]
           if not derefPtrToReg(node.intVal, typ2, regs[rc], isAssign = true):
             stackTrace(c, tos, pc, "opcWrDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
+        else:
+          regs[ra].node[] = regs[rc].regToNode[]
+          regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
@@ -1415,16 +1419,19 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if typ.kind == tyPtr:
         ensureKind(rkNode)
         # checkme: nkPtrTy ? nkPtrLit?
-        regs[ra].node = newNodeIT(nkIntLit, node.info, typ)
-        regs[ra].node.intVal = cast[ptr int](node.intVal)[]
+        let node2 = newNodeIT(nkIntLit, node.info, typ)
+        node2.intVal = cast[ptr int](node.intVal)[]
+        node2.flags.incl nfIsPtr
+        regs[ra].node = node2
       elif not derefPtrToReg(node.intVal, typ, regs[ra], isAssign = false):
-        stackTrace(c, tos, pc, "opcLdDeref unsupported ptr type: " & $(typeToString(typ), typ[0].kind))
+        stackTrace(c, tos, pc, "opcLdDeref unsupported type: " & $(typeToString(typ), typ[0].kind))
     of opcLdGlobalAddrDeref:
       let rb = instr.regBx - wordExcess - 1
       let node = c.globals[rb]
       let typ = node.typ
       var node2 = newNodeIT(nkIntLit, node.info, typ)
       node2.intVal = node.intVal
+      node2.flags.incl nfIsPtr
       ensureKind(rkNode)
       regs[ra].node = node2
     of opcLdGlobalAddr:
