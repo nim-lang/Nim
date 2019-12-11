@@ -308,7 +308,7 @@ proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
 
 proc clear*(s: StringTableRef, mode: StringTableMode) {.
   rtlFunc, extern: "nst$1".} =
-  ## Resets a string table to be empty again.
+  ## Resets a string table to be empty again, perhaps altering the mode.
   ##
   ## See also:
   ## * `del proc <#del,StringTableRef,string>`_ for removing a key from the table
@@ -323,6 +323,10 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   s.data.setLen(startSize)
   for i in 0..<s.data.len:
     s.data[i].hasValue = false
+
+proc clear*(s: StringTableRef) {.since: (1, 1).} =
+  ## Resets a string table to be empty again without changing the mode.
+  s.clear(s.mode)
 
 proc del*(t: StringTableRef, key: string) =
   ## Removes `key` from `t`.

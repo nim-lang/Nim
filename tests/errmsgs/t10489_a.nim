@@ -1,5 +1,5 @@
 discard """
-errormsg: "cannot assign macro symbol to variable here"
+errormsg: "cannot assign macro 'm' to 'x1'. Did you mean to call the macro with '()'?"
 line: 9
 """
 

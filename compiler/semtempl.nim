@@ -261,6 +261,11 @@ proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   else:
     if isField and sfGenSym in s.flags: result = n
     else: result = newSymNode(s, n.info)
+    # Issue #12832
+    when defined(nimsuggest):
+      suggestSym(c.config, n.info, s, c.graph.usageSym, false)
+    if {optStyleHint, optStyleError} * c.config.globalOptions != {}:
+      styleCheckUse(c.config, n.info, s)
 
 proc semRoutineInTemplName(c: var TemplCtx, n: PNode): PNode =
   result = n

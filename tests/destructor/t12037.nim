@@ -16,3 +16,10 @@ proc test() =
   doAssert cast[int](sq1[0].unsafeAddr) != 0
 
 test()
+
+
+#############################################
+### bug 12820
+import tables
+var t = initTable[string, seq[ptr int]]()
+discard t.hasKeyOrPut("f1", @[])

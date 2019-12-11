@@ -539,6 +539,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
         if p.hcrOn: decl.add("static ")
         elif sfImportc in s.flags: decl.add("extern ")
+        if s.kind == skLet and value != nil: decl.add("NIM_CONST ")
         decl.add(td)
         if p.hcrOn: decl.add("*")
         if sfRegister in s.flags: decl.add(" register")
@@ -945,11 +946,12 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     # assignment this is not good enough! The only pattern we allow for
     # is 'finally: result = x'
     result = InitSkippable
-    for it in n:
-      if it.kind == nkFinally:
-        result = allPathsAsgnResult(it.lastSon)
+    allPathsInBranch(n[0])
+    for i in 1..<n.len:
+      if n[i].kind == nkFinally:
+        result = allPathsAsgnResult(n[i].lastSon)
       else:
-        allPathsInBranch(it.lastSon)
+        allPathsInBranch(n[i].lastSon)
   else:
     for i in 0..<n.safeLen:
       allPathsInBranch(n[i])

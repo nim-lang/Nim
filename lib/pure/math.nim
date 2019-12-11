@@ -103,21 +103,23 @@ when defined(Posix) and not defined(genode):
   {.passl: "-lm".}
 
 const
-  PI* = 3.1415926535897932384626433        ## The circle constant PI (Ludolph's number)
-  TAU* = 2.0 * PI                          ## The circle constant TAU (= 2 * PI)
-  E* = 2.71828182845904523536028747        ## Euler's number
+  PI* = 3.1415926535897932384626433          ## The circle constant PI (Ludolph's number)
+  TAU* = 2.0 * PI                            ## The circle constant TAU (= 2 * PI)
+  E* = 2.71828182845904523536028747          ## Euler's number
 
-  MaxFloat64Precision* = 16                ## Maximum number of meaningful digits
-                                           ## after the decimal point for Nim's
-                                           ## ``float64`` type.
-  MaxFloat32Precision* = 8                 ## Maximum number of meaningful digits
-                                           ## after the decimal point for Nim's
-                                           ## ``float32`` type.
-  MaxFloatPrecision* = MaxFloat64Precision ## Maximum number of
-                                           ## meaningful digits
-                                           ## after the decimal point
-                                           ## for Nim's ``float`` type.
-  RadPerDeg = PI / 180.0                   ## Number of radians per degree
+  MaxFloat64Precision* = 16                  ## Maximum number of meaningful digits
+                                             ## after the decimal point for Nim's
+                                             ## ``float64`` type.
+  MaxFloat32Precision* = 8                   ## Maximum number of meaningful digits
+                                             ## after the decimal point for Nim's
+                                             ## ``float32`` type.
+  MaxFloatPrecision* = MaxFloat64Precision   ## Maximum number of
+                                             ## meaningful digits
+                                             ## after the decimal point
+                                             ## for Nim's ``float`` type.
+  MinFloatNormal* = 2.225073858507201e-308   ## Smallest normal number for Nim's
+                                             ## ``float`` type. (= 2^-1022).
+  RadPerDeg = PI / 180.0                     ## Number of radians per degree
 
 type
   FloatClass* = enum ## Describes the class a floating point value belongs to.
@@ -140,6 +142,7 @@ proc classify*(x: float): FloatClass =
     doAssert classify(0.0) == fcZero
     doAssert classify(0.3/0.0) == fcInf
     doAssert classify(-0.3/0.0) == fcNegInf
+    doAssert classify(5.0e-324) == fcSubnormal
 
   # JavaScript and most C compilers have no classify:
   if x == 0.0:
@@ -151,8 +154,9 @@ proc classify*(x: float): FloatClass =
     if x > 0.0: return fcInf
     else: return fcNegInf
   if x != x: return fcNan
+  if abs(x) < MinFloatNormal:
+    return fcSubnormal
   return fcNormal
-  # XXX: fcSubnormal is not detected!
 
 proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.

@@ -34,12 +34,16 @@
   delimiter instead of '{' and '}'.
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
+- To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
 
 
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
+
+- Added `sugar.capture` for capturing some local loop variables when creating a closure.
+  This is an enhanced version of `closureScope`.
 
 ## Library changes
 

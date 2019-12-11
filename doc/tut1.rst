@@ -689,9 +689,6 @@ been declared with the ``discardable`` pragma:
 
   p(3, 4) # now valid
 
-The ``discard`` statement can also be used to create block comments as
-described in the `Comments`_ section.
-
 
 Named arguments
 ---------------
