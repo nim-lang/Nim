@@ -1004,9 +1004,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         # we know these cannot be equal
         regs[ra].intVal = ord(false)
       else:
-        regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
-                              regs[rc].node.kind == nkNilLit) or
-                              regs[rb].node == regs[rc].node)
+        let nb = regs[rb].node
+        let nc = regs[rc].node
+        regs[ra].intVal = ord(
+          (nb.kind == nkNilLit and nc.kind == nkNilLit) or
+          (nb.typ.kind in {tyPtr, tyPointer} and nb.typ.kind == nc.typ.kind and nb.intVal == nc.intVal) or
+          nb == nc)
     of opcEqNimNode:
       decodeBC(rkInt)
       regs[ra].intVal =
