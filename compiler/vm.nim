@@ -616,6 +616,18 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].kind != rkNode:
         stackTrace(c, tos, pc, "opcCastPtrToInt: regs[rb].kind: " & $regs[rb].kind)
       regs[ra].intVal = cast[int](regs[rb].node.intVal)
+    of opcCastIntToPtr:
+      let rb = instr.regB
+      let typ = regs[ra].node.typ
+      let node2 = newNodeIT(nkIntLit, c.debug[pc], typ)
+      case regs[rb].kind
+      of rkInt: node2.intVal = regs[rb].intVal
+      of rkNode:
+        if regs[rb].node.typ.kind notin PtrLikeKinds:
+          stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].node.typ: " & $regs[rb].node.typ.kind)
+        node2.intVal = regs[rb].node.intVal
+      else: stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].kind: " & $regs[rb].kind)
+      regs[ra].node = node2
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcFastAsgnComplex:
@@ -1006,9 +1018,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       else:
         let nb = regs[rb].node
         let nc = regs[rc].node
+        template getTyp(n): untyped =
+          n.typ.skipTypes({tyAlias})
         regs[ra].intVal = ord(
           (nb.kind == nkNilLit and nc.kind == nkNilLit) or
-          (nb.typ.kind in PtrLikeKinds and nb.typ.kind == nc.typ.kind and nb.intVal == nc.intVal) or
+          (nb.getTyp.kind in PtrLikeKinds and nb.getTyp.kind == nc.getTyp.kind and nb.intVal == nc.intVal) or
           nb == nc)
     of opcEqNimNode:
       decodeBC(rkInt)
@@ -1422,7 +1436,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if typ.kind == tyPtr:
         ensureKind(rkNode)
         # checkme: nkPtrTy ? nkPtrLit?
-        let node2 = newNodeIT(nkIntLit, node.info, typ)
+        let node2 = newNodeIT(nkIntLit, c.debug[pc], typ)
         node2.intVal = cast[ptr int](node.intVal)[]
         node2.flags.incl nfIsPtr
         regs[ra].node = node2

@@ -64,6 +64,7 @@ type
     opcCastFloatToInt32,    # int and float must be of the same byte size
     opcCastFloatToInt64,    # int and float must be of the same byte size
     opcCastPtrToInt,
+    opcCastIntToPtr,
     opcFastAsgnComplex,
     opcNodeToReg,
 
