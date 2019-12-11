@@ -885,13 +885,13 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastFloatToInt64, dest, tmp)
       # narrowing for 64 bits not needed (no extended sign bits available).
     c.freeTemp(tmp)
-  elif src.kind == tyPtr and dst.kind == tyInt:
+  elif src.kind in PtrLikeKinds and dst.kind == tyInt:
     let tmp = c.genx(n[1])
     if dest < 0: dest = c.getTemp(n[0].typ)
     c.gABC(n, opcCastPtrToInt, dest, tmp)
     c.freeTemp(tmp)
   else:
-    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size " & $(src.kind, dst.kind))
+    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size or PtrLikeKinds => int " & $(src.kind, dst.kind))
 
 proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)

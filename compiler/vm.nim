@@ -1008,7 +1008,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let nc = regs[rc].node
         regs[ra].intVal = ord(
           (nb.kind == nkNilLit and nc.kind == nkNilLit) or
-          (nb.typ.kind in {tyPtr, tyPointer} and nb.typ.kind == nc.typ.kind and nb.intVal == nc.intVal) or
+          (nb.typ.kind in PtrLikeKinds and nb.typ.kind == nc.typ.kind and nb.intVal == nc.intVal) or
           nb == nc)
     of opcEqNimNode:
       decodeBC(rkInt)

@@ -979,6 +979,7 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
     tyProc, tyError}
+  PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
