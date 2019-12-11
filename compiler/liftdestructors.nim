@@ -777,7 +777,7 @@ proc isTrival(s: PSym): bool {.inline.} =
 
 
 proc isEmptyContainer(g: ModuleGraph, t: PType): bool =
-  (t.kind == tyArray and lengthOrd(g.config, t[0]) == 0) or 
+  (t.kind == tyArray and lengthOrd(g.config, t[0]) == 0) or
     (t.kind == tySequence and t[0].kind == tyError)
 
 

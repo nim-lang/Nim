@@ -71,6 +71,9 @@ template head(p: pointer): Cell =
 
 var allocs*: int
 
+const
+  traceCollector = false
+
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
@@ -85,6 +88,8 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     atomicInc allocs
   else:
     inc allocs
+  when traceCollector:
+    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   dec head(p).rc, rcIncrement
@@ -100,6 +105,8 @@ proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
+    when traceCollector:
+      cprintf("[Freed] %p\n", p -! sizeof(RefHeader))
     when defined(nimOwnedEnabled):
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
@@ -166,6 +173,8 @@ proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
 
 proc free(s: Cell; desc: PNimType) {.inline.} =
   var p = s +! sizeof(RefHeader)
+  when traceCollector:
+    cprintf("[From ] %p %ld color %ld\n", s, s.rc shr rcShift, s.color)
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
   nimRawDispose(p)
@@ -191,19 +200,23 @@ proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
     var t = head(p)
     var j = cast[ptr JumpStack](env)
     case j.phase
-    of doCollect:
-      collect(t, desc, j[])
     of doMarkRed:
-      #cprintf("[Cycle dec] %p %ld\n", t, t.rc shr rcShift)
+      when traceCollector:
+        cprintf("[Cycle dec] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
       dec t.rc, rcIncrement
       if (t.rc and not rcMask) >= 0 and (t.rc and jumpStackFlag) == 0:
         t.rc = t.rc or jumpStackFlag
+        when traceCollector:
+          cprintf("[Now in jumpstack] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
         j[].add(t, desc)
       markRed(t, desc, j[])
     of doScanGreen:
       if t.color != colGreen: scanGreen(t, desc, j[])
       inc t.rc, rcIncrement
-      #cprintf("[Cycle inc] %p %ld\n", t, t.rc shr rcShift)
+      when traceCollector:
+        cprintf("[Cycle inc] %p %ld color %ld\n", t, t.rc shr rcShift, t.color)
+    of doCollect:
+      collect(t, desc, j[])
 
 proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
   if p != nil:
@@ -212,24 +225,31 @@ proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
 
 proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
   j.phase = doScanGreen
+  when traceCollector:
+    cprintf("[doScanGreen] %p %ld\n", s, s.rc shr rcShift)
   if (s.rc and not rcMask) >= 0:
     scanGreen(s, desc, j)
     s.setColor colYellow
   else:
     while j.L > 0:
       let (t, desc) = j.pop
+      # not in jump stack anymore!
+      t.rc = t.rc and not jumpStackFlag
       if t.color == colRed and (t.rc and not rcMask) >= 0:
         scanGreen(t, desc, j)
         t.setColor colYellow
-        #cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
+        when traceCollector:
+          cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
     j.phase = doCollect
     collect(s, desc, j)
 
-proc traceCycle(cell: Cell; desc: PNimType) {.noinline.} =
+proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
+  when traceCollector:
+    cprintf("[traceCycle] %p %ld\n", s, s.rc shr rcShift)
   var j: JumpStack
   j.phase = doMarkRed
-  markRed(cell, desc, j)
-  scan(cell, desc, j)
+  markRed(s, desc, j)
+  scan(s, desc, j)
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
