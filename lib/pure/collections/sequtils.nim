@@ -143,6 +143,96 @@ proc count*[T](s: openArray[T], x: T): int =
     if itm == x:
       inc result
 
+proc count*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
+                                                         {.since: (1, 1).} =
+  ## Returns the number of items in the container `s` that fullfills
+  ## the predicate `pred` (function that returns a `bool`).
+  ##
+  runnableExamples:
+    assert count("abracadabra", func (c: char): bool = c in {'a', 'r'}) == 7
+
+  for itm in items(s):
+    if pred(itm):
+      inc result
+
+since (1, 1):
+  template countIt*(s: typed, op: untyped): untyped =
+    ## Returns a new sequence with the results of `op` proc applied to every
+    ## item in the container `s`.
+    ##
+    ## Since the input is not modified you can use it to
+    ## transform the type of the elements in the input container.
+    ##
+    ## The template injects the ``it`` variable which you can use directly in an
+    ## expression.
+    ##
+    ## See also:
+    ## * `map proc<#map,openArray[T],proc(T)>`_
+    ## * `applyIt template<#applyIt.t,untyped,untyped>`_ for the in-place version
+    ##
+    runnableExamples:
+      assert countIt("abracadabra", it in {'a', 'r'}) == 7
+
+    var
+      result: int = 0
+    for it {.inject.} in s:
+      if op:
+        inc result
+    result
+
+proc lengthWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
+                                                            {.since: (1, 1).} =
+  ## Returns the number of items in the container `s` that keep fullfilling
+  ## the predicate `pred` (function that returns a `bool`) from the beginning.
+  ##
+  runnableExamples:
+    assert lengthWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
+
+  for itm in items(s):
+    if pred(itm):
+      inc result
+    else:
+      break
+
+proc takeWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
+                                                            {.since: (1, 1).} =
+  ## Returns a sequence of items in the container `s` that keep fullfilling
+  ## the predicate `pred` (function that returns a `bool`) from the beginning.
+  ##
+  runnableExamples:
+    assert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[1, 2, 3]
+
+  let len = lengthWhile(s, pred)
+  result = newSeq[T](len)
+  for i in 0 ..< len:
+    result[i] = s[i]
+
+proc dropWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
+                                                            {.since: (1, 1).} =
+  ## Returns a sequence of items in the container `s` without items that
+  ## keep fullfilling the predicate `pred` (function that returns a `bool`)
+  ## from the beginning, i.e. those items are dropped.
+  ##
+  runnableExamples:
+    assert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[4, 5]
+
+  let len = lengthWhile(s, pred)
+  result = newSeq[T](s.len - len)
+  for i in len ..< s.len:
+    result[i - len] = s[i]
+
+proc nest*[T](f: proc(x: T): T, x: T, n: Natural): seq[T] {.since: (1, 1).} =
+  ## Returns a new sequence of the results of applying `f` to `x` 0 .. `n`
+  ## times, i.e. `@[x, f(x), f(f(x)), ...]`.
+  ##
+  runnableExamples:
+    assert nest(func (x: int): int = x * 2, 1, 4) == @[1, 2, 4, 8, 16]
+
+  result = newSeq[T](n + 1)
+  result[0] = x
+  for i in 1 .. n:
+    result[i] = f(result[i - 1])
+
 proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of the container `s` repeated
   ## `n` times.
@@ -245,6 +335,52 @@ when (NimMajor, NimMinor) <= (1, 0):
   zipImpl(s1, s2, seq[tuple[a: S, b: T]])
 else:
   zipImpl(s1, s2, seq[(S, T)])
+
+proc zipwith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
+            op: proc (x: T1, y: T2): R {.closure.}): seq[R]
+                                                          {.since: (1, 1).} =
+  ## Returns a new sequence with a transformation on each elememnt from
+  ## two input containers.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6, 7]
+      zip1 = zipwith(s1, s2, func (x, y: int): int = x * y)
+    assert zip1 == @[4, 10, 18]
+
+  var m = min(s1.len, s2.len)
+  newSeq(result, m)
+  for i in 0 ..< m:
+    result[i] = op(s1[i], s2[i])
+
+proc zipwith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
+                             s3: openArray[T3],
+                             op: proc (x: T1, y: T2, Z: T3): R {.closure.}):
+                                                   seq[R] {.since: (1, 1).} =
+  ## Returns a new sequence with a transformation on each pair of elememnts
+  ## from two input containers.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6]
+      s3 = @[5, 7, 9, 9]
+      zip1 = zipwith(s1, s2, s3, func (x, y, z: int): bool = x + y == z)
+    assert zip1 == @[true, true, true]
+
+  var m = min(min(s1.len, s2.len), s3.len)
+  newSeq(result, m)
+  for i in 0 ..< m:
+    result[i] = op(s1[i], s2[i], s3[i])
 
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
@@ -406,6 +542,33 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   for i in 0 ..< s.len:
     if pred(s[i]):
       result.add(s[i])
+
+proc findFirst*[T](s: openArray[T], pred: proc (x: T): bool {.closure.},
+                                    def: T): T {.since: (1, 1).} =
+  ## Search for the first element in `s` that fulfilled the
+  ## predicate `pred` (function that returns a `bool`). If such element
+  ## is not found is `s`, `def` is returned.
+  ##
+  runnableExamples:
+    let
+      l = @[2, 4, 6, 7, 9]
+      x = findFirst(l, proc(x: int): bool = x mod 2 == 1, -1)
+    assert x == 7
+
+  for i in 0 ..< s.len:
+    if pred(s[i]):
+      return s[i]
+  return def
+
+since (1,1):
+  when defined(nimHasDefault):
+    func findFirst*[T](s: openArray[T], pred: proc (x: T): bool {.closure.}): T
+                                                                  {.inline.}  =
+      ## Search for the first element in `s` that fulfilled the
+      ## predicate `pred` (function that returns a `bool`). If such element
+      ## is not found is `s`, `default(T)` is returned.
+      ##
+      return findFirst(s, pred, default(T))
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
