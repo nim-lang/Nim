@@ -99,7 +99,7 @@ proc genTraverseProc(c: TTraversalClosure, accessor: Rope, typ: PType) =
   of tyRef:
     lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
   of tySequence:
-    if tfHasAsgn notin typ.flags:
+    if optSeqDestructors notin c.p.module.config.globalOptions:
       lineCg(p, cpsStmts, visitorFrmt, [accessor, c.visitorFrmt])
     elif containsGarbageCollectedRef(typ.lastSon):
       # destructor based seqs are themselves not traced but their data is, if
