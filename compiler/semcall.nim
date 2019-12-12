@@ -293,7 +293,7 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
         assert result.startsWith "sk"
         result = result[2..^1].toLowerAscii
       result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
-      sym = nextOverloadIter(o, c, n)
+      sym = nextOverloadIter(o, c, f)
 
   let ident = considerQuotedIdent(c, f, n).s
   if nfDotField in n.flags and nfExplicitCall notin n.flags:
