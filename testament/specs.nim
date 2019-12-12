@@ -170,7 +170,8 @@ proc parseSpec*(filename: string): TSpec =
       of "tcolumn":
         discard parseInt(e.value, result.tcolumn)
       of "output":
-        result.outputCheck = ocEqual
+        if result.outputCheck != ocSubstr:
+          result.outputCheck = ocEqual
         result.output = strip(e.value)
       of "input":
         result.input = e.value
