@@ -170,7 +170,8 @@ proc parseSpec*(filename: string): TSpec =
       of "tcolumn":
         discard parseInt(e.value, result.tcolumn)
       of "output":
-        result.outputCheck = ocEqual
+        if result.outputCheck != ocSubstr:
+          result.outputCheck = ocEqual
         result.output = strip(e.value)
       of "input":
         result.input = e.value
@@ -200,6 +201,8 @@ proc parseSpec*(filename: string): TSpec =
         when defined(linux) and sizeof(int) == 8:
           result.useValgrind = parseCfgBool(e.value)
           result.unjoinable = true
+          if result.useValgrind:
+            result.outputCheck = ocSubstr
         else:
           # Windows lacks valgrind. Silly OS.
           # Valgrind only supports OSX <= 17.x

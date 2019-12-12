@@ -449,7 +449,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
             else:
               exeCmd = exeFile
             if expected.useValgrind:
-              args = exeCmd & args
+              args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
