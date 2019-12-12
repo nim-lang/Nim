@@ -200,6 +200,8 @@ proc parseSpec*(filename: string): TSpec =
         when defined(linux) and sizeof(int) == 8:
           result.useValgrind = parseCfgBool(e.value)
           result.unjoinable = true
+          if result.useValgrind:
+            result.outputCheck = ocSubstr
         else:
           # Windows lacks valgrind. Silly OS.
           # Valgrind only supports OSX <= 17.x
