@@ -336,7 +336,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-proc zipwith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
+proc zipWith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
             op: proc (x: T1, y: T2): R {.closure.}): seq[R]
                                                           {.since: (1, 1).} =
   ## Returns a new sequence with a transformation on each elememnt from
@@ -350,7 +350,7 @@ proc zipwith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
     let
       s1 = @[1, 2, 3]
       s2 = @[4, 5, 6, 7]
-      zip1 = zipwith(s1, s2, func (x, y: int): int = x * y)
+      zip1 = zipWith(s1, s2, func (x, y: int): int = x * y)
     assert zip1 == @[4, 10, 18]
 
   var m = min(s1.len, s2.len)
@@ -358,7 +358,7 @@ proc zipwith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
   for i in 0 ..< m:
     result[i] = op(s1[i], s2[i])
 
-proc zipwith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
+proc zipWith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
                              s3: openArray[T3],
                              op: proc (x: T1, y: T2, Z: T3): R {.closure.}):
                                                    seq[R] {.since: (1, 1).} =
@@ -374,7 +374,7 @@ proc zipwith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
       s1 = @[1, 2, 3]
       s2 = @[4, 5, 6]
       s3 = @[5, 7, 9, 9]
-      zip1 = zipwith(s1, s2, s3, func (x, y, z: int): bool = x + y == z)
+      zip1 = zipWith(s1, s2, s3, func (x, y, z: int): bool = x + y == z)
     assert zip1 == @[true, true, true]
 
   var m = min(min(s1.len, s2.len), s3.len)

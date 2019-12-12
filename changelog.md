@@ -45,8 +45,8 @@
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
 
-- Added `count`, `countIt`, `lengthWhile`, `takeWhile`, `dropWhile`, `nest`, `zipwith`,
-  and `findFirst` to `sequtils` module to enrich its functionalities.
+- Added `count` (a new version), `countIt`, `lengthWhile`, `takeWhile`, `dropWhile`, `nest`,
+  `zipWith`, and `findFirst` to `sequtils` module to enrich its functionalities.
 
 ## Library changes
 
