@@ -1,5 +1,6 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  valgrind: true
+  cmd: '''nim c --newruntime -d:useMalloc $file'''
   output: '''422 422'''
 """
 
