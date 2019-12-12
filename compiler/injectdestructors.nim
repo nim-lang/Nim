@@ -218,7 +218,7 @@ proc genCopyNoCheck(c: Con; dest, ri: PNode): PNode =
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
-  if tfHasOwned in t.flags:
+  if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
     if c.otherRead == nil: discard isLastRead(ri, c)
     checkForErrorPragma(c, t, ri, "=")
