@@ -242,6 +242,10 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
 
 proc semTemplSymbol(c: PContext, n: PNode, s: PSym; isField: bool): PNode =
   incl(s.flags, sfUsed)
+  # bug #12885; ideally sem'checking is performed again afterwards marking
+  # the symbol as used properly, but the nfSem mechanism currently prevents
+  # that from happening, so we mark the module as used here already:
+  markOwnerModuleAsUsed(c, s)
   # we do not call onUse here, as the identifier is not really
   # resolved here. We will fixup the used identifiers later.
   case s.kind
