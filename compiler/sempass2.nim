@@ -765,10 +765,11 @@ proc track(tracked: PEffects, n: PNode) =
       if opKind != -1:
         # rebind type bounds operations after createTypeBoundOps call
         let t = n[1].typ.skipTypes({tyAlias, tyVar})
-        createTypeBoundOps(tracked, t, n.info)
-        let op = t.attachedOps[TTypeAttachedOp(opKind)]
-        if op != nil:
-          n[0].sym = op
+        if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
+          createTypeBoundOps(tracked, t, n.info)
+          let op = t.attachedOps[TTypeAttachedOp(opKind)]
+          if op != nil:
+            n[0].sym = op
 
     for i in 0..<n.safeLen:
       track(tracked, n[i])
