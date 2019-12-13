@@ -428,5 +428,8 @@ proc run(self: var LoopTesterApp) =
     echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
     echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
-var l = newLoopTesterApp()
-l.run
+proc main =
+  var l = newLoopTesterApp()
+  l.run
+
+main()
