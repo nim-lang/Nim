@@ -761,7 +761,7 @@ proc track(tracked: PEffects, n: PNode) =
 
     if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
           tracked.owner.kind != skMacro:
-      let opKind = find(AttachedOpToStr, a.sym.name.s)
+      let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
       if opKind != -1:
         # rebind type bounds operations after createTypeBoundOps call
         let t = n[1].typ.skipTypes({tyAlias, tyVar})
