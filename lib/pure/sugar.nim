@@ -236,30 +236,37 @@ when (NimMajor, NimMinor) >= (1, 1):
   proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) =
     # Looks for the last statement of the last statement, etc...
     case n.kind
+    of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
+      result[0] = copyNimTree(n)
+      result[1] = copyNimTree(n)
+      result[2] = copyNimTree(n)
+      for i in ord(n.kind == nnkCaseStmt)..<n.len:
+        (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
     of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
-        nnkForStmt, nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt,
-        nnkElifBranch, nnkElse, nnkElifExpr:
+        nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
       result[0] = copyNimTree(n)
       result[1] = copyNimTree(n)
       result[2] = copyNimTree(n)
       if n.len >= 1:
-        (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res,
-            bracketExpr)
+        (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res, bracketExpr)
     of nnkTableConstr:
       result[1] = n[0][0]
       result[2] = n[0][1]
-      bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
-          bindSym"typeof", newEmptyNode())])
+      if bracketExpr.len == 1:
+        bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
+            bindSym"typeof", newEmptyNode())])
       template adder(res, k, v) = res[k] = v
       result[0] = getAst(adder(res, n[0][0], n[0][1]))
     of nnkCurly:
       result[2] = n[0]
-      bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
+      if bracketExpr.len == 1:
+        bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
       template adder(res, v) = res.incl(v)
       result[0] = getAst(adder(res, n[0]))
     else:
       result[2] = n
-      bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
+      if bracketExpr.len == 1:
+        bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
       template adder(res, v) = res.add(v)
       result[0] = getAst(adder(res, n))
 
@@ -347,3 +354,30 @@ when (NimMajor, NimMinor) >= (1, 1):
         for (i, d) in data.pairs:
           if i mod 2 == 0: d
     assert x == @["bird"]
+
+    # bug #12874
+
+    let bug1 = collect(
+        newSeq,
+        for (i, d) in data.pairs:(
+          block:
+            if i mod 2 == 0:
+              d
+            else:
+              d & d
+          )
+    )
+    assert bug1 == @["bird", "wordword"]
+
+    import strutils
+    let y = collect(newSeq):
+      for (i, d) in data.pairs:
+        try: parseInt(d) except: 0
+    assert y == @[0, 0]
+
+    let z = collect(newSeq):
+      for (i, d) in data.pairs:
+        case d
+        of "bird": "word"
+        else: d
+    assert z == @["word", "word"]
