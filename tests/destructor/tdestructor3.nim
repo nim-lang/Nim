@@ -110,7 +110,7 @@ type
 
 proc deleteTop(p: ptr TopObject) =
   if p != nil:    
-    `=destroy`(p[]) # !!! this operation leak the integer
+    `=destroy`(p[]) # !!! this operation used to leak the integer
     deallocshared(p)
 
 proc createTop(): ptr TopObject =
