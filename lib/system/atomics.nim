@@ -11,6 +11,7 @@
 {.push stackTrace:off, profiler:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
+const someVcc = defined(vcc) or defined(clang_cl)
 
 type
   AtomType* = SomeNumber|pointer|ptr|char|bool
@@ -163,7 +164,7 @@ when someGcc and hasThreadSupport:
     ## ignore this parameter.
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
-elif defined(vcc) and hasThreadSupport:
+elif someVcc and hasThreadSupport:
   type AtomMemModel* = distinct cint
 
   const
@@ -217,7 +218,7 @@ else:
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
-  elif defined(vcc) and hasThreadSupport:
+  elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
     inc(result, x)
   else:
@@ -230,14 +231,14 @@ proc atomicDec*(memLoc: var int, x: int = 1): int =
       result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
     else:
       result = atomicAddFetch(memLoc.addr, -x, ATOMIC_RELAXED)
-  elif defined(vcc) and hasThreadSupport:
+  elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
     dec(result, x)
   else:
     dec(memLoc, x)
     result = memLoc
 
-when defined(vcc):
+when someVcc:
   when defined(cpp):
     proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
       {.importcpp: "_InterlockedCompareExchange64(static_cast<NI64 volatile *>(#), #, #)", header: "<intrin.h>".}
@@ -321,7 +322,7 @@ else:
   # XXX is this valid for 'int'?
 
 
-when (defined(x86) or defined(amd64)) and defined(vcc):
+when (defined(x86) or defined(amd64)) and someVcc:
   proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
 elif (defined(x86) or defined(amd64)) and (someGcc or defined(bcc)):
   proc cpuRelax* {.inline.} =
