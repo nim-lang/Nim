@@ -72,7 +72,7 @@ template head(p: pointer): Cell =
 var allocs*: int
 
 const
-  traceCollector = false
+  traceCollector = defined(traceArc)
 
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
