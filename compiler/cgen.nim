@@ -701,14 +701,10 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
 proc mangleDynLibProc(sym: PSym): Rope =
   # we have to build this as a single rope in order not to trip the
   # optimization in genInfixCall, see test tests/cpp/t8241.nim
-  when not defined(windows):
-    # mysterious bug that only affects windows, causing SIGSEGV in
+  if sym.loc.r != nil:
+    # `return rope($sym.loc.r)` would cause on windows a SIGSEGV in
     # stdlib_winleanDatInit000 () at generated_not_to_break_here
-    if sym.loc.r != nil:
-      if sym.loc.r.data.len > 0:
-        return sym.loc.r
-      else:
-        return rope($sym.loc.r)
+    if sym.cname.len == 0: sym.cname = $sym.loc.r
   if sfCompilerProc in sym.flags:
     # NOTE: sym.loc.r is the external name!
     result = rope(sym.name.s)

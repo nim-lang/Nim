@@ -857,6 +857,8 @@ type
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
+    cname*: string            # resolved C declaration name in importc decl, eg:
+                              # {.importc: "foo".} => cname = foo
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems

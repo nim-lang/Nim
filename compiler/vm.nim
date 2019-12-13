@@ -281,7 +281,7 @@ proc putIntoReg(dest: var TFullReg; n: PNode) =
     if dest.kind == rkNode:
       dest.node = n
       return
-    elif n.typ.kind == tyPtr:
+    elif n.typ != nil and n.typ.kind == tyPtr:
       dest = TFullReg(kind: rkNode, node: n)
       return
 
