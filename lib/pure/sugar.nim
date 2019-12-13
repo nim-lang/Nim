@@ -243,7 +243,7 @@ when (NimMajor, NimMinor) >= (1, 1):
       for i in ord(n.kind == nnkCaseStmt)..<n.len:
         (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
     of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
-        nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr:
+        nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
       result[0] = copyNimTree(n)
       result[1] = copyNimTree(n)
       result[2] = copyNimTree(n)
@@ -368,3 +368,16 @@ when (NimMajor, NimMinor) >= (1, 1):
           )
     )
     assert bug1 == @["bird", "wordword"]
+
+    import strutils
+    let y = collect(newSeq):
+      for (i, d) in data.pairs:
+        try: parseInt(d) except: 0
+    assert y == @[0, 0]
+
+    let z = collect(newSeq):
+      for (i, d) in data.pairs:
+        case d
+        of "bird": "word"
+        else: d
+    assert z == @["word", "word"]
