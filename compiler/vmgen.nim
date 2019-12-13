@@ -451,7 +451,8 @@ proc sameConstant*(a, b: PNode): bool =
     of nkSym: result = a.sym == b.sym
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit:
+      result = a.floatVal == b.floatVal and a.typ.kind == b.typ.kind
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkType, nkNilLit: result = a.typ == b.typ
     of nkEmpty: result = true
@@ -462,7 +463,7 @@ proc sameConstant*(a, b: PNode): bool =
         result = true
 
 proc genLiteral(c: PCtx; n: PNode): int =
-  # types do not matter here:
+  # types do not matter here except for special cases eg float32, see #12884
   for i in 0..<c.constants.len:
     if sameConstant(c.constants[i], n): return i
   result = rawGenLiteral(c, n)

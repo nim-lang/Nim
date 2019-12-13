@@ -252,7 +252,10 @@ proc putIntoReg(dest: var TFullReg; n: PNode) =
     dest.intVal = n.intVal
   of nkFloatLit..nkFloat128Lit:
     dest.kind = rkFloat
-    dest.floatVal = n.floatVal
+    case n.typ.kind
+    of tyFloat32: dest.floatVal = n.floatVal.float32
+    of tyFloat: dest.floatVal = n.floatVal.float # handles 32bit float on 32 bit platforms
+    else: dest.floatVal = n.floatVal
   else:
     dest.kind = rkNode
     dest.node = n
