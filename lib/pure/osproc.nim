@@ -70,6 +70,10 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
                                          ## Now `ProcessOption` uses the correct spelling ("daemon"),
                                          ## and this is needed just for backward compatibility.
 
+const osOpen* =
+  when defined(macos): "open" elif defined(windows): "start" else: "xdg-open" ## \
+  ## Alias for the operating system specific *"open"* command,
+  ## ``"open"`` on MacOS, ``"start"`` on Windows, ``"xdg-open"`` on Linux, BSD, etc.
 
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
