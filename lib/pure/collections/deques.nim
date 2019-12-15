@@ -52,7 +52,7 @@
 ## * `channels module <channels.html>`_ for inter-thread communication
 
 
-import math, typetraits
+import math
 
 type
   Deque*[T] = object
