@@ -147,11 +147,6 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl.} =
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 
 type
-  GcPhase = enum
-    doMarkRed,
-    doScanGreen,
-    doCollect
-
   CellTuple = (Cell, PNimType)
   CellArray = ptr UncheckedArray[CellTuple]
   CellSeq = object
@@ -159,7 +154,6 @@ type
     d: CellArray
 
   GcEnv = object
-    phase: GcPhase
     traceStack: CellSeq
     jumpStack: CellSeq
 
@@ -220,7 +214,15 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
 proc collect(s: Cell; desc: PNimType; j: var GcEnv) =
   if s.color == colRed:
     s.setColor colGreen
+
     trace(s, desc, j)
+    while j.traceStack.len > 0:
+      let (t, desc) = j.traceStack.pop()
+      if t.color == colRed:
+        t.setColor colGreen
+        trace(t, desc, j)
+        free(t, desc)
+
     free(s, desc)
     #cprintf("[Cycle free] %p %ld\n", s, s.rc shr rcShift)
 
@@ -228,17 +230,8 @@ proc markRed(s: Cell; desc: PNimType; j: var GcEnv) =
   if s.color != colRed:
     s.setColor colRed
     trace(s, desc, j)
-
-proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
-  s.setColor colGreen
-  trace(s, desc, j)
-
-proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
-  if p != nil:
-    var t = head(p)
-    var j = cast[ptr GcEnv](env)
-    case j.phase
-    of doMarkRed:
+    while j.traceStack.len > 0:
+      let (t, desc) = j.traceStack.pop()
       when traceCollector:
         cprintf("[Cycle dec] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
       dec t.rc, rcIncrement
@@ -247,22 +240,36 @@ proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
         when traceCollector:
           cprintf("[Now in jumpstack] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
         j.jumpStack.add(t, desc)
-      markRed(t, desc, j[])
-    of doScanGreen:
-      if t.color != colGreen: scanGreen(t, desc, j[])
-      inc t.rc, rcIncrement
-      when traceCollector:
-        cprintf("[Cycle inc] %p %ld color %ld\n", t, t.rc shr rcShift, t.color)
-    of doCollect:
-      collect(t, desc, j[])
+      if t.color != colRed:
+        t.setColor colRed
+        trace(t, desc, j)
+
+proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
+  s.setColor colGreen
+  trace(s, desc, j)
+  while j.traceStack.len > 0:
+    let (t, desc) = j.traceStack.pop()
+    if t.color != colGreen:
+      t.setColor colGreen
+      trace(t, desc, j)
+    inc t.rc, rcIncrement
+    when traceCollector:
+      cprintf("[Cycle inc] %p %ld color %ld\n", t, t.rc shr rcShift, t.color)
+
+proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  if p != nil:
+    var t = head(p)
+    var j = cast[ptr GcEnv](env)
+    j.traceStack.add(t, desc)
 
 proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
   if p != nil:
     let desc = cast[ptr PNimType](p)[]
-    nimTraceRef(p, desc, env)
+    var t = head(p)
+    var j = cast[ptr GcEnv](env)
+    j.traceStack.add(t, desc)
 
 proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
-  j.phase = doScanGreen
   when traceCollector:
     cprintf("[doScanGreen] %p %ld\n", s, s.rc shr rcShift)
   # even after trial deletion, `s` is still alive, so undo
@@ -285,7 +292,6 @@ proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
           cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
     # we have proven that `s` and its subgraph are dead, so we can
     # collect these nodes:
-    j.phase = doCollect
     collect(s, desc, j)
 
 proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
@@ -293,7 +299,7 @@ proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
     cprintf("[traceCycle] %p %ld\n", s, s.rc shr rcShift)
   var j: GcEnv
   init j.jumpStack
-  j.phase = doMarkRed
+  init j.traceStack
   markRed(s, desc, j)
   scan(s, desc, j)
   while j.jumpStack.len > 0:
@@ -301,6 +307,7 @@ proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
     # not in jump stack anymore!
     t.rc = t.rc and not jumpStackFlag
   deinit j.jumpStack
+  deinit j.traceStack
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
