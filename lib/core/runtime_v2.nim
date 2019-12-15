@@ -152,21 +152,58 @@ type
     doScanGreen,
     doCollect
 
-  JumpStack = object
+  CellTuple = (Cell, PNimType)
+  CellArray = ptr UncheckedArray[CellTuple]
+  CellSeq = object
+    len, cap: int
+    d: CellArray
+
+  GcEnv = object
     phase: GcPhase
-    L: int
-    a: array[200, (Cell, PNimType)]
+    traceStack: CellSeq
+    jumpStack: CellSeq
 
-proc add(j: var JumpStack; c: Cell; t: PNimType) =
-  # XXX overflow handling here
-  j.a[j.L] = (c, t)
-  inc j.L
+# ------------------- cell seq handling ---------------------------------------
 
-proc pop(j: var JumpStack): (Cell, PNimType) =
-  result = j.a[j.L-1]
-  dec j.L
+proc add(s: var CellSeq, c: Cell; t: PNimType) {.inline.} =
+  if s.len >= s.cap:
+    s.cap = s.cap * 3 div 2
+    when defined(useMalloc):
+      var d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
+    else:
+      var d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
+    copyMem(d, s.d, s.len * sizeof(CellTuple))
+    when defined(useMalloc):
+      c_free(s.d)
+    else:
+      dealloc(s.d)
+    s.d = d
+    # XXX: realloc?
+  s.d[s.len] = (c, t)
+  inc(s.len)
 
-proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
+proc init(s: var CellSeq, cap: int = 1024) =
+  s.len = 0
+  s.cap = cap
+  when defined(useMalloc):
+    s.d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
+  else:
+    s.d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
+
+proc deinit(s: var CellSeq) =
+  when defined(useMalloc):
+    c_free(s.d)
+  else:
+    dealloc(s.d)
+  s.d = nil
+  s.len = 0
+  s.cap = 0
+
+proc pop(s: var CellSeq): (Cell, PNimType) =
+  result = s.d[s.len-1]
+  dec s.len
+
+proc trace(s: Cell; desc: PNimType; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
     var p = s +! sizeof(RefHeader)
     cast[TraceProc](desc.traceImpl)(p, addr(j))
@@ -180,26 +217,26 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
     cast[DisposeProc](desc.disposeImpl)(p)
   nimRawDispose(p)
 
-proc collect(s: Cell; desc: PNimType; j: var JumpStack) =
+proc collect(s: Cell; desc: PNimType; j: var GcEnv) =
   if s.color == colRed:
     s.setColor colGreen
     trace(s, desc, j)
     free(s, desc)
     #cprintf("[Cycle free] %p %ld\n", s, s.rc shr rcShift)
 
-proc markRed(s: Cell; desc: PNimType; j: var JumpStack) =
+proc markRed(s: Cell; desc: PNimType; j: var GcEnv) =
   if s.color != colRed:
     s.setColor colRed
     trace(s, desc, j)
 
-proc scanGreen(s: Cell; desc: PNimType; j: var JumpStack) =
+proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
   s.setColor colGreen
   trace(s, desc, j)
 
 proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
   if p != nil:
     var t = head(p)
-    var j = cast[ptr JumpStack](env)
+    var j = cast[ptr GcEnv](env)
     case j.phase
     of doMarkRed:
       when traceCollector:
@@ -209,7 +246,7 @@ proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
         t.rc = t.rc or jumpStackFlag
         when traceCollector:
           cprintf("[Now in jumpstack] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
-        j[].add(t, desc)
+        j.jumpStack.add(t, desc)
       markRed(t, desc, j[])
     of doScanGreen:
       if t.color != colGreen: scanGreen(t, desc, j[])
@@ -224,7 +261,7 @@ proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
     let desc = cast[ptr PNimType](p)[]
     nimTraceRef(p, desc, env)
 
-proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
+proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
   j.phase = doScanGreen
   when traceCollector:
     cprintf("[doScanGreen] %p %ld\n", s, s.rc shr rcShift)
@@ -237,8 +274,8 @@ proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
     # first we have to repair all the nodes we have seen
     # that are still alive; we also need to mark what they
     # refer to as alive:
-    while j.L > 0:
-      let (t, desc) = j.pop
+    while j.jumpStack.len > 0:
+      let (t, desc) = j.jumpStack.pop
       # not in jump stack anymore!
       t.rc = t.rc and not jumpStackFlag
       if t.color == colRed and (t.rc and not rcMask) >= 0:
@@ -254,14 +291,16 @@ proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
 proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
   when traceCollector:
     cprintf("[traceCycle] %p %ld\n", s, s.rc shr rcShift)
-  var j: JumpStack
+  var j: GcEnv
+  init j.jumpStack
   j.phase = doMarkRed
   markRed(s, desc, j)
   scan(s, desc, j)
-  while j.L > 0:
-    let (t, desc) = j.pop
+  while j.jumpStack.len > 0:
+    let (t, desc) = j.jumpStack.pop
     # not in jump stack anymore!
     t.rc = t.rc and not jumpStackFlag
+  deinit j.jumpStack
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
