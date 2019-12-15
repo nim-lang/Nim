@@ -168,7 +168,7 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
   of tyUInt8: fun(intVal, uint8, rkInt)
   of tyUInt16: fun(intVal, uint16, rkInt)
   of tyUInt32: fun(intVal, uint32, rkInt)
-  of tyUInt64: fun(intVal, uint64, rkInt) # checkme: differs from typeinfo.getBiggestInt
+  of tyUInt64: fun(intVal, uint64, rkInt) # note: differs from typeinfo.getBiggestInt
   of tyFloat: fun(floatVal, float, rkFloat)
   of tyFloat32: fun(floatVal, float32, rkFloat)
   of tyFloat64: fun(floatVal, float64, rkFloat)
@@ -277,7 +277,7 @@ proc writeField(n: var PNode, x: TFullReg) =
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
   if n.kind == nkIntLit:
-    # IMPROVE; use `nkPtrLit` once this becomes a thing
+    # use `nkPtrLit` once this is added
     if dest.kind == rkNode:
       dest.node = n
       return
@@ -712,7 +712,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let src = regs[rb].node
       case src.kind
       of nkEmpty..nkNilLit:
-        # TODO: for nkPtrLit, use something like: derefPtrToReg(src.intVal + offsetof(src.typ, rc), typ_field, regs[ra], isAssign = false)
+        # for nkPtrLit, this could be supported in the future, use something like:
+        # derefPtrToReg(src.intVal + offsetof(src.typ, rc), typ_field, regs[ra], isAssign = false)
         # where we compute the offset in bytes for field rc
         stackTrace(c, tos, pc, errNilAccess & " " & $("kind", src.kind, "typ", typeToString(src.typ), "rc", rc))
       of nkObjConstr:
@@ -781,9 +782,9 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
         else:
-          # TODO: nfIsPtr
           let node = regs[rb].node
           let typ = node.typ
+          # see also `nfIsPtr`
           if node.kind == nkIntLit:
             var typ2 = typ
             if typ.kind == tyPtr:
@@ -819,7 +820,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           stackTrace(c, tos, pc, errNilAccess)
         let node = regs[ra].node
         let typ = node.typ
-        if nfIsPtr in node.flags or typ.kind == tyPtr: # IMPROVE
+        if nfIsPtr in node.flags or typ.kind == tyPtr:
           assert node.kind == nkIntLit, $(node.kind)
           var typ2 = typ
           if typ.kind == tyPtr:
@@ -1435,7 +1436,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       doAssert node.kind == nkIntLit, $(node.kind)
       if typ.kind == tyPtr:
         ensureKind(rkNode)
-        # checkme: nkPtrTy ? nkPtrLit?
+        # use nkPtrLit once this is added
         let node2 = newNodeIT(nkIntLit, c.debug[pc], typ)
         node2.intVal = cast[ptr int](node.intVal)[]
         node2.flags.incl nfIsPtr
