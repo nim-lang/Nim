@@ -172,9 +172,10 @@ proc trace(s: Cell; desc: PNimType; j: var JumpStack) {.inline.} =
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 proc free(s: Cell; desc: PNimType) {.inline.} =
-  var p = s +! sizeof(RefHeader)
   when traceCollector:
-    cprintf("[From ] %p %ld color %ld\n", s, s.rc shr rcShift, s.color)
+    cprintf("[From ] %p rc %ld color %ld in jumpstack %ld\n", s, s.rc shr rcShift,
+            s.color, s.rc and jumpStackFlag)
+  var p = s +! sizeof(RefHeader)
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
   nimRawDispose(p)
@@ -227,10 +228,15 @@ proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
   j.phase = doScanGreen
   when traceCollector:
     cprintf("[doScanGreen] %p %ld\n", s, s.rc shr rcShift)
+  # even after trial deletion, `s` is still alive, so undo
+  # the decrefs by calling `scanGreen`:
   if (s.rc and not rcMask) >= 0:
     scanGreen(s, desc, j)
     s.setColor colYellow
   else:
+    # first we have to repair all the nodes we have seen
+    # that are still alive; we also need to mark what they
+    # refer to as alive:
     while j.L > 0:
       let (t, desc) = j.pop
       # not in jump stack anymore!
@@ -240,6 +246,8 @@ proc scan(s: Cell; desc: PNimType; j: var JumpStack) =
         t.setColor colYellow
         when traceCollector:
           cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
+    # we have proven that `s` and its subgraph are dead, so we can
+    # collect these nodes:
     j.phase = doCollect
     collect(s, desc, j)
 
@@ -250,6 +258,10 @@ proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
   j.phase = doMarkRed
   markRed(s, desc, j)
   scan(s, desc, j)
+  while j.L > 0:
+    let (t, desc) = j.pop
+    # not in jump stack anymore!
+    t.rc = t.rc and not jumpStackFlag
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
