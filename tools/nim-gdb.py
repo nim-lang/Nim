@@ -161,6 +161,35 @@ class DollarPrintFunction (gdb.Function):
 
 DollarPrintFunction()
 
+
+################################################################################
+#####  GDB Function, Nim string comparison
+################################################################################
+
+class NimStringEqFunction (gdb.Function):
+  """Compare Nim strings for example in conditionals for breakpoints."""
+
+  def __init__ (self):
+    super (NimStringEqFunction, self).__init__("nimstreq")
+
+  @staticmethod
+  def invoke_static(arg1,arg2):
+    if arg1.type.code == gdb.TYPE_CODE_PTR and arg1.type.target().name == "NimStringDesc":
+      str1 = NimStringPrinter(arg1).to_string()
+    else:
+      str1 = arg1.string()
+    if arg2.type.code == gdb.TYPE_CODE_PTR and arg2.type.target().name == "NimStringDesc":
+      str2 = NimStringPrinter(arg1).to_string()
+    else:
+      str2 = arg2.string()
+
+    return str1 == str2
+
+  def invoke(self, arg1, arg2):
+    return self.invoke_static(arg1, arg2)
+
+NimStringEqFunction()
+
 ################################################################################
 #####  GDB Command, equivalent of Nim's $ operator
 ################################################################################
