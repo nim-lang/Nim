@@ -857,7 +857,8 @@ proc track(tracked: PEffects, n: PNode) =
         addDiscriminantFact(tracked.guards, x)
     setLen(tracked.guards.s, oldFacts)
     if tracked.owner.kind != skMacro:
-      if n.typ.skipTypes(abstractInst).kind == tyRef:
+      # XXX n.typ can be nil in runnableExamples, we need to do something about it.
+      if n.typ != nil and n.typ.skipTypes(abstractInst).kind == tyRef:
         createTypeBoundOps(tracked, n.typ.lastSon, n.info)
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkPragmaBlock:
