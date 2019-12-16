@@ -44,7 +44,7 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
     result = n + 2
   else:
     result = n
-  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' or nan(ind)
+  # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN' or 'nan(ind)'
   # of '-1.#IND' are produced.
   # We want to get rid of these here:
   if buf[n-1] in {'n', 'N', 'D', 'd', ')'}:
