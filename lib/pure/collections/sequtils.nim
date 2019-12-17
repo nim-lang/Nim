@@ -1401,7 +1401,7 @@ since (1, 1):
     findItFirst(s, op, default(typeof(items(s), typeOfIter)))
 
   template indexOfIt*(s: typed, op: untyped): int =
-    ## ## Get the index of the first element in `s` that fulfilled the predicate
+    ## Get the index of the first element in `s` that fulfilled the predicate
     ## `op` (a `bool` expression). If such element is not found is `s`,
     ##  `low(s) - 1` is returned.
     ##
