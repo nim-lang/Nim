@@ -103,6 +103,12 @@ proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   inc h.rc, rcIncrement
   h.setColor colYellow # mark as potential cycle!
 
+proc markCyclic*[T](x: ref T) {.inline.} =
+  ## Mark the underlying object as a candidate for cycle collections.
+  ## Experimental API. Do not use!
+  let h = head(cast[pointer](x))
+  h.setColor colYellow
+
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
     when traceCollector:
@@ -214,7 +220,6 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
 proc collect(s: Cell; desc: PNimType; j: var GcEnv) =
   if s.color == colRed:
     s.setColor colGreen
-
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
@@ -222,7 +227,6 @@ proc collect(s: Cell; desc: PNimType; j: var GcEnv) =
         t.setColor colGreen
         trace(t, desc, j)
         free(t, desc)
-
     free(s, desc)
     #cprintf("[Cycle free] %p %ld\n", s, s.rc shr rcShift)
 
