@@ -1119,6 +1119,10 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   # usual we desperately try to save memory:
   result.n.add newNodeI(nkEffectList, info)
 
+proc isMagic(sym: PSym): bool =
+  let nPragmas = sym.ast[pragmasPos]
+  return hasPragma(nPragmas, wMagic)
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                      prev: PType, kind: TSymKind; isType=false): PType =
   # for historical reasons (code grows) this is invoked for parameter
@@ -1148,11 +1152,13 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = semParamType(c, a[^2], constraint)
-      var owner = getCurrOwner(c).owner
+      let sym = getCurrOwner(c)
+      var owner = sym.owner
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
-      if (owner.kind != skModule or owner.owner.name.s != "stdlib") and
-        kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
-          localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros")
+      if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
+        if not isMagic(sym):
+          if (owner.kind != skModule or (owner.owner.name.s != "stdlib")):
+            localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
 
     if hasDefault:
       def = a[^1]
