@@ -1491,7 +1491,7 @@ since (1, 1):
       var
         it {.inject.}: typeof(items(ss1), typeOfIter)
         jt {.inject.}: typeof(items(ss2), typeOfIter)
-        kt {.inject.}: typeof(items(ss3), typeofIter)
+        kt {.inject.}: typeof(items(ss3), typeOfIter)
       type
         OutType = typeof(op, typeOfProc)
 
