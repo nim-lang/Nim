@@ -11,7 +11,7 @@ test
 '''
 """
 
-import core / allocators
+import system / allocators
 import system / ansi_c
 
 import tables
@@ -132,5 +132,5 @@ proc xx(xml: string): MyObject =
   result.x  = xml
   defer: echo stream
 
- 
+
 discard xx("test")

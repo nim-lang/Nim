@@ -6,7 +6,7 @@ discard """
 
 import strutils, os, std / wordwrap
 
-import core / allocators
+import system / allocators
 import system / ansi_c
 
 # bug #11004
