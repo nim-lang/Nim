@@ -1157,8 +1157,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
         if not isMagic(sym):
-          if (owner.kind != skModule or (owner.owner.name.s != "stdlib")):
-            localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
+          localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
 
     if hasDefault:
       def = a[^1]
