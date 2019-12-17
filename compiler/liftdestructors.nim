@@ -68,7 +68,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
     if sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
-        c.g.config.selectedGC in {gcDestructors, gcHooks}:
+        c.g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
       fillBody(c, f.typ, body, x.dotField(f), b)
@@ -405,7 +405,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     addDestructorCall(c, elemType, newNodeI(nkStmtList, c.info), genDeref(x, nkDerefExpr))
     actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, x)
 
-  let isCyclic = types.canFormAcycle(t)
+  let isCyclic = c.g.config.selectedGC == gcOrc and types.canFormAcycle(t)
 
   var cond: PNode
   if isCyclic:
@@ -460,7 +460,10 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   var actions = newNodeI(nkStmtList, c.info)
   actions.add callCodegenProc(c.g, "nimDestroyAndDispose", c.info, xenv)
 
-  let cond = callCodegenProc(c.g, "nimDecRefIsLastCyclicDyn", c.info, xenv)
+  let decRefProc =
+    if c.g.config.selectedGC == gcOrc: "nimDecRefIsLastCyclicDyn"
+    else: "nimDecRefIsLast"
+  let cond = callCodegenProc(c.g, decRefProc, c.info, xenv)
   cond.typ = getSysType(c.g, x.info, tyBool)
 
   case c.kind
@@ -470,7 +473,10 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedAsgn:
     let yenv = genBuiltin(c.g, mAccessEnv, "accessEnv", y)
     yenv.typ = getSysType(c.g, c.info, tyPointer)
-    body.add genIf(c, yenv, callCodegenProc(c.g, "nimIncRefCyclic", c.info, yenv))
+    let incRefProc =
+      if c.g.config.selectedGC == gcOrc: "nimIncRefCyclic"
+      else: "nimIncRef"
+    body.add genIf(c, yenv, callCodegenProc(c.g, incRefProc, c.info, yenv))
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
@@ -545,7 +551,7 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     call[1] = y
     body.add newAsgnStmt(x, call)
   elif (optOwnedRefs in c.g.config.globalOptions and
-      optRefCheck in c.g.config.options) or c.g.config.selectedGC == gcDestructors:
+      optRefCheck in c.g.config.options) or c.g.config.selectedGC in {gcArc, gcOrc}:
     let xx = genBuiltin(c.g, mAccessEnv, "accessEnv", x)
     xx.typ = getSysType(c.g, c.info, tyPointer)
     case c.kind
@@ -591,7 +597,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       tyPtr, tyOpt, tyUncheckedArray, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
-    if c.g.config.selectedGC == gcDestructors:
+    if c.g.config.selectedGC in {gcArc, gcOrc}:
       atomicRefOp(c, t, body, x, y)
     elif (optOwnedRefs in c.g.config.globalOptions and
         optRefCheck in c.g.config.options):
@@ -600,7 +606,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyProc:
     if t.callConv == ccClosure:
-      if c.g.config.selectedGC == gcDestructors:
+      if c.g.config.selectedGC in {gcArc, gcOrc}:
         atomicClosureOp(c, t, body, x, y)
       else:
         closureOp(c, t, body, x, y)
@@ -718,7 +724,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   typ.attachedOps[kind] = result
 
   var tk: TTypeKind
-  if g.config.selectedGC in {gcDestructors, gcHooks}:
+  if g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
     tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
   else:
     tk = tyNone # no special casing for strings and seqs
@@ -804,8 +810,13 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   # 4. We have a custom destructor.
   # 5. We have a (custom) generic destructor.
 
+  # we do not generate '=trace' nor '=dispose' procs if we
+  # have the cycle detection disabled, saves code size.
+  let lastAttached = if g.config.selectedGC == gcOrc: attachedDispose
+                     else: attachedSink
+
   # we generate the destructor first so that other operators can depend on it:
-  for k in attachedDestructor..attachedDispose:
+  for k in attachedDestructor..lastAttached:
     if canon.attachedOps[k] == nil:
       discard produceSym(g, c, canon, k, info)
     else:

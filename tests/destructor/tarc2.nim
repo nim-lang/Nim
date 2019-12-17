@@ -1,6 +1,6 @@
 discard """
   output: '''leak: false'''
-  cmd: '''nim c --gc:arc $file'''
+  cmd: '''nim c --gc:orc $file'''
 """
 
 type

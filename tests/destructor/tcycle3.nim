@@ -3,7 +3,7 @@ discard """
 END
 END 2
 0'''
-  cmd: '''nim c --gc:arc $file'''
+  cmd: '''nim c --gc:orc $file'''
 """
 
 # extracted from thavlak.nim
