@@ -2031,13 +2031,15 @@ proc genDestroy(p: BProc; n: PNode) =
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*)); }$n",
+        " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*));$n" &
+        " $1.p = NIM_NIL; }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*)); }$n",
+        " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*));$n" &
+        " $1.p = NIM_NIL; }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
