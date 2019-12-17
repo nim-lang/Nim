@@ -3112,11 +3112,13 @@ when not defined(js):
         destructor: pointer
         size: int
         name: cstring
+        traceImpl: pointer
+        disposeImpl: pointer
       PNimType = ptr TNimType
 
   when defined(nimSeqsV2) and not defined(nimscript):
-    include "core/strs"
-    include "core/seqs"
+    include "system/strs_v2"
+    include "system/seqs_v2"
 
   {.pop.}
 
@@ -3139,7 +3141,7 @@ when not defined(JS) and not defined(nimscript):
   {.pop.}
 
 when defined(nimV2):
-  include core/runtime_v2
+  include system/refs_v2
 
 import system/assertions
 export assertions

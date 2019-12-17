@@ -499,7 +499,8 @@ else:
   when not defined(gcRegions):
     include "system/alloc"
 
-    include "system/cellsets"
+    when not usesDestructors:
+      include "system/cellsets"
     when not leakDetector and not useCellIds:
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):

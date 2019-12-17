@@ -6,7 +6,7 @@ discard """
 
 import strutils, math
 import system / ansi_c
-import core / allocators
+import system / allocators
 
 proc mainA =
   try:

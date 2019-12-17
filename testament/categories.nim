@@ -179,9 +179,9 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release -d:useRealtimeGC", cat)
     when filename != "gctest":
       testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:arc", cat)
+                    " --gc:orc", cat)
       testSpec r, makeTest("tests/gc" / filename, options &
-                    " --gc:arc -d:release", cat)
+                    " --gc:orc -d:release", cat)
 
   template testWithoutBoehm(filename: untyped) =
     testWithoutMs filename

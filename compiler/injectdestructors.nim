@@ -218,7 +218,7 @@ proc genCopyNoCheck(c: Con; dest, ri: PNode): PNode =
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
-  if tfHasOwned in t.flags:
+  if tfHasOwned in t.flags and ri.kind != nkNilLit:
     # try to improve the error message here:
     if c.otherRead == nil: discard isLastRead(ri, c)
     checkForErrorPragma(c, t, ri, "=")
@@ -409,7 +409,7 @@ proc isCursor(n: PNode): bool =
     result = false
 
 proc cycleCheck(n: PNode; c: var Con) =
-  if c.graph.config.selectedGC != gcDestructors: return
+  if c.graph.config.selectedGC != gcArc: return
   var value = n[1]
   if value.kind == nkClosure:
     value = value[1]
@@ -512,7 +512,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result[i] = p(n[i], c, normal)
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
-        if c.graph.config.selectedGC in {gcHooks, gcDestructors}:
+        if c.graph.config.selectedGC in {gcHooks, gcArc, gcOrc}:
           let destroyOld = genDestroy(c, result[1])
           result = newTree(nkStmtList, destroyOld, result)
       else:

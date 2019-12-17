@@ -1210,7 +1210,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
-    if bt.destructor != nil and not trivialDestructor(bt.destructor):
+    if bt.destructor != nil and not isTrivialProc(bt.destructor):
       # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
       # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
       # convention at least:
@@ -1584,6 +1584,7 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
   gcUsage(p.config, e)
 
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
+  discard cgsym(p.module, "TNimType")
   let t = e[1].typ
   putIntoDest(p, d, e, genTypeInfo(p.module, t, e.info))
 
@@ -2077,6 +2078,21 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   n[0] = newSymNode(toStrProc)
   expr(p, n, d)
 
+proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope): Rope =
+  result = rdLoc(a)
+  var t = skipTypes(a.t, abstractInst)
+  while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
+    if t.kind notin {tyVar, tyLent}: nilCheck = result
+    if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
+      result = "(*$1)" % [result]
+    t = skipTypes(t.lastSon, abstractInst)
+  discard getTypeDesc(p.module, t)
+  if not p.module.compileToCpp:
+    while t.kind == tyObject and t[0] != nil:
+      result.add(".Sup")
+      t = skipTypes(t[0], skipPtrs)
+  result.add ".m_type"
+
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op
   of mOr, mAnd: genAndOr(p, e, d, op)
@@ -2260,6 +2276,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
+  of mAccessTypeInfo:
+    var a: TLoc
+    var dummy: Rope
+    initLocExpr(p, e[1], a)
+    putIntoDest(p, d, e, rdMType(p, a, dummy))
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       "'toOpenArray' is only valid within a call expression")
@@ -2407,28 +2428,17 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
   initLocExpr(p, n[0], a)
   let dest = skipTypes(n.typ, abstractPtrs)
   if optObjCheck in p.options and not isObjLackingTypeField(dest):
-    var r = rdLoc(a)
-    var nilCheck: Rope = nil
-    var t = skipTypes(a.t, abstractInst)
-    while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
-      if t.kind notin {tyVar, tyLent}: nilCheck = r
-      if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
-        r = "(*$1)" % [r]
-      t = skipTypes(t.lastSon, abstractInst)
-    discard getTypeDesc(p.module, t)
-    if not p.module.compileToCpp:
-      while t.kind == tyObject and t[0] != nil:
-        r.add(".Sup")
-        t = skipTypes(t[0], skipPtrs)
+    var nilCheck = Rope(nil)
+    let r = rdMType(p, a, nilCheck)
     let checkFor = if optTinyRtti in p.config.globalOptions:
                      genTypeInfo2Name(p.module, dest)
                    else:
                      genTypeInfo(p.module, dest, n.info)
     if nilCheck != nil:
-      linefmt(p, cpsStmts, "if ($1) #chckObj($2.m_type, $3);$n",
+      linefmt(p, cpsStmts, "if ($1) #chckObj($2, $3);$n",
               [nilCheck, r, checkFor])
     else:
-      linefmt(p, cpsStmts, "#chckObj($1.m_type, $2);$n",
+      linefmt(p, cpsStmts, "#chckObj($1, $2);$n",
               [r, checkFor])
   if n[0].typ.kind != tyObject:
     putIntoDest(p, d, n,

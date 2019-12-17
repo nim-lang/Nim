@@ -237,8 +237,8 @@ This uses the configuration defined in ``config\nim.cfg`` for ``lvm_gcc``.
 If nimcache already contains compiled code from a different compiler for the same project,
 add the ``-f`` flag to force all files to be recompiled.
 
-The default compiler is defined at the top of ``config\nim.cfg``.  Changing this setting
-affects the compiler used by ``koch`` to (re)build Nim.
+The default compiler is defined at the top of ``config\nim.cfg``.
+Changing this setting affects the compiler used by ``koch`` to (re)build Nim.
 
 
 Cross compilation
@@ -557,9 +557,9 @@ For example, to generate code for an `AVR`:idx: processor use this command::
 For the ``standalone`` target one needs to provide
 a file ``panicoverride.nim``.
 See ``tests/manyloc/standalone/panicoverride.nim`` for an example
-implementation.  Additionally, users should specify the
+implementation. Additionally, users should specify the
 amount of heap space to use with the ``-d:StandaloneHeapSize=<size>``
-command line switch.  Note that the total heap size will be
+command line switch. Note that the total heap size will be
 ``<size> * sizeof(float64)``.
 
 

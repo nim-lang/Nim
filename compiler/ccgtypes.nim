@@ -1273,30 +1273,44 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
     it = it[0]
   result = makeCString(res)
 
-proc trivialDestructor(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
+proc isTrivialProc(s: PSym): bool {.inline.} = s.ast[bodyPos].len == 0
 
-proc genObjectInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
-  assert t.kind == tyObject
-  if incompleteType(t):
-    localError(m.config, info, "request for RTTI generation for incomplete object: " &
-                      typeToString(t))
-
-  var d: Rope
-  if t.destructor != nil and not trivialDestructor(t.destructor):
+proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
+  let theProc = t.attachedOps[op]
+  if theProc != nil and not isTrivialProc(theProc):
     # the prototype of a destructor is ``=destroy(x: var T)`` and that of a
     # finalizer is: ``proc (x: ref T) {.nimcall.}``. We need to check the calling
     # convention at least:
-    if t.destructor.typ == nil or t.destructor.typ.callConv != ccDefault:
+    if theProc.typ == nil or theProc.typ.callConv != ccDefault:
       localError(m.config, info,
-        "the destructor that is turned into a finalizer needs " &
-        "to have the 'nimcall' calling convention")
-    genProc(m, t.destructor)
-    d = t.destructor.loc.r
+        theProc.name.s & " needs to have the 'nimcall' calling convention")
+
+    genProc(m, theProc)
+    result = theProc.loc.r
   else:
-    d = rope("NIM_NIL")
+    result = rope("NIM_NIL")
+
+proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =
+  var typeName: Rope
+  if t.kind == tyObject:
+    if incompleteType(t):
+      localError(m.config, info, "request for RTTI generation for incomplete object: " &
+                 typeToString(t))
+    typeName = genTypeInfo2Name(m, t)
+  else:
+    typeName = rope("NIM_NIL")
+
   m.s[cfsData].addf("TNimType $1;$n", [name])
-  m.s[cfsTypeInit3].addf("$1.destructor = (void*)$2; $1.size = sizeof($3); $1.name = $4;$n", [
-    name, d, getTypeDesc(m, t), genTypeInfo2Name(m, t)])
+  let destroyImpl = genHook(m, t, info, attachedDestructor)
+  let traceImpl = genHook(m, t, info, attachedTrace)
+  let disposeImpl = genHook(m, t, info, attachedDispose)
+
+  m.s[cfsTypeInit3].addf("$1.destructor = (void*)$2; $1.size = sizeof($3);$n" &
+    "$1.name = $4;$n" &
+    "$1.traceImpl = (void*)$5;$n" &
+    "$1.disposeImpl = (void*)$6;$n", [
+    name, destroyImpl, getTypeDesc(m, t), typeName,
+    traceImpl, disposeImpl])
 
 proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   let origType = t
@@ -1333,49 +1347,51 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
     return prefixTI.rope & result & ")".rope
 
   m.g.typeInfoMarker[sig] = (str: result, owner: owner)
-  case t.kind
-  of tyEmpty, tyVoid: result = rope"0"
-  of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
-    genTypeInfoAuxBase(m, t, t, result, rope"0", info)
-  of tyStatic:
-    if t.n != nil: result = genTypeInfo(m, lastSon t, info)
-    else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
-  of tyUserTypeClasses:
-    internalAssert m.config, t.isResolvedUserTypeClass
-    return genTypeInfo(m, t.lastSon, info)
-  of tyProc:
-    if t.callConv != ccClosure:
+
+  if optTinyRtti in m.config.globalOptions:
+    genTypeInfoV2(m, t, origType, result, info)
+  else:
+    case t.kind
+    of tyEmpty, tyVoid: result = rope"0"
+    of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
       genTypeInfoAuxBase(m, t, t, result, rope"0", info)
-    else:
-      let x = fakeClosureType(m, t.owner)
-      genTupleInfo(m, x, x, result, info)
-  of tySequence:
-    genTypeInfoAux(m, t, t, result, info)
-    if optSeqDestructors notin m.config.globalOptions:
+    of tyStatic:
+      if t.n != nil: result = genTypeInfo(m, lastSon t, info)
+      else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
+    of tyUserTypeClasses:
+      internalAssert m.config, t.isResolvedUserTypeClass
+      return genTypeInfo(m, t.lastSon, info)
+    of tyProc:
+      if t.callConv != ccClosure:
+        genTypeInfoAuxBase(m, t, t, result, rope"0", info)
+      else:
+        let x = fakeClosureType(m, t.owner)
+        genTupleInfo(m, x, x, result, info)
+    of tySequence:
+      genTypeInfoAux(m, t, t, result, info)
+      if optSeqDestructors notin m.config.globalOptions:
+        if m.config.selectedGC >= gcMarkAndSweep:
+          let markerProc = genTraverseProc(m, origType, sig)
+          m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
+    of tyRef:
+      genTypeInfoAux(m, t, t, result, info)
       if m.config.selectedGC >= gcMarkAndSweep:
         let markerProc = genTraverseProc(m, origType, sig)
         m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
-  of tyRef:
-    genTypeInfoAux(m, t, t, result, info)
-    if m.config.selectedGC >= gcMarkAndSweep:
-      let markerProc = genTraverseProc(m, origType, sig)
-      m.s[cfsTypeInit3].addf("$1.marker = $2;$n", [tiNameForHcr(m, result), markerProc])
-  of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
-  of tyArray: genArrayInfo(m, t, result, info)
-  of tySet: genSetInfo(m, t, result, info)
-  of tyEnum: genEnumInfo(m, t, result, info)
-  of tyObject:
-    if optTinyRtti in m.config.globalOptions:
-      genObjectInfoV2(m, t, origType, result, info)
-    else:
+    of tyPtr, tyRange, tyUncheckedArray: genTypeInfoAux(m, t, t, result, info)
+    of tyArray: genArrayInfo(m, t, result, info)
+    of tySet: genSetInfo(m, t, result, info)
+    of tyEnum: genEnumInfo(m, t, result, info)
+    of tyObject:
       genObjectInfo(m, t, origType, result, info)
-  of tyTuple:
-    # if t.n != nil: genObjectInfo(m, t, result)
-    # else:
-    # BUGFIX: use consistently RTTI without proper field names; otherwise
-    # results are not deterministic!
-    genTupleInfo(m, t, origType, result, info)
-  else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
+    of tyTuple:
+      # if t.n != nil: genObjectInfo(m, t, result)
+      # else:
+      # BUGFIX: use consistently RTTI without proper field names; otherwise
+      # results are not deterministic!
+      genTupleInfo(m, t, origType, result, info)
+    else: internalError(m.config, "genTypeInfo(" & $t.kind & ')')
+
   if t.attachedOps[attachedDeepCopy] != nil:
     genDeepCopyProc(m, t.attachedOps[attachedDeepCopy], result)
   elif origType.attachedOps[attachedDeepCopy] != nil:

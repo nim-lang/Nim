@@ -1601,7 +1601,7 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
   proc scopedLifetime(c: PContext; ri: PNode): bool {.inline.} =
     let n = getRoot(ri, followDeref = false)
     result = (ri.kind in nkCallKinds+{nkObjConstr}) or
-      (n.kind == nkSym and n.sym.owner == c.p.owner)
+      (n.kind == nkSym and n.sym.owner == c.p.owner and n.sym.kind != skResult)
 
   proc escapes(c: PContext; le: PNode): bool {.inline.} =
     # param[].foo[] = self  definitely escapes, we don't need to

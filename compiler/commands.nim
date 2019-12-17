@@ -229,7 +229,8 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "v2": result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
-    of "destructors", "arc": result = conf.selectedGC == gcDestructors
+    of "destructors", "arc": result = conf.selectedGC == gcArc
+    of "orc": result = conf.selectedGC == gcOrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
@@ -455,8 +456,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
-        conf.selectedGC = gcDestructors
+        conf.selectedGC = gcArc
         defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcarc")
+        incl conf.globalOptions, optSeqDestructors
+        incl conf.globalOptions, optTinyRtti
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
+          defineSymbol(conf.symbols, "nimV2")
+      of "orc":
+        conf.selectedGC = gcOrc
+        defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcorc")
         incl conf.globalOptions, optSeqDestructors
         incl conf.globalOptions, optTinyRtti
         if pass in {passCmd2, passPP}:
