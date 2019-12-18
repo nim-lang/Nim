@@ -252,6 +252,7 @@ the imperative (command) form. That is, between:
   proc hello*(): string =
     ## Return "hello"
     result = "hello"
+
 or
 
 .. code-block:: nim
