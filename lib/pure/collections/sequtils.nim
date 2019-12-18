@@ -46,10 +46,10 @@
 ##   * `items<#items.i>`_ · `newSeqWith<#newSeqWith.t,int,untyped>`_
 ## * Inspecting a container
 ##   * `count<#count,openArray[T],proc(T)>`_ · `all<#all,openArray[T],proc(T)>`_ ·
-##     `any<#any,openArray[T],proc(T)>`_ · `lengthWhile<#lengthWhile,openArray[T],proc(T)>`_ ·
+##     `any<#any,openArray[T],proc(T)>`_ · `lenWhile<#lenWhile,openArray[T],proc(T)>`_ ·
 ##     `indexOf<#indexOf,openArray[T],proc(T)>`_ · `findFirst<#findFirst,openArray[T],proc(T),T>`_
 ##   * `countIt<#countIt.t,typed,untyped>`_ ·  `allIt<#allIt.t,untyped,untyped>`_ ·
-##     `anyIt<#anyIt.t,untyped,untyped>`_ · `lengthWhileIt<#lengthWhileIt.t,typed,untyped>`_ ·
+##     `anyIt<#anyIt.t,untyped,untyped>`_ · `lenWhileIt<#lenWhileIt.t,typed,untyped>`_ ·
 ##     `indexOfIt<#indexOfIt.t,typed,untyped>`_ · `findItFirst<#findItFirst.t,typed,untyped>`_
 ## * Selecting items
 ##   * `filter<#filter,openArray[T],proc(T)>`_ · `delete<#delete,seq[T][T],Natural,Natural>`_  ·
@@ -187,13 +187,13 @@ proc count*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
     if pred(itm):
       inc result
 
-proc lengthWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
+proc lenWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
                                                             {.since: (1, 1).} =
   ## Returns the number of items in the container `s` that keep fulfilling
   ## the predicate `pred` (function that returns a `bool`) from the beginning.
   ##
   runnableExamples:
-    assert lengthWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
+    assert lenWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
 
   for itm in items(s):
     if pred(itm):
@@ -209,7 +209,7 @@ proc takeWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   runnableExamples:
     assert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[1, 2, 3]
 
-  s[0 ..< lengthWhile(s, pred)]
+  s[0 ..< lenWhile(s, pred)]
 
 proc dropWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
                                                             {.since: (1, 1).} =
@@ -220,7 +220,7 @@ proc dropWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   runnableExamples:
     assert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[4, 5]
 
-  s[lengthWhile(s, pred) ..< s.len]
+  s[lenWhile(s, pred) ..< s.len]
 
 proc nest*[T](f: proc(x: T): T, x: T, n: Natural): seq[T] {.since: (1, 1).} =
   ## Returns a new sequence of the results of applying `f` to `x` 0 .. `n`
@@ -1319,7 +1319,7 @@ since (1, 1):
           inc result
       result
 
-  template lengthWhileIt*(s: typed, op: untyped): int =
+  template lenWhileIt*(s: typed, op: untyped): int =
     ## Returns the number of items in the container `s` that keep fulfilling
     ## `op` (an expression resulting in a `bool`) from the beginning.
     ##
@@ -1327,7 +1327,7 @@ since (1, 1):
     ## expression.
     ##
     runnableExamples:
-      assert lengthWhileIt(@[1, 2, 3, 4, 5], it < 4) == 3
+      assert lenWhileIt(@[1, 2, 3, 4, 5], it < 4) == 3
 
     block:
       var result = 0
@@ -1345,7 +1345,7 @@ since (1, 1):
     ##
     block:
       evalOnceAs(s1, s, compiles((let _ = s)))
-      s1[low(s1) ..< low(s1) + lengthWhileIt(s1, op)]
+      s1[low(s1) ..< low(s1) + lenWhileIt(s1, op)]
 
   template dropItWhile*(s: typed, op: untyped): untyped =
     ## Returns a sequence of items in the container `s` without items that
@@ -1357,7 +1357,7 @@ since (1, 1):
     ##
     block:
       evalOnceAs(s1, s, compiles((let _ = s)))
-      s1[low(s1) + lengthWhileIt(s1, op) ..< s1.len]
+      s1[low(s1) + lenWhileIt(s1, op) ..< s1.len]
 
   template nestIt*(op: untyped, x: typed, n: Natural): untyped =
     ## Returns a new sequence of the results of evaluating `op` on previous value for `n`

@@ -133,26 +133,26 @@ template test() =
     doAssert nestIt("1" & it, "1", 4) == @["1", "11", "111", "1111", "11111"]
     
   block: # while
-    doAssert lengthWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
+    doAssert lenWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
     doAssert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[1, 2, 3]
     doAssert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[4, 5]
     
-    doAssert lengthWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x > 10) == 0
+    doAssert lenWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x > 10) == 0
     doAssert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x > 10) == @[]
     doAssert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x > 10) == @[1, 2, 3, 4, 5]
 
-    doAssert lengthWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 10) == 5
+    doAssert lenWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 10) == 5
     doAssert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 10) == @[1, 2, 3, 4, 5]
     doAssert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 10) == @[]
 
     let
       s: seq[int] = @[]
-    doAssert lengthWhile(s, func (x: int): bool = x < 10) == 0
+    doAssert lenWhile(s, func (x: int): bool = x < 10) == 0
     doAssert takeWhile(s, func (x: int): bool = x < 10) == @[]
     doAssert dropWhile(s, func (x: int): bool = x < 10) == @[]
   
   block: # whileIt
-    doAssert lengthWhileIt(@[1, 2, 3, 4, 5], it < 4) == 3
+    doAssert lenWhileIt(@[1, 2, 3, 4, 5], it < 4) == 3
     doAssert takeItWhile(@[1, 2, 3, 4, 5], it < 4) == @[1, 2, 3]
     doAssert dropItWhile(@[1, 2, 3, 4, 5], it < 4) == @[4, 5]
 
@@ -164,7 +164,7 @@ template test() =
 
     let
       s: seq[int] = @[]
-    doAssert lengthWhileIt(s, it < 10) == 0
+    doAssert lenWhileIt(s, it < 10) == 0
     doAssert takeItWhile(s, it < 10) == @[]
     doAssert dropItWhile(s, it < 10) == @[]
   
