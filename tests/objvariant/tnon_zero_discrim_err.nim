@@ -1,10 +1,10 @@
 discard """
-  errormsg: " branch initialization with a runtime discriminator only supports ordinal types with 2^16 elements or less."
-  line: 13
+  errormsg: "low(kind) must be 0 for discriminant"
+  line: 7
 """
 type
   HoledObj = object
-    case kind: range[0 .. 20000]
+    case kind: int
     of 0: a: int
     else: discard
 
