@@ -792,7 +792,8 @@ proc isTrivalStmtExpr(n: PNode): bool =
       return false
   result = true
 
-proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string): PNode =
+proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string;
+                     flags: TExprFlags): PNode =
   if selector.kind in nkCallKinds:
     # we transform
     # n := for a, b, c in m(x, y, z): Y
@@ -821,14 +822,14 @@ proc handleStmtMacro(c: PContext; n, selector: PNode; magicType: string): PNode 
     callExpr.add newSymNode(match)
     callExpr.add n
     case match.kind
-    of skMacro: result = semMacroExpr(c, callExpr, callExpr, match, {})
-    of skTemplate: result = semTemplateExpr(c, callExpr, match, {})
+    of skMacro: result = semMacroExpr(c, callExpr, callExpr, match, flags)
+    of skTemplate: result = semTemplateExpr(c, callExpr, match, flags)
     else: result = nil
 
-proc handleForLoopMacro(c: PContext; n: PNode): PNode =
-  result = handleStmtMacro(c, n, n[^2], "ForLoopStmt")
+proc handleForLoopMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
+  result = handleStmtMacro(c, n, n[^2], "ForLoopStmt", flags)
 
-proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
+proc handleCaseStmtMacro(c: PContext; n: PNode; flags: TExprFlags): PNode =
   # n[0] has been sem'checked and has a type. We use this to resolve
   # 'match(n[0])' but then we pass 'n' to the 'match' macro. This seems to
   # be the best solution.
@@ -848,8 +849,8 @@ proc handleCaseStmtMacro(c: PContext; n: PNode): PNode =
     r.call.sons[1] = n
     let toExpand = semResolvedCall(c, r, r.call, {})
     case match.kind
-    of skMacro: result = semMacroExpr(c, toExpand, toExpand, match, {})
-    of skTemplate: result = semTemplateExpr(c, toExpand, match, {})
+    of skMacro: result = semMacroExpr(c, toExpand, toExpand, match, flags)
+    of skTemplate: result = semTemplateExpr(c, toExpand, match, flags)
     else: result = nil
   # this would be the perfectly consistent solution with 'for loop macros',
   # but it kinda sucks for pattern matching as the matcher is not attached to
@@ -861,7 +862,7 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
   checkMinSonsLen(n, 3, c.config)
   var length = len(n)
   if forLoopMacros in c.features:
-    result = handleForLoopMacro(c, n)
+    result = handleForLoopMacro(c, n, flags)
     if result != nil: return result
   openScope(c)
   result = n
@@ -924,7 +925,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
     popCaseContext(c)
     closeScope(c)
     if caseStmtMacros in c.features:
-      result = handleCaseStmtMacro(c, n)
+      result = handleCaseStmtMacro(c, n, flags)
       if result != nil:
         return result
     localError(c.config, n.sons[0].info, errSelectorMustBeOfCertainTypes)
