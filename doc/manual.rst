@@ -4139,7 +4139,7 @@ A custom exception is a custom type:
 .. code-block:: nim
   type
     LoadError* = object of Exception
-  
+
 Ending the custom exception's name with ``Error`` is recommended.
 
 Custom exceptions can be raised like any others, e.g.:
@@ -6503,7 +6503,7 @@ alignment requirement of the type are ignored.
 
    type
      sseType = object
-       sseData {.align(16).}: array[4,float32]
+       sseData {.align(16).}: array[4, float32]
 
      # every object will be aligned to 128-byte boundary
      Data = object
