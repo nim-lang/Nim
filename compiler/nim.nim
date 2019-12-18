@@ -33,9 +33,6 @@ when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
 
-when defined(libbacktrace):
-  import libbacktrace
-
 proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
     if os.isAbsolute(f.string): result = f
