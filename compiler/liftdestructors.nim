@@ -429,9 +429,7 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
-    when false:
-      # XXX investigate if this is necessary:
-      actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
+    actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
@@ -480,9 +478,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
-    when false:
-      # XXX investigate if this is necessary:
-      actions.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
+    actions.add newAsgnStmt(xenv, newNodeIT(nkNilLit, body.info, xenv.typ))
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
@@ -510,7 +506,10 @@ proc weakrefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of attachedDestructor:
     # it's better to prepend the destruction of weak refs in order to
     # prevent wrong "dangling refs exist" problems:
-    let des = genIf(c, x, callCodegenProc(c.g, "nimDecWeakRef", c.info, x))
+    var actions = newNodeI(nkStmtList, c.info)
+    actions.add callCodegenProc(c.g, "nimDecWeakRef", c.info, x)
+    actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
+    let des = genIf(c, x, actions)
     if body.len == 0:
       body.add des
     else:
@@ -537,6 +536,7 @@ proc ownedRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, x, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
+    actions.add newAsgnStmt(x, newNodeIT(nkNilLit, body.info, t))
     body.add genIf(c, x, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace, attachedDispose: discard
@@ -567,7 +567,10 @@ proc closureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       body.add genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
       body.add newAsgnStmt(x, y)
     of attachedDestructor:
-      let des = genIf(c, xx, callCodegenProc(c.g, "nimDecWeakRef", c.info, xx))
+      var actions = newNodeI(nkStmtList, c.info)
+      actions.add callCodegenProc(c.g, "nimDecWeakRef", c.info, xx)
+      actions.add newAsgnStmt(xx, newNodeIT(nkNilLit, body.info, xx.typ))
+      let des = genIf(c, xx, actions)
       if body.len == 0:
         body.add des
       else:
@@ -586,6 +589,7 @@ proc ownedClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, xx, actions)
     body.add newAsgnStmt(x, y)
   of attachedDestructor:
+    actions.add newAsgnStmt(xx, newNodeIT(nkNilLit, body.info, xx.typ))
     body.add genIf(c, xx, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace, attachedDispose: discard
