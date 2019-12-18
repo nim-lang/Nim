@@ -409,7 +409,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   sysAssert(allocInv(gch.region), "rawNewObj begin")
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch)
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  var res = cast[PCell](rawAllocAlignedAtOffset(gch.region, size + sizeof(Cell), MemAlign, sizeof(Cell)))
   #gcAssert typ.kind in {tyString, tySequence} or size >= typ.base.size, "size too small"
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -457,7 +457,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   collectCT(gch)
   sysAssert(allocInv(gch.region), "newObjRC1 after collectCT")
 
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  var res = cast[PCell](rawAllocAlignedAtOffset(gch.region, size + sizeof(Cell), MemAlign, sizeof(Cell)))
   sysAssert(allocInv(gch.region), "newObjRC1 after rawAlloc")
   sysAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
@@ -490,7 +490,7 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
   sysAssert(allocInv(gch.region), "growObj begin")
 
-  var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
+  var res = cast[PCell](rawAllocAlignedAtOffset(gch.region, newsize + sizeof(Cell), MemAlign, sizeof(Cell)))
   var elemSize = 1
   if ol.typ.kind != tyString: elemSize = ol.typ.base.size
   incTypeSize ol.typ, newsize

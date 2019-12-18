@@ -268,7 +268,7 @@ proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   incTypeSize typ, size
   gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch, size + sizeof(Cell))
-  var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
+  var res = cast[PCell](rawAllocAlignedAtOffset(gch.region, size + sizeof(Cell), MemAlign, sizeof(Cell)))
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
   # now it is buffered in the ZCT
   res.typ = typ
@@ -326,7 +326,7 @@ when not defined(nimSeqsV2):
     sysAssert(ol.typ != nil, "growObj: 1")
     gcAssert(ol.typ.kind in {tyString, tySequence}, "growObj: 2")
 
-    var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
+    var res = cast[PCell](rawAllocAlignedAtOffset(gch.region, newsize + sizeof(Cell), MemAlign, sizeof(Cell)))
     var elemSize = 1
     if ol.typ.kind != tyString: elemSize = ol.typ.base.size
     incTypeSize ol.typ, newsize

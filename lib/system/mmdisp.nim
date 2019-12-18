@@ -46,8 +46,6 @@ const
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
-  MemAlign = 8 # also minimal allocatable memory block
-
   BitsPerPage = PageSize div MemAlign
   UnitsPerPage = BitsPerPage div (sizeof(int)*8)
     # how many ints do we need to describe a page:

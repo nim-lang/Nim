@@ -33,6 +33,17 @@ const
   MaxBigChunkSize = 1 shl MaxFli - 1 shl (MaxFli-MaxLog2Sli-1)
   HugeChunkSize = MaxBigChunkSize + 1
 
+  # alignments
+  MinAlignment = 4  # also min object size
+  MaxAlignment = 32
+  Alignments = block:
+    var result = 0
+    var i = MinAlignment
+    while i <= MaxAlignment:
+      result.inc
+      i = i * 2
+    result
+
 type
   PTrunk = ptr Trunk
   Trunk = object
@@ -45,7 +56,6 @@ type
     data: TrunkBuckets
 
 type
-  AlignType = BiggestFloat
   FreeCell {.final, pure.} = object
     next: ptr FreeCell  # next free cell in chunk (overlaid with refcount)
     zeroField: int       # 0 means cell is not used (overlaid with typ field)
@@ -59,22 +69,37 @@ type
     prevSize: int        # size of previous chunk; for coalescing
                          # 0th bit == 1 if 'used
     size: int            # if < PageSize it is a small chunk
+    alignment: int       # chunks selected alignment
 
   SmallChunk = object of BaseChunk
     next, prev: PSmallChunk  # chunks of the same size
     freeList: ptr FreeCell
     free: int            # how many bytes remain
     acc: int             # accumulator for small object allocation
-    when defined(cpu32):
-      align: int
-    data: AlignType      # start of usable memory
+    data: UncheckedArray[byte]      # start of usable memory
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
-    next, prev: PBigChunk    # chunks of the same (or bigger) size
-    data: AlignType      # start of usable memory
+    next, prev: PBigChunk        # chunks of the same (or bigger) size
+    data: UncheckedArray[byte]   # start of usable memory
 
-template smallChunkOverhead(): untyped = sizeof(SmallChunk)-sizeof(AlignType)
-template bigChunkOverhead(): untyped = sizeof(BigChunk)-sizeof(AlignType)
+template align(address: int, alignment: int): int =
+  ((address) + (alignment - 1)) and not (alignment - 1)
+
+template align(address: pointer, alignment: int): pointer =
+  cast[pointer](align(cast[int](address), alignment))
+
+template alignmentOverhead(chunk: typedesc, alignment: int): int =
+  align(offsetOf(chunk, data), alignment) - offsetOf(chunk, data)
+
+const
+  SmallChunkSizeOf = offsetOf(SmallChunk, data)
+  BigChunkSizeOf = offsetOf(BigChunk, data)
+
+template smallChunkOverhead(c: PSmallChunk): int =
+  SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment)
+
+template bigChunkOverhead(c: PBigChunk): int =
+  BigChunkSizeOf + alignmentOverhead(BigChunk, c.alignment)
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk
@@ -103,7 +128,7 @@ type
 
   MemRegion = object
     minLargeObj, maxLargeObj: int
-    freeSmallChunks: array[0..SmallChunkSize div MemAlign-1, PSmallChunk]
+    freeSmallChunks: array[0..SmallChunkSize div MinAlignment-1, array[Alignments, PSmallChunk]]
     flBitmap: uint32
     slBitmap: array[RealFli, uint32]
     matrix: array[RealFli, array[MaxSli, PBigChunk]]
@@ -367,7 +392,7 @@ iterator elements(t: IntSet): int {.inline.} =
       r = r.next
 
 proc isSmallChunk(c: PChunk): bool {.inline.} =
-  return c.size <= SmallChunkSize-smallChunkOverhead()
+  return c.size <= SmallChunkSize - (SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment))
 
 proc chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0
@@ -381,16 +406,15 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
       if not chunkUnused(c):
         if isSmallChunk(c):
           var c = cast[PSmallChunk](c)
-
           let size = c.size
-          var a = cast[ByteAddress](addr(c.data))
+          var a = cast[ByteAddress](align(addr(c.data), c.alignment))
           let limit = a + c.acc
           while a <% limit:
             yield cast[pointer](a)
             a = a +% size
         else:
           let c = cast[PBigChunk](c)
-          yield addr(c.data)
+          yield align(addr(c.data), c.alignment)
   m.locked = false
 
 proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
@@ -398,6 +422,10 @@ proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
 
 proc isCell(p: pointer): bool {.inline.} =
   result = cast[ptr FreeCell](p).zeroField >% 1
+
+proc alignmentIndex(alignment: int): byte =
+  const baseShift = msbit(MinAlignment)
+  msbit((alignment shr baseShift).uint32).byte
 
 # ------------- chunk management ----------------------------------------------
 proc pageIndex(c: PChunk): int {.inline.} =
@@ -643,8 +671,8 @@ else:
         if c.next == c:
           echo "[SYSASSERT] c.next == c"
           return false
-        if not (c.size == s * MemAlign):
-          echo "[SYSASSERT] c.size != s * MemAlign"
+        if not (c.size == s * MinAlignment):
+          echo "[SYSASSERT] c.size != s * MinAlignment"
           return false
         var it = c.freeList
         while not (it == nil):
@@ -677,126 +705,90 @@ else:
   template trackSize(x) = discard
   template untrackSize(x) = discard
 
-when false:
-  # not yet used by the GCs
-  proc rawTryAlloc(a: var MemRegion; requestedSize: int): pointer =
-    sysAssert(allocInv(a), "rawAlloc: begin")
-    sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
-    sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
-    var size = roundup(requestedSize, MemAlign)
-    inc a.occ, size
-    trackSize(size)
-    sysAssert(size >= requestedSize, "insufficient allocated size!")
-    #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
-    if size <= SmallChunkSize-smallChunkOverhead():
-      # allocate a small block: for small chunks, we use only its next pointer
-      var s = size div MemAlign
-      var c = a.freeSmallChunks[s]
-      if c == nil:
-        result = nil
-      else:
-        sysAssert c.size == size, "rawAlloc 6"
-        if c.freeList == nil:
-          sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
-                    "rawAlloc 7")
-          result = cast[pointer](cast[ByteAddress](addr(c.data)) +% c.acc)
-          inc(c.acc, size)
-        else:
-          result = c.freeList
-          sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
-          c.freeList = c.freeList.next
-        dec(c.free, size)
-        sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
-        if c.free < size:
-          listRemove(a.freeSmallChunks[s], c)
-          sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-        sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead()) %%
-                  size == 0, "rawAlloc 21")
-        sysAssert(allocInv(a), "rawAlloc: end small size")
-    else:
-      inc size, bigChunkOverhead()
-      var fl, sl: int
-      mappingSearch(size, fl, sl)
-      sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
-      let c = findSuitableBlock(a, fl, sl)
-      if c != nil:
-        removeChunkFromMatrix2(a, c, fl, sl)
-        if c.size >= size + PageSize:
-          splitChunk(a, c, size)
-        # set 'used' to to true:
-        c.prevSize = 1
-        incl(a, a.chunkStarts, pageIndex(c))
-        dec(a.freeMem, size)
-        result = addr(c.data)
-        sysAssert((cast[ByteAddress](c) and (MemAlign-1)) == 0, "rawAlloc 13")
-        sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
-        if a.root == nil: a.root = getBottom(a)
-        add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
-      else:
-        result = nil
+func isPowerOfTwo(x: int): bool =
+  (x > 0) and ((x and (x - 1)) == 0)
 
-proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
+proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = MemAlign, offset = 0): pointer =
   when defined(nimTypeNames):
     inc(a.allocCounter)
+  sysAssert(isPowerOfTwo(alignment), "rawAlloc: alignment is not power of two")
+  sysAssert(alignment <= MaxAlignment, "Requested alignment exceeds max support alignment " & $MaxAlignment)
+  let alignment = clamp(MinAlignment, alignment, MaxAlignment)
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
-  var size = roundup(requestedSize, MemAlign)
+  var size = roundup(requestedSize, alignment)
+  var resultOffset = 0
+  if offset > 0 and offset mod alignment != 0:
+    # there will be an extra free space at the beginning:
+    resultOffset = alignment - offset mod alignment
+
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
-  if size <= SmallChunkSize-smallChunkOverhead():
+
+  let smallChunkAlignedOverhead = SmallChunkSizeOf + alignmentOverhead(SmallChunk, alignment)
+  if size <= SmallChunkSize - smallChunkAlignedOverhead:
     # allocate a small block: for small chunks, we use only its next pointer
-    var s = size div MemAlign
-    var c = a.freeSmallChunks[s]
+    let s = size div MinAlignment
+    let ai = alignmentIndex(alignment)
+    var c = a.freeSmallChunks[s][ai]
+
     if c == nil:
       c = getSmallChunk(a)
       c.freeList = nil
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
       c.acc = size
-      c.free = SmallChunkSize - smallChunkOverhead() - size
+      c.free = SmallChunkSize - smallChunkAlignedOverhead - size
       c.next = nil
       c.prev = nil
-      listAdd(a.freeSmallChunks[s], c)
-      result = addr(c.data)
-      sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 4")
+      c.alignment = alignment
+      let alignedDataStart = align(addr(c.data), alignment)
+      listAdd(a.freeSmallChunks[s][ai], c)
+      result = cast[pointer](cast[ByteAddress](alignedDataStart) +% resultOffset)
+      sysAssert(((cast[ByteAddress](result)) and (alignment-1)) == 0, "rawAlloc 4")
     else:
       sysAssert(allocInv(a), "rawAlloc: begin c != nil")
+      sysAssert(c.alignment == alignment, "rawAlloc: chunk alignment mismatch")
       sysAssert c.next != c, "rawAlloc 5"
       #if c.size != size:
       #  c_fprintf(stdout, "csize: %lld; size %lld\n", c.size, size)
       sysAssert c.size == size, "rawAlloc 6"
       if c.freeList == nil:
-        sysAssert(c.acc + smallChunkOverhead() + size <= SmallChunkSize,
+        sysAssert(c.acc + smallChunkAlignedOverhead + size <= SmallChunkSize,
                   "rawAlloc 7")
-        result = cast[pointer](cast[ByteAddress](addr(c.data)) +% c.acc)
+        let alignedDataStart = align(addr(c.data), alignment)
+        result = cast[pointer](cast[ByteAddress](alignedDataStart) +% c.acc +% resultOffset)
         inc(c.acc, size)
       else:
         result = c.freeList
         sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
       dec(c.free, size)
-      sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
+      sysAssert((cast[ByteAddress](result) and (alignment-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
     sysAssert(allocInv(a), "rawAlloc: before c.free < size")
     if c.free < size:
       sysAssert(allocInv(a), "rawAlloc: before listRemove test")
-      listRemove(a.freeSmallChunks[s], c)
+      listRemove(a.freeSmallChunks[s][ai], c)
       sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead()) %%
-               size == 0, "rawAlloc 21")
+    sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead(c)) %%
+            size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
     trackSize(c.size)
   else:
-    size = requestedSize + bigChunkOverhead() #  roundup(requestedSize+bigChunkOverhead(), PageSize)
+    size = requestedSize + BigChunkSizeOf + alignmentOverhead(BigChunk, alignment)
     # allocate a large block
     var c = if size >= HugeChunkSize: getHugeChunk(a, size)
             else: getBigChunk(a, size)
+    c.alignment = alignment
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
-    result = addr(c.data)
-    sysAssert((cast[ByteAddress](c) and (MemAlign-1)) == 0, "rawAlloc 13")
+    let alignedDataStart = align(addr(c.data), alignment)
+    result = cast[pointer](cast[ByteAddress](alignedDataStart) +% resultOffset)
+    sysAssert((cast[ByteAddress](c) and (alignment-1)) == 0, "rawAlloc 13")
+    sysAssert((cast[ByteAddress](result) and (alignment-1)) == 0, "rawAlloc 14")
     sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     if a.root == nil: a.root = getBottom(a)
     add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
@@ -806,8 +798,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(allocInv(a), "rawAlloc: end")
   when logAlloc: cprintf("var pointer_%p = alloc(%ld)\n", result, requestedSize)
 
-proc rawAlloc0(a: var MemRegion, requestedSize: int): pointer =
-  result = rawAlloc(a, requestedSize)
+proc rawAlloc0(a: var MemRegion, requestedSize: int, alignment = MemAlign): pointer =
+  result = rawAllocAlignedAtOffset(a, requestedSize, alignment, 0)
   zeroMem(result, requestedSize)
 
 proc rawDealloc(a: var MemRegion, p: pointer) =
@@ -823,7 +815,7 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     dec a.occ, s
     untrackSize(s)
     sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead(c)) %%
                s == 0, "rawDealloc 3")
     var f = cast[ptr FreeCell](p)
     #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
@@ -836,28 +828,30 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
       nimSetMem(cast[pointer](cast[int](p) +% sizeof(FreeCell)), -1'i32,
                s -% sizeof(FreeCell))
     # check if it is not in the freeSmallChunks[s] list:
+    let ai = alignmentIndex(c.alignment)
     if c.free < s:
       # add it to the freeSmallChunks[s] array:
-      listAdd(a.freeSmallChunks[s div MemAlign], c)
+      listAdd(a.freeSmallChunks[s div MinAlignment][ai], c)
       inc(c.free, s)
     else:
       inc(c.free, s)
-      if c.free == SmallChunkSize-smallChunkOverhead():
-        listRemove(a.freeSmallChunks[s div MemAlign], c)
+      let smallChunkAlignedOverhead = SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment)
+      if c.free == SmallChunkSize-smallChunkAlignedOverhead:
+        listRemove(a.freeSmallChunks[s div MinAlignment][ai], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
+    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead(c)) %%
                s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
-    when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead())
+    when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead)
     # free big chunk
     var c = cast[PBigChunk](c)
     dec a.occ, c.size
     untrackSize(c.size)
     sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case B)"
     a.deleted = getBottom(a)
-    del(a, a.root, cast[int](addr(c.data)))
+    del(a, a.root, cast[int](align(addr c.data, c.alignment)))
     if c.size >= HugeChunkSize: freeHugeChunk(a, c)
     else: freeBigChunk(a, c)
   sysAssert(allocInv(a), "rawDealloc: end")
@@ -870,12 +864,12 @@ proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
       if isSmallChunk(c):
         var c = cast[PSmallChunk](c)
         var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
-                     smallChunkOverhead()
+                        smallChunkOverhead(c)
         result = (c.acc >% offset) and (offset %% c.size == 0) and
           (cast[ptr FreeCell](p).zeroField >% 1)
       else:
         var c = cast[PBigChunk](c)
-        result = p == addr(c.data) and cast[ptr FreeCell](p).zeroField >% 1
+        result = p == align(addr c.data, c.alignment) and cast[ptr FreeCell](p).zeroField >% 1
 
 proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
   a.minLargeObj = lowGauge(a.root)
@@ -888,21 +882,22 @@ proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
       if isSmallChunk(c):
         var c = cast[PSmallChunk](c)
         var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
-                     smallChunkOverhead()
+                     smallChunkOverhead(c)
         if c.acc >% offset:
-          sysAssert(cast[ByteAddress](addr(c.data)) +% offset ==
+          let alignedDataStart = cast[ByteAddress](align(addr(c.data), c.alignment))
+          sysAssert(alignedDataStart +% offset ==
                     cast[ByteAddress](p), "offset is not what you think it is")
-          var d = cast[ptr FreeCell](cast[ByteAddress](addr(c.data)) +%
+          var d = cast[ptr FreeCell](alignedDataStart +%
                     offset -% (offset %% c.size))
           if d.zeroField >% 1:
             result = d
-            sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
+            sysAssert isAllocatedPtr(a, result), " result wrong pointer! 2"
       else:
         var c = cast[PBigChunk](c)
-        var d = addr(c.data)
+        var d = align(addr(c.data), c.alignment)
         if p >= d and cast[ptr FreeCell](d).zeroField >% 1:
           result = d
-          sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
+          sysAssert isAllocatedPtr(a, result), " result wrong pointer! 3"
   else:
     var q = cast[int](p)
     if q >=% a.minLargeObj and q <=% a.maxLargeObj:
@@ -915,7 +910,7 @@ proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
         sysAssert(addr(c.data) == k, " k is not the same as addr(c.data)!")
         if cast[ptr FreeCell](k).zeroField >% 1:
           result = k
-          sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
+          sysAssert isAllocatedPtr(a, result), " result wrong pointer! 1"
 
 proc ptrSize(p: pointer): int =
   var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
@@ -923,17 +918,17 @@ proc ptrSize(p: pointer): int =
   sysAssert(not chunkUnused(c), "ptrSize")
   result = c.size -% sizeof(FreeCell)
   if not isSmallChunk(c):
-    dec result, bigChunkOverhead()
+    dec result, bigChunkOverhead(c.PBigChunk)
 
-proc alloc(allocator: var MemRegion, size: Natural): pointer {.gcsafe.} =
-  result = rawAlloc(allocator, size+sizeof(FreeCell))
+proc alloc(allocator: var MemRegion, size: Natural, alignment = MemAlign): pointer {.gcsafe.} =
+  result = rawAllocAlignedAtOffset(allocator, size+sizeof(FreeCell), alignment, sizeof(FreeCell))
   cast[ptr FreeCell](result).zeroField = 1 # mark it as used
   sysAssert(not isAllocatedPtr(allocator, result), "alloc")
   result = cast[pointer](cast[ByteAddress](result) +% sizeof(FreeCell))
   track("alloc", result, size)
 
-proc alloc0(allocator: var MemRegion, size: Natural): pointer =
-  result = alloc(allocator, size)
+proc alloc0(allocator: var MemRegion, size: Natural, alignment = MemAlign): pointer =
+  result = alloc(allocator, size, alignment)
   zeroMem(result, size)
 
 proc dealloc(allocator: var MemRegion, p: pointer) =
@@ -946,9 +941,9 @@ proc dealloc(allocator: var MemRegion, p: pointer) =
   sysAssert(not isAllocatedPtr(allocator, x), "dealloc: object still accessible")
   track("dealloc", p, 0)
 
-proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
+proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural, alignment = MemAlign): pointer =
   if newsize > 0:
-    result = alloc0(allocator, newsize)
+    result = alloc0(allocator, newsize, alignment)
     if p != nil:
       copyMem(result, p, min(ptrSize(p), newsize))
       dealloc(allocator, p)
@@ -997,17 +992,17 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
 
   proc deallocOsPages = deallocOsPages(allocator)
 
-  proc alloc(size: Natural): pointer =
-    result = alloc(allocator, size)
+  proc alloc(size: Natural, align = MemAlign): pointer =
+    result = alloc(allocator, size, align)
 
-  proc alloc0(size: Natural): pointer =
-    result = alloc0(allocator, size)
+  proc alloc0(size: Natural, align = MemAlign): pointer =
+    result = alloc0(allocator, size, align)
 
   proc dealloc(p: pointer) =
     dealloc(allocator, p)
 
-  proc realloc(p: pointer, newSize: Natural): pointer =
-    result = realloc(allocator, p, newSize)
+  proc realloc(p: pointer, newSize: Natural, align = MemAlign): pointer =
+    result = realloc(allocator, p, newSize, align)
 
   when false:
     proc countFreeMem(): int =
@@ -1034,16 +1029,16 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     var heapLock: SysLock
     initSysLock(heapLock)
 
-  proc allocShared(size: Natural): pointer =
+  proc allocShared(size: Natural, align = MemAlign): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
-      result = alloc(sharedHeap, size)
+      result = alloc(sharedHeap, size, align)
       releaseSys(heapLock)
     else:
       result = alloc(size)
 
-  proc allocShared0(size: Natural): pointer =
-    result = allocShared(size)
+  proc allocShared0(size: Natural, align = MemAlign): pointer =
+    result = allocShared(size, align)
     zeroMem(result, size)
 
   proc deallocShared(p: pointer) =
@@ -1054,10 +1049,10 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     else:
       dealloc(p)
 
-  proc reallocShared(p: pointer, newSize: Natural): pointer =
+  proc reallocShared(p: pointer, newSize: Natural, align = MemAlign): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
-      result = realloc(sharedHeap, p, newSize)
+      result = realloc(sharedHeap, p, newSize, align)
       releaseSys(heapLock)
     else:
       result = realloc(p, newSize)
