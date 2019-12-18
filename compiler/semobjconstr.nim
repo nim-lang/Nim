@@ -84,55 +84,17 @@ proc caseBranchMatchesExpr(branch, matched: PNode): bool =
 
   return false
 
-template processBranchVals(b, op) =
-  if b.kind != nkElifBranch:
-    for i in 0..<b.len-1:
-      if b[i].kind == nkIntLit:
-        result.op(b[i].intVal.int)
-      elif b[i].kind == nkRange:
-        for i in b[i][0].intVal..b[i][1].intVal:
-          result.op(i.int)
-
-proc allPossibleValues(c: PContext, t: PType): IntSet =
-  result = initIntSet()
-  if t.enumHasHoles:
-    let t = t.skipTypes(abstractRange)
-    for field in t.n.sons:
-      result.incl(field.sym.position)
-  else:
-    for i in toInt64(firstOrd(c.config, t))..toInt64(lastOrd(c.config, t)):
-      result.incl(i.int)
-
 proc branchVals(c: PContext, caseNode: PNode, caseIdx: int,
                 isStmtBranch: bool): IntSet =
   if caseNode[caseIdx].kind == nkOfBranch:
     result = initIntSet()
-    processBranchVals(caseNode[caseIdx], incl)
+    for val in processBranchVals(caseNode[caseIdx]):
+      result.incl(val)
   else:
-    result = allPossibleValues(c, caseNode[0].typ)
+    result = c.getIntSetOfType(caseNode[0].typ)
     for i in 1..<caseNode.len-1:
-      processBranchVals(caseNode[i], excl)
-
-proc rangeTypVals(rangeTyp: PType): IntSet =
-  assert rangeTyp.kind == tyRange
-  let (a, b) = (rangeTyp.n[0].intVal, rangeTyp.n[1].intVal)
-  result = initIntSet()
-  for it in a..b:
-    result.incl(it.int)
-
-proc formatUnsafeBranchVals(t: PType, diffVals: IntSet): string =
-  if diffVals.len <= 32:
-    var strs: seq[string]
-    let t = t.skipTypes(abstractRange)
-    if t.kind in {tyEnum, tyBool}:
-      var i = 0
-      for val in diffVals:
-        while t.n[i].sym.position < val: inc(i)
-        strs.add(t.n[i].sym.name.s)
-    else:
-      for val in diffVals:
-        strs.add($val)
-    result = "{" & strs.join(", ") & "} "
+      for val in processBranchVals(caseNode[i]):
+        result.excl(val)
 
 proc findUsefulCaseContext(c: PContext, discrimator: PNode): (PNode, int) =
   for i in countdown(c.p.caseContext.high, 0):
@@ -250,9 +212,9 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
       template valuesInConflictError(valsDiff) =
         localError(c.config, discriminatorVal.info, ("possible values " &
-          "$2are in conflict with discriminator values for " &
+          "$2 are in conflict with discriminator values for " &
           "selected object branch $1.") % [$selectedBranch,
-          formatUnsafeBranchVals(recNode[0].typ, valsDiff)])
+          valsDiff.renderAsType(recNode[0].typ)])
 
       let branchNode = recNode[selectedBranch]
       let flags = flags*{efAllowDestructor} + {efPreferStatic,
@@ -275,7 +237,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
         let (ctorCase, ctorIdx) = findUsefulCaseContext(c, discriminatorVal)
         if ctorCase == nil:
           if discriminatorVal.typ.kind == tyRange:
-            let rangeVals = rangeTypVals(discriminatorVal.typ)
+            let rangeVals = c.getIntSetOfType(discriminatorVal.typ)
             let recBranchVals = branchVals(c, recNode, selectedBranch, false)
             let diff = rangeVals - recBranchVals
             if diff.len != 0:
@@ -311,7 +273,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
               break
         if failedBranch != -1:
           if discriminatorVal.typ.kind == tyRange:
-            let rangeVals = rangeTypVals(discriminatorVal.typ)
+            let rangeVals = c.getIntSetOfType(discriminatorVal.typ)
             let recBranchVals = branchVals(c, recNode, selectedBranch, false)
             let diff = rangeVals - recBranchVals
             if diff.len != 0:
