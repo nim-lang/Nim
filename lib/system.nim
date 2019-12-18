@@ -4200,7 +4200,7 @@ type
 
 proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
 
-macro lenVarargs*(x: varargs[untyped]): int {.magic: "LengthOpenArray", noSideEffect.} =
+macro lenVarargs*(x: varargs[untyped]): int =
   ## returns number of variadic arguments in `x`
   lenVarargsImpl(x)
 
