@@ -38,7 +38,7 @@
 ## * Iteratively applying operations
 ##   * `nest<#nest,proc(T),T,Natural>`_
 ##   * `foldl<#foldl.t,,,>`_ · `foldr<#foldr.t,untyped,untyped>`_ · `nestIt<#nestIt.t,untyped,typed,Natural>`_
-## * Creating a container
+## * Creating containers
 ##   * `circle<#cycle,openArray[T],Natural>`_ · `repeat<#repeat,T,Natural>`_ ·
 ##     `deduplicate<#deduplicate,openArray[T],bool>`_ · `zip<#zip,,>`_ ·
 ##     `concat<#concat,varargs[seq[T][T]]>`_ · `distribute<#distribute,seq[T][T],Positive>`_ ·
@@ -1451,17 +1451,19 @@ since (1, 1):
     block:
       evalOnceAs(ss1, s1, compiles((let _ = s1)))
       evalOnceAs(ss2, s2, compiles((let _ = s2)))
-      var
-        it {.inject.}: typeof(items(ss1), typeOfIter)
-        jt {.inject.}: typeof(items(ss2), typeOfIter)
+
       type
-        OutType = typeof(op, typeOfProc)
+        OutType = typeof((block:
+          var
+            it {.inject.}: typeof(items(ss1), typeOfIter)
+            jt {.inject.}: typeof(items(ss2), typeOfIter)
+          op), typeOfProc)
 
       let m = min(ss1.len, ss2.len)
       var result = newSeq[OutType](m)
       for i in 0 ..< m:
-        it = ss1[i]
-        jt = ss2[i]
+        let it {.inject.} = ss1[i]
+        let jt {.inject.} = ss2[i]
         result[i] = op
       result
 
@@ -1488,19 +1490,21 @@ since (1, 1):
       evalOnceAs(ss1, s1, compiles((let _ = s1)))
       evalOnceAs(ss2, s2, compiles((let _ = s2)))
       evalOnceAs(ss3, s3, compiles((let _ = s3)))
-      var
-        it {.inject.}: typeof(items(ss1), typeOfIter)
-        jt {.inject.}: typeof(items(ss2), typeOfIter)
-        kt {.inject.}: typeof(items(ss3), typeOfIter)
+
       type
-        OutType = typeof(op, typeOfProc)
+        OutType = typeof((block:
+          var
+            it {.inject.}: typeof(items(ss1), typeOfIter)
+            jt {.inject.}: typeof(items(ss2), typeOfIter)
+            kt {.inject.}: typeof(items(ss3), typeOfIter)
+          op), typeOfProc)
 
       let m = min(min(ss1.len, ss2.len), ss3.len)
       var result = newSeq[OutType](m)
       for i in 0 ..< m:
-        it = ss1[i]
-        jt = ss2[i]
-        kt = ss3[i]
+        let it {.inject.} = ss1[i]
+        let jt {.inject.} = ss2[i]
+        let kt {.inject.} = ss3[i]
         result[i] = op
       result
 
