@@ -2592,6 +2592,9 @@ An empty ``discard`` statement is often used as a null statement:
     of '0'..'9': echo "a number"
     else: discard
 
+The ``discardable`` pragma should not be used together with ``async`` or ``multisync`` pragmas,
+because async procs return a Future, even if you dont return explicitly, it will return a ``Future[void]``.
+
 
 Void context
 ------------
@@ -4139,7 +4142,7 @@ A custom exception is a custom type:
 .. code-block:: nim
   type
     LoadError* = object of Exception
-  
+
 Ending the custom exception's name with ``Error`` is recommended.
 
 Custom exceptions can be raised like any others, e.g.:
@@ -6013,6 +6016,10 @@ but accessed at runtime:
 noReturn pragma
 ---------------
 The ``noreturn`` pragma is used to mark a proc that never returns.
+
+The ``noreturn`` pragma can not be used together with ``async`` or ``multisync`` pragmas,
+it will produce a compile time error or warning, because async procs return a Future,
+even if you dont return explicitly, it will return a ``Future[void]``.
 
 
 acyclic pragma
