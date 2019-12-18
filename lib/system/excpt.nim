@@ -140,8 +140,17 @@ proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
-  hasSomeStackTrace = NimStackTrace or
-    defined(nativeStackTrace) and nativeStackTraceSupported
+  hasSomeStackTrace = NimStackTrace or defined(libbacktrace) or
+    (defined(nativeStackTrace) and nativeStackTraceSupported)
+
+when defined(libbacktrace):
+  # This is a Nim procedure, but we can't import the "libbacktrace" module in
+  # here, so we {.exportc.} it in there and {.importc.} it in here. We rely on
+  # "libbacktrace" being imported somewhere else, or this will cause a linker error.
+  proc getBacktrace*(): string {.importc.}
+
+  proc auxWriteStackTraceWithLibbacktrace(s: var string) =
+    add(s, getBacktrace())
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
@@ -295,6 +304,9 @@ when hasSomeStackTrace:
       else:
         add(s, "Traceback (most recent call last)\n")
         auxWriteStackTrace(framePtr, s)
+    elif defined(libbacktrace):
+      add(s, "Traceback (most recent call last)\n")
+      auxWriteStackTraceWithLibbacktrace(s)
     elif defined(nativeStackTrace) and nativeStackTraceSupported:
       add(s, "Traceback from system (most recent call last)\n")
       auxWriteStackTraceWithBacktrace(s)
@@ -313,6 +325,8 @@ when hasSomeStackTrace:
         result = false
       else:
         result = true
+    elif defined(libbacktrace):
+      result = true
     elif defined(nativeStackTrace) and nativeStackTraceSupported:
       result = true
     else:
