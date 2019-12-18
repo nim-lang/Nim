@@ -3,10 +3,10 @@ discard """
 tlenvarargs.nim:35:9 (1, 2)
 tlenvarargs.nim:36:9 12
 tlenvarargs.nim:37:9 1
-tlenvarargs.nim:38:8'''
-  joinable: "false"
+tlenvarargs.nim:38:8 
+done
+'''
 """
-
 ## line 10
 
 template myecho*(a: varargs[untyped]) =
@@ -52,4 +52,8 @@ proc main()=
   ## shows why `lenVarargs` can't be named `len`
   doAssert fun4("abcdef") == len("abcdef")
 
+  ## workaround for BUG:D20191218T171447 whereby if testament expected output ends
+  ## in space, testament strips it from expected output but not actual output,
+  ## which leads to a mismatch when running test via megatest
+  echo "done"
 main()
