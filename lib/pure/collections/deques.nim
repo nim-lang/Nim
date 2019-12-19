@@ -349,7 +349,7 @@ proc peekLast*[T](deq: Deque[T]): T {.inline.} =
   result = deq.data[(deq.tail - 1) and deq.mask]
 
 template destroy(x: untyped) =
-  reset(x)
+  x = default(typeof(x))
 
 proc popFirst*[T](deq: var Deque[T]): T {.inline, discardable.} =
   ## Remove and returns the first element of the `deq`.
