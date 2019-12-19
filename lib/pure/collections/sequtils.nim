@@ -26,37 +26,36 @@
 ## procs, iterators and templates inspired by functional programming
 ## languages, such as:
 ## * Applying operations to a single container
-##   * `map<#map,openArray[T],proc(T)>`_ · `apply<#apply,openArray[T],proc(T)>`_ ·
+##   * `apply<#apply,openArray[T],proc(T)>`_ · `map<#map,openArray[T],proc(T)>`_ ·
 ##     `mapIndexed<#mapIndexed,openArray[T],proc(int,T)>`_ ·
 ##     `scan<#scan,openArray[T],proc(T)>`_ · `scanIndexed<#scanIndexed,openArray[T],proc(int,T)>`_
-##   * `mapIt<#mapIt.t,typed,untyped>`_ · `applyIt<#applyIt.t,untyped,untyped>`_ ·
-##     `scanIt<#scanIt.t,typed,untyped>`_ ·  `mapLiterals<#mapLiterals.m,untyped,untyped>`_
+##   * `applyIt<#applyIt.t,untyped,untyped>`_ · `mapIt<#mapIt.t,typed,untyped>`_ ·
+##     `mapLiterals<#mapLiterals.m,untyped,untyped>`_ · `scanIt<#scanIt.t,typed,untyped>`_
 ## * Applying operations to two or three containers
-##   * `zipWith<#zipWith,openArray[T1],openArray[T2],proc(T1,T2)>`_ ·
-##     `zippedScan<#zippedScan,openArray[T1],openArray[T2],proc(T1,T2)>`_
-##   * `zipThem<#zipThem.t,typed,typed,untyped>`_ · `scanThem<#scanThem.t,typed,typed,untyped>`_
+##   * `zippedScan<#zippedScan,openArray[T1],openArray[T2],proc(T1,T2)>`_ ·
+##     `zipWith<#zipWith,openArray[T1],openArray[T2],proc(T1,T2)>`_
+##   * `scanThem<#scanThem.t,typed,typed,untyped>`_ · `zipThem<#zipThem.t,typed,typed,untyped>`_
 ## * Iteratively applying operations
-##   * `nest<#nest,proc(T),T,Natural>`_
-##   * `foldl<#foldl.t,,,>`_ · `foldr<#foldr.t,untyped,untyped>`_ · `nestIt<#nestIt.t,untyped,typed,Natural>`_
+##   * `foldl<#foldl.t,,,>`_ · `foldr<#foldr.t,untyped,untyped>`_
 ## * Creating containers
-##   * `circle<#cycle,openArray[T],Natural>`_ · `repeat<#repeat,T,Natural>`_ ·
-##     `deduplicate<#deduplicate,openArray[T],bool>`_ · `zip<#zip,,>`_ ·
-##     `concat<#concat,varargs[seq[T][T]]>`_ · `distribute<#distribute,seq[T][T],Positive>`_ ·
-##     `partition<#partition,seq[T][T],Positive>`_ · `insert<#insert,seq[T][T],openArray[T],int>`_
-##   * `items<#items.i>`_ · `newSeqWith<#newSeqWith.t,int,untyped>`_
+##   * `circle<#cycle,openArray[T],Natural>`_ · `concat<#concat,varargs[seq[T][T]]>`_ ·
+##     `deduplicate<#deduplicate,openArray[T],bool>`_ · `distribute<#distribute,seq[T][T],Positive>`_ ·
+##     `insert<#insert,seq[T][T],openArray[T],int>`_ · `nest<#nest,proc(T),T,Natural>`_ ·
+##     `partition<#partition,seq[T][T],Positive>`_ · `repeat<#repeat,T,Natural>`_ · `zip<#zip,,>`_
+##   * `items<#items.i>`_ · `nestIt<#nestIt.t,untyped,typed,Natural>`_ · `newSeqWith<#newSeqWith.t,int,untyped>`_
 ## * Inspecting a container
-##   * `count<#count,openArray[T],proc(T)>`_ · `all<#all,openArray[T],proc(T)>`_ ·
-##     `any<#any,openArray[T],proc(T)>`_ · `lenWhile<#lenWhile,openArray[T],proc(T)>`_ ·
-##     `indexOf<#indexOf,openArray[T],proc(T)>`_ · `findFirst<#findFirst,openArray[T],proc(T),T>`_
-##   * `countIt<#countIt.t,typed,untyped>`_ ·  `allIt<#allIt.t,untyped,untyped>`_ ·
-##     `anyIt<#anyIt.t,untyped,untyped>`_ · `lenWhileIt<#lenWhileIt.t,typed,untyped>`_ ·
-##     `indexOfIt<#indexOfIt.t,typed,untyped>`_ · `findItFirst<#findItFirst.t,typed,untyped>`_
+##   * `all<#all,openArray[T],proc(T)>`_ · `any<#any,openArray[T],proc(T)>`_ ·
+##     `count<#count,openArray[T],proc(T)>`_ · `findFirst<#findFirst,openArray[T],proc(T),T>`_ ·
+##     `indexOf<#indexOf,openArray[T],proc(T)>`_ · `lenWhile<#lenWhile,openArray[T],proc(T)>`_
+##   * `allIt<#allIt.t,untyped,untyped>`_ · `anyIt<#anyIt.t,untyped,untyped>`_ ·
+##     `countIt<#countIt.t,typed,untyped>`_ · `findItFirst<#findItFirst.t,typed,untyped>`_ ·
+##     `indexOfIt<#indexOfIt.t,typed,untyped>`_ · `lenWhileIt<#lenWhileIt.t,typed,untyped>`_
 ## * Selecting items
-##   * `filter<#filter,openArray[T],proc(T)>`_ · `delete<#delete,seq[T][T],Natural,Natural>`_  ·
-##     `takeWhile<#takeWhile,openArray[T],proc(T)>`_ · `dropWhile<#dropWhile,openArray[T],proc(T)>`_ ·
-##     `keepIf<#keepIf,seq[T][T],proc(T)>`_
-##   * `takeItWhile<#takeItWhile.t,typed,untyped>`_ · `dropItWhile<#dropItWhile.t,typed,untyped>`_ ·
-##     `keepItIf<#keepItIf.t,seq[T],untyped>`_ · `filterIt<#filterIt.t,untyped,untyped>`_
+##   * `delete<#delete,seq[T][T],Natural,Natural>`_ · `dropWhile<#dropWhile,openArray[T],proc(T)>`_ ·
+##     `filter<#filter,openArray[T],proc(T)>`_ · `keepIf<#keepIf,seq[T][T],proc(T)>`_ ·
+##     `takeWhile<#takeWhile,openArray[T],proc(T)>`_
+##   * `dropItWhile<#dropItWhile.t,typed,untyped>`_ · `filterIt<#filterIt.t,untyped,untyped>`_ ·
+##     `keepItIf<#keepItIf.t,seq[T],untyped>`_ · `takeItWhile<#takeItWhile.t,typed,untyped>`_
 ##
 ## For functional style programming you have different options at your disposal:
 ## * pass `anonymous proc<manual.html#procedures-anonymous-procs>`_
@@ -175,66 +174,6 @@ proc count*[T](s: openArray[T], x: T): int =
     if itm == x:
       inc result
 
-proc count*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
-                                                         {.since: (1, 1).} =
-  ## Returns the number of items in the container `s` that fulfills
-  ## the predicate `pred` (function that returns a `bool`).
-  ##
-  runnableExamples:
-    assert count("abracadabra", func (c: char): bool = c in {'a', 'r'}) == 7
-
-  for itm in items(s):
-    if pred(itm):
-      inc result
-
-proc lenWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
-                                                            {.since: (1, 1).} =
-  ## Returns the number of items in the container `s` that keep fulfilling
-  ## the predicate `pred` (function that returns a `bool`) from the beginning.
-  ##
-  runnableExamples:
-    assert lenWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
-
-  for itm in items(s):
-    if pred(itm):
-      inc result
-    else:
-      break
-
-proc takeWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
-                                                            {.since: (1, 1).} =
-  ## Returns a sequence of items in the container `s` that keep fulfilling
-  ## the predicate `pred` (function that returns a `bool`) from the beginning.
-  ##
-  runnableExamples:
-    assert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[1, 2, 3]
-
-  s[0 ..< lenWhile(s, pred)]
-
-proc dropWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
-                                                            {.since: (1, 1).} =
-  ## Returns a sequence of items in the container `s` without items that
-  ## keep fulfilling the predicate `pred` (function that returns a `bool`)
-  ## from the beginning, i.e. those items are dropped.
-  ##
-  runnableExamples:
-    assert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[4, 5]
-
-  s[lenWhile(s, pred) ..< s.len]
-
-proc nest*[T](f: proc(x: T): T, x: T, n: Natural): seq[T] {.since: (1, 1).} =
-  ## Returns a new sequence of the results of applying `f` to `x` 0 .. `n`
-  ## times, i.e. `@[x, f(x), f(f(x)), ...]`.
-  ## `n` must be a non-negative number (zero or more).
-  ##
-  runnableExamples:
-    assert nest(func (x: int): int = x * 2, 1, 4) == @[1, 2, 4, 8, 16]
-
-  result = newSeq[T](n + 1)
-  result[0] = x
-  for i in 1 .. n:
-    result[i] = f(result[i - 1])
-
 proc cycle*[T](s: openArray[T], n: Natural): seq[T] =
   ## Returns a new sequence with the items of the container `s` repeated
   ## `n` times.
@@ -338,132 +277,6 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-proc zipWith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
-            op: proc (x: T1, y: T2): R {.closure.}): seq[R]
-                                                          {.since: (1, 1).} =
-  ## Returns a new sequence with a transformation on each pair of elements
-  ## from the two input containers.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6, 7]
-      zip1 = zipWith(s1, s2, func (x, y: int): int = x * y)
-    assert zip1 == @[4, 10, 18]
-
-  let m = min(s1.len, s2.len)
-  newSeq(result, m)
-  for i in 0 ..< m:
-    result[i] = op(s1[i], s2[i])
-
-proc zipWith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
-                             s3: openArray[T3],
-                             op: proc (x: T1, y: T2, Z: T3): R {.closure.}):
-                                                   seq[R] {.since: (1, 1).} =
-  ## Returns a new sequence with a transformation on each triple of elements
-  ## from three input containers.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6]
-      s3 = @[5, 7, 9, 9]
-      zip1 = zipWith(s1, s2, s3, func (x, y, z: int): bool = x + y == z)
-    assert zip1 == @[true, true, true]
-
-  let m = min(min(s1.len, s2.len), s3.len)
-  newSeq(result, m)
-  for i in 0 ..< m:
-    result[i] = op(s1[i], s2[i], s3[i])
-
-proc zippedScan*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
-            op: proc (x: T1, y: T2): R {.closure.}) {.since: (1, 1).} =
-  ## Apply `op` proc on each pair of elements from the two input containers,
-  ## discarding results.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6, 7]
-    zippedScan(s1, s2, proc (x, y: int): int = x * y)
-
-  let m = min(s1.len, s2.len)
-  for i in 0 ..< m:
-    discard op(s1[i], s2[i])
-
-proc zippedScan*[T1, T2](s1: openArray[T1], s2: openArray[T2],
-            op: proc (x: T1, y: T2) {.closure.}) {.since: (1, 1).} =
-  ## Apply `op` proc on each pair of elements from the two input containers.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6, 7]
-    zippedScan(s1, s2, proc (x, y: int) = echo x * y)
-
-  let m = min(s1.len, s2.len)
-  for i in 0 ..< m:
-    op(s1[i], s2[i])
-
-proc zippedScan*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
-                             s3: openArray[T3],
-                             op: proc (x: T1, y: T2, Z: T3): R {.closure.})
-                                                          {.since: (1, 1).} =
-  ## Apply `op` proc on each triple of elements from the three input containers,
-  ## discarding results.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6]
-      s3 = @[5, 7, 9, 9]
-    zippedScan(s1, s2, s3, proc (x, y, z: int): bool = x + y == z)
-
-  let m = min(min(s1.len, s2.len), s3.len)
-  for i in 0 ..< m:
-    discard op(s1[i], s2[i], s3[i])
-
-proc zippedScan*[T1, T2, T3](s1: openArray[T1], s2: openArray[T2],
-                             s3: openArray[T3],
-                             op: proc (x: T1, y: T2, Z: T3) {.closure.})
-                                                          {.since: (1, 1).} =
-  ## Apply `op` proc on each triple of elements from the three input containers.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6]
-      s3 = @[5, 7, 9, 9]
-    zippedScan(s1, s2, s3, proc (x, y, z: int) = echo x + y == z)
-
-  let m = min(min(s1.len, s2.len), s3.len)
-  for i in 0 ..< m:
-    op(s1[i], s2[i], s3[i])
-
 proc partition*[T](s: seq[T], len: Positive): seq[seq[T]] {.since: (1, 1).} =
   ## Splits a sequence `s` into sub-sequences of length `len`.
   ##
@@ -565,8 +378,8 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
   for i in 0 ..< s.len:
     result[i] = op(s[i])
 
-proc mapIndexed*[T, S](s: openArray[T], op:
-                       proc (i: int, x: T): S {.closure.}): seq[S]{.inline.} =
+proc mapIndexed*[T, S](s: openArray[T],
+                       op: proc (i: int, x: T): S {.closure.}): seq[S]{.inline.} =
   ## Returns a new sequence with the results of `op` proc applied to every
   ## item together with its index in the container `s`.
   ##
@@ -586,39 +399,6 @@ proc mapIndexed*[T, S](s: openArray[T], op:
   newSeq(result, s.len)
   for i, v in s:
     result[i] = op(i, s[i])
-
-proc scan*[T](s: openArray[T], op: proc (x: T) {.closure.})
-                                                {.since: (1, 1).} =
-  ## Apply `op` proc to every item in the container `s`.
-  ##
-  ## See also:
-  ## * `scanIt template<#scanIt.t,typed,untyped>`_
-  ##
-  runnableExamples:
-    let
-      a = @[1, 2, 3, 4]
-    scan(a, proc(x: int) = echo x)
-
-  for i in low(s) .. high(s):
-    op(s[i])
-
-proc scan*[T, S](s: openArray[T], op: proc (x: T): S {.closure.})
-                                                {.since: (1, 1).} =
-  ## Apply `op` proc to every item in the container `s`. Results
-  ## of `op` proc are discarded.
-  ##
-  ## See also:
-  ## * `scanIt template<#scanIt.t,typed,untyped>`_
-  ##
-  runnableExamples:
-    let
-      a = @[1, 2, 3, 4]
-    scan(a, proc(x: int): string =
-      echo x
-      return $x)
-
-  for i in low(s) .. high(s):
-    discard op(s[i])
 
 proc scanIndexed*[T](s: openArray[T],
                      op: proc (i: int, x: T) {.closure.}) {.since: (1, 1).} =
@@ -734,63 +514,6 @@ proc filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T]
   for i in 0 ..< s.len:
     if pred(s[i]):
       result.add(s[i])
-
-proc findFirst*[T](s: openArray[T], pred: proc (x: T): bool {.closure.},
-                                          def: T): T {.since: (1, 1).} =
-  ## Find the first element in `s` that fulfilled the predicate
-  ## `pred` (function that returns a `bool`). If such element
-  ## is not found is `s`, `def` is returned.
-  ##
-  runnableExamples:
-    let
-      l = @[2, 4, 6, 7, 9]
-      x = findFirst(l, proc(x: int): bool = x mod 2 == 1, -1)
-    assert x == 7
-
-  for i in low(s) .. high(s):
-    if pred(s[i]):
-      return s[i]
-  return def
-
-proc findFirst*[T](s: openArray[T], pred: proc (x: T): bool {.closure.}): T
-                                                       {.since: (1, 1).}  =
-  ## Find the first element in `s` that fulfilled the predicate
-  ## `pred` (function that returns a `bool`). If such element
-  ## is not found is `s`, `default(T)` is returned.
-  ##
-  return findFirst(s, pred, default(T))
-
-proc indexOf*[T](s: openArray[T], v: T): int {.since: (1, 1).} =
-  ## Get the index of the first element in `s` that equals to `v`.
-  ## If such element is not found is `s`, `low(s) - 1` is returned.
-  ##
-  runnableExamples:
-    let
-      l = @[2, 4, 6, 7, 9]
-      x = indexOf(l, 7)
-    assert x == 3
-
-  for i in low(s) .. high(s):
-    if s[i] == v:
-      return i
-  return low(s) - 1
-
-proc indexOf*[T](s: openArray[T], pred: proc (x: T): bool {.closure.}): int
-                                                        {.since: (1, 1).} =
-  ## Get the index of the first element in `s` that fulfilled the predicate
-  ## `pred` (function that returns a `bool`). If such element
-  ## is not found is `s`, `low(s) - 1` is returned.
-  ##
-  runnableExamples:
-    let
-      l = @[2, 4, 6, 7, 9]
-      x = indexOf(l, proc(x: int): bool = x mod 2 == 1)
-    assert x == 3
-
-  for i in low(s) .. high(s):
-    if pred(s[i]):
-      return i
-  return low(s) - 1
 
 proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
                                                                 {.inline.} =
@@ -1564,6 +1287,236 @@ since (1, 1):
         let jt {.inject.} = ss2[i]
         let kt {.inject.} = ss3[i]
         op
+
+proc count*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int {.since: (1, 1).} =
+  ## Returns the number of items in the container `s` that fulfills
+  ## the predicate `pred` (function that returns a `bool`).
+  ##
+  runnableExamples:
+    assert count("abracadabra", func (c: char): bool = c in {'a', 'r'}) == 7
+
+  countIt(s, pred(it))
+
+proc lenWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int {.since: (1, 1).} =
+  ## Returns the number of items in the container `s` that keep fulfilling
+  ## the predicate `pred` (function that returns a `bool`) from the beginning.
+  ##
+  runnableExamples:
+    assert lenWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == 3
+
+  lenWhileIt(s, pred(it))
+
+proc takeWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T] {.since: (1, 1).} =
+  ## Returns a sequence of items in the container `s` that keep fulfilling
+  ## the predicate `pred` (function that returns a `bool`) from the beginning.
+  ##
+  runnableExamples:
+    assert takeWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[1, 2, 3]
+
+  s[0 ..< lenWhile(s, pred)]
+
+proc dropWhile*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): seq[T] {.since: (1, 1).} =
+  ## Returns a sequence of items in the container `s` without items that
+  ## keep fulfilling the predicate `pred` (function that returns a `bool`)
+  ## from the beginning, i.e. those items are dropped.
+  ##
+  runnableExamples:
+    assert dropWhile(@[1, 2, 3, 4, 5], func (x: int): bool = x < 4) == @[4, 5]
+
+  s[lenWhile(s, pred) ..< s.len]
+
+proc nest*[T](f: proc(x: T): T, x: T, n: Natural): seq[T] {.since: (1, 1).} =
+  ## Returns a new sequence of the results of applying `f` to `x` 0 .. `n`
+  ## times, i.e. `@[x, f(x), f(f(x)), ...]`.
+  ## `n` must be a non-negative number (zero or more).
+  ##
+  runnableExamples:
+    assert nest(func (x: int): int = x * 2, 1, 4) == @[1, 2, 4, 8, 16]
+
+  nestIt(f(it), x, n)
+
+proc zipWith*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
+                         op: proc (x: T1, y: T2): R {.closure.}): seq[R] {.since: (1, 1).} =
+  ## Returns a new sequence with a transformation on each pair of elements
+  ## from the two input containers.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6, 7]
+      zip1 = zipWith(s1, s2, func (x, y: int): int = x * y)
+    assert zip1 == @[4, 10, 18]
+
+  zipThem(s1, s2, op(it, jt))
+
+proc zipWith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
+                             s3: openArray[T3],
+                             op: proc (x: T1, y: T2, Z: T3): R {.closure.}): seq[R] {.since: (1, 1).} =
+  ## Returns a new sequence with a transformation on each triple of elements
+  ## from three input containers.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6]
+      s3 = @[5, 7, 9, 9]
+      zip1 = zipWith(s1, s2, s3, func (x, y, z: int): bool = x + y == z)
+    assert zip1 == @[true, true, true]
+
+  zipThem(s1, s2, s3, op(it, jt, kt))
+
+proc zippedScan*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
+                            op: proc (x: T1, y: T2): R {.closure.}) {.since: (1, 1).} =
+  ## Apply `op` proc on each pair of elements from the two input containers,
+  ## discarding results.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6, 7]
+    zippedScan(s1, s2, proc (x, y: int): int = x * y)
+
+  scanThem(s1, s2, (discard op(it, jt)))
+
+proc zippedScan*[T1, T2](s1: openArray[T1], s2: openArray[T2],
+                         op: proc (x: T1, y: T2) {.closure.}) {.since: (1, 1).} =
+  ## Apply `op` proc on each pair of elements from the two input containers.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6, 7]
+    zippedScan(s1, s2, proc (x, y: int) = echo x * y)
+
+  scanThem(s1, s2, op(it, jt))
+
+proc zippedScan*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
+                             s3: openArray[T3],
+                             op: proc (x: T1, y: T2, Z: T3): R {.closure.}) {.since: (1, 1).} =
+  ## Apply `op` proc on each triple of elements from the three input containers,
+  ## discarding results.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6]
+      s3 = @[5, 7, 9, 9]
+    zippedScan(s1, s2, s3, proc (x, y, z: int): bool = x + y == z)
+
+  scanThem(s1, s2, s3, (discard op(it, jt, kt)))
+
+proc zippedScan*[T1, T2, T3](s1: openArray[T1], s2: openArray[T2],
+                             s3: openArray[T3],
+                             op: proc (x: T1, y: T2, Z: T3) {.closure.}) {.since: (1, 1).} =
+  ## Apply `op` proc on each triple of elements from the three input containers.
+  ##
+  ## The input containers can be of different types.
+  ## If one container is shorter, the remaining items in the longer container
+  ## are discarded.
+  ##
+  runnableExamples:
+    let
+      s1 = @[1, 2, 3]
+      s2 = @[4, 5, 6]
+      s3 = @[5, 7, 9, 9]
+    zippedScan(s1, s2, s3, proc (x, y, z: int) = echo x + y == z)
+
+  scanThem(s1, s2, s3, op(it, jt, kt))
+
+proc scan*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.since: (1, 1).} =
+  ## Apply `op` proc to every item in the container `s`.
+  ##
+  ## See also:
+  ## * `scanIt template<#scanIt.t,typed,untyped>`_
+  ##
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+    scan(a, proc(x: int) = echo x)
+
+  scanIt(s, op(it))
+
+proc scan*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}) {.since: (1, 1).} =
+  ## Apply `op` proc to every item in the container `s`. Results
+  ## of `op` proc are discarded.
+  ##
+  ## See also:
+  ## * `scanIt template<#scanIt.t,typed,untyped>`_
+  ##
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+    scan(a, proc(x: int): string =
+      echo x
+      return $x)
+
+  scanIt(s, (discard op(it)))
+
+proc findFirst*[T](s: openArray[T],
+                   pred: proc (x: T): bool {.closure.}, def: T): T {.since: (1, 1).} =
+  ## Find the first element in `s` that fulfilled the predicate
+  ## `pred` (function that returns a `bool`). If such element
+  ## is not found is `s`, `def` is returned.
+  ##
+  runnableExamples:
+    let
+      l = @[2, 4, 6, 7, 9]
+      x = findFirst(l, proc(x: int): bool = x mod 2 == 1, -1)
+    assert x == 7
+
+  findItFirst(s, pred(it), def)
+
+proc findFirst*[T](s: openArray[T], pred: proc (x: T): bool {.closure.}): T {.since: (1, 1).}  =
+  ## Find the first element in `s` that fulfilled the predicate
+  ## `pred` (function that returns a `bool`). If such element
+  ## is not found is `s`, `default(T)` is returned.
+  ##
+  findFirst(s, pred, default(T))
+
+proc indexOf*[T](s: openArray[T], v: T): int {.since: (1, 1).} =
+  ## Get the index of the first element in `s` that equals to `v`.
+  ## If such element is not found is `s`, `low(s) - 1` is returned.
+  ##
+  runnableExamples:
+    let
+      l = @[2, 4, 6, 7, 9]
+      x = indexOf(l, 7)
+    assert x == 3
+
+  indexOfIt(s, it == v)
+
+proc indexOf*[T](s: openArray[T], pred: proc (x: T): bool {.closure.}): int {.since: (1, 1).} =
+  ## Get the index of the first element in `s` that fulfilled the predicate
+  ## `pred` (function that returns a `bool`). If such element
+  ## is not found is `s`, `low(s) - 1` is returned.
+  ##
+  runnableExamples:
+    let
+      l = @[2, 4, 6, 7, 9]
+      x = indexOf(l, proc(x: int): bool = x mod 2 == 1)
+    assert x == 3
+
+  indexOfIt(s, pred(it))
 
 proc mapLitsImpl(constructor: NimNode; op: NimNode; nested: bool;
                  filter = nnkLiterals): NimNode =
