@@ -839,12 +839,12 @@ proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
       if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
 
 proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
-  when not defined(osx): return
-  if optCDebug notin conf.globalOptions: return
-  # if needed, add an option to skip or override location
-  let cmd = "dsymutil " & $(exe).quoteShell
-  tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
-    execExternalProgram(conf, cmd, hintExecuting)
+  when defined(osx):
+    if optCDebug notin conf.globalOptions: return
+    # if needed, add an option to skip or override location
+    let cmd = "dsymutil " & $(exe).quoteShell
+    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+      execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
