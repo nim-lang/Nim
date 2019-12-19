@@ -2493,7 +2493,7 @@ when not defined(nimscript):
     proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
                                                                  benign, raises: [].} =
       ## Allocates a new memory block on the shared heap with at
-      ## least ``T.sizeof * size`` bytes
+      ## least ``T.sizeof * size`` bytes.
       ##
       ## The block has to be freed with
       ## `resizeShared(block, 0) <#resizeShared,ptr.T,Natural>`_ or
