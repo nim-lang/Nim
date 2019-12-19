@@ -1193,7 +1193,7 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
-proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
+proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
   var sizeExpr = sizeExpr
   let typ = a.t
   var b: TLoc
@@ -1241,7 +1241,7 @@ proc rawGenNew(p: BProc, a: TLoc, sizeExpr: Rope) =
       b.r = ropecg(p.module, "($1) #newObj($2, $3)", [getTypeDesc(p.module, typ), ti, sizeExpr])
       genAssignment(p, a, b, {})
   # set the object type:
-  genObjectInit(p, cpsStmts, bt, a, false)
+  genObjectInit(p, cpsStmts, bt, a, constructRefObj)
 
 proc genNew(p: BProc, e: PNode) =
   var a: TLoc
@@ -1313,17 +1313,20 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
                 genTypeInfo(p.module, seqtype, e.info), a.rdLoc]))
     gcUsage(p.config, e)
 
+proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
+  let t = n.typ
+  discard getTypeDesc(p.module, t) # so that any fields are initialized
+  let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+  fillLoc(d, locData, n, p.module.tmpBase & rope(id), OnStatic)
+  if id == p.module.labels:
+    # expression not found in the cache:
+    inc(p.module.labels)
+    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+          [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
+
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
-    let t = n.typ
-    discard getTypeDesc(p.module, t) # so that any fields are initialized
-    let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-    fillLoc(d, locData, n, p.module.tmpBase & rope(id), OnStatic)
-    if id == p.module.labels:
-      # expression not found in the cache:
-      inc(p.module.labels)
-      p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
-           [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
+    rawConstExpr(p, n, d)
     result = true
   else:
     result = false
@@ -1477,7 +1480,7 @@ proc genNewFinalize(p: BProc, e: PNode) =
       ti, getTypeDesc(p.module, skipTypes(refType.lastSon, abstractRange))])
   genAssignment(p, a, b, {})  # set the object type:
   bt = skipTypes(refType.lastSon, abstractRange)
-  genObjectInit(p, cpsStmts, bt, a, false)
+  genObjectInit(p, cpsStmts, bt, a, constructRefObj)
   gcUsage(p.config, e)
 
 proc genOfHelper(p: BProc; dest: PType; a: Rope; info: TLineInfo): Rope =
@@ -2732,7 +2735,8 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
     else:
       result = rope"{NIM_NIL, NIM_NIL}"
   of tyObject:
-    if not isObjLackingTypeField(t) and not p.module.compileToCpp:
+    # XXX Needs to be recursive!
+    if not isObjLackingTypeField(t):
       result = "{{$1}}" % [genTypeInfo(p.module, t, info)]
     else:
       result = rope"{}"
@@ -2742,7 +2746,13 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       if i > 0: result.add ", "
       result.add getDefaultValue(p, typ[i], info)
     result.add "}"
-  of tyArray: result = rope"{}"
+  of tyArray:
+    result = rope"{"
+    for i in 0..<toInt(lengthOrd(p.config, typ.sons[0])):
+      if i > 0: result.add ", "
+      result.add getDefaultValue(p, typ.sons[1], info)
+    result.add "}"
+    #result = rope"{}"
   of tySet:
     if mapType(p.config, t) == ctArray: result = rope"{}"
     else: result = rope"0"
@@ -2758,8 +2768,13 @@ proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
       getNullValueAux(p, t, it, cons, result, count, isConst)
   of nkRecCase:
     getNullValueAux(p, t, obj[0], cons, result, count, isConst)
-    for i in 1..<obj.len:
-      getNullValueAux(p, t, lastSon(obj[i]), cons, result, count, isConst)
+    if count > 0: result.add ", "
+    result.add "{{" # struct inside union
+    # XXX select default case branch here!
+    #for i in 1..<obj.len:
+    var countB = 0
+    getNullValueAux(p, t, lastSon(obj[1]), cons, result, countB, isConst)
+    result.add "}}"
   of nkSym:
     if count > 0: result.add ", "
     inc count
@@ -2787,8 +2802,8 @@ proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode,
   if base != nil:
     base = skipTypes(base, skipPtrs)
     getNullValueAuxT(p, orig, base, base.n, cons, result, count, isConst)
-  elif not isObjLackingTypeField(t) and not p.module.compileToCpp:
-    result.addf("$1", [genTypeInfo(p.module, orig, obj.info)])
+  elif not isObjLackingTypeField(t):
+    result.addf("{$1}", [genTypeInfo(p.module, orig, obj.info)])
     inc count
   getNullValueAux(p, t, obj, cons, result, count, isConst)
   # do not emit '{}' as that is not valid C:
