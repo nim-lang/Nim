@@ -4393,10 +4393,14 @@ when defined(nimNoNilSeqs2):
       proc `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
       proc `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
 
-template closureScope*(body: untyped): untyped {.deprecated:
-                                                "1.1.0, use `sugar.capture` instead".} =
+template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
-  ## their current iteration values. Example:
+  ## their current iteration values.
+  ##
+  ## Note: This template may not work in some cases, use
+  ## `capture <sugar.html#capture.m,openArray[typed],untyped>`_ instead.
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   var myClosure : proc()

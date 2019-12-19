@@ -3520,7 +3520,8 @@ Creating closures in loops
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since closures capture local variables by reference it is often not wanted
-behavior inside loop bodies. See `capture
+behavior inside loop bodies. See `closureScope
+<system.html#closureScope.t,untyped>`_ and `capture
 <sugar.html#capture.m,openArray[typed],untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
