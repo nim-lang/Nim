@@ -264,17 +264,6 @@ when not defined(gcDestructors):
     ## **Note**: The `finalizer` refers to the type `T`, not to the object!
     ## This means that for each object of type `T` the finalizer will be called!
 
-when defined(nimV2):
-  proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
-    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
-    ##
-    ## New runtime target: An alias for `=destroy`.
-else:
-  proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
-    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
-    ##
-    ## New runtime target: An alias for `=destroy`.
-
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
@@ -1824,6 +1813,15 @@ else:
 when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
+
+  proc reset*[T](obj: var T) {.noSideEffect.} =
+    ## Resets an object `obj` to its default value.
+    obj = default(typeof(obj))
+else:
+  when defined(nimV2):
+    proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
+  else:
+    proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
