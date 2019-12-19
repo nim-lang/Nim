@@ -843,6 +843,7 @@ proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
     if optCDebug notin conf.globalOptions: return
     # if needed, add an option to skip or override location
     let cmd = "dsymutil " & $(exe).quoteShell
+    conf.extraCmds.add cmd
     tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
       execExternalProgram(conf, cmd, hintExecuting)
 
@@ -1075,6 +1076,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
+    lit ",\L\"extraCmds\": "
+    lit $(%* conf.extraCmds)
+
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
@@ -1086,6 +1090,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit "\L}\L"
     close(f)
+    # we really should use json apis (eg %* and %) instead of all those `lit`,
+    # no need for premature optimization
+    writeFile $jsonFile, ($jsonFile).parseFile.pretty
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
@@ -1140,6 +1147,14 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
     execLinkCmd(conf, linkCmd.getStr)
+    if data.hasKey("extraCmds"):
+      let extraCmds = data["extraCmds"]
+      doAssert extraCmds.kind == JArray
+      for cmd in extraCmds:
+        doAssert cmd.kind == JString, $cmd.kind
+        let cmd2 = cmd.getStr
+        execExternalProgram(conf, cmd2, hintExecuting)
+
   except:
     when declared(echo):
       echo getCurrentException().getStackTrace()

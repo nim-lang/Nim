@@ -249,6 +249,7 @@ type
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
+    extraCmds*: seq[string] # for writeJsonBuildInstructions
     keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
