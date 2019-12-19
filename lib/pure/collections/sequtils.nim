@@ -277,7 +277,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-proc partition*[T](s: seq[T], len: Positive): seq[seq[T]] {.since: (1, 1).} =
+proc partition*[T](s: openArray[T], len: Positive): seq[seq[T]] {.since: (1, 1).} =
   ## Splits a sequence `s` into sub-sequences of length `len`.
   ##
   ## Number of sequences in result is `s.len div len`. If length of `s`
