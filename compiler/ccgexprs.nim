@@ -2742,15 +2742,15 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result = rope"{}"
   of tyTuple:
     result = rope"{"
-    for i in 0..<typ.len:
+    for i in 0..<t.len:
       if i > 0: result.add ", "
-      result.add getDefaultValue(p, typ[i], info)
+      result.add getDefaultValue(p, t[i], info)
     result.add "}"
   of tyArray:
     result = rope"{"
-    for i in 0..<toInt(lengthOrd(p.config, typ.sons[0])):
+    for i in 0..<toInt(lengthOrd(p.config, t.sons[0])):
       if i > 0: result.add ", "
-      result.add getDefaultValue(p, typ.sons[1], info)
+      result.add getDefaultValue(p, t.sons[1], info)
     result.add "}"
     #result = rope"{}"
   of tySet:
