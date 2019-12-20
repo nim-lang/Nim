@@ -392,10 +392,8 @@ iterator elements(t: IntSet): int {.inline.} =
         inc(i)
       r = r.next
 
-proc isSmallChunk(c: PChunk): bool {.inline.} =
-  # careful, free big chunks can have alignment of zero
-  c.alignment != 0 and
-    c.size <= (SmallChunkSize - (SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment)))
+template isSmallChunk(c: PChunk): bool =
+  c.size <= (SmallChunkSize - (SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment)))
 
 proc chunkUnused(c: PChunk): bool {.inline.} =
   (c.prevSize and 1) == 0
@@ -452,7 +450,7 @@ when false:
 
 const nimMaxHeap {.intdefine.} = 0
 
-proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
+proc requestOsChunks(a: var MemRegion, size, alignment: int): PBigChunk =
   when not defined(emscripten):
     if not a.blockChunkSizeIncrease:
       let usedMem = a.occ #a.currMem # - a.freeMem
@@ -491,6 +489,7 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   result.next = nil
   result.prev = nil
   result.size = size
+  result.alignment = alignment
   # update next.prevSize:
   var nxt = cast[ByteAddress](result) +% size
   sysAssert((nxt and PageMask) == 0, "requestOsChunks 2")
@@ -554,6 +553,7 @@ proc updatePrevSize(a: var MemRegion, c: PBigChunk,
 proc splitChunk2(a: var MemRegion, c: PBigChunk, size: int): PBigChunk =
   result = cast[PBigChunk](cast[ByteAddress](c) +% size)
   result.size = c.size - size
+  result.alignment = c.alignment
   track("result.size", addr result.size, sizeof(int))
   # XXX check if these two nil assignments are dead code given
   # addChunkToMatrix's implementation:
@@ -607,7 +607,7 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
           addChunkToMatrix(a, rest)
   addChunkToMatrix(a, c)
 
-proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
+proc getBigChunk(a: var MemRegion, size, alignment: int): PBigChunk =
   sysAssert(size > 0, "getBigChunk 2")
   var size = size # roundup(size, PageSize)
   var fl, sl: int
@@ -616,10 +616,10 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   result = findSuitableBlock(a, fl, sl)
   if result == nil:
     if size < nimMinHeapPages * PageSize:
-      result = requestOsChunks(a, nimMinHeapPages * PageSize)
+      result = requestOsChunks(a, nimMinHeapPages * PageSize, alignment)
       splitChunk(a, result, size)
     else:
-      result = requestOsChunks(a, size)
+      result = requestOsChunks(a, size, alignment)
       # if we over allocated split the chunk:
       if result.size > size:
         splitChunk(a, result, size)
@@ -634,7 +634,7 @@ proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   incl(a, a.chunkStarts, pageIndex(result))
   dec(a.freeMem, size)
 
-proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
+proc getHugeChunk(a: var MemRegion; size, alignment: int): PBigChunk =
   result = cast[PBigChunk](osAllocPages(size))
   incCurrMem(a, size)
   # XXX add this to the heap links. But also remove it from it later.
@@ -643,6 +643,7 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   result.next = nil
   result.prev = nil
   result.size = size
+  result.alignment = alignment
   # set 'used' to to true:
   result.prevSize = 1
   incl(a, a.chunkStarts, pageIndex(result))
@@ -654,8 +655,8 @@ proc freeHugeChunk(a: var MemRegion; c: PBigChunk) =
   decCurrMem(a, size)
   osDeallocPages(c, size)
 
-proc getSmallChunk(a: var MemRegion): PSmallChunk =
-  var res = getBigChunk(a, PageSize)
+proc getSmallChunk(a: var MemRegion, alignment: int): PSmallChunk =
+  var res = getBigChunk(a, PageSize, alignment)
   sysAssert res.prev == nil, "getSmallChunk 1"
   sysAssert res.next == nil, "getSmallChunk 2"
   result = cast[PSmallChunk](res)
@@ -737,7 +738,7 @@ proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = M
     let i = smallChunkIndex(size, alignment)
     var c = a.freeSmallChunks[i]
     if c == nil:
-      c = getSmallChunk(a)
+      c = getSmallChunk(a, alignment)
       c.freeList = nil
       sysAssert c.size == PageSize, "rawAlloc 3"
       c.size = size
@@ -783,8 +784,8 @@ proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = M
   else:
     size = requestedSize + BigChunkSizeOf + alignmentOverhead(BigChunk, alignment)
     # allocate a large block
-    var c = if size >= HugeChunkSize: getHugeChunk(a, size)
-            else: getBigChunk(a, size)
+    var c = if size >= HugeChunkSize: getHugeChunk(a, size, alignment)
+            else: getBigChunk(a, size, alignment)
     c.alignment = alignment
     sysAssert c.prev == nil, "rawAlloc 10"
     sysAssert c.next == nil, "rawAlloc 11"
