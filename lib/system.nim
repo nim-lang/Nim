@@ -2387,8 +2387,8 @@ when not defined(nimscript):
 
     proc alloc*(size: Natural, align = MemAlign): pointer {.noconv, rtl, tags: [], benign, raises: [].}
       ## Allocates a new memory block with at least ``size`` bytes and alignment `align`.
-      ## `align` must be power of two. It is adviced to use `createU` instead as
-      ## it handles alignment automatically.
+      ## `align` must be power of two. It is adviced to use `createU` as it handles 
+      ## alignment automatically.
       ##
       ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
       ## or `dealloc(block) <#dealloc,pointer>`_.
@@ -2417,8 +2417,8 @@ when not defined(nimscript):
 
     proc alloc0*(size: Natural, align = MemAlign): pointer {.noconv, rtl, tags: [], benign, raises: [].}
       ## Allocates a new memory block with at least ``size`` bytes and alignment `align`.
-      ## `align` must be power of two. It is adviced to use `create` instead as
-      ## it handles alignment automatically.
+      ## `align` must be power of two. It is adviced to use `create` as it handles 
+      ## alignment automatically.
       ##
       ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
       ## or `dealloc(block) <#dealloc,pointer>`_.
@@ -2447,6 +2447,7 @@ when not defined(nimscript):
       ## In either way the block has at least ``newSize`` bytes. `align` must be a power
       ## of two. If ``newSize == 0`` and `p` is not **nil** ``realloc`` calls ``dealloc(p)``.
       ## In other cases the block has to be freed with `dealloc(block) <#dealloc,pointer>`_.
+      ## It is adviced to use `resize` as it handles alignment automatically. 
       ##
       ## The allocated memory belongs to its allocating thread!
       ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
@@ -2479,7 +2480,7 @@ when not defined(nimscript):
     proc allocShared*(size: Natural, align = MemAlign): pointer {.noconv, rtl, benign, raises: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes and alignment `align`. `align` must be power of two.
-      ## It is adviced to use `createSharedU` instead as it handles alignment automatically.
+      ## It is adviced to use `createSharedU` as it handles alignment automatically.
       ##
       ## The block has to be freed with
       ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
@@ -2509,7 +2510,7 @@ when not defined(nimscript):
     proc allocShared0*(size: Natural, align = MemAlign): pointer {.noconv, rtl, benign, raises: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` byte  and alignment `align`. `align` must be power of two.
-      ## It is adviced to use `createSharedU` instead as it handles alignment
+      ## It is adviced to use `createShared` as it handles alignment
       ## automatically.
       ##
       ## The block has to be freed with

@@ -34,7 +34,7 @@ const
   HugeChunkSize = MaxBigChunkSize + 1
 
   # alignments
-  MinAlignment = 4  # also min object size
+  MinAlignment = 8  # also min object size
   MaxAlignment = 32
   Alignments = block:
     var result = 0
@@ -83,6 +83,7 @@ type
     data: UncheckedArray[byte]   # start of usable memory
 
 template align(address: int, alignment: int): int =
+  sysAssert(alignment > 0, "Alignment can't be zero")
   ((address) + (alignment - 1)) and not (alignment - 1)
 
 template align(address: pointer, alignment: int): pointer =
@@ -392,10 +393,12 @@ iterator elements(t: IntSet): int {.inline.} =
       r = r.next
 
 proc isSmallChunk(c: PChunk): bool {.inline.} =
-  return c.size <= SmallChunkSize - (SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment))
+  # careful, free big chunks can have alignment of zero
+  c.alignment != 0 and
+    c.size <= (SmallChunkSize - (SmallChunkSizeOf + alignmentOverhead(SmallChunk, c.alignment)))
 
 proc chunkUnused(c: PChunk): bool {.inline.} =
-  result = (c.prevSize and 1) == 0
+  (c.prevSize and 1) == 0
 
 iterator allObjects(m: var MemRegion): pointer {.inline.} =
   m.locked = true
@@ -719,9 +722,11 @@ proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = M
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
   var size = roundup(requestedSize, alignment)
   var resultOffset = 0
-  if offset > 0 and offset mod alignment != 0:
+  if offset mod alignment != 0:
     # there will be an extra free space at the beginning:
     resultOffset = alignment - offset mod alignment
+    if size - resultOffset < requestedSize:
+      size.inc alignment
 
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
@@ -744,7 +749,7 @@ proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = M
       let alignedDataStart = align(addr(c.data), alignment)
       listAdd(a.freeSmallChunks[i], c)
       result = cast[pointer](cast[ByteAddress](alignedDataStart) +% resultOffset)
-      sysAssert(((cast[ByteAddress](result)) and (alignment-1)) == 0, "rawAlloc 4")
+      sysAssert(((cast[ByteAddress](result) + offset) and (alignment-1)) == 0, "rawAlloc 4")
     else:
       sysAssert(allocInv(a), "rawAlloc: begin c != nil")
       sysAssert(c.alignment == alignment, "rawAlloc: chunk alignment mismatch")
@@ -763,14 +768,14 @@ proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = M
         sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
       dec(c.free, size)
-      sysAssert((cast[ByteAddress](result) and (alignment-1)) == 0, "rawAlloc 9")
+      sysAssert(((cast[ByteAddress](result) + offset) and (alignment-1)) == 0, "rawAlloc 9")
       sysAssert(allocInv(a), "rawAlloc: end c != nil")
     sysAssert(allocInv(a), "rawAlloc: before c.free < size")
     if c.free < size:
       sysAssert(allocInv(a), "rawAlloc: before listRemove test")
       listRemove(a.freeSmallChunks[i], c)
       sysAssert(allocInv(a), "rawAlloc: end listRemove test")
-    sysAssert(((cast[ByteAddress](result) and PageMask) - smallChunkOverhead(c)) %%
+    sysAssert((((cast[ByteAddress](result) - resultOffset) and PageMask) - smallChunkOverhead(c)) %%
             size == 0, "rawAlloc 21")
     sysAssert(allocInv(a), "rawAlloc: end small size")
     inc a.occ, size
@@ -786,10 +791,10 @@ proc rawAllocAlignedAtOffset(a: var MemRegion, requestedSize: int, alignment = M
     let alignedDataStart = align(addr(c.data), alignment)
     result = cast[pointer](cast[ByteAddress](alignedDataStart) +% resultOffset)
     sysAssert((cast[ByteAddress](c) and (alignment-1)) == 0, "rawAlloc 13")
-    sysAssert((cast[ByteAddress](result) and (alignment-1)) == 0, "rawAlloc 14")
+    sysAssert(((cast[ByteAddress](result) + offset) and (alignment-1)) == 0, "rawAlloc 14")
     sysAssert((cast[ByteAddress](c) and PageMask) == 0, "rawAlloc: Not aligned on a page boundary")
     if a.root == nil: a.root = getBottom(a)
-    add(a, a.root, cast[ByteAddress](result), cast[ByteAddress](result)+%size)
+    add(a, a.root, cast[ByteAddress](alignedDataStart), cast[ByteAddress](result)+%size)
     inc a.occ, c.size
     trackSize(c.size)
   sysAssert(isAccessible(a, result), "rawAlloc 14")
@@ -813,8 +818,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     dec a.occ, s
     untrackSize(s)
     sysAssert a.occ >= 0, "rawDealloc: negative occupied memory (case A)"
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead(c)) %%
-               s == 0, "rawDealloc 3")
     var f = cast[ptr FreeCell](p)
     #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
     sysAssert(f.zeroField != 0, "rawDealloc 1")
@@ -838,8 +841,6 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
         listRemove(a.freeSmallChunks[i], c)
         c.size = SmallChunkSize
         freeBigChunk(a, cast[PBigChunk](c))
-    sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead(c)) %%
-               s == 0, "rawDealloc 2")
   else:
     # set to 0xff to check for usage after free bugs:
     when overwriteFree: nimSetMem(p, -1'i32, c.size -% bigChunkOverhead)
