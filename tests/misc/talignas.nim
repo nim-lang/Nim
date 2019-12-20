@@ -1,4 +1,5 @@
 discard """
+cmd: "nim $target $options -d:useSysAssert $file"
 ccodeCheck: "\\i @'NIM_ALIGN(128) NI mylocal1' .*"
 target: "c cpp"
 output: "align ok"
@@ -42,3 +43,47 @@ proc foobar() =
   echo "align ok"
 
 foobar()
+
+
+#----------------------------------------------------------------
+# Aligned allocation
+
+type
+  MyType16 = object
+    a {.align(16).}: int
+
+const qtys = 100..500 # covers small and big chunks of allocator 
+
+var x: array[10, ptr MyType16]
+for q in qtys:
+  for i in 0..<x.len:
+    x[i] = create(MyType16, q)
+    doAssert(cast[int](x[i]) mod alignof(MyType16) == 0)
+  for i in 0..<x.len:
+    dealloc(x[i])
+
+
+type
+  MyType32  = object
+    a{.align(32).}: int
+
+var y: array[10, ptr MyType32]
+for q in qtys:
+  for i in 0..<y.len:
+    y[i] = create(MyType32, q)
+    doAssert(cast[int](y[i]) mod alignof(MyType32) == 0)
+  for i in 0..<y.len:
+    dealloc(y[i])
+
+
+
+type
+  m256d {.importc: "__m256d", header: "immintrin.h".} = object
+
+var z: array[10, ptr m256d]
+for q in qtys:
+  for i in 0..<z.len:
+    z[i] = create(m256d, q)
+    doAssert(cast[int](z[i]) mod alignof(m256d) == 0)
+  for i in 0..<y.len:
+    dealloc(z[i])
