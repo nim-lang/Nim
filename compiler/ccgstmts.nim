@@ -490,12 +490,12 @@ iterator fieldValuePairs(n: PNode): tuple[memberSym, valueSym: PNode] =
         let memberSym = identDefs[i]
         yield((memberSym: memberSym, valueSym: valueSym))
 
-proc genComputedGoto(p: BProc; nAsIs: PNode) =
+proc genComputedGoto(p: BProc; n: PNode) =
   # first pass: Generate array of computed labels:
 
   # flatten the loop body because otherwise let and var sections
   # wrapped inside stmt lists by inject destructors won't be recognised
-  let n = nAsIs.flattenStmts()
+  let n = n.flattenStmts()
   var casePos = -1
   var arraySize: int
   for i in 0..<n.len:
