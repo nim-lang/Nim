@@ -2538,7 +2538,7 @@ when not defined(nimscript):
       ## Grows or shrinks a given memory block on the heap.
       ##
       ## If `p` is **nil** then a new memory block is returned with alignment `align`
-      ## In either way the block has at least ``newSize`` bytes. align` must be a power
+      ## In either way the block has at least ``newSize`` bytes. `align` must be a power
       ## of two. If ``newSize == 0`` and `p` is not **nil** ``reallocShared`` calls
       ## ``deallocShared(p)``.
       ## In other cases the block has to be freed with
