@@ -4198,10 +4198,11 @@ type
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## Represents a Nim AST node. Macros operate on this type.
 
-macro lenVarargs*(x: varargs[untyped]): int =
-  ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+when (NimMajor, NimMinor) >= (1, 1):
+  macro lenVarargs*(x: varargs[untyped]): int =
+    ## returns number of variadic arguments in `x`
+    proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+    lenVarargsImpl(x)
 
 when false:
   template eval*(blk: typed): typed =
