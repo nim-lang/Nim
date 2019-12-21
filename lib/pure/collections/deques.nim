@@ -62,6 +62,19 @@ type
     data: seq[T]
     head, tail, count, mask: int
 
+const
+  defaultInitialSize* = 4
+
+template initImpl(result: typed, initialSize: int) =
+  assert isPowerOfTwo(initialSize)
+  result.mask = initialSize-1
+  newSeq(result.data, initialSize)
+  
+template checkIfInitialized(deq: typed) =
+  when compiles(defaultInitialSize):
+    if deq.mask == 0:
+      initImpl(deq, defaultInitialSize)
+
 proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## Create a new empty deque.
   ##
@@ -73,9 +86,7 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## If you need to accept runtime values for this you could use the
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_.
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  result.initImpl(initialSize)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
@@ -134,6 +145,7 @@ proc `[]=`*[T](deq: var Deque[T], i: Natural, val: T) {.inline.} =
     a[3] = 66
     assert $a == "[99, 20, 30, 66, 50]"
 
+  checkIfInitialized(deq)
   xBoundsCheck(deq, i)
   deq.data[(deq.head + i) and deq.mask] = val
 
@@ -179,6 +191,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
     a[^3] = 77
     assert $a == "[10, 20, 77, 40, 99]"
 
+  checkIfInitialized(deq)
   xBoundsCheck(deq, deq.len - int(i))
   deq[deq.len - int(i)] = x
 
@@ -256,6 +269,7 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   return false
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
+  checkIfInitialized(deq)
   var cap = deq.mask + 1
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
