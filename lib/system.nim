@@ -4395,7 +4395,12 @@ when defined(nimNoNilSeqs2):
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
-  ## their current iteration values. Example:
+  ## their current iteration values.
+  ##
+  ## Note: This template may not work in some cases, use
+  ## `capture <sugar.html#capture.m,openArray[typed],untyped>`_ instead.
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   var myClosure : proc()
