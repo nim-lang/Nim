@@ -838,6 +838,15 @@ proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
     execExternalProgram(conf, linkCmd,
       if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
 
+proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
+  when defined(osx):
+    if optCDebug notin conf.globalOptions: return
+    # if needed, add an option to skip or override location
+    let cmd = "dsymutil " & $(exe).quoteShell
+    conf.extraCmds.add cmd
+    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+      execExternalProgram(conf, cmd, hintExecuting)
+
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
     let exitCode = p.peekExitCode
@@ -979,6 +988,7 @@ proc callCCompiler*(conf: ConfigRef) =
           linkViaResponseFile(conf, linkCmd)
         else:
           execLinkCmd(conf, linkCmd)
+        maybeRunDsymutil(conf, mainOutput)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
@@ -1066,6 +1076,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
+    lit ",\L\"extraCmds\": "
+    lit $(%* conf.extraCmds)
+
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
@@ -1131,6 +1144,14 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
     execLinkCmd(conf, linkCmd.getStr)
+    if data.hasKey("extraCmds"):
+      let extraCmds = data["extraCmds"]
+      doAssert extraCmds.kind == JArray
+      for cmd in extraCmds:
+        doAssert cmd.kind == JString, $cmd.kind
+        let cmd2 = cmd.getStr
+        execExternalProgram(conf, cmd2, hintExecuting)
+
   except:
     when declared(echo):
       echo getCurrentException().getStackTrace()
