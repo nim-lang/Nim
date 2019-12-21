@@ -1090,9 +1090,6 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
 
     lit "\L}\L"
     close(f)
-    # we really should use json apis (eg %* and %) instead of all those `lit`,
-    # no need for premature optimization
-    writeFile $jsonFile, ($jsonFile).parseFile.pretty
 
 proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
