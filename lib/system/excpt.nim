@@ -144,10 +144,10 @@ const
     (defined(nativeStackTrace) and nativeStackTraceSupported)
 
 when defined(nimStackTraceOverride):
-  type StackTraceOverrideProc* = proc (): string {.nimcall, benign, raises: [], tags: [].}
+  type StackTraceOverrideProc* = proc (): string {.nimcall, noinline, benign, raises: [], tags: [].}
     ## Procedure type for overriding the default stack trace.
 
-  var stackTraceOverrideGetTraceback: StackTraceOverrideProc = proc(): string =
+  var stackTraceOverrideGetTraceback: StackTraceOverrideProc = proc(): string {.noinline.} =
     result = "Stack trace override procedure not registered.\n"
 
   proc registerStackTraceOverride*(overrideProc: StackTraceOverrideProc) =
