@@ -426,7 +426,7 @@ proc isCell(p: pointer): bool {.inline.} =
 
 proc smallChunkIndex(size, alignment: int): int {.inline.} =
   const baseShift = msbit(MinAlignment)
-  size div MinAlignment + msbit((alignment shr baseShift).uint32)
+  (size div MinAlignment) * Alignments + msbit((alignment shr baseShift).uint32)
 
 # ------------- chunk management ----------------------------------------------
 proc pageIndex(c: PChunk): int {.inline.} =
@@ -907,7 +907,7 @@ proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
       if avlNode != nil:
         var k = cast[pointer](avlNode.key)
         var c = cast[PBigChunk](pageAddr(k))
-        sysAssert(addr(c.data) == k, " k is not the same as addr(c.data)!")
+        sysAssert(align(addr c.data, c.alignment) == k, " k is not the same as addr(c.data)!")
         if cast[ptr FreeCell](k).zeroField >% 1:
           result = k
           sysAssert isAllocatedPtr(a, result), " result wrong pointer! 1"
