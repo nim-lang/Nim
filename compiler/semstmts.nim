@@ -953,7 +953,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if chckCovered:
     if covered == toCover(c, n[0].typ):
       hasElse = true
-    elif n[0].typ.skipTypes(abstractRange).kind == tyEnum:
+    elif n[0].typ.skipTypes(abstractRange).kind in {tyEnum, tyChar}:
       localError(c.config, n.info, "not all cases are covered; missing: $1" %
                  formatMissingEnums(c, n))
     else:
