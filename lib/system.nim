@@ -1976,6 +1976,9 @@ proc compileOption*(option, arg: string): bool {.
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
+proc getCompileOption*(option: string): string {.
+  magic: "CompileOptionString", noSideEffect.}
+
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own

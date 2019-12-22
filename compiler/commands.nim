@@ -299,6 +299,37 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "oldast": result = contains(conf.options, optOldAst)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
+proc getCompileOptionString*(conf: ConfigRef; switch: string; info: TLineInfo): string =
+  case switch.normalize
+  of "arguments": result = conf.arguments
+  of "outfile": result = conf.outFile.string
+  of "outdir": result = conf.outDir.string
+  of "nimcachedir": result = conf.nimcacheDir.string
+  of "projectname": result = conf.projectName
+  of "projectpath": result = conf.projectPath.string
+  of "projectfull": result = conf.projectFull.string
+  of "command": result = conf.command
+  of "commandline": result = conf.commandLine
+  of "linkoptions": result = conf.linkOptions
+  of "compileoptions": result = conf.compileOptions
+  of "ccompilerpath": result = conf.cCompilerPath
+  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+
+proc getCompileOptionSeq*(conf: ConfigRef; switch: string; info: TLineInfo): seq[string] =
+  case switch.normalize
+  of "nimblepaths":
+    for i in conf.nimblePaths: result.add i.string
+  of "searchpaths":
+    for i in conf.searchPaths: result.add i.string
+  of "lazypaths":
+    for i in conf.lazyPaths: result.add i.string
+  of "commandargs": result = conf.commandArgs
+  of "cincludes":
+    for i in conf.cIncludes: result.add i.string
+  of "clibs":
+    for i in conf.cLibs: result.add i.string
+  else: invalidCmdLineOption(conf, passCmd1, switch, info)
+
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
                  notRelativeToProj = false): AbsoluteDir =
   let p = if os.isAbsolute(path) or '$' in path:
