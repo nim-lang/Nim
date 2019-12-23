@@ -143,7 +143,7 @@ template unameRelease(cmd, cache): untyped =
     cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
   cache
 
-template uname(): untyped = unameRelease("uname -o", unameRes)
+template uname(): untyped = unameRelease("uname -a", unameRes)
 template release(): untyped = unameRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
