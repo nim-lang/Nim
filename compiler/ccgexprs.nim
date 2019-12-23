@@ -2876,44 +2876,47 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
   case n.kind
   of nkHiddenStdConv, nkHiddenSubConv:
     result = genBracedInit(p, n[1], isConst)
-  of nkCurly:
-    var cs: TBitSet
-    toBitSet(p.config, n, cs)
-    result = genRawSetData(cs, int(getSize(p.config, n.typ)))
-  of nkBracket, nkPar, nkTupleConstr, nkClosure:
+  else:
     var t = skipTypes(n.typ, abstractInstOwned)
-    if t.kind == tySequence:
+    case t.kind
+    of tySet:
+      var cs: TBitSet
+      toBitSet(p.config, n, cs)
+      result = genRawSetData(cs, int(getSize(p.config, n.typ)))
+    of tySequence:
       if optSeqDestructors in p.config.globalOptions:
         result = genConstSeqV2(p, n, n.typ, isConst)
       else:
         result = genConstSeq(p, n, n.typ, isConst)
-    elif t.kind == tyProc and t.callConv == ccClosure and n.len > 1 and
-         n[1].kind == nkNilLit:
-      # Conversion: nimcall -> closure.
-      # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
-      # this behaviour is needed since closure_var = nil must be
-      # expanded to {NIM_NIL,NIM_NIL}
-      # in VM closures are initialized with nkPar(nkNilLit, nkNilLit)
-      # leading to duplicate code like this:
-      # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
-      if n[0].kind == nkNilLit:
-        result = ~"{NIM_NIL,NIM_NIL}"
+    of tyProc:
+      if t.callConv == ccClosure and n.len > 1 and n[1].kind == nkNilLit:
+        # Conversion: nimcall -> closure.
+        # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
+        # this behaviour is needed since closure_var = nil must be
+        # expanded to {NIM_NIL,NIM_NIL}
+        # in VM closures are initialized with nkPar(nkNilLit, nkNilLit)
+        # leading to duplicate code like this:
+        # "{NIM_NIL,NIM_NIL}, {NIM_NIL,NIM_NIL}"
+        if n[0].kind == nkNilLit:
+          result = ~"{NIM_NIL,NIM_NIL}"
+        else:
+          var d: TLoc
+          initLocExpr(p, n[0], d)
+          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
+      else:
+        result = ~"NIM_NIL"
+    of tyArray, tyTuple, tyOpenArray, tyVarargs:
+      result = genConstSimpleList(p, n, isConst)
+    of tyObject:
+      result = genConstObjConstr(p, n, isConst)
+    of tyString, tyCString:
+      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit:
+        result = genStringLiteralV2Const(p.module, n, isConst)
       else:
         var d: TLoc
-        initLocExpr(p, n[0], d)
-        result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
-    else:
-      result = genConstSimpleList(p, n, isConst)
-  of nkObjConstr:
-    result = genConstObjConstr(p, n, isConst)
-  of nkStrLit..nkTripleStrLit:
-    if optSeqDestructors in p.config.globalOptions:
-      result = genStringLiteralV2Const(p.module, n, isConst)
+        initLocExpr(p, n, d)
+        result = rdLoc(d)
     else:
       var d: TLoc
       initLocExpr(p, n, d)
       result = rdLoc(d)
-  else:
-    var d: TLoc
-    initLocExpr(p, n, d)
-    result = rdLoc(d)
