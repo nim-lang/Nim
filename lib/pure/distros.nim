@@ -136,7 +136,7 @@ const
 
 # we cache the result of the 'uname -a'
 # execution for faster platform detections.
-var unameRes, releaseRes, hostnamectlRes: string
+var unameRes, releaseRes, hostnamectlRes, etcOsRes: string
 
 template unameRelease(cmd, cache): untyped =
   if cache.len == 0:
@@ -146,6 +146,7 @@ template unameRelease(cmd, cache): untyped =
 template uname(): untyped = unameRelease("uname -o", unameRes)
 template release(): untyped = unameRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
+template etcOs(): untyped = unameRelease("grep '^NAME' /etc/os-release", etcOsRes)
 
 proc detectOsImpl(d: Distribution): bool =
   case d
@@ -154,9 +155,12 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
-  of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
-     Distribution.OpenBSD:
+  of Distribution.FreeBSD, Distribution.OpenBSD:
     result = ("-" & $d & " ") in uname()
+  of Distribution.Ubuntu:
+    result = "Ubuntu" in etcOs()
+  of Distribution.Gentoo:
+    result = "Gentoo" in etcOs()
   of Distribution.RedHat:
     result = "Red Hat" in uname()
   of Distribution.BSD: result = defined(bsd)
