@@ -2904,7 +2904,9 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
           initLocExpr(p, n[0], d)
           result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
       else:
-        result = ~"NIM_NIL"
+        var d: TLoc
+        initLocExpr(p, n, d)
+        result = rdLoc(d)
     of tyArray, tyTuple, tyOpenArray, tyVarargs:
       result = genConstSimpleList(p, n, isConst)
     of tyObject:
