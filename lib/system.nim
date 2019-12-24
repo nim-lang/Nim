@@ -2469,7 +2469,7 @@ when not defined(nimscript):
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
 
-    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
+    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes.
       ##
@@ -2482,7 +2482,7 @@ when not defined(nimscript):
       ##
       ## See also:
       ## `allocShared0 <#allocShared0,Natural>`_.
-    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
+    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
                                                                  benign, raises: [].} =
       ## Allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes.
@@ -2498,7 +2498,7 @@ when not defined(nimscript):
       ## * `createShared <#createShared,typedesc>`_
       cast[ptr T](allocShared(T.sizeof * size))
 
-    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
+    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes.
       ##
@@ -2522,7 +2522,7 @@ when not defined(nimscript):
       ## `createSharedU <#createSharedU,typedesc>`_.
       cast[ptr T](allocShared0(T.sizeof * size))
 
-    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
+    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
                                                                  benign, raises: [].}
       ## Grows or shrinks a given memory block on the heap.
       ##
@@ -2543,7 +2543,7 @@ when not defined(nimscript):
       ## `freeShared <#freeShared,ptr.T>`_.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [].}
+    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
       ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``.
       ##
