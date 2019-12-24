@@ -3764,7 +3764,7 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone" and not usesDestructors: include "system/channels"
+      when hostOS != "standalone": include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
     when not usesDestructors:
