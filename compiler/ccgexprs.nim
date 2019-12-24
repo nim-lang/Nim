@@ -2877,8 +2877,15 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
   of nkHiddenStdConv, nkHiddenSubConv:
     result = genBracedInit(p, n[1], isConst)
   else:
-    var t = skipTypes(n.typ, abstractInstOwned)
-    case t.kind
+    var ty = tyNone
+    if n.typ == nil:
+      if n.kind in nkStrKinds:
+        ty = tyString
+      else:
+        internalError(p.config, n.info, "node has no type")
+    else:
+      ty = skipTypes(n.typ, abstractInstOwned).kind
+    case ty
     of tySet:
       var cs: TBitSet
       toBitSet(p.config, n, cs)
@@ -2889,7 +2896,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
       else:
         result = genConstSeq(p, n, n.typ, isConst)
     of tyProc:
-      if t.callConv == ccClosure and n.len > 1 and n[1].kind == nkNilLit:
+      if n.typ.callConv == ccClosure and n.len > 1 and n[1].kind == nkNilLit:
         # Conversion: nimcall -> closure.
         # this hack fixes issue that nkNilLit is expanded to {NIM_NIL,NIM_NIL}
         # this behaviour is needed since closure_var = nil must be
@@ -2902,7 +2909,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
         else:
           var d: TLoc
           initLocExpr(p, n[0], d)
-          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, t, clHalfWithEnv), rdLoc(d)]
+          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, n.typ, clHalfWithEnv), rdLoc(d)]
       else:
         var d: TLoc
         initLocExpr(p, n, d)
