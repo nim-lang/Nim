@@ -1037,6 +1037,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
   ## is returned. Follows symlinks.
   ##
   ## See also:
+  ## * `checkDir proc <#checkDir,OSErrorCode>`_
   ## * `existsFile proc <#existsFile,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
@@ -1049,6 +1050,27 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
   else:
     var res: Stat
     return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
+
+proc checkDir*(dir: string): OSErrorCode {.rtl, extern: "nos$1",
+                                          tags: [ReadDirEffect], noNimScript.} =
+  ## Returns 0 if opening `dir` as a directory succeeds (`dir` exists and is a
+  ## readable directory), otherwise returns the OS error code. Follows symlinks.
+  ##
+  ## See also:
+  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
+  ## * `existsDir proc <#existsDir,string>`_
+  ## * `symlinkExists proc <#symlinkExists,string>`_
+  when defined(windows):
+      var f: WIN32_FIND_DATA
+      var h = findFirstFile(dir / "*", f)
+      defer: findClose(h)
+      if h == -1:
+        result = osLastError()
+  else:
+      var d = opendir(dir)
+      defer: discard closedir(d)
+      if d == nil:
+        result = osLastError()
 
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
