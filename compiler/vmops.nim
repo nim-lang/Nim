@@ -91,7 +91,7 @@ template wrapDangerous(op, modop) {.dirty.} =
 
 proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, if a.currentException.isNil: ""
-               else: a.currentException.sons[3].skipColon.strVal)
+               else: a.currentException[3].skipColon.strVal)
 
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, a.currentException)
@@ -191,7 +191,7 @@ proc registerAdditionalOps*(c: PCtx) =
     let ePos = a.getInt(2).int
     let arr = a.getNode(0)
     var bytes = newSeq[byte](arr.len)
-    for i in 0 ..< arr.len:
+    for i in 0..<arr.len:
       bytes[i] = byte(arr[i].intVal and 0xff)
 
     var res = hashes.hash(bytes, sPos, ePos)

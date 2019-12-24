@@ -36,7 +36,7 @@ proc `|abs|`*(a: BiggestInt): BiggestInt =
     result = low(a)
 
 proc `|div|`*(a, b: BiggestInt): BiggestInt =
-  # (0..5) div (0..4) == (0..5) div (1..4) == (0 div 4) .. (5 div 1)
+  # (0..5) div (0..4) == (0..5) div (1..4) == (0 div 4)..(5 div 1)
   if b == 0'i64:
     # make the same as ``div 1``:
     result = a

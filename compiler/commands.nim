@@ -110,7 +110,7 @@ proc writeCommandLineUsage*(conf: ConfigRef) =
   msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
 
 proc addPrefix(switch: string): string =
-  if len(switch) <= 1: result = "-" & switch
+  if switch.len <= 1: result = "-" & switch
   else: result = "--" & switch
 
 const
@@ -127,14 +127,14 @@ proc splitSwitch(conf: ConfigRef; switch: string, cmd, arg: var string, pass: TC
                  info: TLineInfo) =
   cmd = ""
   var i = 0
-  if i < len(switch) and switch[i] == '-': inc(i)
-  if i < len(switch) and switch[i] == '-': inc(i)
-  while i < len(switch):
+  if i < switch.len and switch[i] == '-': inc(i)
+  if i < switch.len and switch[i] == '-': inc(i)
+  while i < switch.len:
     case switch[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': add(cmd, switch[i])
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_', '.': cmd.add(switch[i])
     else: break
     inc(i)
-  if i >= len(switch): arg = ""
+  if i >= switch.len: arg = ""
   # cmd:arg => (cmd,arg)
   elif switch[i] in {':', '='}: arg = substr(switch, i + 1)
   # cmd[sub]:rest => (cmd,[sub]:rest)
@@ -178,17 +178,17 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
   var i = 0
   var n = hintMin
   var isBracket = false
-  if i < len(arg) and arg[i] == '[':
+  if i < arg.len and arg[i] == '[':
     isBracket = true
     inc(i)
-  while i < len(arg) and (arg[i] notin {':', '=', ']'}):
-    add(id, arg[i])
+  while i < arg.len and (arg[i] notin {':', '=', ']'}):
+    id.add(arg[i])
     inc(i)
   if isBracket:
-    if i < len(arg) and arg[i] == ']': inc(i)
+    if i < arg.len and arg[i] == ']': inc(i)
     else: invalidCmdLineOption(conf, pass, orig, info)
 
-  if i < len(arg) and (arg[i] in {':', '='}): inc(i)
+  if i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
     let x = findStr(lineinfos.HintsToStr, id)
@@ -229,7 +229,8 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "v2": result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
-    of "destructors", "arc": result = conf.selectedGC == gcDestructors
+    of "destructors", "arc": result = conf.selectedGC == gcArc
+    of "orc": result = conf.selectedGC == gcOrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
@@ -367,8 +368,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   case switch.normalize
   of "path", "p":
     expectArg(conf, switch, arg, pass, info)
-    addPath(conf, if pass == passPP: processCfgPath(conf, arg, info)
-                  else: processPath(conf, arg, info), info)
+    for path in nimbleSubs(conf, arg):
+      addPath(conf, if pass == passPP: processCfgPath(conf, path, info)
+                    else: processPath(conf, path, info), info)
   of "nimblepath", "babelpath":
     # keep the old name for compat
     if pass in {passCmd2, passPP} and optNoNimblePath notin conf.globalOptions:
@@ -391,15 +393,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.lazyPaths.keepItIf(it != path)
   of "nimcache":
     expectArg(conf, switch, arg, pass, info)
-    conf.nimcacheDir = processPath(conf, arg, info, true)
+    conf.nimcacheDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "out", "o":
     expectArg(conf, switch, arg, pass, info)
-    let f = splitFile(arg.expandTilde)
+    let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
     conf.outFile = RelativeFile f.name & f.ext
     conf.outDir = toAbsoluteDir f.dir
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
-    conf.outDir = toAbsoluteDir arg.expandTilde
+    conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
@@ -454,8 +456,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
-        conf.selectedGC = gcDestructors
+        conf.selectedGC = gcArc
         defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcarc")
+        incl conf.globalOptions, optSeqDestructors
+        incl conf.globalOptions, optTinyRtti
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
+          defineSymbol(conf.symbols, "nimV2")
+      of "orc":
+        conf.selectedGC = gcOrc
+        defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcorc")
         incl conf.globalOptions, optSeqDestructors
         incl conf.globalOptions, optTinyRtti
         if pass in {passCmd2, passPP}:
@@ -626,6 +638,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
   of "listcmd":
     processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
+  of "asm":
+    processOnOffSwitchG(conf, {optProduceAsm}, arg, pass, info)
   of "genmapping":
     processOnOffSwitchG(conf, {optGenMapping}, arg, pass, info)
   of "os":

@@ -18,7 +18,7 @@ type
 
 when defined(nimv2):
 
-  import core / allocators
+  import system / allocators
 
   type
     WideCString* = ptr UncheckedArray[Utf16Char]

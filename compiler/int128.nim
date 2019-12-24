@@ -162,7 +162,7 @@ proc castToUInt64*(arg: Int128): uint64 =
   cast[uint64](bitconcat(arg.udata[1], arg.udata[0]))
 
 proc addToHex(result: var string; arg: uint32) =
-  for i in 0 ..< 8:
+  for i in 0..<8:
     let idx = (arg shr ((7-i) * 4)) and 0xf
     result.add "0123456789abcdef"[idx]
 
@@ -335,7 +335,6 @@ proc `*`(a: Int128, b: uint32): Int128 =
   result.udata[3] = cast[uint32](tmp3) + cast[uint32](tmp2 shr 32)
 
 proc `*`*(a: Int128, b: int32): Int128 =
-  let isNegative = isNegative(a) xor isNegative(b)
   result = a * cast[uint32](abs(b))
   if b < 0:
     result = -result
@@ -356,8 +355,6 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs,rhs: Int128): Int128 =
-  let isNegative = isNegative(lhs) xor isNegative(rhs)
-
   let
     a = cast[uint64](lhs.udata[0])
     b = cast[uint64](lhs.udata[1])
@@ -378,9 +375,6 @@ proc `*`*(lhs,rhs: Int128): Int128 =
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result = result + toInt128(a32 * b00) shl 32
   result = result + toInt128(a00 * b32) shl 32
-
-  if isNegative != isNegative(result):
-    assert(false, "overflow")
 
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
@@ -430,7 +424,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   # Uses shift-subtract algorithm to divide dividend by denominator. The
   # remainder will be left in dividend.
-  for i in 0 .. shift:
+  for i in 0..shift:
     quotient = quotient shl 1
     if dividend >= denominator:
       dividend = dividend - denominator
@@ -492,7 +486,7 @@ proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
     pos += 1
 
   result = Zero
-  while pos < arg.len and arg[pos] in '0' .. '9':
+  while pos < arg.len and arg[pos] in '0'..'9':
     result = result * Ten
     result.inc(uint32(arg[pos]) - uint32('0'))
     pos += 1
@@ -549,8 +543,6 @@ template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
 
 proc toInt128*(arg: float64): Int128 =
   let isNegative = arg < 0
-  assert(arg <  0x47E0000000000000'f64, "out of range")
-  assert(arg >= 0xC7E0000000000000'f64, "out of range")
   let v0 = ldexp(abs(arg), -100)
   let w0 = uint64(trunc(v0))
   let v1 = ldexp(v0 - float64(w0), 50)
@@ -654,8 +646,8 @@ when isMainModule:
   d[37] = parseDecimalInt128("10000000000000000000000000000000000000")
   d[38] = parseDecimalInt128("100000000000000000000000000000000000000")
 
-  for i in 0 ..< d.len:
-    for j in 0 ..< d.len:
+  for i in 0..<d.len:
+    for j in 0..<d.len:
       doAssert(cmp(d[i], d[j]) == cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == d[i+j]
@@ -672,8 +664,8 @@ when isMainModule:
   for it in d.mitems:
     it = -it
 
-  for i in 0 ..< d.len:
-    for j in 0 ..< d.len:
+  for i in 0..<d.len:
+    for j in 0..<d.len:
       doAssert(cmp(d[i], d[j]) == -cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == -d[i+j]
@@ -685,6 +677,9 @@ when isMainModule:
 
   var ma = 100'i64
   var mb = 13
+
+  doAssert toInt128(ma) * toInt128(0) == toInt128(0)
+  doAssert toInt128(-ma) * toInt128(0) == toInt128(0)
 
   # sign correctness
   doAssert divMod(toInt128( ma),toInt128( mb)) == (toInt128( ma div  mb), toInt128( ma mod  mb))

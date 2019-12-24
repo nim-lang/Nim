@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci]
+# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci] [![builds.sr.ht freebsd status](https://builds.sr.ht/~araq/nim/freebsd.yml.svg)](https://builds.sr.ht/~araq/nim/freebsd.yml?)
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for

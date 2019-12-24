@@ -89,6 +89,7 @@ type                          # please make sure we have under 32 options
     optMultiMethods
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
+    optProduceAsm             # produce assembler code
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -115,7 +116,7 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
     gcHooks,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
@@ -146,6 +147,10 @@ type
       ## Allows to modify a NimNode where the type has already been
       ## flagged with nfSem. If you actually do this, it will cause
       ## bugs.
+    checkUnsignedConversions
+      ## Historically and especially in version 1.0.0 of the language
+      ## conversions to unsigned numbers were checked. In 1.0.4 they
+      ## are not anymore.
 
   SymbolFilesOption* = enum
     disabledSf, writeOnlySf, readOnlySf, v2Sf
@@ -229,12 +234,13 @@ type
                              ## symbols are always guaranteed to be style
                              ## insensitive. Otherwise hell would break lose.
     packageCache*: StringTableRef
+    nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
-    dllOverrides, moduleOverrides*: StringTableRef
+    dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
     projectFull*: AbsoluteFile # projectPath/projectName
@@ -243,6 +249,7 @@ type
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
+    extraCmds*: seq[string] # for writeJsonBuildInstructions
     keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
@@ -342,6 +349,7 @@ proc newConfigRef*(): ConfigRef =
     libpath: AbsoluteDir"", nimcacheDir: AbsoluteDir"",
     dllOverrides: newStringTable(modeCaseInsensitive),
     moduleOverrides: newStringTable(modeStyleInsensitive),
+    cfileSpecificOptions: newStringTable(modeCaseSensitive),
     projectName: "", # holds a name like 'nim'
     projectPath: AbsoluteDir"", # holds a path like /home/alice/projects/nim/compiler/
     projectFull: AbsoluteFile"", # projectPath/projectName
@@ -530,24 +538,26 @@ proc shortenDir*(conf: ConfigRef; dir: string): string {.
   ## returns the interesting part of a dir
   var prefix = conf.projectPath.string & DirSep
   if startsWith(dir, prefix):
-    return substr(dir, len(prefix))
+    return substr(dir, prefix.len)
   prefix = getPrefixDir(conf).string & DirSep
   if startsWith(dir, prefix):
-    return substr(dir, len(prefix))
+    return substr(dir, prefix.len)
   result = dir
 
 proc removeTrailingDirSep*(path: string): string =
-  if (len(path) > 0) and (path[len(path) - 1] == DirSep):
-    result = substr(path, 0, len(path) - 2)
+  if (path.len > 0) and (path[^1] == DirSep):
+    result = substr(path, 0, path.len - 2)
   else:
     result = path
 
 proc disableNimblePath*(conf: ConfigRef) =
   incl conf.globalOptions, optNoNimblePath
   conf.lazyPaths.setLen(0)
+  conf.nimblePaths.setLen(0)
 
 proc clearNimblePath*(conf: ConfigRef) =
   conf.lazyPaths.setLen(0)
+  conf.nimblePaths.setLen(0)
 
 include packagehandling
 
@@ -577,9 +587,16 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "projectname", conf.projectName,
     "projectpath", conf.projectPath.string,
     "projectdir", conf.projectPath.string,
-    "nimcache", getNimcacheDir(conf).string])
-  if "~/" in result:
-    result = result.replace("~/", home & '/')
+    "nimcache", getNimcacheDir(conf).string]).expandTilde
+
+iterator nimbleSubs*(conf: ConfigRef; p: string): string =
+  let pl = p.toLowerAscii
+  if "$nimblepath" in pl or "$nimbledir" in pl:
+    for i in countdown(conf.nimblePaths.len-1, 0):
+      let nimblePath = removeTrailingDirSep(conf.nimblePaths[i].string)
+      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
+  else:
+    yield p
 
 proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
                       ext: string): AbsoluteFile =
@@ -627,7 +644,7 @@ template patchModule(conf: ConfigRef) {.dirty.} =
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
 
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile {.procvar.} =
+proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
     result = if f.existsFile: AbsoluteFile(f) else: AbsoluteFile""
   else:

@@ -5,7 +5,7 @@ clicked!
 6 6  alloc/dealloc pairs: 0'''
 """
 
-import core / allocators
+import system / allocators
 import system / ansi_c
 
 type

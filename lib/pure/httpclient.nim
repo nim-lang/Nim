@@ -175,6 +175,8 @@
 ##    let client = newHttpClient(maxRedirects = 0)
 ##
 
+include "system/inclrtl"
+
 import net, strutils, uri, parseutils, base64, os, mimetypes,
   math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
@@ -228,7 +230,7 @@ proc lastModified*(response: Response | AsyncResponse): DateTime =
   ## Raises a ``ValueError`` if the parsing fails or the value is not a correctly
   ## formatted time.
   var lastModifiedHeader = response.headers.getOrDefault("last-modified")
-  result = parse(lastModifiedHeader, "dd, dd MMM yyyy HH:mm:ss Z")
+  result = parse(lastModifiedHeader, "ddd, dd MMM yyyy HH:mm:ss 'GMT'", utc())
 
 proc body*(response: Response): string =
   ## Retrieves the specified response's body.
@@ -278,10 +280,10 @@ proc fileError(msg: string) =
 
 
 when not defined(ssl):
-  type SSLContext = ref object
-var defaultSslContext {.threadvar.}: SSLContext
+  type SslContext = ref object
+var defaultSslContext {.threadvar.}: SslContext
 
-proc getDefaultSSL(): SSLContext =
+proc getDefaultSSL(): SslContext =
   result = defaultSslContext
   when defined(ssl):
     if result == nil:
@@ -296,6 +298,17 @@ proc newProxy*(url: string, auth = ""): Proxy =
 proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
+
+
+proc `$`*(data: MultipartData): string {.since: (1, 1).} =
+  ## convert MultipartData to string so it's human readable when echo
+  ## see https://github.com/nim-lang/Nim/issues/11863
+  const prefixLen = "Content-Disposition: form-data; ".len
+  for pos, item in data.content:
+    result &= "------------------------------  "
+    result.addInt pos
+    result &= "  ------------------------------\n"
+    result &= item[prefixLen .. item.high]
 
 proc add*(p: var MultipartData, name, content: string, filename: string = "",
           contentType: string = "") =
@@ -734,7 +747,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       # Parse HTTP version info and status code.
       var le = skipIgnoreCase(line, "HTTP/", linei)
       if le <= 0:
-        httpError("invalid http version, " & line.repr)
+        httpError("invalid http version, `" & line & "`")
       inc(linei, le)
       le = skipIgnoreCase(line, "1.1", linei)
       if le > 0: result.version = "1.1"

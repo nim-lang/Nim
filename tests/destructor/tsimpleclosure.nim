@@ -8,7 +8,7 @@ hello
 2 2  alloc/dealloc pairs: 0'''
 """
 
-import core / allocators
+import system / allocators
 import system / ansi_c
 
 proc main(): owned(proc()) =

@@ -1,12 +1,12 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''OK 3
-5 1'''
+5 2'''
 """
 
 import strutils, math
 import system / ansi_c
-import core / allocators
+import system / allocators
 
 proc mainA =
   try:

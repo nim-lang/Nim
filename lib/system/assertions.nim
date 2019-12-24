@@ -44,7 +44,7 @@ template assert*(cond: untyped, msg = "") =
   ## to be caught by unit testing frameworks.
   ##
   ## The compiler may not generate any code at all for ``assert`` if it is
-  ## advised to do so through the ``-d:release`` or ``--assertions:off``
+  ## advised to do so through the ``-d:danger`` or ``--assertions:off``
   ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))

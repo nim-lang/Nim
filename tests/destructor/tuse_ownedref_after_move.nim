@@ -4,7 +4,7 @@ discard """
   line: 49
 """
 
-import core / allocators
+import system / allocators
 import system / ansi_c
 
 type

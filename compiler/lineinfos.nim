@@ -37,7 +37,7 @@ type
     warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnCaseTransition, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed,
     hintConvToBaseNotNeeded,
@@ -94,6 +94,7 @@ const
     warnResultShadowed: "Special variable 'result' is shadowed.",
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
+    warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
@@ -139,7 +140,7 @@ const
     "UnsafeCode", "UnusedImport", "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "CaseTransition", "User"]
+    "Spacing", "CaseTransition", "CycleCreated", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",

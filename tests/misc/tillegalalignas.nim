@@ -4,4 +4,4 @@ errormsg: "power of two or 0 expected"
 """
 
 proc foobar() =
-  let something {.alignas(33).} = 123
+  let something {.align(33).} = 123

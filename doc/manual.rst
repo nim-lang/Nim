@@ -1644,7 +1644,7 @@ object branch, the initialization is considered valid. This analysis only works
 for immutable discriminators of an ordinal type and disregards ``elif``
 branches. For discriminator values with a ``range`` type, the compiler
 checks if the entire range of possible values for the discriminator value is
-valid for the choosen object branch.
+valid for the chosen object branch.
 
 A small example:
 
@@ -3188,6 +3188,7 @@ has lots of advantages:
 
 Type conversions
 ----------------
+
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
@@ -3206,6 +3207,19 @@ A type conversion can also be used to disambiguate overloaded routines:
 
   let procVar = (proc(x: string))(p)
   procVar("a")
+
+Since operations on unsigned numbers wrap around and are unchecked so are
+type conversion to unsigned integers and between unsigned integers. The
+rationale for this is mostly better interoperability with the C Programming
+language when algorithms are ported from C to Nim.
+
+Exception: Values that are converted to an unsigned type at compile time
+are checked so that code like ``byte(-1)`` does not compile.
+
+**Note**: Historically the operations
+were unchecked and the conversions were sometimes checked but starting with
+the revision 1.0.4 of this document and the language implementation the
+conversions too are now *always unchecked*.
 
 
 Type casts
@@ -3426,14 +3440,14 @@ different; for this a special setter syntax is needed:
     ## setter of hostAddr.
     ## This accesses the 'host' field and is not a recursive call to
     ## ``host=`` because the builtin dot access is preferred if it is
-    ## avaliable:
+    ## available:
     s.host = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of hostAddr
     ## This accesses the 'host' field and is not a recursive call to
     ## ``host`` because the builtin dot access is preferred if it is
-    ## avaliable:
+    ## available:
     s.host
 
 .. code-block:: nim
@@ -3507,7 +3521,8 @@ Creating closures in loops
 
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope
-<system.html#closureScope.t,untyped>`_ for details on how to change this behavior.
+<system.html#closureScope.t,untyped>`_ and `capture
+<sugar.html#capture.m,openArray[typed],untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
@@ -3665,7 +3680,7 @@ a syntax like:
   proc foo(other: Y; container: var X): var T from container
 
 Here ``var T from container`` explicitly exposes that the
-location is deviated from the second parameter (called
+location is derived from the second parameter (called
 'container' in this case). The syntax ``var T from p`` specifies a type
 ``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
 
@@ -4115,6 +4130,23 @@ error message from ``e``, and for such situations it is enough to use
   except:
     echo getCurrentExceptionMsg()
 
+Custom exceptions
+-----------------
+
+Is it possible to create custom exceptions. These make it easy to distinguish between exceptions raised by nim and those from your own code.
+
+A custom exception is a custom type:
+
+.. code-block:: nim
+  type
+    LoadError* = object of Exception
+
+Ending the custom exception's name with ``Error`` is recommended.
+
+Custom exceptions can be raised like any others, e.g.:
+
+.. code-block:: nim
+  raise newException(LoadError, "Failed to load data")
 
 Defer statement
 ---------------
@@ -5395,7 +5427,7 @@ expression by coercing it to a corresponding ``static`` type:
 
   echo static(fac(5)), " ", static[bool](16.isPowerOfTwo)
 
-The complier will report any failure to evaluate the expression or a
+The compiler will report any failure to evaluate the expression or a
 possible type mismatch error.
 
 typedesc[T]
@@ -5407,7 +5439,7 @@ all values must have a type, ``typedesc`` is considered their special type.
 
 ``typedesc`` acts like a generic type. For instance, the type of the symbol
 ``int`` is ``typedesc[int]``. Just like with regular generic types, when the
-generic param is ommited, ``typedesc`` denotes the type class of all types.
+generic param is omitted, ``typedesc`` denotes the type class of all types.
 As a syntactic convenience, you can also use ``typedesc`` as a modifier.
 
 Procs featuring ``typedesc`` params are considered implicitly generic.
@@ -5986,8 +6018,32 @@ The ``noreturn`` pragma is used to mark a proc that never returns.
 
 acyclic pragma
 --------------
-The ``acyclic`` pragma applies to type declarations. It is deprecated and
-ignored.
+The ``acyclic`` pragma can be used for object types to mark them as acyclic
+even though they seem to be cyclic. This is an **optimization** for the garbage
+collector to not consider objects of this type as part of a cycle:
+
+.. code-block:: nim
+  type
+    Node = ref NodeObj
+    NodeObj {.acyclic.} = object
+      left, right: Node
+      data: string
+
+Or if we directly use a ref object:
+
+.. code-block:: nim
+  type
+    Node {.acyclic.} = ref object
+      left, right: Node
+      data: string
+
+In the example a tree structure is declared with the ``Node`` type. Note that
+the type definition is recursive and the GC has to assume that objects of
+this type may form a cyclic graph. The ``acyclic`` pragma passes the
+information that this cannot happen to the GC. If the programmer uses the
+``acyclic`` pragma for data types that are in reality cyclic, the memory leaks
+can be the result, but memory safety is preserved.
+
 
 
 final pragma
@@ -6433,38 +6489,39 @@ generates:
     unsigned int flag:1;
   };
 
-Alignas pragma
---------------
 
-The ``alignas`` pragma is for variables and object field members. It
-modifies the alignment requirement of the thing being declared. The
-argument must be a constant power of 2 or 0.  Valid non-zero
-alignments that are weaker than another alignas pragmas on the same
-declaration are ignored.  Alignments that are weaker that the
-alignment requirement of the type are ignored. ``alignas(0)`` is
-always ignored.
+Align pragma
+------------
+
+The `align`:idx: pragma is for variables and object field members. It
+modifies the alignment requirement of the entity being declared. The
+argument must be a constant power of 2. Valid non-zero
+alignments that are weaker than nother align pragmas on the same
+declaration are ignored. Alignments that are weaker that the
+alignment requirement of the type are ignored.
 
 .. code-block:: Nim
 
    type
      sseType = object
-       sseData {.alignas(16).}: array[4,float32]
+       sseData {.align(16).}: array[4, float32]
 
      # every object will be aligned to 128-byte boundary
      Data = object
        x: char
-       cacheline {.alignas(128).}: array[128, char] # over-aligned array of char,
+       cacheline {.align(128).}: array[128, char] # over-aligned array of char,
 
    proc main() =
      echo "sizeof(Data) = ", sizeof(Data), " (1 byte + 127 bytes padding + 128-byte array)"
      # output: sizeof(Data) = 256 (1 byte + 127 bytes padding + 128-byte array)
      echo "alignment of sseType is ", alignof(sseType)
      # output: alignment of sseType is 16
-     var d {.alignas(2048).}: Data # this instance of data is aligned even stricter
+     var d {.align(2048).}: Data # this instance of data is aligned even stricter
 
    main()
 
-This pragma has no effect on nimvm or the js backend.
+This pragma has no effect for the JS backend.
+
 
 Volatile pragma
 ---------------
@@ -6545,18 +6602,31 @@ The ``link`` pragma can be used to link an additional file with the project:
 
 PassC pragma
 ------------
-The ``passC`` pragma can be used to pass additional parameters to the C
-compiler like you would using the commandline switch ``--passC``:
+The ``passc`` pragma can be used to pass additional parameters to the C
+compiler like you would using the commandline switch ``--passc``:
 
 .. code-block:: Nim
-  {.passC: "-Wall -Werror".}
+  {.passc: "-Wall -Werror".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim
-  {.passC: gorge("pkg-config --cflags sdl").}
+  {.passc: gorge("pkg-config --cflags sdl").}
+
+
+LocalPassc pragma
+-----------------
+The ``localPassc`` pragma can be used to pass additional parameters to the C
+compiler, but only for the C/C++ file that is produced from the Nim module
+the pragma resides in:
+
+.. code-block:: Nim
+  # Module A.nim
+  # Produces: A.nim.cpp
+  {.localPassc: "-Wall -Werror".} # Passed when compiling A.nim.cpp
+
 
 PassL pragma
 ------------
@@ -6677,15 +6747,6 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
 The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
-
-
-ImportJs pragma
----------------
-
-Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
-the ``importjs`` pragma can be used to import Javascript methods or
-symbols in general. The generated code then uses the Javascript method
-calling syntax: ``obj.method(arg)``.
 
 Namespaces
 ~~~~~~~~~~
@@ -6867,6 +6928,15 @@ Produces:
 .. code-block:: C
 
   std::vector<int>::iterator x;
+
+
+ImportJs pragma
+---------------
+
+Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+the ``importjs`` pragma can be used to import Javascript methods or
+symbols in general. The generated code then uses the Javascript method
+calling syntax: ``obj.method(arg)``.
 
 
 ImportObjC pragma
@@ -7085,7 +7155,7 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma has been abused in the past to also work in the
-js backand for js objects and functions. : Other backends do provide
+js backend for js objects and functions. : Other backends do provide
 the same feature under the same name. Also, when the target language
 is not set to C, other pragmas are available:
 
