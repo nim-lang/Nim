@@ -1558,15 +1558,20 @@ proc parseDirBody(p: var RstParser, contentParser: SectionParser): PRstNode =
     popInd(p)
 
 proc dirInclude(p: var RstParser): PRstNode =
-  #
-  #The following options are recognized:
-  #
-  #start-after : text to find in the external data file
-  #    Only the content after the first occurrence of the specified text will
-  #    be included.
-  #end-before : text to find in the external data file
-  #    Only the content before the first occurrence of the specified text
-  #    (but after any after text) will be included.
+  ##
+  ## The following options are recognized:
+  ##
+  ## :start-after: text to find in the external data file
+  ##
+  ##     Only the content after the first occurrence of the specified
+  ##     text will be included. If text is not found inclusion will
+  ##     start from beginning of the file
+  ##
+  ## :end-before: text to find in the external data file
+  ##
+  ##     Only the content before the first occurrence of the specified
+  ##     text (but after any after text) will be included. If text is
+  ##     not found inclusion will happen until the end of the file.
   #literal : flag (empty)
   #    The entire included text is inserted into the document as a single
   #    literal block (useful for program listings).
