@@ -1586,10 +1586,31 @@ proc dirInclude(p: var RstParser): PRstNode =
       result = newRstNode(rnLiteralBlock)
       add(result, newRstNode(rnLeaf, readFile(path)))
     else:
+      let inputString = readFile(path).string()
+      let startPosition =
+        block:
+          let searchFor = n.getFieldValue("start-after").strip()
+          if searchFor != "":
+            let pos = inputString.find(searchFor)
+            if pos != -1: pos + searchFor.len()
+            else: 0
+          else:
+            0
+
+      let endPosition =
+        block:
+          let searchFor = n.getFieldValue("end-before").strip()
+          if searchFor != "":
+            let pos = inputString.find(searchFor, start = startPosition)
+            if pos != -1: pos - 1
+            else: 0
+          else:
+            inputString.len - 1
+
       var q: RstParser
       initParser(q, p.s)
       q.filename = path
-      q.col += getTokens(readFile(path), false, q.tok)
+      q.col += getTokens(inputString[startPosition..endPosition], false, q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")
