@@ -1832,3 +1832,21 @@ proc addParam*(procType: PType; param: PSym) =
 template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
 template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
 template asink*(t: PType): PSym = t.attachedOps[attachedSink]
+
+const magicsThatCanRaise = {
+  mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst}
+
+proc canRaiseConservative*(fn: PNode): bool =
+  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
+    result = false
+  else:
+    result = true
+
+proc canRaise*(fn: PNode): bool =
+  if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
+      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc}):
+    result = false
+  else:
+    result = fn.typ != nil and ((fn.typ.n[0].len < effectListLen) or
+      (fn.typ.n[0][exceptionEffects] != nil and
+      fn.typ.n[0][exceptionEffects].safeLen > 0))

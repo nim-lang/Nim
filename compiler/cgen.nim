@@ -104,17 +104,17 @@ proc getModuleDllPath(m: BModule, s: PSym): Rope =
 
 import macros
 
-proc cgFormatValue(result: var string; value: Rope): void =
+proc cgFormatValue(result: var string; value: Rope) =
   for str in leaves(value):
     result.add str
 
-proc cgFormatValue(result: var string; value: string): void =
+proc cgFormatValue(result: var string; value: string) =
   result.add value
 
-proc cgFormatValue(result: var string; value: BiggestInt): void =
+proc cgFormatValue(result: var string; value: BiggestInt) =
   result.addInt value
 
-proc cgFormatValue(result: var string; value: Int128): void =
+proc cgFormatValue(result: var string; value: Int128) =
   result.addInt128 value
 
 # TODO: please document
