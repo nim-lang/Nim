@@ -2163,6 +2163,12 @@ proc max*[T](x: openArray[T]): T =
   for i in 1..high(x):
     if result < x[i]: result = x[i]
 
+proc idxmax*[T](x: openArray[T]): T =
+  ## The index of the maximum value of `x`. ``T`` needs to have a ``<`` operator.
+  result = 0
+  for i in 1..high(x):
+    if x[result] < x[i]: result = i
+
 proc abs*(x: float): float {.magic: "AbsF64", noSideEffect.} =
   if x < 0.0: -x else: x
 proc min*(x, y: float): float {.magic: "MinF64", noSideEffect.} =
