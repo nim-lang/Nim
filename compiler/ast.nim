@@ -1763,7 +1763,7 @@ proc toObject*(typ: PType): PType =
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
 
-  if optNoCppExceptions in conf.globalOptions:
+  if conf.exc != excCpp:
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})

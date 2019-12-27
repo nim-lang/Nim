@@ -188,6 +188,7 @@ proc mainCommand*(graph: ModuleGraph) =
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
+    conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":

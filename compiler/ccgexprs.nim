@@ -2675,7 +2675,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       line(p, cpsStmts, "(void)(" & a.r & ");\L")
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt:
-    if p.module.compileToCpp and optNoCppExceptions notin p.config.globalOptions:
+    if p.config.exc == excCpp:
       genTryCpp(p, n, d)
     else:
       genTry(p, n, d)
