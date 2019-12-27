@@ -198,7 +198,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
   # Called by return and break stmts.
   # Deals with issues faced when jumping out of try/except/finally stmts.
 
-  var stack = newSeq[tuple[fin: PNode, inExcept: bool]](0)
+  var stack = newSeq[tuple[fin: PNode, inExcept: bool, label: Natural]](0)
 
   for i in 1..howManyTrys:
     let tryStmt = p.nestedTryStmts.pop
@@ -224,7 +224,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
   if p.config.exc != excCpp:
     # Pop exceptions that was handled by the
     # except-blocks we are in
-    if not p.noSafePoints:
+    if noSafePoints notin p.flags:
       for i in countdown(howManyExcepts-1, 0):
         linefmt(p, cpsStmts, "#popCurrentException();$n", [])
 
@@ -237,7 +237,7 @@ proc genGotoState(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n[0], a)
   lineF(p, cpsStmts, "switch ($1) {$n", [rdLoc(a)])
-  p.beforeRetNeeded = true
+  p.flags.incl beforeRetNeeded
   lineF(p, cpsStmts, "case -1:$n", [])
   blockLeaveActions(p,
     howManyTrys    = p.nestedTryStmts.len,
@@ -454,13 +454,13 @@ proc genIf(p: BProc, n: PNode, d: var TLoc) =
 
 proc genReturnStmt(p: BProc, t: PNode) =
   if nfPreventCg in t.flags: return
-  p.beforeRetNeeded = true
+  p.flags.incl beforeRetNeeded
   genLineDir(p, t)
   if (t[0].kind != nkEmpty): genStmts(p, t[0])
   blockLeaveActions(p,
     howManyTrys    = p.nestedTryStmts.len,
     howManyExcepts = p.inExceptBlockLen)
-  if (p.finallySafePoints.len > 0) and not p.noSafePoints:
+  if (p.finallySafePoints.len > 0) and noSafePoints notin p.flags:
     # If we're in a finally block, and we came here by exception
     # consume it before we return.
     var safePoint = p.finallySafePoints[^1]
@@ -595,6 +595,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
         loopBody = loopBody[1]
       genComputedGoto(p, loopBody)
     else:
+      let prevRaiseCounter = p.raiseCounter
       p.breakIdx = startBlock(p, "while (1) {$n")
       p.blocks[p.breakIdx].isLoop = true
       initLocExpr(p, t[0], a)
@@ -606,6 +607,7 @@ proc genWhileStmt(p: BProc, t: PNode) =
       if optProfiler in p.options:
         # invoke at loop body exit:
         linefmt(p, cpsStmts, "#nimProfile();$n", [])
+      if prevRaiseCounter != p.raiseCounter: raiseExit(p)
       endBlock(p)
 
   dec(p.withinLoop)
@@ -687,8 +689,20 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
+proc raiseExit(p: BProc) =
+  assert p.config.exc == excGoto
+  p.flags.incl nimErrorFlagAccessed
+  if p.nestedTryStmts.len == 0:
+    p.flags.incl beforeRetNeeded
+    # easy case, simply goto 'ret':
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
+  else:
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n", [p.nestedTryStmts[^1].label])
+
 proc genRaiseStmt(p: BProc, t: PNode) =
-  if p.config.exc == excCpp:
+  if p.config.exc == excGoto:
+    inc p.raiseCounter
+  elif p.config.exc == excCpp:
     discard cgsym(p.module, "popCurrentExceptionEx")
   if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
     # if the current try stmt have a finally block,
@@ -906,8 +920,8 @@ proc genCase(p: BProc, t: PNode, d: var TLoc) =
 
 proc genRestoreFrameAfterException(p: BProc) =
   if optStackTrace in p.module.config.options:
-    if not p.hasCurFramePointer:
-      p.hasCurFramePointer = true
+    if hasCurFramePointer notin p.flags:
+      p.flags.incl hasCurFramePointer
       p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;$n", []))
       p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();$n", []))
     linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);$n", [])
@@ -938,7 +952,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   genLineDir(p, t)
   discard cgsym(p.module, "popCurrentExceptionEx")
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, false))
+  p.nestedTryStmts.add((fin, false, 0.Natural))
   startBlock(p, "try {$n")
   expr(p, t[0], d)
   endBlock(p)
@@ -982,7 +996,63 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
     genSimpleBlock(p, t[^1][0])
 
-proc genTry(p: BProc, t: PNode, d: var TLoc) =
+proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  p.flags.incl noSafePoints
+  inc p.labels
+  let lab = p.labels
+  p.nestedTryStmts.add((fin, true, lab))
+  expr(p, t[0], d)
+  if 1 < t.len and t[1].kind == nkExceptBranch:
+    p.flags.incl nimErrorFlagAccessed
+    startBlock(p, "if (NIM_UNLIKELY(*nimErr_)) {$n")
+  else:
+    startBlock(p)
+  linefmt(p, cpsStmts, "LA$1_:;$n", [lab])
+  p.nestedTryStmts[^1].inExcept = true
+  var i = 1
+  while (i < t.len) and (t[i].kind == nkExceptBranch):
+    # bug #4230: avoid false sharing between branches:
+    if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
+    if t[i].len == 1:
+      # general except section:
+      if i > 1: lineF(p, cpsStmts, "else", [])
+      startBlock(p)
+      expr(p, t[i][0], d)
+    else:
+      var orExpr: Rope = nil
+      for j in 0..<t[i].len - 1:
+        assert(t[i][j].kind == nkType)
+        if orExpr != nil: orExpr.add("||")
+        let checkFor = if optTinyRtti in p.config.globalOptions:
+          genTypeInfo2Name(p.module, t[i][j].typ)
+        else:
+          genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
+        let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
+        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+
+      if i > 1: line(p, cpsStmts, "else ")
+      startBlock(p, "if ($1) {$n", [orExpr])
+      expr(p, t[i][^1], d)
+
+    linefmt(p, cpsStmts, "#popCurrentException();$n", [])
+    endBlock(p)
+    inc(i)
+  discard pop(p.nestedTryStmts)
+  endBlock(p) # end of else block
+  if i < t.len and t[i].kind == nkFinally:
+    startBlock(p)
+    genStmts(p, t[i][0])
+    # this is correct for all these cases:
+    # 1. finally is run during ordinary control flow
+    # 2. finally is run after 'except' block handling: these however set the
+    #    error back to nil.
+    # 3. finally is run for exception handling code without any 'except'
+    #    handler present or only handlers that did not match.
+    raiseExit(p)
+    endBlock(p)
+
+proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
   #
   # XXX: There should be a standard dispatch algorithm
@@ -1018,7 +1088,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
   if not quirkyExceptions:
     p.module.includeHeader("<setjmp.h>")
   else:
-    p.noSafePoints = true
+    p.flags.incl noSafePoints
   genLineDir(p, t)
   discard cgsym(p.module, "Exception")
   var safePoint: Rope
@@ -1036,7 +1106,7 @@ proc genTry(p: BProc, t: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])
     startBlock(p, "if ($1.status == 0) {$n", [safePoint])
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.nestedTryStmts.add((fin, quirkyExceptions))
+  p.nestedTryStmts.add((fin, quirkyExceptions, 0.Natural))
   expr(p, t[0], d)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "#popSafePoint();$n", [])

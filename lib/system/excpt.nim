@@ -12,7 +12,7 @@
 
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
-                                            nimcall.})
+                                            nimcall, raises: [].})
     ## Function that will be called
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
@@ -379,6 +379,11 @@ proc nimLeaveFinally() {.compilerRtl.} =
           showErrorMessage(tbuf())
           quitOrDebug()
 
+when defined(nimHasExceptionsQuery):
+  const gotoBasedExceptions = compileOption("exceptions", "goto")
+else:
+  const gotoBasedExceptions = false
+
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
@@ -394,7 +399,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
         raiseCounter.inc # skip zero at overflow
       e.raiseId = raiseCounter
       {.emit: "`e`->raise();".}
-  elif defined(nimQuirky):
+  elif defined(nimQuirky) or gotoBasedExceptions:
     pushCurrentException(e)
   else:
     if excHandler != nil:
@@ -467,9 +472,9 @@ proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""
     rawWriteStackTrace(s)
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)(s)
+    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)(s)
   else:
-    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall.}](showErrorMessage)("No stack traceback available\n")
+    cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)("No stack traceback available\n")
 
 proc getStackTrace(): string =
   when hasSomeStackTrace:
@@ -508,7 +513,7 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quitOrDebug()
 
-proc nimFrame(s: PFrame) {.compilerRtl, inl.} =
+proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
   s.prev = framePtr
   framePtr = s
