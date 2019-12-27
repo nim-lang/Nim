@@ -46,11 +46,6 @@ template test() =
     var r: string
     s1.scan(proc (it: int) = r = r & $it)
     doAssert r == "123"
-    r = ""
-    s1.scan(proc (it: int): int = 
-      r = r & $it
-      it)
-    doAssert r == "123"
 
   block: # zippedScan
     let
@@ -65,17 +60,6 @@ template test() =
     doAssert zip1 == @[true, true, true]
     doAssert zip2 == @[5, 7, 9]
 
-    zip1 = @[]
-    zip2 = @[]
-    zippedScan(s1, s2, s3, proc (x, y, z: int): int =
-      zip1.add(x + y == z)
-      x + y)
-    zippedScan(s1, s2, proc (x, y: int): int =
-      zip2.add(x + y)
-      x + y)
-    doAssert zip1 == @[true, true, true]
-    doAssert zip2 == @[5, 7, 9]
-
   block: # scanIt
     let s1 = @[1, 2, 3]
     var r: seq[string] = @[]
@@ -86,12 +70,6 @@ template test() =
     var r: seq[string]
     @["I", "II", "III"].scanIndexed(
               proc (i: int, x: string) = r.add($(i + 1) & ":" & x))          
-    doAssert r == @["1:I", "2:II", "3:III"]
-    r = @[]
-    @["I", "II", "III"].scanIndexed(
-              proc (i: int, x: string): int = 
-                r.add($(i + 1) & ":" & x)
-                i)
     doAssert r == @["1:I", "2:II", "3:III"]
 
   block: # scanThem

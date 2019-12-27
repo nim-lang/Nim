@@ -415,24 +415,6 @@ proc scanIndexed*[T](s: openArray[T],
   for i, v in s:
     op(i, v)
 
-proc scanIndexed*[T, S](s: openArray[T],
-                        op: proc (i: int, x: T): S {.closure.}) {.since: (1, 1).} =
-  ## Apply `op` proc to every item in the container `s`. Results
-  ## of `op` proc are discarded.
-  ##
-  ## See also:
-  ## * `scanIt template<#scanIt.t,typed,untyped>`_
-  ##
-  runnableExamples:
-    let
-      a = @[1, 2, 3, 4]
-    scan(a, proc(x: int): string =
-      echo x
-      return $x)
-
-  for i, v in s:
-    discard op(i, v)
-
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
   ## Applies `op` to every item in `s` modifying it directly.
@@ -1373,23 +1355,6 @@ proc zipWith*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
 
   zipThem(s1, s2, s3, op(it, jt, kt))
 
-proc zippedScan*[T1, T2, R](s1: openArray[T1], s2: openArray[T2],
-                            op: proc (x: T1, y: T2): R {.closure.}) {.since: (1, 1).} =
-  ## Apply `op` proc on each pair of elements from the two input containers,
-  ## discarding results.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6, 7]
-    zippedScan(s1, s2, proc (x, y: int): int = x * y)
-
-  scanThem(s1, s2, (discard op(it, jt)))
-
 proc zippedScan*[T1, T2](s1: openArray[T1], s2: openArray[T2],
                          op: proc (x: T1, y: T2) {.closure.}) {.since: (1, 1).} =
   ## Apply `op` proc on each pair of elements from the two input containers.
@@ -1405,25 +1370,6 @@ proc zippedScan*[T1, T2](s1: openArray[T1], s2: openArray[T2],
     zippedScan(s1, s2, proc (x, y: int) = echo x * y)
 
   scanThem(s1, s2, op(it, jt))
-
-proc zippedScan*[T1, T2, T3, R](s1: openArray[T1], s2: openArray[T2],
-                             s3: openArray[T3],
-                             op: proc (x: T1, y: T2, Z: T3): R {.closure.}) {.since: (1, 1).} =
-  ## Apply `op` proc on each triple of elements from the three input containers,
-  ## discarding results.
-  ##
-  ## The input containers can be of different types.
-  ## If one container is shorter, the remaining items in the longer container
-  ## are discarded.
-  ##
-  runnableExamples:
-    let
-      s1 = @[1, 2, 3]
-      s2 = @[4, 5, 6]
-      s3 = @[5, 7, 9, 9]
-    zippedScan(s1, s2, s3, proc (x, y, z: int): bool = x + y == z)
-
-  scanThem(s1, s2, s3, (discard op(it, jt, kt)))
 
 proc zippedScan*[T1, T2, T3](s1: openArray[T1], s2: openArray[T2],
                              s3: openArray[T3],
@@ -1455,22 +1401,6 @@ proc scan*[T](s: openArray[T], op: proc (x: T) {.closure.}) {.since: (1, 1).} =
     scan(a, proc(x: int) = echo x)
 
   scanIt(s, op(it))
-
-proc scan*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}) {.since: (1, 1).} =
-  ## Apply `op` proc to every item in the container `s`. Results
-  ## of `op` proc are discarded.
-  ##
-  ## See also:
-  ## * `scanIt template<#scanIt.t,typed,untyped>`_
-  ##
-  runnableExamples:
-    let
-      a = @[1, 2, 3, 4]
-    scan(a, proc(x: int): string =
-      echo x
-      return $x)
-
-  scanIt(s, (discard op(it)))
 
 proc findFirst*[T](s: openArray[T],
                    pred: proc (x: T): bool {.closure.}, def: T): T {.since: (1, 1).} =
