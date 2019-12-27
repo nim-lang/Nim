@@ -2139,6 +2139,12 @@ proc min*[T](x: openArray[T]): T =
   for i in 1..high(x):
     if x[i] < result: result = x[i]
 
+proc idxmin*[T](x: openArray[T]): T =
+  ## The index of the minimum value of `x`. ``T`` needs to have a ``<`` operator.
+  result = 0
+  for i in 1..high(x):
+    if x[i] < x[result]: result = i
+
 proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
 proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.} =
