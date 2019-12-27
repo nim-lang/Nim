@@ -10,15 +10,13 @@ import lists
 import strutils
 
 proc mkleak() =
-    # allocate 10 MB via linked lists
+    # allocate 1 MB via linked lists
     let numberOfLists = 100
     for i in countUp(1, numberOfLists):
         var leakList = initDoublyLinkedList[string]()
-        let numberOfLeaks = 50000
+        let numberOfLeaks = 5000
         for j in countUp(1, numberOfLeaks):
-            let leakSize = 200
-            let leaked = newString(leakSize)
-            leakList.append(leaked)
+            leakList.append(newString(200))
 
 proc mkManyLeaks() =
     for i in 0..0:
@@ -29,7 +27,7 @@ proc mkManyLeaks() =
         # lists and bring the memory usage down to a few MB's.
         GC_fullCollect()
         when false: echo getOccupiedMem()
-        if getOccupiedMem() > 8 * 200 * 50_000 * 2:
+        if getOccupiedMem() > 8 * 200 * 5000 * 2:
           echo GC_getStatistics()
           quit "leaking"
     echo "Success"

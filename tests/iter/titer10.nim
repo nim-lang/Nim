@@ -23,7 +23,7 @@ when true:
       for val in sortable:
           yield val
 
-  when isMainModule:
+  when true:
     proc main =
       for val in byDistance([2, 3, 5, 1], 3):
           echo val
@@ -40,7 +40,7 @@ when true:
                  @[2, 3]]
 
   iterator threadUniqs(seq1: seq[seq[int]]): seq[seq[int]] =
-    for i in 0 .. <seq1.len:
+    for i in 0 ..< seq1.len:
       block:
         let i = i
         yield seq1.filter do (x: seq[int]) -> bool: x[0] == seq1[i][0]

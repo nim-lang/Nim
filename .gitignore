@@ -11,7 +11,9 @@ dnimcache/
 !/icons/*.o
 *.obj
 *.ilk
+*.exp
 *.pdb
+*.lib
 *.dll
 *.exe
 *.so
@@ -19,6 +21,7 @@ dnimcache/
 *.zip
 *.iss
 *.log
+*.pdb
 
 mapping.txt
 tags
@@ -30,7 +33,7 @@ doc/*.html
 doc/*.pdf
 doc/*.idx
 /web/upload
-build/*
+/build/*
 bin/*
 
 # iOS specific wildcards.
@@ -40,17 +43,27 @@ bin/*
 *.perspectivev3
 *.swp
 .DS_Store
+.tags
 project.xcworkspace/
 xcuserdata/
 
 # Generated files.
 /compile.json
-/compiler/nimrod.dot
+/compiler/nim.dot
 /reject.json
 /run.json
-/testresults.html
+/tools/dochack/dochack.js
+*.json
+/pkgstemp/**/*
+# for `nim doc foo.nim`
+/*.html
+lib/**/*.html
+#/testresults.html #covered by /*.html
+
 /testresults.json
 testament.db
+/tests/**/*.json
+/tests/**/*.js
 /csources
 dist/
 
@@ -58,6 +71,18 @@ dist/
 .*/
 ~*
 
-# testament cruft
+# testament cruft; TODO: generate these in a gitignore'd dir in the first place.
 testresults/
 test.txt
+/test.ini
+
+tweeter.db
+tweeter_test.db
+megatest.nim
+
+/outputExpected.txt
+/outputGotten.txt
+
+/lib/pure/*.js
+
+!/.builds/

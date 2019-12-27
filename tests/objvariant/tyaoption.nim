@@ -1,7 +1,8 @@
 discard """
   output: '''some(str), some(5), none
 some(5!)
-some(10)'''
+some(10)
+34'''
 """
 
 import strutils
@@ -45,3 +46,25 @@ let a3 = intOrString(some(5))
 #echo a1
 echo a2
 echo a3
+
+
+# bug #10033
+
+type
+  Token = enum
+    Int,
+    Float
+
+  Base = ref object of RootObj
+    case token: Token
+    of Int:
+      bInt: int
+    of Float:
+      bFloat: float
+
+  Child = ref object of Base
+
+let c = new Child
+c.token = Int
+c.bInt = 34
+echo c.bInt

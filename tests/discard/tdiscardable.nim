@@ -1,3 +1,15 @@
+discard """
+output: '''
+tdiscardable
+1
+1
+something defered
+something defered
+'''
+"""
+
+echo "tdiscardable"
+
 # Test the discardable pragma
 
 proc p(x, y: int): int {.discardable.} =
@@ -13,7 +25,7 @@ q[float](0.8, 0.2)
 
 # bug #942
 
-template maybeMod(x: Tinteger, module:Natural): untyped =
+template maybeMod(x: SomeInteger, module: Natural): untyped =
   if module > 0: x mod module
   else: x
 
@@ -27,3 +39,29 @@ proc bar(b: int):int =
 
 echo foo(0)
 echo bar(0)
+
+# bug #9726
+
+proc foo: (proc: int) =
+  proc bar: int = 1
+  return bar
+
+discard foo()
+
+# bug #10842
+
+proc myDiscardable(): int {.discardable.} =
+  discard
+
+proc main1() =
+  defer:
+    echo "something defered"
+  discard myDiscardable()
+
+proc main2() =
+  defer:
+    echo "something defered"
+  myDiscardable()
+
+main1()
+main2()

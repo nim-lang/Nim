@@ -1,125 +1,94 @@
-## v0.19.X - XX/XX/2018
-
-### Changes affecting backwards compatibility
-
-- The stdlib module ``future`` has been renamed to ``sugar``.
-- ``macros.callsite`` is now deprecated. Since the introduction of ``varargs``
-  parameters this became unnecessary.
-- Anonymous tuples with a single element can now be written as ``(1,)`` with a
-  trailing comma. The underlying AST is ``nnkTupleConst(newLit 1)`` for this
-  example. ``nnkTupleConstr`` is a new node kind your macros need to be able
-  to deal with!
-- Indexing into a ``cstring`` for the JS target is now mapped
-  to ``charCodeAt``.
-- Assignments that would "slice" an object into its supertype are now prevented
-  at runtime. Use ``ref object`` with inheritance rather than ``object`` with
-  inheritance to prevent this issue.
-- The ``not nil`` type annotation now has to be enabled explicitly
-  via ``{.experimental: "notnil"}`` as we are still not pleased with how this
-  feature works with Nim's containers.
+# 1.2 - xxxx-xx-xx
 
 
-#### Breaking changes in the standard library
+## Changes affecting backwards compatibility
 
-- ``re.split`` for empty regular expressions now yields every character in
-  the string which is what other programming languages chose to do.
-- The returned tuple of ``system.instantiationInfo`` now has a third field
-  containing the column of the instantiation.
 
-- ``cookies.setCookie` no longer assumes UTC for the expiration date.
-- ``strutils.formatEng`` does not distinguish between ``nil`` and ``""``
-  strings anymore for its ``unit`` parameter. Instead the space is controlled
-  by a new parameter ``useUnitSpace``.
 
-- ``proc `-`*(a, b: Time): int64`` in the ``times`` module has changed return type
-  to ``times.Duration`` in order to support higher time resolutions.
-  The proc is no longer deprecated.
-- ``posix.Timeval.tv_sec`` has changed type to ``posix.Time``.
+### Breaking changes in the standard library
 
-#### Breaking changes in the compiler
+- `base64.encode` no longer supports `lineLen` and `newLine`.
+  Use `base64.encodeMIME` instead.
+- `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/"
+   as the dir component of "/root_sub_dir" instead of the empty string.
+- `sequtils.zip` now returns a sequence of anonymous tuples i.e. those tuples
+  now do not have fields named "a" and "b".
+- `strutils.formatFloat` with `precision = 0` has the same behavior in all
+  backends, and it is compatible with Python's behavior,
+  e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
+- Global variable `lc` has been removed from sugar.nim.
 
-### Library additions
+### Breaking changes in the compiler
 
-- ``re.split`` now also supports the ``maxsplit`` parameter for consistency
-  with ``strutils.split``.
-- Added ``system.toOpenArray`` in order to support zero-copy slicing
-  operations. This is currently not yet available for the JavaScript target.
-- Added ``getCurrentDir``, ``findExe``, ``cpDir`` and  ``mvDir`` procs to
-  ``nimscript``.
-- The ``times`` module now supports up to nanosecond time resolution when available.
-- Added the type ``times.Duration`` for representing fixed durations of time.
-- Added the proc ``times.convert`` for converting between different time units,
-  e.g days to seconds.
+- Implicit conversions for `const` behave correctly now, meaning that code like
+  `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
+  Simply write `const SOMECONST = 0` instead.
 
-### Library changes
 
-- ``macros.astGenRepr``, ``macros.lispRepr`` and ``macros.treeRepr``
-  now escapes the content of string literals consistently.
-- ``macros.NimSym`` and ``macros.NimIdent`` is now deprecated in favor
-  of the more general ``NimNode``.
-- ``macros.getImpl`` now includes the pragmas of types, instead of omitting them.
-- ``macros.hasCustomPragma`` and ``macros.getCustomPragmaVal`` now
-  also support ``ref`` and ``ptr`` types, pragmas on types and variant
-  fields.
-- ``system.SomeReal`` is now called ``SomeFloat`` for consistency and
-  correctness.
-- ``algorithm.smartBinarySearch`` and ``algorithm.binarySearch`` is
-  now joined in ``binarySearch``. ``smartbinarySearch`` is now
-  deprecated.
 
-### Language additions
+## Library additions
 
-- Dot calls combined with explicit generic instantiations can now be written
-  as ``x.y[:z]``. ``x.y[:z]`` that is transformed into ``y[z](x)`` in the parser.
-- ``func`` is now an alias for ``proc {.noSideEffect.}``.
-- In order to make ``for`` loops and iterators more flexible to use Nim now
-  supports so called "for-loop macros". See
-  the `manual <manual.html#macros-for-loop-macros>`_ for more details.
+- `macros.newLit` now works for ref object types.
+- `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- Added overloaded `strformat.fmt` macro that use specified characters as
+  delimiter instead of '{' and '}'.
+- introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
+  `CountTable.pop`, `Table.pop`
+- To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
 
-### Language changes
 
-- The `importcpp` pragma now allows importing the listed fields of generic
-  C++ types. Support for numeric parameters have also been added through
-  the use of `static[T]` types.
-  (#6415)
+- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
+  operations that work on a copy of the data and return the mutated copy. As the existing
+  `sorted` does.
+- Added `sugar.collect` that does comprehension for seq/set/table collections.
 
-- Native C++ exceptions can now be imported with `importcpp` pragma.
-  Imported exceptions can be raised and caught just like Nim exceptions.
-  More details in language manual.
+- Added `sugar.capture` for capturing some local loop variables when creating a closure.
+  This is an enhanced version of `closureScope`.
 
-- ``nil`` for strings/seqs is finally gone. Instead the default value for
-  these is ``"" / @[]``.
-- Accessing the binary zero terminator in Nim's native strings
-  is now invalid. Internally a Nim string still has the trailing zero for
-  zero-copy interoperability with ``cstring``. Compile your code with the
-  next switch ``--laxStrings:on`` if you need a transition period.
+## Library changes
+
+- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
+  and only returns once all pending async operations are guaranteed to have completed.
+- `asyncdispatch.drain` now consistently uses the passed timeout value for all
+  iterations of the event loop, and not just the first iteration.
+  This is more consistent with the other asyncdispatch apis, and allows
+  `asyncdispatch.drain` to be more efficient.
+- `base64.encode` and `base64.decode` was made faster by about 50%.
+- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
+  (ISO 40314).
+- `macros.eqIdent` is now invariant to export markers and backtick quotes.
+- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+
+
+## Language additions
+
+- An `align` pragma can now be used for variables and object fields, similar
+  to the `alignas` declaration modifier in C/C++.
+
+## Language changes
+
+- Unsigned integer operators have been fixed to allow promotion of the first operand.
+- Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
+  versions. The documentation was improved to acknowledge this special case.
+  See https://github.com/nim-lang/RFCs/issues/175 for more details.
 
 
 ### Tool changes
 
-- ``jsondoc2`` has been renamed ``jsondoc``, similar to how ``doc2`` was renamed
-  ``doc``. The old ``jsondoc`` can still be invoked with ``jsondoc0``.
+
 
 ### Compiler changes
 
-- The VM's instruction count limit was raised to 1 billion instructions in
-  order to support more complex computations at compile-time.
+- JS target indent is all spaces, instead of mixed spaces and tabs, for
+  generated JavaScript.
+- The Nim compiler now supports the ``--asm`` command option for easier
+  inspection of the produced assembler code.
+- The Nim compiler now supports a new pragma called ``.localPassc`` to
+  pass specific compiler options to the C(++) backend for the C(++) file
+  that was produced from the current Nim module.
 
-- Support for hot code reloading has been implemented for the JavaScript
-  target. To use it, compile your code with `--hotCodeReloading:on` and use a
-  helper library such as LiveReload or BrowserSync.
 
-- A new compiler option `--cppCompileToNamespace` puts the generated C++ code
-  into the namespace "Nim" in order to avoid naming conflicts with existing
-  C++ code. This is done for all Nim code - internal and exported.
+## Bugfixes
 
-- Added ``macros.getProjectPath`` and ``ospaths.putEnv`` procs to Nim's virtual
-  machine.
-
-- The ``deadCodeElim`` option is now always turned on and the switch has no
-  effect anymore, but is recognized for backwards compatibility.
-
-- ``experimental`` is now a pragma / command line switch that can enable specific
-  language extensions, it is not an all-or-nothing switch anymore.
-
-### Bugfixes
+- The `FD` variant of `selector.unregister` for `ioselector_epoll` and
+  `ioselector_select` now properly handle the `Event.User` select event type.

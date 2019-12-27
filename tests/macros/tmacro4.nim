@@ -2,8 +2,7 @@ discard """
   output: "after"
 """
 
-import
-  macros, strutils
+import macros
 
 macro test_macro*(s: string, n: untyped): untyped =
   result = newNimNode(nnkStmtList)
@@ -11,7 +10,7 @@ macro test_macro*(s: string, n: untyped): untyped =
   add(ass, newIdentNode("str"))
   add(ass, newStrLitNode("after"))
   add(result, ass)
-when isMainModule:
+when true:
   var str: string = "before"
   test_macro(str):
     var i : integer = 123

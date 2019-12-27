@@ -1,8 +1,9 @@
 discard """
-  file: "tmacrogenerics.nim"
-  msg: '''
-instantiation 1 with typedesc and typedesc
-counter: 1
+  nimout: '''
+instantiation 1 with typeDesc[int] and typeDesc[float]
+instantiation 2 with typeDesc[float] and typeDesc[string]
+instantiation 3 with typeDesc[string] and typeDesc[string]
+counter: 3
 '''
   output: "int\nfloat\nint\nstring"
 """
@@ -13,7 +14,7 @@ var counter {.compileTime.} = 0
 
 macro makeBar(A, B: typedesc): typedesc =
   inc counter
-  echo "instantiation ", counter, " with ", A.name, " and ", B.name
+  echo "instantiation ", counter, " with ", A.getTypeInst.repr, " and ", B.getTypeInst.repr
   result = A
 
 type

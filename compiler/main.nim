@@ -9,292 +9,359 @@
 
 # implements the command dispatcher and several commands
 
+when not defined(nimcore):
+  {.error: "nimcore MUST be defined for Nim's core tooling".}
+
 import
-  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
-  os, condsyms, rodread, rodwrite, times,
-  wordrecg, sem, semdata, idents, passes, docgen, extccomp,
-  cgen, jsgen, json, nversion,
-  platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  docgen2, service, parser, modules, ccgutils, sigmatch, ropes,
-  modulegraphs, tables, rod
+  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  condsyms, times,
+  sem, idents, passes, extccomp,
+  cgen, json, nversion,
+  platform, nimconf, passaux, depends, vm, idgen,
+  modules,
+  modulegraphs, tables, rod, lineinfos, pathutils
 
-from magicsys import systemModule, resetSysTypes
+when not defined(leanCompiler):
+  import jsgen, docgen, docgen2
 
-proc rodPass =
-  if gSymbolFiles in {enabledSf, writeOnlySf}:
-    registerPass(rodwritePass)
+proc semanticPasses(g: ModuleGraph) =
+  registerPass g, verbosePass
+  registerPass g, semPass
 
-proc codegenPass =
-  registerPass cgenPass
-
-proc semanticPasses =
-  registerPass verbosePass
-  registerPass semPass
-
-proc writeDepsFile(g: ModuleGraph; project: string) =
-  let f = open(changeFileExt(project, "deps"), fmWrite)
+proc writeDepsFile(g: ModuleGraph) =
+  let fname = g.config.nimcacheDir / RelativeFile(g.config.projectName & ".deps")
+  let f = open(fname.string, fmWrite)
   for m in g.modules:
     if m != nil:
-      f.writeLine(toFullPath(m.position.FileIndex))
+      f.writeLine(toFullPath(g.config, m.position.FileIndex))
   for k in g.inclToMod.keys:
     if g.getModule(k).isNil:  # don't repeat includes which are also modules
-      f.writeLine(k.toFullPath)
+      f.writeLine(toFullPath(g.config, k))
   f.close()
 
-proc commandGenDepend(graph: ModuleGraph; cache: IdentCache) =
-  semanticPasses()
-  registerPass(gendependPass)
-  #registerPass(cleanupPass)
-  compileProject(graph, cache)
-  writeDepsFile(graph, gProjectFull)
-  generateDot(gProjectFull)
-  execExternalProgram("dot -Tpng -o" & changeFileExt(gProjectFull, "png") &
-      ' ' & changeFileExt(gProjectFull, "dot"))
+proc commandGenDepend(graph: ModuleGraph) =
+  semanticPasses(graph)
+  registerPass(graph, gendependPass)
+  compileProject(graph)
+  let project = graph.config.projectFull
+  writeDepsFile(graph)
+  generateDot(graph, project)
+  execExternalProgram(graph.config, "dot -Tpng -o" &
+      changeFileExt(project, "png").string &
+      ' ' & changeFileExt(project, "dot").string)
 
-proc commandCheck(graph: ModuleGraph; cache: IdentCache) =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  defineSymbol("nimcheck")
-  semanticPasses()            # use an empty backend for semantic checking only
-  rodPass()
-  compileProject(graph, cache)
+proc commandCheck(graph: ModuleGraph) =
+  graph.config.errorMax = high(int)  # do not stop after first error
+  defineSymbol(graph.config.symbols, "nimcheck")
+  semanticPasses(graph)  # use an empty backend for semantic checking only
+  compileProject(graph)
 
-proc commandDoc2(graph: ModuleGraph; cache: IdentCache; json: bool) =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  semanticPasses()
-  if json: registerPass(docgen2JsonPass)
-  else: registerPass(docgen2Pass)
-  #registerPass(cleanupPass())
-  compileProject(graph, cache)
-  finishDoc2Pass(gProjectName)
+when not defined(leanCompiler):
+  proc commandDoc2(graph: ModuleGraph; json: bool) =
+    handleDocOutputOptions graph.config
+    graph.config.errorMax = high(int)  # do not stop after first error
+    semanticPasses(graph)
+    if json: registerPass(graph, docgen2JsonPass)
+    else: registerPass(graph, docgen2Pass)
+    compileProject(graph)
+    finishDoc2Pass(graph.config.projectName)
 
-proc commandCompileToC(graph: ModuleGraph; cache: IdentCache) =
-  extccomp.initVars()
-  semanticPasses()
-  registerPass(cgenPass)
-  rodPass()
-  #registerPass(cleanupPass())
+proc commandCompileToC(graph: ModuleGraph) =
+  let conf = graph.config
 
-  compileProject(graph, cache)
-  cgenWriteModules(graph.backend, graph.config)
-  if gCmd != cmdRun:
-    let proj = changeFileExt(gProjectFull, "")
-    extccomp.callCCompiler(proj)
-    extccomp.writeJsonBuildInstructions(proj)
-    if optGenScript in gGlobalOptions:
-      writeDepsFile(graph, toGeneratedFile(proj, ""))
+  if conf.outDir.isEmpty:
+    conf.outDir = conf.projectPath
+  if conf.outFile.isEmpty:
+    let targetName = if optGenDynLib in conf.globalOptions:
+      platform.OS[conf.target.targetOS].dllFrmt % conf.projectName
+    else:
+      conf.projectName & platform.OS[conf.target.targetOS].exeExt
+    conf.outFile = RelativeFile targetName
 
-proc commandJsonScript(graph: ModuleGraph; cache: IdentCache) =
-  let proj = changeFileExt(gProjectFull, "")
-  extccomp.runJsonBuildInstructions(proj)
+  extccomp.initVars(conf)
+  semanticPasses(graph)
+  registerPass(graph, cgenPass)
 
-proc commandCompileToJS(graph: ModuleGraph; cache: IdentCache) =
-  #incl(gGlobalOptions, optSafeCode)
-  setTarget(osJS, cpuJS)
-  #initDefines()
-  defineSymbol("nimrod") # 'nimrod' is always defined
-  defineSymbol("ecmascript") # For backward compatibility
-  defineSymbol("js")
-  semanticPasses()
-  registerPass(JSgenPass)
-  compileProject(graph, cache)
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+    let proj = changeFileExt(conf.projectFull, "")
+    if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      # nothing changed
+      graph.config.notes = graph.config.mainPackageNotes
+      return
 
-proc interactivePasses(graph: ModuleGraph; cache: IdentCache) =
-  #incl(gGlobalOptions, optSafeCode)
-  #setTarget(osNimrodVM, cpuNimrodVM)
-  initDefines()
-  defineSymbol("nimscript")
-  when hasFFI: defineSymbol("nimffi")
-  registerPass(verbosePass)
-  registerPass(semPass)
-  registerPass(evalPass)
+  compileProject(graph)
+  if graph.config.errorCounter > 0:
+    return # issue #9933
+  cgenWriteModules(graph.backend, conf)
+  if conf.cmd != cmdRun:
+    extccomp.callCCompiler(conf)
+    # for now we do not support writing out a .json file with the build instructions when HCR is on
+    if not conf.hcrOn:
+      extccomp.writeJsonBuildInstructions(conf)
+    if optGenScript in graph.config.globalOptions:
+      writeDepsFile(graph)
 
-proc commandInteractive(graph: ModuleGraph; cache: IdentCache) =
-  msgs.gErrorMax = high(int)  # do not stop after first error
-  interactivePasses(graph, cache)
-  compileSystemModule(graph, cache)
-  if commandArgs.len > 0:
-    discard graph.compileModule(fileInfoIdx(gProjectFull), cache, {})
+proc commandJsonScript(graph: ModuleGraph) =
+  let proj = changeFileExt(graph.config.projectFull, "")
+  extccomp.runJsonBuildInstructions(graph.config, proj)
+
+when not defined(leanCompiler):
+  proc commandCompileToJS(graph: ModuleGraph) =
+    let conf = graph.config
+
+    if conf.outDir.isEmpty:
+      conf.outDir = conf.projectPath
+    if conf.outFile.isEmpty:
+      conf.outFile = RelativeFile(conf.projectName & ".js")
+
+    #incl(gGlobalOptions, optSafeCode)
+    setTarget(graph.config.target, osJS, cpuJS)
+    #initDefines()
+    defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
+    defineSymbol(graph.config.symbols, "js")
+    semanticPasses(graph)
+    registerPass(graph, JSgenPass)
+    compileProject(graph)
+    if optGenScript in graph.config.globalOptions:
+      writeDepsFile(graph)
+
+proc interactivePasses(graph: ModuleGraph) =
+  initDefines(graph.config.symbols)
+  defineSymbol(graph.config.symbols, "nimscript")
+  # note: seems redundant with -d:nimHasLibFFI
+  when hasFFI: defineSymbol(graph.config.symbols, "nimffi")
+  registerPass(graph, verbosePass)
+  registerPass(graph, semPass)
+  registerPass(graph, evalPass)
+
+proc commandInteractive(graph: ModuleGraph) =
+  graph.config.errorMax = high(int)  # do not stop after first error
+  interactivePasses(graph)
+  compileSystemModule(graph)
+  if graph.config.commandArgs.len > 0:
+    discard graph.compileModule(fileInfoIdx(graph.config, graph.config.projectFull), {})
   else:
     var m = graph.makeStdinModule()
     incl(m.flags, sfMainModule)
-    processModule(graph, m, llStreamOpenStdIn(), nil, cache)
+    processModule(graph, m, llStreamOpenStdIn())
 
 const evalPasses = [verbosePass, semPass, evalPass]
 
-proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym; cache: IdentCache) =
-  carryPasses(graph, nodes, module, cache, evalPasses)
+proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
+  carryPasses(graph, nodes, module, evalPasses)
 
-proc commandEval(graph: ModuleGraph; cache: IdentCache; exp: string) =
-  if systemModule == nil:
-    interactivePasses(graph, cache)
-    compileSystemModule(graph, cache)
-  let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
-  evalNim(graph, echoExp.parseString(cache), makeStdinModule(graph), cache)
-
-proc commandScan(cache: IdentCache) =
-  var f = addFileExt(mainCommandArg(), NimExt)
+proc commandScan(cache: IdentCache, config: ConfigRef) =
+  var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
   var stream = llStreamOpen(f, fmRead)
   if stream != nil:
     var
       L: TLexer
       tok: TToken
     initToken(tok)
-    openLexer(L, f, stream, cache)
+    openLexer(L, f, stream, cache, config)
     while true:
       rawGetTok(L, tok)
-      printTok(tok)
+      printTok(config, tok)
       if tok.tokType == tkEof: break
     closeLexer(L)
   else:
-    rawMessage(errCannotOpenFile, f)
+    rawMessage(config, errGenerated, "cannot open file: " & f.string)
 
 const
-  SimulateCaasMemReset = false
   PrintRopeCacheStats = false
 
-proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
-  when SimulateCaasMemReset:
-    gGlobalOptions.incl(optCaasEnabled)
+proc mainCommand*(graph: ModuleGraph) =
+  let conf = graph.config
+  let cache = graph.cache
 
-  setupModuleCache()
+  setupModuleCache(graph)
   # In "nim serve" scenario, each command must reset the registered passes
-  clearPasses()
-  gLastCmdTime = epochTime()
-  searchPaths.add(options.libpath)
-  when false: # gProjectFull.len != 0:
-    # current path is always looked first for modules
-    prependStr(searchPaths, gProjectPath)
+  clearPasses(graph)
+  conf.lastCmdTime = epochTime()
+  conf.searchPaths.add(conf.libpath)
   setId(100)
-  case command.normalize
+  case conf.command.normalize
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
-    gCmd = cmdCompileToC
-    commandCompileToC(graph, cache)
+    conf.cmd = cmdCompileToC
+    defineSymbol(graph.config.symbols, "c")
+    commandCompileToC(graph)
   of "cpp", "compiletocpp":
-    gCmd = cmdCompileToCpp
-    defineSymbol("cpp")
-    commandCompileToC(graph, cache)
+    conf.cmd = cmdCompileToCpp
+    defineSymbol(graph.config.symbols, "cpp")
+    commandCompileToC(graph)
   of "objc", "compiletooc":
-    gCmd = cmdCompileToOC
-    defineSymbol("objc")
-    commandCompileToC(graph, cache)
+    conf.cmd = cmdCompileToOC
+    defineSymbol(graph.config.symbols, "objc")
+    commandCompileToC(graph)
   of "run":
-    gCmd = cmdRun
+    conf.cmd = cmdRun
     when hasTinyCBackend:
       extccomp.setCC("tcc")
-      commandCompileToC(graph, cache)
+      commandCompileToC(graph)
     else:
-      rawMessage(errInvalidCommandX, command)
+      rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
   of "js", "compiletojs":
-    gCmd = cmdCompileToJS
-    commandCompileToJS(graph, cache)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with JS code generator"
+    else:
+      conf.cmd = cmdCompileToJS
+      if conf.hcrOn:
+        # XXX: At the moment, system.nim cannot be compiled in JS mode
+        # with "-d:useNimRtl". The HCR option has been processed earlier
+        # and it has added this define implictly, so we must undo that here.
+        # A better solution might be to fix system.nim
+        undefSymbol(conf.symbols, "useNimRtl")
+      commandCompileToJS(graph)
   of "doc0":
-    wantMainModule()
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    commandDoc()
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      wantMainModule(conf)
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      commandDoc(cache, conf)
   of "doc2", "doc":
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    defineSymbol("nimdoc")
-    commandDoc2(graph, cache, false)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandDoc2(graph, false)
   of "rst2html":
-    gCmd = cmdRst2html
-    loadConfigs(DocConfig, cache)
-    commandRst2Html()
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdRst2html
+      loadConfigs(DocConfig, cache, conf)
+      commandRst2Html(cache, conf)
   of "rst2tex":
-    gCmd = cmdRst2tex
-    loadConfigs(DocTexConfig, cache)
-    commandRst2TeX()
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdRst2tex
+      loadConfigs(DocTexConfig, cache, conf)
+      commandRst2TeX(cache, conf)
   of "jsondoc0":
-    wantMainModule()
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    wantMainModule()
-    defineSymbol("nimdoc")
-    commandJson()
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      wantMainModule(conf)
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      wantMainModule(conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandJson(cache, conf)
   of "jsondoc2", "jsondoc":
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    wantMainModule()
-    defineSymbol("nimdoc")
-    commandDoc2(graph, cache, true)
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      wantMainModule(conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandDoc2(graph, true)
   of "ctags":
-    wantMainModule()
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    wantMainModule()
-    defineSymbol("nimdoc")
-    commandTags()
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      wantMainModule(conf)
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      defineSymbol(conf.symbols, "nimdoc")
+      commandTags(cache, conf)
   of "buildindex":
-    gCmd = cmdDoc
-    loadConfigs(DocConfig, cache)
-    commandBuildIndex()
+    when defined(leanCompiler):
+      quit "compiler wasn't built with documentation generator"
+    else:
+      conf.cmd = cmdDoc
+      loadConfigs(DocConfig, cache, conf)
+      commandBuildIndex(cache, conf)
   of "gendepend":
-    gCmd = cmdGenDepend
-    commandGenDepend(graph, cache)
+    conf.cmd = cmdGenDepend
+    commandGenDepend(graph)
   of "dump":
-    gCmd = cmdDump
-    if getConfigVar("dump.format") == "json":
-      wantMainModule()
+    conf.cmd = cmdDump
+    if getConfigVar(conf, "dump.format") == "json":
+      wantMainModule(conf)
 
       var definedSymbols = newJArray()
-      for s in definedSymbolNames(): definedSymbols.elems.add(%s)
+      for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
-      for dir in searchPaths: libpaths.elems.add(%dir)
+      for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
 
-      var dumpdata = % [
+      var hints = newJObject() # consider factoring with `listHints`
+      for a in hintMin..hintMax:
+        let key = lineinfos.HintsToStr[ord(a) - ord(hintMin)]
+        hints[key] = %(a in conf.notes)
+      var warnings = newJObject()
+      for a in warnMin..warnMax:
+        let key = lineinfos.WarningsToStr[ord(a) - ord(warnMin)]
+        warnings[key] = %(a in conf.notes)
+
+      var dumpdata = %[
         (key: "version", val: %VersionAsString),
-        (key: "project_path", val: %gProjectFull),
+        (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
-        (key: "lib_paths", val: libpaths)
+        (key: "lib_paths", val: %libpaths),
+        (key: "outdir", val: %conf.outDir.string),
+        (key: "out", val: %conf.outFile.string),
+        (key: "nimcache", val: %getNimcacheDir(conf).string),
+        (key: "hints", val: hints),
+        (key: "warnings", val: warnings),
       ]
 
-      msgWriteln($dumpdata, {msgStdout, msgSkipHook})
+      msgWriteln(conf, $dumpdata, {msgStdout, msgSkipHook})
     else:
-      msgWriteln("-- list of currently defined symbols --",
+      msgWriteln(conf, "-- list of currently defined symbols --",
                  {msgStdout, msgSkipHook})
-      for s in definedSymbolNames(): msgWriteln(s, {msgStdout, msgSkipHook})
-      msgWriteln("-- end of list --", {msgStdout, msgSkipHook})
+      for s in definedSymbolNames(conf.symbols): msgWriteln(conf, s, {msgStdout, msgSkipHook})
+      msgWriteln(conf, "-- end of list --", {msgStdout, msgSkipHook})
 
-      for it in searchPaths: msgWriteln(it)
+      for it in conf.searchPaths: msgWriteln(conf, it.string)
   of "check":
-    gCmd = cmdCheck
-    commandCheck(graph, cache)
+    conf.cmd = cmdCheck
+    commandCheck(graph)
   of "parse":
-    gCmd = cmdParse
-    wantMainModule()
-    discard parseFile(FileIndex gProjectMainIdx, cache)
+    conf.cmd = cmdParse
+    wantMainModule(conf)
+    discard parseFile(conf.projectMainIdx, cache, conf)
   of "scan":
-    gCmd = cmdScan
-    wantMainModule()
-    commandScan(cache)
-    msgWriteln("Beware: Indentation tokens depend on the parser's state!")
+    conf.cmd = cmdScan
+    wantMainModule(conf)
+    commandScan(cache, conf)
+    msgWriteln(conf, "Beware: Indentation tokens depend on the parser's state!")
   of "secret":
-    gCmd = cmdInteractive
-    commandInteractive(graph, cache)
+    conf.cmd = cmdInteractive
+    commandInteractive(graph)
   of "e":
-    commandEval(graph, cache, mainCommandArg())
+    if not fileExists(conf.projectFull):
+      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
+    # main NimScript logic handled in cmdlinehelper.nim.
   of "nop", "help":
     # prevent the "success" message:
-    gCmd = cmdDump
+    conf.cmd = cmdDump
   of "jsonscript":
-    gCmd = cmdJsonScript
-    commandJsonScript(graph, cache)
+    conf.cmd = cmdJsonScript
+    commandJsonScript(graph)
   else:
-    rawMessage(errInvalidCommandX, command)
+    rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 
-  if msgs.gErrorCounter == 0 and
-     gCmd notin {cmdInterpret, cmdRun, cmdDump}:
+  if conf.errorCounter == 0 and
+     conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
     when declared(system.getMaxMem):
       let usedMem = formatSize(getMaxMem()) & " peakmem"
     else:
       let usedMem = formatSize(getTotalMem())
-    rawMessage(hintSuccessX, [$gLinesCompiled,
-               formatFloat(epochTime() - gLastCmdTime, ffDecimal, 3),
+    rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
+               formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
                usedMem,
-               if condSyms.isDefined("release"): "Release Build"
+               if isDefined(conf, "danger"): "Dangerous Release Build"
+               elif isDefined(conf, "release"): "Release Build"
                else: "Debug Build"])
 
   when PrintRopeCacheStats:
@@ -305,9 +372,4 @@ proc mainCommand*(graph: ModuleGraph; cache: IdentCache) =
     echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float),
                                        ffDecimal, 3)
 
-  when SimulateCaasMemReset:
-    resetMemory()
-
-  resetAttributes()
-
-proc mainCommand*() = mainCommand(newModuleGraph(newConfigRef()), newIdentCache())
+  resetAttributes(conf)

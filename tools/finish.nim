@@ -5,14 +5,23 @@ import strutils, os, osproc, streams, browsers
 
 const
   arch = $(sizeof(int)*8)
-  mingw = "mingw$1-6.3.0.7z" % arch
+  mingw = "mingw$1.7z" % arch
   url = r"https://nim-lang.org/download/" & mingw
+
+var
+  interactive = true
 
 type
   DownloadResult = enum
     Failure,
     Manual,
     Success
+
+proc expand(s: string): string =
+  try:
+    result = expandFilename(s)
+  except OSError, IOError:
+    result = s
 
 proc unzip(): bool =
   if not fileExists("dist" / mingw):
@@ -38,19 +47,28 @@ proc downloadMingw(): DownloadResult =
   if cmd.len > 0:
     if execShellCmd(cmd) != 0:
       echo "download failed! ", cmd
-      openDefaultBrowser(url)
-      result = Manual
+      if interactive:
+        openDefaultBrowser(url)
+        result = Manual
+      else:
+        result = Failure
     else:
       if unzip(): result = Success
   else:
-    openDefaultBrowser(url)
-    result = Manual
+    if interactive:
+      openDefaultBrowser(url)
+      result = Manual
+    else:
+      result = Failure
 
 when defined(windows):
   import registry
 
   proc askBool(m: string): bool =
     stdout.write m
+    if not interactive:
+      stdout.writeLine "y (non-interactive mode)"
+      return true
     while true:
       try:
         let answer = stdin.readLine().normalize
@@ -67,6 +85,9 @@ when defined(windows):
   proc askNumber(m: string; a, b: int): int =
     stdout.write m
     stdout.write " [" & $a & ".." & $b & "] "
+    if not interactive:
+      stdout.writeLine $a & " (non-interactive mode)"
+      return a
     while true:
       let answer = stdin.readLine()
       try:
@@ -177,41 +198,59 @@ when defined(windows):
     let bits = $(sizeof(pointer)*8)
     for d in dirs:
       if dirExists d:
-        let x = expandFilename(d / "bin")
-        if checkGccArch(x): return x
-        else: incompat.add x
+        let x = expand(d / "bin")
+        if x.len != 0:
+          if checkGccArch(x): return x
+          else: incompat.add x
       elif dirExists(d & bits):
-        let x = expandFilename((d & bits) / "bin")
-        if checkGccArch(x): return x
-        else: incompat.add x
+        let x = expand((d & bits) / "bin")
+        if x.len != 0:
+          if checkGccArch(x): return x
+          else: incompat.add x
 
 proc main() =
   when defined(windows):
-    let desiredPath = expandFilename(getCurrentDir() / "bin")
+    let nimDesiredPath = expand(getCurrentDir() / "bin")
+    let nimbleBin = getEnv("USERPROFILE") / ".nimble" / "bin"
+    let nimbleDesiredPath = expand(nimbleBin)
     let p = tryGetUnicodeValue(r"Environment", "Path",
       HKEY_CURRENT_USER) & ";" & tryGetUnicodeValue(
         r"System\CurrentControlSet\Control\Session Manager\Environment", "Path",
         HKEY_LOCAL_MACHINE)
-    var alreadyInPath = false
+    var nimAlreadyInPath = false
+    var nimbleAlreadyInPath = false
     var mingWchoices: seq[string] = @[]
     var incompat: seq[string] = @[]
     for x in p.split(';'):
       if x.len == 0: continue
       let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
                                     substr(x, 1, x.len-2) else: x)
+              except OSError as e:
+                if e.errorCode == 0: x else: ""
               except: ""
-      if y.cmpIgnoreCase(desiredPath) == 0: alreadyInPath = true
-      if y.toLowerAscii.contains("mingw"):
+      if y.cmpIgnoreCase(nimDesiredPath) == 0:
+        nimAlreadyInPath = true
+      elif y.cmpIgnoreCase(nimbleDesiredPath) == 0:
+        nimbleAlreadyInPath = true
+      elif y.toLowerAscii.contains("mingw"):
         if dirExists(y):
           if checkGccArch(y): mingWchoices.add y
           else: incompat.add y
 
-    if alreadyInPath:
-      echo "bin/nim.exe is already in your PATH [Skipping]"
+    if nimAlreadyInPath:
+      echo "bin\\nim.exe is already in your PATH [Skipping]"
     else:
       if askBool("nim.exe is not in your PATH environment variable.\n" &
           "Should it be added permanently? (y/n) "):
-        addToPathEnv(desiredPath)
+        addToPathEnv(nimDesiredPath)
+
+    if nimbleAlreadyInPath:
+      echo nimbleDesiredPath & " is already in your PATH [Skipping]"
+    else:
+      if askBool(nimbleDesiredPath & " is not in your PATH environment variable.\n" &
+          "Should it be added permanently? (y/n) "):
+        addToPathEnv(nimbleDesiredPath)
+
     if mingWchoices.len == 0:
       # No mingw in path, so try a few locations:
       let alternative = tryDirs(incompat, defaultMingwLocations())
@@ -278,4 +317,6 @@ when isMainModule:
   when defined(testdownload):
     discard downloadMingw()
   else:
+    if "-y" in commandLineParams():
+      interactive = false
     main()

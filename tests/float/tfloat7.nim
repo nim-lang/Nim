@@ -1,12 +1,13 @@
 discard """
-  file: "tfloat6.nim"
-  output: '''passed.
+output: '''
 passed.
 passed.
 passed.
 passed.
 passed.
-passed.'''
+passed.
+passed.
+'''
 """
 
 import strutils

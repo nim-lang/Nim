@@ -45,7 +45,7 @@ proc download(pkg: string; c: Controls) {.async.} =
 
 proc apply(a: Actions; c: Controls) {.async.} =
   if a.mingw:
-    await download("mingw" & arch & "-6.3.0", c)
+    await download("mingw" & arch, c)
   if a.aporia:
     await download("aporia-0.4.0", c)
 

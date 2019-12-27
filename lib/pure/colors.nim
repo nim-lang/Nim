@@ -6,18 +6,24 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements color handling for Nim. It is used by
-## the ``graphics`` module.
+## This module implements color handling for Nim.
 
 import strutils
+from algorithm import binarySearch
 
 type
-  Color* = distinct int ## a color stored as RGB
-
-{.deprecated: [TColor: Color].}
+  Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.
 
 proc `==` *(a, b: Color): bool {.borrow.}
-  ## compares two colors.
+  ## Compares two colors.
+  ##
+  ## .. code-block::
+  ##   var
+  ##     a = Color(0xff_00_ff)
+  ##     b = colFuchsia
+  ##     c = Color(0x00_ff_cc)
+  ##   assert a == b
+  ##   assert not a == c
 
 template extract(a: Color, r, g, b: untyped) =
   var r = a.int shr 16 and 0xff
@@ -41,24 +47,64 @@ proc satMinus(a, b: int): int {.inline.} =
   if result < 0: result = 0
 
 proc `+`*(a, b: Color): Color =
-  ## adds two colors: This uses saturated artithmetic, so that each color
+  ## Adds two colors.
+  ##
+  ## This uses saturated arithmetic, so that each color
   ## component cannot overflow (255 is used as a maximum).
+  ##
+  runnableExamples:
+    var
+      a = Color(0xaa_00_ff)
+      b = Color(0x11_cc_cc)
+    assert a + b == Color(0xbb_cc_ff)
+
   colorOp(satPlus)
 
 proc `-`*(a, b: Color): Color =
-  ## subtracts two colors: This uses saturated artithmetic, so that each color
-  ## component cannot overflow (255 is used as a maximum).
+  ## Subtracts two colors.
+  ##
+  ## This uses saturated arithmetic, so that each color
+  ## component cannot underflow (0 is used as a minimum).
+  ##
+  runnableExamples:
+    var
+      a = Color(0xff_33_ff)
+      b = Color(0x11_ff_cc)
+    assert a - b == Color(0xee_00_33)
+
   colorOp(satMinus)
 
 proc extractRGB*(a: Color): tuple[r, g, b: range[0..255]] =
-  ## extracts the red/green/blue components of the color `a`.
+  ## Extracts the red/green/blue components of the color `a`.
+  ##
+  runnableExamples:
+    var
+      a = Color(0xff_00_ff)
+      b = Color(0x00_ff_cc)
+    type
+      Col = range[0..255]
+    # assert extractRGB(a) == (r: 255.Col, g: 0.Col, b: 255.Col)
+    # assert extractRGB(b) == (r: 0.Col, g: 255.Col, b: 204.Col)
+    echo extractRGB(a)
+    echo typeof(extractRGB(a))
+    echo extractRGB(b)
+    echo typeof(extractRGB(b))
+
   result.r = a.int shr 16 and 0xff
   result.g = a.int shr 8 and 0xff
   result.b = a.int and 0xff
 
 proc intensity*(a: Color, f: float): Color =
-  ## returns `a` with intensity `f`. `f` should be a float from 0.0 (completely
+  ## Returns `a` with intensity `f`. `f` should be a float from 0.0 (completely
   ## dark) to 1.0 (full color intensity).
+  ##
+  runnableExamples:
+    var
+      a = Color(0xff_00_ff)
+      b = Color(0x00_42_cc)
+    assert a.intensity(0.5) == Color(0x80_00_80)
+    assert b.intensity(0.5) == Color(0x00_21_66)
+
   var r = toInt(toFloat(a.int shr 16 and 0xff) * f)
   var g = toInt(toFloat(a.int shr 8 and 0xff) * f)
   var b = toInt(toFloat(a.int and 0xff) * f)
@@ -68,10 +114,22 @@ proc intensity*(a: Color, f: float): Color =
   result = rawRGB(r, g, b)
 
 template mix*(a, b: Color, fn: untyped): untyped =
-  ## uses `fn` to mix the colors `a` and `b`. `fn` is invoked for each component
-  ## R, G, and B. This is a template because `fn` should be inlined and the
-  ## compiler cannot inline proc pointers yet. If `fn`'s result is not in the
-  ## range[0..255], it will be saturated to be so.
+  ## Uses `fn` to mix the colors `a` and `b`.
+  ##
+  ## `fn` is invoked for each component R, G, and B.
+  ## If `fn`'s result is not in the `range[0..255]`,
+  ## it will be saturated to be so.
+  ##
+  runnableExamples:
+    var
+      a = Color(0x0a2814)
+      b = Color(0x050a03)
+
+    proc myMix(x, y: int): int =
+      2 * x - 3 * y
+
+    assert mix(a, b, myMix) == Color(0x05_32_1f)
+
   template `><` (x: untyped): untyped =
     # keep it in the range 0..255
     block:
@@ -80,9 +138,9 @@ template mix*(a, b: Color, fn: untyped): untyped =
         y = if y < 0: 0 else: 255
       y
 
-  (bind extract)(a, ar, ag, ab)
-  (bind extract)(b, br, bg, bb)
-  (bind rawRGB)(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
+  extract(a, ar, ag, ab)
+  extract(b, br, bg, bb)
+  rawRGB(><fn(ar, br), ><fn(ag, bg), ><fn(ab, bb))
 
 
 const
@@ -370,42 +428,61 @@ const
     ("yellowgreen", colYellowGreen)]
 
 proc `$`*(c: Color): string =
-  ## converts a color into its textual representation. Example: ``#00FF00``.
+  ## Converts a color into its textual representation.
+  ##
+  runnableExamples:
+    assert $colFuchsia == "#FF00FF"
   result = '#' & toHex(int(c), 6)
 
-proc binaryStrSearch(x: openArray[tuple[name: string, col: Color]],
-                     y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmp(x[mid].name, y)
-    if c < 0: a = mid + 1
-    elif c > 0: b = mid - 1
-    else: return mid
-  result = - 1
+proc colorNameCmp(x: tuple[name: string, col: Color], y: string): int =
+  result = cmpIgnoreCase(x.name, y)
 
 proc parseColor*(name: string): Color =
-  ## parses `name` to a color value. If no valid color could be
-  ## parsed ``EInvalidValue`` is raised.
+  ## Parses `name` to a color value.
+  ##
+  ## If no valid color could be parsed ``ValueError`` is raised.
+  ## Case insensitive.
+  ##
+  runnableExamples:
+    var
+      a = "silver"
+      b = "#0179fc"
+      c = "#zzmmtt"
+    assert parseColor(a) == Color(0xc0_c0_c0)
+    assert parseColor(b) == Color(0x01_79_fc)
+    doAssertRaises(ValueError): discard parseColor(c)
+
   if name[0] == '#':
     result = Color(parseHexInt(name))
   else:
-    var idx = binaryStrSearch(colorNames, name)
+    var idx = binarySearch(colorNames, name, colorNameCmp)
     if idx < 0: raise newException(ValueError, "unknown color: " & name)
     result = colorNames[idx][1]
 
 proc isColor*(name: string): bool =
-  ## returns true if `name` is a known color name or a hexadecimal color
-  ## prefixed with ``#``.
+  ## Returns true if `name` is a known color name or a hexadecimal color
+  ## prefixed with ``#``. Case insensitive.
+  ##
+  runnableExamples:
+    var
+      a = "silver"
+      b = "#0179fc"
+      c = "#zzmmtt"
+    assert a.isColor
+    assert b.isColor
+    assert not c.isColor
+
   if name[0] == '#':
     for i in 1 .. name.len-1:
       if name[i] notin {'0'..'9', 'a'..'f', 'A'..'F'}: return false
     result = true
   else:
-    result = binaryStrSearch(colorNames, name) >= 0
+    result = binarySearch(colorNames, name, colorNameCmp) >= 0
 
 proc rgb*(r, g, b: range[0..255]): Color =
-  ## constructs a color from RGB values.
-  result = rawRGB(r, g, b)
+  ## Constructs a color from RGB values.
+  ##
+  runnableExamples:
+    assert rgb(0, 255, 128) == Color(0x00_ff_80)
 
+  result = rawRGB(r, g, b)

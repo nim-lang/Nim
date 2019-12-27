@@ -141,8 +141,8 @@ proc poll*(timeout: int = 250) =
       echo("Write ", c, " result: ", res, " data: ", c.outputBuf.data)
       c.outputBuf.flush()
 
-when isMainModule:
-  import parseopt, matchers, strutils
+when true:
+  import parseopt, strutils
   var zoneCfgFile = "./server_settings.json"
   for kind, key, val in getOpt():
     case kind

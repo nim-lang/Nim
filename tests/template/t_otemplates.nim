@@ -312,7 +312,7 @@ proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.co
 
 
 proc parse_template(node: NimNode, value: string) =
-    ## Parses through entire template, outputing valid
+    ## Parses through entire template, outputting valid
     ## Nim code into the input `node` AST.
     var index = 0
     while index < value.len and
@@ -340,6 +340,6 @@ macro tmpl*(body: untyped): untyped =
 
 
 # Run tests
-when isMainModule:
+when true:
     include otests
     echo "Success"

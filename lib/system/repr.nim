@@ -25,29 +25,13 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
     discard c_sprintf(buf, "%p", x)
     return $buf
 
-proc `$`(x: uint64): string =
-  if x == 0:
-    result = "0"
-  else:
-    result = newString(60)
-    var i = 0
-    var n = x
-    while n != 0:
-      let nn = n div 10'u64
-      result[i] = char(n - 10'u64 * nn + ord('0'))
-      inc i
-      n = nn
-    result.setLen i
-
-    let half = i div 2
-    # Reverse
-    for t in 0 .. half-1: swap(result[t], result[i-t-1])
-
 proc reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
-  add result, reprPointer(cast[pointer](s)) & "\""
+  if len > 0:
+    add result, reprPointer(cast[pointer](s))
+  add result, "\""
   for i in 0 .. pred(len):
     let c = s[i]
     case c
@@ -94,7 +78,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  PByteArray = ptr array[0xffff, int8]
+  PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
@@ -111,22 +95,22 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
   var elemCounter = 0  # we need this flag for adding the comma at
                        # the right places
   add result, "{"
-  var u: int64
+  var u: uint64
   case typ.size
-  of 1: u = ze64(cast[ptr int8](p)[])
-  of 2: u = ze64(cast[ptr int16](p)[])
-  of 4: u = ze64(cast[ptr int32](p)[])
-  of 8: u = cast[ptr int64](p)[]
+  of 1: u = cast[ptr uint8](p)[]
+  of 2: u = cast[ptr uint16](p)[]
+  of 4: u = cast[ptr uint32](p)[]
+  of 8: u = cast[ptr uint64](p)[]
   else:
     var a = cast[PByteArray](p)
     for i in 0 .. typ.size*8-1:
-      if (ze(a[i div 8]) and (1 shl (i mod 8))) != 0:
+      if (uint(a[i shr 3]) and (1'u shl (i and 7))) != 0:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
   if typ.size <= 8:
     for i in 0..sizeof(int64)*8-1:
-      if (u and (1'i64 shl int64(i))) != 0'i64:
+      if (u and (1'u64 shl uint64(i))) != 0'u64:
         if elemCounter > 0: add result, ", "
         addSetElem(result, i+typ.node.len, typ.base)
         inc(elemCounter)
@@ -143,7 +127,6 @@ type
       marked: CellSet
     recdepth: int       # do not recurse endlessly
     indent: int         # indentation
-{.deprecated: [TReprClosure: ReprClosure].}
 
 when not defined(useNimRtl):
   proc initReprClosure(cl: var ReprClosure) =
@@ -177,16 +160,32 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
     add result, "]"
 
+  when defined(nimSeqsV2):
+    type
+      GenericSeq = object
+        len: int
+        p: pointer
+      PGenericSeq = ptr GenericSeq
+    const payloadOffset = sizeof(int) + sizeof(pointer)
+      # see seqs.nim:    cap: int
+      #                  region: Allocator
+
+    template payloadPtr(x: untyped): untyped = cast[PGenericSeq](x).p
+  else:
+    const payloadOffset = GenericSeqSize
+    template payloadPtr(x: untyped): untyped = x
+
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
                     cl: var ReprClosure) =
     if p == nil:
-      add result, "nil"
+      add result, "[]"
       return
-    result.add(reprPointer(p) & "[")
+    result.add(reprPointer(p))
+    result.add "@["
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](p) + GenericSeqSize + i*bs),
+      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + payloadOffset + i*bs),
               typ.base, cl)
     add result, "]"
 
@@ -227,11 +226,12 @@ when not defined(useNimRtl):
                cl: var ReprClosure) =
     # we know that p is not nil here:
     when declared(CellSet):
-      when defined(boehmGC) or defined(gogc) or defined(nogc):
+      when defined(boehmGC) or defined(gogc) or defined(nogc) or usesDestructors:
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)
-      add result, "ref " & reprPointer(p)
+      add result, if typ.kind == tyPtr: "ptr " else: "ref "
+      add result, reprPointer(p)
       if cell notin cl.marked:
         # only the address is shown:
         incl(cl.marked, cell)
@@ -284,7 +284,7 @@ when not defined(useNimRtl):
     of tyChar: add result, reprChar(cast[ptr char](p)[])
     of tyString:
       let sp = cast[ptr string](p)
-      reprStrAux(result, if sp[].isNil: nil else: sp[].cstring, sp[].len)
+      reprStrAux(result, sp[].cstring, sp[].len)
     of tyCString:
       let cs = cast[ptr cstring](p)[]
       if cs.isNil: add result, "nil"
@@ -293,22 +293,25 @@ when not defined(useNimRtl):
     of tyProc, tyPointer:
       if cast[PPointer](p)[] == nil: add result, "nil"
       else: add result, reprPointer(cast[PPointer](p)[])
+    of tyUncheckedArray:
+      add result, "[...]"
     else:
       add result, "(invalid data!)"
     inc(cl.recdepth)
 
-proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
-                   compilerRtl.} =
-  var
-    cl: ReprClosure
-  initReprClosure(cl)
-  result = "["
-  var bs = elemtyp.size
-  for i in 0..length - 1:
-    if i > 0: add result, ", "
-    reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
-  add result, "]"
-  deinitReprClosure(cl)
+when not defined(useNimRtl):
+  proc reprOpenArray(p: pointer, length: int, elemtyp: PNimType): string {.
+                     compilerRtl.} =
+    var
+      cl: ReprClosure
+    initReprClosure(cl)
+    result = "["
+    var bs = elemtyp.size
+    for i in 0..length - 1:
+      if i > 0: add result, ", "
+      reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), elemtyp, cl)
+    add result, "]"
+    deinitReprClosure(cl)
 
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string =

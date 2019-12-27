@@ -27,7 +27,7 @@ type
   BitIndex = range[0..UnitsPerPage-1]
   PageDesc {.final, pure.} = object
     next: PPageDesc # all nodes are connected with this pointer
-    key: ByteAddress   # start address at bit 0
+    key: uint   # start address at bit 0
     bits: array[BitIndex, int] # a bit vector
 
   PPageDescArray = ptr UncheckedArray[PPageDesc]
@@ -39,8 +39,7 @@ type
   CellSeq {.final, pure.} = object
     len, cap: int
     d: PCellArray
-{.deprecated: [TCell: Cell, TBitIndex: BitIndex, TPageDesc: PageDesc,
-              TRefCount: RefCount, TCellSet: CellSet, TCellSeq: CellSeq].}
+
 # ------------------- cell seq handling ---------------------------------------
 
 proc contains(s: CellSeq, c: PCell): bool {.inline.} =
@@ -98,7 +97,7 @@ proc nextTry(h, maxHash: int): int {.inline.} =
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
 
-proc cellSetGet(t: CellSet, key: ByteAddress): PPageDesc =
+proc cellSetGet(t: CellSet, key: uint): PPageDesc =
   var h = cast[int](key) and t.max
   while t.data[h] != nil:
     if t.data[h].key == key: return t.data[h]
@@ -123,7 +122,7 @@ proc cellSetEnlarge(t: var CellSet) =
   dealloc(t.data)
   t.data = n
 
-proc cellSetPut(t: var CellSet, key: ByteAddress): PPageDesc =
+proc cellSetPut(t: var CellSet, key: uint): PPageDesc =
   var h = cast[int](key) and t.max
   while true:
     var x = t.data[h]
@@ -147,33 +146,33 @@ proc cellSetPut(t: var CellSet, key: ByteAddress): PPageDesc =
 # ---------- slightly higher level procs --------------------------------------
 
 proc contains(s: CellSet, cell: PCell): bool =
-  var u = cast[ByteAddress](cell)
+  var u = cast[uint](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
-    u = (u %% PageSize) /% MemAlign
+    u = (u mod PageSize) div MemAlign
     result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
   else:
     result = false
 
-proc incl(s: var CellSet, cell: PCell) {.noinline.} =
-  var u = cast[ByteAddress](cell)
+proc incl(s: var CellSet, cell: PCell) =
+  var u = cast[uint](cell)
   var t = cellSetPut(s, u shr PageShift)
-  u = (u %% PageSize) /% MemAlign
+  u = (u mod PageSize) div MemAlign
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
 
 proc excl(s: var CellSet, cell: PCell) =
-  var u = cast[ByteAddress](cell)
+  var u = cast[uint](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
-    u = (u %% PageSize) /% MemAlign
+    u = (u mod PageSize) div MemAlign
     t.bits[u shr IntShift] = (t.bits[u shr IntShift] and
                               not (1 shl (u and IntMask)))
 
 proc containsOrIncl(s: var CellSet, cell: PCell): bool =
-  var u = cast[ByteAddress](cell)
+  var u = cast[uint](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
-    u = (u %% PageSize) /% MemAlign
+    u = (u mod PageSize) div MemAlign
     result = (t.bits[u shr IntShift] and (1 shl (u and IntMask))) != 0
     if not result:
       t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -186,15 +185,15 @@ iterator elements(t: CellSet): PCell {.inline.} =
   # while traversing it is forbidden to add pointers to the tree!
   var r = t.head
   while r != nil:
-    var i = 0
-    while i <= high(r.bits):
+    var i: uint = 0
+    while int(i) <= high(r.bits):
       var w = r.bits[i] # taking a copy of r.bits[i] here is correct, because
       # modifying operations are not allowed during traversation
-      var j = 0
+      var j: uint = 0
       while w != 0:         # test all remaining bits for zero
         if (w and 1) != 0:  # the bit is set!
           yield cast[PCell]((r.key shl PageShift) or
-                              (i shl IntShift +% j) *% MemAlign)
+                              (i shl IntShift + j) * MemAlign)
         inc(j)
         w = w shr 1
       inc(i)
@@ -239,16 +238,16 @@ iterator elementsExcept(t, s: CellSet): PCell {.inline.} =
   var r = t.head
   while r != nil:
     let ss = cellSetGet(s, r.key)
-    var i = 0
-    while i <= high(r.bits):
+    var i:uint = 0
+    while int(i) <= high(r.bits):
       var w = r.bits[i]
       if ss != nil:
         w = w and not ss.bits[i]
-      var j = 0
+      var j:uint = 0
       while w != 0:
         if (w and 1) != 0:
           yield cast[PCell]((r.key shl PageShift) or
-                              (i shl IntShift +% j) *% MemAlign)
+                              (i shl IntShift + j) * MemAlign)
         inc(j)
         w = w shr 1
       inc(i)

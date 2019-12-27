@@ -1,7 +1,7 @@
 discard """
+  errormsg: "attempt to redefine: 'grain'"
   file: "tparameterizedparent4.nim"
   line: 23
-  errormsg: "redefinition of 'grain'"
 """
 # bug #5264
 type

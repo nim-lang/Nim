@@ -7,114 +7,143 @@
 #    distribution, for details about the copyright.
 #
 
-# This include file contains headers of Ansi C procs
+# This module contains headers of Ansi C procs
 # and definitions of Ansi C types in Nim syntax
 # All symbols are prefixed with 'c_' to avoid ambiguities
 
-{.push hints:off}
+{.push hints:off, stack_trace: off, profiler: off.}
+when not defined(nimHasHotCodeReloading):
+  {.pragma: nonReloadable.}
 
-proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
+proc c_memchr*(s: pointer, c: cint, n: csize_t): pointer {.
   importc: "memchr", header: "<string.h>".}
-proc c_memcmp(a, b: pointer, size: csize): cint {.
+proc c_memcmp*(a, b: pointer, size: csize_t): cint {.
   importc: "memcmp", header: "<string.h>", noSideEffect.}
-proc c_memcpy(a, b: pointer, size: csize): pointer {.
+proc c_memcpy*(a, b: pointer, size: csize_t): pointer {.
   importc: "memcpy", header: "<string.h>", discardable.}
-proc c_memmove(a, b: pointer, size: csize): pointer {.
+proc c_memmove*(a, b: pointer, size: csize_t): pointer {.
   importc: "memmove", header: "<string.h>",discardable.}
-proc c_memset(p: pointer, value: cint, size: csize): pointer {.
+proc c_memset*(p: pointer, value: cint, size: csize_t): pointer {.
   importc: "memset", header: "<string.h>", discardable.}
-proc c_strcmp(a, b: cstring): cint {.
+proc c_strcmp*(a, b: cstring): cint {.
   importc: "strcmp", header: "<string.h>", noSideEffect.}
+proc c_strlen*(a: cstring): csize_t {.
+  importc: "strlen", header: "<string.h>", noSideEffect.}
+proc c_abort*() {.
+  importc: "abort", header: "<stdlib.h>", noSideEffect, noreturn.}
+
 
 when defined(linux) and defined(amd64):
   type
-    C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
+    C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>", bycopy.} = object
         abi: array[200 div sizeof(clong), clong]
 else:
   type
-    C_JmpBuf {.importc: "jmp_buf", header: "<setjmp.h>".} = object
+    C_JmpBuf* {.importc: "jmp_buf", header: "<setjmp.h>".} = object
 
 
 when defined(windows):
   const
-    SIGABRT = cint(22)
-    SIGFPE = cint(8)
-    SIGILL = cint(4)
-    SIGINT = cint(2)
-    SIGSEGV = cint(11)
+    SIGABRT* = cint(22)
+    SIGFPE* = cint(8)
+    SIGILL* = cint(4)
+    SIGINT* = cint(2)
+    SIGSEGV* = cint(11)
     SIGTERM = cint(15)
 elif defined(macosx) or defined(linux) or defined(freebsd) or
      defined(openbsd) or defined(netbsd) or defined(solaris) or
-     defined(dragonfly):
+     defined(dragonfly) or defined(nintendoswitch) or defined(genode) or
+     defined(aix) or hostOS == "standalone":
   const
-    SIGABRT = cint(6)
-    SIGFPE = cint(8)
-    SIGILL = cint(4)
-    SIGINT = cint(2)
-    SIGSEGV = cint(11)
-    SIGTERM = cint(15)
-    SIGPIPE = cint(13)
+    SIGABRT* = cint(6)
+    SIGFPE* = cint(8)
+    SIGILL* = cint(4)
+    SIGINT* = cint(2)
+    SIGSEGV* = cint(11)
+    SIGTERM* = cint(15)
+    SIGPIPE* = cint(13)
+elif defined(haiku):
+  const
+    SIGABRT* = cint(6)
+    SIGFPE* = cint(8)
+    SIGILL* = cint(4)
+    SIGINT* = cint(2)
+    SIGSEGV* = cint(11)
+    SIGTERM* = cint(15)
+    SIGPIPE* = cint(7)
 else:
   when NoFakeVars:
     {.error: "SIGABRT not ported to your platform".}
   else:
     var
-      SIGINT {.importc: "SIGINT", nodecl.}: cint
-      SIGSEGV {.importc: "SIGSEGV", nodecl.}: cint
-      SIGABRT {.importc: "SIGABRT", nodecl.}: cint
-      SIGFPE {.importc: "SIGFPE", nodecl.}: cint
-      SIGILL {.importc: "SIGILL", nodecl.}: cint
+      SIGINT* {.importc: "SIGINT", nodecl.}: cint
+      SIGSEGV* {.importc: "SIGSEGV", nodecl.}: cint
+      SIGABRT* {.importc: "SIGABRT", nodecl.}: cint
+      SIGFPE* {.importc: "SIGFPE", nodecl.}: cint
+      SIGILL* {.importc: "SIGILL", nodecl.}: cint
     when defined(macosx) or defined(linux):
-      var SIGPIPE {.importc: "SIGPIPE", nodecl.}: cint
+      var SIGPIPE* {.importc: "SIGPIPE", nodecl.}: cint
 
 when defined(macosx):
-  const SIGBUS = cint(10)
-else:
-  template SIGBUS: untyped = SIGSEGV
+  const SIGBUS* = cint(10)
+elif defined(haiku):
+  const SIGBUS* = cint(30)
 
 when defined(nimSigSetjmp) and not defined(nimStdSetjmp):
-  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "siglongjmp".}
-  template c_setjmp(jmpb: C_JmpBuf): cint =
+  template c_setjmp*(jmpb: C_JmpBuf): cint =
     proc c_sigsetjmp(jmpb: C_JmpBuf, savemask: cint): cint {.
       header: "<setjmp.h>", importc: "sigsetjmp".}
     c_sigsetjmp(jmpb, 0)
 elif defined(nimRawSetjmp) and not defined(nimStdSetjmp):
-  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "_longjmp".}
-  proc c_setjmp(jmpb: C_JmpBuf): cint {.
+  proc c_setjmp*(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "_setjmp".}
 else:
-  proc c_longjmp(jmpb: C_JmpBuf, retval: cint) {.
+  proc c_longjmp*(jmpb: C_JmpBuf, retval: cint) {.
     header: "<setjmp.h>", importc: "longjmp".}
-  proc c_setjmp(jmpb: C_JmpBuf): cint {.
+  proc c_setjmp*(jmpb: C_JmpBuf): cint {.
     header: "<setjmp.h>", importc: "setjmp".}
 
-type c_sighandler_t = proc (a: cint) {.noconv.}
-proc c_signal(sign: cint, handler: proc (a: cint) {.noconv.}): c_sighandler_t {.
+type CSighandlerT = proc (a: cint) {.noconv.}
+proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
 
-proc c_fprintf(f: File, frmt: cstring): cint {.
+type
+  CFile {.importc: "FILE", header: "<stdio.h>",
+          incompleteStruct.} = object
+  CFilePtr* = ptr CFile ## The type representing a file handle.
+
+var
+  cstderr* {.importc: "stderr", header: "<stdio.h>".}: CFilePtr
+  cstdout* {.importc: "stdout", header: "<stdio.h>".}: CFilePtr
+
+proc c_fprintf*(f: CFilePtr, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
-proc c_printf(frmt: cstring): cint {.
+proc c_printf*(frmt: cstring): cint {.
   importc: "printf", header: "<stdio.h>", varargs, discardable.}
 
-proc c_sprintf(buf, frmt: cstring): cint {.
+proc c_fputs*(c: cstring, f: CFilePtr): cint {.
+  importc: "fputs", header: "<stdio.h>", discardable.}
+
+proc c_sprintf*(buf, frmt: cstring): cint {.
   importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
   # we use it only in a way that cannot lead to security issues
 
-when defined(windows):
-  proc c_fileno(f: File): cint {.
-      importc: "_fileno", header: "<stdio.h>".}
-else:
-  proc c_fileno(f: File): cint {.
-      importc: "fileno", header: "<fcntl.h>".}
-
-proc c_malloc(size: csize): pointer {.
+proc c_malloc*(size: csize_t): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
-proc c_free(p: pointer) {.
+proc c_free*(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
-proc c_realloc(p: pointer, newsize: csize): pointer {.
+proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
   importc: "realloc", header: "<stdlib.h>".}
 
-{.pop}
+proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
+  importc: "fwrite", header: "<stdio.h>".}
+
+proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
+  # we cannot throw an exception here!
+  discard c_fwrite(s, 1, cast[csize_t](s.len), f)
+
+{.pop.}

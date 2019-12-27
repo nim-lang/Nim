@@ -3,7 +3,7 @@ discard """
   disabled: "windows"
   output: "Matched"
 """
-import asyncdispatch
+import asyncdispatch, strutils
 
 # Tests to ensure our exception trace backs are friendly.
 
@@ -70,19 +70,19 @@ b failure
 Async traceback:
   tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
   asyncmacro\.nim\(\d+?\)\s+?a
-  asyncmacro\.nim\(\d+?\)\s+?a_continue
+  asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
     ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?aIter
   asyncmacro\.nim\(\d+?\)\s+?b
-  asyncmacro\.nim\(\d+?\)\s+?b_continue
+  asyncmacro\.nim\(\d+?\)\s+?bNimAsyncContinue
     ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?bIter
   #\[
     tasync_traceback\.nim\(\d+?\)\s+?tasync_traceback
     asyncmacro\.nim\(\d+?\)\s+?a
-    asyncmacro\.nim\(\d+?\)\s+?a_continue
+    asyncmacro\.nim\(\d+?\)\s+?aNimAsyncContinue
       ## Resumes an async procedure
-    asyncmacro\.nim\(\d+?\)\s+?aIter
+    tasync_traceback\.nim\(\d+?\)\s+?aIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: b failure
@@ -97,7 +97,7 @@ Async traceback:
   asyncdispatch\.nim\(\d+?\)\s+?runOnce
   asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
     ## Executes pending callbacks
-  asyncmacro\.nim\(\d+?\)\s+?bar_continue
+  asyncmacro\.nim\(\d+?\)\s+?barNimAsyncContinue
     ## Resumes an async procedure
   tasync_traceback\.nim\(\d+?\)\s+?barIter
   #\[
@@ -108,19 +108,40 @@ Async traceback:
     asyncdispatch\.nim\(\d+?\)\s+?runOnce
     asyncdispatch\.nim\(\d+?\)\s+?processPendingCallbacks
       ## Executes pending callbacks
-    asyncmacro\.nim\(\d+?\)\s+?foo_continue
+    asyncmacro\.nim\(\d+?\)\s+?fooNimAsyncContinue
       ## Resumes an async procedure
-    asyncmacro\.nim\(\d+?\)\s+?fooIter
+    tasync_traceback\.nim\(\d+?\)\s+?fooIter
     asyncfutures\.nim\(\d+?\)\s+?read
   \]#
 Exception message: bar failure
 Exception type:
 """
 
-if result.match(re(expected)):
+let resLines = splitLines(result.strip)
+let expLines = splitLines(expected.strip)
+
+if resLines.len != expLines.len:
+  echo("Not matched! Wrong number of lines!")
+  echo expLines.len
+  echo resLines.len
+  echo("Expected: -----------")
+  echo expected
+  echo("Gotten: -------------")
+  echo result
+  echo("---------------------")
+  quit(QuitFailure)
+
+var ok = true
+for i in 0 ..< resLines.len:
+  if not resLines[i].match(re(expLines[i])):
+    echo "Not matched! Line ", i + 1
+    echo "Expected:"
+    echo expLines[i]
+    echo "Actual:"
+    echo resLines[i]
+    ok = false
+
+if ok:
   echo("Matched")
 else:
-  echo("Not matched!")
-  echo()
-  echo(result)
   quit(QuitFailure)

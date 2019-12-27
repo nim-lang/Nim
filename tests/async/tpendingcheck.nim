@@ -1,6 +1,4 @@
 discard """
-  file: "tpendingcheck.nim"
-  exitcode: 0
   output: ""
 """
 
@@ -18,4 +16,3 @@ while not f.finished:
 f.read
 
 doAssert(not hasPendingOperations())
-

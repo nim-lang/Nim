@@ -5,47 +5,51 @@ Constructing Simple CFG...
 Constructing CFG...
 Performing Loop Recognition
 1 Iteration
-Another 50 iterations...
-..................................................
-Found 1 loops (including artificial root node) (50)'''
+Another 5 iterations...
+.....
+Found 1 loops (including artificial root node) (5)'''
 """
 
 # bug #3184
 
-import tables
-import sequtils
-import sets
+import tables, sets
+
+when not declared(withScratchRegion):
+  template withScratchRegion(body: untyped) = body
 
 type
-  BasicBlock = object
-    inEdges: seq[ref BasicBlock]
-    outEdges: seq[ref BasicBlock]
+  BasicBlock = ref object
+    inEdges: seq[BasicBlock]
+    outEdges: seq[BasicBlock]
     name: int
 
-proc newBasicBlock(name: int): ref BasicBlock =
-  new(result)
-  result.inEdges = newSeq[ref BasicBlock]()
-  result.outEdges = newSeq[ref BasicBlock]()
-  result.name = name
+proc newBasicBlock(name: int): BasicBlock =
+  result = BasicBlock(
+    inEdges: newSeq[BasicBlock](),
+    outEdges: newSeq[BasicBlock](),
+    name: name
+  )
 
-proc hash(x: ref BasicBlock): int {.inline.} =
+proc hash(x: BasicBlock): int {.inline.} =
   result = x.name
 
 type
   BasicBlockEdge = object
-    fr: ref BasicBlock
-    to: ref BasicBlock
+    fr: BasicBlock
+    to: BasicBlock
 
   Cfg = object
-    basicBlockMap: Table[int, ref BasicBlock]
+    basicBlockMap: Table[int, BasicBlock]
     edgeList: seq[BasicBlockEdge]
-    startNode: ref BasicBlock
+    startNode: BasicBlock
 
 proc newCfg(): Cfg =
-  result.basicBlockMap = initTable[int, ref BasicBlock]()
-  result.edgeList = newSeq[BasicBlockEdge]()
+  result = Cfg(
+    basicBlockMap: initTable[int, BasicBlock](),
+    edgeList: newSeq[BasicBlockEdge](),
+    startNode: nil)
 
-proc createNode(self: var Cfg, name: int): ref BasicBlock =
+proc createNode(self: var Cfg, name: int): BasicBlock =
   result = self.basicBlockMap.getOrDefault(name)
   if result == nil:
     result = newBasicBlock(name)
@@ -54,128 +58,94 @@ proc createNode(self: var Cfg, name: int): ref BasicBlock =
   if self.startNode == nil:
     self.startNode = result
 
-proc addEdge(self: var Cfg, edge: BasicBlockEdge) =
-  self.edgeList.add(edge)
-
-proc getNumNodes(self: Cfg): int =
-  self.basicBlockMap.len
-
-proc newBasicBlockEdge(cfg: var Cfg, fromName: int, toName: int): BasicBlockEdge =
-  result.fr = cfg.createNode(fromName)
-  result.to = cfg.createNode(toName)
+proc newBasicBlockEdge(cfg: var Cfg, fromName, toName: int) =
+  var result = BasicBlockEdge(
+    fr: cfg.createNode(fromName),
+    to: cfg.createNode(toName)
+  )
   result.fr.outEdges.add(result.to)
   result.to.inEdges.add(result.fr)
-  cfg.addEdge(result)
+  cfg.edgeList.add(result)
 
 type
-  SimpleLoop = object
-    basicBlocks: seq[ref BasicBlock] # TODO: set here
-    children: seq[ref SimpleLoop] # TODO: set here
-    parent: ref SimpleLoop
-    header: ref BasicBlock
-    isRoot: bool
-    isReducible: bool
-    counter: int
-    nestingLevel: int
-    depthLevel: int
+  SimpleLoop = ref object
+    basicBlocks: seq[BasicBlock] # TODO: set here
+    children: seq[SimpleLoop] # TODO: set here
+    parent: SimpleLoop
+    header: BasicBlock
+    isRoot, isReducible: bool
+    counter, nestingLevel, depthLevel: int
 
-proc newSimpleLoop(): ref SimpleLoop =
-  new(result)
-  result.basicBlocks = newSeq[ref BasicBlock]()
-  result.children = newSeq[ref SimpleLoop]()
-  result.parent = nil
-  result.header = nil
-  result.isRoot = false
-  result.isReducible = true
-  result.counter = 0
-  result.nestingLevel = 0
-  result.depthLevel = 0
-
-proc addNode(self: ref SimpleLoop, bb: ref BasicBlock) =
-  self.basicBlocks.add bb
-
-proc addChildLoop(self: ref SimpleLoop, loop: ref SimpleLoop) =
-  self.children.add loop
-
-proc setParent(self: ref SimpleLoop, parent: ref SimpleLoop) =
+proc setParent(self: SimpleLoop, parent: SimpleLoop) =
   self.parent = parent
-  self.parent.addChildLoop(self)
+  self.parent.children.add self
 
-proc setHeader(self: ref SimpleLoop, bb: ref BasicBlock) =
+proc setHeader(self: SimpleLoop, bb: BasicBlock) =
   self.basicBlocks.add(bb)
   self.header = bb
 
-proc setNestingLevel(self: ref SimpleLoop, level: int) =
+proc setNestingLevel(self: SimpleLoop, level: int) =
   self.nestingLevel = level
   if level == 0: self.isRoot = true
 
-var loop_counter: int = 0
+var loopCounter: int = 0
 
 type
   Lsg = object
-    loops: seq[ref SimpleLoop]
-    root: ref SimpleLoop
+    loops: seq[SimpleLoop]
+    root: SimpleLoop
 
-proc createNewLoop(self: var Lsg): ref SimpleLoop =
-  result = newSimpleLoop()
-  loop_counter += 1
-  result.counter = loop_counter
+proc createNewLoop(self: var Lsg): SimpleLoop =
+  result = SimpleLoop(
+    basicBlocks: newSeq[BasicBlock](),
+    children: newSeq[SimpleLoop](),
+    isReducible: true)
+  loopCounter += 1
+  result.counter = loopCounter
 
-proc addLoop(self: var Lsg, l: ref SimpleLoop) =
+proc addLoop(self: var Lsg, l: SimpleLoop) =
   self.loops.add l
 
 proc newLsg(): Lsg =
-  result.loops = newSeq[ref SimpleLoop]()
-  result.root = result.createNewLoop()
+  result = Lsg(loops: newSeq[SimpleLoop](),
+    root: result.createNewLoop())
   result.root.setNestingLevel(0)
   result.addLoop(result.root)
 
-proc getNumLoops(self: Lsg): int =
-  self.loops.len
-
 type
-  UnionFindNode = object
-    parent: ref UnionFindNode
-    bb: ref BasicBlock
-    l: ref SimpleLoop
+  UnionFindNode = ref object
+    parent {.cursor.}: UnionFindNode
+    bb: BasicBlock
+    l: SimpleLoop
     dfsNumber: int
 
-proc newUnionFindNode(): ref UnionFindNode =
-  new(result)
-  when false:
-    result.parent = nil
-    result.bb = nil
-    result.l = nil
-    result.dfsNumber = 0
-
-proc initNode(self: ref UnionFindNode, bb: ref BasicBlock, dfsNumber: int) =
+proc initNode(self: UnionFindNode, bb: BasicBlock, dfsNumber: int) =
   self.parent = self
   self.bb = bb
   self.dfsNumber = dfsNumber
 
-proc findSet(self: ref UnionFindNode): ref UnionFindNode =
-  var nodeList = newSeq[ref UnionFindNode]()
-  result = self
+proc findSet(self: UnionFindNode): UnionFindNode =
+  var nodeList = newSeq[UnionFindNode]()
+  var it {.cursor.} = self
 
-  while result != result.parent:
-    var parent = result.parent
-    if parent != parent.parent: nodeList.add result
-    result = parent
+  while it != it.parent:
+    var parent {.cursor.} = it.parent
+    if parent != parent.parent: nodeList.add it
+    it = parent
 
-  for iter in nodeList: iter.parent = result.parent
+  for iter in nodeList: iter.parent = it.parent
+  result = it
 
-proc union(self: ref UnionFindNode, unionFindNode: ref UnionFindNode) =
+proc union(self: UnionFindNode, unionFindNode: UnionFindNode) =
   self.parent = unionFindNode
 
 
 const
-  BB_TOP          = 0 # uninitialized
-  BB_NONHEADER    = 1 # a regular BB
-  BB_REDUCIBLE    = 2 # reducible loop
-  BB_SELF         = 3 # single BB loop
-  BB_IRREDUCIBLE  = 4 # irreducible loop
-  BB_DEAD         = 5 # a dead BB
-  BB_LAST         = 6 # Sentinel
+  BB_NONHEADER = 1 # a regular BB
+  BB_REDUCIBLE = 2 # reducible loop
+  BB_SELF = 3 # single BB loop
+  BB_IRREDUCIBLE = 4 # irreducible loop
+  BB_DEAD = 5 # a dead BB
 
   # # Marker for uninitialized nodes.
   UNVISITED = -1
@@ -188,44 +158,44 @@ type
     cfg: Cfg
     lsg: Lsg
 
-proc newHavlakLoopFinder(cfg: Cfg, lsg: Lsg): HavlakLoopFinder =
-  result.cfg = cfg
-  result.lsg = lsg
+proc newHavlakLoopFinder(cfg: Cfg, lsg: sink Lsg): HavlakLoopFinder =
+  result = HavlakLoopFinder(cfg: cfg, lsg: lsg)
 
-proc isAncestor(w: int, v: int, last: seq[int]): bool =
+proc isAncestor(w, v: int, last: seq[int]): bool =
   w <= v and v <= last[w]
 
-proc dfs(currentNode: ref BasicBlock, nodes: var seq[ref UnionFindNode], number: var Table[ref BasicBlock, int], last: var seq[int], current: int): int =
+proc dfs(currentNode: BasicBlock, nodes: var seq[UnionFindNode],
+         number: var Table[BasicBlock, int],
+         last: var seq[int], current: int) =
   var stack = @[(currentNode, current)]
   while stack.len > 0:
     let (currentNode, current) = stack.pop()
     nodes[current].initNode(currentNode, current)
     number[currentNode] = current
 
-    result = current
     for target in currentNode.outEdges:
       if number[target] == UNVISITED:
-        stack.add((target, result+1))
+        stack.add((target, current+1))
         #result = dfs(target, nodes, number, last, result + 1)
-  last[number[currentNode]] = result
+  last[number[currentNode]] = current
 
 proc findLoops(self: var HavlakLoopFinder): int =
   var startNode = self.cfg.startNode
   if startNode == nil: return 0
-  var size = self.cfg.getNumNodes
+  var size = self.cfg.basicBlockMap.len
 
-  var nonBackPreds    = newSeq[HashSet[int]]()
-  var backPreds       = newSeq[seq[int]]()
-  var number          = initTable[ref BasicBlock, int]()
-  var header          = newSeq[int](size)
-  var types           = newSeq[int](size)
-  var last            = newSeq[int](size)
-  var nodes           = newSeq[ref UnionFindNode]()
+  var nonBackPreds = newSeq[HashSet[int]]()
+  var backPreds = newSeq[seq[int]]()
+  var number = initTable[BasicBlock, int]()
+  var header = newSeq[int](size)
+  var types = newSeq[int](size)
+  var last = newSeq[int](size)
+  var nodes = newSeq[UnionFindNode]()
 
   for i in 1..size:
-    nonBackPreds.add initSet[int](1)
+    nonBackPreds.add initHashSet[int](1)
     backPreds.add newSeq[int]()
-    nodes.add newUnionFindNode()
+    nodes.add(UnionFindNode())
 
   # Step a:
   #   - initialize all nodes as unvisited.
@@ -233,7 +203,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
   #   - unreached BB's are marked as dead.
   #
   for v in self.cfg.basicBlockMap.values: number[v] = UNVISITED
-  var res = dfs(startNode, nodes, number, last, 0)
+  dfs(startNode, nodes, number, last, 0)
 
   # Step b:
   #   - iterate over all nodes.
@@ -245,7 +215,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
   #     - the list of backedges (backPreds) or
   #     - the list of non-backedges (nonBackPreds)
   #
-  for w in 0 .. <size:
+  for w in 0 ..< size:
     header[w] = 0
     types[w]  = BB_NONHEADER
 
@@ -278,7 +248,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
 
   for w in countdown(size - 1, 0):
     # this is 'P' in Havlak's paper
-    var nodePool = newSeq[ref UnionFindNode]()
+    var nodePool = newSeq[UnionFindNode]()
 
     var nodeW = nodes[w].bb
     if nodeW != nil: # dead BB
@@ -291,7 +261,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
 
       # Copy nodePool to workList.
       #
-      var workList = newSeq[ref UnionFindNode]()
+      var workList = newSeq[UnionFindNode]()
       for x in nodePool: workList.add x
 
       if nodePool.len != 0: types[w] = BB_REDUCIBLE
@@ -299,7 +269,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
       # work the list...
       #
       while workList.len > 0:
-        var x = workList[0]
+        let x = workList[0]
         workList.del(0)
 
         # Step e:
@@ -332,7 +302,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
       # Collapse/Unionize nodes in a SCC to a single node
       # For every SCC found, create a loop descriptor and link it in.
       #
-      if (nodePool.len > 0) or (types[w] == BB_SELF):
+      if nodePool.len > 0 or types[w] == BB_SELF:
         var l = self.lsg.createNewLoop
 
         l.setHeader(nodeW)
@@ -358,15 +328,15 @@ proc findLoops(self: var HavlakLoopFinder): int =
           node.union(nodes[w])
 
           # Nested loops are not added, but linked together.
-          var node_l = node.l
-          if node_l != nil:
-            node_l.setParent(l)
+          var nodeL = node.l
+          if nodeL != nil:
+            nodeL.setParent(l)
           else:
-            l.addNode(node.bb)
+            l.basicBlocks.add node.bb
 
         self.lsg.addLoop(l)
 
-  result = self.lsg.getNumLoops
+  result = self.lsg.loops.len
 
 
 type
@@ -379,27 +349,26 @@ proc newLoopTesterApp(): LoopTesterApp =
   result.lsg = newLsg()
 
 proc buildDiamond(self: var LoopTesterApp, start: int): int =
-  var bb0 = start
-  var x1 = newBasicBlockEdge(self.cfg, bb0, bb0 + 1)
-  var x2 = newBasicBlockEdge(self.cfg, bb0, bb0 + 2)
-  var x3 = newBasicBlockEdge(self.cfg, bb0 + 1, bb0 + 3)
-  var x4 = newBasicBlockEdge(self.cfg, bb0 + 2, bb0 + 3)
-  result = bb0 + 3
+  newBasicBlockEdge(self.cfg, start, start + 1)
+  newBasicBlockEdge(self.cfg, start, start + 2)
+  newBasicBlockEdge(self.cfg, start + 1, start + 3)
+  newBasicBlockEdge(self.cfg, start + 2, start + 3)
+  result = start + 3
 
-proc buildConnect(self: var LoopTesterApp, start1: int, end1: int) =
-  var x1 = newBasicBlockEdge(self.cfg, start1, end1)
+proc buildConnect(self: var LoopTesterApp, start1, end1: int) =
+  newBasicBlockEdge(self.cfg, start1, end1)
 
-proc buildStraight(self: var LoopTesterApp, start: int, n: int): int =
+proc buildStraight(self: var LoopTesterApp, start, n: int): int =
   for i in 0..n-1:
     self.buildConnect(start + i, start + i + 1)
   result = start + n
 
 proc buildBaseLoop(self: var LoopTesterApp, from1: int): int =
-  var header   = self.buildStraight(from1, 1)
-  var diamond1 = self.buildDiamond(header)
-  var d11      = self.buildStraight(diamond1, 1)
-  var diamond2 = self.buildDiamond(d11)
-  var footer   = self.buildStraight(diamond2, 1)
+  let header = self.buildStraight(from1, 1)
+  let diamond1 = self.buildDiamond(header)
+  let d11 = self.buildStraight(diamond1, 1)
+  let diamond2 = self.buildDiamond(d11)
+  let footer = self.buildStraight(diamond2, 1)
 
   self.buildConnect(diamond2, d11)
   self.buildConnect(diamond1, header)
@@ -410,48 +379,62 @@ proc run(self: var LoopTesterApp) =
   echo "Welcome to LoopTesterApp, Nim edition"
   echo "Constructing Simple CFG..."
 
-  var x1 = self.cfg.createNode(0)
-  var x2 = self.buildBaseLoop(0)
-  var x3 = self.cfg.createNode(1)
+  discard self.cfg.createNode(0)
+  discard self.buildBaseLoop(0)
+  discard self.cfg.createNode(1)
   self.buildConnect(0, 2)
 
   echo "15000 dummy loops"
 
   for i in 1..15000:
-    var h = newHavlakLoopFinder(self.cfg, newLsg())
-    var res = h.findLoops
+    withScratchRegion:
+      var h = newHavlakLoopFinder(self.cfg, newLsg())
+      discard h.findLoops
 
   echo "Constructing CFG..."
   var n = 2
 
-  for parlooptrees in 1..10:
-    var x6 = self.cfg.createNode(n + 1)
-    self.buildConnect(2, n + 1)
-    n += 1
-    for i in 1..100:
-      var top = n
-      n = self.buildStraight(n, 1)
-      for j in 1..25: n = self.buildBaseLoop(n)
-      var bottom = self.buildStraight(n, 1)
-      self.buildConnect n, top
-      n = bottom
-    self.buildConnect(n, 1)
+  when not defined(gcOrc):
+    # currently cycle detection is so slow that we disable this part
+    for parlooptrees in 1..10:
+      discard self.cfg.createNode(n + 1)
+      self.buildConnect(2, n + 1)
+      n += 1
+      for i in 1..100:
+        var top = n
+        n = self.buildStraight(n, 1)
+        for j in 1..25: n = self.buildBaseLoop(n)
+        var bottom = self.buildStraight(n, 1)
+        self.buildConnect n, top
+        n = bottom
+      self.buildConnect(n, 1)
 
   echo "Performing Loop Recognition\n1 Iteration"
 
   var h = newHavlakLoopFinder(self.cfg, newLsg())
   var loops = h.findLoops
 
-  echo "Another 50 iterations..."
+  echo "Another 5 iterations..."
 
   var sum = 0
-  for i in 1..50:
-    write stdout, "."
-    flushFile(stdout)
-    var hlf = newHavlakLoopFinder(self.cfg, newLsg())
-    sum += hlf.findLoops
-    #echo getOccupiedMem()
+  for i in 1..5:
+    withScratchRegion:
+      write stdout, "."
+      flushFile(stdout)
+      var hlf = newHavlakLoopFinder(self.cfg, newLsg())
+      sum += hlf.findLoops
+      #echo getOccupiedMem()
   echo "\nFound ", loops, " loops (including artificial root node) (", sum, ")"
 
-var l = newLoopTesterApp()
-l.run
+  when false:
+    echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
+    echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
+
+proc main =
+  var l = newLoopTesterApp()
+  l.run
+
+let mem = getOccupiedMem()
+main()
+when defined(gcOrc):
+  doAssert getOccupiedMem() == mem

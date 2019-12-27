@@ -11,13 +11,8 @@
 
 include "system/inclrtl"
 
-import strutils, os
-
 when not defined(windows):
   import posix
-
-when defined(linux):
-  import linux
 
 when defined(freebsd) or defined(macosx):
   {.emit:"#include <sys/types.h>".}
@@ -38,11 +33,21 @@ when defined(macosx) or defined(bsd):
               importc: "sysctl", nodecl.}
 
 when defined(genode):
-  proc affinitySpaceTotal(): cuint {.
-    importcpp: "genodeEnv->cpu().affinity_space().total()".}
+  include genode/env
+
+  proc affinitySpaceTotal(env: GenodeEnvPtr): cuint {.
+    importcpp: "@->cpu().affinity_space().total()".}
+
+when defined(haiku):
+  type
+    SystemInfo {.importc: "system_info", header: "<OS.h>".} = object
+      cpuCount {.importc: "cpu_count".}: uint32
+
+  proc getSystemInfo(info: ptr SystemInfo): int32 {.importc: "get_system_info",
+                                                    header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
-  ## returns the numer of the processors/cores the machine has.
+  ## returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     type
@@ -83,7 +88,11 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     var SC_NPROC_ONLN {.importc: "_SC_NPROC_ONLN", header: "<unistd.h>".}: cint
     result = sysconf(SC_NPROC_ONLN)
   elif defined(genode):
-    result = affinitySpaceTotal().int
+    result = runtimeEnv.affinitySpaceTotal().int
+  elif defined(haiku):
+    var sysinfo: SystemInfo
+    if getSystemInfo(addr sysinfo) == 0:
+      result = sysinfo.cpuCount.int
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0

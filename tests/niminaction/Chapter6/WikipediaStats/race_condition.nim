@@ -1,9 +1,13 @@
+discard """
+action: compile
+"""
+
 import threadpool
 
 var counter = 0
 
 proc increment(x: int) =
-  for i in 0 .. <x:
+  for i in 0 ..< x:
     let value = counter + 1
     counter = value
 

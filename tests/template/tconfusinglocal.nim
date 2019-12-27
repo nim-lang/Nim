@@ -1,3 +1,7 @@
+discard """
+output: "0"
+"""
+
 
 # bug #5135
 proc fail*[E](e: E): void =

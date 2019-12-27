@@ -1,11 +1,12 @@
 discard """
-  output: '''obj2 nil
-obj nil
-obj3 nil
+  output: '''ob2 @[]
+ob @[]
+ob3 @[]
 3
-obj2 nil
-obj nil
-obj3 nil'''
+ob2 @[]
+ob @[]
+ob3 @[]
+'''
   cmd: "nim c -r --threads:on $file"
 """
 
@@ -30,24 +31,24 @@ type
 var globalTable {.threadvar.}: TableRef[string, Base]
 globalTable = newTable[string, Base]()
 let d = new(Derived)
-globalTable.add("obj", d)
-globalTable.add("obj2", d)
-globalTable.add("obj3", d)
+globalTable.add("ob", d)
+globalTable.add("ob2", d)
+globalTable.add("ob3", d)
 
 proc testThread(channel: ptr TableChannel) {.thread.} =
   globalTable = channel[].recv()
   for k, v in pairs globaltable:
     echo k, " ", v.someSeq
   var myObj: Base
-  deepCopy(myObj, globalTable["obj"])
+  deepCopy(myObj, globalTable["ob"])
   myObj.someSeq = newSeq[int](100)
   let table = channel[].recv() # same table
   echo table.len
   for k, v in mpairs table:
     echo k, " ", v.someSeq
-  assert(table.contains("obj")) # fails!
-  assert(table.contains("obj2")) # fails!
-  assert(table.contains("obj3")) # fails!
+  assert(table.contains("ob")) # fails!
+  assert(table.contains("ob2")) # fails!
+  assert(table.contains("ob3")) # fails!
 
 var channel: TableChannel
 

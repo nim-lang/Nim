@@ -14,9 +14,8 @@
 ## application you should use a reverse proxy (for example nginx) instead of
 ## allowing users to connect directly to this server.
 ##
-##
-## Examples
-## --------
+## Basic usage
+## ===========
 ##
 ## This example will create an HTTP server on port 8080. The server will
 ## respond to all requests with a ``200 OK`` response code and "Hello World"
@@ -51,7 +50,7 @@ type
     headers*: HttpHeaders
     protocol*: tuple[orig: string, major, minor: int]
     url*: Uri
-    hostname*: string ## The hostname of the client that made the request.
+    hostname*: string    ## The hostname of the client that made the request.
     body*: string
 
   AsyncHttpServer* = ref object
@@ -59,9 +58,6 @@ type
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
-
-{.deprecated: [TRequest: Request, PAsyncHttpServer: AsyncHttpServer,
-  THttpCode: HttpCode, THttpVersion: HttpVersion].}
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608): AsyncHttpServer =
@@ -88,8 +84,8 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ##
   ## This procedure will **not** close the client socket.
   ##
-  ## Examples
-  ## --------
+  ## Example:
+  ##
   ## .. code-block::nim
   ##    import json
   ##    proc handler(req: Request) {.async.} =
@@ -132,11 +128,14 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
-                    client: AsyncSocket,
-                    address: string, lineFut: FutureVar[string],
-                    callback: proc (request: Request):
-                      Future[void] {.closure, gcsafe.}) {.async.} =
+proc processRequest(
+  server: AsyncHttpServer,
+  req: FutureVar[Request],
+  client: AsyncSocket,
+  address: string,
+  lineFut: FutureVar[string],
+  callback: proc (request: Request): Future[void] {.closure, gcsafe.},
+): Future[bool] {.async.} =
 
   # Alias `request` to `req.mget()` so we don't have to write `mget` everywhere.
   template request(): Request =
@@ -156,16 +155,16 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
   for i in 0..1:
     lineFut.mget().setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine) # TODO: Timeouts.
+    await client.recvLineInto(lineFut, maxLength = maxLine) # TODO: Timeouts.
 
     if lineFut.mget == "":
       client.close()
-      return
+      return false
 
     if lineFut.mget.len > maxLine:
       await request.respondError(Http413)
       client.close()
-      return
+      return false
     if lineFut.mget != "\c\L":
       break
 
@@ -174,27 +173,34 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
   for linePart in lineFut.mget.split(' '):
     case i
     of 0:
-      try:
-        # TODO: this is likely slow.
-        request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
-      except ValueError:
+      case linePart
+      of "GET": request.reqMethod = HttpGet
+      of "POST": request.reqMethod = HttpPost
+      of "HEAD": request.reqMethod = HttpHead
+      of "PUT": request.reqMethod = HttpPut
+      of "DELETE": request.reqMethod = HttpDelete
+      of "PATCH": request.reqMethod = HttpPatch
+      of "OPTIONS": request.reqMethod = HttpOptions
+      of "CONNECT": request.reqMethod = HttpConnect
+      of "TRACE": request.reqMethod = HttpTrace
+      else:
         asyncCheck request.respondError(Http400)
-        return
+        return true # Retry processing of request
     of 1:
       try:
         parseUri(linePart, request.url)
       except ValueError:
         asyncCheck request.respondError(Http400)
-        return
+        return true
     of 2:
       try:
         request.protocol = parseProtocol(linePart)
       except ValueError:
         asyncCheck request.respondError(Http400)
-        return
+        return true
     else:
       await request.respondError(Http400)
-      return
+      return true
     inc i
 
   # Headers
@@ -202,13 +208,13 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     i = 0
     lineFut.mget.setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine)
+    await client.recvLineInto(lineFut, maxLength = maxLine)
 
     if lineFut.mget == "":
-      client.close(); return
+      client.close(); return false
     if lineFut.mget.len > maxLine:
       await request.respondError(Http413)
-      client.close(); return
+      client.close(); return false
     if lineFut.mget == "\c\L": break
     let (key, value) = parseHeader(lineFut.mget)
     request.headers[key] = value
@@ -216,7 +222,7 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     if request.headers.len > headerLimit:
       await client.sendStatus("400 Bad Request")
       request.client.close()
-      return
+      return false
 
   if request.reqMethod == HttpPost:
     # Check for Expect header
@@ -232,24 +238,27 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     var contentLength = 0
     if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-      return
+      return true
     else:
       if contentLength > server.maxBody:
         await request.respondError(Http413)
-        return
+        return false
       request.body = await client.recv(contentLength)
       if request.body.len != contentLength:
         await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return
+        return true
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
-    return
+    return true
 
   # Call the user's callback.
   await callback(request)
 
   if "upgrade" in request.headers.getOrDefault("connection"):
-    return
+    return false
+
+  # The request has been served, from this point on returning `true` means the
+  # connection will not be closed and will be kept in the connection pool.
 
   # Persistent connections
   if (request.protocol == HttpVer11 and
@@ -260,10 +269,10 @@ proc processRequest(server: AsyncHttpServer, req: FutureVar[Request],
     # header states otherwise.
     # In HTTP 1.0 we assume that the connection should not be persistent.
     # Unless the connection header states otherwise.
-    discard
+    return true
   else:
     request.client.close()
-    return
+    return false
 
 proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
                    callback: proc (request: Request):
@@ -275,10 +284,13 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
   lineFut.mget() = newStringOfCap(80)
 
   while not client.isClosed:
-    await processRequest(server, request, client, address, lineFut, callback)
+    let retry = await processRequest(
+      server, request, client, address, lineFut, callback
+    )
+    if not retry: break
 
 proc serve*(server: AsyncHttpServer, port: Port,
-            callback: proc (request: Request): Future[void] {.closure,gcsafe.},
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
@@ -293,10 +305,8 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket.listen()
 
   while true:
-    # TODO: Causes compiler crash.
-    #var (address, client) = await server.socket.acceptAddr()
-    var fut = await server.socket.acceptAddr()
-    asyncCheck processClient(server, fut.client, fut.address, callback)
+    var (address, client) = await server.socket.acceptAddr()
+    asyncCheck processClient(server, client, address, callback)
     #echo(f.isNil)
     #echo(f.repr)
 

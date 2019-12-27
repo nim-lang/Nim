@@ -22,48 +22,61 @@ elif defined(posix):
 else:
   {.error: "the memfiles module is not supported on your operating system!".}
 
-import os
+import os, streams
+
+proc newEIO(msg: string): ref IOError =
+  new(result)
+  result.msg = msg
 
 type
-  MemFile* = object  ## represents a memory mapped file
-    mem*: pointer    ## a pointer to the memory mapped file. The pointer
-                     ## can be used directly to change the contents of the
-                     ## file, if it was opened with write access.
-    size*: int       ## size of the memory mapped file
+  MemFile* = object      ## represents a memory mapped file
+    mem*: pointer        ## a pointer to the memory mapped file. The pointer
+                         ## can be used directly to change the contents of the
+                         ## file, if it was opened with write access.
+    size*: int           ## size of the memory mapped file
 
     when defined(windows):
-      fHandle: Handle
-      mapHandle: Handle
-      wasOpened: bool   ## only close if wasOpened
+      fHandle*: Handle   ## **Caution**: Windows specific public field to allow
+                         ## even more low level trickery.
+      mapHandle*: Handle ## **Caution**: Windows specific public field.
+      wasOpened*: bool   ## **Caution**: Windows specific public field.
     else:
-      handle: cint
-
-{.deprecated: [TMemFile: MemFile].}
+      handle*: cint      ## **Caution**: Posix specific public field.
+      flags: cint        ## **Caution**: Platform specific private field.
 
 proc mapMem*(m: var MemFile, mode: FileMode = fmRead,
-             mappedSize = -1, offset = 0): pointer =
+             mappedSize = -1, offset = 0, mapFlags = cint(-1)): pointer =
   ## returns a pointer to a mapped portion of MemFile `m`
   ##
   ## ``mappedSize`` of ``-1`` maps to the whole file, and
   ## ``offset`` must be multiples of the PAGE SIZE of your OS
+  if mode == fmAppend:
+    raise newEIO("The append mode is not supported.")
+
   var readonly = mode == fmRead
   when defined(windows):
     result = mapViewOfFileEx(
       m.mapHandle,
-      if readonly: FILE_MAP_READ else: FILE_MAP_WRITE,
+      if readonly: FILE_MAP_READ else: FILE_MAP_READ or FILE_MAP_WRITE,
       int32(offset shr 32),
       int32(offset and 0xffffffff),
-      if mappedSize == -1: 0 else: mappedSize,
+      WinSizeT(if mappedSize == -1: 0 else: mappedSize),
       nil)
     if result == nil:
       raiseOSError(osLastError())
   else:
     assert mappedSize > 0
+
+    m.flags = if mapFlags == cint(-1): MAP_SHARED else: mapFlags
+    #Ensure exactly one of MAP_PRIVATE cr MAP_SHARED is set
+    if int(m.flags and MAP_PRIVATE) == 0:
+      m.flags = m.flags or MAP_SHARED
+
     result = mmap(
       nil,
       mappedSize,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
+      m.flags,
       m.handle, offset)
     if result == cast[pointer](MAP_FAILED):
       raiseOSError(osLastError())
@@ -84,8 +97,8 @@ proc unmapMem*(f: var MemFile, p: pointer, size: int) =
 
 proc open*(filename: string, mode: FileMode = fmRead,
            mappedSize = -1, offset = 0, newFileSize = -1,
-           allowRemap = false): MemFile =
-  ## opens a memory mapped file. If this fails, ``EOS`` is raised.
+           allowRemap = false, mapFlags = cint(-1)): MemFile =
+  ## opens a memory mapped file. If this fails, ``OSError`` is raised.
   ##
   ## ``newFileSize`` can only be set if the file does not exist and is opened
   ## with write access (e.g., with fmReadWrite).
@@ -98,6 +111,10 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##
   ## ``allowRemap`` only needs to be true if you want to call ``mapMem`` on
   ## the resulting MemFile; else file handles are not kept open.
+  ##
+  ## ``mapFlags`` allows callers to override default choices for memory mapping
+  ## flags with a bitwise mask of a variety of likely platform-specific flags
+  ## which may be ignored or even cause `open` to fail if misspecified.
   ##
   ## Example:
   ##
@@ -115,6 +132,9 @@ proc open*(filename: string, mode: FileMode = fmRead,
   ##   mm_half = memfiles.open("/tmp/test.mmap", mode = fmReadWrite, mappedSize = 512)
 
   # The file can be resized only when write mode is used:
+  if mode == fmAppend:
+    raise newEIO("The append mode is not supported.")
+
   assert newFileSize == -1 or mode != fmRead
   var readonly = mode == fmRead
 
@@ -123,23 +143,28 @@ proc open*(filename: string, mode: FileMode = fmRead,
     result.size = 0
 
   when defined(windows):
+    let desiredAccess = GENERIC_READ
+    let shareMode = FILE_SHARE_READ
+    let flags = FILE_FLAG_RANDOM_ACCESS
+
     template fail(errCode: OSErrorCode, msg: untyped) =
       rollback()
       if result.fHandle != 0: discard closeHandle(result.fHandle)
       if result.mapHandle != 0: discard closeHandle(result.mapHandle)
       raiseOSError(errCode)
       # return false
-      #raise newException(EIO, msg)
+      #raise newException(IOError, msg)
 
     template callCreateFile(winApiProc, filename): untyped =
       winApiProc(
         filename,
         # GENERIC_ALL != (GENERIC_READ or GENERIC_WRITE)
-        if readonly: GENERIC_READ else: GENERIC_READ or GENERIC_WRITE,
-        FILE_SHARE_READ,
+        if readonly: desiredAccess else: desiredAccess or GENERIC_WRITE,
+        if readonly: shareMode else: shareMode or FILE_SHARE_WRITE,
         nil,
         if newFileSize != -1: CREATE_ALWAYS else: OPEN_EXISTING,
-        if readonly: FILE_ATTRIBUTE_READONLY else: FILE_ATTRIBUTE_TEMPORARY,
+        if readonly: FILE_ATTRIBUTE_READONLY or flags
+        else: FILE_ATTRIBUTE_NORMAL or flags,
         0)
 
     when useWinUnicode:
@@ -153,13 +178,13 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if newFileSize != -1:
       var
         sizeHigh = int32(newFileSize shr 32)
-        sizeLow  = int32(newFileSize and 0xffffffff)
+        sizeLow = int32(newFileSize and 0xffffffff)
 
       var status = setFilePointer(result.fHandle, sizeLow, addr(sizeHigh),
                                   FILE_BEGIN)
       let lastErr = osLastError()
       if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
-         (setEndOfFile(result.fHandle) == 0):
+          (setEndOfFile(result.fHandle) == 0):
         fail(lastErr, "error setting file size")
 
     # since the strings are always 'nil', we simply always call
@@ -174,7 +199,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
 
     result.mem = mapViewOfFileEx(
       result.mapHandle,
-      if readonly: FILE_MAP_READ else: FILE_MAP_WRITE,
+      if readonly: FILE_MAP_READ else: FILE_MAP_READ or FILE_MAP_WRITE,
       int32(offset shr 32),
       int32(offset and 0xffffffff),
       if mappedSize == -1: 0 else: mappedSize,
@@ -232,11 +257,16 @@ proc open*(filename: string, mode: FileMode = fmRead,
       else:
         fail(osLastError(), "error getting file size")
 
+    result.flags = if mapFlags == cint(-1): MAP_SHARED else: mapFlags
+    #Ensure exactly one of MAP_PRIVATE cr MAP_SHARED is set
+    if int(result.flags and MAP_PRIVATE) == 0:
+      result.flags = result.flags or MAP_SHARED
+
     result.mem = mmap(
       nil,
       result.size,
       if readonly: PROT_READ else: PROT_READ or PROT_WRITE,
-      if readonly: (MAP_PRIVATE or MAP_POPULATE) else: (MAP_SHARED or MAP_POPULATE),
+      result.flags,
       result.handle,
       offset)
 
@@ -246,6 +276,57 @@ proc open*(filename: string, mode: FileMode = fmRead,
     if not allowRemap and result.handle != -1:
       if close(result.handle) == 0:
         result.handle = -1
+
+proc flush*(f: var MemFile; attempts: Natural = 3) =
+  ## Flushes `f`'s buffer for the number of attempts equal to `attempts`.
+  ## If were errors an exception `OSError` will be raised.
+  var res = false
+  var lastErr: OSErrorCode
+  when defined(windows):
+    for i in 1..attempts:
+      res = flushViewOfFile(f.mem, 0) != 0
+      if res:
+        break
+      lastErr = osLastError()
+      if lastErr != ERROR_LOCK_VIOLATION.OSErrorCode:
+        raiseOSError(lastErr)
+  else:
+    for i in 1..attempts:
+      res = msync(f.mem, f.size, MS_SYNC or MS_INVALIDATE) == 0
+      if res:
+        break
+      lastErr = osLastError()
+      if lastErr != EBUSY.OSErrorCode:
+        raiseOSError(lastErr, "error flushing mapping")
+
+when defined(posix) or defined(nimdoc):
+  proc resize*(f: var MemFile, newFileSize: int) {.raises: [IOError, OSError].} =
+    ## resize and re-map the file underlying an ``allowRemap MemFile``.
+    ## **Note**: this assumes the entire file is mapped read-write at offset zero.
+    ## Also, the value of ``.mem`` will probably change.
+    ## **Note**: This is not (yet) available on Windows.
+    when defined(posix):
+      if f.handle == -1:
+        raise newException(IOError,
+                            "Cannot resize MemFile opened with allowRemap=false")
+      if ftruncate(f.handle, newFileSize) == -1:
+        raiseOSError(osLastError())
+      when defined(linux): #Maybe NetBSD, too?
+        #On Linux this can be over 100 times faster than a munmap,mmap cycle.
+        proc mremap(old: pointer; oldSize, newSize: csize; flags: cint):
+            pointer {.importc: "mremap", header: "<sys/mman.h>".}
+        let newAddr = mremap(f.mem, csize(f.size), csize(newFileSize), cint(1))
+        if newAddr == cast[pointer](MAP_FAILED):
+          raiseOSError(osLastError())
+      else:
+        if munmap(f.mem, f.size) != 0:
+          raiseOSError(osLastError())
+        let newAddr = mmap(nil, newFileSize, PROT_READ or PROT_WRITE,
+                           f.flags, f.handle, 0)
+        if newAddr == cast[pointer](MAP_FAILED):
+          raiseOSError(osLastError())
+      f.mem = newAddr
+      f.size = newFileSize
 
 proc close*(f: var MemFile) =
   ## closes the memory mapped file `f`. All changes are written back to the
@@ -282,23 +363,20 @@ proc close*(f: var MemFile) =
 
   if error: raiseOSError(lastErr)
 
-type MemSlice* = object  ## represent slice of a MemFile for iteration over delimited lines/records
+type MemSlice* = object ## represent slice of a MemFile for iteration over delimited lines/records
   data*: pointer
   size*: int
 
 proc `==`*(x, y: MemSlice): bool =
   ## Compare a pair of MemSlice for strict equality.
-  proc memcmp(a, b: pointer, n:int):int {.importc: "memcmp",header: "string.h".}
-  result = (x.size == y.size and memcmp(x.data, y.data, x.size) == 0)
+  result = (x.size == y.size and equalMem(x.data, y.data, x.size))
 
 proc `$`*(ms: MemSlice): string {.inline.} =
   ## Return a Nim string built from a MemSlice.
-  var buf = newString(ms.size)
-  copyMem(addr(buf[0]), ms.data, ms.size)
-  buf[ms.size] = '\0'
-  result = buf
+  result.setLen(ms.size)
+  copyMem(addr(result[0]), ms.data, ms.size)
 
-iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
+iterator memSlices*(mfile: MemFile, delim = '\l', eat = '\r'): MemSlice {.inline.} =
   ## Iterates over [optional `eat`] `delim`-delimited slices in MemFile `mfile`.
   ##
   ## Default parameters parse lines ending in either Unix(\\l) or Windows(\\r\\l)
@@ -331,7 +409,7 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   ##   echo count
 
   proc c_memchr(cstr: pointer, c: char, n: csize): pointer {.
-       importc: "memchr", header: "<string.h>" .}
+       importc: "memchr", header: "<string.h>".}
   proc `-!`(p, q: pointer): int {.inline.} = return cast[int](p) -% cast[int](q)
   var ms: MemSlice
   var ending: pointer
@@ -339,22 +417,23 @@ iterator memSlices*(mfile: MemFile, delim='\l', eat='\r'): MemSlice {.inline.} =
   var remaining = mfile.size
   while remaining > 0:
     ending = c_memchr(ms.data, delim, remaining)
-    if ending == nil:                               # unterminated final slice
-      ms.size = remaining                           # Weird case..check eat?
+    if ending == nil: # unterminated final slice
+      ms.size = remaining # Weird case..check eat?
       yield ms
       break
-    ms.size = ending -! ms.data                     # delim is NOT included
+    ms.size = ending -! ms.data # delim is NOT included
     if eat != '\0' and ms.size > 0 and cast[cstring](ms.data)[ms.size - 1] == eat:
-      dec(ms.size)                                  # trim pre-delim char
+      dec(ms.size) # trim pre-delim char
     yield ms
-    ms.data = cast[pointer](cast[int](ending) +% 1)     # skip delim
+    ms.data = cast[pointer](cast[int](ending) +% 1) # skip delim
     remaining = mfile.size - (ms.data -! mfile.mem)
 
-iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): TaintedString {.inline.} =
+iterator lines*(mfile: MemFile, buf: var TaintedString, delim = '\l',
+    eat = '\r'): TaintedString {.inline.} =
   ## Replace contents of passed buffer with each new line, like
-  ## `readLine(File) <system.html#readLine,File,TaintedString>`_.
-  ## `delim`, `eat`, and delimiting logic is exactly as for
-  ## `memSlices <#memSlices>`_, but Nim strings are returned.
+  ## `readLine(File) <io.html#readLine,File,TaintedString>`_.
+  ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
+  ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
   ## Example:
   ##
@@ -364,16 +443,16 @@ iterator lines*(mfile: MemFile, buf: var TaintedString, delim='\l', eat='\r'): T
   ##     echo line
 
   for ms in memSlices(mfile, delim, eat):
-    buf.setLen(ms.size)
-    copyMem(addr(buf[0]), ms.data, ms.size)
-    buf[ms.size] = '\0'
+    setLen(buf.string, ms.size)
+    if ms.size > 0:
+      copyMem(addr buf[0], ms.data, ms.size)
     yield buf
 
-iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} =
+iterator lines*(mfile: MemFile, delim = '\l', eat = '\r'): TaintedString {.inline.} =
   ## Return each line in a file as a Nim string, like
-  ## `lines(File) <system.html#lines.i,File>`_.
-  ## `delim`, `eat`, and delimiting logic is exactly as for
-  ## `memSlices <#memSlices>`_, but Nim strings are returned.
+  ## `lines(File) <io.html#lines.i,File>`_.
+  ## `delim`, `eat`, and delimiting logic is exactly as for `memSlices
+  ## <#memSlices.i,MemFile,char,char>`_, but Nim strings are returned.
   ##
   ## Example:
   ##
@@ -384,3 +463,68 @@ iterator lines*(mfile: MemFile, delim='\l', eat='\r'): TaintedString {.inline.} 
   var buf = TaintedString(newStringOfCap(80))
   for line in lines(mfile, buf, delim, eat):
     yield buf
+
+type
+  MemMapFileStream* = ref MemMapFileStreamObj ## a stream that encapsulates a `MemFile`
+  MemMapFileStreamObj* = object of Stream
+    mf: MemFile
+    mode: FileMode
+    pos: ByteAddress
+
+proc mmsClose(s: Stream) =
+  MemMapFileStream(s).pos = -1
+  close(MemMapFileStream(s).mf)
+
+proc mmsFlush(s: Stream) = flush(MemMapFileStream(s).mf)
+
+proc mmsAtEnd(s: Stream): bool = (MemMapFileStream(s).pos >= MemMapFileStream(s).mf.size) or
+                                  (MemMapFileStream(s).pos < 0)
+
+proc mmsSetPosition(s: Stream, pos: int) =
+  if pos > MemMapFileStream(s).mf.size or pos < 0:
+    raise newEIO("cannot set pos in stream")
+  MemMapFileStream(s).pos = pos
+
+proc mmsGetPosition(s: Stream): int = MemMapFileStream(s).pos
+
+proc mmsPeekData(s: Stream, buffer: pointer, bufLen: int): int =
+  let startAddress = cast[ByteAddress](MemMapFileStream(s).mf.mem)
+  let p = cast[ByteAddress](MemMapFileStream(s).pos)
+  let l = min(bufLen, MemMapFileStream(s).mf.size - p)
+  moveMem(buffer, cast[pointer](startAddress + p), l)
+  result = l
+
+proc mmsReadData(s: Stream, buffer: pointer, bufLen: int): int =
+  result = mmsPeekData(s, buffer, bufLen)
+  inc(MemMapFileStream(s).pos, result)
+
+proc mmsWriteData(s: Stream, buffer: pointer, bufLen: int) =
+  if MemMapFileStream(s).mode == fmRead:
+    raise newEIO("cannot write to read-only stream")
+  let size = MemMapFileStream(s).mf.size
+  if MemMapFileStream(s).pos + bufLen > size:
+    raise newEIO("cannot write to stream")
+  let p = cast[ByteAddress](MemMapFileStream(s).mf.mem) +
+          cast[ByteAddress](MemMapFileStream(s).pos)
+  moveMem(cast[pointer](p), buffer, bufLen)
+  inc(MemMapFileStream(s).pos, bufLen)
+
+proc newMemMapFileStream*(filename: string, mode: FileMode = fmRead,
+    fileSize: int = -1): MemMapFileStream =
+  ## creates a new stream from the file named `filename` with the mode `mode`.
+  ## Raises ## `OSError` if the file cannot be opened. See the `system
+  ## <system.html>`_ module for a list of available FileMode enums.
+  ## ``fileSize`` can only be set if the file does not exist and is opened
+  ## with write access (e.g., with fmReadWrite).
+  var mf: MemFile = open(filename, mode, newFileSize = fileSize)
+  new(result)
+  result.mode = mode
+  result.mf = mf
+  result.closeImpl = mmsClose
+  result.atEndImpl = mmsAtEnd
+  result.setPositionImpl = mmsSetPosition
+  result.getPositionImpl = mmsGetPosition
+  result.readDataImpl = mmsReadData
+  result.peekDataImpl = mmsPeekData
+  result.writeDataImpl = mmsWriteData
+  result.flushImpl = mmsFlush

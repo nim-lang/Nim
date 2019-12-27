@@ -16,6 +16,5 @@ proc main =
     var leaf = "this is the leaf. it allocates"
     let x = createCycle(leaf)
     let y = createCycle(leaf)
-  echo "done ", getOccupiedMem()
 
 main()

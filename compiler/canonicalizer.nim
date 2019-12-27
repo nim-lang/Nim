@@ -102,7 +102,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0..<n.len: hashTree(c, n.sons[i])
+    for i in 0..<n.len: hashTree(c, n[i])
 
 proc hashType(c: var MD5Context, t: PType) =
   # modelled after 'typeToString'
@@ -120,44 +120,44 @@ proc hashType(c: var MD5Context, t: PType) =
 
   case t.kind
   of tyGenericBody, tyGenericInst, tyGenericInvocation:
-    for i in countup(0, sonsLen(t) -1 -ord(t.kind != tyGenericInvocation)):
-      c.hashType t.sons[i]
+    for i in 0..<t.len-ord(t.kind != tyGenericInvocation):
+      c.hashType t[i]
   of tyUserTypeClass:
     internalAssert t.sym != nil and t.sym.owner != nil
     c &= t.sym.owner.name.s
   of tyUserTypeClassInst:
     let body = t.base
     c.hashSym body.sym
-    for i in countup(1, sonsLen(t) - 2):
-      c.hashType t.sons[i]
+    for i in 1..<t.len-1:
+      c.hashType t[i]
   of tyFromExpr:
     c.hashTree(t.n)
   of tyArray:
-    c.hashTree(t.sons[0].n)
-    c.hashType(t.sons[1])
+    c.hashTree(t[0].n)
+    c.hashType(t[1])
   of tyTuple:
     if t.n != nil:
-      assert(sonsLen(t.n) == sonsLen(t))
-      for i in countup(0, sonsLen(t.n) - 1):
-        assert(t.n.sons[i].kind == nkSym)
-        c &= t.n.sons[i].sym.name.s
+      assert(t.n.len == t.len)
+      for i in 0..<t.n.len:
+        assert(t.n[i].kind == nkSym)
+        c &= t.n[i].sym.name.s
         c &= ":"
-        c.hashType(t.sons[i])
+        c.hashType(t[i])
         c &= ","
     else:
-      for i in countup(0, sonsLen(t) - 1): c.hashType t.sons[i]
+      for i in 0..<t.len: c.hashType t[i]
   of tyRange:
     c.hashTree(t.n)
-    c.hashType(t.sons[0])
+    c.hashType(t[0])
   of tyProc:
     c &= (if tfIterator in t.flags: "iterator " else: "proc ")
-    for i in 0..<t.len: c.hashType(t.sons[i])
+    for i in 0..<t.len: c.hashType(t[i])
     md5Update(c, cast[cstring](addr(t.callConv)), 1)
 
     if tfNoSideEffect in t.flags: c &= ".noSideEffect"
     if tfThread in t.flags: c &= ".thread"
   else:
-    for i in 0..<t.len: c.hashType(t.sons[i])
+    for i in 0..<t.len: c.hashType(t[i])
   if tfNotNil in t.flags: c &= "not nil"
 
 proc canonConst(n: PNode): TUid =
@@ -238,35 +238,35 @@ proc encodeNode(w: PRodWriter, fInfo: TLineInfo, n: PNode,
     encodeVInt(n.sym.id, result)
     pushSym(w, n.sym)
   else:
-    for i in countup(0, sonsLen(n) - 1):
-      encodeNode(w, n.info, n.sons[i], result)
-  add(result, ')')
+    for i in 0..<n.len:
+      encodeNode(w, n.info, n[i], result)
+  result.add(')')
 
 proc encodeLoc(w: PRodWriter, loc: TLoc, result: var string) =
   var oldLen = result.len
   result.add('<')
   if loc.k != low(loc.k): encodeVInt(ord(loc.k), result)
   if loc.s != low(loc.s):
-    add(result, '*')
+    result.add('*')
     encodeVInt(ord(loc.s), result)
   if loc.flags != {}:
-    add(result, '$')
+    result.add('$')
     encodeVInt(cast[int32](loc.flags), result)
   if loc.t != nil:
-    add(result, '^')
+    result.add('^')
     encodeVInt(cast[int32](loc.t.id), result)
     pushType(w, loc.t)
   if loc.r != nil:
-    add(result, '!')
+    result.add('!')
     encodeStr($loc.r, result)
   if loc.a != 0:
-    add(result, '?')
+    result.add('?')
     encodeVInt(loc.a, result)
   if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
   else:
-    add(result, '>')
+    result.add('>')
 
 proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t == nil:
@@ -277,47 +277,47 @@ proc encodeType(w: PRodWriter, t: PType, result: var string) =
   if t.kind == tyForward: internalError("encodeType: tyForward")
   # for the new rodfile viewer we use a preceding [ so that the data section
   # can easily be disambiguated:
-  add(result, '[')
+  result.add('[')
   encodeVInt(ord(t.kind), result)
-  add(result, '+')
+  result.add('+')
   encodeVInt(t.id, result)
   if t.n != nil:
     encodeNode(w, unknownLineInfo(), t.n, result)
   if t.flags != {}:
-    add(result, '$')
+    result.add('$')
     encodeVInt(cast[int32](t.flags), result)
   if t.callConv != low(t.callConv):
-    add(result, '?')
+    result.add('?')
     encodeVInt(ord(t.callConv), result)
   if t.owner != nil:
-    add(result, '*')
+    result.add('*')
     encodeVInt(t.owner.id, result)
     pushSym(w, t.owner)
   if t.sym != nil:
-    add(result, '&')
+    result.add('&')
     encodeVInt(t.sym.id, result)
     pushSym(w, t.sym)
   if t.size != - 1:
-    add(result, '/')
+    result.add('/')
     encodeVBiggestInt(t.size, result)
-  if t.align != 2:
-    add(result, '=')
+  if t.align != - 1:
+    result.add('=')
     encodeVInt(t.align, result)
   encodeLoc(w, t.loc, result)
-  for i in countup(0, sonsLen(t) - 1):
-    if t.sons[i] == nil:
-      add(result, "^()")
+  for i in 0..<t.len:
+    if t[i] == nil:
+      result.add("^()")
     else:
-      add(result, '^')
-      encodeVInt(t.sons[i].id, result)
-      pushType(w, t.sons[i])
+      result.add('^')
+      encodeVInt(t[i].id, result)
+      pushType(w, t[i])
 
 proc encodeLib(w: PRodWriter, lib: PLib, info: TLineInfo, result: var string) =
-  add(result, '|')
+  result.add('|')
   encodeVInt(ord(lib.kind), result)
-  add(result, '|')
+  result.add('|')
   encodeStr($lib.name, result)
-  add(result, '|')
+  result.add('|')
   encodeNode(w, info, lib.path, result)
 
 proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
@@ -363,7 +363,7 @@ proc encodeSym(w: PRodWriter, s: PSym, result: var string) =
   encodeLoc(w, s.loc, result)
   if s.annex != nil: encodeLib(w, s.annex, s.info, result)
   if s.constraint != nil:
-    add(result, '#')
+    result.add('#')
     encodeNode(w, unknownLineInfo(), s.constraint, result)
   # lazy loading will soon reload the ast lazily, so the ast needs to be
   # the last entry of a symbol:

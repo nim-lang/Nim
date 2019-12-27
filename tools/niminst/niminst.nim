@@ -14,14 +14,15 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
+  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
 
 const
   maxOS = 20 # max number of OSes
   maxCPU = 20 # max number of CPUs
   buildShFile = "build.sh"
-  buildBatFile32 = "build.bat"
+  buildBatFile = "build.bat"
+  buildBatFile32 = "build32.bat"
   buildBatFile64 = "build64.bat"
   makeFile = "makefile"
   installShFile = "install.sh"
@@ -125,13 +126,13 @@ proc skipRoot(f: string): string =
     inc i
   if result.len == 0: result = f
 
-include "inno.tmpl"
-include "nsis.tmpl"
-include "buildsh.tmpl"
-include "makefile.tmpl"
-include "buildbat.tmpl"
-include "install.tmpl"
-include "deinstall.tmpl"
+include "inno.nimf"
+include "nsis.nimf"
+include "buildsh.nimf"
+include "makefile.nimf"
+include "buildbat.nimf"
+include "install.nimf"
+include "deinstall.nimf"
 
 # ------------------------- configuration file -------------------------------
 
@@ -184,7 +185,7 @@ proc parseCmdLine(c: var ConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimArgs = cmdLineRest(p).string
         break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key.string)
       of "help", "h":
         stdout.write(Usage)
@@ -482,7 +483,8 @@ proc deduplicateFiles(c: var ConfigData) =
   let build = getOutputDir(c)
   for osA in countup(1, c.oses.len):
     for cpuA in countup(1, c.cpus.len):
-      if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
+      when not defined(nimNoNilSeqs):
+        if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
       for dup in mitems(c.cfiles[osA][cpuA]):
         let key = $secureHashFile(build / dup)
@@ -542,12 +544,13 @@ proc srcdist(c: var ConfigData) =
   inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   writeFile(getOutputDir(c) / makeFile, generateMakefile(c), "\10")
   if winIndex >= 0:
+    if intel32Index >= 0 or intel64Index >= 0:
+      writeFile(getOutputDir(c) / buildBatFile,
+                generateBuildBatchScript(c, winIndex, intel32Index, intel64Index), "\13\10")
     if intel32Index >= 0:
-      writeFile(getOutputDir(c) / buildBatFile32,
-                generateBuildBatchScript(c, winIndex, intel32Index), "\13\10")
+      writeFile(getOutputDir(c) / buildBatFile32, "SET ARCH=32\nCALL build.bat\n")
     if intel64Index >= 0:
-      writeFile(getOutputDir(c) / buildBatFile64,
-                generateBuildBatchScript(c, winIndex, intel64Index), "\13\10")
+      writeFile(getOutputDir(c) / buildBatFile64, "SET ARCH=64\nCALL build.bat\n")
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
@@ -593,6 +596,7 @@ when haveZipLib:
     else: n = c.outdir / n
     var z: ZipArchive
     if open(z, n, fmWrite):
+      addFile(z, proj / buildBatFile, "build" / buildBatFile)
       addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
       addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
       addFile(z, proj / buildShFile, "build" / buildShFile)
@@ -631,11 +635,12 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     if not dirExists(destDir): createDir(destDir)
     copyFileWithPermissions(src, dest)
 
-  if not windowsZip and not existsFile("build" / buildBatFile32):
+  if not windowsZip and not existsFile("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
          "./koch csource -d:release.")
 
   if not windowsZip:
+    processFile(proj / buildBatFile, "build" / buildBatFile)
     processFile(proj / buildBatFile32, "build" / buildBatFile32)
     processFile(proj / buildBatFile64, "build" / buildBatFile64)
     processFile(proj / buildShFile, "build" / buildShFile)
@@ -679,7 +684,7 @@ RunProgram="tools\downloader.exe"
           if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
             echo("External program failed (7z)")
       else:
-        if execShellCmd("gtar cf $1.tar $1 --exclude=.DS_Store" %
+        if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
                         proj) != 0:
           # try old 'tar' without --exclude feature:
           if execShellCmd("tar cf $1.tar $1" % proj) != 0:

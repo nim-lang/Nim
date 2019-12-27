@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''identifier expected, but found 'echo 4'''
+  errormsg: '''in expression '4 2': identifier expected, but found '4'''
   line: 6
 """
 

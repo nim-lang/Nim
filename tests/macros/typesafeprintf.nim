@@ -9,7 +9,7 @@ proc printfImpl(formatstr: cstring) {.importc: "printf", varargs.}
 
 iterator tokenize(format: string): char =
   var i = 0
-  while true:
+  while i < format.len:
     case format[i]
     of '%':
       case format[i+1]
@@ -42,7 +42,8 @@ macro printf(formatString: string{lit}, args: varargs[typed]): untyped =
             $expectedType & ", actual type: " & $actualType
 
   # keep the original callsite, but use cprintf instead
-  result = callsite()
-  result[0] = bindSym"printfImpl"
+  result = newCall(bindSym"printfImpl")
+  result.add formatString
+  for a in args: result.add a
 
 printf("test %d\n", 10)

@@ -1,6 +1,5 @@
 discard """
-  file: "tasyncsend4754.nim"
-  output: "Finished"
+output: "Finished"
 """
 
 import asyncdispatch, asyncnet

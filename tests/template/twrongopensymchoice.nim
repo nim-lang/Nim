@@ -20,5 +20,5 @@ proc main =
   var f = Foo.new()
   echo f.b
 
-when isMainModule:
+when true:
   main()

@@ -1,7 +1,7 @@
-## Include file that implements 'osErrorMsg' and friends. Do not import it!
+# Include file that implements 'osErrorMsg' and friends. Do not import it!
 
-when not declared(ospaths):
-  {.error: "This is an include file for ospaths.nim!".}
+when not declared(os) and not declared(ospaths):
+  {.error: "This is an include file for os.nim!".}
 
 when not defined(nimscript):
   var errno {.importc, header: "<errno.h>".}: cint
@@ -12,57 +12,13 @@ when not defined(nimscript):
   when defined(windows):
     import winlean
 
-proc osErrorMsg*(): string {.rtl, extern: "nos$1", deprecated.} =
-  ## Retrieves the operating system's error flag, ``errno``.
-  ## On Windows ``GetLastError`` is checked before ``errno``.
-  ## Returns "" if no error occurred.
-  ##
-  ## **Deprecated since version 0.9.4**: use the other ``osErrorMsg`` proc.
-
-  result = ""
-  when defined(Windows) and not defined(nimscript):
-    var err = getLastError()
-    if err != 0'i32:
-      when useWinUnicode:
-        var msgbuf: WideCString
-        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
-                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(cast[pointer](msgbuf))
-      else:
-        var msgbuf: cstring
-        if formatMessageA(0x00000100 or 0x00001000 or 0x00000200 or 0x000000FF,
-                          nil, err, 0, addr(msgbuf), 0, nil) != 0'i32:
-          result = $msgbuf
-          if msgbuf != nil: localFree(msgbuf)
-  when not defined(nimscript):
-    if errno != 0'i32:
-      result = $c_strerror(errno)
-
-{.push warning[deprecated]: off.}
-proc raiseOSError*(msg: string = "") {.noinline, rtl, extern: "nos$1",
-                                       deprecated.} =
-  ## raises an OSError exception with the given message ``msg``.
-  ## If ``msg == ""``, the operating system's error flag
-  ## (``errno``) is converted to a readable error message. On Windows
-  ## ``GetLastError`` is checked before ``errno``.
-  ## If no error flag is set, the message ``unknown OS error`` is used.
-  ##
-  ## **Deprecated since version 0.9.4**: use the other ``raiseOSError`` proc.
-  if len(msg) == 0:
-    var m = osErrorMsg()
-    raise newException(OSError, if m.len > 0: m else: "unknown OS error")
-  else:
-    raise newException(OSError, msg)
-{.pop.}
-
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}
 
 proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
   ##
-  ## The error code can be retrieved using the ``osLastError`` proc.
+  ## The error code can be retrieved using the `osLastError proc <#osLastError>`_.
   ##
   ## If conversion fails, or ``errorCode`` is ``0`` then ``""`` will be
   ## returned.
@@ -70,6 +26,16 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## On Windows, the ``-d:useWinAnsi`` compilation flag can be used to
   ## make this procedure use the non-unicode Win API calls to retrieve the
   ## message.
+  ##
+  ## See also:
+  ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
+  ## * `osLastError proc <#osLastError>`_
+  runnableExamples:
+    when defined(linux):
+      assert osErrorMsg(OSErrorCode(0)) == ""
+      assert osErrorMsg(OSErrorCode(1)) == "Operation not permitted"
+      assert osErrorMsg(OSErrorCode(2)) == "No such file or directory"
+
   result = ""
   when defined(nimscript):
     discard
@@ -91,26 +57,44 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
 
-proc raiseOSError*(errorCode: OSErrorCode; additionalInfo = "") {.noinline.} =
-  ## Raises an ``OSError`` exception. The ``errorCode`` will determine the
-  ## message, ``osErrorMsg`` will be used to get this message.
+proc newOSError*(
+  errorCode: OSErrorCode, additionalInfo = ""
+): owned(ref OSError) {.noinline.} =
+  ## Creates a new `OSError exception <system.html#OSError>`_.
   ##
-  ## The error code can be retrieved using the ``osLastError`` proc.
+  ## The ``errorCode`` will determine the
+  ## message, `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_ will be used
+  ## to get this message.
+  ##
+  ## The error code can be retrieved using the `osLastError proc
+  ## <#osLastError>`_.
   ##
   ## If the error code is ``0`` or an error message could not be retrieved,
   ## the message ``unknown OS error`` will be used.
-  var e: ref OSError; new(e)
+  ##
+  ## See also:
+  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
+  ## * `osLastError proc <#osLastError>`_
+  var e: owned(ref OSError); new(e)
   e.errorCode = errorCode.int32
-  if additionalInfo.len == 0:
-    e.msg = osErrorMsg(errorCode)
-  else:
-    e.msg = osErrorMsg(errorCode) & "\nAdditional info: " & additionalInfo
+  e.msg = osErrorMsg(errorCode)
+  if additionalInfo.len > 0:
+    if e.msg.len > 0 and e.msg[^1] != '\n': e.msg.add '\n'
+    e.msg.add  "Additional info: "
+    e.msg.addQuoted additionalInfo
   if e.msg == "":
     e.msg = "unknown OS error"
-  raise e
+  return e
+
+proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
+  ## Raises an `OSError exception <system.html#OSError>`_.
+  ##
+  ## Read the description of the `newOSError proc <#newOSError,OSErrorCode,string>`_ to learn
+  ## how the exception object is created.
+  raise newOSError(errorCode, additionalInfo)
 
 {.push stackTrace:off.}
-proc osLastError*(): OSErrorCode =
+proc osLastError*(): OSErrorCode {.sideEffect.} =
   ## Retrieves the last operating system error code.
   ##
   ## This procedure is useful in the event when an OS call fails. In that case
@@ -123,6 +107,10 @@ proc osLastError*(): OSErrorCode =
   ## On Windows some OS calls can reset the error code to ``0`` causing this
   ## procedure to return ``0``. It is therefore advised to call this procedure
   ## immediately after an OS call fails. On POSIX systems this is not a problem.
+  ##
+  ## See also:
+  ## * `osErrorMsg proc <#osErrorMsg,OSErrorCode>`_
+  ## * `raiseOSError proc <#raiseOSError,OSErrorCode,string>`_
   when defined(nimscript):
     discard
   elif defined(windows):

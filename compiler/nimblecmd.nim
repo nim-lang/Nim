@@ -9,11 +9,12 @@
 
 ## Implements some helper procs for Nimble (Nim's package manager) support.
 
-import parseutils, strutils, strtabs, os, options, msgs, sequtils
+import parseutils, strutils, strtabs, os, options, msgs, sequtils,
+  lineinfos, pathutils
 
-proc addPath*(path: string, info: TLineInfo) =
-  if not options.searchPaths.contains(path):
-    options.searchPaths.insert(path, 0)
+proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
+  if not conf.searchPaths.contains(path):
+    conf.searchPaths.insert(path, 0)
 
 type
   Version* = distinct string
@@ -47,7 +48,7 @@ proc `<`*(ver: Version, ver2: Version): bool =
   # Handling for normal versions such as "0.1.0" or "1.0".
   var sVer = string(ver).split('.')
   var sVer2 = string(ver2).split('.')
-  for i in 0..max(sVer.len, sVer2.len)-1:
+  for i in 0..<max(sVer.len, sVer2.len):
     var sVerI = 0
     if i < sVer.len:
       discard parseInt(sVer[i], sVerI)
@@ -81,10 +82,10 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
       result.name = p
       return
 
-  result.name = p[0 .. sepIdx - 1]
+  result.name = p[0..sepIdx - 1]
   result.version = p.substr(sepIdx + 1)
 
-proc addPackage(packages: StringTableRef, p: string; info: TLineInfo) =
+proc addPackage(conf: ConfigRef; packages: StringTableRef, p: string; info: TLineInfo) =
   let (name, ver) = getPathVersion(p)
   if isValidVersion(ver):
     let version = newVersion(ver)
@@ -92,14 +93,14 @@ proc addPackage(packages: StringTableRef, p: string; info: TLineInfo) =
       (not packages.hasKey(name)):
       packages[name] = $version
   else:
-    localError(info, "invalid package name: " & p)
+    localError(conf, info, "invalid package name: " & p)
 
 iterator chosen(packages: StringTableRef): string =
   for key, val in pairs(packages):
     let res = if val.len == 0: key else: key & '-' & val
     yield res
 
-proc addNimblePath(p: string, info: TLineInfo) =
+proc addNimblePath(conf: ConfigRef; p: string, info: TLineInfo) =
   var path = p
   let nimbleLinks = toSeq(walkPattern(p / "*.nimble-link"))
   if nimbleLinks.len > 0:
@@ -111,23 +112,27 @@ proc addNimblePath(p: string, info: TLineInfo) =
     if not path.isAbsolute():
       path = p / path
 
-  if not contains(options.searchPaths, path):
-    message(info, hintPath, path)
-    options.lazyPaths.insert(path, 0)
+  if not contains(conf.searchPaths, AbsoluteDir path):
+    message(conf, info, hintPath, path)
+    conf.lazyPaths.insert(AbsoluteDir path, 0)
 
-proc addPathRec(dir: string, info: TLineInfo) =
+proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
   var pos = dir.len-1
   if dir[pos] in {DirSep, AltSep}: inc(pos)
   for k,p in os.walkDir(dir):
     if k == pcDir and p[pos] != '.':
-      addPackage(packages, p, info)
+      addPackage(conf, packages, p, info)
   for p in packages.chosen:
-    addNimblePath(p, info)
+    addNimblePath(conf, p, info)
 
-proc nimblePath*(path: string, info: TLineInfo) =
-  addPathRec(path, info)
-  addNimblePath(path, info)
+proc nimblePath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
+  addPathRec(conf, path.string, info)
+  addNimblePath(conf, path.string, info)
+  let i = conf.nimblePaths.find(path)
+  if i != -1:
+    conf.nimblePaths.delete(i)
+  conf.nimblePaths.insert(path, 0)
 
 when isMainModule:
   proc v(s: string): Version = s.newVersion
@@ -139,18 +144,19 @@ when isMainModule:
   doAssert v"#aaaqwe" < v"1.1" # We cannot assume that a branch is newer.
   doAssert v"#a111" < v"#head"
 
+  let conf = newConfigRef()
   var rr = newStringTable()
-  addPackage rr, "irc-#a111"
-  addPackage rr, "irc-#head"
-  addPackage rr, "irc-0.1.0"
-  addPackage rr, "irc"
-  addPackage rr, "another"
-  addPackage rr, "another-0.1"
+  addPackage conf, rr, "irc-#a111", unknownLineInfo()
+  addPackage conf, rr, "irc-#head", unknownLineInfo()
+  addPackage conf, rr, "irc-0.1.0", unknownLineInfo()
+  #addPackage conf, rr, "irc", unknownLineInfo()
+  #addPackage conf, rr, "another", unknownLineInfo()
+  addPackage conf, rr, "another-0.1", unknownLineInfo()
 
-  addPackage rr, "ab-0.1.3"
-  addPackage rr, "ab-0.1"
-  addPackage rr, "justone"
+  addPackage conf, rr, "ab-0.1.3", unknownLineInfo()
+  addPackage conf, rr, "ab-0.1", unknownLineInfo()
+  addPackage conf, rr, "justone-1.0", unknownLineInfo()
 
   doAssert toSeq(rr.chosen) ==
-    @["irc-#head", "another-0.1", "ab-0.1.3", "justone"]
+    @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]
 

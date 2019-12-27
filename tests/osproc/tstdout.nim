@@ -1,11 +1,13 @@
 discard """
   output: '''--------------------------------------
+start ta_out
 to stdout
 to stdout
 to stderr
 to stderr
 to stdout
 to stdout
+end ta_out
 --------------------------------------
 '''
 """

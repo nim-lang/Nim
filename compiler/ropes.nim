@@ -56,7 +56,9 @@
 #  To cache them they are inserted in a `cache` array.
 
 import
-  platform, hashes
+  hashes
+
+from pathutils import AbsoluteFile
 
 type
   FormatStr* = string  # later we may change it to CString for better
@@ -66,47 +68,27 @@ type
   Rope* = ref RopeObj
   RopeObj*{.acyclic.} = object of RootObj # the empty rope is represented
                                           # by nil to safe space
-    left*, right*: Rope
-    length*: int
-    data*: string             # != nil if a leaf
-
-  RopeSeq* = seq[Rope]
-
-  RopesError* = enum
-    rCannotOpenFile
-    rInvalidFormatStr
-
-# implementation
-
-var errorHandler*: proc(err: RopesError, msg: string, useWarning = false)
-  # avoid dependency on msgs.nim
+    left, right: Rope
+    L: int                    # <= 0 if a leaf
+    data*: string
 
 proc len*(a: Rope): int =
   ## the rope's length
   if a == nil: result = 0
-  else: result = a.length
+  else: result = abs a.L
 
-proc newRope(data: string = nil): Rope =
+proc newRope(data: string = ""): Rope =
   new(result)
-  if data != nil:
-    result.length = len(data)
-    result.data = data
+  result.L = -data.len
+  result.data = data
 
-proc newMutableRope*(capacity = 30): Rope =
-  ## creates a new rope that supports direct modifications of the rope's
-  ## 'data' and 'length' fields.
-  new(result)
-  result.data = newStringOfCap(capacity)
+when not compileOption("threads"):
+  var
+    cache: array[0..2048*2 - 1, Rope]
 
-proc freezeMutableRope*(r: Rope) {.inline.} =
-  r.length = r.data.len
-
-var
-  cache: array[0..2048*2 - 1, Rope]
-
-proc resetRopeCache* =
-  for i in low(cache)..high(cache):
-    cache[i] = nil
+  proc resetRopeCache* =
+    for i in low(cache)..high(cache):
+      cache[i] = nil
 
 proc ropeInvariant(r: Rope): bool =
   if r == nil:
@@ -126,13 +108,16 @@ var gCacheMisses* = 0
 var gCacheIntTries* = 0
 
 proc insertInCache(s: string): Rope =
-  inc gCacheTries
-  var h = hash(s) and high(cache)
-  result = cache[h]
-  if isNil(result) or result.data != s:
-    inc gCacheMisses
+  when declared(cache):
+    inc gCacheTries
+    var h = hash(s) and high(cache)
+    result = cache[h]
+    if isNil(result) or result.data != s:
+      inc gCacheMisses
+      result = newRope(s)
+      cache[h] = result
+  else:
     result = newRope(s)
-    cache[h] = result
 
 proc rope*(s: string): Rope =
   ## Converts a string to a rope.
@@ -158,7 +143,7 @@ proc `&`*(a, b: Rope): Rope =
     result = a
   else:
     result = newRope()
-    result.length = a.length + b.length
+    result.L = abs(a.L) + abs(b.L)
     result.left = a
     result.right = b
 
@@ -172,7 +157,7 @@ proc `&`*(a: string, b: Rope): Rope =
 
 proc `&`*(a: openArray[Rope]): Rope =
   ## the concatenation operator for an openarray of ropes.
-  for i in countup(0, high(a)): result = result & a[i]
+  for i in 0..high(a): result = result & a[i]
 
 proc add*(a: var Rope, b: Rope) =
   ## adds `b` to the rope `a`.
@@ -204,47 +189,42 @@ proc writeRope*(f: File, r: Rope) =
   ## writes a rope to a file.
   for s in leaves(r): write(f, s)
 
-proc writeRope*(head: Rope, filename: string, useWarning = false) =
+proc writeRope*(head: Rope, filename: AbsoluteFile): bool =
   var f: File
-  if open(f, filename, fmWrite):
+  if open(f, filename.string, fmWrite):
     if head != nil: writeRope(f, head)
     close(f)
+    result = true
   else:
-    errorHandler(rCannotOpenFile, filename, useWarning)
+    result = false
 
 proc `$`*(r: Rope): string =
   ## converts a rope back to a string.
   result = newString(r.len)
   setLen(result, 0)
-  for s in leaves(r): add(result, s)
+  for s in leaves(r): result.add(s)
 
 proc ropeConcat*(a: varargs[Rope]): Rope =
   # not overloaded version of concat to speed-up `rfmt` a little bit
-  for i in countup(0, high(a)): result = result & a[i]
+  for i in 0..high(a): result = result & a[i]
 
 proc prepend*(a: var Rope, b: Rope) = a = b & a
 proc prepend*(a: var Rope, b: string) = a = b & a
 
-var
-  rnl* = tnl.newRope
-  softRnl* = tnl.newRope
-  noRnl* = "".newRope
-
-proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
+proc runtimeFormat*(frmt: FormatStr, args: openArray[Rope]): Rope =
   var i = 0
-  var length = len(frmt)
   result = nil
   var num = 0
-  while i < length:
+  while i < frmt.len:
     if frmt[i] == '$':
       inc(i)                  # skip '$'
       case frmt[i]
       of '$':
-        add(result, "$")
+        result.add("$")
         inc(i)
       of '#':
         inc(i)
-        add(result, args[num])
+        result.add(args[num])
         inc(num)
       of '0'..'9':
         var j = 0
@@ -254,9 +234,9 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
           if i >= frmt.len or frmt[i] notin {'0'..'9'}: break
         num = j
         if j > high(args) + 1:
-          errorHandler(rInvalidFormatStr, $(j))
+          doAssert false, "invalid format string: " & frmt
         else:
-          add(result, args[j-1])
+          result.add(args[j-1])
       of '{':
         inc(i)
         var j = 0
@@ -265,31 +245,35 @@ proc `%`*(frmt: FormatStr, args: openArray[Rope]): Rope =
           inc(i)
         num = j
         if frmt[i] == '}': inc(i)
-        else: errorHandler(rInvalidFormatStr, $(frmt[i]))
+        else:
+          doAssert false, "invalid format string: " & frmt
 
         if j > high(args) + 1:
-          errorHandler(rInvalidFormatStr, $(j))
+          doAssert false, "invalid format string: " & frmt
         else:
-          add(result, args[j-1])
+          result.add(args[j-1])
       of 'n':
-        add(result, softRnl)
+        result.add("\n")
         inc(i)
       of 'N':
-        add(result, rnl)
+        result.add("\n")
         inc(i)
       else:
-        errorHandler(rInvalidFormatStr, $(frmt[i]))
+        doAssert false, "invalid format string: " & frmt
     var start = i
-    while i < length:
+    while i < frmt.len:
       if frmt[i] != '$': inc(i)
       else: break
     if i - 1 >= start:
-      add(result, substr(frmt, start, i - 1))
+      result.add(substr(frmt, start, i - 1))
   assert(ropeInvariant(result))
 
-proc addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
+proc `%`*(frmt: static[FormatStr], args: openArray[Rope]): Rope =
+  runtimeFormat(frmt, args)
+
+template addf*(c: var Rope, frmt: FormatStr, args: openArray[Rope]) =
   ## shortcut for ``add(c, frmt % args)``.
-  add(c, frmt % args)
+  c.add(frmt % args)
 
 when true:
   template `~`*(r: string): Rope = r % []
@@ -316,9 +300,8 @@ proc equalsFile*(r: Rope, f: File): bool =
 
   for s in leaves(r):
     var spos = 0
-    let slen = s.len
-    rtotal += slen
-    while spos < slen:
+    rtotal += s.len
+    while spos < s.len:
       if bpos == blen:
         # Read more data
         bpos = 0
@@ -327,7 +310,7 @@ proc equalsFile*(r: Rope, f: File): bool =
         if blen == 0:  # no more data in file
           result = false
           return
-      let n = min(blen - bpos, slen - spos)
+      let n = min(blen - bpos, s.len - spos)
       # TODO There's gotta be a better way of comparing here...
       if not equalMem(addr(buf[bpos]), cast[pointer](cast[int](cstring(s))+spos), n):
         result = false
@@ -338,19 +321,18 @@ proc equalsFile*(r: Rope, f: File): bool =
   result = readBuffer(f, addr(buf[0]), 1) == 0 and
       btotal == rtotal # check that we've read all
 
-proc equalsFile*(r: Rope, filename: string): bool =
+proc equalsFile*(r: Rope, filename: AbsoluteFile): bool =
   ## returns true if the contents of the file `f` equal `r`. If `f` does not
   ## exist, false is returned.
   var f: File
-  result = open(f, filename)
+  result = open(f, filename.string)
   if result:
     result = equalsFile(r, f)
     close(f)
 
-proc writeRopeIfNotEqual*(r: Rope, filename: string): bool =
+proc writeRopeIfNotEqual*(r: Rope, filename: AbsoluteFile): bool =
   # returns true if overwritten
   if not equalsFile(r, filename):
-    writeRope(r, filename)
-    result = true
+    result = writeRope(r, filename)
   else:
     result = false

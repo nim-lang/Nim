@@ -1,6 +1,6 @@
 discard """
-  line: 10
   errormsg: "'x' is not the first parameter; context: 'x.field[0]'"
+  line: 10
 """
 
 type

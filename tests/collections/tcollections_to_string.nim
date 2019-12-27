@@ -9,9 +9,9 @@ import lists
 import critbits
 
 # Tests for tuples
-doAssert $(1, 2, 3) == "(Field0: 1, Field1: 2, Field2: 3)"
-doAssert $("1", "2", "3") == """(Field0: "1", Field1: "2", Field2: "3")"""
-doAssert $('1', '2', '3') == """(Field0: '1', Field1: '2', Field2: '3')"""
+doAssert $(1, 2, 3) == "(1, 2, 3)"
+doAssert $("1", "2", "3") == """("1", "2", "3")"""
+doAssert $('1', '2', '3') == """('1', '2', '3')"""
 
 # Tests for seqs
 doAssert $(@[1, 2, 3]) == "@[1, 2, 3]"
@@ -68,15 +68,15 @@ block:
 block:
   var t: CritBitTree[int]
   t["a"] = 1
-  doAssert $t == "{a: 1}"
+  doAssert $t == """{"a": 1}"""
 block:
   var t: CritBitTree[string]
   t["a"] = "1"
-  doAssert $t == """{a: "1"}"""
+  doAssert $t == """{"a": "1"}"""
 block:
   var t: CritBitTree[char]
   t["a"] = '1'
-  doAssert $t == "{a: '1'}"
+  doAssert $t == """{"a": '1'}"""
 
 
 # Test escaping behavior

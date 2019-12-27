@@ -40,7 +40,7 @@
 </div>
 #end proc
 #
-#when isMainModule:
+#when true:
 #  echo renderUser(User(username: "d0m96<>", following: @[]))
 #  echo renderMessages(@[
 #    Message(username: "d0m96", time: getTime(), msg: "Hello World!"),

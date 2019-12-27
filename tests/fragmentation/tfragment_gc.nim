@@ -1,7 +1,7 @@
 discard """
   output: '''occupied ok: true
 total ok: true'''
-  disabled: "windows"
+  disabled: "true"
 """
 
 import strutils, data

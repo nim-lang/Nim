@@ -4,23 +4,31 @@ Documentation Style
 General Guidelines
 ------------------
 
-* Authors should document anything that is exported.
+* Authors should document anything that is exported; documentation for private
+  procs can be useful too (visible via ``nim doc --docInternal foo.nim``).
 * Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation, each sentence after the first should be complete and in present tense.
-* Documentation is parsed as ReStructuredText (RST).
-* Inline code should be surrounded by double tick marks ("``````"). If you would like a character to immediately follow inline code (e.g., "``int8``s are great!"), escape the following character with a backslash (``\``). The preceding is typed as ``` ``int8``\s are great!```.
+* Documentation is parsed as a custom ReStructuredText (RST) with partial markdown support.
+
+.. code-block:: nim
+
+  proc someproc*(s: string, foo: int) =
+    ## Use single backticks for inline code, eg: `s` or `someExpr(true)`.
+    ## Use a backlash to follow with alphanumeric char: `int8`\s are great.
+
 
 Module-level documentation
 --------------------------
 
 Documentation of a module is placed at the top of the module itself. Each line of documentation begins with double hashes (``##``).
+Sometimes ``##[ multiline docs containing code ]##`` is preferable, see ``lib/pure/times.nim``.
 Code samples are encouraged, and should follow the general RST syntax:
 
 .. code-block:: Nim
 
-  ## The ``universe`` module computes the answer to life, the universe, and everything.
+  ## The `universe` module computes the answer to life, the universe, and everything.
   ##
-  ## .. code-block:: Nim
-  ##  echo computeAnswerString() # "42"
+  ## .. code-block::
+  ##  doAssert computeAnswerString() == 42
 
 
 Within this top-level comment, you can indicate the authorship and copyright of the code, which will be featured in the produced documentation.
@@ -38,12 +46,12 @@ Leave a space between the last line of top-level documentation and the beginning
 Procs, Templates, Macros, Converters, and Iterators
 ---------------------------------------------------
 
-The documentation of a procedure should begin with a capital letter and should be in present tense. Variables referenced in the documentation should be surrounded by double tick marks (``````).
+The documentation of a procedure should begin with a capital letter and should be in present tense. Variables referenced in the documentation should be surrounded by single tick marks:
 
 .. code-block:: Nim
 
   proc example1*(x: int) =
-    ## Prints the value of ``x``.
+    ## Prints the value of `x`.
     echo x
 
 Whenever an example of usage would be helpful to the user, you should include one within the documentation in RST format as below.
@@ -51,11 +59,16 @@ Whenever an example of usage would be helpful to the user, you should include on
 .. code-block:: Nim
 
   proc addThree*(x, y, z: int8): int =
-    ## Adds three ``int8`` values, treating them as unsigned and
+    ## Adds three `int8` values, treating them as unsigned and
     ## truncating the result.
     ##
-    ## .. code-block:: nim
-    ##  echo addThree(3, 125, 6) # -122
+    ## .. code-block::
+    ##  # things that aren't suitable for a `runnableExamples` go in code-block:
+    ##  echo execCmdEx("git pull")
+    ##  drawOnScreen()
+    runnableExamples:
+      # `runnableExamples` is usually preferred to `code-block`, when possible.
+      doAssert addThree(3, 125, 6) == -122
     result = x +% y +% z
 
 The commands ``nim doc`` and ``nim doc2`` will then correctly syntax highlight the Nim code within the documentation.
@@ -94,7 +107,7 @@ Make sure to place the documentation beside or within the object.
 .. code-block:: Nim
 
   type
-    ## This documentation disappears because it annotates the ``type`` keyword
+    ## Bad: this documentation disappears because it annotates the ``type`` keyword
     ## above, not ``NamedQueue``.
     NamedQueue*[T] = object
       name*: string ## This becomes the main documentation for the object, which

@@ -17,6 +17,7 @@ proc main =
   map0.#[!]#
 
 discard """
+disabled:true
 $nimsuggest --tester $file
 >sug $1
 sug;;skProc;;tables.getOrDefault;;proc (t: Table[getOrDefault.A, getOrDefault.B], key: A): B;;$lib/pure/collections/tables.nim;;178;;5;;"";;100;;None

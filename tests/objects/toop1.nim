@@ -1,5 +1,4 @@
 discard """
-  file: "toop1.nim"
   output: "34[]o 5"
 """
 # Test the stuff in the tutorial
@@ -35,7 +34,7 @@ proc init(my: var TRectangle) =
   my.height = 10
   my.draw = cast[proc (my: var TFigure) {.nimcall.}](drawRectangle)
 
-macro `!` (n: untyped): typed {.immediate.}=
+macro `!` (n: varargs[untyped]): typed =
   let n = callsite()
   result = newNimNode(nnkCall, n)
   var dot = newNimNode(nnkDotExpr, n)

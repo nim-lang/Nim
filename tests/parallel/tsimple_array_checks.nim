@@ -1,3 +1,25 @@
+discard """
+sortoutput: true
+output: '''
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+Hello 1
+Hello 2
+Hello 3
+Hello 4
+Hello 5
+Hello 6
+'''
+"""
+
 # bug #2287
 
 import threadPool
@@ -13,9 +35,9 @@ proc main =
   parallel:
     for n in nums: # Error: cannot prove: i <= len(nums) + -1
       spawn log(n)
-    #for i in 0 .. <nums.len: # Error: cannot prove: i <= len(nums) + -1
+    #for i in 0 ..< nums.len: # Error: cannot prove: i <= len(nums) + -1
     #for i in 0 .. nums.len-1: # WORKS!
-    #for i in 0 .. <nums.len: # WORKS!
+    #for i in 0 ..< nums.len: # WORKS!
     #  spawn log(nums[i])
 
 # Array needs explicit size to work, probably related to issue #2287
@@ -37,5 +59,5 @@ proc maino =
 
 maino() # Doesn't work outside a proc
 
-when isMainModule:
+when true:
   main()

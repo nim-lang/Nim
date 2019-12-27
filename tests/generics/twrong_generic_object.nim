@@ -1,5 +1,5 @@
 discard """
-  errormsg: "cannot instantiate: 'GenericNodeObj'"
+  errormsg: "cannot instantiate: 'GenericNodeObj[T]'; Maybe generic arguments are missing?"
   line: 21
 """
 # bug #2509

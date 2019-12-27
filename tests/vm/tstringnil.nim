@@ -20,16 +20,16 @@ proc buildSuiteContents(suiteName, suiteDesc, suiteBloc: NimNode): tuple[tests: 
 
       var testObj = SuiteTest()
       if suiteName.kind == nnkNilLit:
-        testObj.suiteName = nil
+        testObj.suiteName = ""
       else:
         testObj.suiteName = $suiteName
       if suiteDesc.kind == nnkNilLit:
-        testObj.suiteDesc = nil
+        testObj.suiteDesc = ""
       else:
         testObj.suiteDesc = suiteDesc.strVal
       testObj.testName = $child[1] # should not ever be nil
       if child[2].kind == nnkNilLit:
-        testObj.testDesc = nil
+        testObj.testDesc = ""
       else:
         testObj.testDesc = child[2].strVal
       testObj.testBlock = child[1]
@@ -46,5 +46,5 @@ macro suite(suiteName, suiteDesc, suiteBloc: untyped): typed =
 
 # Test above
 suite basics, "Description of such":
-  test(t5, nil):
+  test(t5, ""):
     assert false

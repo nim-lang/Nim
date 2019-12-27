@@ -9,19 +9,14 @@
 
 # Module providing functions for calling the different external C compilers
 # Uses some hard-wired facts about each C/C++ compiler, plus options read
-# from a configuration file, to provide generalized procedures to compile
+# from a lineinfos file, to provide generalized procedures to compile
 # nim files.
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  std / sha1, streams
-
-#from debuginfo import writeDebugInfo
+  lineinfos, std / sha1, streams, pathutils, sequtils, times, strtabs
 
 type
-  TSystemCC* = enum
-    ccNone, ccGcc, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
-    ccTcc, ccPcc, ccUcc, ccIcl, ccIcc
   TInfoCCProp* = enum         # properties of the C compiler:
     hasSwitchRange,           # CC allows ranges in switch statements (GNU C)
     hasComputedGoto,          # CC has computed goto (GNU C extension)
@@ -53,6 +48,7 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
+    produceAsm: string,   # Format how to produce assembler listings
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -63,13 +59,16 @@ type
 template compiler(name, settings: untyped): untyped =
   proc name: TInfoCC {.compileTime.} = settings
 
+const
+  gnuAsmListing = "-Wa,-acdl=$asmfile -g -fverbose-asm -masm=intel"
+
 # GNU C and C++ Compiler
 compiler gcc:
   result = (
     name: "gcc",
     objExt: "o",
-    optSpeed: " -O3 -ffast-math ",
-    optSize: " -Os -ffast-math ",
+    optSpeed: " -O3 -fno-ident",
+    optSize: " -Os -fno-ident",
     compilerExe: "gcc",
     cppCompiler: "g++",
     compileTmpl: "-c $options $include -o $objfile $file",
@@ -85,6 +84,33 @@ compiler gcc:
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
+            hasAttribute})
+
+# GNU C and C++ Compiler
+compiler nintendoSwitchGCC:
+  result = (
+    name: "switch_gcc",
+    objExt: "o",
+    optSpeed: " -O3 ",
+    optSize: " -Os ",
+    compilerExe: "aarch64-none-elf-gcc",
+    cppCompiler: "aarch64-none-elf-g++",
+    compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    buildGui: " -mwindows",
+    buildDll: " -shared",
+    buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
+    linkerExe: "aarch64-none-elf-gcc",
+    linkTmpl: "$buildgui $builddll -Wl,-Map,$mapfile -o $exefile $objfiles $options",
+    includeCmd: " -I",
+    linkDirCmd: " -L",
+    linkLibCmd: " -l$1",
+    debug: "",
+    pic: "-fPIE",
+    asmStmtFrmt: "asm($1);$n",
+    structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -114,16 +140,16 @@ compiler vcc:
   result = (
     name: "vcc",
     objExt: "obj",
-    optSpeed: " /Ogityb2 /G7 /arch:SSE2 ",
+    optSpeed: " /Ogityb2 /G7 ",
     optSize: " /O1 /G7 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c $options $include /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
     buildGui: " /link /SUBSYSTEM:WINDOWS ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$options $builddll /Fe$exefile $objfiles $buildgui",
+    linkTmpl: "$options $builddll$vccplatform /Fe$exefile $objfiles $buildgui",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -131,7 +157,15 @@ compiler vcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "/Fa$asmfile",
     props: {hasCpp, hasAssume, hasDeclspec})
+
+compiler clangcl:
+  result = vcc()
+  result.name = "clang_cl"
+  result.compilerExe = "clang-cl"
+  result.cppCompiler = "clang-cl"
+  result.linkerExe = "clang-cl"
 
 # Intel C/C++ Compiler
 compiler icl:
@@ -169,6 +203,7 @@ compiler lcc:
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Borland C Compiler
@@ -193,9 +228,9 @@ compiler bcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
-    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, 
+    produceAsm: "",
+    props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
-    
 
 # Digital Mars C Compiler
 compiler dmc:
@@ -219,6 +254,7 @@ compiler dmc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -243,6 +279,7 @@ compiler wcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -267,6 +304,7 @@ compiler tcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasSwitchRange, hasComputedGoto})
 
 # Pelles C Compiler
@@ -292,6 +330,7 @@ compiler pcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Your C Compiler
@@ -316,11 +355,13 @@ compiler ucc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
     gcc(),
+    nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
     lcc(),
@@ -332,424 +373,552 @@ const
     pcc(),
     ucc(),
     icl(),
-    icc()]
+    icc(),
+    clangcl()]
 
   hExt* = ".h"
 
-var
-  cCompiler* = ccGcc # the used compiler
-  gMixedMode*: bool  # true if some module triggered C++ codegen
-  cIncludes*: seq[string] = @[]   # directories to search for included files
-  cLibs*: seq[string] = @[]       # directories to search for lib files
-  cLinkedLibs*: seq[string] = @[] # libraries to link
-
-# implementation
-
-proc libNameTmpl(): string {.inline.} =
-  result = if targetOS == osWindows: "$1.lib" else: "lib$1.a"
-
-type
-  CfileFlag* {.pure.} = enum
-    Cached,    ## no need to recompile this time
-    External   ## file was introduced via .compile pragma
-
-  Cfile* = object
-    cname*, obj*: string
-    flags*: set[CFileFlag]
-  CfileList = seq[Cfile]
-
-var
-  externalToLink: seq[string] = @[] # files to link in addition to the file
-                                    # we compiled
-  linkOptionsCmd: string = ""
-  compileOptionsCmd: seq[string] = @[]
-  linkOptions: string = ""
-  compileOptions: string = ""
-  ccompilerpath: string = ""
-  toCompile: CfileList = @[]
+proc libNameTmpl(conf: ConfigRef): string {.inline.} =
+  result = if conf.target.targetOS == osWindows: "$1.lib" else: "lib$1.a"
 
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
   ## if the name doesn't refer to any known compiler.
-  for i in countup(succ(ccNone), high(TSystemCC)):
+  for i in succ(ccNone)..high(TSystemCC):
     if cmpIgnoreStyle(name, CC[i].name) == 0:
       return i
   result = ccNone
 
-proc getConfigVar(c: TSystemCC, suffix: string): string =
+proc listCCnames(): seq[string] =
+  for i in succ(ccNone)..high(TSystemCC):
+    result.add CC[i].name
+
+proc isVSCompatible*(conf: ConfigRef): bool =
+  return conf.cCompiler == ccVcc or
+          conf.cCompiler == ccClangCl or
+          (conf.cCompiler == ccIcl and conf.target.hostOS in osDos..osWindows)
+
+proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
   # for niminst support
   let fullSuffix =
-    if gCmd == cmdCompileToCpp:
+    if conf.cmd == cmdCompileToCpp:
       ".cpp" & suffix
-    elif gCmd == cmdCompileToOC:
+    elif conf.cmd == cmdCompileToOC:
       ".objc" & suffix
-    elif gCmd == cmdCompileToJS:
+    elif conf.cmd == cmdCompileToJS:
       ".js" & suffix
     else:
       suffix
 
-  if (platform.hostOS != targetOS or platform.hostCPU != targetCPU) and
-      optCompileOnly notin gGlobalOptions:
-    let fullCCname = platform.CPU[targetCPU].name & '.' &
-                     platform.OS[targetOS].name & '.' &
+  if optCompileOnly notin conf.globalOptions:
+    let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
+                     platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
-    result = getConfigVar(fullCCname)
+    result = getConfigVar(conf, fullCCname)
     if result.len == 0:
-      # not overriden for this cross compilation setting?
-      result = getConfigVar(CC[c].name & fullSuffix)
+      # not overridden for this cross compilation setting?
+      result = getConfigVar(conf, CC[c].name & fullSuffix)
   else:
-    result = getConfigVar(CC[c].name & fullSuffix)
+    result = getConfigVar(conf, CC[c].name & fullSuffix)
 
-proc setCC*(ccname: string) =
-  cCompiler = nameToCC(ccname)
-  if cCompiler == ccNone: rawMessage(errUnknownCcompiler, ccname)
-  compileOptions = getConfigVar(cCompiler, ".options.always")
-  linkOptions = ""
-  ccompilerpath = getConfigVar(cCompiler, ".path")
-  for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
-  defineSymbol(CC[cCompiler].name)
+proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
+  conf.cCompiler = nameToCC(ccname)
+  if conf.cCompiler == ccNone:
+    let ccList = listCCnames().join(", ")
+    localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, ccList])
+  conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
+  conf.linkOptions = ""
+  conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
+  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
+  defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
-  if len(dest) == 0 or dest[len(dest)-1] != ' ': add(dest, " ")
-  add(dest, src)
+  if dest.len == 0 or dest[^1] != ' ': dest.add(" ")
+  dest.add(src)
 
-proc addLinkOption*(option: string) =
-  addOpt(linkOptions, option)
+proc addLinkOption*(conf: ConfigRef; option: string) =
+  addOpt(conf.linkOptions, option)
 
-proc addCompileOption*(option: string) =
-  if strutils.find(compileOptions, option, 0) < 0:
-    addOpt(compileOptions, option)
+proc addCompileOption*(conf: ConfigRef; option: string) =
+  if strutils.find(conf.compileOptions, option, 0) < 0:
+    addOpt(conf.compileOptions, option)
 
-proc addLinkOptionCmd*(option: string) =
-  addOpt(linkOptionsCmd, option)
+proc addLinkOptionCmd*(conf: ConfigRef; option: string) =
+  addOpt(conf.linkOptionsCmd, option)
 
-proc addCompileOptionCmd*(option: string) =
-  compileOptionsCmd.add(option)
+proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
+  conf.compileOptionsCmd.add(option)
 
-proc initVars*() =
+proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
-  for i in countup(low(CC), high(CC)): undefSymbol(CC[i].name)
-  defineSymbol(CC[cCompiler].name)
-  addCompileOption(getConfigVar(cCompiler, ".options.always"))
+  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
+  defineSymbol(conf.symbols, CC[conf.cCompiler].name)
+  addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
-  if len(ccompilerpath) == 0:
-    ccompilerpath = getConfigVar(cCompiler, ".path")
+  if conf.cCompilerPath.len == 0:
+    conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
 
-proc completeCFilePath*(cfile: string, createSubDir: bool = true): string =
-  result = completeGeneratedFilePath(cfile, createSubDir)
+proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
+                        createSubDir: bool = true): AbsoluteFile =
+  result = completeGeneratedFilePath(conf, cfile, createSubDir)
 
-proc toObjFile*(filename: string): string =
+proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
   # Object file for compilation
-  #if filename.endsWith(".cpp"):
-  #  result = changeFileExt(filename, "cpp." & CC[cCompiler].objExt)
-  #else:
-  result = changeFileExt(filename, CC[cCompiler].objExt)
+  result = AbsoluteFile(filename.string & "." & CC[conf.cCompiler].objExt)
 
-proc addFileToCompile*(cf: Cfile) =
-  toCompile.add(cf)
+proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
+  conf.toCompile.add(cf)
 
-proc resetCompilationLists* =
-  toCompile.setLen 0
+proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
+  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  var value = conf.cfileSpecificOptions.getOrDefault(key)
+  if strutils.find(value, option, 0) < 0:
+    addOpt(value, option)
+    conf.cfileSpecificOptions[key] = value
+
+proc resetCompilationLists*(conf: ConfigRef) =
+  conf.toCompile.setLen 0
   ## XXX: we must associate these with their originating module
   # when the module is loaded/unloaded it adds/removes its items
   # That's because we still need to hash check the external files
   # Maybe we can do that in checkDep on the other hand?
-  externalToLink.setLen 0
+  conf.externalToLink.setLen 0
 
-proc addExternalFileToLink*(filename: string) =
-  externalToLink.insert(filename, 0)
+proc addExternalFileToLink*(conf: ConfigRef; filename: AbsoluteFile) =
+  conf.externalToLink.insert(filename.string, 0)
 
-proc execWithEcho(cmd: string, msg = hintExecuting): int =
-  rawMessage(msg, cmd)
+proc execWithEcho(conf: ConfigRef; cmd: string, msg = hintExecuting): int =
+  rawMessage(conf, msg, cmd)
   result = execCmd(cmd)
 
-proc execExternalProgram*(cmd: string, msg = hintExecuting) =
-  if execWithEcho(cmd, msg) != 0:
-    rawMessage(errExecutionOfProgramFailed, cmd)
+proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
+  if execWithEcho(conf, cmd, msg) != 0:
+    rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
+      cmd)
 
-proc generateScript(projectFile: string, script: Rope) =
-  let (dir, name, ext) = splitFile(projectFile)
-  writeRope(script, getNimcacheDir() / addFileExt("compile_" & name,
-                                     platform.OS[targetOS].scriptExt))
-  copyFile(libpath / "nimbase.h", getNimcacheDir() / "nimbase.h")
+proc generateScript(conf: ConfigRef; script: Rope) =
+  let (_, name, _) = splitFile(conf.outFile.string)
+  let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
+                                     platform.OS[conf.target.targetOS].scriptExt))
+  if writeRope(script, filename):
+    copyFile(conf.libpath / RelativeFile"nimbase.h",
+             getNimcacheDir(conf) / RelativeFile"nimbase.h")
+  else:
+    rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
 
-proc getOptSpeed(c: TSystemCC): string =
-  result = getConfigVar(c, ".options.speed")
+proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
+  result = getConfigVar(conf, c, ".options.speed")
   if result == "":
     result = CC[c].optSpeed   # use default settings from this file
 
-proc getDebug(c: TSystemCC): string =
-  result = getConfigVar(c, ".options.debug")
+proc getDebug(conf: ConfigRef; c: TSystemCC): string =
+  result = getConfigVar(conf, c, ".options.debug")
   if result == "":
     result = CC[c].debug      # use default settings from this file
 
-proc getOptSize(c: TSystemCC): string =
-  result = getConfigVar(c, ".options.size")
+proc getOptSize(conf: ConfigRef; c: TSystemCC): string =
+  result = getConfigVar(conf, c, ".options.size")
   if result == "":
     result = CC[c].optSize    # use default settings from this file
 
-proc noAbsolutePaths: bool {.inline.} =
+proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # We used to check current OS != specified OS, but this makes no sense
   # really: Cross compilation from Linux to Linux for example is entirely
   # reasonable.
   # `optGenMapping` is included here for niminst.
-  result = gGlobalOptions * {optGenScript, optGenMapping} != {}
+  result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
-proc cFileSpecificOptions(cfilename: string): string =
-  result = compileOptions
-  for option in compileOptionsCmd:
+proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
+  result = conf.compileOptions
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
+
+  for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
 
-  var trunk = splitFile(cfilename).name
-  if optCDebug in gGlobalOptions:
-    var key = trunk & ".debug"
-    if existsConfigVar(key): addOpt(result, getConfigVar(key))
-    else: addOpt(result, getDebug(cCompiler))
-  if optOptimizeSpeed in gOptions:
-    var key = trunk & ".speed"
-    if existsConfigVar(key): addOpt(result, getConfigVar(key))
-    else: addOpt(result, getOptSpeed(cCompiler))
-  elif optOptimizeSize in gOptions:
-    var key = trunk & ".size"
-    if existsConfigVar(key): addOpt(result, getConfigVar(key))
-    else: addOpt(result, getOptSize(cCompiler))
-  var key = trunk & ".always"
-  if existsConfigVar(key): addOpt(result, getConfigVar(key))
+  if optCDebug in conf.globalOptions:
+    let key = nimname & ".debug"
+    if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+    else: addOpt(result, getDebug(conf, conf.cCompiler))
+  if optOptimizeSpeed in conf.options:
+    let key = nimname & ".speed"
+    if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+    else: addOpt(result, getOptSpeed(conf, conf.cCompiler))
+  elif optOptimizeSize in conf.options:
+    let key = nimname & ".size"
+    if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+    else: addOpt(result, getOptSize(conf, conf.cCompiler))
+  let key = nimname & ".always"
+  if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
-proc getCompileOptions: string =
-  result = cFileSpecificOptions("__dummy__")
+proc getCompileOptions(conf: ConfigRef): string =
+  result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")
 
-proc getLinkOptions: string =
-  result = linkOptions & " " & linkOptionsCmd & " "
-  for linkedLib in items(cLinkedLibs):
-    result.add(CC[cCompiler].linkLibCmd % linkedLib.quoteShell)
-  for libDir in items(cLibs):
-    result.add(join([CC[cCompiler].linkDirCmd, libDir.quoteShell]))
+proc vccplatform(conf: ConfigRef): string =
+  # VCC specific but preferable over the config hacks people
+  # had to do before, see #11306
+  case conf.target.targetCPU
+  of cpuI386:
+    result = " --platform:x86"
+  of cpuArm:
+    result = " --platform:arm"
+  of cpuAmd64:
+    result = " --platform:amd64"
+  else:
+    result = ""
 
-proc needsExeExt(): bool {.inline.} =
-  result = (optGenScript in gGlobalOptions and targetOS == osWindows) or
-           (platform.hostOS == osWindows)
+proc getLinkOptions(conf: ConfigRef): string =
+  result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
+  for linkedLib in items(conf.cLinkedLibs):
+    result.add(CC[conf.cCompiler].linkLibCmd % linkedLib.quoteShell)
+  for libDir in items(conf.cLibs):
+    result.add(join([CC[conf.cCompiler].linkDirCmd, libDir.quoteShell]))
 
-proc getCompilerExe(compiler: TSystemCC; cfile: string): string =
-  result = if gCmd == cmdCompileToCpp and not cfile.endsWith(".c"):
+proc needsExeExt(conf: ConfigRef): bool {.inline.} =
+  result = (optGenScript in conf.globalOptions and conf.target.targetOS == osWindows) or
+           (conf.target.hostOS == osWindows)
+
+proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): string =
+  result = if conf.cmd == cmdCompileToCpp and not cfile.string.endsWith(".c"):
              CC[compiler].cppCompiler
            else:
              CC[compiler].compilerExe
   if result.len == 0:
-    rawMessage(errCompilerDoesntSupportTarget, CC[compiler].name)
+    rawMessage(conf, errGenerated,
+      "Compiler '$1' doesn't support the requested target" %
+      CC[compiler].name)
 
-proc getLinkerExe(compiler: TSystemCC): string =
+proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
-           elif gMixedMode and gCmd != cmdCompileToCpp: CC[compiler].cppCompiler
-           else: compiler.getCompilerExe("")
+           elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
+           else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
-proc getCompileCFileCmd*(cfile: Cfile): string =
-  var c = cCompiler
-  var options = cFileSpecificOptions(cfile.cname)
-  var exe = getConfigVar(c, ".exe")
-  if exe.len == 0: exe = c.getCompilerExe(cfile.cname)
+proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
+                         isMainFile = false; produceOutput = false): string =
+  var c = conf.cCompiler
+  # We produce files like module.nim.cpp, so the absolute Nim filename is not
+  # cfile.name but `cfile.cname.changeFileExt("")`:
+  var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
+  var exe = getConfigVar(conf, c, ".exe")
+  if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
-  if needsExeExt(): exe = addFileExt(exe, "exe")
-  if optGenDynLib in gGlobalOptions and
-      ospNeedsPIC in platform.OS[targetOS].props:
-    add(options, ' ' & CC[c].pic)
+  if needsExeExt(conf): exe = addFileExt(exe, "exe")
+  if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
+      ospNeedsPIC in platform.OS[conf.target.targetOS].props:
+    options.add(' ' & CC[c].pic)
 
   var includeCmd, compilePattern: string
-  if not noAbsolutePaths():
+  if not noAbsolutePaths(conf):
     # compute include paths:
-    includeCmd = CC[c].includeCmd & quoteShell(libpath)
+    includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
 
-    for includeDir in items(cIncludes):
+    for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
-    compilePattern = joinPath(ccompilerpath, exe)
+    compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
     includeCmd = ""
-    compilePattern = c.getCompilerExe(cfile.cname)
+    compilePattern = getCompilerExe(conf, c, cfile.cname)
 
-  var cf = if noAbsolutePaths(): extractFilename(cfile.cname)
+  includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
+
+  var cf = if noAbsolutePaths(conf): AbsoluteFile extractFilename(cfile.cname.string)
            else: cfile.cname
 
   var objfile =
-    if cfile.obj.len == 0:
-      if not cfile.flags.contains(CfileFlag.External) or noAbsolutePaths():
-        toObjFile(cf)
+    if cfile.obj.isEmpty:
+      if not cfile.flags.contains(CfileFlag.External) or noAbsolutePaths(conf):
+        toObjFile(conf, cf).string
       else:
-        completeCFilePath(toObjFile(cf))
-    elif noAbsolutePaths():
-      extractFilename(cfile.obj)
+        completeCfilePath(conf, toObjFile(conf, cf)).string
+    elif noAbsolutePaths(conf):
+      extractFilename(cfile.obj.string)
     else:
-      cfile.obj
+      cfile.obj.string
 
-  objfile = quoteShell(objfile)
-  cf = quoteShell(cf)
+  # D files are required by nintendo switch libs for
+  # compilation. They are basically a list of all includes.
+  let dfile = objfile.changeFileExt(".d").quoteShell
+
+  let cfsh = quoteShell(cf)
   result = quoteShell(compilePattern % [
-    "file", cf, "objfile", objfile, "options", options,
-    "include", includeCmd, "nim", getPrefixDir(),
-    "nim", getPrefixDir(), "lib", libpath])
-  add(result, ' ')
-  addf(result, CC[c].compileTmpl, [
-    "file", cf, "objfile", objfile,
+    "dfile", dfile,
+    "file", cfsh, "objfile", quoteShell(objfile), "options", options,
+    "include", includeCmd, "nim", getPrefixDir(conf).string,
+    "lib", conf.libpath.string])
+
+  if optProduceAsm in conf.globalOptions:
+    if CC[conf.cCompiler].produceAsm.len > 0:
+      let asmfile = objfile.changeFileExt(".asm").quoteShell
+      addOpt(result, CC[conf.cCompiler].produceAsm % ["asmfile", asmfile])
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Produced assembler here: " & asmfile)
+    else:
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Couldn't produce assembler listing " &
+          "for the selected C compiler: " & CC[conf.cCompiler].name)
+
+  result.add(' ')
+  result.addf(CC[c].compileTmpl, [
+    "dfile", dfile,
+    "file", cfsh, "objfile", quoteShell(objfile),
     "options", options, "include", includeCmd,
-    "nim", quoteShell(getPrefixDir()),
-    "nim", quoteShell(getPrefixDir()),
-    "lib", quoteShell(libpath)])
+    "nim", quoteShell(getPrefixDir(conf)),
+    "lib", quoteShell(conf.libpath),
+    "vccplatform", vccplatform(conf)])
 
-proc footprint(cfile: Cfile): SecureHash =
+proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
-    $secureHashFile(cfile.cname) &
-    platform.OS[targetOS].name &
-    platform.CPU[targetCPU].name &
-    extccomp.CC[extccomp.cCompiler].name &
-    getCompileCFileCmd(cfile))
+    $secureHashFile(cfile.cname.string) &
+    platform.OS[conf.target.targetOS].name &
+    platform.CPU[conf.target.targetCPU].name &
+    extccomp.CC[conf.cCompiler].name &
+    getCompileCFileCmd(conf, cfile))
 
-proc externalFileChanged(cfile: Cfile): bool =
-  if gCmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
+proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
+  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM, cmdNone}:
     return false
 
-  var hashFile = toGeneratedFile(cfile.cname.withPackageName, "sha1")
-  var currentHash = footprint(cfile)
+  var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
+  var currentHash = footprint(conf, cfile)
   var f: File
-  if open(f, hashFile, fmRead):
+  if open(f, hashFile.string, fmRead):
     let oldHash = parseSecureHash(f.readLine())
     close(f)
     result = oldHash != currentHash
   else:
     result = true
   if result:
-    if open(f, hashFile, fmWrite):
+    if open(f, hashFile.string, fmWrite):
       f.writeLine($currentHash)
       close(f)
 
-proc addExternalFileToCompile*(c: var Cfile) =
-  if optForceFullMake notin gGlobalOptions and not externalFileChanged(c):
+proc addExternalFileToCompile*(conf: ConfigRef; c: var Cfile) =
+  if optForceFullMake notin conf.globalOptions and fileExists(c.obj) and
+      not externalFileChanged(conf, c):
     c.flags.incl CfileFlag.Cached
-  toCompile.add(c)
+  else:
+    # make sure Nim keeps recompiling the external file on reruns
+    # if compilation is not successful
+    discard tryRemoveFile(c.obj.string)
+  conf.toCompile.add(c)
 
-proc addExternalFileToCompile*(filename: string) =
-  var c = Cfile(cname: filename,
-    obj: toObjFile(completeCFilePath(changeFileExt(filename, ""), false)),
+proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
+  var c = Cfile(nimname: splitFile(filename).name, cname: filename,
+    obj: toObjFile(conf, completeCfilePath(conf, filename, false)),
     flags: {CfileFlag.External})
-  addExternalFileToCompile(c)
+  addExternalFileToCompile(conf, c)
 
-proc compileCFile(list: CFileList, script: var Rope, cmds: var TStringSeq,
+proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
+  var currIdx = 0
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(it)
-    if optCompileOnly notin gGlobalOptions:
-      add(cmds, compileCmd)
+    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1, produceOutput=true)
+    inc currIdx
+    if optCompileOnly notin conf.globalOptions:
+      cmds.add(compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, "CC: " & name)
-    if optGenScript in gGlobalOptions:
-      add(script, compileCmd)
-      add(script, tnl)
+      prettyCmds.add(if hintCC in conf.notes: "CC: " & demanglePackageName(name) else: "")
+    if optGenScript in conf.globalOptions:
+      script.add(compileCmd)
+      script.add("\n")
 
-proc getLinkCmd(projectfile, objfiles: string): string =
-  if optGenStaticLib in gGlobalOptions:
+proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
+                objfiles: string, isDllBuild: bool): string =
+  if optGenStaticLib in conf.globalOptions:
     var libname: string
-    if options.outFile.len > 0:
-      libname = options.outFile.expandTilde
+    if not conf.outFile.isEmpty:
+      libname = conf.outFile.string.expandTilde
       if not libname.isAbsolute():
         libname = getCurrentDir() / libname
     else:
-      libname = (libNameTmpl() % splitFile(gProjectName).name)
-    result = CC[cCompiler].buildLib % ["libfile", libname,
-                                       "objfiles", objfiles]
+      libname = (libNameTmpl(conf) % splitFile(conf.projectName).name)
+    result = CC[conf.cCompiler].buildLib % ["libfile", quoteShell(libname),
+                                            "objfiles", objfiles]
   else:
-    var linkerExe = getConfigVar(cCompiler, ".linkerexe")
-    if len(linkerExe) == 0: linkerExe = cCompiler.getLinkerExe
+    var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
+    if linkerExe.len == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
-    if needsExeExt(): linkerExe = addFileExt(linkerExe, "exe")
-    if noAbsolutePaths(): result = linkerExe
-    else: result = joinPath(ccompilerpath, linkerExe)
-    let buildgui = if optGenGuiApp in gGlobalOptions: CC[cCompiler].buildGui
-                   else: ""
-    var exefile, builddll: string
-    if optGenDynLib in gGlobalOptions:
-      exefile = platform.OS[targetOS].dllFrmt % splitFile(projectfile).name
-      builddll = CC[cCompiler].buildDll
-    else:
-      exefile = splitFile(projectfile).name & platform.OS[targetOS].exeExt
-      builddll = ""
-    if options.outFile.len > 0:
-      exefile = options.outFile.expandTilde
-      if not exefile.isAbsolute():
-        exefile = getCurrentDir() / exefile
-    if not noAbsolutePaths():
-      if not exefile.isAbsolute():
-        exefile = joinPath(splitFile(projectfile).dir, exefile)
+    if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
+    if noAbsolutePaths(conf): result = linkerExe
+    else: result = joinPath(conf.cCompilerPath, linkerExe)
+    let buildgui = if optGenGuiApp in conf.globalOptions and conf.target.targetOS == osWindows:
+                     CC[conf.cCompiler].buildGui
+                   else:
+                     ""
+    let builddll = if isDllBuild: CC[conf.cCompiler].buildDll else: ""
+    let exefile = quoteShell(output)
+
     when false:
-      if optCDebug in gGlobalOptions:
+      if optCDebug in conf.globalOptions:
         writeDebugInfo(exefile.changeFileExt("ndb"))
-    exefile = quoteShell(exefile)
-    let linkOptions = getLinkOptions() & " " &
-                      getConfigVar(cCompiler, ".options.linker")
-    var linkTmpl = getConfigVar(cCompiler, ".linkTmpl")
+
+    # Map files are required by Nintendo Switch compilation. They are a list
+    # of all function calls in the library and where they come from.
+    let mapfile = quoteShell(getNimcacheDir(conf) / RelativeFile(splitFile(output).name & ".map"))
+
+    let linkOptions = getLinkOptions(conf) & " " &
+                      getConfigVar(conf, conf.cCompiler, ".options.linker")
+    var linkTmpl = getConfigVar(conf, conf.cCompiler, ".linkTmpl")
     if linkTmpl.len == 0:
-      linkTmpl = CC[cCompiler].linkTmpl
+      linkTmpl = CC[conf.cCompiler].linkTmpl
     result = quoteShell(result % ["builddll", builddll,
+        "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
-        "exefile", exefile, "nim", getPrefixDir(), "lib", libpath])
+        "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string])
     result.add ' '
-    addf(result, linkTmpl, ["builddll", builddll,
+    result.addf(linkTmpl, ["builddll", builddll,
+        "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
-        "nim", quoteShell(getPrefixDir()),
-        "lib", quoteShell(libpath)])
+        "nim", quoteShell(getPrefixDir(conf)),
+        "lib", quoteShell(conf.libpath),
+        "vccplatform", vccplatform(conf)])
+    # On windows the debug information for binaries is emitted in a separate .pdb
+    # file and the binaries (.dll and .exe) contain a full path to that .pdb file.
+    # This is a problem for hot code reloading because even when we copy the .dll
+    # and load the copy so the build process may overwrite the original .dll on
+    # the disk (windows locks the files of running binaries) the copy still points
+    # to the original .pdb (and a simple copy of the .pdb won't help). This is a
+    # problem when a debugger is attached to the program we are hot-reloading.
+    # This problem is nonexistent on Unix since there by default debug symbols
+    # are embedded in the binaries so loading a copy of a .so will be fine. There
+    # is the '/Z7' flag for the MSVC compiler to embed the debug info of source
+    # files into their respective .obj files but the linker still produces a .pdb
+    # when a final .dll or .exe is linked so the debug info isn't embedded.
+    # There is also the issue that even when a .dll is unloaded the debugger
+    # still keeps the .pdb for that .dll locked. This is a major problem and
+    # because of this we cannot just alternate between 2 names for a .pdb file
+    # when rebuilding a .dll - instead we need to accumulate differently named
+    # .pdb files in the nimcache folder - this is the easiest and most reliable
+    # way of being able to debug and rebuild the program at the same time. This
+    # is accomplished using the /PDB:<filename> flag (there also exists the
+    # /PDBALTPATH:<filename> flag). The only downside is that the .pdb files are
+    # at least 300kb big (when linking statically to the runtime - or else 5mb+)
+    # and will quickly accumulate. There is a hacky solution: we could try to
+    # delete all .pdb files with a pattern and swallow exceptions.
+    #
+    # links about .pdb files and hot code reloading:
+    # https://ourmachinery.com/post/dll-hot-reloading-in-theory-and-practice/
+    # https://ourmachinery.com/post/little-machines-working-together-part-2/
+    # https://github.com/fungos/cr
+    # https://fungos.github.io/blog/2017/11/20/cr.h-a-simple-c-hot-reload-header-only-library/
+    # on forcing the debugger to unlock a locked .pdb of an unloaded library:
+    # https://blog.molecular-matters.com/2017/05/09/deleting-pdb-files-locked-by-visual-studio/
+    # and a bit about the .pdb format in case that is ever needed:
+    # https://github.com/crosire/blink
+    # http://www.debuginfo.com/articles/debuginfomatch.html#pdbfiles
+    if conf.hcrOn and isVSCompatible(conf):
+      let t = now()
+      let pdb = output.string & "." & format(t, "MMMM-yyyy-HH-mm-") & $t.nanosecond & ".pdb"
+      result.add " /link /PDB:" & pdb
+  if optCDebug in conf.globalOptions and conf.cCompiler == ccVcc:
+    result.add " /Zi /FS /Od"
 
-template tryExceptOSErrorMessage(errorPrefix: string = "", body: untyped): typed =
+template getLinkCmd(conf: ConfigRef; output: AbsoluteFile, objfiles: string): string =
+  getLinkCmd(conf, output, objfiles, optGenDynLib in conf.globalOptions)
+
+template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body: untyped) =
   try:
     body
   except OSError:
     let ose = (ref OSError)(getCurrentException())
     if errorPrefix.len > 0:
-      rawMessage(errGenerated, errorPrefix & " " & ose.msg & " " & $ose.errorCode)
+      rawMessage(conf, errGenerated, errorPrefix & " " & ose.msg & " " & $ose.errorCode)
     else:
-      rawMessage(errExecutionOfProgramFailed, ose.msg & " " & $ose.errorCode)
+      rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
+        (ose.msg & " " & $ose.errorCode))
     raise
 
-proc execLinkCmd(linkCmd: string) =
-  tryExceptOSErrorMessage("invocation of external linker program failed."):
-    execExternalProgram(linkCmd,
-      if optListCmd in gGlobalOptions or gVerbosity > 1: hintExecuting else: hintLinking)
+proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
+  tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
+    execExternalProgram(conf, linkCmd,
+      if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
 
-proc execCmdsInParallel(cmds: seq[string]; prettyCb: proc (idx: int)) =
+proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
+  when defined(osx):
+    if optCDebug notin conf.globalOptions: return
+    # if needed, add an option to skip or override location
+    let cmd = "dsymutil " & $(exe).quoteShell
+    conf.extraCmds.add cmd
+    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+      execExternalProgram(conf, cmd, hintExecuting)
+
+proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
     let exitCode = p.peekExitCode
     if exitCode != 0:
-      rawMessage(errGenerated, "execution of an external compiler program '" &
+      rawMessage(conf, errGenerated, "execution of an external compiler program '" &
         cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
         p.outputStream.readAll.strip)
-  if gNumberOfProcessors == 0: gNumberOfProcessors = countProcessors()
+  if conf.numberOfProcessors == 0: conf.numberOfProcessors = countProcessors()
   var res = 0
-  if gNumberOfProcessors <= 1:
-    for i in countup(0, high(cmds)):
-      tryExceptOSErrorMessage("invocation of external compiler program failed."):
-        res = execWithEcho(cmds[i])
-      if res != 0: rawMessage(errExecutionOfProgramFailed, cmds[i])
+  if conf.numberOfProcessors <= 1:
+    for i in 0..high(cmds):
+      tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
+        res = execWithEcho(conf, cmds[i])
+      if res != 0:
+        rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
+          cmds[i])
   else:
-    tryExceptOSErrorMessage("invocation of external compiler program failed."):
-      if optListCmd in gGlobalOptions or gVerbosity > 1:
+    tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
+      if optListCmd in conf.globalOptions or conf.verbosity > 1:
         res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
-                            gNumberOfProcessors, afterRunEvent=runCb)
-      elif gVerbosity == 1:
+                            conf.numberOfProcessors, afterRunEvent=runCb)
+      elif conf.verbosity == 1:
         res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
-                            gNumberOfProcessors, prettyCb, afterRunEvent=runCb)
+                            conf.numberOfProcessors, prettyCb, afterRunEvent=runCb)
       else:
         res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
-                            gNumberOfProcessors, afterRunEvent=runCb)
+                            conf.numberOfProcessors, afterRunEvent=runCb)
   if res != 0:
-    if gNumberOfProcessors <= 1:
-      rawMessage(errExecutionOfProgramFailed, cmds.join())
+    if conf.numberOfProcessors <= 1:
+      rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
+        cmds.join())
 
-proc callCCompiler*(projectfile: string) =
+proc linkViaResponseFile(conf: ConfigRef; cmd: string) =
+  # Extracting the linker.exe here is a bit hacky but the best solution
+  # given ``buildLib``'s design.
+  var i = 0
+  var last = 0
+  if cmd.len > 0 and cmd[0] == '"':
+    inc i
+    while i < cmd.len and cmd[i] != '"': inc i
+    last = i
+    inc i
+  else:
+    while i < cmd.len and cmd[i] != ' ': inc i
+    last = i
+  while i < cmd.len and cmd[i] == ' ': inc i
+  let linkerArgs = conf.projectName & "_" & "linkerArgs.txt"
+  let args = cmd.substr(i)
+  # GCC's response files don't support backslashes. Junk.
+  if conf.cCompiler == ccGcc or conf.cCompiler == ccCLang:
+    writeFile(linkerArgs, args.replace('\\', '/'))
+  else:
+    writeFile(linkerArgs, args)
+  try:
+    execLinkCmd(conf, cmd.substr(0, last) & " @" & linkerArgs)
+  finally:
+    removeFile(linkerArgs)
+
+proc getObjFilePath(conf: ConfigRef, f: Cfile): string =
+  if noAbsolutePaths(conf): f.obj.extractFilename
+  else: f.obj.string
+
+proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): AbsoluteFile =
+  let basename = splitFile(objFile).name
+  let targetName = if isMain: basename & ".exe"
+                   else: platform.OS[conf.target.targetOS].dllFrmt % basename
+  result = conf.getNimcacheDir / RelativeFile(targetName)
+
+proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
-  if gGlobalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
+  if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
   #var c = cCompiler
@@ -757,37 +926,82 @@ proc callCCompiler*(projectfile: string) =
   var cmds: TStringSeq = @[]
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) =
-    echo prettyCmds[idx]
-  compileCFile(toCompile, script, cmds, prettyCmds)
-  if optCompileOnly notin gGlobalOptions:
-    execCmdsInParallel(cmds, prettyCb)
-  if optNoLinking notin gGlobalOptions:
+    when declared(echo):
+      let cmd = prettyCmds[idx]
+      if cmd != "": echo cmd
+  compileCFiles(conf, conf.toCompile, script, cmds, prettyCmds)
+  if optCompileOnly notin conf.globalOptions:
+    execCmdsInParallel(conf, cmds, prettyCb)
+  if optNoLinking notin conf.globalOptions:
     # call the linker:
     var objfiles = ""
-    for it in externalToLink:
-      let objFile = if noAbsolutePaths(): it.extractFilename else: it
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(
-          addFileExt(objFile, CC[cCompiler].objExt)))
-    for x in toCompile:
-      let objFile = if noAbsolutePaths(): x.obj.extractFilename else: x.obj
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(objFile))
+    for it in conf.externalToLink:
+      let objFile = if noAbsolutePaths(conf): it.extractFilename else: it
+      objfiles.add(' ')
+      objfiles.add(quoteShell(
+          addFileExt(objFile, CC[conf.cCompiler].objExt)))
 
-    linkCmd = getLinkCmd(projectfile, objfiles)
-    if optCompileOnly notin gGlobalOptions:
-      execLinkCmd(linkCmd)
+    if conf.hcrOn: # lets assume that optCompileOnly isn't on
+      cmds = @[]
+      let mainFileIdx = conf.toCompile.len - 1
+      for idx, x in conf.toCompile:
+        # don't relink each of the many binaries (one for each source file) if the nim code is
+        # cached because that would take too much time for small changes - the only downside to
+        # this is that if an external-to-link file changes the final target wouldn't be relinked
+        if x.flags.contains(CfileFlag.Cached): continue
+        # we pass each object file as if it is the project file - a .dll will be created for each such
+        # object file in the nimcache directory, and only in the case of the main project file will
+        # there be probably an executable (if the project is such) which will be copied out of the nimcache
+        let objFile = conf.getObjFilePath(x)
+        let buildDll = idx != mainFileIdx
+        let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
+        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
+        # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
+        # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
+        if isVSCompatible(conf):
+          for pdb in walkFiles(objFile & ".*.pdb"):
+            discard tryRemoveFile(pdb)
+      # execute link commands in parallel - output will be a bit different
+      # if it fails than that from execLinkCmd() but that doesn't matter
+      prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
+      execCmdsInParallel(conf, cmds, prettyCb)
+      # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
+      if not conf.toCompile[mainFileIdx].flags.contains(CfileFlag.Cached):
+        let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
+        var src = conf.hcrLinkTargetName(mainObjFile, true)
+        var dst = conf.prepareToWriteOutput
+        copyFileWithPermissions(src.string, dst.string)
+    else:
+      for x in conf.toCompile:
+        let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
+        objfiles.add(' ')
+        objfiles.add(quoteShell(objFile))
+      let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
+                       else: AbsoluteFile(conf.projectName)
+      linkCmd = getLinkCmd(conf, mainOutput, objfiles)
+      if optCompileOnly notin conf.globalOptions:
+        const MaxCmdLen = when defined(windows): 8_000 else: 32_000
+        if linkCmd.len > MaxCmdLen:
+          # Windows's command line limit is about 8K (don't laugh...) so C compilers on
+          # Windows support a feature where the command line can be passed via ``@linkcmd``
+          # to them.
+          linkViaResponseFile(conf, linkCmd)
+        else:
+          execLinkCmd(conf, linkCmd)
+        maybeRunDsymutil(conf, mainOutput)
   else:
     linkCmd = ""
-  if optGenScript in gGlobalOptions:
-    add(script, linkCmd)
-    add(script, tnl)
-    generateScript(projectfile, script)
+  if optGenScript in conf.globalOptions:
+    script.add(linkCmd)
+    script.add("\n")
+    generateScript(conf, script)
 
 #from json import escapeJson
-import json
+import json, std / sha1
 
-proc writeJsonBuildInstructions*(projectfile: string) =
+template hashNimExe(): string = $secureHashFile(os.getAppFilename())
+
+proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
   template str(x: untyped) =
     when compiles(escapeJson(x, buf)):
@@ -797,65 +1011,119 @@ proc writeJsonBuildInstructions*(projectfile: string) =
     else:
       f.write escapeJson(x)
 
-  proc cfiles(f: File; buf: var string; clist: CfileList, isExternal: bool) =
-    var pastStart = false
+  proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
+    var i = 0
     for it in clist:
       if CfileFlag.Cached in it.flags: continue
-      let compileCmd = getCompileCFileCmd(it)
-      if pastStart: lit "],\L"
+      let compileCmd = getCompileCFileCmd(conf, it)
+      if i > 0: lit ",\L"
       lit "["
-      str it.cname
+      str it.cname.string
       lit ", "
       str compileCmd
-      pastStart = true
-    lit "]\L"
+      lit "]"
+      inc i
 
-  proc linkfiles(f: File; buf, objfiles: var string; clist: CfileList;
+  proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
                  llist: seq[string]) =
     var pastStart = false
     for it in llist:
-      let objfile = if noAbsolutePaths(): it.extractFilename
+      let objfile = if noAbsolutePaths(conf): it.extractFilename
                     else: it
-      let objstr = addFileExt(objfile, CC[cCompiler].objExt)
-      add(objfiles, ' ')
-      add(objfiles, objstr)
+      let objstr = addFileExt(objfile, CC[conf.cCompiler].objExt)
+      objfiles.add(' ')
+      objfiles.add(objstr)
       if pastStart: lit ",\L"
       str objstr
       pastStart = true
 
     for it in clist:
       let objstr = quoteShell(it.obj)
-      add(objfiles, ' ')
-      add(objfiles, objstr)
+      objfiles.add(' ')
+      objfiles.add(objstr)
       if pastStart: lit ",\L"
       str objstr
       pastStart = true
     lit "\L"
 
+  proc depfiles(conf: ConfigRef; f: File) =
+    var i = 0
+    for it in conf.m.fileInfos:
+      let path = it.fullPath.string
+      if isAbsolute(path): # TODO: else?
+        if i > 0: lit "],\L"
+        lit "["
+        str path
+        lit ", "
+        str $secureHashFile(path)
+        inc i
+    lit "]\L"
+
+
   var buf = newStringOfCap(50)
 
-  let file = projectfile.splitFile.name
-  let jsonFile = toGeneratedFile(file, "json")
+  let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
 
   var f: File
-  if open(f, jsonFile, fmWrite):
+  if open(f, jsonFile.string, fmWrite):
     lit "{\"compile\":[\L"
-    cfiles(f, buf, toCompile, false)
+    cfiles(conf, f, buf, conf.toCompile, false)
     lit "],\L\"link\":[\L"
     var objfiles = ""
     # XXX add every file here that is to link
-    linkfiles(f, buf, objfiles, toCompile, externalToLink)
+    linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(projectfile, objfiles)
+    str getLinkCmd(conf, conf.absOutFile, objfiles)
+
+    lit ",\L\"extraCmds\": "
+    lit $(%* conf.extraCmds)
+
+    if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
+      lit ",\L\"cmdline\": "
+      str conf.commandLine
+      lit ",\L\"depfiles\":[\L"
+      depfiles(conf, f)
+      lit "],\L\"nimexe\": \L"
+      str hashNimExe()
+      lit "\L"
+
     lit "\L}\L"
     close(f)
 
-proc runJsonBuildInstructions*(projectfile: string) =
-  let file = projectfile.splitFile.name
-  let jsonFile = toGeneratedFile(file, "json")
+proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile): bool =
+  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  if not fileExists(jsonFile): return true
+  if not fileExists(conf.absOutFile): return true
+  result = false
   try:
-    let data = json.parseFile(jsonFile)
+    let data = json.parseFile(jsonFile.string)
+    if not data.hasKey("depfiles") or not data.hasKey("cmdline"):
+      return true
+    let oldCmdLine = data["cmdline"].getStr
+    if conf.commandLine != oldCmdLine:
+      return true
+    if hashNimExe() != data["nimexe"].getStr:
+      return true
+    let depfilesPairs = data["depfiles"]
+    doAssert depfilesPairs.kind == JArray
+    for p in depfilesPairs:
+      doAssert p.kind == JArray
+      # >= 2 for forwards compatibility with potential later .json files:
+      doAssert p.len >= 2
+      let depFilename = p[0].getStr
+      let oldHashValue = p[1].getStr
+      let newHashValue = $secureHashFile(depFilename)
+      if oldHashValue != newHashValue:
+        return true
+  except IOError, OSError, ValueError:
+    echo "Warning: JSON processing failed: ", getCurrentExceptionMsg()
+    result = true
+
+proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
+  let jsonFile = toGeneratedFile(conf, projectfile, "json")
+  try:
+    let data = json.parseFile(jsonFile.string)
     let toCompile = data["compile"]
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq = @[]
@@ -864,38 +1132,50 @@ proc runJsonBuildInstructions*(projectfile: string) =
       doAssert c.kind == JArray
       doAssert c.len >= 2
 
-      add(cmds, c[1].getStr)
+      cmds.add(c[1].getStr)
       let (_, name, _) = splitFile(c[0].getStr)
-      add(prettyCmds, "CC: " & name)
+      prettyCmds.add("CC: " & demanglePackageName(name))
 
     let prettyCb = proc (idx: int) =
-      echo prettyCmds[idx]
-    execCmdsInParallel(cmds, prettyCb)
+      when declared(echo):
+        echo prettyCmds[idx]
+    execCmdsInParallel(conf, cmds, prettyCb)
 
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
-    execLinkCmd(linkCmd.getStr)
+    execLinkCmd(conf, linkCmd.getStr)
+    if data.hasKey("extraCmds"):
+      let extraCmds = data["extraCmds"]
+      doAssert extraCmds.kind == JArray
+      for cmd in extraCmds:
+        doAssert cmd.kind == JString, $cmd.kind
+        let cmd2 = cmd.getStr
+        execExternalProgram(conf, cmd2, hintExecuting)
+
   except:
-    echo getCurrentException().getStackTrace()
-    quit "error evaluating JSON file: " & jsonFile
+    when declared(echo):
+      echo getCurrentException().getStackTrace()
+    quit "error evaluating JSON file: " & jsonFile.string
 
-proc genMappingFiles(list: CFileList): Rope =
+proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
-    addf(result, "--file:r\"$1\"$N", [rope(it.cname)])
+    result.addf("--file:r\"$1\"$N", [rope(it.cname.string)])
 
-proc writeMapping*(gSymbolMapping: Rope) =
-  if optGenMapping notin gGlobalOptions: return
+proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
+  if optGenMapping notin conf.globalOptions: return
   var code = rope("[C_Files]\n")
-  add(code, genMappingFiles(toCompile))
-  add(code, "\n[C_Compiler]\nFlags=")
-  add(code, strutils.escape(getCompileOptions()))
+  code.add(genMappingFiles(conf, conf.toCompile))
+  code.add("\n[C_Compiler]\nFlags=")
+  code.add(strutils.escape(getCompileOptions(conf)))
 
-  add(code, "\n[Linker]\nFlags=")
-  add(code, strutils.escape(getLinkOptions() & " " &
-                            getConfigVar(cCompiler, ".options.linker")))
+  code.add("\n[Linker]\nFlags=")
+  code.add(strutils.escape(getLinkOptions(conf) & " " &
+                            getConfigVar(conf, conf.cCompiler, ".options.linker")))
 
-  add(code, "\n[Environment]\nlibpath=")
-  add(code, strutils.escape(libpath))
+  code.add("\n[Environment]\nlibpath=")
+  code.add(strutils.escape(conf.libpath.string))
 
-  addf(code, "\n[Symbols]$n$1", [gSymbolMapping])
-  writeRope(code, joinPath(gProjectPath, "mapping.txt"))
+  code.addf("\n[Symbols]$n$1", [symbolMapping])
+  let filename = conf.projectPath / RelativeFile"mapping.txt"
+  if not writeRope(code, filename):
+    rawMessage(conf, errGenerated, "could not write to file: " & filename.string)

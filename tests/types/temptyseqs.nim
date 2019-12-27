@@ -22,7 +22,7 @@ when true:
   import os
 
   type
-    In_out = tuple[src, dest, options: string]
+    In_out = tuple[src, dest: string, options: ref int]
 
   let
     nil_var: In_out = ("hey"/"there", "something", nil)

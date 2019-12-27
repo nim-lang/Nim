@@ -7,13 +7,16 @@
 #    distribution, for details about the copyright.
 #
 
-## This module contains procs for `serialization`:idx: and `deseralization`:idx:
+## This module contains procs for `serialization`:idx: and `deserialization`:idx:
 ## of arbitrary Nim data structures. The serialization format uses `JSON`:idx:.
-## Warning: The serialization format could change in future!
 ##
 ## **Restriction**: For objects their type is **not** serialized. This means
 ## essentially that it does not work if the object has some other runtime
-## type than its compiletime type:
+## type than its compiletime type.
+##
+##
+## Basic usage
+## ===========
 ##
 ## .. code-block:: nim
 ##
@@ -32,11 +35,21 @@
 ##
 ##   # unmarshal
 ##   let c = to[B]("""{"f": 2}""")
+##   assert typeof(c) is B
+##   assert c.f == 2
 ##
 ##   # marshal
 ##   let s = $$c
-
+##   assert s == """{"f": 2}"""
+##
 ## **Note**: The ``to`` and ``$$`` operations are available at compile-time!
+##
+##
+## See also
+## ========
+## * `streams module <streams.html>`_
+## * `json module <json.html>`_
+
 
 import streams, typeinfo, json, intsets, tables, unicode
 
@@ -54,13 +67,11 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
     else:
       s.write($int(ch))
   of akArray, akSequence:
-    if a.kind == akSequence and isNil(a): s.write("null")
-    else:
-      s.write("[")
-      for i in 0 .. a.len-1:
-        if i > 0: s.write(", ")
-        storeAny(s, a[i], stored)
-      s.write("]")
+    s.write("[")
+    for i in 0 .. a.len-1:
+      if i > 0: s.write(", ")
+      storeAny(s, a[i], stored)
+    s.write("]")
   of akObject, akTuple:
     s.write("{")
     var i = 0
@@ -98,8 +109,7 @@ proc storeAny(s: Stream, a: Any, stored: var IntSet) =
   of akProc, akPointer, akCString: s.write($a.getPointer.ptrToInt)
   of akString:
     var x = getString(a)
-    if isNil(x): s.write("null")
-    elif x.validateUtf8() == -1: s.write(escapeJson(x))
+    if x.validateUtf8() == -1: s.write(escapeJson(x))
     else:
       s.write("[")
       var i = 0
@@ -257,19 +267,46 @@ proc loadAny(s: Stream, a: Any, t: var Table[BiggestInt, pointer]) =
   close(p)
 
 proc load*[T](s: Stream, data: var T) =
-  ## loads `data` from the stream `s`. Raises `EIO` in case of an error.
+  ## Loads `data` from the stream `s`. Raises `IOError` in case of an error.
+  runnableExamples:
+    import marshal, streams
+    var s = newStringStream("[1, 3, 5]")
+    var a: array[3, int]
+    load(s, a)
+    assert a == [1, 3, 5]
+
   var tab = initTable[BiggestInt, pointer]()
   loadAny(s, toAny(data), tab)
 
 proc store*[T](s: Stream, data: T) =
-  ## stores `data` into the stream `s`. Raises `EIO` in case of an error.
+  ## Stores `data` into the stream `s`. Raises `IOError` in case of an error.
+  runnableExamples:
+    import marshal, streams
+    var s = newStringStream("")
+    var a = [1, 3, 5]
+    store(s, a)
+    s.setPosition(0)
+    assert s.readAll() == "[1, 3, 5]"
+
   var stored = initIntSet()
   var d: T
   shallowCopy(d, data)
   storeAny(s, toAny(d), stored)
 
 proc `$$`*[T](x: T): string =
-  ## returns a string representation of `x`.
+  ## Returns a string representation of `x` (serialization, marshalling).
+  ##
+  ## **Note:** to serialize `x` to JSON use `$(%x)` from the ``json`` module.
+  runnableExamples:
+    type
+      Foo = object
+        id: int
+        bar: string
+    let x = Foo(id: 1, bar: "baz")
+    ## serialize:
+    let y = $$x
+    assert y == """{"id": 1, "bar": "baz"}"""
+
   var stored = initIntSet()
   var d: T
   shallowCopy(d, x)
@@ -278,9 +315,23 @@ proc `$$`*[T](x: T): string =
   result = s.data
 
 proc to*[T](data: string): T =
-  ## reads data and transforms it to a ``T``.
+  ## Reads data and transforms it to a type ``T`` (deserialization, unmarshalling).
+  runnableExamples:
+    type
+      Foo = object
+        id: int
+        bar: string
+    let y = """{"id": 1, "bar": "baz"}"""
+    assert typeof(y) is string
+    ## deserialize to type 'Foo':
+    let z = y.to[:Foo]
+    assert typeof(z) is Foo
+    assert z.id == 1
+    assert z.bar == "baz"
+
   var tab = initTable[BiggestInt, pointer]()
   loadAny(newStringStream(data), toAny(result), tab)
+
 
 when not defined(testing) and isMainModule:
   template testit(x: untyped) = echo($$to[type(x)]($$x))
@@ -309,7 +360,6 @@ when not defined(testing) and isMainModule:
     Node = object
       next, prev: PNode
       data: string
-  {.deprecated: [TNode: Node].}
 
   proc buildList(): PNode =
     new(result)
@@ -325,7 +375,7 @@ when not defined(testing) and isMainModule:
 
   var test3: TestObj
   test3.test = 42
-  test3.test2 = blah
+  test3 = TestObj(test2: blah)
   testit(test3)
 
   var test4: ref tuple[a, b: string]
@@ -334,7 +384,7 @@ when not defined(testing) and isMainModule:
   test4.b = "ref string test: B"
   testit(test4)
 
-  var test5 = @[(0,1),(2,3),(4,5)]
+  var test5 = @[(0, 1), (2, 3), (4, 5)]
   testit(test5)
 
   var test6: set[char] = {'A'..'Z', '_'}
@@ -355,5 +405,3 @@ when not defined(testing) and isMainModule:
   new(b)
   a = b
   echo($$a[]) # produces "{}", not "{f: 0}"
-
-

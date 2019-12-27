@@ -29,13 +29,14 @@ from strutils import contains, toLowerAscii
 
 when not defined(nimscript):
   from osproc import execProcess
+  from os import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
-    Windows ## some version of Windows
-    Posix   ## some Posix system
-    MacOSX  ## some version of OSX
-    Linux   ## some version of Linux
+    Windows                     ## some version of Windows
+    Posix                       ## some Posix system
+    MacOSX                      ## some version of OSX
+    Linux                       ## some version of Linux
     Ubuntu
     Debian
     Gentoo
@@ -105,7 +106,7 @@ type
     Clonezilla
     SteamOS
     Absolute
-    NixOS
+    NixOS ## NixOS or a Nix build environment
     AUSTRUMI
     Arya
     Porteus
@@ -126,13 +127,16 @@ type
     OpenBSD
     DragonFlyBSD
 
+    Haiku
+
 
 const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
     Distribution.ArchLinux}
 
-var unameRes, releaseRes: string ## we cache the result of the 'uname -a'
-                                 ## execution for faster platform detections.
+# we cache the result of the 'uname -a'
+# execution for faster platform detections.
+var unameRes, releaseRes, hostnamectlRes: string
 
 template unameRelease(cmd, cache): untyped =
   if cache.len == 0:
@@ -140,7 +144,8 @@ template unameRelease(cmd, cache): untyped =
   cache
 
 template uname(): untyped = unameRelease("uname -a", unameRes)
-template release(): untyped = unameRelease("lsb_release -a", releaseRes)
+template release(): untyped = unameRelease("lsb_release -d", releaseRes)
+template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsImpl(d: Distribution): bool =
   case d
@@ -157,6 +162,9 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.BSD: result = defined(bsd)
   of Distribution.ArchLinux:
     result = "arch" in toLowerAscii(uname())
+  of Distribution.NixOS:
+    result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
+    # Check if this is a Nix build or NixOS environment
   of Distribution.OpenSUSE:
     result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
   of Distribution.GoboLinux:
@@ -166,9 +174,12 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Solaris:
     let uname = toLowerAscii(uname())
     result = ("sun" in uname) or ("solaris" in uname)
+  of Distribution.Haiku:
+    result = defined(haiku)
   else:
     let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release())
+    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or
+              ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
@@ -179,7 +190,7 @@ template detectOs*(d: untyped): bool =
 when not defined(nimble):
   var foreignDeps: seq[string] = @[]
 
-proc foreignCmd*(cmd: string; requiresSudo=false) =
+proc foreignCmd*(cmd: string; requiresSudo = false) =
   ## Registers a foreign command to the intern list of commands
   ## that can be queried later.
   let c = (if requiresSudo: "sudo " else: "") & cmd
@@ -220,10 +231,12 @@ proc foreignDepInstallCmd*(foreignPackageName: string): (string, bool) =
       result = ("pkg install " & p, true)
     elif detectOs(PCLinuxOS):
       result = ("rpm -ivh " & p, true)
-    elif detectOs(ArchLinux):
+    elif detectOs(ArchLinux) or detectOs(Manjaro):
       result = ("pacman -S " & p, true)
     else:
       result = ("<your package manager here> install " & p, true)
+  elif defined(haiku):
+    result = ("pkgman install " & p, true)
   else:
     result = ("brew install " & p, false)
 

@@ -1,9 +1,13 @@
+discard """
+action: compile
+"""
 
-template withOpenFile(f: untyped, filename: string, mode: TFileMode,
+
+template withOpenFile(f: untyped, filename: string, mode: FileMode,
                       actions: untyped): untyped =
   block:
     # test that 'f' is implicitly 'injecting':
-    var f: TFile
+    var f: File
     if open(f, filename, mode):
       try:
         actions
@@ -33,7 +37,7 @@ var `hu "XYZ"` = "yay"
 
 echo prefix(XYZ)
 
-template typedef(name: untyped, typ: typeDesc) {.immediate, dirty.} =
+template typedef(name: untyped, typ: typeDesc) {.dirty.} =
   type
     `T name`* = typ
     `P name`* = ref `T name`
@@ -56,3 +60,24 @@ template create(typ: typeDesc, arg: untyped): untyped = `init typ`(arg)
 var ff = Foo.create(12)
 
 echo ff.arg
+
+
+import macros
+
+# bug #11494
+macro staticForEach(arr: untyped, body: untyped): untyped =
+  result = newNimNode(nnkStmtList)
+  arr.expectKind(nnkBracket)
+  for n in arr:
+    let b = copyNimTree(body)
+    result.add quote do:
+      block:
+        type it {.inject.} = `n`
+        `b`
+
+template forEveryMatchingEntity*() =
+  staticForEach([int, string, float]):
+    var a {.inject.}: it
+    echo a
+
+forEveryMatchingEntity()

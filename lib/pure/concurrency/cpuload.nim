@@ -9,6 +9,8 @@
 
 ## This module implements a helper for a thread pool to determine whether
 ## creating a thread is a good idea.
+##
+## Unstable API.
 
 when defined(windows):
   import winlean, os, strutils, math
@@ -81,7 +83,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     result = doNothing
   inc s.calls
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and isMainModule and not defined(nimdoc):
   import random
 
   proc busyLoop() =

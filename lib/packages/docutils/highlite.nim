@@ -10,9 +10,39 @@
 ## Source highlighter for programming or markup languages.
 ## Currently only few languages are supported, other languages may be added.
 ## The interface supports one language nested in another.
+##
+## **Note:** Import ``packages/docutils/highlite`` to use this module
+##
+## You can use this to build your own syntax highlighting, check this example:
+##
+## .. code::nim
+##   let code = """for x in $int.high: echo x.ord mod 2 == 0"""
+##   var toknizr: GeneralTokenizer
+##   initGeneralTokenizer(toknizr, code)
+##   while true:
+##     getNextToken(toknizr, langNim)
+##     case toknizr.kind
+##     of gtEof: break  # End Of File (or string)
+##     of gtWhitespace:
+##       echo gtWhitespace # Maybe you want "visible" whitespaces?.
+##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##     of gtOperator:
+##       echo gtOperator # Maybe you want Operators to use a specific color?.
+##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##     # of gtSomeSymbol: syntaxHighlight("Comic Sans", "bold", "99px", "pink")
+##     else:
+##       echo toknizr.kind # All the kinds of tokens can be processed here.
+##       echo substr(code, toknizr.start, toknizr.length + toknizr.start - 1)
+##
+## The proc ``getSourceLanguage`` can get the language ``enum`` from a string:
+##
+## .. code::nim
+##   for l in ["C", "c++", "jAvA", "Nim", "c#"]: echo getSourceLanguage(l)
+##
 
 import
   strutils
+from algorithm import binarySearch
 
 type
   TokenClass* = enum
@@ -129,7 +159,7 @@ proc nimNumber(g: var GeneralTokenizer, position: int): int =
 
 const
   OpChars  = {'+', '-', '*', '/', '\\', '<', '>', '!', '?', '^', '.',
-              '|', '=', '%', '&', '$', '@', '~', ':', '\x80'..'\xFF'}
+              '|', '=', '%', '&', '$', '@', '~', ':'}
 
 proc nimNextToken(g: var GeneralTokenizer) =
   const
@@ -365,32 +395,10 @@ proc generalStrLit(g: var GeneralTokenizer, position: int): int =
   result = pos
 
 proc isKeyword(x: openArray[string], y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmp(x[mid], y)
-    if c < 0:
-      a = mid + 1
-    elif c > 0:
-      b = mid - 1
-    else:
-      return mid
-  result = - 1
+  binarySearch(x, y)
 
 proc isKeywordIgnoreCase(x: openArray[string], y: string): int =
-  var a = 0
-  var b = len(x) - 1
-  while a <= b:
-    var mid = (a + b) div 2
-    var c = cmpIgnoreCase(x[mid], y)
-    if c < 0:
-      a = mid + 1
-    elif c > 0:
-      b = mid - 1
-    else:
-      return mid
-  result = - 1
+  binarySearch(x, y, cmpIgnoreCase)
 
 type
   TokenizerFlag = enum
@@ -857,7 +865,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
       inc(pos)
       while g.buf[pos] in {'0'..'9', '+', '-'}: inc(pos)
     of '0'..'9': yamlPossibleNumber(g, pos)
-    of '\0': g.kind = gtEOF
+    of '\0': g.kind = gtEof
     else: yamlPlainStrLit(g, pos)
   else:
     # outside document
@@ -875,7 +883,7 @@ proc yamlNextToken(g: var GeneralTokenizer) =
     of '#':
       g.kind = gtComment
       while g.buf[pos] notin {'\0', '\x0A', '\x0D'}: inc(pos)
-    of '\0': g.kind = gtEOF
+    of '\0': g.kind = gtEof
     else:
       g.kind = gtNone
       g.state = gtOther
@@ -902,7 +910,7 @@ when isMainModule:
       break
     except:
       echo filename, " not found"
-  doAssert(not keywords.isNil, "Couldn't read any keywords.txt file!")
+  doAssert(keywords.len > 0, "Couldn't read any keywords.txt file!")
   for i in 0..min(keywords.len, nimKeywords.len)-1:
     doAssert keywords[i] == nimKeywords[i], "Unexpected keyword"
   doAssert keywords.len == nimKeywords.len, "No matching lengths"

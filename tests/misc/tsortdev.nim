@@ -1,5 +1,5 @@
 discard """
-  output: "done"
+  output: "done tsortdev"
 """
 
 import algorithm, strutils
@@ -39,7 +39,7 @@ proc cmpPlatforms(a, b: string): int =
 
 proc sorted[T](a: openArray[T]): bool =
   result = true
-  for i in 0 .. < a.high:
+  for i in 0 ..< a.high:
     if cmpPlatforms(a[i], a[i+1]) > 0:
       echo "Out of order: ", a[i], " ", a[i+1]
       result = false
@@ -55,5 +55,4 @@ proc main() =
 for i in 0..1_000:
   main()
 
-echo "done"
-
+echo "done tsortdev"

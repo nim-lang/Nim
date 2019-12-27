@@ -1,3 +1,12 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2015 Dominik Picheta
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
 # TODO: This shouldn't need to be included, but should ideally be exported.
@@ -6,31 +15,71 @@ type
 
   CallbackList = object
     function: CallbackFunc
-    next: ref CallbackList
+    next: owned(ref CallbackList)
 
-  FutureBase* = ref object of RootObj ## Untyped future.
+  FutureBase* = ref object of RootObj  ## Untyped future.
     callbacks: CallbackList
 
     finished: bool
-    error*: ref Exception ## Stored exception
+    error*: ref Exception              ## Stored exception
     errorStackTrace*: string
     when not defined(release):
-      stackTrace: string ## For debugging purposes only.
+      stackTrace: seq[StackTraceEntry] ## For debugging purposes only.
       id: int
       fromProc: string
 
   Future*[T] = ref object of FutureBase ## Typed future.
-    value: T ## Stored value
+    value: T                            ## Stored value
 
   FutureVar*[T] = distinct Future[T]
 
   FutureError* = object of Exception
     cause*: FutureBase
 
-{.deprecated: [PFutureBase: FutureBase, PFuture: Future].}
-
 when not defined(release):
   var currentID = 0
+
+const isFutureLoggingEnabled* = defined(futureLogging)
+
+const
+  NimAsyncContinueSuffix* = "NimAsyncContinue" ## For internal usage. Do not use.
+
+when isFutureLoggingEnabled:
+  import hashes
+  type
+    FutureInfo* = object
+      stackTrace*: seq[StackTraceEntry]
+      fromProc*: string
+
+  var futuresInProgress {.threadvar.}: Table[FutureInfo, int]
+
+  proc getFuturesInProgress*(): var Table[FutureInfo, int] =
+    return futuresInProgress
+
+  proc hash(s: StackTraceEntry): Hash =
+    result = hash(s.procname) !& hash(s.line) !&
+      hash(s.filename)
+    result = !$result
+
+  proc hash(fi: FutureInfo): Hash =
+    result = hash(fi.stackTrace) !& hash(fi.fromProc)
+    result = !$result
+
+  proc getFutureInfo(fut: FutureBase): FutureInfo =
+    let info = FutureInfo(
+      stackTrace: fut.stackTrace,
+      fromProc: fut.fromProc
+    )
+    return info
+
+  proc logFutureStart(fut: FutureBase) =
+    let info = getFutureInfo(fut)
+    if info notin getFuturesInProgress():
+      getFuturesInProgress()[info] = 0
+    getFuturesInProgress()[info].inc()
+
+  proc logFutureFinish(fut: FutureBase) =
+    getFuturesInProgress()[getFutureInfo(fut)].dec()
 
 var callSoonProc {.threadvar.}: proc (cbproc: proc ()) {.gcsafe.}
 
@@ -58,25 +107,28 @@ template setupFutureBase(fromProc: string) =
   new(result)
   result.finished = false
   when not defined(release):
-    result.stackTrace = getStackTrace()
+    result.stackTrace = getStackTraceEntries()
     result.id = currentID
     result.fromProc = fromProc
     currentID.inc()
 
-proc newFuture*[T](fromProc: string = "unspecified"): Future[T] =
+proc newFuture*[T](fromProc: string = "unspecified"): owned(Future[T]) =
   ## Creates a new future.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
   setupFutureBase(fromProc)
+  when isFutureLoggingEnabled: logFutureStart(result)
 
-proc newFutureVar*[T](fromProc = "unspecified"): FutureVar[T] =
+proc newFutureVar*[T](fromProc = "unspecified"): owned(FutureVar[T]) =
   ## Create a new ``FutureVar``. This Future type is ideally suited for
   ## situations where you want to avoid unnecessary allocations of Futures.
   ##
   ## Specifying ``fromProc``, which is a string specifying the name of the proc
   ## that this future belongs to, is a good habit as it helps with debugging.
-  result = FutureVar[T](newFuture[T](fromProc))
+  let fo = newFuture[T](fromProc)
+  result = typeof(result)(fo)
+  when isFutureLoggingEnabled: logFutureStart(Future[T](result))
 
 proc clean*[T](future: FutureVar[T]) =
   ## Resets the ``finished`` status of ``future``.
@@ -94,10 +146,10 @@ proc checkFinished[T](future: Future[T]) =
       msg.add("\n  Future ID: " & $future.id)
       msg.add("\n  Created in proc: " & future.fromProc)
       msg.add("\n  Stack trace to moment of creation:")
-      msg.add("\n" & indent(future.stackTrace.strip(), 4))
+      msg.add("\n" & indent(($future.stackTrace).strip(), 4))
       when T is string:
         msg.add("\n  Contents (string): ")
-        msg.add("\n" & indent(future.value.repr, 4))
+        msg.add("\n" & indent($future.value, 4))
       msg.add("\n  Stack trace to moment of secondary completion:")
       msg.add("\n" & indent(getStackTrace().strip(), 4))
       var err = newException(FutureError, msg)
@@ -105,16 +157,32 @@ proc checkFinished[T](future: Future[T]) =
       raise err
 
 proc call(callbacks: var CallbackList) =
-  var current = callbacks
+  when not defined(nimV2):
+    # strictly speaking a little code duplication here, but we strive
+    # to minimize regressions and I'm not sure I got the 'nimV2' logic
+    # right:
+    var current = callbacks
+    while true:
+      if not current.function.isNil:
+        callSoon(current.function)
 
-  while true:
-    if not current.function.isNil:
-      callSoon(current.function)
+      if current.next.isNil:
+        break
+      else:
+        current = current.next[]
+  else:
+    var currentFunc = unown callbacks.function
+    var currentNext = unown callbacks.next
 
-    if current.next.isNil:
-      break
-    else:
-      current = current.next[]
+    while true:
+      if not currentFunc.isNil:
+        callSoon(currentFunc)
+
+      if currentNext.isNil:
+        break
+      else:
+        currentFunc = currentNext.function
+        currentNext = unown currentNext.next
 
   # callback will be called only once, let GC collect them now
   callbacks.next = nil
@@ -125,11 +193,17 @@ proc add(callbacks: var CallbackList, function: CallbackFunc) =
     callbacks.function = function
     assert callbacks.next == nil
   else:
-    let newNext = new(ref CallbackList)
-    newNext.function = callbacks.function
-    newNext.next = callbacks.next
-    callbacks.next = newNext
-    callbacks.function = function
+    let newCallback = new(ref CallbackList)
+    newCallback.function = function
+    newCallback.next = nil
+
+    if callbacks.next == nil:
+      callbacks.next = newCallback
+    else:
+      var last = callbacks.next
+      while last.next != nil:
+        last = last.next
+      last.next = newCallback
 
 proc complete*[T](future: Future[T], val: T) =
   ## Completes ``future`` with value ``val``.
@@ -139,6 +213,7 @@ proc complete*[T](future: Future[T], val: T) =
   future.value = val
   future.finished = true
   future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*(future: Future[void]) =
   ## Completes a void ``future``.
@@ -147,6 +222,7 @@ proc complete*(future: Future[void]) =
   assert(future.error == nil)
   future.finished = true
   future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*[T](future: FutureVar[T]) =
   ## Completes a ``FutureVar``.
@@ -155,6 +231,7 @@ proc complete*[T](future: FutureVar[T]) =
   assert(fut.error == nil)
   fut.finished = true
   fut.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
 
 proc complete*[T](future: FutureVar[T], val: T) =
   ## Completes a ``FutureVar`` with value ``val``.
@@ -166,6 +243,7 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.finished = true
   fut.value = val
   fut.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc fail*[T](future: Future[T], error: ref Exception) =
   ## Completes ``future`` with ``error``.
@@ -176,12 +254,13 @@ proc fail*[T](future: Future[T], error: ref Exception) =
   future.errorStackTrace =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
+  when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc clearCallbacks*(future: FutureBase) =
   future.callbacks.function = nil
   future.callbacks.next = nil
 
-proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
+proc addCallback*(future: FutureBase, cb: proc() {.closure, gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -192,16 +271,16 @@ proc addCallback*(future: FutureBase, cb: proc() {.closure,gcsafe.}) =
     future.callbacks.add cb
 
 proc addCallback*[T](future: Future[T],
-                     cb: proc (future: Future[T]) {.closure,gcsafe.}) =
+                     cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Adds the callbacks proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
   future.addCallback(
     proc() =
-      cb(future)
+    cb(future)
   )
 
-proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
+proc `callback=`*(future: FutureBase, cb: proc () {.closure, gcsafe.}) =
   ## Clears the list of callbacks and sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -211,7 +290,7 @@ proc `callback=`*(future: FutureBase, cb: proc () {.closure,gcsafe.}) =
   future.addCallback cb
 
 proc `callback=`*[T](future: Future[T],
-    cb: proc (future: Future[T]) {.closure,gcsafe.}) =
+    cb: proc (future: Future[T]) {.closure, gcsafe.}) =
   ## Sets the callback proc to be called when the future completes.
   ##
   ## If future has already completed then ``cb`` will be called immediately.
@@ -221,14 +300,14 @@ proc getHint(entry: StackTraceEntry): string =
   ## We try to provide some hints about stack trace entries that the user
   ## may not be familiar with, in particular calls inside the stdlib.
   result = ""
-  if entry.procname == "processPendingCallbacks":
+  if entry.procname == cstring"processPendingCallbacks":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Executes pending callbacks"
-  elif entry.procname == "poll":
+  elif entry.procname == cstring"poll":
     if cmpIgnoreStyle(entry.filename, "asyncdispatch.nim") == 0:
       return "Processes asynchronous completion events"
 
-  if entry.procname.endsWith("_continue"):
+  if entry.procname.endsWith(NimAsyncContinueSuffix):
     if cmpIgnoreStyle(entry.filename, "asyncmacro.nim") == 0:
       return "Resumes an async procedure"
 
@@ -237,7 +316,7 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   # Find longest filename & line number combo for alignment purposes.
   var longestLeft = 0
   for entry in entries:
-    if entry.procName.isNil: continue
+    if entry.procname.isNil: continue
 
     let left = $entry.filename & $entry.line
     if left.len > longestLeft:
@@ -246,20 +325,20 @@ proc `$`*(entries: seq[StackTraceEntry]): string =
   var indent = 2
   # Format the entries.
   for entry in entries:
-    if entry.procName.isNil:
+    if entry.procname.isNil:
       if entry.line == -10:
         result.add(spaces(indent) & "#[\n")
         indent.inc(2)
       else:
         indent.dec(2)
-        result.add(spaces(indent)& "]#\n")
+        result.add(spaces(indent) & "]#\n")
       continue
 
     let left = "$#($#)" % [$entry.filename, $entry.line]
     result.add((spaces(indent) & "$#$# $#\n") % [
       left,
       spaces(longestLeft - left.len + 2),
-      $entry.procName
+      $entry.procname
     ])
     let hint = getHint(entry)
     if hint.len > 0:
@@ -341,13 +420,16 @@ proc asyncCheck*[T](future: Future[T]) =
   ## Sets a callback on ``future`` which raises an exception if the future
   ## finished with an error.
   ##
-  ## This should be used instead of ``discard`` to discard void futures.
+  ## This should be used instead of ``discard`` to discard void futures,
+  ## or use ``waitFor`` if you need to wait for the future's completion.
   assert(not future.isNil, "Future is nil")
-  future.callback =
-    proc () =
-      if future.failed:
-        injectStacktrace(future)
-        raise future.error
+  # TODO: We can likely look at the stack trace here and inject the location
+  # where the `asyncCheck` was called to give a better error stack message.
+  proc asyncCheckCallback() =
+    if future.failed:
+      injectStacktrace(future)
+      raise future.error
+  future.callback = asyncCheckCallback
 
 proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once both ``fut1`` and ``fut2``
@@ -370,8 +452,9 @@ proc `or`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## complete.
   var retFuture = newFuture[void]("asyncdispatch.`or`")
   proc cb[X](fut: Future[X]) =
-    if fut.failed: retFuture.fail(fut.error)
-    if not retFuture.finished: retFuture.complete()
+    if not retFuture.finished:
+      if fut.failed: retFuture.fail(fut.error)
+      else: retFuture.complete()
   fut1.callback = cb[T]
   fut2.callback = cb[Y]
   return retFuture

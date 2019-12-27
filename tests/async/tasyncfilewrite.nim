@@ -6,12 +6,14 @@ string 3'''
 # bug #5532
 import os, asyncfile, asyncdispatch
 
-removeFile("test.txt")
-let f = openAsync("test.txt", fmWrite)
+const F = "test_async.txt"
+
+removeFile(F)
+let f = openAsync(F, fmWrite)
 var futs = newSeq[Future[void]]()
 for i in 1..3:
   futs.add(f.write("string " & $i & "\n"))
 waitFor(all(futs))
 f.close()
-echo readFile("test.txt")
-
+echo readFile(F)
+removeFile(F)

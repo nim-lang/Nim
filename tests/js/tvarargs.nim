@@ -1,3 +1,6 @@
+discard """
+  output: "Hello, world"
+"""
 
 # bug #3584
 
@@ -8,5 +11,5 @@ type
 
 var console* {.importc.}: Console
 
-when isMainModule:
+when true:
   console.log "Hello, world"

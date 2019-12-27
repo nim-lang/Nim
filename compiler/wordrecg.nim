@@ -35,47 +35,45 @@ type
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
     wMagic, wThread, wFinal, wProfiler, wMemTracker, wObjChecks,
-    wIntDefine, wStrDefine,
-
-    wDestroy,
+    wIntDefine, wStrDefine, wBoolDefine, wCursor,
 
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wExportc, wExportNims, wIncompleteStruct, wRequiresInit,
-    wAlign, wNodecl, wPure, wSideeffect, wHeader,
-    wNosideeffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
-    wCompilerproc, wCore, wProcVar, wBase, wUsed,
+    wImportc, wImportJs, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
+    wAlign, wNodecl, wPure, wSideEffect, wHeader,
+    wNoSideEffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
+    wCompilerProc, wCore, wProcVar, wBase, wUsed,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
-    wLinedir, wStacktrace, wLinetrace, wLink, wCompile,
-    wLinksys, wDeprecated, wVarargs, wCallconv, wBreakpoint, wDebugger,
+    wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
+    wLinksys, wDeprecated, wVarargs, wCallconv, wDebugger,
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
-    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangechecks,
-    wBoundchecks, wOverflowchecks, wNilchecks,
-    wFloatchecks, wNanChecks, wInfChecks, wMoveChecks,
-    wAssertions, wPatterns, wWarnings,
+    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
+    wBoundChecks, wOverflowChecks, wNilChecks,
+    wFloatChecks, wNanChecks, wInfChecks, wStyleChecks,
+    wNonReloadable, wExecuteOnReload,
+    wAssertions, wPatterns, wTrMacros, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
-    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite,
+    wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
     wPragma,
     wCompileTime, wNoInit,
-    wPassc, wPassl, wBorrow, wDiscardable,
+    wPassc, wPassl, wLocalPassc, wBorrow, wDiscardable,
     wFieldChecks,
-    wWatchPoint, wSubsChar,
-    wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
+    wSubsChar, wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
     wInjectStmt, wExperimental,
     wWrite, wGensym, wInject, wDirty, wInheritable, wThreadVar, wEmit,
     wAsmNoStackFrame,
     wImplicitStatic, wGlobal, wCodegenDecl, wUnchecked, wGuard, wLocks,
     wPartial, wExplain, wLiftLocals,
 
-    wAuto, wBool, wCatch, wChar, wClass,
+    wAuto, wBool, wCatch, wChar, wClass, wCompl
     wConst_cast, wDefault, wDelete, wDouble, wDynamic_cast,
     wExplicit, wExtern, wFalse, wFloat, wFriend,
     wGoto, wInt, wLong, wMutable, wNamespace, wNew, wOperator,
-    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast,
+    wPrivate, wProtected, wPublic, wRegister, wReinterpret_cast, wRestrict,
     wShort, wSigned, wSizeof, wStatic_cast, wStruct, wSwitch,
-    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypename,
+    wThis, wThrow, wTrue, wTypedef, wTypeid, wTypeof, wTypename,
     wUnion, wPacked, wUnsigned, wVirtual, wVoid, wVolatile, wWchar_t,
 
     wAlignas, wAlignof, wConstexpr, wDecltype, wNullptr, wNoexcept,
@@ -84,7 +82,7 @@ type
     wStdIn, wStdOut, wStdErr,
 
     wInOut, wByCopy, wByRef, wOneWay,
-    wBitsize,
+    wBitsize
 
   TSpecialWords* = set[TSpecialWord]
 
@@ -122,13 +120,12 @@ const
 
     ":", "::", "=", ".", "..",
     "*", "-",
-    "magic", "thread", "final", "profiler", "memtracker", "objchecks", "intdefine", "strdefine",
-
-    "destroy",
+    "magic", "thread", "final", "profiler", "memtracker", "objchecks",
+    "intdefine", "strdefine", "booldefine", "cursor",
 
     "immediate", "constructor", "destructor", "delegator", "override",
     "importcpp", "importobjc",
-    "importcompilerproc", "importc", "exportc", "exportnims",
+    "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
     "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
@@ -136,34 +133,34 @@ const
     "fatal", "error", "warning", "hint", "line",
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
     "link", "compile", "linksys", "deprecated", "varargs",
-    "callconv", "breakpoint", "debugger", "nimcall", "stdcall",
+    "callconv", "debugger", "nimcall", "stdcall",
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
-    "floatchecks", "nanchecks", "infchecks", "movechecks",
+    "floatchecks", "nanchecks", "infchecks", "stylechecks",
+    "nonreloadable", "executeonreload",
 
-    "assertions", "patterns", "warnings", "hints",
+    "assertions", "patterns", "trmacros", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim",  # deprecated, dead code elim always happens
-    "safecode", "package", "noforward", "reorder", "norewrite",
+    "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",
     "compiletime", "noinit",
-    "passc", "passl", "borrow", "discardable", "fieldchecks",
-    "watchpoint",
+    "passc", "passl", "localpassc", "borrow", "discardable", "fieldchecks",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "computedgoto", "injectstmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
     "asmnostackframe", "implicitstatic", "global", "codegendecl", "unchecked",
     "guard", "locks", "partial", "explain", "liftlocals",
 
-    "auto", "bool", "catch", "char", "class",
+    "auto", "bool", "catch", "char", "class", "compl",
     "const_cast", "default", "delete", "double",
     "dynamic_cast", "explicit", "extern", "false",
     "float", "friend", "goto", "int", "long", "mutable",
     "namespace", "new", "operator",
-    "private", "protected", "public", "register", "reinterpret_cast",
+    "private", "protected", "public", "register", "reinterpret_cast", "restrict",
     "short", "signed", "sizeof", "static_cast", "struct", "switch",
-    "this", "throw", "true", "typedef", "typeid",
+    "this", "throw", "true", "typedef", "typeid", "typeof",
     "typename", "union", "packed", "unsigned", "virtual", "void", "volatile",
     "wchar_t",
 
@@ -173,11 +170,44 @@ const
     "stdin", "stdout", "stderr",
 
     "inout", "bycopy", "byref", "oneway",
-    "bitsize",
+    "bitsize"
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
-  for i in countup(low(a), high(a)):
+  for i in low(a)..high(a):
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
+
+proc canonPragmaSpelling*(w: TSpecialWord): string =
+  case w
+  of wNoSideEffect: "noSideEffect"
+  of wImportCompilerProc: "importCompilerProc"
+  of wIncompleteStruct: "incompleteStruct"
+  of wRequiresInit: "requiresInit"
+  of wSideEffect: "sideEffect"
+  of wLineDir: "lineDir"
+  of wStackTrace: "stackTrace"
+  of wLineTrace: "lineTrace"
+  of wRangeChecks: "rangeChecks"
+  of wBoundChecks: "boundChecks"
+  of wOverflowChecks: "overflowChecks"
+  of wNilChecks: "nilChecks"
+  of wFloatChecks: "floatChecks"
+  of wNanChecks: "nanChecks"
+  of wInfChecks: "infChecks"
+  of wStyleChecks: "styleChecks"
+  of wNonReloadable: "nonReloadable"
+  of wExecuteOnReload: "executeOnReload"
+  of wDeadCodeElimUnused: "deadCodeElim"
+  of wCompileTime: "compileTime"
+  of wFieldChecks: "fieldChecks"
+  of wLinearScanEnd: "linearScanEnd"
+  of wComputedGoto: "computedGoto"
+  of wInjectStmt: "injectStmt"
+  of wAsmNoStackFrame: "asmNoStackFrame"
+  of wImplicitStatic: "implicitStatic"
+  of wCodegenDecl: "codegenDecl"
+  of wLiftLocals: "liftLocals"
+  of wLocalPassc: "localPassc"
+  else: specialWords[w]

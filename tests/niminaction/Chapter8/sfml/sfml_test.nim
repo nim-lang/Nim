@@ -1,5 +1,7 @@
 discard """
-  disabled: "windows"
+action: compile
+disabled: "windows"
+disabled: "freebsd"
 """
 
 import sfml, os

@@ -22,10 +22,17 @@ true
 Event { name: 'click: test' }
 Event { name: 'reloaded: test' }
 Event { name: 'updates: test' }
+true
+true
+true
+true
+true
+true
+true
 '''
 """
 
-import macros, jsffi, jsconsole
+import jsffi, jsconsole
 
 # Tests for JsObject
 # Test JsObject []= and []
@@ -64,7 +71,7 @@ block:
   proc test(): bool =
     let obj = newJsObject()
     obj.`?!$` = proc(x, y, z: int, t: cstring): cstring = t & $(x + y + z)
-    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == "Result is: 6"
+    obj.`?!$`(1, 2, 3, "Result is: ").to(cstring) == cstring"Result is: 6"
   echo test()
 
 # Test JsObject []()
@@ -120,7 +127,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    var comparison {. importc, nodecl .}: JsObject
+    var comparison {. importjs, nodecl .}: JsObject
     let obj = newJsObject()
     obj.a = 22
     obj.b = "test".cstring
@@ -131,7 +138,7 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 'test'};" .}
-    var comparison {. importc, nodecl .}: JsObject
+    var comparison {. importjs, nodecl .}: JsObject
     let obj = JsObject{ a: 22, b: "test".cstring }
     obj.a == comparison.a and obj.b == comparison.b
   echo test()
@@ -154,7 +161,7 @@ block:
 # Test JsAssoc .= and .
 block:
   proc test(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 11
     obj.`$!&` = 42
@@ -168,7 +175,7 @@ block:
 # Test JsAssoc .()
 block:
   proc test(): bool =
-    let obj = newJsAssoc[string, proc(e: int): int]()
+    let obj = newJsAssoc[cstring, proc(e: int): int]()
     obj.a = proc(e: int): int = e * e
     obj.a(10) == 100
   echo test()
@@ -176,7 +183,7 @@ block:
 # Test JsAssoc []()
 block:
   proc test(): bool =
-    let obj = newJsAssoc[string, proc(e: int): int]()
+    let obj = newJsAssoc[cstring, proc(e: int): int]()
     obj.a = proc(e: int): int = e * e
     let call = obj["a"]
     call(10) == 100
@@ -185,7 +192,7 @@ block:
 # Test JsAssoc Iterators
 block:
   proc testPairs(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 10
     obj.b = 20
@@ -202,7 +209,7 @@ block:
         return false
     working
   proc testItems(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 10
     obj.b = 20
@@ -211,13 +218,13 @@ block:
       working = working and v in [10, 20, 30]
     working
   proc testKeys(): bool =
-    let obj = newJsAssoc[string, int]()
+    let obj = newJsAssoc[cstring, int]()
     var working = true
     obj.a = 10
     obj.b = 20
     obj.c = 30
     for v in obj.keys:
-      working = working and v in ["a", "b", "c"]
+      working = working and v in [cstring"a", cstring"b", cstring"c"]
     working
   proc test(): bool = testPairs() and testItems() and testKeys()
   echo test()
@@ -226,8 +233,8 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
-    let obj = newJsAssoc[string, int]()
+    var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
+    let obj = newJsAssoc[cstring, int]()
     obj.a = 22
     obj.b = 55
     obj.a == comparison.a and obj.b == comparison.b
@@ -237,15 +244,15 @@ block:
 block:
   proc test(): bool =
     {. emit: "var comparison = {a: 22, b: 55};" .}
-    var comparison {. importcpp, nodecl .}: JsAssoc[string, int]
-    let obj = JsAssoc[string, int]{ a: 22, b: 55 }
+    var comparison {. importjs, nodecl .}: JsAssoc[cstring, int]
+    let obj = JsAssoc[cstring, int]{ a: 22, b: 55 }
     var working = true
     working = working and
       compiles(JsAssoc[int, int]{ 1: 22, 2: 55 })
     working = working and
       comparison.a == obj.a and comparison.b == obj.b
     working = working and
-      not compiles(JsAssoc[string, int]{ a: "test" })
+      not compiles(JsAssoc[cstring, int]{ a: "test" })
     working
   echo test()
 
@@ -257,7 +264,7 @@ block:
     b: cstring
   proc test(): bool =
     {. emit: "var comparison = {a: 1};" .}
-    var comparison {. importc, nodecl .}: TestObject
+    var comparison {. importjs, nodecl .}: TestObject
     let obj = TestObject{ a: 1 }
     obj == comparison
   echo test()
@@ -267,8 +274,8 @@ block:
   type TestObject = object
     a: int
     onWhatever: proc(e: int): int
-  proc handleWhatever(that: TestObject, e: int): int =
-    e + that.a
+  proc handleWhatever(this: TestObject, e: int): int =
+    e + this.a
   proc test(): bool =
     let obj = TestObject(a: 9, onWhatever: bindMethod(handleWhatever))
     obj.onWhatever(1) == 10
@@ -276,7 +283,7 @@ block:
 
 block:
   {.emit: "function jsProc(n) { return n; }" .}
-  proc jsProc(x: int32): JsObject {.importc: "jsProc".}
+  proc jsProc(x: int32): JsObject {.importjs: "jsProc(#)".}
 
   proc test() =
     var x = jsProc(1)
@@ -288,8 +295,6 @@ block:
     console.log x
 
   test()
-
-import macros
 
 block:
   {.emit:
@@ -303,8 +308,8 @@ block:
   type Event = object
     name: cstring
 
-  proc on(event: cstring, handler: proc) {.importc: "on".}
-  var jslib {.importc: "jslib", nodecl.}: JsObject
+  proc on(event: cstring, handler: proc) {.importjs: "on(#,#)".}
+  var jslib {.importjs: "jslib", nodecl.}: JsObject
 
   on("click") do (e: Event):
     console.log e
@@ -317,3 +322,12 @@ block:
   jslib.subscribe("updates"):
     console.log jsarguments[0]
 
+block:
+
+  echo jsUndefined == jsNull
+  echo jsUndefined == nil
+  echo jsNull == nil
+  echo jsUndefined.isNil
+  echo jsNull.isNil
+  echo jsNull.isNull
+  echo jsUndefined.isUndefined

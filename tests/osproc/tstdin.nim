@@ -1,5 +1,4 @@
 discard """
-  file: "tstdin.nim"
   output: "10"
 """
 import osproc, os, streams

@@ -1,6 +1,5 @@
 discard """
-  file: "tvariantstack.nim"
-  output: "came here"
+output: "came here"
 """
 #BUG
 type
@@ -33,15 +32,11 @@ proc pop(Stack: var TStack): TAny =
 
 var stack = newStack()
 
-var s: TAny
-s.kind = nkString
-s.strVal = "test"
+var s = TAny(kind: nkString, strVal: "test")
 
 stack.push(s)
 
-var nr: TAny
-nr.kind = nkint
-nr.intVal = 78
+var nr = TAny(kind: nkInt, intVal: 78)
 
 stack.push(nr)
 

@@ -186,7 +186,7 @@ when defined(nimdoc):
   proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: var T): bool =
     ## Associate application-defined ``data`` with descriptor ``fd``.
     ##
-    ## Returns ``true``, if data was succesfully updated, ``false`` otherwise.
+    ## Returns ``true``, if data was successfully updated, ``false`` otherwise.
 
   template isEmpty*[T](s: Selector[T]): bool = # TODO: Why is this a template?
     ## Returns ``true``, if there are no registered events or descriptors
@@ -239,6 +239,9 @@ else:
     proc allocSharedArray[T](nsize: int): ptr SharedArray[T] =
       result = cast[ptr SharedArray[T]](allocShared0(sizeof(T) * nsize))
 
+    proc reallocSharedArray[T](sa: ptr SharedArray[T], nsize: int): ptr SharedArray[T] =
+      result = cast[ptr SharedArray[T]](reallocShared(sa, sizeof(T) * nsize))
+
     proc deallocSharedArray[T](sa: ptr SharedArray[T]) =
       deallocShared(cast[pointer](sa))
   type
@@ -261,6 +264,9 @@ else:
       param: int
       data: T
 
+  const
+    InvalidIdent = -1
+
   proc raiseIOSelectorsError[T](message: T) =
     var msg = ""
     when T is string:
@@ -271,7 +277,7 @@ else:
       msg.add("Internal Error\n")
     var err = newException(IOSelectorsException, msg)
     raise err
-  
+
   proc setNonBlocking(fd: cint) {.inline.} =
     setBlocking(fd.SocketHandle, false)
 
@@ -302,6 +308,17 @@ else:
         if posix.sigprocmask(SIG_UNBLOCK, newmask, oldmask) == -1:
           raiseIOSelectorsError(osLastError())
 
+  template clearKey[T](key: ptr SelectorKey[T]) =
+    var empty: T
+    key.ident = InvalidIdent
+    key.events = {}
+    key.data = empty
+
+  proc verifySelectParams(timeout: int) =
+    # Timeout of -1 means: wait forever
+    # Anything higher is the time to wait in milliseconds.
+    doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
+
   when defined(linux):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
@@ -312,22 +329,24 @@ else:
     include ioselects/ioselectors_poll # need to replace it with event ports
   elif defined(genode):
     include ioselects/ioselectors_select # TODO: use the native VFS layer
+  elif defined(nintendoswitch):
+    include ioselects/ioselectors_select
   else:
     include ioselects/ioselectors_poll
 
 proc register*[T](s: Selector[T], fd: int | SocketHandle,
-                  events: set[Event], data: T) {.deprecated.} =
+                  events: set[Event], data: T) {.deprecated: "use registerHandle instead".} =
   ## **Deprecated since v0.18.0:** Use ``registerHandle`` instead.
   s.registerHandle(fd, events, data)
 
-proc setEvent*(ev: SelectEvent) {.deprecated.} =
+proc setEvent*(ev: SelectEvent) {.deprecated: "use trigger instead".} =
   ## Trigger event ``ev``.
   ##
   ## **Deprecated since v0.18.0:** Use ``trigger`` instead.
   ev.trigger()
 
 proc update*[T](s: Selector[T], fd: int | SocketHandle,
-                events: set[Event]) {.deprecated.} =
+                events: set[Event]) {.deprecated: "use updateHandle instead".} =
   ## Update file/socket descriptor ``fd``, registered in selector
   ## ``s`` with new events set ``event``.
   ##

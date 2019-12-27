@@ -26,8 +26,6 @@ when defined(Windows):
 
     SysCond = Handle
 
-  {.deprecated: [THandle: Handle, TSysLock: SysLock, TSysCond: SysCond].}
-
   proc initSysLock(L: var SysLock) {.importc: "InitializeCriticalSection",
                                      header: "<windows.h>".}
     ## Initializes the lock `L`.

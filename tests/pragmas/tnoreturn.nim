@@ -1,5 +1,6 @@
 discard """
 ccodeCheck: "\\i @'__attribute__((noreturn))' .*"
+action: compile
 """
 
 proc noret1*(i: int) {.noreturn.} =
@@ -9,8 +10,8 @@ proc noret1*(i: int) {.noreturn.} =
 proc noret2*(i: int): void {.noreturn.} =
   echo i
 
-noret1(1)
-noret2(2)
+if true: noret1(1)
+if true: noret2(2)
 
 var p {.used.}: proc(i: int): int
 doAssert(not compiles(

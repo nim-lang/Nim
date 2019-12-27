@@ -1,6 +1,6 @@
 discard """
+  errormsg: "identifier expected, but got 'keyword of'"
   line: 11
-  errormsg: "identifier expected, but found 'keyword of'"
 """
 
 type
@@ -10,5 +10,3 @@ type
     of enA:
     of enU: x, y: int
     of enO: a, b: string
-
-

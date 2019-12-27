@@ -70,15 +70,15 @@ proc addEntry(entry: LogEntry) =
     if interesting:
       gLog.disabled = true
       cprintf("interesting %s:%ld %s\n", entry.file, entry.line, entry.op)
-      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0.}](writeStackTrace)
+      let x = cast[proc() {.nimcall, tags: [], gcsafe, locks: 0, raises: [].}](writeStackTrace)
       x()
       quit 1
-      if gLog.count > high(gLog.data):
-        gLogger(gLog)
-        gLog.count = 0
-      gLog.data[gLog.count] = entry
-      inc gLog.count
-      gLog.disabled = false
+      #if gLog.count > high(gLog.data):
+      #  gLogger(gLog)
+      #  gLog.count = 0
+      #gLog.data[gLog.count] = entry
+      #inc gLog.count
+      #gLog.disabled = false
 
 proc memTrackerWrite(address: pointer; size: int; file: cstring; line: int) {.compilerProc.} =
   addEntry LogEntry(op: "write", address: address,

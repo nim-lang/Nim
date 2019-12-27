@@ -10,19 +10,44 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, passes, msgs, idents, intsets
+import ast, idents, options, modulegraphs, lineinfos
+
+type TInstrType* = uint64
 
 const
+  regOBits = 8 # Opcode
+  regABits = 16
+  regBBits = 16
+  regCBits = 16
+  regBxBits = 24
+
   byteExcess* = 128 # we use excess-K for immediates
-  wordExcess* = 32768
 
-  MaxLoopIterations* = 1_000_000_000 # max iterations of all loops
+  MaxLoopIterations* = 10_000_000 # max iterations of all loops
 
+# Calculate register shifts, masks and ranges
+
+const
+  regOShift* = 0.TInstrType
+  regAShift* = (regOShift + regOBits)
+  regBShift* = (regAShift + regABits)
+  regCShift* = (regBShift + regBBits)
+  regBxShift* = (regAShift + regABits)
+
+  regOMask*  = ((1.TInstrType shl regOBits) - 1)
+  regAMask*  = ((1.TInstrType shl regABits) - 1)
+  regBMask*  = ((1.TInstrType shl regBBits) - 1)
+  regCMask*  = ((1.TInstrType shl regCBits) - 1)
+  regBxMask* = ((1.TInstrType shl regBxBits) - 1)
+
+  wordExcess* = 1 shl (regBxBits-1)
+  regBxMin* = -wordExcess+1
+  regBxMax* =  wordExcess-1
 
 type
-  TRegister* = range[0..255]
-  TDest* = range[-1 .. 255]
-  TInstr* = distinct uint32
+  TRegister* = range[0..regAMask.int]
+  TDest* = range[-1..regAMask.int]
+  TInstr* = distinct TInstrType
 
   TOpcode* = enum
     opcEof,         # end of code
@@ -31,16 +56,21 @@ type
     opcYldVal,      # yield with a value
 
     opcAsgnInt,
-    opcAsgnStr,
     opcAsgnFloat,
     opcAsgnRef,
     opcAsgnComplex,
-    opcRegToNode,
+    opcCastIntToFloat32,    # int and float must be of the same byte size
+    opcCastIntToFloat64,    # int and float must be of the same byte size
+    opcCastFloatToInt32,    # int and float must be of the same byte size
+    opcCastFloatToInt64,    # int and float must be of the same byte size
+    opcFastAsgnComplex,
     opcNodeToReg,
 
     opcLdArr,  # a = b[c]
+    opcLdArrAddr, # a = addr(b[c])
     opcWrArr,  # a[b] = c
     opcLdObj,  # a = b.c
+    opcLdObjAddr, # a = addr(b.c)
     opcWrObj,  # a.b = c
     opcAddrReg,
     opcAddrNode,
@@ -57,19 +87,21 @@ type
     opcLenStr,
 
     opcIncl, opcInclRange, opcExcl, opcCard, opcMulInt, opcDivInt, opcModInt,
-    opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat, opcShrInt, opcShlInt,
+    opcAddFloat, opcSubFloat, opcMulFloat, opcDivFloat,
+    opcShrInt, opcShlInt, opcAshrInt,
     opcBitandInt, opcBitorInt, opcBitxorInt, opcAddu, opcSubu, opcMulu,
     opcDivu, opcModu, opcEqInt, opcLeInt, opcLtInt, opcEqFloat,
     opcLeFloat, opcLtFloat, opcLeu, opcLtu,
-    opcEqRef, opcEqNimrodNode, opcSameNodeType,
+    opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
     opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
-    opcQuit, opcReset,
+    opcQuit, opcInvalidField,
     opcNarrowS, opcNarrowU,
+    opcSignExtend,
 
     opcAddStrCh,
     opcAddStrStr,
@@ -86,10 +118,15 @@ type
     opcNIdent,
     opcNGetType,
     opcNStrVal,
+    opcNSigHash,
+    opcNGetSize,
 
     opcNSetIntVal,
     opcNSetFloatVal, opcNSetSymbol, opcNSetIdent, opcNSetType, opcNSetStrVal,
     opcNNewNimNode, opcNCopyNimNode, opcNCopyNimTree, opcNDel, opcGenSym,
+
+    opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
+    opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext, opcNodeId,
 
     opcSlurp,
     opcGorge,
@@ -99,10 +136,11 @@ type
     opcNError,
     opcNWarning,
     opcNHint,
-    opcNGetLine, opcNGetColumn, opcNGetFile,
+    opcNGetLineInfo, opcNSetLineInfo,
     opcEqIdent,
     opcStrToIdent,
     opcGetImpl,
+    opcGetImplTransf
 
     opcEcho,
     opcIndCall, # dest = call regStart, n; where regStart = fn, arg1, ...
@@ -133,11 +171,12 @@ type
     opcLdGlobalAddr, # dest = addr(globals[Bx])
 
     opcLdImmInt,  # dest = immediate value
-    opcNBindSym,
+    opcNBindSym, opcNDynBindSym,
     opcSetType,   # dest.typ = types[Bx]
     opcTypeTrait,
     opcMarshalLoad, opcMarshalStore,
-    opcToNarrowInt
+    opcSymOwner,
+    opcSymIsInstantiationOf
 
   TBlock* = object
     label*: PSym
@@ -154,7 +193,6 @@ type
 
   TSandboxFlag* = enum        ## what the evaluation engine should allow
     allowCast,                ## allow unsafe language feature: 'cast'
-    allowFFI,                 ## allow the FFI
     allowInfiniteLoops        ## allow endless loops
   TSandboxFlags* = set[TSandboxFlag]
 
@@ -186,7 +224,7 @@ type
   VmCallback* = proc (args: VmArgs) {.closure.}
 
   PCtx* = ref TCtx
-  TCtx* = object of passes.TPassContext # code gen context
+  TCtx* = object of TPassContext # code gen context
     code*: seq[TInstr]
     debug*: seq[TLineInfo]  # line info for every instruction; kept separate
                             # to not slow down interpretation
@@ -206,24 +244,28 @@ type
     callbacks*: seq[tuple[key: string, value: VmCallback]]
     errorFlag*: string
     cache*: IdentCache
+    config*: ConfigRef
+    graph*: ModuleGraph
+    oldErrorCount*: int
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
 
-proc newCtx*(module: PSym; cache: IdentCache): PCtx =
+proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
     comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
-    cache: cache)
+    cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = MaxLoopIterations
 
-proc registerCallback*(c: PCtx; name: string; callback: VmCallback) =
+proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
+  result = c.callbacks.len
   c.callbacks.add((name, callback))
 
 const
@@ -237,10 +279,10 @@ const
 # flag is used to signal opcSeqLen if node is NimNode.
 const nimNodeFlag* = 16
 
-template opcode*(x: TInstr): TOpcode = TOpcode(x.uint32 and 0xff'u32)
-template regA*(x: TInstr): TRegister = TRegister(x.uint32 shr 8'u32 and 0xff'u32)
-template regB*(x: TInstr): TRegister = TRegister(x.uint32 shr 16'u32 and 0xff'u32)
-template regC*(x: TInstr): TRegister = TRegister(x.uint32 shr 24'u32)
-template regBx*(x: TInstr): int = (x.uint32 shr 16'u32).int
+template opcode*(x: TInstr): TOpcode = TOpcode(x.TInstrType shr regOShift and regOMask)
+template regA*(x: TInstr): TRegister = TRegister(x.TInstrType shr regAShift and regAMask)
+template regB*(x: TInstr): TRegister = TRegister(x.TInstrType shr regBShift and regBMask)
+template regC*(x: TInstr): TRegister = TRegister(x.TInstrType shr regCShift and regCMask)
+template regBx*(x: TInstr): int = (x.TInstrType shr regBxShift and regBxMask).int
 
 template jmpDiff*(x: TInstr): int = regBx(x) - wordExcess

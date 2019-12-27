@@ -20,7 +20,7 @@ from strutils import contains, toHex
 
 from openssl import getOpenSSLVersion
 
-when isMainModule:
+when true:
   echo "version: 0x" & $getOpenSSLVersion().toHex()
 
   let client = newHttpClient()

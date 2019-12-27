@@ -1,5 +1,8 @@
 discard """
-  output: "action 3 arg"
+  output: '''
+action 3 arg
+action 3 arg
+'''
 """
 
 import tables
@@ -17,10 +20,18 @@ proc action4(arg: string) =
   echo "action 4 ", arg
 
 var
-  actionTable = {
+  actionTable1 = {
     "A": action1,
     "B": action2,
     "C": action3,
     "D": action4}.toTable
 
-actionTable["C"]("arg")
+const
+  actionTable2 = {
+    "A": action1,
+    "B": action2,
+    "C": action3,
+    "D": action4}.toTable
+
+actionTable1["C"]("arg")
+actionTable2["C"]("arg")

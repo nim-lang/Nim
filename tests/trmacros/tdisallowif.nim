@@ -1,6 +1,6 @@
 discard """
-  line: 24
   errormsg: "usage of 'disallowIf' is a user-defined error"
+  line: 24
   disabled: true
 """
 

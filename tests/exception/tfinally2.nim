@@ -1,9 +1,10 @@
 discard """
-  file: "tfinally2.nim"
-  output: '''A
+output: '''
+A
 B
 C
-D'''
+D
+'''
 """
 # Test break in try statement:
 
@@ -24,7 +25,4 @@ proc main: int =
   finally:
     echo("D")
 
-discard main() #OUT ABCD
-
-
-
+discard main()

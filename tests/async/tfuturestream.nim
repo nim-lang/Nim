@@ -1,7 +1,5 @@
 discard """
-  file: "tfuturestream.nim"
-  exitcode: 0
-  output: '''
+output: '''
 0
 1
 2
@@ -19,7 +17,7 @@ var fs = newFutureStream[int]()
 proc alpha() {.async.} =
   for i in 0 .. 5:
     await fs.write(i)
-    await sleepAsync(1000)
+    await sleepAsync(200)
 
   echo("Done")
   fs.complete()
@@ -34,6 +32,26 @@ proc beta() {.async.} =
 
 asyncCheck alpha()
 waitFor beta()
+
+template ensureCallbacksAreScheduled =
+  # callbacks are called directly if the dispatcher is not running
+  discard getGlobalDispatcher()
+
+proc testCompletion() {.async.} =
+  ensureCallbacksAreScheduled
+
+  var stream = newFutureStream[string]()
+
+  for i in 1..5:
+    await stream.write($i)
+
+  var readFuture = stream.readAll()
+  stream.complete()
+  yield readFuture
+  let data = readFuture.read()
+  doAssert(data.len == 5, "actual data len = " & $data.len)
+
+waitFor testCompletion()
 
 # TODO: Something like this should work eventually.
 # proc delta(): FutureStream[string] {.async.} =

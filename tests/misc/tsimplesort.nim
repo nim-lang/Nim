@@ -40,11 +40,11 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: THash): THash {.inline.} =
+proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = ((5 * h) + 1) and maxHash
 
 template rawGetImpl() =
-  var h: THash = hash(key) and high(t.data) # start with real hash value
+  var h: Hash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].slot != seEmpty:
     if t.data[h].key == key and t.data[h].slot == seFilled:
       return h
@@ -52,7 +52,7 @@ template rawGetImpl() =
   result = -1
 
 template rawInsertImpl() =
-  var h: THash = hash(key) and high(data)
+  var h: Hash = hash(key) and high(data)
   while data[h].slot == seFilled:
     h = nextTry(h, high(data))
   data[h].key = key
@@ -162,7 +162,7 @@ iterator values*[A](t: TCountTable[A]): int =
     if t.data[h].val != 0: yield t.data[h].val
 
 proc RawGet[A](t: TCountTable[A], key: A): int =
-  var h: THash = hash(key) and high(t.data) # start with real hash value
+  var h: Hash = hash(key) and high(t.data) # start with real hash value
   while t.data[h].val != 0:
     if t.data[h].key == key: return h
     h = nextTry(h, high(t.data))
@@ -181,7 +181,7 @@ proc hasKey*[A](t: TCountTable[A], key: A): bool =
 
 proc rawInsert[A](t: TCountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  var h: THash = hash(key) and high(data)
+  var h: Hash = hash(key) and high(data)
   while data[h].val != 0: h = nextTry(h, high(data))
   data[h].key = key
   data[h].val = val

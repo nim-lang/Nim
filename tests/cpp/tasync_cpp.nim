@@ -1,6 +1,7 @@
 discard """
   targets: "cpp"
   output: "hello"
+  cmd: "nim cpp --nilseqs:on --nimblePath:tests/deps $file"
 """
 
 # bug #3299

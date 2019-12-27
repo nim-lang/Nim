@@ -2,25 +2,26 @@ discard """
   output: '''(peel: 0, color: 15)
 (color: 15)
 17
-(width: 0.0, taste: nil, color: 13)
-(width: 0.0, taste: nil, color: 15)
-cool'''
+(width: 0.0, taste: "", color: 13)
+(width: 0.0, taste: "", color: 15)
+cool
+test'''
 """
 
 # bug #5241
 type
   BaseFruit[T] = object of RootObj
     color: T
-    
+
   MidLevel[T] = object of BaseFruit[T]
-  
+
   Mango = object of MidLevel[int]
     peel: int
-    
+
   Peach[X, T, Y] = object of T
     width: X
     taste: Y
-    
+
 proc setColor[T](self: var BaseFruit[T]) =
   self.color = 15
 
@@ -63,3 +64,25 @@ method m[T](o: Foo[T]) = echo "cool"
 var v: Bar
 v.new()
 v.m() # Abstract method not called anymore
+
+
+# bug #88
+
+type
+  TGen[T] = object of RootObj
+    field: T
+
+  TDerived[T] = object of TGen[T]
+    nextField: T
+
+proc doSomething[T](x: ref TGen[T]) =
+  type
+    Ty = ref TDerived[T]
+  echo Ty(x).nextField
+
+var
+  x: ref TDerived[string]
+new(x)
+x.nextField = "test"
+
+doSomething(x)

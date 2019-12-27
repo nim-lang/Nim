@@ -1,13 +1,14 @@
 discard """
-  file: "tobjpragma.nim"
-  output: '''2
+  output: '''
+2
 3
 9
 257
 1
 2
-3'''
-  disabled: "true"
+3
+'''
+disabled: "true"
 """
 
 # Disabled since some versions of GCC ignore the 'packed' attribute

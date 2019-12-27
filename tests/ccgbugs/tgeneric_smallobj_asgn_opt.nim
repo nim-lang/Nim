@@ -1,5 +1,5 @@
 discard """
-  output: '''false'''
+  output: "done generic smallobj asgn opt"
 """
 
 # bug #5402
@@ -23,4 +23,5 @@ proc newListOfContainers[T](): ListOfContainers[T] =
   result.list = initDoublyLinkedList[Container[T]]()
 
 let q = newListOfContainers[int64]()
-echo q.contains(123)
+if not q.contains(123):
+  echo "done generic smallobj asgn opt"

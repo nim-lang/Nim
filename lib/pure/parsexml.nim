@@ -26,80 +26,179 @@
 ##   creates.
 ##
 ##
-## Example 1: Retrieve HTML title
-## ==============================
-##
-## The file ``examples/htmltitle.nim`` demonstrates how to use the
-## XML parser to accomplish a simple task: To determine the title of an HTML
-## document.
-##
-## .. code-block:: nim
-##     :file: ../../examples/htmltitle.nim
-##
-##
-## Example 2: Retrieve all HTML links
-## ==================================
-##
-## The file ``examples/htmlrefs.nim`` demonstrates how to use the
-## XML parser to accomplish another simple task: To determine all the links
-## an HTML document contains.
-##
-## .. code-block:: nim
-##     :file: ../../examples/htmlrefs.nim
-##
+
+##[
+
+Example 1: Retrieve HTML title
+==============================
+
+The file ``examples/htmltitle.nim`` demonstrates how to use the
+XML parser to accomplish a simple task: To determine the title of an HTML
+document.
+
+.. code-block:: nim
+
+    # Example program to show the parsexml module
+    # This program reads an HTML file and writes its title to stdout.
+    # Errors and whitespace are ignored.
+
+    import os, streams, parsexml, strutils
+
+    if paramCount() < 1:
+      quit("Usage: htmltitle filename[.html]")
+
+    var filename = addFileExt(paramStr(1), "html")
+    var s = newFileStream(filename, fmRead)
+    if s == nil: quit("cannot open the file " & filename)
+    var x: XmlParser
+    open(x, s, filename)
+    while true:
+      x.next()
+      case x.kind
+      of xmlElementStart:
+        if cmpIgnoreCase(x.elementName, "title") == 0:
+          var title = ""
+          x.next()  # skip "<title>"
+          while x.kind == xmlCharData:
+            title.add(x.charData)
+            x.next()
+          if x.kind == xmlElementEnd and cmpIgnoreCase(x.elementName, "title") == 0:
+            echo("Title: " & title)
+            quit(0) # Success!
+          else:
+            echo(x.errorMsgExpected("/title"))
+
+      of xmlEof: break # end of file reached
+      else: discard # ignore other events
+
+    x.close()
+    quit("Could not determine title!")
+
+]##
+
+##[
+
+Example 2: Retrieve all HTML links
+==================================
+
+The file ``examples/htmlrefs.nim`` demonstrates how to use the
+XML parser to accomplish another simple task: To determine all the links
+an HTML document contains.
+
+.. code-block:: nim
+
+    # Example program to show the new parsexml module
+    # This program reads an HTML file and writes all its used links to stdout.
+    # Errors and whitespace are ignored.
+
+    import os, streams, parsexml, strutils
+
+    proc `=?=` (a, b: string): bool =
+      # little trick: define our own comparator that ignores case
+      return cmpIgnoreCase(a, b) == 0
+
+    if paramCount() < 1:
+      quit("Usage: htmlrefs filename[.html]")
+
+    var links = 0 # count the number of links
+    var filename = addFileExt(paramStr(1), "html")
+    var s = newFileStream(filename, fmRead)
+    if s == nil: quit("cannot open the file " & filename)
+    var x: XmlParser
+    open(x, s, filename)
+    next(x) # get first event
+    block mainLoop:
+      while true:
+        case x.kind
+        of xmlElementOpen:
+          # the <a href = "xyz"> tag we are interested in always has an attribute,
+          # thus we search for ``xmlElementOpen`` and not for ``xmlElementStart``
+          if x.elementName =?= "a":
+            x.next()
+            if x.kind == xmlAttribute:
+              if x.attrKey =?= "href":
+                var link = x.attrValue
+                inc(links)
+                # skip until we have an ``xmlElementClose`` event
+                while true:
+                  x.next()
+                  case x.kind
+                  of xmlEof: break mainLoop
+                  of xmlElementClose: break
+                  else: discard
+                x.next() # skip ``xmlElementClose``
+                # now we have the description for the ``a`` element
+                var desc = ""
+                while x.kind == xmlCharData:
+                  desc.add(x.charData)
+                  x.next()
+                echo(desc & ": " & link)
+          else:
+            x.next()
+        of xmlEof: break # end of file reached
+        of xmlError:
+          echo(errorMsg(x))
+          x.next()
+        else: x.next() # skip other events
+
+    echo($links & " link(s) found!")
+    x.close()
+
+]##
 
 import
-  hashes, strutils, lexbase, streams, unicode
+  strutils, lexbase, streams, unicode
 
 # the parser treats ``<br />`` as ``<br></br>``
 
 #  xmlElementCloseEnd, ## ``/>``
 
 type
-  XmlEventKind* = enum ## enumation of all events that may occur when parsing
-    xmlError,           ## an error occurred during parsing
-    xmlEof,             ## end of file reached
-    xmlCharData,        ## character data
-    xmlWhitespace,      ## whitespace has been parsed
-    xmlComment,         ## a comment has been parsed
-    xmlPI,              ## processing instruction (``<?name something ?>``)
-    xmlElementStart,    ## ``<elem>``
-    xmlElementEnd,      ## ``</elem>``
-    xmlElementOpen,     ## ``<elem
-    xmlAttribute,       ## ``key = "value"`` pair
-    xmlElementClose,    ## ``>``
-    xmlCData,           ## ``<![CDATA[`` ... data ... ``]]>``
-    xmlEntity,          ## &entity;
-    xmlSpecial          ## ``<! ... data ... >``
+  XmlEventKind* = enum ## enumeration of all events that may occur when parsing
+    xmlError,          ## an error occurred during parsing
+    xmlEof,            ## end of file reached
+    xmlCharData,       ## character data
+    xmlWhitespace,     ## whitespace has been parsed
+    xmlComment,        ## a comment has been parsed
+    xmlPI,             ## processing instruction (``<?name something ?>``)
+    xmlElementStart,   ## ``<elem>``
+    xmlElementEnd,     ## ``</elem>``
+    xmlElementOpen,    ## ``<elem
+    xmlAttribute,      ## ``key = "value"`` pair
+    xmlElementClose,   ## ``>``
+    xmlCData,          ## ``<![CDATA[`` ... data ... ``]]>``
+    xmlEntity,         ## &entity;
+    xmlSpecial         ## ``<! ... data ... >``
 
-  XmlErrorKind* = enum       ## enumeration that lists all errors that can occur
-    errNone,                 ## no error
-    errEndOfCDataExpected,   ## ``]]>`` expected
-    errNameExpected,         ## name expected
-    errSemicolonExpected,    ## ``;`` expected
-    errQmGtExpected,         ## ``?>`` expected
-    errGtExpected,           ## ``>`` expected
-    errEqExpected,           ## ``=`` expected
-    errQuoteExpected,        ## ``"`` or ``'`` expected
-    errEndOfCommentExpected  ## ``-->`` expected
+  XmlErrorKind* = enum        ## enumeration that lists all errors that can occur
+    errNone,                  ## no error
+    errEndOfCDataExpected,    ## ``]]>`` expected
+    errNameExpected,          ## name expected
+    errSemicolonExpected,     ## ``;`` expected
+    errQmGtExpected,          ## ``?>`` expected
+    errGtExpected,            ## ``>`` expected
+    errEqExpected,            ## ``=`` expected
+    errQuoteExpected,         ## ``"`` or ``'`` expected
+    errEndOfCommentExpected   ## ``-->`` expected
+    errAttributeValueExpected ## non-empty attribute value expected
 
   ParserState = enum
     stateStart, stateNormal, stateAttr, stateEmptyElementTag, stateError
 
-  XmlParseOption* = enum  ## options for the XML parser
-    reportWhitespace,      ## report whitespace
-    reportComments         ## report comments
+  XmlParseOption* = enum ## options for the XML parser
+    reportWhitespace,    ## report whitespace
+    reportComments       ## report comments
+    allowUnquotedAttribs ## allow unquoted attribute values (for HTML)
+    allowEmptyAttribs    ## allow empty attributes (without explicit value)
 
   XmlParser* = object of BaseLexer ## the parser object.
     a, b, c: string
     kind: XmlEventKind
     err: XmlErrorKind
     state: ParserState
+    cIsEmpty: bool
     filename: string
     options: set[XmlParseOption]
-
-{.deprecated: [TXmlParser: XmlParser, TXmlParseOptions: XmlParseOption,
-    TXmlError: XmlErrorKind, TXmlEventKind: XmlEventKind].}
 
 const
   errorMessages: array[XmlErrorKind, string] = [
@@ -111,7 +210,8 @@ const
     "'>' expected",
     "'=' expected",
     "'\"' or \"'\" expected",
-    "'-->' expected"
+    "'-->' expected",
+    "attribute value expected"
   ]
 
 proc open*(my: var XmlParser, input: Stream, filename: string,
@@ -128,7 +228,8 @@ proc open*(my: var XmlParser, input: Stream, filename: string,
   my.kind = xmlError
   my.a = ""
   my.b = ""
-  my.c = nil
+  my.c = ""
+  my.cIsEmpty = true
   my.options = options
 
 proc close*(my: var XmlParser) {.inline.} =
@@ -198,15 +299,21 @@ template piRest*(my: XmlParser): string =
   assert(my.kind == xmlPI)
   my.b
 
-proc rawData*(my: XmlParser): string {.inline.} =
+proc rawData*(my: var XmlParser): string {.inline.} =
   ## returns the underlying 'data' string by reference.
   ## This is only used for speed hacks.
-  shallowCopy(result, my.a)
+  when defined(gcDestructors):
+    result = move(my.a)
+  else:
+    shallowCopy(result, my.a)
 
-proc rawData2*(my: XmlParser): string {.inline.} =
+proc rawData2*(my: var XmlParser): string {.inline.} =
   ## returns the underlying second 'data' string by reference.
   ## This is only used for speed hacks.
-  shallowCopy(result, my.b)
+  when defined(gcDestructors):
+    result = move(my.b)
+  else:
+    shallowCopy(result, my.b)
 
 proc getColumn*(my: XmlParser): int {.inline.} =
   ## get the current column the parser has arrived at.
@@ -244,11 +351,10 @@ proc markError(my: var XmlParser, kind: XmlErrorKind) {.inline.} =
 
 proc parseCDATA(my: var XmlParser) =
   var pos = my.bufpos + len("<![CDATA[")
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of ']':
-      if buf[pos+1] == ']' and buf[pos+2] == '>':
+      if my.buf[pos+1] == ']' and my.buf[pos+2] == '>':
         inc(pos, 3)
         break
       add(my.a, ']')
@@ -258,29 +364,25 @@ proc parseCDATA(my: var XmlParser) =
       break
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.a, '/')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos # store back
   my.kind = xmlCData
 
 proc parseComment(my: var XmlParser) =
   var pos = my.bufpos + len("<!--")
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '-':
-      if buf[pos+1] == '-' and buf[pos+2] == '>':
+      if my.buf[pos+1] == '-' and my.buf[pos+2] == '>':
         inc(pos, 3)
         break
       if my.options.contains(reportComments): add(my.a, '-')
@@ -290,38 +392,32 @@ proc parseComment(my: var XmlParser) =
       break
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       if my.options.contains(reportComments): add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       if my.options.contains(reportComments): add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       if my.options.contains(reportComments): add(my.a, '/')
     else:
-      if my.options.contains(reportComments): add(my.a, buf[pos])
+      if my.options.contains(reportComments): add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlComment
 
-proc parseWhitespace(my: var XmlParser, skip=false) =
+proc parseWhitespace(my: var XmlParser, skip = false) =
   var pos = my.bufpos
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of ' ', '\t':
-      if not skip: add(my.a, buf[pos])
+      if not skip: add(my.a, my.buf[pos])
       inc(pos)
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       if not skip: add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       if not skip: add(my.a, '\L')
     else:
       break
@@ -333,82 +429,82 @@ const
 
 proc parseName(my: var XmlParser, dest: var string) =
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in NameStartChar:
+  if my.buf[pos] in NameStartChar:
     while true:
-      add(dest, buf[pos])
+      add(dest, my.buf[pos])
       inc(pos)
-      if buf[pos] notin NameChar: break
+      if my.buf[pos] notin NameChar: break
     my.bufpos = pos
   else:
     markError(my, errNameExpected)
 
 proc parseEntity(my: var XmlParser, dest: var string) =
   var pos = my.bufpos+1
-  var buf = my.buf
   my.kind = xmlCharData
-  if buf[pos] == '#':
+  if my.buf[pos] == '#':
     var r: int
     inc(pos)
-    if buf[pos] == 'x':
+    if my.buf[pos] == 'x':
       inc(pos)
       while true:
-        case buf[pos]
-        of '0'..'9': r = (r shl 4) or (ord(buf[pos]) - ord('0'))
-        of 'a'..'f': r = (r shl 4) or (ord(buf[pos]) - ord('a') + 10)
-        of 'A'..'F': r = (r shl 4) or (ord(buf[pos]) - ord('A') + 10)
+        case my.buf[pos]
+        of '0'..'9': r = (r shl 4) or (ord(my.buf[pos]) - ord('0'))
+        of 'a'..'f': r = (r shl 4) or (ord(my.buf[pos]) - ord('a') + 10)
+        of 'A'..'F': r = (r shl 4) or (ord(my.buf[pos]) - ord('A') + 10)
         else: break
         inc(pos)
     else:
-      while buf[pos] in {'0'..'9'}:
-        r = r * 10 + (ord(buf[pos]) - ord('0'))
+      while my.buf[pos] in {'0'..'9'}:
+        r = r * 10 + (ord(my.buf[pos]) - ord('0'))
         inc(pos)
     add(dest, toUTF8(Rune(r)))
-  elif buf[pos] == 'l' and buf[pos+1] == 't' and buf[pos+2] == ';':
+  elif my.buf[pos] == 'l' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '<')
     inc(pos, 2)
-  elif buf[pos] == 'g' and buf[pos+1] == 't' and buf[pos+2] == ';':
+  elif my.buf[pos] == 'g' and my.buf[pos+1] == 't' and my.buf[pos+2] == ';':
     add(dest, '>')
     inc(pos, 2)
-  elif buf[pos] == 'a' and buf[pos+1] == 'm' and buf[pos+2] == 'p' and
-      buf[pos+3] == ';':
+  elif my.buf[pos] == 'a' and my.buf[pos+1] == 'm' and my.buf[pos+2] == 'p' and
+      my.buf[pos+3] == ';':
     add(dest, '&')
     inc(pos, 3)
-  elif buf[pos] == 'a' and buf[pos+1] == 'p' and buf[pos+2] == 'o' and
-      buf[pos+3] == 's' and buf[pos+4] == ';':
+  elif my.buf[pos] == 'a' and my.buf[pos+1] == 'p' and my.buf[pos+2] == 'o' and
+      my.buf[pos+3] == 's' and my.buf[pos+4] == ';':
     add(dest, '\'')
     inc(pos, 4)
-  elif buf[pos] == 'q' and buf[pos+1] == 'u' and buf[pos+2] == 'o' and
-      buf[pos+3] == 't' and buf[pos+4] == ';':
+  elif my.buf[pos] == 'q' and my.buf[pos+1] == 'u' and my.buf[pos+2] == 'o' and
+      my.buf[pos+3] == 't' and my.buf[pos+4] == ';':
     add(dest, '"')
     inc(pos, 4)
   else:
     my.bufpos = pos
-    parseName(my, dest)
+    var name = ""
+    parseName(my, name)
     pos = my.bufpos
-    if my.err != errNameExpected:
+    if my.err != errNameExpected and my.buf[pos] == ';':
       my.kind = xmlEntity
     else:
       add(dest, '&')
-  if buf[pos] == ';':
+    add(dest, name)
+  if my.buf[pos] == ';':
     inc(pos)
   else:
-    markError(my, errSemicolonExpected)
+    my.err = errSemicolonExpected
+    # do not overwrite 'my.state' here, it's a benign error
   my.bufpos = pos
 
 proc parsePI(my: var XmlParser) =
   inc(my.bufpos, "<?".len)
   parseName(my, my.a)
   var pos = my.bufpos
-  var buf = my.buf
   setLen(my.b, 0)
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       markError(my, errQmGtExpected)
       break
     of '?':
-      if buf[pos+1] == '>':
+      if my.buf[pos+1] == '>':
         inc(pos, 2)
         break
       add(my.b, '?')
@@ -416,18 +512,15 @@ proc parsePI(my: var XmlParser) =
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.b, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.b, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.b, '/')
     else:
-      add(my.b, buf[pos])
+      add(my.b, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlPI
@@ -435,10 +528,9 @@ proc parsePI(my: var XmlParser) =
 proc parseSpecial(my: var XmlParser) =
   # things that start with <!
   var pos = my.bufpos + 2
-  var buf = my.buf
   var opentags = 0
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0':
       markError(my, errGtExpected)
       break
@@ -455,18 +547,15 @@ proc parseSpecial(my: var XmlParser) =
       add(my.a, '>')
     of '\c':
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.b, '/')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlSpecial
@@ -479,12 +568,13 @@ proc parseTag(my: var XmlParser) =
     my.kind = xmlCharData
     add(my.a, '<')
     return
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
   if my.buf[my.bufpos] in NameStartChar:
     # an attribute follows:
     my.kind = xmlElementOpen
     my.state = stateAttr
     my.c = my.a # save for later
+    my.cIsEmpty = false
   else:
     my.kind = xmlElementStart
     let slash = my.buf[my.bufpos] == '/'
@@ -493,7 +583,8 @@ proc parseTag(my: var XmlParser) =
     if slash and my.buf[my.bufpos] == '>':
       inc(my.bufpos)
       my.state = stateEmptyElementTag
-      my.c = nil
+      my.c = ""
+      my.cIsEmpty = true
     elif my.buf[my.bufpos] == '>':
       inc(my.bufpos)
     else:
@@ -503,7 +594,7 @@ proc parseEndTag(my: var XmlParser) =
   my.bufpos = lexbase.handleRefillChar(my, my.bufpos+1)
   #inc(my.bufpos, 2)
   parseName(my, my.a)
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
   if my.buf[my.bufpos] == '>':
     inc(my.bufpos)
   else:
@@ -519,21 +610,25 @@ proc parseAttribute(my: var XmlParser) =
   if my.a.len == 0:
     markError(my, errGtExpected)
     return
-  parseWhitespace(my, skip=true)
+
+  let startPos = my.bufpos
+  parseWhitespace(my, skip = true)
   if my.buf[my.bufpos] != '=':
-    markError(my, errEqExpected)
+    if allowEmptyAttribs notin my.options or
+        (my.buf[my.bufpos] != '>' and my.bufpos == startPos):
+      markError(my, errEqExpected)
     return
+
   inc(my.bufpos)
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
 
   var pos = my.bufpos
-  var buf = my.buf
-  if buf[pos] in {'\'', '"'}:
-    var quote = buf[pos]
+  if my.buf[pos] in {'\'', '"'}:
+    var quote = my.buf[pos]
     var pendingSpace = false
     inc(pos)
     while true:
-      case buf[pos]
+      case my.buf[pos]
       of '\0':
         markError(my, errQuoteExpected)
         break
@@ -550,56 +645,64 @@ proc parseAttribute(my: var XmlParser) =
         inc(pos)
       of '\c':
         pos = lexbase.handleCR(my, pos)
-        buf = my.buf
         pendingSpace = true
       of '\L':
         pos = lexbase.handleLF(my, pos)
-        buf = my.buf
         pendingSpace = true
       of '/':
         pos = lexbase.handleRefillChar(my, pos)
-        buf = my.buf
         add(my.b, '/')
       else:
-        if buf[pos] == quote:
+        if my.buf[pos] == quote:
           inc(pos)
           break
         else:
           if pendingSpace:
             add(my.b, ' ')
             pendingSpace = false
-          add(my.b, buf[pos])
+          add(my.b, my.buf[pos])
           inc(pos)
+  elif allowUnquotedAttribs in my.options:
+    const disallowedChars = {'"', '\'', '`', '=', '<', '>', ' ',
+                             '\0', '\t', '\L', '\F', '\f'}
+    let startPos = pos
+    while (let c = my.buf[pos]; c notin disallowedChars):
+      if c == '&':
+        my.bufpos = pos
+        parseEntity(my, my.b)
+        my.kind = xmlAttribute # parseEntity overwrites my.kind!
+        pos = my.bufpos
+      else:
+        add(my.b, c)
+        inc(pos)
+    if pos == startPos:
+      markError(my, errAttributeValueExpected)
   else:
     markError(my, errQuoteExpected)
     # error corrections: guess what was meant
-    while buf[pos] != '>' and buf[pos] > ' ':
-      add(my.b, buf[pos])
+    while my.buf[pos] != '>' and my.buf[pos] > ' ':
+      add(my.b, my.buf[pos])
       inc pos
   my.bufpos = pos
-  parseWhitespace(my, skip=true)
+  parseWhitespace(my, skip = true)
 
 proc parseCharData(my: var XmlParser) =
   var pos = my.bufpos
-  var buf = my.buf
   while true:
-    case buf[pos]
+    case my.buf[pos]
     of '\0', '<', '&': break
     of '\c':
       # the specification says that CR-LF, CR are to be transformed to LF
       pos = lexbase.handleCR(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '\L':
       pos = lexbase.handleLF(my, pos)
-      buf = my.buf
       add(my.a, '\L')
     of '/':
       pos = lexbase.handleRefillChar(my, pos)
-      buf = my.buf
       add(my.a, '/')
     else:
-      add(my.a, buf[pos])
+      add(my.a, my.buf[pos])
       inc(pos)
   my.bufpos = pos
   my.kind = xmlCharData
@@ -608,18 +711,18 @@ proc rawGetTok(my: var XmlParser) =
   my.kind = xmlError
   setLen(my.a, 0)
   var pos = my.bufpos
-  var buf = my.buf
-  case buf[pos]
+  case my.buf[pos]
   of '<':
-    case buf[pos+1]
+    case my.buf[pos+1]
     of '/':
       parseEndTag(my)
     of '!':
-      if buf[pos+2] == '[' and buf[pos+3] == 'C' and buf[pos+4] == 'D' and
-          buf[pos+5] == 'A' and buf[pos+6] == 'T' and buf[pos+7] == 'A' and
-          buf[pos+8] == '[':
+      if my.buf[pos+2] == '[' and my.buf[pos+3] == 'C' and
+          my.buf[pos+4] == 'D' and my.buf[pos+5] == 'A' and
+          my.buf[pos+6] == 'T' and my.buf[pos+7] == 'A' and
+          my.buf[pos+8] == '[':
         parseCDATA(my)
-      elif buf[pos+2] == '-' and buf[pos+3] == '-':
+      elif my.buf[pos+2] == '-' and my.buf[pos+3] == '-':
         parseComment(my)
       else:
         parseSpecial(my)
@@ -646,7 +749,8 @@ proc getTok(my: var XmlParser) =
     of xmlComment:
       if my.options.contains(reportComments): break
     of xmlWhitespace:
-      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData, xmlComment, xmlEntity}:
+      if my.options.contains(reportWhitespace) or lastKind in {xmlCharData,
+          xmlComment, xmlEntity}:
         break
     else: break
 
@@ -681,7 +785,7 @@ proc next*(my: var XmlParser) =
   of stateEmptyElementTag:
     my.state = stateNormal
     my.kind = xmlElementEnd
-    if not my.c.isNil:
+    if not my.cIsEmpty:
       my.a = my.c
   of stateError:
     my.kind = xmlError
@@ -718,4 +822,3 @@ when not defined(testing) and isMainModule:
     of xmlSpecial:
       echo("SPECIAL: " & x.charData)
   close(x)
-

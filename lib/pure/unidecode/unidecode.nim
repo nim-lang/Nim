@@ -22,14 +22,14 @@
 ## strictly one-way transformation. However a human reader will probably
 ## still be able to guess what original string was meant from the context.
 ##
-## This module needs the data file "unidecode.dat" to work: You can either
-## ship this file with your application and initialize this module with the
-## `loadUnidecodeTable` proc or you can define the ``embedUnidecodeTable``
-## symbol to embed the file as a resource into your application.
+## This module needs the data file "unidecode.dat" to work: This file is
+## embedded as a resource into your application by default. But you an also
+## define the symbol ``--define:noUnidecodeTable`` during compile time and
+## use the `loadUnidecodeTable` proc to initialize this module.
 
 import unicode
 
-when defined(embedUnidecodeTable):
+when not defined(noUnidecodeTable):
   import strutils
 
   const translationTable = splitLines(slurp"unidecode/unidecode.dat")
@@ -38,11 +38,11 @@ else:
   var translationTable: seq[string]
 
 proc loadUnidecodeTable*(datafile = "unidecode.dat") =
-  ## loads the datafile that `unidecode` to work. Unless this module is
-  ## compiled with the ``embedUnidecodeTable`` symbol defined, this needs
-  ## to be called by the main thread before any thread can make a call
-  ## to `unidecode`.
-  when not defined(embedUnidecodeTable):
+  ## loads the datafile that `unidecode` to work. This is only required if
+  ## the module was compiled with the ``--define:noUnidecodeTable`` switch.
+  ## This needs to be called by the main thread before any thread can make a
+  ## call to `unidecode`.
+  when defined(noUnidecodeTable):
     newSeq(translationTable, 0xffff)
     var i = 0
     for line in lines(datafile):
@@ -57,11 +57,10 @@ proc unidecode*(s: string): string =
   ##
   ## ..code-block:: nim
   ##
-  ##   unidecode("\x53\x17\x4E\xB0")
+  ##   unidecode("北京")
   ##
   ## Results in: "Bei Jing"
   ##
-  assert(not isNil(translationTable))
   result = ""
   for r in runes(s):
     var c = int(r)
@@ -69,6 +68,6 @@ proc unidecode*(s: string): string =
     elif c <% translationTable.len: add(result, translationTable[c-128])
 
 when isMainModule:
-  loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
-  assert unidecode("Äußerst") == "Ausserst"
-
+  #loadUnidecodeTable("lib/pure/unidecode/unidecode.dat")
+  doAssert unidecode("Äußerst") == "Ausserst"
+  doAssert unidecode("北京") == "Bei Jing "

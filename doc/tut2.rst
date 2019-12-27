@@ -13,7 +13,6 @@ Introduction
 
   "Repetition renders the ridiculous reasonable." -- Norman Wildberger
 
-
 This document is a tutorial for the advanced constructs of the *Nim*
 programming language. **Note that this document is somewhat obsolete as the**
 `manual <manual.html>`_ **contains many more examples of the advanced language
@@ -41,18 +40,16 @@ and more efficient code. In particular, preferring composition over inheritance
 is often the better design.
 
 
-Objects
--------
+Inheritance
+-----------
 
-Like tuples, objects are a means to pack different values together in a
-structured way. However, objects provide many features that tuples do not:
-They provide inheritance and information hiding. Because objects encapsulate
-data, the ``T()`` object constructor should only be used internally and the
-programmer should provide a proc to initialize the object (this is called
-a *constructor*).
-
-Objects have access to their type at runtime. There is an
-``of`` operator that can be used to check the object's type:
+Inheritance in Nim is entirely optional. To enable inheritance with
+runtime type information the object needs to inherit from
+``RootObj``.  This can be done directly, or indirectly by
+inheriting from an object that inherits from ``RootObj``.  Usually
+types with inheritance are also marked as ``ref`` types even though
+this isn't strictly enforced. To check at runtime if an object is of a certain
+type, the ``of`` operator can be used.
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -71,11 +68,6 @@ Objects have access to their type at runtime. There is an
   # object construction:
   student = Student(name: "Anton", age: 5, id: 2)
   echo student[]
-
-Object fields that should be visible from outside the defining module have to
-be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. New object types can only be defined within a type
-section.
 
 Inheritance is done with the ``object of`` syntax. Multiple inheritance is
 currently not supported. If an object type has no suitable ancestor, ``RootObj``
@@ -175,21 +167,6 @@ An example:
 As can been seen from the example, an advantage to an object hierarchy is that
 no conversion between different object types is needed. Yet, access to invalid
 object fields raises an exception.
-
-
-Methods
--------
-In ordinary object oriented languages, procedures (also called *methods*) are
-bound to a class. This has disadvantages:
-
-* Adding a method to a class the programmer has no control over is
-  impossible or needs ugly workarounds.
-* Often it is unclear where the method should belong to: is
-  ``join`` a string method or an array method?
-
-Nim avoids these problems by not assigning methods to a class. All methods
-in Nim are multi-methods. As we will see later, multi-methods are
-distinguished from procs only for dynamic binding purposes.
 
 
 Method call syntax
@@ -300,7 +277,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
       a, b: Expression
 
   # watch out: 'eval' relies on dynamic binding
-  method eval(e: Expression): int =
+  method eval(e: Expression): int {.base.} =
     # override this base method
     quit "to override!"
 
@@ -316,11 +293,14 @@ Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
 because it makes more sense for them to use static binding, but ``eval`` is a
 method because it requires dynamic binding.
 
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
+
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 
 .. code-block:: nim
-    :test: "nim c $1"
+    :test: "nim c --multiMethods:on $1"
 
   type
     Thing = ref object of RootObj
@@ -618,20 +598,20 @@ Turning the ``log`` proc into a template solves this problem:
   log("x has the value: " & $x)
 
 The parameters' types can be ordinary types or the meta types ``untyped``,
-``typed``, or ``typedesc``.
-``typedesc`` stands for *type description*, and ``untyped`` means symbol lookups and
-type resolution is not performed before the expression is passed to the template.
+``typed``, or ``type``. ``type`` suggests that only a type symbol may be given
+as an argument, and ``untyped`` means symbol lookups and type resolution is not
+performed before the expression is passed to the template.
 
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.
 
-To pass a block of statements to a template, use 'untyped' for the last parameter:
+To pass a block of statements to a template, use ``untyped`` for the last parameter:
 
 .. code-block:: nim
     :test: "nim c $1"
 
   template withFile(f: untyped, filename: string, mode: FileMode,
-                    body: untyped): typed =
+                    body: untyped) =
     let fn = filename
     var f: File
     if open(f, fn, mode):
@@ -652,369 +632,8 @@ avoid a common bug: to forget to close the file. Note how the
 ``let fn = filename`` statement ensures that ``filename`` is evaluated only
 once.
 
-Macros
-======
-
-Macros enable advanced compile-time code transformations, but they cannot
-change Nim's syntax. However, this is no real restriction because Nim's
-syntax is flexible enough anyway. Macros have to be implemented in pure Nim
-code if the `foreign function interface (FFI)
-<manual.html#foreign-function-interface>`_ is not enabled in the compiler, but
-other than that restriction (which at some point in the future will go away)
-you can write any kind of Nim code and the compiler will run it at compile
-time.
-
-There are two ways to write a macro, either *generating* Nim source code and
-letting the compiler parse it, or creating manually an abstract syntax tree
-(AST) which you feed to the compiler. In order to build the AST one needs to
-know how the Nim concrete syntax is converted to an abstract syntax tree
-(AST). The AST is documented in the `macros <macros.html>`_ module.
-
-Once your macro is finished, there are two ways to invoke it:
-(1) invoking a macro like a procedure call (expression macros)
-(2) invoking a macro with the special ``macrostmt``
-    syntax (statement macros)
-
-
-Expression Macros
------------------
-
-The following example implements a powerful ``debug`` command that accepts a
-variable number of arguments:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  # to work with Nim syntax trees, we need an API that is defined in the
-  # ``macros`` module:
-  import macros
-
-  macro debug(n: varargs[untyped]): typed =
-    # `n` is a Nim AST that contains a list of expressions;
-    # this macro returns a list of statements (n is passed for proper line
-    # information):
-    result = newNimNode(nnkStmtList, n)
-    # iterate over any argument that is passed to this macro:
-    for x in n:
-      # add a call to the statement list that writes the expression;
-      # `toStrLit` converts an AST to its string representation:
-      result.add(newCall("write", newIdentNode("stdout"), toStrLit(x)))
-      # add a call to the statement list that writes ": "
-      result.add(newCall("write", newIdentNode("stdout"), newStrLitNode(": ")))
-      # add a call to the statement list that writes the expressions value:
-      result.add(newCall("writeLine", newIdentNode("stdout"), x))
-
-  var
-    a: array[0..10, int]
-    x = "some string"
-  a[0] = 42
-  a[1] = 45
-
-  debug(a[0], a[1], x)
-
-The macro call expands to:
-
-.. code-block:: nim
-  write(stdout, "a[0]")
-  write(stdout, ": ")
-  writeLine(stdout, a[0])
-
-  write(stdout, "a[1]")
-  write(stdout, ": ")
-  writeLine(stdout, a[1])
-
-  write(stdout, "x")
-  write(stdout, ": ")
-  writeLine(stdout, x)
-
-
-
-Statement Macros
-----------------
-
-Statement macros are defined just as expression macros. However, they are
-invoked by an expression following a colon.
-
-The following example outlines a macro that generates a lexical analyzer from
-regular expressions:
-
-.. code-block:: nim
-
-  macro case_token(n: varargs[untyped]): typed =
-    # creates a lexical analyzer from regular expressions
-    # ... (implementation is an exercise for the reader :-)
-    discard
-
-  case_token: # this colon tells the parser it is a macro statement
-  of r"[A-Za-z_]+[A-Za-z_0-9]*":
-    return tkIdentifier
-  of r"0-9+":
-    return tkInteger
-  of r"[\+\-\*\?]+":
-    return tkOperator
-  else:
-    return tkUnknown
-
-
-Building your first macro
--------------------------
-
-To give a footstart to writing macros we will show now how to turn your typical
-dynamic code into something that compiles statically. For the exercise we will
-use the following snippet of code as the starting point:
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  import strutils, tables
-
-  proc readCfgAtRuntime(cfgFilename: string): Table[string, string] =
-    let
-      inputString = readFile(cfgFilename)
-    var
-      source = ""
-
-    result = initTable[string, string]()
-    for line in inputString.splitLines:
-      # Ignore empty lines
-      if line.len < 1: continue
-      var chunks = split(line, ',')
-      if chunks.len != 2:
-        quit("Input needs comma split values, got: " & line)
-      result[chunks[0]] = chunks[1]
-
-    if result.len < 1: quit("Input file empty!")
-
-  let info = readCfgAtRuntime("data.cfg")
-
-  when isMainModule:
-    echo info["licenseOwner"]
-    echo info["licenseKey"]
-    echo info["version"]
-
-Presumably this snippet of code could be used in a commercial software, reading
-a configuration file to display information about the person who bought the
-software. This external file would be generated by an online web shopping cart
-to be included along the program containing the license information::
-
-  version,1.1
-  licenseOwner,Hyori Lee
-  licenseKey,M1Tl3PjBWO2CC48m
-
-The ``readCfgAtRuntime`` proc will open the given filename and return a
-``Table`` from the `tables module <tables.html>`_. The parsing of the file is
-done (without much care for handling invalid data or corner cases) using the
-`splitLines proc from the strutils module <strutils.html#splitLines>`_. There
-are many things which can fail; mind the purpose is explaining how to make
-this run at compile time, not how to properly implement a DRM scheme.
-
-The reimplementation of this code as a compile time proc will allow us to get
-rid of the ``data.cfg`` file we would need to distribute along the binary, plus
-if the information is really constant, it doesn't make from a logical point of
-view to have it *mutable* in a global variable, it would be better if it was a
-constant. Finally, and likely the most valuable feature, we can implement some
-verification at compile time. You could think of this as a *better unit
-testing*, since it is impossible to obtain a binary unless everything is
-correct, preventing you to ship to users a broken program which won't start
-because a small critical file is missing or its contents changed by mistake to
-something invalid.
-
-
-Generating source code
-++++++++++++++++++++++
-
-Our first attempt will start by modifying the program to generate a compile
-time string with the *generated source code*, which we then pass to the
-``parseStmt`` proc from the `macros module <macros.html>`_. Here is the
-modified source code implementing the macro:
-
-.. code-block:: nim
-   :number-lines:
-
-  import macros, strutils
-
-  macro readCfgAndBuildSource(cfgFilename: string): typed =
-    let
-      inputString = slurp(cfgFilename.strVal)
-    var
-      source = ""
-
-    for line in inputString.splitLines:
-      # Ignore empty lines
-      if line.len < 1: continue
-      var chunks = split(line, ',')
-      if chunks.len != 2:
-        error("Input needs comma split values, got: " & line)
-      source &= "const cfg" & chunks[0] & "= \"" & chunks[1] & "\"\n"
-
-    if source.len < 1: error("Input file empty!")
-    result = parseStmt(source)
-
-  readCfgAndBuildSource("data.cfg")
-
-  when isMainModule:
-    echo cfglicenseOwner
-    echo cfglicenseKey
-    echo cfgversion
-
-The good news is not much has changed! First, we need to change the handling
-of the input parameter (line 3). In the dynamic version the
-``readCfgAtRuntime`` proc receives a string parameter. However, in the macro
-version it is also declared as string, but this is the *outside* interface of
-the macro.  When the macro is run, it actually gets a ``PNimNode`` object
-instead of a string, and we have to call the `strVal proc
-<macros.html#strVal>`_ (line 5) from the `macros module <macros.html>`_ to
-obtain the string being passed in to the macro.
-
-Second, we cannot use the `readFile proc <system.html#readFile>`_ from the
-`system module <system.html>`_ due to FFI restriction at compile time. If we
-try to use this proc, or any other which depends on FFI, the compiler will
-error with the message ``cannot evaluate`` and a dump of the macro's source
-code, along with a stack trace where the compiler reached before bailing out.
-We can get around this limitation by using the `slurp proc
-<system.html#slurp>`_ from the `system module <system.html>`_, which was
-precisely made for compilation time (just like `gorge <system.html#gorge>`_
-which executes an external program and captures its output).
-
-The interesting thing is that our macro does not return a runtime `Table
-<tables.html#Table>`_ object. Instead, it builds up Nim source code into
-the ``source`` variable.  For each line of the configuration file a ``const``
-variable will be generated (line 15).  To avoid conflicts we prefix these
-variables with ``cfg``. In essence, what the compiler is doing is replacing
-the line calling the macro with the following snippet of code:
-
-.. code-block:: nim
-  const cfgversion = "1.1"
-  const cfglicenseOwner = "Hyori Lee"
-  const cfglicenseKey = "M1Tl3PjBWO2CC48m"
-
-You can verify this yourself adding the line ``echo source`` somewhere at the
-end of the macro and compiling the program. Another difference is that instead
-of calling the usual `quit proc <system.html#quit>`_ to abort (which we could
-still call) this version calls the `error proc <macros.html#error>`_ (line
-14). The ``error`` proc has the same behavior as ``quit`` but will dump also
-the source and file line information where the error happened, making it
-easier for the programmer to find where compilation failed. In this situation
-it would point to the line invoking the macro, but **not** the line of
-``data.cfg`` we are processing, that's something the macro itself would need
-to control.
-
-
-Generating AST by hand
-++++++++++++++++++++++
-
-To generate an AST we would need to intimately know the structures used by the
-Nim compiler exposed in the `macros module <macros.html>`_, which at first
-look seems a daunting task. But we can use as helper shortcut the `dumpTree
-macro <macros.html#dumpTree>`_, which is used as a statement macro instead of
-an expression macro.  Since we know that we want to generate a bunch of
-``const`` symbols we can create the following source file and compile it to
-see what the compiler *expects* from us:
-
-.. code-block:: nim
-    :test: "nim c $1"
-  import macros
-
-  dumpTree:
-    const cfgversion: string = "1.1"
-    const cfglicenseOwner = "Hyori Lee"
-    const cfglicenseKey = "M1Tl3PjBWO2CC48m"
-
-During compilation of the source code we should see the following lines in the
-output (again, since this is a macro, compilation is enough, you don't have to
-run any binary)::
-
-  StmtList
-    ConstSection
-      ConstDef
-        Ident !"cfgversion"
-        Ident !"string"
-        StrLit 1.1
-    ConstSection
-      ConstDef
-        Ident !"cfglicenseOwner"
-        Empty
-        StrLit Hyori Lee
-    ConstSection
-      ConstDef
-        Ident !"cfglicenseKey"
-        Empty
-        StrLit M1Tl3PjBWO2CC48m
-
-With this output we have a better idea of what kind of input the compiler
-expects. We need to generate a list of statements. For each constant the source
-code generates a ``ConstSection`` and a ``ConstDef``. If we were to move all
-the constants to a single ``const`` block we would see only a single
-``ConstSection`` with three children.
-
-Maybe you didn't notice, but in the ``dumpTree`` example the first constant
-explicitly specifies the type of the constant.  That's why in the tree output
-the two last constants have their second child ``Empty`` but the first has a
-string identifier. So basically a ``const`` definition is made up from an
-identifier, optionally a type (can be an *empty* node) and the value. Armed
-with this knowledge, let's look at the finished version of the AST building
-macro:
-
-.. code-block:: nim
-   :number-lines:
-
-  import macros, strutils
-
-  macro readCfgAndBuildAST(cfgFilename: string): typed =
-    let
-      inputString = slurp(cfgFilename.strVal)
-
-    result = newNimNode(nnkStmtList)
-    for line in inputString.splitLines:
-      # Ignore empty lines
-      if line.len < 1: continue
-      var chunks = split(line, ',')
-      if chunks.len != 2:
-        error("Input needs comma split values, got: " & line)
-      var
-        section = newNimNode(nnkConstSection)
-        constDef = newNimNode(nnkConstDef)
-      constDef.add(newIdentNode("cfg" & chunks[0]))
-      constDef.add(newEmptyNode())
-      constDef.add(newStrLitNode(chunks[1]))
-      section.add(constDef)
-      result.add(section)
-
-    if result.len < 1: error("Input file empty!")
-
-  readCfgAndBuildAST("data.cfg")
-
-  when isMainModule:
-    echo cfglicenseOwner
-    echo cfglicenseKey
-    echo cfgversion
-
-Since we are building on the previous example generating source code, we will
-only mention the differences to it. Instead of creating a temporary ``string``
-variable and writing into it source code as if it were written *by hand*, we
-use the ``result`` variable directly and create a statement list node
-(``nnkStmtList``) which will hold our children (line 7).
-
-For each input line we have to create a constant definition (``nnkConstDef``)
-and wrap it inside a constant section (``nnkConstSection``). Once these
-variables are created, we fill them hierarchichally (line 17) like the
-previous AST dump tree showed: the constant definition is a child of the
-section definition, and the constant definition has an identifier node, an
-empty node (we let the compiler figure out the type), and a string literal
-with the value.
-
-A last tip when writing a macro: if you are not sure the AST you are building
-looks ok, you may be tempted to use the ``dumpTree`` macro. But you can't use
-it *inside* the macro you are writting/debugging. Instead ``echo`` the string
-generated by `treeRepr <macros.html#treeRepr>`_. If at the end of the this
-example you add ``echo treeRepr(result)`` you should get the same output as
-using the ``dumpTree`` macro, but of course you can call that at any point of
-the macro where you might be having troubles.
-
-Example Templates and Macros
-============================
-
-Lifting Procs
-+++++++++++++
+Example: Lifting Procs
+----------------------
 
 .. code-block:: nim
     :test: "nim c $1"
@@ -1039,36 +658,6 @@ Lifting Procs
   liftScalarProc(sqrt)   # make sqrt() work for sequences
   echo sqrt(@[4.0, 16.0, 25.0, 36.0])   # => @[2.0, 4.0, 5.0, 6.0]
 
-Identifier Mangling
-+++++++++++++++++++
-
-.. code-block:: nim
-  proc echoHW() =
-    echo "Hello world"
-  proc echoHW0() =
-    echo "Hello world 0"
-  proc echoHW1() =
-    echo "Hello world 1"
-
-  template joinSymbols(a, b: untyped): untyped =
-    `a b`()
-
-  joinSymbols(echo, HW)
-
-  macro str2Call(s1, s2): typed =
-    result = newNimNode(nnkStmtList)
-    for i in 0..1:
-      # combines s1, s2 and an integer into an proc identifier
-      # that is called in a statement list
-      result.add(newCall(!($s1 & $s2 & $i)))
-
-  str2Call("echo", "HW")
-
-  # Output:
-  #   Hello world
-  #   Hello world 0
-  #   Hello world 1
-
 Compilation to JavaScript
 =========================
 
@@ -1083,3 +672,9 @@ JavaScript-compatible code you should remember the following:
 - ``cstring`` in JavaScript means JavaScript string. It is a good practice to
   use ``cstring`` only when it is semantically appropriate. E.g. don't use
   ``cstring`` as a binary data buffer.
+
+
+Part 3
+======
+
+Next part will be entirely about metaprogramming via macros: `Part III <tut3.html>`_

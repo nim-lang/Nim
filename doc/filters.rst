@@ -4,7 +4,7 @@ Source Code Filters
 
 .. contents::
 
-A `Source Code Filter` transforms the input character stream to an in-memory
+A `Source Code Filter (SCF)`  transforms the input character stream to an in-memory
 output stream before parsing. A filter can be used to provide templating
 systems or preprocessors.
 
@@ -23,10 +23,26 @@ just like an ordinary procedure call with named or positional arguments. The
 available parameters depend on the invoked filter. Before version 0.12.0 of
 the language ``#!`` was used instead of ``#?``.
 
-**Hint:** With ``--hint[codeBegin]:on```or ``--verbosity:2``
-(or higher) Nim lists the processed code after each filter
-application.
+**Hint:** With ``--hint[codeBegin]:on`` or ``--verbosity:2``
+(or higher) while compiling or `nim check`, Nim lists the processed code after
+each filter application.
 
+Usage
+=====
+
+First, put your SCF code in a separate file with filters specified in the first line. 
+**Note:** You can name your SCF file with any file extension you want, but the
+conventional extension is ``.nimf``
+(it used to be ``.tmpl`` but that was too generic, for example preventing github to
+recognize it as Nim source file).
+
+If we use `generateXML` code shown above and call the SCF file `xmlGen.nimf`
+In your `main.nim`:
+
+.. code-block:: nim
+  include "xmlGen.nimf"
+  
+  echo generateXML("John Smith","42")
 
 Pipe operator
 =============

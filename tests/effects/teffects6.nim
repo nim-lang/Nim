@@ -1,3 +1,8 @@
+discard """
+action: compile
+"""
+
+# XXX: it is not actually tested if the effects are inferred
 
 type
   PMenu = ref object
@@ -11,7 +16,7 @@ createMenuItem(s, "Go to definition...",
       proc (i: PMenuItem, p: pointer) {.cdecl.} =
         try:
           echo(i.repr)
-        except EInvalidValue:
+        except ValueError:
           echo("blah")
 )
 
@@ -20,8 +25,8 @@ proc noRaise(x: proc()) {.raises: [].} =
   # unknown call that might raise anything, but valid:
   x()
 
-proc doRaise() {.raises: [EIO].} =
-  raise newException(EIO, "IO")
+proc doRaise() {.raises: [IoError].} =
+  raise newException(IoError, "IO")
 
 proc use*() =
   noRaise(doRaise)

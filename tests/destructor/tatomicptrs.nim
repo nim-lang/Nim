@@ -8,8 +8,10 @@ allocating
 deallocating
 deallocating
 deallocating
+allocating
+deallocating
 '''
-  cmd: '''nim c --newruntime $file'''
+joinable: false
 """
 
 type
@@ -23,8 +25,7 @@ template incRef(x) =
 
 template decRef(x): untyped = atomicDec(x.refcount)
 
-proc makeShared*[T](x: T): SharedPtr[T] =
-  # XXX could benefit from 'sink' parameter.
+proc makeShared*[T](x: sink T): SharedPtr[T] =
   # XXX could benefit from a macro that generates it.
   result = cast[SharedPtr[T]](allocShared(sizeof(x)))
   result.x[] = x
@@ -58,6 +59,9 @@ proc `=sink`*[T](dest: var SharedPtr[T]; src: SharedPtr[T]) =
       deallocShared(s)
       echo "deallocating"
     dest.x = src.x
+
+proc get*[T](s: SharedPtr[T]): lent T =
+  s.x[]
 
 template `.`*[T](s: SharedPtr[T]; field: untyped): untyped =
   s.x.field
@@ -98,4 +102,66 @@ proc main =
   takesTree(t)
 
 main()
+
+
+
+#-------------------------------------------------------
+#bug #9781
+
+type
+  MySeq* [T] = object
+    refcount: int
+    len: int
+    data: ptr UncheckedArray[T]
+
+proc `=destroy`*[T](m: var MySeq[T]) {.inline.} =
+  if m.data != nil:
+    deallocShared(m.data)
+    m.data = nil
+
+proc `=`*[T](m: var MySeq[T], m2: MySeq[T]) =
+  if m.data == m2.data: return
+  if m.data != nil:
+    `=destroy`(m)
+
+  m.len = m2.len
+  let bytes = m.len.int * sizeof(float)
+  if bytes > 0:
+    m.data = cast[ptr UncheckedArray[T]](allocShared(bytes))
+    copyMem(m.data, m2.data, bytes)
+
+proc `=sink`*[T](m: var MySeq[T], m2: MySeq[T]) {.inline.} =
+  if m.data != m2.data:
+    if m.data != nil:
+      `=destroy`(m)
+    m.len = m2.len
+    m.data = m2.data
+
+proc len*[T](m: MySeq[T]): int {.inline.} = m.len
+
+proc newMySeq*[T](size: int, initial_value: T): MySeq[T] =
+  result.len = size
+  if size > 0:
+    result.data = cast[ptr UncheckedArray[T]](allocShared(sizeof(T) * size))
+
+
+let x = makeShared(newMySeq(10, 1.0))
+doAssert: x.get().len == 10
+
+
+
+#-------------------------------------------------------
+#bug #12882
+
+type
+  ValueObject = object
+    v: MySeq[int]
+    name: string
+
+  TopObject = object
+    internal: seq[ValueObject]
+
+var zz = new(TopObject)
+
+
 

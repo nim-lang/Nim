@@ -12,13 +12,12 @@ type
     mt: array[0..623, uint32]
     index: int
 
-{.deprecated: [TMersenneTwister: MersenneTwister].}
-
 proc newMersenneTwister*(seed: uint32): MersenneTwister =
   result.index = 0
   result.mt[0] = seed
   for i in 1'u32 .. 623'u32:
-    result.mt[i] = (0x6c078965'u32 * (result.mt[i-1] xor (result.mt[i-1] shr 30'u32)) + i)
+    result.mt[i] = (0x6c078965'u32 * (result.mt[i-1] xor
+                                      (result.mt[i-1] shr 30'u32)) + i)
 
 proc generateNumbers(m: var MersenneTwister) =
   for i in 0..623:

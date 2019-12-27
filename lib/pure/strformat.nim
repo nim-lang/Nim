@@ -88,48 +88,23 @@ An expression like ``&"{key} is {value:arg} {{z}}"`` is transformed into:
 
 .. code-block:: nim
   var temp = newStringOfCap(educatedCapGuess)
-  format(key, temp)
-  format(" is ", temp)
-  format(value, arg, temp)
-  format(" {z}", temp)
+  temp.formatValue key, ""
+  temp.add " is "
+  temp.formatValue value, arg
+  temp.add " {z}"
   temp
 
 Parts of the string that are enclosed in the curly braces are interpreted
 as Nim code, to escape an ``{`` or ``}`` double it.
 
 ``&`` delegates most of the work to an open overloaded set
-of ``format`` procs. The required signature for a type ``T`` that supports
-formatting is usually ``proc format(x: T; result: var string)`` for efficiency
-but can also be ``proc format(x: T): string``. ``add`` and ``$`` procs are
-used as the fallback implementation.
-
-This is the concrete lookup algorithm that ``&`` uses:
-
-.. code-block:: nim
-
-  when compiles(format(arg, res)):
-    format(arg, res)
-  elif compiles(format(arg)):
-    res.add format(arg)
-  elif compiles(add(res, arg)):
-    res.add(arg)
-  else:
-    res.add($arg)
-
+of ``formatValue`` procs. The required signature for a type ``T`` that supports
+formatting is usually ``proc formatValue(result: var string; x: T; specifier: string)``.
 
 The subexpression after the colon
-(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is an optional argument
-passed to ``format``.
-
-If an optional argument is present the following lookup algorithm is used:
-
-.. code-block:: nim
-
-  when compiles(format(arg, option, res)):
-    format(arg, option, res)
-  else:
-    res.add format(arg, option)
-
+(``arg`` in ``&"{key} is {value:arg} {{z}}"``) is optional. It will be passed as
+the last argument to ``formatValue``. When the colon with the subexpression it is
+left out, an empty string will be taken instead.
 
 For strings and numeric types the optional argument is a so-called
 "standard format specifier".
@@ -238,11 +213,49 @@ The available floating point presentation types are:
 =================        ====================================================
 
 
+Limitations
+===========
+
+Because of the well defined order how templates and macros are
+expanded, strformat cannot expand template arguments:
+
+.. code-block:: nim
+  template myTemplate(arg: untyped): untyped =
+    echo "arg is: ", arg
+    echo &"--- {arg} ---"
+
+  let x = "abc"
+  myTemplate(x)
+
+First the template ``myTemplate`` is expanded, where every identifier
+``arg`` is substituted with its argument. The ``arg`` inside the
+format string is not seen by this process, because it is part of a
+quoted string literal. It is not an identifier yet. Then the strformat
+macro creates the ``arg`` identifier from the string literal. An
+identifier that cannot be resolved anymore.
+
+The workaround for this is to bind the template argument to a new local variable.
+
+.. code-block:: nim
+
+  template myTemplate(arg: untyped): untyped =
+    block:
+      let arg1 {.inject.} = arg
+      echo "arg is: ", arg1
+      echo &"--- {arg1} ---"
+
+The use of ``{.inject.}`` here is necessary again because of template
+expansion order and hygienic templates. But since we generally want to
+keep the hygienicness of ``myTemplate``, and we do not want ``arg1``
+to be injected into the context where ``myTemplate`` is expanded,
+everything is wrapped in a ``block``.
+
+
 Future directions
 =================
 
 A curly expression with commas in it like ``{x, argA, argB}`` could be
-transformed to ``format(x, argA, argB, res)`` in order to support
+transformed to ``formatValue(result, x, argA, argB)`` in order to support
 formatters that do not need to parse a custom language within a custom
 language but instead prefer to use Nim's existing syntax. This also
 helps in readability since there is only so much you can cram into
@@ -251,90 +264,7 @@ single letter DSLs.
 ]##
 
 import macros, parseutils, unicode
-import strutils
-
-template callFormat(res, arg) {.dirty.} =
-  when arg is string:
-    # workaround in order to circumvent 'strutils.format' which matches
-    # too but doesn't adhere to our protocol.
-    res.add arg
-  elif compiles(format(arg, res)):
-    format(arg, res)
-  elif compiles(format(arg)):
-    res.add format(arg)
-  elif compiles(add(res, arg)):
-    res.add(arg)
-  else:
-    res.add($arg)
-
-template callFormatOption(res, arg, option) {.dirty.} =
-  when compiles(format(arg, option, res)):
-    format(arg, option, res)
-  elif compiles(format(arg, option)):
-    res.add format(arg, option)
-  else:
-    format($arg, option, res)
-
-macro `&`*(pattern: string): untyped =
-  ## For a specification of the ``&`` macro, see the module level documentation.
-  if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
-    error "string formatting (fmt(), &) only works with string literals", pattern
-  let f = pattern.strVal
-  var i = 0
-  let res = genSym(nskVar, "fmtRes")
-  result = newNimNode(nnkStmtListExpr, lineInfoFrom=pattern)
-  result.add newVarStmt(res, newCall(bindSym"newStringOfCap", newLit(f.len + count(f, '{')*10)))
-  var strlit = ""
-  while i < f.len:
-    if f[i] == '{':
-      inc i
-      if f[i] == '{':
-        inc i
-        strlit.add '{'
-      else:
-        if strlit.len > 0:
-          result.add newCall(bindSym"add", res, newLit(strlit))
-          strlit = ""
-
-        var subexpr = ""
-        while i < f.len and f[i] != '}' and f[i] != ':':
-          subexpr.add f[i]
-          inc i
-        let x = parseExpr(subexpr)
-
-        if f[i] == ':':
-          inc i
-          var options = ""
-          while i < f.len and f[i] != '}':
-            options.add f[i]
-            inc i
-          result.add getAst(callFormatOption(res, x, newLit(options)))
-        else:
-          result.add getAst(callFormat(res, x))
-        if f[i] == '}':
-          inc i
-        else:
-          doAssert false, "invalid format string: missing '}'"
-    elif f[i] == '}':
-      if f[i+1] == '}':
-        strlit.add '}'
-        inc i, 2
-      else:
-        doAssert false, "invalid format string: '}' instead of '}}'"
-        inc i
-    else:
-      strlit.add f[i]
-      inc i
-  if strlit.len > 0:
-    result.add newCall(bindSym"add", res, newLit(strlit))
-  result.add res
-  when defined(debugFmtDsl):
-    echo repr result
-
-template fmt*(pattern: string): untyped =
-  ## An alias for ``&``.
-  bind `&`
-  &pattern
+import strutils except format
 
 proc mkDigit(v: int, typ: char): string {.inline.} =
   assert(v < 26)
@@ -343,7 +273,8 @@ proc mkDigit(v: int, typ: char): string {.inline.} =
   else:
     result = $chr(ord(if typ == 'x': 'a' else: 'A') + v - 10)
 
-proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): string =
+proc alignString*(s: string, minimumWidth: int; align = '\0';
+    fill = ' '): string =
   ## Aligns ``s`` using ``fill`` char.
   ## This is only of interest if you want to write a custom ``format`` proc that
   ## should support the standard format specifiers.
@@ -364,17 +295,18 @@ proc alignString*(s: string, minimumWidth: int; align = '\0'; fill = ' '): strin
 
 type
   StandardFormatSpecifier* = object ## Type that describes "standard format specifiers".
-    fill*, align*: char             ## Desired fill and alignment.
-    sign*: char                     ## Desired sign.
-    alternateForm*: bool            ## Whether to prefix binary, octal and hex numbers
-                                    ## with ``0b``, ``0o``, ``0x``.
-    padWithZero*: bool              ## Whether to pad with zeros rather than spaces.
-    minimumWidth*, precision*: int  ## Desired minium width and precision.
-    typ*: char                      ## Type like 'f', 'g' or 'd'.
-    endPosition*: int ## End position in the format specifier after
-                      ## ``parseStandardFormatSpecifier`` returned.
+    fill*, align*: char            ## Desired fill and alignment.
+    sign*: char                    ## Desired sign.
+    alternateForm*: bool           ## Whether to prefix binary, octal and hex numbers
+                                   ## with ``0b``, ``0o``, ``0x``.
+    padWithZero*: bool             ## Whether to pad with zeros rather than spaces.
+    minimumWidth*, precision*: int ## Desired minimum width and precision.
+    typ*: char                     ## Type like 'f', 'g' or 'd'.
+    endPosition*: int              ## End position in the format specifier after
+                                   ## ``parseStandardFormatSpecifier`` returned.
 
-proc formatInt(n: SomeNumber; radix: int; spec: StandardFormatSpecifier): string =
+proc formatInt(n: SomeNumber; radix: int;
+    spec: StandardFormatSpecifier): string =
   ## Converts ``n`` to string. If ``n`` is `SomeFloat`, it casts to `int64`.
   ## Conversion is done using ``radix``. If result's length is lesser than
   ## ``minimumWidth``, it aligns result to the right or left (depending on ``a``)
@@ -485,11 +417,14 @@ proc parseStandardFormatSpecifier*(s: string; start = 0;
     raise newException(ValueError,
       "invalid format string, cannot parse: " & s[i..^1])
 
-
-proc format*(value: SomeInteger; specifier: string; res: var string) =
+proc formatValue*[T: SomeInteger](result: var string; value: T;
+    specifier: string) =
   ## Standard format implementation for ``SomeInteger``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
+  if specifier.len == 0:
+    result.add $value
+    return
   let spec = parseStandardFormatSpecifier(specifier)
   var radix = 10
   case spec.typ
@@ -501,12 +436,15 @@ proc format*(value: SomeInteger; specifier: string; res: var string) =
     raise newException(ValueError,
       "invalid type in format string for number, expected one " &
       " of 'x', 'X', 'b', 'd', 'o' but got: " & spec.typ)
-  res.add formatInt(value, radix, spec)
+  result.add formatInt(value, radix, spec)
 
-proc format*(value: SomeFloat; specifier: string; res: var string) =
+proc formatValue*(result: var string; value: SomeFloat; specifier: string) =
   ## Standard format implementation for ``SomeFloat``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
+  if specifier.len == 0:
+    result.add $value
+    return
   let spec = parseStandardFormatSpecifier(specifier)
 
   var fmode = ffDefault
@@ -524,29 +462,149 @@ proc format*(value: SomeFloat; specifier: string; res: var string) =
       " of 'e', 'E', 'f', 'F', 'g', 'G' but got: " & spec.typ)
 
   var f = formatBiggestFloat(value, fmode, spec.precision)
-  if value >= 0.0 and spec.sign != '-':
-    f = spec.sign & f
+  var sign = false
+  if value >= 0.0:
+    if spec.sign != '-':
+      sign = true
+      if value == 0.0:
+        if 1.0 / value == Inf:
+          # only insert the sign if value != negZero
+          f.insert($spec.sign, 0)
+      else:
+        f.insert($spec.sign, 0)
+  else:
+    sign = true
+
+  if spec.padWithZero:
+    var signStr = ""
+    if sign:
+      signStr = $f[0]
+      f = f[1..^1]
+
+    let toFill = spec.minimumWidth - f.len - ord(sign)
+    if toFill > 0:
+      f = repeat('0', toFill) & f
+    if sign:
+      f = signStr & f
+
   # the default for numbers is right-alignment:
   let align = if spec.align == '\0': '>' else: spec.align
-  let result = alignString(f, spec.minimumWidth,
-                           align, spec.fill)
+  let res = alignString(f, spec.minimumWidth, align, spec.fill)
   if spec.typ in {'A'..'Z'}:
-    res.add toUpperAscii(result)
+    result.add toUpperAscii(res)
   else:
-    res.add result
+    result.add res
 
-proc format*(value: string; specifier: string; res: var string) =
+proc formatValue*(result: var string; value: string; specifier: string) =
   ## Standard format implementation for ``string``. It makes little
   ## sense to call this directly, but it is required to exist
   ## by the ``&`` macro.
   let spec = parseStandardFormatSpecifier(specifier)
+  var value = value
   case spec.typ
   of 's', '\0': discard
   else:
     raise newException(ValueError,
       "invalid type in format string for string, expected 's', but got " &
       spec.typ)
-  res.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
+  if spec.precision != -1:
+    if spec.precision < runeLen(value):
+      setLen(value, runeOffset(value, spec.precision))
+  result.add alignString(value, spec.minimumWidth, spec.align, spec.fill)
+
+proc formatValue[T: not SomeInteger](result: var string; value: T;
+    specifier: string) =
+  mixin `$`
+  formatValue(result, $value, specifier)
+
+template formatValue(result: var string; value: char; specifier: string) =
+  result.add value
+
+template formatValue(result: var string; value: cstring; specifier: string) =
+  result.add value
+
+proc strformatImpl(pattern: NimNode; openChar, closeChar: char): NimNode =
+  if pattern.kind notin {nnkStrLit..nnkTripleStrLit}:
+    error "string formatting (fmt(), &) only works with string literals", pattern
+  if openChar == ':' or closeChar == ':':
+    error "openChar and closeChar must not be ':'"
+  let f = pattern.strVal
+  var i = 0
+  let res = genSym(nskVar, "fmtRes")
+  result = newNimNode(nnkStmtListExpr, lineInfoFrom = pattern)
+  # XXX: https://github.com/nim-lang/Nim/issues/8405
+  # When compiling with -d:useNimRtl, certain procs such as `count` from the strutils
+  # module are not accessible at compile-time:
+  let expectedGrowth = when defined(useNimRtl): 0 else: count(f, '{') * 10
+  result.add newVarStmt(res, newCall(bindSym"newStringOfCap",
+                                     newLit(f.len + expectedGrowth)))
+  var strlit = ""
+  while i < f.len:
+    if f[i] == openChar:
+      inc i
+      if f[i] == openChar:
+        inc i
+        strlit.add openChar
+      else:
+        if strlit.len > 0:
+          result.add newCall(bindSym"add", res, newLit(strlit))
+          strlit = ""
+
+        var subexpr = ""
+        while i < f.len and f[i] != closeChar and f[i] != ':':
+          subexpr.add f[i]
+          inc i
+        var x: NimNode
+        try:
+          x = parseExpr(subexpr)
+        except ValueError:
+          when declared(getCurrentExceptionMsg):
+            let msg = getCurrentExceptionMsg()
+            error("could not parse `" & subexpr & "`.\n" & msg, pattern)
+          else:
+            error("could not parse `" & subexpr & "`.\n", pattern)
+        let formatSym = bindSym("formatValue", brOpen)
+        var options = ""
+        if f[i] == ':':
+          inc i
+          while i < f.len and f[i] != closeChar:
+            options.add f[i]
+            inc i
+        if f[i] == closeChar:
+          inc i
+        else:
+          doAssert false, "invalid format string: missing '}'"
+        result.add newCall(formatSym, res, x, newLit(options))
+    elif f[i] == closeChar:
+      if f[i+1] == closeChar:
+        strlit.add closeChar
+        inc i, 2
+      else:
+        doAssert false, "invalid format string: '}' instead of '}}'"
+        inc i
+    else:
+      strlit.add f[i]
+      inc i
+  if strlit.len > 0:
+    result.add newCall(bindSym"add", res, newLit(strlit))
+  result.add res
+  when defined(debugFmtDsl):
+    echo repr result
+
+macro `&`*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+  ## For a specification of the ``&`` macro, see the module level documentation.
+
+macro fmt*(pattern: string): untyped = strformatImpl(pattern, '{', '}')
+  ## An alias for ``&``.
+
+macro fmt*(pattern: string; openChar, closeChar: char): untyped =
+  ## Use ``openChar`` instead of '{' and ``closeChar`` instead of '}'
+  runnableExamples:
+    let testInt = 123
+    doAssert "<testInt>".fmt('<', '>') == "123"
+    doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+    doAssert """ ""{"123+123"}"" """.fmt('"', '"') == " \"{246}\" "
+  strformatImpl(pattern, openChar.intVal.char, closeChar.intVal.char)
 
 when isMainModule:
   template check(actual, expected: string) =
@@ -575,7 +633,7 @@ when isMainModule:
   check &"{1f:.3f}", "1.000"
   check &"Hello, {s}!", "Hello, string!"
 
-  # Tests for identifers without parenthesis
+  # Tests for identifiers without parenthesis
   check &"{s} works{s}", "string worksstring"
   check &"{s:>7}", " string"
   doAssert(not compiles(&"{s_works}")) # parsed as identifier `s_works`
@@ -634,12 +692,11 @@ when isMainModule:
   check &"{-123.456:.3f}", "-123.456"
   check &"{123.456:1g}", "123.456"
   check &"{123.456:.1f}", "123.5"
-  check &"{123.456:.0f}", "123."
-  #check &"{123.456:.0f}", "123."
+  check &"{123.456:.0f}", "123"
   check &"{123.456:>9.3f}", "  123.456"
   check &"{123.456:9.3f}", "  123.456"
   check &"{123.456:>9.4f}", " 123.4560"
-  check &"{123.456:>9.0f}", "     123."
+  check &"{123.456:>9.0f}", "      123"
   check &"{123.456:<9.4f}", "123.4560 "
 
   # Float (scientific) tests
@@ -654,8 +711,11 @@ when isMainModule:
   # works:
   import times
 
-  var nullTime: DateTime
-  check &"{nullTime:yyyy-mm-dd}", "0000-00-00"
+  var dt = initDateTime(01, mJan, 2000, 00, 00, 00)
+  check &"{dt:yyyy-MM-dd}", "2000-01-01"
+
+  var tm = fromUnix(0)
+  discard &"{tm}"
 
   # Unicode string tests
   check &"""{"αβγ"}""", "αβγ"
@@ -673,6 +733,13 @@ when isMainModule:
   for s in invalidUtf8:
     check &"{s:>5}", repeat(" ", 5-s.len) & s
 
+  # bug #11089
+  let flfoo: float = 1.0
+  check &"{flfoo}", "1.0"
+
+  # bug #11092
+  check &"{high(int64)}", "9223372036854775807"
+  check &"{low(int64)}", "-9223372036854775808"
 
   import json
 

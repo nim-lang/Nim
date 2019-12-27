@@ -1,5 +1,14 @@
-import unittest
-import hashes
+
+discard """
+output: '''
+[Suite] hashes
+
+[Suite] hashing
+
+'''
+"""
+
+import unittest, hashes
 
 suite "hashes":
   suite "hashing":

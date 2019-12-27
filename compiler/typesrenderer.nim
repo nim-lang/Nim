@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import renderer, strutils, ast, msgs, types, astalgo
+import renderer, strutils, ast, types
 
 const defaultParamSeparator* = ","
 
@@ -17,10 +17,9 @@ proc renderPlainSymbolName*(n: PNode): string =
   ## Use this on documentation name nodes to extract the *raw* symbol name,
   ## without decorations, parameters, or anything. That can be used as the base
   ## for the HTML hyperlinks.
-  result = ""
   case n.kind
   of nkPostfix, nkAccQuoted:
-    result = renderPlainSymbolName(n[n.len-1])
+    result = renderPlainSymbolName(n[^1])
   of nkIdent:
     result = n.ident.s
   of nkSym:
@@ -28,8 +27,8 @@ proc renderPlainSymbolName*(n: PNode): string =
   of nkPragmaExpr:
     result = renderPlainSymbolName(n[0])
   else:
-    internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
-  assert(not result.isNil)
+    result = ""
+    #internalError(n.info, "renderPlainSymbolName() with " & $n.kind)
 
 proc renderType(n: PNode): string =
   ## Returns a string with the node type or the empty string.
@@ -52,35 +51,34 @@ proc renderType(n: PNode): string =
     else:
       result = "ptr"
   of nkProcTy:
-    assert len(n) != 1
-    if len(n) > 1:
+    assert n.len != 1
+    if n.len > 1:
       let params = n[0]
       assert params.kind == nkFormalParams
-      assert len(params) > 0
+      assert params.len > 0
       result = "proc("
-      for i in 1 ..< len(params): result.add(renderType(params[i]) & ',')
-      result[len(result)-1] = ')'
+      for i in 1..<params.len: result.add(renderType(params[i]) & ',')
+      result[^1] = ')'
     else:
       result = "proc"
   of nkIdentDefs:
-    assert len(n) >= 3
-    let typePos = len(n) - 2
+    assert n.len >= 3
+    let typePos = n.len - 2
     let typeStr = renderType(n[typePos])
     result = typeStr
-    for i in 1 ..< typePos:
+    for i in 1..<typePos:
       assert n[i].kind == nkIdent
       result.add(',' & typeStr)
   of nkTupleTy:
     result = "tuple["
-    for i in 0 ..< len(n): result.add(renderType(n[i]) & ',')
-    result[len(result)-1] = ']'
+    for i in 0..<n.len: result.add(renderType(n[i]) & ',')
+    result[^1] = ']'
   of nkBracketExpr:
-    assert len(n) >= 2
+    assert n.len >= 2
     result = renderType(n[0]) & '['
-    for i in 1 ..< len(n): result.add(renderType(n[i]) & ',')
-    result[len(result)-1] = ']'
+    for i in 1..<n.len: result.add(renderType(n[i]) & ',')
+    result[^1] = ']'
   else: result = ""
-  assert(not result.isNil)
 
 
 proc renderParamTypes(found: var seq[string], n: PNode) =
@@ -91,10 +89,10 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
   ## generator does include the information.
   case n.kind
   of nkFormalParams:
-    for i in 1 ..< len(n): renderParamTypes(found, n[i])
+    for i in 1..<n.len: renderParamTypes(found, n[i])
   of nkIdentDefs:
     # These are parameter names + type + default value node.
-    let typePos = len(n) - 2
+    let typePos = n.len - 2
     assert typePos > 0
     var typeStr = renderType(n[typePos])
     if typeStr.len < 1 and n[typePos+1].kind != nkEmpty:
@@ -102,10 +100,11 @@ proc renderParamTypes(found: var seq[string], n: PNode) =
       let typ = n[typePos+1].typ
       if not typ.isNil: typeStr = typeToString(typ, preferExported)
       if typeStr.len < 1: return
-    for i in 0 ..< typePos:
+    for i in 0..<typePos:
       found.add(typeStr)
   else:
-    internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)
+    found.add($n)
+    #internalError(n.info, "renderParamTypes(found,n) with " & $n.kind)
 
 proc renderParamTypes*(n: PNode, sep = defaultParamSeparator): string =
   ## Returns the types contained in `n` joined by `sep`.

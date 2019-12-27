@@ -1,6 +1,6 @@
 discard """
 # Since the tests for nre are all bundled together we treat failure in one test as an nre failure
-# When running 'tests/testament/tester' a failed check() in the test suite will cause the exit
+# When running 'testament/tester' a failed check() in the test suite will cause the exit
 # codes to differ and be reported as a failure
 
   output:

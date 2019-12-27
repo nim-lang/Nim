@@ -11,7 +11,7 @@ discard """
 ## because it's more efficient than using procedure pointers and less
 ## verbose than defining a new callable type for every invocation of `map`.
 
-import future
+import sugar
 import macros
 import strutils
 

@@ -3,7 +3,7 @@ discard """
 
 # bug #5404
 
-import parseopt2
+import parseopt
 
 {.emit: """typedef struct {
     int key;
@@ -12,5 +12,5 @@ import parseopt2
 type foo* {.importc: "foo", nodecl.} = object
   key* {.importc: "key".}: cint
 
-for kind, key, value in parseopt2.getopt():
+for kind, key, value in parseopt.getopt():
   discard
