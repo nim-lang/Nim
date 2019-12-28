@@ -7506,6 +7506,7 @@ Ignores the Future            Yes          No        No
 Returns result inside Future  No           No        Yes
 Only available inside async   No           No        Yes
 
+
 Multisync
 =========
 
