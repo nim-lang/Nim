@@ -1009,6 +1009,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   inc p.labels
   let lab = p.labels
   p.nestedTryStmts.add((fin, true, lab))
+  let prevRaiseCounter = p.raiseCounter
   expr(p, t[0], d)
   if 1 < t.len and t[1].kind == nkExceptBranch:
     p.flags.incl nimErrorFlagAccessed
@@ -1056,7 +1057,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     #    error back to nil.
     # 3. finally is run for exception handling code without any 'except'
     #    handler present or only handlers that did not match.
-    raiseExit(p)
+    if p.raiseCounter != prevRaiseCounter:
+      raiseExit(p)
     endBlock(p)
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
