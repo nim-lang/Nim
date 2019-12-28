@@ -177,7 +177,7 @@
 
 include "system/inclrtl"
 
-import net, strutils, uri, parseutils, base64, os, mimetypes,
+import net, strutils, sequtils, uri, parseutils, base64, os, mimetypes, streams,
   math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
 import nativesockets
@@ -388,21 +388,19 @@ proc `[]=`*(p: var MultipartData, name: string,
   ##     "<html><head></head><body><p>test</p></body></html>")
   p.add(name, file.content, file.name, file.contentType)
 
+proc getBoundary(p: MultipartData): string =
+  if p == nil or p.content.len == 0: return
+  while true:
+    result = $random(int.high)
+    if not p.content.anyIt(result in it):
+      break
+
 proc format(p: MultipartData): tuple[contentType, body: string] =
   if p == nil or p.content.len == 0:
     return ("", "")
 
   # Create boundary that is not in the data to be formatted
-  var bound: string
-  while true:
-    bound = $random(int.high)
-    var found = false
-    for s in p.content:
-      if bound in s:
-        found = true
-    if not found:
-      break
-
+  let bound = getBoundary(p)
   result.contentType = "multipart/form-data; boundary=" & bound
   result.body = ""
   for s in p.content:
@@ -875,6 +873,16 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
+proc getHeaders(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
+                requestUrl: Uri, httpMethod, body: string, ): string =
+  let effectiveHeaders = client.headers.override(headers)
+
+  if not effectiveHeaders.hasKey("user-agent") and client.userAgent != "":
+    effectiveHeaders["User-Agent"] = client.userAgent
+
+  result = generateHeaders(requestUrl, httpMethod, effectiveHeaders,
+                           body, client.proxy)
+
 proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
                 httpMethod: string, body = "",
                 headers: HttpHeaders = nil): Future[Response | AsyncResponse]
@@ -893,15 +901,9 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url: string,
 
   await newConnection(client, requestUrl)
 
-  let effectiveHeaders = client.headers.override(headers)
-
-  if not effectiveHeaders.hasKey("user-agent") and client.userAgent != "":
-    effectiveHeaders["User-Agent"] = client.userAgent
-
-  var headersString = generateHeaders(requestUrl, httpMethod,
-                                      effectiveHeaders, body, client.proxy)
-
+  let headersString = client.getHeaders(headers, requestUrl, httpMethod, body)
   await client.socket.send(headersString)
+
   if body != "":
     await client.socket.send(body)
 
@@ -1100,3 +1102,66 @@ proc downloadFile*(client: AsyncHttpClient, url: string,
     result.addCallback(
       proc () = client.getBody = true
     )
+
+proc fileString(filePath, name: string, mimes: MimeDB): string =
+  let
+    (_, fName, ext) = splitFile(filePath)
+    contentType = mimes.getMimetype(ext.strip(chars={'.'}), "")
+
+  "Content-Disposition: form-data; name=\"" & name &
+    "\"; filename=\"" & fName & ext &
+    "\"\c\LContent-Type: " & contentType & "\c\L"
+
+proc uploadFile*(client: HttpClient | AsyncHttpClient, url, filePath, name: string,
+                 multipart: MultipartData, chunkSize = (2^18),
+                 mimes: MimeDB = newMimetypes()): Future[Response | AsyncResponse] {.multisync.} =
+  let requestUrl = parseUri(url)
+
+  if requestUrl.scheme == "":
+    raise newException(ValueError, "No uri scheme supplied.")
+
+  when client is AsyncHttpClient:
+    if not client.parseBodyFut.isNil:
+      # let the current operation finish before making another request
+      await client.parseBodyFut
+      client.parseBodyFut = nil
+
+    var file = openAsync(filepath)
+    let fileSize = getFileSize(file)
+  else:
+    var file = newFileStream(filepath, fmRead)
+    let fileSize = getFileSize(filePath)
+
+  var data = multipart
+  data.content.add fileString(filePath, name, mimes)
+
+  let
+    cl = "\c\L"
+    boundary = getBoundary(multipart)
+    boundaryBegin = "--" & boundary & cl
+    boundaryEnd = cl & "--" & boundary & "--"
+    xb = multipart.content.mapIt(boundaryBegin & it & cl).join("")
+
+  client.headers["Content-Type"] = "multipart/form-data; boundary=" & boundary
+  client.headers["Content-Length"] = $(xb.len + fileSize + boundaryEnd.len)
+
+  await newConnection(client, requestUrl)
+
+  let headersString = client.getHeaders(client.headers, requestUrl, $HttpPOST, "")
+  await client.socket.send(headersString)
+
+  await client.socket.send(xb)
+  while true:
+    let buf =
+      when client is AsyncHttpClient:
+        await read(file, chunkSize)
+      else:
+        readStr(file, chunkSize)
+
+    if buf.len == 0:
+      file.close()
+      break
+    await client.socket.send(buf)
+
+  await client.socket.send(boundaryEnd)
+  result = await parseResponse(client, client.getBody)
