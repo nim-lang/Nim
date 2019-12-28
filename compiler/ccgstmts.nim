@@ -689,7 +689,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
-proc raiseExit(p: BProc) =
+proc raiseExit(p: BProc; endOfFinally = false) =
   assert p.config.exc == excGoto
   p.flags.incl nimErrorFlagAccessed
   if p.nestedTryStmts.len == 0:
@@ -697,19 +697,21 @@ proc raiseExit(p: BProc) =
     # easy case, simply goto 'ret':
     lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
   else:
-    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n", [p.nestedTryStmts[^1].label])
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
+      [p.nestedTryStmts[^1].label + ord(endOfFinally)])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.config.exc == excGoto:
     inc p.raiseCounter
-  elif p.config.exc == excCpp:
-    discard cgsym(p.module, "popCurrentExceptionEx")
-  if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
-    # if the current try stmt have a finally block,
-    # we must execute it before reraising
-    let finallyBlock = p.nestedTryStmts[^1].fin
-    if finallyBlock != nil:
-      genSimpleBlock(p, finallyBlock[0])
+  else:
+    if p.config.exc == excCpp:
+      discard cgsym(p.module, "popCurrentExceptionEx")
+    if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
+      # if the current try stmt have a finally block,
+      # we must execute it before reraising
+      let finallyBlock = p.nestedTryStmts[^1].fin
+      if finallyBlock != nil:
+        genSimpleBlock(p, finallyBlock[0])
   if t[0].kind != nkEmpty:
     var a: TLoc
     initLocExprSingleUse(p, t[0], a)
@@ -1006,7 +1008,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.flags.incl noSafePoints
-  inc p.labels
+  inc p.labels, 2
   let lab = p.labels
   p.nestedTryStmts.add((fin, true, lab))
   let prevRaiseCounter = p.raiseCounter
@@ -1048,6 +1050,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     inc(i)
   discard pop(p.nestedTryStmts)
   endBlock(p) # end of else block
+  linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
     genStmts(p, t[i][0])
@@ -1058,7 +1061,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     # 3. finally is run for exception handling code without any 'except'
     #    handler present or only handlers that did not match.
     if p.raiseCounter != prevRaiseCounter:
-      raiseExit(p)
+      raiseExit(p, endOfFinally = true)
     endBlock(p)
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =

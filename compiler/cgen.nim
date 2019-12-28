@@ -591,7 +591,7 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt): Rope
 proc genLiteral(p: BProc, n: PNode): Rope
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope
-proc raiseExit(p: BProc)
+proc raiseExit(p: BProc; endOfFinally = false)
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
