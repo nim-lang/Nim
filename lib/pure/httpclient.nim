@@ -264,6 +264,7 @@ type
                                         ## and ``postContent`` proc,
                                         ## when the server returns an error
 
+const cl = "\c\L"
 const defUserAgent* = "Nim httpclient/" & NimVersion
 
 proc httpError(msg: string) =
@@ -325,10 +326,10 @@ proc add*(p: var MultipartData, name, content: string, filename: string = "",
   var str = "Content-Disposition: form-data; name=\"" & name & "\""
   if filename.len > 0:
     str.add("; filename=\"" & filename & "\"")
-  str.add("\c\L")
+  str.add(cl)
   if contentType.len > 0:
-    str.add("Content-Type: " & contentType & "\c\L")
-  str.add("\c\L" & content & "\c\L")
+    str.add("Content-Type: " & contentType & cl)
+  str.add(cl & content & cl)
 
   p.content.add(str)
 
@@ -404,8 +405,8 @@ proc format(p: MultipartData): tuple[contentType, body: string] =
   result.contentType = "multipart/form-data; boundary=" & bound
   result.body = ""
   for s in p.content:
-    result.body.add("--" & bound & "\c\L" & s)
-  result.body.add("--" & bound & "--\c\L")
+    result.body.add("--" & bound & cl & s)
+  result.body.add("--" & bound & "--" & cl)
 
 proc redirection(status: string): bool =
   const redirectionNRs = ["301", "302", "303", "307"]
@@ -445,34 +446,34 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
     result.add($modifiedUrl)
 
   # HTTP/1.1\c\l
-  result.add(" HTTP/1.1\c\L")
+  result.add(" HTTP/1.1" & cl)
 
   # Host header.
   if not headers.hasKey("Host"):
     if requestUrl.port == "":
-      add(result, "Host: " & requestUrl.hostname & "\c\L")
+      add(result, "Host: " & requestUrl.hostname & cl)
     else:
-      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
+      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & cl)
 
   # Connection header.
   if not headers.hasKey("Connection"):
-    add(result, "Connection: Keep-Alive\c\L")
+    add(result, "Connection: Keep-Alive" & cl)
 
   # Content length header.
   const requiresBody = ["POST", "PUT", "PATCH"]
   let needsContentLength = body.len > 0 or upperMethod in requiresBody
   if needsContentLength and not headers.hasKey("Content-Length"):
-    add(result, "Content-Length: " & $body.len & "\c\L")
+    add(result, "Content-Length: " & $body.len & cl)
 
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
     let auth = base64.encode(proxy.auth)
-    add(result, "Proxy-Authorization: basic " & auth & "\c\L")
+    add(result, "Proxy-Authorization: basic " & auth & cl)
 
   for key, val in headers:
-    add(result, key & ": " & val & "\c\L")
+    add(result, key & ": " & val & cl)
 
-  add(result, "\c\L")
+  add(result, cl)
 
 type
   ProgressChangedProc*[ReturnType] =
@@ -743,7 +744,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       # We've been disconnected.
       client.close()
       break
-    if line == "\c\L":
+    if line == cl:
       fullyRead = true
       break
     if not parsedStatus:
@@ -997,8 +998,8 @@ proc makeRequestContent(body = "", multipart: MultipartData = nil): (string, Htt
   let (mpContentType, mpBody) = format(multipart)
   # TODO: Support FutureStream for `body` parameter.
   template withNewLine(x): untyped =
-    if x.len > 0 and not x.endsWith("\c\L"):
-      x & "\c\L"
+    if x.len > 0 and not x.endsWith(cl):
+      x & cl
     else:
       x
   var xb = mpBody.withNewLine() & body
@@ -1109,8 +1110,8 @@ proc fileString(filePath, name: string, mimes: MimeDB): string =
     contentType = mimes.getMimetype(ext.strip(chars={'.'}), "")
 
   "Content-Disposition: form-data; name=\"" & name &
-    "\"; filename=\"" & fName & ext &
-    "\"\c\LContent-Type: " & contentType & "\c\L"
+    "\"; filename=\"" & fName & ext & "\"" & cl &
+    "Content-Type: " & contentType & cl
 
 proc uploadFile*(client: HttpClient | AsyncHttpClient, url, filePath, name: string,
                  multipart: MultipartData, chunkSize = (2^18),
@@ -1136,7 +1137,6 @@ proc uploadFile*(client: HttpClient | AsyncHttpClient, url, filePath, name: stri
   data.content.add fileString(filePath, name, mimes)
 
   let
-    cl = "\c\L"
     boundary = getBoundary(multipart)
     boundaryBegin = "--" & boundary & cl
     boundaryEnd = cl & "--" & boundary & "--"
