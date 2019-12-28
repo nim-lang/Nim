@@ -3105,7 +3105,7 @@ when not defined(js):
   when defined(nimV2):
     type
       TNimNode {.compilerproc.} = object # to keep the code generator simple
-      DestructorProc = proc (p: pointer) {.nimcall, benign.}
+      DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
       TNimType {.compilerproc.} = object
         destructor: pointer
         size: int
