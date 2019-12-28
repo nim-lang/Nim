@@ -98,6 +98,26 @@
 ## ``await``. The following section shows different ways that you can handle
 ## exceptions in async procs.
 ##
+## ``{.async.}`` can be set on an anonymous procedure.
+##
+## .. code-block:: nim
+##    echo (proc () {.async.} = echo 42)()
+##
+## ``{.async.}`` can not be set on an functional procedure ``func`` because it may contain side-effects.
+##
+## .. code-block:: nim
+##    func wrong() {.async.} = echo "This wont compile" # ERROR!
+##
+## ``{.async.}`` can not be set on a ``template``, nor ``macro``, nor ``iterator``.
+## The ``{.async.}`` Pragma can not be used with the ``{.compiletime.}`` Pragma.
+##
+## .. code-block:: nim
+##    template soWrong() {.async.} = echo "This is wrong!"   # ERROR
+##    macro badExample() {.async.} = echo "Wont compile!"    # ERROR
+##    iterator nopeNope() {.async.} = for i in 0..9: yield i # ERROR
+##    proc bad(): Future[int] {.async, compiletime.} = 2 + 1 # ERROR
+##
+##
 ## Handling Exceptions
 ## -------------------
 ##
@@ -136,9 +156,50 @@
 ## Examples
 ## ========
 ##
-## For examples take a look at the documentation for the modules implementing
+## .. code-block:: nim
+##   proc example() {.async.} =
+##     echo "asyncCheck Example"
+##
+##   asyncCheck example()
+##
+## For more examples take a look at the documentation for the modules implementing
 ## asynchronous IO. A good place to start is the
 ## `asyncnet module <asyncnet.html>`_.
+##
+##
+## waitFor
+## -------
+##
+## ``waitFor`` is similiar to ``asyncCheck`` but it will wait for the ``Future``.
+##
+## The usage and features are the same of ``asyncCheck`` (mentioned above). Example:
+##
+## .. code-block:: nim
+##   proc example() {.async.} =
+##     echo "waitFor Example"
+##
+##   waitFor example()
+##
+## await
+## -----
+##
+## ``await`` will wait for the ``Future``, and gives you the contents inside the ``Future``,
+## ``await`` only available inside a function with the ``{.async.}`` or ``{.multisync.}`` Pragmas.
+##
+## The usage and features are the same of ``waitFor`` (mentioned above).
+##
+## Comparison
+## ----------
+##
+## ============================ ============ ========= =======
+##  Description                  asyncCheck   waitFor   await
+## ============================ ============ ========= =======
+## Waits the Future              No           Yes       Yes
+## Ignores the Future            Yes          No        No
+## Returns result inside Future  No           No        Yes
+## Only available inside async   No           No        Yes
+## ============================ ============ ========= =======
+##
 ##
 ## Investigating pending futures
 ## =============================
@@ -159,6 +220,41 @@
 ## the pending futures into prometheus, allowing you to analyse them via a nice
 ## graph.
 ##
+##
+## Multisync
+## =========
+##
+## The ``{.multisync.}`` Pragma is similar to the ``{.async.}`` Pragma,
+## ``{.multisync.}`` Pragma converts a procedure to an asynchronous *and* synchronous procedure,
+## then the same function can be used on asynchronous *and* synchronous code,
+## you can think of it as a function that is async or sync depending on how you use it.
+##
+## The usage and features are the same of ``{.async.}`` (mentioned above). Example:
+##
+## .. code-block:: nim
+##   import asyncdispatch, httpclient
+##
+##   type
+##     Client = HttpClient
+##     AsyncClient = AsyncHttpClient
+##
+##   proc multisync_function(this: Client | AsyncClient): Future[string] {.multisync.} =
+##     const url = "https://nim-lang.org"
+##     result =
+##       when this is AsyncClient: await newAsyncHttpClient().getContent(url)
+##       else: newHttpClient().getContent(url)
+##
+##   proc async_example() {.async.} =
+##     echo await AsyncClient().multisync_function()
+##
+##   waitFor async_example()            # Async
+##
+##   echo Client().multisync_function() # Sync
+##
+## This is one of the reasons Nim wont use syntax like ``async proc fetch() =`` like other languages,
+## also you dont have to repeat your procedure twice like ``async proc aio_fetch() =`` and ``proc fetch() =``,
+## because a procedure can be both async and sync at the same time.
+## Internally the ``multisync`` Pragma is implemented using metaprogramming features of Macros and Templates.
 ##
 ##
 ## Limitations/Bugs
