@@ -689,7 +689,7 @@ proc genBreakStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   lineF(p, cpsStmts, "goto $1;$n", [label])
 
-proc raiseExit(p: BProc; endOfFinally = false) =
+proc raiseExit(p: BProc) =
   assert p.config.exc == excGoto
   p.flags.incl nimErrorFlagAccessed
   if p.nestedTryStmts.len == 0:
@@ -698,7 +698,19 @@ proc raiseExit(p: BProc; endOfFinally = false) =
     lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
   else:
     lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
-      [p.nestedTryStmts[^1].label + ord(endOfFinally)])
+      [p.nestedTryStmts[^1].label + ord(p.nestedTryStmts[^1].inExcept)])
+
+proc raiseExitFromFinally(p: BProc) =
+  assert p.config.exc == excGoto
+  p.flags.incl nimErrorFlagAccessed
+  if p.nestedTryStmts.len == 0:
+    p.flags.incl beforeRetNeeded
+    # easy case, simply goto 'ret':
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
+  else:
+    # jump to the next 'finally' section directly:
+    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
+      [p.nestedTryStmts[^1].label + 1])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.config.exc == excGoto:
@@ -735,12 +747,16 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
   if p.config.exc == excGoto:
-    if p.nestedTryStmts.len == 0:
+    let L = p.nestedTryStmts.len
+    if L == 0:
       p.flags.incl beforeRetNeeded
       # easy case, simply goto 'ret':
       lineCg(p, cpsStmts, "goto BeforeRet_;$n", [])
     else:
-      lineCg(p, cpsStmts, "goto LA$1_;$n", [p.nestedTryStmts[^1].label])
+      # raise inside an 'except' must go to the finally block,
+      # raise outside an 'except' block must go to the 'except' list.
+      lineCg(p, cpsStmts, "goto LA$1_;$n",
+        [p.nestedTryStmts[L-1].label + ord(p.nestedTryStmts[L-1].inExcept)])
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =
@@ -1010,7 +1026,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   p.flags.incl noSafePoints
   inc p.labels, 2
   let lab = p.labels
-  p.nestedTryStmts.add((fin, true, lab))
+  p.nestedTryStmts.add((fin, false, lab))
   let prevRaiseCounter = p.raiseCounter
   expr(p, t[0], d)
   if 1 < t.len and t[1].kind == nkExceptBranch:
@@ -1061,7 +1077,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     # 3. finally is run for exception handling code without any 'except'
     #    handler present or only handlers that did not match.
     if p.raiseCounter != prevRaiseCounter:
-      raiseExit(p, endOfFinally = true)
+      raiseExitFromFinally(p)
     endBlock(p)
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
