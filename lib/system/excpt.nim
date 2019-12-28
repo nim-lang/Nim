@@ -395,7 +395,11 @@ else:
 
 when gotoBasedExceptions:
   addQuitProc(proc () {.noconv.} =
-    if currException != nil: reportUnhandledError(currException)
+    if currException != nil:
+      reportUnhandledError(currException)
+      # emulate: ``programResult = 1`` via abort() and a nop signal handler.
+      c_signal(SIGABRT, (proc (sign: cint) {.noconv, benign.} = discard))
+      c_abort()
   )
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =

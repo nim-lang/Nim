@@ -732,6 +732,13 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       line(p, cpsStmts, ~"throw;$n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
+  if p.config.exc == excGoto:
+    if p.nestedTryStmts.len == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      lineCg(p, cpsStmts, "goto BeforeRet_;$n", [])
+    else:
+      lineCg(p, cpsStmts, "goto LA$1_;$n", [p.nestedTryStmts[^1].label])
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =

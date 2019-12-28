@@ -1844,7 +1844,8 @@ proc canRaiseConservative*(fn: PNode): bool =
 
 proc canRaise*(fn: PNode): bool =
   if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
-      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc}):
+      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
+      sfGeneratedOp in fn.sym.flags):
     result = false
   else:
     result = fn.typ != nil and ((fn.typ.n[0].len < effectListLen) or
