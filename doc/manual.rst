@@ -7469,7 +7469,10 @@ If you want to discard a ``Future`` you should use ``asyncCheck``,
 ``asyncCheck`` allows to ignore a ``Future`` without blocking nor waiting on it.
 
 .. code-block:: nim
-  asyncCheck (proc () {.async.} = echo "Nim")()
+  proc example() {.async.} =
+    echo "asyncCheck Example"
+
+  asyncCheck example()
 
 waitFor
 -------
@@ -7479,7 +7482,10 @@ waitFor
 The usage and features are the same of ``asyncCheck`` (mentioned above). Example:
 
 .. code-block:: nim
-  waitFor (proc () {.async.} = echo "Nim")()
+  proc example() {.async.} =
+    echo "waitFor Example"
+
+  waitFor example()
 
 await
 -----
