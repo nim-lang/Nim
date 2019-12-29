@@ -139,8 +139,23 @@ proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
-  hasSomeStackTrace = NimStackTrace or
-    defined(nativeStackTrace) and nativeStackTraceSupported
+  hasSomeStackTrace = NimStackTrace or defined(nimStackTraceOverride) or
+    (defined(nativeStackTrace) and nativeStackTraceSupported)
+
+when defined(nimStackTraceOverride):
+  type StackTraceOverrideProc* = proc (): string {.nimcall, noinline, benign, raises: [], tags: [].}
+    ## Procedure type for overriding the default stack trace.
+
+  var stackTraceOverrideGetTraceback: StackTraceOverrideProc = proc(): string {.noinline.} =
+    result = "Stack trace override procedure not registered.\n"
+
+  proc registerStackTraceOverride*(overrideProc: StackTraceOverrideProc) =
+    ## Override the default stack trace inside rawWriteStackTrace() with your
+    ## own procedure.
+    stackTraceOverrideGetTraceback = overrideProc
+
+  proc auxWriteStackTraceWithOverride(s: var string) =
+    add(s, stackTraceOverrideGetTraceback())
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
@@ -288,7 +303,10 @@ proc stackTraceAvailable*(): bool
 
 when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
-    when NimStackTrace:
+    when defined(nimStackTraceOverride):
+      add(s, "Traceback (most recent call last, using override)\n")
+      auxWriteStackTraceWithOverride(s)
+    elif NimStackTrace:
       if framePtr == nil:
         add(s, "No stack traceback available\n")
       else:
@@ -307,7 +325,9 @@ when hasSomeStackTrace:
       s = @[]
 
   proc stackTraceAvailable(): bool =
-    when NimStackTrace:
+    when defined(nimStackTraceOverride):
+      result = true
+    elif NimStackTrace:
       if framePtr == nil:
         result = false
       else:
@@ -395,12 +415,15 @@ proc raiseExceptionAux(e: ref Exception) =
 proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
-    if e.trace.len == 0:
-      rawWriteStackTrace(e.trace)
-    elif framePtr != nil:
-      e.trace.add reraisedFrom(reraisedFromBegin)
-      auxWriteStackTrace(framePtr, e.trace)
-      e.trace.add reraisedFrom(reraisedFromEnd)
+    when defined(nimStackTraceOverride):
+      e.trace = @[]
+    elif NimStackTrace:
+      if e.trace.len == 0:
+        rawWriteStackTrace(e.trace)
+      elif framePtr != nil:
+        e.trace.add reraisedFrom(reraisedFromBegin)
+        auxWriteStackTrace(framePtr, e.trace)
+        e.trace.add reraisedFrom(reraisedFromEnd)
   else:
     if procname != nil and filename != nil:
       e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
