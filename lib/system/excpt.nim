@@ -418,7 +418,9 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       e.raiseId = raiseCounter
       {.emit: "`e`->raise();".}
   elif defined(nimQuirky) or gotoBasedExceptions:
-    pushCurrentException(e)
+    # XXX This check should likely also be done in the setjmp case below.
+    if e != currException:
+      pushCurrentException(e)
   else:
     if excHandler != nil:
       pushCurrentException(e)
