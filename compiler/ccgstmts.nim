@@ -744,7 +744,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     # reraise the last exception:
     if p.config.exc == excCpp:
       line(p, cpsStmts, ~"throw;$n")
-    elif p.config.exc != excGoto:
+    else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
   if p.config.exc == excGoto:
     let L = p.nestedTryStmts.len

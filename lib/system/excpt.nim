@@ -451,7 +451,8 @@ proc reraiseException() {.compilerRtl.} =
   if currException == nil:
     sysFatal(ReraiseError, "no exception to reraise")
   else:
-    raiseExceptionAux(currException)
+    when not gotoBasedExceptions:
+      raiseExceptionAux(currException)
 
 proc writeStackTrace() =
   when hasSomeStackTrace:

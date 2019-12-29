@@ -60,29 +60,3 @@ when true:
     p()
   except:
     echo "caught! 2"
-
-when false:
-  proc canRaise(p: int) =
-    if p < 3004:
-      raise newException(ValueError, "")
-
-  proc noraise {.importc, nodecl.}
-
-  proc main(p: proc(); q: proc() {.raises: [].} ) =
-    # {.raises: [].} =
-    echo "foo bar"
-    noraise()
-    canRaise(4)
-    if p != nil: p()
-    if q != nil: q()
-
-  proc other(p: int): int =
-    let x = 3 + p
-    result = x - 8
-
-  main(nil, nil)
-  echo other(89)
-
-# - 'owned' is optional
-# -
-
