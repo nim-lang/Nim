@@ -1988,7 +1988,7 @@ when defined(nimHasCompileSetting):
     magic: "CompileSettingSeq", noSideEffect.}
   ## Can be used to get a multi-string compile-time option. Example:
   ##
-  ## .. code-blocks:: Nim
+  ## .. code-block:: Nim
   ##   const nimblePaths = compileSettingSeq("nimblePaths")
 
 const
