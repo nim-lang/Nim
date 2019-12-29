@@ -59,9 +59,11 @@ var
     # list of exception handlers
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
-  raiseCounter {.threadvar.}: uint
-
   gcFramePtr {.threadvar.}: GcFrame
+
+when defined(cpp) and not defined(noCppExceptions):
+  var
+    raiseCounter {.threadvar.}: uint
 
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
