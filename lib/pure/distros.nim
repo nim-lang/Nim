@@ -134,18 +134,24 @@ const
   LacksDevPackages* = {Distribution.Gentoo, Distribution.Slackware,
     Distribution.ArchLinux}
 
-# we cache the result of the 'uname -a'
+# we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
-var unameRes, releaseRes, hostnamectlRes: string
+var unameRes, osRes, releaseRes, hostnamectlRes: string
 
-template unameRelease(cmd, cache): untyped =
+template cmdRelease(cmd, cache): untyped =
   if cache.len == 0:
     cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
   cache
 
-template uname(): untyped = unameRelease("uname -a", unameRes)
-template release(): untyped = unameRelease("lsb_release -d", releaseRes)
-template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
+template uname(): untyped = cmdRelease("uname -a", unameRes)
+template osrelease(): untyped = cmdRelease("cat /etc/os-release", osRes)
+template release(): untyped = cmdRelease("lsb_release -d", releaseRes)
+template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
+
+proc detectOsWithAllCmd(d: Distribution): bool =
+  let dd = toLowerAscii($d)
+  result = dd in toLowerAscii(osrelease()) or dd in toLowerAscii(release()) or
+            dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 proc detectOsImpl(d: Distribution): bool =
   case d
@@ -154,32 +160,36 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Posix: result = defined(posix)
   of Distribution.MacOSX: result = defined(macosx)
   of Distribution.Linux: result = defined(linux)
-  of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
-     Distribution.OpenBSD:
-    result = ("-" & $d & " ") in uname()
-  of Distribution.RedHat:
-    result = "Red Hat" in uname()
   of Distribution.BSD: result = defined(bsd)
-  of Distribution.ArchLinux:
-    result = "arch" in toLowerAscii(uname())
-  of Distribution.NixOS:
-    result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
-    # Check if this is a Nix build or NixOS environment
-  of Distribution.OpenSUSE:
-    result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
-  of Distribution.GoboLinux:
-    result = "-Gobo " in uname()
-  of Distribution.OpenMandriva:
-    result = "mandriva" in toLowerAscii(uname())
-  of Distribution.Solaris:
-    let uname = toLowerAscii(uname())
-    result = ("sun" in uname) or ("solaris" in uname)
-  of Distribution.Haiku:
-    result = defined(haiku)
   else:
-    let dd = toLowerAscii($d)
-    result = dd in toLowerAscii(uname()) or dd in toLowerAscii(release()) or
-              ("operating system: " & dd) in toLowerAscii(hostnamectl())
+    when defined(linux):
+      case d
+      of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
+        Distribution.OpenBSD, Distribution.Debian, Distribution.Fedora,
+        Distribution.OpenMandriva, Distribution.CentOS:
+        result = $d in osrelease()
+      of Distribution.RedHat:
+        result = "Red Hat" in osrelease()
+      of Distribution.Elementary:
+        result = "elementary OS" in osrelease()
+      of Distribution.ArchLinux:
+        result = "Arch Linux" in osrelease()
+      of Distribution.NixOS:
+        result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
+        # Check if this is a Nix build or NixOS environment
+      of Distribution.OpenSUSE:
+        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
+      of Distribution.GoboLinux:
+        result = "-Gobo " in uname()
+      of Distribution.Solaris:
+        let uname = toLowerAscii(uname())
+        result = ("sun" in uname) or ("solaris" in uname)
+      of Distribution.Haiku:
+        result = defined(haiku)
+      else:
+        result = detectOsWithAllCmd(d)
+    else:
+      result = detectOsWithAllCmd(d)
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
