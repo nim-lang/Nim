@@ -315,7 +315,7 @@ proc testCompileSetting*(conf: ConfigRef; switch: string; info: TLineInfo): stri
   of "ccompilerpath": result = conf.cCompilerPath
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
-proc testCompileMultiSetting*(conf: ConfigRef; switch: string; info: TLineInfo): seq[string] =
+proc testCompileSettingSeq*(conf: ConfigRef; switch: string; info: TLineInfo): seq[string] =
   case switch.normalize
   of "nimblepaths":
     for i in conf.nimblePaths: result.add i.string
