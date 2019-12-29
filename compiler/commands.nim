@@ -307,7 +307,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "oldast": result = contains(conf.options, optOldAst)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
-proc getCompileOptionString*(conf: ConfigRef; switch: string; info: TLineInfo): string =
+proc testCompileSetting*(conf: ConfigRef; switch: string; info: TLineInfo): string =
   case switch.normalize
   of "arguments": result = conf.arguments
   of "outfile": result = conf.outFile.string
@@ -323,7 +323,7 @@ proc getCompileOptionString*(conf: ConfigRef; switch: string; info: TLineInfo): 
   of "ccompilerpath": result = conf.cCompilerPath
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
-proc getCompileOptionSeq*(conf: ConfigRef; switch: string; info: TLineInfo): seq[string] =
+proc testCompileMultiSetting*(conf: ConfigRef; switch: string; info: TLineInfo): seq[string] =
   case switch.normalize
   of "nimblepaths":
     for i in conf.nimblePaths: result.add i.string
