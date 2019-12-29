@@ -96,6 +96,8 @@
 
 include "system/inclrtl"
 
+const taintMode = compileOption("taintmode")
+
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
   result.msg = msg
