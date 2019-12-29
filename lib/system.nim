@@ -2475,7 +2475,7 @@ when not defined(nimscript):
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
 
-    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
+    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes.
       ##
@@ -2488,7 +2488,7 @@ when not defined(nimscript):
       ##
       ## See also:
       ## `allocShared0 <#allocShared0,Natural>`_.
-    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
+    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
                                                                  benign, raises: [].} =
       ## Allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes.
@@ -2504,7 +2504,7 @@ when not defined(nimscript):
       ## * `createShared <#createShared,typedesc>`_
       cast[ptr T](allocShared(T.sizeof * size))
 
-    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
+    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes.
       ##
@@ -2528,7 +2528,7 @@ when not defined(nimscript):
       ## `createSharedU <#createSharedU,typedesc>`_.
       cast[ptr T](allocShared0(T.sizeof * size))
 
-    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
+    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
                                                                  benign, raises: [].}
       ## Grows or shrinks a given memory block on the heap.
       ##
@@ -2549,7 +2549,7 @@ when not defined(nimscript):
       ## `freeShared <#freeShared,ptr.T>`_.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [].}
+    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
       ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``.
       ##
@@ -3770,7 +3770,7 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone" and not usesDestructors: include "system/channels"
+      when hostOS != "standalone": include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
     when not usesDestructors:
@@ -4203,6 +4203,11 @@ type
 
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## Represents a Nim AST node. Macros operate on this type.
+
+macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+  ## returns number of variadic arguments in `x`
+  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  lenVarargsImpl(x)
 
 when false:
   template eval*(blk: typed): typed =

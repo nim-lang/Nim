@@ -1789,12 +1789,12 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
       let e = skipTypes(t[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
         e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
-        if n[0].kind in {nkPar, nkTupleConstr}:
-          n[0][i] = takeImplicitAddr(c, n[0][i], e.kind == tyLent)
-        elif n[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
-             n[0][1].kind in {nkPar, nkTupleConstr}:
-          var a = n[0][1]
-          a[i] = takeImplicitAddr(c, a[i], e.kind == tyLent)
+        let tupleConstr = if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}: n[0][1] else: n[0]
+        if tupleConstr.kind in {nkPar, nkTupleConstr}:
+          if tupleConstr[i].kind == nkExprColonExpr:
+            tupleConstr[i][1] = takeImplicitAddr(c, tupleConstr[i][1], e.kind == tyLent)
+          else:
+            tupleConstr[i] = takeImplicitAddr(c, tupleConstr[i], e.kind == tyLent)
         else:
           localError(c.config, n[0].info, errXExpected, "tuple constructor")
   else: discard

@@ -93,7 +93,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     var traverseProc: Rope
     if sfGlobal in v.flags:
       assignGlobalVar(p, vn, nil)
-      genObjectInit(p, cpsInit, v.typ, v.loc, true)
+      genObjectInit(p, cpsInit, v.typ, v.loc, constructObj)
       traverseProc = getTraverseProc(p, v)
       if traverseProc != nil and not p.hcrOn:
         registerTraverseProc(p, v, traverseProc)
@@ -314,7 +314,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
       if sfThread in v.flags and emulatedThreadVars(p.config) and
         isComplexValueType(v.typ):
         initLocExprSingleUse(p.module.preInitProc, vn, loc)
-      genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, true)
+      genObjectInit(p.module.preInitProc, cpsInit, v.typ, loc, constructObj)
     # Alternative construction using default constructor (which may zeromem):
     # if sfImportc notin v.flags: constructLoc(p.module.preInitProc, v.loc)
     if sfExportc in v.flags and p.module.g.generatedHeader != nil:

@@ -708,6 +708,8 @@ proc track(tracked: PEffects, n: PNode) =
   of nkCallKinds:
     # p's effects are ours too:
     var a = n[0]
+    #if canRaise(a):
+    #  echo "this can raise ", tracked.config $ n.info
     let op = a.typ
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:

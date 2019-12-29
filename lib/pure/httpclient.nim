@@ -450,10 +450,11 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
   result.add(" HTTP/1.1\c\L")
 
   # Host header.
-  if requestUrl.port == "":
-    add(result, "Host: " & requestUrl.hostname & "\c\L")
-  else:
-    add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
+  if not headers.hasKey("Host"):
+    if requestUrl.port == "":
+      add(result, "Host: " & requestUrl.hostname & "\c\L")
+    else:
+      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
 
   # Connection header.
   if not headers.hasKey("Connection"):

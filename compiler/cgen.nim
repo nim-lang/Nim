@@ -104,17 +104,17 @@ proc getModuleDllPath(m: BModule, s: PSym): Rope =
 
 import macros
 
-proc cgFormatValue(result: var string; value: Rope): void =
+proc cgFormatValue(result: var string; value: Rope) =
   for str in leaves(value):
     result.add str
 
-proc cgFormatValue(result: var string; value: string): void =
+proc cgFormatValue(result: var string; value: string) =
   result.add value
 
-proc cgFormatValue(result: var string; value: BiggestInt): void =
+proc cgFormatValue(result: var string; value: BiggestInt) =
   result.addInt value
 
-proc cgFormatValue(result: var string; value: Int128): void =
+proc cgFormatValue(result: var string; value: Int128) =
   result.addInt128 value
 
 # TODO: please document
@@ -326,8 +326,22 @@ proc rdCharLoc(a: TLoc): Rope =
   if skipTypes(a.t, abstractRange).kind == tyChar:
     result = "((NU8)($1))" % [result]
 
-proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
-                   takeAddr: bool) =
+type
+  TAssignmentFlag = enum
+    needToCopy
+  TAssignmentFlags = set[TAssignmentFlag]
+
+proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
+proc rawConstExpr(p: BProc, n: PNode; d: var TLoc)
+proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
+
+type
+  ObjConstrMode = enum
+    constructObj,
+    constructRefObj
+
+proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
+                   mode: ObjConstrMode) =
   if p.module.compileToCpp and t.isException and not isDefined(p.config, "noCppExceptions"):
     # init vtable in Exception object for polymorphic exceptions
     includeHeader(p.module, "<new>")
@@ -339,7 +353,7 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     discard
   of frHeader:
     var r = rdLoc(a)
-    if not takeAddr: r = "(*$1)" % [r]
+    if mode == constructRefObj: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
       while s.kind == tyObject and s[0] != nil:
@@ -348,26 +362,28 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: TLoc,
     linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t, a.lode.info)])
   of frEmbedded:
     if optTinyRtti in p.config.globalOptions:
-      localError(p.config, p.prc.info,
-        "complex object initialization is not supported with --newruntime")
-    # worst case for performance:
-    var r = if takeAddr: addrLoc(p.config, a) else: rdLoc(a)
-    linefmt(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t, a.lode.info)])
+      if mode == constructRefObj:
+        var n = newNodeIT(nkObjConstr, a.lode.info, t)
+        n.add newNodeIT(nkType, a.lode.info, t)
+        genObjConstr(p, n, a)
+      else:
+        var tmp: TLoc
+        rawConstExpr(p, newNodeIT(nkType, a.lode.info, t), tmp)
+        genAssignment(p, a, tmp, {})
+    else:
+      # worst case for performance:
+      var r = if mode == constructObj: addrLoc(p.config, a) else: rdLoc(a)
+      linefmt(p, section, "#objectInit($1, $2);$n", [r, genTypeInfo(p.module, t, a.lode.info)])
 
   if isException(t):
     var r = rdLoc(a)
-    if not takeAddr: r = "(*$1)" % [r]
+    if mode == constructRefObj: r = "(*$1)" % [r]
     var s = skipTypes(t, abstractInst)
     if not p.module.compileToCpp:
       while s.kind == tyObject and s[0] != nil and s.sym.magic != mException:
         r.add(".Sup")
         s = skipTypes(s[0], skipPtrs)
     linefmt(p, section, "$1.name = $2;$n", [r, makeCString(t.skipTypes(abstractInst).sym.name.s)])
-
-type
-  TAssignmentFlag = enum
-    needToCopy
-  TAssignmentFlags = set[TAssignmentFlag]
 
 proc genRefAssign(p: BProc, dest, src: TLoc)
 
@@ -399,7 +415,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
               [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
-      genObjectInit(p, cpsStmts, loc.t, loc, true)
+      genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
     else:
       # array passed as argument decayed into pointer, bug #7332
       # so we use getTypeDesc here rather than rdLoc(loc)
@@ -407,9 +423,9 @@ proc resetLoc(p: BProc, loc: var TLoc) =
               [addrLoc(p.config, loc), getTypeDesc(p.module, loc.t)])
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
-      genObjectInit(p, cpsStmts, loc.t, loc, true)
+      genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
-proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
+proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
   if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
@@ -423,7 +439,7 @@ proc constructLoc(p: BProc, loc: TLoc, isTemp = false) =
       if not isImportedCppType(typ):
         linefmt(p, cpsStmts, "#nimZeroMem((void*)$1, sizeof($2));$n",
                 [addrLoc(p.config, loc), getTypeDesc(p.module, typ)])
-    genObjectInit(p, cpsStmts, loc.t, loc, true)
+    genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
 
 proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
   if sfNoInit notin v.flags:
@@ -580,7 +596,6 @@ proc genStmts(p: BProc, t: PNode)
 proc expr(p: BProc, n: PNode, d: var TLoc)
 proc genProcPrototype(m: BModule, sym: PSym)
 proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
-proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 proc intLiteral(i: BiggestInt): Rope
 proc genLiteral(p: BProc, n: PNode): Rope
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope

@@ -607,7 +607,7 @@ iterator processBranchVals(b: PNode): int =
   assert b.kind in {nkOfBranch, nkElifBranch, nkElse}
   if b.kind == nkOfBranch:
     for i in 0..<b.len-1:
-      if b[i].kind == nkIntLit:
+      if b[i].kind in {nkIntLit, nkCharLit}:
         yield b[i].intVal.int
       elif b[i].kind == nkRange:
         for i in b[i][0].intVal..b[i][1].intVal:
@@ -621,9 +621,12 @@ proc renderAsType(vals: IntSet, t: PType): string =
   for val in vals:
     if result.len > 1:
       result &= ", "
-    if t.kind in {tyEnum, tyBool}:
+    case t.kind:
+    of tyEnum, tyBool:
       while t.n[enumSymOffset].sym.position < val: inc(enumSymOffset)
       result &= t.n[enumSymOffset].sym.name.s
+    of tyChar:
+      result.addQuoted(char(val))
     else:
       if i == 64:
         result &= "omitted $1 values..." % $(vals.len - i)
