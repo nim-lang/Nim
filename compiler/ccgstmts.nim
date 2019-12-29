@@ -1022,7 +1022,28 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
     genSimpleBlock(p, t[^1][0])
 
+proc bodyCanRaise(n: PNode): bool =
+  case n.kind
+  of nkCallKinds:
+    result = canRaise(n[0])
+  of nkRaiseStmt:
+    result = true
+  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    result = false
+  else:
+    for i in 0 ..< safeLen(n):
+      if bodyCanRaise(n[i]): return true
+    result = false
+
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
+  if not bodyCanRaise(t):
+    # optimize away the 'try' block:
+    expr(p, t[0], d)
+    if t.len > 1 and t[^1].kind == nkFinally:
+      genStmts(p, t[^1][0])
+    return
+
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.flags.incl noSafePoints
   inc p.labels, 2
@@ -1086,16 +1107,21 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
-    # pretend we did handle the error for the safe execution of the 'finally' section:
-    linefmt(p, cpsStmts, "NI oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
-    genStmts(p, t[i][0])
-    # this is correct for all these cases:
-    # 1. finally is run during ordinary control flow
-    # 2. finally is run after 'except' block handling: these however set the
-    #    error back to nil.
-    # 3. finally is run for exception handling code without any 'except'
-    #    handler present or only handlers that did not match.
-    linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n", [lab])
+    if not bodyCanRaise(t[i][0]):
+      # this is an important optimization; most destroy blocks are detected not to raise an
+      # exception and so we help the C optimizer by not mutating nimErr_ pointlessly:
+      genStmts(p, t[i][0])
+    else:
+      # pretend we did handle the error for the safe execution of the 'finally' section:
+      linefmt(p, cpsStmts, "NI oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
+      genStmts(p, t[i][0])
+      # this is correct for all these cases:
+      # 1. finally is run during ordinary control flow
+      # 2. finally is run after 'except' block handling: these however set the
+      #    error back to nil.
+      # 3. finally is run for exception handling code without any 'except'
+      #    handler present or only handlers that did not match.
+      linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n", [lab])
     raiseExitFromFinally(p)
     endBlock(p)
   # restore the real error value:
