@@ -103,3 +103,4 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimHasCursor")
   defineSymbol("nimHasExceptionsQuery")
+  defineSymbol("nimHasCompileSetting")
