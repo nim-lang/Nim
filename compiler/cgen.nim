@@ -1051,9 +1051,12 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optProfiler in prc.options:
       # invoke at proc entry for recursion:
       appcg(p, cpsInit, "\t#nimProfile();$n", [])
+    # this pair of {} is required for C++ (C++ is weird with its
+    # control flow integrity checks):
+    if beforeRetNeeded in p.flags: generatedProc.add("{")
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
-    if beforeRetNeeded in p.flags: generatedProc.add(~"\tBeforeRet_: ;$n")
+    if beforeRetNeeded in p.flags: generatedProc.add(~"\t}BeforeRet_: ;$n")
     if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
     generatedProc.add(~"}$N")
