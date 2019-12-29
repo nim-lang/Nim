@@ -39,7 +39,7 @@ proc main =
       echo "begin"
       doraise()
     finally:
-      echo "one iteration!"
+      echo "one ", "iteration!"
 
 try:
   main()

@@ -396,6 +396,11 @@ else:
   const gotoBasedExceptions = false
 
 when gotoBasedExceptions:
+  var nimInErrorMode {.threadvar.}: int
+
+  proc nimErrorFlag(): ptr int {.compilerRtl, inl.} =
+    result = addr(nimInErrorMode)
+
   addQuitProc(proc () {.noconv.} =
     if currException != nil:
       reportUnhandledError(currException)
@@ -423,6 +428,8 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
       pushCurrentException(e)
+      when gotoBasedExceptions:
+        inc nimInErrorMode
   else:
     if excHandler != nil:
       pushCurrentException(e)
@@ -453,7 +460,9 @@ proc reraiseException() {.compilerRtl.} =
   if currException == nil:
     sysFatal(ReraiseError, "no exception to reraise")
   else:
-    when not gotoBasedExceptions:
+    when gotoBasedExceptions:
+      inc nimInErrorMode
+    else:
       raiseExceptionAux(currException)
 
 proc writeStackTrace() =

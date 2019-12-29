@@ -3782,9 +3782,6 @@ when not defined(JS): #and not defined(nimscript):
       # C codegen only uses it in a borrowed way:
       result = currException
 
-    proc nimErrorFlag(): ptr ref Exception {.compilerRtl, inl.} =
-      result = addr(currException)
-
     proc getCurrentExceptionMsg*(): string {.inline, benign.} =
       ## Retrieves the error message that was attached to the current
       ## exception; if there is none, `""` is returned.
