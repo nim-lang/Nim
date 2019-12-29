@@ -469,7 +469,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
         conf.selectedGC = gcArc
-        when false:
+        when true:
           if conf.cmd != cmdCompileToCpp:
             conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
@@ -481,7 +481,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
           defineSymbol(conf.symbols, "nimV2")
       of "orc":
         conf.selectedGC = gcOrc
-        when false:
+        when true:
           if conf.cmd != cmdCompileToCpp:
             conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
