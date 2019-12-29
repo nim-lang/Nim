@@ -1976,8 +1976,11 @@ proc compileOption*(option, arg: string): bool {.
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
-proc getCompileOption*(option: string): string {.
-  magic: "CompileOptionString", noSideEffect.}
+proc compileSetting*(option: string): string {.
+  magic: "CompileSetting", noSideEffect.}
+
+proc compileMultiSetting*(option: string): seq[string] {.
+  magic: "CompileMultiSetting", noSideEffect.}
 
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
