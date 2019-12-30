@@ -36,7 +36,7 @@ elif (defined(nimQuirky) and not defined(nimscript)) or gotoBasedExceptions:
     add(buf, arg)
     add(buf, " [")
     add(buf, name exceptn)
-    add(buf, "]")
+    add(buf, "]\n")
     cstderr.rawWrite buf
     quit 1
 
