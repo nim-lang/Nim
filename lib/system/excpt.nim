@@ -390,11 +390,6 @@ proc nimLeaveFinally() {.compilerRtl.} =
       reportUnhandledError(currException)
       quit(1)
 
-when defined(nimHasExceptionsQuery):
-  const gotoBasedExceptions = compileOption("exceptions", "goto")
-else:
-  const gotoBasedExceptions = false
-
 when gotoBasedExceptions:
   var nimInErrorMode {.threadvar.}: int
 

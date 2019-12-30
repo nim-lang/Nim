@@ -1,4 +1,19 @@
+#
+#
+#            Nim's Runtime Library
+#        (c) Copyright 2019 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+
 {.push profiler: off.}
+
+when defined(nimHasExceptionsQuery):
+  const gotoBasedExceptions = compileOption("exceptions", "goto")
+else:
+  const gotoBasedExceptions = false
+
 when hostOS == "standalone":
   include "$projectpath/panicoverride"
 
@@ -9,7 +24,7 @@ when hostOS == "standalone":
     rawoutput(message)
     panic(arg)
 
-elif defined(nimQuirky) and not defined(nimscript):
+elif (defined(nimQuirky) and not defined(nimscript)) or gotoBasedExceptions:
   import ansi_c
 
   proc name(t: typedesc): string {.magic: "TypeTrait".}
