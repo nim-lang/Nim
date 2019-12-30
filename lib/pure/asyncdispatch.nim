@@ -109,7 +109,7 @@
 ##    func wrong() {.async.} = echo "This wont compile" # ERROR!
 ##
 ## ``{.async.}`` can not be set on a ``template``, nor ``macro``, nor ``iterator``.
-## The ``{.async.}`` Pragma can not be used with the ``{.compiletime.}`` Pragma.
+## The ``{.async.}`` pragma can not be used with the ``{.compiletime.}`` pragma.
 ##
 ## .. code-block:: nim
 ##    template soWrong() {.async.} = echo "This is wrong!"   # ERROR
@@ -153,16 +153,7 @@
 ## however that this does not wait for completion, and you should use
 ## ``waitFor`` for that purpose.
 ##
-## Examples
-## ========
-##
-## .. code-block:: nim
-##   proc example() {.async.} =
-##     echo "asyncCheck Example"
-##
-##   asyncCheck example()
-##
-## For more examples take a look at the documentation for the modules implementing
+## For examples take a look at the documentation for the modules implementing
 ## asynchronous IO. A good place to start is the
 ## `asyncnet module <asyncnet.html>`_.
 ##
@@ -170,9 +161,9 @@
 ## waitFor
 ## -------
 ##
-## ``waitFor`` is similiar to ``asyncCheck`` but it will wait for the ``Future``.
+## ``waitFor`` blocks and runs the async loop until the Future finishes.
 ##
-## The usage and features are the same of ``asyncCheck`` (mentioned above). Example:
+## Example:
 ##
 ## .. code-block:: nim
 ##   proc example() {.async.} =
@@ -186,19 +177,17 @@
 ## ``await`` will wait for the ``Future``, and gives you the contents inside the ``Future``,
 ## ``await`` only available inside a function with the ``{.async.}`` or ``{.multisync.}`` Pragmas.
 ##
-## The usage and features are the same of ``waitFor`` (mentioned above).
-##
 ## Comparison
 ## ----------
 ##
-## ============================ ============ ========= =======
-##  Description                  asyncCheck   waitFor   await
-## ============================ ============ ========= =======
-## Waits the Future              No           Yes       Yes
-## Ignores the Future            Yes          No        No
-## Returns result inside Future  No           No        Yes
-## Only available inside async   No           No        Yes
-## ============================ ============ ========= =======
+## ================================ ============ ========= =======
+##  Description                      asyncCheck   waitFor   await
+## ================================ ============ ========= =======
+## Waits for the Future to complete  No           Yes       Yes
+## Ignores the Future                Yes          No        No
+## Returns result inside Future      No           No        Yes
+## Only available inside async       No           No        Yes
+## ================================ ============ ========= =======
 ##
 ##
 ## Investigating pending futures
@@ -224,12 +213,12 @@
 ## Multisync
 ## =========
 ##
-## The ``{.multisync.}`` Pragma is similar to the ``{.async.}`` Pragma,
-## ``{.multisync.}`` Pragma converts a procedure to an asynchronous *and* synchronous procedure,
+## The ``{.multisync.}`` pragma is similar to the ``{.async.}`` pragma,
+## ``{.multisync.}`` pragma converts a procedure to an asynchronous *and* synchronous procedure,
 ## then the same function can be used on asynchronous *and* synchronous code,
 ## you can think of it as a function that is async or sync depending on how you use it.
 ##
-## The usage and features are the same of ``{.async.}`` (mentioned above). Example:
+## Example:
 ##
 ## .. code-block:: nim
 ##   import asyncdispatch, httpclient
@@ -238,23 +227,24 @@
 ##     Client = HttpClient
 ##     AsyncClient = AsyncHttpClient
 ##
-##   proc multisync_function(this: Client | AsyncClient): Future[string] {.multisync.} =
+##   proc multisyncFunction(this: Client | AsyncClient): Future[string] {.multisync.} =
 ##     const url = "https://nim-lang.org"
 ##     result =
-##       when this is AsyncClient: await newAsyncHttpClient().getContent(url)
-##       else: newHttpClient().getContent(url)
+##       when this is AsyncClient:
+##         let client = AsyncHttpClient()
+##         await client.getContent(url)
+##       else:
+##         let client = newHttpClient()
+##         client.getContent(url)
 ##
 ##   proc async_example() {.async.} =
-##     echo await AsyncClient().multisync_function()
+##     echo await AsyncClient().multisyncFunction()
 ##
-##   waitFor async_example()            # Async
+##   waitFor async_example()           # Async
 ##
-##   echo Client().multisync_function() # Sync
+##   echo Client().multisyncFunction() # Sync
 ##
-## This is one of the reasons Nim wont use syntax like ``async proc fetch() =`` like other languages,
-## also you dont have to repeat your procedure twice like ``async proc aio_fetch() =`` and ``proc fetch() =``,
-## because a procedure can be both async and sync at the same time.
-## Internally the ``multisync`` Pragma is implemented using metaprogramming features of Macros and Templates.
+## Internally the ``multisync`` pragma is implemented using metaprogramming features of Macros and Templates.
 ##
 ##
 ## Limitations/Bugs
