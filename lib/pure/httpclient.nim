@@ -367,7 +367,7 @@ proc addFiles*(p: var MultipartData, xs: openArray[tuple[name, file: string]]):
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = m.getMimetype(ext[1..ext.high], "")
-    p.add(name, readFile(file), fName & ext, contentType)
+    p.add(name, readFile(file).string, fName & ext, contentType)
   result = p
 
 proc `[]=`*(p: var MultipartData, name, content: string) =
@@ -450,10 +450,11 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
   result.add(" HTTP/1.1\c\L")
 
   # Host header.
-  if requestUrl.port == "":
-    add(result, "Host: " & requestUrl.hostname & "\c\L")
-  else:
-    add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
+  if not headers.hasKey("Host"):
+    if requestUrl.port == "":
+      add(result, "Host: " & requestUrl.hostname & "\c\L")
+    else:
+      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
 
   # Connection header.
   if not headers.hasKey("Connection"):
@@ -633,7 +634,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
                  {.multisync.} =
   while true:
     var chunkSize = 0
-    var chunkSizeStr = await client.socket.recvLine()
+    var chunkSizeStr = (await client.socket.recvLine()).string
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
@@ -733,9 +734,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   while true:
     linei = 0
     when client is HttpClient:
-      line = await client.socket.recvLine(client.timeout)
+      line = (await client.socket.recvLine(client.timeout)).string
     else:
-      line = await client.socket.recvLine()
+      line = (await client.socket.recvLine()).string
     if line == "":
       # We've been disconnected.
       client.close()
