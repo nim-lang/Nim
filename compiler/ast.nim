@@ -1850,6 +1850,6 @@ proc canRaise*(fn: PNode): bool =
   elif fn.kind == nkSym and fn.sym.magic == mEcho:
     result = true
   else:
-    result = fn.typ != nil and ((fn.typ.n[0].len < effectListLen) or
+    result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
       (fn.typ.n[0][exceptionEffects] != nil and
       fn.typ.n[0][exceptionEffects].safeLen > 0))

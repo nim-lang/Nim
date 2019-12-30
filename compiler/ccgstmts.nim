@@ -1026,6 +1026,10 @@ proc bodyCanRaise(n: PNode): bool =
   case n.kind
   of nkCallKinds:
     result = canRaise(n[0])
+    if not result:
+      # also check the arguments:
+      for i in 1 ..< n.len:
+        if bodyCanRaise(n[i]): return true
   of nkRaiseStmt:
     result = true
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
@@ -1098,8 +1102,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       expr(p, t[i][^1], d)
 
     linefmt(p, cpsStmts, "#popCurrentException();$n", [])
-    endBlock(p)
     linefmt(p, cpsStmts, "LA$1_:;$n", [nextExcept])
+    endBlock(p)
 
     inc(i)
   discard pop(p.nestedTryStmts)
