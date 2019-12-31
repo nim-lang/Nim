@@ -3562,6 +3562,13 @@ const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
+template since*(version, body: untyped) {.dirty.} =
+  ## Enable `body` when nim >= `version`
+  ##
+  ## .. code-block:: Nim
+  ##   proc foo*() {.since: (1, 1).} = discard
+  when version <= (NimMajor, NimMinor):
+    body
 
 type
   FileSeekPos* = enum ## Position relative to which seek should happen.
