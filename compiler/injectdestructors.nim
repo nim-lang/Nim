@@ -133,10 +133,10 @@ proc initialized(code: ControlFlowGraph; pc: int,
       inc pc
   return pc
 
-template isUnpackedTuple(s: PSym): bool =
+template isUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
-  s.kind == skTemp and s.typ.kind == tyTuple
+  (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
@@ -542,7 +542,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
               # move the variable declaration to the top of the frame:
               c.addTopVar v
               # make sure it's destroyed at the end of the proc:
-              if not isUnpackedTuple(it[0].sym):
+              if not isUnpackedTuple(v):
                 c.destroys.add genDestroy(c, v)
             if ri.kind == nkEmpty and c.inLoop > 0:
               ri = genDefaultCall(v.typ, c, v.info)
@@ -612,13 +612,15 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   case ri.kind
   of nkCallKinds:
-    result = genSink(c, dest, ri)
-    result.add p(ri, c, consumed)
-  of nkBracketExpr:
-    if ri[0].kind == nkSym and isUnpackedTuple(ri[0].sym):
-      # unpacking of tuple: move out the elements
+    if isUnpackedTuple(dest):
+      result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
+    else:
       result = genSink(c, dest, ri)
       result.add p(ri, c, consumed)
+  of nkBracketExpr:
+    if isUnpackedTuple(ri[0]):
+      # unpacking of tuple: take over elements
+      result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
