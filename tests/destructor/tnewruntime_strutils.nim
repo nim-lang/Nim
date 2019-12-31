@@ -210,5 +210,9 @@ proc staticTests =
 nonStaticTests()
 staticTests()
 
+# bug #12965
+let xaa = @[""].join()
+let xbb = @["", ""].join()
+
 let (a, d) = allocCounters()
 discard cprintf("%ld %ld\n", a, d)
