@@ -1,10 +1,10 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  errormsg: "'=' is not available for type <owned Widget>; requires a copy because it's not the last read of ':envAlt.b1()'; another read is done here: tuse_ownedref_after_move.nim(53, 4)"
+  errormsg: "'=' is not available for type <owned Button>; requires a copy because it's not the last read of ':envAlt.b1'; another read is done here: tuse_ownedref_after_move.nim(53, 4)"
   line: 49
 """
 
-import core / allocators
+import system / allocators
 import system / ansi_c
 
 type

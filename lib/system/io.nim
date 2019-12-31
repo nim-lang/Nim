@@ -522,7 +522,7 @@ proc open*(f: var File, filename: string,
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
   ## This throws no exception if the file could not be opened.
-  var p: pointer = fopen(filename, FormatOpen[mode])
+  var p = fopen(filename, FormatOpen[mode])
   if p != nil:
     when defined(posix) and not defined(nimscript):
       # How `fopen` handles opening a directory is not specified in ISO C and
@@ -547,15 +547,13 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## file variables.
   ##
   ## Default mode is readonly. Returns true iff the file could be reopened.
-  var p: pointer = freopen(filename, FormatOpen[mode], f)
-  result = p != nil
+  result = freopen(filename, FormatOpen[mode], f) != nil
 
 proc open*(f: var File, filehandle: FileHandle,
            mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
   ## Creates a ``File`` from a `filehandle` with given `mode`.
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
-
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
@@ -582,7 +580,7 @@ proc getFilePos*(f: File): int64 {.benign.} =
 
 proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
   ## retrieves the file size (in bytes) of `f`.
-  var oldPos = getFilePos(f)
+  let oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
@@ -639,7 +637,7 @@ when defined(windows) and not defined(nimscript):
     importc: when defined(bcc): "setmode" else: "_setmode",
     header: "<io.h>".}
   var
-    O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
+    O_BINARY {.importc: "_O_BINARY", header: "<fcntl.h>".}: cint
 
   # we use binary mode on Windows:
   c_setmode(c_fileno(stdin), O_BINARY)
@@ -731,9 +729,11 @@ iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ##       buffer.add(line.replace("a", "0") & '\x0A')
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
-  defer: close(f)
-  var res = TaintedString(newStringOfCap(80))
-  while f.readLine(res): yield res
+  try:
+    var res = TaintedString(newStringOfCap(80))
+    while f.readLine(res): yield res
+  finally:
+    close(f)
 
 iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterate over any line in the file `f`.

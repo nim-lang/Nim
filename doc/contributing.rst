@@ -252,6 +252,7 @@ the imperative (command) form. That is, between:
   proc hello*(): string =
     ## Return "hello"
     result = "hello"
+
 or
 
 .. code-block:: nim
@@ -443,3 +444,65 @@ Code reviews
 .. include:: docstyle.rst
 
 
+Evolving the stdlib
+===================
+
+As outlined in https://github.com/nim-lang/RFCs/issues/173 there are a couple
+of guidelines about what should go into the stdlib, what should be added and
+what eventually should be removed.
+
+
+What the compiler itself needs must be part of the stdlib
+---------------------------------------------------------
+
+Maybe in the future the compiler itself can depend on Nimble packages but for
+the time being, we strive to have zero dependencies in the compiler as the
+compiler is the root of the bootstrapping process and is also used to build
+Nimble.
+
+
+Vocabulary types must be part of the stdlib
+-------------------------------------------
+
+These are types most packages need to agree on for better interoperability,
+for example ``Option[T]``. This rule also covers the existing collections like
+``Table``, ``CountTable`` etc. "Sorted" containers based on a tree-like data
+structure are still missing and should be added.
+
+Time handling, especially the ``Time`` type are also covered by this rule.
+
+
+Existing, battle-tested modules stay
+------------------------------------
+
+Reason: There is no benefit in moving them around just to fullfill some design
+fashion as in "Nim's core MUST BE SMALL". If you don't like an existing module,
+don't import it. If a compilation target (e.g. JS) cannot support a module,
+document this limitation.
+
+This covers modules like ``os``, ``osproc``, ``strscans``, ``strutils``,
+``strformat``, etc.
+
+
+New stdlib modules do not start as stdlib modules
+-------------------------------------------------
+
+As we strive for higher quality everywhere, it's easier to adopt existing,
+battle-tested modules eventually rather than creating modules from scratch.
+
+
+Little additions are acceptable
+-------------------------------
+
+As long as they are documented and tested well, adding little helpers
+to existing modules is acceptable. For two reasons:
+
+1. It makes Nim easier to learn and use in the long run.
+   ("Why does sequtils lack a ``countIt``?
+   Because version 1.0 happens to have lacked it? Silly...")
+2. To encourage contributions. Contributors often start with PRs that
+   add simple things and then they stay and also fix bugs. Nim is an
+   open source project and lives from people's contributions and involvement.
+   Newly introduced issues have to be balanced against motivating new people. We know where
+   to find perfectly designed pieces of software that have no bugs -- these are the systems
+   that nobody uses.

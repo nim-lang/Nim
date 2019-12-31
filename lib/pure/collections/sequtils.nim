@@ -447,7 +447,9 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest
-
+  doAssert first <= last
+  if first >= s.len:
+    return
   var i = first
   var j = min(len(s), last+1)
   var newLen = len(s)-j+i
@@ -872,13 +874,6 @@ template mapIt*(s: typed, op: untyped): untyped =
       result.add(op)
     result
 
-template mapIt*(s, typ, op: untyped): untyped {.error:
-  "Deprecated since v0.12; Use 'mapIt(seq1, op)' - without specifying the type of the returned sequence".} =
-  var result: seq[typ] = @[]
-  for it {.inject.} in items(s):
-    result.add(op)
-  result
-
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
   ##
@@ -1180,6 +1175,9 @@ when isMainModule:
     assert outcome == dest, """\
     Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
+    var x = @[1, 2, 3]
+    x.delete(100, 100)
+    assert x == @[1, 2, 3]
 
   block: # insert tests
     var dest = @[1, 1, 1, 1, 1, 1, 1, 1]

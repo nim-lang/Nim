@@ -103,19 +103,20 @@ proc pushGcFrame*(s: GcFrame) {.compilerRtl, inl.} =
   gcFramePtr = s
 
 proc pushSafePoint(s: PSafePoint) {.compilerRtl, inl.} =
-  s.hasRaiseAction = false
   s.prev = excHandler
   excHandler = s
 
 proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
-proc pushCurrentException(e: ref Exception) {.compilerRtl, inl.} =
+proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
   e.up = currException
   currException = e
+  #showErrorMessage "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
+  #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
@@ -139,8 +140,23 @@ proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
 const
   nativeStackTraceSupported* = (defined(macosx) or defined(linux)) and
                               not NimStackTrace
-  hasSomeStackTrace = NimStackTrace or
-    defined(nativeStackTrace) and nativeStackTraceSupported
+  hasSomeStackTrace = NimStackTrace or defined(nimStackTraceOverride) or
+    (defined(nativeStackTrace) and nativeStackTraceSupported)
+
+when defined(nimStackTraceOverride):
+  type StackTraceOverrideProc* = proc (): string {.nimcall, noinline, benign, raises: [], tags: [].}
+    ## Procedure type for overriding the default stack trace.
+
+  var stackTraceOverrideGetTraceback: StackTraceOverrideProc = proc(): string {.noinline.} =
+    result = "Stack trace override procedure not registered.\n"
+
+  proc registerStackTraceOverride*(overrideProc: StackTraceOverrideProc) =
+    ## Override the default stack trace inside rawWriteStackTrace() with your
+    ## own procedure.
+    stackTraceOverrideGetTraceback = overrideProc
+
+  proc auxWriteStackTraceWithOverride(s: var string) =
+    add(s, stackTraceOverrideGetTraceback())
 
 when defined(nativeStacktrace) and nativeStackTraceSupported:
   type
@@ -288,7 +304,10 @@ proc stackTraceAvailable*(): bool
 
 when hasSomeStackTrace:
   proc rawWriteStackTrace(s: var string) =
-    when NimStackTrace:
+    when defined(nimStackTraceOverride):
+      add(s, "Traceback (most recent call last, using override)\n")
+      auxWriteStackTraceWithOverride(s)
+    elif NimStackTrace:
       if framePtr == nil:
         add(s, "No stack traceback available\n")
       else:
@@ -307,7 +326,9 @@ when hasSomeStackTrace:
       s = @[]
 
   proc stackTraceAvailable(): bool =
-    when NimStackTrace:
+    when defined(nimStackTraceOverride):
+      result = true
+    elif NimStackTrace:
       if framePtr == nil:
         result = false
       else:
@@ -332,28 +353,13 @@ template unhandled(buf, body) =
   else:
     body
 
-proc raiseExceptionAux(e: ref Exception) =
-  if localRaiseHook != nil:
-    if not localRaiseHook(e): return
-  if globalRaiseHook != nil:
-    if not globalRaiseHook(e): return
+proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions):
-    if e == currException:
-      {.emit: "throw;".}
-    else:
-      pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
-  elif defined(nimQuirky):
-    pushCurrentException(e)
+    {.emit: "throw;".}
   else:
+    template e: untyped = currException
     if excHandler != nil:
-      if not excHandler.hasRaiseAction or excHandler.raiseAction(e):
-        pushCurrentException(e)
-        c_longjmp(excHandler.context, 1)
+      c_longjmp(excHandler.context, 1)
     else:
       when hasSomeStackTrace:
         var buf = newStringOfCap(2000)
@@ -367,6 +373,7 @@ proc raiseExceptionAux(e: ref Exception) =
         unhandled(buf):
           showErrorMessage(buf)
           quitOrDebug()
+        `=destroy`(buf)
       else:
         # ugly, but avoids heap allocations :-)
         template xadd(buf, s, slen) =
@@ -392,21 +399,85 @@ proc raiseExceptionAux(e: ref Exception) =
           showErrorMessage(tbuf())
           quitOrDebug()
 
-proc raiseExceptionEx(e: ref Exception, ename, procname, filename: cstring, line: int) {.compilerRtl.} =
+proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
+  if localRaiseHook != nil:
+    if not localRaiseHook(e): return
+  if globalRaiseHook != nil:
+    if not globalRaiseHook(e): return
+  when defined(cpp) and not defined(noCppExceptions):
+    if e == currException:
+      {.emit: "throw;".}
+    else:
+      pushCurrentException(e)
+      raiseCounter.inc
+      if raiseCounter == 0:
+        raiseCounter.inc # skip zero at overflow
+      e.raiseId = raiseCounter
+      {.emit: "`e`->raise();".}
+  elif defined(nimQuirky):
+    pushCurrentException(e)
+  else:
+    if excHandler != nil:
+      pushCurrentException(e)
+      c_longjmp(excHandler.context, 1)
+    else:
+      when hasSomeStackTrace:
+        var buf = newStringOfCap(2000)
+        if e.trace.len == 0: rawWriteStackTrace(buf)
+        else: add(buf, $e.trace)
+        add(buf, "Error: unhandled exception: ")
+        add(buf, e.msg)
+        add(buf, " [")
+        add(buf, $e.name)
+        add(buf, "]\n")
+        unhandled(buf):
+          showErrorMessage(buf)
+          quitOrDebug()
+        `=destroy`(buf)
+      else:
+        # ugly, but avoids heap allocations :-)
+        template xadd(buf, s, slen) =
+          if L + slen < high(buf):
+            copyMem(addr(buf[L]), cstring(s), slen)
+            inc L, slen
+        template add(buf, s) =
+          xadd(buf, s, s.len)
+        var buf: array[0..2000, char]
+        var L = 0
+        if e.trace.len != 0:
+          add(buf, $e.trace) # gc allocation
+        add(buf, "Error: unhandled exception: ")
+        add(buf, e.msg)
+        add(buf, " [")
+        xadd(buf, e.name, e.name.len)
+        add(buf, "]\n")
+        when defined(nimNoArrayToCstringConversion):
+          template tbuf(): untyped = addr buf
+        else:
+          template tbuf(): untyped = buf
+        unhandled(tbuf()):
+          showErrorMessage(tbuf())
+          quitOrDebug()
+
+proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring,
+                      line: int) {.compilerRtl, nodestroy.} =
   if e.name.isNil: e.name = ename
   when hasSomeStackTrace:
-    if e.trace.len == 0:
-      rawWriteStackTrace(e.trace)
-    elif framePtr != nil:
-      e.trace.add reraisedFrom(reraisedFromBegin)
-      auxWriteStackTrace(framePtr, e.trace)
-      e.trace.add reraisedFrom(reraisedFromEnd)
+    when defined(nimStackTraceOverride):
+      e.trace = @[]
+    elif NimStackTrace:
+      if e.trace.len == 0:
+        rawWriteStackTrace(e.trace)
+      elif framePtr != nil:
+        e.trace.add reraisedFrom(reraisedFromBegin)
+        auxWriteStackTrace(framePtr, e.trace)
+        e.trace.add reraisedFrom(reraisedFromEnd)
   else:
     if procname != nil and filename != nil:
       e.trace.add StackTraceEntry(procname: procname, filename: filename, line: line)
   raiseExceptionAux(e)
 
-proc raiseException(e: ref Exception, ename: cstring) {.compilerRtl.} =
+proc raiseException(e: sink(ref Exception), ename: cstring) {.compilerRtl.} =
   raiseExceptionEx(e, ename, nil, nil, 0)
 
 proc reraiseException() {.compilerRtl.} =
@@ -531,12 +602,12 @@ when not defined(noSignalHandler) and not defined(useNimRtl):
     when defined(memtracker):
       logPendingOps()
     when hasSomeStackTrace:
-      GC_disable()
+      when not usesDestructors: GC_disable()
       var buf = newStringOfCap(2000)
       rawWriteStackTrace(buf)
       processSignal(sign, buf.add) # nice hu? currying a la Nim :-)
       showErrorMessage(buf)
-      GC_enable()
+      when not usesDestructors: GC_enable()
     else:
       var msg: cstring
       template asgn(y) =

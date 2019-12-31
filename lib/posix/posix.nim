@@ -86,7 +86,7 @@ const
 type Sighandler = proc (a: cint) {.noconv.}
 
 const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
-    defined(openbsd) or defined(dragonfly) ## \
+    defined(osx) or defined(openbsd) or defined(dragonfly) ## \
   ## Boolean flag that indicates if the system supports nanosecond time
   ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
   ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
@@ -97,6 +97,8 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 when (defined(linux) and not defined(android)) and defined(amd64):
   include posix_linux_amd64
+elif defined(openbsd) and defined(amd64):
+  include posix_openbsd_amd64
 elif (defined(macos) or defined(macosx) or defined(bsd)) and defined(cpu64):
   include posix_macos_amd64
 elif defined(nintendoswitch):

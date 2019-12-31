@@ -304,3 +304,12 @@ proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
     let half = i div 2
     # Reverse
     for t in 0 .. half-1: swap(result[t], result[i-t-1])
+
+when defined(gcDestructors):
+  proc GC_getStatistics*(): string =
+    result = "[GC] total memory: "
+    result.addInt getTotalMem()
+    result.add "\n[GC] occupied memory: "
+    result.addInt getOccupiedMem()
+    result.add '\n'
+    #"[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &

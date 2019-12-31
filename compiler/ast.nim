@@ -228,7 +228,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # already 38 flags!
+  TSymFlag* = enum    # 40 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -284,7 +284,8 @@ type
                       # variable is generated closure environment; requires early
                       # destruction for --newruntime.
     sfTemplateParam   # symbol is a template parameter
-
+    sfCursor          # variable/field is a cursor, see RFC 177 for details
+    sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
 
   TSymFlags* = set[TSymFlag]
 
@@ -477,7 +478,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~38)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~39)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -536,6 +537,7 @@ type
     tfContravariant   # contravariant generic param
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
+    tfAcyclic # object type was annotated as .acyclic
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -634,7 +636,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mReset,
+    mDefault, mUnown, mAccessEnv, mAccessTypeInfo, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -823,6 +825,7 @@ type
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
+      alignment*: int # for alignas(X) expressions
     else: nil
     magic*: TMagic
     typ*: PType
@@ -868,6 +871,8 @@ type
     attachedDestructor,
     attachedAsgn,
     attachedSink,
+    attachedTrace,
+    attachedDispose,
     attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
@@ -1023,27 +1028,27 @@ type Indexable = PNode | PType
 
 proc len*(n: Indexable): int {.inline.} =
   when defined(nimNoNilSeqs):
-    result = len(n.sons)
+    result = n.sons.len
   else:
     if isNil(n.sons): result = 0
-    else: result = len(n.sons)
+    else: result = n.sons.len
 
 proc safeLen*(n: PNode): int {.inline.} =
   ## works even for leaves.
   if n.kind in {nkNone..nkNilLit}: result = 0
-  else: result = len(n)
+  else: result = n.len
 
 proc safeArrLen*(n: PNode): int {.inline.} =
   ## works for array-like objects (strings passed as openArray in VM).
-  if n.kind in {nkStrLit..nkTripleStrLit}:result = len(n.strVal)
+  if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
-  else: result = len(n)
+  else: result = n.len
 
-proc add*(father, son: PNode) =
+proc add*(father, son: Indexable) =
   assert son != nil
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
@@ -1142,18 +1147,18 @@ const                         # for all kind of hash tables:
 
 proc copyStrTable*(dest: var TStrTable, src: TStrTable) =
   dest.counter = src.counter
-  setLen(dest.data, len(src.data))
-  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
+  setLen(dest.data, src.data.len)
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyIdTable*(dest: var TIdTable, src: TIdTable) =
   dest.counter = src.counter
-  newSeq(dest.data, len(src.data))
-  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
+  newSeq(dest.data, src.data.len)
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc copyObjectSet*(dest: var TObjectSet, src: TObjectSet) =
   dest.counter = src.counter
-  setLen(dest.data, len(src.data))
-  for i in 0 .. high(src.data): dest.data[i] = src.data[i]
+  setLen(dest.data, src.data.len)
+  for i in 0..high(src.data): dest.data[i] = src.data[i]
 
 proc discardSons*(father: PNode) =
   when defined(nimNoNilSeqs):
@@ -1284,12 +1289,6 @@ proc newStrNode*(strVal: string; info: TLineInfo): PNode =
   result = newNodeI(nkStrLit, info)
   result.strVal = strVal
 
-proc addSon*(father, son: PNode) =
-  assert son != nil
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-
 proc newProcNode*(kind: TNodeKind, info: TLineInfo, body: PNode,
                  params,
                  name, pattern, genericParams,
@@ -1302,7 +1301,8 @@ const
   UnspecifiedLockLevel* = TLockLevel(-1'i16)
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
-  AttachedOpToStr*: array[TTypeAttachedOp, string] = ["=destroy", "=", "=sink", "=deepcopy"]
+  AttachedOpToStr*: array[TTypeAttachedOp, string] = [
+    "=destroy", "=", "=sink", "=trace", "=dispose", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
@@ -1364,8 +1364,8 @@ proc assignType*(dest, src: PType) =
       mergeLoc(dest.sym.loc, src.sym.loc)
     else:
       dest.sym = src.sym
-  newSons(dest, len(src))
-  for i in 0 ..< len(src): dest.sons[i] = src.sons[i]
+  newSons(dest, src.len)
+  for i in 0..<src.len: dest[i] = src[i]
 
 proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
   result = newType(t.kind, owner)
@@ -1460,7 +1460,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
   result = t.kind in {tyString, tyRef, tySequence} or
            t.kind == tyProc and t.callConv == ccClosure
 
-proc propagateToOwner*(owner, elem: PType) =
+proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
   if tfNotNil in elem.flags:
@@ -1476,19 +1476,13 @@ proc propagateToOwner*(owner, elem: PType) =
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
 
-  if tfHasAsgn in elem.flags:
+  let mask = elem.flags * {tfHasAsgn, tfHasOwned}
+  if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
                    tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
-      o2.flags.incl tfHasAsgn
-      owner.flags.incl tfHasAsgn
-
-  if tfHasOwned in elem.flags:
-    let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
-    if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
-      o2.flags.incl tfHasOwned
-      owner.flags.incl tfHasOwned
+      o2.flags.incl mask
+      owner.flags.incl mask
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
@@ -1498,30 +1492,29 @@ proc propagateToOwner*(owner, elem: PType) =
       # ensure this doesn't bite us in sempass2.
       owner.flags.incl tfHasGCedMem
 
-proc rawAddSon*(father, son: PType) =
+proc rawAddSon*(father, son: PType; propagateHasAsgn = true) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
-  if not son.isNil: propagateToOwner(father, son)
+  father.sons.add(son)
+  if not son.isNil: propagateToOwner(father, son, propagateHasAsgn)
 
 proc rawAddSonNoPropagationOfTypeFlags*(father, son: PType) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
 
 proc addSonNilAllowed*(father, son: PNode) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
-  add(father.sons, son)
+  father.sons.add(son)
 
 proc delSon*(father: PNode, idx: int) =
   when defined(nimNoNilSeqs):
     if father.len == 0: return
   else:
     if isNil(father.sons): return
-  var length = len(father)
-  for i in idx .. length - 2: father.sons[i] = father.sons[i + 1]
-  setLen(father.sons, length - 1)
+  for i in idx..<father.len - 1: father[i] = father[i + 1]
+  father.sons.setLen(father.len - 1)
 
 proc copyNode*(src: PNode): PNode =
   # does not copy its sons!
@@ -1560,7 +1553,7 @@ proc shallowCopy*(src: PNode): PNode =
   of nkSym: result.sym = src.sym
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, len(src))
+  else: newSeq(result.sons, src.len)
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
@@ -1581,21 +1574,21 @@ proc copyTree*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else:
-    newSeq(result.sons, len(src))
-    for i in 0 ..< len(src):
-      result.sons[i] = copyTree(src.sons[i])
+    newSeq(result.sons, src.len)
+    for i in 0..<src.len:
+      result[i] = copyTree(src[i])
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
-  for i in 0 ..< len(n):
-    if n.sons[i].kind == kind:
+  for i in 0..<n.len:
+    if n[i].kind == kind:
       return true
   result = false
 
 proc hasNilSon*(n: PNode): bool =
-  for i in 0 ..< safeLen(n):
-    if n.sons[i] == nil:
+  for i in 0..<n.safeLen:
+    if n[i] == nil:
       return true
-    elif hasNilSon(n.sons[i]):
+    elif hasNilSon(n[i]):
       return true
   result = false
 
@@ -1604,15 +1597,15 @@ proc containsNode*(n: PNode, kinds: TNodeKinds): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind in kinds
   else:
-    for i in 0 ..< len(n):
-      if n.kind in kinds or containsNode(n.sons[i], kinds): return true
+    for i in 0..<n.len:
+      if n.kind in kinds or containsNode(n[i], kinds): return true
 
 proc hasSubnodeWith*(n: PNode, kind: TNodeKind): bool =
   case n.kind
   of nkEmpty..nkNilLit: result = n.kind == kind
   else:
-    for i in 0 ..< len(n):
-      if (n.sons[i].kind == kind) or hasSubnodeWith(n.sons[i], kind):
+    for i in 0..<n.len:
+      if (n[i].kind == kind) or hasSubnodeWith(n[i], kind):
         return true
     result = false
 
@@ -1708,19 +1701,19 @@ proc requiredParams*(s: PSym): int =
   # Returns the number of required params (without default values)
   # XXX: Perhaps we can store this in the `offset` field of the
   # symbol instead?
-  for i in 1 ..< s.typ.len:
+  for i in 1..<s.typ.len:
     if s.typ.n[i].sym.ast != nil:
       return i - 1
   return s.typ.len - 1
 
 proc hasPattern*(s: PSym): bool {.inline.} =
-  result = isRoutine(s) and s.ast.sons[patternPos].kind != nkEmpty
+  result = isRoutine(s) and s.ast[patternPos].kind != nkEmpty
 
 iterator items*(n: PNode): PNode =
-  for i in 0..<n.safeLen: yield n.sons[i]
+  for i in 0..<n.safeLen: yield n[i]
 
 iterator pairs*(n: PNode): tuple[i: int, n: PNode] =
-  for i in 0..<n.safeLen: yield (i, n.sons[i])
+  for i in 0..<n.safeLen: yield (i, n[i])
 
 proc isAtom*(n: PNode): bool {.inline.} =
   result = n.kind >= nkNone and n.kind <= nkNilLit
@@ -1738,7 +1731,7 @@ proc makeStmtList*(n: PNode): PNode =
 
 proc skipStmtList*(n: PNode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr}:
-    for i in 0 .. n.len-2:
+    for i in 0..<n.len-1:
       if n[i].kind notin {nkEmpty, nkCommentStmt}: return n
     result = n.lastSon
   else:
@@ -1795,7 +1788,7 @@ when false:
   proc containsNil*(n: PNode): bool =
     # only for debugging
     if n.isNil: return true
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       if n[i].containsNil: return true
 
 template hasDestructor*(t: PType): bool = {tfHasAsgn, tfHasOwned} * t.flags != {}
@@ -1829,13 +1822,31 @@ proc newProcType*(info: TLineInfo; owner: PSym): PType =
   # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
   # the effects are now stored in there too ... this is a bit hacky, but as
   # usual we desperately try to save memory:
-  addSon(result.n, newNodeI(nkEffectList, info))
+  result.n.add newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1
-  addSon(procType.n, newSymNode(param))
+  procType.n.add newSymNode(param)
   rawAddSon(procType, param.typ)
 
 template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
 template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
 template asink*(t: PType): PSym = t.attachedOps[attachedSink]
+
+const magicsThatCanRaise = {
+  mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst}
+
+proc canRaiseConservative*(fn: PNode): bool =
+  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
+    result = false
+  else:
+    result = true
+
+proc canRaise*(fn: PNode): bool =
+  if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
+      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc}):
+    result = false
+  else:
+    result = fn.typ != nil and ((fn.typ.n[0].len < effectListLen) or
+      (fn.typ.n[0][exceptionEffects] != nil and
+      fn.typ.n[0][exceptionEffects].safeLen > 0))

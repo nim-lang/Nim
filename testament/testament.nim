@@ -90,7 +90,7 @@ proc getFileDir(filename: string): string =
   if not result.isAbsolute():
     result = getCurrentDir() / result
 
-proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: string = ""): tuple[
+proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: string = ""): tuple[
                 cmdLine: string,
                 output: TaintedString,
                 exitCode: int] {.tags:
@@ -100,8 +100,8 @@ proc execCmdEx2(command: string, args: openarray[string]; workingDir, input: str
   for arg in args:
     result.cmdLine.add ' '
     result.cmdLine.add quoteShell(arg)
-
-  var p = startProcess(command, workingDir=workingDir, args=args, options={poStdErrToStdOut, poUsePath})
+  var p = startProcess(command, workingDir=workingDir, args=args,
+                       options={poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -246,7 +246,7 @@ proc `$`(x: TResults): string =
 proc addResult(r: var TResults, test: TTest, target: TTarget,
                expected, given: string, successOrig: TResultEnum) =
   # test.name is easier to find than test.name.extractFilename
-  # A bit hacky but simple and works with tests/testament/tshouldfail.nim
+  # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
   name.add " " & $target & test.options
 
@@ -441,12 +441,16 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
           if isJsTarget:
             exeCmd = nodejs
             args = concat(@[exeFile], args)
-          elif defined(posix) and not exeFile.contains('/'):
-            # "security" in Posix is actually just a euphemism
-            # for "unproductive arbitrary shit"
-            exeCmd = "./" & exeFile
           else:
-            exeCmd = exeFile
+            if defined(posix) and not exeFile.contains('/'):
+              # "security" in Posix is actually just a euphemism
+              # for "unproductive arbitrary shit"
+              exeCmd = "./" & exeFile
+            else:
+              exeCmd = exeFile
+            if expected.useValgrind:
+              args = @["--error-exitcode=1"] & exeCmd & args
+              exeCmd = "valgrind"
           var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
@@ -461,7 +465,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
           if exitCode != expected.exitCode:
             r.addResult(test, target, "exitcode: " & $expected.exitCode,
                               "exitcode: " & $exitCode & "\n\nOutput:\n" &
-                              bufB, reExitCodesDiffer)
+                              bufB, reExitcodesDiffer)
           elif (expected.outputCheck == ocEqual and expected.output != bufB) or
               (expected.outputCheck == ocSubstr and expected.output notin bufB):
             given.err = reOutputsDiffer
@@ -518,7 +522,7 @@ proc testC(r: var TResults, test: TTest, action: TTestAction) =
   elif action == actionRun:
     let exeFile = changeFileExt(test.name, ExeExt)
     var (_, exitCode) = execCmdEx(exeFile, options = {poStdErrToStdOut, poUsePath})
-    if exitCode != 0: given.err = reExitCodesDiffer
+    if exitCode != 0: given.err = reExitcodesDiffer
   if given.err == reSuccess: inc(r.passed)
 
 proc testExec(r: var TResults, test: TTest) =
@@ -531,7 +535,7 @@ proc testExec(r: var TResults, test: TTest) =
   if errC == 0:
     given.err = reSuccess
   else:
-    given.err = reExitCodesDiffer
+    given.err = reExitcodesDiffer
     given.msg = outp.string
 
   if given.err == reSuccess: inc(r.passed)
@@ -595,8 +599,8 @@ proc loadSkipFrom(name: string): seq[string] =
       result.add sline
 
 proc main() =
-  os.putenv "NIMTEST_COLOR", "never"
-  os.putenv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
+  os.putEnv "NIMTEST_COLOR", "never"
+  os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
   backend.open()
   var optPrintResults = false
@@ -608,7 +612,7 @@ proc main() =
 
   var p = initOptParser()
   p.next()
-  while p.kind in {cmdLongoption, cmdShortOption}:
+  while p.kind in {cmdLongOption, cmdShortOption}:
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true

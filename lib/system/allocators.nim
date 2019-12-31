@@ -43,21 +43,27 @@ proc getLocalAllocator*(): Allocator =
     result = addr allocatorStorage
     result.alloc = proc (a: Allocator; size: int; alignment: int = 8): pointer {.nimcall, raises: [].} =
       when defined(useMalloc) and not defined(nimscript):
-        result = c_malloc(size)
+        result = c_malloc(cuint size)
         # XXX do we need this?
         nimZeroMem(result, size)
+      elif compileOption("threads"):
+        result = system.allocShared0(size)
       else:
         result = system.alloc0(size)
       inc a.allocCount
     result.dealloc = proc (a: Allocator; p: pointer; size: int) {.nimcall, raises: [].} =
       when defined(useMalloc) and not defined(nimscript):
         c_free(p)
+      elif compileOption("threads"):
+        system.deallocShared(p)
       else:
         system.dealloc(p)
       inc a.deallocCount
     result.realloc = proc (a: Allocator; p: pointer; oldSize, newSize: int): pointer {.nimcall, raises: [].} =
       when defined(useMalloc) and not defined(nimscript):
-        result = c_realloc(p, newSize)
+        result = c_realloc(p, cuint newSize)
+      elif compileOption("threads"):
+        result = system.reallocShared(p, newSize)
       else:
         result = system.realloc(p, newSize)
       nimZeroMem(result +! oldSize, newSize - oldSize)

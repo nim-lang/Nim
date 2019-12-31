@@ -364,11 +364,16 @@ proc buildJS() =
   exec(findNim() & " js " & (docHackDir / "dochack.nim"))
 
 proc buildDocs*(args: string) =
+  const
+    docHackJs = "dochack.js"
+    css = "nimdoc.css"
   let
     a = nimArgs & " " & args
-    docHackJs = "dochack.js"
     docHackJsSource = docHackDir / docHackJs
     docHackJsDest = docHtmlOutput / docHackJs
+
+    cssSource = "doc" / css
+    cssDest = docHtmlOutput / css
   buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
@@ -382,3 +387,6 @@ proc buildDocs*(args: string) =
   buildDoc(nimArgs, docHtmlOutput)
   copyFile(docHackJsSource, docHackJsDest)
   copyFile(docHackJsSource, docup / docHackJs)
+
+  copyFile(cssSource, cssDest)
+  copyFile(cssSource, docup / css)

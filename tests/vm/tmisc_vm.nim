@@ -12,6 +12,12 @@ main:end
 (width: 0, height: 0, path: "")
 @[(width: 0, height: 0, path: ""), (width: 0, height: 0, path: "")]
 Done!
+foo4
+foo4
+foo4
+(a: 0, b: 0)
+(a: 0, b: 0)
+(a: 0, b: 0)
 '''
 """
 
@@ -214,3 +220,34 @@ static:
   someTransform(state)
 
   doAssert state[1] == 13087528040916209671'u64
+
+import macros
+# bug #12670
+
+macro fooImpl(arg: untyped) =
+  result = quote do:
+    `arg`
+
+proc foo(): string {.compileTime.} =
+  fooImpl:
+    result = "foo"
+    result.addInt 4
+
+static:
+  echo foo()
+  echo foo()
+  echo foo()
+
+# bug #12488
+type
+  MyObject = object
+    a,b: int
+  MyObjectRef = ref MyObject
+
+static:
+  let x1 = new(MyObject)
+  echo x1[]
+  let x2 = new(MyObjectRef)
+  echo x2[]
+  let x3 = new(ref MyObject) # cannot generate VM code for ref MyObject
+  echo x3[]

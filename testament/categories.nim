@@ -40,7 +40,8 @@ const
     "coroutines",
     "osproc",
     "shouldfail",
-    "dir with space"
+    "dir with space",
+    "destructor"
   ]
 
 proc isTestFile*(file: string): bool =
@@ -176,6 +177,11 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " -d:release", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat)
+    when filename != "gctest":
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:orc", cat)
+      testSpec r, makeTest("tests/gc" / filename, options &
+                    " --gc:orc -d:release", cat)
 
   template testWithoutBoehm(filename: untyped) =
     testWithoutMs filename
@@ -295,7 +301,7 @@ proc testNimInAction(r: var TResults, cat: Category, options: string) =
     testSpec r, makeTest(filename, options, cat), {targetJS}
 
   template testCPP(filename: untyped) =
-    testSpec r, makeTest(filename, options, cat), {targetCPP}
+    testSpec r, makeTest(filename, options, cat), {targetCpp}
 
   let tests = [
     "niminaction/Chapter1/various1",
@@ -382,7 +388,7 @@ proc findMainFile(dir: string): string =
       elif file.endsWith(".nim"):
         if result.len == 0: result = file
         inc nimFiles
-  if nimFiles != 1: result.setlen(0)
+  if nimFiles != 1: result.setLen(0)
 
 proc manyLoc(r: var TResults, cat: Category, options: string) =
   for kind, dir in os.walkDir("tests/manyloc"):
@@ -534,7 +540,7 @@ const MegaTestCat = "megatest"
 
 proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
-  result = if b.startswith(a): b else: a & b
+  result = if b.startsWith(a): b else: a & b
 
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = testsDir &.? cat.string / test

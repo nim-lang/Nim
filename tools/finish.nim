@@ -225,6 +225,8 @@ proc main() =
       if x.len == 0: continue
       let y = try: expandFilename(if x[0] == '"' and x[^1] == '"':
                                     substr(x, 1, x.len-2) else: x)
+              except OSError as e:
+                if e.errorCode == 0: x else: ""
               except: ""
       if y.cmpIgnoreCase(nimDesiredPath) == 0:
         nimAlreadyInPath = true

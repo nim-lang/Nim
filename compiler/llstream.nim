@@ -109,12 +109,12 @@ proc llReadFromStdin(s: PLLStream, buf: pointer, bufLen: int): int =
   var line = newStringOfCap(120)
   var triples = 0
   while readLineFromStdin(if s.s.len == 0: ">>> " else: "... ", line):
-    add(s.s, line)
-    add(s.s, "\n")
+    s.s.add(line)
+    s.s.add("\n")
     inc triples, countTriples(line)
     if not continueLine(line, (triples and 1) == 1): break
   inc(s.lineOffset)
-  result = min(bufLen, len(s.s) - s.rd)
+  result = min(bufLen, s.s.len - s.rd)
   if result > 0:
     copyMem(buf, addr(s.s[s.rd]), result)
     inc(s.rd, result)
@@ -124,7 +124,7 @@ proc llStreamRead*(s: PLLStream, buf: pointer, bufLen: int): int =
   of llsNone:
     result = 0
   of llsString:
-    result = min(bufLen, len(s.s) - s.rd)
+    result = min(bufLen, s.s.len - s.rd)
     if result > 0:
       copyMem(buf, addr(s.s[0 + s.rd]), result)
       inc(s.rd, result)
@@ -139,7 +139,7 @@ proc llStreamReadLine*(s: PLLStream, line: var string): bool =
   of llsNone:
     result = true
   of llsString:
-    while s.rd < len(s.s):
+    while s.rd < s.s.len:
       case s.s[s.rd]
       of '\x0D':
         inc(s.rd)
@@ -149,9 +149,9 @@ proc llStreamReadLine*(s: PLLStream, line: var string): bool =
         inc(s.rd)
         break
       else:
-        add(line, s.s[s.rd])
+        line.add(s.s[s.rd])
         inc(s.rd)
-    result = line.len > 0 or s.rd < len(s.s)
+    result = line.len > 0 or s.rd < s.s.len
   of llsFile:
     result = readLine(s.f, line)
   of llsStdIn:
@@ -162,8 +162,8 @@ proc llStreamWrite*(s: PLLStream, data: string) =
   of llsNone, llsStdIn:
     discard
   of llsString:
-    add(s.s, data)
-    inc(s.wr, len(data))
+    s.s.add(data)
+    inc(s.wr, data.len)
   of llsFile:
     write(s.f, data)
 
@@ -177,7 +177,7 @@ proc llStreamWrite*(s: PLLStream, data: char) =
   of llsNone, llsStdIn:
     discard
   of llsString:
-    add(s.s, data)
+    s.s.add(data)
     inc(s.wr)
   of llsFile:
     c = data
@@ -189,7 +189,7 @@ proc llStreamWrite*(s: PLLStream, buf: pointer, buflen: int) =
     discard
   of llsString:
     if buflen > 0:
-      setLen(s.s, len(s.s) + buflen)
+      setLen(s.s, s.s.len + buflen)
       copyMem(addr(s.s[0 + s.wr]), buf, buflen)
       inc(s.wr, buflen)
   of llsFile:
@@ -204,7 +204,7 @@ proc llStreamReadAll*(s: PLLStream): string =
   of llsString:
     if s.rd == 0: result = s.s
     else: result = substr(s.s, s.rd)
-    s.rd = len(s.s)
+    s.rd = s.s.len
   of llsFile:
     result = newString(bufSize)
     var bytes = readBuffer(s.f, addr(result[0]), bufSize)

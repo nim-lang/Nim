@@ -1,4 +1,4 @@
-# x.x - xxxx-xx-xx
+# 1.2 - xxxx-xx-xx
 
 
 ## Changes affecting backwards compatibility
@@ -16,7 +16,7 @@
 - `strutils.formatFloat` with `precision = 0` has the same behavior in all
   backends, and it is compatible with Python's behavior,
   e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
-
+- Global variable `lc` has been removed from sugar.nim.
 
 ### Breaking changes in the compiler
 
@@ -32,11 +32,18 @@
 - `system.writeFile` has been overloaded to also support `openarray[byte]`.
 - Added overloaded `strformat.fmt` macro that use specified characters as
   delimiter instead of '{' and '}'.
-- introduced new procs in `tables.nim`: `OrderedTable.take`, `CountTable.del`,
-  `CountTable.take`
+- introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
+  `CountTable.pop`, `Table.pop`
+- To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
+
+
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
+- Added `sugar.collect` that does comprehension for seq/set/table collections.
+
+- Added `sugar.capture` for capturing some local loop variables when creating a closure.
+  This is an enhanced version of `closureScope`.
 - `jsfetch` [Fetch](https://developer.mozilla.org/docs/Web/API/Fetch_API) wrapper for JavaScript target.
 
 
@@ -52,16 +59,20 @@
 - `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
-
+- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 
 
 ## Language additions
 
-
+- An `align` pragma can now be used for variables and object fields, similar
+  to the `alignas` declaration modifier in C/C++.
 
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
+- Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
+  versions. The documentation was improved to acknowledge this special case.
+  See https://github.com/nim-lang/RFCs/issues/175 for more details.
 
 
 ### Tool changes
@@ -72,7 +83,11 @@
 
 - JS target indent is all spaces, instead of mixed spaces and tabs, for
   generated JavaScript.
-
+- The Nim compiler now supports the ``--asm`` command option for easier
+  inspection of the produced assembler code.
+- The Nim compiler now supports a new pragma called ``.localPassc`` to
+  pass specific compiler options to the C(++) backend for the C(++) file
+  that was produced from the current Nim module.
 
 
 ## Bugfixes

@@ -72,3 +72,8 @@ proc testObj(typ: typedesc[object]): Y[typ] =
   discard
 
 discard testObj(X)
+
+
+#bug 12804
+import typetraits
+discard int.name[0]

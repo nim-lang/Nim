@@ -1206,7 +1206,8 @@ proc parseHexStr*(s: string): string {.noSideEffect, procvar,
   for pos, c in s:
     let val = hexCharToValueMap[ord(c)].ord
     if val == 17:
-      raise newException(ValueError, "Invalid hex char " & repr(c))
+      raise newException(ValueError, "Invalid hex char `" &
+                         c & "` (ord " & $c.ord & ")")
     if pos mod 2 == 0:
       buf = val
     else:
@@ -2391,7 +2392,7 @@ proc formatFloat*(f: float, format: FloatFormatMode = ffDefault,
 
   result = formatBiggestFloat(f, format, precision, decimalSep)
 
-proc trimZeros*(x: var string) {.noSideEffect.} =
+proc trimZeros*(x: var string; decimalSep = '.') {.noSideEffect.} =
   ## Trim trailing zeros from a formatted floating point
   ## value `x` (must be declared as ``var``).
   ##
@@ -2400,17 +2401,15 @@ proc trimZeros*(x: var string) {.noSideEffect.} =
     var x = "123.456000000"
     x.trimZeros()
     doAssert x == "123.456"
-  var spl: seq[string]
-  if x.contains('.') or x.contains(','):
-    if x.contains('e'):
-      spl = x.split('e')
-      x = spl[0]
-    while x[x.high] == '0':
-      x.setLen(x.len-1)
-    if x[x.high] in [',', '.']:
-      x.setLen(x.len-1)
-    if spl.len > 0:
-      x &= "e" & spl[1]
+
+  let sPos = find(x, decimalSep)
+  if sPos >= 0:
+    var last = find(x, 'e', start = sPos)
+    last = if last >= 0: last - 1 else: high(x)
+    var pos = last
+    while pos >= 0 and x[pos] == '0': dec(pos)
+    if pos > sPos: inc(pos)
+    x.delete(pos, last)
 
 type
   BinaryPrefixMode* = enum ## the different names for binary prefixes
@@ -2467,7 +2466,7 @@ proc formatSize*(bytes: int64,
   fbytes = bytes.float / (1'i64 shl (matchedIndex*10)).float
   result = formatFloat(fbytes, format = ffDecimal, precision = 3,
       decimalSep = decimalSep)
-  result.trimZeros()
+  result.trimZeros(decimalSep)
   if includeSpace:
     result &= " "
   result &= prefixes[matchedIndex]

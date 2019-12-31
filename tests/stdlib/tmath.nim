@@ -19,7 +19,7 @@ import sets, tables
 
 suite "random int":
   test "there might be some randomness":
-    var set = initSet[int](128)
+    var set = initHashSet[int](128)
 
     for i in 1..1000:
       incl(set, random(high(int)))
