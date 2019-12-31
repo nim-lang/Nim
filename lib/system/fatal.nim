@@ -24,7 +24,7 @@ when hostOS == "standalone":
     rawoutput(message)
     panic(arg)
 
-elif (defined(nimQuirky) and not defined(nimscript)) or gotoBasedExceptions:
+elif (defined(nimQuirky) or gotoBasedExceptions) and not defined(nimscript):
   import ansi_c
 
   proc name(t: typedesc): string {.magic: "TypeTrait".}
