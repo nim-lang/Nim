@@ -136,7 +136,7 @@ proc initialized(code: ControlFlowGraph; pc: int,
 template isUnpackedTuple(n: PNode): bool =
   ## we move out all elements of unpacked tuples,
   ## hence unpacked tuples themselves don't need to be destroyed
-  n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple
+  (n.kind == nkSym and n.sym.kind == skTemp and n.sym.typ.kind == tyTuple)
 
 proc checkForErrorPragma(c: Con; t: PType; ri: PNode; opname: string) =
   var m = "'" & opname & "' is not available for type <" & typeToString(t) & ">"
@@ -619,9 +619,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result.add p(ri, c, consumed)
   of nkBracketExpr:
     if isUnpackedTuple(ri[0]):
-      # unpacking of tuple: move out the elements
-      result = genSink(c, dest, ri)
-      result.add p(ri, c, consumed)
+      # unpacking of tuple: take over elements
+      result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
