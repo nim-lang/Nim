@@ -37,6 +37,7 @@
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
+- To `os.nim`, added `normalizePathEnd` for additional path sanitization.
 
 
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into

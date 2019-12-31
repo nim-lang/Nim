@@ -84,9 +84,12 @@ include "includes/osseps"
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
-  ## ``trailingSep``, and taking care of edge cases: it preservers whether
+  ## ``trailingSep``, and taking care of edge cases: it preserves whether
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
   ## not `AltSep`.
+  ## See also:
+  ## * `normalizePathEnd proc <#normalizePathEnd,string,bool>`_ for a version
+  ## which returns a new string.
   if path.len == 0: return
   var i = path.len
   while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
@@ -103,8 +106,23 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
     path = $DirSep
 
 proc normalizePathEnd(path: string, trailingSep = false): string =
+  ## A version of ``normalizePathEnd()``
+  ## See also:
+  ## * `normalizePathEnd proc <#normalizePathEnd,string,bool>`_ for the
+  ## in-place version.
+  runnableExamples:
+    when defined(posix):
+      assert normalizePathEnd("/lib/", trailingSep = true) == "/lib/"
+      assert normalizePathEnd("", trailingSep = true) == "/"
+      assert normalizePathEnd("/lib", trailingSep = false) == "/lib"
+      assert normalizePathEnd("lib//", trailingSep = false) == "lib"
+      assert normalizePathEnd("lib", trailingSep = false) == "lib"
+      assert normalizePathEnd("/lib//", trailingSep = true) == "/lib/"
   result = path
   result.normalizePathEnd(trailingSep)
+
+when (NimMajor, NimMinor) >= (1, 1):
+  export normalizePathEnd
 
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
