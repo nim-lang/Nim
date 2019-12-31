@@ -69,9 +69,10 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
   result.version = ""
 
   const specialSeparator = "-#"
-  var sepIdx = p.find(specialSeparator)
+  let last = p.rfind(p.lastPathPart) # the index where the last path part begins
+  var sepIdx = p.find(specialSeparator, start = last)
   if sepIdx == -1:
-    sepIdx = p.rfind('-')
+    sepIdx = p.rfind('-', start = last)
 
   if sepIdx == -1:
     result.name = p
