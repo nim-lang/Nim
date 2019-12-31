@@ -221,6 +221,15 @@ proc idxmin*[T](s: openArray[T]): Natural =
 proc idxmax*[T](s: openArray[T]): Natural =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = @[6, 5, 4, 3]
+      c = @[2, -7, 8, -5]
+    assert idxmax(a) == 3
+    assert idxmax(b) == 0
+    assert idxmax(c) == 2
+
   result = 0
   for i in 1..high(s):
     if s[result] < s[i]: result = i
