@@ -213,7 +213,7 @@ proc genSink(c: Con; dest, ri: PNode): PNode =
     result = newTree(nkFastAsgn, dest)
 
 proc genSinkOrMemMove(c: Con; dest, ri: PNode, isFirstWrite: bool): PNode =
-  # optimize sink call into a bitwise mem
+  # optimize sink call into a bitwise memcopy
   if isFirstWrite: newTree(nkFastAsgn, dest)
   else: genSink(c, dest, ri)
 
