@@ -209,6 +209,13 @@ proc idxmin*[T](s: openArray[T]): Natural =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
+proc idxmax*[T](s: openArray[T]): Natural =
+  ## Returns the index of the maximum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  result = 0
+  for i in 1..high(s):
+    if s[result] < s[i]: result = i
+
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.
