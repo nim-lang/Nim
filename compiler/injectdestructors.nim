@@ -617,11 +617,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
 proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite = false): PNode =
   case ri.kind
   of nkCallKinds:
-    if isUnpackedTuple(dest):
-      result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
-    else:
-      result = genSinkOrMemMove(c, dest, ri, isFirstWrite)
-      result.add p(ri, c, consumed)
+    result = genSinkOrMemMove(c, dest, ri, isFirstWrite)
+    result.add p(ri, c, consumed)
   of nkBracketExpr:
     if isUnpackedTuple(ri[0]):
       # unpacking of tuple: take over elements
