@@ -3120,6 +3120,12 @@ when not defined(js):
 
   {.pop.}
 
+when not defined(js) and not defined(nimscript):
+  proc writeStackTrace*() {.tags: [], gcsafe.}
+    ## Writes the current stack trace to ``stderr``. This is only works
+    ## for debug builds. Since it's usually used for debugging, this
+    ## is proclaimed to have no IO effect!
+
 when not declared(sysFatal):
   include "system/fatal"
 
@@ -3693,10 +3699,6 @@ when not defined(JS): #and not defined(nimscript):
       proc unsetControlCHook*()
         ## Reverts a call to setControlCHook.
 
-    proc writeStackTrace*() {.tags: [], gcsafe.}
-      ## Writes the current stack trace to ``stderr``. This is only works
-      ## for debug builds. Since it's usually used for debugging, this
-      ## is proclaimed to have no IO effect!
     when hostOS != "standalone":
       proc getStackTrace*(): string {.gcsafe.}
         ## Gets the current stack trace. This only works for debug builds.

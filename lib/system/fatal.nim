@@ -30,6 +30,7 @@ elif (defined(nimQuirky) and not defined(nimscript)) or gotoBasedExceptions:
   proc name(t: typedesc): string {.magic: "TypeTrait".}
 
   proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
+    writeStackTrace()
     var buf = newStringOfCap(200)
     add(buf, "Error: unhandled exception: ")
     add(buf, message)
