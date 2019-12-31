@@ -205,6 +205,15 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
 proc idxmin*[T](s: openArray[T]): Natural =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = @[6, 5, 4, 3]
+      c = @[2, -7, 8, -5]
+    assert idxmin(a) == 0
+    assert idxmin(b) == 3
+    assert idxmin(c) == 1
+
   result = 0
   for i in 1..high(s):
     if s[i] < s[result]: result = i
