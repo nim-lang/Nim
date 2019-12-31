@@ -289,7 +289,7 @@ type
     sinkArg
 
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
-proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite = false): PNode
+proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite: bool): PNode
 
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
 
@@ -571,7 +571,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
             cycleCheck(n, c)
-          result = moveOrCopy(n[0], n[1], c)
+          result = moveOrCopy(n[0], n[1], c, isFirstWrite = false)
       else:
         result = copyNode(n)
         result.add copyTree(n[0])
@@ -614,7 +614,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       for i in 0..<n.len:
         result[i] = p(n[i], c, mode)
 
-proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite = false): PNode =
+proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite: bool): PNode =
   case ri.kind
   of nkCallKinds:
     result = genSinkOrMemMove(c, dest, ri, isFirstWrite)
@@ -659,7 +659,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite = false): PNode =
       result.add p(ri, c, consumed)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
     when false:
-      result = moveOrCopy(dest, ri[1], c)
+      result = moveOrCopy(dest, ri[1], c, isFirstWrite)
       if not sameType(ri.typ, ri[1].typ):
         let copyRi = copyTree(ri)
         copyRi[1] = result[^1]
@@ -669,7 +669,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite = false): PNode =
       result.add p(ri, c, sinkArg)
   of nkObjDownConv, nkObjUpConv:
     when false:
-      result = moveOrCopy(dest, ri[0], c)
+      result = moveOrCopy(dest, ri[0], c, isFirstWrite)
       let copyRi = copyTree(ri)
       copyRi[0] = result[^1]
       result[^1] = copyRi
@@ -677,7 +677,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con, isFirstWrite = false): PNode =
       result = genSinkOrMemMove(c, dest, ri, isFirstWrite)
       result.add p(ri, c, sinkArg)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
-    handleNested(ri): moveOrCopy(dest, node, c)
+    handleNested(ri): moveOrCopy(dest, node, c, isFirstWrite)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(c, dest.typ):
