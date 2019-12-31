@@ -23,3 +23,12 @@ test()
 import tables
 var t = initTable[string, seq[ptr int]]()
 discard t.hasKeyOrPut("f1", @[])
+
+
+#############################################
+### bug #12989
+proc bug(start: (seq[int], int)) =
+  let (s, i) = start
+
+let input = @[0]
+bug((input, 0))
