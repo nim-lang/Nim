@@ -28,7 +28,7 @@ proc test(): auto =
 var (a, b, _) = test()
 
 doAssert assign_counter == 0
-doAssert sink_counter == 9 # XXX this is still silly and needs to be investigated
+doAssert sink_counter == 6
 
 # bug #11510
 proc main =
