@@ -32,3 +32,4 @@ proc bug(start: (seq[int], int)) =
 
 let input = @[0]
 bug((input, 0))
+doASsert(input.len == 1)
