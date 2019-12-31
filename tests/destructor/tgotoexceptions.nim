@@ -9,7 +9,10 @@ one iteration!
 caught!
 except1
 finally1
-caught! 2'''
+caught! 2
+BEFORE
+FINALLY
+'''
   cmd: "nim c --gc:arc --exceptions:goto $file"
 """
 
@@ -60,3 +63,18 @@ when true:
     p()
   except:
     echo "caught! 2"
+
+
+proc noException =
+  try:
+    echo "BEFORE"
+
+  except:
+    echo "EXCEPT"
+    raise
+
+  finally:
+    echo "FINALLY"
+
+try: noException()
+except: echo "RECOVER"

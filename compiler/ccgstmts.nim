@@ -1054,17 +1054,17 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let lab = p.labels-1
   p.nestedTryStmts.add((fin, false, Natural lab))
 
+  p.flags.incl nimErrorFlagAccessed
+  linefmt(p, cpsStmts, "NI oldNimErr$1_ = *nimErr_; *nimErr_ = 0;;$n", [lab])
+
   expr(p, t[0], d)
 
-  p.flags.incl nimErrorFlagAccessed
   if 1 < t.len and t[1].kind == nkExceptBranch:
     startBlock(p, "if (NIM_UNLIKELY(*nimErr_)) {$n")
   else:
     startBlock(p)
-  linefmt(p, cpsStmts, "LA$1_:;$n", [lab])
-
   # pretend we did handle the error for the safe execution of the sections:
-  linefmt(p, cpsStmts, "NI oldNimErr$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
+  linefmt(p, cpsStmts, "LA$1_: oldNimErr$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
 
   p.nestedTryStmts[^1].inExcept = true
   var i = 1
@@ -1107,8 +1107,9 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
 
     inc(i)
   discard pop(p.nestedTryStmts)
+  endBlock(p)
 
-  linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
+  #linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
     if not bodyCanRaise(t[i][0]):
@@ -1130,7 +1131,6 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     endBlock(p)
   # restore the real error value:
   linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_;$n", [lab])
-  endBlock(p)
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
