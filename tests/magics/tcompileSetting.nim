@@ -5,6 +5,8 @@ joinable: false
 
 import strutils
 
+import std / compilesettings
+
 const
   nc = compileSetting("nimcachedir")
   np = compileSettingSeq("nimblePaths")
