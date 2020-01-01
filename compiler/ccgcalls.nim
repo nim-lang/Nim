@@ -567,6 +567,8 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, nil, e, d)
   postStmtActions(p)
+  if p.config.exc == excGoto and canRaise(e[0]):
+    raiseExit(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
@@ -578,3 +580,5 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
+  if p.config.exc == excGoto and canRaise(ri[0]):
+    raiseExit(p)

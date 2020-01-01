@@ -219,6 +219,7 @@ const
   errNoneBoehmRefcExpectedButXFound = "'none', 'boehm' or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
+  errInvalidExceptionSystem = "'goto', 'setjump', 'cpp' or 'quirky' expected, but '$1' found"
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
@@ -254,6 +255,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     else: localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
   of "dynliboverride":
     result = isDynlibOverride(conf, arg)
+  of "exceptions":
+    case arg.normalize
+    of "cpp": result = conf.exc == excCpp
+    of "setjmp": result = conf.exc == excSetjmp
+    of "quirky": result = conf.exc == excQuirky
+    of "goto": result = conf.exc == excGoto
+    else: localError(conf, info, errInvalidExceptionSystem % arg)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
@@ -411,8 +419,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
+      if cmpIgnoreStyle(key, "nimQuirky") == 0:
+        conf.exc = excQuirky
       defineSymbol(conf.symbols, key, val)
     else:
+      if cmpIgnoreStyle(arg, "nimQuirky") == 0:
+        conf.exc = excQuirky
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
@@ -457,6 +469,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
         conf.selectedGC = gcArc
+        when true:
+          if conf.cmd != cmdCompileToCpp:
+            conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
         defineSymbol(conf.symbols, "gcarc")
         incl conf.globalOptions, optSeqDestructors
@@ -466,6 +481,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
           defineSymbol(conf.symbols, "nimV2")
       of "orc":
         conf.selectedGC = gcOrc
+        when true:
+          if conf.cmd != cmdCompileToCpp:
+            conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
         defineSymbol(conf.symbols, "gcorc")
         incl conf.globalOptions, optSeqDestructors
@@ -775,8 +793,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "unknown obsolete feature")
   of "nocppexceptions":
     expectNoArg(conf, switch, arg, pass, info)
-    incl(conf.globalOptions, optNoCppExceptions)
+    conf.exc = low(ExceptionSystem)
     defineSymbol(conf.symbols, "noCppExceptions")
+  of "exceptions":
+    case arg.normalize
+    of "cpp": conf.exc = excCpp
+    of "setjmp": conf.exc = excSetjmp
+    of "quirky": conf.exc = excQuirky
+    of "goto": conf.exc = excGoto
+    else: localError(conf, info, errInvalidExceptionSystem % arg)
   of "cppdefine":
     expectArg(conf, switch, arg, pass, info)
     if conf != nil:

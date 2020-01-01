@@ -71,7 +71,6 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
-    optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
@@ -159,6 +158,12 @@ type
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
+  ExceptionSystem* = enum
+    excSetjmp, # setjmp based exception handling
+    excCpp,    # use C++'s native exception handling
+    excGoto,   # exception handling based on goto (should become the new default for C)
+    excQuirky  # quirky exception handling
+
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
     External   ## file was introduced via .compile pragma
@@ -204,6 +209,7 @@ type
     exitcode*: int8
     cmd*: TCommands  # the command
     selectedGC*: TGCMode       # the selected GC (+)
+    exc*: ExceptionSystem
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     evalExpr*: string          # expression for idetools --eval

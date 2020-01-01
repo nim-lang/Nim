@@ -481,14 +481,6 @@ proc getIntTemp(p: BProc, result: var TLoc) =
   result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo(), tyInt)
   result.flags = {}
 
-proc initGCFrame(p: BProc): Rope =
-  if p.gcFrameId > 0: result = "struct {$1} GCFRAME_;$n" % [p.gcFrameType]
-
-proc deinitGCFrame(p: BProc): Rope =
-  if p.gcFrameId > 0:
-    result = ropecg(p.module,
-                    "if (((NU)&GCFRAME_) < 4096) #nimGCFrame(&GCFRAME_);$n", [])
-
 proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
@@ -599,6 +591,7 @@ proc putLocIntoDest(p: BProc, d: var TLoc, s: TLoc)
 proc intLiteral(i: BiggestInt): Rope
 proc genLiteral(p: BProc, n: PNode): Rope
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope
+proc raiseExit(p: BProc)
 
 proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
@@ -636,13 +629,7 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   discard cgsym(p.module, "nimFrame")
-  if p.maxFrameLen > 0:
-    discard cgsym(p.module, "VarSlot")
-    result = ropecg(p.module, "\tnimfrs_($1, $2, $3, $4);$n",
-                  [procname, filename, p.maxFrameLen,
-                  p.blocks[0].frameLen])
-  else:
-    result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
+  result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   discard cgsym(p.module, "nimFrame")
@@ -979,6 +966,13 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     genProcParams(m, prc.typ, rettype, params, check)
     result = "$1(*)$2" % [rettype, params]
 
+proc genProcBody(p: BProc; procBody: PNode) =
+  genStmts(p, procBody) # modifies p.locals, p.init, etc.
+  if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
+    p.flags.incl nimErrorFlagDeclared
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NI* nimErr_;$n", []))
+    p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
+
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
@@ -1029,7 +1023,8 @@ proc genProcAux(m: BModule, prc: PSym) =
     if param.typ.isCompileTimeOnly: continue
     assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
-  genStmts(p, procBody) # modifies p.locals, p.init, etc.
+  genProcBody(p, procBody)
+
   var generatedProc: Rope
   generatedProc.genCLineDir prc.info, m.config
   if sfNoReturn in prc.flags:
@@ -1046,8 +1041,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       # This fixes the use of methods and also the case when 2 functions within the same module
       # call each other using directly the "_actual" versions (an optimization) - see issue #11608
       m.s[cfsProcHeaders].addf("$1;\n", [header])
-    generatedProc.add ropecg(p.module, "$1 {", [header])
-    generatedProc.add(initGCFrame(p))
+    generatedProc.add ropecg(p.module, "$1 {$n", [header])
     if optStackTrace in prc.options:
       generatedProc.add(p.s(cpsLocals))
       var procname = makeCString(prc.name.s)
@@ -1057,11 +1051,12 @@ proc genProcAux(m: BModule, prc: PSym) =
     if optProfiler in prc.options:
       # invoke at proc entry for recursion:
       appcg(p, cpsInit, "\t#nimProfile();$n", [])
-    if p.beforeRetNeeded: generatedProc.add("{")
+    # this pair of {} is required for C++ (C++ is weird with its
+    # control flow integrity checks):
+    if beforeRetNeeded in p.flags: generatedProc.add("{")
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
-    if p.beforeRetNeeded: generatedProc.add(~"\t}BeforeRet_: ;$n")
-    generatedProc.add(deinitGCFrame(p))
+    if beforeRetNeeded in p.flags: generatedProc.add(~"\t}BeforeRet_: ;$n")
     if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
     generatedProc.add(~"}$N")
@@ -1645,10 +1640,6 @@ proc genInitCode(m: BModule) =
   # add new scope for following code, because old vcc compiler need variable
   # be defined at the top of the block
   prc.addf("{$N", [])
-  if m.initProc.gcFrameId > 0:
-    moduleInitRequired = true
-    prc.add(initGCFrame(m.initProc))
-
   writeSection(initProc, cpsLocals)
 
   if m.initProc.s(cpsInit).len > 0 or m.initProc.s(cpsStmts).len > 0:
@@ -1666,12 +1657,11 @@ proc genInitCode(m: BModule) =
     writeSection(initProc, cpsInit, m.hcrOn)
     writeSection(initProc, cpsStmts)
 
+    if beforeRetNeeded in m.initProc.flags:
+      prc.add(~"\tBeforeRet_: ;$n")
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
 
-  if m.initProc.gcFrameId > 0:
-    moduleInitRequired = true
-    prc.add(deinitGCFrame(m.initProc))
   prc.addf("}$N", [])
 
   prc.addf("}$N$N", [])
@@ -1894,7 +1884,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    genStmts(m.initProc, transformedN)
+    genProcBody(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -1996,6 +1986,10 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if b == nil: return
   var m = BModule(b)
   if sfMainModule in m.module.flags:
+    let testForError = getCompilerProc(graph, "nimTestErrorFlag")
+    if testForError != nil and graph.config.exc == excGoto:
+      n.add newTree(nkCall, testForError.newSymNode)
+
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
@@ -2005,7 +1999,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     # XXX emit the dispatchers into its own .c file?
     if n != nil:
       m.initProc.options = initProcOptions(m)
-      genStmts(m.initProc, n)
+      genProcBody(m.initProc, n)
 
     if m.hcrOn:
       # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)

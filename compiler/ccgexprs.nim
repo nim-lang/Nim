@@ -2675,10 +2675,13 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       line(p, cpsStmts, "(void)(" & a.r & ");\L")
   of nkAsmStmt: genAsmStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt:
-    if p.module.compileToCpp and optNoCppExceptions notin p.config.globalOptions:
+    case p.config.exc
+    of excGoto:
+      genTryGoto(p, n, d)
+    of excCpp:
       genTryCpp(p, n, d)
     else:
-      genTry(p, n, d)
+      genTrySetjmp(p, n, d)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection:
     # we have to emit the type information for object types here to support
