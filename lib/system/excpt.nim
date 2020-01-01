@@ -396,6 +396,15 @@ when gotoBasedExceptions:
   proc nimErrorFlag(): ptr int {.compilerRtl, inl.} =
     result = addr(nimInErrorMode)
 
+  proc nimTestErrorFlag() {.compilerRtl.} =
+    ## This proc must be called before ``currException`` is destroyed.
+    ## It also must be called at the end of every thread to ensure no
+    ## error is swallowed.
+    if currException != nil:
+      reportUnhandledError(currException)
+      currException = nil
+      quit(1)
+
   addQuitProc(proc () {.noconv.} =
     if currException != nil:
       reportUnhandledError(currException)

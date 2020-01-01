@@ -1986,6 +1986,10 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if b == nil: return
   var m = BModule(b)
   if sfMainModule in m.module.flags:
+    let testForError = getCompilerProc(graph, "nimTestErrorFlag")
+    if testForError != nil and graph.config.exc == excGoto:
+      n.add newTree(nkCall, testForError.newSymNode)
+
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return

@@ -1049,7 +1049,6 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
     return
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  p.flags.incl noSafePoints
   inc p.labels, 2
   let lab = p.labels-1
   p.nestedTryStmts.add((fin, false, Natural lab))
