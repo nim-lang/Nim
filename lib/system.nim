@@ -1976,21 +1976,6 @@ proc compileOption*(option, arg: string): bool {.
   ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
   ##     echo "compiled with optimization for size and uses Boehm's GC"
 
-when defined(nimHasCompileSetting):
-  proc compileSetting*(option: string): string {.
-    magic: "CompileSetting", noSideEffect.}
-  ## Can be used to get a string compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   const nimcache = compileSetting("nimcachedir")
-
-  proc compileSettingSeq*(option: string): seq[string] {.
-    magic: "CompileSettingSeq", noSideEffect.}
-  ## Can be used to get a multi-string compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   const nimblePaths = compileSettingSeq("nimblePaths")
-
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
