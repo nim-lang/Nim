@@ -568,7 +568,6 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
     genPrefixCall(p, nil, e, d)
   postStmtActions(p)
   if p.config.exc == excGoto and canRaise(e[0]):
-    inc p.raiseCounter
     raiseExit(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
@@ -582,5 +581,4 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
   if p.config.exc == excGoto and canRaise(ri[0]):
-    inc p.raiseCounter
     raiseExit(p)

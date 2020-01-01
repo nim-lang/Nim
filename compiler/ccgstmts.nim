@@ -595,7 +595,6 @@ proc genWhileStmt(p: BProc, t: PNode) =
         loopBody = loopBody[1]
       genComputedGoto(p, loopBody)
     else:
-      let prevRaiseCounter = p.raiseCounter
       p.breakIdx = startBlock(p, "while (1) {$n")
       p.blocks[p.breakIdx].isLoop = true
       initLocExpr(p, t[0], a)
@@ -607,7 +606,6 @@ proc genWhileStmt(p: BProc, t: PNode) =
       if optProfiler in p.options:
         # invoke at loop body exit:
         linefmt(p, cpsStmts, "#nimProfile();$n", [])
-      if prevRaiseCounter != p.raiseCounter: raiseExit(p)
       endBlock(p)
 
   dec(p.withinLoop)
@@ -698,24 +696,10 @@ proc raiseExit(p: BProc) =
     lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
   else:
     lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
-      [p.nestedTryStmts[^1].label]) # + ord(p.nestedTryStmts[^1].inExcept)])
-
-proc raiseExitFromFinally(p: BProc) =
-  assert p.config.exc == excGoto
-  p.flags.incl nimErrorFlagAccessed
-  if p.nestedTryStmts.len == 0:
-    p.flags.incl beforeRetNeeded
-    # easy case, simply goto 'ret':
-    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
-  else:
-    # jump to the next 'except'/'finally' section directly:
-    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
-      [p.nestedTryStmts[^1].label]) # + 1])
+      [p.nestedTryStmts[^1].label])
 
 proc genRaiseStmt(p: BProc, t: PNode) =
-  if p.config.exc == excGoto:
-    inc p.raiseCounter
-  else:
+  if p.config.exc != excGoto:
     if p.config.exc == excCpp:
       discard cgsym(p.module, "popCurrentExceptionEx")
     if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
@@ -1126,7 +1110,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       # 3. finally is run for exception handling code without any 'except'
       #    handler present or only handlers that did not match.
       linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n", [lab])
-    raiseExitFromFinally(p)
+    raiseExit(p)
     endBlock(p)
   # restore the real error value:
   linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_;$n", [lab])
