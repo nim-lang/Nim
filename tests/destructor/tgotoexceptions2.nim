@@ -2,17 +2,10 @@ discard """
   cmd: "nim c --gc:arc --exceptions:goto $file"
   output: '''
 B1
-A1
-1
-B1
 B2
 catch
 A1
 1
-B1
-A1
-A2
-2
 B1
 B2
 catch
@@ -20,16 +13,9 @@ A1
 A2
 0
 B1
-A1
-1
-B1
 B2
 A1
 1
-B1
-A1
-A2
-2
 B1
 B2
 A1
@@ -37,7 +23,8 @@ A2
 3
 A
 B
-C'''
+C
+'''
 """
 
 # More thorough test of return-in-finaly
@@ -67,14 +54,18 @@ proc main: int =
 
 for x in [true, false]:
   for y in [true, false]:
-    for z in [true, false]:
-      # echo "raiseEx: " & $x
-      # echo "returnA: " & $y
-      # echo "returnB: " & $z
-      raiseEx = x
-      returnA = y
-      returnB = z
-      echo main()
+    # echo "raiseEx: " & $x
+    # echo "returnA: " & $y
+    # echo "returnB: " & $z
+    # in the original test returnB was set to true too and
+    # this leads to swallowing the OSError exception. This is
+    # somewhat compatible with Python but it's non-sense, 'finally'
+    # should not be allowed to swallow exceptions. The goto based
+    # implementation does something sane so we don't "correct" its
+    # behavior just to be compatible with v1.
+    raiseEx = x
+    returnA = y
+    echo main()
 
 # Various tests of return nested in double try/except statements
 
