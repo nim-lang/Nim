@@ -253,13 +253,6 @@ proc considerUserDefinedOp(c: var TLiftCtx; t: PType; body, x, y: PNode): bool =
       body.add newDeepCopyCall(op, x, y)
       result = true
 
-proc addVar(father, v, value: PNode) =
-  var vpart = newNodeI(nkIdentDefs, v.info, 3)
-  vpart[0] = v
-  vpart[1] = newNodeI(nkEmpty, v.info)
-  vpart[2] = value
-  father.add vpart
-
 proc declareCounter(c: var TLiftCtx; body: PNode; first: BiggestInt): PNode =
   var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.fn, c.info)
   temp.typ = getSysType(c.g, body.info, tyInt)

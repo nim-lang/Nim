@@ -42,6 +42,13 @@ proc addVar*(father, v: PNode) =
   vpart[2] = vpart[1]
   father.add vpart
 
+proc addVar*(father, v, value: PNode) =
+  var vpart = newNodeI(nkIdentDefs, v.info, 3)
+  vpart[0] = v
+  vpart[1] = newNodeI(nkEmpty, v.info)
+  vpart[2] = value
+  father.add vpart
+
 proc newAsgnStmt*(le, ri: PNode): PNode =
   result = newNodeI(nkAsgn, le.info, 2)
   result[0] = le
@@ -63,10 +70,9 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
 
   var v = newNodeI(nkVarSection, value.info)
   let tempAsNode = newSymNode(temp)
-  v.addVar(tempAsNode)
+  v.addVar(tempAsNode, value)
   result.add(v)
 
-  result.add newAsgnStmt(tempAsNode, value)
   for i in 0..<n.len-2:
     if n[i].kind == nkSym: v.addVar(n[i])
     result.add newAsgnStmt(n[i], newTupleAccess(g, tempAsNode, i))
