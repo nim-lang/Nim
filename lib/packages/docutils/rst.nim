@@ -1615,7 +1615,10 @@ proc dirInclude(p: var RstParser): PRstNode =
       var q: RstParser
       initParser(q, p.s)
       q.filename = path
-      q.col += getTokens(inputString[startPosition..endPosition], false, q.tok)
+      q.col += getTokens(
+        inputString[startPosition..endPosition].strip(),
+        false,
+        q.tok)
       # workaround a GCC bug; more like the interior pointer bug?
       #if find(q.tok[high(q.tok)].symbol, "\0\x01\x02") > 0:
       #  InternalError("Too many binary zeros in include file")
