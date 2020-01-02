@@ -686,10 +686,10 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
     sysFatal(IOError, "cannot open: " & filename)
 
 
-proc readLines*(filename: string, n = 1.Natural): seq[TaintedString] =
-  ## read `n` lines from the file named `filename`. Raises an IO exception
+proc staticReadLines*(filename: string, n: Natural): seq[TaintedString] =
+  ## Compile time read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
-  ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
+  ## A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned strings.
   var f: File
   if open(f, filename):
