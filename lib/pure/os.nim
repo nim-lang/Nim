@@ -1973,7 +1973,9 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
+iterator walkDir*(dir: string;
+                  relative=false;
+                  checkError=false): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
@@ -1997,6 +1999,9 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
   ##   dirA/dirC
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
+  ##
+  ## When `dir` cannot be open, raises `OSError` if `checkError` is true,
+  ## otherwise the error is ignored and yields nothing.
   ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
@@ -2030,6 +2035,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             let errCode = getLastError()
             if errCode == ERROR_NO_MORE_FILES: break
             else: raiseOSError(errCode.OSErrorCode)
+      elif checkError:
+        raiseOSError(osLastError())
     else:
       var d = opendir(dir)
       if d != nil:
@@ -2064,6 +2071,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             elif S_ISLNK(s.st_mode):
               k = getSymlinkFileKind(path)
             yield (k, y)
+      elif checkError:
+        raiseOSError(osLastError())
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},

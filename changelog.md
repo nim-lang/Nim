@@ -53,6 +53,9 @@
 
 - Added `os.normalizePathEnd` for additional path sanitization.
 
+- Added `checkError` parameter to `os.walkDir`. If it is true, raises `OSError`
+  when `dir` cannot be open.
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
