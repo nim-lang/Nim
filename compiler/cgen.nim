@@ -362,12 +362,14 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
     linefmt(p, section, "$1.m_type = $2;$n", [r, genTypeInfo(p.module, t, a.lode.info)])
   of frEmbedded:
     if optTinyRtti in p.config.globalOptions:
+      var tmp: TLoc
       if mode == constructRefObj:
-        var n = newNodeIT(nkObjConstr, a.lode.info, t)
-        n.add newNodeIT(nkType, a.lode.info, t)
-        genObjConstr(p, n, a)
+        let objType = t.skipTypes(abstractInst+{tyRef})
+        rawConstExpr(p, newNodeIT(nkType, a.lode.info, objType), tmp)
+        linefmt(p, cpsStmts,
+            "#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
+            [rdLoc(a), rdLoc(tmp), getTypeDesc(p.module, objType)])
       else:
-        var tmp: TLoc
         rawConstExpr(p, newNodeIT(nkType, a.lode.info, t), tmp)
         genAssignment(p, a, tmp, {})
     else:
