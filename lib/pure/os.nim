@@ -1647,10 +1647,10 @@ proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
     # generic version of copyFile which works for any platform:
     const bufSize = 8000 # better for memory manager
     var d, s: File
-    if not open(s, source): raiseOSError(osLastError())
+    if not open(s, source): raiseOSError(osLastError(), source)
     if not open(d, dest, fmWrite):
       close(s)
-      raiseOSError(osLastError())
+      raiseOSError(osLastError(), dest)
     var buf = alloc(bufSize)
     while true:
       var bytesread = readBuffer(s, buf, bufSize)
