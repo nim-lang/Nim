@@ -28,7 +28,7 @@ proc main() =
   doAssert a3.maybe.x2.x2.x3[1][] == 'b'
   doAssert a.maybe.x2.x2.x3[1][] == default(char)
 
-  # make sure double evaluation bug
+  # make sure no double evaluation bug
   doAssert witness == 0
   doAssert initFoo(1.3).maybe.x1[] == 1.3
   doAssert witness == 1

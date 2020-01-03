@@ -2,7 +2,9 @@ type Maybe*[T] = object
   valueImpl*: T
 
 proc maybe*[T](a: T): auto =
-  ## Allows chains of dot-access and `[]` with maybe intermediate nil values
+  ## Allows chains of field-access and indexing where the LHS can be nil.
+  ## This simplifies code by reducing need for if-else branches around intermediate
+  ## maybe nil values.
   runnableExamples:
     type Foo = ref object
       x1: string
