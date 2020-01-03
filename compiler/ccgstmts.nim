@@ -698,19 +698,21 @@ proc raiseExit(p: BProc) =
     lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
       [p.nestedTryStmts[^1].label])
 
+proc finallyActions(p: BProc) =
+  if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
+    # if the current try stmt have a finally block,
+    # we must execute it before reraising
+    let finallyBlock = p.nestedTryStmts[^1].fin
+    if finallyBlock != nil:
+      genSimpleBlock(p, finallyBlock[0])
+
 proc genRaiseStmt(p: BProc, t: PNode) =
-  if p.config.exc != excGoto:
-    if p.config.exc == excCpp:
-      discard cgsym(p.module, "popCurrentExceptionEx")
-    if p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
-      # if the current try stmt have a finally block,
-      # we must execute it before reraising
-      let finallyBlock = p.nestedTryStmts[^1].fin
-      if finallyBlock != nil:
-        genSimpleBlock(p, finallyBlock[0])
+  if p.config.exc == excCpp:
+    discard cgsym(p.module, "popCurrentExceptionEx")
   if t[0].kind != nkEmpty:
     var a: TLoc
     initLocExprSingleUse(p, t[0], a)
+    finallyActions(p)
     var e = rdLoc(a)
     var typ = skipTypes(t[0].typ, abstractPtrs)
     genLineDir(p, t)
@@ -724,6 +726,7 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       if optOwnedRefs in p.config.globalOptions:
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
+    finallyActions(p)
     genLineDir(p, t)
     # reraise the last exception:
     if p.config.exc == excCpp:
