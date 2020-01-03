@@ -1,5 +1,6 @@
 discard """
-  output: "true"
+  output: '''true
+OK'''
   cmd: "nim c --gc:arc $file"
 """
 
@@ -31,3 +32,25 @@ assert y.more[2] of MyObject1
 assert y.more[2] of RootObj
 
 echo "true"
+
+# bug #12978
+type
+  Vector2* = object of RootObj
+    x*, y*: float
+
+type
+  Vertex* = ref object
+    point*: Vector2
+
+proc newVertex*(p: Vector2): Vertex =
+  return Vertex(point: p)
+
+proc createVertex*(p: Vector2): Vertex =
+  result = newVertex(p)
+
+proc p =
+  var x = Vector2(x: 1, y: 2)
+  let other = createVertex(x)
+  echo "OK"
+
+p()
