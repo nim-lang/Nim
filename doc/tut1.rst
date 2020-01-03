@@ -1393,7 +1393,7 @@ define operators which accept Slice objects to define ranges.
     :test: "nim c $1"
 
   var
-    a = "Nim is a progamming language"
+    a = "Nim is a programming language"
     b = "Slices are useless."
 
   echo a[7..12] # --> 'a prog'
