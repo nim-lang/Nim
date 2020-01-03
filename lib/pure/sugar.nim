@@ -381,3 +381,18 @@ when (NimMajor, NimMinor) >= (1, 1):
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+
+template `.?`*[T](a: T, b: untyped): untyped =
+  ## obj.?field returns obj.field if obj != nil, else its default value
+  runnableExamples:
+    type Foo = ref object
+      x1: float
+      x2: Foo
+    var x: Foo
+    doAssert x.?x2.?x1 == 0.0
+    doAssert Foo(x1: 1.0).?x1 == 1.0
+
+  if a == nil:
+    default(type(a.b))
+  else:
+    a.b
