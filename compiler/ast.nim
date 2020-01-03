@@ -544,6 +544,7 @@ type
 
   TSymKind* = enum        # the different symbols (start with the prefix sk);
                           # order is important for the documentation generator!
+                          # keep in sync with `NimSymKind`
     skUnknown,            # unknown symbol: used for parsing assembler blocks
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
@@ -575,6 +576,7 @@ type
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
     skAlias               # an alias (needs to be resolved immediately)
+    skPragma,             # a pragma
   TSymKinds* = set[TSymKind]
 
 const
@@ -985,7 +987,7 @@ const
   PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias, skPragma}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfIsPtr, nfPreventCg, nfLL,

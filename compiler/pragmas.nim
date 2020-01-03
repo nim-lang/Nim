@@ -604,9 +604,10 @@ proc processPragma(c: PContext, n: PNode, i: int) =
   elif it.safeLen != 2 or it[0].kind != nkIdent or it[1].kind != nkIdent:
     invalidPragma(c, n)
 
-  var userPragma = newSym(skTemplate, it[1].ident, nil, it.info, c.config.options)
+  var userPragma = newSym(skPragma, it[1].ident, nil, it.info, c.config.options)
   userPragma.ast = newNode(nkPragma, n.info, n.sons[i+1..^1])
   strTableAdd(c.userPragmas, userPragma)
+  strTableAdd(c.currentScope.symbols, userPragma)
 
 proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   proc processExc(c: PContext, x: PNode) =

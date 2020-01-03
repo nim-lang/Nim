@@ -68,7 +68,8 @@ proc rawImportSymbol(c: PContext, s, origin: PSym) =
             importPureEnumField(c, e)
   else:
     if s.kind == skConverter: addConverter(c, s)
-    if hasPattern(s): addPattern(c, s)
+    if s.kind == skPragma: strTableAdd(c.userPragmas, s)
+    elif hasPattern(s): addPattern(c, s)
   if s.owner != origin:
     c.exportIndirections.incl((origin.id, s.id))
 
