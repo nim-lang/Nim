@@ -302,10 +302,10 @@ compiler tcc:
     linkLibCmd: "", # XXX: not supported yet
     debug: " -g ",
     pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
+    asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $2",
-    produceAsm: "",
-    props: {hasSwitchRange, hasComputedGoto})
+    produceAsm: gnuAsmListing,
+    props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
 # Pelles C Compiler
 compiler pcc:
