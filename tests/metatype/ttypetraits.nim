@@ -58,3 +58,29 @@ var xvar: selectType(string)
 xvar = "proba"
 echo xvar.type.name
 
+
+#----------------------------------------------------
+type
+  AA = distinct seq[int]
+  BB = distinct string
+  CC = distinct int
+  AAA = AA
+
+
+var a2: AAA
+var b2: BB
+var c2: CC
+
+static:
+  doAssert(a2 is distinct)
+  doAssert(b2 is distinct)
+  doAssert(c2 is distinct)
+
+  doAssert($typeof(baseType(typeof(AA))) == "seq[int]")
+  doAssert($typeof(baseType(typeof(BB))) == "string")
+  doAssert($typeof(baseType(typeof(CC))) == "int")
+
+
+static:
+  doAssert(not isNamedTuple((int, float)))
+  doAssert(isNamedTuple(tuple[a: int, b:float]))

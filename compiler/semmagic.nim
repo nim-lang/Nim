@@ -172,6 +172,16 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
+  of "isNamedTuple":
+    let cond = operand.kind == tyTuple and operand.n != nil
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+  of "baseType":
+    if operand.kind == tyDistinct:
+      result = base(operand).toNode(traitCall.info)
+    else:
+      localError(c.config, traitCall.info,
+        "baseType expects a distinct type as argument. The given type was " & typeToString(operand))
+      result = newType(tyError, context).toNode(traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)

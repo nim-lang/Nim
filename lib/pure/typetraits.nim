@@ -63,20 +63,15 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ##
   ## Other languages name a type like these `blob`:idx:.
 
-proc isNamedTuple*(T: typedesc): bool =
+proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".}
   ## Return true for named tuples, false for any other type.
-  when T isnot tuple: result = false
-  else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    # empty tuple should be un-named,
-    # see https://github.com/nim-lang/Nim/issues/8861#issue-356631191
-    return false
 
+proc baseType*(T: typedesc): typedesc {.magic: "TypeTrait".}
+  ## Returns base type for distinct types, works only for distinct types.
+  ## compile time error otherwise
+  runnableExamples:
+    type MySeq = distinct seq[int]
+    assert($typeof(baseType(MySeq)) == "seq[int]")
 
 when isMainModule:
   static:
