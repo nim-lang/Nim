@@ -318,10 +318,22 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
-      [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
-      [nimi, args, smartNimcache]
+    # Teashrock: working around bug <https://github.com/nim-lang/Nim/issues/13017>
+    when system.hostOS == "haiku":
+      exec "$# $# $# $# --nimcache" %
+        [nimi, bootOptions, extraOption, args] &
+      r":" & "$# --compileOnly compiler" / "nim.nim" %
+        [smartNimcache]
+      exec "$# jsonscript $# --nimcache" %
+        [nimi, args] &
+      r":" & "$# compiler" / "nim.nim" %
+        [smartNimcache]
+    # Teashrock: End of workaround #13017
+    else:
+      exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
+        [nimi, bootOptions, extraOption, args, smartNimcache]
+      exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
+        [nimi, args, smartNimcache]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
