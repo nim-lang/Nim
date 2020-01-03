@@ -15,7 +15,7 @@ proc maybe*[T](a: T): auto =
 
 template `.`*(a: Maybe, b): untyped =
   let a2 = a.valueImpl # to avoid double evaluations
-  when a2 is ref|ptr:
+  when type(a2) is ref|ptr:
     if a2 == nil:
       maybe(default(type(a2.b)))
     else:
