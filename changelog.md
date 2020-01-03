@@ -53,8 +53,8 @@
 
 - Added `os.normalizePathEnd` for additional path sanitization.
 
-- Added `checkError` parameter to `os.walkDir`. If it is true, raises `OSError`
-  when `dir` cannot be open.
+- Added `checkError` parameter to `os.walkDir` and `os.walkDirRec`.
+  If it is true, raises `OSError` when `dir` cannot be open.
 
 ## Library changes
 

@@ -2076,7 +2076,8 @@ iterator walkDir*(dir: string;
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false): string {.tags: [ReadDirEffect].} =
+                     relative = false,
+                     checkError = false): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -2105,6 +2106,9 @@ iterator walkDirRec*(dir: string,
   ## ``pcLinkToDir``         follow symbolic links to directories
   ## ---------------------   ---------------------------------------------
   ##
+  ## When `dir` or any directory in `dir` cannot be open, raises `OSError`
+  ## if `checkError` is true, otherwise the error is ignored and yield nothing
+  ## from the directory.
   ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
@@ -2115,7 +2119,7 @@ iterator walkDirRec*(dir: string,
   var stack = @[""]
   while stack.len > 0:
     let d = stack.pop()
-    for k, p in walkDir(dir / d, relative = true):
+    for k, p in walkDir(dir / d, relative = true, checkError):
       let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel
