@@ -2036,7 +2036,7 @@ iterator walkDir*(dir: string;
             if errCode == ERROR_NO_MORE_FILES: break
             else: raiseOSError(errCode.OSErrorCode)
       elif checkError:
-        raiseOSError(osLastError())
+        raiseOSError(osLastError(), dir)
     else:
       var d = opendir(dir)
       if d != nil:
@@ -2072,7 +2072,7 @@ iterator walkDir*(dir: string;
               k = getSymlinkFileKind(path)
             yield (k, y)
       elif checkError:
-        raiseOSError(osLastError())
+        raiseOSError(osLastError(), dir)
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
