@@ -563,6 +563,7 @@ type
     skIterator,           # an iterator
     skConverter,          # a type converter
     skMacro,              # a macro
+    skPragma,             # a pragma
     skTemplate,           # a template; currently also misused for user-defined
                           # pragmas
     skField,              # a field in a record or object
@@ -980,7 +981,7 @@ const
     tyProc, tyError}
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
-    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
+    skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias, skPragma}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
                                       nfIsRef, nfPreventCg, nfLL,
