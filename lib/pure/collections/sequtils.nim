@@ -214,7 +214,6 @@ proc idxmin*[T](s: openArray[T]): Natural =
     assert idxmin(b) == 3
     assert idxmin(c) == 1
 
-  result = 0
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
@@ -230,7 +229,6 @@ proc idxmax*[T](s: openArray[T]): Natural =
     assert idxmax(b) == 0
     assert idxmax(c) == 2
 
-  result = 0
   for i in 1..high(s):
     if s[result] < s[i]: result = i
 
