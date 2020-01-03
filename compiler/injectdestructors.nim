@@ -227,7 +227,7 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     # try to improve the error message here:
     if c.otherRead == nil: discard isLastRead(ri, c)
     checkForErrorPragma(c, t, ri, "=")
-  genCopyNoCheck(c, dest, ri)
+  result = genCopyNoCheck(c, dest, ri)
 
 proc genDestroy(c: Con; dest: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -571,6 +571,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
             cycleCheck(n, c)
+          assert n[1].kind notin {nkAsgn, nkFastAsgn}
           result = moveOrCopy(n[0], n[1], c, isFirstWrite = false)
       else:
         result = copyNode(n)

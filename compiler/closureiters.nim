@@ -838,7 +838,8 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     if n[0].kind != nkEmpty:
       let asgnTmpResult = newNodeI(nkAsgn, n.info)
       asgnTmpResult.add(ctx.newTmpResultAccess())
-      asgnTmpResult.add(n[0])
+      let x = if n[0].kind in {nkAsgn, nkFastAsgn}: n[0][1] else: n[0]
+      asgnTmpResult.add(x)
       result.add(asgnTmpResult)
 
     result.add(ctx.newNullifyCurExc(n.info))
