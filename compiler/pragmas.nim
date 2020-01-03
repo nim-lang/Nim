@@ -129,6 +129,8 @@ proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
       s.loc.r = rope(extname % s.name.s)
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
+  when hasFFI:
+    s.cname = $s.loc.r
   if c.config.cmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
     s.loc.flags.incl(lfFullExternalName)
