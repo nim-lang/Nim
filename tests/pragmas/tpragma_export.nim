@@ -1,3 +1,13 @@
+discard """
+  output: '''
+ok1
+ok2
+in fun4
+in fun5
+in fun6
+'''
+"""
+
 import ./mpragma_export
 
 {.pragma: myfoo, exportc.}
