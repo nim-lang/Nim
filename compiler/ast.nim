@@ -543,6 +543,7 @@ type
 
   TSymKind* = enum        # the different symbols (start with the prefix sk);
                           # order is important for the documentation generator!
+                          # keep in sync with `NimSymKind`
     skUnknown,            # unknown symbol: used for parsing assembler blocks
                           # and first phase symbol lookup in generics
     skConditional,        # symbol for the preprocessor (may become obsolete)
@@ -563,7 +564,6 @@ type
     skIterator,           # an iterator
     skConverter,          # a type converter
     skMacro,              # a macro
-    skPragma,             # a pragma
     skTemplate,           # a template; currently also misused for user-defined
                           # pragmas
     skField,              # a field in a record or object
@@ -575,6 +575,7 @@ type
                           # mean: never)
     skPackage,            # symbol is a package (used for canonicalization)
     skAlias               # an alias (needs to be resolved immediately)
+    skPragma,             # a pragma
   TSymKinds* = set[TSymKind]
 
 const

@@ -985,8 +985,8 @@ proc generateTags*(d: PDoc, n: PNode, r: var Rope) =
 proc genSection(d: PDoc, kind: TSymKind) =
   const sectionNames: array[skModule..skField, string] = [
     "Imports", "Types", "Vars", "Lets", "Consts", "Vars", "Procs", "Funcs",
-    "Methods", "Iterators", "Converters", "Macros", "Pragmas", "Templates", "Exports"
-  ]
+    "Methods", "Iterators", "Converters", "Macros", "Templates", "Exports"
+  ] # consider adding more, eg for `skPragma`
   if d.section[kind] == nil: return
   var title = sectionNames[kind].rope
   d.section[kind] = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.section"), [
