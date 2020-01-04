@@ -100,4 +100,18 @@ mkManyLeaks()
 tsimpleClosureIterator()
 tleakingNewStmt()
 leakObjConstr()
+
+# bug #12964
+
+type
+  Token* = ref object of RootObj
+  Li* = ref object of Token
+
+proc bug12964*() =
+  var token = Li()
+  var tokens = @[Token()]
+  tokens.add token
+
+bug12964()
+
 echo getOccupiedMem() - startMem
