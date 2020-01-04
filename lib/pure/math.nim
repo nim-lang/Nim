@@ -526,7 +526,7 @@ else: # JS
   proc arcsin*[T: float32|float64](x: T): T {.importc: "Math.asin", nodecl.}
   proc arccos*[T: float32|float64](x: T): T {.importc: "Math.acos", nodecl.}
   proc arctan*[T: float32|float64](x: T): T {.importc: "Math.atan", nodecl.}
-  proc arctan2*[T: float32|float64](y, x: T): T {.importC: "Math.atan2", nodecl.}
+  proc arctan2*[T: float32|float64](y, x: T): T {.importc: "Math.atan2", nodecl.}
 
   proc arcsinh*[T: float32|float64](x: T): T {.importc: "Math.asinh", nodecl.}
   proc arccosh*[T: float32|float64](x: T): T {.importc: "Math.acosh", nodecl.}
@@ -772,7 +772,7 @@ when not defined(JS): # C
 else: # JS
   proc hypot*(x, y: float32): float32 {.importc: "Math.hypot", varargs, nodecl.}
   proc hypot*(x, y: float64): float64 {.importc: "Math.hypot", varargs, nodecl.}
-  proc pow*(x, y: float32): float32 {.importC: "Math.pow", nodecl.}
+  proc pow*(x, y: float32): float32 {.importc: "Math.pow", nodecl.}
   proc pow*(x, y: float64): float64 {.importc: "Math.pow", nodecl.}
   proc floor*(x: float32): float32 {.importc: "Math.floor", nodecl.}
   proc floor*(x: float64): float64 {.importc: "Math.floor", nodecl.}
