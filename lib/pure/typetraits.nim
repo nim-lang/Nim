@@ -69,9 +69,7 @@ proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".}
 proc baseType*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
-  runnableExamples:
-    type MySeq = distinct seq[int]
-    assert($typeof(baseType(MySeq)) == "seq[int]")
+
 
 when isMainModule:
   static:
