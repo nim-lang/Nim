@@ -1019,7 +1019,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     for i in 1..<params.len:
       let param = params[i].sym
       if isSinkTypeForParam(param.typ):
-        createTypeBoundOps(t.graph, t.c, param.typ, param.info)
+        createTypeBoundOps(t, param.typ, param.info)
 
   if not isEmptyType(s.typ[0]) and
       ({tfNeedsInit, tfNotNil} * s.typ[0].flags != {} or
