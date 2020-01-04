@@ -658,6 +658,8 @@ else:
       walker(rep, f, counter, errors)
   if errors != 0:
     printError $errors & " errors"
+  if counter == 1:
+    stdout.write("\n")
   stdout.write($counter & " matches\n")
   if errors != 0:
     quit(1)

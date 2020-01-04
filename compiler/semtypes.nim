@@ -592,22 +592,56 @@ proc toCover(c: PContext, t: PType): Int128 =
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
                       father: PNode, rectype: PType, hasCaseFields = false)
 
-proc formatMissingEnums(n: PNode): string =
+proc getIntSetOfType(c: PContext, t: PType): IntSet =
+  result = initIntSet()
+  if t.enumHasHoles:
+    let t = t.skipTypes(abstractRange)
+    for field in t.n.sons:
+      result.incl(field.sym.position)
+  else:
+    assert(lengthOrd(c.config, t) <= BiggestInt(MaxSetElements))
+    for i in toInt64(firstOrd(c.config, t))..toInt64(lastOrd(c.config, t)):
+      result.incl(i.int)
+
+iterator processBranchVals(b: PNode): int =
+  assert b.kind in {nkOfBranch, nkElifBranch, nkElse}
+  if b.kind == nkOfBranch:
+    for i in 0..<b.len-1:
+      if b[i].kind in {nkIntLit, nkCharLit}:
+        yield b[i].intVal.int
+      elif b[i].kind == nkRange:
+        for i in b[i][0].intVal..b[i][1].intVal:
+          yield i.int
+
+proc renderAsType(vals: IntSet, t: PType): string =
+  result = "{"
+  let t = t.skipTypes(abstractRange)
+  var enumSymOffset = 0
+  var i = 0
+  for val in vals:
+    if result.len > 1:
+      result &= ", "
+    case t.kind:
+    of tyEnum, tyBool:
+      while t.n[enumSymOffset].sym.position < val: inc(enumSymOffset)
+      result &= t.n[enumSymOffset].sym.name.s
+    of tyChar:
+      result.addQuoted(char(val))
+    else:
+      if i == 64:
+        result &= "omitted $1 values..." % $(vals.len - i)
+        break
+      else:
+        result &= $val
+    inc(i)
+  result &= "}"
+
+proc formatMissingEnums(c: PContext, n: PNode): string =
   var coveredCases = initIntSet()
   for i in 1..<n.len:
-    let ofBranch = n[i]
-    for j in 0..<ofBranch.len - 1:
-      let child = ofBranch[j]
-      if child.kind == nkIntLit:
-        coveredCases.incl(child.intVal.int)
-      elif child.kind == nkRange:
-        for k in child[0].intVal.int..child[1].intVal.int:
-          coveredCases.incl k
-  for child in n[0].typ.n.sons:
-    if child.sym.position notin coveredCases:
-      if result.len > 0:
-        result.add ", "
-      result.add child.sym.name.s
+    for val in processBranchVals(n[i]):
+      coveredCases.incl val
+  result = (c.getIntSetOfType(n[0].typ) - coveredCases).renderAsType(n[0].typ)
 
 proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
                    father: PNode, rectype: PType) =
@@ -656,9 +690,9 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     delSon(b, b.len - 1)
     semRecordNodeAux(c, lastSon(n[i]), check, pos, b, rectype, hasCaseFields = true)
   if chckCovered and covered != toCover(c, a[0].typ):
-    if a[0].typ.kind == tyEnum:
-      localError(c.config, a.info, "not all cases are covered; missing: {$1}" %
-        formatMissingEnums(a))
+    if a[0].typ.skipTypes(abstractRange).kind == tyEnum:
+      localError(c.config, a.info, "not all cases are covered; missing: $1" %
+                 formatMissingEnums(c, a))
     else:
       localError(c.config, a.info, "not all cases are covered")
   father.add a
@@ -1119,6 +1153,10 @@ proc newProcType(c: PContext; info: TLineInfo; prev: PType = nil): PType =
   # usual we desperately try to save memory:
   result.n.add newNodeI(nkEffectList, info)
 
+proc isMagic(sym: PSym): bool =
+  let nPragmas = sym.ast[pragmasPos]
+  return hasPragma(nPragmas, wMagic)
+
 proc semProcTypeNode(c: PContext, n, genericParams: PNode,
                      prev: PType, kind: TSymKind; isType=false): PType =
   # for historical reasons (code grows) this is invoked for parameter
@@ -1148,11 +1186,12 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = semParamType(c, a[^2], constraint)
-      var owner = getCurrOwner(c).owner
+      let sym = getCurrOwner(c)
+      var owner = sym.owner
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
-      if (owner.kind != skModule or owner.owner.name.s != "stdlib") and
-        kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
-          localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros")
+      if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
+        if not isMagic(sym):
+          localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
 
     if hasDefault:
       def = a[^1]

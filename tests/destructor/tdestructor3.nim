@@ -7,7 +7,13 @@ destroy
 destroy Foo: 123
 destroy Foo: 5
 (x1: (val: ...))
-destroy'''
+destroy
+---------------
+app begin
+(val: ...)
+destroy
+app end
+'''
 joinable: false
 """
 
@@ -93,3 +99,30 @@ proc test =
   echo obj2
 
 test()
+
+
+#------------------------------------------------------------
+# Issue #12883
+
+type 
+  TopObject = object
+    internal: UniquePtr[int]
+
+proc deleteTop(p: ptr TopObject) =
+  if p != nil:    
+    `=destroy`(p[]) # !!! this operation used to leak the integer
+    deallocshared(p)
+
+proc createTop(): ptr TopObject =
+  result = cast[ptr TopObject](allocShared0(sizeof(TopObject)))
+  result.internal = newUniquePtr(1)
+
+proc test2() = 
+  let x = createTop()
+  echo $x.internal
+  deleteTop(x)
+
+echo "---------------"  
+echo "app begin"
+test2()
+echo "app end"

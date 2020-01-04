@@ -478,7 +478,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~38)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~39)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -537,6 +537,7 @@ type
     tfContravariant   # contravariant generic param
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
+    tfAcyclic # object type was annotated as .acyclic
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -635,7 +636,7 @@ type
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mReset,
+    mDefault, mUnown, mAccessEnv, mAccessTypeInfo, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -870,6 +871,8 @@ type
     attachedDestructor,
     attachedAsgn,
     attachedSink,
+    attachedTrace,
+    attachedDispose,
     attachedDeepCopy
 
   TType* {.acyclic.} = object of TIdObj # \
@@ -1298,7 +1301,8 @@ const
   UnspecifiedLockLevel* = TLockLevel(-1'i16)
   MaxLockLevel* = 1000'i16
   UnknownLockLevel* = TLockLevel(1001'i16)
-  AttachedOpToStr*: array[TTypeAttachedOp, string] = ["=destroy", "=", "=sink", "=deepcopy"]
+  AttachedOpToStr*: array[TTypeAttachedOp, string] = [
+    "=destroy", "=", "=sink", "=trace", "=dispose", "=deepcopy"]
 
 proc `$`*(x: TLockLevel): string =
   if x.ord == UnspecifiedLockLevel.ord: result = "<unspecified>"
@@ -1759,7 +1763,7 @@ proc toObject*(typ: PType): PType =
 proc isImportedException*(t: PType; conf: ConfigRef): bool =
   assert t != nil
 
-  if optNoCppExceptions in conf.globalOptions:
+  if conf.exc != excCpp:
     return false
 
   let base = t.skipTypes({tyAlias, tyPtr, tyDistinct, tyGenericInst})
@@ -1828,3 +1832,24 @@ proc addParam*(procType: PType; param: PSym) =
 template destructor*(t: PType): PSym = t.attachedOps[attachedDestructor]
 template assignment*(t: PType): PSym = t.attachedOps[attachedAsgn]
 template asink*(t: PType): PSym = t.attachedOps[attachedSink]
+
+const magicsThatCanRaise = {
+  mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst, mEcho}
+
+proc canRaiseConservative*(fn: PNode): bool =
+  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
+    result = false
+  else:
+    result = true
+
+proc canRaise*(fn: PNode): bool =
+  if fn.kind == nkSym and (fn.sym.magic notin magicsThatCanRaise or
+      {sfImportc, sfInfixCall} * fn.sym.flags == {sfImportc} or
+      sfGeneratedOp in fn.sym.flags):
+    result = false
+  elif fn.kind == nkSym and fn.sym.magic == mEcho:
+    result = true
+  else:
+    result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
+      (fn.typ.n[0][exceptionEffects] != nil and
+      fn.typ.n[0][exceptionEffects].safeLen > 0))

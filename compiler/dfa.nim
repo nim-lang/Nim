@@ -693,14 +693,6 @@ proc genDef(c: var Con; n: PNode) =
   elif isAnalysableFieldAccess(n, c.owner):
     c.code.add Instr(n: n, kind: def, sym: nil)
 
-proc canRaise(fn: PNode): bool =
-  const magicsThatCanRaise = {
-    mNone, mSlurp, mStaticExec, mParseExprToAst, mParseStmtToAst}
-  if fn.kind == nkSym and fn.sym.magic notin magicsThatCanRaise:
-    result = false
-  else:
-    result = true
-
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
   var t = n[0].typ
@@ -715,7 +707,7 @@ proc genCall(c: var Con; n: PNode) =
         # optimizer.
         genDef(c, n[i])
   # every call can potentially raise:
-  if c.inTryStmt > 0 and canRaise(n[0]):
+  if c.inTryStmt > 0 and canRaiseConservative(n[0]):
     # we generate the instruction sequence:
     # fork lab1
     # goto exceptionHandler (except or finally)

@@ -150,10 +150,10 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
 
     asm "throw lastJSError;"
 
-proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerProc.} =
+proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerproc.} =
   raise newException(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
+proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerproc.} =
   raise newException(DivByZeroError, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
@@ -322,7 +322,7 @@ proc SetMinus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     return result;
   """
 
-proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
+proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
   asm """
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
@@ -337,7 +337,7 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
 proc cmp(x, y: string): int =
   return cmpStrings(x, y)
 
-proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
+proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
   asm """
     if (`a` == `b`) return true;
     if (`a` === null && `b`.length == 0) return true;
@@ -681,7 +681,7 @@ const
 
 # XXX use JS's native way here
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {.
-                          compilerProc.} =
+                          compilerproc.} =
   var
     esign = 1.0
     sign = 1.0

@@ -37,16 +37,17 @@ proc resize(old: int): int {.inline.} =
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
-  if isLiteral(s) and addlen > 0:
-    let oldP = s.p
-    # can't mutate a literal, so we need a fresh copy here:
-    let allocator = getLocalAllocator()
-    s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len + addlen)))
-    s.p.allocator = allocator
-    s.p.cap = s.len + addlen
-    if s.len > 0:
-      # we are about to append, so there is no need to copy the \0 terminator:
-      copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
+  if isLiteral(s):
+    if addlen > 0:
+      let oldP = s.p
+      # can't mutate a literal, so we need a fresh copy here:
+      let allocator = getLocalAllocator()
+      s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len + addlen)))
+      s.p.allocator = allocator
+      s.p.cap = s.len + addlen
+      if s.len > 0:
+        # we are about to append, so there is no need to copy the \0 terminator:
+        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
   elif s.len + addlen > s.p.cap:
     let cap = max(s.len + addlen, resize(s.p.cap))
     s.p = cast[ptr NimStrPayload](s.p.allocator.realloc(s.p.allocator, s.p,

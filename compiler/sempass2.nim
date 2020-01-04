@@ -167,9 +167,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
     guardGlobal(a, n, g)
 
 proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
-  template compileToCpp(a): untyped =
-    a.config.cmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
-  if a.inTryStmt > 0 and not compileToCpp(a):
+  if a.inTryStmt > 0 and a.config.exc == excSetjmp:
     incl(s.flags, sfVolatile)
 
 proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
@@ -708,6 +706,8 @@ proc track(tracked: PEffects, n: PNode) =
   of nkCallKinds:
     # p's effects are ours too:
     var a = n[0]
+    #if canRaise(a):
+    #  echo "this can raise ", tracked.config $ n.info
     let op = a.typ
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
@@ -758,6 +758,19 @@ proc track(tracked: PEffects, n: PNode) =
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
+
+    if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
+          tracked.owner.kind != skMacro:
+      let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
+      if opKind != -1:
+        # rebind type bounds operations after createTypeBoundOps call
+        let t = n[1].typ.skipTypes({tyAlias, tyVar})
+        if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
+          createTypeBoundOps(tracked, t, n.info)
+          let op = t.attachedOps[TTypeAttachedOp(opKind)]
+          if op != nil:
+            n[0].sym = op
+
     for i in 0..<n.safeLen:
       track(tracked, n[i])
   of nkDotExpr:
@@ -855,9 +868,19 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, x)
       if x[0].kind == nkSym and sfDiscriminant in x[0].sym.flags:
         addDiscriminantFact(tracked.guards, x)
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, x[1].typ, n.info)
     setLen(tracked.guards.s, oldFacts)
     if tracked.owner.kind != skMacro:
+      # XXX n.typ can be nil in runnableExamples, we need to do something about it.
+      if n.typ != nil and n.typ.skipTypes(abstractInst).kind == tyRef:
+        createTypeBoundOps(tracked, n.typ.lastSon, n.info)
       createTypeBoundOps(tracked, n.typ, n.info)
+  of nkTupleConstr:
+    for i in 0..<n.len:
+      track(tracked, n[i])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n[i].typ, n.info)
   of nkPragmaBlock:
     let pragmaList = n[0]
     let oldLocked = tracked.locked.len
@@ -996,7 +1019,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     for i in 1..<params.len:
       let param = params[i].sym
       if isSinkTypeForParam(param.typ):
-        createTypeBoundOps(t.graph, t.c, param.typ, param.info)
+        createTypeBoundOps(t, param.typ, param.info)
 
   if not isEmptyType(s.typ[0]) and
       ({tfNeedsInit, tfNotNil} * s.typ[0].flags != {} or

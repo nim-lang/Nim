@@ -264,17 +264,6 @@ when not defined(gcDestructors):
     ## **Note**: The `finalizer` refers to the type `T`, not to the object!
     ## This means that for each object of type `T` the finalizer will be called!
 
-when defined(nimV2):
-  proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
-    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
-    ##
-    ## New runtime target: An alias for `=destroy`.
-else:
-  proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
-    ## Old runtime target: Resets an object `obj` to its initial (binary zero) value.
-    ##
-    ## New runtime target: An alias for `=destroy`.
-
 proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
@@ -1825,6 +1814,15 @@ when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
+  proc reset*[T](obj: var T) {.noSideEffect.} =
+    ## Resets an object `obj` to its default value.
+    obj = default(typeof(obj))
+else:
+  when defined(nimV2):
+    proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
+  else:
+    proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
   ## Sets the length of seq `s` to `newlen`. ``T`` may be any sequence type.
@@ -2471,7 +2469,7 @@ when not defined(nimscript):
       ## The freed memory must belong to its allocating thread!
       ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
 
-    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
+    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes.
       ##
@@ -2484,7 +2482,7 @@ when not defined(nimscript):
       ##
       ## See also:
       ## `allocShared0 <#allocShared0,Natural>`_.
-    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline,
+    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
                                                                  benign, raises: [].} =
       ## Allocates a new memory block on the shared heap with at
       ## least ``T.sizeof * size`` bytes.
@@ -2500,7 +2498,7 @@ when not defined(nimscript):
       ## * `createShared <#createShared,typedesc>`_
       cast[ptr T](allocShared(T.sizeof * size))
 
-    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [].}
+    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
       ## Allocates a new memory block on the shared heap with at
       ## least ``size`` bytes.
       ##
@@ -2524,7 +2522,7 @@ when not defined(nimscript):
       ## `createSharedU <#createSharedU,typedesc>`_.
       cast[ptr T](allocShared0(T.sizeof * size))
 
-    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl,
+    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
                                                                  benign, raises: [].}
       ## Grows or shrinks a given memory block on the heap.
       ##
@@ -2545,7 +2543,7 @@ when not defined(nimscript):
       ## `freeShared <#freeShared,ptr.T>`_.
       cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [].}
+    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
       ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
       ## ``reallocShared``.
       ##
@@ -3107,18 +3105,26 @@ when not defined(js):
   when defined(nimV2):
     type
       TNimNode {.compilerproc.} = object # to keep the code generator simple
-      DestructorProc = proc (p: pointer) {.nimcall, benign.}
+      DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
       TNimType {.compilerproc.} = object
         destructor: pointer
         size: int
         name: cstring
+        traceImpl: pointer
+        disposeImpl: pointer
       PNimType = ptr TNimType
 
   when defined(nimSeqsV2) and not defined(nimscript):
-    include "core/strs"
-    include "core/seqs"
+    include "system/strs_v2"
+    include "system/seqs_v2"
 
   {.pop.}
+
+when not defined(js) and not defined(nimscript):
+  proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
+    ## Writes the current stack trace to ``stderr``. This is only works
+    ## for debug builds. Since it's usually used for debugging, this
+    ## is proclaimed to have no IO effect!
 
 when not declared(sysFatal):
   include "system/fatal"
@@ -3139,7 +3145,7 @@ when not defined(JS) and not defined(nimscript):
   {.pop.}
 
 when defined(nimV2):
-  include core/runtime_v2
+  include system/refs_v2
 
 import system/assertions
 export assertions
@@ -3693,10 +3699,6 @@ when not defined(JS): #and not defined(nimscript):
       proc unsetControlCHook*()
         ## Reverts a call to setControlCHook.
 
-    proc writeStackTrace*() {.tags: [], gcsafe.}
-      ## Writes the current stack trace to ``stderr``. This is only works
-      ## for debug builds. Since it's usually used for debugging, this
-      ## is proclaimed to have no IO effect!
     when hostOS != "standalone":
       proc getStackTrace*(): string {.gcsafe.}
         ## Gets the current stack trace. This only works for debug builds.
@@ -3764,7 +3766,7 @@ when not defined(JS): #and not defined(nimscript):
     when hasAlloc: include "system/strmantle"
 
     when hasThreadSupport:
-      when hostOS != "standalone" and not usesDestructors: include "system/channels"
+      when hostOS != "standalone": include "system/channels"
 
   when not defined(nimscript) and hasAlloc:
     when not usesDestructors:
@@ -4198,6 +4200,11 @@ type
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## Represents a Nim AST node. Macros operate on this type.
 
+macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+  ## returns number of variadic arguments in `x`
+  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  lenVarargsImpl(x)
+
 when false:
   template eval*(blk: typed): typed =
     ## Executes a block of code at compile time just as if it was a macro.
@@ -4395,7 +4402,12 @@ when defined(nimNoNilSeqs2):
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
-  ## their current iteration values. Example:
+  ## their current iteration values.
+  ##
+  ## Note: This template may not work in some cases, use
+  ## `capture <sugar.html#capture.m,openArray[typed],untyped>`_ instead.
+  ##
+  ## Example:
   ##
   ## .. code-block:: Nim
   ##   var myClosure : proc()

@@ -880,7 +880,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNoreturn:
         noVal(c, it)
         # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
-        if not isDefined(c.config, "nimQuirky"):
+        if c.config.exc notin {excQuirky, excGoto}:
           incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
@@ -940,7 +940,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wAcyclic:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        # now: ignored
+        else: incl(sym.typ.flags, tfAcyclic)
       of wShallow:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
@@ -1168,7 +1168,7 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
   if sym != nil and sym.kind != skModule:
     for it in c.optionStack:
       let o = it.otherPragmas
-      if not o.isNil:
+      if not o.isNil and sfFromGeneric notin sym.flags: # see issue #12985
         pushInfoContext(c.config, n.info)
         var i = 0
         while i < o.len:

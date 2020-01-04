@@ -53,11 +53,11 @@ import
 
 type
   PNode = ref TNode
-  TNode {.final.} = object
+  TNode {.final, acyclic.} = object
     left, right: PNode
     i, j: int
 
-proc newNode(L, r: PNode): PNode =
+proc newNode(L, r: sink PNode): PNode =
   new(result)
   result.left = L
   result.right = r
@@ -166,9 +166,13 @@ proc main() =
 
   var elapsed = epochTime() - t
   printDiagnostics()
-  echo("Completed in " & $elapsed & "ms. Success!")
+  echo("Completed in " & $elapsed & "s. Success!")
 
 when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
 
+when defined(gcDestructors):
+  let mem = getOccupiedMem()
 main()
+when defined(gcDestructors):
+  doAssert getOccupiedMem() == mem

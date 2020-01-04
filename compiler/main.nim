@@ -108,6 +108,7 @@ proc commandJsonScript(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
     let conf = graph.config
+    conf.exc = excCpp
 
     if conf.outDir.isEmpty:
       conf.outDir = conf.projectPath
@@ -188,6 +189,7 @@ proc mainCommand*(graph: ModuleGraph) =
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
+    conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":

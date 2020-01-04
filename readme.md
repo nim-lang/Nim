@@ -197,8 +197,8 @@ Copyright © 2006-2019 Andreas Rumpf, all rights reserved.
 [nim-irc]: https://webchat.freenode.net/?channels=nim
 [nim-travisci]: https://travis-ci.org/nim-lang/Nim
 [nim-twitter]: https://twitter.com/nim_lang
-[nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim
-[nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim?sort=newest&pageSize=15
+[nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
+[nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
 [nim-gitter]: https://gitter.im/nim-lang/Nim
 [nim-telegram]: https://t.me/nim_lang
 [nim-bountysource]: https://www.bountysource.com/teams/nim

@@ -394,18 +394,20 @@ proc run(self: var LoopTesterApp) =
   echo "Constructing CFG..."
   var n = 2
 
-  for parlooptrees in 1..10:
-    discard self.cfg.createNode(n + 1)
-    self.buildConnect(2, n + 1)
-    n += 1
-    for i in 1..100:
-      var top = n
-      n = self.buildStraight(n, 1)
-      for j in 1..25: n = self.buildBaseLoop(n)
-      var bottom = self.buildStraight(n, 1)
-      self.buildConnect n, top
-      n = bottom
-    self.buildConnect(n, 1)
+  when not defined(gcOrc):
+    # currently cycle detection is so slow that we disable this part
+    for parlooptrees in 1..10:
+      discard self.cfg.createNode(n + 1)
+      self.buildConnect(2, n + 1)
+      n += 1
+      for i in 1..100:
+        var top = n
+        n = self.buildStraight(n, 1)
+        for j in 1..25: n = self.buildBaseLoop(n)
+        var bottom = self.buildStraight(n, 1)
+        self.buildConnect n, top
+        n = bottom
+      self.buildConnect(n, 1)
 
   echo "Performing Loop Recognition\n1 Iteration"
 
@@ -428,5 +430,11 @@ proc run(self: var LoopTesterApp) =
     echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
     echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
-var l = newLoopTesterApp()
-l.run
+proc main =
+  var l = newLoopTesterApp()
+  l.run
+
+let mem = getOccupiedMem()
+main()
+when defined(gcOrc):
+  doAssert getOccupiedMem() == mem

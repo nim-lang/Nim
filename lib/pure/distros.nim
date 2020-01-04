@@ -29,6 +29,7 @@ from strutils import contains, toLowerAscii
 
 when not defined(nimscript):
   from osproc import execProcess
+  from os import existsEnv
 
 type
   Distribution* {.pure.} = enum ## the list of known distributions
@@ -105,7 +106,7 @@ type
     Clonezilla
     SteamOS
     Absolute
-    NixOS
+    NixOS ## NixOS or a Nix build environment
     AUSTRUMI
     Arya
     Porteus
@@ -142,7 +143,7 @@ template unameRelease(cmd, cache): untyped =
     cache = (when defined(nimscript): gorge(cmd) else: execProcess(cmd))
   cache
 
-template uname(): untyped = unameRelease("uname -o", unameRes)
+template uname(): untyped = unameRelease("uname -a", unameRes)
 template release(): untyped = unameRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = unameRelease("hostnamectl", hostnamectlRes)
 
@@ -161,6 +162,9 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.BSD: result = defined(bsd)
   of Distribution.ArchLinux:
     result = "arch" in toLowerAscii(uname())
+  of Distribution.NixOS:
+    result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
+    # Check if this is a Nix build or NixOS environment
   of Distribution.OpenSUSE:
     result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
   of Distribution.GoboLinux:

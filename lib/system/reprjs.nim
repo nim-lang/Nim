@@ -209,7 +209,7 @@ proc reprRecord(o: pointer, typ: PNimType, cl: var ReprClosure): string {.compil
   reprRecordAux(result, o, typ,cl)
 
 
-proc reprJSONStringify(p: int): string {.compilerRtl.} =
+proc reprJsonStringify(p: int): string {.compilerRtl.} =
   # As a last resort, use stringify
   # We use this for tyOpenArray, tyVarargs while genTypeInfo is not implemented
   var tmp: cstring

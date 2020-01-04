@@ -64,16 +64,20 @@ type
     nestedExceptStmts*: int16 # how many except statements is it nested into
     frameLen*: int16
 
+  TCProcFlag* = enum
+    beforeRetNeeded,
+    threadVarAccessed,
+    hasCurFramePointer,
+    noSafePoints,
+    nimErrorFlagAccessed,
+    nimErrorFlagDeclared
+
   TCProc = object             # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to
-    beforeRetNeeded*: bool    # true iff 'BeforeRet' label for proc is needed
-    threadVarAccessed*: bool  # true if the proc already accessed some threadvar
-    hasCurFramePointer*: bool # true if _nimCurFrame var needed to recover after
-                              # exception is generated
-    noSafePoints*: bool       # the proc doesn't use safe points in exception handling
+    flags*: set[TCProcFlag]
     lastLineInfo*: TLineInfo  # to avoid generating excessive 'nimln' statements
     currLineInfo*: TLineInfo  # AST codegen will make this superfluous
-    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool]]
+    nestedTryStmts*: seq[tuple[fin: PNode, inExcept: bool, label: Natural]]
                               # in how many nested try statements we are
                               # (the vars must be volatile then)
                               # bool is true when are in the except part of a try block
@@ -86,14 +90,11 @@ type
     options*: TOptions        # options that should be used for code
                               # generation; this is the same as prc.options
                               # unless prc == nil
-    maxFrameLen*: int         # max length of frame descriptor
     module*: BModule          # used to prevent excessive parameter passing
     withinLoop*: int          # > 0 if we are within a loop
     splitDecls*: int          # > 0 if we are in some context for C++ that
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
-    gcFrameId*: Natural       # for the GC stack marking
-    gcFrameType*: Rope        # the struct {} we put the GC markers into
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]

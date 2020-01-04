@@ -13,7 +13,7 @@ true
 41 41'''
 """
 
-import allocators
+import system / allocators
 include system / ansi_c
 
 proc main =
