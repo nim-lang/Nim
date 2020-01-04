@@ -66,7 +66,7 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
 proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".}
   ## Return true for named tuples, false for any other type.
 
-proc baseType*(T: typedesc): typedesc {.magic: "TypeTrait".}
+proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
 

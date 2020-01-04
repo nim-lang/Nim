@@ -76,9 +76,9 @@ static:
   doAssert(b2 is distinct)
   doAssert(c2 is distinct)
 
-  doAssert($typeof(baseType(typeof(AA))) == "seq[int]")
-  doAssert($typeof(baseType(typeof(BB))) == "string")
-  doAssert($typeof(baseType(typeof(CC))) == "int")
+  doAssert($distinctBase(typeof(AA))) == "seq[int]")
+  doAssert($distinctBase(typeof(BB))) == "string")
+  doAssert($distinctBase(typeof(CC))) == "int")
 
 
 static:

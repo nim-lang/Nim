@@ -160,7 +160,7 @@ proc freshIdentNodes(ast: NimNode): NimNode =
         result.add inspect(child)
   result = inspect(ast)
 
-macro distinctBase*(T: typedesc): untyped =
+macro distinctBase*(T: typedesc): untyped {.deprecated: "use distinctBase from typetraits instead".} =
   ## reverses ``type T = distinct A``; works recursively.
   runnableExamples:
     type T = distinct int

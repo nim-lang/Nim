@@ -1,8 +1,9 @@
 discard """
   output: "@[@[], @[], @[], @[], @[]]"
 """
-import sugar
+import typetraits
 import macros
+import sugar except distinctBase
 
 block distinctBase:
   block:
