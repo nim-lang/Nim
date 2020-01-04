@@ -1809,7 +1809,7 @@ template defaultWalkFilter(item): bool =
   ## files and directories
   true
 
-template walkCommon(pattern: string, filter) =
+template walkCommon(pattern: string, filter: typed, checkError: bool) =
   ## Common code for getting the files and directories with the
   ## specified `pattern`
   when defined(windows):
@@ -1833,6 +1833,8 @@ template walkCommon(pattern: string, filter) =
           let errCode = getLastError()
           if errCode == ERROR_NO_MORE_FILES: break
           else: raiseOSError(errCode.OSErrorCode)
+    elif checkError:
+      raiseOSError(osLastError(), pattern)
   else: # here we use glob
     var
       f: Glob
@@ -1840,7 +1842,7 @@ template walkCommon(pattern: string, filter) =
     f.gl_offs = 0
     f.gl_pathc = 0
     f.gl_pathv = nil
-    res = glob(pattern, 0, nil, addr(f))
+    res = glob(pattern, if checkError: GLOB_ERR else: 0, nil, addr(f))
     defer: globfree(addr(f))
     if res == 0:
       for i in 0.. f.gl_pathc - 1:
@@ -1848,48 +1850,62 @@ template walkCommon(pattern: string, filter) =
         let path = $f.gl_pathv[i]
         if filter(path):
           yield path
+    elif checkError:
+      raiseOSError(osLastError(), pattern)
 
-iterator walkPattern*(pattern: string): string {.tags: [ReadDirEffect], noNimScript.} =
+iterator walkPattern*(pattern: string; checkError = false): string {.
+  tags: [ReadDirEffect], noNimScript.} =
   ## Iterate over all the files and directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
   ## `pattern` is OS dependent, but at least the `"\*.ext"`
   ## notation is supported.
   ##
+  ## In case of an error, raises `OSError` if `checkError` is true,
+  ## otherwise the error is ignored and yields nothing.
+  ##
   ## See also:
   ## * `walkFiles iterator <#walkFiles.i,string>`_
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
-  walkCommon(pattern, defaultWalkFilter)
+  walkCommon(pattern, defaultWalkFilter, checkError)
 
-iterator walkFiles*(pattern: string): string {.tags: [ReadDirEffect], noNimScript.} =
+iterator walkFiles*(pattern: string; checkError = false): string {.
+  tags: [ReadDirEffect], noNimScript.} =
   ## Iterate over all the files that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
   ## `pattern` is OS dependent, but at least the `"\*.ext"`
   ## notation is supported.
   ##
+  ## In case of an error, raises `OSError` if `checkError` is true,
+  ## otherwise the error is ignored and yields nothing.
+  ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
-  walkCommon(pattern, isFile)
+  walkCommon(pattern, isFile, checkError)
 
-iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noNimScript.} =
+iterator walkDirs*(pattern: string; checkError = false): string {.
+  tags: [ReadDirEffect], noNimScript.} =
   ## Iterate over all the directories that match the `pattern`.
   ##
   ## On POSIX this uses the `glob`:idx: call.
   ## `pattern` is OS dependent, but at least the `"\*.ext"`
   ## notation is supported.
   ##
+  ## In case of an error, raises `OSError` if `checkError` is true,
+  ## otherwise the error is ignored and yields nothing.
+  ##
   ## See also:
   ## * `walkPattern iterator <#walkPattern.i,string>`_
   ## * `walkFiles iterator <#walkFiles.i,string>`_
   ## * `walkDir iterator <#walkDir.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
-  walkCommon(pattern, isDir)
+  walkCommon(pattern, isDir, checkError)
 
 proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
   tags: [ReadDirEffect], noNimScript.} =

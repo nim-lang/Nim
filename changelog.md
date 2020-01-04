@@ -51,10 +51,9 @@
   and `typetraits.get` to get the ith element of a type tuple.
 - Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
 
-- Added `os.normalizePathEnd` for additional path sanitization.
-
-- Added `checkError` parameter to `os.walkDir` and `os.walkDirRec`.
-  If it is true, raises `OSError` when `dir` cannot be open.
+- Added `checkError` parameter to `os.walkPattern`, `os.walkFiles`,
+  `os.walkDirs`, `os.walkDir` and `os.walkDirRec`. If it is true, raises
+  `OSError` in case of an error.
 
 ## Library changes
 
