@@ -13,7 +13,10 @@ proc maybe*[T](a: T): auto =
     assert f.maybe.x2.x1[] == ""
   Maybe[T](valueImpl: a)
 
+{.push experimental: "dotOperators".}
+
 template `.`*(a: Maybe, b): untyped =
+  ## See `maybe`
   let a2 = a.valueImpl # to avoid double evaluations
   when type(a2) is ref|ptr:
     if a2 == nil:
@@ -23,10 +26,14 @@ template `.`*(a: Maybe, b): untyped =
   else:
     maybe(a2.b)
 
+{.pop.}
+
 template `[]`*(a: Maybe): untyped =
+  ## See `maybe`
   a.valueImpl
 
 template `[]`*[I](a: Maybe, i: I): untyped =
+  ## See `maybe`
   let a2 = a.valueImpl # to avoid double evaluations
   if len(a2) == 0:
     maybe(default(type(a2[i])))
