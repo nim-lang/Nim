@@ -1168,6 +1168,9 @@ proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
       ["Index".rope, nil, nil, rope(getDateStr()),
                    rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
-  let filename = getOutFile(conf, RelativeFile"theindex", HtmlExt)
+  var outFile = RelativeFile"theindex"
+  if conf.outFile != RelativeFile"":
+    outFile = conf.outFile
+  let filename = getOutFile(conf, outFile, HtmlExt)
   if not writeRope(code, filename):
     rawMessage(conf, errCannotOpenFile, filename.string)
