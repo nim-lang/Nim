@@ -276,23 +276,20 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
-  if n.kind == nkIntLit:
-    # use `nkPtrLit` once this is added
-    if dest.kind == rkNode:
-      dest.node = n
-      return
-    elif n.typ != nil and n.typ.kind == tyPtr:
-      dest = TFullReg(kind: rkNode, node: n)
-      return
-
+  template funInt() =
+    dest.kind = rkInt
+    dest.intVal = n.intVal
   case n.kind
   of nkStrLit..nkTripleStrLit:
     dest.kind = rkNode
     createStr(dest)
     dest.node.strVal = n.strVal
-  of nkCharLit..nkUInt64Lit:
-    dest.kind = rkInt
-    dest.intVal = n.intVal
+  of nkIntLit: # use `nkPtrLit` once this is added
+    if dest.kind == rkNode: dest.node = n
+    elif n.typ != nil and n.typ.kind in PtrLikeKinds:
+      dest = TFullReg(kind: rkNode, node: n)
+    else: funInt()
+  of {nkCharLit..nkUInt64Lit} - {nkIntLit}: funInt()
   of nkFloatLit..nkFloat128Lit:
     dest.kind = rkFloat
     dest.floatVal = n.floatVal
@@ -1020,11 +1017,15 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         let nb = regs[rb].node
         let nc = regs[rc].node
         template getTyp(n): untyped =
-          n.typ.skipTypes({tyAlias})
-        regs[ra].intVal = ord(
-          (nb.kind == nkNilLit and nc.kind == nkNilLit) or
-          (nb.getTyp.kind in PtrLikeKinds and nb.getTyp.kind == nc.getTyp.kind and nb.intVal == nc.intVal) or
-          nb == nc)
+          n.typ.skipTypes(abstractInst)
+        var ret = false
+        if nb.kind != nc.kind: discard
+        elif (nb == nc) or (nb.kind == nkNilLit): ret = true
+        elif nb.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit ?
+          let tb = nb.getTyp
+          let tc = nc.getTyp
+          ret = tb.kind in PtrLikeKinds and tc.kind == tb.kind
+        regs[ra].intVal = ord(ret)
     of opcEqNimNode:
       decodeBC(rkInt)
       regs[ra].intVal =
