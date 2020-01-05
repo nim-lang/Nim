@@ -604,7 +604,7 @@ proc fromUnix*(unix: float): Time
   let nsecs = (unix - secs) * 1e9
   initTime(secs.int64, nsecs.NanosecondRange)
 
-proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [], since: (1, 1).} =
+proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [].} =
   ## Same as `toUnix` but using subsecond resolution.
   runnableExamples:
     let t = getTime()
