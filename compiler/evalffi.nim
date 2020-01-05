@@ -46,19 +46,12 @@ proc getDll(conf: ConfigRef, cache: var TDllCache; dll: string; info: TLineInfo)
 const
   nkPtrLit = nkIntLit # hopefully we can get rid of this hack soon
 
-var myerrno {.importc: "errno", header: "<errno.h>".}: cint ## error variable
-
 proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
-  let name = $sym.loc.r
+  let name = sym.cname # $sym.loc.r would point to internal name
   # the AST does not support untyped pointers directly, so we use an nkIntLit
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
-  case name
-  of "stdin":  result.intVal = cast[ByteAddress](system.stdin)
-  of "stdout": result.intVal = cast[ByteAddress](system.stdout)
-  of "stderr": result.intVal = cast[ByteAddress](system.stderr)
-  of "vmErrnoWrapper": result.intVal = cast[ByteAddress](myerrno)
-  else:
+  when true:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
       globalError(conf, sym.info, "dynlib needs to be a string lit")
@@ -74,7 +67,7 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
       let dll = if lib.kind == libHeader: libcDll else: lib.path.strVal
       let dllhandle = getDll(conf, gDllCache, dll, sym.info)
       theAddr = dllhandle.symAddr(name)
-    if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & sym.name.s)
+    if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & name)
     result.intVal = cast[ByteAddress](theAddr)
 
 proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.TType =

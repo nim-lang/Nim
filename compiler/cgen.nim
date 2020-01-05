@@ -700,7 +700,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
 
 proc mangleDynLibProc(sym: PSym): Rope =
   # we have to build this as a single rope in order not to trip the
-  # optimization in genInfixCall
+  # optimization in genInfixCall, see test tests/cpp/t8241.nim
   if sfCompilerProc in sym.flags:
     # NOTE: sym.loc.r is the external name!
     result = rope(sym.name.s)

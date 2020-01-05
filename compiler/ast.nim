@@ -469,6 +469,7 @@ type
     nfExplicitCall # x.y() was used instead of x.y
     nfExprCall  # this is an attempt to call a regular expression
     nfIsRef     # this node is a 'ref' node; used for the VM
+    nfIsPtr     # this node is a 'ptr' node; used for the VM
     nfPreventCg # this node should be ignored by the codegen
     nfBlockArg  # this a stmtlist appearing in a call (e.g. a do block)
     nfFromTemplate # a top-level node returned from a template
@@ -856,6 +857,9 @@ type
     loc*: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
+    when hasFFI:
+      cname*: string          # resolved C declaration name in importc decl, eg:
+                              # proc fun() {.importc: "$1aux".} => cname = funaux
     constraint*: PNode        # additional constraints like 'lit|result'; also
                               # misused for the codegenDecl pragma in the hope
                               # it won't cause problems
@@ -978,12 +982,13 @@ const
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
     tyProc, tyError}
+  PtrLikeKinds*: TTypeKinds = {tyPointer, tyPtr} # for VM
   ExportableSymKinds* = {skVar, skConst, skProc, skFunc, skMethod, skType,
     skIterator,
     skMacro, skTemplate, skConverter, skEnumField, skLet, skStub, skAlias}
   PersistentNodeFlags*: TNodeFlags = {nfBase2, nfBase8, nfBase16,
                                       nfDotSetter, nfDotField,
-                                      nfIsRef, nfPreventCg, nfLL,
+                                      nfIsRef, nfIsPtr, nfPreventCg, nfLL,
                                       nfFromTemplate, nfDefaultRefsParam,
                                       nfExecuteOnReload}
   namePos* = 0

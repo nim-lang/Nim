@@ -885,8 +885,21 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastFloatToInt64, dest, tmp)
       # narrowing for 64 bits not needed (no extended sign bits available).
     c.freeTemp(tmp)
+  elif src.kind in PtrLikeKinds + {tyRef} and dst.kind == tyInt:
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    var imm: BiggestInt = if src.kind in PtrLikeKinds: 1 else: 2
+    c.gABI(n, opcCastPtrToInt, dest, tmp, imm)
+    c.freeTemp(tmp)
+  elif src.kind in PtrLikeKinds + {tyInt} and dst.kind in PtrLikeKinds:
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    c.gABx(n, opcSetType, dest, c.genType(dst))
+    c.gABC(n, opcCastIntToPtr, dest, tmp)
+    c.freeTemp(tmp)
   else:
-    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size")
+    # todo: support cast from tyInt to tyRef
+    globalError(c.config, n.info, "VM does not support 'cast' from " & $src.kind & " to " & $dst.kind)
 
 proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)
@@ -1474,11 +1487,17 @@ proc getOwner(c: PCtx): PSym =
   result = c.prc.sym
   if result.isNil: result = c.module
 
+proc importcCondVar*(s: PSym): bool {.inline.} =
+  # see also importcCond
+  if sfImportc in s.flags:
+    return s.kind in {skVar, skLet, skConst}
+
 proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
+  if s.importcCondVar: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     # little hack ahead for bug #12612: assume gensym'ed variables
@@ -1618,17 +1637,24 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   assert card(flags * {gfNodeAddr, gfNode}) < 2
   let s = n.sym
   if s.isGlobal:
-    if sfCompileTime in s.flags or c.mode == emRepl:
+    let isImportcVar = importcCondVar(s)
+    if sfCompileTime in s.flags or c.mode == emRepl or isImportcVar:
       discard
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if importcCond(s): c.importcSym(n.info, s)
+      if importcCond(s) or isImportcVar: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
+
     if gfNodeAddr in flags:
-      c.gABx(n, opcLdGlobalAddr, dest, s.position)
+      if isImportcVar:
+        c.gABx(n, opcLdGlobalAddrDerefFFI, dest, s.position)
+      else:
+        c.gABx(n, opcLdGlobalAddr, dest, s.position)
+    elif isImportcVar:
+      c.gABx(n, opcLdGlobalDerefFFI, dest, s.position)
     elif fitsRegister(s.typ) and gfNode notin flags:
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
