@@ -1,10 +1,11 @@
 type Wrapnil*[T] = object
   valueImpl*: T
 
-proc wrapnil*[T](a: T): auto =
+proc wrapnil*[T](a: T): Wrapnil[T] =
   ## Allows chains of field-access and indexing where the LHS can be nil.
   ## This simplifies code by reducing need for if-else branches around intermediate
   ## maybe nil values.
+  ## Note: experimental module and relies on {.experimental: "dotOperators".}
   runnableExamples:
     type Foo = ref object
       x1: string
