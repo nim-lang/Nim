@@ -74,7 +74,7 @@ let
       'template/generic instantiation' ( ' of `' [^`]+ '`' )? ' from here' .*
     """
   pegOtherError = peg"'Error:' \s* {.*}"
-  pegSuccess = peg"'Hint: operation successful'.*"
+  pegSuccess = peg"'Hint: LOC: '.*" # 
   pegOfInterest = pegLineError / pegOtherError
 
 var gTargets = {low(TTarget)..high(TTarget)}
@@ -170,6 +170,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   result.tfile = ""
   result.tline = 0
   result.tcolumn = 0
+  result.err = reNimcCrash
   if tmpl =~ pegLineTemplate:
     result.tfile = extractFilename(matches[0])
     result.tline = parseInt(matches[1])
