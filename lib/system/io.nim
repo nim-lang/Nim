@@ -714,7 +714,7 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
     sysFatal(IOError, "cannot open: " & filename)
 
 proc readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".}
-
+  readLines(filename, 1)
 
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
