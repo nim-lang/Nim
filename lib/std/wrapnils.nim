@@ -1,7 +1,7 @@
-type Nilwrap*[T] = object
+type Wrapnil*[T] = object
   valueImpl*: T
 
-proc nilwrap*[T](a: T): auto =
+proc wrapnil*[T](a: T): auto =
   ## Allows chains of field-access and indexing where the LHS can be nil.
   ## This simplifies code by reducing need for if-else branches around intermediate
   ## maybe nil values.
@@ -10,32 +10,32 @@ proc nilwrap*[T](a: T): auto =
       x1: string
       x2: Foo
     var f: Foo
-    assert f.nilwrap.x2.x1[] == ""
-  Nilwrap[T](valueImpl: a)
+    assert f.wrapnil.x2.x1[] == ""
+  Wrapnil[T](valueImpl: a)
 
 {.push experimental: "dotOperators".}
 
-template `.`*(a: Nilwrap, b): untyped =
-  ## See `nilwrap`
+template `.`*(a: Wrapnil, b): untyped =
+  ## See `wrapnil`
   let a2 = a.valueImpl # to avoid double evaluations
   when type(a2) is ref|ptr:
     if a2 == nil:
-      nilwrap(default(type(a2.b)))
+      wrapnil(default(type(a2.b)))
     else:
-      nilwrap(a2.b)
+      wrapnil(a2.b)
   else:
-    nilwrap(a2.b)
+    wrapnil(a2.b)
 
 {.pop.}
 
-template `[]`*(a: Nilwrap): untyped =
-  ## See `nilwrap`
+template `[]`*(a: Wrapnil): untyped =
+  ## See `wrapnil`
   a.valueImpl
 
-template `[]`*[I](a: Nilwrap, i: I): untyped =
-  ## See `nilwrap`
+template `[]`*[I](a: Wrapnil, i: I): untyped =
+  ## See `wrapnil`
   let a2 = a.valueImpl # to avoid double evaluations
   if len(a2) == 0:
-    nilwrap(default(type(a2[i])))
+    wrapnil(default(type(a2[i])))
   else:
-    nilwrap(a2[i])
+    wrapnil(a2[i])
