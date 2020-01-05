@@ -607,12 +607,21 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regB
       ensureKind(rkFloat)
       regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
-    of opcCastPtrToInt:
-      let rb = instr.regB
-      ensureKind(rkInt)
-      if regs[rb].kind != rkNode:
-        stackTrace(c, tos, pc, "opcCastPtrToInt: regs[rb].kind: " & $regs[rb].kind)
-      regs[ra].intVal = cast[int](regs[rb].node.intVal)
+
+    of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
+      decodeBImm(rkInt)
+      case imm
+      of 1: # PtrLikeKinds
+        case regs[rb].kind
+        of rkNode:
+          regs[ra].intVal = cast[int](regs[rb].node.intVal)
+        of rkNodeAddr:
+          regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        else:
+          stackTrace(c, tos, pc, "opcCastPtrToInt: got " & $regs[rb].kind)
+      of 2: # tyRef
+        regs[ra].intVal = cast[int](regs[rb].node)
+      else: assert false, $imm
     of opcCastIntToPtr:
       let rb = instr.regB
       let typ = regs[ra].node.typ
@@ -1001,31 +1010,40 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
+      var ret = false
       decodeBC(rkInt)
+      template getTyp(n): untyped =
+        n.typ.skipTypes(abstractInst)
+      proc ptrEquality(n1: ptr PNode, n2: PNode): bool =
+        ## true if n2.intVal represents a ptr equal to n1
+        let p1 = cast[int](n1)
+        case n2.kind
+        of nkNilLit: return p1 == 0
+        of nkIntLit: # TODO: nkPtrLit
+          # for example, n1.kind == nkFloatLit (ptr float)
+          # the problem is that n1.typ == nil so we can't compare n1.typ and n2.typ
+          # this is the best we can do (pending making sure we assign a valid n1.typ to nodeAddr's)
+          let t2 = n2.getTyp
+          return t2.kind in PtrLikeKinds and n2.intVal == p1
+        else: return false
+
       if regs[rb].kind == rkNodeAddr:
         if regs[rc].kind == rkNodeAddr:
-          regs[ra].intVal = ord(regs[rb].nodeAddr == regs[rc].nodeAddr)
+          ret = regs[rb].nodeAddr == regs[rc].nodeAddr
         else:
-          assert regs[rc].kind == rkNode
-          # we know these cannot be equal
-          regs[ra].intVal = ord(false)
+          ret = ptrEquality(regs[rb].nodeAddr, regs[rc].node)
       elif regs[rc].kind == rkNodeAddr:
-        assert regs[rb].kind == rkNode
-        # we know these cannot be equal
-        regs[ra].intVal = ord(false)
+        ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
       else:
         let nb = regs[rb].node
         let nc = regs[rc].node
-        template getTyp(n): untyped =
-          n.typ.skipTypes(abstractInst)
-        var ret = false
         if nb.kind != nc.kind: discard
         elif (nb == nc) or (nb.kind == nkNilLit): ret = true
-        elif nb.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit ?
+        elif nb.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
           let tb = nb.getTyp
           let tc = nc.getTyp
           ret = tb.kind in PtrLikeKinds and tc.kind == tb.kind
-        regs[ra].intVal = ord(ret)
+      regs[ra].intVal = ord(ret)
     of opcEqNimNode:
       decodeBC(rkInt)
       regs[ra].intVal =
