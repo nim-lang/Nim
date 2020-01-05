@@ -793,6 +793,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           # see also `nfIsPtr`
           if node.kind == nkIntLit:
             var typ2 = typ
+            doAssert typ != nil
             if typ.kind == tyPtr:
               typ2 = typ2[0]
             if not derefPtrToReg(node.intVal, typ2, regs[ra], isAssign = false):
@@ -826,7 +827,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           stackTrace(c, tos, pc, errNilAccess)
         let node = regs[ra].node
         let typ = node.typ
-        if nfIsPtr in node.flags or typ.kind == tyPtr:
+        if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
           assert node.kind == nkIntLit, $(node.kind)
           var typ2 = typ
           if typ.kind == tyPtr:
