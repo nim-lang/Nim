@@ -696,10 +696,10 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc staticReadLines*(filename: string, n: Natural): seq[TaintedString] =
-  ## Compile time read `n` lines from the file named `filename`. Raises an IO exception
+proc readLines*(filename: string, n: Natural): seq[TaintedString] =
+  ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
-  ## A line of text may be delimited by ``LF`` or ``CRLF``.
+  ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned strings.
   var f: File
   if open(f, filename):
@@ -713,6 +713,8 @@ proc staticReadLines*(filename: string, n: Natural): seq[TaintedString] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
+proc readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+  readLines(filename, 1)
 
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
