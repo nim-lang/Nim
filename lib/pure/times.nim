@@ -596,7 +596,7 @@ proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   t.seconds
 
 proc fromUnix*(unix: float): Time
-    {.benign, tags: [], raises: [], noSideEffect.} =
+    {.benign, tags: [], raises: [], noSideEffect, since: (1, 1).} =
   ## Overload working with subsecond resolution.
   runnableExamples:
     doAssert fromUnix(123.0) == fromUnix(123)
@@ -604,7 +604,7 @@ proc fromUnix*(unix: float): Time
   let nsecs = (unix - secs) * 1e9
   initTime(secs.int64, nsecs.NanosecondRange)
 
-proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [].} =
+proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [], since: (1, 1).} =
   ## Same as `toUnix` but using subsecond resolution.
   runnableExamples:
     let t = getTime()
