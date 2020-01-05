@@ -97,7 +97,7 @@ const
     warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#) project: $# output: $#",
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",

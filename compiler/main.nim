@@ -364,7 +364,10 @@ proc mainCommand*(graph: ModuleGraph) =
                usedMem,
                if isDefined(conf, "danger"): "Dangerous Release Build"
                elif isDefined(conf, "release"): "Release Build"
-               else: "Debug Build"])
+               else: "Debug Build",
+               $conf.projectFull,
+               $conf.getOutFileFull(),
+               ])
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "
