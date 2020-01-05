@@ -417,8 +417,8 @@ proc sendFile(socket: Socket | AsyncSocket,
   var buffer: string
   while true:
     buffer =
-      when socket is AsyncSocket: await read(file, chunkSize)
-      else: readStr(file, chunkSize)
+      when socket is AsyncSocket: (await read(file, chunkSize)).string
+      else: readStr(file, chunkSize).string
     if buffer.len == 0: break
     await socket.send(buffer)
   file.close()
