@@ -9,6 +9,7 @@ block: # isNamedTuple
   doAssert (a:1,).type.isNamedTuple
   doAssert Foo1.isNamedTuple
   doAssert Foo2.isNamedTuple
+  doAssert isNamedTuple(tuple[key: int])
   doAssert not Foo3.isNamedTuple
   doAssert not Foo4.isNamedTuple
   doAssert not (1,).type.isNamedTuple
@@ -50,21 +51,17 @@ type
   CC = distinct int
   AAA = AA
 
-
-var a2: AAA
-var b2: BB
-var c2: CC
-
 static:
+  var a2: AAA
+  var b2: BB
+  var c2: CC
+
   doAssert(a2 is distinct)
   doAssert(b2 is distinct)
   doAssert(c2 is distinct)
 
-  doAssert($distinctBase(typeof(a2))) == "seq[int]")
-  doAssert($distinctBase(typeof(b2))) == "string")
-  doAssert($distinctBase(typeof(c2))) == "int")
+  doAssert($distinctBase(typeof(a2)) == "seq[int]")
+  doAssert($distinctBase(typeof(b2)) == "string")
+  doAssert($distinctBase(typeof(c2)) == "int")
 
 
-static:
-  doAssert(not isNamedTuple((int, float)))
-  doAssert(isNamedTuple(tuple[a: int, b:float]))

@@ -176,10 +176,11 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
   of "distinctBase":
-    let operand2 = operand.skipTypes({tyGenericInst})
-    if operand2.kind == tyDistinct:
-      var resType = base(operand2)
-      result = newNodeIT(nkTypeOfExpr, traitCall.info, resType)
+    let arg = operand.skipTypes({tyGenericInst})
+    if arg.kind == tyDistinct:
+      var resType = newType(tyTypeDesc, base(arg).owner)
+      rawAddSon(resType, base(arg))
+      result = toNode(resType, traitCall.info)
     else:
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
