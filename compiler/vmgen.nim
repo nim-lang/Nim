@@ -1650,11 +1650,11 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
     if gfNodeAddr in flags:
       if isImportcVar:
-        c.gABx(n, opcLdGlobalAddrDeref, dest, s.position)
+        c.gABx(n, opcLdGlobalAddrDerefFFI, dest, s.position)
       else:
         c.gABx(n, opcLdGlobalAddr, dest, s.position)
     elif isImportcVar:
-      c.gABx(n, opcLdGlobalDeref, dest, s.position)
+      c.gABx(n, opcLdGlobalDerefFFI, dest, s.position)
     elif fitsRegister(s.typ) and gfNode notin flags:
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)

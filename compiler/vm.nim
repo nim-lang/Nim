@@ -1448,7 +1448,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNode)
       regs[ra].node = c.globals[rb]
-    of opcLdGlobalDeref:
+    of opcLdGlobalDerefFFI:
       let rb = instr.regBx - wordExcess - 1
       let node = c.globals[rb]
       let typ = node.typ
@@ -1462,7 +1462,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].node = node2
       elif not derefPtrToReg(node.intVal, typ, regs[ra], isAssign = false):
         stackTrace(c, tos, pc, "opcLdDeref unsupported type: " & $(typeToString(typ), typ[0].kind))
-    of opcLdGlobalAddrDeref:
+    of opcLdGlobalAddrDerefFFI:
       let rb = instr.regBx - wordExcess - 1
       let node = c.globals[rb]
       let typ = node.typ
