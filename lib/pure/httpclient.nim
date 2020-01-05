@@ -256,7 +256,7 @@ type
     name, content: string
     case isFile: bool
     of true:
-      fileName, contentType: string
+      filename, contentType: string
       fileSize: int64
       isStream: bool
     else: discard
@@ -306,7 +306,7 @@ proc newProxy*(url: string, auth = ""): Proxy =
 
 proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
-  MultipartData(content: @[])
+  MultipartData()
 
 proc `$`*(data: MultipartData): string {.since: (1, 1).} =
   ## convert MultipartData to string so it's human readable when echo
@@ -318,7 +318,7 @@ proc `$`*(data: MultipartData): string {.since: (1, 1).} =
     result &= "  ------------------------------\n"
     result &= entry.name & "\n\n" & entry.content & "\n"
 
-proc add*(p: var MultipartData, name, content: string, filename: string = "",
+proc add*(p: MultipartData, name, content: string, filename: string = "",
           contentType: string = "", stream = true) =
   ## Add a value to the multipart data. Raises a `ValueError` exception if
   ## `name`, `filename` or `contentType` contain newline characters.
@@ -342,7 +342,7 @@ proc add*(p: var MultipartData, name, content: string, filename: string = "",
 
   p.content.add(entry)
 
-proc add*(p: var MultipartData, xs: MultipartEntries): MultipartData
+proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
          {.discardable.} =
   ## Add a list of multipart entries to the multipart data `p`. All values are
   ## added without a filename and without a content type.
@@ -363,7 +363,7 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
   for entry in xs:
     result.add(entry.name, entry.content)
 
-proc addFiles*(p: var MultipartData, xs: openArray[tuple[name, file: string]],
+proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
                mimeDb = newMimetypes(), stream = true):
                MultipartData {.discardable.} =
   ## Add files to a multipart data object. The file will be opened from your
@@ -382,7 +382,7 @@ proc addFiles*(p: var MultipartData, xs: openArray[tuple[name, file: string]],
     p.add(name, content, fName & ext, contentType, stream=stream)
   result = p
 
-proc `[]=`*(p: var MultipartData, name, content: string) =
+proc `[]=`*(p: MultipartData, name, content: string) =
   ## Add a multipart entry to the multipart data `p`. The value is added
   ## without a filename and without a content type.
   ##
@@ -390,7 +390,7 @@ proc `[]=`*(p: var MultipartData, name, content: string) =
   ##   data["username"] = "NimUser"
   p.add(name, content)
 
-proc `[]=`*(p: var MultipartData, name: string,
+proc `[]=`*(p: MultipartData, name: string,
             file: tuple[name, contentType, content: string]) =
   ## Add a file to the multipart data `p`, specifying filename, contentType and
   ## content manually.
