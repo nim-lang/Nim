@@ -17,8 +17,8 @@
   backends, and it is compatible with Python's behavior,
   e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
 - Global variable `lc` has been removed from sugar.nim.
-- `distincBase` has been moved from sugar.nim to typetraits and now implemented as
-   compiler type trait instead of macro. `distincBase` in sugar is now deprecated
+- `distinctBase` has been moved from sugar.nim to typetraits and now implemented as
+  compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
 
 ### Breaking changes in the compiler
 
