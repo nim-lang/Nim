@@ -1,4 +1,4 @@
-import std/maybes
+import std/nilwraps
 
 proc main() =
   type Bar = object
@@ -20,17 +20,17 @@ proc main() =
     witness.inc
     result = Foo(x1: x1)
 
-  doAssert a.maybe.x2.x2.x1[] == 0.0
-  doAssert a3.maybe.x2.x2.x1[] == 1.2
-  doAssert a3.maybe.x2.x2.x5.len[] == 0
-  doAssert a3.maybe.x2.x2.x3.len[] == 3
-  doAssert a3.maybe.x2.x2.x3.len == maybe(3)
-  doAssert a3.maybe.x2.x2.x3[1][] == 'b'
-  doAssert a.maybe.x2.x2.x3[1][] == default(char)
+  doAssert a.nilwrap.x2.x2.x1[] == 0.0
+  doAssert a3.nilwrap.x2.x2.x1[] == 1.2
+  doAssert a3.nilwrap.x2.x2.x5.len[] == 0
+  doAssert a3.nilwrap.x2.x2.x3.len[] == 3
+  doAssert a3.nilwrap.x2.x2.x3.len == nilwrap(3)
+  doAssert a3.nilwrap.x2.x2.x3[1][] == 'b'
+  doAssert a.nilwrap.x2.x2.x3[1][] == default(char)
 
   # make sure no double evaluation bug
   doAssert witness == 0
-  doAssert initFoo(1.3).maybe.x1[] == 1.3
+  doAssert initFoo(1.3).nilwrap.x1[] == 1.3
   doAssert witness == 1
 
 main()
