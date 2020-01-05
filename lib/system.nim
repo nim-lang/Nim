@@ -1958,7 +1958,24 @@ const
 let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
   ## May be used only in `when` expression.
   ## It is true in Nim VM context and false otherwise.
+  ##
+  ## .. code-block:: Nim
+  ##   when nimvm: # can't use expressions (eg `not nimvm`)
+  ##     discard # VM running
+  ##   else: # this branch must exist
+  ##     doAssert(false) # VM not running
 {.pop.}
+
+template nimvmRunning*: bool =
+  ## Wrapper around `nimvm` that can be used in any context. Note that it always
+  ## evaluates to `true` inside a when context so can't be used for statically
+  ## disabling code.
+  runnableExamples:
+    if not nimvmRunning: discard # non-static branch selection
+    when nimvmRunning: discard # this isn't useful, branch always taken
+    discard nimvmRunning
+  when nimvm: true
+  else: false
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}

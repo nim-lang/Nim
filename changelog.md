@@ -45,6 +45,10 @@
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
 
+- Added `system.nimct` which is true inside compile time evaluation context. Unlike `nimvm`,
+  it can be used in any context, however it'll evaluate to true inside a when `nimct` context
+  so can't be used to statically disable code.
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
