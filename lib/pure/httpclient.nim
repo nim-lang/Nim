@@ -279,7 +279,6 @@ proc fileError(msg: string) =
   e.msg = msg
   raise e
 
-
 when not defined(ssl):
   type SslContext = ref object
 var defaultSslContext {.threadvar.}: SslContext
@@ -299,7 +298,6 @@ proc newProxy*(url: string, auth = ""): Proxy =
 proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData(content: @[])
-
 
 proc `$`*(data: MultipartData): string {.since: (1, 1).} =
   ## convert MultipartData to string so it's human readable when echo
@@ -510,9 +508,9 @@ type
 type
   HttpClient* = HttpClientBase[Socket]
 
-proc newHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = getDefaultSSL(), proxy: Proxy = nil,
-    timeout = -1, headers = newHttpHeaders()): HttpClient =
+proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
+                    sslContext = getDefaultSSL(), proxy: Proxy = nil,
+                    timeout = -1, headers = newHttpHeaders()): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -670,8 +668,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
     # Trailer headers will only be sent if the request specifies that we want
     # them: http://tools.ietf.org/html/rfc2616#section-3.6.1
 
-proc parseBody(client: HttpClient | AsyncHttpClient,
-               headers: HttpHeaders,
+proc parseBody(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
                httpVersion: string): Future[void] {.multisync.} =
   # Reset progress from previous requests.
   client.contentTotal = 0
@@ -875,7 +872,7 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
     result[k] = vs
 
 proc getHeaders(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
-                requestUrl: Uri, httpMethod, body: string, ): string =
+                requestUrl: Uri, httpMethod, body: string): string =
   let effectiveHeaders = client.headers.override(headers)
 
   if not effectiveHeaders.hasKey("user-agent") and client.userAgent != "":
@@ -983,13 +980,13 @@ proc getContent*(client: HttpClient | AsyncHttpClient,
   return await responseContent(resp)
 
 proc delete*(client: HttpClient | AsyncHttpClient,
-          url: string): Future[Response | AsyncResponse] {.multisync.} =
+             url: string): Future[Response | AsyncResponse] {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a DELETE request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   result = await client.request(url, HttpDelete)
 
 proc deleteContent*(client: HttpClient | AsyncHttpClient,
-                 url: string): Future[string] {.multisync.} =
+                    url: string): Future[string] {.multisync.} =
   ## Connects to the hostname specified by the URL and returns the content of a DELETE request.
   let resp = await delete(client, url)
   return await responseContent(resp)
@@ -1017,8 +1014,7 @@ proc post*(client: HttpClient | AsyncHttpClient, url: string, body = "",
   var (xb, headers) = makeRequestContent(body, multipart)
   result = await client.request(url, $HttpPost, xb, headers)
 
-proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
-                  body = "",
+proc postContent*(client: HttpClient | AsyncHttpClient, url: string, body = "",
                   multipart: MultipartData = nil): Future[string]
                   {.multisync.} =
   ## Connects to the hostname specified by the URL and returns the content of a POST request.
@@ -1026,32 +1022,29 @@ proc postContent*(client: HttpClient | AsyncHttpClient, url: string,
   return await responseContent(resp)
 
 proc put*(client: HttpClient | AsyncHttpClient, url: string, body = "",
-           multipart: MultipartData = nil): Future[Response | AsyncResponse]
-           {.multisync.} =
+          multipart: MultipartData = nil): Future[Response | AsyncResponse]
+          {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a PUT request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
   result = await client.request(url, $HttpPut, xb, headers)
 
-proc putContent*(client: HttpClient | AsyncHttpClient, url: string,
-                  body = "",
-                  multipart: MultipartData = nil): Future[string]
-                  {.multisync.} =
+proc putContent*(client: HttpClient | AsyncHttpClient, url: string, body = "",
+                 multipart: MultipartData = nil): Future[string] {.multisync.} =
   ## Connects to the hostname specified by the URL andreturns the content of a PUT request.
   let resp = await put(client, url, body, multipart)
   return await responseContent(resp)
 
 proc patch*(client: HttpClient | AsyncHttpClient, url: string, body = "",
-           multipart: MultipartData = nil): Future[Response | AsyncResponse]
-           {.multisync.} =
+            multipart: MultipartData = nil): Future[Response | AsyncResponse]
+            {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a PATCH request.
   ## This procedure uses httpClient values such as ``client.maxRedirects``.
   var (xb, headers) = makeRequestContent(body, multipart)
   result = await client.request(url, $HttpPatch, xb, headers)
 
-proc patchContent*(client: HttpClient | AsyncHttpClient, url: string,
-                  body = "",
-                  multipart: MultipartData = nil): Future[string]
+proc patchContent*(client: HttpClient | AsyncHttpClient, url: string, body = "",
+                   multipart: MultipartData = nil): Future[string]
                   {.multisync.} =
   ## Connects to the hostname specified by the URL and returns the content of a PATCH request.
   let resp = await patch(client, url, body, multipart)
@@ -1114,8 +1107,9 @@ proc fileString(filePath, name: string, mimes: MimeDB): string =
     "Content-Type: " & contentType & cl
 
 proc uploadFile*(client: HttpClient | AsyncHttpClient, url, filePath, name: string,
-                 multipart: MultipartData, chunkSize = (2^18),
-                 mimes: MimeDB = newMimetypes()): Future[Response | AsyncResponse] {.multisync.} =
+                 multipart: MultipartData, mimes: MimeDB = newMimetypes(),
+                 chunkSize = (2^18)): Future[Response | AsyncResponse]
+                 {.multisync.} =
   let requestUrl = parseUri(url)
 
   if requestUrl.scheme == "":
