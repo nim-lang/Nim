@@ -1863,11 +1863,11 @@ proc implicitConv(kind: TNodeKind, f: PType, arg: PNode, m: TCandidate,
   result = newNodeI(kind, arg.info)
   if containsGenericType(f):
     if not m.hasFauxMatch:
-      result.typ = getInstantiatedType(c, arg, m, f)
+      result.typ = getInstantiatedType(c, arg, m, f).skipTypes({tySink})
     else:
       result.typ = errorType(c)
   else:
-    result.typ = f
+    result.typ = f.skipTypes({tySink})
   if result.typ == nil: internalError(c.graph.config, arg.info, "implicitConv")
   result.add c.graph.emptyNode
   result.add arg

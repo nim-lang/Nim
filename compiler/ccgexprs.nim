@@ -2070,7 +2070,7 @@ proc genDispose(p: BProc; n: PNode) =
 
 proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   const ToStringProcSlot = -4
-  let t = e[1].typ.skipTypes(abstractInst)
+  let t = e[1].typ.skipTypes(abstractInst+{tyRange})
   var toStrProc: PSym = nil
   for idx, p in items(t.methods):
     if idx == ToStringProcSlot:
