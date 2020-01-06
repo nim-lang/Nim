@@ -14,31 +14,40 @@ runnableExamples:
   assert Foo(x1: "a").wrapnil.x1[] == "a"
 
 type Wrapnil*[T] = object
-  valueImpl*: T
+  valueImpl: T
+  validImpl: bool
 
 proc wrapnil*[T](a: T): Wrapnil[T] =
-  Wrapnil[T](valueImpl: a)
+  Wrapnil[T](valueImpl: a, validImpl: true)
 
 {.push experimental: "dotOperators".}
 
 template `.`*(a: Wrapnil, b): untyped =
-  let a2 = a.valueImpl # to avoid double evaluations
-  when type(a2) is ref|ptr:
-    if a2 == nil:
-      wrapnil(default(type(a2.b)))
+  let a1 = a # to avoid double evaluations
+  let a2 = a1.valueImpl
+  if a1.validImpl:
+    when type(a2) is ref|ptr:
+      if a2 == nil:
+        default(Wrapnil[type(a2.b)])
+      else:
+        wrapnil(a2.b)
     else:
       wrapnil(a2.b)
   else:
-    wrapnil(a2.b)
+    # nil is "sticky"; this is needed, see tests
+    default(Wrapnil[type(a2.b)])
 
 {.pop.}
 
 template `[]`*(a: Wrapnil): untyped =
   a.valueImpl
 
+proc isNotNil*(a: Wrapnil): bool = a.validImpl
+
 template `[]`*[I](a: Wrapnil, i: I): untyped =
-  let a2 = a.valueImpl # to avoid double evaluations
-  if len(a2) == 0:
-    wrapnil(default(type(a2[i])))
+  let a1 = a # to avoid double evaluations
+  if a1.validImpl:
+    # correctly will raise IndexError if a is valid but wraps an empty container
+    wrapnil(a1.valueImpl[i])
   else:
-    wrapnil(a2[i])
+    default(Wrapnil[type(a1.valueImpl[i])])
