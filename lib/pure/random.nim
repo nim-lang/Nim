@@ -670,7 +670,7 @@ when isMainModule:
     doAssert a[1] == 0
 
     doAssert rand(0) == 0
-    doAssert rand("a") == 'a'
+    doAssert sample("a") == 'a'
 
     when compileOption("rangeChecks"):
       try:
