@@ -352,6 +352,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   ## Unstable API.
 
 proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+  let e = if e == nil: currException else: e
   when hasSomeStackTrace:
     var buf = newStringOfCap(2000)
     if e.trace.len == 0:
@@ -367,7 +368,8 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
     add(buf, "]\n")
 
     if onUnhandledException != nil:
-      onUnhandledException(buf)
+      cast[proc (errorMsg: string) {.nimcall, raises: [].}](
+        onUnhandledException)(buf)
     else:
       showErrorMessage(buf)
     `=destroy`(buf)
@@ -425,13 +427,14 @@ when gotoBasedExceptions:
       currException = nil
       quit(1)
 
-  addQuitProc(proc () {.noconv.} =
-    if currException != nil:
-      reportUnhandledError(currException)
-      # emulate: ``programResult = 1`` via abort() and a nop signal handler.
-      c_signal(SIGABRT, (proc (sign: cint) {.noconv, benign.} = discard))
-      c_abort()
-  )
+  when false:
+    addQuitProc(proc () {.noconv.} =
+      if currException != nil:
+        reportUnhandledError(currException)
+        # emulate: ``programResult = 1`` via abort() and a nop signal handler.
+        c_signal(SIGABRT, (proc (sign: cint) {.noconv, benign.} = discard))
+        c_abort()
+    )
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   if localRaiseHook != nil:

@@ -79,7 +79,7 @@ when not defined(useNimRtl):
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
-  Thread* {.pure, final.}[TArg] = object
+  Thread*[TArg] = object
     core: PGcThread
     sys: SysThread
     when TArg is void:
@@ -98,9 +98,6 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
   ## A thread is destructed when the ``.thread`` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
-  when not defined(nimNoNilSeqs):
-    if threadDestructionHandlers.isNil:
-      threadDestructionHandlers = @[]
   threadDestructionHandlers.add handler
 
 template afterThreadRuns() =
@@ -109,6 +106,8 @@ template afterThreadRuns() =
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages() {.rtl.}
+
+proc reportUnhandledError(e: ref Exception) {.raises: [].}
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
@@ -122,30 +121,36 @@ when defined(boehmgc):
   proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv.} =
     boehmGC_register_my_thread(sb)
     try:
-      let thrd = cast[ptr Thread[TArg]](thrd)
-      when TArg is void:
-        thrd.dataFn()
-      else:
-        thrd.dataFn(thrd.data)
-    finally:
-      afterThreadRuns()
+      try:
+        let thrd = cast[ptr Thread[TArg]](thrd)
+        when TArg is void:
+          thrd.dataFn()
+        else:
+          thrd.dataFn(thrd.data)
+      finally:
+        afterThreadRuns()
+    except:
+      reportUnhandledError(nil)
     boehmGC_unregister_my_thread()
 else:
   proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) =
     try:
-      when TArg is void:
-        thrd.dataFn()
-      else:
-        when defined(nimV2):
-          thrd.dataFn(thrd.data)
+      try:
+        when TArg is void:
+          thrd.dataFn()
         else:
-          var x: TArg
-          deepCopy(x, thrd.data)
-          thrd.dataFn(x)
-    finally:
-      afterThreadRuns()
+          when defined(nimV2):
+            thrd.dataFn(thrd.data)
+          else:
+            var x: TArg
+            deepCopy(x, thrd.data)
+            thrd.dataFn(x)
+      finally:
+        afterThreadRuns()
+    except:
+      reportUnhandledError(nil)
 
-proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
+proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
@@ -179,7 +184,7 @@ template threadProcWrapperBody(closure: untyped): untyped =
 
 {.push stack_trace:off.}
 when defined(windows):
-  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall.} =
+  proc threadProcWrapper[TArg](closure: pointer): int32 {.stdcall, raises: [].} =
     threadProcWrapperBody(closure)
     # implicitly return 0
 elif defined(genode):
