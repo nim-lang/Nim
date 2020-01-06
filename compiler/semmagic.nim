@@ -176,10 +176,13 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
   of "distinctBase":
-    let arg = operand.skipTypes({tyGenericInst})
+    var arg = operand.skipTypes({tyGenericInst})
     if arg.kind == tyDistinct:
-      var resType = newType(tyTypeDesc, base(arg).owner)
-      rawAddSon(resType, base(arg))
+      while arg.kind == tyDistinct:
+        arg = arg.base
+        arg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      var resType = newType(tyTypeDesc, operand.owner)
+      rawAddSon(resType, arg)
       result = toNode(resType, traitCall.info)
     else:
       localError(c.config, traitCall.info,
