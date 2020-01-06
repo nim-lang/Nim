@@ -5,7 +5,6 @@ ok2
 in fun4
 in fun5
 in fun6
-in fun7
 '''
 """
 
@@ -32,8 +31,14 @@ when false:
   # of to identifiers.
   template myfooHijacked* = {. .}
 
-proc fun7(): int {.myfoo7.} =
-  echo "in fun7"
+proc funHijackExample(): int {.myfoo7.} =
+  126
+
+## example showing a template pragma can use a local {.pragma.} pragma.
+## Using an imported {.pragma.} pragma would require https://github.com/nim-lang/Nim/pull/13030
+{.pragma: myfooLocal, discardable.}
+template myfoo8* = {.myfooLocal.}
+proc fun8(): int {.myfoo8.} =
   126
 
 fun1()
@@ -43,4 +48,5 @@ doAssert fun3()  == 123
 fun4()
 doAssert fun5() == 125
 fun6()
-fun7()
+funHijackExample()
+fun8()
