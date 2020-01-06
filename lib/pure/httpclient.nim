@@ -1007,12 +1007,12 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
       let redirectTo = getNewLocation(lastURL, result.headers)
       # Guarantee method for HTTP 307: see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
       var meth = if result.status == "307": httpMethod else: "GET"
-      result = await client.requestAux(redirectTo, meth, body=body, headers=headers)
+      result = await client.requestAux(redirectTo, meth, body, headers, multipart)
       lastURL = redirectTo
 
 proc request*(client: HttpClient | AsyncHttpClient, url: string,
-              httpMethod = HttpGet, body = "",
-              headers: HttpHeaders = nil): Future[Response | AsyncResponse]
+              httpMethod = HttpGet, body = "", headers: HttpHeaders = nil,
+              multipart: MultipartData = nil): Future[Response | AsyncResponse]
               {.multisync.} =
   ## Connects to the hostname specified by the URL and performs a request
   ## using the method specified.
@@ -1023,7 +1023,7 @@ proc request*(client: HttpClient | AsyncHttpClient, url: string,
   ##
   ## When a request is made to a different hostname, the current connection will
   ## be closed.
-  result = await request(client, url, $httpMethod, body, headers)
+  result = await request(client, url, $httpMethod, body, headers, multipart)
 
 proc responseContent(resp: Response | AsyncResponse): Future[string] {.multisync.} =
   ## Returns the content of a response as a string.
