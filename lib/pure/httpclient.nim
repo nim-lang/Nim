@@ -52,6 +52,18 @@
 ##
 ##   echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##
+## To stream files from disk when performing the request, use ``addFiles``.
+## **Note:** This will allocate a new ``Mimetypes`` database every time you call
+## it, you can pass your own via the ``mimeDb`` parameter to avoid this.
+##
+## .. code-block:: Nim
+##   let mimes = newMimetypes()
+##   var client = newHttpClient()
+##   var data = newMultipartData()
+##   data.addFiles({"uploaded_file": "test.html"}, mimeDb = mimes)
+##
+##   echo client.postContent("http://validator.w3.org/check", multipart=data)
+##
 ## You can also make post requests with custom headers.
 ## This example sets ``Content-Type`` to ``application/json``
 ## and uses a json object for the body
@@ -319,8 +331,9 @@ proc `$`*(data: MultipartData): string {.since: (1, 1).} =
 
 proc add*(p: MultipartData, name, content: string, filename: string = "",
           contentType: string = "", stream = true) =
-  ## Add a value to the multipart data. Raises a `ValueError` exception if
-  ## `name`, `filename` or `contentType` contain newline characters.
+  ## Add a value to the multipart data. Raises a ``ValueError`` exception if
+  ## ``name``, ``filename`` or ``contentType`` contain newline characters.
+  ## When ``stream`` is ``false``, the file will be read into memory.
   if {'\c', '\L'} in name:
     raise newException(ValueError, "name contains a newline character")
   if {'\c', '\L'} in filename:
@@ -343,7 +356,7 @@ proc add*(p: MultipartData, name, content: string, filename: string = "",
 
 proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
          {.discardable.} =
-  ## Add a list of multipart entries to the multipart data `p`. All values are
+  ## Add a list of multipart entries to the multipart data ``p``. All values are
   ## added without a filename and without a content type.
   ##
   ## .. code-block:: Nim
@@ -353,7 +366,7 @@ proc add*(p: MultipartData, xs: MultipartEntries): MultipartData
   result = p
 
 proc newMultipartData*(xs: MultipartEntries): MultipartData =
-  ## Create a new multipart data object and fill it with the entries `xs`
+  ## Create a new multipart data object and fill it with the entries ``xs``
   ## directly.
   ##
   ## .. code-block:: Nim
@@ -365,10 +378,12 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
 proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
                mimeDb = newMimetypes(), stream = true):
                MultipartData {.discardable.} =
-  ## Add files to a multipart data object. The file will be opened from your
-  ## disk, read and sent with the automatically determined MIME type. Raises an
-  ## `IOError` if the file cannot be opened or reading fails. To manually
-  ## specify file content, filename and MIME type, use `[]=` instead.
+  ## Add files to a multipart data object. The file will be streamed from disk
+  ## when the request is being made. When ``stream`` is ``false``, the file will
+  ## instead be read into memory, but beware this is very memory ineffecient
+  ## even for small files. The MIME type will automatically be determined.
+  ## Raises an ``IOError`` if the file cannot be opened or reading fails. To
+  ## manually specify file content, filename and MIME type, use ``[]=`` instead.
   ##
   ## .. code-block:: Nim
   ##   data.addFiles({"uploaded_file": "public/test.html"})
@@ -382,7 +397,7 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
   result = p
 
 proc `[]=`*(p: MultipartData, name, content: string) =
-  ## Add a multipart entry to the multipart data `p`. The value is added
+  ## Add a multipart entry to the multipart data ``p``. The value is added
   ## without a filename and without a content type.
   ##
   ## .. code-block:: Nim
@@ -391,8 +406,8 @@ proc `[]=`*(p: MultipartData, name, content: string) =
 
 proc `[]=`*(p: MultipartData, name: string,
             file: tuple[name, contentType, content: string]) =
-  ## Add a file to the multipart data `p`, specifying filename, contentType and
-  ## content manually.
+  ## Add a file to the multipart data ``p``, specifying filename, contentType
+  ## and content manually.
   ##
   ## .. code-block:: Nim
   ##   data["uploaded_file"] = ("test.html", "text/html",
