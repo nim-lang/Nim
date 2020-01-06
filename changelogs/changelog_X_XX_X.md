@@ -16,7 +16,8 @@
 - `set[T].len` is now an alias for `set[T].card` (cardinality)
 
 ## Library changes
-
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
 
 ## Language additions
 
