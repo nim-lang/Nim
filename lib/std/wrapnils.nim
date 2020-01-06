@@ -25,17 +25,18 @@ proc wrapnil*[T](a: T): Wrapnil[T] =
 template `.`*(a: Wrapnil, b): untyped =
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
+  type T = Wrapnil[type(a2.b)]
   if a1.validImpl:
     when type(a2) is ref|ptr:
       if a2 == nil:
-        default(Wrapnil[type(a2.b)])
+        default(T)
       else:
         wrapnil(a2.b)
     else:
       wrapnil(a2.b)
   else:
     # nil is "sticky"; this is needed, see tests
-    default(Wrapnil[type(a2.b)])
+    default(T)
 
 {.pop.}
 
@@ -51,3 +52,16 @@ template `[]`*[I](a: Wrapnil, i: I): untyped =
     wrapnil(a1.valueImpl[i])
   else:
     default(Wrapnil[type(a1.valueImpl[i])])
+
+template deref*(a: Wrapnil): untyped =
+  ## Since `[]` is hijacked, we can use `deref` that wraps original `system.[]`
+  let a1 = a # to avoid double evaluations
+  let a2 = a1.valueImpl
+  type T = Wrapnil[type(a2[])]
+  if a1.validImpl:
+    if a2 == nil:
+      default(T)
+    else:
+      wrapnil(a2[])
+  else:
+    default(T)

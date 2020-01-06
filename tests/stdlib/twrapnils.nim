@@ -10,6 +10,8 @@ var witness = 0
 proc main() =
   type Bar = object
     b1: int
+    b2: ptr string
+
   type Foo = ref object
     x1: float
     x2: Foo
@@ -19,6 +21,9 @@ proc main() =
     x6: ptr Bar
     x7: array[2, string]
     x8: seq[int]
+    x9: ref Bar
+
+  proc fun(a: Bar): auto = a.b2
 
   var a: Foo
   var x6 = create(Bar)
@@ -56,5 +61,9 @@ proc main() =
   doAssert witness == 0
   doAssert initFoo(1.3).wrapnil.x1[] == 1.3
   doAssert witness == 1
+
+  # since `[]` is hijacked, we can use `deref` that wraps original `system.[]`
+  # here, it's used twice, to deref `ref Bar` and then `ptr string`
+  doAssert a.wrapnil.x9.deref.fun.deref[] == ""
 
 main()
