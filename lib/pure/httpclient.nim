@@ -189,7 +189,7 @@
 
 include "system/inclrtl"
 
-import net, strutils, sequtils, uri, parseutils, base64, os, mimetypes, streams,
+import net, strutils, uri, parseutils, base64, os, mimetypes, streams,
   math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
 import nativesockets
@@ -418,8 +418,9 @@ proc getBoundary(p: MultipartData): string =
   if p == nil or p.content.len == 0: return
   while true:
     result = $random(int.high)
-    if p.content.allIt(result notin it.content):
-      break
+    for i, entry in p.content:
+      if result in entry.content: break
+      elif i == p.content.high: return
 
 proc sendFile(socket: Socket | AsyncSocket,
               entry: MultipartEntry) {.multisync.} =
@@ -573,9 +574,9 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
 type
   AsyncHttpClient* = HttpClientBase[AsyncSocket]
 
-proc newAsyncHttpClient*(userAgent = defUserAgent,
-    maxRedirects = 5, sslContext = getDefaultSSL(),
-    proxy: Proxy = nil, headers = newHttpHeaders()): AsyncHttpClient =
+proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
+                         sslContext = getDefaultSSL(), proxy: Proxy = nil,
+                         headers = newHttpHeaders()): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -929,7 +930,8 @@ proc format(client: HttpClient | AsyncHttpClient,
       length += entry.fileSize
 
   result.add cl & "--" & bound & "--"
-  length += sum result.mapIt(it.len)
+
+  for s in result: length += s.len
   client.headers["Content-Length"] = $length
 
 proc override(fallback, override: HttpHeaders): HttpHeaders =
