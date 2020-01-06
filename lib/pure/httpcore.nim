@@ -97,6 +97,7 @@ const
   Http504* = HttpCode(504)
   Http505* = HttpCode(505)
 
+const cl* = "\c\L"
 const headerLimit* = 10_000
 
 proc newHttpHeaders*(): HttpHeaders =

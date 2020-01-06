@@ -273,7 +273,6 @@ type
                                         ## and ``postContent`` proc,
                                         ## when the server returns an error
 
-const cl = "\c\L"
 const defUserAgent* = "Nim httpclient/" & NimVersion
 
 proc httpError(msg: string) =
