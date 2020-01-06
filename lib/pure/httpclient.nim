@@ -966,7 +966,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
     raise newException(ValueError, "No uri scheme supplied.")
 
   var data: seq[string]
-  if multipart != nil:
+  if multipart != nil and multipart.content.len > 0:
     data = await client.format(multipart)
   elif body.len > 0:
     client.headers["Content-Length"] = $body.len
