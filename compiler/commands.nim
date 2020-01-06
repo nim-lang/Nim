@@ -826,7 +826,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
-    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint}
+    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":
