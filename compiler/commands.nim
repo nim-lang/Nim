@@ -172,6 +172,19 @@ proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info:
   if arg != "":
     localError(conf, info, "invalid argument for command line option: '$1'" % addPrefix(switch))
 
+proc setNote(conf: ConfigRef, info: TLineInfo, arg: string, note: TNoteKind) =
+  case arg.normalize
+  of "", "on":
+    incl(conf.notes, note)
+    incl(conf.mainPackageNotes, note)
+    incl(conf.enableNotes, note)
+  of "off":
+    excl(conf.notes, note)
+    excl(conf.mainPackageNotes, note)
+    incl(conf.disableNotes, note)
+    excl(conf.foreignPackageNotes, note)
+  else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
+
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key:val or [key]:val;  with val=on|off
@@ -198,17 +211,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     let x = findStr(lineinfos.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(conf, info, "unknown warning: " & id)
-  case substr(arg, i).normalize
-  of "on":
-    incl(conf.notes, n)
-    incl(conf.mainPackageNotes, n)
-    incl(conf.enableNotes, n)
-  of "off":
-    excl(conf.notes, n)
-    excl(conf.mainPackageNotes, n)
-    incl(conf.disableNotes, n)
-    excl(conf.foreignPackageNotes, n)
-  else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
+  setNote(conf, info, substr(arg, i), n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -654,8 +657,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:
       conf.implicitIncludes.add findModule(conf, arg, toFullPath(conf, info)).string
-  of "listcmd":
-    processOnOffSwitchG(conf, {optListCmd}, arg, pass, info)
+  of "listcmd": setNote(conf, info, arg, hintExecuting)
   of "asm":
     processOnOffSwitchG(conf, {optProduceAsm}, arg, pass, info)
   of "genmapping":

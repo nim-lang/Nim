@@ -133,7 +133,7 @@ block toptions:
     TOption = enum
       optNone, optForceFullMake, optBoehmGC, optRefcGC, optRangeCheck,
       optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
-      optWarns, optHints, optListCmd, optCompileOnly,
+      optWarns, optHints, optCompileOnly,
       optSafeCode,             # only allow safe code
       optStyleCheck, optOptimizeSpeed, optOptimizeSize, optGenDynLib,
       optGenGuiApp, optStackTrace

@@ -45,7 +45,8 @@ type                          # please make sure we have under 32 options
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
     optWasNimscript,
-    optListCmd, optCompileOnly, optNoLinking,
+    optListCmd,               # DEPRECATED UNUSED
+    optCompileOnly, optNoLinking,
     optCDebug,                # turn on debugging information
     optGenDynLib,             # generate a dynamic library
     optGenStaticLib,          # generate a static library

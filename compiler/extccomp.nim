@@ -836,7 +836,7 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
     execExternalProgram(conf, linkCmd,
-      if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
+      if hintExecuting in conf.notes or conf.verbosity > 1: hintExecuting else: hintLinking)
 
 proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
   when defined(osx):
@@ -865,7 +865,7 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
           cmds[i])
   else:
     tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
-      if optListCmd in conf.globalOptions or conf.verbosity > 1:
+      if hintExecuting in conf.notes or conf.verbosity > 1:
         res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
                             conf.numberOfProcessors, afterRunEvent=runCb)
       elif conf.verbosity == 1:
