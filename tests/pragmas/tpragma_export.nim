@@ -5,6 +5,7 @@ ok2
 in fun4
 in fun5
 in fun6
+in fun7
 '''
 """
 
@@ -25,6 +26,16 @@ proc fun6(): int {.myfoo6.} =
   echo "in fun6"
   125
 
+when false:
+  # BUG: enable this and it'll hijack `myfoo7` and fail in `fun7()`;
+  # ideally, the pragma template would to locally defined symbols, instead
+  # of to identifiers.
+  template myfooHijacked* = {. .}
+
+proc fun7(): int {.myfoo7.} =
+  echo "in fun7"
+  126
+
 fun1()
 fun2()
 fun3()
@@ -32,3 +43,4 @@ doAssert fun3()  == 123
 fun4()
 doAssert fun5() == 125
 fun6()
+fun7()

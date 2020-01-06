@@ -15,4 +15,7 @@ else:
 
 template myfoo6* = {.myfoo0, discardable.}
 
+template myfooHijacked* = {.discardable.}
+template myfoo7* = {.myfooHijacked.}
+
 export myfoo5
