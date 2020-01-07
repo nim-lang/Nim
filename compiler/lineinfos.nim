@@ -115,7 +115,7 @@ const
     hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
-    hintLinking: "",
+    hintLinking: "$1",
     hintDependency: "$1",
     hintSource: "$1",
     hintPerformance: "$1",
