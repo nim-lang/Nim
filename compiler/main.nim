@@ -355,16 +355,24 @@ proc mainCommand*(graph: ModuleGraph) =
 
   if conf.errorCounter == 0 and
      conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
-    when declared(system.getMaxMem):
-      let usedMem = formatSize(getMaxMem()) & " peakmem"
-    else:
-      let usedMem = formatSize(getTotalMem())
-    rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
-               formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
-               usedMem,
-               if isDefined(conf, "danger"): "Dangerous Release Build"
-               elif isDefined(conf, "release"): "Release Build"
-               else: "Debug Build"])
+    let mem =
+      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+      else: formatSize(getTotalMem()) & " totmem"
+    let loc = $conf.linesCompiled
+    let build = if isDefined(conf, "danger"): "Dangerous Release"
+                elif isDefined(conf, "release"): "Release"
+                else: "Debug"
+    let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
+    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    let output = if optListFullPaths in conf.globalOptions: $conf.getOutFileFull else: $conf.outFile
+    rawMessage(conf, hintSuccessX, [
+      "loc", loc,
+      "sec", sec,
+      "mem", mem,
+      "build", build,
+      "project", project,
+      "output", output,
+      ])
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "
