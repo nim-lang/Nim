@@ -61,10 +61,6 @@ var
   currException {.threadvar.}: ref Exception
   gcFramePtr {.threadvar.}: GcFrame
 
-when defined(cpp) and not defined(noCppExceptions):
-  var
-    raiseCounter {.threadvar.}: uint
-
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
                      excHandler: PSafePoint, currException: ref Exception]
@@ -123,19 +119,7 @@ proc popCurrentException {.compilerRtl, inl.} =
   #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
-  # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
-  if currException.raiseId == id:
-    currException = currException.up
-  else:
-    var cur = currException.up
-    var prev = currException
-    while cur != nil and cur.raiseId != id:
-      prev = cur
-      cur = cur.up
-    if cur == nil:
-      showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
-      quit(1)
-    prev.up = cur.up
+  discard "only for bootstrapping compatbility"
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   currException = e
@@ -443,11 +427,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       {.emit: "throw;".}
     else:
       pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+      {.emit: "throw e;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
@@ -543,9 +523,10 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
-when defined(cpp) and appType != "lib" and
-    not defined(js) and not defined(nimscript) and
-    hostOS != "standalone" and not defined(noCppExceptions):
+when false:
+  # defined(cpp) and appType != "lib" and
+  #  not defined(js) and not defined(nimscript) and
+  #  hostOS != "standalone" and not defined(noCppExceptions):
 
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
