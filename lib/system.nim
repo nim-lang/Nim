@@ -2841,7 +2841,7 @@ iterator `||`*[S, T](a: S, b: T, step: Positive, annotation: static string = "pa
   ## and GC.
   discard
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
 proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.} =
@@ -2894,7 +2894,7 @@ proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
   if x <= y: x else: y
 proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
   if y <= x: x else: y
-{.pop.}
+{.pop.} # stackTrace: off
 
 proc high*(T: typedesc[SomeFloat]): T = Inf
 proc low*(T: typedesc[SomeFloat]): T = NegInf
@@ -3095,7 +3095,7 @@ when not defined(js) and not defined(nimscript):
   import "system/memory"
 
 when not defined(js):
-  {.push stackTrace:off.}
+  {.push stackTrace: off.}
 
   when hasThreadSupport and hostOS != "standalone":
     const insideRLocksModule = false
@@ -3130,7 +3130,7 @@ when not declared(sysFatal):
   include "system/fatal"
 
 when not defined(JS) and not defined(nimscript):
-  {.push stackTrace: off, profiler:off.}
+  {.push stackTrace: off, profiler: off.}
 
   proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
     discardable, benign.}
@@ -3418,7 +3418,7 @@ when defined(JS):
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
-  {.push stack_trace:off, profiler:off.}
+  {.push stackTrace: off, profiler: off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
     if y != nil:
@@ -3579,7 +3579,7 @@ type
 
 
 when not defined(JS): #and not defined(nimscript):
-  {.push stack_trace: off, profiler:off.}
+  {.push stackTrace: off, profiler: off.}
 
   when hasAlloc:
     when not defined(gcRegions) and not usesDestructors:
@@ -3707,7 +3707,7 @@ when not defined(JS): #and not defined(nimscript):
         ## Gets the stack trace associated with `e`, which is the stack that
         ## lead to the ``raise`` statement. This only works for debug builds.
 
-    {.push stackTrace: off, profiler:off.}
+    {.push stackTrace: off, profiler: off.}
     when defined(memtracker):
       include "system/memtracker"
 
@@ -3720,8 +3720,8 @@ when not defined(JS): #and not defined(nimscript):
     # we cannot compile this with stack tracing on
     # as it would recurse endlessly!
     include "system/arithm"
-    {.pop.} # stack trace
-  {.pop.} # stack trace
+    {.pop.} # stackTrace: off, profiler: off
+  {.pop.} # stackTrace: off, profiler: off
 
   when hostOS != "standalone" and not defined(nimscript):
     include "system/dyncalls"
@@ -3755,10 +3755,10 @@ when not defined(JS): #and not defined(nimscript):
         else:
           result = n.sons[n.len]
 
-    {.push profiler:off.}
+    {.push profiler: off.}
     when hasAlloc: include "system/mmdisp"
     {.pop.}
-    {.push stack_trace: off, profiler:off.}
+    {.push stackTrace: off, profiler: off.}
     when hasAlloc:
       when not defined(nimSeqsV2):
         include "system/sysstr"
@@ -3795,10 +3795,10 @@ when not defined(JS): #and not defined(nimscript):
       ## **Warning**: Only use this if you know what you are doing.
       currException = exc
 
-  {.push stack_trace: off, profiler:off.}
+  {.push stackTrace: off, profiler: off.}
   when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
     include "system/profiler"
-  {.pop.} # stacktrace
+  {.pop.}
 
   when not defined(nimscript):
     proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
@@ -3866,8 +3866,8 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
       cstderr.rawWrite("\n")
   quit(errorcode)
 
-{.pop.} # checks
-{.pop.} # hints
+{.pop.} # checks: off
+{.pop.} # hints: off
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## Division of integers that results in a float.
@@ -4443,7 +4443,7 @@ template once*(body: untyped): untyped =
     alreadyExecuted = true
     body
 
-{.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
+{.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
 proc substr*(s: string, first, last: int): string =
   ## Copies a slice of `s` into a new string and returns this new
