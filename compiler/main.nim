@@ -356,8 +356,8 @@ proc mainCommand*(graph: ModuleGraph) =
   if conf.errorCounter == 0 and
      conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
     let mem =
-      when declared(system.getMaxMem): "peakmem: " & formatSize(getMaxMem())
-      else: "totmem: " & formatSize(getTotalMem())
+      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+      else: formatSize(getTotalMem()) & " totmem"
     let loc = $conf.linesCompiled
     let build = if isDefined(conf, "danger"): "Dangerous Release"
                 elif isDefined(conf, "release"): "Release"
