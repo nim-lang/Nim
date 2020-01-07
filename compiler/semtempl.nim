@@ -503,7 +503,10 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
       template x: untyped = n[i]
       case x.kind
       of nkExprColonExpr:
-        x[0] = semTemplBody(c, x[0])
+        when false:
+          # this would fail with things like:
+          # invalid pragma: hint[ConvFromXtoItselfNotNeeded]: off
+          x[0] = semTemplBody(c, x[0])
         x[1] = semTemplBody(c, x[1])
       of nkIdent:
         x = semTemplBody(c, x)
