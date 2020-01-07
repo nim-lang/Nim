@@ -1,22 +1,24 @@
+template getExportcName*(): string =
+  ## returns at runtime the exportc name; there may be a better way (that also works at CT)
+  # TODO: add to stdlib
+  block:
+    var name {.inject.}: cstring
+    {.emit: "`name` = __func__;".}
+    $name
+
 template myfoo2* = {.exportc.}
 template myfoo3* = {.exportc: "myfoo3_in_c", discardable.}
 template myfoo4* = {.discardable, myfoo2.}
 template myfoo5 = {. .}
 
-when false:
-  # would require pragma export via https://github.com/nim-lang/Nim/pull/13030
-  {.pragma: myfoo0, exportc: "myfoo0_in_c".}
-  export myfoo0
-elif false:
-  # can't use non exported template pragma inside exported template pragma
-  template myfoo0 = {.exportc: "myfoo0_in_c".}
-else:
-  # works
-  template myfoo0* = {.exportc: "myfoo0_in_c".}
+{.pragma: myfoo0a, exportc: "myfoo0_in_c".}
+# export myfoo0a # works even if not exported
+template myfoo0b* = {.cdecl.}
 
-template myfoo6* = {.myfoo0, discardable.}
+template myfoo6* = {.myfoo0a, myfoo0b, discardable.}
 
-template myfooHijacked* = {.discardable.}
-template myfoo7* = {.myfooHijacked.}
+# this won't be hijacked
+template myfooHijacked = {.exportc: "myfooHijacked_orig".}
+template myfooHijacked_wrap* = {.myfooHijacked.}
 
 export myfoo5

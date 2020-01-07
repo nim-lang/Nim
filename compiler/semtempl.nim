@@ -498,9 +498,26 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
   of nkPostfix:
     result[1] = semTemplBody(c, n[1])
   of nkPragma:
-    for x in n:
-      if x.kind == nkExprColonExpr:
+    var i=0
+    while i < n.len:
+      template x: untyped = n[i]
+      case x.kind
+      of nkExprColonExpr:
+        x[0] = semTemplBody(c, x[0])
         x[1] = semTemplBody(c, x[1])
+      of nkIdent:
+        x = semTemplBody(c, x)
+        if x.kind == nkSym:
+          if x.sym.kind == skPragma:
+            # similar to semCustomPragmaMulti
+            n.sons[i..i] = x.sym.ast.sons # expand user pragma with its content
+          else:
+            # eg: skProc
+            discard
+      else:
+        doAssert false # CHECKME
+      i.inc
+
   of nkBracketExpr:
     result = newNodeI(nkCall, n.info)
     result.add newIdentNode(getIdent(c.c.cache, "[]"), n.info)

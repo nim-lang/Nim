@@ -25,14 +25,14 @@ proc fun6(): int {.myfoo6.} =
   echo "in fun6"
   125
 
-when false:
-  # BUG: enable this and it'll hijack `myfoo7` and fail in `fun7()`;
-  # ideally, the pragma template would to locally defined symbols, instead
-  # of to identifiers.
-  template myfooHijacked* = {. .}
+block:
+  # checks that local redefinition with same name does not hijack definition of
+  # myfooHijacked_wrap
+  template myfooHijacked = {.exportc: "myfooHijacked_new".}
 
-proc funHijackExample(): int {.myfoo7.} =
-  126
+  proc funHijackExample() {.myfooHijacked_wrap.} =
+    doAssert getExportcName() == "myfooHijacked_orig"
+  funHijackExample()
 
 ## example showing a template pragma can use a local {.pragma.} pragma.
 ## Using an imported {.pragma.} pragma would require https://github.com/nim-lang/Nim/pull/13030
@@ -48,5 +48,4 @@ doAssert fun3()  == 123
 fun4()
 doAssert fun5() == 125
 fun6()
-funHijackExample()
 fun8()
