@@ -1328,8 +1328,9 @@ proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
 proc basename*(a: NimNode): NimNode =
   ## Pull an identifier from prefix/postfix expressions.
   case a.kind
-  of nnkIdent: return a
-  of nnkPostfix, nnkPrefix: return a[1]
+  of nnkIdent: result = a
+  of nnkPostfix, nnkPrefix: result = a[1]
+  of nnkPragmaExpr: result = basename(a[0])
   else:
     error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
       repr(a), a)
@@ -1340,6 +1341,7 @@ proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
     a.strVal = val
   of nnkPostfix, nnkPrefix:
     a[1] = ident(val)
+  of nnkPragmaExpr: `basename=`(a[0], val)
   else:
     error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
       repr(a), a)
