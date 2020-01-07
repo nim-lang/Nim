@@ -380,10 +380,10 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
 proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
                mimeDb = newMimetypes(), stream = true):
                MultipartData {.discardable.} =
-  ## Add files to a multipart data object. The file will be streamed from disk
-  ## when the request is being made. When ``stream`` is ``false``, the file will
-  ## instead be read into memory, but beware this is very memory ineffecient
-  ## even for small files. The MIME type will automatically be determined.
+  ## Add files to a multipart data object. The files will be streamed from disk
+  ## when the request is being made. When ``stream`` is ``false``, the files are
+  ## instead read into memory, but beware this is very memory ineffecient even
+  ## for small files. The MIME types will automatically be determined.
   ## Raises an ``IOError`` if the file cannot be opened or reading fails. To
   ## manually specify file content, filename and MIME type, use ``[]=`` instead.
   ##
