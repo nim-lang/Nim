@@ -54,7 +54,7 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimlsp", "", true
-pkg "nimly", "nim c -r tests/test_nimly", true
+pkg "nimly", "", true
 # pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
