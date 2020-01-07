@@ -216,7 +216,7 @@ template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
 proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
   let
     absPath = toFullPath(conf, info)
-    relPath = toProjPath(conf, info)
+    relPath = absPath.relativePath(getCurrentDir())
   result = if (optListFullPaths in conf.globalOptions) or
               (relPath.len > absPath.len) or
               (relPath.count("..") > 2):
