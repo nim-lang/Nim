@@ -70,6 +70,44 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
 
+import std/macros
+
+macro len*(t: tuple): int =
+  ## Return number of elements of `t`
+  newLit t.len
+
+template len*(T: typedesc[tuple]): untyped =
+  ## Return number of elements of `T`
+  len(default(T))
+
+template get*(T: typedesc[tuple], i: static int): untyped =
+  ## Return `i`th element of `T`
+  # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
+  type(default(T)[i])
+
+macro genericParams*(T: typedesc): untyped =
+  ## return tuple of generic params for generic `T`
+  runnableExamples:
+    type Foo[T1, T2]=object
+    doAssert genericParams(Foo[float, string]) is (float, string)
+  result = newNimNode(nnkTupleConstr)
+  var impl = getTypeImpl(T)
+  expectKind(impl, nnkBracketExpr)
+  impl = impl[1]
+  while true:
+    case impl.kind
+      of nnkSym:
+        impl = impl.getImpl
+        continue
+      of nnkTypeDef:
+        impl = impl[2]
+        continue
+      of nnkBracketExpr:
+        for i in 1..<impl.len:
+          result.add impl[i]
+        break
+      else:
+        error "wrong kind: " & $impl.kind
 
 when isMainModule:
   static:
