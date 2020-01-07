@@ -193,6 +193,8 @@ proc pqtransactionStatus*(conn: PPGconn): PGTransactionStatusType{.cdecl,
     dynlib: dllName, importc: "PQtransactionStatus".}
 proc pqparameterStatus*(conn: PPGconn, paramName: cstring): cstring{.cdecl,
     dynlib: dllName, importc: "PQparameterStatus".}
+proc pqserverVersion*(conn: PPGconn): int32{.cdecl,
+    dynlib: dllName, importc: "PQserverVersion".}
 proc pqprotocolVersion*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
     importc: "PQprotocolVersion".}
 proc pqerrorMessage*(conn: PPGconn): cstring{.cdecl, dynlib: dllName,
@@ -201,6 +203,10 @@ proc pqsocket*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
                                       importc: "PQsocket".}
 proc pqbackendPID*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
     importc: "PQbackendPID".}
+proc pqconnectionNeedsPassword*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
+    importc: "PQconnectionNeedsPassword".}
+proc pqconnectionUsedPassword*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
+    importc: "PQconnectionUsedPassword".}
 proc pqclientEncoding*(conn: PPGconn): int32{.cdecl, dynlib: dllName,
     importc: "PQclientEncoding".}
 proc pqsetClientEncoding*(conn: PPGconn, encoding: cstring): int32{.cdecl,
