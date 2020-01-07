@@ -322,12 +322,14 @@ proc newMultipartData*: MultipartData =
 proc `$`*(data: MultipartData): string {.since: (1, 1).} =
   ## convert MultipartData to string so it's human readable when echo
   ## see https://github.com/nim-lang/Nim/issues/11863
-  const prefixLen = "Content-Disposition: form-data; ".len
+  const sep = "-".repeat(30)
   for pos, entry in data.content:
-    result &= "------------------------------  "
-    result.addInt pos
-    result &= "  ------------------------------\n"
-    result &= entry.name & "\n\n" & entry.content & "\n"
+    result.add(sep & center($pos, 3) & sep)
+    result.add("\nname=\"" & entry.name & "\"")
+    if entry.isFile:
+      result.add("; filename=\"" & entry.filename & "\"\n")
+      result.add("Content-Type: " & entry.contentType)
+    result.add("\n\n" & entry.content & "\n")
 
 proc add*(p: MultipartData, name, content: string, filename: string = "",
           contentType: string = "", stream = true) =
