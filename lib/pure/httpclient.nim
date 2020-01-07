@@ -914,7 +914,7 @@ proc format(entry: MultipartEntry, boundary: string): string =
     result.add("; filename=\"" & entry.filename & "\"" & cl)
     result.add("Content-Type: " & entry.contentType & cl)
   else:
-    result.add(cl & cl & entry.content & cl)
+    result.add(cl & cl & entry.content)
 
 proc format(client: HttpClient | AsyncHttpClient,
             multipart: MultipartData): Future[seq[string]] {.multisync.} =
@@ -927,9 +927,9 @@ proc format(client: HttpClient | AsyncHttpClient,
   for entry in multipart.content:
     result.add(format(entry, bound) & cl)
     if entry.isFile:
-      length += entry.fileSize
+      length += entry.fileSize + cl.len
 
-  result.add cl & "--" & bound & "--"
+  result.add "--" & bound & "--"
 
   for s in result: length += s.len
   client.headers["Content-Length"] = $length
@@ -994,6 +994,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
         await client.socket.sendFile(entry)
       else:
         await client.socket.send(entry.content)
+      buffer.add cl
     # send the rest and the last boundary
     await client.socket.send(buffer & data[^1])
   elif body.len > 0:
