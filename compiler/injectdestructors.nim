@@ -168,13 +168,13 @@ proc initialized(code: ControlFlowGraph; pc: int,
       if comesFrom == target: return pc
       inc pc
     of use:
-      let v = code[pc].sym
+      let v = code[pc].n.sym
       if v.kind != skParam and v.id notin init:
         # attempt to read an uninit'ed variable
         uninit.incl v.id
       inc pc
     of def:
-      let v = code[pc].sym
+      let v = code[pc].n.sym
       init.incl v.id
       inc pc
   return pc
