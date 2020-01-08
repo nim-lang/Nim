@@ -1730,9 +1730,13 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
 else:
   template unown*(x: typed): untyped = x
 
-  proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
-    ## Creates a new object of type ``T`` and returns a safe (traced)
-    ## reference to it in ``a``.
+  when defined(nimWithStatsTypes):
+    from system/stats_types_new import new
+    export new
+  else:
+    proc new*[T](a: var ref T) {.magic: "New", noSideEffect.}
+      ## Creates a new object of type ``T`` and returns a safe (traced)
+      ## reference to it in ``a``.
 
   proc new*(t: typedesc): auto =
     ## Creates a new object of type ``T`` and returns a safe (traced)
@@ -4531,3 +4535,6 @@ export io
 
 when not defined(createNimHcr):
   include nimhcr
+
+when defined(nimWithStatsTypes):
+  import system/stats_types_show
