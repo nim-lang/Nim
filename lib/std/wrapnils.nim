@@ -10,8 +10,8 @@ runnableExamples:
     x1: string
     x2: Foo
   var f: Foo
-  assert ?!f.x2.x1 == ""
-  assert ?!Foo(x1: "a").x1 == "a"
+  assert ?.f.x2.x1 == ""
+  assert ?.Foo(x1: "a").x1 == "a"
 
 type Wrapnil*[T] = object
   valueImpl: T
@@ -78,10 +78,10 @@ proc replace(n: NimNode): NimNode =
     n[0] = replace(n[0])
     n
 
-macro `?!`*(a: untyped): untyped =
+macro `?.`*(a: untyped): untyped =
   #[
   I don't think this can work with a template
-  template `?!`*(a: untyped): untyped = wrapnil(a)[]
+  template `?.`*(a: untyped): untyped = wrapnil(a)[]
   ]#
   result = replace(a)
   result = quote do:
