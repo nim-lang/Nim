@@ -60,6 +60,8 @@
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
 
 
 ## Language additions
