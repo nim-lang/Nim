@@ -10,8 +10,8 @@ runnableExamples:
     x1: string
     x2: Foo
   var f: Foo
-  assert f.wrapnil.x2.x1[] == ""
-  assert Foo(x1: "a").wrapnil.x1[] == "a"
+  assert ?!f.x2.x1 == ""
+  assert ?!Foo(x1: "a").x1 == "a"
 
 type Wrapnil*[T] = object
   valueImpl: T
@@ -19,6 +19,8 @@ type Wrapnil*[T] = object
 
 proc wrapnil*[T](a: T): Wrapnil[T] =
   Wrapnil[T](valueImpl: a, validImpl: true)
+
+template unwrap*(a: Wrapnil): untyped = a.valueImpl
 
 {.push experimental: "dotOperators".}
 
@@ -40,9 +42,6 @@ template `.`*(a: Wrapnil, b): untyped =
 
 {.pop.}
 
-template `[]`*(a: Wrapnil): untyped =
-  a.valueImpl
-
 proc isNotNil*(a: Wrapnil): bool = a.validImpl
 
 template `[]`*[I](a: Wrapnil, i: I): untyped =
@@ -53,8 +52,7 @@ template `[]`*[I](a: Wrapnil, i: I): untyped =
   else:
     default(Wrapnil[type(a1.valueImpl[i])])
 
-template deref*(a: Wrapnil): untyped =
-  ## Since `[]` is hijacked, we can use `deref` that wraps original `system.[]`
+template `[]`*(a: Wrapnil): untyped =
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
   type T = Wrapnil[type(a2[])]
@@ -65,3 +63,27 @@ template deref*(a: Wrapnil): untyped =
       wrapnil(a2[])
   else:
     default(T)
+
+import std/macros
+
+proc replace(n: NimNode): NimNode =
+  if n.kind == nnkPar:
+    doAssert n.len == 1
+    newCall(bindSym"wrapnil", n[0])
+  elif n.kind in {nnkCall, nnkObjConstr}:
+    newCall(bindSym"wrapnil", n)
+  elif n.len == 0:
+    newCall(bindSym"wrapnil", n)
+  else:
+    n[0] = replace(n[0])
+    n
+
+macro `?!`*(a: untyped): untyped =
+  #[
+  I don't think this can work with a template
+  template `?!`*(a: untyped): untyped = wrapnil(a)[]
+  ]#
+  result = replace(a)
+  result = quote do:
+    `result`.valueImpl
+
