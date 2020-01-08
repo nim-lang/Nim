@@ -725,7 +725,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
        sfOverriden in typ.attachedOps[attachedDestructor].flags:
     ## compiler can use a combination of `=destroy` and memCopy for sink op
     dest.flags.incl sfCursor
-    body.add newOpCall(typ.attachedOps[attachedDestructor], d)
+    body.add newOpCall(typ.attachedOps[attachedDestructor], d[0])
     body.add newAsgnStmt(d, newSymNode(src))
   else:
     var tk: TTypeKind
