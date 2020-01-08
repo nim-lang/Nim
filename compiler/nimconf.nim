@@ -160,8 +160,9 @@ proc checkSymbol(L: TLexer, tok: TToken) =
 
 proc parseAssignment(L: var TLexer, tok: var TToken;
                      config: ConfigRef; condStack: var seq[bool]) =
-  if tok.ident.s == "-" or tok.ident.s == "--":
-    confTok(L, tok, config, condStack)           # skip unnecessary prefix
+  if tok.ident != nil:
+    if tok.ident.s == "-" or tok.ident.s == "--":
+      confTok(L, tok, config, condStack)           # skip unnecessary prefix
   var info = getLineInfo(L, tok) # save for later in case of an error
   checkSymbol(L, tok)
   var s = $tok
