@@ -306,6 +306,35 @@ when (NimMajor, NimMinor) >= (1, 1):
         call.add init[i]
     result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
+  macro operateOn*(x: typed; calls: untyped) =
+    ## This macro provides the `chaining`:idx: of function calls.
+    ## It does so by patching every call in `calls` to
+    ## use `x` as the first argument.
+    ## **This evaluates `x` multiple times!**
+    runnableExamples:
+      var x = "yay"
+      operateOn x:
+        add "abc"
+        add "efg"
+      doAssert x == "yayabcefg"
+
+      var a = 44
+      operateOn a:
+        += 4
+        -= 5
+      doAssert a == 43
+
+    result = copyNimNode(calls)
+    expectKind calls, {nnkStmtList, nnkStmtListExpr}
+    # non-recursive processing because that's exactly what we need here:
+    for y in calls:
+      expectKind y, nnkCallKinds
+      var call = newTree(y.kind)
+      call.add y[0]
+      call.add x
+      for j in 1..<y.len: call.add y[j]
+      result.add call
+
   when isMainModule:
     import algorithm
 
