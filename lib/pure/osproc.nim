@@ -539,7 +539,7 @@ when defined(Windows) and not defined(useNimRtl):
       FILE_ATTRIBUTE_NORMAL,
       0 # no template file for OPEN_EXISTING
     )
-    if si.hStdOutput == INVALID_HANDLE_VALUE:
+    if si.hStdInput == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
     stdin = myDup(pipeIn, 0)
