@@ -1383,7 +1383,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
-  if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
+  if t.kind in {tyCompositeTypeClass, tyAlias} and t.base.kind == tyGenericBody:
     t = t.base
 
   result = newOrPrevType(tyGenericInvocation, prev, c)
@@ -1403,7 +1403,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
     # not generic.
-    localError(c.config, n.info, errNoGenericParamsAllowedForX % s.name.s)
+    localError(c.config, n.info, errNoGenericParamsAllowedForX % $(s.name.s, t.kind))
     return newOrPrevType(tyError, prev, c)
   else:
     var m = newCandidate(c, t)
@@ -1454,7 +1454,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward} and prev != nil:
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody} and prev != nil:
     result = newTypeS(tyAlias, c)
     result.rawAddSon typeExpr
     result.sym = prev.sym
@@ -1781,8 +1781,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         assignType(prev, s.typ)
         # bugfix: keep the fresh id for aliases to integral types:
-        if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
-                             tyUInt..tyUInt64}:
+        if s.typ.kind notin NumberLikeTypes:
           prev.id = s.typ.id
         result = prev
   of nkSym:

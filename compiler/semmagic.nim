@@ -121,6 +121,11 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t[1]
     else: t
 
+proc getTypeDescNode(typ: PType, sym: PSym, info: TLineInfo): PNode =
+  var resType = newType(tyTypeDesc, sym)
+  rawAddSon(resType, typ)
+  result = toNode(resType, info)
+
 proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
   const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
@@ -160,14 +165,22 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
     result.typ = newType(tyInt, context)
     result.info = traitCall.info
+  of "getTypeid":
+    var arg = operand
+    if arg.kind in NumberLikeTypes:
+      # needed otherwise we could get different ids, see tests
+      arg = getSysType(c.graph, traitCall[1].info, arg.kind)
+    result = newIntNode(nkIntLit, arg.id)
+      # `id` better than cast[int](arg) so that it's reproducible across compiles
+    result.typ = getSysType(c.graph, traitCall[1].info, tyInt)
+    result.info = traitCall.info
   of "genericHead":
-    var res = uninstantiate(operand)
-    if res == operand and res.kind notin tyMagicGenerics:
-      localError(c.config, traitCall.info,
-        "genericHead expects a generic type. The given type was " &
-        typeToString(operand))
-      return newType(tyError, context).toNode(traitCall.info)
-    result = res.base.toNode(traitCall.info)
+    var arg = operand
+    if arg.kind == tyGenericInst:
+      result = getTypeDescNode(arg.base, operand.owner, traitCall.info)
+    else:
+      localError(c.config, traitCall.info, "expected generic instantiation, got: " & $(arg.kind, typeToString(operand)))
+      result = newType(tyError, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
@@ -185,9 +198,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       while arg.kind == tyDistinct:
         arg = arg.base
         arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-      var resType = newType(tyTypeDesc, operand.owner)
-      rawAddSon(resType, arg)
-      result = toNode(resType, traitCall.info)
+      result = getTypeDescNode(arg, operand.owner, traitCall.info)
     else:
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))

@@ -47,7 +47,7 @@ block: # typeToString
   doAssert MyInt.name3 == "MyInt{int}"
   doAssert (tuple[a: MyInt, b: float]).name3 == "tuple[a: MyInt{int}, b: float]"
   doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
-    "tuple[a: C2b{C}[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
+    "tuple[a: C[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
 
 block distinctBase:
   block:
@@ -126,3 +126,46 @@ static:
   doAssert(not string.supportsCopyMem)
   doAssert x.T is string          # true
   doAssert x.raw_buffer is seq
+
+block:
+  const c1 = getTypeid(type(12))
+  const a1 = getTypeid(type(12))
+  const a2 = getTypeid(type(12))
+  let a3 = getTypeid(type(12))
+  doAssert a1 == a2
+    # we need to check that because nim uses different id's
+    # for different instances of tyInt (etc), so we make sure implementation of
+    # `getTypeid` is robust to that
+  doAssert a1 == a3
+  doAssert getTypeid(type(12.0)) != getTypeid(type(12))
+  doAssert getTypeid(type(12.0)) == getTypeid(float)
+
+  type Foo = object
+    x1: int
+
+  type FooT[T] = object
+    x1: int
+  type Foo2 = Foo
+  type FooT2 = FooT
+  doAssert Foo.getTypeid == Foo2.getTypeid
+  doAssert FooT2.getTypeid == FooT.getTypeid
+  doAssert FooT2[float].getTypeid == FooT[type(1.2)].getTypeid
+  doAssert FooT2[float].getTypeid != FooT[type(1)].getTypeid
+  doAssert Foo.x1.type.getTypeid == int.getTypeid
+
+block genericHead:
+  type Foo[T1,T2] = object
+    x1: T1
+    x2: T2
+  type FooInst = Foo[int, float]
+  type Foo2 = genericHead(FooInst)
+  doAssert Foo2 is Foo # issue #13066
+  type Foo2Inst = Foo2[int, float]
+  doAssert FooInst.default == Foo2Inst.default
+  doAssert FooInst.default.x2 == 0.0
+  doAssert Foo2Inst is FooInst
+  doAssert FooInst is Foo2Inst
+  doAssert compiles(genericHead(FooInst))
+  doAssert not compiles(genericHead(Foo))
+  type Bar = object
+  doAssert not compiles(genericHead(Bar))
