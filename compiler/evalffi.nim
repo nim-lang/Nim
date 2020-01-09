@@ -27,7 +27,8 @@ var
   gDllCache = initTable[string, LibHandle]()
 
 when defined(windows):
-  var gExeHandle = loadLib(os.getAppFilename())
+  from os import getAppFilename
+  var gExeHandle = loadLib(getAppFilename())
 else:
   var gExeHandle = loadLib()
 
