@@ -22,7 +22,6 @@ ret={s1:foobar s2:foobar age:25 pi:3.14}
 hello world stderr
 hi stderr
 '''
-  disabled: "true"
 """
 
 # re-enable for windows once libffi can be installed in koch.nim

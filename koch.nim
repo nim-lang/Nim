@@ -485,9 +485,9 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  when false:
-    execFold("nimble install -y libffi", "nimble install -y libffi")
-    kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
+  ## test -d:nimHasLibFFI
+  execFold("nimble install -y libffi", "nimble install -y libffi")
+  kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
