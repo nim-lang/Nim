@@ -28,7 +28,7 @@ const doNotUnmap = not (defined(amd64) or defined(i386)) or
                    defined(windows) or defined(nimAllocNoUnmap)
 
 
-when defined(emscripten):
+when defined(emscripten) and not defined(StandaloneHeapSize):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
@@ -77,10 +77,10 @@ when defined(emscripten):
     var mmapDescr = cast[EmscriptenMMapBlock](mmapDescrPos)
     munmap(mmapDescr.realPointer, mmapDescr.realSize)
 
-elif defined(genode):
+elif defined(genode) and not defined(StandaloneHeapSize):
   include genode/alloc # osAllocPages, osTryAllocPages, osDeallocPages
 
-elif defined(nintendoswitch):
+elif defined(nintendoswitch) and not defined(StandaloneHeapSize):
 
   import nintendoswitch/switch_memory
 
@@ -191,7 +191,7 @@ elif defined(nintendoswitch):
     when reallyOsDealloc:
       freeMem(p)
 
-elif defined(posix):
+elif defined(posix) and not defined(StandaloneHeapSize):
   const
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
@@ -234,7 +234,7 @@ elif defined(posix):
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     when reallyOsDealloc: discard munmap(p, cast[csize_t](size))
 
-elif defined(windows):
+elif defined(windows) and not defined(StandaloneHeapSize):
   const
     MEM_RESERVE = 0x2000
     MEM_COMMIT = 0x1000
@@ -274,10 +274,10 @@ elif defined(windows):
         quit 1
     #VirtualFree(p, size, MEM_DECOMMIT)
 
-elif hostOS == "standalone":
+elif hostOS == "standalone" or defined(StandaloneHeapSize):
   const StandaloneHeapSize {.intdefine.}: int = 1024 * PageSize
   var
-    theHeap: array[StandaloneHeapSize, float64] # 'float64' for alignment
+    theHeap: array[StandaloneHeapSize div sizeof(float64), float64] # 'float64' for alignment
     bumpPointer = cast[int](addr theHeap)
 
   proc osAllocPages(size: int): pointer {.inline.} =
