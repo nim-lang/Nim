@@ -72,13 +72,13 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
 
 import std/macros
 
-macro len*(t: tuple): int =
+macro lenTuple*(t: tuple): int =
   ## Return number of elements of `t`
   newLit t.len
 
-template len*(T: typedesc[tuple]): untyped =
+macro lenTuple*(t: typedesc[tuple]): int =
   ## Return number of elements of `T`
-  len(default(T))
+  newLit t.len
 
 template get*(T: typedesc[tuple], i: static int): untyped =
   ## Return `i`th element of `T`

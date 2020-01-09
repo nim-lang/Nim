@@ -98,6 +98,6 @@ block genericParams:
   doAssert genericParams(Foo2).get(1) is Foo1
   doAssert (int,).get(0) is int
   doAssert (int, float).get(1) is float
-  static: doAssert (int, float).len == 2
-  static: doAssert (1, ).len == 1
-  static: doAssert ().len == 0
+  static: doAssert (int, float).lenTuple == 2
+  static: doAssert (1, ).lenTuple == 1
+  static: doAssert ().lenTuple == 0
