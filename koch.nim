@@ -486,7 +486,9 @@ proc runCI(cmd: string) =
   kochExecFold("Build Nimble", "nimble")
 
   ## test -d:nimHasLibFFI
-  execFold("nimble install -y libffi", "nimble install -y libffi")
+  ## pending https://github.com/Araq/libffi/pull/4
+  # execFold("nimble install -y libffi", "nimble install -y libffi")
+  execFold("nimble install -y https://github.com/timotheecour/libffi@9617720caba60ebd458fc1470f7b49ba19d32006", "nimble install -y libffi")
   kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
