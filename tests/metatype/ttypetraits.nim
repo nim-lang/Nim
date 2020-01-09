@@ -350,3 +350,29 @@ block: # enum.len
     doAssert MyEnum.enumLen == 4
     doAssert OtherEnum.enumLen == 3
     doAssert MyFlag.enumLen == 4
+
+block: # getTypeid
+  const c1 = getTypeid(type(12))
+  const a1 = getTypeid(type(12))
+  const a2 = getTypeid(type(12))
+  let a3 = getTypeid(type(12))
+  doAssert a1 == a2
+    # we need to check that because nim uses different id's
+    # for different instances of tyInt (etc), so we make sure implementation of
+    # `getTypeid` is robust to that
+  doAssert a1 == a3
+  doAssert getTypeid(type(12.0)) != getTypeid(type(12))
+  doAssert getTypeid(type(12.0)) == getTypeid(float)
+
+  type Foo = object
+    x1: int
+
+  type FooT[T] = object
+    x1: int
+  type Foo2 = Foo
+  type FooT2 = FooT
+  doAssert Foo.getTypeid == Foo2.getTypeid
+  doAssert FooT2.getTypeid == FooT.getTypeid
+  doAssert FooT2[float].getTypeid == FooT[type(1.2)].getTypeid
+  doAssert FooT2[float].getTypeid != FooT[type(1)].getTypeid
+  doAssert Foo.x1.type.getTypeid == int.getTypeid

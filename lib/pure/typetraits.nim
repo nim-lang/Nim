@@ -30,7 +30,17 @@ runnableExamples:
   type C[T] = enum h0 = 2, h1 = 4
   assert C[float] is HoleyEnum
 
-proc name*(t: typedesc): string {.magic: "TypeTrait".} =
+proc getTypeid*(t: typedesc): int {.magic: "TypeTrait", since: (1, 1).} =
+  ## returns a unique id representing a type; the id is stable across
+  ## recompilations of the same program, but may differ if the program source
+  ## changes.
+  runnableExamples:
+    type Foo[T] = object
+    type Foo2 = Foo
+    doAssert Foo[int].getTypeid == Foo2[type(1)].getTypeid
+    doAssert Foo[int].getTypeid != Foo[float].getTypeid
+
+proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
   ##
   ## Alias for `system.\`$\`(t) <dollars.html#$,typedesc>`_ since Nim v0.20.
