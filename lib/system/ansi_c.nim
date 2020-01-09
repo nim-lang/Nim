@@ -116,9 +116,11 @@ type
           incompleteStruct.} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
+import system/imports_common
 var
-  cstderr* {.importc: "stderr", header: "<stdio.h>".}: CFilePtr
-  cstdout* {.importc: "stdout", header: "<stdio.h>".}: CFilePtr
+  cstderr* {.importc: stderrName, header: "<stdio.h>".}: CFilePtr
+  cstdout* {.importc: stdoutName, header: "<stdio.h>".}: CFilePtr
+  cstdin* {.importc: stdinName, header: "<stdio.h>".}: CFilePtr
 
 proc c_fprintf*(f: CFilePtr, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
