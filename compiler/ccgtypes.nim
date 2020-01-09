@@ -1256,7 +1256,7 @@ proc genTypeInfo2Name(m: BModule; t: PType): Rope =
   while it != nil:
     it = it.skipTypes(skipPtrs)
     if it.sym != nil:
-      var m = t.sym.owner
+      var m = it.sym.owner
       while m != nil and m.kind != skModule: m = m.owner
       if m == nil or sfSystemModule in m.flags:
         # produce short names for system types:
