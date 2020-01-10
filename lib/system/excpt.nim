@@ -452,8 +452,8 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
       pushCurrentException(e)
-      when gotoBasedExceptions:
-        inc nimInErrorMode
+    when gotoBasedExceptions:
+      inc nimInErrorMode
   else:
     if excHandler != nil:
       pushCurrentException(e)
