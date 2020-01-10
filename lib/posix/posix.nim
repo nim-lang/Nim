@@ -16,7 +16,10 @@
 ## convenience: cstrings are used instead of proper Nim strings and
 ## return codes indicate errors. If you want exceptions
 ## and a proper Nim-like interface, use the OS module or write a wrapper.
-
+##
+## For high-level wrappers specialized for Linux and BSDs see:
+## `posix_utils <posix_utils.html>`_
+##
 ## Coding conventions:
 ## ALL types are named the same as in the POSIX standard except that they start
 ## with 'T' or 'P' (if they are pointers) and without the '_t' suffix to be
