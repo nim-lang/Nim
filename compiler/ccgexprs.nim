@@ -2172,7 +2172,11 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genRepr(p, e, d)
   of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
-  of mNewFinalize: genNewFinalize(p, e)
+  of mNewFinalize:
+    if optTinyRtti in p.config.globalOptions:
+      genNew(p, e)
+    else:
+      genNewFinalize(p, e)
   of mNewSeq: genNewSeq(p, e)
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
