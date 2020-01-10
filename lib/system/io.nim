@@ -115,8 +115,8 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-## When running nim in android app, stdout goes nowhere, so echo gets ignored
-## To redirect echo to the android logcat, use -d:androidNDK
+# When running nim in android app, stdout goes nowhere, so echo gets ignored
+# To redirect echo to the android logcat, use -d:androidNDK
 when defined(androidNDK):
   const ANDROID_LOG_VERBOSE = 2.cint
   proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
