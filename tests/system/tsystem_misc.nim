@@ -59,6 +59,8 @@ doAssert high(float) > low(float)
 doAssert high(float32) > low(float32)
 doAssert high(float64) > low(float64)
 
+for i in 0..100: doAssert i.Percentage == i
+
 # bug #6710
 var s = @[1]
 s.delete(0)

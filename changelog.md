@@ -37,7 +37,7 @@
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
-
+- Added `Percentage` an `int` type ranging from 0 to 100. This type is often useful for Percentages, without off-by-one errors.
 
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing

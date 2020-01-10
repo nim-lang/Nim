@@ -691,6 +691,8 @@ type
     ## is an `int` type ranging from one to the maximum value
     ## of an `int`. This type is often useful for documentation and debugging.
 
+  Percentage* = range[0..100] ## `int` type ranging from 0 to 100. Useful for Percentages, without off-by-one errors.
+
   RootObj* {.compilerproc, inheritable.} =
     object ## The root of Nim's object hierarchy.
            ##
