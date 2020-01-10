@@ -116,7 +116,11 @@ type
           incompleteStruct.} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
-import system/imports_common
+# duplicated between io and ansi_c
+const stderrName* = when defined(osx): "__stderrp" else: "stderr"
+const stdoutName* = when defined(osx): "__stdoutp" else: "stdout"
+const stdinName* = when defined(osx): "__stdinp" else: "stdin"
+
 var
   cstderr* {.importc: stderrName, header: "<stdio.h>".}: CFilePtr
   cstdout* {.importc: stdoutName, header: "<stdio.h>".}: CFilePtr
