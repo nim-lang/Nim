@@ -590,27 +590,31 @@ proc fromUnix*(unix: int64): Time
 
 proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert ``t`` to a unix timestamp (seconds since ``1970-01-01T00:00:00Z``).
-  ## See also `toUnix`.
+  ## See also `toUnixFloat` for subsecond resolution.
   runnableExamples:
     doAssert fromUnix(0).toUnix() == 0
   t.seconds
 
-proc fromUnix*(unix: float): Time
+proc fromUnixFloat*(seconds: float): Time
     {.benign, tags: [], raises: [], noSideEffect, since: (1, 1).} =
-  ## Overload working with subsecond resolution.
+  ## Convert a unix timestamp in seconds to a `Time`; same as `fromUnix`
+  ## but with subsecond resolution.
   runnableExamples:
-    doAssert fromUnix(123.0) == fromUnix(123)
-  let secs = unix.floor
-  let nsecs = (unix - secs) * 1e9
+    doAssert fromUnixFloat(123.0) == fromUnixFloat(123)
+  let secs = seconds.floor
+  let nsecs = (seconds - secs) * 1e9
   initTime(secs.int64, nsecs.NanosecondRange)
 
-proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [].} =
+template toUnixFloatImpl(t): untyped =
+  t.seconds.float + t.nanosecond / convert(Seconds, Nanoseconds, 1)
+
+proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [], since: (1, 1).} =
   ## Same as `toUnix` but using subsecond resolution.
   runnableExamples:
     let t = getTime()
     # `<` because of rounding errors
-    doAssert abs(t.toUnixFloat().fromUnix - t) < initDuration(nanoseconds = 1000)
-  t.seconds.float + t.nanosecond / convert(Seconds, Nanoseconds, 1)
+    doAssert abs(t.toUnixFloat().fromUnixFloat - t) < initDuration(nanoseconds = 1000)
+  toUnixFloatImpl(t)
 
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since
@@ -2723,7 +2727,7 @@ proc fromSeconds*(since1970: int64): Time
 proc toSeconds*(time: Time): float
     {.tags: [], raises: [], benign, deprecated: "Use toUnixFloat or toUnix".} =
   ## Returns the time in seconds since the unix epoch, with subsecond resolution.
-  toUnixFloat(time)
+  toUnixFloatImpl(time)
 
 proc getLocalTime*(time: Time): DateTime
     {.tags: [], raises: [], benign, deprecated.} =
