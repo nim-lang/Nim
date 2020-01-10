@@ -977,6 +977,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # an unhandled exception happened!
   lineCg(p, cpsStmts, "T$1_ = T$2_;", [etmp, etmp+1])
   p.nestedTryStmts[^1].inExcept = true
+  var hasImportedCppExceptions = false
   var i = 1
   while (i < t.len) and (t[i].kind == nkExceptBranch):
     # bug #4230: avoid false sharing between branches:
@@ -1005,6 +1006,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         if orExpr != nil: orExpr.add("||")
         if isImportedException(typeNode.typ, p.config):
           orExpr.add "NIM_FALSE"
+          hasImportedCppExceptions = true
         else:
           let checkFor = if optTinyRtti in p.config.globalOptions:
             genTypeInfo2Name(p.module, typeNode.typ)
@@ -1033,32 +1035,33 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       genStmts(p, t[^1][0])
       endBlock(p)
 
-  for i in 1..<t.len:
-    if t[i].kind != nkExceptBranch: break
+  if hasImportedCppExceptions:
+    for i in 1..<t.len:
+      if t[i].kind != nkExceptBranch: break
 
-    # bug #4230: avoid false sharing between branches:
-    if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
+      # bug #4230: avoid false sharing between branches:
+      if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
 
-    if t[i].len == 1:
-      # general except section:
-      startBlock(p, "catch (...) {", [])
-      genExceptBranchBody(t[i][0])
-      endBlock(p)
-    else:
-      for j in 0..<t[i].len-1:
-        var typeNode = t[i][j]
-        if t[i][j].isInfixAs():
-          typeNode = t[i][j][1]
-          if isImportedException(typeNode.typ, p.config):
-            let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
-            fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnStack)
-            startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc))
+      if t[i].len == 1:
+        # general except section:
+        startBlock(p, "catch (...) {", [])
+        genExceptBranchBody(t[i][0])
+        endBlock(p)
+      else:
+        for j in 0..<t[i].len-1:
+          var typeNode = t[i][j]
+          if t[i][j].isInfixAs():
+            typeNode = t[i][j][1]
+            if isImportedException(typeNode.typ, p.config):
+              let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
+              fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnStack)
+              startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc))
+              genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
+              endBlock(p)
+          elif isImportedException(typeNode.typ, p.config):
+            startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
             genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
             endBlock(p)
-        elif isImportedException(typeNode.typ, p.config):
-          startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
-          genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
-          endBlock(p)
 
   discard pop(p.nestedTryStmts)
 
