@@ -44,9 +44,6 @@ block: # typeToString
   doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
     "tuple[a: C2b{C}[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
 
-
-#----------------------------------------------------
-
 block distinctBase:
   block:
     type
@@ -90,4 +87,17 @@ block distinctBase:
         doAssert($distinctBase(typeof(b2)) == "string")
         doAssert($distinctBase(typeof(c2)) == "int")
 
-
+block genericParams:
+  type Foo[T1, T2]=object
+  doAssert genericParams(Foo[float, string]) is (float, string)
+  type Foo1 = Foo[float, int]
+  doAssert genericParams(Foo1) is (float, int)
+  type Foo2 = Foo[float, Foo1]
+  doAssert genericParams(Foo2) is (float, Foo[float, int])
+  doAssert genericParams(Foo2) is (float, Foo1)
+  doAssert genericParams(Foo2).get(1) is Foo1
+  doAssert (int,).get(0) is int
+  doAssert (int, float).get(1) is float
+  static: doAssert (int, float).lenTuple == 2
+  static: doAssert (1, ).lenTuple == 1
+  static: doAssert ().lenTuple == 0
