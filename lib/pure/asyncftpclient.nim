@@ -167,7 +167,7 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   var ip = nums[0 .. ^3]
   var port = nums[^2 .. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
-  await ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
+  await ftp.dsock.connect(ip.join("."), Port(properPort))
   ftp.dsockConnected = true
 
 proc normalizePathSep(path: string): string =
