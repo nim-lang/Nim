@@ -97,7 +97,8 @@ const
     warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    # keep in sync with `pegSuccess` see testament.nim
+    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; $project proj; $output out",
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
@@ -115,7 +116,7 @@ const
     hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
-    hintLinking: "",
+    hintLinking: "$1",
     hintDependency: "$1",
     hintSource: "$1",
     hintPerformance: "$1",

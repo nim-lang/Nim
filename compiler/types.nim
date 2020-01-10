@@ -106,13 +106,6 @@ proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
     # should therefore really be revisited.
     onError
 
-proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
-  case n.kind
-  of nkCharLit..nkUInt64Lit: n.intVal
-  of nkNilLit: 0
-  of nkHiddenStdConv: getOrdValue64(n[1])
-  else: high(BiggestInt)
-
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
   of nkFloatLiterals: n.floatVal

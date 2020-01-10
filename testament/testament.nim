@@ -74,10 +74,13 @@ let
       'template/generic instantiation' ( ' of `' [^`]+ '`' )? ' from here' .*
     """
   pegOtherError = peg"'Error:' \s* {.*}"
-  pegSuccess = peg"'Hint: operation successful'.*"
   pegOfInterest = pegLineError / pegOtherError
 
 var gTargets = {low(TTarget)..high(TTarget)}
+
+proc isSuccess(input: string): bool =
+  # not clear how to do the equivalent of pkg/regex's: re"FOO(.*?)BAR" in pegs
+  input.startsWith("Hint: ") and input.endsWith("[SuccessX]")
 
 proc normalizeMsg(s: string): string =
   result = newStringOfCap(s.len+1)
@@ -157,7 +160,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
       elif x =~ pegLineTemplate and err == "":
         # `tmpl` contains the last template expansion before the error
         tmpl = x
-      elif x =~ pegSuccess:
+      elif x.isSuccess:
         suc = x
     elif not running(p):
       break
@@ -170,6 +173,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   result.tfile = ""
   result.tline = 0
   result.tcolumn = 0
+  result.err = reNimcCrash
   if tmpl =~ pegLineTemplate:
     result.tfile = extractFilename(matches[0])
     result.tline = parseInt(matches[1])
@@ -181,7 +185,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
     result.msg = matches[3]
   elif err =~ pegOtherError:
     result.msg = matches[0]
-  elif suc =~ pegSuccess:
+  elif suc.isSuccess:
     result.err = reSuccess
 
 proc callCCompiler(cmdTemplate, filename, options: string,
