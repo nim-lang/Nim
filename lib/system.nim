@@ -250,7 +250,7 @@ const ThisIsSystem = true
 proc internalNew*[T](a: var ref T) {.magic: "New", noSideEffect.}
   ## Leaked implementation detail. Do not use.
 
-when not defined(gcDestructors):
+when true:
   proc new*[T](a: var ref T, finalizer: proc (x: ref T) {.nimcall.}) {.
     magic: "NewFinalize", noSideEffect.}
     ## Creates a new object of type ``T`` and returns a safe (traced)
@@ -2197,17 +2197,18 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
       defaultImpl()
   x[i] = item
 
-proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
-  ## Takes any Nim variable and returns its string representation.
-  ##
-  ## It works even for complex data graphs with cycles. This is a great
-  ## debugging tool.
-  ##
-  ## .. code-block:: Nim
-  ##  var s: seq[string] = @["test2", "test2"]
-  ##  var i = @[1, 2, 3, 4, 5]
-  ##  echo repr(s) # => 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
-  ##  echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
+when not defined(nimV2):
+  proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
+    ## Takes any Nim variable and returns its string representation.
+    ##
+    ## It works even for complex data graphs with cycles. This is a great
+    ## debugging tool.
+    ##
+    ## .. code-block:: Nim
+    ##  var s: seq[string] = @["test2", "test2"]
+    ##  var i = @[1, 2, 3, 4, 5]
+    ##  echo repr(s) # => 0x1055eb050[0x1055ec050"test2", 0x1055ec078"test2"]
+    ##  echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
 
 type
   ByteAddress* = int
@@ -3555,6 +3556,9 @@ template unlikely*(val: bool): bool =
 import system/dollars
 export dollars
 
+when defined(nimV2):
+  import system/repr_v2
+  export repr_v2
 
 const
   NimMajor* {.intdefine.}: int = 1
@@ -4217,6 +4221,9 @@ type
 
   NimNode* {.magic: "PNimrodNode".} = ref NimNodeObj
     ## Represents a Nim AST node. Macros operate on this type.
+
+when defined(nimV2):
+  proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
 
 macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
