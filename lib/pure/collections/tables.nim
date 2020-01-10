@@ -2320,11 +2320,14 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
-  let h = rawGet(t, key)
-  if h >= 0:
-    t.data[h].val = val
+  if val == 0:
+    t.remove(key)
   else:
-    insertImpl()
+    let h = rawGet(t, key)
+    if h >= 0:
+      t.data[h].val = val
+    else:
+      insertImpl()
 
 proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
@@ -3112,6 +3115,13 @@ when isMainModule:
     t_mut['z'] = 1
     doAssert t_mut['z'] == 1
     doAssert t_mut.hasKey('z') == true
+
+  block: #12813 #13079
+    var t = toCountTable("abracadabra")
+    doAssert len(t) == 5
+
+    t['a'] = 0 # remove a key
+    doAssert len(t) == 4
 
   block:
     var tp: Table[string, string] = initTable[string, string]()
