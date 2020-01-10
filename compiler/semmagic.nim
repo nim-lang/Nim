@@ -476,7 +476,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     # Make sure the finalizer procedure refers to a procedure
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
-    else:
+    elif optTinyRtti in c.config.globalOptions:
       bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym), n, attachedDestructor)
     result = n
   of mDestroy:
