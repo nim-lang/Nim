@@ -658,6 +658,8 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
+const notJSnotNims = not defined(JS) and not defined(nimscript)
+
 when not defined(JS) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
@@ -670,12 +672,12 @@ when not defined(JS) and not defined(nimSeqsV2):
       data: UncheckedArray[char]
     NimString = ptr NimStringDesc
 
-when not defined(JS) and not defined(nimscript):
-  when not defined(nimSeqsV2):
-    template space(s: PGenericSeq): int {.dirty.} =
-      s.reserved and not (seqShallowFlag or strlitFlag)
-  when not defined(nimV2):
-    include "system/hti"
+when notJSnotNims and not defined(nimSeqsV2):
+  template space(s: PGenericSeq): int {.dirty.} =
+    s.reserved and not (seqShallowFlag or strlitFlag)
+
+when notJSnotNims and not defined(nimV2):
+  include "system/hti"
 
 type
   byte* = uint8 ## This is an alias for ``uint8``, that is an unsigned
@@ -833,7 +835,7 @@ type
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
 
-when defined(js) or defined(nimdoc):
+when defined(JS) or defined(nimdoc):
   type
     JsRoot* = ref object of RootObj
       ## Root type of the JavaScript object hierarchy
@@ -1113,7 +1115,6 @@ when defined(nimNoZeroExtendMagic):
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
-
     cast[int](uint(cast[uint8](x)))
 
   proc ze*(x: int16): int {.deprecated.} =
@@ -1806,18 +1807,17 @@ when defined(nimHasDefault):
     ##
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
-else:
-  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
 
-when defined(nimHasDefault):
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
   proc reset*[T](obj: var T) {.noSideEffect.} =
     ## Resets an object `obj` to its default value.
     obj = default(typeof(obj))
+
 else:
+  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
+    magic: "ArrToSeq", noSideEffect.}
   when defined(nimV2):
     proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
   else:
@@ -2035,7 +2035,7 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(js) and defined(nodejs) and not defined(nimscript):
+when defined(JS) and defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
@@ -2077,15 +2077,14 @@ elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) =
     systemEnv.quit(errorcode)
 
-
-
-elif defined(js) and defined(nodejs) and not defined(nimscript):
+elif defined(JS) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
 else:
   proc quit*(errorcode: int = QuitSuccess) {.
     magic: "Exit", importc: "exit", header: "<stdlib.h>", noreturn.}
+
 
 template sysAssert(cond: bool, msg: string) =
   when defined(useSysAssert):
@@ -2097,12 +2096,12 @@ template sysAssert(cond: bool, msg: string) =
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
-when not defined(JS) and not defined(nimscript) and hostOS != "standalone":
+when notJSnotNims and hostOS != "standalone":
   include "system/cgprocs"
-when not defined(JS) and not defined(nimscript) and hasAlloc and not defined(nimSeqsV2):
+when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when not defined(nimSeqsV2) or defined(nimscript):
+when defined(nimscript) or not defined(nimSeqsV2):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -2170,7 +2169,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   when nimvm:
     defaultImpl()
   else:
-    when defined(js):
+    when defined(JS):
       {.emit: "`x`.splice(`i`, 1);".}
     else:
       defaultImpl()
@@ -2191,7 +2190,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   when nimvm:
     defaultImpl()
   else:
-    when defined(js):
+    when defined(JS):
       var it : T
       {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
@@ -2344,7 +2343,7 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 # In case of an unhandled exception the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
-when not defined(nimscript) and not defined(JS):
+when notJSnotNims:
   proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
     tags: [], locks: 0, raises: [].}
     ## Overwrites the contents of the memory at ``p`` with the value 0.
@@ -2379,187 +2378,186 @@ when not defined(nimscript) and not defined(JS):
     ## otherwise. Like any procedure dealing with raw memory this is
     ## **unsafe**.
 
-when not defined(nimscript):
-  when hasAlloc:
-    proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
-      ## Allocates a new memory block with at least ``size`` bytes.
-      ##
-      ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
-      ## or `dealloc(block) <#dealloc,pointer>`_.
-      ## The block is not initialized, so reading
-      ## from it before writing to it is undefined behaviour!
-      ##
-      ## The allocated memory belongs to its allocating thread!
-      ## Use `allocShared <#allocShared,Natural>`_ to allocate from a shared heap.
-      ##
-      ## See also:
-      ## * `alloc0 <#alloc0,Natural>`_
-    proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
-      ## Allocates a new memory block with at least ``T.sizeof * size`` bytes.
-      ##
-      ## The block has to be freed with `resize(block, 0) <#resize,ptr.T,Natural>`_
-      ## or `dealloc(block) <#dealloc,pointer>`_.
-      ## The block is not initialized, so reading
-      ## from it before writing to it is undefined behaviour!
-      ##
-      ## The allocated memory belongs to its allocating thread!
-      ## Use `createSharedU <#createSharedU,typedesc>`_ to allocate from a shared heap.
-      ##
-      ## See also:
-      ## * `create <#create,typedesc>`_
-      cast[ptr T](alloc(T.sizeof * size))
+when hasAlloc:
+  proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+    ## Allocates a new memory block with at least ``size`` bytes.
+    ##
+    ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
+    ## or `dealloc(block) <#dealloc,pointer>`_.
+    ## The block is not initialized, so reading
+    ## from it before writing to it is undefined behaviour!
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `allocShared <#allocShared,Natural>`_ to allocate from a shared heap.
+    ##
+    ## See also:
+    ## * `alloc0 <#alloc0,Natural>`_
+  proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
+    ## Allocates a new memory block with at least ``T.sizeof * size`` bytes.
+    ##
+    ## The block has to be freed with `resize(block, 0) <#resize,ptr.T,Natural>`_
+    ## or `dealloc(block) <#dealloc,pointer>`_.
+    ## The block is not initialized, so reading
+    ## from it before writing to it is undefined behaviour!
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `createSharedU <#createSharedU,typedesc>`_ to allocate from a shared heap.
+    ##
+    ## See also:
+    ## * `create <#create,typedesc>`_
+    cast[ptr T](alloc(T.sizeof * size))
 
-    proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
-      ## Allocates a new memory block with at least ``size`` bytes.
-      ##
-      ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
-      ## or `dealloc(block) <#dealloc,pointer>`_.
-      ## The block is initialized with all bytes containing zero, so it is
-      ## somewhat safer than  `alloc <#alloc,Natural>`_.
-      ##
-      ## The allocated memory belongs to its allocating thread!
-      ## Use `allocShared0 <#allocShared0,Natural>`_ to allocate from a shared heap.
-    proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
-      ## Allocates a new memory block with at least ``T.sizeof * size`` bytes.
-      ##
-      ## The block has to be freed with `resize(block, 0) <#resize,ptr.T,Natural>`_
-      ## or `dealloc(block) <#dealloc,pointer>`_.
-      ## The block is initialized with all bytes containing zero, so it is
-      ## somewhat safer than `createU <#createU,typedesc>`_.
-      ##
-      ## The allocated memory belongs to its allocating thread!
-      ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
-      cast[ptr T](alloc0(sizeof(T) * size))
+  proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+    ## Allocates a new memory block with at least ``size`` bytes.
+    ##
+    ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
+    ## or `dealloc(block) <#dealloc,pointer>`_.
+    ## The block is initialized with all bytes containing zero, so it is
+    ## somewhat safer than  `alloc <#alloc,Natural>`_.
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `allocShared0 <#allocShared0,Natural>`_ to allocate from a shared heap.
+  proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
+    ## Allocates a new memory block with at least ``T.sizeof * size`` bytes.
+    ##
+    ## The block has to be freed with `resize(block, 0) <#resize,ptr.T,Natural>`_
+    ## or `dealloc(block) <#dealloc,pointer>`_.
+    ## The block is initialized with all bytes containing zero, so it is
+    ## somewhat safer than `createU <#createU,typedesc>`_.
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
+    cast[ptr T](alloc0(sizeof(T) * size))
 
-    proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
-                                                           benign, raises: [].}
-      ## Grows or shrinks a given memory block.
-      ##
-      ## If `p` is **nil** then a new memory block is returned.
-      ## In either way the block has at least ``newSize`` bytes.
-      ## If ``newSize == 0`` and `p` is not **nil** ``realloc`` calls ``dealloc(p)``.
-      ## In other cases the block has to be freed with
-      ## `dealloc(block) <#dealloc,pointer>`_.
-      ##
-      ## The allocated memory belongs to its allocating thread!
-      ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
-      ## from a shared heap.
-    proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
-      ## Grows or shrinks a given memory block.
-      ##
-      ## If `p` is **nil** then a new memory block is returned.
-      ## In either way the block has at least ``T.sizeof * newSize`` bytes.
-      ## If ``newSize == 0`` and `p` is not **nil** ``resize`` calls ``dealloc(p)``.
-      ## In other cases the block has to be freed with ``free``.
-      ##
-      ## The allocated memory belongs to its allocating thread!
-      ## Use `resizeShared <#resizeShared,ptr.T,Natural>`_ to reallocate
-      ## from a shared heap.
-      cast[ptr T](realloc(p, T.sizeof * newSize))
+  proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
+                                                         benign, raises: [].}
+    ## Grows or shrinks a given memory block.
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``realloc`` calls ``dealloc(p)``.
+    ## In other cases the block has to be freed with
+    ## `dealloc(block) <#dealloc,pointer>`_.
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
+    ## from a shared heap.
+  proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
+    ## Grows or shrinks a given memory block.
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``T.sizeof * newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``resize`` calls ``dealloc(p)``.
+    ## In other cases the block has to be freed with ``free``.
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `resizeShared <#resizeShared,ptr.T,Natural>`_ to reallocate
+    ## from a shared heap.
+    cast[ptr T](realloc(p, T.sizeof * newSize))
 
-    proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
-      ## Frees the memory allocated with ``alloc``, ``alloc0`` or
-      ## ``realloc``.
-      ##
-      ## **This procedure is dangerous!**
-      ## If one forgets to free the memory a leak occurs; if one tries to
-      ## access freed memory (or just freeing it twice!) a core dump may happen
-      ## or other memory may be corrupted.
-      ##
-      ## The freed memory must belong to its allocating thread!
-      ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
+  proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
+    ## Frees the memory allocated with ``alloc``, ``alloc0`` or
+    ## ``realloc``.
+    ##
+    ## **This procedure is dangerous!**
+    ## If one forgets to free the memory a leak occurs; if one tries to
+    ## access freed memory (or just freeing it twice!) a core dump may happen
+    ## or other memory may be corrupted.
+    ##
+    ## The freed memory must belong to its allocating thread!
+    ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
 
-    proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
-      ## Allocates a new memory block on the shared heap with at
-      ## least ``size`` bytes.
-      ##
-      ## The block has to be freed with
-      ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
-      ## or `deallocShared(block) <#deallocShared,pointer>`_.
-      ##
-      ## The block is not initialized, so reading from it before writing
-      ## to it is undefined behaviour!
-      ##
-      ## See also:
-      ## `allocShared0 <#allocShared0,Natural>`_.
-    proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
-                                                                 benign, raises: [].} =
-      ## Allocates a new memory block on the shared heap with at
-      ## least ``T.sizeof * size`` bytes.
-      ##
-      ## The block has to be freed with
-      ## `resizeShared(block, 0) <#resizeShared,ptr.T,Natural>`_ or
-      ## `freeShared(block) <#freeShared,ptr.T>`_.
-      ##
-      ## The block is not initialized, so reading from it before writing
-      ## to it is undefined behaviour!
-      ##
-      ## See also:
-      ## * `createShared <#createShared,typedesc>`_
-      cast[ptr T](allocShared(T.sizeof * size))
+  proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
+    ## Allocates a new memory block on the shared heap with at
+    ## least ``size`` bytes.
+    ##
+    ## The block has to be freed with
+    ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
+    ## or `deallocShared(block) <#deallocShared,pointer>`_.
+    ##
+    ## The block is not initialized, so reading from it before writing
+    ## to it is undefined behaviour!
+    ##
+    ## See also:
+    ## `allocShared0 <#allocShared0,Natural>`_.
+  proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
+                                                               benign, raises: [].} =
+    ## Allocates a new memory block on the shared heap with at
+    ## least ``T.sizeof * size`` bytes.
+    ##
+    ## The block has to be freed with
+    ## `resizeShared(block, 0) <#resizeShared,ptr.T,Natural>`_ or
+    ## `freeShared(block) <#freeShared,ptr.T>`_.
+    ##
+    ## The block is not initialized, so reading from it before writing
+    ## to it is undefined behaviour!
+    ##
+    ## See also:
+    ## * `createShared <#createShared,typedesc>`_
+    cast[ptr T](allocShared(T.sizeof * size))
 
-    proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
-      ## Allocates a new memory block on the shared heap with at
-      ## least ``size`` bytes.
-      ##
-      ## The block has to be freed with
-      ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
-      ## or `deallocShared(block) <#deallocShared,pointer>`_.
-      ##
-      ## The block is initialized with all bytes
-      ## containing zero, so it is somewhat safer than
-      ## `allocShared <#allocShared,Natural>`_.
-    proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
-      ## Allocates a new memory block on the shared heap with at
-      ## least ``T.sizeof * size`` bytes.
-      ##
-      ## The block has to be freed with
-      ## `resizeShared(block, 0) <#resizeShared,ptr.T,Natural>`_ or
-      ## `freeShared(block) <#freeShared,ptr.T>`_.
-      ##
-      ## The block is initialized with all bytes
-      ## containing zero, so it is somewhat safer than
-      ## `createSharedU <#createSharedU,typedesc>`_.
-      cast[ptr T](allocShared0(T.sizeof * size))
+  proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
+    ## Allocates a new memory block on the shared heap with at
+    ## least ``size`` bytes.
+    ##
+    ## The block has to be freed with
+    ## `reallocShared(block, 0) <#reallocShared,pointer,Natural>`_
+    ## or `deallocShared(block) <#deallocShared,pointer>`_.
+    ##
+    ## The block is initialized with all bytes
+    ## containing zero, so it is somewhat safer than
+    ## `allocShared <#allocShared,Natural>`_.
+  proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
+    ## Allocates a new memory block on the shared heap with at
+    ## least ``T.sizeof * size`` bytes.
+    ##
+    ## The block has to be freed with
+    ## `resizeShared(block, 0) <#resizeShared,ptr.T,Natural>`_ or
+    ## `freeShared(block) <#freeShared,ptr.T>`_.
+    ##
+    ## The block is initialized with all bytes
+    ## containing zero, so it is somewhat safer than
+    ## `createSharedU <#createSharedU,typedesc>`_.
+    cast[ptr T](allocShared0(T.sizeof * size))
 
-    proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
-                                                                 benign, raises: [].}
-      ## Grows or shrinks a given memory block on the heap.
-      ##
-      ## If `p` is **nil** then a new memory block is returned.
-      ## In either way the block has at least ``newSize`` bytes.
-      ## If ``newSize == 0`` and `p` is not **nil** ``reallocShared`` calls
-      ## ``deallocShared(p)``.
-      ## In other cases the block has to be freed with
-      ## `deallocShared <#deallocShared,pointer>`_.
-    proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].} =
-      ## Grows or shrinks a given memory block on the heap.
-      ##
-      ## If `p` is **nil** then a new memory block is returned.
-      ## In either way the block has at least ``T.sizeof * newSize`` bytes.
-      ## If ``newSize == 0`` and `p` is not **nil** ``resizeShared`` calls
-      ## ``freeShared(p)``.
-      ## In other cases the block has to be freed with
-      ## `freeShared <#freeShared,ptr.T>`_.
-      cast[ptr T](reallocShared(p, T.sizeof * newSize))
+  proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
+                                                               benign, raises: [].}
+    ## Grows or shrinks a given memory block on the heap.
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``reallocShared`` calls
+    ## ``deallocShared(p)``.
+    ## In other cases the block has to be freed with
+    ## `deallocShared <#deallocShared,pointer>`_.
+  proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].} =
+    ## Grows or shrinks a given memory block on the heap.
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``T.sizeof * newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``resizeShared`` calls
+    ## ``freeShared(p)``.
+    ## In other cases the block has to be freed with
+    ## `freeShared <#freeShared,ptr.T>`_.
+    cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-    proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
-      ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
-      ## ``reallocShared``.
-      ##
-      ## **This procedure is dangerous!**
-      ## If one forgets to free the memory a leak occurs; if one tries to
-      ## access freed memory (or just freeing it twice!) a core dump may happen
-      ## or other memory may be corrupted.
-    proc freeShared*[T](p: ptr T) {.inline, benign, raises: [].} =
-      ## Frees the memory allocated with ``createShared``, ``createSharedU`` or
-      ## ``resizeShared``.
-      ##
-      ## **This procedure is dangerous!**
-      ## If one forgets to free the memory a leak occurs; if one tries to
-      ## access freed memory (or just freeing it twice!) a core dump may happen
-      ## or other memory may be corrupted.
-      deallocShared(p)
+  proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
+    ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
+    ## ``reallocShared``.
+    ##
+    ## **This procedure is dangerous!**
+    ## If one forgets to free the memory a leak occurs; if one tries to
+    ## access freed memory (or just freeing it twice!) a core dump may happen
+    ## or other memory may be corrupted.
+  proc freeShared*[T](p: ptr T) {.inline, benign, raises: [].} =
+    ## Frees the memory allocated with ``createShared``, ``createSharedU`` or
+    ## ``resizeShared``.
+    ##
+    ## **This procedure is dangerous!**
+    ## If one forgets to free the memory a leak occurs; if one tries to
+    ## access freed memory (or just freeing it twice!) a core dump may happen
+    ## or other memory may be corrupted.
+    deallocShared(p)
 
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
@@ -2577,7 +2575,7 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ##   assert a == 9
   ##   assert b == 5
 
-when not defined(js) and not defined(booting) and defined(nimTrMacros):
+when not defined(JS) and not defined(booting) and defined(nimTrMacros):
   template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openArray[ref], a, b: int) =
     # Optimize swapping of array elements if they are refs. Default swap
     # implementation will cause unsureAsgnRef to be emitted which causes
@@ -2598,7 +2596,7 @@ const
 
 # GC interface:
 
-when not defined(nimscript) and hasAlloc:
+when hasAlloc:
   proc getOccupiedMem*(): int {.rtl.}
     ## Returns the number of bytes that are owned by the process and hold data.
 
@@ -2609,20 +2607,22 @@ when not defined(nimscript) and hasAlloc:
   proc getTotalMem*(): int {.rtl.}
     ## Returns the number of bytes that are owned by the process.
 
-  when hasThreadSupport:
-    proc getOccupiedSharedMem*(): int {.rtl.}
-      ## Returns the number of bytes that are owned by the process
-      ## on the shared heap and hold data. This is only available when
-      ## threads are enabled.
 
-    proc getFreeSharedMem*(): int {.rtl.}
-      ## Returns the number of bytes that are owned by the
-      ## process on the shared heap, but do not hold any meaningful data.
-      ## This is only available when threads are enabled.
+when hasAlloc and hasThreadSupport:
+  proc getOccupiedSharedMem*(): int {.rtl.}
+    ## Returns the number of bytes that are owned by the process
+    ## on the shared heap and hold data. This is only available when
+    ## threads are enabled.
 
-    proc getTotalSharedMem*(): int {.rtl.}
-      ## Returns the number of bytes on the shared heap that are owned by the
-      ## process. This is only available when threads are enabled.
+  proc getFreeSharedMem*(): int {.rtl.}
+    ## Returns the number of bytes that are owned by the
+    ## process on the shared heap, but do not hold any meaningful data.
+    ## This is only available when threads are enabled.
+
+  proc getTotalSharedMem*(): int {.rtl.}
+    ## Returns the number of bytes on the shared heap that are owned by the
+    ## process. This is only available when threads are enabled.
+
 
 proc `|`*(a, b: typedesc): typedesc = discard
 
@@ -2750,7 +2750,7 @@ when defined(nimNewRoof):
   dotdotLessImpl(uint64)
   dotdotLessImpl(uint32)
 
-else:
+else: # not defined(nimNewRoof)
   iterator countup*[S, T](a: S, b: T, step = 1): T {.inline.} =
     ## Counts from ordinal value `a` up to `b` (inclusive) with the given
     ## step count.
@@ -2841,7 +2841,7 @@ iterator `||`*[S, T](a: S, b: T, step: Positive, annotation: static string = "pa
   ## and GC.
   discard
 
-{.push stackTrace:off.}
+{.push stackTrace: off.}
 proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
 proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.} =
@@ -2894,7 +2894,7 @@ proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
   if x <= y: x else: y
 proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
   if y <= x: x else: y
-{.pop.}
+{.pop.} # stackTrace: off
 
 proc high*(T: typedesc[SomeFloat]): T = Inf
 proc low*(T: typedesc[SomeFloat]): T = NegInf
@@ -3090,37 +3090,38 @@ proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.
   ##     echo "'+' for integers is available"
   discard
 
-when not defined(js) and not defined(nimscript):
+when notJSnotNims:
   import "system/ansi_c"
   import "system/memory"
 
-when not defined(js):
-  {.push stackTrace:off.}
 
-  when hasThreadSupport and hostOS != "standalone":
-    const insideRLocksModule = false
-    include "system/syslocks"
-    include "system/threadlocalstorage"
+{.push stackTrace: off.}
 
-  when defined(nimV2):
-    type
-      TNimNode {.compilerproc.} = object # to keep the code generator simple
-      DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
-      TNimType {.compilerproc.} = object
-        destructor: pointer
-        size: int
-        name: cstring
-        traceImpl: pointer
-        disposeImpl: pointer
-      PNimType = ptr TNimType
+when not defined(JS) and hasThreadSupport and hostOS != "standalone":
+  const insideRLocksModule = false
+  include "system/syslocks"
+  include "system/threadlocalstorage"
 
-  when defined(nimSeqsV2) and not defined(nimscript):
-    include "system/strs_v2"
-    include "system/seqs_v2"
+when not defined(JS) and defined(nimV2):
+  type
+    TNimNode {.compilerproc.} = object # to keep the code generator simple
+    DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
+    TNimType {.compilerproc.} = object
+      destructor: pointer
+      size: int
+      name: cstring
+      traceImpl: pointer
+      disposeImpl: pointer
+    PNimType = ptr TNimType
 
-  {.pop.}
+when notJSnotNims and defined(nimSeqsV2):
+  include "system/strs_v2"
+  include "system/seqs_v2"
 
-when not defined(js) and not defined(nimscript):
+{.pop.}
+
+
+when notJSnotNims:
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
     ## Writes the current stack trace to ``stderr``. This is only works
     ## for debug builds. Since it's usually used for debugging, this
@@ -3129,8 +3130,8 @@ when not defined(js) and not defined(nimscript):
 when not declared(sysFatal):
   include "system/fatal"
 
-when not defined(JS) and not defined(nimscript):
-  {.push stackTrace: off, profiler:off.}
+when notJSnotNims:
+  {.push stackTrace: off, profiler: off.}
 
   proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
     discardable, benign.}
@@ -3143,6 +3144,7 @@ when not defined(JS) and not defined(nimscript):
   include "system/atomics"
 
   {.pop.}
+
 
 when defined(nimV2):
   include system/refs_v2
@@ -3227,7 +3229,7 @@ const
 when not usesDestructors:
   {.pragma: nodestroy.}
 
-when not defined(nimscript) and hasAlloc:
+when hasAlloc:
   type
     GC_Strategy* = enum  ## The strategy the GC should use for the application.
       gcThroughput,      ## optimize for throughput
@@ -3235,92 +3237,91 @@ when not defined(nimscript) and hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-  when not defined(JS) and not usesDestructors:
-    proc GC_disable*() {.rtl, inl, benign.}
-      ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
-      ## are needed to reactivate the GC.
-      ##
-      ## Note that in most circumstances one should only disable
-      ## the mark and sweep phase with
-      ## `GC_disableMarkAndSweep <#GC_disableMarkAndSweep>`_.
+when hasAlloc and not defined(JS) and not usesDestructors:
+  proc GC_disable*() {.rtl, inl, benign.}
+    ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
+    ## are needed to reactivate the GC.
+    ##
+    ## Note that in most circumstances one should only disable
+    ## the mark and sweep phase with
+    ## `GC_disableMarkAndSweep <#GC_disableMarkAndSweep>`_.
 
-    proc GC_enable*() {.rtl, inl, benign.}
-      ## Enables the GC again.
+  proc GC_enable*() {.rtl, inl, benign.}
+    ## Enables the GC again.
 
-    proc GC_fullCollect*() {.rtl, benign.}
-      ## Forces a full garbage collection pass.
-      ## Ordinary code does not need to call this (and should not).
+  proc GC_fullCollect*() {.rtl, benign.}
+    ## Forces a full garbage collection pass.
+    ## Ordinary code does not need to call this (and should not).
 
-    proc GC_enableMarkAndSweep*() {.rtl, benign.}
-    proc GC_disableMarkAndSweep*() {.rtl, benign.}
-      ## The current implementation uses a reference counting garbage collector
-      ## with a seldomly run mark and sweep phase to free cycles. The mark and
-      ## sweep phase may take a long time and is not needed if the application
-      ## does not create cycles. Thus the mark and sweep phase can be deactivated
-      ## and activated separately from the rest of the GC.
+  proc GC_enableMarkAndSweep*() {.rtl, benign.}
+  proc GC_disableMarkAndSweep*() {.rtl, benign.}
+    ## The current implementation uses a reference counting garbage collector
+    ## with a seldomly run mark and sweep phase to free cycles. The mark and
+    ## sweep phase may take a long time and is not needed if the application
+    ## does not create cycles. Thus the mark and sweep phase can be deactivated
+    ## and activated separately from the rest of the GC.
 
-    proc GC_getStatistics*(): string {.rtl, benign.}
-      ## Returns an informative string about the GC's activity. This may be useful
-      ## for tweaking.
+  proc GC_getStatistics*(): string {.rtl, benign.}
+    ## Returns an informative string about the GC's activity. This may be useful
+    ## for tweaking.
 
-    proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
-    proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
-    proc GC_ref*(x: string) {.magic: "GCref", benign.}
-      ## Marks the object `x` as referenced, so that it will not be freed until
-      ## it is unmarked via `GC_unref`.
-      ## If called n-times for the same object `x`,
-      ## n calls to `GC_unref` are needed to unmark `x`.
+  proc GC_ref*[T](x: ref T) {.magic: "GCref", benign.}
+  proc GC_ref*[T](x: seq[T]) {.magic: "GCref", benign.}
+  proc GC_ref*(x: string) {.magic: "GCref", benign.}
+    ## Marks the object `x` as referenced, so that it will not be freed until
+    ## it is unmarked via `GC_unref`.
+    ## If called n-times for the same object `x`,
+    ## n calls to `GC_unref` are needed to unmark `x`.
 
-    proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
-    proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
-    proc GC_unref*(x: string) {.magic: "GCunref", benign.}
-      ## See the documentation of `GC_ref <#GC_ref,string>`_.
+  proc GC_unref*[T](x: ref T) {.magic: "GCunref", benign.}
+  proc GC_unref*[T](x: seq[T]) {.magic: "GCunref", benign.}
+  proc GC_unref*(x: string) {.magic: "GCunref", benign.}
+    ## See the documentation of `GC_ref <#GC_ref,string>`_.
 
-    when not defined(JS) and not defined(nimscript) and hasAlloc:
-      proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
-        ## Expands operating GC stack range to `theStackBottom`. Does nothing
-        ## if current stack bottom is already lower than `theStackBottom`.
+  proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
+    ## Expands operating GC stack range to `theStackBottom`. Does nothing
+      ## if current stack bottom is already lower than `theStackBottom`.
 
-  elif defined(JS):
-    template GC_disable* =
-      {.warning: "GC_disable is a no-op in JavaScript".}
+when hasAlloc and defined(JS):
+  template GC_disable* =
+    {.warning: "GC_disable is a no-op in JavaScript".}
 
-    template GC_enable* =
-      {.warning: "GC_enable is a no-op in JavaScript".}
+  template GC_enable* =
+    {.warning: "GC_enable is a no-op in JavaScript".}
 
-    template GC_fullCollect* =
-      {.warning: "GC_fullCollect is a no-op in JavaScript".}
+  template GC_fullCollect* =
+    {.warning: "GC_fullCollect is a no-op in JavaScript".}
 
-    template GC_setStrategy* =
-      {.warning: "GC_setStrategy is a no-op in JavaScript".}
+  template GC_setStrategy* =
+    {.warning: "GC_setStrategy is a no-op in JavaScript".}
 
-    template GC_enableMarkAndSweep* =
-      {.warning: "GC_enableMarkAndSweep is a no-op in JavaScript".}
+  template GC_enableMarkAndSweep* =
+    {.warning: "GC_enableMarkAndSweep is a no-op in JavaScript".}
 
-    template GC_disableMarkAndSweep* =
-      {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
+  template GC_disableMarkAndSweep* =
+    {.warning: "GC_disableMarkAndSweep is a no-op in JavaScript".}
 
-    template GC_ref*[T](x: ref T) =
-      {.warning: "GC_ref is a no-op in JavaScript".}
+  template GC_ref*[T](x: ref T) =
+    {.warning: "GC_ref is a no-op in JavaScript".}
 
-    template GC_ref*[T](x: seq[T]) =
-      {.warning: "GC_ref is a no-op in JavaScript".}
+  template GC_ref*[T](x: seq[T]) =
+    {.warning: "GC_ref is a no-op in JavaScript".}
 
-    template GC_ref*(x: string) =
-      {.warning: "GC_ref is a no-op in JavaScript".}
+  template GC_ref*(x: string) =
+    {.warning: "GC_ref is a no-op in JavaScript".}
 
-    template GC_unref*[T](x: ref T) =
-      {.warning: "GC_unref is a no-op in JavaScript".}
+  template GC_unref*[T](x: ref T) =
+    {.warning: "GC_unref is a no-op in JavaScript".}
 
-    template GC_unref*[T](x: seq[T]) =
-      {.warning: "GC_unref is a no-op in JavaScript".}
+  template GC_unref*[T](x: seq[T]) =
+    {.warning: "GC_unref is a no-op in JavaScript".}
 
-    template GC_unref*(x: string) =
-      {.warning: "GC_unref is a no-op in JavaScript".}
+  template GC_unref*(x: string) =
+    {.warning: "GC_unref is a no-op in JavaScript".}
 
-    template GC_getStatistics*(): string =
-      {.warning: "GC_getStatistics is a no-op in JavaScript".}
-      ""
+  template GC_getStatistics*(): string =
+    {.warning: "GC_getStatistics is a no-op in JavaScript".}
+    ""
 
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
@@ -3418,7 +3419,7 @@ when defined(JS):
   proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
-  {.push stack_trace:off, profiler:off.}
+  {.push stackTrace: off, profiler: off.}
   proc add*(x: var string, y: cstring) =
     var i = 0
     if y != nil:
@@ -3578,8 +3579,8 @@ type
     fspEnd            ## Seek relative to end
 
 
-when not defined(JS): #and not defined(nimscript):
-  {.push stack_trace: off, profiler:off.}
+when not defined(JS):
+  {.push stackTrace: off, profiler: off.}
 
   when hasAlloc:
     when not defined(gcRegions) and not usesDestructors:
@@ -3606,22 +3607,31 @@ when not defined(JS): #and not defined(nimscript):
         strDesc = TNimType(size: sizeof(string), kind: tyString, flags: {ntfAcyclic})
       {.pop.}
 
-  when not defined(nimscript):
-    proc zeroMem(p: pointer, size: Natural) =
-      nimZeroMem(p, size)
-      when declared(memTrackerOp):
-        memTrackerOp("zeroMem", p, size)
-    proc copyMem(dest, source: pointer, size: Natural) =
-      nimCopyMem(dest, source, size)
-      when declared(memTrackerOp):
-        memTrackerOp("copyMem", dest, size)
-    proc moveMem(dest, source: pointer, size: Natural) =
-      c_memmove(dest, source, csize_t(size))
-      when declared(memTrackerOp):
-        memTrackerOp("moveMem", dest, size)
-    proc equalMem(a, b: pointer, size: Natural): bool =
-      nimCmpMem(a, b, size) == 0
+  {.pop.}
 
+
+when not defined(JS):
+  # ugly hack, see the accompanying .pop for
+  # the mysterious error message
+  {.push stackTrace: off, profiler: off.}
+
+when notJSnotNims:
+  proc zeroMem(p: pointer, size: Natural) =
+    nimZeroMem(p, size)
+    when declared(memTrackerOp):
+      memTrackerOp("zeroMem", p, size)
+  proc copyMem(dest, source: pointer, size: Natural) =
+    nimCopyMem(dest, source, size)
+    when declared(memTrackerOp):
+      memTrackerOp("copyMem", dest, size)
+  proc moveMem(dest, source: pointer, size: Natural) =
+    c_memmove(dest, source, csize_t(size))
+    when declared(memTrackerOp):
+      memTrackerOp("moveMem", dest, size)
+  proc equalMem(a, b: pointer, size: Natural): bool =
+    nimCmpMem(a, b, size) == 0
+
+when not defined(JS):
   proc cmp(x, y: string): int =
     when defined(nimscript):
       if x < y: result = -1
@@ -3652,36 +3662,36 @@ when not defined(JS): #and not defined(nimscript):
       while a[L] != nil: inc(L)
       result = cstringArrayToSeq(a, L)
 
-  # -------------------------------------------------------------------------
 
-  when declared(alloc0) and declared(dealloc):
-    proc allocCStringArray*(a: openArray[string]): cstringArray =
-      ## Creates a NULL terminated cstringArray from `a`. The result has to
-      ## be freed with `deallocCStringArray` after it's not needed anymore.
-      result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
+when not defined(JS) and declared(alloc0) and declared(dealloc):
+  proc allocCStringArray*(a: openArray[string]): cstringArray =
+    ## Creates a NULL terminated cstringArray from `a`. The result has to
+    ## be freed with `deallocCStringArray` after it's not needed anymore.
+    result = cast[cstringArray](alloc0((a.len+1) * sizeof(cstring)))
 
-      let x = cast[ptr UncheckedArray[string]](a)
-      for i in 0 .. a.high:
-        result[i] = cast[cstring](alloc0(x[i].len+1))
-        copyMem(result[i], addr(x[i][0]), x[i].len)
+    let x = cast[ptr UncheckedArray[string]](a)
+    for i in 0 .. a.high:
+      result[i] = cast[cstring](alloc0(x[i].len+1))
+      copyMem(result[i], addr(x[i][0]), x[i].len)
 
-    proc deallocCStringArray*(a: cstringArray) =
-      ## Frees a NULL terminated cstringArray.
-      var i = 0
-      while a[i] != nil:
-        dealloc(a[i])
-        inc(i)
-      dealloc(a)
+  proc deallocCStringArray*(a: cstringArray) =
+    ## Frees a NULL terminated cstringArray.
+    var i = 0
+    while a[i] != nil:
+      dealloc(a[i])
+      inc(i)
+    dealloc(a)
 
-  when not defined(nimscript):
-    type
-      PSafePoint = ptr TSafePoint
-      TSafePoint {.compilerproc, final.} = object
-        prev: PSafePoint # points to next safe point ON THE STACK
-        status: int
-        context: C_JmpBuf
-      SafePoint = TSafePoint
+when notJSnotNims:
+  type
+    PSafePoint = ptr TSafePoint
+    TSafePoint {.compilerproc, final.} = object
+      prev: PSafePoint # points to next safe point ON THE STACK
+      status: int
+      context: C_JmpBuf
+    SafePoint = TSafePoint
 
+when not defined(JS):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
@@ -3690,138 +3700,147 @@ when not defined(JS): #and not defined(nimscript):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     when declared(initGC): initGC()
 
-  when not defined(nimscript):
-    proc setControlCHook*(hook: proc () {.noconv.})
-      ## Allows you to override the behaviour of your application when CTRL+C
-      ## is pressed. Only one such hook is supported.
+when notJSnotNims:
+  proc setControlCHook*(hook: proc () {.noconv.})
+    ## Allows you to override the behaviour of your application when CTRL+C
+    ## is pressed. Only one such hook is supported.
 
-    when not defined(noSignalHandler) and not defined(useNimRtl):
-      proc unsetControlCHook*()
-        ## Reverts a call to setControlCHook.
+  when not defined(noSignalHandler) and not defined(useNimRtl):
+    proc unsetControlCHook*()
+      ## Reverts a call to setControlCHook.
 
-    when hostOS != "standalone":
-      proc getStackTrace*(): string {.gcsafe.}
-        ## Gets the current stack trace. This only works for debug builds.
+  when hostOS != "standalone":
+    proc getStackTrace*(): string {.gcsafe.}
+      ## Gets the current stack trace. This only works for debug builds.
 
-      proc getStackTrace*(e: ref Exception): string {.gcsafe.}
-        ## Gets the stack trace associated with `e`, which is the stack that
-        ## lead to the ``raise`` statement. This only works for debug builds.
+    proc getStackTrace*(e: ref Exception): string {.gcsafe.}
+      ## Gets the stack trace associated with `e`, which is the stack that
+      ## lead to the ``raise`` statement. This only works for debug builds.
 
-    {.push stackTrace: off, profiler:off.}
-    when defined(memtracker):
-      include "system/memtracker"
+  {.push stackTrace: off, profiler: off.}
+  when defined(memtracker):
+    include "system/memtracker"
 
-    when hostOS == "standalone":
-      include "system/embedded"
-    else:
-      include "system/excpt"
-    include "system/chcks"
+  when hostOS == "standalone":
+    include "system/embedded"
+  else:
+    include "system/excpt"
+  include "system/chcks"
 
-    # we cannot compile this with stack tracing on
-    # as it would recurse endlessly!
-    include "system/arithm"
-    {.pop.} # stack trace
-  {.pop.} # stack trace
+  # we cannot compile this with stack tracing on
+  # as it would recurse endlessly!
+  include "system/arithm"
+  {.pop.}
 
-  when hostOS != "standalone" and not defined(nimscript):
+
+when not defined(JS):
+  # this is a hack: without this when statement, you would get:
+  # Error: system module needs: nimGCvisit
+  {.pop.} # stackTrace: off, profiler: off
+
+
+
+when notJSnotNims:
+  when hostOS != "standalone":
     include "system/dyncalls"
-  when not defined(nimscript):
-    include "system/sets"
 
-    when defined(gogc):
-      const GenericSeqSize = (3 * sizeof(int))
-    else:
-      const GenericSeqSize = (2 * sizeof(int))
+  include "system/sets"
 
-    when not defined(nimV2):
-      proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
-        sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
-        var d: uint
-        var a = cast[uint](aa)
-        case n.typ.size
-        of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
-        of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
-        of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
-        of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
-        else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
-        return d
+  when defined(gogc):
+    const GenericSeqSize = (3 * sizeof(int))
+  else:
+    const GenericSeqSize = (2 * sizeof(int))
 
-      proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
-        var discr = getDiscriminant(aa, n)
-        if discr < cast[uint](n.len):
-          result = n.sons[discr]
-          if result == nil: result = n.sons[n.len]
-          # n.sons[n.len] contains the ``else`` part (but may be nil)
-        else:
-          result = n.sons[n.len]
+  when not defined(nimV2):
+    proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
+      sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
+      var d: uint
+      var a = cast[uint](aa)
+      case n.typ.size
+      of 1: d = uint(cast[ptr uint8](a + uint(n.offset))[])
+      of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
+      of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
+      of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
+      else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
+      return d
 
-    {.push profiler:off.}
-    when hasAlloc: include "system/mmdisp"
-    {.pop.}
-    {.push stack_trace: off, profiler:off.}
-    when hasAlloc:
-      when not defined(nimSeqsV2):
-        include "system/sysstr"
-    {.pop.}
-    when hasAlloc: include "system/strmantle"
+    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
+      var discr = getDiscriminant(aa, n)
+      if discr < cast[uint](n.len):
+        result = n.sons[discr]
+        if result == nil: result = n.sons[n.len]
+        # n.sons[n.len] contains the ``else`` part (but may be nil)
+      else:
+        result = n.sons[n.len]
 
-    when hasThreadSupport:
-      when hostOS != "standalone": include "system/channels"
+when notJSnotNims and hasAlloc:
+  {.push profiler: off.}
+  include "system/mmdisp"
+  {.pop.}
+  {.push stackTrace: off, profiler: off.}
+  when not defined(nimSeqsV2):
+    include "system/sysstr"
+  {.pop.}
 
-  when not defined(nimscript) and hasAlloc:
-    when not usesDestructors:
-      include "system/assign"
-    when not defined(nimV2):
-      include "system/repr"
+  include "system/strmantle"
+  when not usesDestructors:
+    include "system/assign"
+  when not defined(nimV2):
+    include "system/repr"
 
-  when hostOS != "standalone" and not defined(nimscript):
-    proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
-      ## Retrieves the current exception; if there is none, `nil` is returned.
-      result = currException
+when notJSnotNims and hasThreadSupport and hostOS != "standalone":
+  include "system/channels"
 
-    proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
-      # .nodestroy here so that we do not produce a write barrier as the
-      # C codegen only uses it in a borrowed way:
-      result = currException
 
-    proc getCurrentExceptionMsg*(): string {.inline, benign.} =
-      ## Retrieves the error message that was attached to the current
-      ## exception; if there is none, `""` is returned.
-      return if currException == nil: "" else: currException.msg
+when notJSnotNims and hostOS != "standalone":
+  proc getCurrentException*(): ref Exception {.compilerRtl, inl, benign.} =
+    ## Retrieves the current exception; if there is none, `nil` is returned.
+    result = currException
 
-    proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
-      ## Sets the current exception.
-      ##
-      ## **Warning**: Only use this if you know what you are doing.
-      currException = exc
+  proc nimBorrowCurrentException(): ref Exception {.compilerRtl, inl, benign, nodestroy.} =
+    # .nodestroy here so that we do not produce a write barrier as the
+    # C codegen only uses it in a borrowed way:
+    result = currException
 
-  {.push stack_trace: off, profiler:off.}
-  when (defined(profiler) or defined(memProfiler)) and not defined(nimscript):
+  proc getCurrentExceptionMsg*(): string {.inline, benign.} =
+    ## Retrieves the error message that was attached to the current
+    ## exception; if there is none, `""` is returned.
+    return if currException == nil: "" else: currException.msg
+
+  proc setCurrentException*(exc: ref Exception) {.inline, benign.} =
+    ## Sets the current exception.
+    ##
+    ## **Warning**: Only use this if you know what you are doing.
+    currException = exc
+
+
+when notJSnotNims:
+  {.push stackTrace: off, profiler: off.}
+  when (defined(profiler) or defined(memProfiler)):
     include "system/profiler"
-  {.pop.} # stacktrace
+  {.pop.}
 
-  when not defined(nimscript):
-    proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-      ## Retrieves the raw proc pointer of the closure `x`. This is
-      ## useful for interfacing closures with C.
-      {.emit: """
-      `result` = `x`.ClP_0;
-      """.}
+  proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+    ## Retrieves the raw proc pointer of the closure `x`. This is
+    ## useful for interfacing closures with C.
+    {.emit: """
+    `result` = `x`.ClP_0;
+    """.}
 
-    proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
-      ## Retrieves the raw environment pointer of the closure `x`. This is
-      ## useful for interfacing closures with C.
-      {.emit: """
-      `result` = `x`.ClE_0;
-      """.}
+  proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+    ## Retrieves the raw environment pointer of the closure `x`. This is
+    ## useful for interfacing closures with C.
+    {.emit: """
+    `result` = `x`.ClE_0;
+    """.}
 
-    proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
-      ## can be used to determine if a first class iterator has finished.
-      {.emit: """
-      `result` = ((NI*) `x`.ClE_0)[1] < 0;
-      """.}
+  proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
+    ## can be used to determine if a first class iterator has finished.
+    {.emit: """
+    `result` = ((NI*) `x`.ClE_0)[1] < 0;
+    """.}
 
-elif defined(JS):
+when defined(JS):
   # Stubs:
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1
@@ -3837,11 +3856,10 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
-
-  when defined(JS) and not defined(nimscript):
+  when not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
-  elif defined(nimscript):
+  else:
     proc cmp(x, y: string): int =
       if x == y: return 0
       if x < y: return -1
@@ -3856,7 +3874,7 @@ when defined(JS) or defined(nimscript):
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
-  when defined(nimscript) or defined(js) or (hostOS == "standalone"):
+  when defined(nimscript) or defined(JS) or (hostOS == "standalone"):
     echo errormsg
   else:
     when nimvm:
@@ -3866,8 +3884,8 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
       cstderr.rawWrite("\n")
   quit(errorcode)
 
-{.pop.} # checks
-{.pop.} # hints
+{.pop.} # checks: off
+{.pop.} # hints: off
 
 proc `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## Division of integers that results in a float.
@@ -4350,8 +4368,7 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ##   # -> B is 1
   discard
 
-when hasAlloc and not defined(nimscript) and not defined(JS) and
-    not usesDestructors:
+when hasAlloc and notJSnotNims and not usesDestructors:
   # XXX how to implement 'deepCopy' is an open problem.
   proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## Performs a deep copy of `y` and copies it into `x`.
@@ -4385,20 +4402,19 @@ proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
   elif x.isNil or y.isNil: result = false
   else: result = strcmp(x, y) == 0
 
-when defined(nimNoNilSeqs2):
-  when not compileOption("nilseqs"):
-    when defined(nimHasUserErrors):
-      # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)'.
-      # Eventually (in 0.20?) we will be able to remove this hack completely.
-      proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
-          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
-        discard
-      proc `==`*(x: type(nil) | type(nil); y: string): bool {.
-          error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
-        discard
-    else:
-      proc `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
-      proc `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
+when defined(nimNoNilSeqs2) and not compileOption("nilseqs"):
+  when defined(nimHasUserErrors):
+    # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)'.
+    # Eventually (in 0.20?) we will be able to remove this hack completely.
+    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
+        error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      discard
+    proc `==`*(x: type(nil) | type(nil); y: string): bool {.
+        error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
+      discard
+  else:
+    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
+    proc `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
@@ -4443,7 +4459,7 @@ template once*(body: untyped): untyped =
     alreadyExecuted = true
     body
 
-{.pop.} #{.push warning[GcMem]: off, warning[Uninit]: off.}
+{.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
 proc substr*(s: string, first, last: int): string =
   ## Copies a slice of `s` into a new string and returns this new
@@ -4472,7 +4488,7 @@ proc substr*(s: string, first = 0): string =
 when defined(nimconfig):
   include "system/nimscript"
 
-when not defined(js):
+when not defined(JS):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
   when defined(nimToOpenArrayCString):
