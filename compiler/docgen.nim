@@ -40,7 +40,7 @@ type
     exampleCounter: int
     emitted: IntSet # we need to track which symbols have been emitted
                     # already. See bug #3655
-    destFile*: AbsoluteFile
+    destFile*: AbsoluteFile # that's a lie...
     thisDir*: AbsoluteDir
     examples: string
 
@@ -1072,6 +1072,8 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
+    # for some reason, outfile is relative, violating its type contract
+    d.conf.outFileAlt = outfile.`$`.absolutePath.AbsoluteFile
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1089,6 +1091,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
+      d.conf.outFileAlt = d.destFile
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
                  warnUser, "unable to open file \"" & d.destFile.string &

@@ -244,6 +244,7 @@ type
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
+    outFileAlt*: AbsoluteFile ## eg html produced by `nim doc`
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
@@ -284,7 +285,11 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
-proc getOutFileFull*(a: ConfigRef): AbsoluteFile = a.outDir / a.outFile
+proc getOutFileFull*(a: ConfigRef): AbsoluteFile =
+  if a.outFile.`$`.len > 0:
+    result = a.outDir / a.outFile
+  else:
+    result = a.outFileAlt
 
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
