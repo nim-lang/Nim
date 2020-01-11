@@ -62,8 +62,8 @@ proc main() =
   # shows that checkNotZero won't be called if a nil is found earlier in chain
   doAssert ?.a.x1.checkNotZero == 0.0
 
-  doAssert a2.wrapnil.x4.isNotNil
-  doAssert not a.wrapnil.x4.isNotNil
+  doAssert a2.wrapnil.x4.isValid
+  doAssert not a.wrapnil.x4.isValid
 
   # checks that a chain without nil but with an empty seq still throws IndexError
   doAssertRaises(IndexError): discard ?.a2.wrapnil.x8[3]

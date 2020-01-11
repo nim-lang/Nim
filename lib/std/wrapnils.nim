@@ -9,22 +9,42 @@ runnableExamples:
   type Foo = ref object
     x1: string
     x2: Foo
+    x3: ref int
+
   var f: Foo
-  assert ?.f.x2.x1 == ""
-  assert ?.Foo(x1: "a").x1 == "a"
+  assert ?.f.x2.x1 == "" # returns default value since `f` is nil
+
+  var f2 = Foo(x1: "a")
+  f2.x2 = f2
+  assert ?.f2.x1 == "a" # same as f2.x1 (no nil LHS in this chain)
+  assert ?.Foo(x1: "a").x1 == "a" # can use constructor inside
+
+  let b = f2.wrapnil.x2.x3
+  assert b.isValid # no nil LHS in the chain so `b` is valid
+  assert b.unwrap == nil # but its value itself is nil in this example
+  assert not f.wrapnil.x2.x3.isValid # because `f` is nil
+
+  # when you know a sub-expression is not nil, you can scope it as follows:
+  assert ?.(f2.x2.x2).x3[] == 0 # because `f` is nil
+  # which is just sugar for the following:
+  assert f2.x2.x2.wrapnil.x3[].unwrap == 0
 
 type Wrapnil*[T] = object
   valueImpl: T
   validImpl: bool
 
 proc wrapnil*[T](a: T): Wrapnil[T] =
+  ## See top-level example.
   Wrapnil[T](valueImpl: a, validImpl: true)
 
-template unwrap*(a: Wrapnil): untyped = a.valueImpl
+template unwrap*(a: Wrapnil): untyped =
+  ## See top-level example.
+  a.valueImpl
 
 {.push experimental: "dotOperators".}
 
 template `.`*(a: Wrapnil, b): untyped =
+  ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
   type T = Wrapnil[type(a2.b)]
@@ -42,9 +62,13 @@ template `.`*(a: Wrapnil, b): untyped =
 
 {.pop.}
 
-proc isNotNil*(a: Wrapnil): bool = a.validImpl
+proc isValid*(a: Wrapnil): bool =
+  ## Returns true if `a` didn't contain intermediate `nil` values (note that
+  ## `a.valueImpl` itself can be nil even in that case)
+  a.validImpl
 
 template `[]`*[I](a: Wrapnil, i: I): untyped =
+  ## See top-level example.
   let a1 = a # to avoid double evaluations
   if a1.validImpl:
     # correctly will raise IndexError if a is valid but wraps an empty container
@@ -53,6 +77,7 @@ template `[]`*[I](a: Wrapnil, i: I): untyped =
     default(Wrapnil[type(a1.valueImpl[i])])
 
 template `[]`*(a: Wrapnil): untyped =
+  ## See top-level example.
   let a1 = a # to avoid double evaluations
   let a2 = a1.valueImpl
   type T = Wrapnil[type(a2[])]
@@ -79,11 +104,13 @@ proc replace(n: NimNode): NimNode =
     n
 
 macro `?.`*(a: untyped): untyped =
+  ## Transforms `a` into an expression that can be safely evaluated even in
+  ## presence of intermediate nil pointers/references, in which case a default
+  ## value is produced.
   #[
-  I don't think this can work with a template
-  template `?.`*(a: untyped): untyped = wrapnil(a)[]
+  Using a template like this wouldn't work:
+    template `?.`*(a: untyped): untyped = wrapnil(a)[]
   ]#
   result = replace(a)
   result = quote do:
     `result`.valueImpl
-
