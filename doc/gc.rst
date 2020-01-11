@@ -19,11 +19,8 @@ This document describes how the GC works and how to tune it for
 
 The basic algorithm is *Deferred Reference Counting* with cycle detection.
 References on the stack are not counted for better performance (and easier C
-code generation). Cycle detection is currently done by a simple mark&sweep
-GC that has to scan the full (thread local heap). ``--gc:v2`` replaces this
-with an incremental mark and sweep. That it is not production ready yet,
-however.
-
+code generation). Cycle detection is currently done by a simple Mark&Sweep
+GC that has to scan the full (thread local heap).
 
 The GC is only triggered in a memory allocation operation. It is not triggered
 by some timer and does not run in a background thread.
@@ -122,14 +119,16 @@ use to keep track of memory are:
 * ``getTotalMem()`` Returns the amount of total memory managed by the GC.
 * ``getOccupiedMem()`` Bytes reserved by the GC and used by objects.
 * ``getFreeMem()`` Bytes reserved by the GC and not in use.
+* ``GC_getStatistics()`` Garbage collector statistics as a human-readable string.
 
 These numbers are usually only for the running thread, not for the whole heap,
 with the exception of ``--gc:boehm`` and ``--gc:go``.
 
 In addition to ``GC_ref`` and ``GC_unref`` you can avoid the GC by manually
-allocating memory with procs like ``alloc``, ``allocShared``, or
-``allocCStringArray``. The GC won't try to free them, you need to call their
-respective *dealloc* pairs when you are done with them or they will leak.
+allocating memory with procs like ``alloc``, ``alloc0``, ``allocShared``, ``allocShared0`` or ``allocCStringArray``.
+The GC won't try to free them, you need to call their respective *dealloc* pairs
+(``dealloc``, ``deallocShared``, ``deallocCStringArray``, etc)
+when you are done with them or they will leak.
 
 
 Heap dump
@@ -150,22 +149,49 @@ change in later versions.
 
 
 Garbage collector options
--------------------------
+=========================
 
 You can choose which garbage collector to use when compiling source code,
 you can pass ``--gc:`` on the compile command with the choosed garbage collector.
 
-- ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with cycle detection, `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_, default.
-- ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector, `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector, `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_, `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:go`` Go lang like garbage collector, `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_, `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
+  with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_,
+  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_, default.
+- ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector,
+  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector,
+  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
+  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:go`` Go lang like garbage collector,
+  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
+  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
 - ``--gc:regions`` `Stack <https://en.wikipedia.org/wiki/Memory_management#Stack_allocation>`_ based garbage collector.
+- ``--gc:arc`` Plain `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with
+  `move semantic optimizations <destructors.html#move-semantics>`_,
+  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
+  can be optimized with `sink <destructors.html#sink-parameters>`_ and `lent <destructors.html#lent-type>`_ annotations,
+  designed to work well with `WebAssembly <https://webassembly.org>`_, `Emscripten <https://emscripten.org>`_,
+  `hot code reloading <hcr.html>`_ and `address sanitizers <https://en.wikipedia.org/wiki/AddressSanitizer>`_,
+  basically it is like a shared heap with subgraphs with a single owner,
+  this is not the same as Swift and ObjectiveC lang ARC because those can not handle cycles,
+  can use `GOTO based Exception handling <https://nim-lang.org/araq/gotobased_exceptions.html>`_,
+  may become default after or near Nim ``2.0``.
+- ``--gc:orc`` Similar to ``--gc:arc`` but with improved
+  `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_.
+  `Cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
+  will not be the default, because by definition it conflicts with
+  `deterministic memory management <https://en.wikipedia.org/wiki/Deterministic_memory>`_.
 - ``--gc:none`` No garbage collector.
+  You should use `Manual memory management <https://en.wikipedia.org/wiki/Manual_memory_management>`_ with it.
 
 The same Nim code can be compiled to use any of the garbage collectors;
 the Nim syntax generally will not change from one garbage collector to another.
+
 No garbage collector is used for `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.
 `NimScript <nims.html>`_ target uses Nim VM garbage collector.
+
+Some memory management strategies that Nim uses may or may not fit the traditional "Garbage Collector" definition,
+but to keep things simple for new users Nim just names them "--gc:" and "Garbage Collector" for all of them.
 
 If you are new to Nim and just starting, the default garbage collector is balanced to fit most common use cases.
