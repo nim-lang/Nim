@@ -36,9 +36,9 @@ type
 # text file handling:
 when not defined(nimscript) and not defined(js):
   # duplicated between io and ansi_c
-  const stderrName* = when defined(osx): "__stderrp" else: "stderr"
-  const stdoutName* = when defined(osx): "__stdoutp" else: "stdout"
-  const stdinName* = when defined(osx): "__stdinp" else: "stdin"
+  const stderrName = when defined(osx): "__stderrp" else: "stderr"
+  const stdoutName = when defined(osx): "__stdoutp" else: "stdout"
+  const stdinName = when defined(osx): "__stdinp" else: "stdin"
 
   var
     stdin* {.importc: stdinName, header: "<stdio.h>".}: File
