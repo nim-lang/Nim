@@ -351,7 +351,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   assert ftp.dsockConnected
 
   let total = file.getFileSize()
-  var data = newStringOfCap(4000)
+  var data = newString(4000)
   var progress = 0
   var progressInSecond = 0
   var countdownFut = sleepAsync(1000)
