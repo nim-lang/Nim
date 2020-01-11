@@ -3394,6 +3394,11 @@ var
     ##
     ## If the handler does not raise an exception, ordinary control flow
     ## continues and the program is terminated.
+  unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+    ## Set this variable to provide a procedure that should be called
+    ## in case of an `unhandle exception` event. The standard handler
+    ## writes an error message and terminates the program, except when
+    ## using `--os:any`
 
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;

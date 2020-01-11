@@ -352,7 +352,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
   ## Unstable API.
 
-proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
   when hasSomeStackTrace:
     var buf = newStringOfCap(2000)
     if e.trace.len == 0:
@@ -400,6 +400,14 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
       onUnhandledException($tbuf())
     else:
       showErrorMessage(tbuf())
+
+proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+  if unhandledExceptionHook != nil:
+    unhandledExceptionHook(e)
+  when hostOS != "any":
+    reportUnhandledErrorAux(e)
+  else:
+    discard()
 
 proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions):
