@@ -53,6 +53,8 @@
 
 - Added `os.normalizePathEnd` for additional path sanitization.
 
+- Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
