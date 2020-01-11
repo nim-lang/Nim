@@ -296,7 +296,7 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
     if bumpPointer-size == cast[int](p):
       dec bumpPointer, size
 
-elif hostOS == "ansic":
+elif hostOS == "any":
   proc osAllocPages(size: int): pointer {.inline.} =
     result = c_malloc(size.csize_t)
 

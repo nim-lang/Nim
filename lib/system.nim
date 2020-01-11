@@ -2096,7 +2096,7 @@ template sysAssert(cond: bool, msg: string) =
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
-when notJSnotNims and hostOS != "standalone" and hostOS != "ansic":
+when notJSnotNims and hostOS != "standalone" and hostOS != "any":
   include "system/cgprocs"
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
@@ -3741,7 +3741,7 @@ when not defined(JS):
 
 
 when notJSnotNims:
-  when hostOS != "standalone" and hostOS != "ansic":
+  when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
   include "system/sets"
