@@ -197,6 +197,20 @@ ends with ``.nims``:
 
 Use ``#!/usr/bin/env -S nim --hints:off`` to disable hints.
 
+If your ``env`` tool does not support the ``-S`` option, if you need your script
+to be more portable, or if you need to perform additional initialization, you can
+write what is known as a "polyglot" Shell/Nim script, that will be parsed by the
+system shell first, and then by Nim:
+
+.. code-block:: nim
+
+  #!/bin/sh
+  #[
+  exec nim --hints:off "$0" "$@"
+  ]#
+
+  echo "hello world"
+  
 
 Benefits
 ========
