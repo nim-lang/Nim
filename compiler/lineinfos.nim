@@ -98,7 +98,7 @@ const
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `pegSuccess` see testament.nim
-    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; $project proj; $output out",
+    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
