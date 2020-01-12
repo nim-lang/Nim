@@ -974,6 +974,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
   # Nim based exceptions:
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
+  genRestoreFrameAfterException(p)
   # an unhandled exception happened!
   lineCg(p, cpsStmts, "T$1_ = T$2_;", [etmp, etmp+1])
   p.nestedTryStmts[^1].inExcept = true
@@ -1082,9 +1083,9 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     # re-raise the unhandled one but instead keep the old one (it was
     # not popped either):
     if getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
-      linefmt(p, cpsStmts, "if ($1) #nimLeaveFinally();$n", [etmp])
+      linefmt(p, cpsStmts, "if (T$1_) #nimLeaveFinally();$n", [etmp])
     else:
-      linefmt(p, cpsStmts, "if ($1) #reraiseException();$n", [etmp])
+      linefmt(p, cpsStmts, "if (T$1_) #reraiseException();$n", [etmp])
     endBlock(p)
 
 proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
