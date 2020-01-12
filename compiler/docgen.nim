@@ -1066,14 +1066,13 @@ proc writeOutput*(d: PDoc, useWarning = false) =
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
-    template outfile: untyped = d.destFile
+    let outfile = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
     createDir(outfile.splitFile.dir)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
-    # for some reason, outfile is relative, violating its type contract
-    d.conf.outFileAlt = outfile.`$`.absolutePath.AbsoluteFile
+    d.conf.outFileAlt = outfile
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
