@@ -40,7 +40,7 @@ type
     exampleCounter: int
     emitted: IntSet # we need to track which symbols have been emitted
                     # already. See bug #3655
-    destFile*: AbsoluteFile # that's a lie...
+    destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     examples: string
 

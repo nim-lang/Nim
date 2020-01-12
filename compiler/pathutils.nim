@@ -54,21 +54,21 @@ when true:
 
   proc `==`*[T: AnyPath](x, y: T): bool = eqImpl(x.string, y.string)
 
-  proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
+  proc joinPathImpl[T](base: AbsoluteDir; f: T, T2: typedesc): T2 =
+    var base = base
+    if base.isEmpty: base = getCurrentDir().AbsoluteDir
     #assert isAbsolute(base.string)
     assert(not isAbsolute(f.string))
-    result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
+    result = T2 newStringOfCap(base.string.len + f.string.len)
     var state = 0
     addNormalizePath(base.string, result.string, state)
     addNormalizePath(f.string, result.string, state)
 
+  proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
+    joinPathImpl(base, f, AbsoluteFile)
+
   proc `/`*(base: AbsoluteDir; f: RelativeDir): AbsoluteDir =
-    #assert isAbsolute(base.string)
-    assert(not isAbsolute(f.string))
-    result = AbsoluteDir newStringOfCap(base.string.len + f.string.len)
-    var state = 0
-    addNormalizePath(base.string, result.string, state)
-    addNormalizePath(f.string, result.string, state)
+    joinPathImpl(base, f, AbsoluteDir)
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
