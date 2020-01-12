@@ -11,12 +11,15 @@ const
   webUploadOutput = "web/upload"
   docHackDir = "tools/dochack"
 
+var nimExe*: string
+
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
     result = result.replace('/','\\')
 
 proc findNim*(): string =
+  if nimExe.len > 0: return nimExe
   var nim = "nim".exe
   result = "bin" / nim
   if existsFile(result): return
@@ -366,14 +369,11 @@ proc buildJS() =
 proc buildDocs*(args: string) =
   const
     docHackJs = "dochack.js"
-    css = "nimdoc.css"
   let
     a = nimArgs & " " & args
     docHackJsSource = docHackDir / docHackJs
     docHackJsDest = docHtmlOutput / docHackJs
 
-    cssSource = "doc" / css
-    cssDest = docHtmlOutput / css
   buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
@@ -387,6 +387,3 @@ proc buildDocs*(args: string) =
   buildDoc(nimArgs, docHtmlOutput)
   copyFile(docHackJsSource, docHackJsDest)
   copyFile(docHackJsSource, docup / docHackJs)
-
-  copyFile(cssSource, cssDest)
-  copyFile(cssSource, docup / css)

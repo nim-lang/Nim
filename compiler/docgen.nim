@@ -43,6 +43,7 @@ type
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     examples: string
+    wroteCss*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -1060,6 +1061,8 @@ proc generateIndex*(d: PDoc) =
                                               d.conf.projectPath), IndexExt)
     writeIndexFile(d[], dest.string)
 
+const nimRepoDir = currentSourcePath / ".." / ".." # this should be exposed somewhere
+
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
   var content = genOutFile(d)
@@ -1068,10 +1071,18 @@ proc writeOutput*(d: PDoc, useWarning = false) =
   else:
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
-    createDir(outfile.splitFile.dir)
+    let dir = outfile.`$`.parentDir
+    createDir(dir)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
+    else:
+      if not d.wroteCss:
+        let cssSource = nimRepoDir / "doc" / "nimdoc.css"
+        let cssDest = $d.conf.outDir / "nimdoc.out.css"
+          # renamed to make it easier to use with gitignore in user's repos
+        copyFile(cssSource, cssDest)
+        d.wroteCss = true
     d.conf.outFile = outfile.extractFilename.RelativeFile
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
