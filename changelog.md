@@ -55,6 +55,8 @@
 
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 
+- Added `sugar.byRef,byPtr` allowing a simple syntax for lvalue expressions
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`

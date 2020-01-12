@@ -365,7 +365,7 @@ when (NimMajor, NimMinor) >= (1, 1):
         else: d
     assert z == @["word", "word"]
 
-proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported: bool] =
+proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported: bool] {.since: (1,1).} =
   ## allows library constructs such as:
   ## `byRef: a2=expr`
   ## `byRef: a2*=expr` (to indicate `export`)
@@ -383,7 +383,7 @@ proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported:
   else: doAssert false, $def2.kind
   expectKind(result.lhs, nnkIdent)
 
-macro byRef*(def: untyped): untyped =
+macro byRef*(def: untyped): untyped {.since: (1,1).} =
   ## Defines a ref alias for lvalue expressions. The expression is evaluated
   ## only once, and any side effects will only be evaluated once, at declaration
   ## time.
@@ -403,7 +403,7 @@ macro byRef*(def: untyped): untyped =
       let myAddr = addr `exp`
       template `name`: untyped = myAddr[]
 
-macro byPtr*(def: untyped): untyped =
+macro byPtr*(def: untyped): untyped {.since: (1,1).} =
   ## Same as `byRef` but uses uses `unsafeAddr` instead of `addr`; `byRef` is
   ## safer and should be preferred when possible.
   ## This can for example be used on `let` variables.
