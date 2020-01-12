@@ -303,8 +303,11 @@ proc mainCommand*(graph: ModuleGraph) =
         let key = lineinfos.WarningsToStr[ord(a) - ord(warnMin)]
         warnings[key] = %(a in conf.notes)
 
+      let nimroot = getNimRoot(conf)
+
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "nimroot", val: %nimroot.string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),

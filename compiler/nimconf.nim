@@ -238,6 +238,26 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
+const nimRepoDirCT = currentSourcePath / ".." / ".." # this should be exposed somewhere
+
+proc getNimRoot*(conf: ConfigRef): AbsoluteDir =
+  ## returns root nim dir; works both with installed nim and local nim git repo.
+  ## This can be easily overridden if needed with NIM_ROOT_DIR environment variable
+  ## The result should satisfy: $result/doc/basicopt.txt exists
+  if conf.nimRootDir.isEmpty:
+    result = getEnv("NIM_ROOT_DIR").AbsoluteDir
+    if result.isEmpty:
+      if dirExists(nimRepoDirCT / ".git"):
+        result = nimRepoDirCT.AbsoluteDir
+      else:
+        result = AbsoluteDir getSystemConfigPath(conf, "".RelativeFile).`$`
+    # sanity check to make sure we have the right directory
+    let file = $result / "doc" / "basicopt.txt"
+    doAssert fileExists(file), $file
+    conf.nimRootDir = result
+  else:
+    result = conf.nimRootDir
+
 proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
 

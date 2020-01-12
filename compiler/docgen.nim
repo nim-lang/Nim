@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees
+  pathutils, trees, nimconf
 
 const
   exportSection = skField
@@ -1061,8 +1061,6 @@ proc generateIndex*(d: PDoc) =
                                               d.conf.projectPath), IndexExt)
     writeIndexFile(d[], dest.string)
 
-const nimRepoDir = currentSourcePath / ".." / ".." # this should be exposed somewhere
-
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
   var content = genOutFile(d)
@@ -1078,7 +1076,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
         outfile.string)
     else:
       if not d.wroteCss:
-        let cssSource = nimRepoDir / "doc" / "nimdoc.css"
+        let cssSource = getNimRoot(d.conf).string / "doc" / "nimdoc.css"
         let cssDest = $d.conf.outDir / "nimdoc.out.css"
           # renamed to make it easier to use with gitignore in user's repos
         copyFile(cssSource, cssDest)
