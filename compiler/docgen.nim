@@ -1066,7 +1066,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
   if optStdout in d.conf.globalOptions:
     writeRope(stdout, content)
   else:
-    let outfile = d.destFile
+    template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
     createDir(outfile.splitFile.dir)
     if not writeRope(content, outfile):
