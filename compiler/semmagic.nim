@@ -383,7 +383,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
   # little hack for injectdestructors.nim (see bug #11350):
   #result[0].typ = nil
 
-proc turnFinalizerIntoDestructor(c: PContext; orig: PSym): PSym =
+proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym =
   # We need to do 2 things: Replace n.typ which is a 'ref T' by a 'var T' type.
   # Replace nkDerefExpr by nkHiddenDeref
   # nkDeref is for 'ref T':  x[].field
@@ -400,7 +400,9 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym): PSym =
     #  result =
 
   result = copySym(orig)
+  result.info = info
   result.flags.incl sfFromGeneric
+  result.owner = orig
   let origParamType = orig.typ[1]
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs))
   let oldParam = orig.typ.n[1].sym
@@ -477,7 +479,12 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
-      bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym), n, attachedDestructor)
+      # check if we converted this finalizer into a destructor already:
+      let t = whereToBindTypeHook(c, n[^1].sym.typ[1].skipTypes(abstractInst+{tyRef}))
+      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == n[^1].sym:
+        discard "already turned this one into a finalizer"
+      else:
+        bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n

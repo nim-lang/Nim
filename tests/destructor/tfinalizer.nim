@@ -1,6 +1,7 @@
 discard """
   cmd: "nim c --gc:arc $file"
   output: '''Foo(field: "Dick Laurent", k: ka, x: 0.0)
+Nobody is dead
 Dick Laurent is dead'''
 """
 
@@ -23,3 +24,8 @@ x.field = "Dick Laurent"
 # reference to a great movie. If you haven't seen it, highly recommended.
 
 echo repr x
+
+# bug #13112: bind the same finalizer multiple times:
+var xx: Foo
+new(xx, finalizer)
+xx.field = "Nobody"
