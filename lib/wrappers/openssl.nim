@@ -101,6 +101,10 @@ type
   PASN1_UTCTIME* = SslPtr
   PASN1_cInt* = SslPtr
   PPasswdCb* = SslPtr
+  EVP_MD* = SslPtr
+  EVP_MD_CTX* = SslPtr
+  EVP_PKEY_CTX* = SslPtr
+  ENGINE* = SslPtr
   PFunction* = proc () {.cdecl.}
   DES_cblock* = array[0..7, int8]
   PDES_cblock* = ptr DES_cblock
@@ -534,6 +538,45 @@ proc PEM_read_bio_RSA_PUBKEY*(bp: BIO, x: ptr PRSA, pw: pem_password_cb, u: poin
 
 proc RSA_verify*(kind: cint, origMsg: pointer, origMsgLen: cuint, signature: pointer,
     signatureLen: cuint, rsa: PRSA): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
+# sha types
+proc EVP_md_null*(): EVP_MD   {.cdecl, importc.}
+proc EVP_md2*(): EVP_MD       {.cdecl, importc.}
+proc EVP_md4*(): EVP_MD       {.cdecl, importc.}
+proc EVP_md5*(): EVP_MD       {.cdecl, importc.}
+proc EVP_sha*(): EVP_MD       {.cdecl, importc.}
+proc EVP_sha1*(): EVP_MD      {.cdecl, importc.}
+proc EVP_dss*(): EVP_MD       {.cdecl, importc.}
+proc EVP_dss1*(): EVP_MD      {.cdecl, importc.}
+proc EVP_ecdsa*(): EVP_MD     {.cdecl, importc.}
+proc EVP_sha224*(): EVP_MD    {.cdecl, importc.}
+proc EVP_sha256*(): EVP_MD    {.cdecl, importc.}
+proc EVP_sha384*(): EVP_MD    {.cdecl, importc.}
+proc EVP_sha512*(): EVP_MD    {.cdecl, importc.}
+proc EVP_mdc2*(): EVP_MD      {.cdecl, importc.}
+proc EVP_ripemd160*(): EVP_MD {.cdecl, importc.}
+proc EVP_whirlpool*(): EVP_MD {.cdecl, importc.}
+
+# hmac functions
+proc HMAC*(evp_md: EVP_MD; key: pointer; key_len: cint; d: cstring; n: csize_t; md: cstring; md_len: ptr cuint): cstring {.cdecl, importc.}
+
+# RSA key functions
+proc PEM_read_bio_PrivateKey*(bp: BIO, x: ptr EVP_PKEY, cb: pointer, u: pointer): EVP_PKEY {.cdecl, importc.}
+proc EVP_PKEY_free*(p: EVP_PKEY)  {.cdecl, importc.}
+proc EVP_DigestSignInit*(ctx: EVP_MD_CTX, pctx: ptr EVP_PKEY_CTX, typ: EVP_MD, e: ENGINE, pkey: EVP_PKEY): cint {.cdecl, importc.}
+proc EVP_DigestUpdate*(ctx: EVP_MD_CTX, data: pointer, len: cuint): cint {.cdecl, importc.}
+proc EVP_DigestSignFinal*(ctx: EVP_MD_CTX, data: pointer, len: ptr csize_t): cint {.cdecl, importc.}
+proc EVP_PKEY_CTX_new*(pkey: EVP_PKEY, e: ENGINE): EVP_PKEY_CTX {.cdecl, importc.}
+proc EVP_PKEY_CTX_free*(pkeyCtx: EVP_PKEY_CTX) {.cdecl, importc.}
+proc EVP_PKEY_sign_init*(c: EVP_PKEY_CTX): cint {.cdecl, importc.}
+
+when defined(macosx) or defined(windows):
+  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc.}
+  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc.}
+else:
+  # some times you will need this instead:
+  proc EVP_MD_CTX_create*(): EVP_MD_CTX {.cdecl, importc: "EVP_MD_CTX_new".}
+  proc EVP_MD_CTX_destroy*(ctx: EVP_MD_CTX) {.cdecl, importc: "EVP_MD_CTX_free".}
 
 # <openssl/md5.h>
 type
