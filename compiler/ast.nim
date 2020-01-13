@@ -826,7 +826,7 @@ type
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
-      alignment*: int # for alignas(X) expressions
+      alignment*: int # for alignment
     else: nil
     magic*: TMagic
     typ*: PType
@@ -1398,6 +1398,8 @@ proc copySym*(s: PSym): PSym =
   result.annex = s.annex      # BUGFIX
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
+    result.bitsize = s.bitsize
+    result.alignment = s.alignment
 
 proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =
