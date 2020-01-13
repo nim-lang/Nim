@@ -402,6 +402,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result = copySym(orig)
   result.info = info
   result.flags.incl sfFromGeneric
+  result.owner = orig
   let origParamType = orig.typ[1]
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs))
   let oldParam = orig.typ.n[1].sym
@@ -478,7 +479,12 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
     elif optTinyRtti in c.config.globalOptions:
-      bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym, n.info), n, attachedDestructor)
+      # check if we converted this finalizer into a destructor already:
+      let t = whereToBindTypeHook(c, n[^1].sym.typ[1].skipTypes(abstractInst+{tyRef}))
+      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == n[^1].sym:
+        discard "already turned this one into a finalizer"
+      else:
+        bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n
