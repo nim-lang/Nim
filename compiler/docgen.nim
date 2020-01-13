@@ -26,6 +26,7 @@ type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
+    module: PSym
     modDeprecationMsg: Rope
     toc, section: TSections
     indexValFilename: string
@@ -115,9 +116,10 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt): PDoc =
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt, module: PSym = nil): PDoc =
   declareClosures()
   new(result)
+  result.module = module
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
@@ -631,8 +633,12 @@ proc genDeprecationMsg(d: PDoc, n: PNode): Rope =
   else:
     doAssert false
 
-proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
-  if not isVisible(d, nameNode): return
+type DocFlags = enum
+  kDefault
+  kForceExport
+
+proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
+  if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(d, nameNode)
     nameRope = name.rope
@@ -848,7 +854,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p4 != nil: n.sons[pragmasPos].add p4
     if p5 != nil: n.sons[pragmasPos].add p5
 
-proc generateDoc*(d: PDoc, n, orig: PNode) =
+proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+  template genItemAux(skind) =
+    genItem(d, n, n[namePos], skind, docFlags)
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -856,27 +864,27 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   of nkCommentStmt: add(d.modDesc, genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skProc)
+    genItemAux(skProc)
   of nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skFunc)
+    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skMethod)
+    genItemAux(skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skIterator)
-  of nkMacroDef: genItem(d, n, n.sons[namePos], skMacro)
-  of nkTemplateDef: genItem(d, n, n.sons[namePos], skTemplate)
+    genItemAux(skIterator)
+  of nkMacroDef: genItemAux(skMacro)
+  of nkTemplateDef: genItemAux(skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n.sons[namePos], skConverter)
+    genItemAux(skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in 0 ..< len(n):
       if n.sons[i].kind != nkCommentStmt:
         # order is always 'type var let const':
-        genItem(d, n.sons[i], n.sons[i].sons[0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+        genItem(d, n[i], n[i][0],
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags)
   of nkStmtList:
     for i in 0 ..< len(n): generateDoc(d, n.sons[i], orig)
   of nkWhenStmt:
@@ -887,7 +895,11 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      if it.kind == nkSym: exportSym(d, it.sym)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:
+          generateDoc(d, it.sym.ast, orig, kForceExport)
+        else:
+          exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n.sons[0])
   of nkCallKinds:
