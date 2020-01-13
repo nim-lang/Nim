@@ -252,7 +252,7 @@ type
     projectFull*: AbsoluteFile # projectPath/projectName
     projectIsStdin*: bool # whether we're compiling from stdin
     projectMainIdx*: FileIndex # the canonical path id of the main module
-    command*: string # the main command (e.g. cc, check, scan, etc)
+    command*: string # the main command (e.g. cc, check, scan, doc, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
     extraCmds*: seq[string] # for writeJsonBuildInstructions
@@ -446,6 +446,18 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
       result = conf.target.targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd,
                             osDragonfly, osMacosx}
     else: discard
+
+proc getBackend*(conf: ConfigRef): string =
+  ## Get the backend derived from config files.
+  result = "c" # default
+  if conf.cmd == cmdDoc: # doc, doc0, etc commands
+    if isDefined(conf, "doccpp"): return "cpp"
+    elif isDefined(conf, "docjs"): return "js"
+    elif isDefined(conf, "docobjc"): return "objc"
+  else:
+    if isDefined(conf, "cpp"): return "cpp"
+    elif isDefined(conf, "js"): return "js"
+    elif isDefined(conf, "objc"): return "objc"
 
 proc importantComments*(conf: ConfigRef): bool {.inline.} = conf.cmd in {cmdDoc, cmdIdeTools}
 proc usesWriteBarrier*(conf: ConfigRef): bool {.inline.} = conf.selectedGC >= gcRefc

@@ -164,7 +164,9 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
-      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+      let c = if cmd.startsWith("nim c "): os.getAppFilename() & " " & d.conf.getBackend() & cmd.substr(5)
+              # rstgen.nim sets the cmd to "nim c -r $1" for ":test:" code blocks.
+              elif cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
               else: cmd
       let c2 = c % quoteShell(outp)
       rawMessage(conf, hintExecuting, c2)
@@ -400,11 +402,7 @@ proc runAllExamples(d: PDoc) =
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
   writeFile(outp, d.examples)
-  let backend = if isDefined(d.conf, "js"): "js"
-                elif isDefined(d.conf, "cpp"): "cpp"
-                elif isDefined(d.conf, "objc"): "objc"
-                else: "c"
-  if os.execShellCmd(os.getAppFilename() & " " & backend &
+  if os.execShellCmd(os.getAppFilename() & " " & d.conf.getBackend() &
                     " --warning[UnusedImport]:off" &
                     " --path:" & quoteShell(d.conf.projectPath) &
                     " --nimcache:" & quoteShell(outputDir) &
