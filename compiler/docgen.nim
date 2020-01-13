@@ -26,6 +26,7 @@ type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
+    module: PSym
     modDeprecationMsg: Rope
     toc, section: TSections
     indexValFilename: string
@@ -115,9 +116,10 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt): PDoc =
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt, module: PSym = nil): PDoc =
   declareClosures()
   new(result)
+  result.module = module
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
@@ -893,9 +895,8 @@ proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
   of nkExportStmt:
     for it in n:
       if it.kind == nkSym:
-        let ast = it.sym.ast
-        if ast != nil and it.info.fileIndex == ast.info.fileIndex:
-          generateDoc(d, ast, orig, kForceExport)
+        if d.module != nil and d.module == it.sym.owner:
+          generateDoc(d, it.sym.ast, orig, kForceExport)
         else:
           exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
