@@ -99,7 +99,8 @@ template normalizePathEndImpl(path: var string; trailingSep: bool) =
     path = $DirSep
 
 when (NimMajor, NimMinor) >= (1, 1):
-  proc normalizePathEnd*(path: var string, trailingSep = false) =
+  proc normalizePathEnd*(path: var string,
+                         trailingSep = false) {.since: (1, 1).} =
     ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
     ## ``trailingSep``, and taking care of edge cases: it preserves whether
     ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
@@ -109,7 +110,8 @@ when (NimMajor, NimMinor) >= (1, 1):
     ## which returns a new string.
     normalizePathEndImpl(path, trailingSep = trailingSep)
 
-  proc normalizePathEnd*(path: string, trailingSep = false): string =
+  proc normalizePathEnd*(path: string,
+                         trailingSep = false): string {.since: (1, 1).} =
     ## A version of ``normalizePathEnd()``
     ## See also:
     ## * `normalizePathEnd proc <#normalizePathEnd,string,bool>`_ for the
