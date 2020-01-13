@@ -217,7 +217,7 @@ proc idxmin*[T](s: openArray[T]): Natural =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
-proc idxmin*[T, U](s: array[T, U]): int =
+proc idxmin*[T, U](s: array[T, U]): auto =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -228,6 +228,10 @@ proc idxmin*[T, U](s: array[T, U]): int =
     assert idxmin(a) == 0
     assert idxmin(b) == 2
     assert idxmin(c) == -1
+
+    type Count = enum First, Second, Third
+    let d: array[Count, int] = [0, 1, 2]
+    assert idxmin(d) = First
 
   result = low(s)
   for i in result.succ..high(s):
@@ -249,7 +253,7 @@ proc idxmax*[T](s: openArray[T]): Natural =
   for i in 1..high(s):
     if s[result] < s[i]: result = i
 
-proc idxmax*[T, U](s: array[T, U]): int =
+proc idxmax*[T, U](s: array[T, U]): auto =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -260,6 +264,10 @@ proc idxmax*[T, U](s: array[T, U]): int =
     assert idxmin(a) == 2
     assert idxmin(b) == 4
     assert idxmin(c) == -2
+
+    type Count = enum First, Second, Third
+    let d: array[Count, int] = [0, 1, 2]
+    assert idxmax(d) = Third
 
   result = low(s)
   for i in result.succ..high(s):
