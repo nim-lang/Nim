@@ -536,6 +536,7 @@ type
     tfContravariant   # contravariant generic param
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
+    tfIncompleteStruct # treat this type as if it had sizeof(pointer)
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -577,7 +578,6 @@ type
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  tfIncompleteStruct* = tfVarargs
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
