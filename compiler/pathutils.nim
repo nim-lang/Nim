@@ -26,6 +26,14 @@ proc copyFile*(source, dest: AbsoluteFile) =
 
 proc removeFile*(x: AbsoluteFile) {.borrow.}
 
+template toRelative(x: typedesc[AnyPath]): typedesc =
+  when x is AbsoluteFile | RelativeFile: RelativeFile else: RelativeDir
+
+proc lastPathPart*(x: AnyPath): auto =
+  ## analog to os.lastPathPart
+  type T2 = toRelative(type(x))
+  x.string.lastPathPart.T2
+
 proc splitFile*(x: AbsoluteFile): tuple[dir: AbsoluteDir, name, ext: string] =
   let (a, b, c) = splitFile(x.string)
   result = (dir: AbsoluteDir(a), name: b, ext: c)

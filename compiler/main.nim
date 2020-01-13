@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm, idgen,
   modules,
-  modulegraphs, tables, rod, lineinfos, pathutils, os
+  modulegraphs, tables, rod, lineinfos, pathutils
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
@@ -363,11 +363,11 @@ proc mainCommand*(graph: ModuleGraph) =
                 elif isDefined(conf, "release"): "Release"
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    template postprocess(path): untyped =
+    template displayPath(path): untyped =
       if optListFullPaths in conf.globalOptions: $path
-      else: path.`$`.lastPathPart
-    let project = conf.projectFull.postprocess
-    let output = conf.getOutFileFull.postprocess
+      else: $path.lastPathPart
+    let project = conf.projectFull.displayPath
+    let output = conf.getOutFileFull.displayPath
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
