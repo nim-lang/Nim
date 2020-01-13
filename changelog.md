@@ -55,7 +55,7 @@
 
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 
-- Added `sugar.byRef,byPtr` allowing a simple syntax for lvalue expressions
+- Added `sugar.byRef` allowing a ref syntax for lvalue expressions
 
 ## Library changes
 

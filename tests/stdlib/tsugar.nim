@@ -21,11 +21,8 @@ block byPtrfBlock:
     x: string
   proc fun(a: Foo): auto =
     doAssert not compiles (block: byRef: x=a.x)
-    byPtr: x=a.x
-    x[0]='X'
   let foo = Foo(x: "asdf")
   fun(foo)
-  doAssert foo.x == "Xsdf"
 
 # test byRef with export
 import ./msugar

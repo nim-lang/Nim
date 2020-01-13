@@ -402,17 +402,3 @@ macro byRef*(def: untyped): untyped {.since: (1,1).} =
     result = quote do:
       let myAddr = addr `exp`
       template `name`: untyped = myAddr[]
-
-macro byPtr*(def: untyped): untyped {.since: (1,1).} =
-  ## Same as `byRef` but uses uses `unsafeAddr` instead of `addr`; `byRef` is
-  ## safer and should be preferred when possible.
-  ## This can for example be used on `let` variables.
-  let (name, exp, exported) = splitDefinition(def)
-  if exported:
-    result = quote do:
-      let myAddr = unsafeAddr `exp`
-      template `name`*: untyped = myAddr[]
-  else:
-    result = quote do:
-      let myAddr = unsafeAddr `exp`
-      template `name`: untyped = myAddr[]
