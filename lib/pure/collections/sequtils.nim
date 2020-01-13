@@ -217,6 +217,23 @@ proc idxmin*[T](s: openArray[T]): Natural =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
+proc idxmin*[T, U](s: array[T, U]): int =
+  ## Returns the index of the minimum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a: array[3, int] = [0, 1, 2]
+      b: array[2..4, int] = [0, 1, 2]
+      c: array[-2..4, int] = [4, -5, 1, 3, 0, 1, 2]
+    assert idxmin(a) == 0
+    assert idxmin(b) == 2
+    assert idxmin(c) == -1
+
+  result = low(s)
+  for i in result.succ..high(s):
+    if s[i] < s[result]:
+      result = i
+
 proc idxmax*[T](s: openArray[T]): Natural =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
@@ -231,6 +248,23 @@ proc idxmax*[T](s: openArray[T]): Natural =
 
   for i in 1..high(s):
     if s[result] < s[i]: result = i
+
+proc idxmax*[T, U](s: array[T, U]): int =
+  ## Returns the index of the maximum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a: array[3, int] = [0, 1, 2]
+      b: array[2..4, int] = [0, 1, 2]
+      c: array[-2..4, int] = [4, -5, 1, 3, 0, 1, 2]
+    assert idxmin(a) == 2
+    assert idxmin(b) == 4
+    assert idxmin(c) == -2
+
+  result = low(s)
+  for i in result.succ..high(s):
+    if s[result] < s[i]:
+      result = i
 
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
