@@ -242,15 +242,12 @@ const nimRepoDirCT = currentSourcePath / ".." / ".." # this should be exposed so
 
 proc getNimRoot*(conf: ConfigRef): AbsoluteDir =
   ## returns root nim dir; works both with installed nim and local nim git repo.
-  ## This can be easily overridden if needed with NIM_ROOT_DIR environment variable
-  ## The result should satisfy: $result/doc/basicopt.txt exists
+  ## The result should satisfy: $result/doc/basicopt.txt exists as sanity check
   if conf.nimRootDir.isEmpty:
-    result = getEnv("NIM_ROOT_DIR").AbsoluteDir
-    if result.isEmpty:
-      if dirExists(nimRepoDirCT / ".git"):
-        result = nimRepoDirCT.AbsoluteDir
-      else:
-        result = AbsoluteDir getSystemConfigPath(conf, "".RelativeFile).`$`
+    if dirExists(nimRepoDirCT / ".git"):
+      result = nimRepoDirCT.AbsoluteDir
+    else:
+      result = AbsoluteDir getSystemConfigPath(conf, "".RelativeFile).`$`
     # sanity check to make sure we have the right directory
     let file = $result / "doc" / "basicopt.txt"
     doAssert fileExists(file), $file
