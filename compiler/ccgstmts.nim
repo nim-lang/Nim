@@ -936,16 +936,17 @@ proc genRestoreFrameAfterException(p: BProc) =
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
 
-    Exception tmp = nullptr;
+    Bool error = false;
     try {
       body;
     } catch (Exception e) {
+      error = true;
       if (ofExpr(e, TypeHere)) {
 
+        error = false; // handled
       } else if (...) {
 
       } else {
-        tmp = e; // unhandled exception happened!
       }
     } catch(...) {
       // C++ exception occured, not under Nim's control.
@@ -953,7 +954,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     {
       /* finally: */
       printf('fin!\n');
-      if (tmp) throw tmp; // re-raise the exception
+      if (error) throw; // re-raise the exception
     }
   ]#
   if not isEmptyType(t.typ) and d.k == locNone:
@@ -963,7 +964,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   inc(p.labels, 2)
   let etmp = p.labels
 
-  lineCg(p, cpsStmts, "#Exception* T$1_ = NIM_NIL;", [etmp])
+  lineCg(p, cpsStmts, "NIM_BOOL T$1_ = NIM_FALSE;", [etmp])
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
@@ -972,43 +973,40 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   expr(p, t[0], d)
   endBlock(p)
 
-  # Nim based exceptions:
+  # First pass: handle Nim based exceptions:
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
   genRestoreFrameAfterException(p)
   # an unhandled exception happened!
-  lineCg(p, cpsStmts, "T$1_ = T$2_;", [etmp, etmp+1])
+  lineCg(p, cpsStmts, "T$1_ = NIM_TRUE;", [etmp])
   p.nestedTryStmts[^1].inExcept = true
   var hasImportedCppExceptions = false
   var i = 1
+  var hasIf = false
   while (i < t.len) and (t[i].kind == nkExceptBranch):
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
     if t[i].len == 1:
       # general except section:
-      if i > 1: lineF(p, cpsStmts, "else", [])
+      if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
       # we handled the error:
-      linefmt(p, cpsStmts, "T$1_ = NIM_NIL;$n", [etmp])
+      linefmt(p, cpsStmts, "T$1_ = NIM_FALSE;$n", [etmp])
       expr(p, t[i][0], d)
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
     else:
       var orExpr = Rope(nil)
+      var exvar = PNode(nil)
       for j in 0..<t[i].len - 1:
         var typeNode = t[i][j]
         if t[i][j].isInfixAs():
           typeNode = t[i][j][1]
-          let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
-          fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnStack)
-          linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, typeNode.typ),
-            rdLoc(exvar.sym.loc), rope(etmp+1)])
-
+          exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
         assert(typeNode.kind == nkType)
-        if orExpr != nil: orExpr.add("||")
         if isImportedException(typeNode.typ, p.config):
-          orExpr.add "NIM_FALSE"
           hasImportedCppExceptions = true
         else:
+          if orExpr != nil: orExpr.add("||")
           let checkFor = if optTinyRtti in p.config.globalOptions:
             genTypeInfo2Name(p.module, typeNode.typ)
           else:
@@ -1016,20 +1014,29 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
           appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
 
-      if i > 1: line(p, cpsStmts, "else ")
-      startBlock(p, "if ($1) {$n", [orExpr])
-      # we handled the error:
-      linefmt(p, cpsStmts, "T$1_ = NIM_NIL;$n", [etmp])
-      expr(p, t[i][^1], d)
-      linefmt(p, cpsStmts, "#popCurrentException();$n", [])
-      endBlock(p)
+      if orExpr != nil:
+        if hasIf:
+          startBlock(p, "else if ($1) {$n", [orExpr])
+        else:
+          startBlock(p, "if ($1) {$n", [orExpr])
+          hasIf = true
+        if exvar != nil:
+          fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnStack)
+          linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
+            rdLoc(exvar.sym.loc), rope(etmp+1)])
+        # we handled the error:
+        linefmt(p, cpsStmts, "T$1_ = NIM_FALSE;$n", [etmp])
+        expr(p, t[i][^1], d)
+        linefmt(p, cpsStmts, "#popCurrentException();$n", [])
+        endBlock(p)
     inc(i)
 
   linefmt(p, cpsStmts, "}$n", [])
 
-  # C++ based exceptions:
+  # Second pass: handle C++ based exceptions:
   template genExceptBranchBody(body: PNode) {.dirty.} =
     genRestoreFrameAfterException(p)
+    # lineCg(p, cpsStmts, "T$1_ = NIM_TRUE;", [etmp])
     expr(p, body, d)
     if t.len > 0 and t[^1].kind == nkFinally:
       startBlock(p)
@@ -1079,13 +1086,15 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   if t.len > 0 and t[^1].kind == nkFinally:
     startBlock(p)
     genStmts(p, t[^1][0])
-    # pretend we handled the exception in a 'finally' so that we don't
-    # re-raise the unhandled one but instead keep the old one (it was
-    # not popped either):
-    if getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
-      linefmt(p, cpsStmts, "if (T$1_) #nimLeaveFinally();$n", [etmp])
-    else:
-      linefmt(p, cpsStmts, "if (T$1_) #reraiseException();$n", [etmp])
+    when false:
+      # pretend we handled the exception in a 'finally' so that we don't
+      # re-raise the unhandled one but instead keep the old one (it was
+      # not popped either):
+      if getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
+        linefmt(p, cpsStmts, "if (T$1_) #nimLeaveFinally();$n", [etmp])
+      else:
+        linefmt(p, cpsStmts, "if (T$1_) #reraiseException();$n", [etmp])
+    linefmt(p, cpsStmts, "if (T$1_) throw;$n", [etmp])
     endBlock(p)
 
 proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =

@@ -523,10 +523,9 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
-when false:
-  # defined(cpp) and appType != "lib" and
-  #  not defined(js) and not defined(nimscript) and
-  #  hostOS != "standalone" and not defined(noCppExceptions):
+when defined(cpp) and appType != "lib" and
+    not defined(js) and not defined(nimscript) and
+    hostOS != "standalone" and not defined(noCppExceptions):
 
   type
     StdException {.importcpp: "std::exception", header: "<exception>".} = object
@@ -542,9 +541,9 @@ when false:
 
     var msg = "Unknown error in unexpected exception handler"
     try:
-      {.emit"#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
+      {.emit: "#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
-      {.emit"#endif".}
+      {.emit: "#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
@@ -553,9 +552,9 @@ when false:
     except:
       msg = "Error: unhandled unknown cpp exception"
 
-    {.emit"#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
+    {.emit: "#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
     msg = "Error: unhandled unknown cpp exception"
-    {.emit"#endif".}
+    {.emit: "#endif".}
 
     when defined(genode):
       # stderr not available by default, use the LOG session
