@@ -2779,12 +2779,13 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
   of nkRecCase:
     getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
     if count > 0: result.add ", "
-    result.add "{{" # struct inside union
+    result.add "{" # struct inside union
     # XXX select default case branch here!
     #for i in 1..<obj.len:
     var countB = 0
+    echo "ZZ ", obj[1]
     getNullValueAux(p, t, lastSon(obj[1]), constOrNil, result, countB, isConst, info)
-    result.add "}}"
+    result.add "}"
   of nkSym:
     if count > 0: result.add ", "
     inc count
