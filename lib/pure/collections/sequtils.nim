@@ -231,7 +231,7 @@ proc idxmin*[T, U](s: array[T, U]): auto =
 
     type Count = enum First, Second, Third
     let d: array[Count, int] = [0, 1, 2]
-    assert idxmin(d) = First
+    assert idxmin(d) == Count.First
 
   result = low(s)
   for i in result.succ..high(s):
@@ -267,7 +267,7 @@ proc idxmax*[T, U](s: array[T, U]): auto =
 
     type Count = enum First, Second, Third
     let d: array[Count, int] = [0, 1, 2]
-    assert idxmax(d) = Third
+    assert idxmax(d) == Count.Third
 
   result = low(s)
   for i in result.succ..high(s):
