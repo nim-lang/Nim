@@ -52,20 +52,23 @@ type
     url*: Uri
     hostname*: string    ## The hostname of the client that made the request.
     body*: string
+    contentLength*: int
 
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
+    handleBody: bool ## if false leave the body for the developer to do whatever he wants with it
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
-                         maxBody = 8388608): AsyncHttpServer =
+                         maxBody = 8388608, handleBody = true): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
   result.maxBody = maxBody
+  result.handleBody = handleBody
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -146,6 +149,7 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
+  request.contentLength = 0
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
@@ -243,10 +247,14 @@ proc processRequest(
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
-      request.body = await client.recv(contentLength)
-      if request.body.len != contentLength:
-        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return true
+        
+      request.contentLength = contentLength
+      if server.handleBody == true: ## if false leave the body for the developer to do whatever he wants with it.
+        request.body = await client.recv(contentLength)
+        if request.body.len != contentLength:
+          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+          return true
+          
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
