@@ -261,9 +261,9 @@ proc idxmax*[T, U](s: array[T, U]): auto =
       a: array[3, int] = [0, 1, 2]
       b: array[2..4, int] = [0, 1, 2]
       c: array[-2..4, int] = [4, -5, 1, 3, 0, 1, 2]
-    assert idxmin(a) == 2
-    assert idxmin(b) == 4
-    assert idxmin(c) == -2
+    assert idxmax(a) == 2
+    assert idxmax(b) == 4
+    assert idxmax(c) == -2
 
     type Count = enum First, Second, Third
     let d: array[Count, int] = [0, 1, 2]
