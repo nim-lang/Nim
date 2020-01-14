@@ -2170,6 +2170,19 @@ proc enlarge[A](t: var CountTable[A]) =
     if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
   swap(t.data, n)
 
+proc remove[A](t: var CountTable[A], key: A) =
+  var n: seq[tuple[key: A, val: int]]
+  newSeq(n, len(t.data))
+  var removed: bool
+  for i in countup(0, high(t.data)):
+    if t.data[i].val != 0:
+      if t.data[i].key != key:
+        ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+      else:
+        removed = true
+  swap(t.data, n)
+  if removed: dec(t.counter)
+
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
@@ -2242,11 +2255,14 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
-  let h = rawGet(t, key)
-  if h >= 0:
-    t.data[h].val = val
+  if val == 0:
+    t.remove(key)
   else:
-    insertImpl()
+    let h = rawGet(t, key)
+    if h >= 0:
+      t.data[h].val = val
+    else:
+      insertImpl()
 
 proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
@@ -2958,6 +2974,13 @@ when isMainModule:
     t_mut['z'] = 1
     doAssert t_mut['z'] == 1
     doAssert t_mut.hasKey('z') == true
+
+  block: #12813 #13079
+    var t = toCountTable("abracadabra")
+    doAssert len(t) == 5
+
+    t['a'] = 0 # remove a key
+    doAssert len(t) == 4
 
   block:
     var tp: Table[string, string] = initTable[string, string]()
