@@ -6,6 +6,7 @@ discard """
 true false
 100 300 100
 1
+1
 '''
 """
 
@@ -70,3 +71,10 @@ block:
     var nums = [1, 2]
     foo(nums)
     echo nums[0]
+
+proc bug9674 =
+  var b = @[1,2,3]
+  var a = move(b)
+  echo a[0]
+
+bug9674()

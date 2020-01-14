@@ -1894,6 +1894,15 @@ proc genReset(p: PProc, n: PNode) =
     lineF(p, "$1 = genericReset($3, $2);$n", [a,
                   genTypeInfo(p, n.sons[1].typ), tmp])
 
+proc genMove(p: PProc; n: PNode; r: var TCompRes) =
+  var a: TCompRes
+  r.kind = resVal
+  r.res = p.getTemp()
+  gen(p, n[1], a)
+  lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
+  genReset(p, n)
+  #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
+
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   var
     a: TCompRes
@@ -2018,7 +2027,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
   of mDefault: genDefault(p, n, r)
-  of mReset: genReset(p, n)
+  of mReset, mWasMoved: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n.sons[0].sym.name.s)
@@ -2041,6 +2050,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n.sons[3], z)
     r.res = "($1.slice($2, $3+1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
     r.kind = resExpr
+  of mMove:
+    genMove(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);
