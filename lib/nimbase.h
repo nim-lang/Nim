@@ -208,11 +208,7 @@ __AVR__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C"
-#  else
-#    define N_LIB_EXPORT  extern
-#  endif
+#  define N_LIB_EXPORT __attribute__((visibility("default")))
 #  define N_LIB_IMPORT  extern
 #endif
 
