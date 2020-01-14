@@ -336,7 +336,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray:
-    if containsGarbageCollectedRef(dest.t):
+    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcOrc, gcHooks}:
       genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts,
