@@ -267,7 +267,6 @@ proc genSink(c: var Con; dest, ri: PNode): PNode =
 proc genCopyNoCheck(c: Con; dest, ri: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = genOp(c, t, attachedAsgn, dest, ri)
-  result.add ri
 
 proc genCopy(c: var Con; dest, ri: PNode): PNode =
   let t = dest.typ
@@ -342,7 +341,9 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   # out of loops we need to mark it as 'wasMoved'.
   result.add genWasMoved(tmp, c)
   if hasDestructor(n.typ):
-    result.add genCopy(c, tmp, p(n, c, normal))
+    var m = genCopy(c, tmp, n)
+    m.add p(n, c, normal)
+    result.add m
     if isLValue(n) and not isClosureEnv(n):
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
@@ -622,7 +623,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result.add call
         else:
           let tmp = getTemp(c, n[0].typ, n.info)
-          let m = genCopyNoCheck(c, tmp, p(n[0], c, normal))
+          var m = genCopyNoCheck(c, tmp, n[0])
+          m.add p(n[0], c, normal)
           result = newTree(nkStmtList, genWasMoved(tmp, c), m)
           var toDisarm = n[0]
           if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
@@ -667,11 +669,13 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       var snk = genSink(c, dest, ri)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
-      result = genCopy(c, dest, p(ri, c, consumed))
+      result = genCopy(c, dest, ri)
+      result.add p(ri, c, consumed)
   of nkBracket:
     # array constructor
     if ri.len > 0 and isDangerousSeq(ri.typ):
-      result = genCopy(c, dest, p(ri, c, consumed))
+      result = genCopy(c, dest, ri)
+      result.add p(ri, c, consumed)
     else:
       result = genSink(c, dest, p(ri, c, consumed))
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
@@ -688,7 +692,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       let snk = genSink(c, dest, ri)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
-      result = genCopy(c, dest, p(ri, c, consumed))
+      result = genCopy(c, dest, ri)
+      result.add p(ri, c, consumed)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
     when false:
       result = moveOrCopy(dest, ri[1], c)
@@ -715,7 +720,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       let snk = genSink(c, dest, ri)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
-      result = genCopy(c, dest, p(ri, c, consumed))
+      result = genCopy(c, dest, ri)
+      result.add p(ri, c, consumed)
 
 proc computeUninit(c: var Con) =
   if not c.uninitComputed:
