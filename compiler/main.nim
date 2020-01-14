@@ -363,11 +363,9 @@ proc mainCommand*(graph: ModuleGraph) =
                 elif isDefined(conf, "release"): "Release"
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
-    template displayPath(path): untyped =
-      if optListFullPaths in conf.globalOptions: $path
-      else: $path.lastPathPart
-    let project = conf.projectFull.displayPath
-    let output = conf.getOutFileFull.displayPath
+    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    var output = $conf.absOutFile
+    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,

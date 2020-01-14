@@ -26,14 +26,6 @@ proc copyFile*(source, dest: AbsoluteFile) =
 
 proc removeFile*(x: AbsoluteFile) {.borrow.}
 
-template toRelative(x: typedesc[AnyPath]): typedesc =
-  when x is AbsoluteFile | RelativeFile: RelativeFile else: RelativeDir
-
-proc lastPathPart*(x: AnyPath): auto =
-  ## analog to os.lastPathPart
-  type T2 = toRelative(type(x))
-  x.string.lastPathPart.T2
-
 proc splitFile*(x: AbsoluteFile): tuple[dir: AbsoluteDir, name, ext: string] =
   let (a, b, c) = splitFile(x.string)
   result = (dir: AbsoluteDir(a), name: b, ext: c)
@@ -62,21 +54,25 @@ when true:
 
   proc `==`*[T: AnyPath](x, y: T): bool = eqImpl(x.string, y.string)
 
-  proc joinPathImpl[T](base: AbsoluteDir; f: T, T2: typedesc): T2 =
-    var base = base
-    if base.isEmpty: base = getCurrentDir().AbsoluteDir
-    #assert isAbsolute(base.string)
+  template checkValid(base: AbsoluteDir) =
+    # empty paths should not mean `cwd`
+    doAssert isAbsolute(base.string), base.string
+
+  proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
+    checkValid(base)
     assert(not isAbsolute(f.string))
-    result = T2 newStringOfCap(base.string.len + f.string.len)
+    result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
     addNormalizePath(base.string, result.string, state)
     addNormalizePath(f.string, result.string, state)
 
-  proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
-    joinPathImpl(base, f, AbsoluteFile)
-
   proc `/`*(base: AbsoluteDir; f: RelativeDir): AbsoluteDir =
-    joinPathImpl(base, f, AbsoluteDir)
+    checkValid(base)
+    assert(not isAbsolute(f.string))
+    result = AbsoluteDir newStringOfCap(base.string.len + f.string.len)
+    var state = 0
+    addNormalizePath(base.string, result.string, state)
+    addNormalizePath(f.string, result.string, state)
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
