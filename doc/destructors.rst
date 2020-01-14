@@ -199,7 +199,7 @@ objects inside ``=`` and ``=sink`` is a strong indicator to treat
 ``system.swap`` as a builtin primitive of its own that simply swaps every
 field in the involved objects via ``copyMem`` or a comparable mechanism.
 In other words, ``swap(a, b)`` is **not** implemented
-as ``let tmp = move(a); b = move(a); a = move(tmp)``.
+as ``let tmp = move(b); b = move(a); a = move(tmp)``.
 
 This has further consequences:
 
