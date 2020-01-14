@@ -1076,7 +1076,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
         outfile.string)
     else:
       if not d.wroteCss:
-        let cssSource = getNimRoot(d.conf).string / "doc" / "nimdoc.css"
+        let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
         let cssDest = $d.conf.outDir / "nimdoc.out.css"
           # renamed to make it easier to use with gitignore in user's repos
         copyFile(cssSource, cssDest)

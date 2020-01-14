@@ -246,7 +246,6 @@ type
     outFile*: RelativeFile
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
-    nimRootDir*: AbsoluteDir ## works both for install dir and local git nim repo
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
     projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
@@ -510,6 +509,9 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ##
   ## This is overridden by some tools (namely nimsuggest) via the ``conf.prefixDir``
   ## field.
+  ## This should resolve to root of nim sources, whether running nim from a local
+  ##  clone or using installed nim, so that these exist: `result/doc/advopt.txt`
+  ## and `result/lib/system.nim`
   if not conf.prefixDir.isEmpty: result = conf.prefixDir
   else: result = AbsoluteDir splitPath(getAppDir()).head
 
