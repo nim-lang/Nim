@@ -23,7 +23,7 @@ const
 
   byteExcess* = 128 # we use excess-K for immediates
 
-  MaxLoopIterations* = 10_000_000 # max iterations of all loops
+  MaxLoopIterations* = 100_000_000 # max iterations of all loops
 
 # Calculate register shifts, masks and ranges
 
