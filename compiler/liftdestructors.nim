@@ -62,28 +62,32 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
     body.add newAsgnStmt(x, y)
 
-proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
+proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) =
   case n.kind
   of nkSym:
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
-    if sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
-        c.g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
+    if (sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
+        c.g.config.selectedGC in {gcArc, gcOrc, gcHooks}) or
+        enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
       fillBody(c, f.typ, body, x.dotField(f), b)
   of nkNilLit: discard
   of nkRecCase:
+    # XXX This is only correct for 'attachedSink'!
+    var localEnforceDefaultOp = enforceDefaultOp
     if c.kind in {attachedSink, attachedAsgn, attachedDeepCopy}:
       ## the value needs to be destroyed before we assign the selector
       ## or the value is lost
       let prevKind = c.kind
       c.kind = attachedDestructor
-      fillBodyObj(c, n, body, x, y)
+      fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
       c.kind = prevKind
+      localEnforceDefaultOp = true
 
     # copy the selector:
-    fillBodyObj(c, n[0], body, x, y)
+    fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
     # we need to generate a case statement:
     var caseStmt = newNodeI(nkCaseStmt, c.info)
     # XXX generate 'if' that checks same branches
@@ -96,20 +100,21 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       var branch = copyTree(n[i])
       branch[^1] = newNodeI(nkStmtList, c.info)
 
-      fillBodyObj(c, n[i].lastSon, branch[^1], x, y)
+      fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
+                  enforceDefaultOp = localEnforceDefaultOp)
       if branch[^1].len == 0: inc emptyBranches
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
   of nkRecList:
-    for t in items(n): fillBodyObj(c, t, body, x, y)
+    for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
   else:
     illFormedAstLocal(n, c.g.config)
 
 proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   if t.len > 0 and t[0] != nil:
     fillBodyObjT(c, skipTypes(t[0], abstractPtrs), body, x, y)
-  fillBodyObj(c, t.n, body, x, y)
+  fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
 proc genAddr(g: ModuleGraph; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
