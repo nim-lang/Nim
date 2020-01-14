@@ -202,7 +202,7 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
-proc idxmin*[T](s: openArray[T]): Natural =
+proc minIndex*[T](s: openArray[T]): Natural =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -210,14 +210,14 @@ proc idxmin*[T](s: openArray[T]): Natural =
       a = @[1, 2, 3, 4]
       b = @[6, 5, 4, 3]
       c = @[2, -7, 8, -5]
-    assert idxmin(a) == 0
-    assert idxmin(b) == 3
-    assert idxmin(c) == 1
+    assert minIndex(a) == 0
+    assert minIndex(b) == 3
+    assert minIndex(c) == 1
 
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
-proc idxmin*[T, U](s: array[T, U]): auto =
+proc minIndex*[T, U](s: array[T, U]): auto =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -225,20 +225,20 @@ proc idxmin*[T, U](s: array[T, U]): auto =
       a: array[3, int] = [0, 1, 2]
       b: array[2..4, int] = [0, 1, 2]
       c: array[-2..4, int] = [4, -5, 1, 3, 0, 1, 2]
-    assert idxmin(a) == 0
-    assert idxmin(b) == 2
-    assert idxmin(c) == -1
+    assert minIndex(a) == 0
+    assert minIndex(b) == 2
+    assert minIndex(c) == -1
 
     type Count = enum First, Second, Third
     let d: array[Count, int] = [0, 1, 2]
-    assert idxmin(d) == Count.First
+    assert minIndex(d) == Count.First
 
   result = low(s)
   for i in result.succ..high(s):
     if s[i] < s[result]:
       result = i
 
-proc idxmax*[T](s: openArray[T]): Natural =
+proc maxIndex*[T](s: openArray[T]): Natural =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -246,14 +246,14 @@ proc idxmax*[T](s: openArray[T]): Natural =
       a = @[1, 2, 3, 4]
       b = @[6, 5, 4, 3]
       c = @[2, -7, 8, -5]
-    assert idxmax(a) == 3
-    assert idxmax(b) == 0
-    assert idxmax(c) == 2
+    assert maxIndex(a) == 3
+    assert maxIndex(b) == 0
+    assert maxIndex(c) == 2
 
   for i in 1..high(s):
     if s[result] < s[i]: result = i
 
-proc idxmax*[T, U](s: array[T, U]): auto =
+proc maxIndex*[T, U](s: array[T, U]): auto =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -261,13 +261,13 @@ proc idxmax*[T, U](s: array[T, U]): auto =
       a: array[3, int] = [0, 1, 2]
       b: array[2..4, int] = [0, 1, 2]
       c: array[-2..4, int] = [4, -5, 1, 3, 0, 1, 2]
-    assert idxmax(a) == 2
-    assert idxmax(b) == 4
-    assert idxmax(c) == -2
+    assert maxIndex(a) == 2
+    assert maxIndex(b) == 4
+    assert maxIndex(c) == -2
 
     type Count = enum First, Second, Third
     let d: array[Count, int] = [0, 1, 2]
-    assert idxmax(d) == Count.Third
+    assert maxIndex(d) == Count.Third
 
   result = low(s)
   for i in result.succ..high(s):
