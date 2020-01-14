@@ -244,12 +244,12 @@ proc processRequest(
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return true
     else:
+      request.contentLength = contentLength
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
 
-      request.contentLength = contentLength
-      if server.handleBody == true: # if false leave the body for the developer to do whatever he wants with it.
+      if server.handleBody: # if false leave the body for the developer to do whatever he wants with it.
         request.body = await client.recv(contentLength)
         if request.body.len != contentLength:
           await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
