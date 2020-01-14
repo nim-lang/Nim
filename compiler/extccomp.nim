@@ -558,15 +558,14 @@ proc getCompileOptions(conf: ConfigRef): string =
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  case conf.target.targetCPU
-  of cpuI386:
-    result = " --platform:x86"
-  of cpuArm:
-    result = " --platform:arm"
-  of cpuAmd64:
-    result = " --platform:amd64"
-  else:
-    result = ""
+  if conf.cCompiler == ccVcc: 
+    let exe = getConfigVar(conf, conf.cCompiler, ".exe")
+    if "vccexe.exe" == extractFilename(exe):
+      result = case conf.target.targetCPU
+        of cpuI386: " --platform:x86"
+        of cpuArm: " --platform:arm"
+        of cpuAmd64: " --platform:amd64"
+        else: ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -596,7 +595,7 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
                          isMainFile = false; produceOutput = false): string =
-  var c = conf.cCompiler
+  let c = conf.cCompiler
   # We produce files like module.nim.cpp, so the absolute Nim filename is not
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)

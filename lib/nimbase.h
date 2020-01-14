@@ -221,7 +221,7 @@ __AVR__
 #define N_NOCONV_PTR(rettype, name) rettype (*name)
 
 #if defined(__GNUC__) || defined(__ICC__)
-#  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
+#  define N_NOINLINE(rettype, name) rettype __attribute__((__noinline__)) name
 #elif defined(_MSC_VER)
 #  define N_NOINLINE(rettype, name) __declspec(noinline) rettype name
 #else

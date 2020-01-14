@@ -172,6 +172,22 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
+  of "isNamedTuple":
+    let cond = operand.kind == tyTuple and operand.n != nil
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+  of "distinctBase":
+    var arg = operand.skipTypes({tyGenericInst})
+    if arg.kind == tyDistinct:
+      while arg.kind == tyDistinct:
+        arg = arg.base
+        arg = arg.skipTypes(skippedTypes + {tyGenericInst})
+      var resType = newType(tyTypeDesc, operand.owner)
+      rawAddSon(resType, arg)
+      result = toNode(resType, traitCall.info)
+    else:
+      localError(c.config, traitCall.info,
+        "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
+      result = newType(tyError, context).toNode(traitCall.info)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)
@@ -367,6 +383,37 @@ proc semUnown(c: PContext; n: PNode): PNode =
   # little hack for injectdestructors.nim (see bug #11350):
   #result[0].typ = nil
 
+proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym =
+  # We need to do 2 things: Replace n.typ which is a 'ref T' by a 'var T' type.
+  # Replace nkDerefExpr by nkHiddenDeref
+  # nkDeref is for 'ref T':  x[].field
+  # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
+  proc transform(n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+    result = shallowCopy(n)
+    if sameTypeOrNil(n.typ, old):
+      result.typ = fresh
+    if n.kind == nkSym and n.sym == oldParam:
+      result.sym = newParam
+    for i in 0 ..< safeLen(n):
+      result[i] = transform(n[i], old, fresh, oldParam, newParam)
+    #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
+    #  result =
+
+  result = copySym(orig)
+  result.info = info
+  result.flags.incl sfFromGeneric
+  result.owner = orig
+  let origParamType = orig.typ[1]
+  let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs))
+  let oldParam = orig.typ.n[1].sym
+  let newParam = newSym(skParam, oldParam.name, result, result.info)
+  newParam.typ = newParamType
+  # proc body:
+  result.ast = transform(orig.ast, origParamType, newParamType, oldParam, newParam)
+  # proc signature:
+  result.typ = newProcType(result.info, result)
+  result.typ.addParam newParam
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -431,6 +478,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     # Make sure the finalizer procedure refers to a procedure
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+    elif optTinyRtti in c.config.globalOptions:
+      # check if we converted this finalizer into a destructor already:
+      let t = whereToBindTypeHook(c, n[^1].sym.typ[1].skipTypes(abstractInst+{tyRef}))
+      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == n[^1].sym:
+        discard "already turned this one into a finalizer"
+      else:
+        bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n

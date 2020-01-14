@@ -479,7 +479,7 @@ type
     nfExecuteOnReload  # A top-level statement that will be executed during reloads
 
   TNodeFlags* = set[TNodeFlag]
-  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~39)
+  TTypeFlag* = enum   # keep below 32 for efficiency reasons (now: ~40)
     tfVarargs,        # procedure has C styled varargs
                       # tyArray type represeting a varargs list
     tfNoSideEffect,   # procedure type does not allow side effects
@@ -539,6 +539,7 @@ type
     tfCheckedForDestructor # type was checked for having a destructor.
                            # If it has one, t.destructor is not nil.
     tfAcyclic # object type was annotated as .acyclic
+    tfIncompleteStruct # treat this type as if it had sizeof(pointer)
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -580,7 +581,6 @@ type
 const
   routineKinds* = {skProc, skFunc, skMethod, skIterator,
                    skConverter, skMacro, skTemplate}
-  tfIncompleteStruct* = tfVarargs
   tfUnion* = tfNoSideEffect
   tfGcSafe* = tfThread
   tfObjHasKids* = tfEnumHasHoles
@@ -826,7 +826,7 @@ type
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
-      alignment*: int # for alignas(X) expressions
+      alignment*: int # for alignment
     else: nil
     magic*: TMagic
     typ*: PType
@@ -1398,6 +1398,8 @@ proc copySym*(s: PSym): PSym =
   result.annex = s.annex      # BUGFIX
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard
+    result.bitsize = s.bitsize
+    result.alignment = s.alignment
 
 proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
                         options: TOptions): PSym =

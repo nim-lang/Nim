@@ -17,6 +17,8 @@
   backends, and it is compatible with Python's behavior,
   e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
 - Global variable `lc` has been removed from sugar.nim.
+- `distinctBase` has been moved from sugar.nim to typetraits and now implemented as
+  compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
 
 ### Breaking changes in the compiler
 
@@ -45,6 +47,10 @@
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
 
+- Added `typetraits.lenTuple` to get number of elements of a tuple/type tuple,
+  and `typetraits.get` to get the ith element of a type tuple.
+- Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
@@ -58,6 +64,8 @@
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
 
 
 ## Language additions
