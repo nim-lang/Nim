@@ -779,7 +779,7 @@ proc cgsym(m: BModule, name: string): Rope =
     result.addActualSuffixForHCR(m.module, sym)
 
 proc generateHeaders(m: BModule) =
-  m.s[cfsHeaders].add("\L#include \"nimbase.h\"\L")
+  m.s[cfsHeaders].add("\L#include <nimbase.h>\L") # see #13144
 
   for it in m.headerFiles:
     if it[0] == '#':
