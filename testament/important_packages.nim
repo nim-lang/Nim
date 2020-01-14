@@ -33,7 +33,7 @@ pkg "gara"
 pkg "glob"
 pkg "gnuplot"
 # pkg "godot", "nim c -r godot/godot.nim" # not yet compatible with Nim 0.19
-pkg "hts", "nim c -o:htss -r src/hts.nim"
+pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "illwill", "nimble examples"
 pkg "inim"
 pkg "itertools", "nim doc src/itertools.nim"
