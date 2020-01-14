@@ -656,7 +656,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyTuple:
     fillBodyTup(c, t, body, x, y)
   of tyVarargs, tyOpenArray:
-    if c.kind == attachedDestructor:
+    if c.kind == attachedDestructor and (tfHasAsgn in t.flags or useNoGc(c, t)):
       forallElements(c, t, body, x, y)
     else:
       discard "cannot copy openArray"
