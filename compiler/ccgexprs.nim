@@ -2783,7 +2783,6 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     # XXX select default case branch here!
     #for i in 1..<obj.len:
     var countB = 0
-    echo "ZZ ", obj[1]
     getNullValueAux(p, t, lastSon(obj[1]), constOrNil, result, countB, isConst, info)
     result.add "}"
   of nkSym:
