@@ -210,7 +210,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
           # interested in
           enabled = true
 
-when not hasThreadSupport:
+when hasSomeStackTrace and not hasThreadSupport:
   var
     tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
 
@@ -261,52 +261,53 @@ proc `$`(s: seq[StackTraceEntry]): string =
     elif s[i].line == reraisedFromEnd: result.add "]]\n"
     else: addFrameEntry(result, s[i])
 
-proc auxWriteStackTrace(f: PFrame, s: var string) =
-  when hasThreadSupport:
-    var
-      tempFrames: array[0..127, PFrame] # but better than a threadvar
-  const
-    firstCalls = 32
-  var
-    it = f
-    i = 0
-    total = 0
-  # setup long head:
-  while it != nil and i <= high(tempFrames)-firstCalls:
-    tempFrames[i] = it
-    inc(i)
-    inc(total)
-    it = it.prev
-  # go up the stack to count 'total':
-  var b = it
-  while it != nil:
-    inc(total)
-    it = it.prev
-  var skipped = 0
-  if total > len(tempFrames):
-    # skip N
-    skipped = total-i-firstCalls+1
-    for j in 1..skipped:
-      if b != nil: b = b.prev
-    # create '...' entry:
-    tempFrames[i] = nil
-    inc(i)
-  # setup short tail:
-  while b != nil and i <= high(tempFrames):
-    tempFrames[i] = b
-    inc(i)
-    b = b.prev
-  for j in countdown(i-1, 0):
-    if tempFrames[j] == nil:
-      add(s, "(")
-      add(s, $skipped)
-      add(s, " calls omitted) ...\n")
-    else:
-      addFrameEntry(s, tempFrames[j])
-
-proc stackTraceAvailable*(): bool
-
 when hasSomeStackTrace:
+
+  proc auxWriteStackTrace(f: PFrame, s: var string) =
+    when hasThreadSupport:
+      var
+        tempFrames: array[0..127, PFrame] # but better than a threadvar
+    const
+      firstCalls = 32
+    var
+      it = f
+      i = 0
+      total = 0
+    # setup long head:
+    while it != nil and i <= high(tempFrames)-firstCalls:
+      tempFrames[i] = it
+      inc(i)
+      inc(total)
+      it = it.prev
+    # go up the stack to count 'total':
+    var b = it
+    while it != nil:
+      inc(total)
+      it = it.prev
+    var skipped = 0
+    if total > len(tempFrames):
+      # skip N
+      skipped = total-i-firstCalls+1
+      for j in 1..skipped:
+        if b != nil: b = b.prev
+      # create '...' entry:
+      tempFrames[i] = nil
+      inc(i)
+    # setup short tail:
+    while b != nil and i <= high(tempFrames):
+      tempFrames[i] = b
+      inc(i)
+      b = b.prev
+    for j in countdown(i-1, 0):
+      if tempFrames[j] == nil:
+        add(s, "(")
+        add(s, $skipped)
+        add(s, " calls omitted) ...\n")
+      else:
+        addFrameEntry(s, tempFrames[j])
+
+  proc stackTraceAvailable*(): bool
+
   proc rawWriteStackTrace(s: var string) =
     when defined(nimStackTraceOverride):
       add(s, "Traceback (most recent call last, using override)\n")
@@ -351,7 +352,7 @@ var onUnhandledException*: (proc (errorMsg: string) {.
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
   ## Unstable API.
 
-proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+proc reportUnhandledErrorAux(e: ref Exception) {.nodestroy.} =
   when hasSomeStackTrace:
     var buf = newStringOfCap(2000)
     if e.trace.len == 0:
@@ -400,6 +401,14 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
     else:
       showErrorMessage(tbuf())
 
+proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
+  if unhandledExceptionHook != nil:
+    unhandledExceptionHook(e)
+  when hostOS != "any":
+    reportUnhandledErrorAux(e)
+  else:
+    discard()
+
 proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions):
     {.emit: "throw;".}
@@ -424,14 +433,6 @@ when gotoBasedExceptions:
       reportUnhandledError(currException)
       currException = nil
       quit(1)
-
-  addQuitProc(proc () {.noconv.} =
-    if currException != nil:
-      reportUnhandledError(currException)
-      # emulate: ``programResult = 1`` via abort() and a nop signal handler.
-      c_signal(SIGABRT, (proc (sign: cint) {.noconv, benign.} = discard))
-      c_abort()
-  )
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
   if localRaiseHook != nil:

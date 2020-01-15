@@ -2096,7 +2096,7 @@ template sysAssert(cond: bool, msg: string) =
 
 const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
-when notJSnotNims and hostOS != "standalone":
+when notJSnotNims and hostOS != "standalone" and hostOS != "any":
   include "system/cgprocs"
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
@@ -3395,6 +3395,11 @@ var
     ##
     ## If the handler does not raise an exception, ordinary control flow
     ## continues and the program is terminated.
+  unhandledExceptionHook*: proc (e: ref Exception) {.nimcall, tags: [], benign, raises: [].}
+    ## Set this variable to provide a procedure that should be called
+    ## in case of an `unhandle exception` event. The standard handler
+    ## writes an error message and terminates the program, except when
+    ## using `--os:any`
 
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
@@ -3745,7 +3750,7 @@ when not defined(JS):
 
 
 when notJSnotNims:
-  when hostOS != "standalone":
+  when hostOS != "standalone" and hostOS != "any":
     include "system/dyncalls"
 
   include "system/sets"

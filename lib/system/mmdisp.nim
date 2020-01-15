@@ -354,11 +354,11 @@ elif defined(gogc):
   proc deallocOsPages(r: var MemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
 
-elif defined(nogc) and defined(useMalloc):
+elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
   when not defined(useNimRtl):
     proc alloc(size: Natural): pointer =
-      var x = c_malloc(size + sizeof(size))
+      var x = c_malloc (size + sizeof(size)).csize_t
       if x == nil: raiseOutOfMem()
 
       cast[ptr int](x)[] = size
@@ -371,7 +371,7 @@ elif defined(nogc) and defined(useMalloc):
       var x = cast[pointer](cast[int](p) - sizeof(newsize))
       let oldsize = cast[ptr int](x)[]
 
-      x = c_realloc(x, newsize + sizeof(newsize))
+      x = c_realloc(x, (newsize + sizeof(newsize)).csize_t)
 
       if x == nil: raiseOutOfMem()
 
@@ -384,13 +384,13 @@ elif defined(nogc) and defined(useMalloc):
     proc dealloc(p: pointer) = c_free(cast[pointer](cast[int](p) - sizeof(int)))
 
     proc allocShared(size: Natural): pointer =
-      result = c_malloc(size)
+      result = c_malloc(size.csize_t)
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
     proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = c_realloc(p, newsize)
+      result = c_realloc(p, newsize.csize_t)
       if result == nil: raiseOutOfMem()
     proc deallocShared(p: pointer) = c_free(p)
 
@@ -400,7 +400,7 @@ elif defined(nogc) and defined(useMalloc):
     proc GC_setStrategy(strategy: GC_Strategy) = discard
     proc GC_enableMarkAndSweep() = discard
     proc GC_disableMarkAndSweep() = discard
-    proc GC_getStatistics(): string = return ""
+    #proc GC_getStatistics(): string = return ""
 
     proc getOccupiedMem(): int = discard
     proc getFreeMem(): int = discard
@@ -409,13 +409,6 @@ elif defined(nogc) and defined(useMalloc):
     proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
   proc initGC() = discard
-
-  proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
-    result = alloc0(size)
-  proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-    result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
-    cast[PGenericSeq](result).len = len
-    cast[PGenericSeq](result).reserved = len
 
   proc newObjNoInit(typ: PNimType, size: int): pointer =
     result = alloc(size)
