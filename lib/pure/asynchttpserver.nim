@@ -52,7 +52,6 @@ type
     url*: Uri
     hostname*: string    ## The hostname of the client that made the request.
     body*: string
-    contentLength*: int
 
   AsyncHttpServer* = ref object
     socket: AsyncSocket
@@ -149,7 +148,6 @@ proc processRequest(
   # \n
   request.headers.clear()
   request.body = ""
-  request.contentLength = 0
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
@@ -244,7 +242,6 @@ proc processRequest(
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return true
     else:
-      request.contentLength = contentLength
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
