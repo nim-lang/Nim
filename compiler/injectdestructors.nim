@@ -673,7 +673,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     if isUnpackedTuple(ri[0]):
       # unpacking of tuple: take over elements
       result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
-    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+        not aliases(dest, ri):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
       snk.add ri

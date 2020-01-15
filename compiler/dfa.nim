@@ -597,7 +597,7 @@ proc genUse(c: var Con; orig: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
 
-proc aliases(obj, field: PNode): bool =
+proc aliases*(obj, field: PNode): bool =
   var n = field
   var obj = obj
   while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:

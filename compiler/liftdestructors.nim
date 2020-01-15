@@ -313,10 +313,10 @@ proc setLenStrCall(g: ModuleGraph; x, y: PNode): PNode =
   result = genBuiltin(g, mSetLengthStr, "setLen", x) # genAddr(g, x))
   result.add lenCall
 
-proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
+proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode; m: TMagic; ms: string): PNode =
   let lenCall = genBuiltin(c.g, mLengthSeq, "len", y)
   lenCall.typ = getSysType(c.g, x.info, tyInt)
-  var op = getSysMagic(c.g, x.info, "setLen", mSetLengthSeq)
+  var op = getSysMagic(c.g, x.info, ms, m)
   op = instantiateGeneric(c, op, t, t)
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
@@ -333,12 +333,14 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedAsgn, attachedDeepCopy:
     # we generate:
-    # setLen(dest, y.len)
+    # ensureLen(dest, y.len)
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
+    # shrink(dest, y.len)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenSeqCall(c, t, x, y)
+    body.add setLenSeqCall(c, t, x, y, mEnsureSeqLen, "ensureLen")
     forallElements(c, t, body, x, y)
+    body.add setLenSeqCall(c, t, x, y, mShrinkSeq, "shrink")
   of attachedSink:
     let moveCall = genBuiltin(c.g, mMove, "move", x)
     moveCall.add y
