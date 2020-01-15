@@ -103,8 +103,17 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
     path = $DirSep
 
 proc normalizePathEnd(path: string, trailingSep = false): string =
+  ## outplace overload
+  runnableExamples:
+    when defined(posix):
+      assert normalizePathEnd("/lib//", trailingSep = true) == "/lib/"
+      assert normalizePathEnd("lib//", trailingSep = false) == "lib"
+      assert normalizePathEnd("", trailingSep = true) == "" # not / !
   result = path
   result.normalizePathEnd(trailingSep)
+
+when (NimMajor, NimMinor) >= (1, 1):
+  export normalizePathEnd
 
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =

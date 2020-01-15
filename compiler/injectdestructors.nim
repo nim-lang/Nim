@@ -349,6 +349,8 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "use 'move($1)' to prevent it") % $n)
   else:
+    if c.graph.config.selectedGC in {gcArc, gcOrc}:
+      assert(not containsGarbageCollectedRef(n.typ))
     result.add newTree(nkAsgn, tmp, p(n, c, normal))
   result.add tmp
 
@@ -664,7 +666,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     if isUnpackedTuple(ri[0]):
       # unpacking of tuple: take over elements
       result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
-    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c):
+    elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
+        not aliases(dest, ri):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       var snk = genSink(c, dest, ri)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))

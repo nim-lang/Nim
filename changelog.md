@@ -47,6 +47,12 @@
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
 
+- Added `typetraits.lenTuple` to get number of elements of a tuple/type tuple,
+  and `typetraits.get` to get the ith element of a type tuple.
+- Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
+
+- Added `os.normalizePathEnd` for additional path sanitization.
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
@@ -60,6 +66,8 @@
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
 
 
 ## Language additions

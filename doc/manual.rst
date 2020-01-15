@@ -555,6 +555,9 @@ following characters::
        @     $     ~     &     %     |
        !     ?     ^     .     :     \
 
+(The grammar uses the terminal OPR to refer to operator symbols as
+defined here.)
+
 These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 

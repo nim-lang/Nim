@@ -819,12 +819,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wAlign:
         let alignment = expectIntLit(c, it)
-        if alignment == 0:
-          discard
-        elif isPowerOfTwo(alignment):
+        if isPowerOfTwo(alignment) and alignment > 0:
           sym.alignment = max(sym.alignment, alignment)
         else:
-          localError(c.config, it.info, "power of two or 0 expected")
+          localError(c.config, it.info, "power of two expected")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
