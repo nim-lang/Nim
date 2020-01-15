@@ -84,7 +84,18 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       c.kind = attachedDestructor
       fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
       c.kind = prevKind
-      localEnforceDefaultOp = true
+      if c.kind == attachedSink:
+        localEnforceDefaultOp = true
+      else:
+        # assignment for case objects is complex, we do:
+        # =destroy(obj)
+        # wasMoved(obj)
+        # for every field:
+        #   `=` dest.field, src.field
+        var wasMovedCall = newNodeI(nkCall, n.info)
+        wasMovedCall.add(newSymNode(createMagic(c.g, "wasMoved", mWasMoved)))
+        wasMovedCall.add x # mWasMoved does not take the address
+        body.add x
 
     # copy the selector:
     fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
