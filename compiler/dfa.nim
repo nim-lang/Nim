@@ -646,8 +646,14 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   while true:
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr:
+       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
       n = n[0]
+    of nkBracketExpr:
+      # in a[i] the 'i' must be known
+      if n.len > 1 and n[1].kind in {nkCharLit..nkUInt64Lit}:
+        n = n[0]
+      else:
+        return false
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.
