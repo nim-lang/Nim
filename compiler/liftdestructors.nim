@@ -95,7 +95,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
         var wasMovedCall = newNodeI(nkCall, n.info)
         wasMovedCall.add(newSymNode(createMagic(c.g, "wasMoved", mWasMoved)))
         wasMovedCall.add x # mWasMoved does not take the address
-        body.add x
+        body.add wasMovedCall
 
     # copy the selector:
     fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)

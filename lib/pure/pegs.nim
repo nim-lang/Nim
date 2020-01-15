@@ -191,8 +191,8 @@ template multipleOp(k: PegKind, localOpt: untyped) =
         localOpt(result, y)
     else:
       localOpt(result, x)
-  if result.len == 1:
-    result = result.sons[0]
+  #if result.len == 1:
+  #  result = result.sons[0]
 
 proc `/`*(a: varargs[Peg]): Peg {.
   noSideEffect, rtl, extern: "npegsOrderedChoice".} =

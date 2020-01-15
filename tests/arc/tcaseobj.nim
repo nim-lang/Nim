@@ -3,6 +3,8 @@ discard """
   output: '''myobj destroyed
 myobj destroyed
 myobj destroyed
+A
+B
 myobj destroyed
 '''
 """
@@ -87,3 +89,46 @@ proc testCopies(i: int) =
 
 let x1 = testSinks()
 testCopies(0)
+
+# bug #12957
+
+type
+  PegKind* = enum
+    pkCharChoice,
+    pkSequence
+  Peg* = object ## type that represents a PEG
+    case kind: PegKind
+    of pkCharChoice: charChoice: ref set[char]
+    else: discard
+    sons: seq[Peg]
+
+proc charSet*(s: set[char]): Peg =
+  ## constructs a PEG from a character set `s`
+  result = Peg(kind: pkCharChoice)
+  new(result.charChoice)
+  result.charChoice[] = s
+
+proc len(a: Peg): int {.inline.} = return a.sons.len
+proc myadd(d: var Peg, s: Peg) {.inline.} = add(d.sons, s)
+
+proc sequence*(a: array[2, Peg]): Peg =
+  result = Peg(kind: pkSequence, sons: @[])
+  when false:
+    #works too:
+    result.myadd(a[0])
+    result.myadd(a[1])
+  for x in items(a):
+    # works:
+    #result.sons.add(x)
+    # fails:
+    result.myadd x
+
+when true:
+  # bug #12957
+
+  proc p =
+    echo "A"
+    let x = sequence([charSet({'a'..'z', 'A'..'Z', '_'}),
+              charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'})])
+    echo "B"
+  p()
