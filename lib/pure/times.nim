@@ -595,26 +595,27 @@ proc toUnix*(t: Time): int64 {.benign, tags: [], raises: [], noSideEffect.} =
     doAssert fromUnix(0).toUnix() == 0
   t.seconds
 
-proc fromUnixFloat*(seconds: float): Time
-    {.benign, tags: [], raises: [], noSideEffect, since: (1, 1).} =
+proc fromUnixFloat(seconds: float): Time {.benign, tags: [], raises: [], noSideEffect.} =
   ## Convert a unix timestamp in seconds to a `Time`; same as `fromUnix`
   ## but with subsecond resolution.
   runnableExamples:
-    doAssert fromUnixFloat(123.0) == fromUnixFloat(123)
+    doAssert fromUnixFloat(123456.0) == fromUnixFloat(123456)
+    doAssert fromUnixFloat(-123456.0) == fromUnixFloat(-123456)
   let secs = seconds.floor
   let nsecs = (seconds - secs) * 1e9
   initTime(secs.int64, nsecs.NanosecondRange)
 
-template toUnixFloatImpl(t): untyped =
-  t.seconds.float + t.nanosecond / convert(Seconds, Nanoseconds, 1)
-
-proc toUnixFloat*(t: Time): float {.benign, tags: [], raises: [], since: (1, 1).} =
+proc toUnixFloat(t: Time): float {.benign, tags: [], raises: [].} =
   ## Same as `toUnix` but using subsecond resolution.
   runnableExamples:
     let t = getTime()
     # `<` because of rounding errors
     doAssert abs(t.toUnixFloat().fromUnixFloat - t) < initDuration(nanoseconds = 1000)
-  toUnixFloatImpl(t)
+  t.seconds.float + t.nanosecond / convert(Seconds, Nanoseconds, 1)
+
+since((1, 1)):
+  export fromUnixFloat
+  export toUnixFloat
 
 proc fromWinTime*(win: int64): Time =
   ## Convert a Windows file time (100-nanosecond intervals since
@@ -2707,14 +2708,12 @@ proc initInterval*(seconds, minutes, hours, days, months, years: int = 0):
   initTimeInterval(0, 0, 0, seconds, minutes, hours, days, 0, months, years)
 
 proc fromSeconds*(since1970: float): Time
-    {.tags: [], raises: [], benign, deprecated.} =
+    {.tags: [], raises: [], benign, deprecated: "Use fromUnixFloat or fromUnix".} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
   ##
   ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
-  let nanos = ((since1970 - since1970.int64.float) *
-    convert(Seconds, Nanoseconds, 1).float).int
-  initTime(since1970.int64, nanos)
+  fromUnixFloat(since1970)
 
 proc fromSeconds*(since1970: int64): Time
     {.tags: [], raises: [], benign, deprecated.} =
@@ -2727,7 +2726,7 @@ proc fromSeconds*(since1970: int64): Time
 proc toSeconds*(time: Time): float
     {.tags: [], raises: [], benign, deprecated: "Use toUnixFloat or toUnix".} =
   ## Returns the time in seconds since the unix epoch, with subsecond resolution.
-  toUnixFloatImpl(time)
+  toUnixFloat(time)
 
 proc getLocalTime*(time: Time): DateTime
     {.tags: [], raises: [], benign, deprecated.} =
