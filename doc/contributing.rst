@@ -428,7 +428,7 @@ Code reviews
    .. code-block:: sh
 
       git fetch origin pull/10431/head && git checkout FETCH_HEAD
-      git show --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
+      git diff --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
 
 3. In addition, you can view github-like diffs locally to identify what was changed
    within a code block using `diff-highlight` or `diff-so-fancy`, e.g.:
