@@ -464,8 +464,10 @@ let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
   ## It is true in Nim VM context and false otherwise.
 {.pop.}
 
-include "system/arithmetics"
-include "system/comparisons"
+import system/arithmetics
+export arithmetics except IntMax32
+import system/comparisons
+export comparisons
 
 const
   appType* {.magic: "AppType"}: string = ""
@@ -477,7 +479,8 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-const notJSnotNims = not defined(JS) and not defined(nimscript)
+import system/privatedefs
+export hostOS, compileOption
 
 when not defined(JS) and not defined(nimSeqsV2):
   type
@@ -517,8 +520,40 @@ type
            ## However, objects that have no ancestor are also allowed.
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
+type
+  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
+                            ## to them. A `StackTraceEntry` is a single entry of the
+                            ## stack trace.
+    procname*: cstring      ## Name of the proc that is currently executing.
+    line*: int              ## Line number of the proc that is currently executing.
+    filename*: cstring      ## Filename of the proc that is currently executing.
 
-include "system/exceptions"
+  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
+    ## Base exception class.
+    ##
+    ## Each exception has to inherit from `Exception`. See the full `exception
+    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
+    parent*: ref Exception ## Parent exception (can be used as a stack).
+    name*: cstring         ## The exception's name is its Nim identifier.
+                           ## This field is filled automatically in the
+                           ## ``raise`` statement.
+    msg* {.exportc: "message".}: string ## The exception's message. Not
+                                        ## providing an exception message
+                                        ## is bad style.
+    when defined(js):
+      trace: string
+    else:
+      trace: seq[StackTraceEntry]
+    when defined(nimBoostrapCsources0_19_0):
+      # see #10315, bootstrap with `nim cpp` from csources gave error:
+      # error: no member named 'raise_id' in 'Exception'
+      raise_id: uint # set when exception is raised
+    else:
+      raiseId: uint # set when exception is raised
+    up: ref Exception # used for stacking exceptions. Not exported!
+
+import system/exceptions
+export exceptions
 
 when defined(JS) or defined(nimdoc):
   type
@@ -723,8 +758,8 @@ proc `<=`*(x, y: float): bool {.magic: "LeF64", noSideEffect.}
 proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
 
 
-include "system/setops"
-
+import system/setops
+export setops
 
 proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.} =
   ## Checks if `value` is within the range of `s`; returns true if
@@ -1008,13 +1043,6 @@ const
     ## information for low-level code only. This works thanks to compiler
     ## magic.
 
-  hostOS* {.magic: "HostOS".}: string = ""
-    ## A string that describes the host operating system.
-    ##
-    ## Possible values:
-    ## `"windows"`, `"macosx"`, `"linux"`, `"netbsd"`, `"freebsd"`,
-    ## `"openbsd"`, `"solaris"`, `"aix"`, `"haiku"`, `"standalone"`.
-
   hostCPU* {.magic: "HostCPU".}: string = ""
     ## A string that describes the host CPU.
     ##
@@ -1028,24 +1056,8 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
-  ## Can be used to determine an `on|off` compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
-
-proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
-  ## Can be used to determine an enum compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
 
 const
-  hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
   taintMode = compileOption("taintmode")
   nimEnableCovariance* = defined(nimEnableCovariance) # or true
@@ -1161,8 +1173,6 @@ template sysAssert(cond: bool, msg: string) =
       cstderr.rawWrite msg
       cstderr.rawWrite "\n"
       quit 1
-
-const hasAlloc = (hostOS != "standalone" or not defined(nogc)) and not defined(nimscript)
 
 when notJSnotNims and hostOS != "standalone" and hostOS != "any":
   include "system/cgprocs"
@@ -1443,13 +1453,12 @@ const
     ## and expect a reasonable result - use the `classify` procedure
     ## in the `math module <math.html>`_ for checking for NaN.
 
-
 include "system/memalloc"
-
 
 proc `|`*(a, b: typedesc): typedesc = discard
 
-include "system/iterators_1"
+import system/iterators_1
+export iterators_1
 
 
 {.push stackTrace: off.}
@@ -1735,7 +1744,6 @@ proc `<`*[T: tuple](x, y: T): bool =
     if c < 0: return true
     if c > 0: return false
   return false
-
 
 include "system/gc_interface"
 

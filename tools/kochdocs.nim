@@ -131,6 +131,12 @@ lib/system/assertions.nim
 lib/system/iterators.nim
 lib/system/dollars.nim
 lib/system/widestrs.nim
+lib/system/arithmetics.nim
+lib/system/comparisons.nim
+lib/system/exceptions.nim
+lib/system/iterators_1.nim
+lib/system/privatedefs.nim
+lib/system/setops.nim
 lib/deprecated/pure/ospaths.nim
 lib/pure/parsejson.nim
 lib/pure/cstrutils.nim

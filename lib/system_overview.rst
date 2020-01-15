@@ -1,12 +1,17 @@
 The System module imports several separate modules, and their documentation
 is in separate files:
 
-* `iterators <iterators.html>`_
+* `arithmetics <arithmetics.html>`_
 * `assertions <assertions.html>`_
+* `comparisons <comparisons.html>`_
 * `dollars <dollars.html>`_
+* `exceptions <exceptions.html>`_
 * `io <io.html>`_
+* `iterators <iterators.html>`_
+* `iterators_1 <iterators_1.html>`_
+* `privatedefs <privatedefs.html>`_
+* `setops <setops.html>`_
 * `widestrs <widestrs.html>`_
-
 
 Here is a short overview of the most commonly used functions from the
 `system` module. Function names in the tables below are clickable and

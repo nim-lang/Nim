@@ -10,37 +10,6 @@ type
   WriteIOEffect* = object of IOEffect  ## Effect describing a write IO operation.
   ExecIOEffect* = object of IOEffect   ## Effect describing an executing IO operation.
 
-  StackTraceEntry* = object ## In debug mode exceptions store the stack trace that led
-                            ## to them. A `StackTraceEntry` is a single entry of the
-                            ## stack trace.
-    procname*: cstring      ## Name of the proc that is currently executing.
-    line*: int              ## Line number of the proc that is currently executing.
-    filename*: cstring      ## Filename of the proc that is currently executing.
-
-  Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
-    ## Base exception class.
-    ##
-    ## Each exception has to inherit from `Exception`. See the full `exception
-    ## hierarchy <manual.html#exception-handling-exception-hierarchy>`_.
-    parent*: ref Exception ## Parent exception (can be used as a stack).
-    name*: cstring         ## The exception's name is its Nim identifier.
-                           ## This field is filled automatically in the
-                           ## ``raise`` statement.
-    msg* {.exportc: "message".}: string ## The exception's message. Not
-                                        ## providing an exception message
-                                        ## is bad style.
-    when defined(js):
-      trace: string
-    else:
-      trace: seq[StackTraceEntry]
-    when defined(nimBoostrapCsources0_19_0):
-      # see #10315, bootstrap with `nim cpp` from csources gave error:
-      # error: no member named 'raise_id' in 'Exception'
-      raise_id: uint # set when exception is raised
-    else:
-      raiseId: uint # set when exception is raised
-    up: ref Exception # used for stacking exceptions. Not exported!
-
   Defect* = object of Exception ## \
     ## Abstract base class for all exceptions that Nim's runtime raises
     ## but that are strictly uncatchable as they can also be mapped to

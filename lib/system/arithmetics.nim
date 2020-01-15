@@ -343,7 +343,7 @@ proc `xor`*(x, y: int32): int32 {.magic: "BitxorI", noSideEffect.}
 proc `xor`*(x, y: int64): int64 {.magic: "BitxorI", noSideEffect.}
 
 type
-  IntMax32 = int|int8|int16|int32
+  IntMax32* = int|int8|int16|int32
 
 proc `+%`*(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
 proc `+%`*(x, y: int64): int64 {.magic: "AddU", noSideEffect.}

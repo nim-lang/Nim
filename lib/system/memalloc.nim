@@ -1,3 +1,7 @@
+## uncomment these when this turns into an import module
+# import system/privatedefs
+# include "system/inclrtl"
+
 when notJSnotNims:
   proc zeroMem*(p: pointer, size: Natural) {.inline, noSideEffect,
     tags: [], locks: 0, raises: [].}
