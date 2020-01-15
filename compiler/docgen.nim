@@ -1072,6 +1072,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
+    d.conf.outFile = outfile.extractFilename.RelativeFile
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1089,6 +1090,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
+      d.conf.outFile = d.destFile.extractFilename.RelativeFile
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
                  warnUser, "unable to open file \"" & d.destFile.string &
