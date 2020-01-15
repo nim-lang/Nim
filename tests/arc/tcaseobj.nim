@@ -40,6 +40,7 @@ proc main =
 main()
 
 # bug #13149
+
 type
   TMyObj = object
     p: pointer
