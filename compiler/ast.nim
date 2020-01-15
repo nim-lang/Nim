@@ -632,7 +632,7 @@ type
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
     mInRange, mInSet, mRepr, mExit,
-    mSetLengthStr, mSetLengthSeq, mEnsureSeqLen, mShrinkSeq,
+    mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
     mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
     mNewString, mNewStringOfCap, mParseBiggestFloat,

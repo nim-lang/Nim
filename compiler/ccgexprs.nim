@@ -2226,10 +2226,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mGCunref: unaryStmt(p, e, d, "if ($1) { #nimGCunref($1); }$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)
   of mSetLengthSeq: genSetLengthSeq(p, e, d)
-  of mEnsureSeqLen, mShrinkSeq:
-    doAssert optSeqDestructors in p.config.globalOptions
-    e[1] = makeAddr(e[1])
-    genCall(p, e, d)
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)

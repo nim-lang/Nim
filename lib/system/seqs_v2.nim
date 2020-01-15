@@ -80,7 +80,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
         q.cap = cap
         result = q
 
-proc shrink*[T](x: var seq[T]; newLen: Natural) {.magic: "ShrinkSeq".} =
+proc shrink*[T](x: var seq[T]; newLen: Natural) =
   when nimvm:
     setLen(x, newLen)
   else:
@@ -91,14 +91,6 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) {.magic: "ShrinkSeq".} =
         `=destroy`(x[i])
     # XXX This is wrong for const seqs that were moved into 'x'!
     cast[ptr NimSeqV2[T]](addr x).len = newLen
-
-proc ensureLen*[T](x: var seq[T]; newLen: Natural) {.magic: "EnsureSeqLen".} =
-  let oldLen = x.len
-  if newLen <= oldLen: return
-  var xu = cast[ptr NimSeqV2[T]](addr x)
-  if xu.p == nil or xu.p.cap < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
-  xu.len = newLen
 
 proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   let oldLen = x.len

@@ -16,6 +16,8 @@
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, tables
 
+from trees import isCaseObj
+
 type
   TLiftCtx = object
     g: ModuleGraph
@@ -62,6 +64,19 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
     body.add newAsgnStmt(x, y)
 
+proc genAddr(g: ModuleGraph; x: PNode): PNode =
+  if x.kind == nkHiddenDeref:
+    checkSonsLen(x, 1, g.config)
+    result = x[0]
+  else:
+    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ))
+    result.add x
+
+proc destructorCall(g: ModuleGraph; op: PSym; x: PNode): PNode =
+  result = newNodeIT(nkCall, x.info, op.typ[0])
+  result.add(newSymNode(op))
+  result.add genAddr(g, x)
+
 proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) =
   case n.kind
   of nkSym:
@@ -77,25 +92,14 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
   of nkRecCase:
     # XXX This is only correct for 'attachedSink'!
     var localEnforceDefaultOp = enforceDefaultOp
-    if c.kind in {attachedSink, attachedAsgn, attachedDeepCopy}:
+    if c.kind == attachedSink:
       ## the value needs to be destroyed before we assign the selector
       ## or the value is lost
       let prevKind = c.kind
       c.kind = attachedDestructor
       fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
       c.kind = prevKind
-      if c.kind == attachedSink:
-        localEnforceDefaultOp = true
-      else:
-        # assignment for case objects is complex, we do:
-        # =destroy(obj)
-        # wasMoved(obj)
-        # for every field:
-        #   `=` dest.field, src.field
-        var wasMovedCall = newNodeI(nkCall, n.info)
-        wasMovedCall.add(newSymNode(createMagic(c.g, "wasMoved", mWasMoved)))
-        wasMovedCall.add x # mWasMoved does not take the address
-        body.add wasMovedCall
+      localEnforceDefaultOp = true
 
     # copy the selector:
     fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
@@ -122,18 +126,58 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
   else:
     illFormedAstLocal(n, c.g.config)
 
-proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
+proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   if t.len > 0 and t[0] != nil:
-    fillBodyObjT(c, skipTypes(t[0], abstractPtrs), body, x, y)
+    fillBodyObjTImpl(c, skipTypes(t[0], abstractPtrs), body, x, y)
   fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
-proc genAddr(g: ModuleGraph; x: PNode): PNode =
-  if x.kind == nkHiddenDeref:
-    checkSonsLen(x, 1, g.config)
-    result = x[0]
+proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
+  var hasCase = isCaseObj(t.n)
+  var obj = t
+  while obj.len > 0 and obj[0] != nil:
+    obj = skipTypes(obj[0], abstractPtrs)
+    hasCase = hasCase or isCaseObj(obj.n)
+
+  if hasCase and c.kind in {attachedAsgn, attachedDeepCopy}:
+    # assignment for case objects is complex, we do:
+    # =destroy(dest)
+    # wasMoved(dest)
+    # for every field:
+    #   `=` dest.field, src.field
+    # ^ this is what we used to do, but for 'result = result.sons[0]' it
+    # destroys 'result' too early.
+    # So this is what we really need to do:
+    # let blob {.cursor.} = dest # remembers the old dest.kind
+    # wasMoved(dest)
+    # dest.kind = src.kind
+    # for every field (dependent on dest.kind):
+    #   `=` dest.field, src.field
+    # =destroy(blob)
+    var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.fn, c.info)
+    temp.typ = x.typ
+    incl(temp.flags, sfFromGeneric)
+    var v = newNodeI(nkVarSection, c.info)
+    let blob = newSymNode(temp)
+    v.addVar(blob, x)
+    body.add v
+    #body.add newAsgnStmt(blob, x)
+
+    var wasMovedCall = newNodeI(nkCall, c.info)
+    wasMovedCall.add(newSymNode(createMagic(c.g, "wasMoved", mWasMoved)))
+    wasMovedCall.add x # mWasMoved does not take the address
+    body.add wasMovedCall
+
+    fillBodyObjTImpl(c, t, body, x, y)
+    when false:
+      # does not work yet due to phase-ordering problems:
+      assert t.destructor != nil
+      body.add destructorCall(c.g, t.destructor, blob)
+    let prevKind = c.kind
+    c.kind = attachedDestructor
+    fillBodyObjTImpl(c, t, body, blob, y)
+    c.kind = prevKind
   else:
-    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ))
-    result.add x
+    fillBodyObjTImpl(c, t, body, x, y)
 
 proc newHookCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
   #if sfError in op.flags:
@@ -151,11 +195,6 @@ proc newOpCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ[0])
   result.add(newSymNode(op))
   result.add x
-
-proc destructorCall(g: ModuleGraph; op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ[0])
-  result.add(newSymNode(op))
-  result.add genAddr(g, x)
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
@@ -313,10 +352,10 @@ proc setLenStrCall(g: ModuleGraph; x, y: PNode): PNode =
   result = genBuiltin(g, mSetLengthStr, "setLen", x) # genAddr(g, x))
   result.add lenCall
 
-proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode; m: TMagic; ms: string): PNode =
+proc setLenSeqCall(c: var TLiftCtx; t: PType; x, y: PNode): PNode =
   let lenCall = genBuiltin(c.g, mLengthSeq, "len", y)
   lenCall.typ = getSysType(c.g, x.info, tyInt)
-  var op = getSysMagic(c.g, x.info, ms, m)
+  var op = getSysMagic(c.g, x.info, "setLen", mSetLengthSeq)
   op = instantiateGeneric(c, op, t, t)
   result = newTree(nkCall, newSymNode(op, x.info), x, lenCall)
 
@@ -333,14 +372,12 @@ proc fillSeqOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case c.kind
   of attachedAsgn, attachedDeepCopy:
     # we generate:
-    # ensureLen(dest, y.len)
+    # setLen(dest, y.len)
     # var i = 0
     # while i < y.len: dest[i] = y[i]; inc(i)
-    # shrink(dest, y.len)
     # This is usually more efficient than a destroy/create pair.
-    body.add setLenSeqCall(c, t, x, y, mEnsureSeqLen, "ensureLen")
+    body.add setLenSeqCall(c, t, x, y)
     forallElements(c, t, body, x, y)
-    body.add setLenSeqCall(c, t, x, y, mShrinkSeq, "shrink")
   of attachedSink:
     let moveCall = genBuiltin(c.g, mMove, "move", x)
     moveCall.add y

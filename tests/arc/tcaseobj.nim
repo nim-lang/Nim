@@ -1,10 +1,13 @@
 discard """
-  cmd: "nim c --gc:arc $file"
+  valgrind: true
+  cmd: "nim c --gc:arc -d:useMalloc $file"
   output: '''myobj destroyed
 myobj destroyed
 myobj destroyed
 A
 B
+begin
+end
 myobj destroyed
 '''
 """
@@ -111,7 +114,7 @@ proc charSet*(s: set[char]): Peg =
 proc len(a: Peg): int {.inline.} = return a.sons.len
 proc myadd(d: var Peg, s: Peg) {.inline.} = add(d.sons, s)
 
-proc sequence*(a: array[2, Peg]): Peg =
+proc sequence*(a: openArray[Peg]): Peg =
   result = Peg(kind: pkSequence, sons: @[])
   when false:
     #works too:
@@ -122,6 +125,8 @@ proc sequence*(a: array[2, Peg]): Peg =
     #result.sons.add(x)
     # fails:
     result.myadd x
+  if result.len == 1:
+    result = result.sons[0] # this must not move!
 
 when true:
   # bug #12957
@@ -132,3 +137,10 @@ when true:
               charSet({'a'..'z', 'A'..'Z', '0'..'9', '_'})])
     echo "B"
   p()
+
+  proc testSubObjAssignment =
+    echo "begin"
+    # There must be extactly one element in the array constructor!
+    let x = sequence([charSet({'a'..'z', 'A'..'Z', '_'})])
+    echo "end"
+  testSubObjAssignment()
