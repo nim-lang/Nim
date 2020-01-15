@@ -1069,19 +1069,17 @@ proc writeOutput*(d: PDoc, useWarning = false) =
   else:
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
-    let dir = outfile.`$`.parentDir
-    createDir(dir)
+    createDir(outfile.splitFile.dir)
+    d.conf.outFile = outfile.extractFilename.RelativeFile
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
-    else:
-      if not d.wroteCss:
-        let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-        let cssDest = $d.conf.outDir / "nimdoc.out.css"
-          # renamed to make it easier to use with gitignore in user's repos
-        copyFile(cssSource, cssDest)
-        d.wroteCss = true
-    d.conf.outFile = outfile.extractFilename.RelativeFile
+    elif not d.wroteCss:
+      let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
+      let cssDest = $d.conf.outDir / "nimdoc.out.css"
+        # renamed to make it easier to use with gitignore in user's repos
+      copyFile(cssSource, cssDest)
+      d.wroteCss = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
