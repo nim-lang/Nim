@@ -16,6 +16,8 @@
 import modulegraphs, lineinfos, idents, ast, renderer, semdata,
   sighashes, lowerings, options, types, msgs, magicsys, tables
 
+from trees import isCaseObj
+
 type
   TLiftCtx = object
     g: ModuleGraph
@@ -62,28 +64,45 @@ proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
     body.add newAsgnStmt(x, y)
 
-proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
+proc genAddr(g: ModuleGraph; x: PNode): PNode =
+  if x.kind == nkHiddenDeref:
+    checkSonsLen(x, 1, g.config)
+    result = x[0]
+  else:
+    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ))
+    result.add x
+
+proc destructorCall(g: ModuleGraph; op: PSym; x: PNode): PNode =
+  result = newNodeIT(nkCall, x.info, op.typ[0])
+  result.add(newSymNode(op))
+  result.add genAddr(g, x)
+
+proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) =
   case n.kind
   of nkSym:
     let f = n.sym
     let b = if c.kind == attachedTrace: y else: y.dotField(f)
-    if sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
-        c.g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
+    if (sfCursor in f.flags and f.typ.skipTypes(abstractInst).kind in {tyRef, tyProc} and
+        c.g.config.selectedGC in {gcArc, gcOrc, gcHooks}) or
+        enforceDefaultOp:
       defaultOp(c, f.typ, body, x.dotField(f), b)
     else:
       fillBody(c, f.typ, body, x.dotField(f), b)
   of nkNilLit: discard
   of nkRecCase:
-    if c.kind in {attachedSink, attachedAsgn, attachedDeepCopy}:
+    # XXX This is only correct for 'attachedSink'!
+    var localEnforceDefaultOp = enforceDefaultOp
+    if c.kind == attachedSink:
       ## the value needs to be destroyed before we assign the selector
       ## or the value is lost
       let prevKind = c.kind
       c.kind = attachedDestructor
-      fillBodyObj(c, n, body, x, y)
+      fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
       c.kind = prevKind
+      localEnforceDefaultOp = true
 
     # copy the selector:
-    fillBodyObj(c, n[0], body, x, y)
+    fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
     # we need to generate a case statement:
     var caseStmt = newNodeI(nkCaseStmt, c.info)
     # XXX generate 'if' that checks same branches
@@ -96,28 +115,69 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode) =
       var branch = copyTree(n[i])
       branch[^1] = newNodeI(nkStmtList, c.info)
 
-      fillBodyObj(c, n[i].lastSon, branch[^1], x, y)
+      fillBodyObj(c, n[i].lastSon, branch[^1], x, y,
+                  enforceDefaultOp = localEnforceDefaultOp)
       if branch[^1].len == 0: inc emptyBranches
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
   of nkRecList:
-    for t in items(n): fillBodyObj(c, t, body, x, y)
+    for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
   else:
     illFormedAstLocal(n, c.g.config)
 
-proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
+proc fillBodyObjTImpl(c: var TLiftCtx; t: PType, body, x, y: PNode) =
   if t.len > 0 and t[0] != nil:
-    fillBodyObjT(c, skipTypes(t[0], abstractPtrs), body, x, y)
-  fillBodyObj(c, t.n, body, x, y)
+    fillBodyObjTImpl(c, skipTypes(t[0], abstractPtrs), body, x, y)
+  fillBodyObj(c, t.n, body, x, y, enforceDefaultOp = false)
 
-proc genAddr(g: ModuleGraph; x: PNode): PNode =
-  if x.kind == nkHiddenDeref:
-    checkSonsLen(x, 1, g.config)
-    result = x[0]
+proc fillBodyObjT(c: var TLiftCtx; t: PType, body, x, y: PNode) =
+  var hasCase = isCaseObj(t.n)
+  var obj = t
+  while obj.len > 0 and obj[0] != nil:
+    obj = skipTypes(obj[0], abstractPtrs)
+    hasCase = hasCase or isCaseObj(obj.n)
+
+  if hasCase and c.kind in {attachedAsgn, attachedDeepCopy}:
+    # assignment for case objects is complex, we do:
+    # =destroy(dest)
+    # wasMoved(dest)
+    # for every field:
+    #   `=` dest.field, src.field
+    # ^ this is what we used to do, but for 'result = result.sons[0]' it
+    # destroys 'result' too early.
+    # So this is what we really need to do:
+    # let blob {.cursor.} = dest # remembers the old dest.kind
+    # wasMoved(dest)
+    # dest.kind = src.kind
+    # for every field (dependent on dest.kind):
+    #   `=` dest.field, src.field
+    # =destroy(blob)
+    var temp = newSym(skTemp, getIdent(c.g.cache, lowerings.genPrefix), c.fn, c.info)
+    temp.typ = x.typ
+    incl(temp.flags, sfFromGeneric)
+    var v = newNodeI(nkVarSection, c.info)
+    let blob = newSymNode(temp)
+    v.addVar(blob, x)
+    body.add v
+    #body.add newAsgnStmt(blob, x)
+
+    var wasMovedCall = newNodeI(nkCall, c.info)
+    wasMovedCall.add(newSymNode(createMagic(c.g, "wasMoved", mWasMoved)))
+    wasMovedCall.add x # mWasMoved does not take the address
+    body.add wasMovedCall
+
+    fillBodyObjTImpl(c, t, body, x, y)
+    when false:
+      # does not work yet due to phase-ordering problems:
+      assert t.destructor != nil
+      body.add destructorCall(c.g, t.destructor, blob)
+    let prevKind = c.kind
+    c.kind = attachedDestructor
+    fillBodyObjTImpl(c, t, body, blob, y)
+    c.kind = prevKind
   else:
-    result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ))
-    result.add x
+    fillBodyObjTImpl(c, t, body, x, y)
 
 proc newHookCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
   #if sfError in op.flags:
@@ -135,11 +195,6 @@ proc newOpCall(op: PSym; x: PNode): PNode =
   result = newNodeIT(nkCall, x.info, op.typ[0])
   result.add(newSymNode(op))
   result.add x
-
-proc destructorCall(g: ModuleGraph; op: PSym; x: PNode): PNode =
-  result = newNodeIT(nkCall, x.info, op.typ[0])
-  result.add(newSymNode(op))
-  result.add genAddr(g, x)
 
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))

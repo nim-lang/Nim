@@ -597,7 +597,7 @@ proc genUse(c: var Con; orig: PNode) =
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
 
-proc aliases(obj, field: PNode): bool =
+proc aliases*(obj, field: PNode): bool =
   var n = field
   var obj = obj
   while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
@@ -646,8 +646,14 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   while true:
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr:
+       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
       n = n[0]
+    of nkBracketExpr:
+      # in a[i] the 'i' must be known
+      if n.len > 1 and n[1].kind in {nkCharLit..nkUInt64Lit}:
+        n = n[0]
+      else:
+        return false
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.
