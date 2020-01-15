@@ -1995,6 +1995,87 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
+iterator walkDirErr*(dir: string; relative=false):
+                    tuple[kind: PathComponent, path: string, error: OSErrorCode]
+                    {.tags: [ReadDirEffect].} =
+  ## The same as `walkDir iterator <#walkDir.i,string>`_ but with full error
+  ## checking: when an error at getting information about some path happened
+  ## then yields the path and the error code (`kind` may be wrong in this case).
+  ##
+  ## .. code-block:: Nim
+  ##     for kind, path, error in walkDirErr("dirA"):
+  ##       if error == OSErrorCode(0):
+  ##         echo path & " of kind " & $kind
+  ##       else:
+  ##         echo path & " GET INFO FAILED: " & osErrorMsg(error)
+
+  when nimvm:
+    for k, v in items(staticWalkDir(dir, relative)):
+      yield (k, v, osLastError())
+  else:
+    when weirdTarget:
+      for k, v in items(staticWalkDir(dir, relative)):
+        yield (k, v, osLastError())
+    elif defined(windows):
+      var f: WIN32_FIND_DATA
+      var h = findFirstFile(dir / "*", f)
+      if h == -1:
+        yield (pcFile, dir, osLastError())
+      else:
+        defer: findClose(h)
+        while true:
+          var k = pcFile
+          if not skipFindData(f):
+            if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
+              k = pcDir
+            if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
+              k = succ(k)
+            let xx = if relative: extractFilename(getFilename(f))
+                     else: dir / extractFilename(getFilename(f))
+            yield (k, xx, OSErrorCode(0))
+          if findNextFile(h, f) == 0'i32:
+            let errCode = getLastError()
+            if errCode == ERROR_NO_MORE_FILES: break
+            else: raiseOSError(errCode.OSErrorCode)
+    else:
+      var d = opendir(dir)
+      if d == nil:
+        yield(pcFile, dir, osLastError())
+      else:
+        defer: discard closedir(d)
+        while true:
+          var x = readdir(d)
+          if x == nil: break
+          when defined(nimNoArrayToCstringConversion):
+            var y = $cstring(addr x.d_name)
+          else:
+            var y = $x.d_name.cstring
+          if y != "." and y != "..":
+            var s: Stat
+            let path = dir / y
+            if not relative:
+              y = path
+            var k = pcFile
+
+            when defined(linux) or defined(macosx) or
+                 defined(bsd) or defined(genode) or defined(nintendoswitch):
+              if x.d_type != DT_UNKNOWN:
+                if x.d_type == DT_DIR: k = pcDir
+                errno = 0
+                if x.d_type == DT_LNK:
+                  if dirExists(path): k = pcLinkToDir
+                  else: k = pcLinkToFile
+                yield (k, y, osLastError())  # check error in dirExists
+                continue
+
+            errno = 0
+            if lstat(path, s) < 0'i32: break
+            if S_ISDIR(s.st_mode):
+              k = pcDir
+            elif S_ISLNK(s.st_mode):
+              k = getSymlinkFileKind(path)
+            yield (k, y, osLastError())  # check error in getSymlinkFileKind
+
 iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
@@ -2020,72 +2101,19 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
   ##
+  ## Error checking is minimal and aimed at dropping: if `dir` is not an open
+  ## directory the iterator yields nothing; all closed symlinks inside `dir`
+  ## are silently omitted.
+  ##
   ## See also:
+  ## * `walkDirErr iterator <#walkDirErr.i,string>`_
   ## * `walkPattern iterator <#walkPattern.i,string>`_
   ## * `walkFiles iterator <#walkFiles.i,string>`_
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
-
-  when nimvm:
-    for k, v in items(staticWalkDir(dir, relative)):
-      yield (k, v)
-  else:
-    when weirdTarget:
-      for k, v in items(staticWalkDir(dir, relative)):
-        yield (k, v)
-    elif defined(windows):
-      var f: WIN32_FIND_DATA
-      var h = findFirstFile(dir / "*", f)
-      if h != -1:
-        defer: findClose(h)
-        while true:
-          var k = pcFile
-          if not skipFindData(f):
-            if (f.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
-              k = pcDir
-            if (f.dwFileAttributes and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32:
-              k = succ(k)
-            let xx = if relative: extractFilename(getFilename(f))
-                     else: dir / extractFilename(getFilename(f))
-            yield (k, xx)
-          if findNextFile(h, f) == 0'i32:
-            let errCode = getLastError()
-            if errCode == ERROR_NO_MORE_FILES: break
-            else: raiseOSError(errCode.OSErrorCode)
-    else:
-      var d = opendir(dir)
-      if d != nil:
-        defer: discard closedir(d)
-        while true:
-          var x = readdir(d)
-          if x == nil: break
-          when defined(nimNoArrayToCstringConversion):
-            var y = $cstring(addr x.d_name)
-          else:
-            var y = $x.d_name.cstring
-          if y != "." and y != "..":
-            var s: Stat
-            let path = dir / y
-            if not relative:
-              y = path
-            var k = pcFile
-
-            when defined(linux) or defined(macosx) or
-                 defined(bsd) or defined(genode) or defined(nintendoswitch):
-              if x.d_type != DT_UNKNOWN:
-                if x.d_type == DT_DIR: k = pcDir
-                if x.d_type == DT_LNK:
-                  if dirExists(path): k = pcLinkToDir
-                  else: k = pcLinkToFile
-                yield (k, y)
-                continue
-
-            if lstat(path, s) < 0'i32: break
-            if S_ISDIR(s.st_mode):
-              k = pcDir
-            elif S_ISLNK(s.st_mode):
-              k = getSymlinkFileKind(path)
-            yield (k, y)
+  for kind, path, error in walkDirErr(dir, relative):
+    if error == OSErrorCode(0):
+      yield (kind, path)
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
