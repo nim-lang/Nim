@@ -296,15 +296,5 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
     if bumpPointer-size == cast[int](p):
       dec bumpPointer, size
 
-elif hostOS == "any":
-  proc osAllocPages(size: int): pointer {.inline.} =
-    result = c_malloc(size.csize_t)
-
-  proc osTryAllocPages(size: int): pointer {.inline.} =
-    result = c_malloc(size.csize_t)
-
-  proc osDeallocPages(p: pointer, size: int) {.inline.} =
-    c_free(p)
-
 else:
   {.error: "Port memory manager to your platform".}
