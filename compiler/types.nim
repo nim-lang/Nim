@@ -366,8 +366,8 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   else: discard
 
 proc isFinal*(t: PType): bool =
-  var t = t.skipTypes(abstractInst)
-  result = t.kind != tyObject or tfFinal in t.flags
+  let t = t.skipTypes(abstractInst)
+  result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()
