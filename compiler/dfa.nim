@@ -37,13 +37,10 @@ type
   InstrKind* = enum
     goto, fork, join, def, use
   Instr* = object
-    n*: PNode
+    n*: PNode # contains the def/use location.
     case kind*: InstrKind
-    of def, use: sym*: PSym # 'sym' can also be 'nil' and
-                            # then 'n' contains the def/use location.
-                            # This is used so that we can track object
-                            # and tuple field accesses precisely.
     of goto, fork, join: dest*: int
+    else: discard
 
   ControlFlowGraph* = seq[Instr]
 
@@ -595,7 +592,7 @@ proc genUse(c: var Con; orig: PNode) =
       n = n[1]
     else: break
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
+    c.code.add Instr(n: orig, kind: use)
 
 proc aliases*(obj, field: PNode): bool =
   var n = field
@@ -605,41 +602,24 @@ proc aliases*(obj, field: PNode): bool =
   while true:
     if sameTrees(obj, n): return true
     case n.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr,
-       nkHiddenDeref, nkDerefExpr:
+    of PathKinds0, PathKinds1:
       n = n[0]
     else:
       break
-  return false
 
 proc useInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == use
-  if ins.sym != nil and loc.kind == nkSym:
-    result = ins.sym == loc.sym
-  else:
-    result = ins.n == loc or sameTrees(ins.n, loc)
-  if not result:
-    # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-    # def x.f; question: does it affect the full 'x'? No.
-    # def x; question: does it affect the 'x.f'? Yes.
-    # use x.f;  question: does it affect the full 'x'? No.
-    # use x; question does it affect 'x.f'? Yes.
-    result = aliases(ins.n, loc) or aliases(loc, ins.n)
+  sameTrees(ins.n, loc) or
+  ins.n.aliases(loc) or loc.aliases(ins.n) # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  # use x.f;  question: does it affect the full 'x'? No.
+  # use x; question does it affect 'x.f'? Yes.
 
 proc defInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == def
-  if ins.sym != nil and loc.kind == nkSym:
-    result = ins.sym == loc.sym
-  else:
-    result = ins.n == loc or sameTrees(ins.n, loc)
-  if not result:
-    # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-    # def x.f; question: does it affect the full 'x'? No.
-    # def x; question: does it affect the 'x.f'? Yes.
-    # use x.f;  question: does it affect the full 'x'? No.
-    # use x; question does it affect 'x.f'? Yes.
-    result = aliases(ins.n, loc)
+  sameTrees(ins.n, loc) or
+  ins.n.aliases(loc) # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  # def x.f; question: does it affect the full 'x'? No.
+  # def x; question: does it affect the 'x.f'? Yes.
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
@@ -695,9 +675,9 @@ proc genDef(c: var Con; n: PNode) =
       break
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: n, kind: def, sym: n.sym)
+    c.code.add Instr(n: n, kind: def)
   elif isAnalysableFieldAccess(n, c.owner):
-    c.code.add Instr(n: n, kind: def, sym: nil)
+    c.code.add Instr(n: n, kind: def)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
