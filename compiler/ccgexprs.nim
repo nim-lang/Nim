@@ -2811,15 +2811,17 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     
     result.add "{"
     var countB = 0
+    let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
-    if lastSon(obj[selectedBranch]).kind != nkSym:
+    # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
+    if  b.kind == nkRecList and b.len > 0:
       result.add "._i" & $selectedBranch & " = {"
-      getNullValueAux(p, t, lastSon(obj[selectedBranch]), constOrNil, result, countB, isConst, info)
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
-    else:
+    elif b.kind == nkSym:
       result.add "." & lastSon(obj[selectedBranch]).sym.loc.r & " = "
-      getNullValueAux(p, t, lastSon(obj[selectedBranch]), constOrNil, result, countB, isConst, info)
-      result.add "}"
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
+    result.add "}"
     
   of nkSym:
     if count > 0: result.add ", "

@@ -4,7 +4,7 @@ discard """
 """
 
 when defined(cpp):
-  {.passC: "-std=gnu++17".}
+  {.passC: "-std=gnu++2a".}
 
 type
   TokenKind* = enum
@@ -24,6 +24,23 @@ type
     else: discard
     pos*: Natural
 
+
+  Token2* = object
+    case kind*: TokenKind
+    of tkString: strVal*: string
+    of tkNumber: numVal*: float
+    of tkInt64, tkColon..tkComma:
+      str1*: array[2, string]
+      float: float
+    else: discard
+    pos*: Natural
+
+  Token3* = object
+    case kind*: TokenKind
+    of tkNumber: numVal*: float
+    of tkInt64, tkComma..tkString: ff: seq[float]
+    else: str1*: string
+  
   BaseLexer* = object of RootObj
     input*: string
     pos*: Natural
@@ -39,6 +56,8 @@ type
   Parser[T: Lexer] = object
     l: T
     tok: Token
+    tok2: Token2
+    tok3: Token3
     allowTrailingComma: bool
     allowIdentifierObjectKey: bool
 
