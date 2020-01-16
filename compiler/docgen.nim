@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, nimconf
+  pathutils, trees
 
 const
   exportSection = skField
