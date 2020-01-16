@@ -2204,8 +2204,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
-      else:
-        rope(dotExpr[1].sym.name.s)
+      else: dotExpr[1].sym.loc.r
     putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
