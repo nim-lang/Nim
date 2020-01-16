@@ -55,16 +55,14 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   strTableAdd(packSym.tab, result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
+  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  new(result)
-  result.id = -1             # for better error checking
-  result.kind = skModule
-  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-  result.name = getIdent(graph.cache, splitFile(filename).name)
+  result = PSym(kind: skModule, id: -1, # for better error checking
+                name: getIdent(graph.cache, splitFile(filename).name),
+                info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
-  result.info = newLineInfo(fileIdx, 1, 1)
   partialInitModule(result, graph, fileIdx, filename)
 
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =

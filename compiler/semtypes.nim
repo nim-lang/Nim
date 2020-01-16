@@ -381,7 +381,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         if result.typ.kind == tyGenericParam and result.typ.len == 0 and
            tfWildcard in result.typ.flags:
           # collapse the wild-card param to a type
-          result.kind = skType
+          result.transitionGenericParamToType()
           result.typ.flags.excl tfWildcard
           return
         else:
@@ -405,7 +405,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         reset(n[])
         when defined(useNodeIds):
           n.id = oldId
-        n.kind = nkSym
+        n.transitionNoneToSym()
         n.sym = result
         n.info = oldInfo
         n.typ = result.typ
@@ -1127,7 +1127,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
-      paramType.sym.kind = skType
+      paramType.sym.transitionGenericParamToType()
 
   else: discard
 
@@ -1326,7 +1326,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         result.flags.incl tfUnresolved
 
       if tfWildcard in n.sym.typ.flags:
-        n.sym.kind = skType
+        n.sym.transitionGenericParamToType()
         n.sym.typ.flags.excl tfWildcard
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
@@ -1696,7 +1696,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
-    if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
+    if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
     result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2, c.config)

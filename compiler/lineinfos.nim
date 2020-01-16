@@ -236,11 +236,7 @@ proc raiseRecoverableError*(msg: string) {.noinline.} =
 
 const
   InvalidFileIdx* = FileIndex(-1)
-
-proc unknownLineInfo*(): TLineInfo =
-  result.line = uint16(0)
-  result.col = int16(-1)
-  result.fileIndex = InvalidFileIdx
+  unknownLineInfo* = TLineInfo(line: 0, col: -1, fileIndex: InvalidFileIdx)
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three
@@ -267,7 +263,7 @@ type
 
 proc initMsgConfig*(): MsgConfig =
   result.msgContext = @[]
-  result.lastError = unknownLineInfo()
+  result.lastError = unknownLineInfo
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}

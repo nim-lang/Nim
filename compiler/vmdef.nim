@@ -260,7 +260,7 @@ proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
     prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
-    comesFromHeuristic: unknownLineInfo(), callbacks: @[], errorFlag: "",
+    comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =

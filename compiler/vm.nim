@@ -108,12 +108,12 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc myreset(n: var TFullReg) = reset(n)
+proc ensureKind(n: var TFullReg, kind: TRegisterKind) =
+  if n.kind != kind:
+    n = TFullReg(kind: kind)
 
 template ensureKind(k: untyped) {.dirty.} =
-  if regs[ra].kind != k:
-    myreset(regs[ra])
-    regs[ra].kind = k
+  ensureKind(regs[ra], k)
 
 template decodeB(k: untyped) {.dirty.} =
   let rb = instr.regB
@@ -146,10 +146,7 @@ proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: b
     if isAssign:
       cast[ptr T](address)[] = T(r.field)
     else:
-      # ensureKind(rkind)
-      if r.kind != rkind:
-        myreset(r)
-        r.kind = rkind
+      r.ensureKind(rkind)
       let val = cast[ptr T](address)[]
       when T is SomeInteger:
         r.field = BiggestInt(val)
@@ -180,8 +177,7 @@ proc createStrKeepNode(x: var TFullReg; keepNode=true) =
   elif x.node.kind == nkNilLit and keepNode:
     when defined(useNodeIds):
       let id = x.node.id
-    system.reset(x.node[])
-    x.node.kind = nkStrLit
+    x.node[] = TNode(kind: nkStrLit)
     when defined(useNodeIds):
       x.node.id = id
   elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
@@ -201,9 +197,7 @@ template createSet(x) =
   x.node = newNode(nkCurly)
 
 proc moveConst(x: var TFullReg, y: TFullReg) =
-  if x.kind != y.kind:
-    myreset(x)
-    x.kind = y.kind
+  x.ensureKind(y.kind)
   case x.kind
   of rkNone: discard
   of rkInt: x.intVal = y.intVal
@@ -239,9 +233,7 @@ proc copyValue(src: PNode): PNode =
       result[i] = copyValue(src[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
-  if x.kind != y.kind:
-    myreset(x)
-    x.kind = y.kind
+  x.ensureKind(y.kind)
   case x.kind
   of rkNone: discard
   of rkInt: x.intVal = y.intVal
@@ -251,9 +243,7 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
 proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
-  if x.kind != y.kind:
-    myreset(x)
-    x.kind = y.kind
+  x.ensureKind(y.kind)
   case x.kind
   of rkNone: discard
   of rkInt: x.intVal = y.intVal
@@ -267,8 +257,7 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNone: discard
   of rkInt:
     if n.kind == nkNilLit:
-      n[].reset
-      n.kind = nkIntLit # ideally, `nkPtrLit`
+      n[] = TNode(kind: nkIntLit) # ideally, `nkPtrLit`
     n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
   of rkNode: n = copyValue(x.node)
@@ -276,26 +265,21 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNodeAddr: n = x.nodeAddr[]
 
 proc putIntoReg(dest: var TFullReg; n: PNode) =
-  template funInt() =
-    dest.kind = rkInt
-    dest.intVal = n.intVal
   case n.kind
   of nkStrLit..nkTripleStrLit:
-    dest.kind = rkNode
-    createStr(dest)
-    dest.node.strVal = n.strVal
+    dest = TFullReg(kind: rkNode, node: newStrNode(nkStrLit, n.strVal))
   of nkIntLit: # use `nkPtrLit` once this is added
     if dest.kind == rkNode: dest.node = n
     elif n.typ != nil and n.typ.kind in PtrLikeKinds:
       dest = TFullReg(kind: rkNode, node: n)
-    else: funInt()
-  of {nkCharLit..nkUInt64Lit} - {nkIntLit}: funInt()
+    else:
+      dest = TFullReg(kind: rkInt, intVal: n.intVal)
+  of {nkCharLit..nkUInt64Lit} - {nkIntLit}:
+    dest = TFullReg(kind: rkInt, intVal: n.intVal)
   of nkFloatLit..nkFloat128Lit:
-    dest.kind = rkFloat
-    dest.floatVal = n.floatVal
+    dest = TFullReg(kind: rkFloat, floatVal: n.floatVal)
   else:
-    dest.kind = rkNode
-    dest.node = n
+    dest = TFullReg(kind: rkNode, node: n)
 
 proc regToNode(x: TFullReg): PNode =
   case x.kind
@@ -413,9 +397,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
 
 proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
   if desttyp.kind == tyString:
-    if dest.kind != rkNode:
-      myreset(dest)
-      dest.kind = rkNode
+    dest.ensureKind(rkNode)
     dest.node = newNode(nkStrLit)
     let styp = srctyp.skipTypes(abstractRange)
     case styp.kind
@@ -460,8 +442,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
   else:
     case skipTypes(desttyp, abstractVarRange).kind
     of tyInt..tyInt64:
-      if dest.kind != rkInt:
-        myreset(dest); dest.kind = rkInt
+      dest.ensureKind(rkInt)
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
@@ -470,8 +451,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       if toInt128(dest.intVal) < firstOrd(c.config, desttyp) or toInt128(dest.intVal) > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
-      if dest.kind != rkInt:
-        myreset(dest); dest.kind = rkInt
+      dest.ensureKind(rkInt)
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
@@ -484,8 +464,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
     of tyFloat..tyFloat64:
-      if dest.kind != rkFloat:
-        myreset(dest); dest.kind = rkFloat
+      dest.ensureKind(rkFloat)
       case skipTypes(srctyp, abstractRange).kind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
         dest.floatVal = toBiggestFloat(src.intVal)
@@ -1206,8 +1185,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var rcAddr = addr(regs[rc])
       if rcAddr.kind == rkRegisterAddr: rcAddr = rcAddr.regAddr
       elif regs[rc].kind != rkFloat:
-        myreset(regs[rc])
-        regs[rc].kind = rkFloat
+        regs[rc] = TFullReg(kind: rkFloat)
       regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal,
                                           rcAddr.floatVal, regs[rd].intVal.int)
     of opcRangeChck:
@@ -1267,8 +1245,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
-          newFrame.slots[rc].kind = rkNode
-          newFrame.slots[rc].node = regs[rb].node[1]
+          newFrame.slots[rc] = TFullReg(kind: rkNode, node: regs[rb].node[1])
         tos = newFrame
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
@@ -1432,7 +1409,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess
       let cnst = c.constants[rb]
       if fitsRegister(cnst.typ):
-        myreset(regs[ra])
+        reset(regs[ra])
         putIntoReg(regs[ra], cnst)
       else:
         ensureKind(rkNode)
@@ -2259,13 +2236,12 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   of tyStatic:
     putIntoReg(result, prepareVMValue(x))
   else:
-    result.kind = rkNode
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
     n = n.canonValue
     n.flags.incl nfIsRef
     n.typ = x.typ
-    result.node = n
+    result = TFullReg(kind: rkNode, node: n)
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
@@ -2317,8 +2293,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   #InternalAssert tos.slots.len >= L
 
   # return value:
-  tos.slots[0].kind = rkNode
-  tos.slots[0].node = newNodeI(nkEmpty, n.info)
+  tos.slots[0] = TFullReg(kind: rkNode, node: newNodeI(nkEmpty, n.info))
 
   # setup parameters:
   for i in 1..<sym.typ.len:
