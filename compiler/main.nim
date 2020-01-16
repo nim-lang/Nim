@@ -305,6 +305,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "prefixdir", val: %conf.getPrefixDir().string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
