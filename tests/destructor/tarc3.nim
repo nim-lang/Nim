@@ -1,9 +1,10 @@
 
 discard """
-  cmd: '''nim cpp --gc:arc $file'''
+  cmd: '''nim c --gc:arc $file'''
 """
 
-{.passC: "-std=gnu++17".}
+when defined(cpp):
+  {.passC: "-std=gnu++17".}
 
 type
   TokenKind* = enum
