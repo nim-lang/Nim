@@ -558,7 +558,7 @@ proc genComputedGoto(p: BProc; n: PNode) =
       let it = n[j]
       if it.kind in {nkLetSection, nkVarSection}:
         let asgn = copyNode(it)
-        asgn.kind = nkAsgn
+        asgn.transitionSonsKind(nkAsgn)
         asgn.sons.setLen 2
         for sym, value in it.fieldValuePairs:
           if value.kind != nkEmpty:

@@ -147,16 +147,16 @@ when isMainModule:
 
   let conf = newConfigRef()
   var rr = newStringTable()
-  addPackage conf, rr, "irc-#a111", unknownLineInfo()
-  addPackage conf, rr, "irc-#head", unknownLineInfo()
-  addPackage conf, rr, "irc-0.1.0", unknownLineInfo()
-  #addPackage conf, rr, "irc", unknownLineInfo()
-  #addPackage conf, rr, "another", unknownLineInfo()
-  addPackage conf, rr, "another-0.1", unknownLineInfo()
+  addPackage conf, rr, "irc-#a111", unknownLineInfo
+  addPackage conf, rr, "irc-#head", unknownLineInfo
+  addPackage conf, rr, "irc-0.1.0", unknownLineInfo
+  #addPackage conf, rr, "irc", unknownLineInfo
+  #addPackage conf, rr, "another", unknownLineInfo
+  addPackage conf, rr, "another-0.1", unknownLineInfo
 
-  addPackage conf, rr, "ab-0.1.3", unknownLineInfo()
-  addPackage conf, rr, "ab-0.1", unknownLineInfo()
-  addPackage conf, rr, "justone-1.0", unknownLineInfo()
+  addPackage conf, rr, "ab-0.1.3", unknownLineInfo
+  addPackage conf, rr, "ab-0.1", unknownLineInfo
+  addPackage conf, rr, "justone-1.0", unknownLineInfo
 
   doAssert toSeq(rr.chosen) ==
     @["irc-#head", "another-0.1", "ab-0.1.3", "justone-1.0"]

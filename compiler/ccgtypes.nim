@@ -696,7 +696,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     var etB = et.skipTypes(abstractInst)
     if mapType(m.config, t) == ctPtrToArray:
       if etB.kind == tySet:
-        et = getSysType(m.g.graph, unknownLineInfo(), tyUInt8)
+        et = getSysType(m.g.graph, unknownLineInfo, tyUInt8)
       else:
         et = elemType(etB)
       etB = et.skipTypes(abstractInst)

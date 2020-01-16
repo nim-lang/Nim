@@ -1714,7 +1714,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result == isGeneric:
         var concrete = a
         if tfWildcard in a.flags:
-          a.sym.kind = skType
+          a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         else:
           concrete = concreteType(c, a, f)
@@ -1943,7 +1943,7 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil
-    if result.kind == nkCall: result.kind = nkHiddenCallConv
+    if result.kind == nkCall: result.transitionSonsKind(nkHiddenCallConv)
     inc(m.convMatches)
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
@@ -2602,7 +2602,7 @@ when not declared(tests):
   template tests(s: untyped) = discard
 
 tests:
-  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())
+  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, unknownLineInfo)
 
   proc `|` (t1, t2: PType): PType =
     result = newType(tyOr, dummyOwner)
@@ -2625,7 +2625,7 @@ tests:
   proc array(x: int, t: PType): PType =
     result = newType(tyArray, dummyOwner)
 
-    var n = newNodeI(nkRange, UnknownLineInfo())
+    var n = newNodeI(nkRange, unknownLineInfo)
     n.add newIntNode(nkIntLit, 0)
     n.add newIntNode(nkIntLit, x)
     let range = newType(tyRange, dummyOwner)
@@ -2643,14 +2643,14 @@ tests:
       number = int | float
 
     var TFoo = newType(tyObject, dummyOwner)
-    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, UnknownLineInfo())
+    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, unknownLineInfo)
 
     var T1 = newType(tyGenericParam, dummyOwner)
-    T1.sym = newSym(skType, getIdent"T1", dummyOwner, UnknownLineInfo())
+    T1.sym = newSym(skType, getIdent"T1", dummyOwner, unknownLineInfo)
     T1.sym.position = 0
 
     var T2 = newType(tyGenericParam, dummyOwner)
-    T2.sym = newSym(skType, getIdent"T2", dummyOwner, UnknownLineInfo())
+    T2.sym = newSym(skType, getIdent"T2", dummyOwner, unknownLineInfo)
     T2.sym.position = 1
 
     setup:
