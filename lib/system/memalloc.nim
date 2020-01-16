@@ -229,7 +229,7 @@ when hasAlloc:
     ## Returns the number of bytes that are owned by the process.
 
 
-when defined(JS):
+when defined(js):
   # Stubs:
   proc getOccupiedMem(): int = return -1
   proc getFreeMem(): int = return -1

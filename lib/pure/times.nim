@@ -196,7 +196,7 @@ import strutils, math, options
 
 include "system/inclrtl"
 
-when defined(JS):
+when defined(js):
   import jscore
 
   # This is really bad, but overflow checks are broken badly for
@@ -1070,7 +1070,7 @@ proc toAdjTime(dt: DateTime): Time =
   seconds.inc dt.second
   result = initTime(seconds, dt.nanosecond)
 
-when defined(JS):
+when defined(js):
   proc localZonedTimeFromTime(time: Time): ZonedTime =
     let jsDate = newDate(time.seconds * 1000)
     let offset = jsDate.getTimezoneOffset() * secondsInMin
@@ -1200,7 +1200,7 @@ proc local*(t: Time): DateTime =
 
 proc getTime*(): Time {.tags: [TimeEffect], benign.} =
   ## Gets the current time as a ``Time`` with up to nanosecond resolution.
-  when defined(JS):
+  when defined(js):
     let millis = newDate().getTime()
     let seconds = convert(Milliseconds, Seconds, millis)
     let nanos = convert(Milliseconds, Nanoseconds,
@@ -2498,7 +2498,7 @@ proc toTimeInterval*(time: Time): TimeInterval
   initTimeInterval(dt.nanosecond, 0, 0, dt.second, dt.minute, dt.hour,
     dt.monthday, 0, dt.month.ord - 1, dt.year)
 
-when not defined(JS):
+when not defined(js):
   type
     Clock {.importc: "clock_t".} = distinct int
 
@@ -2559,7 +2559,7 @@ when not defined(JS):
     else:
       {.error: "unknown OS".}
 
-when defined(JS):
+when defined(js):
   proc epochTime*(): float {.tags: [TimeEffect].} =
     newDate().getTime() / 1000
 
@@ -2664,7 +2664,7 @@ proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
         nanoseconds = 9)
   initDuration(nanoseconds = dur.nanosecond)
 
-when not defined(JS):
+when not defined(js):
   proc unixTimeToWinTime*(time: CTime): int64
       {.deprecated: "Use toWinTime instead".} =
     ## Converts a UNIX `Time` (``time_t``) to a Windows file time
@@ -2731,7 +2731,7 @@ proc getTimezone*(): int
   ##
   ## **Deprecated since v0.18.0:** use ``now().utcOffset`` to get the current
   ## utc offset (including DST).
-  when defined(JS):
+  when defined(js):
     return newDate().getTimezoneOffset() * 60
   elif defined(freebsd) or defined(netbsd) or defined(openbsd):
     # This is wrong since it will include DST offsets, but the behavior has

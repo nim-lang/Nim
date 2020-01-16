@@ -13,7 +13,7 @@ when hasAlloc:
       gcOptimizeTime,    ## optimize for speed
       gcOptimizeSpace    ## optimize for memory footprint
 
-when hasAlloc and not defined(JS) and not usesDestructors:
+when hasAlloc and not defined(js) and not usesDestructors:
   proc GC_disable*() {.rtl, inl, benign.}
     ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
     ## are needed to reactivate the GC.
@@ -58,7 +58,7 @@ when hasAlloc and not defined(JS) and not usesDestructors:
     ## Expands operating GC stack range to `theStackBottom`. Does nothing
       ## if current stack bottom is already lower than `theStackBottom`.
 
-when hasAlloc and defined(JS):
+when hasAlloc and defined(js):
   template GC_disable* =
     {.warning: "GC_disable is a no-op in JavaScript".}
 

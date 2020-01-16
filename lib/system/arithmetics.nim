@@ -105,7 +105,7 @@ when defined(nimNoZeroExtendMagic):
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int32](x)
 
-elif not defined(JS):
+elif not defined(js):
   proc ze*(x: int8): int {.magic: "Ze8ToI", noSideEffect, deprecated.}
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.

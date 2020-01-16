@@ -477,9 +477,9 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-const notJSnotNims = not defined(JS) and not defined(nimscript)
+const notJSnotNims = not defined(js) and not defined(nimscript)
 
-when not defined(JS) and not defined(nimSeqsV2):
+when not defined(js) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -520,7 +520,7 @@ type
 
 include "system/exceptions"
 
-when defined(JS) or defined(nimdoc):
+when defined(js) or defined(nimdoc):
   type
     JsRoot* = ref object of RootObj
       ## Root type of the JavaScript object hierarchy
@@ -625,7 +625,7 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ##   assert len(x) == 1
   discard
 
-when not defined(JS):
+when not defined(js):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## Creates a new sequence of type ``seq[T]`` with length ``len``.
     ##
@@ -1103,7 +1103,7 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(JS) and defined(nodejs) and not defined(nimscript):
+when defined(js) and defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
@@ -1145,7 +1145,7 @@ elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) =
     systemEnv.quit(errorcode)
 
-elif defined(JS) and defined(nodejs) and not defined(nimscript):
+elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
@@ -1237,7 +1237,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   when nimvm:
     defaultImpl()
   else:
-    when defined(JS):
+    when defined(js):
       {.emit: "`x`.splice(`i`, 1);".}
     else:
       defaultImpl()
@@ -1258,7 +1258,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   when nimvm:
     defaultImpl()
   else:
-    when defined(JS):
+    when defined(js):
       var it : T
       {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
@@ -1288,7 +1288,7 @@ type
     ## compiler supports. Currently this is ``float64``, but it is
     ## platform-dependent in general.
 
-when defined(JS):
+when defined(js):
   type BiggestUInt* = uint32
     ## is an alias for the biggest unsigned integer type the Nim compiler
     ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
@@ -1424,7 +1424,7 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ##   assert a == 9
   ##   assert b == 5
 
-when not defined(JS) and not defined(booting) and defined(nimTrMacros):
+when not defined(js) and not defined(booting) and defined(nimTrMacros):
   template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openArray[ref], a, b: int) =
     # Optimize swapping of array elements if they are refs. Default swap
     # implementation will cause unsureAsgnRef to be emitted which causes
@@ -1613,12 +1613,12 @@ when notJSnotNims:
 
 {.push stackTrace: off.}
 
-when not defined(JS) and hasThreadSupport and hostOS != "standalone":
+when not defined(js) and hasThreadSupport and hostOS != "standalone":
   const insideRLocksModule = false
   include "system/syslocks"
   include "system/threadlocalstorage"
 
-when not defined(JS) and defined(nimV2):
+when not defined(js) and defined(nimV2):
   type
     TNimNode {.compilerproc.} = object # to keep the code generator simple
     DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
@@ -1827,7 +1827,7 @@ type
     len*: int16         ## Length of the inspectable slots.
     calldepth*: int16   ## Used for max call depth checking.
 
-when defined(JS):
+when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
       if (`x` === null) { `x` = []; }
@@ -1920,7 +1920,7 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
 {.pop.}
 
 
-when not defined(JS):
+when not defined(js):
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
   proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
@@ -1943,7 +1943,7 @@ template likely*(val: bool): bool =
   when nimvm:
     val
   else:
-    when defined(JS):
+    when defined(js):
       val
     else:
       likelyProc(val)
@@ -1967,7 +1967,7 @@ template unlikely*(val: bool): bool =
   when nimvm:
     val
   else:
-    when defined(JS):
+    when defined(js):
       val
     else:
       unlikelyProc(val)
@@ -2003,7 +2003,7 @@ type
     fspEnd            ## Seek relative to end
 
 
-when not defined(JS):
+when not defined(js):
   {.push stackTrace: off, profiler: off.}
 
   when hasAlloc:
@@ -2034,7 +2034,7 @@ when not defined(JS):
   {.pop.}
 
 
-when not defined(JS):
+when not defined(js):
   # ugly hack, see the accompanying .pop for
   # the mysterious error message
   {.push stackTrace: off, profiler: off.}
@@ -2055,7 +2055,7 @@ when notJSnotNims:
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
 
-when not defined(JS):
+when not defined(js):
   proc cmp(x, y: string): int =
     when defined(nimscript):
       if x < y: result = -1
@@ -2087,7 +2087,7 @@ when not defined(JS):
       result = cstringArrayToSeq(a, L)
 
 
-when not defined(JS) and declared(alloc0) and declared(dealloc):
+when not defined(js) and declared(alloc0) and declared(dealloc):
   proc allocCStringArray*(a: openArray[string]): cstringArray =
     ## Creates a NULL terminated cstringArray from `a`. The result has to
     ## be freed with `deallocCStringArray` after it's not needed anymore.
@@ -2115,7 +2115,7 @@ when notJSnotNims:
       context: C_JmpBuf
     SafePoint = TSafePoint
 
-when not defined(JS):
+when not defined(js):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
@@ -2157,7 +2157,7 @@ when notJSnotNims:
   {.pop.}
 
 
-when not defined(JS):
+when not defined(js):
   # this is a hack: without this when statement, you would get:
   # Error: system module needs: nimGCvisit
   {.pop.} # stackTrace: off, profiler: off
@@ -2264,7 +2264,7 @@ when notJSnotNims:
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
 
-when defined(JS):
+when defined(js):
   when not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
@@ -2274,7 +2274,7 @@ when defined(JS):
       if x < y: return -1
       return 1
 
-when defined(JS) or defined(nimscript):
+when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
     result.add $x
 
@@ -2283,7 +2283,7 @@ when defined(JS) or defined(nimscript):
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
-  when defined(nimscript) or defined(JS) or (hostOS == "standalone"):
+  when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
     when nimvm:
@@ -2584,7 +2584,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ##
   ## This is only useful for optimization purposes.
   if s.len == 0: return
-  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
+  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -2593,7 +2593,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## perform deep copies of `s`.
   ##
   ## This is only useful for optimization purposes.
-  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
+  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     if s == nil:
       s = cast[PGenericSeq](newString(0))
@@ -2880,7 +2880,7 @@ proc substr*(s: string, first = 0): string =
 when defined(nimconfig):
   include "system/nimscript"
 
-when not defined(JS):
+when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
   when defined(nimToOpenArrayCString):

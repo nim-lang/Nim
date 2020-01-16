@@ -263,7 +263,7 @@ proc cumsum*[T](x: var openArray[T]) =
   for i in 1 ..< x.len: x[i] = x[i-1] + x[i]
 
 {.push noSideEffect.}
-when not defined(JS): # C
+when not defined(js): # C
   proc sqrt*(x: float32): float32 {.importc: "sqrtf", header: "<math.h>".}
   proc sqrt*(x: float64): float64 {.importc: "sqrt", header: "<math.h>".}
     ## Computes the square root of ``x``.
@@ -329,7 +329,7 @@ proc log*[T: SomeFloat](x, base: T): T =
   ##  echo log(8.0, -2.0) ## nan
   ln(x) / ln(base)
 
-when not defined(JS): # C
+when not defined(js): # C
   proc log10*(x: float32): float32 {.importc: "log10f", header: "<math.h>".}
   proc log10*(x: float64): float64 {.importc: "log10", header: "<math.h>".}
     ## Computes the common logarithm (base 10) of ``x``.
@@ -562,7 +562,7 @@ proc arccsch*[T: float32|float64](x: T): T = arcsinh(1.0 / x)
 
 const windowsCC89 = defined(windows) and defined(bcc)
 
-when not defined(JS): # C
+when not defined(js): # C
   proc hypot*(x, y: float32): float32 {.importc: "hypotf", header: "<math.h>".}
   proc hypot*(x, y: float64): float64 {.importc: "hypot", header: "<math.h>".}
     ## Computes the hypotenuse of a right-angle triangle with ``x`` and
@@ -851,7 +851,7 @@ proc floorMod*[T: SomeNumber](x, y: T): T =
   result = x mod y
   if (result > 0 and y < 0) or (result < 0 and y > 0): result += y
 
-when not defined(JS):
+when not defined(js):
   proc c_frexp*(x: float32, exponent: var int32): float32 {.
     importc: "frexp", header: "<math.h>".}
   proc c_frexp*(x: float64, exponent: var int32): float64 {.
@@ -1104,7 +1104,7 @@ proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
     result = lcm(result, x[i])
     inc(i)
 
-when isMainModule and not defined(JS) and not windowsCC89:
+when isMainModule and not defined(js) and not windowsCC89:
   # Check for no side effect annotation
   proc mySqrt(num: float): float {.noSideEffect.} =
     return sqrt(num)

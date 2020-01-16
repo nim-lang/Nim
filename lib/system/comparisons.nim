@@ -283,7 +283,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
       if x.len == 0 and y.len == 0:
         return true
   else:
-    when not defined(JS):
+    when not defined(js):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
         when defined(nimSeqsV2):
           result = cast[NimSeqV2[T]](x).p
