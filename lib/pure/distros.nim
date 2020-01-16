@@ -190,7 +190,7 @@ proc detectOsImpl(d: Distribution): bool =
       else:
         result = detectOsWithAllCmd(d)
     else:
-      result = detectOsWithAllCmd(d)
+      result = false
 
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
