@@ -3,7 +3,6 @@ is in separate files:
 
 * `arithmetics <arithmetics.html>`_
 * `assertions <assertions.html>`_
-* `comparisons <comparisons.html>`_
 * `dollars <dollars.html>`_
 * `exceptions <exceptions.html>`_
 * `io <io.html>`_

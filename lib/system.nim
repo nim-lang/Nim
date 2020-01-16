@@ -466,8 +466,15 @@ let nimvm* {.magic: "Nimvm", compileTime.}: bool = false
 
 import system/arithmetics
 export arithmetics except IntMax32
-import system/comparisons
-export comparisons
+
+when false:
+  # these mess with stack traces, see tests/enum/tenummix.nim, and also fails with:
+  # system/comparisons.nim(291, 40) Error: undeclared field: 'p'
+  # because NimSeqV2.p is private
+  import system/comparisons
+  export comparisons
+else:
+  include "system/comparisons"
 
 const
   appType* {.magic: "AppType"}: string = ""

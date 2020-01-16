@@ -132,7 +132,6 @@ lib/system/iterators.nim
 lib/system/dollars.nim
 lib/system/widestrs.nim
 lib/system/arithmetics.nim
-lib/system/comparisons.nim
 lib/system/exceptions.nim
 lib/system/iterators_1.nim
 lib/system/privatedefs.nim
