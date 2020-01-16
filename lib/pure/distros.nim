@@ -136,7 +136,7 @@ const
 
 # we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
-var unameRes, osRes, releaseRes, hostnamectlRes: string
+var unameRes, osReleaseIDRes, releaseRes, hostnamectlRes: string
 
 template cmdRelease(cmd, cache): untyped =
   if cache.len == 0:
@@ -144,13 +144,13 @@ template cmdRelease(cmd, cache): untyped =
   cache
 
 template uname(): untyped = cmdRelease("uname -a", unameRes)
-template osrelease(): untyped = cmdRelease("cat /etc/os-release", osRes)
+template osReleaseID(): untyped = cmdRelease("cat /etc/os-release | grep ^ID=", osReleaseIDRes)
 template release(): untyped = cmdRelease("lsb_release -d", releaseRes)
 template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsWithAllCmd(d: Distribution): bool =
   let dd = toLowerAscii($d)
-  result = dd in toLowerAscii(osrelease()) or dd in toLowerAscii(release()) or
+  result = dd in toLowerAscii(osReleaseID()) or dd in toLowerAscii(release()) or
             dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 proc detectOsImpl(d: Distribution): bool =
@@ -164,16 +164,17 @@ proc detectOsImpl(d: Distribution): bool =
   else:
     when defined(linux):
       case d
-      of Distribution.Ubuntu, Distribution.Gentoo, Distribution.FreeBSD,
-        Distribution.OpenBSD, Distribution.Debian, Distribution.Fedora,
-        Distribution.OpenMandriva, Distribution.CentOS:
-        result = $d in osrelease()
+      of Distribution.Gentoo, Distribution.FreeBSD,
+        Distribution.OpenBSD:
+        result = ("-" & $d & " ") in uname()
+      of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian, Distribution.Fedora,
+        Distribution.OpenMandriva, Distribution.CentOS, Distribution.Alpine,
+        Distribution.Mageia, Distribution.Zorin:
+        result = toLowerAscii($d) in osReleaseID()
       of Distribution.RedHat:
-        result = "Red Hat" in osrelease()
-      of Distribution.Elementary:
-        result = "elementary OS" in osrelease()
+        result = "rhel" in osReleaseID()
       of Distribution.ArchLinux:
-        result = "Arch Linux" in osrelease()
+        result = "arch" in osReleaseID()
       of Distribution.NixOS:
         result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
         # Check if this is a Nix build or NixOS environment
