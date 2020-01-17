@@ -247,10 +247,10 @@ when defined(windows) or defined(nimdoc):
       ioPort: Handle
       handles: HashSet[AsyncFD]
 
-    CustomOverlapped = object of OVERLAPPED
+    CustomObj = object of OVERLAPPED
       data*: CompletionData
 
-    PCustomOverlapped* = ref CustomOverlapped
+    CustomRef* = ref CustomObj
 
     AsyncFD* = distinct int
 
@@ -258,7 +258,7 @@ when defined(windows) or defined(nimdoc):
       ioPort: Handle
       handleFd: AsyncFD
       waitFd: Handle
-      ovl: owned PCustomOverlapped
+      ovl: owned CustomRef
     PostCallbackDataPtr = ptr PostCallbackData
 
     AsyncEventImpl = object
@@ -336,13 +336,15 @@ when defined(windows) or defined(nimdoc):
 
     var lpNumberOfBytesTransferred: DWORD
     var lpCompletionKey: ULONG_PTR
-    var customOverlapped: PCustomOverlapped
+    var customOverlapped: CustomRef
     let res = getQueuedCompletionStatus(p.ioPort,
         addr lpNumberOfBytesTransferred, addr lpCompletionKey,
         cast[ptr POVERLAPPED](addr customOverlapped), llTimeout).bool
     result = true
-    when defined(gcDestructors):
-      GC_ref(customOverlapped)
+    # For 'gcDestructors' the destructor of 'customOverlapped' will
+    # be called at the end and we are the only owner here. This means
+    # We do not have to 'GC_unref(customOverlapped)' because the destructor
+    # does that for us.
 
     # http://stackoverflow.com/a/12277264/492186
     # TODO: http://www.serverframework.com/handling-multiple-pending-socket-read-and-write-operations.html
@@ -359,7 +361,8 @@ when defined(windows) or defined(nimdoc):
       if customOverlapped.data.cell.data != nil:
         system.dispose(customOverlapped.data.cell)
 
-      GC_unref(customOverlapped)
+      when not defined(gcDestructors):
+        GC_unref(customOverlapped)
     else:
       let errCode = osLastError()
       if customOverlapped != nil:
@@ -368,7 +371,8 @@ when defined(windows) or defined(nimdoc):
             lpNumberOfBytesTransferred, errCode)
         if customOverlapped.data.cell.data != nil:
           system.dispose(customOverlapped.data.cell)
-        GC_unref(customOverlapped)
+        when not defined(gcDestructors):
+          GC_unref(customOverlapped)
       else:
         if errCode.int32 == WAIT_TIMEOUT:
           # Timed out
@@ -409,6 +413,13 @@ when defined(windows) or defined(nimdoc):
     getAcceptExSockAddrs = cast[WSAPROC_GETACCEPTEXSOCKADDRS](fun)
     close(dummySock)
 
+  proc newCustom*(): CustomRef =
+    result = CustomRef() # 0
+    GC_ref(result) # 1  prevent destructor from doing a premature free.
+    # destructor of newCustom's caller --> 0. This means
+    # Windows holds a ref for us with RC == 0 (single owner).
+    # This is passed back to us in the IO completion port.
+
   proc recv*(socket: AsyncFD, size: int,
              flags = {SocketFlag.SafeDisconn}): owned(Future[string]) =
     ## Reads **up to** ``size`` bytes from ``socket``. Returned future will
@@ -435,8 +446,7 @@ when defined(windows) or defined(nimdoc):
 
     var bytesReceived: DWORD
     var flagsio = flags.toOSFlags().DWORD
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -512,8 +522,7 @@ when defined(windows) or defined(nimdoc):
 
     var bytesReceived: DWORD
     var flagsio = flags.toOSFlags().DWORD
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -565,8 +574,7 @@ when defined(windows) or defined(nimdoc):
     dataBuf.len = size.ULONG
 
     var bytesReceived, lowFlags: DWORD
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -616,8 +624,7 @@ when defined(windows) or defined(nimdoc):
     zeroMem(addr(staddr[0]), 128)
     copyMem(addr(staddr[0]), saddr, saddrLen)
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -658,8 +665,7 @@ when defined(windows) or defined(nimdoc):
     var bytesReceived = 0.DWORD
     var lowFlags = 0.DWORD
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -754,8 +760,7 @@ when defined(windows) or defined(nimdoc):
           clientSock.close()
           retFuture.fail(getCurrentException())
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -799,7 +804,7 @@ when defined(windows) or defined(nimdoc):
 
   {.push stackTrace: off.}
   proc waitableCallback(param: pointer,
-                        timerOrWaitFired: WINBOOL): void {.stdcall.} =
+                        timerOrWaitFired: WINBOOL) {.stdcall.} =
     var p = cast[PostCallbackDataPtr](param)
     discard postQueuedCompletionStatus(p.ioPort, timerOrWaitFired.DWORD,
                                        ULONG_PTR(p.handleFd),
@@ -815,8 +820,7 @@ when defined(windows) or defined(nimdoc):
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
     pcd.ioPort = p.ioPort
     pcd.handleFd = fd
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
 
     ol.data = CompletionData(fd: fd, cb:
       proc(fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) {.gcsafe.} =
@@ -931,8 +935,7 @@ when defined(windows) or defined(nimdoc):
     let handleFD = AsyncFD(hEvent)
     pcd.ioPort = p.ioPort
     pcd.handleFd = handleFD
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data.fd = handleFD
     ol.data.cb = handleCallback
     # We need to protect our callback environment value, so GC will not free it
@@ -1621,8 +1624,7 @@ when defined(windows) or defined(nimdoc):
     let retFuture = newFuture[void]("doConnect")
     result = retFuture
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: socket, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
