@@ -736,7 +736,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     result = result[0]
   elif n.kind == nkExprColonExpr and r.len == 2:
     # pragma(arg) -> pragma: arg
-    result.kind = n.kind
+    result.transitionSonsKind(n.kind)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,

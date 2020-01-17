@@ -480,7 +480,7 @@ proc getIntTemp(p: BProc, result: var TLoc) =
   linefmt(p, cpsLocals, "NI $1;$n", [result.r])
   result.k = locTemp
   result.storage = OnStack
-  result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo(), tyInt)
+  result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt)
   result.flags = {}
 
 proc localVarDecl(p: BProc; n: PNode): Rope =

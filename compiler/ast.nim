@@ -1020,6 +1020,10 @@ const
   skProcKinds* = {skProc, skFunc, skTemplate, skMacro, skIterator,
                   skMethod, skConverter}
 
+  defaultSize = -1
+  defaultAlignment = -1
+  defaultOffset = -1
+
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 #var
 #  gMainPackageId*: int
@@ -1066,12 +1070,7 @@ when defined(useNodeIds):
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
-  new(result)
-  result.kind = kind
-  #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = InvalidFileIdx
-  result.info.col = int16(-1)
-  result.info.line = uint16(0)
+  result = PNode(kind: kind, info: unknownLineInfo)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1091,15 +1090,8 @@ template previouslyInferred*(t: PType): PType =
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
-  new(result)
-  result.name = name
-  result.kind = symKind
-  result.flags = {}
-  result.info = info
-  result.options = options
-  result.owner = owner
-  result.offset = -1
-  result.id = getID()
+  result = PSym(name: name, kind: symKind, flags: {}, info: info, id: getID(),
+                options: options, owner: owner, offset: defaultOffset)
   when debugIds:
     registerId(result)
 
@@ -1193,9 +1185,7 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.info = info
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
-  new(result)
-  result.kind = kind
-  result.info = info
+  result = PNode(kind: kind, info: info)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1204,9 +1194,7 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
     inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
-  new(result)
-  result.kind = kind
-  result.info = info
+  result = PNode(kind: kind, info: info)
   if children > 0:
     newSeq(result.sons, children)
   when defined(useNodeIds):
@@ -1217,12 +1205,9 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
     inc gNodeId
 
 proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
-             typ: PType = nil): PNode =
-  new(result)
-  result.kind = kind
-  result.info = info
-  result.typ = typ
+              typ: PType = nil): PNode =
   # XXX use shallowCopy here for ownership transfer:
+  result = PNode(kind: kind, info: info, typ: typ)
   result.sons = sons
   when defined(useNodeIds):
     result.id = gNodeId
@@ -1321,14 +1306,10 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 proc newType*(kind: TTypeKind, owner: PSym): PType =
-  new(result)
-  result.kind = kind
-  result.owner = owner
-  result.size = -1
-  result.align = -1            # default alignment
-  result.id = getID()
-  result.uniqueId = result.id
-  result.lockLevel = UnspecifiedLockLevel
+  let id = getID()
+  result = PType(kind: kind, owner: owner, size: defaultSize,
+                 align: defaultAlignment, id: id, uniqueId: id,
+                 lockLevel: UnspecifiedLockLevel)
   when debugIds:
     registerId(result)
   when false:
@@ -1542,6 +1523,51 @@ proc copyNode*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
+
+template transitionNodeKindCommon(k: TNodeKind) =
+  let obj {.inject.} = n[]
+  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags,
+              comment: obj.comment)
+  when defined(useNodeIds):
+    n.id = obj.id
+
+proc transitionSonsKind*(n: PNode, kind: range[nkComesFrom..nkTupleConstr]) =
+  transitionNodeKindCommon(kind)
+  n.sons = obj.sons
+
+proc transitionIntKind*(n: PNode, kind: range[nkCharLit..nkUInt64Lit]) =
+  transitionNodeKindCommon(kind)
+  n.intVal = obj.intVal
+
+proc transitionNoneToSym*(n: PNode) =
+  transitionNodeKindCommon(nkSym)
+
+template transitionSymKindCommon*(k: TSymKind) =
+  let obj {.inject.} = s[]
+  s[] = TSym(kind: k, id: obj.id, magic: obj.magic, typ: obj.typ, name: obj.name,
+             info: obj.info, owner: obj.owner, flags: obj.flags, ast: obj.ast,
+             options: obj.options, position: obj.position, offset: obj.offset,
+             loc: obj.loc, annex: obj.annex, constraint: obj.constraint)
+  when hasFFI:
+    s.cname = obj.cname
+  when defined(nimsuggest):
+    s.allUsages = obj.allUsages
+
+proc transitionGenericParamToType*(s: PSym) =
+  transitionSymKindCommon(skType)
+  s.typeInstCache = obj.typeInstCache
+
+proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
+  transitionSymKindCommon(kind)
+  s.procInstCache = obj.procInstCache
+  s.gcUnsafetyReason = obj.gcUnsafetyReason
+  s.transformedBody = obj.transformedBody
+
+proc transitionToLet*(s: PSym) =
+  transitionSymKindCommon(skLet)
+  s.guard = obj.guard
+  s.bitsize = obj.bitsize
+  s.alignment = obj.alignment
 
 proc shallowCopy*(src: PNode): PNode =
   # does not copy its sons, but provides space for them:
