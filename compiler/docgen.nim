@@ -48,6 +48,20 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
+  let file2 = $file
+  let docRoot = conf.getDocRoot()
+  case $docRoot:
+  # of "$mixed": relativeToPkg(conf, file)
+  of "$pkg": # TODO: check this works; right now failing at command line step
+    let dir = getNimbleFile(conf, file2).parentDir.AbsoluteDir
+    result = relativeTo(file, dir)
+  of "$path":
+    result = getRelativePathFromConfigPath(conf, file)
+  else:
+    result = relativeTo(file, docRoot)
+  result = result.string.replace("..", "@@").RelativeFile
+
 proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
     if d.types.strTableContains(n.sym):
@@ -175,7 +189,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if execShellCmd(c2) != status:
         rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
                                 outExt, htmldocsDir, false)
   result.thisDir = result.destFile.splitFile.dir
 
@@ -295,14 +309,14 @@ proc getPlainDocstring(n: PNode): string =
       if result.len > 0: return
 
 proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
-  result = module.kind == skModule and module.owner != nil and
-      module.owner.id == conf.mainPackageId
+  result = module.kind == skModule and module.nimblePkg != nil and
+      module.nimblePkg.id == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
-        htmldocsDir, sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
+                          htmldocsDir, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -1013,6 +1027,12 @@ proc genSection(d: PDoc, kind: TSymKind) =
 proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
   rope($relativeTo(outDir / RelativeFile"nimdoc.out.css", destFile.splitFile().dir, '/'))
 
+proc nativeToUnix(path: string): string =
+  doAssert not path.isAbsolute # absolute files need more care for the drive
+  when DirSep == '\\':
+    result = replace(path, '\\', '/')
+  else: result = path
+
 proc genOutFile(d: PDoc): Rope =
   var
     code, content: Rope
@@ -1031,7 +1051,7 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
@@ -1060,8 +1080,7 @@ proc generateIndex*(d: PDoc) =
     let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
               else: d.conf.projectPath / htmldocsDir
     createDir(dir)
-    let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
-                                              d.conf.projectPath), IndexExt)
+    let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc writeOutput*(d: PDoc, useWarning = false) =

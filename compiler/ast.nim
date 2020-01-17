@@ -823,6 +823,7 @@ type
       # check for the owner when touching 'usedGenerics'.
       usedGenerics*: seq[PInstantiation]
       tab*: TStrTable         # interface table for modules
+      nimblePkg*: PSym
     of skLet, skVar, skField, skForVar:
       guard*: PSym
       bitsize*: int
@@ -1391,6 +1392,7 @@ proc createModuleAlias*(s: PSym, newIdent: PIdent, info: TLineInfo;
   result.ast = s.ast
   result.id = s.id
   result.flags = s.flags
+  result.nimblePkg = s.nimblePkg
   system.shallowCopy(result.tab, s.tab)
   result.options = s.options
   result.position = s.position

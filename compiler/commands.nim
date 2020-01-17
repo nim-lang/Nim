@@ -413,6 +413,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
+  of "docroot":
+    expectArg(conf, switch, arg, pass, info)
+    conf.docRoot = processPath(conf, arg, info, notRelativeToProj=true)
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":

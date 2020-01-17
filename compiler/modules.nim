@@ -27,7 +27,9 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
     packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, result.info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
+    result.nimblePkg = packSym
   else:
+    result.nimblePkg = packSym
     let existing = strTableGet(packSym.tab, result.name)
     if existing != nil and existing.info.fileIndex != result.info.fileIndex:
       when false:

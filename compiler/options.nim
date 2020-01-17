@@ -263,6 +263,9 @@ type
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
+    docRoot*: AbsoluteDir
+      # `nim doc --docRoot:foo --project --outdir:docs foo/sub/main.nim`
+      # genrates: docs/sub/main.html
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
@@ -500,6 +503,9 @@ proc absOutFile*(conf: ConfigRef): AbsoluteFile =
   if dirExists(result.string):
     result.string.add ".out"
 
+proc getDocRoot*(conf: ConfigRef): AbsoluteDir =
+  if conf.docRoot.isEmpty: conf.projectPath else: conf.docRoot
+
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
   createDir conf.outDir
@@ -655,6 +661,32 @@ template patchModule(conf: ConfigRef) {.dirty.} =
     if conf.moduleOverrides.hasKey(key):
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
+
+proc isRelativeTo(path: string, base: string): bool=
+  # PENDING #13212
+  let path = path.normalizedPath
+  let base = base.normalizedPath
+  let ret = relativePath(path, base)
+  result = path.len > 0 and not ret.startsWith ".."
+
+proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
+  let f = $f
+  template search(paths) =
+    for it in paths:
+      let it = $it
+      if f.isRelativeTo(it):
+        return relativePath(f, it).RelativeFile
+  search(conf.searchPaths)
+  search(conf.lazyPaths)
+
+proc relativeToPkg*(conf: ConfigRef, file: AbsoluteFile): string =
+  let file2 = $file
+  let dir = getNimbleFile(conf, file2).parentDir
+  result = relativePath(file2, dir)
+  # take care of things like in stdlib with multiple `--path:lib/pure` etc
+  let path2 = getRelativePathFromConfigPath(conf, file).string
+  if path2.len > result.len: result = path2
+  if result.len == 0: result = file2
 
 proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
