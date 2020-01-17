@@ -1009,6 +1009,9 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
+proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
+  rope($relativeTo(outDir / RelativeFile"nimdoc.out.css", destFile.splitFile().dir, '/'))
+
 proc genOutFile(d: PDoc): Rope =
   var
     code, content: Rope
@@ -1042,12 +1045,11 @@ proc genOutFile(d: PDoc): Rope =
       rope(getClockStr()), code, d.modDeprecationMsg])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
-    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
-        "tableofcontents", "moduledesc", "date", "time",
+    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
+        "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [title.rope, toc, d.modDesc, rope(getDateStr()),
-                     rope(getClockStr()), content, d.meta[metaAuthor].rope,
-                     d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
+        [cssHref(d.conf.outDir, d.destFile), title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
   result = code
@@ -1183,15 +1185,17 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
 proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
   var content = mergeIndexes(conf.projectFull.string).rope
 
-  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), ["title",
-      "tableofcontents", "moduledesc", "date", "time",
-      "content", "author", "version", "analytics"],
-      ["Index".rope, nil, nil, rope(getDateStr()),
-                   rope(getClockStr()), content, nil, nil, nil])
-  # no analytics because context is not available
   var outFile = RelativeFile"theindex"
   if conf.outFile != RelativeFile"":
     outFile = conf.outFile
   let filename = getOutFile(conf, outFile, HtmlExt)
+
+  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
+      "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+      "content", "author", "version", "analytics"],
+      [cssHref(conf.outDir, filename), rope"Index", nil, nil, rope(getDateStr()),
+      rope(getClockStr()), content, nil, nil, nil])
+  # no analytics because context is not available
+
   if not writeRope(code, filename):
     rawMessage(conf, errCannotOpenFile, filename.string)
