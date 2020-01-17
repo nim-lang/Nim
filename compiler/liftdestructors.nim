@@ -775,18 +775,26 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   # register this operation already:
   typ.attachedOps[kind] = result
 
-  var tk: TTypeKind
-  if g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
-    tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
+
+  if kind == attachedSink and typ.attachedOps[attachedDestructor] != nil and
+       sfOverriden in typ.attachedOps[attachedDestructor].flags:
+    ## compiler can use a combination of `=destroy` and memCopy for sink op
+    dest.flags.incl sfCursor
+    body.add newOpCall(typ.attachedOps[attachedDestructor], d[0])
+    body.add newAsgnStmt(d, newSymNode(src))
   else:
-    tk = tyNone # no special casing for strings and seqs
-  case tk
-  of tySequence:
-    fillSeqOp(a, typ, body, d, newSymNode(src))
-  of tyString:
-    fillStrOp(a, typ, body, d, newSymNode(src))
-  else:
-    fillBody(a, typ, body, d, newSymNode(src))
+    var tk: TTypeKind
+    if g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
+      tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
+    else:
+      tk = tyNone # no special casing for strings and seqs
+    case tk
+    of tySequence:
+      fillSeqOp(a, typ, body, d, newSymNode(src))
+    of tyString:
+      fillStrOp(a, typ, body, d, newSymNode(src))
+    else:
+      fillBody(a, typ, body, d, newSymNode(src))
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)

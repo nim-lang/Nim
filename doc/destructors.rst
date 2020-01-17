@@ -53,7 +53,8 @@ written as:
         a.data[i] = b.data[i]
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
-    # move assignment
+    # move assignment, optional.
+    # Compiler is using `=destroy` and `copyMem` when not provided
     `=destroy`(a)
     a.len = b.len
     a.cap = b.cap
@@ -130,7 +131,10 @@ A `=sink` hook moves an object around, the resources are stolen from the source
 and passed to the destination. It is ensured that source's destructor does
 not free the resources afterwards by setting the object to its default value
 (the value the object's state started in). Setting an object ``x`` back to its
-default value is written as ``wasMoved(x)``.
+default value is written as ``wasMoved(x)``. When not provided the compiler
+is using a combination of `=destroy` and `copyMem` instead. This is efficient
+hence users rarely need to implement their own `=sink` operator, it is enough to
+provide `=destroy` and `=`, compiler will take care about the rest.
 
 The prototype of this hook for a type ``T`` needs to be:
 
