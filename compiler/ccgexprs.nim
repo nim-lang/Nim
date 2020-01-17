@@ -2178,7 +2178,10 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mNew: genNew(p, e)
   of mNewFinalize:
     if optTinyRtti in p.config.globalOptions:
-      genNew(p, e)
+      var a: TLoc
+      initLocExpr(p, e[1], a)
+      rawGenNew(p, a, nil)
+      gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
   of mNewSeq: genNewSeq(p, e)
@@ -2747,9 +2750,9 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
       result = rope"{NIM_NIL, NIM_NIL}"
   of tyObject:
     var count = 0
-    result.add "{" 
+    result.add "{"
     getNullValueAuxT(p, t, t, t.n, nil, result, count, true, info)
-    result.add "}" 
+    result.add "}"
   of tyTuple:
     result = rope"{"
     for i in 0..<t.len:
