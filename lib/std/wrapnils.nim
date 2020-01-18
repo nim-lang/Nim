@@ -19,15 +19,8 @@ runnableExamples:
   assert ?.f2.x1 == "a" # same as f2.x1 (no nil LHS in this chain)
   assert ?.Foo(x1: "a").x1 == "a" # can use constructor inside
 
-  let b = f2.wrapnil.x2.x3
-  assert b.isValid # no nil LHS in the chain so `b` is valid
-  assert b.unwrap == nil # but its value itself is nil in this example
-  assert not f.wrapnil.x2.x3.isValid # because `f` is nil
-
   # when you know a sub-expression is not nil, you can scope it as follows:
   assert ?.(f2.x2.x2).x3[] == 0 # because `f` is nil
-  # which is just sugar for the following:
-  assert f2.x2.x2.wrapnil.x3[].unwrap == 0
 
 type Wrapnil[T] = object
   valueImpl: T
