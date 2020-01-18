@@ -501,10 +501,7 @@ proc generateScript(conf: ConfigRef; script: Rope) =
   let (_, name, _) = splitFile(conf.outFile.string)
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
-  if writeRope(script, filename):
-    copyFile(conf.libpath / RelativeFile"nimbase.h",
-             getNimcacheDir(conf) / RelativeFile"nimbase.h")
-  else:
+  if not writeRope(script, filename):
     rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
 
 proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
@@ -607,17 +604,15 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
 
-  var includeCmd, compilePattern: string
+  var compilePattern: string
+  # compute include paths:
+  var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
   if not noAbsolutePaths(conf):
-    # compute include paths:
-    includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
-
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
