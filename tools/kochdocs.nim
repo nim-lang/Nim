@@ -155,6 +155,7 @@ lib/pure/strutils.nim
 lib/pure/math.nim
 lib/std/editdistance.nim
 lib/std/wordwrap.nim
+lib/std/wrapnils.nim
 lib/experimental/diff.nim
 lib/pure/algorithm.nim
 lib/pure/stats.nim

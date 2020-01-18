@@ -55,6 +55,10 @@
 
 - Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
 
+- Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
+  This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
+  Eg: `echo ?.n.typ.kind`
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
