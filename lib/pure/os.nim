@@ -112,7 +112,7 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
   result = path
   result.normalizePathEnd(trailingSep)
 
-when (NimMajor, NimMinor) >= (1, 1):
+since((1, 1)):
   export normalizePathEnd
 
 proc joinPath*(head, tail: string): string {.
