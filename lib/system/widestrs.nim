@@ -18,8 +18,6 @@ type
 
 when defined(nimv2):
 
-  import system / allocators
-
   type
     WideCString* = ptr UncheckedArray[Utf16Char]
 
@@ -29,8 +27,7 @@ when defined(nimv2):
 
   proc `=destroy`(a: var WideCStringObj) =
     if a.data != nil:
-      let alor = getLocalAllocator()
-      alor.dealloc(alor, a.data, a.bytes)
+      deallocShared(a.data)
       a.data = nil
 
   proc `=`(a: var WideCStringObj; b: WideCStringObj) {.error.}
@@ -41,8 +38,7 @@ when defined(nimv2):
 
   proc createWide(a: var WideCStringObj; bytes: int) =
     a.bytes = bytes
-    let alor = getLocalAllocator()
-    a.data = cast[typeof(a.data)](alor.alloc(alor, bytes))
+    a.data = cast[typeof(a.data)](allocShared0(bytes))
 
   template `[]`(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
   template `[]=`(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val

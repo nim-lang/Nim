@@ -4,14 +4,12 @@ discard """
 Indeed
 axc
 (v: 10)
-0  new: 0
+63
 ...
 destroying GenericObj[T] GenericObj[system.int]
-test
-'''
+test'''
 """
 
-import system / allocators
 import system / ansi_c
 
 import tables
@@ -87,8 +85,7 @@ proc testWrongAt() =
 
 testWrongAt()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld  new: %ld\n", a - unpairedEnvAllocs() - d, allocs)
+discard cprintf("%ld\n", unpairedEnvAllocs())
 
 #-------------------------------------------------
 type

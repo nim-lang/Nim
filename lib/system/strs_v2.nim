@@ -9,12 +9,14 @@
 
 ## Default new string implementation used by Nim's core.
 
-import allocators
-
 type
+  NimStrPayloadBase = object
+    cap: int
+    allocated: int
+
   NimStrPayload {.core.} = object
     cap: int
-    allocator: Allocator
+    allocated: int
     data: UncheckedArray[char]
 
   NimStringV2 {.core.} = object
@@ -23,13 +25,13 @@ type
 
 const nimStrVersion {.core.} = 2
 
-template isLiteral(s): bool = s.p == nil or s.p.allocator == nil
+template isLiteral(s): bool = s.p == nil or s.p.allocated == 0
 
-template contentSize(cap): int = cap + 1 + sizeof(int) + sizeof(Allocator)
+template contentSize(cap): int = cap + 1 + sizeof(NimStrPayloadBase)
 
 template frees(s) =
   if not isLiteral(s):
-    s.p.allocator.dealloc(s.p.allocator, s.p, contentSize(s.p.cap))
+    deallocShared(s.p)
 
 proc resize(old: int): int {.inline.} =
   if old <= 0: result = 4
@@ -41,18 +43,15 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
     if addlen > 0:
       let oldP = s.p
       # can't mutate a literal, so we need a fresh copy here:
-      let allocator = getLocalAllocator()
-      s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len + addlen)))
-      s.p.allocator = allocator
+      s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
+      s.p.allocated = 1
       s.p.cap = s.len + addlen
       if s.len > 0:
         # we are about to append, so there is no need to copy the \0 terminator:
         copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
   elif s.len + addlen > s.p.cap:
     let cap = max(s.len + addlen, resize(s.p.cap))
-    s.p = cast[ptr NimStrPayload](s.p.allocator.realloc(s.p.allocator, s.p,
-      oldSize = contentSize(s.p.cap),
-      newSize = contentSize(cap)))
+    s.p = cast[ptr NimStrPayload](reallocShared(s.p, contentSize(cap)))
     s.p.cap = cap
 
 proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =
@@ -65,9 +64,8 @@ proc toNimStr(str: cstring, len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    let allocator = getLocalAllocator()
-    var p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(len)))
-    p.allocator = allocator
+    var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+    p.allocated = 1
     p.cap = len
     if len > 0:
       # we are about to append, so there is no need to copy the \0 terminator:
@@ -98,9 +96,8 @@ proc rawNewString(space: int): NimStringV2 {.compilerproc.} =
   if space <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    let allocator = getLocalAllocator()
-    var p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(space)))
-    p.allocator = allocator
+    var p = cast[ptr NimStrPayload](allocShared0(contentSize(space)))
+    p.allocated = 1
     p.cap = space
     result = NimStringV2(len: 0, p: p)
 
@@ -108,9 +105,8 @@ proc mnewString(len: int): NimStringV2 {.compilerproc.} =
   if len <= 0:
     result = NimStringV2(len: 0, p: nil)
   else:
-    let allocator = getLocalAllocator()
-    var p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(len)))
-    p.allocator = allocator
+    var p = cast[ptr NimStrPayload](allocShared0(contentSize(len)))
+    p.allocated = 1
     p.cap = len
     result = NimStringV2(len: len, p: p)
 
@@ -131,23 +127,21 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
     a.p = b.p
   else:
     if isLiteral(a) or a.p.cap < b.len:
-      let allocator = if a.p != nil and a.p.allocator != nil: a.p.allocator else: getLocalAllocator()
       # we have to allocate the 'cap' here, consider
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
       frees(a)
-      a.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(b.len)))
-      a.p.allocator = allocator
+      a.p = cast[ptr NimStrPayload](allocShared0(contentSize(b.len)))
+      a.p.allocated = 1
       a.p.cap = b.len
     a.len = b.len
     copyMem(unsafeAddr a.p.data[0], unsafeAddr b.p.data[0], b.len+1)
 
 proc nimPrepareStrMutationV2(s: var NimStringV2) {.compilerRtl.} =
-  if s.p != nil and s.p.allocator == nil:
+  if s.p != nil and s.p.allocated == 0:
     let oldP = s.p
     # can't mutate a literal, so we need a fresh copy here:
-    let allocator = getLocalAllocator()
-    s.p = cast[ptr NimStrPayload](allocator.alloc(allocator, contentSize(s.len)))
-    s.p.allocator = allocator
+    s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len)))
+    s.p.allocated = 1
     s.p.cap = s.len
     copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len+1)

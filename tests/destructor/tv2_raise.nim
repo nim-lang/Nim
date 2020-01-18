@@ -1,12 +1,10 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''OK 3
-5 2'''
+  output: '''OK 3'''
 """
 
 import strutils, math
 import system / ansi_c
-import system / allocators
 
 proc mainA =
   try:
@@ -50,6 +48,3 @@ except:
   inc ok
 
 echo "OK ", ok
-
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)

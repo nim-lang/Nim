@@ -1,10 +1,8 @@
 discard """
   cmd: '''nim c --newruntime $file'''
-  output: '''0
-3 3  alloc/dealloc pairs: 0'''
+  output: '''0'''
 """
 
-import system / allocators
 import system / ansi_c
 
 import random
@@ -99,5 +97,3 @@ proc main() =
 
 main()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, system.allocs)

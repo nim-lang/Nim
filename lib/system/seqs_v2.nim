@@ -9,15 +9,20 @@
 
 
 # import typetraits
-# strs already imported allocators for us.
+# strs already imported allocateds for us.
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type
+
+  NimSeqPayloadBase = object
+    cap: int
+    allocated: int
+
   NimSeqPayload[T] = object
     cap: int
-    allocator: Allocator
+    allocated: int
     data: UncheckedArray[T]
 
   NimSeqV2*[T] = object
@@ -26,22 +31,16 @@ type
 
 const nimSeqVersion {.core.} = 2
 
-template payloadSize(cap): int = cap * sizeof(T) + sizeof(int) + sizeof(Allocator)
+template payloadSize(cap): int = cap * sizeof(T) + sizeof(NimSeqPayloadBase)
 
 # XXX make code memory safe for overflows in '*'
-
-type
-  PayloadBase = object
-    cap: int
-    allocator: Allocator
 
 proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    let allocator = getLocalAllocator()
-    var p = cast[ptr PayloadBase](allocator.alloc(allocator, cap * elemSize + sizeof(int) + sizeof(Allocator)))
-    p.allocator = allocator
+    var p = cast[ptr NimSeqPayloadBase](allocShared0(cap * elemSize + sizeof(NimSeqPayloadBase)))
+    p.allocated = 1
     p.cap = cap
     result = p
   else:
@@ -53,7 +52,7 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     template `+!`(p: pointer, s: int): pointer =
       cast[pointer](cast[int](p) +% s)
 
-    const headerSize = sizeof(int) + sizeof(Allocator)
+    const headerSize = sizeof(NimSeqPayloadBase)
     if addlen <= 0:
       result = p
     elif p == nil:
@@ -61,22 +60,17 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
-      var p = cast[ptr PayloadBase](p)
+      var p = cast[ptr NimSeqPayloadBase](p)
       let cap = max(resize(p.cap), len+addlen)
-      if p.allocator == nil:
-        let allocator = getLocalAllocator()
-        var q = cast[ptr PayloadBase](allocator.alloc(allocator,
-          headerSize + elemSize * cap))
+      if p.allocated == 0:
+        var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * cap))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
-        q.allocator = allocator
+        q.allocated = 1
         q.cap = cap
         result = q
       else:
-        let allocator = p.allocator
-        var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
-          headerSize + elemSize * p.cap,
-          headerSize + elemSize * cap))
-        q.allocator = allocator
+        var q = cast[ptr NimSeqPayloadBase](reallocShared(p, headerSize + elemSize * cap))
+        q.allocated = 1
         q.cap = cap
         result = q
 

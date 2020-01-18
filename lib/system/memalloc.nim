@@ -122,7 +122,7 @@ when hasAlloc:
     ## The freed memory must belong to its allocating thread!
     ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
 
-  proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
+  proc allocShared*(size: Natural): pointer {.noconv, compilerproc, rtl, benign, raises: [], tags: [].}
     ## Allocates a new memory block on the shared heap with at
     ## least ``size`` bytes.
     ##
@@ -196,7 +196,7 @@ when hasAlloc:
     ## `freeShared <#freeShared,ptr.T>`_.
     cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-  proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
+  proc deallocShared*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].}
     ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
     ## ``reallocShared``.
     ##

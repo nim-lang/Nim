@@ -9,11 +9,9 @@ ha
 a: @[4, 2, 3]
 0
 30
-true
-41 41'''
+true'''
 """
 
-import system / allocators
 include system / ansi_c
 
 proc main =
@@ -202,6 +200,3 @@ takeAinArray()
 echo ga == "foo"
 
 
-#echo s
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)

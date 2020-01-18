@@ -1,11 +1,9 @@
 discard """
   cmd: '''nim c --newruntime $file'''
   output: '''button
-clicked!
-6 6  alloc/dealloc pairs: 0'''
+clicked!'''
 """
 
-import system / allocators
 import system / ansi_c
 
 type
@@ -71,5 +69,3 @@ proc main =
 
 main()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, allocs)

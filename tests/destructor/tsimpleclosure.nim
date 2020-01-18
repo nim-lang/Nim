@@ -4,11 +4,9 @@ discard """
 70
 hello
 hello
-hello
-2 2  alloc/dealloc pairs: 0'''
+hello'''
 """
 
-import system / allocators
 import system / ansi_c
 
 proc main(): owned(proc()) =
@@ -60,5 +58,3 @@ when false:
 
   stringIter()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, system.allocs)
