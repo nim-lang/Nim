@@ -997,21 +997,13 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
 
   proc deallocOsPages = deallocOsPages(allocator)
 
-  proc c_getenv(env: cstring): cstring {.importc: "getenv", header: "<stdlib.h>".}
-
   proc alloc(size: Natural): pointer =
     result = alloc(allocator, size)
-    if c_getenv("DUMP") != nil:
-      cfprintf(cstderr, "alloc %p: %d\n", result, size);
 
   proc alloc0(size: Natural): pointer =
     result = alloc0(allocator, size)
-    if c_getenv("DUMP") != nil:
-      cfprintf(cstderr, "alloc %p: %d\n", result, size);
 
   proc dealloc(p: pointer) =
-    if c_getenv("DUMP") != nil:
-      cfprintf(cstderr, "dealloc %p\n", p);
     dealloc(allocator, p)
 
   proc realloc(p: pointer, newSize: Natural): pointer =
