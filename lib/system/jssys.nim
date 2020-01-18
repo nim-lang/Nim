@@ -120,7 +120,7 @@ proc unhandledException(e: ref Exception) {.
   add(buf, "]\n")
   when NimStackTrace:
     add(buf, rawWriteStackTrace())
-  let cbuf : cstring = buf
+  let cbuf = cstring(buf)
   framePtr = nil
   {.emit: """
   if (typeof(Error) !== "undefined") {
@@ -150,10 +150,10 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
 
     asm "throw lastJSError;"
 
-proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerProc.} =
+proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerproc.} =
   raise newException(OverflowError, "over- or underflow")
 
-proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerProc.} =
+proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerproc.} =
   raise newException(DivByZeroError, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
@@ -163,7 +163,7 @@ proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
   raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldError, f & " is not accessible")
+  raise newException(FieldError, f)
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -228,37 +228,44 @@ proc cstrToNimstr(c: cstring): string {.asmNoStackFrame, compilerproc.} =
   return result;
   """.}
 
-proc toJSStr(s: string): cstring {.asmNoStackFrame, compilerproc.} =
-  asm """
-  if (`s` === null) return "";
-  var len = `s`.length;
-  var asciiPart = new Array(len);
-  var fcc = String.fromCharCode;
-  var nonAsciiPart = null;
-  var nonAsciiOffset = 0;
-  for (var i = 0; i < len; ++i) {
-    if (nonAsciiPart !== null) {
-      var offset = (i - nonAsciiOffset) * 2;
-      var code = `s`[i].toString(16);
-      if (code.length == 1) {
-        code = "0"+code;
-      }
-      nonAsciiPart[offset] = "%";
-      nonAsciiPart[offset + 1] = code;
-    }
-    else if (`s`[i] < 128)
-      asciiPart[i] = fcc(`s`[i]);
-    else {
-      asciiPart.length = i;
-      nonAsciiOffset = i;
-      nonAsciiPart = new Array((len - i) * 2);
-      --i;
-    }
-  }
-  asciiPart = asciiPart.join("");
-  return (nonAsciiPart === null) ?
-      asciiPart : asciiPart + decodeURIComponent(nonAsciiPart.join(""));
-  """
+proc toJSStr(s: string): cstring {.compilerproc.} =
+  proc fromCharCode(c: char): cstring {.importc: "String.fromCharCode".}
+  proc join(x: openArray[cstring]; d = cstring""): cstring {.
+    importcpp: "#.join(@)".}
+  proc decodeURIComponent(x: cstring): cstring {.
+    importc: "decodeURIComponent".}
+
+  proc toHexString(c: char; d = 16): cstring {.importcpp: "#.toString(@)".}
+
+  proc log(x: cstring) {.importc: "console.log".}
+
+  var res = newSeq[cstring](s.len)
+  var i = 0
+  var j = 0
+  while i < s.len:
+    var c = s[i]
+    if c < '\128':
+      res[j] = fromCharCode(c)
+      inc i
+    else:
+      var helper = newSeq[cstring]()
+      while true:
+        let code = toHexString(c)
+        if code.len == 1:
+          helper.add cstring"%0"
+        else:
+          helper.add cstring"%"
+        helper.add code
+        inc i
+        if i >= s.len or s[i] < '\128': break
+        c = s[i]
+      try:
+        res[j] = decodeURIComponent join(helper)
+      except:
+        res[j] = join(helper)
+    inc j
+  setLen(res, j)
+  result = join(res)
 
 proc mnewString(len: int): string {.asmNoStackFrame, compilerproc.} =
   asm """
@@ -315,7 +322,7 @@ proc SetMinus(a, b: int): int {.compilerproc, asmNoStackFrame.} =
     return result;
   """
 
-proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
+proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
   asm """
     if (`a` == `b`) return 0;
     if (!`a`) return -1;
@@ -330,7 +337,7 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerProc.} =
 proc cmp(x, y: string): int =
   return cmpStrings(x, y)
 
-proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerProc.} =
+proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
   asm """
     if (`a` == `b`) return true;
     if (`a` === null && `b`.length == 0) return true;
@@ -475,26 +482,27 @@ proc absInt(a: int): int {.compilerproc.} =
 proc absInt64(a: int64): int64 {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
 
-proc ze*(a: int): int {.compilerproc.} =
-  result = a
+when not defined(nimNoZeroExtendMagic):
+  proc ze*(a: int): int {.compilerproc.} =
+    result = a
 
-proc ze64*(a: int64): int64 {.compilerproc.} =
-  result = a
+  proc ze64*(a: int64): int64 {.compilerproc.} =
+    result = a
 
-proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
-  asm """
-    return `a`;
-  """
+  proc toU8*(a: int): int8 {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `a`;
+    """
 
-proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
-  asm """
-    return `a`;
-  """
+  proc toU16*(a: int): int16 {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `a`;
+    """
 
-proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
-  asm """
-    return `a`;
-  """
+  proc toU32*(a: int64): int32 {.asmNoStackFrame, compilerproc.} =
+    asm """
+      return `a`;
+    """
 
 proc nimMin(a, b: int): int {.compilerproc.} = return if a <= b: a else: b
 proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
@@ -673,7 +681,7 @@ const
 
 # XXX use JS's native way here
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat, start = 0): int {.
-                          compilerProc.} =
+                          compilerproc.} =
   var
     esign = 1.0
     sign = 1.0
@@ -750,13 +758,13 @@ else:
 
 # Workaround for IE, IE up to version 11 lacks 'Math.trunc'. We produce
 # 'Math.trunc' for Nim's ``div`` and ``mod`` operators:
-when not defined(nodejs):
-  {.emit: """
-  if (!Math.trunc) {
-    Math.trunc = function(v) {
-      v = +v;
-      if (!isFinite(v)) return v;
-
-      return (v - v % 1)   ||   (v < 0 ? -0 : v === 0 ? v : 0);
-    };
-  }""".}
+const jsMathTrunc = """
+if (!Math.trunc) {
+  Math.trunc = function(v) {
+    v = +v;
+    if (!isFinite(v)) return v;
+    return (v - v % 1) || (v < 0 ? -0 : v === 0 ? v : 0);
+  };
+}
+"""
+when not defined(nodejs): {.emit: jsMathTrunc .}

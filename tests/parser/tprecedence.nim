@@ -49,3 +49,8 @@ let
   aaa = t 2 + 4
   ccc = t (1, 1) + 6
   ddd = t [0, 1, 2] + 5
+
+# bug #10896
+const
+  test =
+    proc(): int = 1

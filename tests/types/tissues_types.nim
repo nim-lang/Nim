@@ -41,6 +41,13 @@ block t5648:
     var g = Foo()
     g.bar = 3
 
+  var
+    mainPtr1: pointer = main
+    mainPtr2 = pointer(main)
+    mainPtr3 = cast[pointer](main)
+
+  doAssert mainPtr1 == mainPtr2 and mainPtr2 == mainPtr3
+
   main()
 
 block t7581:

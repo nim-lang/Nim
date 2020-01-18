@@ -4,7 +4,8 @@ discard """
 17
 (width: 0.0, taste: "", color: 13)
 (width: 0.0, taste: "", color: 15)
-cool'''
+cool
+test'''
 """
 
 # bug #5241
@@ -63,3 +64,25 @@ method m[T](o: Foo[T]) = echo "cool"
 var v: Bar
 v.new()
 v.m() # Abstract method not called anymore
+
+
+# bug #88
+
+type
+  TGen[T] = object of RootObj
+    field: T
+
+  TDerived[T] = object of TGen[T]
+    nextField: T
+
+proc doSomething[T](x: ref TGen[T]) =
+  type
+    Ty = ref TDerived[T]
+  echo Ty(x).nextField
+
+var
+  x: ref TDerived[string]
+new(x)
+x.nextField = "test"
+
+doSomething(x)

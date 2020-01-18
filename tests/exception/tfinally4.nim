@@ -1,5 +1,39 @@
 discard """
-  output: "B1\nA1\n1\nB1\nB2\ncatch\nA1\n1\nB1\nA1\nA2\n2\nB1\nB2\ncatch\nA1\nA2\n0\nB1\nA1\n1\nB1\nB2\nA1\n1\nB1\nA1\nA2\n2\nB1\nB2\nA1\nA2\n3"
+  output: '''
+B1
+A1
+1
+B1
+B2
+catch
+A1
+1
+B1
+A1
+A2
+2
+B1
+B2
+catch
+A1
+A2
+0
+B1
+A1
+1
+B1
+B2
+A1
+1
+B1
+A1
+A2
+2
+B1
+B2
+A1
+A2
+3'''
 """
 
 # More thorough test of return-in-finaly

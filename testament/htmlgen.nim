@@ -9,7 +9,7 @@
 
 ## HTML generator for the tester.
 
-import cgi, backend, strutils, json, os, tables, times
+import strutils, json, os, times
 
 import "testamenthtml.nimf"
 
@@ -63,7 +63,7 @@ proc generateTestResultPanelPartial(outfile: File, testResultRow: JsonNode) =
 
 type
   AllTests = object
-    data: JSonNode
+    data: JsonNode
     totalCount, successCount, ignoredCount, failedCount: int
     successPercentage, ignoredPercentage, failedPercentage: BiggestFloat
 

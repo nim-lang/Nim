@@ -4,9 +4,11 @@ discard """
 """
 
 import math
-import strformat
 
 const manualTest = false
+
+when manualTest:
+  import strformat
 
 proc frexp_test(lo, hi, step: float64) =
   var exp: int

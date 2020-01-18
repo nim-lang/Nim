@@ -8,7 +8,7 @@
 #
 
 ## Timer support for the realtime GC. Based on
-## `<https://github.com/jckarter/clay/blob/master/compiler/src/hirestimer.cpp>`_
+## `<https://github.com/jckarter/clay/blob/master/compiler/hirestimer.cpp>`_
 
 type
   Ticks = distinct int64
@@ -36,9 +36,9 @@ elif defined(macosx):
     MachTimebaseInfoData {.pure, final,
         importc: "mach_timebase_info_data_t",
         header: "<mach/mach_time.h>".} = object
-      numer, denom: int32
+      numer, denom: int32 # note: `uint32` in sources
 
-  proc mach_absolute_time(): int64 {.importc, header: "<mach/mach.h>".}
+  proc mach_absolute_time(): uint64 {.importc, header: "<mach/mach_time.h>".}
   proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
     header: "<mach/mach_time.h>".}
 

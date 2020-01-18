@@ -1,8 +1,6 @@
 discard """
-  disabled: yes
-  outputsub: "101"
   errormsg: "'threadFunc' is not GC-safe"
-  line: 39
+  line: 38
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
@@ -15,7 +13,7 @@ proc doNothing() = discard
 
 type
   PNode = ref TNode
-  TNode = object {.pure.}
+  TNode {.pure.} = object
     le, ri: PNode
     data: string
 

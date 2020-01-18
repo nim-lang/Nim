@@ -151,20 +151,19 @@
 
 include "system/inclrtl"
 
-import
-  os, strutils
+import os
 
 type
-  CmdLineKind* = enum         ## The detected command line token.
-    cmdEnd,                   ## End of command line reached
-    cmdArgument,              ## An argument such as a filename
-    cmdLongOption,            ## A long option such as --option
-    cmdShortOption            ## A short option such as -c
-  OptParser* =
-      object of RootObj ## Implementation of the command line parser.
-      ##
-      ## To initialize it, use the
-      ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
+  CmdLineKind* = enum ## The detected command line token.
+    cmdEnd,           ## End of command line reached
+    cmdArgument,      ## An argument such as a filename
+    cmdLongOption,    ## A long option such as --option
+    cmdShortOption    ## A short option such as -c
+  OptParser* = object of RootObj ## \
+    ## Implementation of the command line parser.
+    ##
+    ## To initialize it, use the
+    ## `initOptParser proc<#initOptParser,string,set[char],seq[string]>`_.
     pos*: int
     inShortState: bool
     allowWhitespaceAfterColon: bool
@@ -172,10 +171,10 @@ type
     longNoVal: seq[string]
     cmds: seq[string]
     idx: int
-    kind*: CmdLineKind        ## The detected command line token
-    key*, val*: TaintedString ## Key and value pair; the key is the option
-                              ## or the argument, and the value is not "" if
-                              ## the option was given a value
+    kind*: CmdLineKind           ## The detected command line token
+    key*, val*: TaintedString    ## Key and value pair; the key is the option
+                                 ## or the argument, and the value is not "" if
+                                 ## the option was given a value
 
 proc parseWord(s: string, i: int, w: var string,
                delim: set[char] = {'\t', ' '}): int =
@@ -197,7 +196,7 @@ when declared(os.paramCount):
   # we cannot provide this for NimRtl creation on Posix, because we can't
   # access the command line arguments then!
 
-  proc initOptParser*(cmdline = "", shortNoVal: set[char]={},
+  proc initOptParser*(cmdline = "", shortNoVal: set[char] = {},
                       longNoVal: seq[string] = @[];
                       allowWhitespaceAfterColon = true): OptParser =
     ## Initializes the command line parser.
@@ -227,15 +226,15 @@ when declared(os.paramCount):
     if cmdline != "":
       result.cmds = parseCmdLine(cmdline)
     else:
-      result.cmds = newSeq[string](paramCount())
-      for i in countup(1, paramCount()):
-        result.cmds[i-1] = paramStr(i).string
+      result.cmds = newSeq[string](os.paramCount())
+      for i in countup(1, os.paramCount()):
+        result.cmds[i-1] = os.paramStr(i).string
 
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
 
-  proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char]={},
+  proc initOptParser*(cmdline: seq[TaintedString], shortNoVal: set[char] = {},
                       longNoVal: seq[string] = @[];
                       allowWhitespaceAfterColon = true): OptParser =
     ## Initializes the command line parser.
@@ -264,9 +263,9 @@ when declared(os.paramCount):
       for i in 0..<cmdline.len:
         result.cmds[i] = cmdline[i].string
     else:
-      result.cmds = newSeq[string](paramCount())
-      for i in countup(1, paramCount()):
-        result.cmds[i-1] = paramStr(i).string
+      result.cmds = newSeq[string](os.paramCount())
+      for i in countup(1, os.paramCount()):
+        result.cmds[i-1] = os.paramStr(i).string
     result.kind = cmdEnd
     result.key = TaintedString""
     result.val = TaintedString""
@@ -274,8 +273,9 @@ when declared(os.paramCount):
 proc handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
-  add(p.key.string, cmd[i])
-  inc(i)
+  if i < cmd.len:
+    add(p.key.string, cmd[i])
+    inc(i)
   p.inShortState = true
   while i < cmd.len and cmd[i] in {'\t', ' '}:
     inc(i)
@@ -344,10 +344,12 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
         inc(i)
         while i < p.cmds[p.idx].len and p.cmds[p.idx][i] in {'\t', ' '}: inc(i)
         # if we're at the end, use the next command line option:
-        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and p.allowWhitespaceAfterColon:
+        if i >= p.cmds[p.idx].len and p.idx < p.cmds.len and
+            p.allowWhitespaceAfterColon:
           inc p.idx
           i = 0
-        p.val = TaintedString p.cmds[p.idx].substr(i)
+        if p.idx < p.cmds.len:
+          p.val = TaintedString p.cmds[p.idx].substr(i)
       elif len(p.longNoVal) > 0 and p.key.string notin p.longNoVal and p.idx+1 < p.cmds.len:
         p.val = TaintedString p.cmds[p.idx+1]
         inc p.idx
@@ -364,45 +366,45 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     inc p.idx
     p.pos = 0
 
-when declared(os.paramCount):
-  proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
-    ## Retrieves the rest of the command line that has not been parsed yet.
-    ##
-    ## See also:
-    ## * `remainingArgs proc<#remainingArgs,OptParser>`_
-    ##
-    ## **Examples:**
-    ##
-    ## .. code-block::
-    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-    ##   while true:
-    ##     p.next()
-    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-    ##       break
-    ##     else: continue
-    ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
-    result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
+proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
+  ## Retrieves the rest of the command line that has not been parsed yet.
+  ##
+  ## See also:
+  ## * `remainingArgs proc<#remainingArgs,OptParser>`_
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+  ##   while true:
+  ##     p.next()
+  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+  ##       break
+  ##     else: continue
+  ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
+  result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
 
-  proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
-    ## Retrieves a sequence of the arguments that have not been parsed yet.
-    ##
-    ## See also:
-    ## * `cmdLineRest proc<#cmdLineRest,OptParser>`_
-    ##
-    ## **Examples:**
-    ##
-    ## .. code-block::
-    ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
-    ##   while true:
-    ##     p.next()
-    ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
-    ##       break
-    ##     else: continue
-    ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
-    result = @[]
-    for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
+proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
+  ## Retrieves a sequence of the arguments that have not been parsed yet.
+  ##
+  ## See also:
+  ## * `cmdLineRest proc<#cmdLineRest,OptParser>`_
+  ##
+  ## **Examples:**
+  ##
+  ## .. code-block::
+  ##   var p = initOptParser("--left -r:2 -- foo.txt bar.txt")
+  ##   while true:
+  ##     p.next()
+  ##     if p.kind == cmdLongOption and p.key == "":  # Look for "--"
+  ##       break
+  ##     else: continue
+  ##   doAssert p.remainingArgs == @["foo.txt", "bar.txt"]
+  result = @[]
+  for i in p.idx..<p.cmds.len: result.add TaintedString(p.cmds[i])
 
-iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedString] =
+iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key,
+    val: TaintedString] =
   ## Convenience iterator for iterating over the given
   ## `OptParser<#OptParser>`_.
   ##
@@ -442,11 +444,11 @@ iterator getopt*(p: var OptParser): tuple[kind: CmdLineKind, key, val: TaintedSt
 
 when declared(initOptParser):
   iterator getopt*(cmdline: seq[TaintedString] = commandLineParams(),
-                   shortNoVal: set[char]={}, longNoVal: seq[string] = @[]):
+                   shortNoVal: set[char] = {}, longNoVal: seq[string] = @[]):
              tuple[kind: CmdLineKind, key, val: TaintedString] =
     ## Convenience iterator for iterating over command line arguments.
     ##
-    ## This creates a new `OptParser<#OptParser>`_. If no command line 
+    ## This creates a new `OptParser<#OptParser>`_. If no command line
     ## arguments are provided, the real command line as provided by the
     ## ``os`` module is retrieved instead.
     ##
@@ -483,7 +485,8 @@ when declared(initOptParser):
     ##   if filename == "":
     ##     # no filename has been written, so we show the help
     ##     writeHelp()
-    var p = initOptParser(cmdline, shortNoVal=shortNoVal, longNoVal=longNoVal)
+    var p = initOptParser(cmdline, shortNoVal = shortNoVal,
+        longNoVal = longNoVal)
     while true:
       next(p)
       if p.kind == cmdEnd: break

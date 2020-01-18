@@ -27,8 +27,6 @@
 include "system/inclrtl.nim"
 include "system/hti.nim"
 
-import system/indexerrors
-
 {.pop.}
 
 type
@@ -702,7 +700,7 @@ when isMainModule:
 
   var test3: TestObj
   test3.test = 42
-  test3.test2 = blah2
+  test3 = TestObj(test2: blah2)
   var x3 = toAny(test3)
   i = 0
   for n, a in fields(x3):

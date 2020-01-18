@@ -28,6 +28,7 @@ true
 -1
 Meow
 '''
+joinable: false
 """
 
 import macros, typetraits, os, posix
@@ -462,5 +463,7 @@ block misc_issues:
 
   proc sayHello(c: Thing) = echo(c.hello)
 
-  var a: Thing = Cat()
+  # used to be 'var a: Thing = Cat()' but that's not valid Nim code
+  # anyway and will be an error soon.
+  var a: Cat = Cat()
   a.sayHello()

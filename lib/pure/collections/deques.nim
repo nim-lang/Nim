@@ -52,7 +52,7 @@
 ## * `channels module <channels.html>`_ for inter-thread communication
 
 
-import math, typetraits
+import math
 
 type
   Deque*[T] = object
@@ -61,6 +61,19 @@ type
     ## To initialize an empty deque use `initDeque proc <#initDeque,int>`_.
     data: seq[T]
     head, tail, count, mask: int
+
+const
+  defaultInitialSize* = 4
+
+template initImpl(result: typed, initialSize: int) =
+  assert isPowerOfTwo(initialSize)
+  result.mask = initialSize-1
+  newSeq(result.data, initialSize)
+  
+template checkIfInitialized(deq: typed) =
+  when compiles(defaultInitialSize):
+    if deq.mask == 0:
+      initImpl(deq, defaultInitialSize)
 
 proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## Create a new empty deque.
@@ -73,9 +86,7 @@ proc initDeque*[T](initialSize: int = 4): Deque[T] =
   ## If you need to accept runtime values for this you could use the
   ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
   ## `math module<math.html>`_.
-  assert isPowerOfTwo(initialSize)
-  result.mask = initialSize-1
-  newSeq(result.data, initialSize)
+  result.initImpl(initialSize)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
@@ -89,15 +100,15 @@ template emptyCheck(deq) =
 
 template xBoundsCheck(deq, i) =
   # Bounds check for the array like accesses.
-  when compileOption("boundChecks"):  # d:release should disable this.
-    if unlikely(i >= deq.count):  # x < deq.low is taken care by the Natural parameter
+  when compileOption("boundChecks"): # d:release should disable this.
+    if unlikely(i >= deq.count): # x < deq.low is taken care by the Natural parameter
       raise newException(IndexError,
                          "Out of bounds: " & $i & " > " & $(deq.count - 1))
-    if unlikely(i < 0):  # when used with BackwardsIndex
+    if unlikely(i < 0): # when used with BackwardsIndex
       raise newException(IndexError,
                          "Out of bounds: " & $i & " < 0")
 
-proc `[]`*[T](deq: Deque[T], i: Natural) : T {.inline.} =
+proc `[]`*[T](deq: Deque[T], i: Natural): T {.inline.} =
   ## Access the i-th element of `deq`.
   runnableExamples:
     var a = initDeque[int]()
@@ -124,7 +135,7 @@ proc `[]`*[T](deq: var Deque[T], i: Natural): var T {.inline.} =
   xBoundsCheck(deq, i)
   return deq.data[(deq.head + i) and deq.mask]
 
-proc `[]=`*[T](deq: var Deque[T], i: Natural, val : T) {.inline.} =
+proc `[]=`*[T](deq: var Deque[T], i: Natural, val: T) {.inline.} =
   ## Change the i-th element of `deq`.
   runnableExamples:
     var a = initDeque[int]()
@@ -134,6 +145,7 @@ proc `[]=`*[T](deq: var Deque[T], i: Natural, val : T) {.inline.} =
     a[3] = 66
     assert $a == "[99, 20, 30, 66, 50]"
 
+  checkIfInitialized(deq)
   xBoundsCheck(deq, i)
   deq.data[(deq.head + i) and deq.mask] = val
 
@@ -179,6 +191,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
     a[^3] = 77
     assert $a == "[10, 20, 77, 40, 99]"
 
+  checkIfInitialized(deq)
   xBoundsCheck(deq, deq.len - int(i))
   deq[deq.len - int(i)] = x
 
@@ -256,12 +269,15 @@ proc contains*[T](deq: Deque[T], item: T): bool {.inline.} =
   return false
 
 proc expandIfNeeded[T](deq: var Deque[T]) =
+  checkIfInitialized(deq)
   var cap = deq.mask + 1
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
-    for i, x in pairs(deq):  # don't use copyMem because the GC and because it's slower.
-      shallowCopy(n[i], x)
-    shallowCopy(deq.data, n)
+    var i = 0
+    for x in mitems(deq): # don't use copyMem because of the GC and because it's slower.
+      n[i] = move(x)
+      inc i
+    deq.data = move(n)
     deq.mask = cap * 2 - 1
     deq.tail = deq.count
     deq.head = 0
@@ -306,7 +322,7 @@ proc addLast*[T](deq: var Deque[T], item: T) =
   deq.data[deq.tail] = item
   deq.tail = (deq.tail + 1) and deq.mask
 
-proc peekFirst*[T](deq: Deque[T]): T {.inline.}=
+proc peekFirst*[T](deq: Deque[T]): T {.inline.} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
@@ -547,9 +563,9 @@ when isMainModule:
       assert deq.popFirst() > 0
 
   #foo(0,0)
-  foo(8,5)
-  foo(10,9)
-  foo(1,1)
-  foo(2,1)
-  foo(1,5)
-  foo(3,2)
+  foo(8, 5)
+  foo(10, 9)
+  foo(1, 1)
+  foo(2, 1)
+  foo(1, 5)
+  foo(3, 2)

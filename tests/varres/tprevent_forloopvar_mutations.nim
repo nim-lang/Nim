@@ -1,10 +1,12 @@
 discard """
   errmsg: "type mismatch: got <int>"
-  line: 15
+  line: 17
   nimout: '''type mismatch: got <int>
 but expected one of:
 proc inc[T: Ordinal | uint | uint64](x: var T; y = 1)
-  for a 'var' type a variable needs to be passed, but 'i' is immutable
+  first type mismatch at position: 1
+  required type for x: var T: Ordinal or uint or uint64
+  but expression 'i' is immutable, not 'var'
 
 expression: inc i
 '''

@@ -10,21 +10,20 @@
 # this unit handles Nim sets; it implements symbolic sets
 
 import
-  ast, astalgo, trees, nversion, lineinfos, platform, bitsets, types, renderer,
-  options
+  ast, astalgo, lineinfos, bitsets, types, options
 
 proc inSet*(s: PNode, elem: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     #internalError(s.info, "inSet")
     return false
-  for i in countup(0, sonsLen(s) - 1):
-    if s.sons[i].kind == nkRange:
-      if leValue(s.sons[i].sons[0], elem) and
-          leValue(elem, s.sons[i].sons[1]):
+  for i in 0..<s.len:
+    if s[i].kind == nkRange:
+      if leValue(s[i][0], elem) and
+          leValue(elem, s[i][1]):
         return true
     else:
-      if sameValue(s.sons[i], elem):
+      if sameValue(s[i], elem):
         return true
   result = false
 
@@ -32,13 +31,13 @@ proc overlap*(a, b: PNode): bool =
   if a.kind == nkRange:
     if b.kind == nkRange:
       # X..Y and C..D overlap iff (X <= D and C <= Y)
-      result = leValue(a.sons[0], b.sons[1]) and
-               leValue(b.sons[0], a.sons[1])
+      result = leValue(a[0], b[1]) and
+               leValue(b[0], a[1])
     else:
-      result = leValue(a.sons[0], b) and leValue(b, a.sons[1])
+      result = leValue(a[0], b) and leValue(b, a[1])
   else:
     if b.kind == nkRange:
-      result = leValue(b.sons[0], a) and leValue(a, b.sons[1])
+      result = leValue(b[0], a) and leValue(a, b[1])
     else:
       result = sameValue(a, b)
 
@@ -48,61 +47,61 @@ proc someInSet*(s: PNode, a, b: PNode): bool =
   if s.kind != nkCurly:
     #internalError(s.info, "SomeInSet")
     return false
-  for i in countup(0, sonsLen(s) - 1):
-    if s.sons[i].kind == nkRange:
-      if leValue(s.sons[i].sons[0], b) and leValue(b, s.sons[i].sons[1]) or
-          leValue(s.sons[i].sons[0], a) and leValue(a, s.sons[i].sons[1]):
+  for i in 0..<s.len:
+    if s[i].kind == nkRange:
+      if leValue(s[i][0], b) and leValue(b, s[i][1]) or
+          leValue(s[i][0], a) and leValue(a, s[i][1]):
         return true
     else:
       # a <= elem <= b
-      if leValue(a, s.sons[i]) and leValue(s.sons[i], b):
+      if leValue(a, s[i]) and leValue(s[i], b):
         return true
   result = false
 
 proc toBitSet*(conf: ConfigRef; s: PNode, b: var TBitSet) =
-  var first, j: BiggestInt
-  first = firstOrd(conf, s.typ.sons[0])
+  var first, j: Int128
+  first = firstOrd(conf, s.typ[0])
   bitSetInit(b, int(getSize(conf, s.typ)))
-  for i in countup(0, sonsLen(s) - 1):
-    if s.sons[i].kind == nkRange:
-      j = getOrdValue(s.sons[i].sons[0])
-      while j <= getOrdValue(s.sons[i].sons[1]):
-        bitSetIncl(b, j - first)
+  for i in 0..<s.len:
+    if s[i].kind == nkRange:
+      j = getOrdValue(s[i][0], first)
+      while j <= getOrdValue(s[i][1], first):
+        bitSetIncl(b, toInt64(j - first))
         inc(j)
     else:
-      bitSetIncl(b, getOrdValue(s.sons[i]) - first)
+      bitSetIncl(b, toInt64(getOrdValue(s[i]) - first))
 
 proc toTreeSet*(conf: ConfigRef; s: TBitSet, settype: PType, info: TLineInfo): PNode =
   var
     a, b, e, first: BiggestInt # a, b are interval borders
     elemType: PType
     n: PNode
-  elemType = settype.sons[0]
-  first = firstOrd(conf, elemType)
+  elemType = settype[0]
+  first = firstOrd(conf, elemType).toInt64
   result = newNodeI(nkCurly, info)
   result.typ = settype
   result.info = info
   e = 0
-  while e < len(s) * ElemSize:
+  while e < s.len * ElemSize:
     if bitSetIn(s, e):
       a = e
       b = e
       while true:
         inc(b)
-        if (b >= len(s) * ElemSize) or not bitSetIn(s, b): break
+        if (b >= s.len * ElemSize) or not bitSetIn(s, b): break
       dec(b)
-      let aa = newIntTypeNode(nkIntLit, a + first, elemType)
+      let aa = newIntTypeNode(a + first, elemType)
       aa.info = info
       if a == b:
-        addSon(result, aa)
+        result.add aa
       else:
         n = newNodeI(nkRange, info)
         n.typ = elemType
-        addSon(n, aa)
-        let bb = newIntTypeNode(nkIntLit, b + first, elemType)
+        n.add aa
+        let bb = newIntTypeNode(b + first, elemType)
         bb.info = info
-        addSon(n, bb)
-        addSon(result, n)
+        n.add bb
+        result.add n
       e = b
     inc(e)
 
@@ -133,7 +132,7 @@ proc equalSets*(conf: ConfigRef; a, b: PNode): bool =
 proc complement*(conf: ConfigRef; a: PNode): PNode =
   var x: TBitSet
   toBitSet(conf, a, x)
-  for i in countup(0, high(x)): x[i] = not x[i]
+  for i in 0..high(x): x[i] = not x[i]
   result = toTreeSet(conf, x, a.typ, a.info)
 
 proc deduplicate*(conf: ConfigRef; a: PNode): PNode =
@@ -150,8 +149,8 @@ proc setHasRange*(s: PNode): bool =
   assert s.kind == nkCurly
   if s.kind != nkCurly:
     return false
-  for i in countup(0, sonsLen(s) - 1):
-    if s.sons[i].kind == nkRange:
+  for i in 0..<s.len:
+    if s[i].kind == nkRange:
       return true
   result = false
 

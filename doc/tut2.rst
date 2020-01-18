@@ -169,21 +169,6 @@ no conversion between different object types is needed. Yet, access to invalid
 object fields raises an exception.
 
 
-Methods
--------
-In ordinary object oriented languages, procedures (also called *methods*) are
-bound to a class. This has disadvantages:
-
-* Adding a method to a class the programmer has no control over is
-  impossible or needs ugly workarounds.
-* Often it is unclear where the method should belong to: is
-  ``join`` a string method or an array method?
-
-Nim avoids these problems by not assigning methods to a class. All methods
-in Nim are multi-methods. As we will see later, multi-methods are
-distinguished from procs only for dynamic binding purposes.
-
-
 Method call syntax
 ------------------
 
@@ -292,7 +277,7 @@ Procedures always use static dispatch. For dynamic dispatch replace the
       a, b: Expression
 
   # watch out: 'eval' relies on dynamic binding
-  method eval(e: Expression): int =
+  method eval(e: Expression): int {.base.} =
     # override this base method
     quit "to override!"
 
@@ -308,11 +293,14 @@ Note that in the example the constructors ``newLit`` and ``newPlus`` are procs
 because it makes more sense for them to use static binding, but ``eval`` is a
 method because it requires dynamic binding.
 
+**Note:** Starting from Nim 0.20, to use multi-methods one must explicitly pass
+``--multimethods:on`` when compiling.
+
 In a multi-method all parameters that have an object type are used for the
 dispatching:
 
 .. code-block:: nim
-    :test: "nim c $1"
+    :test: "nim c --multiMethods:on $1"
 
   type
     Thing = ref object of RootObj
@@ -617,13 +605,13 @@ performed before the expression is passed to the template.
 If the template has no explicit return type,
 ``void`` is used for consistency with procs and methods.
 
-To pass a block of statements to a template, use 'untyped' for the last parameter:
+To pass a block of statements to a template, use ``untyped`` for the last parameter:
 
 .. code-block:: nim
     :test: "nim c $1"
 
   template withFile(f: untyped, filename: string, mode: FileMode,
-                    body: untyped): typed =
+                    body: untyped) =
     let fn = filename
     var f: File
     if open(f, fn, mode):

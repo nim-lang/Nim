@@ -42,7 +42,7 @@ type
                               ## the option was given a value
 
 proc initOptParser*(cmdline: seq[string]): OptParser {.rtl.} =
-  ## Initalizes option parses with cmdline. cmdline should not contain
+  ## Initializes option parses with cmdline. cmdline should not contain
   ## argument 0 - program name.
   ## If cmdline.len == 0 default to current command line arguments.
   result.remainingShortOptions = ""

@@ -105,3 +105,40 @@ block tcolors:
       return rgb(red(a) +! red(b), green(a) +! green(b), blue(a) +! blue(b))
 
     rgb(34, 55, 255)
+
+block:
+  type
+    R8  = range[0'u8 .. 10'u8]
+    R16 = range[0'u16 .. 10'u16]
+    R32 = range[0'u32 .. 10'u32]
+
+  var
+    x1 = R8(4)
+    x2 = R16(4)
+    x3 = R32(4)
+
+  doAssert $x1 & $x2 & $x3 == "444"
+
+block:
+  var x1: range[0'f..1'f] = 1
+  const x2: range[0'f..1'f] = 1
+  var x3: range[0'u8..1'u8] = 1
+  const x4: range[0'u8..1'u8] = 1
+
+  var x5: range[0'f32..1'f32] = 1'f64
+  const x6: range[0'f32..1'f32] = 1'f64
+
+  reject:
+    var x09: range[0'i8..1'i8] = 1.int
+  reject:
+    var x10: range[0'i64..1'i64] = 1'u64
+
+    const x11: range[0'f..1'f] = 2'f
+  reject:
+    const x12: range[0'f..1'f] = 2
+
+# ensure unsigned array indexing is remains lenient:
+var a: array[4'u, string]
+
+for i in 0..<a.len:
+  a[i] = "foo"

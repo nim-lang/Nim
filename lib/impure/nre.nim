@@ -6,18 +6,6 @@
 #    distribution, for details about the copyright.
 #
 
-
-from pcre import nil
-import nre/private/util
-import tables
-from strutils import `%`
-from math import ceil
-import options
-from unicode import runeLenAt
-
-export options
-
-
 ## What is NRE?
 ## ============
 ##
@@ -67,6 +55,15 @@ runnableExamples:
     let matchBounds = firstVowel.get().captureBounds[-1]
     doAssert matchBounds.a == 1
 
+from pcre import nil
+import nre/private/util
+import tables
+from strutils import `%`
+from math import ceil
+import options
+from unicode import runeLenAt
+
+export options
 
 # Type definitions {{{
 type
@@ -140,7 +137,7 @@ type
     ## into PCRE flags. These include ``NEVER_UTF``, ``ANCHORED``,
     ## ``DOLLAR_ENDONLY``, ``FIRSTLINE``, ``NO_AUTO_CAPTURE``,
     ## ``JAVASCRIPT_COMPAT``, ``U``, ``NO_STUDY``. In other PCRE wrappers, you
-    ## will need to pass these as seperate flags to PCRE.
+    ## will need to pass these as separate flags to PCRE.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
@@ -218,7 +215,7 @@ type
     pattern*: string  ## the pattern that caused the problem
 
   StudyError* = ref object of RegexError
-    ## Thrown when studying the regular expression failes
+    ## Thrown when studying the regular expression fails
     ## for whatever reason. The message contains the error
     ## code.
 
@@ -360,11 +357,13 @@ iterator items*(pattern: Captures,
 
 proc toSeq*(pattern: CaptureBounds,
             default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc toSeq*(pattern: Captures,
             default: Option[string] = none(string)): seq[Option[string]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc `$`*(pattern: RegexMatch): string =
   return pattern.captures[-1]
@@ -443,7 +442,6 @@ proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: 
 
 proc destroyRegex(pattern: Regex) =
   pcre.free_substring(cast[cstring](pattern.pcreObj))
-  pattern.pcreObj = nil
   if pattern.pcreExtra != nil:
     pcre.free_study(pattern.pcreExtra)
 

@@ -4,7 +4,7 @@ TFoo
 '''
 """
 
-## XXX this output needs to be adapated for VCC which produces different results.
+## XXX this output needs to be adapted for VCC which produces different results.
 
 # It turned out that it's hard to generate correct for these two test cases at
 # the same time.

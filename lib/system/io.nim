@@ -8,11 +8,12 @@
 #
 
 include inclrtl
+import formatfloat
 
 # ----------------- IO Part ------------------------------------------------
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
-          incompletestruct.} = object
+          incompleteStruct.} = object
   File* = ptr CFile ## The type representing a file handle.
 
   FileMode* = enum           ## The file mode when opening a file.
@@ -34,12 +35,17 @@ type
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
+  # duplicated between io and ansi_c
+  const stderrName = when defined(osx): "__stderrp" else: "stderr"
+  const stdoutName = when defined(osx): "__stdoutp" else: "stdout"
+  const stdinName = when defined(osx): "__stdinp" else: "stdin"
+
   var
-    stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+    stdin* {.importc: stdinName, header: "<stdio.h>".}: File
       ## The standard input stream.
-    stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+    stdout* {.importc: stdoutName, header: "<stdio.h>".}: File
       ## The standard output stream.
-    stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+    stderr* {.importc: stderrName, header: "<stdio.h>".}: File
       ## The standard error stream.
 
 when defined(useStdoutAsStdmsg):
@@ -82,11 +88,11 @@ proc c_feof(f: File): cint {.
   importc: "feof", header: "<stdio.h>".}
 
 when not declared(c_fwrite):
-  proc c_fwrite(buf: pointer, size, n: csize, f: File): cint {.
+  proc c_fwrite(buf: pointer, size, n: csize_t, f: File): cint {.
     importc: "fwrite", header: "<stdio.h>".}
 
 # C routine that is used here:
-proc c_fread(buf: pointer, size, n: csize, f: File): csize {.
+proc c_fread(buf: pointer, size, n: csize_t, f: File): csize_t {.
   importc: "fread", header: "<stdio.h>", tags: [ReadIOEffect].}
 when defined(windows):
   when not defined(amd64):
@@ -106,11 +112,20 @@ else:
     importc: "ftello", header: "<stdio.h>", tags: [].}
 proc c_ferror(f: File): cint {.
   importc: "ferror", header: "<stdio.h>", tags: [].}
-proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize): cint {.
+proc c_setvbuf(f: File, buf: pointer, mode: cint, size: csize_t): cint {.
   importc: "setvbuf", header: "<stdio.h>", tags: [].}
 
 proc c_fprintf(f: File, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
+proc c_fputc(c: char, f: File): cint {.
+  importc: "fputc", header: "<stdio.h>".}
+
+# When running nim in android app, stdout goes nowhere, so echo gets ignored
+# To redirect echo to the android logcat, use -d:androidNDK
+when defined(androidNDK):
+  const ANDROID_LOG_VERBOSE = 2.cint
+  proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
+    {.importc: "__android_log_print", header: "<android/log.h>", varargs, discardable.}
 
 template sysFatal(exc, msg) =
   raise newException(exc, msg)
@@ -143,7 +158,7 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  result = c_fread(buffer, 1, len, f)
+  result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
   if result != len: checkErr(f)
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
@@ -175,7 +190,7 @@ proc writeBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## writes the bytes of buffer pointed to by the parameter `buffer` to the
   ## file `f`. Returns the number of actual written bytes, which may be less
   ## than `len` in case of an error.
-  result = c_fwrite(buffer, 1, len, f)
+  result = cast[int](c_fwrite(buffer, 1, cast[csize_t](len), f))
   checkErr(f)
 
 proc writeBytes*(f: File, a: openArray[int8|uint8], start, len: Natural): int {.
@@ -194,9 +209,34 @@ proc writeChars*(f: File, a: openArray[char], start, len: Natural): int {.
   var x = cast[ptr UncheckedArray[int8]](a)
   result = writeBuffer(f, addr(x[int(start)]), len)
 
+when defined(windows):
+  proc writeWindows(f: File; s: string; doRaise = false) =
+    # Don't ask why but the 'printf' family of function is the only thing
+    # that writes utf-8 strings reliably on Windows. At least on my Win 10
+    # machine. We also enable `setConsoleOutputCP(65001)` now by default.
+    # But we cannot call printf directly as the string might contain \0.
+    # So we have to loop over all the sections separated by potential \0s.
+    var i = c_fprintf(f, "%s", s)
+    while i < s.len:
+      if s[i] == '\0':
+        let w = c_fputc('\0', f)
+        if w != 0:
+          if doRaise: raiseEIO("cannot write string to file")
+          break
+        inc i
+      else:
+        let w = c_fprintf(f, "%s", unsafeAddr s[i])
+        if w <= 0:
+          if doRaise: raiseEIO("cannot write string to file")
+          break
+        inc i, w
+
 proc write*(f: File, s: string) {.tags: [WriteIOEffect], benign.} =
-  if writeBuffer(f, cstring(s), s.len) != s.len:
-    raiseEIO("cannot write string to file")
+  when defined(windows):
+    writeWindows(f, s, doRaise = true)
+  else:
+    if writeBuffer(f, cstring(s), s.len) != s.len:
+      raiseEIO("cannot write string to file")
 {.pop.}
 
 when NoFakeVars:
@@ -236,9 +276,22 @@ proc flushFile*(f: File) {.tags: [WriteIOEffect].} =
   discard c_fflush(f)
 
 proc getFileHandle*(f: File): FileHandle =
+  ## returns the file handle of the file ``f``. This is only useful for
+  ## platform specific programming.
+  ## Note that on Windows this doesn't return the Windows-specific handle,
+  ## but the C library's notion of a handle, whatever that means.
+  ## Use `getOsFileHandle` instead.
+  c_fileno(f)
+
+proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
-  c_fileno(f)
+  when defined(windows):
+    proc getOsfhandle(fd: cint): FileHandle {.
+      importc: "_get_osfhandle", header: "<io.h>".}
+    result = getOsfhandle(getFileHandle(f))
+  else:
+    result = c_fileno(f)
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -248,7 +301,7 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
   ## character(s) are not part of the returned string. Returns ``false``
   ## if the end of the file has been reached, ``true`` otherwise. If
   ## ``false`` is returned `line` contains no new data.
-  proc c_memchr(s: pointer, c: cint, n: csize): pointer {.
+  proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
 
   var pos = 0
@@ -264,7 +317,7 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
 
     var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
     if not fgetsSuccess: checkErr(f)
-    let m = c_memchr(addr line.string[pos], '\L'.ord, sp)
+    let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
       var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
@@ -309,10 +362,16 @@ proc write*(f: File, i: BiggestInt) {.tags: [WriteIOEffect], benign.} =
 proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   if b: write(f, "true")
   else: write(f, "false")
+
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
-  if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
+  var buffer: array[65, char]
+  discard writeFloatToBuffer(buffer, r)
+  if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
+
 proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
-  if c_fprintf(f, "%.16g", r) < 0: checkErr(f)
+  var buffer: array[65, char]
+  discard writeFloatToBuffer(buffer, r)
+  if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.} =
   discard c_putc(cint(c), f)
@@ -420,7 +479,7 @@ when defined(windows) and not defined(useWinAnsi):
     result = wfreopen(f, m, stream)
 
 else:
-  proc fopen(filename, mode: cstring): pointer {.importc: "fopen", noDecl.}
+  proc fopen(filename, mode: cstring): pointer {.importc: "fopen", nodecl.}
   proc freopen(filename, mode: cstring, stream: File): File {.
     importc: "freopen", nodecl.}
 
@@ -442,7 +501,7 @@ when defined(posix) and not defined(nimscript):
         st_mode: Mode        ## Mode of file
         filler_2: array[144 - 24 - 4, char]
 
-    proc S_ISDIR(m: Mode): bool =
+    proc modeIsDir(m: Mode): bool =
       ## Test for a directory.
       (m and 0o170000) == 0o40000
 
@@ -454,7 +513,7 @@ when defined(posix) and not defined(nimscript):
                header: "<sys/stat.h>", final, pure.} = object ## struct stat
         st_mode: Mode        ## Mode of file
 
-    proc S_ISDIR(m: Mode): bool {.importc, header: "<sys/stat.h>".}
+    proc modeIsDir(m: Mode): bool {.importc: "S_ISDIR", header: "<sys/stat.h>".}
       ## Test for a directory.
 
   proc c_fstat(a1: cint, a2: var Stat): cint {.
@@ -468,7 +527,7 @@ proc open*(f: var File, filename: string,
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
   ## This throws no exception if the file could not be opened.
-  var p: pointer = fopen(filename, FormatOpen[mode])
+  var p = fopen(filename, FormatOpen[mode])
   if p != nil:
     when defined(posix) and not defined(nimscript):
       # How `fopen` handles opening a directory is not specified in ISO C and
@@ -476,13 +535,13 @@ proc open*(f: var File, filename: string,
       # be opened.
       var f2 = cast[File](p)
       var res: Stat
-      if c_fstat(getFileHandle(f2), res) >= 0'i32 and S_ISDIR(res.st_mode):
+      if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
-      discard c_setvbuf(f, nil, IOFBF, bufSize.cint)
+      discard c_setvbuf(f, nil, IOFBF, cast[csize_t](bufSize))
     elif bufSize == 0:
       discard c_setvbuf(f, nil, IONBF, 0)
 
@@ -493,15 +552,13 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## file variables.
   ##
   ## Default mode is readonly. Returns true iff the file could be reopened.
-  var p: pointer = freopen(filename, FormatOpen[mode], f)
-  result = p != nil
+  result = freopen(filename, FormatOpen[mode], f) != nil
 
 proc open*(f: var File, filehandle: FileHandle,
            mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
   ## Creates a ``File`` from a `filehandle` with given `mode`.
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
-
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
@@ -528,7 +585,7 @@ proc getFilePos*(f: File): int64 {.benign.} =
 
 proc getFileSize*(f: File): int64 {.tags: [ReadIOEffect], benign.} =
   ## retrieves the file size (in bytes) of `f`.
-  var oldPos = getFilePos(f)
+  let oldPos = getFilePos(f)
   discard c_fseek(f, 0, 2) # seek the end of the file
   result = getFilePos(f)
   setFilePos(f, oldPos)
@@ -550,23 +607,32 @@ when declared(stdout):
     var echoLock: SysLock
     initSysLock echoLock
 
-  proc echoBinSafe(args: openArray[string]) {.compilerProc.} =
-    # flockfile deadlocks some versions of Android 5.x.x
-    when not defined(windows) and not defined(android) and not defined(nintendoswitch):
-      proc flockfile(f: File) {.importc, noDecl.}
-      proc funlockfile(f: File) {.importc, noDecl.}
-      flockfile(stdout)
-    when defined(windows) and compileOption("threads"):
-      acquireSys echoLock
-    for s in args:
-      discard c_fwrite(s.cstring, s.len, 1, stdout)
-    const linefeed = "\n" # can be 1 or more chars
-    discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
-    discard c_fflush(stdout)
-    when not defined(windows) and not defined(android) and not defined(nintendoswitch):
-      funlockfile(stdout)
-    when defined(windows) and compileOption("threads"):
-      releaseSys echoLock
+  proc echoBinSafe(args: openArray[string]) {.compilerproc.} =
+    when defined(androidNDK):
+      var s = ""
+      for arg in args:
+        s.add arg
+      android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
+    else:
+      # flockfile deadlocks some versions of Android 5.x.x
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
+        proc flockfile(f: File) {.importc, nodecl.}
+        proc funlockfile(f: File) {.importc, nodecl.}
+        flockfile(stdout)
+      when defined(windows) and compileOption("threads"):
+        acquireSys echoLock
+      for s in args:
+        when defined(windows):
+          writeWindows(stdout, s)
+        else:
+          discard c_fwrite(s.cstring, cast[csize_t](s.len), 1, stdout)
+      const linefeed = "\n"
+      discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
+      discard c_fflush(stdout)
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
+        funlockfile(stdout)
+      when defined(windows) and compileOption("threads"):
+        releaseSys echoLock
 
 
 when defined(windows) and not defined(nimscript):
@@ -576,24 +642,34 @@ when defined(windows) and not defined(nimscript):
     importc: when defined(bcc): "setmode" else: "_setmode",
     header: "<io.h>".}
   var
-    O_BINARY {.importc: "_O_BINARY", header:"<fcntl.h>".}: cint
+    O_BINARY {.importc: "_O_BINARY", header: "<fcntl.h>".}: cint
 
   # we use binary mode on Windows:
   c_setmode(c_fileno(stdin), O_BINARY)
   c_setmode(c_fileno(stdout), O_BINARY)
   c_setmode(c_fileno(stderr), O_BINARY)
 
+when defined(windows) and appType == "console" and
+    not defined(nimDontSetUtf8CodePage) and not defined(nimscript):
+  proc setConsoleOutputCP(codepage: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleOutputCP".}
+  proc setConsoleCP(wCodePageID: cuint): int32 {.stdcall, dynlib: "kernel32",
+    importc: "SetConsoleCP".}
+
+  const Utf8codepage = 65001
+  discard setConsoleOutputCP(Utf8codepage)
+  discard setConsoleCP(Utf8codepage)
 
 proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.} =
   ## Opens a file named `filename` for reading, calls `readAll
-  ## <#readAll>`_ and closes the file afterwards. Returns the string.
-  ## Raises an IO exception in case of an error. If # you need to call
+  ## <#readAll,File>`_ and closes the file afterwards. Returns the string.
+  ## Raises an IO exception in case of an error. If you need to call
   ## this inside a compile time macro you can use `staticRead
-  ## <#staticRead>`_.
+  ## <system.html#staticRead,string>`_.
   var f: File
   if open(f, filename):
     try:
-      result = readAll(f).TaintedString
+      result = readAll(f)
     finally:
       close(f)
   else:
@@ -612,6 +688,39 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
+proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
+  ## Opens a file named `filename` for writing. Then writes the
+  ## `content` completely to the file and closes the file afterwards.
+  ## Raises an IO exception in case of an error.
+  var f: File
+  if open(f, filename, fmWrite):
+    try:
+      f.writeBuffer(unsafeAddr content[0], content.len)
+    finally:
+      close(f)
+  else:
+    raise newException(IOError, "cannot open: " & filename)
+
+proc readLines*(filename: string, n: Natural): seq[TaintedString] =
+  ## read `n` lines from the file named `filename`. Raises an IO exception
+  ## in case of an error. Raises EOF if file does not contain at least `n` lines.
+  ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
+  ## The newline character(s) are not part of the returned strings.
+  var f: File
+  if open(f, filename):
+    try:
+      result = newSeq[TaintedString](n)
+      for i in 0 .. n - 1:
+        if not readLine(f, result[i]):
+          raiseEOF()
+    finally:
+      close(f)
+  else:
+    sysFatal(IOError, "cannot open: " & filename)
+
+proc readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+  readLines(filename, 1)
+
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.
   ##
@@ -627,9 +736,11 @@ iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ##       buffer.add(line.replace("a", "0") & '\x0A')
   ##     writeFile(filename, buffer)
   var f = open(filename, bufSize=8000)
-  defer: close(f)
-  var res = TaintedString(newStringOfCap(80))
-  while f.readLine(res): yield res
+  try:
+    var res = TaintedString(newStringOfCap(80))
+    while f.readLine(res): yield res
+  finally:
+    close(f)
 
 iterator lines*(f: File): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterate over any line in the file `f`.

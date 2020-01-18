@@ -94,7 +94,7 @@ proc siftup[T](heap: var HeapQueue[T], p: int) =
   let startpos = pos
   let newitem = heap[pos]
   # Bubble up the smaller child until hitting a leaf.
-  var childpos = 2*pos + 1    # leftmost child position
+  var childpos = 2*pos + 1 # leftmost child position
   while childpos < endpos:
     # Set childpos to index of smaller child.
     let rightpos = childpos + 1
@@ -176,12 +176,12 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     result.addQuoted(x)
   result.add("]")
 
-proc newHeapQueue*[T](): HeapQueue[T] {.deprecated.} =
-  ## **Deprecated since v0.20.0:** use ``initHeapQueue`` instead.
+proc newHeapQueue*[T](): HeapQueue[T] {.deprecated:
+  "Deprecated since v0.20.0: use 'initHeapQueue' instead.".} =
   initHeapQueue[T]()
 
-proc newHeapQueue*[T](heap: var HeapQueue[T]) {.deprecated.} =
-  ## **Deprecated since v0.20.0:** use ``clear`` instead.
+proc newHeapQueue*[T](heap: var HeapQueue[T]) {.deprecated:
+  "Deprecated since v0.20.0: use 'clear' instead.".} =
   heap.clear()
 
 when isMainModule:

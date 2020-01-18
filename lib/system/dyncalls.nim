@@ -30,10 +30,10 @@ proc nimLoadLibraryError(path: string) =
     var msg: array[1000, char]
     copyMem(msg[0].addr, prefix.cstring, prefix.len)
     copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
-    discard MessageBoxA(0, msg[0].addr, nil, 0)
+    discard MessageBoxA(nil, msg[0].addr, nil, 0)
   quit(1)
 
-proc procAddrError(name: cstring) {.noinline.} =
+proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
   cstderr.rawWrite("could not import: ")
   cstderr.rawWrite(name)
@@ -118,11 +118,11 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
-    const decorated_length = 250
-    var decorated: array[decorated_length, char]
+    const decoratedLength = 250
+    var decorated: array[decoratedLength, char]
     decorated[0] = '_'
     var m = 1
-    while m < (decorated_length - 5):
+    while m < (decoratedLength - 5):
       if name[m - 1] == '\x00': break
       decorated[m] = name[m - 1]
       inc(m)

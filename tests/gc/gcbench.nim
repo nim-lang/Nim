@@ -44,7 +44,7 @@ discard """
 # - No way to check on memory use
 # - No cyclic data structures
 # - No attempt to measure variation with object size
-# - Results are sensitive to locking cost, but we dont
+# - Results are sensitive to locking cost, but we don't
 #   check for proper locking
 #
 
@@ -53,11 +53,11 @@ import
 
 type
   PNode = ref TNode
-  TNode {.final.} = object
+  TNode {.final, acyclic.} = object
     left, right: PNode
     i, j: int
 
-proc newNode(L, r: PNode): PNode =
+proc newNode(L, r: sink PNode): PNode =
   new(result)
   result.left = L
   result.right = r
@@ -97,8 +97,8 @@ proc makeTree(iDepth: int): PNode =
     return newNode(makeTree(iDepth-1), makeTree(iDepth-1))
 
 proc printDiagnostics() =
-  echo("Total memory available: " & $getTotalMem() & " bytes")
-  echo("Free memory: " & $getFreeMem() & " bytes")
+  echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
+  echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
 proc timeConstruction(depth: int) =
   var
@@ -166,9 +166,13 @@ proc main() =
 
   var elapsed = epochTime() - t
   printDiagnostics()
-  echo("Completed in " & $elapsed & "ms. Success!")
+  echo("Completed in " & $elapsed & "s. Success!")
 
 when defined(GC_setMaxPause):
   GC_setMaxPause 2_000
 
+when defined(gcDestructors):
+  let mem = getOccupiedMem()
 main()
+when defined(gcDestructors):
+  doAssert getOccupiedMem() == mem

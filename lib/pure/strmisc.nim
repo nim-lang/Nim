@@ -12,7 +12,7 @@
 
 import strutils
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
 proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
   procvar.} =

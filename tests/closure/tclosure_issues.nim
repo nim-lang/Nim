@@ -1,5 +1,10 @@
 discard """
-  output: '''true'''
+  output: '''true
+(999, 0)
+ok 0
+ok 1
+ok 2
+'''
 """
 
 
@@ -52,3 +57,26 @@ block tissue1911:
     proc baz() : int = helper()
 
     return (bar, baz)
+
+# bug #11523
+proc foo(): proc =
+  let a = 999
+  return proc(): (int, int) =
+    return (a, 0)
+
+echo foo()()
+
+
+block tissue7104:
+  proc sp(cb: proc())=
+      cb()
+
+  sp:
+      var i = 0
+      echo "ok ", i
+      sp():
+          inc i
+          echo "ok ", i
+          sp do:
+              inc i
+              echo "ok ", i

@@ -100,9 +100,6 @@ proc usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
   result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
 
-proc canbeCycleRoot(c: PCell): bool {.inline.} =
-  result = ntfAcyclic notin c.typ.flags
-
 proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
@@ -165,7 +162,7 @@ when defined(nimGcRefLeak):
 
   var ax: array[10_000, GcStackTrace]
 
-proc nimGCref(p: pointer) {.compilerProc.} =
+proc nimGCref(p: pointer) {.compilerproc.} =
   # we keep it from being collected by pretending it's not even allocated:
   when false:
     when withBitvectors: excl(gch.allocated, usrToCell(p))
@@ -174,7 +171,7 @@ proc nimGCref(p: pointer) {.compilerProc.} =
     captureStackTrace(framePtr, ax[gch.additionalRoots.len])
   add(gch.additionalRoots, usrToCell(p))
 
-proc nimGCunref(p: pointer) {.compilerProc.} =
+proc nimGCunref(p: pointer) {.compilerproc.} =
   let cell = usrToCell(p)
   var L = gch.additionalRoots.len-1
   var i = L
@@ -236,7 +233,7 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
   if dest == nil: return # nothing to do
   if ntfNoRefs notin mt.flags:
     case mt.kind
-    of tyRef, tyOptAsRef, tyString, tySequence: # leaf:
+    of tyRef, tyString, tySequence: # leaf:
       doOperation(cast[PPointer](d)[], op)
     of tyObject, tyTuple:
       forAllSlotsAux(dest, mt.node, op)
@@ -248,16 +245,16 @@ proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) =
 proc forAllChildren(cell: PCell, op: WalkOp) =
   gcAssert(cell != nil, "forAllChildren: 1")
   gcAssert(cell.typ != nil, "forAllChildren: 2")
-  gcAssert cell.typ.kind in {tyRef, tyOptAsRef, tySequence, tyString}, "forAllChildren: 3"
+  gcAssert cell.typ.kind in {tyRef, tySequence, tyString}, "forAllChildren: 3"
   let marker = cell.typ.marker
   if marker != nil:
     marker(cellToUsr(cell), op.int)
   else:
     case cell.typ.kind
-    of tyRef, tyOptAsRef: # common case
+    of tyRef: # common case
       forAllChildrenAux(cellToUsr(cell), cell.typ.base, op)
     of tySequence:
-      when not defined(gcDestructors):
+      when not defined(nimSeqsV2):
         var d = cast[ByteAddress](cellToUsr(cell))
         var s = cast[PGenericSeq](d)
         if s != nil:
@@ -269,7 +266,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
 proc rawNewObj(typ: PNimType, size: int, gch: var GcHeap): pointer =
   # generates a new object and sets its reference counter to 0
   incTypeSize typ, size
-  gcAssert(typ.kind in {tyRef, tyOptAsRef, tyString, tySequence}, "newObj: 1")
+  gcAssert(typ.kind in {tyRef, tyString, tySequence}, "newObj: 1")
   collectCT(gch, size + sizeof(Cell))
   var res = cast[PCell](rawAlloc(gch.region, size + sizeof(Cell)))
   gcAssert((cast[ByteAddress](res) and (MemAlign-1)) == 0, "newObj: 2")
@@ -307,7 +304,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
-when not defined(gcDestructors):
+when not defined(nimSeqsV2):
   proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
     # `newObj` already uses locks, so no need for them here.
     let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
@@ -375,14 +372,14 @@ proc mark(gch: var GcHeap, c: PCell) =
                   c, c.typ.name)
         inc gch.indentation, 2
 
-    c.refCount = rcBlack
+    c.refcount = rcBlack
     gcAssert gch.tempStack.len == 0, "stack not empty!"
     forAllChildren(c, waMarkPrecise)
     while gch.tempStack.len > 0:
       dec gch.tempStack.len
       var d = gch.tempStack.d[gch.tempStack.len]
       if d.refcount == rcWhite:
-        d.refCount = rcBlack
+        d.refcount = rcBlack
         forAllChildren(d, waMarkPrecise)
 
     when defined(nimTracing):
@@ -514,7 +511,7 @@ when not defined(useNimRtl):
       gch.tracing = true
 
   proc GC_fullCollect() =
-    var oldThreshold = gch.cycleThreshold
+    let oldThreshold = gch.cycleThreshold
     gch.cycleThreshold = 0 # forces cycle collection
     collectCT(gch, 0)
     gch.cycleThreshold = oldThreshold

@@ -18,7 +18,7 @@ test:
 
 macro test2*(a: untyped): untyped =
   proc testproc(recurse: int) =
-    echo "Thats weird"
+    echo "That's weird"
     var o : NimNode = nil
     echo "  no its not!"
     o = newNimNode(nnkNone)

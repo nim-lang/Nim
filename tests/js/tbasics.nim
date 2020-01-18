@@ -46,3 +46,17 @@ proc test2 =
   echo int(val)
 
 test2()
+
+
+var someGlobal = default(array[5, int])
+for x in someGlobal: doAssert(x == 0)
+
+proc tdefault =
+  var x = default(int)
+  doAssert(x == 0)
+  proc inner(v: openarray[string]) =
+    doAssert(v.len == 0)
+
+  inner(default(seq[string]))
+
+tdefault()

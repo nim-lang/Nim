@@ -746,7 +746,7 @@ block t5632:
 
 block t7247:
   type n8 = range[0'i8..127'i8]
-  var tab = initSet[n8]()
+  var tab = initHashSet[n8]()
   doAssert tab.contains(8) == false
 
 
@@ -762,11 +762,3 @@ block t3717:
 
   var f: Foo[Foo[int]]
   discard foo(f)
-
-
-
-block t5707:
-  proc foo[T]: seq[int] =
-      return lc[x | (x <- 1..10, x mod 2 == 0), int]
-
-  doAssert foo[float32]() == @[2, 4, 6, 8, 10]

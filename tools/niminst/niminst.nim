@@ -14,7 +14,7 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
+  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
   std / sha1
 
 const
@@ -185,7 +185,7 @@ proc parseCmdLine(c: var ConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimArgs = cmdLineRest(p).string
         break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key.string)
       of "help", "h":
         stdout.write(Usage)

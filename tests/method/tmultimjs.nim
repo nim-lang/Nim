@@ -9,7 +9,7 @@ hello
 
 # tmultim1
 type
-  Expression = ref object {.inheritable.}
+  Expression {.inheritable.} = ref object
   Literal = ref object of Expression
     x: int
   PlusExpr = ref object of Expression

@@ -1,5 +1,5 @@
 discard """
-  errormsg: "invalid recursion in type 'Executor'"
+  errormsg: "illegal recursion in type 'Executor'"
   line: 8
 """
 # bug reported by PR #5637

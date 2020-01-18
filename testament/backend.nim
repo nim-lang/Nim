@@ -23,8 +23,8 @@ var
 proc getMachine*(): MachineId =
   var name = execProcess("hostname").string.strip
   if name.len == 0:
-    name = when defined(posix): getenv("HOSTNAME").string
-           else: getenv("COMPUTERNAME").string
+    name = when defined(posix): getEnv("HOSTNAME").string
+           else: getEnv("COMPUTERNAME").string
   if name.len == 0:
     quit "cannot determine the machine name"
 

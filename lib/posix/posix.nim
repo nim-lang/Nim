@@ -16,7 +16,10 @@
 ## convenience: cstrings are used instead of proper Nim strings and
 ## return codes indicate errors. If you want exceptions
 ## and a proper Nim-like interface, use the OS module or write a wrapper.
-
+##
+## For high-level wrappers specialized for Linux and BSDs see:
+## `posix_utils <posix_utils.html>`_
+##
 ## Coding conventions:
 ## ALL types are named the same as in the POSIX standard except that they start
 ## with 'T' or 'P' (if they are pointers) and without the '_t' suffix to be
@@ -29,8 +32,11 @@
 
 # Dead code elimination ensures that we don't accidentally generate #includes
 # for files that might not exist on a specific platform! The user will get an
-# error only if they actualy try to use the missing declaration
+# error only if they actually try to use the missing declaration
 {.deadCodeElim: on.}  # dce option deprecated
+
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 # TODO these constants don't seem to be fetched from a header file for unknown
 #      platforms - where do they come from and why are they here?
@@ -83,7 +89,7 @@ const
 type Sighandler = proc (a: cint) {.noconv.}
 
 const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
-    defined(openbsd) or defined(dragonfly) ## \
+    defined(osx) or defined(openbsd) or defined(dragonfly) ## \
   ## Boolean flag that indicates if the system supports nanosecond time
   ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
   ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
@@ -92,8 +98,12 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 # Platform specific stuff
 
-when defined(linux) and defined(amd64):
+when (defined(linux) and not defined(android)) and defined(amd64):
   include posix_linux_amd64
+elif defined(openbsd) and defined(amd64):
+  include posix_openbsd_amd64
+elif (defined(macos) or defined(macosx) or defined(bsd)) and defined(cpu64):
+  include posix_macos_amd64
 elif defined(nintendoswitch):
   include posix_nintendoswitch
 else:
@@ -112,13 +122,13 @@ when StatHasNanoseconds:
     ## Second-granularity time of last status change.
     result = s.st_ctim.tv_sec
 else:
-  proc st_atim*(s: Stat): TimeSpec {.inline.} =
+  proc st_atim*(s: Stat): Timespec {.inline.} =
     ## Nanosecond-granularity time of last access.
     result.tv_sec = s.st_atime
-  proc st_mtim*(s: Stat): TimeSpec {.inline.} =
+  proc st_mtim*(s: Stat): Timespec {.inline.} =
     ## Nanosecond-granularity time of last data modification.
     result.tv_sec = s.st_mtime
-  proc st_ctim*(s: Stat): TimeSpec {.inline.} =
+  proc st_ctim*(s: Stat): Timespec {.inline.} =
     ## Nanosecond-granularity time of last data modification.
     result.tv_sec = s.st_ctime
 
@@ -196,6 +206,8 @@ when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch):
 proc glob*(a1: cstring, a2: cint,
           a3: proc (x1: cstring, x2: cint): cint {.noconv.},
           a4: ptr Glob): cint {.importc, header: "<glob.h>".}
+  ## Filename globbing. Use `os.walkPattern() <os.html#glob_1>`_ and similar.
+
 proc globfree*(a1: ptr Glob) {.importc, header: "<glob.h>".}
 
 proc getgrgid*(a1: Gid): ptr Group {.importc, header: "<grp.h>".}
@@ -261,47 +273,49 @@ proc setpwent*() {.importc, header: "<pwd.h>".}
 
 proc uname*(a1: var Utsname): cint {.importc, header: "<sys/utsname.h>".}
 
+proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
+
 proc pthread_atfork*(a1, a2, a3: proc () {.noconv.}): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_destroy*(a1: ptr PthreadAttr): cint {.
+proc pthread_attr_destroy*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getdetachstate*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_getdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getguardsize*(a1: ptr PthreadAttr, a2: var cint): cint {.
+proc pthread_attr_getguardsize*(a1: ptr Pthread_attr, a2: var cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_getinheritsched*(a1: ptr PthreadAttr,
+proc pthread_attr_getinheritsched*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getschedparam*(a1: ptr PthreadAttr,
+proc pthread_attr_getschedparam*(a1: ptr Pthread_attr,
           a2: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getschedpolicy*(a1: ptr PthreadAttr,
+proc pthread_attr_getschedpolicy*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getscope*(a1: ptr PthreadAttr,
+proc pthread_attr_getscope*(a1: ptr Pthread_attr,
           a2: var cint): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstack*(a1: ptr PthreadAttr,
+proc pthread_attr_getstack*(a1: ptr Pthread_attr,
          a2: var pointer, a3: var int): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstackaddr*(a1: ptr PthreadAttr,
+proc pthread_attr_getstackaddr*(a1: ptr Pthread_attr,
           a2: var pointer): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_getstacksize*(a1: ptr PthreadAttr,
+proc pthread_attr_getstacksize*(a1: ptr Pthread_attr,
           a2: var int): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_init*(a1: ptr PthreadAttr): cint {.
+proc pthread_attr_init*(a1: ptr Pthread_attr): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setdetachstate*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_setdetachstate*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setguardsize*(a1: ptr PthreadAttr, a2: int): cint {.
+proc pthread_attr_setguardsize*(a1: ptr Pthread_attr, a2: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setinheritsched*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_setinheritsched*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setschedparam*(a1: ptr PthreadAttr,
+proc pthread_attr_setschedparam*(a1: ptr Pthread_attr,
           a2: ptr Sched_param): cint {.importc, header: "<pthread.h>".}
-proc pthread_attr_setschedpolicy*(a1: ptr PthreadAttr, a2: cint): cint {.
+proc pthread_attr_setschedpolicy*(a1: ptr Pthread_attr, a2: cint): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setscope*(a1: ptr PthreadAttr, a2: cint): cint {.importc,
+proc pthread_attr_setscope*(a1: ptr Pthread_attr, a2: cint): cint {.importc,
   header: "<pthread.h>".}
-proc pthread_attr_setstack*(a1: ptr PthreadAttr, a2: pointer, a3: int): cint {.
+proc pthread_attr_setstack*(a1: ptr Pthread_attr, a2: pointer, a3: int): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setstackaddr*(a1: ptr PthreadAttr, a2: pointer): cint {.
+proc pthread_attr_setstackaddr*(a1: ptr Pthread_attr, a2: pointer): cint {.
   importc, header: "<pthread.h>".}
-proc pthread_attr_setstacksize*(a1: ptr PthreadAttr, a2: int): cint {.
+proc pthread_attr_setstacksize*(a1: ptr Pthread_attr, a2: int): cint {.
   importc, header: "<pthread.h>".}
 proc pthread_barrier_destroy*(a1: ptr Pthread_barrier): cint {.
   importc, header: "<pthread.h>".}
@@ -344,7 +358,7 @@ proc pthread_condattr_init*(a1: ptr Pthread_condattr): cint {.importc, header: "
 proc pthread_condattr_setclock*(a1: ptr Pthread_condattr,a2: ClockId): cint {.importc, header: "<pthread.h>".}
 proc pthread_condattr_setpshared*(a1: ptr Pthread_condattr, a2: cint): cint {.importc, header: "<pthread.h>".}
 
-proc pthread_create*(a1: ptr Pthread, a2: ptr PthreadAttr,
+proc pthread_create*(a1: ptr Pthread, a2: ptr Pthread_attr,
           a3: proc (x: pointer): pointer {.noconv.}, a4: pointer): cint {.importc, header: "<pthread.h>".}
 proc pthread_detach*(a1: Pthread): cint {.importc, header: "<pthread.h>".}
 proc pthread_equal*(a1, a2: Pthread): cint {.importc, header: "<pthread.h>".}
@@ -459,11 +473,21 @@ proc fdatasync*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc fork*(): Pid {.importc, header: "<unistd.h>".}
 proc fpathconf*(a1, a2: cint): int {.importc, header: "<unistd.h>".}
 proc fsync*(a1: cint): cint {.importc, header: "<unistd.h>".}
+ ## synchronize a file's buffer cache to the storage device
+
 proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
 proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>".}
-proc getegid*(): Gid {.importc, header: "<unistd.h>".}
+proc getuid*(): Uid {.importc, header: "<unistd.h>".}
+ ## returns the real user ID of the calling process
+
 proc geteuid*(): Uid {.importc, header: "<unistd.h>".}
+ ## returns the effective user ID of the calling process
+
 proc getgid*(): Gid {.importc, header: "<unistd.h>".}
+ ## returns the real group ID of the calling process
+
+proc getegid*(): Gid {.importc, header: "<unistd.h>".}
+ ## returns the effective group ID of the calling process
 
 proc getgroups*(a1: cint, a2: ptr array[0..255, Gid]): cint {.
   importc, header: "<unistd.h>".}
@@ -477,9 +501,14 @@ proc getopt*(a1: cint, a2: cstringArray, a3: cstring): cint {.
 proc getpgid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
 proc getpgrp*(): Pid {.importc, header: "<unistd.h>".}
 proc getpid*(): Pid {.importc, header: "<unistd.h>".}
+ ## returns  the process ID (PID) of the calling process
+
 proc getppid*(): Pid {.importc, header: "<unistd.h>".}
+ ## returns the process ID of the parent of the calling process
+
 proc getsid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
-proc getuid*(): Uid {.importc, header: "<unistd.h>".}
+ ## returns the session ID of the calling process
+
 proc getwd*(a1: cstring): cstring {.importc, header: "<unistd.h>".}
 proc isatty*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc lchown*(a1: cstring, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>".}
@@ -560,6 +589,8 @@ proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
 proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
 proc mkdir*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+  ## Use `os.createDir() <os.html#createDir,string>`_ and similar.
+
 proc mkfifo*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
 proc mknod*(a1: cstring, a2: Mode, a3: Dev): cint {.
   importc, header: "<sys/stat.h>".}
@@ -598,6 +629,7 @@ proc mmap*(a1: pointer, a2: int, a3, a4, a5: cint, a6: Off): pointer {.
 proc mprotect*(a1: pointer, a2: int, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
 proc msync*(a1: pointer, a2: int, a3: cint): cint {.importc, header: "<sys/mman.h>".}
+
 proc munlock*(a1: pointer, a2: int): cint {.importc, header: "<sys/mman.h>".}
 proc munlockall*(): cint {.importc, header: "<sys/mman.h>".}
 proc munmap*(a1: pointer, a2: int): cint {.importc, header: "<sys/mman.h>".}
@@ -755,7 +787,6 @@ proc sched_setscheduler*(a1: Pid, a2: cint, a3: var Sched_param): cint {.
   importc, header: "<sched.h>".}
 proc sched_yield*(): cint {.importc, header: "<sched.h>".}
 
-proc strerror*(errnum: cint): cstring {.importc, header: "<string.h>".}
 proc hstrerror*(herrnum: cint): cstring {.importc:"(char *)$1", header: "<netdb.h>".}
 
 proc FD_CLR*(a1: cint, a2: var TFdSet) {.importc, header: "<sys/select.h>".}
@@ -844,9 +875,15 @@ proc CMSG_FIRSTHDR*(mhdr: ptr Tmsghdr): ptr Tcmsghdr {.
   importc, header: "<sys/socket.h>".}
 
 proc CMSG_SPACE*(len: csize): csize {.
+  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+
+proc CMSG_SPACE*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
 
 proc CMSG_LEN*(len: csize): csize {.
+  importc, header: "<sys/socket.h>", deprecated: "argument `len` should be of type `csize_t`".}
+
+proc CMSG_LEN*(len: csize_t): csize_t {.
   importc, header: "<sys/socket.h>".}
 
 const
@@ -854,21 +891,21 @@ const
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
-proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): SocketHandle {.
+proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>".}
 
-proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: Socklen): cint {.
+proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
 
-proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: Socklen): cint {.
+proc connect*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getpeername*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): cint {.
+proc getpeername*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): cint {.
   importc, header: "<sys/socket.h>".}
-proc getsockname*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr Socklen): cint {.
+proc getsockname*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 
-proc getsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: ptr Socklen): cint {.
+proc getsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: ptr SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 
 proc listen*(a1: SocketHandle, a2: cint): cint {.
@@ -876,7 +913,7 @@ proc listen*(a1: SocketHandle, a2: cint): cint {.
 proc recv*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
   importc, header: "<sys/socket.h>".}
 proc recvfrom*(a1: SocketHandle, a2: pointer, a3: int, a4: cint,
-        a5: ptr SockAddr, a6: ptr Socklen): int {.
+        a5: ptr SockAddr, a6: ptr SockLen): int {.
   importc, header: "<sys/socket.h>".}
 proc recvmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
@@ -885,9 +922,9 @@ proc send*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
 proc sendmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
   importc, header: "<sys/socket.h>".}
 proc sendto*(a1: SocketHandle, a2: pointer, a3: int, a4: cint, a5: ptr SockAddr,
-             a6: Socklen): int {.
+             a6: SockLen): int {.
   importc, header: "<sys/socket.h>".}
-proc setsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: Socklen): cint {.
+proc setsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 proc shutdown*(a1: SocketHandle, a2: cint): cint {.
   importc, header: "<sys/socket.h>".}
@@ -953,7 +990,7 @@ proc getaddrinfo*(a1, a2: cstring, a3: ptr AddrInfo,
                   a4: var ptr AddrInfo): cint {.importc, header: "<netdb.h>".}
 
 when not defined(android4):
-  proc gethostbyaddr*(a1: pointer, a2: Socklen, a3: cint): ptr Hostent {.
+  proc gethostbyaddr*(a1: pointer, a2: SockLen, a3: cint): ptr Hostent {.
                       importc, header: "<netdb.h>".}
 else:
   proc gethostbyaddr*(a1: cstring, a2: cint, a3: cint): ptr Hostent {.
@@ -961,9 +998,9 @@ else:
 proc gethostbyname*(a1: cstring): ptr Hostent {.importc, header: "<netdb.h>".}
 proc gethostent*(): ptr Hostent {.importc, header: "<netdb.h>".}
 
-proc getnameinfo*(a1: ptr SockAddr, a2: Socklen,
-                  a3: cstring, a4: Socklen, a5: cstring,
-                  a6: Socklen, a7: cint): cint {.importc, header: "<netdb.h>".}
+proc getnameinfo*(a1: ptr SockAddr, a2: SockLen,
+                  a3: cstring, a4: SockLen, a5: cstring,
+                  a6: SockLen, a7: cint): cint {.importc, header: "<netdb.h>".}
 
 proc getnetbyaddr*(a1: int32, a2: cint): ptr Tnetent {.importc, header: "<netdb.h>".}
 proc getnetbyname*(a1: cstring): ptr Tnetent {.importc, header: "<netdb.h>".}
@@ -990,10 +1027,12 @@ proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
 proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>".}
-  ## Create a temporary file.
+  ## Creates a unique temporary file.
   ##
   ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
   ## can't be a string literal. If in doubt copy the string before passing it.
+
+proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>".}
 
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>".}
@@ -1017,7 +1056,7 @@ template onSignal*(signals: varargs[cint], body: untyped) =
   ## Example:
   ##
   ## .. code-block::
-  ##   from posix import SIGINT, SIGTERM
+  ##   from posix import SIGINT, SIGTERM, onSignal
   ##   onSignal(SIGINT, SIGTERM):
   ##     echo "bye from signal ", sig
 
@@ -1043,3 +1082,6 @@ proc setrlimit*(resource: cint, rlp: var RLimit): cint
 proc getrlimit*(resource: cint, rlp: var RLimit): cint
       {.importc: "getrlimit",header: "<sys/resource.h>".}
   ## The getrlimit() system call gets resource limits.
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

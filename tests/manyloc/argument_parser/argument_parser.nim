@@ -471,7 +471,7 @@ proc build_help*(expected: seq[Tparameter_specification] = @[],
   let width = prefixes.map(proc (x: string): int = 3 + len(x)).max
 
   for line in zip(prefixes, helps):
-    result.add(line.a & spaces(width - line.a.len) & line.b)
+    result.add(line[0] & spaces(width - line[0].len) & line[1])
 
 
 proc echo_help*(expected: seq[Tparameter_specification] = @[],

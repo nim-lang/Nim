@@ -17,14 +17,14 @@ build_nim_csources(){
   ## avoid changing dir in case of failure
   (
     echo_run cd csources
-    echo_run sh build.sh
+    echo_run sh build.sh $@
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild from csources
   echo_run cp bin/nim $nim_csources
 }
 
-[ -f $nim_csources ] || echo_run build_nim_csources
+[ -f $nim_csources ] || echo_run build_nim_csources $@
 
 # Note: if fails, may need to `cd csources && git pull`
 echo_run bin/nim c --skipUserCfg --skipParentCfg koch

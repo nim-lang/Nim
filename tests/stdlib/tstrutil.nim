@@ -155,24 +155,6 @@ proc testDelete =
   delete(s, 0, 0)
   assert s == "1236789ABCDEFG"
 
-proc testIsAlphaNumeric =
-  assert isAlphaNumeric("abcdABC1234") == true
-  assert isAlphaNumeric("a") == true
-  assert isAlphaNumeric("abcABC?1234") == false
-  assert isAlphaNumeric("abcABC 1234") == false
-  assert isAlphaNumeric(".") == false
-
-testIsAlphaNumeric()
-
-proc testIsDigit =
-  assert isDigit("1") == true
-  assert isDigit("1234") == true
-  assert isDigit("abcABC?1234") == false
-  assert isDigit(".") == false
-  assert isDigit(":") == false
-
-testIsDigit()
-
 proc testFind =
   assert "0123456789ABCDEFGH".find('A') == 10
   assert "0123456789ABCDEFGH".find('A', 5) == 10
@@ -189,14 +171,56 @@ proc testFind =
 
 proc testRFind =
   assert "0123456789ABCDEFGAH".rfind('A') == 17
-  assert "0123456789ABCDEFGAH".rfind('A', 13) == 10
-  assert "0123456789ABCDEFGAH".rfind('H', 13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind('H', last=13) == -1
   assert "0123456789ABCDEFGAH".rfind("A") == 17
-  assert "0123456789ABCDEFGAH".rfind("A", 13) == 10
-  assert "0123456789ABCDEFGAH".rfind("H", 13) == -1
+  assert "0123456789ABCDEFGAH".rfind("A", last=13) == 10
+  assert "0123456789ABCDEFGAH".rfind("H", last=13) == -1
   assert "0123456789ABCDEFGAH".rfind({'A'..'C'}) == 17
-  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, 13) == 12
-  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, 13) == -1
+  assert "0123456789ABCDEFGAH".rfind({'A'..'C'}, last=13) == 12
+  assert "0123456789ABCDEFGAH".rfind({'G'..'H'}, last=13) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=18) == -1
+  assert "0123456789ABCDEFGAH".rfind('A', start=11, last=17) == 17
+  assert "0123456789ABCDEFGAH".rfind("0", start=0) == 0
+  assert "0123456789ABCDEFGAH".rfind("0", start=1) == -1
+  assert "0123456789ABCDEFGAH".rfind("H", start=11) == 18
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=5) == 9
+  assert "0123456789ABCDEFGAH".rfind({'0'..'9'}, start=10) == -1
+
+proc testTrimZeros() =
+  var x = "1200"
+  x.trimZeros()
+  assert x == "1200"
+  x = "120.0"
+  x.trimZeros()
+  assert x == "120"
+  x = "0."
+  x.trimZeros()
+  assert x == "0"
+  x = "1.0e2"
+  x.trimZeros()
+  assert x == "1e2"
+  x = "78.90"
+  x.trimZeros()
+  assert x == "78.9"
+  x = "1.23e4"
+  x.trimZeros()
+  assert x == "1.23e4"
+  x = "1.01"
+  x.trimZeros()
+  assert x == "1.01"
+  x = "1.1001"
+  x.trimZeros()
+  assert x == "1.1001"
+  x = "0.0"
+  x.trimZeros()
+  assert x == "0"
+  x = "0.01"
+  x.trimZeros()
+  assert x == "0.01"
+  x = "1e0"
+  x.trimZeros()
+  assert x == "1e0"
 
 proc testSplitLines() =
   let fixture = "a\nb\rc\r\nd"
@@ -257,6 +281,7 @@ proc testParseInts =
 testDelete()
 testFind()
 testRFind()
+testTrimZeros()
 testSplitLines()
 testCountLines()
 testParseInts()
@@ -266,17 +291,8 @@ assert(insertSep($232) == "232")
 assert(insertSep($12345, ',') == "12,345")
 assert(insertSep($0) == "0")
 
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
-assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
-assert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
-assert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
-assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
-assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
-assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
-assert(editDistance("main", "malign") == 2)
-
 assert "/1/2/3".rfind('/') == 4
-assert "/1/2/3".rfind('/', 1) == 0
+assert "/1/2/3".rfind('/', last=1) == 0
 assert "/1/2/3".rfind('0') == -1
 
 assert(toHex(100i16, 32) == "00000000000000000000000000000064")
@@ -300,13 +316,20 @@ assert "".toHex == ""
 assert "\x00\xFF\x80".toHex == "00FF80"
 assert "0123456789abcdef".parseHexStr.toHex == "0123456789ABCDEF"
 
-assert(' '.repeat(8)== "        ")
+assert(' '.repeat(8) == "        ")
 assert(" ".repeat(8) == "        ")
 assert(spaces(8) == "        ")
 
 assert(' '.repeat(0) == "")
 assert(" ".repeat(0) == "")
 assert(spaces(0) == "")
+
+# bug #11369
+
+var num: int64 = -1
+assert num.toBin(64) == "1111111111111111111111111111111111111111111111111111111111111111"
+assert num.toOct(24) == "001777777777777777777777"
+
 
 # bug #8911
 when true:

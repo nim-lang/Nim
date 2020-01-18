@@ -57,7 +57,7 @@
 ## ========
 ##
 ## * `streams module <streams.html>`_ for using
-##   `open proc <#open,CsvParser,Stream,string,Char,Char,Char>`_
+##   `open proc <#open,CsvParser,Stream,string,char,char,char>`_
 ##   and other stream processing (like `close proc <streams.html#close,Stream>`_)
 ## * `parseopt module <parseopt.html>`_ for a command line parser
 ## * `parsecfg module <parsecfg.html>`_ for a configuration file parser
@@ -71,12 +71,12 @@ import
 type
   CsvRow* = seq[string] ## A row in a CSV file.
   CsvParser* = object of BaseLexer ## The parser object.
-    ##
-    ## It consists of two public fields:
-    ## * `row` is the current row
-    ## * `headers` are the columns that are defined in the csv file
-    ##   (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
-    ##   Used with `rowEntry <#rowEntry,CsvParser,string>`_).
+                                   ##
+                                   ## It consists of two public fields:
+                                   ## * `row` is the current row
+                                   ## * `headers` are the columns that are defined in the csv file
+                                   ##   (read using `readHeaderRow <#readHeaderRow,CsvParser>`_).
+                                   ##   Used with `rowEntry <#rowEntry,CsvParser,string>`_).
     row*: CsvRow
     filename: string
     sep, quote, esc: char
@@ -117,7 +117,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
   ##   `separator` is ignored.
   ##
   ## See also:
-  ## * `open proc <#open,CsvParser,string,Char,Char,Char>`_ which creates the
+  ## * `open proc <#open,CsvParser,string,char,char,char>`_ which creates the
   ##   file stream for you
   runnableExamples:
     import streams
@@ -139,7 +139,7 @@ proc open*(my: var CsvParser, input: Stream, filename: string,
 proc open*(my: var CsvParser, filename: string,
            separator = ',', quote = '"', escape = '\0',
            skipInitialSpace = false) =
-  ## Similar to the `other open proc<#open,CsvParser,Stream,string,Char,Char,Char>`_,
+  ## Similar to the `other open proc<#open,CsvParser,Stream,string,char,char,char>`_,
   ## but creates the file stream for you.
   runnableExamples:
     from os import removeFile
@@ -156,44 +156,41 @@ proc open*(my: var CsvParser, filename: string,
 
 proc parseField(my: var CsvParser, a: var string) =
   var pos = my.bufpos
-  var buf = my.buf
   if my.skipWhite:
-    while buf[pos] in {' ', '\t'}: inc(pos)
+    while my.buf[pos] in {' ', '\t'}: inc(pos)
   setLen(a, 0) # reuse memory
-  if buf[pos] == my.quote and my.quote != '\0':
+  if my.buf[pos] == my.quote and my.quote != '\0':
     inc(pos)
     while true:
-      let c = buf[pos]
+      let c = my.buf[pos]
       if c == '\0':
         my.bufpos = pos # can continue after exception?
         error(my, pos, my.quote & " expected")
         break
       elif c == my.quote:
-        if my.esc == '\0' and buf[pos+1] == my.quote:
+        if my.esc == '\0' and my.buf[pos+1] == my.quote:
           add(a, my.quote)
           inc(pos, 2)
         else:
           inc(pos)
           break
       elif c == my.esc:
-        add(a, buf[pos+1])
+        add(a, my.buf[pos+1])
         inc(pos, 2)
       else:
         case c
         of '\c':
           pos = handleCR(my, pos)
-          buf = my.buf
           add(a, "\n")
         of '\l':
           pos = handleLF(my, pos)
-          buf = my.buf
           add(a, "\n")
         else:
           add(a, c)
           inc(pos)
   else:
     while true:
-      let c = buf[pos]
+      let c = my.buf[pos]
       if c == my.sep: break
       if c in {'\c', '\l', '\0'}: break
       add(a, c)
@@ -321,7 +318,7 @@ proc readHeaderRow*(my: var CsvParser) =
     my.headers = my.row
 
 proc rowEntry*(my: var CsvParser, entry: string): var string =
-  ## Acceses a specified `entry` from the current row.
+  ## Accesses a specified `entry` from the current row.
   ##
   ## Assumes that `readHeaderRow <#readHeaderRow,CsvParser>`_ has already been
   ## called.

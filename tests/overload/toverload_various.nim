@@ -15,6 +15,8 @@ static: const
 static: literal
 static: constant folding
 static: static string
+foo1
+1
 '''
 """
 
@@ -174,3 +176,97 @@ block tstaticoverload:
   foo("literal")
   foo("constant" & " " & "folding")
   foo(staticString("static string"))
+
+# bug #8568 (2)
+
+proc goo(a: int): string = "int"
+proc goo(a: static[int]): string = "static int"
+proc goo(a: var int): string = "var int"
+proc goo[T: int](a: T): string = "T: int"
+#proc goo[T](a: T): string = "nur T"
+
+const tmp1 = 1
+let tmp2 = 1
+var tmp3 = 1
+
+doAssert goo(1) == "static int"
+doAssert goo(tmp1) == "static int"
+doAssert goo(tmp2) == "int"
+doAssert goo(tmp3) == "var int"
+
+doAssert goo[int](1) == "T: int"
+
+doAssert goo[int](tmp1) == "T: int"
+doAssert goo[int](tmp2) == "T: int"
+doAssert goo[int](tmp3) == "T: int"
+
+# bug #6076
+
+type A[T] = object
+
+proc regr(a: A[void]) = echo "foo1"
+proc regr[T](a: A[T]) = doAssert(false)
+
+regr(A[void]())
+
+
+type Foo[T] = object
+
+proc regr[T](p: Foo[T]): seq[T] =
+  discard
+
+proc regr(p: Foo[void]): seq[int] =
+  discard
+
+
+discard regr(Foo[int]())
+discard regr(Foo[void]())
+
+
+type
+  Sha2Context*[bits: static[int],
+               bsize: static[int],
+               T: uint32|uint64] = object
+    count: array[2, T]
+    state: array[8, T]
+    buffer: array[bsize, byte]
+
+  sha224* = Sha2Context[224, 64, uint32]
+  sha256* = Sha2Context[256, 64, uint32]
+  sha384* = Sha2Context[384, 128, uint64]
+  sha512* = Sha2Context[512, 128, uint64]
+  sha512_224* = Sha2Context[224, 128, uint64]
+  sha512_256* = Sha2Context[256, 128, uint64]
+
+type
+  RipemdContext*[bits: static[int]] = object
+    count: array[2, uint32]
+    state: array[bits div 32, uint32]
+    buffer: array[64, byte]
+
+  ripemd128* = RipemdContext[128]
+  ripemd160* = RipemdContext[160]
+  ripemd256* = RipemdContext[256]
+  ripemd320* = RipemdContext[320]
+
+const
+  MaxHmacBlockSize = 256
+
+type
+  HMAC*[HashType] = object
+    mdctx: HashType
+    opadctx: HashType
+
+template sizeBlock*(h: HMAC[Sha2Context]): uint = 1u
+template sizeBlock*(h: HMAC[RipemdContext]): uint = 0u
+
+proc init*[T](hmctx: HMAC[T], key: ptr byte, ulen: uint) =
+  const sizeBlock = hmctx.sizeBlock
+  echo sizeBlock
+
+proc hmac*[A, B](HashType: typedesc, key: openarray[A],
+                 data: openarray[B]) =
+  var ctx: HMAC[HashType]
+  ctx.init(nil, 0)
+
+sha256.hmac("", "")
