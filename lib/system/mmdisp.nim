@@ -356,48 +356,40 @@ elif defined(gogc):
 
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
-  # libc realloc() does not zero memory when the buffer grows, so we need to do
-  # that here. Every allocated buffer is prepended with the size of the
-  # allocation so we know what to zero when growing the buffer with realloc()
+  # libc realloc() does not zero out memory, so this is handled here. Every
+  # allocated buffer is prepended with the size of the allocation which is used
+  # to deduce which part of the buffer to zero.
 
   when not defined(useNimRtl):
+
     proc alloc(size: Natural): pointer =
       var x = c_malloc (size + sizeof(size)).csize_t
       if x == nil: raiseOutOfMem()
-
       cast[ptr int](x)[] = size
       result = cast[pointer](cast[int](x) + sizeof(size))
 
     proc alloc0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
+
     proc realloc(p: pointer, newsize: Natural): pointer =
       var x = cast[pointer](cast[int](p) - sizeof(newsize))
       let oldsize = cast[ptr int](x)[]
-
       x = c_realloc(x, (newsize + sizeof(newsize)).csize_t)
-
       if x == nil: raiseOutOfMem()
-
       cast[ptr int](x)[] = newsize
       result = cast[pointer](cast[int](x) + sizeof(newsize))
-
       if newsize > oldsize:
         zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
 
     proc dealloc(p: pointer) = c_free(cast[pointer](cast[int](p) - sizeof(int)))
 
-    proc allocShared(size: Natural): pointer =
-      result = alloc(size.csize_t)
-      if result == nil: raiseOutOfMem()
-    proc allocShared0(size: Natural): pointer =
-      result = alloc(size)
-      zeroMem(result, size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = realloc(p, newsize.csize_t)
-      if result == nil: raiseOutOfMem()
-    proc deallocShared(p: pointer) =
-      dealloc(p)
+    # Shared allocators map to the regular ones
+
+    proc allocShared(size: Natural): pointer = alloc(size.csize_t)
+    proc allocShared0(size: Natural): pointer = alloc0(size)
+    proc reallocShared(p: pointer, newsize: Natural): pointer = realloc(p, newsize.csize_t)
+    proc deallocShared(p: pointer) = dealloc(p)
 
     proc GC_disable() = discard
     proc GC_enable() = discard
@@ -405,7 +397,6 @@ elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
     proc GC_setStrategy(strategy: GC_Strategy) = discard
     proc GC_enableMarkAndSweep() = discard
     proc GC_disableMarkAndSweep() = discard
-    #proc GC_getStatistics(): string = return ""
 
     proc getOccupiedMem(): int = discard
     proc getFreeMem(): int = discard
