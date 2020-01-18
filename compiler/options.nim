@@ -284,8 +284,6 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
-proc getOutFileFull*(a: ConfigRef): AbsoluteFile = a.outDir / a.outFile
-
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
@@ -511,6 +509,9 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ##
   ## This is overridden by some tools (namely nimsuggest) via the ``conf.prefixDir``
   ## field.
+  ## This should resolve to root of nim sources, whether running nim from a local
+  ##  clone or using installed nim, so that these exist: `result/doc/advopt.txt`
+  ## and `result/lib/system.nim`
   if not conf.prefixDir.isEmpty: result = conf.prefixDir
   else: result = AbsoluteDir splitPath(getAppDir()).head
 

@@ -51,6 +51,14 @@
   and `typetraits.get` to get the ith element of a type tuple.
 - Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
 
+- Added `os.normalizePathEnd` for additional path sanitization.
+
+- Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
+
+- Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
+  This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
+  Eg: `echo ?.n.typ.kind`
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
@@ -72,6 +80,10 @@
 
 - An `align` pragma can now be used for variables and object fields, similar
   to the `alignas` declaration modifier in C/C++.
+
+- `=sink` type bound operator is now optional. Compiler can now use combination
+  of `=destroy` and `copyMem` to move objects efficiently.
+
 
 ## Language changes
 

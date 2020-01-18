@@ -305,6 +305,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "prefixdir", val: %conf.getPrefixDir().string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
@@ -364,7 +365,8 @@ proc mainCommand*(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    let output = if optListFullPaths in conf.globalOptions: $conf.getOutFileFull else: $conf.outFile
+    var output = $conf.absOutFile
+    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,

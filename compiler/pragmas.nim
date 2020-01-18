@@ -736,7 +736,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     result = result[0]
   elif n.kind == nkExprColonExpr and r.len == 2:
     # pragma(arg) -> pragma: arg
-    result.kind = n.kind
+    result.transitionSonsKind(n.kind)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
@@ -819,12 +819,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, it.info, "size may only be 1, 2, 4 or 8")
       of wAlign:
         let alignment = expectIntLit(c, it)
-        if alignment == 0:
-          discard
-        elif isPowerOfTwo(alignment):
+        if isPowerOfTwo(alignment) and alignment > 0:
           sym.alignment = max(sym.alignment, alignment)
         else:
-          localError(c.config, it.info, "power of two or 0 expected")
+          localError(c.config, it.info, "power of two expected")
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)

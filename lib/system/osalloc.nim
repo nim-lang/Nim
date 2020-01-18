@@ -295,5 +295,6 @@ elif hostOS == "standalone" or defined(StandaloneHeapSize):
   proc osDeallocPages(p: pointer, size: int) {.inline.} =
     if bumpPointer-size == cast[int](p):
       dec bumpPointer, size
+
 else:
   {.error: "Port memory manager to your platform".}

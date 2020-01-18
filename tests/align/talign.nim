@@ -31,9 +31,9 @@ proc foobar() =
   doAssert (cast[uint](addr(toplevel3)) and 31) == 0
 
   # test multiple align expressions
-  var mylocal1 {.align(0), align(128), align(32).}: int = 123
-  var mylocal2 {.align(128), align(0), align(32).}: int = 123
-  var mylocal3 {.align(0), align(32), align(128).}: int = 123
+  var mylocal1 {.align(128), align(32).}: int = 123
+  var mylocal2 {.align(128), align(32).}: int = 123
+  var mylocal3 {.align(32), align(128).}: int = 123
 
   doAssert (cast[uint](addr(mylocal1)) and 127) == 0
   doAssert (cast[uint](addr(mylocal2)) and 127) == 0
@@ -42,3 +42,12 @@ proc foobar() =
   echo "align ok"
 
 foobar()
+
+# bug #13122
+
+type Bug[T] = object
+  bug{.align:64.}: T
+  sideffect{.align:64.}: int
+
+var bug: Bug[int]
+doAssert sizeof(bug) == 128, "Oops my size is " & $sizeof(bug) # 16

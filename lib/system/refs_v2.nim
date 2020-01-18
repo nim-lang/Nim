@@ -83,7 +83,8 @@ proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
 
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   inc head(p).rc, rcIncrement
-  #cprintf("[INCREF] %p\n", p)
+  when traceCollector:
+    cprintf("[INCREF] %p\n", head(p))
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
@@ -131,11 +132,13 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
       result = true
-      #cprintf("[DESTROY] %p\n", p)
+      when traceCollector:
+        cprintf("[ABOUT TO DESTROY] %p\n", cell)
     else:
       dec cell.rc, rcIncrement
       # According to Lins it's correct to do nothing else here.
-      #cprintf("[DeCREF] %p\n", p)
+      when traceCollector:
+        cprintf("[DeCREF] %p\n", cell)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

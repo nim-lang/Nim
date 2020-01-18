@@ -230,9 +230,9 @@ proc genDispatcher(g: ModuleGraph; methods: seq[PSym], relevantCols: IntSet): PS
   var paramLen = base.typ.len
   var nilchecks = newNodeI(nkStmtList, base.info)
   var disp = newNodeI(nkIfStmt, base.info)
-  var ands = getSysMagic(g, unknownLineInfo(), "and", mAnd)
-  var iss = getSysMagic(g, unknownLineInfo(), "of", mOf)
-  let boolType = getSysType(g, unknownLineInfo(), tyBool)
+  var ands = getSysMagic(g, unknownLineInfo, "and", mAnd)
+  var iss = getSysMagic(g, unknownLineInfo, "of", mOf)
+  let boolType = getSysType(g, unknownLineInfo, tyBool)
   for col in 1..<paramLen:
     if contains(relevantCols, col):
       let param = base.typ.n[col].sym

@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees
+  pathutils, trees, nimconf
 
 const
   exportSection = skField
@@ -26,6 +26,7 @@ type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
+    module: PSym
     modDeprecationMsg: Rope
     toc, section: TSections
     indexValFilename: string
@@ -42,6 +43,7 @@ type
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     examples: string
+    wroteCss*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -115,9 +117,10 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt): PDoc =
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt, module: PSym = nil): PDoc =
   declareClosures()
   new(result)
+  result.module = module
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
@@ -630,8 +633,12 @@ proc genDeprecationMsg(d: PDoc, n: PNode): Rope =
   else:
     doAssert false
 
-proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
-  if not isVisible(d, nameNode): return
+type DocFlags = enum
+  kDefault
+  kForceExport
+
+proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
+  if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(d, nameNode)
     nameRope = name.rope
@@ -847,7 +854,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
 
-proc generateDoc*(d: PDoc, n, orig: PNode) =
+proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+  template genItemAux(skind) =
+    genItem(d, n, n[namePos], skind, docFlags)
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -855,27 +864,27 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   of nkCommentStmt: d.modDesc.add(genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skProc)
+    genItemAux(skProc)
   of nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skFunc)
+    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skMethod)
+    genItemAux(skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skIterator)
-  of nkMacroDef: genItem(d, n, n[namePos], skMacro)
-  of nkTemplateDef: genItem(d, n, n[namePos], skTemplate)
+    genItemAux(skIterator)
+  of nkMacroDef: genItemAux(skMacro)
+  of nkTemplateDef: genItemAux(skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skConverter)
+    genItemAux(skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in 0..<n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags)
   of nkStmtList:
     for i in 0..<n.len: generateDoc(d, n[i], orig)
   of nkWhenStmt:
@@ -886,7 +895,11 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      if it.kind == nkSym: exportSym(d, it.sym)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:
+          generateDoc(d, it.sym.ast, orig, kForceExport)
+        else:
+          exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
@@ -996,6 +1009,9 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
+proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
+  rope($relativeTo(outDir / RelativeFile"nimdoc.out.css", destFile.splitFile().dir, '/'))
+
 proc genOutFile(d: PDoc): Rope =
   var
     code, content: Rope
@@ -1029,12 +1045,11 @@ proc genOutFile(d: PDoc): Rope =
       rope(getClockStr()), code, d.modDeprecationMsg])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
-    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
-        "tableofcontents", "moduledesc", "date", "time",
+    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
+        "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [title.rope, toc, d.modDesc, rope(getDateStr()),
-                     rope(getClockStr()), content, d.meta[metaAuthor].rope,
-                     d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
+        [cssHref(d.conf.outDir, d.destFile), title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
   result = code
@@ -1057,9 +1072,16 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
     createDir(outfile.splitFile.dir)
+    d.conf.outFile = outfile.extractFilename.RelativeFile
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
+    elif not d.wroteCss:
+      let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
+      let cssDest = $d.conf.outDir / "nimdoc.out.css"
+        # renamed to make it easier to use with gitignore in user's repos
+      copyFile(cssSource, cssDest)
+      d.wroteCss = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1077,6 +1099,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
+      d.conf.outFile = d.destFile.extractFilename.RelativeFile
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
                  warnUser, "unable to open file \"" & d.destFile.string &
@@ -1162,15 +1185,17 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
 proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
   var content = mergeIndexes(conf.projectFull.string).rope
 
-  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), ["title",
-      "tableofcontents", "moduledesc", "date", "time",
-      "content", "author", "version", "analytics"],
-      ["Index".rope, nil, nil, rope(getDateStr()),
-                   rope(getClockStr()), content, nil, nil, nil])
-  # no analytics because context is not available
   var outFile = RelativeFile"theindex"
   if conf.outFile != RelativeFile"":
     outFile = conf.outFile
   let filename = getOutFile(conf, outFile, HtmlExt)
+
+  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
+      "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+      "content", "author", "version", "analytics"],
+      [cssHref(conf.outDir, filename), rope"Index", nil, nil, rope(getDateStr()),
+      rope(getClockStr()), content, nil, nil, nil])
+  # no analytics because context is not available
+
   if not writeRope(code, filename):
     rawMessage(conf, errCannotOpenFile, filename.string)

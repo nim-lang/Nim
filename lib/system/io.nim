@@ -35,12 +35,17 @@ type
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
+  # duplicated between io and ansi_c
+  const stderrName = when defined(osx): "__stderrp" else: "stderr"
+  const stdoutName = when defined(osx): "__stdoutp" else: "stdout"
+  const stdinName = when defined(osx): "__stdinp" else: "stdin"
+
   var
-    stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+    stdin* {.importc: stdinName, header: "<stdio.h>".}: File
       ## The standard input stream.
-    stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+    stdout* {.importc: stdoutName, header: "<stdio.h>".}: File
       ## The standard output stream.
-    stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+    stderr* {.importc: stderrName, header: "<stdio.h>".}: File
       ## The standard error stream.
 
 when defined(useStdoutAsStdmsg):
@@ -610,7 +615,7 @@ when declared(stdout):
       android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
     else:
       # flockfile deadlocks some versions of Android 5.x.x
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
@@ -624,7 +629,7 @@ when declared(stdout):
       const linefeed = "\n"
       discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
       discard c_fflush(stdout)
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock

@@ -133,6 +133,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
+  if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
+    return traitCall  ## tpo early to evaluate
+    
   let s = trait.sym.name.s
   case s
   of "or", "|":
@@ -383,6 +386,37 @@ proc semUnown(c: PContext; n: PNode): PNode =
   # little hack for injectdestructors.nim (see bug #11350):
   #result[0].typ = nil
 
+proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym =
+  # We need to do 2 things: Replace n.typ which is a 'ref T' by a 'var T' type.
+  # Replace nkDerefExpr by nkHiddenDeref
+  # nkDeref is for 'ref T':  x[].field
+  # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
+  proc transform(n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+    result = shallowCopy(n)
+    if sameTypeOrNil(n.typ, old):
+      result.typ = fresh
+    if n.kind == nkSym and n.sym == oldParam:
+      result.sym = newParam
+    for i in 0 ..< safeLen(n):
+      result[i] = transform(n[i], old, fresh, oldParam, newParam)
+    #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
+    #  result =
+
+  result = copySym(orig)
+  result.info = info
+  result.flags.incl sfFromGeneric
+  result.owner = orig
+  let origParamType = orig.typ[1]
+  let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs))
+  let oldParam = orig.typ.n[1].sym
+  let newParam = newSym(skParam, oldParam.name, result, result.info)
+  newParam.typ = newParamType
+  # proc body:
+  result.ast = transform(orig.ast, origParamType, newParamType, oldParam, newParam)
+  # proc signature:
+  result.typ = newProcType(result.info, result)
+  result.typ.addParam newParam
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -447,6 +481,13 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     # Make sure the finalizer procedure refers to a procedure
     if n[^1].kind == nkSym and n[^1].sym.kind notin {skProc, skFunc}:
       localError(c.config, n.info, "finalizer must be a direct reference to a proc")
+    elif optTinyRtti in c.config.globalOptions:
+      # check if we converted this finalizer into a destructor already:
+      let t = whereToBindTypeHook(c, n[^1].sym.typ[1].skipTypes(abstractInst+{tyRef}))
+      if t != nil and t.attachedOps[attachedDestructor] != nil and t.attachedOps[attachedDestructor].owner == n[^1].sym:
+        discard "already turned this one into a finalizer"
+      else:
+        bindTypeHook(c, turnFinalizerIntoDestructor(c, n[^1].sym, n.info), n, attachedDestructor)
     result = n
   of mDestroy:
     result = n

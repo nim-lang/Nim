@@ -100,7 +100,7 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## this proc calls `window.performance.now()`, which is not supported by
   ## older browsers. See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
-  when defined(JS):
+  when defined(js):
     let ticks = getJsTicks()
     result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
   elif defined(macosx):

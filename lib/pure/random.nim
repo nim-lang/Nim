@@ -83,7 +83,7 @@ import algorithm #For upperBound
 include "system/inclrtl"
 {.push debugger: off.}
 
-when defined(JS):
+when defined(js):
   type Ui = uint32
 
   const randMax = 4_294_967_295u32
@@ -108,7 +108,7 @@ type
                  ## generator are **not** thread-safe!
     a0, a1: Ui
 
-when defined(JS):
+when defined(js):
   var state = Rand(
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
@@ -190,7 +190,7 @@ proc skipRandomNumbers*(s: var Rand) =
   ##
   ## See also:
   ## * `next proc<#next,Rand>`_
-  when defined(JS):
+  when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
   else:
     const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
@@ -216,7 +216,7 @@ proc random*(max: int): int {.benign, deprecated:
 proc random*(max: float): float {.benign, deprecated:
   "Deprecated since v0.18.0; use 'rand' instead".} =
   let x = next(state)
-  when defined(JS):
+  when defined(js):
     result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
@@ -287,7 +287,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     let f = r.rand(1.0)
     ## f = 8.717181376738381e-07
   let x = next(r)
-  when defined(JS):
+  when defined(js):
     result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
@@ -641,7 +641,7 @@ when not defined(nimscript) and not defined(standalone):
     ## See also:
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
-    when defined(JS):
+    when defined(js):
       let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       randomize(time)
     else:

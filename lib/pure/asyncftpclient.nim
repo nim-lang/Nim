@@ -351,15 +351,13 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   assert ftp.dsockConnected
 
   let total = file.getFileSize()
-  var data = newStringOfCap(4000)
+  var data = newString(4000)
   var progress = 0
   var progressInSecond = 0
   var countdownFut = sleepAsync(1000)
   var sendFut: Future[void] = nil
   while ftp.dsockConnected:
-    if sendFut == nil or sendFut.finished:
-      progress.inc(data.len)
-      progressInSecond.inc(data.len)
+    if sendFut == nil or sendFut.finished: 
       # TODO: Async file reading.
       let len = file.readBuffer(addr(data[0]), 4000)
       setLen(data, len)
@@ -370,6 +368,8 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
 
         assertReply(await(ftp.expectReply()), "226")
       else:
+        progress.inc(len)
+        progressInSecond.inc(len)
         sendFut = ftp.dsock.send(data)
 
     if countdownFut.finished:

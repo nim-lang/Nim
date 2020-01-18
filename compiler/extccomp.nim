@@ -501,10 +501,7 @@ proc generateScript(conf: ConfigRef; script: Rope) =
   let (_, name, _) = splitFile(conf.outFile.string)
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
-  if writeRope(script, filename):
-    copyFile(conf.libpath / RelativeFile"nimbase.h",
-             getNimcacheDir(conf) / RelativeFile"nimbase.h")
-  else:
+  if not writeRope(script, filename):
     rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
 
 proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
@@ -558,15 +555,14 @@ proc getCompileOptions(conf: ConfigRef): string =
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  case conf.target.targetCPU
-  of cpuI386:
-    result = " --platform:x86"
-  of cpuArm:
-    result = " --platform:arm"
-  of cpuAmd64:
-    result = " --platform:amd64"
-  else:
-    result = ""
+  if conf.cCompiler == ccVcc: 
+    let exe = getConfigVar(conf, conf.cCompiler, ".exe")
+    if "vccexe.exe" == extractFilename(exe):
+      result = case conf.target.targetCPU
+        of cpuI386: " --platform:x86"
+        of cpuArm: " --platform:arm"
+        of cpuAmd64: " --platform:amd64"
+        else: ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -596,7 +592,7 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
                          isMainFile = false; produceOutput = false): string =
-  var c = conf.cCompiler
+  let c = conf.cCompiler
   # We produce files like module.nim.cpp, so the absolute Nim filename is not
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
@@ -608,17 +604,15 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
 
-  var includeCmd, compilePattern: string
+  var compilePattern: string
+  # compute include paths:
+  var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
   if not noAbsolutePaths(conf):
-    # compute include paths:
-    includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
-
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))

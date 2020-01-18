@@ -101,3 +101,23 @@ block genericParams:
   static: doAssert (int, float).lenTuple == 2
   static: doAssert (1, ).lenTuple == 1
   static: doAssert ().lenTuple == 0
+
+
+##############################################
+# bug 13095
+
+type
+  CpuStorage{.shallow.}[T] = ref object
+    when supportsCopyMem(T):
+      raw_buffer*: ptr UncheckedArray[T] # 8 bytes
+      memalloc*: pointer                 # 8 bytes
+      isMemOwner*: bool                  # 1 byte
+    else: # Tensors of strings, other ref types or non-trivial destructors
+      raw_buffer*: seq[T]                # 8 bytes (16 for seq v2 backed by destructors?)
+
+var x = CpuStorage[string]()
+
+static:
+  doAssert(not string.supportsCopyMem)
+  doAssert x.T is string          # true
+  doAssert x.raw_buffer is seq
