@@ -1,5 +1,8 @@
 import std/wrapnils
 
+const wrapnilExtendedExports = declared(wrapnil)
+  # for now, wrapnil, isValid, unwrap are not exported
+
 proc checkNotZero(x: float): float =
   doAssert x != 0
   x
@@ -47,9 +50,12 @@ proc main() =
   doAssert ?.a3.x2.x2.x5.len == 0
   doAssert a3.x2.x2.x3.len == 3
 
-  # example calling wrapnil directly, with and without unwrap
-  doAssert a3.wrapnil.x2.x2.x3.len == wrapnil(3)
-  doAssert a3.wrapnil.x2.x2.x3.len.unwrap == 3
+  when wrapnilExtendedExports:
+    # example calling wrapnil directly, with and without unwrap
+    doAssert a3.wrapnil.x2.x2.x3.len == wrapnil(3)
+    doAssert a3.wrapnil.x2.x2.x3.len.unwrap == 3
+    doAssert a2.wrapnil.x4.isValid
+    doAssert not a.wrapnil.x4.isValid
 
   doAssert ?.a.x2.x2.x3[1] == default(char)
   # here we only apply wrapnil around gook.foo, not gook (and assume gook is not nil)
@@ -62,11 +68,8 @@ proc main() =
   # shows that checkNotZero won't be called if a nil is found earlier in chain
   doAssert ?.a.x1.checkNotZero == 0.0
 
-  doAssert a2.wrapnil.x4.isValid
-  doAssert not a.wrapnil.x4.isValid
-
   # checks that a chain without nil but with an empty seq still throws IndexError
-  doAssertRaises(IndexError): discard ?.a2.wrapnil.x8[3]
+  doAssertRaises(IndexError): discard ?.a2.x8[3]
 
   # make sure no double evaluation bug
   doAssert witness == 0

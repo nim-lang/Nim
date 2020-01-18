@@ -29,15 +29,15 @@ runnableExamples:
   # which is just sugar for the following:
   assert f2.x2.x2.wrapnil.x3[].unwrap == 0
 
-type Wrapnil*[T] = object
+type Wrapnil[T] = object
   valueImpl: T
   validImpl: bool
 
-proc wrapnil*[T](a: T): Wrapnil[T] =
+proc wrapnil[T](a: T): Wrapnil[T] =
   ## See top-level example.
   Wrapnil[T](valueImpl: a, validImpl: true)
 
-template unwrap*(a: Wrapnil): untyped =
+template unwrap(a: Wrapnil): untyped =
   ## See top-level example.
   a.valueImpl
 
@@ -62,7 +62,7 @@ template `.`*(a: Wrapnil, b): untyped =
 
 {.pop.}
 
-proc isValid*(a: Wrapnil): bool =
+proc isValid(a: Wrapnil): bool =
   ## Returns true if `a` didn't contain intermediate `nil` values (note that
   ## `a.valueImpl` itself can be nil even in that case)
   a.validImpl
