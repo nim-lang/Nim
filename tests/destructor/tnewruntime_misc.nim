@@ -4,7 +4,6 @@ discard """
 Indeed
 axc
 (v: 10)
-63
 ...
 destroying GenericObj[T] GenericObj[system.int]
 test'''
@@ -84,8 +83,6 @@ proc testWrongAt() =
   var x = @[@[FooAt()]]
 
 testWrongAt()
-
-discard cprintf("%ld\n", unpairedEnvAllocs())
 
 #-------------------------------------------------
 type
