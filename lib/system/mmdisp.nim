@@ -356,6 +356,10 @@ elif defined(gogc):
 
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
+  # libc realloc() does not zero memory when the buffer grows, so we need to do
+  # that here. Every allocated buffer is prepended with the size of the
+  # allocation so we know what to zero when growing the buffer with realloc()
+
   when not defined(useNimRtl):
     proc alloc(size: Natural): pointer =
       var x = c_malloc (size + sizeof(size)).csize_t
@@ -384,15 +388,16 @@ elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
     proc dealloc(p: pointer) = c_free(cast[pointer](cast[int](p) - sizeof(int)))
 
     proc allocShared(size: Natural): pointer =
-      result = c_malloc(size.csize_t)
+      result = alloc(size.csize_t)
       if result == nil: raiseOutOfMem()
     proc allocShared0(size: Natural): pointer =
       result = alloc(size)
       zeroMem(result, size)
     proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = c_realloc(p, newsize.csize_t)
+      result = realloc(p, newsize.csize_t)
       if result == nil: raiseOutOfMem()
-    proc deallocShared(p: pointer) = c_free(p)
+    proc deallocShared(p: pointer) =
+      dealloc(p)
 
     proc GC_disable() = discard
     proc GC_enable() = discard
