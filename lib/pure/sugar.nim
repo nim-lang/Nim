@@ -367,8 +367,8 @@ when (NimMajor, NimMinor) >= (1, 1):
 
 proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported: bool] {.since: (1,1).} =
   ## allows library constructs such as:
-  ## `byRef: a2=expr`
-  ## `byRef: a2*=expr` (to indicate `export`)
+  ## `byAddr: a2=expr`
+  ## `byAddr: a2*=expr` (to indicate `export`)
   doAssert def.kind == nnkStmtList and def.len == 1
   let def2 = def[0]
   case def2.kind
@@ -383,13 +383,13 @@ proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported:
   else: doAssert false, $def2.kind
   expectKind(result.lhs, nnkIdent)
 
-macro byRef*(def: untyped): untyped {.since: (1,1).} =
+macro byAddr*(def: untyped): untyped {.since: (1,1).} =
   ## Defines a ref alias for lvalue expressions. The expression is evaluated
   ## only once, and any side effects will only be evaluated once, at declaration
   ## time.
   runnableExamples:
     var x = @[1,2,3]
-    byRef: x1=x[1]
+    byAddr: x1=x[1]
     x1+=10
     doAssert type(x1) is int and x == @[1,12,3]
 

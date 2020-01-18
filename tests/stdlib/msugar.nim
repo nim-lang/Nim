@@ -6,4 +6,4 @@ type Foo = object
   bar: Bar
 
 var foo*: Foo
-byRef: barx*=foo.bar.x
+byAddr: barx*=foo.bar.x
