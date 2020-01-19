@@ -1995,34 +1995,73 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDirErr*(dir: string; relative=false):
-                    tuple[kind: PathComponent, path: string, error: OSErrorCode]
-                    {.tags: [ReadDirEffect].} =
+type openDirStatus* = enum
+  odOpenOk,
+  odNotDir,
+  odAccessDenied,
+  odNotFound,
+  odUnknownError
+
+type WalkStepKind* = enum
+  wiOpenDir,     ## attempt to open directory
+  wiEntryOk,     ## the entry is OK
+  wiEntryBad     ## (Posix-specific) dangling symlink, so unclear if it
+                 ## points to a file or directory
+  wiInterrupted  ## the directory handle got invalidated during reading
+
+type WalkStep = ref object
+  code*: OSErrorCode
+  path*: string
+  case kind*: WalkStepKind
+  of wiOpenDir:
+    openStatus*: openDirStatus
+  of wiEntryOk:
+    entryType*: PathComponent
+  of wiEntryBad, wiInterrupted:
+    discard
+
+iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
+  tags: [ReadDirEffect], raises: [].} =
   ## The same as `walkDir iterator <#walkDir.i,string>`_ but with full error
   ## checking: when an error at getting information about some path happened
   ## then yields the path and the error code (`kind` may be wrong in this case).
   ##
   ## .. code-block:: Nim
-  ##     for kind, path, error in walkDirErr("dirA"):
-  ##       if error == OSErrorCode(0):
-  ##         echo path & " of kind " & $kind
-  ##       else:
-  ##         echo path & " GET INFO FAILED: " & osErrorMsg(error)
+  ## for info, path in tryWalkDir("dirA"):
+  ##  case info.kind
+  ##   of wiEntryOk: echo "found " & path & " of kind " & $info.entryType
+  ##   of wiOpenError: echo "directory " & dir & " could not be opened " &
+  ##                        $info.openError & " / " & osErrorMsg(info.code)
+  ##   of wiEntryBad: echo "bad symlink " & path & " with error " &
+  ##                       osErrorMsg(info.code)
+
+  proc noErrors(pc: PathComponent, path: string): WalkStep =
+    WalkStep(kind: wiEntryOk, entryType: pc, code: OSErrorCode(0), path: path)
+  proc openDir(s: openDirStatus, path: string): WalkStep =
+    WalkStep(kind: wiOpenDir, openStatus: s, code: osLastError(), path: path)
+  proc getError(k: WalkStepKind, path: string): WalkStep =
+    WalkStep(kind: k, code: osLastError(), path: path)
 
   when nimvm:
     for k, v in items(staticWalkDir(dir, relative)):
-      yield (k, v, osLastError())
+      yield noErrors(k, v)
   else:
     when weirdTarget:
       for k, v in items(staticWalkDir(dir, relative)):
-        yield (k, v, osLastError())
+        yield noErrors(k, v)
     elif defined(windows):
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
       if h == -1:
-        yield (pcFile, dir, osLastError())
+        let errCode = getLastError()
+        case errCode
+        of ERROR_PATH_NOT_FOUND: yield openDir(odNotFound, dir)
+        of ERROR_DIRECTORY: yield openDir(odNotDir, dir)
+        of ERROR_ACCESS_DENIED: yield openDir(odAccessDenied, dir)
+        else: yield openDir(odUnknownError, dir)
       else:
         defer: findClose(h)
+        yield openDir(odOpenOk, dir)
         while true:
           var k = pcFile
           if not skipFindData(f):
@@ -2032,20 +2071,28 @@ iterator walkDirErr*(dir: string; relative=false):
               k = succ(k)
             let xx = if relative: extractFilename(getFilename(f))
                      else: dir / extractFilename(getFilename(f))
-            yield (k, xx, OSErrorCode(0))
+            yield noErrors(k, xx)
           if findNextFile(h, f) == 0'i32:
             let errCode = getLastError()
             if errCode == ERROR_NO_MORE_FILES: break
-            else: raiseOSError(errCode.OSErrorCode)
+            else: yield getError(wiInterrupted, dir)
     else:
       var d = opendir(dir)
       if d == nil:
-        yield(pcFile, dir, osLastError())
+        case errno
+        of ENOENT: yield openDir(odNotFound, dir)
+        of ENOTDIR: yield openDir(odNotDir, dir)
+        of EACCES: yield openDir(odAccessDenied, dir)
+        else: yield openDir(odUnknownError, dir)
       else:
         defer: discard closedir(d)
+        yield openDir(odOpenOk, dir)
         while true:
+          errno = 0
           var x = readdir(d)
-          if x == nil: break
+          if x == nil:
+            if errno != 0: yield getError(wiInterrupted, dir)
+            break
           when defined(nimNoArrayToCstringConversion):
             var y = $cstring(addr x.d_name)
           else:
@@ -2060,12 +2107,19 @@ iterator walkDirErr*(dir: string; relative=false):
             when defined(linux) or defined(macosx) or
                  defined(bsd) or defined(genode) or defined(nintendoswitch):
               if x.d_type != DT_UNKNOWN:
-                if x.d_type == DT_DIR: k = pcDir
-                errno = 0
-                if x.d_type == DT_LNK:
+                if x.d_type == DT_DIR:
+                  k = pcDir
+                  yield noErrors(k, y)
+                elif x.d_type == DT_LNK:
+                  errno = 0
                   if dirExists(path): k = pcLinkToDir
                   else: k = pcLinkToFile
-                yield (k, y, osLastError())  # check error in dirExists
+                  if errno == 0:  # check error in getSymlinkFileKind
+                    yield noErrors(k, y)
+                  else:
+                    yield getError(wiEntryBad, y)
+                else:
+                  yield noErrors(k, y)
                 continue
 
             errno = 0
@@ -2074,7 +2128,18 @@ iterator walkDirErr*(dir: string; relative=false):
               k = pcDir
             elif S_ISLNK(s.st_mode):
               k = getSymlinkFileKind(path)
-            yield (k, y, osLastError())  # check error in getSymlinkFileKind
+            if errno == 0:  # check error in getSymlinkFileKind
+              yield noErrors(k, y)
+            else:
+              yield getError(wiEntryBad, y)
+
+proc tryOpenDir*(dir: string): openDirStatus {.
+  tags: [ReadDirEffect], raises: [], since:(1,1) .} =
+  # TODO
+  for step in tryWalkDir(dir):
+    case step.kind
+    of wiOpenDir: return step.openStatus
+    else: break  # can not happen
 
 iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
@@ -2101,9 +2166,12 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
   ##   dirA/fileA1.txt
   ##   dirA/fileA2.txt
   ##
-  ## Error checking is minimal and aimed at dropping: if `dir` is not an open
-  ## directory the iterator yields nothing; all closed symlinks inside `dir`
-  ## are silently omitted.
+  ## Error checking is aimed at dropping bad entries: if path `dir` is not 
+  ## found or is a file or is an access-denied directory then the iterator
+  ## yields nothing; all closed symlinks inside `dir` are silently omitted.
+  ## However, OSException is raised when opening directory resulted to
+  ## an unrecognized error or the directory handle was invalidated during
+  ## the traversal.
   ##
   ## See also:
   ## * `walkDirErr iterator <#walkDirErr.i,string>`_
@@ -2111,9 +2179,14 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
   ## * `walkFiles iterator <#walkFiles.i,string>`_
   ## * `walkDirs iterator <#walkDirs.i,string>`_
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
-  for kind, path, error in walkDirErr(dir, relative):
-    if error == OSErrorCode(0):
-      yield (kind, path)
+  for step in tryWalkDir(dir, relative):
+    case step.kind
+    of wiOpenDir:
+      if step.openStatus == odUnknownError: raiseOSError(step.code)
+      else: discard
+    of wiEntryOk: yield (step.entryType, step.path)
+    of wiEntryBad: discard
+    of wiInterrupted: raiseOSError(step.code)
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
