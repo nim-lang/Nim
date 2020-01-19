@@ -508,15 +508,15 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
-                        check: var IntSet): Rope =
+                        check: var IntSet, unionPrefix = ""): Rope =
   result = nil
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
-      result.add(genRecordFieldsAux(m, n[i], rectype, check))
+      result.add(genRecordFieldsAux(m, n[i], rectype, check, unionPrefix))
   of nkRecCase:
     if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    result.add(genRecordFieldsAux(m, n[0], rectype, check))
+    result.add(genRecordFieldsAux(m, n[0], rectype, check, unionPrefix))
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody: Rope = nil
@@ -525,7 +525,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       of nkOfBranch, nkElse:
         let k = lastSon(n[i])
         if k.kind != nkSym:
-          let a = genRecordFieldsAux(m, k, rectype, check)
+          let a = genRecordFieldsAux(m, k, rectype, check, unionPrefix & "_i" & $i & ".")
           if a != nil:
             if tfPacked notin rectype.flags:
               unionBody.add("struct {")
@@ -535,11 +535,11 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               else:
                 unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
             unionBody.add(a)
-            unionBody.addf("};$n", [])
+            unionBody.addf("} _i$1;$n", [rope($i)])
             if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               unionBody.addf("#pragma pack(pop)$n", [])
         else:
-          unionBody.add(genRecordFieldsAux(m, k, rectype, check))
+          unionBody.add(genRecordFieldsAux(m, k, rectype, check, unionPrefix))
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody != nil:
       result.addf("union{$n$1};$n", [unionBody])
@@ -548,7 +548,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    fillLoc(field.loc, locField, n, sname, OnUnknown)
+    fillLoc(field.loc, locField, n, unionPrefix & sname, OnUnknown)
     if field.alignment > 0:
       result.addf "NIM_ALIGN($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't

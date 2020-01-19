@@ -2204,12 +2204,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let tname = getTypeDesc(p.module, t)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
-      else:
-        rope(dotExpr[1].sym.name.s)
-    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
+      else: dotExpr[1].sym.loc.r
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [tname, member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2782,17 +2782,50 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
   of nkRecCase:
     getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
     if count > 0: result.add ", "
-    # XXX select default case branch here!
-    #for i in 1..<obj.len:
-    let selectedBranch = 1
-    result.add "{" # struct inside union
-    if lastSon(obj[selectedBranch]).kind != nkSym:
-      result.add "{"
+    var branch = Zero
+    if constOrNil != nil:
+      ## find kind value, default is zero if not specified
+      for i in 1..<constOrNil.len:
+        if constOrNil[i].kind == nkExprColonExpr:
+          if constOrNil[i][0].sym.name.id == obj[0].sym.name.id:
+            branch = getOrdValue(constOrNil[i][1])
+            break
+        elif i == obj[0].sym.position:
+          branch = getOrdValue(constOrNil[i])
+          break
+
+    var selectedBranch = -1
+    block branchSelection:
+      for i in 1 ..< obj.len:
+        for j in 0 .. obj[i].len - 2:
+          if obj[i][j].kind == nkRange:
+              let x = getOrdValue(obj[i][j][0])
+              let y = getOrdValue(obj[i][j][1])
+              if branch >= x and branch <= y:
+                selectedBranch = i
+                break branchSelection
+          elif getOrdValue(obj[i][j]) == branch:
+            selectedBranch = i
+            break branchSelection
+        if obj[i].len == 1:
+          # else branch
+          selectedBranch = i
+    assert(selectedBranch >= 1)
+    
+    result.add "{"
     var countB = 0
-    getNullValueAux(p, t, lastSon(obj[selectedBranch]), constOrNil, result, countB, isConst, info)
-    if lastSon(obj[selectedBranch]).kind != nkSym:
+    let b = lastSon(obj[selectedBranch])
+    # designated initilization is the only way to init non first element of unions
+    # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
+    if  b.kind == nkRecList and b.len > 0:
+      result.add "._i" & $selectedBranch & " = {"
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
+    elif b.kind == nkSym:
+      result.add "." & lastSon(obj[selectedBranch]).sym.loc.r & " = "
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
     result.add "}"
+    
   of nkSym:
     if count > 0: result.add ", "
     inc count
