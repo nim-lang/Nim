@@ -2822,6 +2822,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
     elif b.kind == nkSym:
+      result.add "." & mangleRecFieldName(p.module, obj[0].sym) & " = " 
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
     result.add "}"
     
