@@ -1105,7 +1105,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-      p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErr$1_;$n", [lab]))
+      p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErrFin$1_;$n", [lab]))
       linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
