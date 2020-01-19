@@ -948,12 +948,17 @@ proc dealloc(allocator: var MemRegion, p: pointer) =
 
 proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
   if newsize > 0:
-    result = alloc0(allocator, newsize)
+    result = alloc(allocator, newsize)
     if p != nil:
       copyMem(result, p, min(ptrSize(p), newsize))
       dealloc(allocator, p)
   elif p != nil:
     dealloc(allocator, p)
+
+proc realloc0(allocator: var MemRegion, p: pointer, oldsize, newsize: Natural): pointer =
+  result = realloc(allocator, p, newsize)
+  if newsize > oldsize:
+    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
 
 proc deallocOsPages(a: var MemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
@@ -1009,6 +1014,11 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
   proc realloc(p: pointer, newSize: Natural): pointer =
     result = realloc(allocator, p, newSize)
 
+  proc realloc0(p: pointer, oldSize, newSize: Natural): pointer =
+    result = realloc(allocator, p, newSize)
+    if newSize > oldSize:
+      zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
+
   when false:
     proc countFreeMem(): int =
       # only used for assertions
@@ -1061,6 +1071,14 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       releaseSys(heapLock)
     else:
       result = realloc(p, newSize)
+
+  proc reallocShared0(p: pointer, oldSize, newSize: Natural): pointer =
+    when hasThreadSupport:
+      acquireSys(heapLock)
+      result = realloc0(sharedHeap, p, oldSize, newSize)
+      releaseSys(heapLock)
+    else:
+      result = realloc0(p, oldSize, newSize)
 
   when hasThreadSupport:
     template sharedMemStatsShared(v: int) =

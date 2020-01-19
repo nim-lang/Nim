@@ -97,6 +97,22 @@ when hasAlloc:
     ## The allocated memory belongs to its allocating thread!
     ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
     ## from a shared heap.
+  proc realloc0*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [],
+                                                         benign, raises: [].}
+    ## Grows or shrinks a given memory block.
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``realloc`` calls ``dealloc(p)``.
+    ## In other cases the block has to be freed with
+    ## `dealloc(block) <#dealloc,pointer>`_.
+    ##
+    ## The block is initialized with all bytes containing zero, so it is
+    ## somewhat safer then realloc
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
+    ## from a shared heap.
   proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
     ## Grows or shrinks a given memory block.
     ##
@@ -185,6 +201,19 @@ when hasAlloc:
     ## ``deallocShared(p)``.
     ## In other cases the block has to be freed with
     ## `deallocShared <#deallocShared,pointer>`_.
+  proc reallocShared0*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [],
+                                                               benign, raises: [].}
+    ## Grows or shrinks a given memory block on the heap.
+    ##
+    ## When growing, the new bytes of the block is initialized with all bytes
+    ## containing zero, so it is somewhat safer then reallocShared
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``reallocShared`` calls
+    ## ``deallocShared(p)``.
+    ## In other cases the block has to be freed with
+    ## `deallocShared <#deallocShared,pointer>`_.
   proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].} =
     ## Grows or shrinks a given memory block on the heap.
     ##
@@ -239,11 +268,13 @@ when defined(js):
   proc alloc(size: Natural): pointer = discard
   proc alloc0(size: Natural): pointer = discard
   proc realloc(p: pointer, newsize: Natural): pointer = discard
+  proc realloc0(p: pointer, oldsize, newsize: Natural): pointer = discard
 
   proc allocShared(size: Natural): pointer = discard
   proc allocShared0(size: Natural): pointer = discard
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
+  proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer = discard
 
 
 when hasAlloc and hasThreadSupport:

@@ -69,7 +69,9 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
         q.cap = cap
         result = q
       else:
-        var q = cast[ptr NimSeqPayloadBase](reallocShared(p, headerSize + elemSize * cap))
+        let oldSize = headerSize + elemSize * p.cap
+        let newSize = headerSize + elemSize * cap
+        var q = cast[ptr NimSeqPayloadBase](reallocShared0(p, oldSize, newSize))
         q.allocated = 1
         q.cap = cap
         result = q

@@ -140,6 +140,8 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
 
 proc c_malloc*(size: csize_t): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
+proc c_calloc*(nmemb, size: csize_t): pointer {.
+  importc: "calloc", header: "<stdlib.h>".}
 proc c_free*(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 proc c_realloc*(p: pointer, newsize: csize_t): pointer {.

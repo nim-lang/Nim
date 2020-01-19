@@ -51,7 +51,7 @@ proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
         copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
   elif s.len + addlen > s.p.cap:
     let cap = max(s.len + addlen, resize(s.p.cap))
-    s.p = cast[ptr NimStrPayload](reallocShared(s.p, contentSize(cap)))
+    s.p = cast[ptr NimStrPayload](reallocShared0(s.p, contentSize(s.p.cap), contentSize(cap)))
     s.p.cap = cap
 
 proc nimAddCharV1(s: var NimStringV2; c: char) {.compilerRtl.} =

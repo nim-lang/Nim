@@ -386,6 +386,11 @@ proc alloc0(size: Natural): pointer =
 proc realloc(p: pointer, newsize: Natural): pointer =
   result = c_realloc(p, cast[csize_t](newsize))
   if result == nil: raiseOutOfMem()
+proc realloc0(p: pointer, oldsize, newsize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newsize))
+  if result == nil: raiseOutOfMem()
+  if newsize > oldsize:
+    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
 proc dealloc(p: pointer) = c_free(p)
 
 proc alloc0(r: var MemRegion; size: Natural): pointer =
@@ -409,6 +414,11 @@ proc allocShared0(size: Natural): pointer =
 proc reallocShared(p: pointer, newsize: Natural): pointer =
   result = c_realloc(p, cast[csize_t](newsize))
   if result == nil: raiseOutOfMem()
+proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newsize))
+  if result == nil: raiseOutOfMem()
+  if newsize > oldsize:
+    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
 proc deallocShared(p: pointer) = c_free(p)
 
 when hasThreadSupport:

@@ -115,17 +115,18 @@ when defined(boehmgc):
     proc realloc(p: pointer, newSize: Natural): pointer =
       result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
-    proc dealloc(p: pointer) = boehmDealloc(p)
-
-    proc allocShared(size: Natural): pointer =
-      result = boehmAlloc(size)
-      if result == nil: raiseOutOfMem()
-    proc allocShared0(size: Natural): pointer =
-      result = allocShared(size)
-    proc reallocShared(p: pointer, newSize: Natural): pointer =
+    proc realloc0(p: pointer, oldSize, newSize: Natural): pointer =
       result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
-    proc deallocShared(p: pointer) = boehmDealloc(p)
+      if newsize > oldsize:
+        zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    proc dealloc(p: pointer) = boehmDealloc(p)
+
+    proc allocShared(size: Natural): pointer = alloc(size)
+    proc allocShared0(size: Natural): pointer = alloc(size)
+    proc reallocShared(p: pointer, newSize: Natural): pointer = realloc(p, newSize)
+    proc reallocShared0(p: pointer, oldSize, newSize: Natural): pointer = realloc0(p, newSize, oldSize)
+    proc deallocShared(p: pointer) = dealloc(p)
 
     when hasThreadSupport:
       proc getFreeSharedMem(): int =
@@ -274,6 +275,9 @@ elif defined(gogc):
   proc realloc(p: pointer, newsize: Natural): pointer =
     doAssert false, "not implemented"
 
+  proc realloc0(p: pointer, oldsize, newsize: Natural): pointer =
+    doAssert false, "not implemented"
+
   proc dealloc(p: pointer) =
     discard
 
@@ -285,6 +289,9 @@ elif defined(gogc):
 
   proc reallocShared(p: pointer, newsize: Natural): pointer =
     result = realloc(p, newsize)
+
+  proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer =
+    result = realloc0(p, oldsize, newsize)
 
   proc deallocShared(p: pointer) = dealloc(p)
 
@@ -356,39 +363,21 @@ elif defined(gogc):
 
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
-  # libc realloc() does not zero out memory, so this is handled here. Every
-  # allocated buffer is prepended with the size of the allocation which is used
-  # to deduce which part of the buffer to zero.
-
   when not defined(useNimRtl):
 
-    proc alloc(size: Natural): pointer =
-      var x = c_malloc (size + sizeof(size)).csize_t
-      if x == nil: raiseOutOfMem()
-      cast[ptr int](x)[] = size
-      result = cast[pointer](cast[int](x) + sizeof(size))
-
-    proc alloc0(size: Natural): pointer =
-      result = alloc(size)
-      zeroMem(result, size)
-
-    proc realloc(p: pointer, newsize: Natural): pointer =
-      var x = cast[pointer](cast[int](p) - sizeof(newsize))
-      let oldsize = cast[ptr int](x)[]
-      x = c_realloc(x, (newsize + sizeof(newsize)).csize_t)
-      if x == nil: raiseOutOfMem()
-      cast[ptr int](x)[] = newsize
-      result = cast[pointer](cast[int](x) + sizeof(newsize))
+    proc alloc(size: Natural): pointer = c_malloc(size.csize_t)
+    proc alloc0(size: Natural): pointer = c_calloc(size.csize_t, 1)
+    proc realloc(p: pointer, newsize: Natural): pointer = c_realloc(p, newSize.csize_t)
+    proc realloc0(p: pointer, oldsize, newsize: Natural): pointer =
+      result = realloc(p, newsize.csize_t)
       if newsize > oldsize:
         zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    proc dealloc(p: pointer) = c_free(p)
 
-    proc dealloc(p: pointer) = c_free(cast[pointer](cast[int](p) - sizeof(int)))
-
-    # Shared allocators map to the regular ones
-
-    proc allocShared(size: Natural): pointer = alloc(size.csize_t)
+    proc allocShared(size: Natural): pointer = alloc(size)
     proc allocShared0(size: Natural): pointer = alloc0(size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer = realloc(p, newsize.csize_t)
+    proc reallocShared(p: pointer, newsize: Natural): pointer = realloc(p, newsize)
+    proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer = realloc0(p, oldsize, newsize)
     proc deallocShared(p: pointer) = dealloc(p)
 
     proc GC_disable() = discard
