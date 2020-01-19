@@ -41,6 +41,30 @@ type
     of tkInt64, tkComma..tkString: ff: seq[float]
     else: str1*: string
   
+  Token4* = object
+    case kind*: TokenKind
+    of tkNumber: numVal*: float
+    of tkInt64, tkComma..tkString: ff: seq[float]
+    else: str1*: string
+    case kind2*: TokenKind
+    of tkNumber: 
+      numVal2*: float
+      intSeqVal3*: seq[int]
+    of tkInt64, tkComma..tkString: 
+      case kind3*: TokenKind
+      of tkNumber: numVal3*: float
+      of tkInt64, tkComma..tkString: 
+        ff3: seq[float]
+        ff5: string
+      else: 
+        str3*: string
+        mysrq: seq[int]
+    else: 
+      case kind4*: TokenKind
+      of tkNumber: numVal4*: float
+      of tkInt64, tkComma..tkString: ff4: seq[float]
+      else: str4*: string
+  
   BaseLexer* = object of RootObj
     input*: string
     pos*: Natural
@@ -58,6 +82,7 @@ type
     tok: Token
     tok2: Token2
     tok3: Token3
+    tok4: Token4
     allowTrailingComma: bool
     allowIdentifierObjectKey: bool
 
