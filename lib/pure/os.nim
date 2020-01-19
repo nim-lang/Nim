@@ -2035,11 +2035,11 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
   ##   of wiEntryBad: echo "bad symlink " & path & " with error " &
   ##                       osErrorMsg(info.code)
 
-  proc noErrors(pc: PathComponent, path: string): WalkStep =
+  proc noErrors(pc: PathComponent, path: string): owned(WalkStep) =
     WalkStep(kind: wiEntryOk, entryType: pc, code: OSErrorCode(0), path: path)
-  proc openDir(s: openDirStatus, path: string): WalkStep =
+  proc openDir(s: openDirStatus, path: string): owned(WalkStep) =
     WalkStep(kind: wiOpenDir, openStatus: s, code: osLastError(), path: path)
-  proc getError(k: WalkStepKind, path: string): WalkStep =
+  proc getError(k: WalkStepKind, path: string): owned(WalkStep) =
     WalkStep(kind: k, code: osLastError(), path: path)
 
   when nimvm:
@@ -2184,7 +2184,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     of wiOpenDir:
       if step.openStatus == odUnknownError: raiseOSError(step.code)
       else: discard
-    of wiEntryOk: yield (step.entryType, step.path)
+    of wiEntryOk: yield (step.entryType, move(step.path))
     of wiEntryBad: discard
     of wiInterrupted: raiseOSError(step.code)
 
