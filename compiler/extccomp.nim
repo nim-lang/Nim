@@ -71,7 +71,7 @@ compiler gcc:
     optSize: " -Os -fno-ident",
     compilerExe: "gcc",
     cppCompiler: "g++",
-    compileTmpl: "-c $options $include -o $objfile $file",
+    compileTmpl: "-c -std=gnu++11 $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "ar rcs $libfile $objfiles",
@@ -97,7 +97,7 @@ compiler nintendoSwitchGCC:
     optSize: " -Os ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
-    compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    compileTmpl: "-std=gnu++11 -w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
@@ -555,7 +555,7 @@ proc getCompileOptions(conf: ConfigRef): string =
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  if conf.cCompiler == ccVcc: 
+  if conf.cCompiler == ccVcc:
     let exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if "vccexe.exe" == extractFilename(exe):
       result = case conf.target.targetCPU
