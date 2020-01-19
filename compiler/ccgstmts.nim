@@ -936,14 +936,14 @@ proc genRestoreFrameAfterException(p: BProc) =
 proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   #[ code to generate:
 
-    Bool error = false;
+    std::exception_ptr error = nullptr;
     try {
       body;
     } catch (Exception e) {
-      error = true;
+      error = std::current_exception();
       if (ofExpr(e, TypeHere)) {
 
-        error = false; // handled
+        error = nullptr; // handled
       } else if (...) {
 
       } else {
@@ -954,9 +954,11 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     {
       /* finally: */
       printf('fin!\n');
-      if (error) throw; // re-raise the exception
+      if (error) std::rethrow_exception(error); // re-raise the exception
     }
   ]#
+  p.module.includeHeader("<exception>")
+
   if not isEmptyType(t.typ) and d.k == locNone:
     getTemp(p, t.typ, d)
   genLineDir(p, t)
@@ -964,7 +966,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   inc(p.labels, 2)
   let etmp = p.labels
 
-  lineCg(p, cpsStmts, "NIM_BOOL T$1_ = NIM_FALSE;", [etmp])
+  lineCg(p, cpsStmts, "std::exception_ptr T$1_ = nullptr;", [etmp])
 
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   p.nestedTryStmts.add((fin, false, 0.Natural))
@@ -977,7 +979,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   lineCg(p, cpsStmts, "catch (#Exception* T$1_) {$n", [etmp+1])
   genRestoreFrameAfterException(p)
   # an unhandled exception happened!
-  lineCg(p, cpsStmts, "T$1_ = NIM_TRUE;", [etmp])
+  lineCg(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
   p.nestedTryStmts[^1].inExcept = true
   var hasImportedCppExceptions = false
   var i = 1
@@ -990,7 +992,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
       # we handled the error:
-      linefmt(p, cpsStmts, "T$1_ = NIM_FALSE;$n", [etmp])
+      linefmt(p, cpsStmts, "T$1_ = nullptr;$n", [etmp])
       expr(p, t[i][0], d)
       linefmt(p, cpsStmts, "#popCurrentException();$n", [])
       endBlock(p)
@@ -1025,7 +1027,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
             rdLoc(exvar.sym.loc), rope(etmp+1)])
         # we handled the error:
-        linefmt(p, cpsStmts, "T$1_ = NIM_FALSE;$n", [etmp])
+        linefmt(p, cpsStmts, "T$1_ = nullptr;$n", [etmp])
         expr(p, t[i][^1], d)
         linefmt(p, cpsStmts, "#popCurrentException();$n", [])
         endBlock(p)
@@ -1036,12 +1038,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   # Second pass: handle C++ based exceptions:
   template genExceptBranchBody(body: PNode) {.dirty.} =
     genRestoreFrameAfterException(p)
-    # lineCg(p, cpsStmts, "T$1_ = NIM_TRUE;", [etmp])
+    #linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
     expr(p, body, d)
-    if t.len > 0 and t[^1].kind == nkFinally:
-      startBlock(p)
-      genStmts(p, t[^1][0])
-      endBlock(p)
 
   if hasImportedCppExceptions:
     for i in 1..<t.len:
@@ -1073,28 +1071,11 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
   discard pop(p.nestedTryStmts)
 
-  when false:
-    # rethrow the C++ based exception:
-    if t.len > 0 and t[^1].kind == nkFinally:
-      startBlock(p)
-      genStmts(p, t[^1][0])
-      endBlock(p)
-    linefmt(p, cpsStmts, "throw;$n", [])
-    endBlock(p)
-
   # general finally block:
   if t.len > 0 and t[^1].kind == nkFinally:
     startBlock(p)
     genStmts(p, t[^1][0])
-    when false:
-      # pretend we handled the exception in a 'finally' so that we don't
-      # re-raise the unhandled one but instead keep the old one (it was
-      # not popped either):
-      if getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
-        linefmt(p, cpsStmts, "if (T$1_) #nimLeaveFinally();$n", [etmp])
-      else:
-        linefmt(p, cpsStmts, "if (T$1_) #reraiseException();$n", [etmp])
-    linefmt(p, cpsStmts, "if (T$1_) throw;$n", [etmp])
+    linefmt(p, cpsStmts, "if (T$1_) std::rethrow_exception(T$1_);$n", [etmp])
     endBlock(p)
 
 proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
