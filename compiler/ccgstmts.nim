@@ -1041,7 +1041,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   p.nestedTryStmts.add((fin, false, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
-  linefmt(p, cpsStmts, "NI oldNimErr$1_ = *nimErr_; *nimErr_ = 0;;$n", [lab])
+  p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErr$1_;$n", [lab]))
+  linefmt(p, cpsStmts, "oldNimErr$1_ = *nimErr_; *nimErr_ = 0;;$n", [lab])
 
   expr(p, t[0], d)
 
@@ -1104,7 +1105,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-      linefmt(p, cpsStmts, "NI oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
+      p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErrFin$1_;$n", [lab]))
+      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
       # 1. finally is run during ordinary control flow
