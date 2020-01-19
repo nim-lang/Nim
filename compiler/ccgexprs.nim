@@ -2201,11 +2201,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let tname = getTypeDesc(p.module, t)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
       else: dotExpr[1].sym.loc.r
-    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [tname, member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
