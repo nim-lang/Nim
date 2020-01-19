@@ -18,11 +18,9 @@ type
 
   NimSeqPayloadBase = object
     cap: int
-    allocated: int
 
   NimSeqPayload[T] = object
     cap: int
-    allocated: int
     data: UncheckedArray[T]
 
   NimSeqV2*[T] = object
@@ -31,8 +29,6 @@ type
 
 const nimSeqVersion {.core.} = 2
 
-template payloadSize(cap): int = cap * sizeof(T) + sizeof(NimSeqPayloadBase)
-
 # XXX make code memory safe for overflows in '*'
 
 proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
@@ -40,7 +36,6 @@ proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
     var p = cast[ptr NimSeqPayloadBase](allocShared0(cap * elemSize + sizeof(NimSeqPayloadBase)))
-    p.allocated = 1
     p.cap = cap
     result = p
   else:
@@ -61,19 +56,18 @@ proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
       var p = cast[ptr NimSeqPayloadBase](p)
-      let cap = max(resize(p.cap), len+addlen)
-      if p.allocated == 0:
-        var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * cap))
+      let oldCap = p.cap and not strlitFlag
+      let newCap = max(resize(oldCap), len+addlen)
+      if (p.cap and strlitFlag) == strlitFlag:
+        var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * newCap))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
-        q.allocated = 1
-        q.cap = cap
+        q.cap = newCap
         result = q
       else:
-        let oldSize = headerSize + elemSize * p.cap
-        let newSize = headerSize + elemSize * cap
+        let oldSize = headerSize + elemSize * oldCap
+        let newSize = headerSize + elemSize * newCap
         var q = cast[ptr NimSeqPayloadBase](reallocShared0(p, oldSize, newSize))
-        q.allocated = 1
-        q.cap = cap
+        q.cap = newCap
         result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =

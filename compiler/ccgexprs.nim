@@ -2037,14 +2037,14 @@ proc genDestroy(p: BProc; n: PNode) =
     of tyString:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocated) {$n" &
+      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
         " $1.p = NIM_NIL; }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocated) {$n" &
+      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
         " $1.p = NIM_NIL; }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
@@ -2917,8 +2917,8 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
 
   appcg(p.module, cfsData,
     "static $5 struct {$n" &
-    "  NI cap; NI allocated; $1 data[$2];$n" &
-    "} $3 = {$2, 0, $4};$n", [
+    "  NI cap; $1 data[$2];$n" &
+    "} $3 = {$2 | NIM_STRLIT_FLAG, $4};$n", [
     getTypeDesc(p.module, base), n.len, payload, data,
     if isConst: "const" else: ""])
   result = "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
