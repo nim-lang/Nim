@@ -846,7 +846,6 @@ proc isEmptyContainer(g: ModuleGraph, t: PType): bool =
   (t.kind == tyArray and lengthOrd(g.config, t[0]) == 0) or
     (t.kind == tySequence and t[0].kind == tyError)
 
-
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places
   ## to ensure we lift assignment, destructors and moves properly.
