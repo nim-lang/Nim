@@ -273,10 +273,10 @@ elif defined(gogc):
     result = goMalloc(size.uint)
 
   proc realloc(p: pointer, newsize: Natural): pointer =
-    doAssert false, "not implemented"
+    {.error:"not implemented".}
 
   proc realloc0(p: pointer, oldsize, newsize: Natural): pointer =
-    doAssert false, "not implemented"
+    {.error:"not implemented".}
 
   proc dealloc(p: pointer) =
     discard
