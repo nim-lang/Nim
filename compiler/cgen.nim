@@ -1316,19 +1316,19 @@ proc genMainProc(m: BModule) =
   const
     # not a big deal if we always compile these 3 global vars... makes the HCR code easier
     PosixCmdLine =
-      "int cmdCount;$N" &
-      "char** cmdLine;$N" &
-      "char** gEnv;$N"
+      "N_LIB_PRIVATE int cmdCount;$N" &
+      "N_LIB_PRIVATE char** cmdLine;$N" &
+      "N_LIB_PRIVATE char** gEnv;$N"
 
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent
     # functions, which might otherwise merge their stack frames.
     PreMainBody = "$N" &
-      "void PreMainInner(void) {$N" &
+      "N_LIB_PRIVATE void PreMainInner(void) {$N" &
       "$2" &
       "}$N$N" &
       PosixCmdLine &
-      "void PreMain(void) {$N" &
+      "N_LIB_PRIVATE void PreMain(void) {$N" &
       "\tvoid (*volatile inner)(void);$N" &
       "\tinner = PreMainInner;$N" &
       "$1" &
@@ -1341,7 +1341,7 @@ proc genMainProc(m: BModule) =
     MainProcsWithResult =
       MainProcs & ("\treturn $1nim_program_result;$N")
 
-    NimMainInner = "N_CDECL(void, NimMainInner)(void) {$N" &
+    NimMainInner = "N_LIB_PRIVATE N_CDECL(void, NimMainInner)(void) {$N" &
         "$1" &
       "}$N$N"
 
@@ -1388,7 +1388,7 @@ proc genMainProc(m: BModule) =
     PosixNimDllMain = WinNimDllMain
 
     PosixCDllMain =
-      "void NIM_POSIX_INIT NimMainInit(void) {$N" &
+      "N_LIB_PRIVATE void NIM_POSIX_INIT NimMainInit(void) {$N" &
         MainProcs &
       "}$N$N"
 
