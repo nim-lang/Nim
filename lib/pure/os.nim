@@ -2021,7 +2021,7 @@ type WalkStep = ref object
     discard
 
 iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
-  tags: [ReadDirEffect], raises: [].} =
+  tags: [ReadDirEffect], raises: [], noNimScript .} =
   ## The same as `walkDir iterator <#walkDir.i,string>`_ but with full error
   ## checking: when an error at getting information about some path happened
   ## then yields the path and the error code (`kind` may be wrong in this case).
