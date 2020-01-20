@@ -54,8 +54,19 @@ when true:
 
   proc `==`*[T: AnyPath](x, y: T): bool = eqImpl(x.string, y.string)
 
+  template postProcessBase(base: AbsoluteDir): untyped =
+    # xxx: as argued here https://github.com/nim-lang/Nim/pull/10018#issuecomment-448192956
+    # empty paths should not mean `cwd` so the correct behavior would be to throw
+    # here and make sure `outDir` is always correctly initialized; for now
+    # we simply preserve pre-existing external semantics and treat it as `cwd`
+    when false:
+      doAssert isAbsolute(base.string), base.string
+      base
+    else:
+      if base.isEmpty: getCurrentDir().AbsoluteDir else: base
+
   proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
-    #assert isAbsolute(base.string)
+    let base = postProcessBase(base)
     assert(not isAbsolute(f.string))
     result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
@@ -63,7 +74,7 @@ when true:
     addNormalizePath(f.string, result.string, state)
 
   proc `/`*(base: AbsoluteDir; f: RelativeDir): AbsoluteDir =
-    #assert isAbsolute(base.string)
+    let base = postProcessBase(base)
     assert(not isAbsolute(f.string))
     result = AbsoluteDir newStringOfCap(base.string.len + f.string.len)
     var state = 0

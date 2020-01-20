@@ -17,6 +17,8 @@
   backends, and it is compatible with Python's behavior,
   e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
 - Global variable `lc` has been removed from sugar.nim.
+- `distinctBase` has been moved from sugar.nim to typetraits and now implemented as
+  compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
 
 ### Breaking changes in the compiler
 
@@ -35,15 +37,21 @@
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
-
-
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
-
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
+- Added `typetraits.lenTuple` to get number of elements of a tuple/type tuple,
+  and `typetraits.get` to get the ith element of a type tuple.
+- Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
+- Added `os.normalizePathEnd` for additional path sanitization.
+- Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
+- Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
+  This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
+  Eg: `echo ?.n.typ.kind`
+- Added `minIndex` and `maxIndex` to the `sequtils` module
 
 ## Library changes
 
@@ -58,12 +66,18 @@
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
 
 
 ## Language additions
 
 - An `align` pragma can now be used for variables and object fields, similar
   to the `alignas` declaration modifier in C/C++.
+
+- `=sink` type bound operator is now optional. Compiler can now use combination
+  of `=destroy` and `copyMem` to move objects efficiently.
+
 
 ## Language changes
 

@@ -35,7 +35,6 @@ const
 
   AltSep* =
     when doslikeFileSystem: '/'
-    elif defined(haiku): ':'
     else: DirSep
     ## An alternative character used by the operating system to separate
     ## pathname components, or the same as `DirSep <#DirSep>`_ if only one separator

@@ -13,6 +13,7 @@
 include system/inclrtl
 
 import macros
+import typetraits
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo treeRepr(p)
@@ -160,27 +161,9 @@ proc freshIdentNodes(ast: NimNode): NimNode =
         result.add inspect(child)
   result = inspect(ast)
 
-macro distinctBase*(T: typedesc): untyped =
+template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase from typetraits instead".} =
   ## reverses ``type T = distinct A``; works recursively.
-  runnableExamples:
-    type T = distinct int
-    doAssert distinctBase(T) is int
-    doAssert: not compiles(distinctBase(int))
-    type T2 = distinct T
-    doAssert distinctBase(T2) is int
-
-  let typeNode = getTypeImpl(T)
-  expectKind(typeNode, nnkBracketExpr)
-  if typeNode[0].typeKind != ntyTypeDesc:
-    error "expected typeDesc, got " & $typeNode[0]
-  var typeSym = typeNode[1]
-  typeSym = getTypeImpl(typeSym)
-  if typeSym.typeKind != ntyDistinct:
-    error "type is not distinct"
-  typeSym = typeSym[0]
-  while typeSym.typeKind == ntyDistinct:
-    typeSym = getTypeImpl(typeSym)[0]
-  typeSym.freshIdentNodes
+  typetraits.distinctBase(T)
 
 macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables

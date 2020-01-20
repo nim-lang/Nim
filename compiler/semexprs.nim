@@ -884,7 +884,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if n0.kind == nkDotCall:
       # it is a static call!
       result = n0
-      result.kind = nkCall
+      result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
       return semExpr(c, result, flags)
@@ -1509,7 +1509,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         else:
           # We are processing macroOrTmpl[] not in call. Transform it to the
           # macro or template call with generic arguments here.
-          n.kind = nkCall
+          n.transitionSonsKind(nkCall)
           case s.kind
           of skMacro: result = semMacroExpr(c, n, n, s, flags)
           of skTemplate: result = semTemplateExpr(c, n, s, flags)
@@ -1646,7 +1646,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # possible:
       a = dotTransformation(c, n[0])
       if a.kind == nkDotCall:
-        a.kind = nkCall
+        a.transitionSonsKind(nkCall)
         a = semExprWithType(c, a, {efLValue})
   of nkBracketExpr:
     # a[i] = x
@@ -2429,7 +2429,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = n                  # we don't modify n, but compute the type:
-  result.kind = nkTupleConstr
+  result.transitionSonsKind(nkTupleConstr)
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in 0..<n.len:
     n[i] = semExprWithType(c, n[i], flags*{efAllowDestructor})
@@ -2455,8 +2455,8 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags)
   n.typ = n[1].typ
-  if isEmptyType(n.typ): n.kind = nkBlockStmt
-  else: n.kind = nkBlockExpr
+  if isEmptyType(n.typ): n.transitionSonsKind(nkBlockStmt)
+  else: n.transitionSonsKind(nkBlockExpr)
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
@@ -2608,7 +2608,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkDotExpr:
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
-      result.kind = nkCall
+      result.transitionSonsKind(nkCall)
       result = semExpr(c, result, flags)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")

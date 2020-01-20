@@ -9,7 +9,7 @@
 
 ## This file implements the FFI part of the evaluator for Nim code.
 
-import ast, astalgo, ropes, types, options, tables, dynlib, msgs, os, lineinfos
+import ast, types, options, tables, dynlib, msgs, lineinfos
 import pkg/libffi
 
 when defined(windows):
@@ -46,19 +46,12 @@ proc getDll(conf: ConfigRef, cache: var TDllCache; dll: string; info: TLineInfo)
 const
   nkPtrLit = nkIntLit # hopefully we can get rid of this hack soon
 
-var myerrno {.importc: "errno", header: "<errno.h>".}: cint ## error variable
-
 proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
-  let name = $sym.loc.r
+  let name = sym.cname # $sym.loc.r would point to internal name
   # the AST does not support untyped pointers directly, so we use an nkIntLit
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
-  case name
-  of "stdin":  result.intVal = cast[ByteAddress](system.stdin)
-  of "stdout": result.intVal = cast[ByteAddress](system.stdout)
-  of "stderr": result.intVal = cast[ByteAddress](system.stderr)
-  of "vmErrnoWrapper": result.intVal = cast[ByteAddress](myerrno)
-  else:
+  when true:
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
       globalError(conf, sym.info, "dynlib needs to be a string lit")
@@ -74,10 +67,10 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
       let dll = if lib.kind == libHeader: libcDll else: lib.path.strVal
       let dllhandle = getDll(conf, gDllCache, dll, sym.info)
       theAddr = dllhandle.symAddr(name)
-    if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & sym.name.s)
+    if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & name)
     result.intVal = cast[ByteAddress](theAddr)
 
-proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.TType =
+proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
   if t == nil: return addr libffi.type_void
 
   case t.kind
@@ -422,7 +415,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
   internalAssert conf, call[0].kind == nkPtrLit
 
   var cif: TCif
-  var sig: TParamList
+  var sig: ParamList
   # use the arguments' types for varargs support:
   for i in 1..<call.len:
     sig[i-1] = mapType(conf, call[i].typ)
@@ -434,7 +427,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
               mapType(conf, typ[0]), sig) != OK:
     globalError(conf, call.info, "error in FFI call")
 
-  var args: TArgList
+  var args: ArgList
   let fn = cast[pointer](call[0].intVal)
   for i in 1..<call.len:
     var t = call[i].typ
@@ -462,7 +455,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
   internalAssert conf, fn.kind == nkPtrLit
 
   var cif: TCif
-  var sig: TParamList
+  var sig: ParamList
   for i in 0..len-1:
     var aTyp = args[i+start].typ
     if aTyp.isNil:
@@ -476,7 +469,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
               mapType(conf, fntyp[0]), sig) != OK:
     globalError(conf, info, "error in FFI call")
 
-  var cargs: TArgList
+  var cargs: ArgList
   let fn = cast[pointer](fn.intVal)
   for i in 0..len-1:
     let t = args[i+start].typ

@@ -35,12 +35,17 @@ type
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
+  # duplicated between io and ansi_c
+  const stderrName = when defined(osx): "__stderrp" else: "stderr"
+  const stdoutName = when defined(osx): "__stdoutp" else: "stdout"
+  const stdinName = when defined(osx): "__stdinp" else: "stdin"
+
   var
-    stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+    stdin* {.importc: stdinName, header: "<stdio.h>".}: File
       ## The standard input stream.
-    stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+    stdout* {.importc: stdoutName, header: "<stdio.h>".}: File
       ## The standard output stream.
-    stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+    stderr* {.importc: stderrName, header: "<stdio.h>".}: File
       ## The standard error stream.
 
 when defined(useStdoutAsStdmsg):
@@ -115,8 +120,8 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-## When running nim in android app, stdout goes nowhere, so echo gets ignored
-## To redirect echo to the android logcat, use -d:androidNDK
+# When running nim in android app, stdout goes nowhere, so echo gets ignored
+# To redirect echo to the android logcat, use -d:androidNDK
 when defined(androidNDK):
   const ANDROID_LOG_VERBOSE = 2.cint
   proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
@@ -610,7 +615,7 @@ when declared(stdout):
       android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
     else:
       # flockfile deadlocks some versions of Android 5.x.x
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
@@ -624,7 +629,7 @@ when declared(stdout):
       const linefeed = "\n"
       discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
       discard c_fflush(stdout)
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock
@@ -696,10 +701,10 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   else:
     raise newException(IOError, "cannot open: " & filename)
 
-proc staticReadLines*(filename: string, n: Natural): seq[TaintedString] =
-  ## Compile time read `n` lines from the file named `filename`. Raises an IO exception
+proc readLines*(filename: string, n: Natural): seq[TaintedString] =
+  ## read `n` lines from the file named `filename`. Raises an IO exception
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
-  ## A line of text may be delimited by ``LF`` or ``CRLF``.
+  ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned strings.
   var f: File
   if open(f, filename):
@@ -713,6 +718,8 @@ proc staticReadLines*(filename: string, n: Natural): seq[TaintedString] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
+proc readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+  readLines(filename, 1)
 
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =
   ## Iterates over any line in the file named `filename`.

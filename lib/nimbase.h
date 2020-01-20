@@ -159,7 +159,13 @@ __AVR__
 #  define NIM_CAST(type, ptr) ((type)(ptr))
 #endif
 
+
 /* ------------------------------------------------------------------- */
+#ifdef  __cplusplus
+#  define NIM_EXTERNC extern "C"
+#else
+#  define NIM_EXTERNC
+#endif
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
 #  define N_LIB_PRIVATE
@@ -208,11 +214,7 @@ __AVR__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C"
-#  else
-#    define N_LIB_EXPORT  extern
-#  endif
+#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -221,7 +223,7 @@ __AVR__
 #define N_NOCONV_PTR(rettype, name) rettype (*name)
 
 #if defined(__GNUC__) || defined(__ICC__)
-#  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
+#  define N_NOINLINE(rettype, name) rettype __attribute__((__noinline__)) name
 #elif defined(_MSC_VER)
 #  define N_NOINLINE(rettype, name) __declspec(noinline) rettype name
 #else
@@ -518,12 +520,6 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 
 #ifdef USE_NIM_NAMESPACE
 }
-#endif
-
-#ifdef  __cplusplus
-#  define NIM_EXTERNC extern "C"
-#else
-#  define NIM_EXTERNC
 #endif
 
 #if defined(_MSC_VER)

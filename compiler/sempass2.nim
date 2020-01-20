@@ -758,6 +758,7 @@ proc track(tracked: PEffects, n: PNode) =
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
+        # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
 
     if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
           tracked.owner.kind != skMacro:
@@ -905,10 +906,26 @@ proc track(tracked: PEffects, n: PNode) =
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if n.len == 2: track(tracked, n[1])
+  of nkCast:
+    if n.len == 2:
+      track(tracked, n[1])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n.typ, n.info)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if n.len == 2:
+      track(tracked, n[1])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n.typ, n.info)
+        # This is a hacky solution in order to fix bug #13110. Hopefully
+        # a better solution will come up eventually.
+        if n[1].typ.kind != tyString:
+          createTypeBoundOps(tracked, n[1].typ, n[1].info)
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
-    if n.len == 1: track(tracked, n[0])
+    if n.len == 1:
+      track(tracked, n[0])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n.typ, n.info)
+        createTypeBoundOps(tracked, n[0].typ, n[0].info)
   of nkBracket:
     for i in 0..<n.safeLen: track(tracked, n[i])
     if tracked.owner.kind != skMacro:

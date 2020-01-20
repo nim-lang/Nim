@@ -44,7 +44,7 @@ proc reprChar(x: char): string {.compilerRtl.} =
   case x
   of '"': add(result, "\\\"")
   of '\\': add(result, "\\\\")
-  of '\127'..'\255', '\0'..'\31': add( result, "\\" & reprInt(ord(x)) )
+  of '\127'..'\255', '\0'..'\31': add(result, "\\" & reprInt(ord(x)))
   else: add(result, x)
   add(result, "\'")
 
@@ -169,9 +169,9 @@ proc isPointedToNil(p: pointer): bool {.inline.}=
 proc reprRef(result: var string, p: pointer, typ: PNimType,
           cl: var ReprClosure) =
   if p.isPointedToNil:
-    add(result , "nil")
+    add(result, "nil")
     return
-  add( result, "ref " & reprPointer(p) )
+  add(result, "ref " & reprPointer(p))
   add(result, " --> ")
   if typ.base.kind != tyArray:
     {. emit: """
@@ -184,8 +184,8 @@ proc reprRef(result: var string, p: pointer, typ: PNimType,
 proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprClosure) =
   add(result, "[")
 
-  var first: bool = true
-  var val: pointer = o
+  var first = true
+  var val = o
   if typ.node.len == 0:
     # if the object has only one field, len is 0  and sons is nil, the field is in node
     let key: cstring = typ.node.name
@@ -206,7 +206,7 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprCl
 
 proc reprRecord(o: pointer, typ: PNimType, cl: var ReprClosure): string {.compilerRtl.} =
   result = ""
-  reprRecordAux(result, o, typ,cl)
+  reprRecordAux(result, o, typ, cl)
 
 
 proc reprJsonStringify(p: int): string {.compilerRtl.} =
@@ -224,17 +224,17 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
   dec(cl.recDepth)
   case typ.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
-    add( result, reprInt(cast[int](p)) )
+    add(result, reprInt(cast[int](p)))
   of tyChar:
-    add( result, reprChar(cast[char](p)) )
+    add(result, reprChar(cast[char](p)))
   of tyBool:
-    add( result, reprBool(cast[bool](p)) )
+    add(result, reprBool(cast[bool](p)))
   of tyFloat..tyFloat128:
-    add( result, reprFloat(cast[float](p)) )
+    add(result, reprFloat(cast[float](p)))
   of tyString:
     var fp: int
     {. emit: "`fp` = `p`;\n" .}
-    add( result, reprStr(cast[string](p)) )
+    add(result, reprStr(cast[string](p)))
   of tyCString:
     var fp: cstring
     {. emit: "`fp` = `p`;\n" .}
@@ -265,7 +265,7 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
     else:
       add(result, reprPointer(p))
   else:
-    add( result, "(invalid data!)" & reprJsonStringify(cast[int](p)) )
+    add(result, "(invalid data!)" & reprJsonStringify(cast[int](p)))
   inc(cl.recDepth)
 
 proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.} =

@@ -97,7 +97,8 @@ const
     warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    hintSuccessX: "operation successful ($# lines compiled; $# sec total; $#; $#)",
+    # keep in sync with `pegSuccess` see testament.nim
+    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: \'$1\'", # unused
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
@@ -115,7 +116,7 @@ const
     hintName: "$1",
     hintPattern: "$1",
     hintExecuting: "$1",
-    hintLinking: "",
+    hintLinking: "$1",
     hintDependency: "$1",
     hintSource: "$1",
     hintPerformance: "$1",
@@ -235,11 +236,7 @@ proc raiseRecoverableError*(msg: string) {.noinline.} =
 
 const
   InvalidFileIdx* = FileIndex(-1)
-
-proc unknownLineInfo*(): TLineInfo =
-  result.line = uint16(0)
-  result.col = int16(-1)
-  result.fileIndex = InvalidFileIdx
+  unknownLineInfo* = TLineInfo(line: 0, col: -1, fileIndex: InvalidFileIdx)
 
 type
   Severity* {.pure.} = enum ## VS Code only supports these three
@@ -266,7 +263,7 @@ type
 
 proc initMsgConfig*(): MsgConfig =
   result.msgContext = @[]
-  result.lastError = unknownLineInfo()
+  result.lastError = unknownLineInfo
   result.filenameToIndexTbl = initTable[string, FileIndex]()
   result.fileInfos = @[]
   result.errorOutputs = {eStdOut, eStdErr}
