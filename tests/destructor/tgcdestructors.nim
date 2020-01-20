@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:allocStats --newruntime $file'''
   output: '''hi
 ho
 ha
@@ -9,7 +9,8 @@ ha
 a: @[4, 2, 3]
 0
 30
-true'''
+true
+(allocCount: 123, deallocCount: 82)'''
 """
 
 include system / ansi_c
@@ -199,4 +200,4 @@ proc takeAinArray =
 takeAinArray()
 echo ga == "foo"
 
-
+echo getAllocStats()

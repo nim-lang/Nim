@@ -1,7 +1,8 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:allocStats --newruntime $file'''
   output: '''button
-clicked!'''
+clicked!
+(allocCount: 21, deallocCount: 15)'''
 """
 
 import system / ansi_c
@@ -67,5 +68,5 @@ proc main =
   if a != nil:
     a()
 
-main()
-
+dumpAllocStats:
+  main()

@@ -1,7 +1,8 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:allocstats --newruntime $file'''
   output: '''button
-clicked!'''
+clicked!
+(allocCount: 6, deallocCount: 5)'''
 """
 
 import system / ansi_c
@@ -70,5 +71,6 @@ proc main =
 
   w.draw()
 
-main()
+dumpAllocstats:
+  main()
 

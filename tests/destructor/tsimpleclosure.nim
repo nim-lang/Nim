@@ -1,10 +1,11 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:allocStats --newruntime $file'''
   output: '''a b
 70
 hello
 hello
-hello'''
+hello
+(allocCount: 8, deallocCount: 6)'''
 """
 
 import system / ansi_c
@@ -58,3 +59,4 @@ when false:
 
   stringIter()
 
+echo getAllocStats()

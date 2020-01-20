@@ -1,12 +1,13 @@
 discard """
-  cmd: '''nim cpp --newruntime --threads:on $file'''
+  cmd: '''nim cpp -d:allocStats --newruntime --threads:on $file'''
   output: '''(field: "value")
 Indeed
 axc
 (v: 10)
 ...
 destroying GenericObj[T] GenericObj[system.int]
-test'''
+test
+(allocCount: 34, deallocCount: 15)'''
 """
 
 import system / ansi_c
@@ -20,6 +21,8 @@ type
 # bug #11807
 import os
 putEnv("HEAPTRASHING", "Indeed")
+
+let s1 = getAllocStats()
 
 proc main =
   var w = newTable[string, owned Node]()
@@ -128,3 +131,4 @@ proc xx(xml: string): MyObject =
 
 
 discard xx("test")
+echo getAllocStats() - s1

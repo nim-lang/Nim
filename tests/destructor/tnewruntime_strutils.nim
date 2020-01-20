@@ -1,6 +1,6 @@
 discard """
   valgrind: true
-  cmd: '''nim c --newruntime -d:useMalloc $file'''
+  cmd: '''nim c -d:allocStats --newruntime -d:useMalloc $file'''
   output: '''
 @[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]'''
 """
@@ -211,4 +211,3 @@ staticTests()
 # bug #12965
 let xaa = @[""].join()
 let xbb = @["", ""].join()
-

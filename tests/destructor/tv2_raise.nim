@@ -1,6 +1,7 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
-  output: '''OK 3'''
+  cmd: '''nim c -d:allocStats --newruntime $file'''
+  output: '''OK 3
+(allocCount: 18, deallocCount: 5)'''
 """
 
 import strutils, math
@@ -48,3 +49,4 @@ except:
   inc ok
 
 echo "OK ", ok
+echo getAllocStats()

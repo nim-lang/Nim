@@ -1002,19 +1002,19 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
 
   proc deallocOsPages = deallocOsPages(allocator)
 
-  proc alloc(size: Natural): pointer =
+  proc allocImpl(size: Natural): pointer =
     result = alloc(allocator, size)
 
-  proc alloc0(size: Natural): pointer =
+  proc alloc0Impl(size: Natural): pointer =
     result = alloc0(allocator, size)
 
-  proc dealloc(p: pointer) =
+  proc deallocImpl(p: pointer) =
     dealloc(allocator, p)
 
-  proc realloc(p: pointer, newSize: Natural): pointer =
+  proc reallocImpl(p: pointer, newSize: Natural): pointer =
     result = realloc(allocator, p, newSize)
 
-  proc realloc0(p: pointer, oldSize, newSize: Natural): pointer =
+  proc realloc0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     result = realloc(allocator, p, newSize)
     if newSize > oldSize:
       zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
@@ -1044,7 +1044,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     var heapLock: SysLock
     initSysLock(heapLock)
 
-  proc allocShared(size: Natural): pointer =
+  proc allocSharedImpl(size: Natural): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
       result = alloc(sharedHeap, size)
@@ -1052,11 +1052,11 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     else:
       result = alloc(size)
 
-  proc allocShared0(size: Natural): pointer =
+  proc allocShared0Impl(size: Natural): pointer =
     result = allocShared(size)
     zeroMem(result, size)
 
-  proc deallocShared(p: pointer) =
+  proc deallocSharedImpl(p: pointer) =
     when hasThreadSupport:
       acquireSys(heapLock)
       dealloc(sharedHeap, p)
@@ -1064,7 +1064,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     else:
       dealloc(p)
 
-  proc reallocShared(p: pointer, newSize: Natural): pointer =
+  proc reallocSharedImpl(p: pointer, newSize: Natural): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
       result = realloc(sharedHeap, p, newSize)
@@ -1072,7 +1072,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
     else:
       result = realloc(p, newSize)
 
-  proc reallocShared0(p: pointer, oldSize, newSize: Natural): pointer =
+  proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     when hasThreadSupport:
       acquireSys(heapLock)
       result = realloc0(sharedHeap, p, oldSize, newSize)

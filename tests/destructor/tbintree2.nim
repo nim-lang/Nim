@@ -1,6 +1,7 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
-  output: '''0'''
+  cmd: '''nim c -d:allocStats --newruntime $file'''
+  output: '''0
+(allocCount: 12, deallocCount: 9)'''
 """
 
 import system / ansi_c
@@ -95,5 +96,6 @@ proc main() =
       discard
   echo res
 
-main()
+dumpAllocStats:
+  main()
 
