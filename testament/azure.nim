@@ -6,7 +6,7 @@
 #    Look at license.txt for more info.
 #    All rights reserved.
 
-import base64, json, httpclient, os, strutils
+import base64, json, httpclient, os, strutils, times
 import specs
 
 const
@@ -14,7 +14,9 @@ const
   ApiVersion = "?api-version=5.0"
   ApiResults = ApiRuns & "/$1/results"
 
-var runId* = -1
+var
+  runId* = -1
+  overhead = 0.0
 
 proc getAzureEnv(env: string): string =
   # Conversion rule at:
@@ -22,8 +24,11 @@ proc getAzureEnv(env: string): string =
   env.toUpperAscii().replace('.', '_').getEnv
 
 proc invokeRest(httpMethod: HttpMethod; api: string; body = ""): Response =
+  let start = cpuTime()
   let http = newHttpClient()
-  defer: close http
+  defer:
+    overhead += start
+    close http
   result = http.request(getAzureEnv("System.TeamFoundationCollectionUri") &
                         getAzureEnv("System.TeamProjectId") & api & ApiVersion,
                         httpMethod,
@@ -48,6 +53,7 @@ proc finish*() {.noconv.} =
     stderr.writeLine "##vso[task.logissue type=warning;]Unable to finalize Azure backend"
     stderr.writeLine getCurrentExceptionMsg()
 
+  stderr.writeLine "##vso[task.logissue type=warning;]Recorded overhead was ", overhead, " seconds"
   runId = -1
 
 # TODO: Only obtain a run id if tests are run
