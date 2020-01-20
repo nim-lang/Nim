@@ -60,7 +60,7 @@
 ##   createThread(worker1, firstWorker)
 ##
 ##   # Block until the message arrives, then print it out.
-##   echo chan.recv() # "Hello World!"
+##   assert chan.recv() == "Hello World!"
 ##
 ##   # Wait for the thread to exit before moving on to the next example.
 ##   worker1.joinThread()
@@ -74,7 +74,7 @@
 ##   while true:
 ##     let tried = chan.tryRecv()
 ##     if tried.dataAvailable:
-##       echo tried.msg # "Another message"
+##       assert tried.msg == "Another message"
 ##       break
 ##
 ##     echo "Pretend I'm doing useful work..."
@@ -450,4 +450,3 @@ proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
-
