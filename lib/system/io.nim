@@ -538,6 +538,14 @@ const
     #"rt", "wt", "w+t", "r+t", "at"
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
+  NoInheritFlag =
+    # Platform specific flag for creating a File without inheritance.
+    when defined(windows):
+      "N"
+    elif defined(linux) or defined(bsd):
+      "e"
+    else:
+      ""
 
 when defined(posix) and not defined(nimscript):
   when defined(linux) and defined(amd64):
@@ -579,7 +587,7 @@ proc open*(f: var File, filename: string,
   ## This throws no exception if the file could not be opened.
   ##
   ## The file handle associated with the resulting ``File`` is not inheritable.
-  var p = fopen(filename, FormatOpen[mode])
+  var p = fopen(filename, FormatOpen[mode] & NoInheritFlag)
   if p != nil:
     var f2 = cast[File](p)
     when defined(posix) and not defined(nimscript):
@@ -590,7 +598,7 @@ proc open*(f: var File, filename: string,
       if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
-    when declared(setInheritable):
+    when declared(setInheritable) and NoInheritFlag.len == 0:
       if not setInheritable(getFileHandle(f2), false):
         close(f2)
         return false
@@ -611,8 +619,8 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## Default mode is readonly. Returns true iff the file could be reopened.
   ##
   ## The file handle associated with `f` won't be inheritable.
-  if freopen(filename, FormatOpen[mode], f) != nil:
-    when declared(setInheritable):
+  if freopen(filename, FormatOpen[mode] & NoInheritFlag, f) != nil:
+    when declared(setInheritable) and NoInheritFlag.len == 0:
       if not setInheritable(getFileHandle(f), false):
         close(f)
         return false
@@ -624,14 +632,12 @@ proc open*(f: var File, filehandle: FileHandle,
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
   ##
-  ## The file handle associated with the resulting ``File`` is not inheritable.
+  ## The passed file handle will no longer be inheritable.
+  when declared(setInheritable):
+    if not setInheritable(filehandle, false):
+      return false
   f = c_fdopen(filehandle, FormatOpen[mode])
-  if f != nil:
-    when declared(setInheritable):
-      if not setInheritable(getFileHandle(f), false):
-        close(f)
-        return false
-    result = true
+  result = f != nil
 
 proc open*(filename: string,
             mode: FileMode = fmRead, bufSize: int = -1): File =
