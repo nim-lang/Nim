@@ -406,6 +406,19 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     if not f.hasNext(path): break
     ff = f.next(path)
 
+proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
+  ## returns true if `path` is rooted under or equal to `base` modulo path
+  ## normalization.
+  runnableExamples:
+    doAssert isRelativeTo("./foo//bar", "foo")
+    # doAssert isRelativeTo("foo/bar", ".") # pending #13211
+    doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
+    doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
+  let path = path.normalizePath
+  let base = base.normalizePath
+  let ret = relativePath(path, base)
+  result = path.len > 0 and not ret.startsWith ".."
+
 proc parentDirPos(path: string): int =
   var q = 1
   if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
