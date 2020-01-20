@@ -68,7 +68,7 @@
 ##   # Launch the other worker.
 ##   var worker2: Thread[void]
 ##   createThread(worker2, secondWorker)
-##   # This time, use a nonblocking approach with tryRecv.
+##   # This time, use a non-blocking approach with tryRecv.
 ##   # Since the main thread is not blocked, it could be used to perform other
 ##   # useful work while it waits for data to arrive on the channel.
 ##   while true:
