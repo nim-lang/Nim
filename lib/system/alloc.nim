@@ -1050,10 +1050,10 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = alloc(sharedHeap, size)
       releaseSys(heapLock)
     else:
-      result = alloc(size)
+      result = allocImpl(size)
 
   proc allocShared0Impl(size: Natural): pointer =
-    result = allocShared(size)
+    result = allocSharedImpl(size)
     zeroMem(result, size)
 
   proc deallocSharedImpl(p: pointer) =
@@ -1062,7 +1062,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       dealloc(sharedHeap, p)
       releaseSys(heapLock)
     else:
-      dealloc(p)
+      deallocImpl(p)
 
   proc reallocSharedImpl(p: pointer, newSize: Natural): pointer =
     when hasThreadSupport:
@@ -1070,7 +1070,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = realloc(sharedHeap, p, newSize)
       releaseSys(heapLock)
     else:
-      result = realloc(p, newSize)
+      result = reallocImpl(p, newSize)
 
   proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     when hasThreadSupport:
@@ -1078,7 +1078,7 @@ template instantiateForRegion(allocator: untyped) {.dirty.} =
       result = realloc0(sharedHeap, p, oldSize, newSize)
       releaseSys(heapLock)
     else:
-      result = realloc0(p, oldSize, newSize)
+      result = realloc0Impl(p, oldSize, newSize)
 
   when hasThreadSupport:
     template sharedMemStatsShared(v: int) =

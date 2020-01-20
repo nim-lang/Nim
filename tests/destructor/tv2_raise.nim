@@ -1,7 +1,8 @@
 discard """
+  valgrind: true
   cmd: '''nim c -d:allocStats --newruntime $file'''
   output: '''OK 3
-(allocCount: 18, deallocCount: 5)'''
+(allocCount: 8, deallocCount: 3)'''
 """
 
 import strutils, math

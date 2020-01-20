@@ -122,11 +122,11 @@ when defined(boehmgc):
         zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
     proc deallocImpl(p: pointer) = boehmDealloc(p)
 
-    proc allocSharedImpl(size: Natural): pointer = alloc(size)
-    proc allocShared0Impl(size: Natural): pointer = alloc(size)
-    proc reallocSharedImpl(p: pointer, newSize: Natural): pointer = realloc(p, newSize)
-    proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer = realloc0Impl(p, newSize, oldSize)
-    proc deallocSharedImpl(p: pointer) = dealloc(p)
+    proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
+    proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
+    proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
+    proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+    proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
     when hasThreadSupport:
       proc getFreeSharedMem(): int =
@@ -281,19 +281,11 @@ elif defined(gogc):
   proc deallocImpl(p: pointer) =
     discard
 
-  proc allocSharedImpl(size: Natural): pointer =
-    result = alloc(size)
-
-  proc allocShared0Impl(size: Natural): pointer =
-    result = alloc0(size)
-
-  proc reallocSharedImpl(p: pointer, newsize: Natural): pointer =
-    result = realloc(p, newsize)
-
-  proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer =
-    result = realloc0(p, oldsize, newsize)
-
-  proc deallocSharedImpl(p: pointer) = dealloc(p)
+  proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
+  proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
+  proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
+  proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+  proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
   when hasThreadSupport:
     proc getFreeSharedMem(): int = discard

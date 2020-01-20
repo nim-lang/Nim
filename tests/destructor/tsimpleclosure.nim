@@ -5,7 +5,7 @@ discard """
 hello
 hello
 hello
-(allocCount: 8, deallocCount: 6)'''
+(allocCount: 4, deallocCount: 4)'''
 """
 
 import system / ansi_c

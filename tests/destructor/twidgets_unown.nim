@@ -2,7 +2,7 @@ discard """
   cmd: '''nim c -d:allocStats --newruntime $file'''
   output: '''button
 clicked!
-(allocCount: 21, deallocCount: 15)'''
+(allocCount: 9, deallocCount: 9)'''
 """
 
 import system / ansi_c

@@ -7,7 +7,7 @@ axc
 ...
 destroying GenericObj[T] GenericObj[system.int]
 test
-(allocCount: 34, deallocCount: 15)'''
+(allocCount: 17, deallocCount: 15)'''
 """
 
 import system / ansi_c
