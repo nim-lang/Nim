@@ -59,23 +59,22 @@ proc finish*() {.noconv.} =
 # TODO: Only obtain a run id if tests are run
 # NOTE: We can't delete test runs with Azure's access token
 proc start*() =
-  when false:
-    if not isAzure:
-      return
-    try:
-      if runId < 0:
-        runId = invokeRest(HttpPost,
-                           ApiRuns,
-                           $ %* {
-                             "automated": true,
-                             "build": { "id": getAzureEnv("Build.BuildId") },
-                             "buildPlatform": hostCPU,
-                             "controller": "nim-testament",
-                             "name": getAzureEnv("Agent.JobName")
-                           }).body.parseJson["id"].getInt(-1)
-    except:
-      stderr.writeLine "##vso[task.logissue type=warning;]Unable to initialize Azure backend"
-      stderr.writeLine getCurrentExceptionMsg()
+  if not isAzure:
+    return
+  try:
+    if runId < 0:
+      runId = invokeRest(HttpPost,
+                         ApiRuns,
+                         $ %* {
+                           "automated": true,
+                           "build": { "id": getAzureEnv("Build.BuildId") },
+                           "buildPlatform": hostCPU,
+                           "controller": "nim-testament",
+                           "name": getAzureEnv("Agent.JobName")
+                         }).body.parseJson["id"].getInt(-1)
+  except:
+    stderr.writeLine "##vso[task.logissue type=warning;]Unable to initialize Azure backend"
+    stderr.writeLine getCurrentExceptionMsg()
 
 proc addTestResult*(name, category: string; durationInMs: int; errorMsg: string;
                     outcome: TResultEnum) =
