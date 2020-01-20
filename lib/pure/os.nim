@@ -2084,28 +2084,50 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
             if errCode == ERROR_NO_MORE_FILES: break
             else: yield sGetError(wsInterrupted, dir)
     else:
-      var init = false
+      var init: bool
+      var lastIter: bool
+      var skipYield: bool
+      var res: WalkStep
+      var d: ptr DIR
 
-      var d = opendir(dir)
-      if d == nil:
-        if errno == ENOENT: yield sOpenDir(odNotFound, dir)
-        elif errno == ENOTDIR: yield sOpenDir(odNotDir, dir)
-        elif errno == EACCES: yield sOpenDir(odAccessDenied, dir)
-        else: yield sOpenDir(odUnknownError, dir)
-      else:
-        defer: discard closedir(d)
-        yield sOpenDir(odOpenOk, dir)
-        while true:
+      while true:
+        if init and not skipYield:
+          yield res
+        if lastIter:
+          break
+        skipYield = false
+        if not init:
+          init = true
+          d = opendir(dir)
+          if d == nil:
+            res =
+              if errno == ENOENT: sOpenDir(odNotFound, dir)
+              elif errno == ENOTDIR: sOpenDir(odNotDir, dir)
+              elif errno == EACCES: sOpenDir(odAccessDenied, dir)
+              else: sOpenDir(odUnknownError, dir)
+            lastIter = true
+            continue
+          else:
+            res = sOpenDir(odOpenOk, dir)
+            continue
+        else:
           errno = 0
           var x = readdir(d)
           if x == nil:
-            if errno != 0: yield sGetError(wsInterrupted, dir)
-            break
+            if errno == 0:
+              break  # normal end, yielding nothing
+            else:
+              res = sGetError(wsInterrupted, dir)
+              lastIter = true
+              continue
           when defined(nimNoArrayToCstringConversion):
             var y = $cstring(addr x.d_name)
           else:
             var y = $x.d_name.cstring
-          if y != "." and y != "..":
+          if y == "." or y == "..":
+            skipYield = true
+            continue
+          else:
             var s: Stat
             let path = dir / y
             if not relative:
@@ -2117,19 +2139,24 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
               if x.d_type != DT_UNKNOWN:
                 if x.d_type == DT_DIR:
                   k = pcDir
-                  yield sNoErrors(k, y)
+                  res = sNoErrors(k, y)
+                  continue
                 elif x.d_type == DT_LNK:
                   errno = 0
                   if dirExists(path): k = pcLinkToDir
                   else: k = pcLinkToFile
-                  if errno == 0:  # check error in getSymlinkFileKind
-                    yield sNoErrors(k, y)
+                  if errno == 0:  # check error in dirExists
+                    res = sNoErrors(k, y)
+                    continue
                   else:
-                    yield sGetError(wsEntryBad, y)
+                    res = sGetError(wsEntryBad, y)
+                    continue
                 else:
-                  yield sNoErrors(k, y)
-                continue
+                  res = sNoErrors(k, y)
+                  continue
 
+            # special case of DT_UNKNOWN: some filesystems can't detect that
+            # entry is a directory and leave its d_type as 0=DT_UNKNOWN
             errno = 0
             if lstat(path, s) < 0'i32: break
             if S_ISDIR(s.st_mode):
@@ -2137,9 +2164,13 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
             elif S_ISLNK(s.st_mode):
               k = getSymlinkFileKind(path)
             if errno == 0:  # check error in getSymlinkFileKind
-              yield sNoErrors(k, y)
+              res = sNoErrors(k, y)
+              continue
             else:
-              yield sGetError(wsEntryBad, y)
+              res = sGetError(wsEntryBad, y)
+              continue
+      if d != nil:
+        discard closedir(d)
 
 proc tryOpenDir*(dir: string): openDirStatus {.
   tags: [ReadDirEffect], raises: [], since:(1,1) .} =
