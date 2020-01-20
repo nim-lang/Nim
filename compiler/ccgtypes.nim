@@ -954,7 +954,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
       result.add "N_LIB_EXPORT "
   elif prc.typ.callConv == ccInline or asPtr or isNonReloadable(m, prc):
     result.add "static "
-  elif {sfImportc, sfExportc} * prc.flags == {}:
+  elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
