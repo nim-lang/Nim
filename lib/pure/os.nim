@@ -2085,15 +2085,12 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
             else: yield sGetError(wsInterrupted, dir)
     else:
       var init = false
-      #while true:
-      #  if not init
 
       var d = opendir(dir)
       if d == nil:
-        case errno
-        of ENOENT: yield sOpenDir(odNotFound, dir)
-        of ENOTDIR: yield sOpenDir(odNotDir, dir)
-        of EACCES: yield sOpenDir(odAccessDenied, dir)
+        if errno == ENOENT: yield sOpenDir(odNotFound, dir)
+        elif errno == ENOTDIR: yield sOpenDir(odNotDir, dir)
+        elif errno == EACCES: yield sOpenDir(odAccessDenied, dir)
         else: yield sOpenDir(odUnknownError, dir)
       else:
         defer: discard closedir(d)
