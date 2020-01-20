@@ -120,8 +120,8 @@ proc decodeUrl*(s: string, decodePlus = true): string =
     inc(j)
   setLen(result, j)
 
-proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
-    omitEq = true): string =
+func encodeQuery*(query: openArray[(string, string)], usePlus = true,
+    omitEq = true, usePrefix = false): string =
   ## Encodes a set of (key, value) parameters into a URL query string.
   ##
   ## Every (key, value) pair is URL-encoded and written as ``key=value``. If the
@@ -132,12 +132,16 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
   ## The ``usePlus`` parameter is passed down to the `encodeUrl` function that
   ## is used for the URL encoding of the string values.
   ##
+  ## ``usePrefix`` parameter prefixes a ``?`` at the start of the result string.
+  ##
   ## **See also:**
   ## * `encodeUrl proc<#encodeUrl,string>`_
   runnableExamples:
     assert encodeQuery({: }) == ""
     assert encodeQuery({"a": "1", "b": "2"}) == "a=1&b=2"
     assert encodeQuery({"a": "1", "b": ""}) == "a=1&b"
+    assert encodeQuery({"a": "1", "b": "2"}, usePrefix = true) == "?a=1&b=2"
+    assert encodeQuery({"a": "1", "b": ""}, usePrefix = true) == "?a=1&b"
   for elem in query:
     # Encode the `key = value` pairs and separate them with a '&'
     if result.len > 0: result.add('&')
@@ -147,6 +151,7 @@ proc encodeQuery*(query: openArray[(string, string)], usePlus = true,
     if not omitEq or val.len > 0:
       result.add('=')
       result.add(encodeUrl(val, usePlus))
+  if usePrefix and result.len > 0: result = "?" & result
 
 proc parseAuthority(authority: string, result: var Uri) =
   var i = 0
@@ -724,6 +729,13 @@ when isMainModule:
     doAssert encodeQuery({"foo": ""}, omitEq = false) == "foo="
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}) == "a=1&b&c=3"
     doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false) == "a=1&b=&c=3"
+    doAssert encodeQuery({"foo": "bar"}, usePrefix = true) == "?foo=bar"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePrefix = true) == "?foo=bar+%26+baz"
+    doAssert encodeQuery({"foo": "bar & baz"}, usePlus = false, usePrefix = true) == "?foo=bar%20%26%20baz"
+    doAssert encodeQuery({"foo": ""}, usePrefix = true) == "?foo"
+    doAssert encodeQuery({"foo": ""}, omitEq = false, usePrefix = true) == "?foo="
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, usePrefix = true) == "?a=1&b&c=3"
+    doAssert encodeQuery({"a": "1", "b": "", "c": "3"}, omitEq = false, usePrefix = true) == "?a=1&b=&c=3"
 
     block:
       var foo = parseUri("http://example.com") / "foo" ? {"bar": "1", "baz": "qux"}

@@ -68,6 +68,7 @@
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 - `macros.basename` and `basename=` got support for `PragmaExpr`,
   so that an expression like `MyEnum {.pure.}` is handled correctly.
+- `uri.encodeQuery` added `usePrefix` parameter prefixes a `?` at the start of the result string.
 
 
 ## Language additions
