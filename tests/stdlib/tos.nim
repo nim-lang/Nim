@@ -384,6 +384,8 @@ block osenv:
     doAssert existsEnv(dummyEnvVar) == false
 
 block isRelativeTo:
+  doAssert isRelativeTo("/foo", "/")
+  doAssert isRelativeTo("/foo/bar", "/foo")
   doAssert isRelativeTo("foo/bar", "foo")
   doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
   doAssert isRelativeTo("./foo/", "foo")
