@@ -2818,11 +2818,11 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
     if  b.kind == nkRecList and b.len > 0:
-      result.add "._i" & $selectedBranch & " = {"
+      result.add "._" &  mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
     elif b.kind == nkSym:
-      result.add "." & lastSon(obj[selectedBranch]).sym.loc.r & " = "
+      result.add "." & mangleRecFieldName(p.module, b.sym) & " = " 
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
     result.add "}"
     
