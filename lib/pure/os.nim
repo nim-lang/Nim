@@ -1995,7 +1995,7 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-type openDirStatus* = enum
+type OpenDirStatus* = enum
   odOpenOk,
   odNotDir,
   odAccessDenied,
@@ -2014,7 +2014,7 @@ type WalkStep = ref object
   path*: string
   case kind*: WalkStepKind
   of wsOpenDir:
-    openStatus*: openDirStatus
+    openStatus*: OpenDirStatus
   of wsEntryOk:
     entryType*: PathComponent
   of wsEntryBad, wsInterrupted:
@@ -2044,7 +2044,7 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
 
   proc sNoErrors(pc: PathComponent, path: string): owned(WalkStep) =
     WalkStep(kind: wsEntryOk, entryType: pc, code: OSErrorCode(0), path: path)
-  proc sOpenDir(s: openDirStatus, path: string): owned(WalkStep) =
+  proc sOpenDir(s: OpenDirStatus, path: string): owned(WalkStep) =
     WalkStep(kind: wsOpenDir, openStatus: s, code: osLastError(), path: path)
   proc sGetError(k: WalkStepKind, path: string): owned(WalkStep) =
     WalkStep(kind: k, code: osLastError(), path: path)
@@ -2172,7 +2172,7 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
       if d != nil:
         discard closedir(d)
 
-proc tryOpenDir*(dir: string): openDirStatus {.
+proc tryOpenDir*(dir: string): OpenDirStatus {.
   tags: [ReadDirEffect], raises: [], since:(1,1) .} =
   # TODO
   for step in tryWalkDir(dir):
