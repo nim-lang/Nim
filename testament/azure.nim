@@ -42,6 +42,7 @@ proc invokeRest(httpMethod: HttpMethod; api: string; body = ""): Response =
     raise newException(HttpRequestError, "Server returned: " & result.body)
 
 proc finish*() {.noconv.} =
+  stderr.writeLine "##vso[task.logissue type=warning;]Recorded overhead was ", overhead, " seconds"
   if not isAzure or runId < 0:
     return
 
@@ -53,7 +54,6 @@ proc finish*() {.noconv.} =
     stderr.writeLine "##vso[task.logissue type=warning;]Unable to finalize Azure backend"
     stderr.writeLine getCurrentExceptionMsg()
 
-  stderr.writeLine "##vso[task.logissue type=warning;]Recorded overhead was ", overhead, " seconds"
   runId = -1
 
 # TODO: Only obtain a run id if tests are run
