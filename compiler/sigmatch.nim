@@ -1149,9 +1149,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             f.n[i] = tryResolvingStaticExpr(c, f.n[i])
         result = typeRangeRel(f, a)
     else:
-      if skipTypes(f, {tyRange}).kind == a.kind:
+      let f = skipTypes(f, {tyRange})
+      if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
         result = isIntConv
-      elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
+      elif isConvertibleToRange(f, a):
         result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
