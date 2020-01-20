@@ -16,7 +16,7 @@ const
 
 var
   runId* = -1
-  overhead = 0.0
+  overhead* = 0.0
 
 proc getAzureEnv(env: string): string =
   # Conversion rule at:
@@ -42,7 +42,6 @@ proc invokeRest(httpMethod: HttpMethod; api: string; body = ""): Response =
     raise newException(HttpRequestError, "Server returned: " & result.body)
 
 proc finish*() {.noconv.} =
-  stderr.writeLine "##vso[task.logissue type=warning;]Recorded overhead was ", overhead, " seconds"
   if not isAzure or runId < 0:
     return
 

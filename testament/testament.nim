@@ -747,6 +747,7 @@ proc main() =
     else: echo r, r.data
   backend.close()
   if isMainProcess: azure.finish()
+  stderr.writeLine "##vso[task.logissue type=warning;]Recorded overhead was ", overhead, " seconds"
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
