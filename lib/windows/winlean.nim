@@ -128,6 +128,8 @@ const
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
+  HANDLE_FLAG_INHERIT* = 0x00000001'i32
+
 when useWinUnicode:
   proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
       stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}

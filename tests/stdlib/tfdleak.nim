@@ -3,12 +3,19 @@ discard """
   output: ""
 """
 
-import os, osproc, strutils
+import os, osproc, strutils, nativesockets, net
 
 proc leakCheck(f: File, msg: string) =
   discard startProcess(
     getAppFilename(),
-    args = @[$f.getOsFileHandle, msg],
+    args = @["file", $f.getOsFileHandle, msg],
+    options = {poParentStreams}
+  ).waitForExit -1
+
+proc leakCheck(s: SocketHandle, msg: string) =
+  discard startProcess(
+    getAppFilename(),
+    args = @["sock", $s.FileHandle, msg],
     options = {poParentStreams}
   ).waitForExit -1
 
@@ -33,14 +40,46 @@ proc main() =
     doAssert open(f2, f.getFileHandle), "open with FileHandle failed"
 
     leakCheck(f2, "open(FileHandle)")
+
+    let sock = createNativeSocket()
+    defer: close sock
+    leakCheck(sock, "createNativeSocket()")
+
+    let server = newSocket()
+    defer: close server
+    server.bindAddr()
+    server.listen()
+    let (_, port) = server.getLocalAddr
+
+    leakCheck(server.getFd, "newSocket()")
+
+    let client = newSocket()
+    defer: close client
+    client.connect("127.0.0.1", port)
+
+    var input: Socket
+    server.accept(input)
+
+    leakCheck(input.getFd, "accept()")
   else:
-    let fd = parseInt(paramStr 1)
-    when defined(posix):
-      var f: File
-      if open(f, fd.FileHandle):
-        echo "leaked ", paramStr 2
-    else:
-      if openOsfHandle(fd.FileHandle, 0) != -1:
-        echo "leaked ", paramStr 2
+    let
+      ops = paramStr 1
+      fd = parseInt(paramStr 2)
+      msg = "leaked " & paramStr 3
+    case ops
+    of "file":
+      when defined(posix):
+        var f: File
+        if open(f, fd.FileHandle):
+          echo msg
+      else:
+        if openOsfHandle(fd.FileHandle, 0) != -1:
+          echo msg
+    of "sock":
+      try:
+        discard getSockDomain(fd.SocketHandle)
+        echo msg
+      except:
+        discard
 
 when isMainModule: main()

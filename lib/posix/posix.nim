@@ -894,6 +894,10 @@ proc `==`*(x, y: SocketHandle): bool {.borrow.}
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>", sideEffect.}
 
+when defined(linux) or defined(bsd):
+  proc accept4*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen,
+                flags: cint): SocketHandle {.importc, header: "<sys/socket.h>".}
+
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
