@@ -47,6 +47,9 @@ Options:
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
   --megatest:on|off         Enable or disable megatest. Default is on.
   --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
+
+On Azure Pipelines, testament will also publish test results via Azure Pipelines' Test Management API
+provided that System.AccessToken is made available via the environment variable SYSTEM_ACCESSTOKEN.
 """ % resultsFile
 
 type
@@ -606,6 +609,7 @@ proc main() =
   os.putEnv "NIMTEST_COLOR", "never"
   os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
+  azure.init()
   backend.open()
   var optPrintResults = false
   var optFailing = false
@@ -656,8 +660,6 @@ proc main() =
         quit Usage
     of "skipfrom":
       skipFrom = p.val.string
-    of "azurerunid":
-      runId = p.val.parseInt
     else:
       quit Usage
     p.next()
@@ -670,7 +672,6 @@ proc main() =
   of "all":
     #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
 
-    azure.start()
     var myself = quoteShell(findExe("testament" / "testament"))
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
@@ -679,8 +680,6 @@ proc main() =
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
-    if isAzure:
-      myself &= " " & quoteShell("--azureRunId:" & $runId)
 
     var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
@@ -706,16 +705,14 @@ proc main() =
         progressStatus(i)
         processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
     else:
-      addQuitProc azure.finish
+      addQuitProc azure.finalize
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
-    azure.start()
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
     p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
   of "pcat":
-    azure.start()
     skips = loadSkipFrom(skipFrom)
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
@@ -730,7 +727,6 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
-    azure.start()
     # at least one directory is required in the path, to use as a category name
     let pathParts = split(p.key.string, {DirSep, AltSep})
     # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
@@ -745,8 +741,8 @@ proc main() =
   if optPrintResults:
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
+  azure.finalize()
   backend.close()
-  if isMainProcess: azure.finish()
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
