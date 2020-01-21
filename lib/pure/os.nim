@@ -353,8 +353,10 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     assert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
+    assert relativePath("foo", ".", '/') == "foo"
 
   if path.len == 0: return ""
+  let base = if base == ".": "" else: base
 
   when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):

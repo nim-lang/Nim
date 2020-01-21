@@ -334,6 +334,10 @@ block ospaths:
   doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
   doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: "")
 
+  doAssert relativePath("foo", ".", '/') == "foo"
+  doAssert relativePath(".", ".", '/') == "."
+  doAssert relativePath("..", ".", '/') == ".."
+
   when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
     doAssert relativePath(r"c:\foo\bar\baz.nim", r"c:\foo") == r"bar\baz.nim"
