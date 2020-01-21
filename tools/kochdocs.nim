@@ -147,7 +147,7 @@ lib/js/jscore.nim
 """.splitWhitespace()
 
 const
-  doc = """
+  docOld = """
 lib/system.nim
 lib/system/io.nim
 lib/system/nimscript.nim
@@ -289,7 +289,19 @@ lib/posix/posix_utils.nim
 
   ignoredModules = """
 lib/pure/future.nim
+lib/impure/osinfo_posix.nim
+lib/impure/osinfo_win.nim
+lib/pure/collections/hashcommon.nim
+lib/pure/collections/tableimpl.nim
+lib/pure/collections/setimpl.nim
 """.splitWhitespace()
+# lib/deprecated/pure/securehash.nim
+
+# note: another pitfall of `include` is that `nim doc lib/std/sha1.nim` works
+# but `nim doc lib/deprecated/pure/securehash.nim` fails:
+# Error: redefinition of 'secureHash'
+
+# lib/pure/collections/hashcommon.nim # an include file; will cause CT errors by itself
 
 proc getDocList(): seq[string] =
   var t: HashSet[string]
@@ -304,10 +316,10 @@ proc getDocList(): seq[string] =
     doAssert a notin t, a
     t.incl a
 
-  var tdoc: HashSet[string]
-  for a in doc:
-    doAssert a notin tdoc
-    tdoc.incl a
+  var tdocOld: HashSet[string]
+  for a in docOld:
+    doAssert a notin tdocOld
+    tdocOld.incl a
 
   var t2: HashSet[string]
   template myadd(a)=
@@ -316,7 +328,9 @@ proc getDocList(): seq[string] =
     t2.incl a
   for a in walkDirRec("lib"):
     if a.splitFile.ext != ".nim": continue
-    # if a.lib/deprecated
+    # pending #13212 use isRelativeTo 
+    if not a.relativePath("lib/deprecated").startsWith "..":
+      continue
 
     if a notin t:
       result.add a
@@ -324,18 +338,21 @@ proc getDocList(): seq[string] =
       t2.incl a
   myadd "nimsuggest/sexp.nim"
   
-  for a in doc:
+  for a in docOld:
+    if a == "lib/deprecated/pure/ospaths.nim":
+      continue
     doAssert a in t2, a
+
   var ok = true
   for a in result:
-    if a notin tdoc:
+    if a notin tdocOld:
       echo a
       ok = false
-    # doAssert a in tdoc, a
-  doAssert ok
+    # doAssert a in tdocOld, a
+  # doAssert ok
 
-const docFoo = getDocList()
-doAssert docFoo == doc
+const doc = getDocList()
+# doAssert doc == docOld
 
 proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
