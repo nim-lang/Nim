@@ -14,8 +14,12 @@ when compileOption("app", "lib"):
   var
     bar {.exportc.}: int
     thr {.exportc, threadvar.}: int
-  proc foo() {.exportc.} =
-    echo "failed"
+  proc foo() {.exportc.} = discard
+
+  var
+    exported {.exportc, dynlib.}: int
+    exported_thr {.exportc, threadvar, dynlib.}: int
+  proc exported_func() {.exportc, dynlib.} = discard
 elif isMainModule:
   import dynlib
 
@@ -25,7 +29,15 @@ elif isMainModule:
     const s = astToStr(sym)
     if handle.symAddr(s) != nil:
       echo s, " is exported"
+  template checkE(sym: untyped) =
+    const s = astToStr(sym)
+    if handle.symAddr(s) == nil:
+      echo s, " is not exported"
 
   check foo
   check bar
   check thr
+
+  checkE exported
+  checkE exported_thr
+  checkE exported_func
