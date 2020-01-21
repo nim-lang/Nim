@@ -129,7 +129,19 @@ doc/manual/var_t_return.rst
   doc0 = """
 lib/system/threads.nim
 lib/system/channels.nim
-""".splitWhitespace()
+lib/pure/ioselects/ioselectors_kqueue.nim
+lib/pure/ioselects/ioselectors_select.nim
+lib/pure/ioselects/ioselectors_poll.nim
+lib/pure/ioselects/ioselectors_epoll.nim
+lib/posix/posix_macos_amd64.nim
+lib/posix/posix_other.nim
+lib/posix/posix_nintendoswitch.nim
+lib/posix/posix_nintendoswitch_consts.nim
+lib/posix/posix_linux_amd64.nim
+lib/posix/posix_linux_amd64_consts.nim
+lib/posix/posix_other_consts.nim
+lib/posix/posix_openbsd_amd64.nim
+""".splitWhitespace() # these are include files, `nim doc` would not work, but `nim doc0` does
 
   withoutIndex = """
 lib/wrappers/mysql.nim
@@ -146,147 +158,6 @@ lib/posix/termios.nim
 lib/js/jscore.nim
 """.splitWhitespace()
 
-const
-  docOld = """
-lib/system.nim
-lib/system/io.nim
-lib/system/nimscript.nim
-lib/system/assertions.nim
-lib/system/iterators.nim
-lib/system/dollars.nim
-lib/system/widestrs.nim
-lib/deprecated/pure/ospaths.nim
-lib/pure/parsejson.nim
-lib/pure/cstrutils.nim
-lib/core/macros.nim
-lib/pure/marshal.nim
-lib/core/typeinfo.nim
-lib/impure/re.nim
-lib/pure/typetraits.nim
-nimsuggest/sexp.nim
-lib/pure/concurrency/threadpool.nim
-lib/pure/concurrency/cpuinfo.nim
-lib/pure/concurrency/cpuload.nim
-lib/js/dom.nim
-lib/js/jsffi.nim
-lib/js/jsconsole.nim
-lib/js/asyncjs.nim
-lib/pure/os.nim
-lib/pure/strutils.nim
-lib/pure/math.nim
-lib/std/editdistance.nim
-lib/std/wordwrap.nim
-lib/std/wrapnils.nim
-lib/experimental/diff.nim
-lib/pure/algorithm.nim
-lib/pure/stats.nim
-lib/windows/winlean.nim
-lib/windows/registry.nim
-lib/pure/random.nim
-lib/pure/complex.nim
-lib/pure/times.nim
-lib/std/monotimes.nim
-lib/pure/osproc.nim
-lib/pure/pegs.nim
-lib/pure/dynlib.nim
-lib/pure/strscans.nim
-lib/pure/parseopt.nim
-lib/pure/hashes.nim
-lib/pure/strtabs.nim
-lib/pure/lexbase.nim
-lib/pure/parsecfg.nim
-lib/pure/parsexml.nim
-lib/pure/parsecsv.nim
-lib/pure/parsesql.nim
-lib/pure/streams.nim
-lib/pure/terminal.nim
-lib/pure/cgi.nim
-lib/pure/unicode.nim
-lib/pure/strmisc.nim
-lib/pure/htmlgen.nim
-lib/pure/parseutils.nim
-lib/pure/browsers.nim
-lib/impure/db_postgres.nim
-lib/impure/db_mysql.nim
-lib/impure/db_sqlite.nim
-lib/impure/db_odbc.nim
-lib/pure/db_common.nim
-lib/pure/httpclient.nim
-lib/pure/smtp.nim
-lib/pure/ropes.nim
-lib/pure/unidecode/unidecode.nim
-lib/pure/xmlparser.nim
-lib/pure/htmlparser.nim
-lib/pure/xmltree.nim
-lib/pure/colors.nim
-lib/pure/mimetypes.nim
-lib/pure/json.nim
-lib/pure/base64.nim
-lib/impure/nre.nim
-lib/impure/nre/private/util.nim
-lib/pure/collections/tables.nim
-lib/pure/collections/sets.nim
-lib/pure/collections/lists.nim
-lib/pure/collections/sharedlist.nim
-lib/pure/collections/sharedtables.nim
-lib/pure/collections/intsets.nim
-lib/pure/collections/deques.nim
-lib/pure/encodings.nim
-lib/pure/collections/sequtils.nim
-lib/pure/collections/rtarrays.nim
-lib/pure/cookies.nim
-lib/pure/memfiles.nim
-lib/pure/collections/critbits.nim
-lib/core/locks.nim
-lib/core/rlocks.nim
-lib/pure/oids.nim
-lib/pure/endians.nim
-lib/pure/uri.nim
-lib/pure/nimprof.nim
-lib/pure/unittest.nim
-lib/packages/docutils/highlite.nim
-lib/packages/docutils/rst.nim
-lib/packages/docutils/rstast.nim
-lib/packages/docutils/rstgen.nim
-lib/pure/logging.nim
-lib/pure/options.nim
-lib/pure/asyncdispatch.nim
-lib/pure/asyncnet.nim
-lib/pure/asyncstreams.nim
-lib/pure/asyncfutures.nim
-lib/pure/nativesockets.nim
-lib/pure/asynchttpserver.nim
-lib/pure/net.nim
-lib/pure/selectors.nim
-lib/pure/sugar.nim
-lib/pure/collections/chains.nim
-lib/pure/asyncfile.nim
-lib/pure/asyncftpclient.nim
-lib/pure/lenientops.nim
-lib/pure/md5.nim
-lib/pure/rationals.nim
-lib/pure/distros.nim
-lib/pure/oswalkdir.nim
-lib/pure/collections/heapqueue.nim
-lib/pure/fenv.nim
-lib/std/sha1.nim
-lib/std/sums.nim
-lib/std/varints.nim
-lib/std/time_t.nim
-lib/impure/rdstdin.nim
-lib/wrappers/linenoise/linenoise.nim
-lib/pure/strformat.nim
-lib/pure/segfaults.nim
-lib/pure/mersenne.nim
-lib/pure/coro.nim
-lib/pure/httpcore.nim
-lib/pure/bitops.nim
-lib/pure/nimtracker.nim
-lib/pure/punycode.nim
-lib/pure/volatile.nim
-lib/posix/posix_utils.nim
-""".splitWhitespace()
-
   ignoredModules = """
 lib/pure/future.nim
 lib/impure/osinfo_posix.nim
@@ -294,19 +165,7 @@ lib/impure/osinfo_win.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
 lib/pure/collections/setimpl.nim
-lib/pure/ioselects/ioselectors_kqueue.nim
-lib/pure/ioselects/ioselectors_select.nim
-lib/pure/ioselects/ioselectors_poll.nim
-lib/pure/ioselects/ioselectors_epoll.nim
-lib/posix/posix_macos_amd64.nim
-lib/posix/posix_other.nim
-lib/posix/posix_nintendoswitch.nim
-lib/posix/posix_nintendoswitch_consts.nim
-lib/posix/posix_linux_amd64.nim
-lib/posix/posix_linux_amd64_consts.nim
-lib/posix/posix_other_consts.nim
-lib/posix/posix_openbsd_amd64.nim
-""".splitWhitespace()
+""".splitWhitespace() # these don't produce any useful info even with `nim doc0`
 
 import std/strformat
 
@@ -330,11 +189,6 @@ proc getDocList(): seq[string] =
     doAssert a notin t, a
     t.incl a
 
-  var tdocOld: HashSet[string]
-  for a in docOld:
-    doAssert a notin tdocOld
-    tdocOld.incl a
-
   var t2: HashSet[string]
   template myadd(a)=
     result.add a
@@ -354,14 +208,8 @@ proc getDocList(): seq[string] =
       result.add a
       doAssert a notin t2, a
       t2.incl a
-  myadd "nimsuggest/sexp.nim"
-  
-  for a in docOld:
-    doAssert a in t2, a
 
-  for a in result:
-    if a notin tdocOld:
-      echo a
+  myadd "nimsuggest/sexp.nim"
 
 proc runDocAsMegatest(files: seq[string])=
   proc quoted(a: string): string =
@@ -400,7 +248,6 @@ bin/nim doc --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --p
   doAssert false
 
 const doc = getDocList()
-# const doc = docOld
 # runDocAsMegatest(doc)
 
 proc sexec(cmds: openArray[string]) =
