@@ -195,8 +195,8 @@ proc getDocList(): seq[string] =
     doAssert a notin t2, a
     t2.incl a
 
-  when false:
-   const goodSystem = """
+  # don't ignore these even though in lib/system
+  const goodSystem = """
 lib/system/io.nim
 lib/system/nimscript.nim
 lib/system/assertions.nim
@@ -205,7 +205,7 @@ lib/system/dollars.nim
 lib/system/widestrs.nim
 """.splitWhitespace()
 
-   for a in walkDirRec("lib"):
+  for a in walkDirRec("lib"):
     if a.splitFile.ext != ".nim": continue
     if a.isRelativeTo("lib/deprecated"):
       if a notin @["lib/deprecated/pure/ospaths.nim"]: # REMOVE
@@ -246,6 +246,8 @@ compiler/suggest.nim
 compiler/packagehandling.nim
 compiler/hlo.nim
 compiler/rodimpl.nim
+compiler/vmops.nim
+compiler/vmhooks.nim
 """.splitWhitespace()
 
   # not include files but doesn't work; not included/imported anywhere; dead code?
@@ -255,12 +257,16 @@ compiler/canonicalizer.nim
 compiler/forloops.nim
 """.splitWhitespace()
 
-  # these cause mysterious errors even though they're imported
+  # these cause errors even though they're imported (some of which are mysterious)
   const bad2 = """
 compiler/closureiters.nim
 compiler/tccgen.nim
 compiler/lambdalifting.nim
 compiler/layouter.nim
+compiler/evalffi.nim
+compiler/nimfix/nimfix.nim
+compiler/plugins/active.nim
+compiler/plugins/itersgen.nim
 """.splitWhitespace()
 
   for a in walkDirRec("compiler"):
