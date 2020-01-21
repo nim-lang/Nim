@@ -712,6 +712,10 @@ proc genRaiseStmt(p: BProc, t: PNode) =
     finallyActions(p)
     var e = rdLoc(a)
     var typ = skipTypes(t[0].typ, abstractPtrs)
+    # XXX For reasons that currently escape me, this is only required by the new
+    # C++ based exception handling:
+    if p.config.exc == excCpp:
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     genLineDir(p, t)
     if isImportedException(typ, p.config):
       lineF(p, cpsStmts, "throw $1;$n", [e])
@@ -724,6 +728,8 @@ proc genRaiseStmt(p: BProc, t: PNode) =
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
     finallyActions(p)
+    if p.config.exc == excCpp:
+      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     genLineDir(p, t)
     # reraise the last exception:
     linefmt(p, cpsStmts, "#reraiseException();$n", [])
@@ -988,6 +994,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
     if t[i].len == 1:
+      hasImportedCppExceptions = true
       # general except section:
       if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
@@ -1041,6 +1048,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
     #linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
     expr(p, body, d)
 
+  var catchAllPresent = false
+  incl p.flags, noSafePoints # mark as not needing 'popCurrentException'
   if hasImportedCppExceptions:
     for i in 1..<t.len:
       if t[i].kind != nkExceptBranch: break
@@ -1053,6 +1062,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         startBlock(p, "catch (...) {", [])
         genExceptBranchBody(t[i][0])
         endBlock(p)
+        catchAllPresent = true
       else:
         for j in 0..<t[i].len-1:
           var typeNode = t[i][j]
@@ -1069,10 +1079,16 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
             genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
             endBlock(p)
 
+  excl p.flags, noSafePoints
   discard pop(p.nestedTryStmts)
-
   # general finally block:
   if t.len > 0 and t[^1].kind == nkFinally:
+    if not catchAllPresent:
+      startBlock(p, "catch (...) {", [])
+      genRestoreFrameAfterException(p)
+      linefmt(p, cpsStmts, "T$1_ = std::current_exception();$n", [etmp])
+      endBlock(p)
+
     startBlock(p)
     genStmts(p, t[^1][0])
     linefmt(p, cpsStmts, "if (T$1_) std::rethrow_exception(T$1_);$n", [etmp])
