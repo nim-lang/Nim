@@ -1177,7 +1177,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   var q = findPendingModule(m, sym)
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
     assert q.initProc.module == q
-    q.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(q, sym.typ), sym.loc.r, genBracedInit(q.initProc, sym.ast, isConst = true)])
   # declare header:
   if q != m and not containsOrIncl(m.declaredThings, sym.id):
