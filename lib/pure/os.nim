@@ -407,8 +407,7 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     ff = f.next(path)
 
 proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
-  ## returns true if `path` is rooted under or equal to `base` modulo path
-  ## normalization.
+  ## Returns true if `path` is relative to `base`.
   runnableExamples:
     doAssert isRelativeTo("./foo//bar", "foo")
     # doAssert isRelativeTo("foo/bar", ".") # pending #13211
