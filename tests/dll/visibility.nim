@@ -11,7 +11,9 @@ const LibName {.used.} =
     "libvisibility.so"
 
 when compileOption("app", "lib"):
-  var bar {.exportc.}: int
+  var
+    bar {.exportc.}: int
+    thr {.exportc, threadvar.}: int
   proc foo() {.exportc.} =
     echo "failed"
 elif isMainModule:
@@ -26,3 +28,4 @@ elif isMainModule:
 
   check foo
   check bar
+  check thr
