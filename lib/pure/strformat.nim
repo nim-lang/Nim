@@ -717,6 +717,9 @@ when isMainModule:
   var tm = fromUnix(0)
   discard &"{tm}"
 
+  var noww = now()
+  check &"{noww}", $noww
+
   # Unicode string tests
   check &"""{"αβγ"}""", "αβγ"
   check &"""{"αβγ":>5}""", "  αβγ"
