@@ -4,7 +4,7 @@ import os, strutils, osproc, sets
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
-  # --warning[LockLevel]:off pending https://github.com/nim-lang/Nim/issues/13218
+  # --warning[LockLevel]:off pending #13218
   nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
@@ -167,8 +167,6 @@ lib/pure/collections/tableimpl.nim
 lib/pure/collections/setimpl.nim
 """.splitWhitespace() # these don't produce any useful info even with `nim doc0`
 
-import std/strformat
-
 proc isRelativeTo(path, base: string): bool =
   # pending #13212 use os.isRelativeTo
   let path = path.normalizedPath
@@ -207,11 +205,11 @@ lib/system/widestrs.nim
 
   for a in walkDirRec("lib"):
     if a.splitFile.ext != ".nim": continue
+    if a.isRelativeTo("lib/pure/includes"): continue
+    if a.isRelativeTo("lib/genode"): continue
     if a.isRelativeTo("lib/deprecated"):
       if a notin @["lib/deprecated/pure/ospaths.nim"]: # REMOVE
         continue
-    if a.isRelativeTo("lib/pure/includes"): continue
-    if a.isRelativeTo("lib/genode"): continue
     if a.isRelativeTo("lib/system"):
       if a notin goodSystem:
         continue
@@ -276,44 +274,7 @@ compiler/plugins/itersgen.nim
     if a in bad2: continue
     result.add a
 
-proc runDocAsMegatest(files: seq[string])=
-  proc quoted(a: string): string =
-    result.addQuoted(a)
-  let file = "lib/pure/alldoc.nim" # has to be under same project otherwise nim doc would skip
-  var msg = ""
-  for i in files:
-    var i = i
-    # these have special compile options, eg lib/nimrtl.nim.cfg
-    if i in @["lib/nimrtl.nim"]: continue # Error: This file has to be compiled as a library!
-    if i in @["lib/pure/nimprof.nim"]: continue # Profiling support is turned off
-    if i in @["lib/pure/nimtracker.nim"]: continue # when not defined(memTracker) and not isMainModule:
-    if i in @["lib/pure/concurrency/threadpool.nim"]: continue #  Threadpool requires --threads:on option.
-    if i in @["lib/pure/smtp.nim"]: continue #  Error: SMTP module compiled without SSL support
-    if i in file: continue # it's included; missing stuff
-
-    let msgi = "import $1" % i.quoted
-    # let msgi = "from $1 import nil" % i.quoted
-    msg.add "static: echo $1\n" % msgi.quoted
-    msg.add msgi
-    msg.add "\n"
-  writeFile(file, msg)
-  echo file
-  # findNim()
-  const nim = getCurrentCompilerExe()
-  #[
-bin/nim doc --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=1.1.1  --git.url:https://github.com/nim-lang/Nim -o:web/upload/1.1.1/xmltree.html --index:on lib/pure/xmltree.nim
-  ]#
-  let dir = "/tmp/d46"
-  let options = "-d:boot"
-  let cmd = fmt"cd /Users/timothee/git_clone/nim/Nim_prs && {nim} doc {options} --path:. --errorMax:1 --project --index:on --git.url:https://github.com/nim-lang/Nim --putenv:nimversion=1.1.1 --outDir:{dir} {file}"
-  echo cmd
-  let (output, exitCode) = gorgeEx cmd
-  echo (exitCode: exitCode)
-  echo output
-  doAssert false
-
 const doc = getDocList()
-# runDocAsMegatest(doc)
 
 proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
@@ -337,25 +298,7 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
-import std/times
-
 proc buildDoc(nimArgs, destPath: string) =
-  var
-    commands: seq[string]
-  let nim = findNim()
-  for d in items(doc):
-    commands.add nim & " doc $# --git.url:$# -o:$# --index:on $#" %
-      [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
-  let t1 = cputime()
-  mexec(commands)
-  let t2 = cputime()
-  echo ("D20200121T114847", t2 - t1, doc.len)
-  doAssert false
-  exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
-
-when false:
- proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
