@@ -2021,7 +2021,7 @@ type WalkStep = ref object
     discard
 
 iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
-  tags: [ReadDirEffect], raises: [], noNimScript.} =
+  tags: [ReadDirEffect], raises: [].} =
   ## An analogue of `walkDir iterator <#walkDir.i,string>`_ with full error
   ## checking. Yields "steps" of walking through `dir`, each step contains its path `path`, OS error code `code` and additional info. At first step yields info with the status of opening `dir` as a directory, tag `wsOpenDir`. If it's OK,
   ## the subsequent steps will yield the directory entries with file/directory type as info, tag `wsEntryOk`. Dangling symlinks on posix are reported as wsEntryBad. If (rarely) walking terminates with an error, tag is `wsInterrupted`.
@@ -2173,7 +2173,7 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
         discard closedir(d)
 
 proc tryOpenDir*(dir: string): OpenDirStatus {.
-  tags: [ReadDirEffect], raises: [], since:(1,1) .} =
+  tags: [ReadDirEffect], raises: [], since:(1,1).} =
   # TODO
   for step in tryWalkDir(dir):
     case step.kind
