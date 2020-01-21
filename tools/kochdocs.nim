@@ -303,6 +303,15 @@ lib/pure/collections/setimpl.nim
 
 # lib/pure/collections/hashcommon.nim # an include file; will cause CT errors by itself
 
+import std/strformat
+
+proc isRelativeTo(path, base: string): bool =
+  # pending #13212 use os.isRelativeTo
+  let path = path.normalizedPath
+  let base = base.normalizedPath
+  let ret = relativePath(path, base)
+  result = path.len > 0 and not ret.startsWith ".."
+
 proc getDocList(): seq[string] =
   var t: HashSet[string]
   for a in doc0:
@@ -328,10 +337,12 @@ proc getDocList(): seq[string] =
     t2.incl a
   for a in walkDirRec("lib"):
     if a.splitFile.ext != ".nim": continue
-    # pending #13212 use isRelativeTo 
-    if not a.relativePath("lib/deprecated").startsWith "..":
-      continue
-
+    if a.isRelativeTo("lib/deprecated"): continue
+    if a.isRelativeTo("lib/pure/includes"): continue
+    if a.isRelativeTo("lib/genode"): continue
+    if a.isRelativeTo("lib/system"):
+      if a notin @["lib/system/io.nim", "lib/system/nimscript.nim", "lib/system/assertions.nim", "lib/system/iterators.nim", "lib/system/dollars.nim", "lib/system/widestrs.nim"]:
+        continue # CHECKME
     if a notin t:
       result.add a
       doAssert a notin t2, a
@@ -351,7 +362,82 @@ proc getDocList(): seq[string] =
     # doAssert a in tdocOld, a
   # doAssert ok
 
+  proc quoted(a: string): string =
+    result.addQuoted(a)
+
+  # let file = "/tmp/z01.nim"
+  let file = "lib/pure/alldoc.nim"
+
+  var msg = ""
+  # for i in result:
+  for i in docOld:
+    var i = i
+    if i in @["lib/nimrtl.nim"]: continue # Error: This file has to be compiled as a library!
+    if i in @["lib/pure/nimprof.nim"]: continue # Profiling support is turned off
+    if i in @["lib/pure/nimtracker.nim"]: continue # when not defined(memTracker) and not isMainModule:
+    if i in @["lib/pure/ioselects/ioselectors_kqueue.nim"]: continue # it's included; missing stuff
+    if i in @["lib/pure/ioselects/ioselectors_select.nim"]: continue # it's included; missing stuff
+    if i in @["lib/pure/ioselects/ioselectors_poll.nim"]: continue # it's included; missing stuff
+    if i in @["lib/pure/ioselects/ioselectors_epoll.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_macos_amd64.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_other.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_nintendoswitch.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_nintendoswitch_consts.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_linux_amd64.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_linux_amd64_consts.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_other_consts.nim"]: continue # it's included; missing stuff
+    if i in @["lib/posix/posix_openbsd_amd64.nim"]: continue # it's included; missing stuff
+    if i in @["lib/pure/concurrency/threadpool.nim"]: continue #  Threadpool requires --threads:on option.
+    if i in @["lib/pure/smtp.nim"]: continue #  Error: SMTP module compiled without SSL support
+    if i in file: continue # it's included; missing stuff
+
+    # if i in @["lib/system/sysstr.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/seqs_v2.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/arithm.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/atomics.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/chcks.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/alloc.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/gc2.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/excpt.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/refs_v2.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/gc_ms.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/memtracker.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/avltree.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/gc.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/comparisons.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/jssys.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/repr.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/sets.nim"]: continue # it's included; missing stuff
+    # if i in @["lib/system/memalloc.nim"]: continue # it's included; missing stuff
+
+    let msgi = "import $1" % i.quoted
+    # let msgi = "from $1 import nil" % i.quoted
+    msg.add "static: echo $1\n" % msgi.quoted
+    msg.add msgi
+    msg.add "\n"
+  writeFile(file, msg)
+  echo file
+  # findNim()
+  const nim = getCurrentCompilerExe()
+  #[
+bin/nim doc --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=1.1.1  --git.url:https://github.com/nim-lang/Nim -o:web/upload/1.1.1/xmltree.html --index:on lib/pure/xmltree.nim
+
+lib/pure/concurrency/threadpool.nim --threads:on
+  ]#
+  # let dir = "lib/pure/timdocs"
+  let dir = "/tmp/d46"
+  let options = ""
+  # let options = "-d:ssl --threads:on"
+  let cmd = fmt"cd /Users/timothee/git_clone/nim/Nim_prs && {nim} doc {options} --path:. --errorMax:1 --project --index:on --git.url:https://github.com/nim-lang/Nim --putenv:nimversion=1.1.1 --outDir:{dir} {file}"
+  echo cmd
+  let (output, exitCode) = gorgeEx cmd
+  echo (exitCode: exitCode)
+  echo output
+  doAssert false
+
+
 const doc = getDocList()
+# const doc = docOld
 # doAssert doc == docOld
 
 proc sexec(cmds: openArray[string]) =
@@ -376,7 +462,25 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
+import std/times
+
 proc buildDoc(nimArgs, destPath: string) =
+  var
+    commands: seq[string]
+  let nim = findNim()
+  for d in items(doc):
+    commands.add nim & " doc $# --git.url:$# -o:$# --index:on $#" %
+      [nimArgs, gitUrl,
+      destPath / changeFileExt(splitFile(d).name, "html"), d]
+  let t1 = cputime()
+  mexec(commands)
+  let t2 = cputime()
+  echo ("D20200121T114847", t2 - t1, doc.len)
+  doAssert false
+  exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
+
+when false:
+ proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
