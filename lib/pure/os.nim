@@ -410,7 +410,7 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   ## Returns true if `path` is relative to `base`.
   runnableExamples:
     doAssert isRelativeTo("./foo//bar", "foo")
-    # doAssert isRelativeTo("foo/bar", ".") # pending #13211
+    doAssert isRelativeTo("foo/bar", ".")
     doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
     doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
   let path = path.normalizePath

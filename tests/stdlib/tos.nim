@@ -391,6 +391,6 @@ block isRelativeTo:
   doAssert isRelativeTo("./foo/", "foo")
   doAssert isRelativeTo("foo", "./foo/")
   doAssert isRelativeTo(".", ".")
-  # doAssert isRelativeTo("foo/bar", ".") # pending #13211
+  doAssert isRelativeTo("foo/bar", ".")
   doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
   doAssert not isRelativeTo("/foo2", "/foo")
