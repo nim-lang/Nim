@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc
+import os, strutils, osproc, sets
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
@@ -126,6 +126,27 @@ doc/packaging.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
+  doc0 = """
+lib/system/threads.nim
+lib/system/channels.nim
+""".splitWhitespace()
+
+  withoutIndex = """
+lib/wrappers/mysql.nim
+lib/wrappers/iup.nim
+lib/wrappers/sqlite3.nim
+lib/wrappers/postgres.nim
+lib/wrappers/tinyc.nim
+lib/wrappers/odbcsql.nim
+lib/wrappers/pcre.nim
+lib/wrappers/openssl.nim
+lib/posix/posix.nim
+lib/posix/linux.nim
+lib/posix/termios.nim
+lib/js/jscore.nim
+""".splitWhitespace()
+
+const
   doc = """
 lib/system.nim
 lib/system/io.nim
@@ -266,26 +287,55 @@ lib/pure/volatile.nim
 lib/posix/posix_utils.nim
 """.splitWhitespace()
 
-  doc0 = """
-lib/system/threads.nim
-lib/system/channels.nim
+  ignoredModules = """
+lib/pure/future.nim
 """.splitWhitespace()
 
-  withoutIndex = """
-lib/wrappers/mysql.nim
-lib/wrappers/iup.nim
-lib/wrappers/sqlite3.nim
-lib/wrappers/postgres.nim
-lib/wrappers/tinyc.nim
-lib/wrappers/odbcsql.nim
-lib/wrappers/pcre.nim
-lib/wrappers/openssl.nim
-lib/posix/posix.nim
-lib/posix/linux.nim
-lib/posix/termios.nim
-lib/wrappers/odbcsql.nim
-lib/js/jscore.nim
-""".splitWhitespace()
+proc getDocList(): seq[string] =
+  var t: HashSet[string]
+  for a in doc0:
+    doAssert a notin t
+    t.incl a
+  for a in withoutIndex:
+    doAssert a notin t, a
+    t.incl a
+
+  for a in ignoredModules:
+    doAssert a notin t, a
+    t.incl a
+
+  var tdoc: HashSet[string]
+  for a in doc:
+    doAssert a notin tdoc
+    tdoc.incl a
+
+  var t2: HashSet[string]
+  template myadd(a)=
+    result.add a
+    doAssert a notin t2, a
+    t2.incl a
+  for a in walkDirRec("lib"):
+    if a.splitFile.ext != ".nim": continue
+    # if a.lib/deprecated
+
+    if a notin t:
+      result.add a
+      doAssert a notin t2, a
+      t2.incl a
+  myadd "nimsuggest/sexp.nim"
+  
+  for a in doc:
+    doAssert a in t2, a
+  var ok = true
+  for a in result:
+    if a notin tdoc:
+      echo a
+      ok = false
+    # doAssert a in tdoc, a
+  doAssert ok
+
+const docFoo = getDocList()
+doAssert docFoo == doc
 
 proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
