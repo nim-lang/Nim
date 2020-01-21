@@ -486,7 +486,7 @@ type
     connected: bool
     currentURL: Uri       ## Where we are currently connected.
     headers*: HttpHeaders ## Headers to send in requests.
-    maxRedirects: int
+    maxRedirects: Natural ## Maximum redirects, set to ``0`` to disable.
     userAgent: string
     timeout*: int         ## Only used for blocking HttpClient for now.
     proxy: Proxy
@@ -513,7 +513,7 @@ type
 
 proc newHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = getDefaultSSL(), proxy: Proxy = nil,
-    timeout = -1): HttpClient =
+    timeout = -1, headers = newHttpHeaders()): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -529,8 +529,10 @@ proc newHttpClient*(userAgent = defUserAgent,
   ##
   ## ``timeout`` specifies the number of milliseconds to allow before a
   ## ``TimeoutError`` is raised.
+  ##
+  ## ``headers`` specifies the HTTP Headers.
   new result
-  result.headers = newHttpHeaders()
+  result.headers = headers
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   result.proxy = proxy
@@ -546,7 +548,7 @@ type
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = getDefaultSSL(),
-    proxy: Proxy = nil): AsyncHttpClient =
+    proxy: Proxy = nil, headers = newHttpHeaders()): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -559,8 +561,10 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ##
   ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
   ## connections.
+  ##
+  ## ``headers`` specifies the HTTP Headers.
   new result
-  result.headers = newHttpHeaders()
+  result.headers = headers
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   result.proxy = proxy

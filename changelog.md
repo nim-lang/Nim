@@ -68,6 +68,9 @@
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 - `macros.basename` and `basename=` got support for `PragmaExpr`,
   so that an expression like `MyEnum {.pure.}` is handled correctly.
+- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
+- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
+  instead of a hardcoded empty `newHttpHeader()`.
 
 
 ## Language additions
