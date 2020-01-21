@@ -4,8 +4,8 @@ import os, strutils, osproc, sets
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
-
-  nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  # --warning[LockLevel]:off pending https://github.com/nim-lang/Nim/issues/13218
+  nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
@@ -194,7 +194,18 @@ proc getDocList(): seq[string] =
     result.add a
     doAssert a notin t2, a
     t2.incl a
-  for a in walkDirRec("lib"):
+
+  when false:
+   const goodSystem = """
+lib/system/io.nim
+lib/system/nimscript.nim
+lib/system/assertions.nim
+lib/system/iterators.nim
+lib/system/dollars.nim
+lib/system/widestrs.nim
+""".splitWhitespace()
+
+   for a in walkDirRec("lib"):
     if a.splitFile.ext != ".nim": continue
     if a.isRelativeTo("lib/deprecated"):
       if a notin @["lib/deprecated/pure/ospaths.nim"]: # REMOVE
@@ -202,7 +213,7 @@ proc getDocList(): seq[string] =
     if a.isRelativeTo("lib/pure/includes"): continue
     if a.isRelativeTo("lib/genode"): continue
     if a.isRelativeTo("lib/system"):
-      if a notin @["lib/system/io.nim", "lib/system/nimscript.nim", "lib/system/assertions.nim", "lib/system/iterators.nim", "lib/system/dollars.nim", "lib/system/widestrs.nim"]:
+      if a notin goodSystem:
         continue
     if a notin t:
       result.add a
@@ -210,6 +221,54 @@ proc getDocList(): seq[string] =
       t2.incl a
 
   myadd "nimsuggest/sexp.nim"
+  # these are include files, even though some of them don't specify `included from ...`
+  const ignore = """
+compiler/ccgcalls.nim
+compiler/ccgexprs.nim
+compiler/ccgliterals.nim
+compiler/ccgstmts.nim
+compiler/ccgthreadvars.nim
+compiler/ccgtrav.nim
+compiler/ccgtypes.nim
+compiler/jstypes.nim
+compiler/semcall.nim
+compiler/semexprs.nim
+compiler/semfields.nim
+compiler/semgnrc.nim
+compiler/seminst.nim
+compiler/semmagic.nim
+compiler/semobjconstr.nim
+compiler/semstmts.nim
+compiler/semtempl.nim
+compiler/semtypes.nim
+compiler/sizealignoffsetimpl.nim
+compiler/suggest.nim
+compiler/packagehandling.nim
+compiler/hlo.nim
+compiler/rodimpl.nim
+""".splitWhitespace()
+
+  # not include files but doesn't work; not included/imported anywhere; dead code?
+  const bad = """
+compiler/debuginfo.nim
+compiler/canonicalizer.nim
+compiler/forloops.nim
+""".splitWhitespace()
+
+  # these cause mysterious errors even though they're imported
+  const bad2 = """
+compiler/closureiters.nim
+compiler/tccgen.nim
+compiler/lambdalifting.nim
+compiler/layouter.nim
+""".splitWhitespace()
+
+  for a in walkDirRec("compiler"):
+    if a.splitFile.ext != ".nim": continue
+    if a in ignore: continue
+    if a in bad: continue
+    if a in bad2: continue
+    result.add a
 
 proc runDocAsMegatest(files: seq[string])=
   proc quoted(a: string): string =
