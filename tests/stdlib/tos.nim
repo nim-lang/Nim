@@ -382,3 +382,15 @@ block osenv:
     doAssert existsEnv(dummyEnvVar) == false
     delEnv(dummyEnvVar)         # deleting an already deleted env var
     doAssert existsEnv(dummyEnvVar) == false
+
+block isRelativeTo:
+  doAssert isRelativeTo("/foo", "/")
+  doAssert isRelativeTo("/foo/bar", "/foo")
+  doAssert isRelativeTo("foo/bar", "foo")
+  doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
+  doAssert isRelativeTo("./foo/", "foo")
+  doAssert isRelativeTo("foo", "./foo/")
+  doAssert isRelativeTo(".", ".")
+  doAssert isRelativeTo("foo/bar", ".")
+  doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
+  doAssert not isRelativeTo("/foo2", "/foo")
