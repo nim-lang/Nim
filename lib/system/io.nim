@@ -141,6 +141,7 @@ proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 when not defined(NimScript):
   var
     errno {.importc, header: "<errno.h>".}: cint ## error variable
+    EINTR {.importc: "EINTR", header: "<errno.h>".}: cint
 
 proc checkErr(f: File) =
   when not defined(NimScript):
@@ -158,8 +159,17 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
-  if result != len: checkErr(f)
+  while true:
+    result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
+    if result == len: return result
+    when not defined(NimScript):
+      if errno == EINTR:
+        errno = 0
+        c_clearerr(f)
+        doAssert result == 0 # check whether we need to handle result > 0 (ie short read)
+        continue
+    checkErr(f)
+    break
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
@@ -315,8 +325,20 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
     # fgets doesn't append an \L
     for i in 0..<sp: line.string[pos+i] = '\L'
 
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
-    if not fgetsSuccess: checkErr(f)
+    var fgetsSuccess: bool
+    while true:
+      # this pattern may need to be abstracted as a template if reused; likely
+      # other io procs need this for correctness.
+      fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
+      if fgetsSuccess: break
+      when not defined(NimScript):
+        if errno == EINTR:
+          errno = 0
+          c_clearerr(f)
+          continue
+      checkErr(f)
+      break
+
     let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
