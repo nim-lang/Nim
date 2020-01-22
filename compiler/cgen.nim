@@ -549,7 +549,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
         if p.hcrOn: decl.add("static ")
         elif sfImportc in s.flags: decl.add("extern ")
-        elif lfExportLib in s.loc.flags: decl.add("N_LIB_EXPORT ")
+        elif lfExportLib in s.loc.flags: decl.add("N_LIB_EXPORT_VAR ")
         else: decl.add("N_LIB_PRIVATE ")
         if s.kind == skLet and value != nil: decl.add("NIM_CONST ")
         decl.add(td)
