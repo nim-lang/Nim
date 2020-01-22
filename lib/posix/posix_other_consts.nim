@@ -126,6 +126,7 @@ var O_ACCMODE* {.importc: "O_ACCMODE", header: "<fcntl.h>".}: cint
 var O_RDONLY* {.importc: "O_RDONLY", header: "<fcntl.h>".}: cint
 var O_RDWR* {.importc: "O_RDWR", header: "<fcntl.h>".}: cint
 var O_WRONLY* {.importc: "O_WRONLY", header: "<fcntl.h>".}: cint
+var O_CLOEXEC* {.importc: "O_CLOEXEC", header: "<fcntl.h>".}: cint
 var POSIX_FADV_NORMAL* {.importc: "POSIX_FADV_NORMAL", header: "<fcntl.h>".}: cint
 var POSIX_FADV_SEQUENTIAL* {.importc: "POSIX_FADV_SEQUENTIAL", header: "<fcntl.h>".}: cint
 var POSIX_FADV_RANDOM* {.importc: "POSIX_FADV_RANDOM", header: "<fcntl.h>".}: cint
