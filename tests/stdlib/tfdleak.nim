@@ -3,25 +3,26 @@ discard """
   output: ""
 """
 
-import os, osproc, strutils, nativesockets, net
-
-proc leakCheck(f: File, msg: string) =
-  discard startProcess(
-    getAppFilename(),
-    args = @["file", $f.getOsFileHandle, msg],
-    options = {poParentStreams}
-  ).waitForExit -1
-
-proc leakCheck(s: SocketHandle, msg: string) =
-  discard startProcess(
-    getAppFilename(),
-    args = @["sock", $s.FileHandle, msg],
-    options = {poParentStreams}
-  ).waitForExit -1
-
+import os, osproc, strutils, nativesockets, net, selectors
 when defined(windows):
-  proc openOsfHandle(handle: FileHandle, flags: cint): cint {.
-    importc: "_open_osfhandle", header: "<io.h>".}
+  import winlean
+else:
+  import posix
+
+proc leakCheck(f: int | FileHandle | SocketHandle, msg: string) =
+  discard startProcess(
+    getAppFilename(),
+    args = @[$f.int, msg],
+    options = {poParentStreams}
+  ).waitForExit -1
+
+proc isValidHandle(f: int): bool =
+  ## Check if a handle is valid. Requires OS-native handles.
+  when defined(windows):
+    var flags: DWORD
+    result = getHandleInformation(f.Handle, addr flags) != 0
+  else:
+    result = fcntl(f.cint, F_GETFD) != -1
 
 proc main() =
   if paramCount() == 0:
@@ -29,17 +30,11 @@ proc main() =
     let f = open("__test_fdleak", fmReadWrite)
     defer: close f
 
-    leakCheck(f, "open(string)")
+    leakCheck(f.getOsFileHandle, "open(string)")
 
     doAssert f.reopen("__test_fdleak2", fmReadWrite), "reopen failed"
 
-    leakCheck(f, "reopen")
-
-    var f2: File
-    defer: close f2
-    doAssert open(f2, f.getFileHandle), "open with FileHandle failed"
-
-    leakCheck(f2, "open(FileHandle)")
+    leakCheck(f.getOsFileHandle, "reopen")
 
     let sock = createNativeSocket()
     defer: close sock
@@ -61,25 +56,14 @@ proc main() =
     server.accept(input)
 
     leakCheck(input.getFd, "accept()")
+
+    let selector = newSelector[int]()
+    leakCheck(selector.getFd, "selector()")
   else:
     let
-      ops = paramStr 1
-      fd = parseInt(paramStr 2)
-      msg = "leaked " & paramStr 3
-    case ops
-    of "file":
-      when defined(posix):
-        var f: File
-        if open(f, fd.FileHandle):
-          echo msg
-      else:
-        if openOsfHandle(fd.FileHandle, 0) != -1:
-          echo msg
-    of "sock":
-      try:
-        discard getSockDomain(fd.SocketHandle)
-        echo msg
-      except:
-        discard
+      fd = parseInt(paramStr 1)
+      msg = "leaked " & paramStr 2
+    if fd.isValidHandle:
+      echo msg
 
 when isMainModule: main()
