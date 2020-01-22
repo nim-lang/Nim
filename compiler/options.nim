@@ -263,9 +263,7 @@ type
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
-    docRoot*: AbsoluteDir
-      # `nim doc --docRoot:foo --project --outdir:docs foo/sub/main.nim`
-      # genrates: docs/sub/main.html
+    docRoot*: AbsoluteDir ## see nim --fullhelp for --docRoot
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
@@ -662,12 +660,13 @@ template patchModule(conf: ConfigRef) {.dirty.} =
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
 
-proc isRelativeTo(path: string, base: string): bool=
-  # PENDING #13212
-  let path = path.normalizedPath
-  let base = base.normalizedPath
-  let ret = relativePath(path, base)
-  result = path.len > 0 and not ret.startsWith ".."
+when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
+  proc isRelativeTo(path, base: string): bool =
+    # pending #13212 use os.isRelativeTo
+    let path = path.normalizedPath
+    let base = base.normalizedPath
+    let ret = relativePath(path, base)
+    result = path.len > 0 and not ret.startsWith ".."
 
 proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
   let f = $f
