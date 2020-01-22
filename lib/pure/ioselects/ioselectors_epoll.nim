@@ -81,7 +81,7 @@ proc newSelector*[T](): Selector[T] =
   # Start with a reasonable size, checkFd() will grow this on demand
   const numFD = 1024
 
-  var epollFD = epoll_create(MAX_EPOLL_EVENTS)
+  var epollFD = epoll_create1(O_CLOEXEC)
   if epollFD < 0:
     raiseOSError(osLastError())
 
@@ -110,7 +110,7 @@ proc close*[T](s: Selector[T]) =
     raiseIOSelectorsError(osLastError())
 
 proc newSelectEvent*(): SelectEvent =
-  let fdci = eventfd(0, 0)
+  let fdci = eventfd(0, O_CLOEXEC)
   if fdci == -1:
     raiseIOSelectorsError(osLastError())
   setNonBlocking(fdci)
@@ -269,7 +269,7 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   var
     newTs: Itimerspec
     oldTs: Itimerspec
-  let fdi = timerfd_create(CLOCK_MONOTONIC, 0).int
+  let fdi = timerfd_create(CLOCK_MONOTONIC, O_CLOEXEC).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
   setNonBlocking(fdi.cint)
@@ -314,7 +314,7 @@ when not defined(android):
     discard sigaddset(nmask, cint(signal))
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
     setNonBlocking(fdi.cint)
@@ -341,7 +341,7 @@ when not defined(android):
     discard sigaddset(nmask, posix.SIGCHLD)
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, 0).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
     setNonBlocking(fdi.cint)
