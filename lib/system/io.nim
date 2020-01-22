@@ -159,17 +159,8 @@ proc readBuffer*(f: File, buffer: pointer, len: Natural): int {.
   ## reads `len` bytes into the buffer pointed to by `buffer`. Returns
   ## the actual number of bytes that have been read which may be less than
   ## `len` (if not as many bytes are remaining), but not greater.
-  while true:
-    result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
-    if result == len: return result
-    when not defined(NimScript):
-      if errno == EINTR:
-        errno = 0
-        c_clearerr(f)
-        doAssert result == 0 # check whether we need to handle result > 0 (ie short read)
-        continue
-    checkErr(f)
-    break
+  result = cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
+  if result != len: checkErr(f)
 
 proc readBytes*(f: File, a: var openArray[int8|uint8], start, len: Natural): int {.
   tags: [ReadIOEffect], benign.} =
@@ -327,8 +318,8 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
 
     var fgetsSuccess: bool
     while true:
-      # this pattern may need to be abstracted as a template if reused; likely
-      # other io procs need this for correctness.
+      # fixes #9634; this pattern may need to be abstracted as a template if reused;
+      # likely other io procs need this for correctness.
       fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(NimScript):
