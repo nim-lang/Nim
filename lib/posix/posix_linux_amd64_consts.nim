@@ -100,6 +100,7 @@ const EXDEV* = cint(18)
 
 # <fcntl.h>
 const F_DUPFD* = cint(0)
+const F_DUPFD_CLOEXEC* = cint(1030)
 const F_GETFD* = cint(1)
 const F_SETFD* = cint(2)
 const F_GETFL* = cint(3)

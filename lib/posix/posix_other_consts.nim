@@ -99,6 +99,7 @@ var EXDEV* {.importc: "EXDEV", header: "<errno.h>".}: cint
 
 # <fcntl.h>
 var F_DUPFD* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
+var F_DUPFD_CLOEXEC* {.importc: "F_DUPFD", header: "<fcntl.h>".}: cint
 var F_GETFD* {.importc: "F_GETFD", header: "<fcntl.h>".}: cint
 var F_SETFD* {.importc: "F_SETFD", header: "<fcntl.h>".}: cint
 var F_GETFL* {.importc: "F_GETFL", header: "<fcntl.h>".}: cint

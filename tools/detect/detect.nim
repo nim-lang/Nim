@@ -228,6 +228,7 @@ v("EXDEV")
 
 header("<fcntl.h>")
 v("F_DUPFD")
+v("F_DUPFD_CLOEXEC")
 v("F_GETFD")
 v("F_SETFD")
 v("F_GETFL")
