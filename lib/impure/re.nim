@@ -78,7 +78,11 @@ proc re*(s: string, flags = {reStudy}): Regex =
   ##
   ## Note that Nim's
   ## extended raw string literals support the syntax ``re"[abc]"`` as
-  ## a short form for ``re(r"[abc]")``.
+  ## a short form for ``re(r"[abc]")``. Also note that since this
+  ## compiles the regular expression, which is expensive, you should
+  ## avoid putting it directly in the arguments of the functions like
+  ## the examples show below if you plan to use it a lot of times, as
+  ## this will hurt performance immensely. (e.g. outside a loop, ...)
   when defined(gcDestructors):
     result = Regex()
   else:
