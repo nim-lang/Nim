@@ -129,19 +129,7 @@ doc/manual/var_t_return.rst
   doc0 = """
 lib/system/threads.nim
 lib/system/channels.nim
-lib/pure/ioselects/ioselectors_kqueue.nim
-lib/pure/ioselects/ioselectors_select.nim
-lib/pure/ioselects/ioselectors_poll.nim
-lib/pure/ioselects/ioselectors_epoll.nim
-lib/posix/posix_macos_amd64.nim
-lib/posix/posix_other.nim
-lib/posix/posix_nintendoswitch.nim
-lib/posix/posix_nintendoswitch_consts.nim
-lib/posix/posix_linux_amd64.nim
-lib/posix/posix_linux_amd64_consts.nim
-lib/posix/posix_other_consts.nim
-lib/posix/posix_openbsd_amd64.nim
-""".splitWhitespace() # these are include files, `nim doc` would not work, but `nim doc0` does
+""".splitWhitespace() # ran by `nim doc0` instead of `nim doc`
 
   withoutIndex = """
 lib/wrappers/mysql.nim
@@ -165,7 +153,22 @@ lib/impure/osinfo_win.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
 lib/pure/collections/setimpl.nim
-""".splitWhitespace() # these don't produce any useful info even with `nim doc0`
+lib/pure/ioselects/ioselectors_kqueue.nim
+lib/pure/ioselects/ioselectors_select.nim
+lib/pure/ioselects/ioselectors_poll.nim
+lib/pure/ioselects/ioselectors_epoll.nim
+lib/posix/posix_macos_amd64.nim
+lib/posix/posix_other.nim
+lib/posix/posix_nintendoswitch.nim
+lib/posix/posix_nintendoswitch_consts.nim
+lib/posix/posix_linux_amd64.nim
+lib/posix/posix_linux_amd64_consts.nim
+lib/posix/posix_other_consts.nim
+lib/posix/posix_openbsd_amd64.nim
+""".splitWhitespace()
+  # some of these (eg lib/posix/posix_macos_amd64.nim) are include files
+  # but contain potentially valuable docs on OS-specific symbols (eg OSX) that
+  # don't end up in the main docs; we ignore these for now.
 
 proc isRelativeTo(path, base: string): bool =
   # pending #13212 use os.isRelativeTo
@@ -274,7 +277,7 @@ compiler/plugins/itersgen.nim
     if a in bad2: continue
     result.add a
 
-const doc = getDocList()
+let doc = getDocList()
 
 proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
