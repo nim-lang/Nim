@@ -25,18 +25,16 @@
 ##        # => 2019-01-10 - OK
 ##
 ##
-## .. code-block::
-##    import parseutils
-##    from strutils import Digits, parseInt
-##
-##    let input1 = "2019 school start"
-##    let input2 = "3 years back"
-##
-##    let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
-##    let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
-##
-##    echo "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack))
-##    # => Examination is in 2022
+runnableExamples:
+  from strutils import Digits, parseInt
+
+  let input1 = "2019 school start"
+  let input2 = "3 years back"
+
+  let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
+  let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
+
+  doAssert "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack)) == "Examination is in 2022"
 ##
 ##
 ## **See also:**
