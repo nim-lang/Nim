@@ -57,8 +57,10 @@ proc main() =
 
     leakCheck(input.getFd, "accept()")
 
-    let selector = newSelector[int]()
-    leakCheck(selector.getFd, "selector()")
+    # ioselectors_select doesn't support returning a handle.
+    when not defined(windows):
+      let selector = newSelector[int]()
+      leakCheck(selector.getFd, "selector()")
   else:
     let
       fd = parseInt(paramStr 1)
