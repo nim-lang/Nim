@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim cpp -d:allocStats --newruntime --threads:on $file'''
+  cmd: '''nim cpp -d:nimAllocStats --newruntime --threads:on $file'''
   output: '''(field: "value")
 Indeed
 axc
