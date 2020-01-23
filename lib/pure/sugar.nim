@@ -364,3 +364,40 @@ when (NimMajor, NimMinor) >= (1, 1):
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+
+
+macro chainOn*(lhs: typed, calls: varargs[untyped]) {.since: (1, 1).} =
+  ## This macro provides the `chaining`:idx: of function calls.
+  ## It does so by patching every call in `calls` to use `x` as the first argument.
+  ## This advantageously replaces the "builder pattern" seen in other languages.
+  ## **This evaluates `x` multiple times!**
+  runnableExamples:
+    import std/strutils
+    var x = "aa"
+    chainOn x:
+      add "bb"
+      addQuoted "cc"
+      add 'd'
+    doAssert x == """aabb"cc"d"""
+    var a = 44
+    a.chainOn:
+      += 4
+      -= 5
+    doAssert a == 43
+    proc mult2[T](b: var T) = b *= 2
+    # can also pass as varargs:
+    a.chainOn(+= 10, mult2(), *= 100)
+    doAssert a == (43+10)*2*100
+    a.chainOn(*= 0)
+    doAssert a == 0
+
+  result = newStmtList()
+  # non-recursive processing because that's exactly what we need here:
+  let calls2 = if calls.len == 1 and calls[0].kind == nnkStmtList: calls[0] else: calls
+  for y in calls2:
+    expectKind y, nnkCallKinds
+    var kind2 = y.kind
+    if kind2 == nnkPrefix: kind2 = nnkInfix
+    var call = newTree(kind2, [y[0], lhs])
+    for j in 1..<y.len: call.add y[j]
+    result.add call

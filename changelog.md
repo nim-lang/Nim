@@ -55,6 +55,10 @@
 
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 
+- Added a `sugar.chainOn` macro for easy function chaining that's available
+  everywhere, there is no need to concern your APIs with returning the first argument
+  to enable "chaining" (as in the builder pattern), instead use this.
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
