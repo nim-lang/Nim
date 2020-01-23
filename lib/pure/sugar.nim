@@ -392,16 +392,32 @@ macro chainOn*(lhs: typed, calls: varargs[untyped]) {.since: (1, 1).} =
     a.chainOn(*= 0)
     doAssert a == 0
 
+    type Foo = object
+      x1, x2: int
+    var foo: Foo
+    foo.chainOn(x1 = 1, x1 += 3, x2 = 5)
+    doAssert foo == Foo(x1: 1+3, x2: 5)
+
   result = newStmtList()
   # non-recursive processing because that's exactly what we need here:
   let calls2 = if calls.len == 1 and calls[0].kind == nnkStmtList: calls[0] else: calls
 
   for y in calls2:
-    expectKind y, nnkCallKinds
-    var kind2 = y.kind
-    if kind2 == nnkPrefix: kind2 = nnkInfix
-    var call = newTree(kind2, [y[0], lhs])
-    for j in 1..<y.len: call.add y[j]
+    var call: NimNode
+    case y.kind
+    of nnkExprEqExpr: # x1 = expr => _.x1 = expr
+      call = newTree(nnkAsgn)
+      call.add newTree(nnkDotExpr, [lhs, y[0]])
+      call.add y[1]
+    of nnkInfix: # x1 *= expr => _.x1 *= expr
+      call = copyNimTree(y)
+      call[1] = newTree(nnkDotExpr, [lhs, y[1]])
+    else:  # *= expr => _ *= expr
+      expectKind y, nnkCallKinds
+      var kind2 = y.kind
+      if kind2 == nnkPrefix: kind2 = nnkInfix
+      call = newTree(kind2, [y[0], lhs])
+      for j in 1..<y.len: call.add y[j]
     result.add call
 
 since (1, 1):
