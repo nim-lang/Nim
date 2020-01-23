@@ -132,7 +132,11 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
         projPath = RelativeFile filename.extractFilename
       else:
         projPath = RelativeFile filename
-    else: projPath = relativeTo(canon, conf.projectPath)
+    elif conf.projectPath.isEmpty:
+      # eg happens with `nim c -r nimpretty/tester.nim` in CI
+      projPath = relativeTo(canon, getCurrentDir().AbsoluteDir)
+    else:
+      projPath = relativeTo(canon, conf.projectPath)
     conf.m.fileInfos.add(newFileInfo(canon, projPath))
     conf.m.filenameToIndexTbl[canon2] = result
 
