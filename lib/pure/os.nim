@@ -2136,56 +2136,57 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
             else:
               lastIter = true
               res = sGetError(wsInterrupted, dir)
-          when defined(nimNoArrayToCstringConversion):
-            var y = $cstring(addr x.d_name)
           else:
-            var y = $x.d_name.cstring
-          if y == "." or y == "..":
-            yieldAllowed = false
-          else:
-            var s: Stat
-            let path = dir / y
-            if not relative:
-              y = path
-            var k = pcFile
+            when defined(nimNoArrayToCstringConversion):
+              var y = $cstring(addr x.d_name)
+            else:
+              var y = $x.d_name.cstring
+            if y == "." or y == "..":
+              yieldAllowed = false
+            else:
+              var s: Stat
+              let path = dir / y
+              if not relative:
+                y = path
+              var k = pcFile
 
-            var use_lstat = false
-            when defined(linux) or defined(macosx) or
-                 defined(bsd) or defined(genode) or defined(nintendoswitch):
-              if x.d_type != DT_UNKNOWN:
-                if x.d_type == DT_DIR:
-                  k = pcDir
-                  res = sNoErrors(k, y)
-                elif x.d_type == DT_LNK:
+              var use_lstat = false
+              when defined(linux) or defined(macosx) or
+                   defined(bsd) or defined(genode) or defined(nintendoswitch):
+                if x.d_type != DT_UNKNOWN:
+                  if x.d_type == DT_DIR:
+                    k = pcDir
+                    res = sNoErrors(k, y)
+                  elif x.d_type == DT_LNK:
+                    errno = 0
+                    if dirExists(path): k = pcLinkToDir
+                    else: k = pcLinkToFile
+                    if errno == 0:  # check error in dirExists
+                      res = sNoErrors(k, y)
+                    else:
+                      res = sGetError(wsEntryBad, y)
+                  else:
+                    res = sNoErrors(k, y)
+                  use_lstat = false
+                else:
+                  use_lstat = true
+              else:
+                use_lstat = true
+              if use_lstat:
+                # special case of DT_UNKNOWN: some filesystems can't detect that
+                # entry is a directory and keep its d_type as 0=DT_UNKNOWN
+                if lstat(path, s) < 0'i32:
+                  res = sGetError(wsEntryBad, y)
+                else:
                   errno = 0
-                  if dirExists(path): k = pcLinkToDir
-                  else: k = pcLinkToFile
-                  if errno == 0:  # check error in dirExists
+                  if S_ISDIR(s.st_mode):
+                    k = pcDir
+                  elif S_ISLNK(s.st_mode):
+                    k = getSymlinkFileKind(path)
+                  if errno == 0:  # check error in getSymlinkFileKind
                     res = sNoErrors(k, y)
                   else:
                     res = sGetError(wsEntryBad, y)
-                else:
-                  res = sNoErrors(k, y)
-                use_lstat = false
-              else:
-                use_lstat = true
-            else:
-              use_lstat = true
-            if use_lstat:
-              # special case of DT_UNKNOWN: some filesystems can't detect that
-              # entry is a directory and keep its d_type as 0=DT_UNKNOWN
-              if lstat(path, s) < 0'i32:
-                res = sGetError(wsEntryBad, y)
-              else:
-                errno = 0
-                if S_ISDIR(s.st_mode):
-                  k = pcDir
-                elif S_ISLNK(s.st_mode):
-                  k = getSymlinkFileKind(path)
-                if errno == 0:  # check error in getSymlinkFileKind
-                  res = sNoErrors(k, y)
-                else:
-                  res = sGetError(wsEntryBad, y)
         if yieldAllowed: yield res
 
 proc tryOpenDir*(dir: string): OpenDirStatus {.
