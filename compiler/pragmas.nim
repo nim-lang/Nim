@@ -625,6 +625,7 @@ proc pragmaLine(c: PContext, n: PNode) =
       elif y.kind != nkIntLit:
         localError(c.config, n.info, errIntLiteralExpected)
       else:
+        # it's a lie: x.strVal could be non-absolute
         n.info.fileIndex = fileInfoIdx(c.config, AbsoluteFile(x.strVal))
         n.info.line = uint16(y.intVal)
     else:

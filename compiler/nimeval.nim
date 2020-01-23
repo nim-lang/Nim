@@ -117,7 +117,12 @@ proc createInterpreter*(scriptName: string;
     conf.searchPaths.add(AbsoluteDir p)
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
-  var m = graph.makeModule(scriptName)
+  var scriptName2 = findFile(conf, scriptName)
+  if scriptName2.isEmpty:
+    scriptName2 = "/fakeroot".AbsoluteDir / scriptName.RelativeFile
+  conf.projectPath = scriptName2.splitFile.dir
+
+  var m = graph.makeModule(scriptName2)
   incl(m.flags, sfMainModule)
   var idgen = idGeneratorFromModule(m)
   var vm = newCtx(m, cache, graph, idgen)
@@ -127,7 +132,7 @@ proc createInterpreter*(scriptName: string;
     vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
-  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName, idgen: idgen)
+  result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName2.string, idgen: idgen)
 
 proc destroyInterpreter*(i: Interpreter) =
   ## destructor.

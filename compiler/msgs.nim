@@ -54,6 +54,7 @@ proc makeCString*(s: string): Rope =
   result.add(rope(res))
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
+  assert not projPath.string.isAbsolute, $(projPath, fullPath)
   result.fullPath = fullPath
   #shallow(result.fullPath)
   result.projPath = projPath
@@ -92,6 +93,16 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
+  when false:
+    #[
+    filename's type sometimes lies:
+    * stdin
+    * command line
+    * `pragmaLine` call
+    * from nimeval with fake module name
+    ]#
+    assert filename.string.isAbsolute, $filename
+
   var
     canon: AbsoluteFile
     pseudoPath = false
@@ -115,8 +126,14 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
-    conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
-                                            else: relativeTo(canon, conf.projectPath)))
+    var projPath: RelativeFile
+    if pseudoPath:
+      if filename.string.isAbsolute: # can happen from nimeval
+        projPath = RelativeFile filename.extractFilename
+      else:
+        projPath = RelativeFile filename
+    else: projPath = relativeTo(canon, conf.projectPath)
+    conf.m.fileInfos.add(newFileInfo(canon, projPath))
     conf.m.filenameToIndexTbl[canon2] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =

@@ -181,7 +181,4 @@ proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
   result = graph.newModule(fileInfoIdx(graph.config, filename))
   registerModule(graph, result)
 
-proc makeModule*(graph: ModuleGraph; filename: string): PSym =
-  result = makeModule(graph, AbsoluteFile filename)
-
 proc makeStdinModule*(graph: ModuleGraph): PSym = graph.makeModule(AbsoluteFile"stdin")
