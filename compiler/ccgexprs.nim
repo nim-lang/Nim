@@ -1325,7 +1325,7 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
           [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
@@ -2508,7 +2508,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
          [getTypeDesc(p.module, t), tmp, genBracedInit(p, n, isConst = true)])
 
   if d.k == locNone:
@@ -2896,7 +2896,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
-        "$5 struct {$n" &
+        "static $5 struct {$n" &
         "  #TGenericSeq Sup;$n" &
         "  $1 data[$2];$n" &
         "} $3 = $4;$n", [

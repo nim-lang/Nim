@@ -682,7 +682,7 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
  ]#
 proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl,
-    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
+    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS N_LIB_PRIVATE $# $#$#".} =
   forEachStackSlot(gch, gcMark)
 
 proc collectZCT(gch: var GcHeap): bool =
