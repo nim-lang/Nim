@@ -2005,7 +2005,7 @@ type OpenDirStatus* = enum
 type WalkStepKind* = enum
   wsOpenDir,     ## attempt to open directory
   wsEntryOk,     ## the entry is OK
-  wsEntryBad     ## usually a dangling symlink on posix, so unclear if it
+  wsEntryBad     ## usually a dangling symlink on posix, when it's unclear if it
                  ## points to a file or directory
   wsInterrupted  ## the directory handle got invalidated during reading
 
@@ -2022,9 +2022,17 @@ type WalkStep = ref object
 
 iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
   tags: [ReadDirEffect], raises: [].} =
-  ## An analogue of `walkDir iterator <#walkDir.i,string>`_ with full error
-  ## checking. Yields "steps" of walking through `dir`, each step contains its path `path`, OS error code `code` and additional info. At first step yields info with the status of opening `dir` as a directory, tag `wsOpenDir`. If it's OK,
-  ## the subsequent steps will yield the directory entries with file/directory type as info, tag `wsEntryOk`. Dangling symlinks on posix are reported as wsEntryBad. If (rarely) walking terminates with an error, tag is `wsInterrupted`.
+  ## A version of `walkDir iterator <#walkDir.i,string>`_ with more
+  ## thorough error checking.
+  ## Yields *steps* of walking through `dir`, each step contains
+  ## its path ``path``, OS error code ``code`` and additional tag ``kind``.
+  ## At first step it yields info ``openStatus`` of opening
+  ## status `dir` as a directory, tag ``wsOpenDir``.
+  ## If it's OK, the subsequent steps will yield the directory entries
+  ## with component type as info ``entryType``, tag ``wsEntryOk``.
+  ## Dangling symlinks on posix are reported as ``wsEntryBad``.
+  ## If (rarely) walking terminates with an error (such as an I/O error),
+  ## tag is `wsInterrupted`.
   ##
   ## .. code-block:: Nim
   ## for step in tryWalkDir("dirA"):
@@ -2037,7 +2045,7 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
   ##   of odAccessDenied: echo dir & " - Access Denied" & err
   ##   of odNotFound:     echo dir & " - no such path" & err
   ##   of odUnknownError: echo dir & "unknown error - that's bad!" & err
-  ## of wsEntryOk: echo step.path & " is entry of kind " & $step.entryType         
+  ## of wsEntryOk: echo step.path & " is entry of kind " & $step.entryType
   ## of wsEntryBad: echo step.path & " is broken symlink " & err
   ## of wsInterrupted:
   ##   echo dir & " traversal interrupted, really bad! " & err
@@ -2150,7 +2158,7 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
                 y = path
               var k = pcFile
 
-              var use_lstat = false
+              var useLstat = false
               when defined(linux) or defined(macosx) or
                    defined(bsd) or defined(genode) or defined(nintendoswitch):
                 if x.d_type != DT_UNKNOWN:
@@ -2167,12 +2175,12 @@ iterator tryWalkDir*(dir: string; relative=false): WalkStep {.
                       res = sGetError(wsEntryBad, y)
                   else:
                     res = sNoErrors(k, y)
-                  use_lstat = false
+                  useLstat = false
                 else:
-                  use_lstat = true
+                  useLstat = true
               else:
-                use_lstat = true
-              if use_lstat:
+                useLstat = true
+              if useLstat:
                 # special case of DT_UNKNOWN: some filesystems can't detect that
                 # entry is a directory and keep its d_type as 0=DT_UNKNOWN
                 if lstat(path, s) < 0'i32:
