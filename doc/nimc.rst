@@ -567,6 +567,20 @@ A good start is to use the ``any`` operating target together with the
 If your platform does not provide these functions it should be trivial to
 provide an implementation for them and link these to your program.
 
+For targets with very restricted memory, it might be beneficial to pass some
+additional flags to both the Nim compiler and the C compiler and/or linker
+to optimize the build for size. For example, the following flags can be used
+when targeting a gcc compiler:
+
+``--opt:size --passC:-flto --passL:-flto``
+
+The ``--opt:size`` flag instructs Nim to optimize code generation for small
+size (with the help of the C compiler), the ``flto`` flags enable link-time
+optimization in the compiler and linker.
+
+Check the `Cross compilation` section for instructions how to compile the
+program for your target.
+
 Nim for realtime systems
 ========================
 
