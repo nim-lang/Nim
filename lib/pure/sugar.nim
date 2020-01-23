@@ -396,10 +396,8 @@ macro byAddr*(def: untyped): untyped {.since: (1,1).} =
 
   let (name, exp, exported) = splitDefinition(def)
   if exported:
-    result = quote do:
-      let myAddr = addr `exp`
-      template `name`*: untyped = myAddr[]
-  else:
-    result = quote do:
-      let myAddr = addr `exp`
-      template `name`: untyped = myAddr[]
+    error("export marker * not allowed for byAddr because of memory safety concerns", def)
+  # doAssert not exported, "export marker * not allowed for byAddr because of memory safety concerns"
+  result = quote do:
+    let myAddr = addr `exp`
+    template `name`: untyped = myAddr[]

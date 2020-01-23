@@ -24,10 +24,11 @@ block byPtrfBlock:
   let foo = Foo(x: "asdf")
   fun(foo)
 
-# test byAddr with export
 import ./msugar
-barx += 10
-doAssert $foo == "(bar: (x: 10))"
+when exportEnabled:
+  # test byAddr with export
+  barx += 10
+  doAssert $foo == "(bar: (x: 10))"
 
 # bug #7816
 import sequtils
