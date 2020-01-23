@@ -534,10 +534,6 @@ else:
     importc: "freopen", nodecl.}
 
 const
-  FormatOpen: array[FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
-    #"rt", "wt", "w+t", "r+t", "at"
-    # we always use binary here as for Nim the OS line ending
-    # should not be translated.
   NoInheritFlag =
     # Platform specific flag for creating a File without inheritance.
     when defined(windows):
@@ -546,6 +542,13 @@ const
       "e"
     else:
       ""
+  FormatOpen: array[FileMode, string] = [
+    "rb" & NoInheritFlag, "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
+    "r+b" & NoInheritFlag, "ab" & NoInheritFlag
+  ]
+    #"rt", "wt", "w+t", "r+t", "at"
+    # we always use binary here as for Nim the OS line ending
+    # should not be translated.
 
 when defined(posix) and not defined(nimscript):
   when defined(linux) and defined(amd64):
@@ -587,7 +590,7 @@ proc open*(f: var File, filename: string,
   ## This throws no exception if the file could not be opened.
   ##
   ## The file handle associated with the resulting ``File`` is not inheritable.
-  var p = fopen(filename, FormatOpen[mode] & NoInheritFlag)
+  var p = fopen(filename, FormatOpen[mode])
   if p != nil:
     var f2 = cast[File](p)
     when defined(posix) and not defined(nimscript):
@@ -619,7 +622,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## Default mode is readonly. Returns true iff the file could be reopened.
   ##
   ## The file handle associated with `f` won't be inheritable.
-  if freopen(filename, FormatOpen[mode] & NoInheritFlag, f) != nil:
+  if freopen(filename, FormatOpen[mode], f) != nil:
     when declared(setInheritable) and NoInheritFlag.len == 0:
       if not setInheritable(getFileHandle(f), false):
         close(f)
