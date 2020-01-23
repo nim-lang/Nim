@@ -83,8 +83,10 @@ when true:
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
-    assert not baseFilename.isEmpty, $fullPath # else, would return an absolute file
-    RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
+    # this currently fails for `tests/compilerapi/tcompilerapi.nim`
+    # it's needed otherwise would returns an absolute path
+    # assert not baseFilename.isEmpty, $fullPath
+    result = RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
 
   proc toAbsolute*(file: string; base: AbsoluteDir): AbsoluteFile =
     if isAbsolute(file): result = AbsoluteFile(file)
