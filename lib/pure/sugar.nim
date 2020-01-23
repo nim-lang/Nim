@@ -365,22 +365,22 @@ when (NimMajor, NimMinor) >= (1, 1):
         else: d
     assert z == @["word", "word"]
 
-proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported: bool] {.since: (1,1).} =
+proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, op: string] {.since: (1,1).} =
   ## allows library constructs such as:
-  ## `byAddr: a2=expr`
-  ## `byAddr: a2*=expr` (to indicate `export`)
+  ## `myDef: a2=expr`
+  ## `myDef: a2*=expr`
   def.expectKind nnkStmtList
   def.expectLen 1
   let def2 = def[0]
   case def2.kind
   of nnkInfix:
-    doAssert def2[0].strVal == "*="
     result.lhs = def2[1]
     result.rhs = def2[2]
-    result.exported = true
+    result.op = def2[0].strVal
   of nnkAsgn:
     result.lhs = def2[0]
     result.rhs = def2[1]
+    result.op = "="
   else: doAssert false, $def2.kind
   expectKind(result.lhs, nnkIdent)
 
@@ -394,10 +394,9 @@ macro byAddr*(def: untyped): untyped {.since: (1,1).} =
     x1+=10
     doAssert type(x1) is int and x == @[1,12,3]
 
-  let (name, exp, exported) = splitDefinition(def)
-  if exported:
-    error("export marker * not allowed for byAddr because of memory safety concerns", def)
-  # doAssert not exported, "export marker * not allowed for byAddr because of memory safety concerns"
+  let (name, exp, op) = splitDefinition(def)
+  if op != "=":
+    error("expected `=`, got `" & op & "`", def)
   result = quote do:
     let myAddr = addr `exp`
     template `name`: untyped = myAddr[]
