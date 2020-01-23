@@ -170,12 +170,13 @@ lib/posix/posix_openbsd_amd64.nim
   # but contain potentially valuable docs on OS-specific symbols (eg OSX) that
   # don't end up in the main docs; we ignore these for now.
 
-proc isRelativeTo(path, base: string): bool =
-  # pending #13212 use os.isRelativeTo
-  let path = path.normalizedPath
-  let base = base.normalizedPath
-  let ret = relativePath(path, base)
-  result = path.len > 0 and not ret.startsWith ".."
+when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
+  proc isRelativeTo(path, base: string): bool =
+    # pending #13212 use os.isRelativeTo
+    let path = path.normalizedPath
+    let base = base.normalizedPath
+    let ret = relativePath(path, base)
+    result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
   var t: HashSet[string]
