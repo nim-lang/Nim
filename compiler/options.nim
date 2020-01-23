@@ -675,15 +675,6 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeF
   search(conf.searchPaths)
   search(conf.lazyPaths)
 
-proc relativeToPkg*(conf: ConfigRef, file: AbsoluteFile): string =
-  let file2 = $file
-  let dir = getNimbleFile(conf, file2).parentDir
-  result = relativePath(file2, dir)
-  # take care of things like in stdlib with multiple `--path:lib/pure` etc
-  let path2 = getRelativePathFromConfigPath(conf, file).string
-  if path2.len > result.len: result = path2
-  if result.len == 0: result = file2
-
 proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
     result = if f.existsFile: AbsoluteFile(f) else: AbsoluteFile""

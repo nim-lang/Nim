@@ -61,7 +61,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
   of "@path":
     result = getRelativePathFromConfigPath(conf, file)
     if result.isEmpty: bail()
-  # of "@mixed": result = relativeToPkg(conf, file) # consider enabling this
+  # we could consider a @besteffort mode that would returned the "best" match among @pkg and @path
   elif conf.docRoot.len > 0:
     doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
     doAssert conf.docRoot.existsDir, conf.docRoot
