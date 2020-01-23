@@ -12,32 +12,29 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##
 ##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
+##    var outp: seq[string]
 ##
 ##    for log in logs:
 ##      var res: string
 ##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
-##        echo res & " - " & captureBetween(log, ' ', '_')
-##        # => 2019-01-10 - OK
+##        outp.add(res & " - " & captureBetween(log, ' ', '_'))
+##    doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##    from strutils import Digits, parseInt
 ##
-##    let input1 = "2019 school start"
-##    let input2 = "3 years back"
-##
-##    let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
-##    let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
-##
-##    echo "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack))
-##    # => Examination is in 2022
-##
+##    let
+##      input1 = "2019 school start"
+##      input2 = "3 years back"
+##      startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
+##      yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
+##      examYear = parseInt(startYear) + parseInt(yearsBack)
+##    doAssert "Examination is in " & $examYear == "Examination is in 2022"
 ##
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
@@ -586,21 +583,17 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
-  ##     echo "(", k, ", \"", v, "\")"
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##   (ikString, "  ")
-  ##   (ikExpr, "this")
-  ##   (ikString, " is ")
-  ##   (ikExpr, "an  example")
-  ##   (ikString, "  ")
-  ##   (ikDollar, "$")
+  runnableExamples:
+    var outp: seq[tuple[kind: InterpolatedKind, value: string]]
+    for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
+      outp.add (k, v)
+    doAssert outp == @[(ikStr, "  "),
+                       (ikVar, "this"),
+                       (ikStr, " is "),
+                       (ikExpr, "an  example"),
+                       (ikStr, "  "),
+                       (ikDollar, "$")]
+
   var i = 0
   var kind: InterpolatedKind
   while true:
