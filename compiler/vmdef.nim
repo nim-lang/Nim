@@ -23,8 +23,6 @@ const
 
   byteExcess* = 128 # we use excess-K for immediates
 
-  MaxLoopIterations* = 10_000_000 # max iterations of all loops
-
 # Calculate register shifts, masks and ranges
 
 const
@@ -259,14 +257,14 @@ type
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
+    prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
-  c.loopIterations = MaxLoopIterations
+  c.loopIterations = c.config.maxLoopIterationsVM
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len
