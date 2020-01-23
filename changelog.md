@@ -53,6 +53,8 @@
   Eg: `echo ?.n.typ.kind`
 - Added `minIndex` and `maxIndex` to the `sequtils` module
 
+- Added `os.isRelativeTo` to tell whether a path is relative to another
+
 ## Library changes
 
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
@@ -68,7 +70,10 @@
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 - `macros.basename` and `basename=` got support for `PragmaExpr`,
   so that an expression like `MyEnum {.pure.}` is handled correctly.
-- `uri.encodeQuery` added `usePrefix` parameter prefixes a `?` at the start of the result string.
+- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
+- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
+  instead of a hardcoded empty `newHttpHeader()`.
+- `uri.encodeQuery` added `usePrefix` parameter which adds a prefix `?` at the start of the result string.
 
 
 ## Language additions

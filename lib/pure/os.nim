@@ -353,8 +353,10 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     assert relativePath("/Users///me/bar//z.nim", "//Users/", '/') == "me/bar/z.nim"
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
+    assert relativePath("foo", ".", '/') == "foo"
 
   if path.len == 0: return ""
+  let base = if base == ".": "" else: base
 
   when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):
@@ -403,6 +405,18 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
         result.add path[i + ff[0]]
     if not f.hasNext(path): break
     ff = f.next(path)
+
+proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
+  ## Returns true if `path` is relative to `base`.
+  runnableExamples:
+    doAssert isRelativeTo("./foo//bar", "foo")
+    doAssert isRelativeTo("foo/bar", ".")
+    doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
+    doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
+  let path = path.normalizePath
+  let base = base.normalizePath
+  let ret = relativePath(path, base)
+  result = path.len > 0 and not ret.startsWith ".."
 
 proc parentDirPos(path: string): int =
   var q = 1

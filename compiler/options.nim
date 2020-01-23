@@ -235,6 +235,7 @@ type
     hintCounter*: int
     warnCounter*: int
     errorMax*: int
+    maxLoopIterationsVM*: int ## VM: max iterations of all loops
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
@@ -380,7 +381,8 @@ proc newConfigRef*(): ConfigRef =
     ccompilerpath: "",
     toCompile: @[],
     arguments: "",
-    suggestMaxResults: 10_000
+    suggestMaxResults: 10_000,
+    maxLoopIterationsVM: 10_000_000,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
