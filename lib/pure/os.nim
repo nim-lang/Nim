@@ -86,10 +86,13 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
   ## ``trailingSep``, and taking care of edge cases: it preservers whether
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
-  ## not `AltSep`.
+  ## not `AltSep`. Trailing `/.` are compressed, see examples.
   if path.len == 0: return
   var i = path.len
-  while i >= 1 and path[i-1] in {DirSep, AltSep}: dec(i)
+  while i >= 1:
+    if path[i-1] in {DirSep, AltSep}: dec(i)
+    elif path[i-1] == '.' and i >= 2 and path[i-2] in {DirSep, AltSep}: dec(i)
+    else: break
   if trailingSep:
     # foo// => foo
     path.setLen(i)
@@ -106,9 +109,11 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
   ## outplace overload
   runnableExamples:
     when defined(posix):
-      assert normalizePathEnd("/lib//", trailingSep = true) == "/lib/"
-      assert normalizePathEnd("lib//", trailingSep = false) == "lib"
+      assert normalizePathEnd("/lib//.//", trailingSep = true) == "/lib/"
+      assert normalizePathEnd("lib/./.", trailingSep = false) == "lib"
+      assert normalizePathEnd(".//./.", trailingSep = false) == "."
       assert normalizePathEnd("", trailingSep = true) == "" # not / !
+      assert normalizePathEnd("/", trailingSep = false) == "/" # not "" !
   result = path
   result.normalizePathEnd(trailingSep)
 
@@ -429,8 +434,8 @@ proc parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
-  ## This is the same as ``splitPath(path).head`` when ``path`` doesn't end
-  ## in a dir separator.
+  ## This is similar to ``splitPath(path).head`` when ``path`` doesn't end
+  ## in a dir separator, but also takes care of path normalizations.
   ## The remainder can be obtained with `lastPathPart(path) proc
   ## <#lastPathPart,string>`_.
   ##
@@ -443,19 +448,23 @@ proc parentDir*(path: string): string {.
     assert parentDir("") == ""
     when defined(posix):
       assert parentDir("/usr/local/bin") == "/usr/local"
-      assert parentDir("foo/bar/") == "foo"
       assert parentDir("foo/bar//") == "foo"
-      assert parentDir("//foo//bar//") == "//foo"
+      assert parentDir("//foo//bar//.") == "/foo"
       assert parentDir("./foo") == "."
-      assert parentDir("/foo") == ""
-
-  result = normalizePathEnd(path)
+      assert parentDir("/./foo//./") == "/"
+      assert parentDir("a//./") == "."
+      assert parentDir("a/b/c/..") == "a"
+  result = pathnorm.normalizePath(path)
   var sepPos = parentDirPos(result)
   if sepPos >= 0:
-    while sepPos >= 0 and result[sepPos] in {DirSep, AltSep}: dec sepPos
     result = substr(result, 0, sepPos)
-  else:
+    normalizePathEnd(result)
+  elif result == ".." or result == "." or result.len == 0 or result[^1] in {DirSep, AltSep}:
+    # `.` => `..` and .. => `../..`(etc) would be a sensible alternative
+    # `/` => `/` (as done with splitFile) would be a sensible alternative
     result = ""
+  else:
+    result = "."
 
 proc tailDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
@@ -598,7 +607,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
-  ## `dir` does not end in `DirSep <#DirSep>`_.
+  ## `dir` does not end in `DirSep <#DirSep>`_ unless it's `/`.
   ## `extension` includes the leading dot.
   ##
   ## If `path` has no extension, `ext` is the empty string.
