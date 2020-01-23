@@ -369,7 +369,8 @@ proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported:
   ## allows library constructs such as:
   ## `byAddr: a2=expr`
   ## `byAddr: a2*=expr` (to indicate `export`)
-  doAssert def.kind == nnkStmtList and def.len == 1, $(def.repr, def.treeRepr)
+  def.expectKind nnkStmtList
+  def.expectLen 1
   let def2 = def[0]
   case def2.kind
   of nnkInfix:
