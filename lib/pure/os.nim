@@ -111,6 +111,7 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
     when defined(posix):
       assert normalizePathEnd("/lib//.//", trailingSep = true) == "/lib/"
       assert normalizePathEnd("lib/./.", trailingSep = false) == "lib"
+      assert normalizePathEnd(".//./.", trailingSep = false) == "."
       assert normalizePathEnd("", trailingSep = true) == "" # not / !
       assert normalizePathEnd("/", trailingSep = false) == "/" # not "" !
   result = path
