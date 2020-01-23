@@ -384,9 +384,9 @@ proc splitDefinition*(def: NimNode): tuple[lhs: NimNode, rhs: NimNode, exported:
   expectKind(result.lhs, nnkIdent)
 
 macro byAddr*(def: untyped): untyped {.since: (1,1).} =
-  ## Defines a ref alias for lvalue expressions. The expression is evaluated
-  ## only once, and any side effects will only be evaluated once, at declaration
-  ## time.
+  ## Defines a reference syntax for lvalue expressions, analog to C++ `auto& a = expr`.
+  ## The expression is evaluated only once, and any side effects will only be
+  ## evaluated once, at declaration time.
   runnableExamples:
     var x = @[1,2,3]
     byAddr: x1=x[1]
