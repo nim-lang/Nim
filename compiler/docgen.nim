@@ -49,18 +49,27 @@ type
   PDoc* = ref TDocumentor ## Alias to type less.
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
+  ## returns a relative file that will be appended to outDir
   let file2 = $file
-  let docRoot = conf.getDocRoot()
-  case $docRoot:
-  # of "$mixed": relativeToPkg(conf, file)
-  of "$pkg": # TODO: check this works; right now failing at command line step
+  template bail() =
+    result = relativeTo(file, conf.projectPath)
+  case conf.docRoot:
+  of "@pkg":
     let dir = getNimbleFile(conf, file2).parentDir.AbsoluteDir
-    result = relativeTo(file, dir)
-  of "$path":
+    if dir.isEmpty: bail()
+    else: result = relativeTo(file, dir)
+  of "@path":
     result = getRelativePathFromConfigPath(conf, file)
+    if result.isEmpty: bail()
+  # of "@mixed": result = relativeToPkg(conf, file) # consider enabling this
+  elif conf.docRoot.len > 0:
+    doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
+    doAssert conf.docRoot.existsDir, conf.docRoot
+    result = relativeTo(file, conf.docRoot.AbsoluteDir)
   else:
-    result = relativeTo(file, docRoot)
-  result = result.string.replace("..", "@@").RelativeFile
+    bail()
+  result = result.string.replace("..", "@@").RelativeFile ## refs #13223
+  doAssert not result.isEmpty
 
 proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:

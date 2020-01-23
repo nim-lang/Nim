@@ -263,7 +263,7 @@ type
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
-    docRoot*: AbsoluteDir ## see nim --fullhelp for --docRoot
+    docRoot*: string ## see nim --fullhelp for --docRoot
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
@@ -500,9 +500,6 @@ proc absOutFile*(conf: ConfigRef): AbsoluteFile =
   result = conf.outDir / conf.outFile
   if dirExists(result.string):
     result.string.add ".out"
-
-proc getDocRoot*(conf: ConfigRef): AbsoluteDir =
-  if conf.docRoot.isEmpty: conf.projectPath else: conf.docRoot
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file

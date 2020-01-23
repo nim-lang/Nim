@@ -67,7 +67,7 @@ when true:
 
   proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
     let base = postProcessBase(base)
-    assert(not isAbsolute(f.string))
+    assert(not isAbsolute(f.string), f.string)
     result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
     addNormalizePath(base.string, result.string, state)
@@ -83,6 +83,7 @@ when true:
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
+    assert not baseFilename.isEmpty, $fullPath # else, would return an absolute file
     RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
 
   proc toAbsolute*(file: string; base: AbsoluteDir): AbsoluteFile =
