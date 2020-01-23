@@ -206,11 +206,11 @@ block isHidden:
   when defined(posix):
     doAssert ".foo.txt".isHidden
     doAssert "bar/.foo.ext".isHidden
-    doAssert: not "bar".isHidden
-    doAssert: not "foo/".isHidden
-    # Corner cases: paths are not normalized when determining `isHidden`
-    doAssert: not ".foo/.".isHidden
-    doAssert: not ".foo/..".isHidden
+    doAssert not "bar".isHidden
+    doAssert not "foo/".isHidden
+    doAssert ".foo/.".isHidden
+    # Corner cases: `isHidden` is not yet `..` aware
+    doAssert not ".foo/..".isHidden
 
 block absolutePath:
   doAssertRaises(ValueError): discard absolutePath("a", "b")
