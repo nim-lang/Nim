@@ -9,10 +9,10 @@ when defined(windows):
 else:
   import posix
 
-proc leakCheck(f: int | FileHandle | SocketHandle, msg: string) =
+proc leakCheck(f: int | FileHandle | SocketHandle, msg: string, expectLeak = false) =
   discard startProcess(
     getAppFilename(),
-    args = @[$f.int, msg],
+    args = @[$f.int, msg, $expectLeak],
     options = {poParentStreams}
   ).waitForExit -1
 
@@ -39,6 +39,10 @@ proc main() =
     let sock = createNativeSocket()
     defer: close sock
     leakCheck(sock, "createNativeSocket()")
+    if sock.setInheritable(true):
+      leakCheck(sock, "createNativeSocket()", true)
+    else:
+      raiseOSError osLastError()
 
     let server = newSocket()
     defer: close server
@@ -64,8 +68,9 @@ proc main() =
   else:
     let
       fd = parseInt(paramStr 1)
-      msg = "leaked " & paramStr 2
-    if fd.isValidHandle:
+      expectLeak = parseBool(paramStr 3)
+      msg = (if expectLeak: "not " else: "") & "leaked " & paramStr 2
+    if expectLeak xor fd.isValidHandle:
       echo msg
 
 when isMainModule: main()
