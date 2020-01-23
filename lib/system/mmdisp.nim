@@ -107,25 +107,26 @@ when defined(boehmgc):
 
   when not defined(useNimRtl):
 
-    proc alloc(size: Natural): pointer =
+    proc allocImpl(size: Natural): pointer =
       result = boehmAlloc(size)
       if result == nil: raiseOutOfMem()
-    proc alloc0(size: Natural): pointer =
+    proc alloc0Impl(size: Natural): pointer =
       result = alloc(size)
-    proc realloc(p: pointer, newSize: Natural): pointer =
+    proc reallocImpl(p: pointer, newSize: Natural): pointer =
       result = boehmRealloc(p, newSize)
       if result == nil: raiseOutOfMem()
-    proc dealloc(p: pointer) = boehmDealloc(p)
+    proc realloc0Impl(p: pointer, oldSize, newSize: Natural): pointer =
+      result = boehmRealloc(p, newSize)
+      if result == nil: raiseOutOfMem()
+      if newsize > oldsize:
+        zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    proc deallocImpl(p: pointer) = boehmDealloc(p)
 
-    proc allocShared(size: Natural): pointer =
-      result = boehmAlloc(size)
-      if result == nil: raiseOutOfMem()
-    proc allocShared0(size: Natural): pointer =
-      result = allocShared(size)
-    proc reallocShared(p: pointer, newSize: Natural): pointer =
-      result = boehmRealloc(p, newSize)
-      if result == nil: raiseOutOfMem()
-    proc deallocShared(p: pointer) = boehmDealloc(p)
+    proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
+    proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
+    proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
+    proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+    proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
     when hasThreadSupport:
       proc getFreeSharedMem(): int =
@@ -265,28 +266,26 @@ elif defined(gogc):
 
   proc nimGC_setStackBottom(theStackBottom: pointer) = discard
 
-  proc alloc(size: Natural): pointer =
+  proc allocImpl(size: Natural): pointer =
     result = goMalloc(size.uint)
 
-  proc alloc0(size: Natural): pointer =
+  proc alloc0Impl(size: Natural): pointer =
     result = goMalloc(size.uint)
 
-  proc realloc(p: pointer, newsize: Natural): pointer =
+  proc reallocImpl(p: pointer, newsize: Natural): pointer =
     doAssert false, "not implemented"
 
-  proc dealloc(p: pointer) =
+  proc realloc0Impl(p: pointer, oldsize, newsize: Natural): pointer =
+    doAssert false, "not implemented"
+
+  proc deallocImpl(p: pointer) =
     discard
 
-  proc allocShared(size: Natural): pointer =
-    result = alloc(size)
-
-  proc allocShared0(size: Natural): pointer =
-    result = alloc0(size)
-
-  proc reallocShared(p: pointer, newsize: Natural): pointer =
-    result = realloc(p, newsize)
-
-  proc deallocShared(p: pointer) = dealloc(p)
+  proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
+  proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
+  proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
+  proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+  proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
   when hasThreadSupport:
     proc getFreeSharedMem(): int = discard
@@ -349,7 +348,7 @@ elif defined(gogc):
   proc alloc(r: var MemRegion, size: int): pointer =
     result = alloc(size)
   proc alloc0(r: var MemRegion, size: int): pointer =
-    result = alloc0(size)
+    result = alloc0Impl(size)
   proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
   proc deallocOsPages(r: var MemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
@@ -357,42 +356,21 @@ elif defined(gogc):
 elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
   when not defined(useNimRtl):
-    proc alloc(size: Natural): pointer =
-      var x = c_malloc (size + sizeof(size)).csize_t
-      if x == nil: raiseOutOfMem()
 
-      cast[ptr int](x)[] = size
-      result = cast[pointer](cast[int](x) + sizeof(size))
-
-    proc alloc0(size: Natural): pointer =
-      result = alloc(size)
-      zeroMem(result, size)
-    proc realloc(p: pointer, newsize: Natural): pointer =
-      var x = cast[pointer](cast[int](p) - sizeof(newsize))
-      let oldsize = cast[ptr int](x)[]
-
-      x = c_realloc(x, (newsize + sizeof(newsize)).csize_t)
-
-      if x == nil: raiseOutOfMem()
-
-      cast[ptr int](x)[] = newsize
-      result = cast[pointer](cast[int](x) + sizeof(newsize))
-
+    proc allocImpl(size: Natural): pointer = c_malloc(size.csize_t)
+    proc alloc0Impl(size: Natural): pointer = c_calloc(size.csize_t, 1)
+    proc reallocImpl(p: pointer, newsize: Natural): pointer = c_realloc(p, newSize.csize_t)
+    proc realloc0Impl(p: pointer, oldsize, newsize: Natural): pointer =
+      result = realloc(p, newsize.csize_t)
       if newsize > oldsize:
         zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    proc deallocImpl(p: pointer) = c_free(p)
 
-    proc dealloc(p: pointer) = c_free(cast[pointer](cast[int](p) - sizeof(int)))
-
-    proc allocShared(size: Natural): pointer =
-      result = c_malloc(size.csize_t)
-      if result == nil: raiseOutOfMem()
-    proc allocShared0(size: Natural): pointer =
-      result = alloc(size)
-      zeroMem(result, size)
-    proc reallocShared(p: pointer, newsize: Natural): pointer =
-      result = c_realloc(p, newsize.csize_t)
-      if result == nil: raiseOutOfMem()
-    proc deallocShared(p: pointer) = c_free(p)
+    proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
+    proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
+    proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
+    proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+    proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
     proc GC_disable() = discard
     proc GC_enable() = discard
@@ -400,7 +378,6 @@ elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
     proc GC_setStrategy(strategy: GC_Strategy) = discard
     proc GC_enableMarkAndSweep() = discard
     proc GC_disableMarkAndSweep() = discard
-    #proc GC_getStatistics(): string = return ""
 
     proc getOccupiedMem(): int = discard
     proc getFreeMem(): int = discard
@@ -431,8 +408,8 @@ elif (defined(nogc) or defined(gcDestructors)) and defined(useMalloc):
 
   proc alloc(r: var MemRegion, size: int): pointer =
     result = alloc(size)
-  proc alloc0(r: var MemRegion, size: int): pointer =
-    result = alloc0(size)
+  proc alloc0Impl(r: var MemRegion, size: int): pointer =
+    result = alloc0Impl(size)
   proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
   proc deallocOsPages(r: var MemRegion) {.inline.} = discard
   proc deallocOsPages() {.inline.} = discard
@@ -459,7 +436,7 @@ elif defined(nogc):
   proc GC_getStatistics(): string = return ""
 
   proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
-    result = alloc0(size)
+    result = alloc0Impl(size)
 
   proc newObjNoInit(typ: PNimType, size: int): pointer =
     result = alloc(size)

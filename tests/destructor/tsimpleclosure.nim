@@ -1,14 +1,13 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:allocStats --newruntime $file'''
   output: '''a b
 70
 hello
 hello
 hello
-2 2  alloc/dealloc pairs: 0'''
+(allocCount: 4, deallocCount: 4)'''
 """
 
-import system / allocators
 import system / ansi_c
 
 proc main(): owned(proc()) =
@@ -60,5 +59,4 @@ when false:
 
   stringIter()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, system.allocs)
+echo getAllocStats()

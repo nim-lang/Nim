@@ -1,14 +1,12 @@
 discard """
   valgrind: true
-  cmd: '''nim c --newruntime -d:useMalloc $file'''
+  cmd: '''nim c -d:allocStats --newruntime -d:useMalloc $file'''
   output: '''
-@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]
-461 461'''
+@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]'''
 """
 
 import strutils, os, std / wordwrap
 
-import system / allocators
 import system / ansi_c
 
 # bug #11004
@@ -213,6 +211,3 @@ staticTests()
 # bug #12965
 let xaa = @[""].join()
 let xbb = @["", ""].join()
-
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)

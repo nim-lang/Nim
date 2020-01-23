@@ -33,8 +33,48 @@ when notJSnotNims:
     ## otherwise. Like any procedure dealing with raw memory this is
     ## **unsafe**.
 
-when hasAlloc:
-  proc alloc*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+when hasAlloc and not defined(js):
+
+  proc allocImpl*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  proc alloc0Impl*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  proc deallocImpl*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
+  proc reallocImpl*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  proc realloc0Impl*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+
+  proc allocSharedImpl*(size: Natural): pointer {.noconv, compilerproc, rtl, benign, raises: [], tags: [].}
+  proc allocShared0Impl*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
+  proc deallocSharedImpl*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
+  proc reallocSharedImpl*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  proc reallocShared0Impl*(p: pointer, oldSize, newSize: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+
+  # Allocator statistics for memory leak tests
+
+  {.push stackTrace: off.}
+
+  type AllocStats* = object
+    allocCount: int
+    deallocCount: int
+
+  proc `-`*(a, b: AllocStats): AllocStats =
+    result.allocCount = a.allocCount - b.allocCount
+    result.deallocCount = a.deallocCount - b.deallocCount
+
+  template dumpAllocstats*(code: untyped) =
+    let stats1 = getAllocStats()
+    code
+    let stats2 = getAllocStats()
+    echo $(stats2 - stats1)
+
+  when defined(allocStats):
+    var stats: AllocStats
+    template incStat(what: untyped) = inc stats.what
+    proc getAllocStats*(): AllocStats = stats
+
+  else:
+    template incStat(what: untyped) = discard
+    proc getAllocStats*(): AllocStats = discard
+
+  template alloc*(size: Natural): pointer =
     ## Allocates a new memory block with at least ``size`` bytes.
     ##
     ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
@@ -47,6 +87,9 @@ when hasAlloc:
     ##
     ## See also:
     ## * `alloc0 <#alloc0,Natural>`_
+    incStat(allocCount)
+    allocImpl(size)
+
   proc createU*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
     ## Allocates a new memory block with at least ``T.sizeof * size`` bytes.
     ##
@@ -62,7 +105,7 @@ when hasAlloc:
     ## * `create <#create,typedesc>`_
     cast[ptr T](alloc(T.sizeof * size))
 
-  proc alloc0*(size: Natural): pointer {.noconv, rtl, tags: [], benign, raises: [].}
+  template alloc0*(size: Natural): pointer =
     ## Allocates a new memory block with at least ``size`` bytes.
     ##
     ## The block has to be freed with `realloc(block, 0) <#realloc,pointer,Natural>`_
@@ -72,6 +115,9 @@ when hasAlloc:
     ##
     ## The allocated memory belongs to its allocating thread!
     ## Use `allocShared0 <#allocShared0,Natural>`_ to allocate from a shared heap.
+    incStat(allocCount)
+    alloc0Impl(size)
+
   proc create*(T: typedesc, size = 1.Positive): ptr T {.inline, benign, raises: [].} =
     ## Allocates a new memory block with at least ``T.sizeof * size`` bytes.
     ##
@@ -84,8 +130,7 @@ when hasAlloc:
     ## Use `createShared <#createShared,typedesc>`_ to allocate from a shared heap.
     cast[ptr T](alloc0(sizeof(T) * size))
 
-  proc realloc*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
-                                                         benign, raises: [].}
+  template realloc*(p: pointer, newSize: Natural): pointer =
     ## Grows or shrinks a given memory block.
     ##
     ## If `p` is **nil** then a new memory block is returned.
@@ -97,6 +142,25 @@ when hasAlloc:
     ## The allocated memory belongs to its allocating thread!
     ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
     ## from a shared heap.
+    reallocImpl(p, newSize)
+
+  template realloc0*(p: pointer, oldSize, newSize: Natural): pointer =
+    ## Grows or shrinks a given memory block.
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``realloc`` calls ``dealloc(p)``.
+    ## In other cases the block has to be freed with
+    ## `dealloc(block) <#dealloc,pointer>`_.
+    ##
+    ## The block is initialized with all bytes containing zero, so it is
+    ## somewhat safer then realloc
+    ##
+    ## The allocated memory belongs to its allocating thread!
+    ## Use `reallocShared <#reallocShared,pointer,Natural>`_ to reallocate
+    ## from a shared heap.
+    realloc0Impl(p, oldSize, newSize)
+
   proc resize*[T](p: ptr T, newSize: Natural): ptr T {.inline, benign, raises: [].} =
     ## Grows or shrinks a given memory block.
     ##
@@ -110,7 +174,7 @@ when hasAlloc:
     ## from a shared heap.
     cast[ptr T](realloc(p, T.sizeof * newSize))
 
-  proc dealloc*(p: pointer) {.noconv, rtl, tags: [], benign, raises: [].}
+  template dealloc*(p: pointer) =
     ## Frees the memory allocated with ``alloc``, ``alloc0`` or
     ## ``realloc``.
     ##
@@ -121,8 +185,10 @@ when hasAlloc:
     ##
     ## The freed memory must belong to its allocating thread!
     ## Use `deallocShared <#deallocShared,pointer>`_ to deallocate from a shared heap.
+    incStat(deallocCount)
+    deallocImpl(p)
 
-  proc allocShared*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
+  template allocShared*(size: Natural): pointer =
     ## Allocates a new memory block on the shared heap with at
     ## least ``size`` bytes.
     ##
@@ -135,6 +201,9 @@ when hasAlloc:
     ##
     ## See also:
     ## `allocShared0 <#allocShared0,Natural>`_.
+    incStat(allocCount)
+    allocSharedImpl(size)
+
   proc createSharedU*(T: typedesc, size = 1.Positive): ptr T {.inline, tags: [],
                                                                benign, raises: [].} =
     ## Allocates a new memory block on the shared heap with at
@@ -151,7 +220,7 @@ when hasAlloc:
     ## * `createShared <#createShared,typedesc>`_
     cast[ptr T](allocShared(T.sizeof * size))
 
-  proc allocShared0*(size: Natural): pointer {.noconv, rtl, benign, raises: [], tags: [].}
+  template allocShared0*(size: Natural): pointer =
     ## Allocates a new memory block on the shared heap with at
     ## least ``size`` bytes.
     ##
@@ -162,6 +231,9 @@ when hasAlloc:
     ## The block is initialized with all bytes
     ## containing zero, so it is somewhat safer than
     ## `allocShared <#allocShared,Natural>`_.
+    incStat(allocCount)
+    allocShared0Impl(size)
+
   proc createShared*(T: typedesc, size = 1.Positive): ptr T {.inline.} =
     ## Allocates a new memory block on the shared heap with at
     ## least ``T.sizeof * size`` bytes.
@@ -175,8 +247,7 @@ when hasAlloc:
     ## `createSharedU <#createSharedU,typedesc>`_.
     cast[ptr T](allocShared0(T.sizeof * size))
 
-  proc reallocShared*(p: pointer, newSize: Natural): pointer {.noconv, rtl, tags: [],
-                                                               benign, raises: [].}
+  template reallocShared*(p: pointer, newSize: Natural): pointer =
     ## Grows or shrinks a given memory block on the heap.
     ##
     ## If `p` is **nil** then a new memory block is returned.
@@ -185,6 +256,22 @@ when hasAlloc:
     ## ``deallocShared(p)``.
     ## In other cases the block has to be freed with
     ## `deallocShared <#deallocShared,pointer>`_.
+    reallocSharedImpl(p, newSize)
+
+  template reallocShared0*(p: pointer, oldSize, newSize: Natural): pointer =
+    ## Grows or shrinks a given memory block on the heap.
+    ##
+    ## When growing, the new bytes of the block is initialized with all bytes
+    ## containing zero, so it is somewhat safer then reallocShared
+    ##
+    ## If `p` is **nil** then a new memory block is returned.
+    ## In either way the block has at least ``newSize`` bytes.
+    ## If ``newSize == 0`` and `p` is not **nil** ``reallocShared`` calls
+    ## ``deallocShared(p)``.
+    ## In other cases the block has to be freed with
+    ## `deallocShared <#deallocShared,pointer>`_.
+    reallocShared0Impl(p, oldSize, newSize)
+
   proc resizeShared*[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].} =
     ## Grows or shrinks a given memory block on the heap.
     ##
@@ -196,7 +283,7 @@ when hasAlloc:
     ## `freeShared <#freeShared,ptr.T>`_.
     cast[ptr T](reallocShared(p, T.sizeof * newSize))
 
-  proc deallocShared*(p: pointer) {.noconv, rtl, benign, raises: [], tags: [].}
+  proc deallocShared*(p: pointer) {.noconv, compilerproc, rtl, benign, raises: [], tags: [].} =
     ## Frees the memory allocated with ``allocShared``, ``allocShared0`` or
     ## ``reallocShared``.
     ##
@@ -204,6 +291,9 @@ when hasAlloc:
     ## If one forgets to free the memory a leak occurs; if one tries to
     ## access freed memory (or just freeing it twice!) a core dump may happen
     ## or other memory may be corrupted.
+    incStat(deallocCount)
+    deallocSharedImpl(p)
+
   proc freeShared*[T](p: ptr T) {.inline, benign, raises: [].} =
     ## Frees the memory allocated with ``createShared``, ``createSharedU`` or
     ## ``resizeShared``.
@@ -214,6 +304,7 @@ when hasAlloc:
     ## or other memory may be corrupted.
     deallocShared(p)
 
+  {.pop.}
 
 # GC interface:
 
@@ -239,11 +330,13 @@ when defined(js):
   proc alloc(size: Natural): pointer = discard
   proc alloc0(size: Natural): pointer = discard
   proc realloc(p: pointer, newsize: Natural): pointer = discard
+  proc realloc0(p: pointer, oldsize, newsize: Natural): pointer = discard
 
   proc allocShared(size: Natural): pointer = discard
   proc allocShared0(size: Natural): pointer = discard
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
+  proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer = discard
 
 
 when hasAlloc and hasThreadSupport:

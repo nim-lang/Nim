@@ -432,7 +432,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
     appcg(m, m.s[cfsTypes], """$N
 $3ifndef $2_Content_PP
 $3define $2_Content_PP
-struct $2_Content { NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];};
+struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE];};
 $3endif$N
       """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check), result, rope"#"])
 

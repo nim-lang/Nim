@@ -1,11 +1,10 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:allocstats --newruntime $file'''
   output: '''button
 clicked!
-1 1  alloc/dealloc pairs: 0'''
+(allocCount: 4, deallocCount: 4)'''
 """
 
-import system / allocators
 import system / ansi_c
 
 type
@@ -72,7 +71,6 @@ proc main =
 
   w.draw()
 
-main()
+dumpAllocstats:
+  main()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, allocs)
