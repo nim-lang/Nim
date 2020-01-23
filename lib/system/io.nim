@@ -259,7 +259,16 @@ else:
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
     IONBF {.importc: "_IONBF", nodecl.}: cint
 
-when defined(posix) and not defined(nimscript):
+const SupportIoctlInheritCtl = (defined(linux) or defined(bsd)) and
+                              not defined(nimscript)
+when SupportIoctlInheritCtl:
+  var
+    FIOCLEX {.importc, header: "<sys/ioctl.h>".}: cint
+    FIONCLEX {.importc, header: "<sys/ioctl.h>".}: cint
+
+  proc c_ioctl(fd: cint, request: cint): cint {.
+    importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
+elif defined(posix) and not defined(nimscript):
   var
     F_GETFD {.importc, header: "<fcntl.h>".}: cint
     F_SETFD {.importc, header: "<fcntl.h>".}: cint
@@ -321,7 +330,9 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
     ##
     ## This procedure is not guaranteed to be available for all platforms. Test for
     ## availability with `declared() <system.html#declared,untyped>`.
-    when defined(posix):
+    when SupportIoctlInheritCtl:
+      result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
+    elif defined(posix):
       var flags = c_fcntl(f, F_GETFD)
       if flags == -1:
         return false
