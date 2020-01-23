@@ -2187,7 +2187,6 @@ proc evalConstExprAux(module: PSym;
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode
-  defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
@@ -2198,6 +2197,7 @@ proc evalConstExprAux(module: PSym;
   #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
+  c.mode = oldMode
 
 proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, g, nil, e, emConst)
