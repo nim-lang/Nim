@@ -342,7 +342,7 @@ type
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
                    mode: ObjConstrMode) =
-  if p.module.compileToCpp and t.isException and not isDefined(p.config, "noCppExceptions"):
+  if p.module.compileToCpp and t.isException and p.config.exc == excCpp:
     # init vtable in Exception object for polymorphic exceptions
     includeHeader(p.module, "<new>")
     linefmt(p, section, "new ($1) $2;$n", [rdLoc(a), getTypeDesc(p.module, t)])
