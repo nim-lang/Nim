@@ -25,10 +25,9 @@ block byPtrfBlock:
   fun(foo)
 
 import ./msugar
-when exportEnabled:
-  # test byAddr with export
-  barx += 10
-  doAssert $foo == "(bar: (x: 10))"
+# test byAddr with export
+barx += 10
+doAssert $foo == "(bar: (x: 10))"
 
 # bug #7816
 import sequtils
