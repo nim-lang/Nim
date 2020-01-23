@@ -119,7 +119,7 @@ proc createInterpreter*(scriptName: string;
 
   var scriptName2 = findFile(conf, scriptName)
   if scriptName2.isEmpty:
-    scriptName2 = "/fakeroot".AbsoluteDir / scriptName.RelativeFile
+    scriptName2 =  getCurrentDir().AbsoluteDir / scriptName.RelativeFile
   conf.projectPath = scriptName2.splitFile.dir
 
   var m = graph.makeModule(scriptName2)
