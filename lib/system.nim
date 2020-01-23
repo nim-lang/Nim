@@ -1494,8 +1494,20 @@ else:
   {.pragma: nilError.}
 
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
+  ## Requires `--nilseqs:on` since 0.19.
+  ##
+  ## Seqs are no longer nil by default, but set and empty.
+  ## Check for zero length instead.
+  ##
+  ## See also:
+  ## * `isNil(string) <#isNil,string>`_
+
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
+  ## Requires `--nilseqs:on`.
+  ##
+  ## See also:
+  ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
