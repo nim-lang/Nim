@@ -371,6 +371,7 @@ macro chainOn*(lhs: typed, calls: varargs[untyped]) {.since: (1, 1).} =
   ## It does so by patching every call in `calls` to use `x` as the first argument.
   ## This advantageously replaces the "builder pattern" seen in other languages.
   ## **This evaluates `x` multiple times!**
+  ## See also `chainEval` for an outplace version.
   runnableExamples:
     import std/strutils
     var x = "aa"
@@ -394,6 +395,7 @@ macro chainOn*(lhs: typed, calls: varargs[untyped]) {.since: (1, 1).} =
   result = newStmtList()
   # non-recursive processing because that's exactly what we need here:
   let calls2 = if calls.len == 1 and calls[0].kind == nnkStmtList: calls[0] else: calls
+
   for y in calls2:
     expectKind y, nnkCallKinds
     var kind2 = y.kind
@@ -401,3 +403,14 @@ macro chainOn*(lhs: typed, calls: varargs[untyped]) {.since: (1, 1).} =
     var call = newTree(kind2, [y[0], lhs])
     for j in 1..<y.len: call.add y[j]
     result.add call
+
+since (1, 1):
+  template chainEval*(lhs: typed, calls: varargs[untyped]): untyped =
+    ## evaluates `lhs` (once), applies each consecutive call in `calls` in a
+    ## similar way as `chainOn`, and returns the result
+    runnableExamples:
+      doAssert (5+5).chainEval(*= 2, += 100) == ((5+5)*2) + 100
+    block:
+      var x = lhs
+      chainOn(x, calls)
+      x
