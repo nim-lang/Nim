@@ -426,6 +426,8 @@ since (1, 1):
     ## similar way as `chainOn`, and returns the result
     runnableExamples:
       doAssert (5+5).chainEval(*= 2, += 100) == ((5+5)*2) + 100
+      ## example showing method call syntax chain mixed with chainEval
+      doAssert 10.chainEval(*= 2).float.chainEval(*= 3.5) == float(10*2)*3.5
     block:
       var x = lhs
       chainOn(x, calls)
