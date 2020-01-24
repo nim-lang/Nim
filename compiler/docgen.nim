@@ -48,7 +48,7 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
-proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, mangleDotDot = true): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
   template bail() =
@@ -68,7 +68,8 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile): RelativeFile =
     result = relativeTo(file, conf.docRoot.AbsoluteDir)
   else:
     bail()
-  result = result.string.replace("..", "@@").RelativeFile ## refs #13223
+  if mangleDotDot:
+    result = result.string.replace("..", "@@").RelativeFile ## refs #13223
   doAssert not result.isEmpty
 
 proc whichType(d: PDoc; n: PNode): PSym =
@@ -1063,7 +1064,8 @@ proc genOutFile(d: PDoc): Rope =
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = extractFilename(changeFileExt(d.filename, ""))
+    # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
+    title = $presentationPath(d.conf, AbsoluteFile d.filename, mangleDotDot = false)
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
