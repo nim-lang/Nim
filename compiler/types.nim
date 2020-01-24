@@ -1291,8 +1291,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     if result.isNil and t[0] != nil:
       result = typeAllowedAux(marker, t[0], skResult, flags)
   of tyTypeDesc:
-    # XXX: This is still a horrible idea...
-    result = nil
+    if kind in {skVar, skLet, skConst}: result = t
   of tyUntyped, tyTyped:
     if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
   of tyStatic:
