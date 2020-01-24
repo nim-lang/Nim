@@ -1065,7 +1065,7 @@ proc genOutFile(d: PDoc): Rope =
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
-    title = $presentationPath(d.conf, AbsoluteFile d.filename, mangleDotDot = false)
+    title = $presentationPath(d.conf, AbsoluteFile d.filename, mangleDotDot = false).changeFileExt("")
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
@@ -1093,6 +1093,11 @@ proc generateIndex*(d: PDoc) =
     let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
+proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
+  if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
+    if d.conf.outFile.isEmpty and not d.conf.outDir.isEmpty:
+      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
   var content = genOutFile(d)
@@ -1102,7 +1107,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
     createDir(outfile.splitFile.dir)
-    d.conf.outFile = outfile.extractFilename.RelativeFile
+    updateOutfile(d, outfile)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
@@ -1129,7 +1134,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
-      d.conf.outFile = d.destFile.extractFilename.RelativeFile
+      updateOutfile(d, d.destFile)
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
                  warnUser, "unable to open file \"" & d.destFile.string &
