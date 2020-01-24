@@ -27,9 +27,7 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
     packSym = newSym(skPackage, getIdent(graph.cache, pck2), nil, result.info)
     initStrTable(packSym.tab)
     graph.packageSyms.strTableAdd(packSym)
-    result.nimblePkg = packSym
   else:
-    result.nimblePkg = packSym
     let existing = strTableGet(packSym.tab, result.name)
     if existing != nil and existing.info.fileIndex != result.info.fileIndex:
       when false:
@@ -41,7 +39,8 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
         # but starting with version 0.20 we now produce a fake Nimble package instead
         # to resolve the conflicts:
         let pck3 = fakePackageName(graph.config, filename)
-        packSym = newSym(skPackage, getIdent(graph.cache, pck3), nil, result.info)
+        # this makes the new `packSym`'s owner be the original `packSym`
+        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packSym, result.info)
         initStrTable(packSym.tab)
         graph.packageSyms.strTableAdd(packSym)
 

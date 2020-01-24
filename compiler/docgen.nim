@@ -318,8 +318,7 @@ proc getPlainDocstring(n: PNode): string =
       if result.len > 0: return
 
 proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
-  result = module.kind == skModule and module.nimblePkg != nil and
-      module.nimblePkg.id == conf.mainPackageId
+  result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions:
