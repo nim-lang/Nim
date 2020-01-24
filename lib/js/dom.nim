@@ -923,6 +923,7 @@ type
     port*: cstring
     protocol*: cstring
     search*: cstring
+    origin*: cstring
 
   History* = ref HistoryObj
   HistoryObj {.importc.} = object of RootObj
