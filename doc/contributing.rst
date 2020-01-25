@@ -271,6 +271,20 @@ Note: these are general guidelines, not hard rules; there are always exceptions.
 Code reviews can just point to a specific section here to save time and
 propagate best practices.
 
+.. _define_needs_prefix:
+New `defined(foo)` symbols need to be prefixed by the nimble package name, or
+by `nim` for symbols in nim sources (e.g. compiler, standard library). This is
+to avoid name conflicts across packages.
+
+.. code-block:: nim
+
+  # if in nim sources
+  when defined(allocStats): discard # bad, can cause conflicts
+  when defined(nimAllocStats): discard # preferred
+  # if in a pacakge `cligen`:
+  when defined(debug): discard # bad, can cause conflicts
+  when defined(cligenDebug): discard # preferred
+
 .. _noimplicitbool:
 Take advantage of no implicit bool conversion
 
