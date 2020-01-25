@@ -2852,10 +2852,7 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
 proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
     extern: "nsuIsEmptyOrWhitespace".} =
   ## Checks if `s` is empty or consists entirely of whitespace characters.
-  result = true
-  for c in s:
-    if not c.isSpaceAscii():
-      return false
+  result = s.allCharsInSet(Whitespace)
 
 proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
     extern: "nsuIsNilOrWhitespace",
