@@ -185,11 +185,12 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
-    conf.exc = excCpp
+    if conf.exc == excNone: conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":

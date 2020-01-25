@@ -159,6 +159,7 @@ type
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   ExceptionSystem* = enum
+    excNone,   # no exception system selected yet
     excSetjmp, # setjmp based exception handling
     excCpp,    # use C++'s native exception handling
     excGoto,   # exception handling based on goto (should become the new default for C)

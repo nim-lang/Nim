@@ -92,7 +92,7 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
 
-proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
+proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ##
   ## For containers that have an order, `add` means *append*. New generic
@@ -104,6 +104,10 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   if xu.p == nil or xu.p.cap < oldLen+1:
     xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T)))
   xu.len = oldLen+1
+  # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+  # copyMem(). This is fine as know by construction that
+  # in `xu.p.data[oldLen]` there is nothing to destroy.
+  # We also save the `wasMoved + destroy` pair for the sink parameter.
   xu.p.data[oldLen] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
