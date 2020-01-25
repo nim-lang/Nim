@@ -48,7 +48,13 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
-proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, mangleDotDot = true): RelativeFile =
+proc nativeToUnix(path: string): string =
+  doAssert not path.isAbsolute # absolute files need more care for the drive
+  when DirSep == '\\':
+    result = replace(path, '\\', '/')
+  else: result = path
+
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
   template bail() =
@@ -68,7 +74,9 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, mangleDotDot = true)
     result = relativeTo(file, conf.docRoot.AbsoluteDir)
   else:
     bail()
-  if mangleDotDot:
+  if isTitle:
+    result = result.string.nativeToUnix.RelativeFile
+  else:
     result = result.string.replace("..", "@@").RelativeFile ## refs #13223
   doAssert not result.isEmpty
 
@@ -1036,12 +1044,6 @@ proc genSection(d: PDoc, kind: TSymKind) =
 proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
   rope($relativeTo(outDir / RelativeFile"nimdoc.out.css", destFile.splitFile().dir, '/'))
 
-proc nativeToUnix(path: string): string =
-  doAssert not path.isAbsolute # absolute files need more care for the drive
-  when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
-
 proc genOutFile(d: PDoc): Rope =
   var
     code, content: Rope
@@ -1065,7 +1067,7 @@ proc genOutFile(d: PDoc): Rope =
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
-    title = $presentationPath(d.conf, AbsoluteFile d.filename, mangleDotDot = false).changeFileExt("")
+    title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
