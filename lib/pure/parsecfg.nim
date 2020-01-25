@@ -354,7 +354,7 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
   of '[':
     tok.kind = tkBracketLe
     inc(c.bufpos)
-    tok.literal = "]"
+    tok.literal = "["
   of ']':
     tok.kind = tkBracketRi
     inc(c.bufpos)

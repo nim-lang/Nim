@@ -1,5 +1,5 @@
 discard """
-  cmd: '''nim c -d:allocstats --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''button
 clicked!
 (allocCount: 4, deallocCount: 4)'''

@@ -65,7 +65,7 @@ when hasAlloc and not defined(js):
     let stats2 = getAllocStats()
     echo $(stats2 - stats1)
 
-  when defined(allocStats):
+  when defined(nimAllocStats):
     var stats: AllocStats
     template incStat(what: untyped) = inc stats.what
     proc getAllocStats*(): AllocStats = stats
