@@ -1001,6 +1001,8 @@ const
   resultPos* = 7
   dispatcherPos* = 8
 
+  nfAllFieldsSet* = nfBase2
+
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
