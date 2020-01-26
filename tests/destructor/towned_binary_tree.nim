@@ -1,7 +1,7 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''331665
-allocs 0'''
+(allocCount: 333335, deallocCount: 333335)'''
 """
 
 #  bug #11053
@@ -87,6 +87,5 @@ proc main() =
       discard
   echo res
 
-when isMainModule:
+dumpAllocStats:
   main()
-  echo "allocs ", allocs
