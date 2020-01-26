@@ -1197,7 +1197,7 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
-proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
+proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
   var sizeExpr = sizeExpr
   let typ = a.t
   var b: TLoc
@@ -1209,8 +1209,12 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
   if optTinyRtti in p.config.globalOptions:
-    b.r = ropecg(p.module, "($1) #nimNewObj($2)",
-        [getTypeDesc(p.module, typ), sizeExpr])
+    if needsInit:
+      b.r = ropecg(p.module, "($1) #nimNewObj($2)",
+          [getTypeDesc(p.module, typ), sizeExpr])
+    else:
+      b.r = ropecg(p.module, "($1) #nimNewObjUninit($2)",
+          [getTypeDesc(p.module, typ), sizeExpr])
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
@@ -1254,9 +1258,9 @@ proc genNew(p: BProc, e: PNode) =
   if e.len == 3:
     var se: TLoc
     initLocExpr(p, e[2], se)
-    rawGenNew(p, a, se.rdLoc)
+    rawGenNew(p, a, se.rdLoc, needsInit = true)
   else:
-    rawGenNew(p, a, nil)
+    rawGenNew(p, a, nil, needsInit = true)
   gcUsage(p.config, e)
 
 proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
@@ -1356,7 +1360,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     getTemp(p, t, tmp)
     r = rdLoc(tmp)
     if isRef:
-      rawGenNew(p, tmp, nil)
+      rawGenNew(p, tmp, nil, needsInit = nfAllFieldsSet notin e.flags)
       t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
@@ -2180,7 +2184,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if optTinyRtti in p.config.globalOptions:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      rawGenNew(p, a, nil)
+      rawGenNew(p, a, nil, needsInit = true)
       gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
@@ -2811,7 +2815,7 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           # else branch
           selectedBranch = i
     assert(selectedBranch >= 1)
-    
+
     result.add "{"
     var countB = 0
     let b = lastSon(obj[selectedBranch])
@@ -2822,10 +2826,10 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
     elif b.kind == nkSym:
-      result.add "." & mangleRecFieldName(p.module, b.sym) & " = " 
+      result.add "." & mangleRecFieldName(p.module, b.sym) & " = "
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
     result.add "}"
-    
+
   of nkSym:
     if count > 0: result.add ", "
     inc count

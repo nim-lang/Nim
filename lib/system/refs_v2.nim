@@ -72,6 +72,23 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   when traceCollector:
     cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
 
+proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+  # Same as 'newNewObj' but do not initialize the memory to zero.
+  # The codegen proved for us that this is not necessary.
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    var orig = cast[ptr RefHeader](c_malloc(cuint s))
+  elif compileOption("threads"):
+    var orig = cast[ptr RefHeader](allocShared(s))
+  else:
+    var orig = cast[ptr RefHeader](alloc(s))
+  orig.rc = 0
+  result = orig +! sizeof(RefHeader)
+  when traceCollector:
+    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
+
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   dec head(p).rc, rcIncrement
 
