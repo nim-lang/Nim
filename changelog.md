@@ -80,6 +80,7 @@
 - `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
   (ISO 40314).
 - `macros.eqIdent` is now invariant to export markers and backtick quotes.
+- Added `os.tryWalkDir` iterator to traverse directories with error checking. 
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 - `macros.basename` and `basename=` got support for `PragmaExpr`,
   so that an expression like `MyEnum {.pure.}` is handled correctly.
