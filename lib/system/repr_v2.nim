@@ -102,11 +102,11 @@ proc repr*[T](x: ptr T): string =
   result.add repr(x[])
 
 proc repr*[T](x: ref T | ptr T): string =
-  if x == nil: return "nil"
+  if isNil(x): return "nil"
   when nimvm:
     result = "ref "
   else:
-    result = "ref "  &repr(cast[pointer](x))
+    result = "ref "  & repr(cast[pointer](x))
   result.add repr(x[])
 
 proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
