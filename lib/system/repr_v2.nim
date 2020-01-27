@@ -105,7 +105,6 @@ proc repr*[T](x: ref T | ptr T): string =
   if x == nil: return "nil"
   when nimvm:
     result = "ref "
- 
   else:
     result = "ref "  &repr(cast[pointer](x))
   result.add repr(x[])

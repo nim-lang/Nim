@@ -1,6 +1,8 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  nimout: "(a: true, n: doAssert)"
+  nimout: '''(a: true, n: doAssert)
+Table[system.string, trepr.MyType](data: @[], counter: 0)
+'''
 """
 
 import macros
@@ -16,11 +18,10 @@ proc myproc(t: MyType) =
   echo repr(t)
 
 proc myproc2(t: MyType) =
-  var x = TableRef[string, t]()
+  var x = Table[string, t]()
   echo repr(x)
 
 macro dumpSym(a: typed) =
-  echo repr(myproc)
   myproc((a: true, n: NimSym(a)))
   myproc2((a: true, n: NimSym(a)))
 
