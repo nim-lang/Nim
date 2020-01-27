@@ -16,6 +16,87 @@
   type B = enum b1, b2
   doAssert not compiles(a1.B)
   doAssert compiles(a1.ord.B)
+## Standard library additions and changes
+- Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
+- Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
+- `uri` adds Data URI Base64, implements RFC-2397.
+- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
+  to the `dom` module for the JavaScript target.
+- The default hash for `Ordinal` has changed to something more bit-scrambling.
+  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
+  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
+- `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
+- File handles created from high-level abstractions in the stdlib will no longer
+  be inherited by child processes. In particular, these modules are affected:
+  `asyncdispatch`, `asyncnet`, `system`, `nativesockets`, `net` and `selectors`.
+
+  For `asyncdispatch`, `asyncnet`, `net` and `nativesockets`, an `inheritable`
+  flag has been added to all `proc`s that create sockets, allowing the user to
+  control whether the resulting socket is inheritable. This flag is provided to
+  ease the writing of multi-process servers, where sockets inheritance is
+  desired.
+
+  For a transistion period, define `nimInheritHandles` to enable file handle
+  inheritance by default. This flag does **not** affect the `selectors` module
+  due to the differing semantics between operating systems.
+
+  `asyncdispatch.setInheritable`, `system.setInheritable` and
+  `nativesockets.setInheritable` is also introduced for setting file handle or
+  socket inheritance. Not all platform have these `proc`s defined.
+
+- The file descriptors created for internal bookkeeping by `ioselector_kqueue`
+  and `ioselector_epoll` will no longer be leaked to child processes.
+
+- `strutils.formatFloat` with `precision = 0` has been restored to the version
+  1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
+  is now `3.`, not `3`.
+- `critbits` adds `commonPrefixLen`.
+
+- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
+  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
+  and this can now throw in edge cases where `getCurrentDir` throws.
+  `relativePath` also now works for js with `-d:nodejs`.
+
+- JavaScript and NimScript standard library changes: `streams.StringStream` is
+  now supported in JavaScript, with the limitation that any buffer `pointer`s
+  used must be castable to `ptr string`, any incompatible pointer type will not
+  work. The `lexbase` and `streams` modules used to fail to compile on
+  NimScript due to a bug, but this has been fixed.
+
+  The following modules now compile on both JS and NimScript: `parsecsv`,
+  `parsecfg`, `parsesql`, `xmlparser`, `htmlparser` and `ropes`. Additionally
+  supported for JS is `cstrutils.startsWith` and `cstrutils.endsWith`, for
+  NimScript: `json`, `parsejson`, `strtabs` and `unidecode`.
+
+- Added `streams.readStr` and `streams.peekStr` overloads to
+  accept an existing string to modify, which avoids memory
+  allocations, similar to `streams.readLine` (#13857).
+
+- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
+
+- `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
+- `dollars.$` now works for unsigned ints with `nim js`
+- Added `os.absolutePrefix` to return the root path component for absolute paths
+- Added `os.nativeToUnixPath` to convert a native path to a UNIX path.
+
+- Improvements to the `bitops` module, including bitslices, non-mutating versions
+  of the original masking functions, `mask`/`masked`, and varargs support for
+  `bitand`, `bitor`, and `bitxor`.
+
+- `sugar.=>` and `sugar.->` changes: Previously `(x, y: int)` was transformed
+  into `(x: auto, y: int)`, it now becomes `(x: int, y: int)` in consistency
+  with regular proc definitions (although you cannot use semicolons).
+
+  Pragmas and using a name are now allowed on the lefthand side of `=>`. Here
+  is an aggregate example of these changes:
+  ```nim
+  import sugar
+
+  foo(x, y: int) {.noSideEffect.} => x + y
+
+  # is transformed into
+
+  proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
   ```
   for a transition period, use `-d:nimLegacyConvEnumEnum`.
 
