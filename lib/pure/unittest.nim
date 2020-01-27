@@ -178,7 +178,7 @@ method testEnded*(formatter: OutputFormatter, testResult: TestResult) {.base, gc
   discard
 method suiteEnded*(formatter: OutputFormatter) {.base, gcsafe.} =
   discard
-
+  
 proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
 
@@ -186,6 +186,9 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
   keepIf(formatters, proc (x: OutputFormatter): bool =
     x != formatter)
 
+proc resetOutputFormatters* =
+  formatters = @[]
+    
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
