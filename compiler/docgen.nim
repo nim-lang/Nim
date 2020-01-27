@@ -330,7 +330,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
   result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
-  if optWholeProject in d.conf.globalOptions:
+  if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
     let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
                           htmldocsDir, sfMainModule notin module.flags)

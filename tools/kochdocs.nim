@@ -321,8 +321,7 @@ proc buildDoc(nimArgs, destPath: string) =
   for d in items(doc):
     var nimArgs2 = nimArgs
     if d.isRelativeTo("compiler"):
-      when false: # enable this when bugs fixed
-        nimArgs2.add " --docroot:@pkg"
+      nimArgs2.add " --docroot:@pkg"
     commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
       [nimArgs2, gitUrl, destPath, d]
     i.inc
