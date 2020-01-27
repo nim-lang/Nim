@@ -178,7 +178,7 @@ method testEnded*(formatter: OutputFormatter, testResult: TestResult) {.base, gc
   discard
 method suiteEnded*(formatter: OutputFormatter) {.base, gcsafe.} =
   discard
-  
+
 proc addOutputFormatter*(formatter: OutputFormatter) =
   formatters.add(formatter)
 
