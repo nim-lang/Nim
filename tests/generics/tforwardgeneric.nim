@@ -1,11 +1,11 @@
 discard """
-  output: "1.1 11\n42\n0"
+  output: "1.125 11\n42\n0"
   ccodecheck: "!@'ClEnv'"
 """
 
 proc p[T](a, b: T): T
 
-echo p(0.9, 0.1), " ", p(9, 1)
+echo p(0.875, 0.125), " ", p(9, 1)
 
 proc p[T](a, b: T): T =
   let c = b
@@ -25,4 +25,3 @@ proc print[T](t: T) =
   echo t
 
 echo bar()
-
