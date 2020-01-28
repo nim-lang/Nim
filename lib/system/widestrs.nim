@@ -40,8 +40,8 @@ when defined(nimv2):
     a.bytes = bytes
     a.data = cast[typeof(a.data)](allocShared0(bytes))
 
-  template `[]`(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
-  template `[]=`(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
+  template `[]`*(a: WideCStringObj; idx: int): Utf16Char = a.data[idx]
+  template `[]=`*(a: WideCStringObj; idx: int; val: Utf16Char) = a.data[idx] = val
 
   template nullWide(): untyped = WideCStringObj(bytes: 0, data: nil)
 
