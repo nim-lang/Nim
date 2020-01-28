@@ -406,7 +406,7 @@ when defined(nimArrIdx):
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: sink S) {.noSideEffect, magic: "ArrPut".}
+    x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
   proc arrGet[I: Ordinal;T](a: T; i: I): T {.
@@ -866,7 +866,7 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## can differ between operating systems!
 
 when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
+  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
     magic: "ArrToSeq", noSideEffect.}
     ## Turns an array into a sequence.
     ##
@@ -952,7 +952,7 @@ proc `&`*(x, y: char): string {.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
-proc `&`*(x, y: sink string): string {.
+proc `&`*(x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates strings `x` and `y`.
   ##
@@ -1194,7 +1194,7 @@ proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
   ##   s.add("test") # s <- @[test2, test2, test]
   let xl = x.len
   setLen(x, xl + y.len)
-  for i in 0..high(y): x[xl+i] = y[i]
+  for i in 0..high(y): x[xl+i] = move(y[i])
 
 when defined(nimSeqsV2):
   template movingCopy(a, b) =
@@ -1523,7 +1523,7 @@ proc `@`*[T](a: sink openArray[T]): seq[T] =
   ## This is not as efficient as turning a fixed length array into a sequence
   ## as it always copies every element of `a`.
   newSeq(result, a.len)
-  for i in 0..a.len-1: result[i] = a[i]
+  for i in 0..a.len-1: result[i] = move(a[i])
 
 proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
   ## Concatenates two sequences.
@@ -1537,9 +1537,9 @@ proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
   ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
   newSeq(result, x.len + y.len)
   for i in 0..x.len-1:
-    result[i] = x[i]
+    result[i] = move(x[i])
   for i in 0..y.len-1:
-    result[i+x.len] = y[i]
+    result[i+x.len] = move(y[i])
 
 proc `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
   ## Appends element y to the end of the sequence.
@@ -1553,8 +1553,8 @@ proc `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
   ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
   newSeq(result, x.len + 1)
   for i in 0..x.len-1:
-    result[i] = x[i]
-  result[x.len] = y
+    result[i] = move(x[i])
+  result[x.len] = move(y)
 
 proc `&`*[T](x: T, y: sink seq[T]): seq[T] {.noSideEffect.} =
   ## Prepends the element x to the beginning of the sequence.
@@ -1566,7 +1566,7 @@ proc `&`*[T](x: T, y: sink seq[T]): seq[T] {.noSideEffect.} =
   newSeq(result, y.len + 1)
   result[0] = x
   for i in 0..y.len-1:
-    result[i+1] = y[i]
+    result[i+1] = move(y[i])
 
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
