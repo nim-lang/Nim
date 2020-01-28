@@ -40,7 +40,8 @@ type
 var k = PFuture[void]()
 
 
-##bug #9297
+##bug #9297 and #13281
+
 import strutils
 
 type
