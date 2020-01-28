@@ -792,11 +792,11 @@ proc newLit*(arg: tuple): NimNode {.compileTime.} =
     result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
 
 macro undistinct[T: distinct](arg: T): untyped =
-  ## convert and distinct value to it's base type.
+  ## convert and distinct value to its base type.
   let baseTyp = getTypeImpl(arg)[0]
   result = newCall(baseTyp, arg)
 
-proc newLit*[T : distinct](arg: T): NimNode =
+proc newLit*[T : distinct](arg: T): NimNode {.compileTime.} =
   result = newCall(bindSym"T", newLit(undistinct(arg)))
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
