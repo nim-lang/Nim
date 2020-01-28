@@ -1988,10 +1988,6 @@ template unlikely*(val: bool): bool =
 import system/dollars
 export dollars
 
-when defined(nimV2):
-  import system/repr_v2
-  export repr_v2
-
 const
   NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version.
@@ -2620,7 +2616,8 @@ type
     ## Represents a Nim AST node. Macros operate on this type.
 
 when defined(nimV2):
-  proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
+  import system/repr_v2
+  export repr_v2
 
 macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
