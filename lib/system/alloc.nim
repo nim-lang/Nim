@@ -48,9 +48,12 @@ type
   AlignType = BiggestFloat
   FreeCell {.final, pure.} = object
     next: ptr FreeCell  # next free cell in chunk (overlaid with refcount)
-    zeroField: int       # 0 means cell is not used (overlaid with typ field)
-                         # 1 means cell is manually managed pointer
-                         # otherwise a PNimType is stored in there
+    when not defined(gcDestructors):
+      zeroField: int       # 0 means cell is not used (overlaid with typ field)
+                          # 1 means cell is manually managed pointer
+                          # otherwise a PNimType is stored in there
+    else:
+      alignment: int
 
   PChunk = ptr BaseChunk
   PBigChunk = ptr BigChunk
@@ -396,8 +399,9 @@ iterator allObjects(m: var MemRegion): pointer {.inline.} =
 proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
                       magic: "Plugin", compileTime.}
 
-proc isCell(p: pointer): bool {.inline.} =
-  result = cast[ptr FreeCell](p).zeroField >% 1
+when not defined(gcDestructors):
+  proc isCell(p: pointer): bool {.inline.} =
+    result = cast[ptr FreeCell](p).zeroField >% 1
 
 # ------------- chunk management ----------------------------------------------
 proc pageIndex(c: PChunk): int {.inline.} =
@@ -630,7 +634,8 @@ proc getSmallChunk(a: var MemRegion): PSmallChunk =
   result = cast[PSmallChunk](res)
 
 # -----------------------------------------------------------------------------
-proc isAllocatedPtr(a: MemRegion, p: pointer): bool {.benign.}
+when not defined(gcDestructors):
+  proc isAllocatedPtr(a: MemRegion, p: pointer): bool {.benign.}
 
 when true:
   template allocInv(a: MemRegion): bool = true
@@ -773,7 +778,8 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
         inc(c.acc, size)
       else:
         result = c.freeList
-        sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
+        when not defined(gcDestructors):
+          sysAssert(c.freeList.zeroField == 0, "rawAlloc 8")
         c.freeList = c.freeList.next
       dec(c.free, size)
       sysAssert((cast[ByteAddress](result) and (MemAlign-1)) == 0, "rawAlloc 9")
@@ -826,9 +832,10 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
     sysAssert(((cast[ByteAddress](p) and PageMask) - smallChunkOverhead()) %%
                s == 0, "rawDealloc 3")
     var f = cast[ptr FreeCell](p)
-    #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
-    sysAssert(f.zeroField != 0, "rawDealloc 1")
-    f.zeroField = 0
+    when not defined(gcDestructors):
+      #echo("setting to nil: ", $cast[ByteAddress](addr(f.zeroField)))
+      sysAssert(f.zeroField != 0, "rawDealloc 1")
+      f.zeroField = 0
     f.next = c.freeList
     c.freeList = f
     when overwriteFree:
@@ -863,88 +870,102 @@ proc rawDealloc(a: var MemRegion, p: pointer) =
   sysAssert(allocInv(a), "rawDealloc: end")
   when logAlloc: cprintf("dealloc(pointer_%p)\n", p)
 
-proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
-  if isAccessible(a, p):
-    var c = pageAddr(p)
-    if not chunkUnused(c):
-      if isSmallChunk(c):
-        var c = cast[PSmallChunk](c)
-        var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
-                     smallChunkOverhead()
-        result = (c.acc >% offset) and (offset %% c.size == 0) and
-          (cast[ptr FreeCell](p).zeroField >% 1)
-      else:
-        var c = cast[PBigChunk](c)
-        result = p == addr(c.data) and cast[ptr FreeCell](p).zeroField >% 1
+when not defined(gcDestructors):
+  proc isAllocatedPtr(a: MemRegion, p: pointer): bool =
+    if isAccessible(a, p):
+      var c = pageAddr(p)
+      if not chunkUnused(c):
+        if isSmallChunk(c):
+          var c = cast[PSmallChunk](c)
+          var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
+                      smallChunkOverhead()
+          result = (c.acc >% offset) and (offset %% c.size == 0) and
+            (cast[ptr FreeCell](p).zeroField >% 1)
+        else:
+          var c = cast[PBigChunk](c)
+          result = p == addr(c.data) and cast[ptr FreeCell](p).zeroField >% 1
 
-proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
-  a.minLargeObj = lowGauge(a.root)
-  a.maxLargeObj = highGauge(a.root)
+  proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
+    a.minLargeObj = lowGauge(a.root)
+    a.maxLargeObj = highGauge(a.root)
 
-proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
-  if isAccessible(a, p):
-    var c = pageAddr(p)
-    if not chunkUnused(c):
-      if isSmallChunk(c):
-        var c = cast[PSmallChunk](c)
-        var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
-                     smallChunkOverhead()
-        if c.acc >% offset:
-          sysAssert(cast[ByteAddress](addr(c.data)) +% offset ==
-                    cast[ByteAddress](p), "offset is not what you think it is")
-          var d = cast[ptr FreeCell](cast[ByteAddress](addr(c.data)) +%
-                    offset -% (offset %% c.size))
-          if d.zeroField >% 1:
+  proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
+    if isAccessible(a, p):
+      var c = pageAddr(p)
+      if not chunkUnused(c):
+        if isSmallChunk(c):
+          var c = cast[PSmallChunk](c)
+          var offset = (cast[ByteAddress](p) and (PageSize-1)) -%
+                      smallChunkOverhead()
+          if c.acc >% offset:
+            sysAssert(cast[ByteAddress](addr(c.data)) +% offset ==
+                      cast[ByteAddress](p), "offset is not what you think it is")
+            var d = cast[ptr FreeCell](cast[ByteAddress](addr(c.data)) +%
+                      offset -% (offset %% c.size))
+            if d.zeroField >% 1:
+              result = d
+              sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
+        else:
+          var c = cast[PBigChunk](c)
+          var d = addr(c.data)
+          if p >= d and cast[ptr FreeCell](d).zeroField >% 1:
             result = d
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
-      else:
-        var c = cast[PBigChunk](c)
-        var d = addr(c.data)
-        if p >= d and cast[ptr FreeCell](d).zeroField >% 1:
-          result = d
-          sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
-  else:
-    var q = cast[int](p)
-    if q >=% a.minLargeObj and q <=% a.maxLargeObj:
-      # this check is highly effective! Test fails for 99,96% of all checks on
-      # an x86-64.
-      var avlNode = inRange(a.root, q)
-      if avlNode != nil:
-        var k = cast[pointer](avlNode.key)
-        var c = cast[PBigChunk](pageAddr(k))
-        sysAssert(addr(c.data) == k, " k is not the same as addr(c.data)!")
-        if cast[ptr FreeCell](k).zeroField >% 1:
-          result = k
-          sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
+    else:
+      var q = cast[int](p)
+      if q >=% a.minLargeObj and q <=% a.maxLargeObj:
+        # this check is highly effective! Test fails for 99,96% of all checks on
+        # an x86-64.
+        var avlNode = inRange(a.root, q)
+        if avlNode != nil:
+          var k = cast[pointer](avlNode.key)
+          var c = cast[PBigChunk](pageAddr(k))
+          sysAssert(addr(c.data) == k, " k is not the same as addr(c.data)!")
+          if cast[ptr FreeCell](k).zeroField >% 1:
+            result = k
+            sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
 
 proc ptrSize(p: pointer): int =
-  var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
-  var c = pageAddr(p)
-  sysAssert(not chunkUnused(c), "ptrSize")
-  result = c.size -% sizeof(FreeCell)
-  if not isSmallChunk(c):
-    dec result, bigChunkOverhead()
+  when not defined(gcDestructors):
+    var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
+    var c = pageAddr(p)
+    sysAssert(not chunkUnused(c), "ptrSize")
+    result = c.size -% sizeof(FreeCell)
+    if not isSmallChunk(c):
+      dec result, bigChunkOverhead()
+  else:
+    var c = pageAddr(p)
+    sysAssert(not chunkUnused(c), "ptrSize")
+    result = c.size
+    if not isSmallChunk(c):
+      dec result, bigChunkOverhead()
 
 proc alloc(allocator: var MemRegion, size: Natural): pointer {.gcsafe.} =
-  result = rawAlloc(allocator, size+sizeof(FreeCell))
-  cast[ptr FreeCell](result).zeroField = 1 # mark it as used
-  sysAssert(not isAllocatedPtr(allocator, result), "alloc")
-  result = cast[pointer](cast[ByteAddress](result) +% sizeof(FreeCell))
-  track("alloc", result, size)
+  when not defined(gcDestructors):
+    result = rawAlloc(allocator, size+sizeof(FreeCell))
+    cast[ptr FreeCell](result).zeroField = 1 # mark it as used
+    sysAssert(not isAllocatedPtr(allocator, result), "alloc")
+    result = cast[pointer](cast[ByteAddress](result) +% sizeof(FreeCell))
+    track("alloc", result, size)
+  else:
+    result = rawAlloc(allocator, size)
 
 proc alloc0(allocator: var MemRegion, size: Natural): pointer =
   result = alloc(allocator, size)
   zeroMem(result, size)
 
 proc dealloc(allocator: var MemRegion, p: pointer) =
-  sysAssert(p != nil, "dealloc: p is nil")
-  var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
-  sysAssert(x != nil, "dealloc: x is nil")
-  sysAssert(isAccessible(allocator, x), "is not accessible")
-  sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc: object header corrupted")
-  rawDealloc(allocator, x)
-  sysAssert(not isAllocatedPtr(allocator, x), "dealloc: object still accessible")
-  track("dealloc", p, 0)
+  when not defined(gcDestructors):
+    sysAssert(p != nil, "dealloc: p is nil")
+    var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
+    sysAssert(x != nil, "dealloc: x is nil")
+    sysAssert(isAccessible(allocator, x), "is not accessible")
+    sysAssert(cast[ptr FreeCell](x).zeroField == 1, "dealloc: object header corrupted")
+    rawDealloc(allocator, x)
+    sysAssert(not isAllocatedPtr(allocator, x), "dealloc: object still accessible")
+    track("dealloc", p, 0)
+  else:
+    rawDealloc(allocator, p)
 
 proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
   if newsize > 0:
@@ -958,7 +979,7 @@ proc realloc(allocator: var MemRegion, p: pointer, newsize: Natural): pointer =
 proc realloc0(allocator: var MemRegion, p: pointer, oldsize, newsize: Natural): pointer =
   result = realloc(allocator, p, newsize)
   if newsize > oldsize:
-    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    zeroMem(cast[pointer](cast[uint](result) + uint(oldsize)), newsize - oldsize)
 
 proc deallocOsPages(a: var MemRegion) =
   # we free every 'ordinarily' allocated page by iterating over the page bits:
