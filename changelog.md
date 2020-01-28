@@ -52,8 +52,8 @@
   This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
   Eg: `echo ?.n.typ.kind`
 - Added `minIndex` and `maxIndex` to the `sequtils` module
-
 - Added `os.isRelativeTo` to tell whether a path is relative to another
+- Added `resetOutputFormatters` to `unittest`
 
 ## Library changes
 
