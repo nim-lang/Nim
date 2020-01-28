@@ -192,3 +192,22 @@ block:
   let x = test_newLit_object_ref_alias()
   doAssert $(x[]) == "(x: 10)"
 
+
+type
+  Rune = distinct int32
+  Foo = object
+    a: Rune
+
+proc `$`(arg: Rune): string = $(int32(arg))
+
+macro test_newLit_distinct(): untyped =
+  newLit(Rune(123))
+
+macro test_newLit_distinct_in_object(): untyped =
+  newLit(Foo(a: Rune(456)))
+
+block:
+  let x1 = test_newLit_distinct()
+  let x2 = test_newLit_distinct_in_object()
+  doAssert $x1 == "123"
+  doAssert $x2 == "(a: 456)"

@@ -725,13 +725,6 @@ proc newLit*(s: string): NimNode {.compileTime.} =
   result = newNimNode(nnkStrLit)
   result.strVal = s
 
-when false:
-  # the float type is not really a distinct type as described in https://github.com/nim-lang/Nim/issues/5875
-  proc newLit*(f: float): NimNode {.compileTime.} =
-    ## Produces a new float literal node.
-    result = newNimNode(nnkFloatLit)
-    result.floatVal = f
-
 proc newLit*(f: float32): NimNode {.compileTime.} =
   ## Produces a new float literal node.
   result = newNimNode(nnkFloat32Lit)
@@ -797,6 +790,14 @@ proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
   for a,b in arg.fieldPairs:
     result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+
+macro undistinct[T: distinct](arg: T): untyped =
+  ## convert and distinct value to it's base type.
+  let baseTyp = getTypeImpl(arg)[0]
+  result = newCall(baseTyp, arg)
+
+proc newLit*[T : distinct](arg: T): NimNode =
+  result = newCall(bindSym"T", newLit(undistinct(arg)))
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
