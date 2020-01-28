@@ -380,8 +380,40 @@ proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
 proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.} =
   discard c_putc(cint(c), f)
 
-proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.} =
-  for x in items(a): write(f, x)
+when defined(harmfulOverloadOfWrite):
+  proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.} =
+    for x in items(a): write(f, x)
+else:
+  # no macros available
+  proc write*[T1,T2](f: File, arg1: T1, arg2: T2) =
+    f.write(arg1)
+    f.write(arg2)
+
+  proc write*[T1,T2,T3](f: File, arg1: T1, arg2: T2, arg3: T3) =
+    f.write(arg1)
+    f.write(arg2)
+    f.write(arg3)
+
+  proc write*[T1,T2,T3,T4](f: File, arg1: T1, arg2: T2, arg3: T3, arg4: T4) =
+    f.write(arg1)
+    f.write(arg2)
+    f.write(arg3)
+    f.write(arg4)
+
+  proc write*[T1,T2,T3,T4,T5](f: File, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5) =
+    f.write(arg1)
+    f.write(arg2)
+    f.write(arg3)
+    f.write(arg4)
+    f.write(arg5)
+
+  proc write*[T1,T2,T3,T4,T5,T6](f: File, arg1: T1, arg2: T2, arg3: T3, arg4: T4, arg5: T5, arg6: T6) =
+    f.write(arg1)
+    f.write(arg2)
+    f.write(arg3)
+    f.write(arg4)
+    f.write(arg5)
+    f.write(arg6)
 
 proc readAllBuffer(file: File): string =
   # This proc is for File we want to read but don't know how many
