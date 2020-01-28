@@ -406,7 +406,7 @@ when defined(nimArrIdx):
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: S) {.noSideEffect, magic: "ArrPut".}
+    x: sink S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
   proc arrGet[I: Ordinal;T](a: T; i: I): T {.
@@ -427,7 +427,7 @@ type
     b*: U                  ## The upper bound (inclusive).
   Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
 
-proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
   ## Binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive.
   ##
@@ -439,7 +439,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## Unary `slice`:idx: operator that constructs an interval ``[default(int), b]``.
   ##
   ## .. code-block:: Nim
@@ -952,7 +952,7 @@ proc `&`*(x, y: char): string {.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
-proc `&`*(x, y: string): string {.
+proc `&`*(x, y: sink string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates strings `x` and `y`.
   ##
@@ -1178,7 +1178,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
+proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a container `y` to a container `x`.
   ##
   ## For containers that have an order, `add` means *append*. New generic
@@ -1242,7 +1242,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     else:
       defaultImpl()
 
-proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
+proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## Inserts `item` into `x` at position `i`.
   ##
   ## .. code-block:: Nim
@@ -1517,7 +1517,7 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## ``== nil``.
 
 
-proc `@`*[T](a: openArray[T]): seq[T] =
+proc `@`*[T](a: sink openArray[T]): seq[T] =
   ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
@@ -1525,7 +1525,7 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   newSeq(result, a.len)
   for i in 0..a.len-1: result[i] = a[i]
 
-proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
   ## Concatenates two sequences.
   ##
   ## Requires copying of the sequences.
@@ -1541,7 +1541,7 @@ proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   for i in 0..y.len-1:
     result[i+x.len] = y[i]
 
-proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+proc `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
   ## Appends element y to the end of the sequence.
   ##
   ## Requires copying of the sequence.
@@ -1556,7 +1556,7 @@ proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
     result[i] = x[i]
   result[x.len] = y
 
-proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+proc `&`*[T](x: T, y: sink seq[T]): seq[T] {.noSideEffect.} =
   ## Prepends the element x to the beginning of the sequence.
   ##
   ## Requires copying of the sequence.
@@ -1901,7 +1901,7 @@ template newException*(exceptn: typedesc, message: string;
   new(e)
   e.msg = message
   e.parent = parentException
-  e
+  move(e)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -1952,13 +1952,10 @@ template likely*(val: bool): bool =
   ##
   ## On backends without branch prediction (JS and the nimscript VM), this
   ## template will not affect code execution.
-  when nimvm:
+  when nimvm or defined(js):
     val
   else:
-    when defined(js):
-      val
-    else:
-      likelyProc(val)
+    likelyProc(val)
 
 template unlikely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be false.
@@ -1976,13 +1973,10 @@ template unlikely*(val: bool): bool =
   ##
   ## On backends without branch prediction (JS and the nimscript VM), this
   ## template will not affect code execution.
-  when nimvm:
+  when nimvm or defined(js):
     val
   else:
-    when defined(js):
-      val
-    else:
-      unlikelyProc(val)
+    unlikelyProc(val)
 
 
 import system/dollars
@@ -2412,7 +2406,7 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: sink openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2422,7 +2416,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
   if L == b.len:
-    for i in 0..<L: a[Idx(i + xa)] = b[i]
+    for i in 0..<L: a[Idx(i + xa)] = move(b[i])
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
 
@@ -2438,7 +2432,7 @@ proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
+proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: sink openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2451,7 +2445,7 @@ proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   if L == b.len:
-    for i in 0 ..< L: s[i+a] = b[i]
+    for i in 0 ..< L: s[i+a] = move(b[i])
   else:
     spliceImpl(s, a, L, b)
 
