@@ -57,13 +57,13 @@ include "system/basic_types"
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
-proc `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
+func `or`*(a, b: typedesc): typedesc {.magic: "TypeTrait",.}
   ## Constructs an `or` meta class.
 
-proc `and`*(a, b: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
+func `and`*(a, b: typedesc): typedesc {.magic: "TypeTrait".}
   ## Constructs an `and` meta class.
 
-proc `not`*(a: typedesc): typedesc {.magic: "TypeTrait", noSideEffect.}
+func `not`*(a: typedesc): typedesc {.magic: "TypeTrait".}
   ## Constructs an `not` meta class.
 
 
@@ -74,7 +74,7 @@ type
   SomeNumber* = SomeInteger|SomeFloat
     ## Type class matching all number types.
 
-proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
+func defined*(x: untyped): bool {.magic: "Defined", compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
   ##
@@ -116,7 +116,7 @@ else:
   template runnableExamples*(body: untyped) =
     discard
 
-proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
+func declared*(x: untyped): bool {.magic: "Defined", compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared. `x` has to be an identifier or a qualified identifier.
   ##
@@ -131,12 +131,12 @@ proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # provide our own toUpper proc here, because strutils is
   ##     # missing it.
 
-proc declaredInScope*(x: untyped): bool {.
-  magic: "DefinedInScope", noSideEffect, compileTime.}
+func declaredInScope*(x: untyped): bool {.
+  magic: "DefinedInScope", compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## declared in the current scope. `x` has to be an identifier.
 
-proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
+func `addr`*[T](x: var T): ptr T {.magic: "Addr".} =
   ## Builtin `addr` operator for taking the address of a memory location.
   ## Cannot be overloaded.
   ##
@@ -151,7 +151,7 @@ proc `addr`*[T](x: var T): ptr T {.magic: "Addr", noSideEffect.} =
   ##  echo p[]    # b
   discard
 
-proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
+func unsafeAddr*[T](x: T): ptr T {.magic: "Addr".} =
   ## Builtin `addr` operator for taking the address of a memory
   ## location. This works even for ``let`` variables or parameters
   ## for better interop with C and so it is considered even more
@@ -178,7 +178,7 @@ when defined(nimNewTypedesc):
       ## The coercion ``type(x)`` can be used to obtain the type of the given
       ## expression ``x``.
 else:
-  proc `type`*(x: untyped): typedesc {.magic: "TypeOf", noSideEffect, compileTime.} =
+  func `type`*(x: untyped): typedesc {.magic: "TypeOf", compileTime.} =
     ## Builtin `type` operator for accessing the type of an expression.
     ## Cannot be overloaded.
     discard
@@ -189,8 +189,8 @@ when defined(nimHasTypeof):
       typeOfProc,      ## Prefer the interpretation that means `x` is a proc call.
       typeOfIter       ## Prefer the interpretation that means `x` is an iterator call.
 
-  proc typeof*(x: untyped; mode = typeOfIter): typedesc {.
-    magic: "TypeOf", noSideEffect, compileTime.} =
+  func typeof*(x: untyped; mode = typeOfIter): typedesc {.
+    magic: "TypeOf", compileTime.} =
     ## Builtin `typeof` operation for accessing the type of an expression.
     ## Since version 0.20.0.
     discard
@@ -249,7 +249,7 @@ else:
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
 
-proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
+func high*[T: Ordinal|enum|range](x: T): T {.magic: "High".}
   ## Returns the highest possible value of an ordinal value `x`.
   ##
   ## As a special semantic rule, `x` may also be a type identifier.
@@ -260,7 +260,7 @@ proc high*[T: Ordinal|enum|range](x: T): T {.magic: "High", noSideEffect.}
   ## .. code-block:: Nim
   ##  high(2) # => 9223372036854775807
 
-proc high*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "High", noSideEffect.}
+func high*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "High".}
   ## Returns the highest possible value of an ordinal or enum type.
   ##
   ## ``high(int)`` is Nim's way of writing `INT_MAX`:idx: or `MAX_INT`:idx:.
@@ -271,7 +271,7 @@ proc high*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "High", noSideEffe
   ## .. code-block:: Nim
   ##  high(int) # => 9223372036854775807
 
-proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
+func high*[T](x: openArray[T]): int {.magic: "High".}
   ## Returns the highest possible index of a sequence `x`.
   ##
   ## See also:
@@ -283,7 +283,7 @@ proc high*[T](x: openArray[T]): int {.magic: "High", noSideEffect.}
   ##  for i in low(s)..high(s):
   ##    echo s[i]
 
-proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
+func high*[I, T](x: array[I, T]): I {.magic: "High".}
   ## Returns the highest possible index of an array `x`.
   ##
   ## See also:
@@ -295,7 +295,7 @@ proc high*[I, T](x: array[I, T]): I {.magic: "High", noSideEffect.}
   ##  for i in low(arr)..high(arr):
   ##    echo arr[i]
 
-proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
+func high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High".}
   ## Returns the highest possible index of an array type.
   ##
   ## See also:
@@ -304,14 +304,14 @@ proc high*[I, T](x: typedesc[array[I, T]]): I {.magic: "High", noSideEffect.}
   ## .. code-block:: Nim
   ##  high(array[7, int]) # => 6
 
-proc high*(x: cstring): int {.magic: "High", noSideEffect.}
+func high*(x: cstring): int {.magic: "High".}
   ## Returns the highest possible index of a compatible string `x`.
   ## This is sometimes an O(n) operation.
   ##
   ## See also:
   ## * `low(cstring) <#low,cstring>`_
 
-proc high*(x: string): int {.magic: "High", noSideEffect.}
+func high*(x: string): int {.magic: "High".}
   ## Returns the highest possible index of a string `x`.
   ##
   ## See also:
@@ -321,7 +321,7 @@ proc high*(x: string): int {.magic: "High", noSideEffect.}
   ##  var str = "Hello world!"
   ##  high(str) # => 11
 
-proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
+func low*[T: Ordinal|enum|range](x: T): T {.magic: "Low".}
   ## Returns the lowest possible value of an ordinal value `x`. As a special
   ## semantic rule, `x` may also be a type identifier.
   ##
@@ -331,7 +331,7 @@ proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
   ## .. code-block:: Nim
   ##  low(2) # => -9223372036854775808
 
-proc low*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "Low", noSideEffect.}
+func low*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "Low".}
   ## Returns the lowest possible value of an ordinal or enum type.
   ##
   ## ``low(int)`` is Nim's way of writing `INT_MIN`:idx: or `MIN_INT`:idx:.
@@ -342,7 +342,7 @@ proc low*[T: Ordinal|enum|range](x: typedesc[T]): T {.magic: "Low", noSideEffect
   ## .. code-block:: Nim
   ##  low(int) # => -9223372036854775808
 
-proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
+func low*[T](x: openArray[T]): int {.magic: "Low".}
   ## Returns the lowest possible index of a sequence `x`.
   ##
   ## See also:
@@ -354,7 +354,7 @@ proc low*[T](x: openArray[T]): int {.magic: "Low", noSideEffect.}
   ##  for i in low(s)..high(s):
   ##    echo s[i]
 
-proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
+func low*[I, T](x: array[I, T]): I {.magic: "Low".}
   ## Returns the lowest possible index of an array `x`.
   ##
   ## See also:
@@ -366,7 +366,7 @@ proc low*[I, T](x: array[I, T]): I {.magic: "Low", noSideEffect.}
   ##  for i in low(arr)..high(arr):
   ##    echo arr[i]
 
-proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
+func low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low".}
   ## Returns the lowest possible index of an array type.
   ##
   ## See also:
@@ -375,13 +375,13 @@ proc low*[I, T](x: typedesc[array[I, T]]): I {.magic: "Low", noSideEffect.}
   ## .. code-block:: Nim
   ##  low(array[7, int]) # => 0
 
-proc low*(x: cstring): int {.magic: "Low", noSideEffect.}
+func low*(x: cstring): int {.magic: "Low".}
   ## Returns the lowest possible index of a compatible string `x`.
   ##
   ## See also:
   ## * `high(cstring) <#high,cstring>`_
 
-proc low*(x: string): int {.magic: "Low", noSideEffect.}
+func low*(x: string): int {.magic: "Low".}
   ## Returns the lowest possible index of a string `x`.
   ##
   ## See also:
@@ -403,14 +403,12 @@ proc shallowCopy*[T](x: var T, y: T) {.noSideEffect, magic: "ShallowCopy".}
 
 when defined(nimArrIdx):
   # :array|openArray|string|seq|cstring|tuple
-  proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
-    noSideEffect, magic: "ArrGet".}
+  func `[]`*[I: Ordinal;T](a: T; i: I): T {.magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
-  proc arrGet[I: Ordinal;T](a: T; i: I): T {.
-    noSideEffect, magic: "ArrGet".}
+  func arrGet[I: Ordinal;T](a: T; i: I): T {.magic: "ArrGet".}
   proc arrPut[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
 
@@ -439,7 +437,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+func `..`*[T](b: T): HSlice[int, T] {.inline, magic: "DotDot".} =
   ## Unary `slice`:idx: operator that constructs an interval ``[default(int), b]``.
   ##
   ## .. code-block:: Nim
@@ -536,7 +534,7 @@ proc unsafeNew*[T](a: var ref T, size: Natural) {.magic: "New", noSideEffect.}
   ## See also:
   ## * `new <#new,ref.T,proc(ref.T)>`_
 
-proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
+func sizeof*[T](x: T): int {.magic: "SizeOf".}
   ## Returns the size of ``x`` in bytes.
   ##
   ## Since this is a low-level proc,
@@ -556,10 +554,10 @@ proc sizeof*[T](x: T): int {.magic: "SizeOf", noSideEffect.}
   ##  sizeof(2) # => 8
 
 when defined(nimHasalignOf):
-  proc alignof*[T](x: T): int {.magic: "AlignOf", noSideEffect.}
-  proc alignof*(x: typedesc): int {.magic: "AlignOf", noSideEffect.}
+  func alignof*[T](x: T): int {.magic: "AlignOf".}
+  func alignof*(x: typedesc): int {.magic: "AlignOf".}
 
-  proc offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", noSideEffect, compileTime.}
+  func offsetOfDotExpr(typeAccess: typed): int {.magic: "OffsetOf", compileTime.}
 
   template offsetOf*[T](t: typedesc[T]; member: untyped): int =
     var tmp {.noinit.}: ptr T
@@ -571,7 +569,7 @@ when defined(nimHasalignOf):
   #proc offsetOf*(memberaccess: typed): int {.magic: "OffsetOf", noSideEffect.}
 
 when defined(nimtypedescfixed):
-  proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
+  func sizeof*(x: typedesc): int {.magic: "SizeOf".}
 
 
 proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
@@ -593,7 +591,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ##   inputStrings[2] = "would crash"
   ##   #inputStrings[3] = "out of bounds"
 
-proc newSeq*[T](len = 0.Natural): seq[T] =
+func newSeq*[T](len = 0.Natural): seq[T] =
   ## Creates a new sequence of type ``seq[T]`` with length ``len``.
   ##
   ## Note that the sequence will be filled with zeroed entries.
@@ -613,8 +611,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
-proc newSeqOfCap*[T](cap: Natural): seq[T] {.
-  magic: "NewSeqOfCap", noSideEffect.} =
+func newSeqOfCap*[T](cap: Natural): seq[T] {.magic: "NewSeqOfCap".} =
   ## Creates a new sequence of type ``seq[T]`` with length zero and capacity
   ## ``cap``.
   ##
@@ -626,7 +623,7 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   discard
 
 when not defined(js):
-  proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
+  func newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## Creates a new sequence of type ``seq[T]`` with length ``len``.
     ##
     ## Only available for numbers types. Note that the sequence will be
@@ -644,22 +641,22 @@ when not defined(js):
       var s = cast[PGenericSeq](result)
       s.len = len
 
-proc len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
-  magic: "LengthOpenArray", noSideEffect.}
+func len*[TOpenArray: openArray|varargs](x: TOpenArray): int {.
+  magic: "LengthOpenArray".}
   ## Returns the length of an openArray.
   ##
   ## .. code-block:: Nim
   ##   var s = [1, 1, 1, 1, 1]
   ##   echo len(s) # => 5
 
-proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
+func len*(x: string): int {.magic: "LengthStr".}
   ## Returns the length of a string.
   ##
   ## .. code-block:: Nim
   ##   var str = "Hello world!"
   ##   echo len(str) # => 12
 
-proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
+func len*(x: cstring): int {.magic: "LengthStr".}
   ## Returns the length of a compatible string. This is sometimes
   ## an O(n) operation.
   ##
@@ -667,7 +664,7 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ##   var str: cstring = "Hello world!"
   ##   len(str) # => 12
 
-proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
+func len*(x: (type array)|array): int {.magic: "LengthArray".}
   ## Returns the length of an array or an array type.
   ## This is roughly the same as ``high(T)-low(T)+1``.
   ##
@@ -676,7 +673,7 @@ proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ##   echo len(arr) # => 5
   ##   echo len(array[3..8, int]) # => 6
 
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
+func len*[T](x: seq[T]): int {.magic: "LengthSeq".}
   ## Returns the length of a sequence.
   ##
   ## .. code-block:: Nim
@@ -684,14 +681,14 @@ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ##   echo len(s) # => 5
 
 
-proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
+func ord*[T: Ordinal|enum](x: T): int {.magic: "Ord".}
   ## Returns the internal `int` value of an ordinal value ``x``.
   ##
   ## .. code-block:: Nim
   ##   echo ord('A') # => 65
   ##   echo ord('a') # => 97
 
-proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
+func chr*(u: range[0..255]): char {.magic: "Chr".}
   ## Converts an `int` in the range `0..255` to a character.
   ##
   ## .. code-block:: Nim
@@ -700,27 +697,27 @@ proc chr*(u: range[0..255]): char {.magic: "Chr", noSideEffect.}
 
 
 # floating point operations:
-proc `+`*(x: float32): float32 {.magic: "UnaryPlusF64", noSideEffect.}
-proc `-`*(x: float32): float32 {.magic: "UnaryMinusF64", noSideEffect.}
-proc `+`*(x, y: float32): float32 {.magic: "AddF64", noSideEffect.}
-proc `-`*(x, y: float32): float32 {.magic: "SubF64", noSideEffect.}
-proc `*`*(x, y: float32): float32 {.magic: "MulF64", noSideEffect.}
-proc `/`*(x, y: float32): float32 {.magic: "DivF64", noSideEffect.}
+func `+`*(x: float32): float32 {.magic: "UnaryPlusF64".}
+func `-`*(x: float32): float32 {.magic: "UnaryMinusF64".}
+func `+`*(x, y: float32): float32 {.magic: "AddF64".}
+func `-`*(x, y: float32): float32 {.magic: "SubF64".}
+func `*`*(x, y: float32): float32 {.magic: "MulF64".}
+func `/`*(x, y: float32): float32 {.magic: "DivF64".}
 
-proc `+`*(x: float): float {.magic: "UnaryPlusF64", noSideEffect.}
-proc `-`*(x: float): float {.magic: "UnaryMinusF64", noSideEffect.}
-proc `+`*(x, y: float): float {.magic: "AddF64", noSideEffect.}
-proc `-`*(x, y: float): float {.magic: "SubF64", noSideEffect.}
-proc `*`*(x, y: float): float {.magic: "MulF64", noSideEffect.}
-proc `/`*(x, y: float): float {.magic: "DivF64", noSideEffect.}
+func `+`*(x: float): float {.magic: "UnaryPlusF64".}
+func `-`*(x: float): float {.magic: "UnaryMinusF64".}
+func `+`*(x, y: float): float {.magic: "AddF64".}
+func `-`*(x, y: float): float {.magic: "SubF64".}
+func `*`*(x, y: float): float {.magic: "MulF64".}
+func `/`*(x, y: float): float {.magic: "DivF64".}
 
-proc `==`*(x, y: float32): bool {.magic: "EqF64", noSideEffect.}
-proc `<=`*(x, y: float32): bool {.magic: "LeF64", noSideEffect.}
-proc `<`  *(x, y: float32): bool {.magic: "LtF64", noSideEffect.}
+func `==`*(x, y: float32): bool {.magic: "EqF64".}
+func `<=`*(x, y: float32): bool {.magic: "LeF64".}
+func `<`  *(x, y: float32): bool {.magic: "LtF64".}
 
-proc `==`*(x, y: float): bool {.magic: "EqF64", noSideEffect.}
-proc `<=`*(x, y: float): bool {.magic: "LeF64", noSideEffect.}
-proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
+func `==`*(x, y: float): bool {.magic: "EqF64".}
+func `<=`*(x, y: float): bool {.magic: "LeF64".}
+func `<`*(x, y: float): bool {.magic: "LtF64".}
 
 
 include "system/setops"
@@ -749,7 +746,7 @@ template `notin`*(x, y: untyped): untyped {.dirty.} = not contains(y, x)
   ##   assert(1 notin (1..3) == false)
   ##   assert(5 notin (1..3) == true)
 
-proc `is`*[T, S](x: T, y: S): bool {.magic: "Is", noSideEffect.}
+func `is`*[T, S](x: T, y: S): bool {.magic: "Is".}
   ## Checks if `T` is of the same type as `S`.
   ##
   ## For a negated version, use `isnot <#isnot.t,untyped,untyped>`_.
@@ -796,7 +793,7 @@ when defined(nimOwnedEnabled) and not defined(nimscript):
     new(r)
     return r
 
-  proc unown*[T](x: T): T {.magic: "Unown", noSideEffect.}
+  func unown*[T](x: T): T {.magic: "Unown".}
     ## Use the expression ``x`` ignoring its ownership attribute.
 
   # This is only required to make 0.20 compile with the 0.19 line.
@@ -832,16 +829,16 @@ template disarm*(x: typed) =
   ## experimental API!
   x = nil
 
-proc `of`*[T, S](x: typedesc[T], y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of", noSideEffect.}
-proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
+func `of`*[T, S](x: typedesc[T], y: typedesc[S]): bool {.magic: "Of".}
+func `of`*[T, S](x: T, y: typedesc[S]): bool {.magic: "Of".}
+func `of`*[T, S](x: T, y: S): bool {.magic: "Of".}
   ## Checks if `x` has a type of `y`.
   ##
   ## .. code-block:: Nim
   ##   assert(FloatingPointError of Exception)
   ##   assert(DivByZeroError of Exception)
 
-proc cmp*[T](x, y: T): int {.procvar.} =
+func cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc.
   ##
   ## Returns:
@@ -859,15 +856,14 @@ proc cmp*[T](x, y: T): int {.procvar.} =
   if x < y: return -1
   return 1
 
-proc cmp*(x, y: string): int {.noSideEffect, procvar.}
+func cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
 when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
+  func `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq".}
     ## Turns an array into a sequence.
     ##
     ## This most often useful for constructing
@@ -882,7 +878,7 @@ when defined(nimHasDefault):
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
 
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
+  func default*(T: typedesc): T {.magic: "Default".}
     ## returns the default value of the type ``T``.
 
   proc reset*[T](obj: var T) {.noSideEffect.} =
@@ -890,8 +886,7 @@ when defined(nimHasDefault):
     obj = default(typeof(obj))
 
 else:
-  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
+  func `@`* [IDX, T](a: array[IDX, T]): seq[T] {.magic: "ArrToSeq".}
   when defined(nimV2):
     proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
   else:
@@ -924,8 +919,8 @@ proc setLen*(s: var string, newlen: Natural) {.
   ##  myS.setLen(3) # myS <- "Nim"
   ##  echo myS, " is fantastic!!"
 
-proc newString*(len: Natural): string {.
-  magic: "NewString", importc: "mnewString", noSideEffect.}
+func newString*(len: Natural): string {.
+  magic: "NewString", importc: "mnewString".}
   ## Returns a new string of length ``len`` but with uninitialized
   ## content. One needs to fill the string character after character
   ## with the index operator ``s[i]``.
@@ -933,33 +928,29 @@ proc newString*(len: Natural): string {.
   ## This procedure exists only for optimization purposes;
   ## the same effect can be achieved with the ``&`` operator or with ``add``.
 
-proc newStringOfCap*(cap: Natural): string {.
-  magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
+func newStringOfCap*(cap: Natural): string {.
+  magic: "NewStringOfCap", importc: "rawNewString".}
   ## Returns a new string of length ``0`` but with capacity `cap`.
   ##
   ## This procedure exists only for optimization purposes; the same effect can
   ## be achieved with the ``&`` operator or with ``add``.
 
-proc `&`*(x: string, y: char): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+func `&`*(x: string, y: char): string {.magic: "ConStrStr", merge.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
-proc `&`*(x, y: char): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+func `&`*(x, y: char): string {. magic: "ConStrStr", merge.}
   ## Concatenates characters `x` and `y` into a string.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
-proc `&`*(x, y: string): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+func `&`*(x, y: string): string {.magic: "ConStrStr", merge.}
   ## Concatenates strings `x` and `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & "cd" == "abcd")
-proc `&`*(x: char, y: string): string {.
-  magic: "ConStrStr", noSideEffect, merge.}
+func `&`*(x: char, y: string): string {.magic: "ConStrStr", merge.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
@@ -1028,16 +1019,14 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
+func compileOption*(option: string): bool {.magic: "CompileOption".}
   ## Can be used to determine an `on|off` compile-time option. Example:
   ##
   ## .. code-block:: Nim
   ##   when compileOption("floatchecks"):
   ##     echo "compiled with floating point NaN and Inf checks"
 
-proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
+func compileOption*(option, arg: string): bool {.magic: "CompileOptionArg".}
   ## Can be used to determine an enum compile-time option. Example:
   ##
   ## .. code-block:: Nim
@@ -1266,7 +1255,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   x[i] = item
 
 when not defined(nimV2):
-  proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
+  func repr*[T](x: T): string {.magic: "Repr".}
     ## Takes any Nim variable and returns its string representation.
     ##
     ## It works even for complex data graphs with cycles. This is a great
@@ -1569,12 +1558,12 @@ proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
     result[i+1] = y[i]
 
 
-proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+func astToStr*[T](x: T): string {.magic: "AstToStr".}
   ## Converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
 
-proc instantiationInfo*(index = -1, fullPaths = false): tuple[
-  filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
+func instantiationInfo*(index = -1, fullPaths = false): tuple[
+  filename: string, line: int, column: int] {.magic: "InstantiationInfo".}
   ## Provides access to the compiler's instantiation stack line information
   ## of a template.
   ##
@@ -1608,7 +1597,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     testException(IndexError, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
-proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+func compiles*(x: untyped): bool {.magic: "Compiles", compileTime.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -1878,7 +1867,7 @@ when defined(nimvarargstyped):
     ## <manual.html#pragmas-nosideeffect-pragma>`_ you can use `debugEcho
     ## <#debugEcho,varargs[typed,]>`_ instead.
 
-  proc debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo", noSideEffect,
+  func debugEcho*(x: varargs[typed, `$`]) {.magic: "Echo",
                                             tags: [], raises: [].}
     ## Same as `echo <#echo,varargs[typed,]>`_, but as a special semantic rule,
     ## ``debugEcho`` pretends to be free of side effects, so that it can be used
@@ -1887,7 +1876,7 @@ when defined(nimvarargstyped):
 else:
   proc echo*(x: varargs[untyped, `$`]) {.magic: "Echo", tags: [WriteIOEffect],
     benign, sideEffect.}
-  proc debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo", noSideEffect,
+  func debugEcho*(x: varargs[untyped, `$`]) {.magic: "Echo",
                                              tags: [], raises: [].}
 
 template newException*(exceptn: typedesc, message: string;
@@ -1915,15 +1904,15 @@ proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## <typeinfo.html>`_ instead.
 
 {.push stackTrace: off.}
-proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int): int {.magic: "AbsI".} =
   if x < 0: -x else: x
-proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int8): int8 {.magic: "AbsI".} =
   if x < 0: -x else: x
-proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int16): int16 {.magic: "AbsI".} =
   if x < 0: -x else: x
-proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int32): int32 {.magic: "AbsI".} =
   if x < 0: -x else: x
-proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int64): int64 {.magic: "AbsI".} =
   ## Returns the absolute value of `x`.
   ##
   ## If `x` is ``low(x)`` (that is -MININT for its type),
@@ -1933,8 +1922,8 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
 
 
 when not defined(js):
-  proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
-  proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
+  func likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl.}
+  func unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
@@ -2068,7 +2057,7 @@ when notJSnotNims:
     nimCmpMem(a, b, size) == 0
 
 when not defined(js):
-  proc cmp(x, y: string): int =
+  func cmp(x, y: string): int =
     when defined(nimscript):
       if x < y: result = -1
       elif x > y: result = 1
@@ -2308,7 +2297,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
 {.pop.} # checks: off
 {.pop.} # hints: off
 
-proc `/`*(x, y: int): float {.inline, noSideEffect.} =
+func `/`*(x, y: int): float {.inline.} =
   ## Division of integers that results in a float.
   ##
   ## See also:
@@ -2620,11 +2609,11 @@ type
     ## Represents a Nim AST node. Macros operate on this type.
 
 when defined(nimV2):
-  proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
+  func repr*(x: NimNode): string {.magic: "Repr".}
 
 macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  func lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray".}
   lenVarargsImpl(x)
 
 when false:
@@ -2746,7 +2735,7 @@ proc addQuoted*[T](s: var string, x: T) =
   else:
     s.add($x)
 
-proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
+func locals*(): RootObj {.magic: "Plugin".} =
   ## Generates a tuple constructor expression listing all the local variables
   ## in the current scope.
   ##
@@ -2797,8 +2786,7 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   discard
 
 
-proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
-                                   inline.} =
+func `==`*(x, y: cstring): bool {.magic: "EqCString", inline.} =
   ## Checks for equality between two `cstring` variables.
   proc strcmp(a, b: cstring): cint {.noSideEffect,
     importc, header: "<string.h>".}
