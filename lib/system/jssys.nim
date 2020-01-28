@@ -334,7 +334,7 @@ proc cmpStrings(a, b: string): int {.asmNoStackFrame, compilerproc.} =
     return `a`.length - `b`.length;
   """
 
-proc cmp(x, y: string): int =
+func cmp(x, y: string): int =
   return cmpStrings(x, y)
 
 proc eqStrings(a, b: string): bool {.asmNoStackFrame, compilerproc.} =
