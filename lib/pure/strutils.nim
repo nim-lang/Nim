@@ -2357,7 +2357,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
-    when (NimMajor, NimMinor) >= (1, 1):
+    since (1, 1):
       # remove trailing dot, compatible with Python's formatter and JS backend
       if result[^1] == decimalSep:
         result.setLen(len(result)-1)
