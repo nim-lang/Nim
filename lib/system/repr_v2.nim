@@ -66,6 +66,27 @@ template repr*(x: distinct): string =
 
 template repr*(t: typedesc): string = $t
 
+proc reprObject[T: tuple|object](res: var string, x: T) = 
+  res.add '('
+  var firstElement = true
+  const isNamed = T is object or isNamedTuple(T)
+  when not isNamed:
+    var count = 0
+  for name, value in fieldPairs(x):
+    if not firstElement: res.add(", ")
+    when isNamed:
+      res.add(name)
+      res.add(": ")
+    else:
+      count.inc
+    res.add repr(value)
+    firstElement = false
+  when not isNamed:
+    if count == 1:
+      res.add(',') # $(1,) should print as the semantically legal (1,)
+  res.add(')')
+
+
 proc repr*[T: tuple|object](x: T): string =
   ## Generic `repr` operator for tuples that is lifted from the components
   ## of `x`. Example:
@@ -76,38 +97,16 @@ proc repr*[T: tuple|object](x: T): string =
   ##   $() == "()"
   when T is object:
     result = $typeof(x)
-  else:
-    result = ""
-  result.add '('
-  var firstElement = true
-  const isNamed = T is object or isNamedTuple(T)
-  when not isNamed:
-    var count = 0
-  for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
-    when isNamed:
-      result.add(name)
-      result.add(": ")
-    else:
-      count.inc
-    result.add repr(value)
-    firstElement = false
-  when not isNamed:
-    if count == 1:
-      result.add(',') # $(1,) should print as the semantically legal (1,)
-  result.add(')')
-
+  reprObject(result, x)
+ 
 proc repr*[T](x: ptr T): string =
   result.add repr(pointer(x)) & " "
   result.add repr(x[])
 
 proc repr*[T](x: ref T | ptr T): string =
   if isNil(x): return "nil"
-  when nimvm:
-    result = "ref "
-  else:
-    result = "ref "  & repr(cast[pointer](x))
-  result.add repr(x[])
+  result = $typeof(x)
+  reprObject(result, x[])
 
 proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
   result = prefix

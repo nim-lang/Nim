@@ -5,8 +5,6 @@ Table[system.string, trepr.MyType](data: @[], counter: 0)
 nil
 '''
 """
-
-import macros
 import tables
 
 type
