@@ -220,11 +220,9 @@ proc getLines(ftp: AsyncFtpClient): Future[string] {.async.} =
 
   assertReply(await(ftp.expectReply()), "226")
 
-proc listDirs*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
+proc listDir*(ftp: AsyncFtpClient, dir = ""): Future[seq[string]] {.async.} =
   ## Returns a list of filenames in the given directory. If ``dir`` is "",
-  ## the current directory is used. If ``async`` is true, this
-  ## function will return immediately and it will be your job to
-  ## use asyncdispatch's ``poll`` to progress this operation.
+  ## the current directory is used.
   await ftp.pasv()
 
   assertReply(await(ftp.send("NLST " & dir.normalizePathSep)), ["125", "150"])
@@ -237,7 +235,7 @@ proc existsFile*(ftp: AsyncFtpClient, file: string): Future[bool] {.async.} =
   for f in items(files):
     if f.normalizePathSep == file.normalizePathSep: return true
 
-proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false){.async.} =
+proc createDir*(ftp: AsyncFtpClient, dir: string, recursive = false) {.async.} =
   ## Creates a directory ``dir``. If ``recursive`` is true, the topmost
   ## subdirectory of ``dir`` will be created first, following the secondmost...
   ## etc. this allows you to give a full path as the ``dir`` without worrying
