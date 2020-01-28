@@ -122,7 +122,7 @@ proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =
     a.len = b.len
     a.p = b.p
   else:
-    if isLiteral(a) or  (a.p.cap and not strlitFlag) < b.len:
+    if isLiteral(a) or (a.p.cap and not strlitFlag) < b.len:
       # we have to allocate the 'cap' here, consider
       # 'let y = newStringOfCap(); var x = y'
       # on the other hand... These get turned into moves now.
