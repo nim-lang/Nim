@@ -424,7 +424,7 @@ when not defined(testing) and isMainModule:
   proc main(ftp: AsyncFtpClient) {.async.} =
     await ftp.connect()
     echo await ftp.pwd()
-    echo await ftp.listDirs()
+    echo await ftp.listDir()
     await ftp.store("payload.jpg", "payload.jpg")
     await ftp.retrFile("payload.jpg", "payload2.jpg")
     await ftp.rename("payload.jpg", "payload_renamed.jpg")
