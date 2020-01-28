@@ -29,7 +29,7 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
   ## * `buf` - A buffer to write into. The buffer does not need to be
   ##           initialized and it will be overridden.
   ##
-  var n: int = c_sprintf(addr buf, "%.16g", value)
+  var n: int = c_sprintf(addr buf, "%.17g", value)
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
