@@ -310,6 +310,8 @@ Replace ``import { "x" } from "./x";`` with ``import { x } from "./x";``
 
 Note: is there a way to have the JS compiler interpolation not interpolate as a string with ``"``?
 
+We could run a small script to replace, using a RegExp like this: ``import\s+{\s+("\w+")+\s+}``
+
 The included file must be an ``mjs`` file as well, such as `x.mjs`
 
 Then you must either run it using the ``--experimental-modules`` option
