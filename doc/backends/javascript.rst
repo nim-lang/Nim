@@ -96,46 +96,122 @@ Use the
 Take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
 develop browser based applications.
 
+`jscore <jscore.html>`_ is the core JavaScript interop library for Nim.
+
+Nim also includes:
+
+- `asyncjs <asyncjs.html>`_ Async JavaScript bindings (``async/await`` and ``Promise``)
+- `dom <dom.html>`_ Browser DOM bindings (Document Object Model) 
+- `jsconsole <jsconsole.html>`_ console bindings (such as ``console.log``)
+- `jsffi <jsffi.html>`_ FFI helpers for JavaScript interop
+
 FFI bindings for javascript libraries
 -------------------------------------
 
-A number of Nim modules are available that provide FFI bindings for popular JavaScript libraries.
+Nim FFI bindings for some popular JavaScript libraries.
 
-- Html5Canvas
-- p5
-- Vue
-- React
+- `HTML5-Canvas <https://gitlab.com/define-private-public/HTML5-Canvas-Nim>`_
+- `Vue <https://github.com/oskca/nimjs-vue>`_
+- `React <https://github.com/andreaferretti/react.nim>`_
 
 Some of these binding libs are a bit dated and could be improved, using 
 the latest Nim features, modules and best FFI practices.
 
-
 jsffi module
 ------------
 
-The ``jsffi`` module provides convenient types, wrappers and macros to make it easier to interop with JavaScript
+The `jsffi <jsffi.html>`_ module provides convenient types, wrappers and macros to make it easier to interop with JavaScript.
+
+Here are some of the special types available
 
 - ``JsObject`` (``Object`` type)
+- ``JsError`` (``Error`` type)
+
+Here are some of the special variables available
+
 - ``jsNull`` (``null`` literal)    
 - ``jsUndefined`` (``undefined`` literal)
+
+Helper functions:
+
+- ``jsTypeOf(type)`` calls `typeOf` to return type of Object
+- ``jsNew(clazz)`` invocation of the JavaScript `new` operator
+- ``jsDelete(key)`` invocation of `delete` operator (delete key from object)
 
 For NodeJS:
 
 - ``jsDirname`` (``__dirname`` pseudo-variable)
 - ``jsFilename``(``__filename`` pseudo-variable)
+- ``require(module: cstring)`` (require a CommonJS module by module name or path)
 
 The ``jsffi`` module is key for proper JavaScript interop, so take some time to see what 
 is available that could be useful for your use case.
 
-emit pragma
------------
-
-In rare cases, you might need to use the ``{.emit.}`` pragma to fine tune the JavaScript code being generated.
+Sample usage:
 
 .. code-block:: nim
 
-  proc promise*(resolve, reject): PromiseJs =
-    ``{.emit: ["new Promise(", resolve, ",", reject, ");"]}``
+  # define document and console
+  var document {.importc, nodecl.}: JsObject
+  var console {.importc, nodecl.}: JsObject
+
+  # import the "$" function
+  proc jq(selector: JsObject): JsObject {.importcpp: "$(#)".}
+
+Sample ``jsffi`` Nim code:
+
+.. code-block:: nim
+  proc jsTypeOf*(x: JsObject): cstring {.importcpp: "typeof(#)".}
+    ## Returns the name of the JsObject's JavaScript type as a cstring.
+
+  proc jsNew*(x: auto): JsObject {.importcpp: "(new #)".}
+    ## Turns a regular function call into an invocation of the
+    ## JavaScript's `new` operator
+
+  proc jsDelete*(x: auto): JsObject {.importcpp: "(delete #)".}
+
+Notice the syntax ``{.importcpp: "typeof(#)".}`` where the ``#`` is an argument substituion similar 
+to that used in Nim Regexp ``re`` module.
+
+We could write similar bindings for `SystemJs <https://github.com/systemjs/systemjs#example-usage>`_
+
+.. code-block:: js
+  System.import('/js/main.js');
+
+Nim bindings (in a ``systemjs`` module)
+
+.. code-block:: nim
+  proc systemImport*(path: cstring): auto {.importcpp: "System.import(#)".}
+
+Using the binding
+
+.. code-block:: nim
+  import systemjs
+
+  systemImport("/js/main.js")
+
+We could use a similar approach for creating helpers to import ES6 modules:
+
+.. code-block:: nim
+  proc esImportAll*(from: cstring)): auto {.importcpp: "import * from '#'".}
+  proc esImportDefault*(name: cstring, nameOrPath: cstring)) =
+    {.emit: ["import ", name, " from ", nameOrPath, "};] .}
+  proc esImport*(name: cstring, nameOrPath: cstring)) =
+    {.emit: ["import { ", name, " }" from '", nameOrPath, "';"] .}
+
+Writing JavaScript FFI binding modules
+======================================
+
+It is good practice to start by detecting if the runtime environment is js (ie. if ``js`` is defined).
+If the module is used in the wrong type of runtime environment, abort with an error using the ``error`` 
+pragma as shown in this example
+
+.. code-block:: nim
+  import macros, dom, jsconsole, jsffi, asyncjs
+
+  when not defined(js) and not defined(Nimdoc):
+    {.error: "This module only works on the JavaScript platform".}
+
 
 Backend code calling Nim
 ------------------------
@@ -169,16 +245,78 @@ from the previous section):
       result = fib(a - 1) + fib(a - 2)
 
 Compile the Nim code to JavaScript with ``nim js -o:fib.js fib.nim`` and
-open ``mhost.html`` in a browser. If the browser supports javascript, you
-should see an alert box displaying the text ``Fib for 9 is 34``. As mentioned
-earlier, JavaScript doesn't require an initialisation call to ``NimMain`` or
+open ``mhost.html`` in a browser. 
+
+If the browser supports javascript, you
+should see an alert box displaying the text ``Fib for 9 is 34``. 
+
+JavaScript doesn't require an initialisation call to ``NimMain`` or
 similar function and you can call the exported Nim proc directly.
 
 Async Javascript
 ~~~~~~~~~~~~~~~~
 
 To interop with asynchronous JavaScript such as `async/await` and `Promises`, 
-please use the ``asyncjs`` module.
+please use the `asyncjs <asyncjs.html>`_ module.
+
+.. code-block:: nim
+
+  proc loadGame(name: string): Future[Game] {.async.} =
+    # code
+
+should be equivalent to
+
+.. code-block:: nim
+  async function loadGame(name) {
+    // code
+  }
+
+A call to an asynchronous procedure usually needs ``await`` to wait for the completion of the ``Future``.
+
+.. code-block:: nim
+
+  var game = await loadGame(name)
+
+Callbacks
+---------
+
+You can wrap callbacks with asynchronous procedures using a promise via ``newPromise``:
+
+.. code-block:: nim
+
+  proc loadGame(name: string): Future[Game] =
+    var promise = newPromise() do (resolve: proc(response: Game)):
+      cbBasedLoadGame(name) do (game: Game):
+        resolve(game)
+    return promise
+
+Promises
+--------
+
+Use the ``PromiseJs`` type and ``newPromise`` (as demonstrated above)
+
+.. code-block:: nim
+type
+  PromiseJs {...} = ref object
+
+Usage
+
+.. code-block:: nim
+  proc loadGame(init: PromiseJs): Future[Game]
+
+emit pragma
+===========
+
+In rare cases, you might need to use the ``{.emit.}`` pragma to have complete control over the JavaScript code being generated.
+
+.. code-block:: nim
+
+  proc createGame*(name: cstring, type: cint, config: JsObject): PromiseJs =
+    ``{.emit: ["await new Game(", name, ",", type, ",", config ").init();"]}``
+
+The `emit` above is equivalent to the string interpolation: `await new Game(${name}, ${type}, ${config}).init();`
+
+Note: The `Html5Canvas` bindings library uses the ``emit`` pragma extensively (not a good practice).
 
 Memory management
 =================
