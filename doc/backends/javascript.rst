@@ -183,6 +183,15 @@ CommonJS (require)
 
 - ``require(module: cstring)`` to import a CommonJS module by name or path
 
+`jsExport <https://github.com/nepeckman/jsExport.nim>_ contains a macro ``jsExport`` 
+that can be used to create CommonJS exports (ie. ``module.exports`` statements) for Nim. 
+
+.. code-block:: nim
+  jsExport:
+    "nimGreet" = greet # export with a different name
+    greetPerson # export with the same name
+    (name, person) # comma seperated list of exports
+
 ES6 imports (modern NodeJS)
 ---------------------------
 
