@@ -1,7 +1,8 @@
+=====================
 The JavaScript target
----------------------
+=====================
 
-Nim can also generate `JavaScript`:idx: code through the ``js`` command.
+Nim can generate `JavaScript`:idx: code through the ``js`` command.
 
 Nim targets JavaScript 1.5 which is supported by any widely used browser.
 Since JavaScript does not have a portable means to include another module,
@@ -18,13 +19,15 @@ available. This includes:
 * unsigned integer arithmetic
 
 However, the modules `strutils <strutils.html>`_, `math <math.html>`_, and
-`times <times.html>`_ are available! To access the DOM, use the `dom
+`times <times.html>`_ are available! 
+
+To access the DOM, use the `dom
 <dom.html>`_ module that is only available for the JavaScript platform.
 
 For JavaScript, an ``importjs`` pragma is available which is an alias for ``importcpp``.
 
 Nim code calling the backend 
-----------------------------
+============================
 
 JavaScript in the Browser 
 -------------------------
@@ -172,8 +175,8 @@ Sample ``jsffi`` Nim code:
 Notice the syntax ``{.importcpp: "typeof(#)".}`` where the ``#`` is an argument substituion similar 
 to that used in Nim Regexp ``re`` module.
 
-JavaScript modules
-==================
+JavaScript modules interop
+==========================
 
 CommonJS (require)
 ------------------
@@ -192,37 +195,42 @@ that can be used to create CommonJS exports (ie. ``module.exports`` statements) 
     greetPerson # export with the same name
     (name, person) # comma seperated list of exports
 
-ES6 imports (modern NodeJS)
----------------------------
+ES6 imports (modern NodeJS/browser)
+-----------------------------------
 
-Binding functions to import ES6 modules (`esmodules` Nim module):
+Sample binding functions to import ES6 modules (`esmodules` Nim module):
 
 .. code-block:: nim
+  # import * from 'xyz'
   proc esImportAll*(from: cstring)): auto {.importcpp: "import * from '#'".}
+
+  # import xyz from 'xyz'
   proc esImportDefault*(name: cstring, nameOrPath: cstring)) =
     {.emit: ["import ", name, " from ", nameOrPath, "};] .}
+
+  # import { default as abc } from 'xyz'
   proc esImportDefaultAs*(name: cstring, nameOrPath: cstring)) =
     {.emit: ["import { default as ", name, " }" from '", nameOrPath, "';"] .}
+
+  # import { x } from 'xyz'
   proc esImport*(name: cstring, nameOrPath: cstring)) =
     {.emit: ["import { ", name, " }" from '", nameOrPath, "';"] .}
 
-Using the bindings
+Using the ES module bindings in Nim
 
 .. code-block:: nim
-  import esmodules
+  import esmodules # custom binding module we created above
 
+  # import { default as $ } from 'xyz'
   esImportDefaultAs("$")
+  # import * from 'xyz'
   esImportAll("game")  
 
   # referencing constants imported (implicitly available)
-  const levels {.importjs.}
+  const levels {.importjs.} # links to imported var levels via * import
   const characters {.importjs "_characters".} 
-  const game {.importjs "$".} 
-
-.. code-block:: nim
-  import systemjs
-
-  systemImport("/js/main.js")
+  
+  const game {.importjs "$".} # links to imported default var with alias $
 
 SystemJS
 --------
@@ -236,14 +244,20 @@ should generate this code:
 Nim bindings (in a ``systemjs`` module)
 
 .. code-block:: nim
+  # System.import('/js/main.js');
   proc systemImport*(path: cstring): auto {.importcpp: "System.import(#)".}
 
-Using the binding
+Using the ``systemJS`` Nim binding
 
 .. code-block:: nim
-  import systemjs
+  import systemjs # custom binding module we created above
 
   systemImport("/js/main.js")
+
+To use `systemJS` in a scalable way, use `importMaps <https://github.com/systemjs/systemjs/blob/master/docs/import-maps.md>`_.
+See `single-spa <https://single-spa.js.org>`_ for a concrete modern example for how to use this approach with Micro Frontends.
+
+Watch `local development with microfrontends and import maps <https://www.youtube.com/watch?v=vjjcuIxqIzY>`_ for a brief introduction.
 
 Writing JavaScript FFI binding modules
 ======================================
@@ -258,12 +272,26 @@ pragma as shown in this example
   when not defined(js) and not defined(Nimdoc):
     {.error: "This module only works on the JavaScript platform".}
 
+TypeScript and dts2nim
+======================
+
+Nim is a statically typed language like `TypeScript <https://www.typescriptlang.org>`_, 
+hence TypeScript should provide a gateway to make it easier for Nim 
+to "pick up" the correct types for variables and function arguments etc.
+
+`dts2nim <https://github.com/mcclure/dts2nim>`_ is a tool that can parse a TypeScript program and generate
+Nim bindings that can be used as a good starting point.
+
+See `nim-webgl-example <https://github.com/mcclure/nim-webgl-example>`_ for an example using the ``dts2nim`` 
+tool to bind to the webGL library using its TypeScript definitions (type definitions, ie. ``d.ts`` files).
+
+For a given library ``name-of-library`` see if you can find TypeScript types for it using `npm find @types/name-of-library`
+If up to date typescript type definitions exist, use them to provide more information on the types to be used in your Nim bindings.
+
+Don't overuse the generic type ``auto`` (similar to ``any`` in TypeScript).
 
 Backend code calling Nim
 ------------------------
-
-The JavaScript target doesn't have any further interfacing considerations
-since it also has garbage collection.
 
 Nim invocation example from JavaScript
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

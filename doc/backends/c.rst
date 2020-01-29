@@ -1,5 +1,6 @@
+=====================
 The C like targets
-------------------
+=====================
 
 The commands to compile to either C, C++ or Objective-C are:
 
@@ -23,39 +24,31 @@ The compiler commands select the target backend, but if needed you can
 <nimc.html#cross-compilation>`_ to select the target CPU, operative system
 or compiler/linker commands.
 
-Backend interfacing via FFI
----------------------------
+Backend interfacing to C via FFI
+================================
 
-Nim code can interface with the backend through the `Foreign function
-interface <manual.html#foreign-function-interface>`_ mainly through the
-`importc pragma <manual.html#foreign-function-interface-importc-pragma>`_.
-The ``importc`` pragma is the *generic* way of making backend symbols available
-in Nim and is available in all the target backends.  The C++
-or Objective-C backends have their respective `ImportCpp
-<manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
-`ImportObjC <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
-pragmas to call methods from classes.
-
-Whenever you use any of these pragmas you need to integrate native code into
-your final binary.
-
-However, for the C like targets you need to link external code either
+For C like targets you need to link external code either
 statically or dynamically. The preferred way of integrating native code is to
 use dynamic linking because it allows you to compile Nim programs without
-the need for having the related development libraries installed. This is done
+the need for having the related development libraries installed. 
+
+This is done
 through the `dynlib pragma for import
 <manual.html#foreign-function-interface-dynlib-pragma-for-import>`_, though
 more specific control can be gained using the `dynlib module <dynlib.html>`_.
 
 The `dynlibOverride <nimc.html#dynliboverride>`_ command line switch allows
 to avoid dynamic linking if you need to statically link something instead.
+
 Nim wrappers designed to statically link source files can use the `compile
 pragma <manual.html#implementation-specific-pragmas-compile-pragma>`_ if
 there are few sources or providing them along the Nim code is easier than using
-a system library. Libraries installed on the host system can be linked in with
+a system library. 
+
+Libraries installed on the host system can be linked in with
 the `PassL pragma <manual.html#implementation-specific-pragmas-passl-pragma>`_.
 
-To wrap native code, take a look at the `c2nim tool <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_ which helps
+To wrap native C like code, take a look at the `c2nim tool <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_ which helps
 with the process of scanning and transforming header files into a Nim
 interface.
 

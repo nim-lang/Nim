@@ -25,7 +25,7 @@ The Nim compiler supports mainly two backend families:
 - JavaScript target
 
 `The C like targets
-<#backends-the-c-like-targets>`_ creates source files which can be compiled
+<c.html#backends-the-c-like-targets>`_ creates source files which can be compiled
 into a library or a final executable. 
 
 `The JavaScript target
@@ -41,8 +41,10 @@ specific pragmas.
 Backends
 ========
 
-- link to C backend document
-- link to JavaScript backend document
+Nim interfaces with the following backends
+
+- `C like targets <c.html>`_
+- `JavaScript <javascript.html>`_
 
 Interfacing
 ===========
@@ -52,6 +54,30 @@ that you can call backend code from Nim and Nim code can be called by
 the backend code. Usually the direction of which calls which depends on your
 software architecture (is Nim your main program or is Nim providing a
 component?).
+
+Backend interfacing via FFI
+---------------------------
+
+Nim code can interface with the backend through the `Foreign function
+interface <manual.html#foreign-function-interface>`_ mainly through the
+`importc pragma <manual.html#foreign-function-interface-importc-pragma>`_.
+
+The ``importc`` pragma is the *generic* way of making backend symbols available
+in Nim and is available in all the target backends.  
+
+The C++
+or Objective-C backends have their respective `ImportCpp
+<manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
+`ImportObjC <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
+pragmas to call methods from classes. 
+
+Javascript has an `ImportJs <<manual.html##implementation-specific-pragmas-importjs-pragma>`_ pragma (alias to ``ImportCpp``)
+
+Whenever you use any of these pragmas you need to integrate native code into
+your final binary.
+
+Note: The JavaScript target doesn't have any interfacing considerations
+since JavaScript has garbage collection.
 
 Nimcache naming logic
 ---------------------
