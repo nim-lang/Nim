@@ -698,7 +698,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   father.add a
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType, hasCaseFields = false) =
+                      father: PNode, rectype: PType, hasCaseFields: bool) =
   if n == nil: return
   case n.kind
   of nkRecWhen:
@@ -727,12 +727,12 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         assign(newCheck, check)
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
-        semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype)
+        semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype, hasCaseFields)
         it[idx] = if newf.len == 1: newf[0] else: newf
     if c.inGenericContext > 0:
       father.add n
     elif branch != nil:
-      semRecordNodeAux(c, branch, check, pos, father, rectype)
+      semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
   of nkRecCase:
     semRecordCase(c, n, check, pos, father, rectype)
   of nkNilLit:
@@ -741,7 +741,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     # attempt to keep the nesting at a sane level:
     var a = if father.kind == nkRecList: father else: copyNode(n)
     for i in 0..<n.len:
-      semRecordNodeAux(c, n[i], check, pos, a, rectype)
+      semRecordNodeAux(c, n[i], check, pos, a, rectype, hasCaseFields)
     if a != father: father.add a
   of nkIdentDefs:
     checkMinSonsLen(n, 3, c.config)

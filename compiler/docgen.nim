@@ -17,10 +17,11 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, nimconf
+  pathutils, trees
 
 const
   exportSection = skField
+  htmldocsDir = RelativeDir"htmldocs"
 
 type
   TSections = array[TSymKind, Rope]
@@ -175,7 +176,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
-                                outExt, RelativeDir"htmldocs", false)
+                                outExt, htmldocsDir, false)
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -301,7 +302,7 @@ proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
     let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
-        RelativeDir"htmldocs", sfMainModule notin module.flags)
+        htmldocsDir, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -1057,7 +1058,7 @@ proc genOutFile(d: PDoc): Rope =
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
     let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
-              else: d.conf.projectPath / RelativeDir"htmldocs"
+              else: d.conf.projectPath / htmldocsDir
     createDir(dir)
     let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
                                               d.conf.projectPath), IndexExt)
@@ -1070,7 +1071,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     writeRope(stdout, content)
   else:
     template outfile: untyped = d.destFile
-    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
     createDir(outfile.splitFile.dir)
     d.conf.outFile = outfile.extractFilename.RelativeFile
     if not writeRope(content, outfile):

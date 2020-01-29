@@ -2725,8 +2725,8 @@ when declared(paramCount) or defined(nimdoc):
       result.add(paramStr(i))
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
-  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize,
-              newp: pointer, newplen: csize): cint
+  proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
+              newp: pointer, newplen: csize_t): cint
        {.importc: "sysctl",header: """#include <sys/types.h>
                                       #include <sys/sysctl.h>"""}
   const
@@ -2740,7 +2740,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
-    var pathLength = csize(MAX_PATH)
+    var pathLength = csize_t(MAX_PATH)
     result = newString(pathLength)
     var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
     while true:
