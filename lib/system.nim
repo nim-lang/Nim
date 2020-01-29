@@ -406,7 +406,7 @@ when defined(nimArrIdx):
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: S) {.noSideEffect, magic: "ArrPut".}
+    x: sink S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
   proc arrGet[I: Ordinal;T](a: T; i: I): T {.
@@ -866,7 +866,7 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## can differ between operating systems!
 
 when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
+  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
     magic: "ArrToSeq", noSideEffect.}
     ## Turns an array into a sequence.
     ##
