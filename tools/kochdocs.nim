@@ -5,7 +5,8 @@ import os, strutils, osproc, sets
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
   # --warning[LockLevel]:off pending #13218
-  nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" %
+      system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
@@ -16,7 +17,7 @@ var nimExe*: string
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
-    result = result.replace('/','\\')
+    result = result.replace('/', '\\')
 
 proc findNim*(): string =
   if nimExe.len > 0: return nimExe
@@ -49,7 +50,8 @@ template inFold*(desc, body) =
   if existsEnv("TRAVIS"):
     echo "travis_fold:end:" & desc.replace(" ", "_")
 
-proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+proc execFold*(desc, cmd: string, errorcode: int = QuitFailure,
+    additionalPath = "") =
   ## Execute shell command. Add log folding on Travis CI.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   inFold(desc):
@@ -77,7 +79,8 @@ proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
-proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
+proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c",
+    options = "") =
   let output = outputDir / input.splitFile.name.exe
   let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
@@ -101,9 +104,9 @@ doc/lib.rst
 doc/manual.rst
 doc/manual_experimental.rst
 doc/destructors.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
+doc/tutorials\tut1.rst
+doc/tutorials\tut2.rst
+doc/tutorials\tut3.rst
 doc/nimc.rst
 doc/hcr.rst
 doc/overview.rst
@@ -116,7 +119,9 @@ doc/estp.rst
 doc/idetools.rst
 doc/docgen.rst
 doc/koch.rst
-doc/backends.rst
+doc/backends/backends.rst
+doc/backends/c.rst
+doc/backends/javascript.rst
 doc/nimsuggest.rst
 doc/nep1.rst
 doc/nims.rst
@@ -192,7 +197,7 @@ proc getDocList(): seq[string] =
     t.incl a
 
   var t2: HashSet[string]
-  template myadd(a)=
+  template myadd(a) =
     result.add a
     doAssert a notin t2, a
     t2.incl a
@@ -305,7 +310,8 @@ proc buildDocSamples(nimArgs, destPath: string) =
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
   var
-    commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
+    commands = newSeq[string](rst2html.len + len(doc0) + len(doc) +
+        withoutIndex.len)
     i = 0
   let nim = findNim()
   for d in items(rst2html):
@@ -347,7 +353,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       let pdf = splitFile(d).name & ".pdf"
       let dest = destPath / pdf
       removeFile(dest)
-      moveFile(dest=dest, source=pdf)
+      moveFile(dest = dest, source = pdf)
       removeFile(changeFileExt(pdf, "aux"))
       if existsFile(changeFileExt(pdf, "toc")):
         removeFile(changeFileExt(pdf, "toc"))
@@ -368,7 +374,7 @@ proc buildDocs*(args: string) =
     docHackJsSource = docHackDir / docHackJs
     docHackJsDest = docHtmlOutput / docHackJs
 
-  buildJS()                     # This call generates docHackJsSource
+  buildJS() # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
   buildDocSamples(a, docup)
