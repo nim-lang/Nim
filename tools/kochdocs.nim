@@ -119,7 +119,7 @@ doc/estp.rst
 doc/idetools.rst
 doc/docgen.rst
 doc/koch.rst
-doc/backends/backends.rst
+doc/backends/index.rst
 doc/backends/c.rst
 doc/backends/javascript.rst
 doc/nimsuggest.rst
