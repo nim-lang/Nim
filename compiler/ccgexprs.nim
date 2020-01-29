@@ -1832,7 +1832,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       if size <= 4: unaryExprChar(p, e, d, "#countBits32($1)")
       else: unaryExprChar(p, e, d, "#countBits64($1)")
-    of mLtSet: binaryExprChar(p, e, d, "(($1 & ~ $2 ==0)&&($1 != $2))")
+    of mLtSet: binaryExprChar(p, e, d, "((($1 & ~ $2)==0)&&($1 != $2))")
     of mLeSet: binaryExprChar(p, e, d, "(($1 & ~ $2)==0)")
     of mEqSet: binaryExpr(p, e, d, "($1 == $2)")
     of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
