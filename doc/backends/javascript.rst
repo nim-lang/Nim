@@ -251,26 +251,30 @@ that can be used to create CommonJS exports (ie. ``module.exports`` statements) 
     greetPerson # export with the same name
     (name, person) # comma seperated list of exports
 
+
 ES6 imports (modern NodeJS/browser)
 -----------------------------------
 
 Sample binding functions to import ES6 modules (`esmodules` Nim module):
 
 .. code-block:: nim
+  import macros, jsffi
+
   # import * from 'xyz'
-  proc esImportAll*(from: cstring)): auto {.importcpp: "import * from '#'".}
+  proc esImportAll*(nameOrPath: cstring) {.importcpp: "import * from #".}
 
   # import xyz from 'xyz'
-  proc esImportDefault*(name: cstring, nameOrPath: cstring)) =
-    {.emit: ["import ", name, " from ", nameOrPath, "};] .}
+  proc esImportDefault*(name: cstring, nameOrPath: cstring) {.
+      importcpp: "import # from #".}
 
   # import { default as abc } from 'xyz'
-  proc esImportDefaultAs*(name: cstring, nameOrPath: cstring)) =
-    {.emit: ["import { default as ", name, " }" from '", nameOrPath, "';"] .}
+  proc esImportDefaultAs*(name: cstring, nameOrPath: cstring) {.
+      importcpp: "import { default as # } from #".}
 
   # import { x } from 'xyz'
-  proc esImport*(name: cstring, nameOrPath: cstring)) =
-    {.emit: ["import { ", name, " }" from '", nameOrPath, "';"] .}
+  proc esImport*(name: cstring, nameOrPath: cstring) {.
+      importcpp: "import { # } from #".}
+
 
 Using the ES module bindings in Nim
 
@@ -288,16 +292,32 @@ Using the ES module bindings in Nim
   
   const game {.importjs "$".} # links to imported default var with alias $
 
-Currently there is no good way to export JavaScript as ES6 modules from Nim.
-Using templates as used in `jsExport <https://github.com/nepeckman/jsExport.nim/blob/master/src/jsExport.nim>`_ 
-with the `emit`` pragma, should work.
+The Nim JS compiler by defaulr spits out all the Nim JS code inside a scope, 
+so that `import` and `export` statements are invalid (must be in global/outer scope of file).
 
-.. code-block:: nim
-  template esModuleExport*(exported: untyped): untyped =
-    {.emit: ["export "] .} exported
+Compile ``my-game.nim`` to nodejs compatible JavaScript using: 
 
-  template esModuleExportDefault*(exported: untyped): untyped =
-    {.emit: ["export default "] .} exported
+  nim js -d:nodejs -r my-game.nim
+
+```js
+// ... loads of Nim generated code
+
+import { "x" } from "./x";
+rawEcho(makeNimstrLit("Hello World"));
+```
+
+Replace ``import { "x" } from "./x";`` with ``import { x } from "./x";`` 
+
+Note: is there a way to have the JS compiler interpolation not interpolate as a string with ``"``?
+
+The included file must be an ``mjs`` file as well, such as `x.mjs`
+
+Then you must either run it using the ``--experimental-modules`` option
+
+`node --experimental-modules my-game.mjs`
+
+Alternatively compile it to old-school compatible JavaScript using Babel (or another JS transpiler)
+
 
 SystemJS
 --------
