@@ -132,17 +132,16 @@ Here are some of the special variables available
 - ``jsNull`` (``null`` literal)    
 - ``jsUndefined`` (``undefined`` literal)
 
-Helper functions:
+Some basic JavaScript helper functions:
 
 - ``jsTypeOf(type)`` calls `typeOf` to return type of Object
 - ``jsNew(clazz)`` invocation of the JavaScript `new` operator
 - ``jsDelete(key)`` invocation of `delete` operator (delete key from object)
 
-For NodeJS:
+A few helpers specific to NodeJS:
 
 - ``jsDirname`` (``__dirname`` pseudo-variable)
 - ``jsFilename``(``__filename`` pseudo-variable)
-- ``require(module: cstring)`` (require a CommonJS module by module name or path)
 
 The ``jsffi`` module is key for proper JavaScript interop, so take some time to see what 
 is available that could be useful for your use case.
@@ -173,7 +172,54 @@ Sample ``jsffi`` Nim code:
 Notice the syntax ``{.importcpp: "typeof(#)".}`` where the ``#`` is an argument substituion similar 
 to that used in Nim Regexp ``re`` module.
 
-We could write similar bindings for `SystemJs <https://github.com/systemjs/systemjs#example-usage>`_
+JavaScript modules
+==================
+
+CommonJS (require)
+------------------
+
+
+``jsffi`` contains a require binding for CommonJS
+
+- ``require(module: cstring)`` to import a CommonJS module by name or path
+
+ES6 imports (modern NodeJS)
+---------------------------
+
+Binding functions to import ES6 modules (`esmodules` Nim module):
+
+.. code-block:: nim
+  proc esImportAll*(from: cstring)): auto {.importcpp: "import * from '#'".}
+  proc esImportDefault*(name: cstring, nameOrPath: cstring)) =
+    {.emit: ["import ", name, " from ", nameOrPath, "};] .}
+  proc esImportDefaultAs*(name: cstring, nameOrPath: cstring)) =
+    {.emit: ["import { default as ", name, " }" from '", nameOrPath, "';"] .}
+  proc esImport*(name: cstring, nameOrPath: cstring)) =
+    {.emit: ["import { ", name, " }" from '", nameOrPath, "';"] .}
+
+Using the bindings
+
+.. code-block:: nim
+  import esmodules
+
+  esImportDefaultAs("$")
+  esImportAll("game")  
+
+  # referencing constants imported (implicitly available)
+  const levels {.importjs.}
+  const characters {.importjs "_characters".} 
+  const game {.importjs "$".} 
+
+.. code-block:: nim
+  import systemjs
+
+  systemImport("/js/main.js")
+
+SystemJS
+--------
+
+Binding functions for `SystemJs <https://github.com/systemjs/systemjs#example-usage>`_
+should generate this code:
 
 .. code-block:: js
   System.import('/js/main.js');
@@ -189,15 +235,6 @@ Using the binding
   import systemjs
 
   systemImport("/js/main.js")
-
-We could use a similar approach for creating helpers to import ES6 modules:
-
-.. code-block:: nim
-  proc esImportAll*(from: cstring)): auto {.importcpp: "import * from '#'".}
-  proc esImportDefault*(name: cstring, nameOrPath: cstring)) =
-    {.emit: ["import ", name, " from ", nameOrPath, "};] .}
-  proc esImport*(name: cstring, nameOrPath: cstring)) =
-    {.emit: ["import { ", name, " }" from '", nameOrPath, "';"] .}
 
 Writing JavaScript FFI binding modules
 ======================================
