@@ -238,7 +238,6 @@ JavaScript modules interop
 CommonJS (require)
 ------------------
 
-
 ``jsffi`` contains a require binding for CommonJS
 
 - ``require(module: cstring)`` to import a CommonJS module by name or path
@@ -288,6 +287,17 @@ Using the ES module bindings in Nim
   const characters {.importjs "_characters".} 
   
   const game {.importjs "$".} # links to imported default var with alias $
+
+Currently there is no good way to export JavaScript as ES6 modules from Nim.
+Using templates as used in `jsExport <https://github.com/nepeckman/jsExport.nim/blob/master/src/jsExport.nim>`_ 
+with the `emit`` pragma, should work.
+
+.. code-block:: nim
+  template esModuleExport*(exported: untyped): untyped =
+    {.emit: ["export "] .} exported
+
+  template esModuleExportDefault*(exported: untyped): untyped =
+    {.emit: ["export default "] .} exported
 
 SystemJS
 --------
