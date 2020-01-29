@@ -2429,6 +2429,8 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   of nkCharLit..nkUInt64Lit:
     if n.typ.kind == tyBool:
       r.res = if n.intVal == 0: rope"false" else: rope"true"
+    elif n.typ.kind in {tyInt64, tyUInt64}:
+      r.res = rope($n.intVal & "n")
     else:
       r.res = rope(n.intVal)
     r.kind = resExpr
