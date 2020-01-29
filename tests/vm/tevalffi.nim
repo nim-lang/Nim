@@ -1,6 +1,8 @@
 discard """
   cmd: "nim c --experimental:compiletimeFFI $file"
   nimout: '''
+hello world stderr
+hi stderr
 foo
 foo:100
 foo:101
@@ -8,10 +10,10 @@ foo:102:103
 foo:102:103:104
 foo:0.03:asdf:103:105
 ret={s1:foobar s2:foobar age:25 pi:3.14}
-hello world stderr
-hi stderr
 '''
   output: '''
+hello world stderr
+hi stderr
 foo
 foo:100
 foo:101
@@ -19,8 +21,6 @@ foo:102:103
 foo:102:103:104
 foo:0.03:asdf:103:105
 ret={s1:foobar s2:foobar age:25 pi:3.14}
-hello world stderr
-hi stderr
 '''
 """
 
@@ -84,8 +84,8 @@ static:
   fun()
 fun()
 
-when true:
-  import system/ansi_c
+import system/ansi_c
+block:
   proc fun2()=
     c_fprintf(cstderr, "hello world stderr\n")
     write(stderr, "hi stderr\n")
