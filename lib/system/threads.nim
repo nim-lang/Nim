@@ -313,10 +313,11 @@ else:
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: Pthread_attr
-    pthread_attr_init(a)
-    pthread_attr_setstacksize(a, ThreadStackSize)
+    doAssert pthread_attr_init(a) == 0
+    doAssert pthread_attr_setstacksize(a, ThreadStackSize) == 0
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
+    doAssert pthread_attr_destroy(a) == 0
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
