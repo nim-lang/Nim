@@ -77,7 +77,7 @@ jobs:
         DEBIAN_FRONTEND='noninteractive' \
           sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
             g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
-            libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386
+            libsdl1.2-dev:i386 libsfml-dev:i386 libglib2.0-dev:i386 libffi-dev
 
         cat << EOF > bin/gcc
         #!/bin/bash
