@@ -292,7 +292,7 @@ Using the ES module bindings in Nim
   
   const game {.importjs "$".} # links to imported default var with alias $
 
-The Nim JS compiler by defaulr spits out all the Nim JS code inside a scope, 
+The Nim JS compiler by default spits out all the Nim JS code inside a scope, 
 so that `import` and `export` statements are invalid (must be in global/outer scope of file).
 
 Compile ``my-game.nim`` to nodejs compatible JavaScript using: 
@@ -308,10 +308,9 @@ rawEcho(makeNimstrLit("Hello World"));
 
 Replace ``import { "x" } from "./x";`` with ``import { x } from "./x";`` 
 
-Note: is there a way to have the JS compiler interpolation not interpolate as a string with ``"``?
+See `Nim Issue #13297 <https://github.com/nim-lang/Nim/issues/13297>`_
 
-We could run a small script to replace, using a RegExp like this: ``import\s+{\s+("\w+")+\s+}``
-
+We could run a small script to replace, using a RegExp like this: ``import\s+{\s+("\w+")+\s+}``.
 The included file must be an ``mjs`` file as well, such as `x.mjs`
 
 Then you must either run it using the ``--experimental-modules`` option
