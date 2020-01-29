@@ -37,6 +37,7 @@ export httpcore except parseHeader
 
 const
   maxLine = 8*1024
+  chunkSize = 1048
 
 # TODO: If it turns out that the decisions that asynchttpserver makes
 # explicitly, about whether to close the client sockets or upgrade them are
@@ -52,22 +53,21 @@ type
     url*: Uri
     hostname*: string    ## The hostname of the client that made the request.
     body*: string
+    bodyStream*: FutureStream[string]
 
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
-    handleBody: bool ## if false leave the body for the developer to do whatever he wants with it.
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
-                         maxBody = 8388608, handleBody = true): AsyncHttpServer =
+                         maxBody = 8388608): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
   result.maxBody = maxBody
-  result.handleBody = handleBody
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -130,6 +130,20 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
+proc parseUppercaseMethod(name: string): HttpMethod =
+  result =
+    case name
+    of "GET": HttpGet
+    of "POST": HttpPost
+    of "HEAD": HttpHead
+    of "PUT": HttpPut
+    of "DELETE": HttpDelete
+    of "PATCH": HttpPatch
+    of "OPTIONS": HttpOptions
+    of "CONNECT": HttpConnect
+    of "TRACE": HttpTrace
+    else: raise newException(ValueError, "Invalid HTTP method " & name)
+
 proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
@@ -151,6 +165,7 @@ proc processRequest(
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
+  request.bodyStream = newFutureStream[string]()
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
@@ -175,17 +190,9 @@ proc processRequest(
   for linePart in lineFut.mget.split(' '):
     case i
     of 0:
-      case linePart
-      of "GET": request.reqMethod = HttpGet
-      of "POST": request.reqMethod = HttpPost
-      of "HEAD": request.reqMethod = HttpHead
-      of "PUT": request.reqMethod = HttpPut
-      of "DELETE": request.reqMethod = HttpDelete
-      of "PATCH": request.reqMethod = HttpPatch
-      of "OPTIONS": request.reqMethod = HttpOptions
-      of "CONNECT": request.reqMethod = HttpConnect
-      of "TRACE": request.reqMethod = HttpTrace
-      else:
+      try:
+        request.reqMethod = parseUppercaseMethod(linePart)
+      except ValueError:
         asyncCheck request.respondError(Http400)
         return true # Retry processing of request
     of 1:
@@ -238,7 +245,8 @@ proc processRequest(
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"],
+        contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return true
     else:
@@ -246,12 +254,27 @@ proc processRequest(
         await request.respondError(Http413)
         return false
 
-      if server.handleBody: # if false leave the body for the developer to do whatever he wants with it.
-        request.body = await client.recv(contentLength)
-        if request.body.len != contentLength:
-          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+      var remainder = contentLength
+      while remainder > 0:
+        let read_size = if remainder < chunkSize: remainder else: chunkSize
+        let data = await client.recv(read_size)
+        if data.len != read_size:
+          await request.respond(Http500, "Internal Server Error. An error occurred while reading the request body.")
           return true
+        await request.bodyStream.write(data)
+        remainder -= data.len
 
+      if remainder > 0:
+        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+        return true
+
+      request.bodyStream.complete()
+
+      ## request.body = await client.recv(contentLength)
+      ## if request.body.len != contentLength:
+      ##  await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+      ##   return true
+  
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
