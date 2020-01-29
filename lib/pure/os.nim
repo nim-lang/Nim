@@ -1329,11 +1329,11 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   when defined(Windows):
     when useWinUnicode:
       if setCurrentDirectoryW(newWideCString(newDir)) == 0'i32:
-        raiseOSError(osLastError())
+        raiseOSError(osLastError(), newDir)
     else:
-      if setCurrentDirectoryA(newDir) == 0'i32: raiseOSError(osLastError())
+      if setCurrentDirectoryA(newDir) == 0'i32: raiseOSError(osLastError(), newDir)
   else:
-    if chdir(newDir) != 0'i32: raiseOSError(osLastError())
+    if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
 
 when not weirdTarget:
   proc absolutePath*(path: string, root = getCurrentDir()): string {.noNimScript.} =
