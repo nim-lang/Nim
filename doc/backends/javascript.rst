@@ -93,11 +93,62 @@ Sometimes these functions are structured and categorised in a hierarchy of objec
   # operator functions are all made available in the rxjs.operators object
   proc merge(a, b: int): int {.importjs. "rxjs.operators.merge" }
 
-Use the
-`dom module <dom.html>`_ for specific DOM querying and modification procs.
+We can reduce the extensive dot syntax, by first linking the variables we need, then 
+calling functions on these variables in the function bindings.
 
-Take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
-develop browser based applications.
+.. code-block:: nim
+  var
+    rxjs {.importjs.} = JsObject
+    operators {.importjs "rxjs.operators" .} = JsObject
+
+  # operator functions are all made available in the rxjs.operators object
+  proc merge(a, b: int): int {.importjs. "operators" }
+
+
+React Nim bindings sample (from ``react`` module)
+
+.. code-block:: nim
+  import macros, dom, jsffi
+
+  {.experimental: "callOperator".}
+
+  when not defined(js):
+    {.error: "React.nim is only available for the JS target" .}
+
+  ReactGlobal* {.importc.} = ref object of RootObj
+    version*: cstring
+  ReactDOMGlobal* {.importc.} = ref object of RootObj
+
+  var
+    React* {.importc, nodecl.}: ReactGlobal
+    ReactDOM* {.importc, nodecl.}: ReactDOMGlobal
+
+  {.push importcpp .}
+
+  # React.createElement(c)
+  proc createElement*(react: ReactGlobal, c: ReactComponent): ReactNode
+  
+  # React.createClass(c)
+  proc createClass*(react: ReactGlobal, c: ReactDescriptor): ReactComponent
+  
+  # ReactDOM.render(node, el)
+  proc render*(reactDom: ReactDOMGlobal, node: ReactNode, el: Element)
+
+  {.pop.}
+
+Note here that we first bind to the global vars in the ``var`` block. 
+We use type name conventions like `ReactGlobal` to clearly indicate that this is a type for a global variable.
+Then we add the methods on the ``React`` object such as ``createElement`` by setting the first argument to ``react: ReactGlobal`` 
+which makes invocation of the form ``React.createElement(component)`` possible, due to Nim's UFCX (Unified Function Call Syntax)
+
+To add a ``useState`` binding (from `React Hooks <https://reactjs.org/docs/hooks-intro.html>`_) we would simply need to verify it is available as ``React.useState``, then
+
+.. code-block:: nim
+  # const [x, setX] = React.useState(0)
+  proc useState*(react: ReactGlobal, initialValue: auto): seq[auto]
+
+Javascript interop standard libraries
+-------------------------------------
 
 `jscore <jscore.html>`_ is the core JavaScript interop library for Nim.
 
@@ -107,6 +158,12 @@ Nim also includes:
 - `dom <dom.html>`_ Browser DOM bindings (Document Object Model) 
 - `jsconsole <jsconsole.html>`_ console bindings (such as ``console.log``)
 - `jsffi <jsffi.html>`_ FFI helpers for JavaScript interop
+
+Javascript web apps with Nim
+----------------------------
+
+Take a look at `karax <https://github.com/pragmagic/karax>`_ for how to
+develop browser based applications.
 
 FFI bindings for javascript libraries
 -------------------------------------
