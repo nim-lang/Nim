@@ -477,8 +477,8 @@ proc runCI(cmd: string) =
   echo "runCI:", cmd
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
-  when defined(posix): # appveyor (on windows) didn't run this
-    kochExecFold("Boot", "boot")
+  # when defined(posix): # appveyor (on windows) didn't run this
+  #   kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release -d:danger")
 
@@ -497,7 +497,7 @@ proc runCI(cmd: string) =
       execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    # execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
     block: # CT FFI
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")

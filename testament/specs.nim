@@ -236,8 +236,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(freebsd): result.err = reDisabled
         of "arm64":
           when defined(arm64): result.err = reDisabled
-        of "not defined(nimhaslibffi)": # a bit hacky, this could be generalized somehow
-          when not defined(nimHasLibFFI): result.err = reDisabled
+        of "not defined(nimhaslibffienabled)": # a bit hacky, this could be generalized somehow
+          when not defined(nimHasLibFFIEnabled): result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
