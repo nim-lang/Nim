@@ -258,67 +258,62 @@ ES6 imports (modern NodeJS/browser)
 Sample binding functions to import ES6 modules (`esmodules` Nim module):
 
 .. code-block:: nim
-  import macros, jsffi
-
-  # import * from 'xyz'
-  proc esImportAll*(nameOrPath: cstring) {.importcpp: "import * from #".}
-
-  # import xyz from 'xyz'
-  proc esImportDefault*(name: cstring, nameOrPath: cstring) {.
-      importcpp: "import # from #".}
-
-  # import { default as abc } from 'xyz'
-  proc esImportDefaultAs*(name: cstring, nameOrPath: cstring) {.
-      importcpp: "import { default as # } from #".}
+  import macros
 
   # import { x } from 'xyz'
   proc esImport*(name: cstring, nameOrPath: cstring) {.
       importcpp: "import { # } from #".}
-
 
 Using the ES module bindings in Nim
 
 .. code-block:: nim
   import esmodules # custom binding module we created above
 
-  # import { default as $ } from 'xyz'
-  esImportDefaultAs("$")
   # import * from 'xyz'
-  esImportAll("game")  
+  esImport("x", "./x")  
 
   # referencing constants imported (implicitly available)
-  const levels {.importjs.} # links to imported var levels via * import
-  const characters {.importjs "_characters".} 
-  
-  const game {.importjs "$".} # links to imported default var with alias $
+  var xx {.importjs. "x"} # links to imported var levels via * import  
+  echo x # links to imported default var with alias $
 
 The Nim JS compiler by default spits out all the Nim JS code inside a scope, 
 so that `import` and `export` statements are invalid (must be in global/outer scope of file).
 
-Compile ``my-game.nim`` to nodejs compatible JavaScript using: 
+Compile ``x_import.nim`` to nodejs compatible JavaScript using: 
 
-  nim js -d:nodejs -r my-game.nim
+  nim js -d:nodejs -r x_import.nim
 
 ```js
 // ... loads of Nim generated code
 
 import { "x" } from "./x";
+var xx = x;
 rawEcho(makeNimstrLit("Hello World"));
 ```
 
-Replace ``import { "x" } from "./x";`` with ``import { x } from "./x";`` 
+The output is of the form ``import { "x" } from "./x";`` which is not what we desired.
+To circumvent this, we need to use some a advanced technique.
 
-See `Nim Issue #13297 <https://github.com/nim-lang/Nim/issues/13297>`_
+.. code-block:: nim
+  proc esImportImpl(name: string, nameOrPath: string): string =
+    result = "import { " & name & " } from "
+    result.addQuoted nameOrPath
 
-We could run a small script to replace, using a RegExp like this: ``import\s+{\s+("\w+")+\s+}``.
-The included file must be an ``mjs`` file as well, such as `x.mjs`
+  template esImport*(name: string, nameOrPath: string) =
+    {.emit: esImportImpl(name, nameOrPath).}
 
-Then you must either run it using the ``--experimental-modules`` option
+Now it correctly outputs ``import { x } from "./x";`` as we desired. 
+
+Note that we used regular string concatenation using ``&`` and then the method ``addQuoted`` to
+ensure output of a quoted string.
+
+The imported file ``x`` must be an ``mjs`` file as well (turtles all the way down).
+
+You can run the ``mjs`` file via Node using the ``--experimental-modules`` option
 
 `node --experimental-modules my-game.mjs`
 
-Alternatively compile it to old-school compatible JavaScript using Babel (or another JS transpiler)
-
+Alternatively compile the ``mjs`` files to compatible ES 5 JavaScript using `Babel <https://babeljs.io/>`_.
 
 SystemJS
 --------
