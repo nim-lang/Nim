@@ -103,3 +103,9 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimHasCursor")
   defineSymbol("nimHasExceptionsQuery")
+
+  when defined(nimHasLibFFI):
+    # Renaming as we can't conflate input vs output define flags; e.g. this
+    # will report the right thing regardless of whether user adds
+    # `-d:nimHasLibFFI` in his user config.
+    defineSymbol("nimHasLibFFIEnabled")

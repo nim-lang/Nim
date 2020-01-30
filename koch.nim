@@ -504,7 +504,7 @@ proc runCI(cmd: string) =
         const nimFFI = "./bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
         execFold("build with -d:nimHasLibFFI", "nim c -d:release -d:nimHasLibFFI -o:$1 compiler/nim.nim" % [nimFFI])
-        execFold("test with -d:nimHasLibFFI", "nim c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
+        execFold("test with -d:nimHasLibFFI", "$1 c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")

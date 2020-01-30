@@ -22,7 +22,7 @@ foo:102:103:104
 foo:0.03:asdf:103:105
 ret={s1:foobar s2:foobar age:25 pi:3.14}
 '''
-  disabled: "windows"
+  disabled: "not defined(nimHasLibFFI)"
 """
 
 # re-enable for windows once libffi can be installed in koch.nim
@@ -65,7 +65,7 @@ proc fun() =
     var buffer2: pointer = c_malloc(n)
     var s: cstring = "foobar"
     var age: cint = 25
-    let j = c_snprintf(buffer2, n, "s1:%s s2:%s age:%d pi:%g", s, s, age, 3.14)
+    discard c_snprintf(buffer2, n, "s1:%s s2:%s age:%d pi:%g", s, s, age, 3.14)
     c_printf("ret={%s}\n", buffer2)
     c_free(buffer2) # not sure it has an effect
 
