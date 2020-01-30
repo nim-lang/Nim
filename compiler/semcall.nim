@@ -657,8 +657,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       x = t.baseOfDistinct
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
-    let kind = if fn.kind == skProc: {skProc, skFunc} else: {fn.kind}
-    var resolved = semOverloadedCall(c, call, call, kind, {})
+    var resolved = semOverloadedCall(c, call, {fn.kind}, kind, {})
     if resolved != nil:
       result = resolved[0].sym
       if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):
