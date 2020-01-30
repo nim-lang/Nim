@@ -256,19 +256,13 @@ proc processRequest(
 
       var remainder = contentLength
       while remainder > 0:
-
         let readSize = min(remainder, chunkSize)
-
         let data = await client.recv(read_size)
         if data.len != read_size:
-          await request.respond(Http500, "Internal Server Error. An error occurred while reading the request body.")
+          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
           return true
         await request.bodyStream.write(data)
         remainder -= data.len
-
-      if remainder > 0:
-        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return true
 
       request.bodyStream.complete()
 
