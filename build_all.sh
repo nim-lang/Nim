@@ -23,7 +23,13 @@ build_nim_csources(){
       echo_run sh build.sh $@
     else
       # no args, use multhreaded (5X faster on 16 cores: 10s instead of 50s)
-      echo_run make -C csources -j
+      makeX=make
+      unamestr=$(uname)
+      if [ "$unamestr" = 'FreeBSD' ]; then
+        makeX=gmake
+      fi
+      # `-j` implies `-j $(sysctl -n hw.ncpu)`
+      echo_run $makeX -C csources -j
     fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
