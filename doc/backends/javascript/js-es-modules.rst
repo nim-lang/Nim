@@ -70,14 +70,14 @@ It would be very convenient if we could automatically generate the var binding a
 ## Naive var binding approach
 
 .. code-block:: nim
-  # emits: import { x } from 'xyz'
+  # emits: import { x as x$$ } from 'xyz'; var x = x$$;
   proc esImportImpl(name: string, nameOrPath: string, bindVar: bool): string =
     result = "import { " & name & " as " & name & "$$ } from "
     result.addQuoted nameOrPath & ";\n"
     if bindVar
       result = result & "var " & name & " = " & name & "$$;"
 
-  # import { _i_x_ } from 'xyz'; var x = _i_x_;
+  # import { x as x$$ } from 'xyz'; var x = x$$;
   template esImport*(name: string, nameOrPath: string, bindVar: bool = true) =
     {.emit: esImportImpl(name, nameOrPath, bindVar).}
 
