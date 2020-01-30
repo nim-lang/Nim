@@ -18,7 +18,6 @@ when defined(windows):
 elif defined(linux):
   const libcDll = "libc.so(.6|.5|)"
 elif defined(freebsd):
-  # const libcDll = "/usr/lib/libc.so"
   const libcDll = "/lib/libc.so.7"
 elif defined(osx):
   const libcDll = "/usr/lib/libSystem.dylib"
