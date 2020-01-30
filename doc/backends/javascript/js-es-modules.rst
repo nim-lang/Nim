@@ -49,34 +49,40 @@ To circumvent the malformed import identifier, we need to use a more advanced te
 
 .. code-block:: nim
   proc esImportImpl(name: string, nameOrPath: string): string =
-    result = "import { _i_" & name & "_ } from "
+    result = "import { " & name & " as " & name & "$$ } from "
     result.addQuoted nameOrPath
 
   template esImport*(name: string, nameOrPath: string) =
     {.emit: esImportImpl(name, nameOrPath).}
 
-Now calling ``esImport("x", "./x")`` outputs ``import { _i_x_ } from "./x";``. 
+We use string concatenation ``&`` to output the name without quotes and use ``addQuoted`` to
+output the module name or path in a quoted string.
+
+Now calling ``esImport("x", "./x")`` outputs ``import { x as x$$ } from "./x";``. 
 We still need to bind a Nim ``var``
 
 .. code-block:: nim
   esImport("x", "./x")
-  var x {.importjs. "_i_x_"}
+  var x {.importjs. "x$$"}
 
-We use string concatenation ``&`` to output the name without quotes and use ``addQuoted`` to
-output the module name or path in a quoted string.
+It would be very convenient if we could automatically generate the var binding as well. 
+
+## Naive var binding approach
 
 .. code-block:: nim
   # emits: import { x } from 'xyz'
   proc esImportImpl(name: string, nameOrPath: string, bindVar: bool): string =
-    result = "import { _i_" & name & "_ } from "
+    result = "import { " & name & " as " & name & "$$ } from "
     result.addQuoted nameOrPath & ";\n"
     if bindVar
-      result = result & "var " & name & " = _i_" & name & "_;"
+      result = result & "var " & name & " = " & name & "$$;"
 
   # import { _i_x_ } from 'xyz'; var x = _i_x_;
   template esImport*(name: string, nameOrPath: string, bindVar: bool = true) =
     {.emit: esImportImpl(name, nameOrPath, bindVar).}
 
+Unfortunately the `var` will only be output to the ``js`` file and not be present in the Nim program.
+To do this correctly we would need to use a macro that operates on the AST to generate code.
 
 The imported file ``x`` must be an ``mjs`` file as well (turtles all the way down).
 
