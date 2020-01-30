@@ -258,7 +258,7 @@ ES6 imports (modern NodeJS/browser)
 Sample binding functions to import ES6 modules (`esmodules` Nim module):
 
 .. code-block:: nim
-  import macros
+  import macros, jsffi
 
   # import { x } from 'xyz'
   proc esImport*(name: cstring, nameOrPath: cstring) {.
@@ -269,7 +269,7 @@ Using the ES module bindings in Nim
 .. code-block:: nim
   import esmodules # custom binding module we created above
 
-  # import * from 'xyz'
+  # import { x } from 'xyz'
   esImport("x", "./x")  
 
   # referencing constants imported (implicitly available)
@@ -288,7 +288,7 @@ Compile ``x_import.nim`` to nodejs compatible JavaScript using:
 
 import { "x" } from "./x";
 var xx = x;
-rawEcho(makeNimstrLit("Hello World"));
+rawEcho(xx);
 ```
 
 The output is of the form ``import { "x" } from "./x";`` which is not what we desired.
@@ -314,6 +314,8 @@ You can run the ``mjs`` file via Node using the ``--experimental-modules`` optio
 `node --experimental-modules my-game.mjs`
 
 Alternatively compile the ``mjs`` files to compatible ES 5 JavaScript using `Babel <https://babeljs.io/>`_.
+
+See `ES module bindings for Nim <https://github.com/kristianmandrup/esmodule_nim>`_ repo.
 
 SystemJS
 --------
