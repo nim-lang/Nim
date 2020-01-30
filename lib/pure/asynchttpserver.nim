@@ -256,7 +256,9 @@ proc processRequest(
 
       var remainder = contentLength
       while remainder > 0:
-        let read_size = if remainder < chunkSize: remainder else: chunkSize
+
+        let readSize = min(remainder, chunkSize)
+
         let data = await client.recv(read_size)
         if data.len != read_size:
           await request.respond(Http500, "Internal Server Error. An error occurred while reading the request body.")
