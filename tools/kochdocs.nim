@@ -119,9 +119,14 @@ doc/estp.rst
 doc/idetools.rst
 doc/docgen.rst
 doc/koch.rst
-doc/backends/index.rst
-doc/backends/c.rst
-doc/backends/javascript.rst
+doc/backends/backends-overview.rst
+doc/backends/c-backend.rst
+doc/backends/javascript-backend.rst
+doc/backends/javascript/js-ffi-pragmas.rst
+doc/backends/javascript/async-js-interop.rst
+doc/backends/javascript/js-modules-interop.rst
+doc/backends/javascript/js-es-modules.rst
+doc/backends/javascript/js-interop-tools.rst
 doc/nimsuggest.rst
 doc/nep1.rst
 doc/nims.rst

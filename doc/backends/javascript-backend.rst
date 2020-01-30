@@ -217,6 +217,9 @@ Sample usage:
   # import the "$" function
   proc jq(selector: JsObject): JsObject {.importcpp: "$(#)".}
 
+Note that the ``importc`` pragmas are used (works, but deprecated when in a JavaScript context).
+We recommend always using ``importjs`` for JavaScript going forward.
+
 Sample ``jsffi`` Nim code:
 
 .. code-block:: nim
@@ -232,118 +235,6 @@ Sample ``jsffi`` Nim code:
 Notice the syntax ``{.importcpp: "typeof(#)".}`` where the ``#`` is an argument substituion similar 
 to that used in Nim Regexp ``re`` module.
 
-JavaScript modules interop
-==========================
-
-CommonJS (require)
-------------------
-
-``jsffi`` contains a require binding for CommonJS
-
-- ``require(module: cstring)`` to import a CommonJS module by name or path
-
-`jsExport <https://github.com/nepeckman/jsExport.nim>_ contains a macro ``jsExport`` 
-that can be used to create CommonJS exports (ie. ``module.exports`` statements) for Nim. 
-
-.. code-block:: nim
-  jsExport:
-    "nimGreet" = greet # export with a different name
-    greetPerson # export with the same name
-    (name, person) # comma seperated list of exports
-
-
-ES6 imports (modern NodeJS/browser)
------------------------------------
-
-Sample binding functions to import ES6 modules (`esmodules` Nim module):
-
-.. code-block:: nim
-  import macros, jsffi
-
-  # import { x } from 'xyz'
-  proc esImport*(name: cstring, nameOrPath: cstring) {.
-      importcpp: "import { # } from #".}
-
-Using the ES module bindings in Nim
-
-.. code-block:: nim
-  import esmodules # custom binding module we created above
-
-  # import { x } from 'xyz'
-  esImport("x", "./x")  
-
-  # referencing constants imported (implicitly available)
-  var xx {.importjs. "x"} # links to imported var levels via * import  
-  echo x # links to imported default var with alias $
-
-The Nim JS compiler by default spits out all the Nim JS code inside a scope, 
-so that `import` and `export` statements are invalid (must be in global/outer scope of file).
-
-Compile ``x_import.nim`` to nodejs compatible JavaScript using: 
-
-  nim js -d:nodejs -r x_import.nim
-
-```js
-// ... loads of Nim generated code
-
-import { "x" } from "./x";
-var xx = x;
-rawEcho(xx);
-```
-
-The output is of the form ``import { "x" } from "./x";`` which is not what we desired.
-To circumvent this, we need to use some a advanced technique.
-
-.. code-block:: nim
-  proc esImportImpl(name: string, nameOrPath: string): string =
-    result = "import { " & name & " } from "
-    result.addQuoted nameOrPath
-
-  template esImport*(name: string, nameOrPath: string) =
-    {.emit: esImportImpl(name, nameOrPath).}
-
-Now it correctly outputs ``import { x } from "./x";`` as we desired. 
-
-Note that we used regular string concatenation using ``&`` and then the method ``addQuoted`` to
-ensure output of a quoted string.
-
-The imported file ``x`` must be an ``mjs`` file as well (turtles all the way down).
-
-You can run the ``mjs`` file via Node using the ``--experimental-modules`` option
-
-`node --experimental-modules my-game.mjs`
-
-Alternatively compile the ``mjs`` files to compatible ES 5 JavaScript using `Babel <https://babeljs.io/>`_.
-
-See `ES module bindings for Nim <https://github.com/kristianmandrup/esmodule_nim>`_ repo.
-
-SystemJS
---------
-
-Binding functions for `SystemJs <https://github.com/systemjs/systemjs#example-usage>`_
-should generate this code:
-
-.. code-block:: js
-  System.import('/js/main.js');
-
-Nim bindings (in a ``systemjs`` module)
-
-.. code-block:: nim
-  # System.import('/js/main.js');
-  proc systemImport*(path: cstring): auto {.importcpp: "System.import(#)".}
-
-Using the ``systemJS`` Nim binding
-
-.. code-block:: nim
-  import systemjs # custom binding module we created above
-
-  systemImport("/js/main.js")
-
-To use `systemJS` in a scalable way, use `importMaps <https://github.com/systemjs/systemjs/blob/master/docs/import-maps.md>`_.
-See `single-spa <https://single-spa.js.org>`_ for a concrete modern example for how to use this approach with Micro Frontends.
-
-Watch `local development with microfrontends and import maps <https://www.youtube.com/watch?v=vjjcuIxqIzY>`_ for a brief introduction.
-
 Writing JavaScript FFI binding modules
 ======================================
 
@@ -357,23 +248,10 @@ pragma as shown in this example
   when not defined(js) and not defined(Nimdoc):
     {.error: "This module only works on the JavaScript platform".}
 
-TypeScript and dts2nim
-======================
+JavaScript interop tools
+------------------------
 
-Nim is a statically typed language like `TypeScript <https://www.typescriptlang.org>`_, 
-hence TypeScript should provide a gateway to make it easier for Nim 
-to "pick up" the correct types for variables and function arguments etc.
-
-`dts2nim <https://github.com/mcclure/dts2nim>`_ is a tool that can parse a TypeScript program and generate
-Nim bindings that can be used as a good starting point.
-
-See `nim-webgl-example <https://github.com/mcclure/nim-webgl-example>`_ for an example using the ``dts2nim`` 
-tool to bind to the webGL library using its TypeScript definitions (type definitions, ie. ``d.ts`` files).
-
-For a given library ``name-of-library`` see if you can find TypeScript types for it using `npm find @types/name-of-library`
-If up to date typescript type definitions exist, use them to provide more information on the types to be used in your Nim bindings.
-
-Don't overuse the generic type ``auto`` (similar to ``any`` in TypeScript).
+See `JavaScript interop tools <js-interop-tools.html>`_ on tools available to make FFI interop easier.
 
 Backend code calling Nim
 ------------------------
@@ -411,71 +289,6 @@ should see an alert box displaying the text ``Fib for 9 is 34``.
 
 JavaScript doesn't require an initialisation call to ``NimMain`` or
 similar function and you can call the exported Nim proc directly.
-
-Async Javascript
-~~~~~~~~~~~~~~~~
-
-To interop with asynchronous JavaScript such as `async/await` and `Promises`, 
-please use the `asyncjs <asyncjs.html>`_ module.
-
-.. code-block:: nim
-
-  proc loadGame(name: string): Future[Game] {.async.} =
-    # code
-
-should be equivalent to
-
-.. code-block:: nim
-  async function loadGame(name) {
-    // code
-  }
-
-A call to an asynchronous procedure usually needs ``await`` to wait for the completion of the ``Future``.
-
-.. code-block:: nim
-
-  var game = await loadGame(name)
-
-Callbacks
----------
-
-You can wrap callbacks with asynchronous procedures using a promise via ``newPromise``:
-
-.. code-block:: nim
-
-  proc loadGame(name: string): Future[Game] =
-    var promise = newPromise() do (resolve: proc(response: Game)):
-      cbBasedLoadGame(name) do (game: Game):
-        resolve(game)
-    return promise
-
-Promises
---------
-
-Use the ``PromiseJs`` type and ``newPromise`` (as demonstrated above)
-
-.. code-block:: nim
-type
-  PromiseJs {...} = ref object
-
-Usage
-
-.. code-block:: nim
-  proc loadGame(init: PromiseJs): Future[Game]
-
-emit pragma
-===========
-
-In rare cases, you might need to use the ``{.emit.}`` pragma to have complete control over the JavaScript code being generated.
-
-.. code-block:: nim
-
-  proc createGame*(name: cstring, type: cint, config: JsObject): PromiseJs =
-    ``{.emit: ["await new Game(", name, ",", type, ",", config ").init();"]}``
-
-The `emit` above is equivalent to the string interpolation: `await new Game(${name}, ${type}, ${config}).init();`
-
-Note: The `Html5Canvas` bindings library uses the ``emit`` pragma extensively (not a good practice).
 
 Memory management
 =================
