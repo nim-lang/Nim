@@ -2711,7 +2711,16 @@ proc addQuoted*[T](s: var string, x: T) =
   ## Users may overload `addQuoted` for custom (string-like) types if
   ## they want to implement a customized element representation.
   ##
-  ## See also: `quoted` (outplace version), `os.quoteShell`.
+  ## See also: `strutils.quoted` (outplace version), `os.quoteShell`.
+  runnableExamples:
+    var tmp = ""
+    tmp.addQuoted(1)
+    tmp.add(", ")
+    tmp.addQuoted("string")
+    tmp.add(", ")
+    tmp.addQuoted('c')
+    assert tmp == """1, "string", 'c'"""
+
   when T is string or T is cstring:
     s.add("\"")
     for c in x:
@@ -2735,14 +2744,6 @@ proc addQuoted*[T](s: var string, x: T) =
     s.add(x)
   else:
     s.add($x)
-
-proc quoted*[T](a: T): string {.since: (1, 1).} =
-  ## outplace version of `addQuoted`
-  runnableExamples:
-    doAssert quoted(1) == "1"
-    doAssert quoted("1") == "\"1\""
-    doAssert quoted('c') == "'c'"
-  addQuoted(result, a)
 
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## Generates a tuple constructor expression listing all the local variables

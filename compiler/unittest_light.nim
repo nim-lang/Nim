@@ -11,6 +11,8 @@ proc mismatch*[T](lhs: T, rhs: T): string =
       of '\n': result.add "\\n\n"
       else: result.add a
 
+  proc quoted(s: string): string = result.addQuoted s
+
   result.add "\n"
   result.add "lhs:{" & replaceInvisible(
       $lhs) & "}\nrhs:{" & replaceInvisible($rhs) & "}\n"

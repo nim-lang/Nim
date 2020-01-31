@@ -2860,6 +2860,14 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
   ## Alias for isEmptyOrWhitespace
   result = isEmptyOrWhitespace(s)
 
+proc quoted*[T](a: T): string {.since: (1, 1).} =
+  ## outplace version of `system.addQuoted`
+  runnableExamples:
+    doAssert quoted(1) == "1"
+    doAssert quoted("1") == "\"1\""
+    doAssert quoted('c') == "'c'"
+  addQuoted(result, a)
+
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
