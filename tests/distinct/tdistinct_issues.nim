@@ -47,7 +47,7 @@ block t9079:
   type
     Dollars = distinct float
 
-  proc `$`(d: Dollars): string {.borrow.}
+  func `$`(d: Dollars): string {.borrow.}
   func `*`(a, b: Dollars): Dollars {.borrow.}
   func `+`(a, b: Dollars): Dollars {.borrow.}
 
@@ -61,7 +61,7 @@ block t9079:
 
 block t9322:
   type Fix = distinct string
-  proc `$`(f: Fix): string {.borrow.}
+  func `$`(f: Fix): string {.borrow.}
   proc mystr(s: string) =
     echo s
   mystr($Fix("apr"))

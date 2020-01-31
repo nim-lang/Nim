@@ -1,37 +1,37 @@
-proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
+func `$`*(x: int): string {.magic: "IntToStr".}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. ``$`` is Nim's general way of
   ## spelling `toString`:idx:.
 
-proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
+func `$`*(x: int64): string {.magic: "Int64ToStr".}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$`*(x: float): string {.magic: "FloatToStr", noSideEffect.}
+func `$`*(x: float): string {.magic: "FloatToStr".}
   ## The stringify operator for a float argument. Returns `x`
   ## converted to a decimal string.
 
-proc `$`*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
+func `$`*(x: bool): string {.magic: "BoolToStr".}
   ## The stringify operator for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc `$`*(x: char): string {.magic: "CharToStr", noSideEffect.}
+func `$`*(x: char): string {.magic: "CharToStr".}
   ## The stringify operator for a character argument. Returns `x`
   ## converted to a string.
   ##
   ## .. code-block:: Nim
   ##   assert $'c' == "c"
 
-proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+func `$`*(x: cstring): string {.magic: "CStrToStr".}
   ## The stringify operator for a CString argument. Returns `x`
   ## converted to a string.
 
-proc `$`*(x: string): string {.magic: "StrToStr", noSideEffect.}
+func `$`*(x: string): string {.magic: "StrToStr".}
   ## The stringify operator for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
-proc `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
+func `$`*[Enum: enum](x: Enum): string {.magic: "EnumToStr".}
   ## The stringify operator for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic.
   ##
@@ -50,19 +50,10 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ##   static: doAssert $(type(@['A', 'B'])) == "seq[char]"
 
 
-proc isNamedTuple(T: typedesc): bool =
-  # Taken from typetraits.
-  when T isnot tuple: result = false
-  else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    return false
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  ## imported from typetraits
 
-proc `$`*[T: tuple|object](x: T): string =
+func `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
@@ -117,7 +108,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
       result.addQuoted(value)
   result.add(suffix)
 
-proc `$`*[T](x: set[T]): string =
+func `$`*[T](x: set[T]): string =
   ## Generic ``$`` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
@@ -125,7 +116,7 @@ proc `$`*[T](x: set[T]): string =
   ##   ${23, 45} == "{23, 45}"
   collectionToString(x, "{", ", ", "}")
 
-proc `$`*[T](x: seq[T]): string =
+func `$`*[T](x: seq[T]): string =
   ## Generic ``$`` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
@@ -133,7 +124,7 @@ proc `$`*[T](x: seq[T]): string =
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", ", ", "]")
 
-proc `$`*[T, U](x: HSlice[T, U]): string =
+func `$`*[T, U](x: HSlice[T, U]): string =
   ## Generic ``$`` operator for slices that is lifted from the components
   ## of `x`. Example:
   ##
@@ -145,11 +136,11 @@ proc `$`*[T, U](x: HSlice[T, U]): string =
 
 
 when not defined(nimNoArrayToString):
-  proc `$`*[T, IDX](x: array[IDX, T]): string =
+  func `$`*[T, IDX](x: array[IDX, T]): string =
     ## Generic ``$`` operator for arrays that is lifted from the components.
     collectionToString(x, "[", ", ", "]")
 
-proc `$`*[T](x: openArray[T]): string =
+func `$`*[T](x: openArray[T]): string =
   ## Generic ``$`` operator for openarrays that is lifted from the components
   ## of `x`. Example:
   ##
