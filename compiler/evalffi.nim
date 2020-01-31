@@ -10,6 +10,7 @@
 ## This file implements the FFI part of the evaluator for Nim code.
 
 import ast, types, options, tables, dynlib, msgs, lineinfos
+from os import getAppFilename
 import pkg/libffi
 
 when defined(windows):
@@ -27,7 +28,7 @@ var
   gDllCache = initTable[string, LibHandle]()
 
 when defined(windows):
-  var gExeHandle = loadLib(os.getAppFilename())
+  var gExeHandle = loadLib(getAppFilename())
 else:
   var gExeHandle = loadLib()
 
@@ -52,11 +53,13 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
   when true:
+    var libPathMsg = ""
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
       globalError(conf, sym.info, "dynlib needs to be a string lit")
     var theAddr: pointer
     if (lib.isNil or lib.kind == libHeader) and not gExeHandle.isNil:
+      libPathMsg = "current exe: " & getAppFilename() & " nor libc: " & libcDll
       # first try this exe itself:
       theAddr = gExeHandle.symAddr(name)
       # then try libc:
@@ -65,9 +68,11 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
         theAddr = dllhandle.symAddr(name)
     elif not lib.isNil:
       let dll = if lib.kind == libHeader: libcDll else: lib.path.strVal
+      libPathMsg = dll
       let dllhandle = getDll(conf, gDllCache, dll, sym.info)
       theAddr = dllhandle.symAddr(name)
-    if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & name)
+    if theAddr.isNil: globalError(conf, sym.info,
+      "cannot import symbol: " & name & " from " & libPathMsg)
     result.intVal = cast[ByteAddress](theAddr)
 
 proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
@@ -320,7 +325,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     else:
       reset n[]
       result = n
-      result.kind = nkNilLit
+      result[] = TNode(kind: nkNilLit)
       result.typ = typ
 
   template awi(kind, v: untyped): untyped = aw(kind, v, intVal)

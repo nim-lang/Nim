@@ -2357,7 +2357,7 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
-    when (NimMajor, NimMinor) >= (1, 1):
+    since (1, 1):
       # remove trailing dot, compatible with Python's formatter and JS backend
       if result[^1] == decimalSep:
         result.setLen(len(result)-1)
@@ -2849,13 +2849,16 @@ iterator tokenize*(s: string, seps: set[char] = Whitespace): tuple[
       break
     i = j
 
+proc isEmptyOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
+    extern: "nsuIsEmptyOrWhitespace".} =
+  ## Checks if `s` is empty or consists entirely of whitespace characters.
+  result = s.allCharsInSet(Whitespace)
+
 proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
-    extern: "nsuIsNilOrWhitespace".} =
-  ## Checks if `s` is nil or consists entirely of whitespace characters.
-  result = true
-  for c in s:
-    if not c.isSpaceAscii():
-      return false
+    extern: "nsuIsNilOrWhitespace",
+    deprecated: "use isEmptyOrWhitespace instead".} =
+  ## Alias for isEmptyOrWhitespace
+  result = isEmptyOrWhitespace(s)
 
 when isMainModule:
   proc nonStaticTests =
@@ -2981,10 +2984,10 @@ when isMainModule:
     doAssert isSpaceAscii('\l')
     doAssert(not isSpaceAscii('A'))
 
-    doAssert(isNilOrWhitespace(""))
-    doAssert(isNilOrWhitespace("       "))
-    doAssert(isNilOrWhitespace("\t\l \v\r\f"))
-    doAssert(not isNilOrWhitespace("ABc   \td"))
+    doAssert(isEmptyOrWhitespace(""))
+    doAssert(isEmptyOrWhitespace("       "))
+    doAssert(isEmptyOrWhitespace("\t\l \v\r\f"))
+    doAssert(not isEmptyOrWhitespace("ABc   \td"))
 
     doAssert isLowerAscii('a')
     doAssert isLowerAscii('z')

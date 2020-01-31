@@ -189,124 +189,124 @@ macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
 
-when (NimMajor, NimMinor) >= (1, 1):
-  macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T =
-    ## Turns an `in-place`:idx: algorithm into one that works on
-    ## a copy and returns this copy. The second parameter is the
-    ## index of the calling expression that is replaced by a copy
-    ## of this expression.
-    ## **Since**: Version 1.2.
-    runnableExamples:
-      import algorithm
+macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1).} =
+  ## Turns an `in-place`:idx: algorithm into one that works on
+  ## a copy and returns this copy. The second parameter is the
+  ## index of the calling expression that is replaced by a copy
+  ## of this expression.
+  ## **Since**: Version 1.2.
+  runnableExamples:
+    import algorithm
 
-      var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert a.outplace(sort()) == sorted(a)
-      #Chaining:
-      var aCopy = a
-      aCopy.insert(10)
+    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+    doAssert a.outplace(sort()) == sorted(a)
+    #Chaining:
+    var aCopy = a
+    aCopy.insert(10)
 
-      doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
 
-    expectKind call, nnkCallKinds
-    let tmp = genSym(nskVar, "outplaceResult")
-    var callsons = call[0..^1]
-    callsons.insert(tmp, inplaceArgPosition)
-    result = newTree(nnkStmtListExpr,
-      newVarStmt(tmp, arg),
-      copyNimNode(call).add callsons,
-      tmp)
+  expectKind call, nnkCallKinds
+  let tmp = genSym(nskVar, "outplaceResult")
+  var callsons = call[0..^1]
+  callsons.insert(tmp, inplaceArgPosition)
+  result = newTree(nnkStmtListExpr,
+    newVarStmt(tmp, arg),
+    copyNimNode(call).add callsons,
+    tmp)
 
-  proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) =
-    # Looks for the last statement of the last statement, etc...
-    case n.kind
-    of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
-      result[0] = copyNimTree(n)
-      result[1] = copyNimTree(n)
-      result[2] = copyNimTree(n)
-      for i in ord(n.kind == nnkCaseStmt)..<n.len:
-        (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
-    of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
-        nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
-      result[0] = copyNimTree(n)
-      result[1] = copyNimTree(n)
-      result[2] = copyNimTree(n)
-      if n.len >= 1:
-        (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res, bracketExpr)
-    of nnkTableConstr:
-      result[1] = n[0][0]
-      result[2] = n[0][1]
-      if bracketExpr.len == 1:
-        bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
-            bindSym"typeof", newEmptyNode())])
-      template adder(res, k, v) = res[k] = v
-      result[0] = getAst(adder(res, n[0][0], n[0][1]))
-    of nnkCurly:
-      result[2] = n[0]
-      if bracketExpr.len == 1:
-        bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
-      template adder(res, v) = res.incl(v)
-      result[0] = getAst(adder(res, n[0]))
-    else:
-      result[2] = n
-      if bracketExpr.len == 1:
-        bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
-      template adder(res, v) = res.add(v)
-      result[0] = getAst(adder(res, n))
+proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
+  # Looks for the last statement of the last statement, etc...
+  case n.kind
+  of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
+    result[0] = copyNimTree(n)
+    result[1] = copyNimTree(n)
+    result[2] = copyNimTree(n)
+    for i in ord(n.kind == nnkCaseStmt)..<n.len:
+      (result[0][i], result[1][^1], result[2][^1]) = transLastStmt(n[i], res, bracketExpr)
+  of nnkStmtList, nnkStmtListExpr, nnkBlockStmt, nnkBlockExpr, nnkWhileStmt,
+      nnkForStmt, nnkElifBranch, nnkElse, nnkElifExpr, nnkOfBranch, nnkExceptBranch:
+    result[0] = copyNimTree(n)
+    result[1] = copyNimTree(n)
+    result[2] = copyNimTree(n)
+    if n.len >= 1:
+      (result[0][^1], result[1][^1], result[2][^1]) = transLastStmt(n[^1], res, bracketExpr)
+  of nnkTableConstr:
+    result[1] = n[0][0]
+    result[2] = n[0][1]
+    if bracketExpr.len == 1:
+      bracketExpr.add([newCall(bindSym"typeof", newEmptyNode()), newCall(
+          bindSym"typeof", newEmptyNode())])
+    template adder(res, k, v) = res[k] = v
+    result[0] = getAst(adder(res, n[0][0], n[0][1]))
+  of nnkCurly:
+    result[2] = n[0]
+    if bracketExpr.len == 1:
+      bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
+    template adder(res, v) = res.incl(v)
+    result[0] = getAst(adder(res, n[0]))
+  else:
+    result[2] = n
+    if bracketExpr.len == 1:
+      bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
+    template adder(res, v) = res.add(v)
+    result[0] = getAst(adder(res, n))
 
-  macro collect*(init, body: untyped): untyped =
-    ## Comprehension for seq/set/table collections. ``init`` is
-    ## the init call, and so custom collections are supported.
-    ##
-    ## The last statement of ``body`` has special syntax that specifies
-    ## the collection's add operation. Use ``{e}`` for set's ``incl``,
-    ## ``{k: v}`` for table's ``[]=`` and ``e`` for seq's ``add``.
-    ##
-    ## The ``init`` proc can be called with any number of arguments,
-    ## i.e. ``initTable(initialSize)``.
-    runnableExamples:
-      import sets, tables
-      let data = @["bird", "word"]
-      ## seq:
-      let k = collect(newSeq):
-        for i, d in data.pairs:
-          if i mod 2 == 0: d
+macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
+  ## Comprehension for seq/set/table collections. ``init`` is
+  ## the init call, and so custom collections are supported.
+  ##
+  ## The last statement of ``body`` has special syntax that specifies
+  ## the collection's add operation. Use ``{e}`` for set's ``incl``,
+  ## ``{k: v}`` for table's ``[]=`` and ``e`` for seq's ``add``.
+  ##
+  ## The ``init`` proc can be called with any number of arguments,
+  ## i.e. ``initTable(initialSize)``.
+  runnableExamples:
+    import sets, tables
+    let data = @["bird", "word"]
+    ## seq:
+    let k = collect(newSeq):
+      for i, d in data.pairs:
+        if i mod 2 == 0: d
 
-      assert k == @["bird"]
-      ## seq with initialSize:
-      let x = collect(newSeqOfCap(4)):
-        for i, d in data.pairs:
-          if i mod 2 == 0: d
+    assert k == @["bird"]
+    ## seq with initialSize:
+    let x = collect(newSeqOfCap(4)):
+      for i, d in data.pairs:
+        if i mod 2 == 0: d
 
-      assert x == @["bird"]
-      ## HashSet:
-      let y = initHashSet.collect:
-        for d in data.items: {d}
+    assert x == @["bird"]
+    ## HashSet:
+    let y = initHashSet.collect:
+      for d in data.items: {d}
 
-      assert y == data.toHashSet
-      ## Table:
-      let z = collect(initTable(2)):
-        for i, d in data.pairs: {i: d}
+    assert y == data.toHashSet
+    ## Table:
+    let z = collect(initTable(2)):
+      for i, d in data.pairs: {i: d}
 
-      assert z == {1: "word", 0: "bird"}.toTable
-    # analyse the body, find the deepest expression 'it' and replace it via
-    # 'result.add it'
-    let res = genSym(nskVar, "collectResult")
-    expectKind init, {nnkCall, nnkIdent, nnkSym}
-    let bracketExpr = newTree(nnkBracketExpr,
-      if init.kind == nnkCall: init[0] else: init)
-    let (resBody, keyType, valueType) = transLastStmt(body, res, bracketExpr)
-    if bracketExpr.len == 3:
-      bracketExpr[1][1] = keyType
-      bracketExpr[2][1] = valueType
-    else:
-      bracketExpr[1][1] = valueType
-    let call = newTree(nnkCall, bracketExpr)
-    if init.kind == nnkCall:
-      for i in 1 ..< init.len:
-        call.add init[i]
-    result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
+    assert z == {1: "word", 0: "bird"}.toTable
+  # analyse the body, find the deepest expression 'it' and replace it via
+  # 'result.add it'
+  let res = genSym(nskVar, "collectResult")
+  expectKind init, {nnkCall, nnkIdent, nnkSym}
+  let bracketExpr = newTree(nnkBracketExpr,
+    if init.kind == nnkCall: init[0] else: init)
+  let (resBody, keyType, valueType) = transLastStmt(body, res, bracketExpr)
+  if bracketExpr.len == 3:
+    bracketExpr[1][1] = keyType
+    bracketExpr[2][1] = valueType
+  else:
+    bracketExpr[1][1] = valueType
+  let call = newTree(nnkCall, bracketExpr)
+  if init.kind == nnkCall:
+    for i in 1 ..< init.len:
+      call.add init[i]
+  result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
-  when isMainModule:
+when isMainModule:
+  since (1, 1):
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]

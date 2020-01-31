@@ -1270,6 +1270,7 @@ proc inViewport*(el: Node): bool =
            rect.right <= clientWidth().float
 
 proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
+proc `scrollTop=`*(e: Node, value: int) {.importcpp: "#.scrollTop = #", nodecl.}
 proc scrollLeft*(e: Node): int {.importcpp: "#.scrollLeft", nodecl.}
 proc scrollHeight*(e: Node): int {.importcpp: "#.scrollHeight", nodecl.}
 proc scrollWidth*(e: Node): int {.importcpp: "#.scrollWidth", nodecl.}
