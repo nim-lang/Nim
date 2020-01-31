@@ -28,7 +28,8 @@ build_nim_csources(){
       if [ "$unamestr" = 'FreeBSD' ]; then
         makeX=gmake
       fi
-      logicalCpus=$([ $(uname) = 'Darwin' ] && sysctl -n hw.logicalcpu_max || nproc)
+      # see https://stackoverflow.com/a/53427092/1426932
+      logicalCpus=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null)
       # +1: see https://unix.stackexchange.com/questions/519092/what-is-the-logic-of-using-nproc-1-in-make-command
       echo_run $makeX -C csources -j $(($logicalCpus + 1))
     fi
