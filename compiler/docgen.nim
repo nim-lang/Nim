@@ -59,15 +59,24 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   let file2 = $file
   template bail() =
     result = relativeTo(file, conf.projectPath)
+  proc nimbleDir(): AbsoluteDir =
+    getNimbleFile(conf, file2).parentDir.AbsoluteDir
   case conf.docRoot:
+  of "@default": # using `@` instead of `$` to avoid shell quoting complications
+    result = getRelativePathFromConfigPath(conf, file)
+    let dir = nimbleDir()
+    if not dir.isEmpty:
+      let result2 = relativeTo(file, dir)
+      if not result2.isEmpty and (result.isEmpty or result2.string.len < result.string.len):
+        result = result2
+    if result.isEmpty: bail()
   of "@pkg":
-    let dir = getNimbleFile(conf, file2).parentDir.AbsoluteDir
+    let dir = nimbleDir()
     if dir.isEmpty: bail()
     else: result = relativeTo(file, dir)
   of "@path":
     result = getRelativePathFromConfigPath(conf, file)
     if result.isEmpty: bail()
-  # we could consider a @besteffort mode that would returned the "best" match among @pkg and @path
   elif conf.docRoot.len > 0:
     doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
     doAssert conf.docRoot.existsDir, conf.docRoot
