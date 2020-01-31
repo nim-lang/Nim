@@ -270,7 +270,7 @@ when defined(windows) or defined(nimdoc):
     Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
-  proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
+  func `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
 
   proc newDispatcher*(): owned PDispatcher =
     ## Creates a new Dispatcher instance.
@@ -1109,8 +1109,8 @@ else:
     PDispatcher* = ref object of PDispatcherBase
       selector: Selector[AsyncData]
 
-  proc `==`*(x, y: AsyncFD): bool {.borrow.}
-  proc `==`*(x, y: AsyncEvent): bool {.borrow.}
+  func `==`*(x, y: AsyncFD): bool {.borrow.}
+  func `==`*(x, y: AsyncEvent): bool {.borrow.}
 
   template newAsyncData(): AsyncData =
     AsyncData(

@@ -283,7 +283,7 @@ proc `$`*(code: HttpCode): string =
   of 505: "505 HTTP Version Not Supported"
   else: $(int(code))
 
-proc `==`*(a, b: HttpCode): bool {.borrow.}
+func `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool =
   return cmpIgnoreCase(rawCode, $code) == 0

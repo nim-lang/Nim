@@ -12,8 +12,8 @@ when not defined(nimscript):
   when defined(windows):
     import winlean
 
-proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
-proc `$`*(err: OSErrorCode): string {.borrow.}
+func `==`*(err1, err2: OSErrorCode): bool {.borrow.}
+func `$`*(err: OSErrorCode): string {.borrow.}
 
 proc osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.

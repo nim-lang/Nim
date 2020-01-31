@@ -175,7 +175,7 @@ elif someVcc and hasThreadSupport:
     ATOMIC_ACQ_REL = 4.AtomMemModel
     ATOMIC_SEQ_CST = 5.AtomMemModel
 
-  proc `==`(x1, x2: AtomMemModel): bool {.borrow.}
+  func `==`(x1, x2: AtomMemModel): bool {.borrow.}
 
   proc readBarrier() {.importc: "_ReadBarrier",  header: "<intrin.h>".}
   proc writeBarrier() {.importc: "_WriteBarrier",  header: "<intrin.h>".}

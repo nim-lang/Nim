@@ -661,8 +661,8 @@ proc clock_nanosleep*(a1: ClockId, a2: cint, a3: var Timespec,
 proc clock_settime*(a1: ClockId, a2: var Timespec): cint {.
   importc, header: "<time.h>".}
 
-proc `==`*(a, b: Time): bool {.borrow.}
-proc `-`*(a, b: Time): Time {.borrow.}
+func `==`*(a, b: Time): bool {.borrow.}
+func `-`*(a, b: Time): Time {.borrow.}
 proc ctime*(a1: var Time): cstring {.importc, header: "<time.h>".}
 proc ctime_r*(a1: var Time, a2: cstring): cstring {.importc, header: "<time.h>".}
 proc difftime*(a1, a2: Time): cdouble {.importc, header: "<time.h>".}
@@ -889,7 +889,7 @@ proc CMSG_LEN*(len: csize_t): csize_t {.
 const
   INVALID_SOCKET* = SocketHandle(-1)
 
-proc `==`*(x, y: SocketHandle): bool {.borrow.}
+func `==`*(x, y: SocketHandle): bool {.borrow.}
 
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>".}
