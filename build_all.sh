@@ -28,8 +28,9 @@ build_nim_csources(){
       if [ "$unamestr" = 'FreeBSD' ]; then
         makeX=gmake
       fi
-      # `-j` implies `-j $(sysctl -n hw.ncpu)`
-      echo_run $makeX -C csources -j
+      logicalCpus=$([ $(uname) = 'Darwin' ] && sysctl -n hw.logicalcpu_max || nproc)
+      # +1: see https://unix.stackexchange.com/questions/519092/what-is-the-logic-of-using-nproc-1-in-make-command
+      echo_run $makeX -C csources -j $(($logicalCpus + 1))
     fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
