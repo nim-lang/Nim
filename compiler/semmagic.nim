@@ -134,7 +134,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
-    return traitCall  ## tpo early to evaluate
+    return traitCall  ## too early to evaluate
     
   let s = trait.sym.name.s
   case s
