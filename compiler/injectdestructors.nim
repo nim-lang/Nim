@@ -20,6 +20,7 @@ import
   lineinfos, parampatterns, sighashes
 
 from trees import exprStructuralEquivalent
+from algorithm import reverse
 
 type
   Con = object
@@ -27,10 +28,13 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     destroys, topLevelVars: PNode
+    tempDestroys: seq[PNode] # used as a stack that pop from
+                             # at strategic places which try to
+                             # mimic the natural scope.
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop: int
+    inLoop, canRaise: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
@@ -373,15 +377,41 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
+proc handleTmpDestroys(c: var Con; body: PNode; oldCanRaise: int): PNode =
+  if c.canRaise == oldCanRaise:
+    for i in countdown(c.tempDestroys.high, 0):
+      body.add c.tempDestroys[i]
+    result = body
+  else:
+    var n = newNodeI(nkStmtList, body.info)
+    for i in countdown(c.tempDestroys.high, 0):
+      n.add c.tempDestroys[i]
+    result = newTryFinally(body, n)
+  c.tempDestroys.setLen 0
+
 template handleNested(n: untyped, processCall: untyped) =
   case n.kind
   of nkStmtList, nkStmtListExpr:
     if n.len == 0: return n
-    result = copyNode(n)
-    for i in 0..<n.len-1:
-      result.add p(n[i], c, normal)
-    template node: untyped = n[^1]
-    result.add processCall
+    let oldCanRaise = c.canRaise
+    result = shallowCopy(n)
+    let l = n.len - 1
+    for i in 0..<l:
+      result[i] = p(n[i], c, normal)
+
+    template node: untyped = n[l]
+    # if we have an expression producing a temporary, we must
+    # not destroy it too early:
+    if n.typ == nil or isEmptyType(n.typ):
+      result[l] = processCall
+      result = handleTmpDestroys(c, result, oldCanRaise)
+    else:
+      setLen(result.sons, l)
+      result = handleTmpDestroys(c, result, oldCanRaise)
+      if result.kind != nkFinally:
+        result.add processCall
+      else:
+        result = newTree(nkStmtListExpr, result, processCall)
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
     result.add n[0]
@@ -563,7 +593,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result = newTree(nkStmtList, destroyOld, result)
       else:
         result[0] = p(n[0], c, normal)
-
+      if canRaise(n[0]): inc c.canRaise
       if mode == normal:
         result = ensureDestruction(result, c)
     of nkDiscardStmt: # Small optimization
@@ -639,6 +669,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result.add p(n[0], c, sinkArg)
         else:
           result.add copyNode(n[0])
+      inc c.canRaise
     of nkWhileStmt:
       result = copyNode(n)
       inc c.inLoop
@@ -759,10 +790,6 @@ proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
       result.add destroys[i]
       destroys[i] = c.emptyNode
 
-proc reverseDestroys(destroys: seq[PNode]): seq[PNode] =
-  for i in countdown(destroys.len - 1, 0):
-    result.add destroys[i]
-
 proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   if sfGeneratedOp in owner.flags or (owner.kind == skIterator and isInlineIterator(owner.typ)):
     return n
@@ -795,13 +822,16 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
-  if c.destroys.len > 0:
-    c.destroys.sons = reverseDestroys(c.destroys.sons)
+  if c.destroys.len > 0 or c.tempDestroys.len > 0:
+    reverse c.destroys.sons
+    var fin: PNode
     if owner.kind == skModule:
-      result.add newTryFinally(body, extractDestroysForTemporaries(c, c.destroys))
+      fin = newTryFinally(body, extractDestroysForTemporaries(c, c.destroys))
       g.globalDestructors.add c.destroys
     else:
-      result.add newTryFinally(body, c.destroys)
+      fin = newTryFinally(body, c.destroys)
+    for i in countdown(c.tempDestroys.high, 0): fin[1].add c.tempDestroys[i]
+    result.add fin
   else:
     result.add body
   dbg:
