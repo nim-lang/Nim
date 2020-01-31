@@ -1,6 +1,7 @@
 #! /bin/sh
 
-# build development version of the compiler; can be rerun safely
+# build development version of the compiler; can be rerun safely.
+# arguments can be passed, eg `--os freebsd`
 
 set -u # error on undefined variables
 set -e # exit on first error
@@ -10,14 +11,33 @@ echo_run(){
   "$@"
 }
 
-[ -d csources ] || echo_run git clone --depth 1 https://github.com/nim-lang/csources.git
+[ -d csources ] || echo_run git clone -q --depth 1 https://github.com/nim-lang/csources.git
 
 nim_csources=bin/nim_csources
+
+build_nim_csources_via_script(){
+  echo_run cd csources
+  echo_run sh build.sh "$@"
+}
+
 build_nim_csources(){
   ## avoid changing dir in case of failure
   (
-    echo_run cd csources
-    echo_run sh build.sh $@
+    if [[ $# -ne 0 ]]; then
+      # some args were passed (eg: `--cpu i386`), need to call build.sh
+      build_nim_csources_via_script "$@"
+    else
+      # no args, use multhreaded (5X faster on 16 cores: 10s instead of 50s)
+      makeX=make
+      unamestr=$(uname)
+      if [ "$unamestr" = 'FreeBSD' ]; then
+        makeX=gmake
+      fi
+      # see https://stackoverflow.com/a/53427092/1426932
+      logicalCpus=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null)
+      # +1: see https://unix.stackexchange.com/questions/519092/what-is-the-logic-of-using-nproc-1-in-make-command
+      which $makeX && echo_run $makeX -C csources -j $(($logicalCpus + 1)) || build_nim_csources_via_script
+    fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
   # without having to rebuild from csources
