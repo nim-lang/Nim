@@ -143,3 +143,4 @@ block genericHead:
   doAssert not compiles(genericHead(Foo))
   type Bar = object
   doAssert not compiles(genericHead(Bar))
+  # doAssert seq[int].genericHead is seq

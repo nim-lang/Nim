@@ -167,9 +167,13 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.info = traitCall.info
   of "genericHead":
     var arg = operand
-    if arg.kind == tyGenericInst:
+    case arg.kind
+    of tyGenericInst:
       result = getTypeDescNode(arg.base, operand.owner, traitCall.info)
-    else:
+    # of tySequence:
+    #   var resType = newType(tySequence, operand.owner)
+    #   result = toNode(resType, traitCall.info) # doesn't work yet
+    else: # there might be more kinds to consider, eg `tySequence` etc
       localError(c.config, traitCall.info, "expected generic instantiation, got: " & $(arg.kind, typeToString(operand)))
       result = newType(tyError, context).toNode(traitCall.info)
   of "stripGenericParams":
