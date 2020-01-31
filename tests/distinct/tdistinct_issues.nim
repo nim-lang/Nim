@@ -48,8 +48,8 @@ block t9079:
     Dollars = distinct float
 
   proc `$`(d: Dollars): string {.borrow.}
-  proc `*`(a, b: Dollars): Dollars {.borrow.}
-  proc `+`(a, b: Dollars): Dollars {.borrow.}
+  func `*`(a, b: Dollars): Dollars {.borrow.}
+  func `+`(a, b: Dollars): Dollars {.borrow.}
 
   var a = Dollars(20)
   a = Dollars(25.0)
