@@ -7,7 +7,7 @@ set -u # error on undefined variables
 set -e # exit on first error
 
 echo_run(){
-  printf "\n$*\n"
+  echo "$*"
   "$@"
 }
 
@@ -21,7 +21,7 @@ build_nim_csources_via_script(){
 }
 
 build_nim_csources(){
-  ## avoid changing dir in case of failure
+  # avoid changing dir in case of failure
   (
     if [[ $# -ne 0 ]]; then
       # some args were passed (eg: `--cpu i386`), need to call build.sh
@@ -33,10 +33,7 @@ build_nim_csources(){
       if [ "$unamestr" = 'FreeBSD' ]; then
         makeX=gmake
       fi
-      # see https://stackoverflow.com/a/53427092/1426932
-      logicalCpus=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null)
-      # +1: see https://unix.stackexchange.com/questions/519092/what-is-the-logic-of-using-nproc-1-in-make-command
-      which $makeX && echo_run $makeX -C csources -j $(($logicalCpus + 1)) || build_nim_csources_via_script
+      which $makeX && echo_run $makeX -C csources -j -l 80 || build_nim_csources_via_script
     fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
