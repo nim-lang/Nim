@@ -987,6 +987,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
     ## When on Windows, it calls `quoteShellWindows proc
     ## <#quoteShellWindows,string>`_. Otherwise, calls `quoteShellPosix proc
     ## <#quoteShellPosix,string>`_.
+    ## See also: `system.quoted`.
     when defined(windows):
       return quoteShellWindows(s)
     else:

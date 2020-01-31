@@ -578,10 +578,6 @@ proc norm(s: var string) =
     s = tmp
   s = s.strip
 
-proc quoted(a: string): string =
-  # todo: consider moving to system.nim
-  result.addQuoted(a)
-
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returns a list of tests that have problems
   var specs: seq[TSpec] = @[]

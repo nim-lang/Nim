@@ -1225,7 +1225,7 @@ proc addMulti(s: var SqlWriter, n: SqlNode, sep = ',', prefix, suffix: char) =
       ra(n.sons[i], s)
     s.add(suffix)
 
-proc quoted(s: string): string =
+proc quoteSQL(s: string): string =
   "\"" & replace(s, "\"", "\"\"") & "\""
 
 proc ra(n: SqlNode, s: var SqlWriter) =
@@ -1236,9 +1236,9 @@ proc ra(n: SqlNode, s: var SqlWriter) =
     if allCharsInSet(n.strVal, {'\33'..'\127'}):
       s.add(n.strVal)
     else:
-      s.add(quoted(n.strVal))
+      s.add(quoteSQL(n.strVal))
   of nkQuotedIdent:
-    s.add(quoted(n.strVal))
+    s.add(quoteSQL(n.strVal))
   of nkStringLit:
     s.add(escape(n.strVal, "'", "'"))
   of nkBitStringLit:

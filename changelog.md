@@ -54,6 +54,7 @@
 - Added `minIndex` and `maxIndex` to the `sequtils` module
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
+- Added `system.quoted`
 
 ## Library changes
 
