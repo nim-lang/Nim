@@ -14,7 +14,7 @@ from algorithm import binarySearch
 type
   Color* = distinct int ## A color stored as RGB, e.g. `0xff00cc`.
 
-proc `==` *(a, b: Color): bool {.borrow.}
+func `==` *(a, b: Color): bool {.borrow.}
   ## Compares two colors.
   ##
   ## .. code-block::

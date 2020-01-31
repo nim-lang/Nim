@@ -554,7 +554,7 @@ var
   SO_ERROR* {.importc, header: "winsock2.h".}: cint
   TCP_NODELAY* {.importc, header: "winsock2.h".}: cint
 
-proc `==`*(x, y: SocketHandle): bool {.borrow.}
+func `==`*(x, y: SocketHandle): bool {.borrow.}
 
 proc getservbyname*(name, proto: cstring): ptr Servent {.
   stdcall, importc: "getservbyname", dynlib: ws2dll.}

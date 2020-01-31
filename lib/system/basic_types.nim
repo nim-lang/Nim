@@ -46,20 +46,20 @@ type
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
-proc `not`*(x: bool): bool {.magic: "Not", noSideEffect.}
+func `not`*(x: bool): bool {.magic: "Not".}
   ## Boolean not; returns true if ``x == false``.
 
-proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
+func `and`*(x, y: bool): bool {.magic: "And".}
   ## Boolean ``and``; returns true if ``x == y == true`` (if both arguments
   ## are true).
   ##
   ## Evaluation is lazy: if ``x`` is false, ``y`` will not even be evaluated.
-proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
+func `or`*(x, y: bool): bool {.magic: "Or".}
   ## Boolean ``or``; returns true if ``not (not x and not y)`` (if any of
   ## the arguments is true).
   ##
   ## Evaluation is lazy: if ``x`` is true, ``y`` will not even be evaluated.
-proc `xor`*(x, y: bool): bool {.magic: "Xor", noSideEffect.}
+func `xor`*(x, y: bool): bool {.magic: "Xor".}
   ## Boolean `exclusive or`; returns true if ``x != y`` (if either argument
   ## is true while the other is false).
 

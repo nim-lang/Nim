@@ -30,9 +30,9 @@ block t4435:
 block t7010:
   type MyInt = distinct int
 
-  proc `+`(x: MyInt, y: MyInt): MyInt {.borrow.}
-  proc `+=`(x: var MyInt, y: MyInt) {.borrow.}
-  proc `=`(x: var MyInt, y: MyInt) {.borrow.}
+  func `+`(x: MyInt, y: MyInt): MyInt {.borrow.}
+  func `+=`(x: var MyInt, y: MyInt) {.borrow.}
+  func `=`(x: var MyInt, y: MyInt) {.borrow.}
 
   var next: MyInt
 

@@ -1,5 +1,5 @@
 # comparison operators:
-proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
+func `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum".}
   ## Checks whether values within the *same enum* have the same underlying value.
   ##
   ## .. code-block:: Nim
@@ -13,35 +13,35 @@ proc `==`*[Enum: enum](x, y: Enum): bool {.magic: "EqEnum", noSideEffect.}
   ##    e2 = Enum1(Place2)
   ##  echo (e1 == e2) # true
   ##  echo (e1 == Place2) # raises error
-proc `==`*(x, y: pointer): bool {.magic: "EqRef", noSideEffect.}
+func `==`*(x, y: pointer): bool {.magic: "EqRef".}
   ## .. code-block:: Nim
   ##  var # this is a wildly dangerous example
   ##    a = cast[pointer](0)
   ##    b = cast[pointer](nil)
   ##  echo (a == b) # true due to the special meaning of `nil`/0 as a pointer
-proc `==`*(x, y: string): bool {.magic: "EqStr", noSideEffect.}
+func `==`*(x, y: string): bool {.magic: "EqStr".}
   ## Checks for equality between two `string` variables.
 
-proc `==`*(x, y: char): bool {.magic: "EqCh", noSideEffect.}
+func `==`*(x, y: char): bool {.magic: "EqCh".}
   ## Checks for equality between two `char` variables.
-proc `==`*(x, y: bool): bool {.magic: "EqB", noSideEffect.}
+func `==`*(x, y: bool): bool {.magic: "EqB".}
   ## Checks for equality between two `bool` variables.
-proc `==`*[T](x, y: set[T]): bool {.magic: "EqSet", noSideEffect.}
+func `==`*[T](x, y: set[T]): bool {.magic: "EqSet".}
   ## Checks for equality between two variables of type `set`.
   ##
   ## .. code-block:: Nim
   ##  var a = {1, 2, 2, 3} # duplication in sets is ignored
   ##  var b = {1, 2, 3}
   ##  echo (a == b) # true
-proc `==`*[T](x, y: ref T): bool {.magic: "EqRef", noSideEffect.}
+func `==`*[T](x, y: ref T): bool {.magic: "EqRef".}
   ## Checks that two `ref` variables refer to the same item.
-proc `==`*[T](x, y: ptr T): bool {.magic: "EqRef", noSideEffect.}
+func `==`*[T](x, y: ptr T): bool {.magic: "EqRef".}
   ## Checks that two `ptr` variables refer to the same item.
-proc `==`*[T: proc](x, y: T): bool {.magic: "EqProc", noSideEffect.}
+func `==`*[T: proc](x, y: T): bool {.magic: "EqProc".}
   ## Checks that two `proc` variables refer to the same procedure.
 
-proc `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum", noSideEffect.}
-proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.}
+func `<=`*[Enum: enum](x, y: Enum): bool {.magic: "LeEnum".}
+func `<=`*(x, y: string): bool {.magic: "LeStr".}
   ## Compares two strings and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   ##
@@ -53,7 +53,7 @@ proc `<=`*(x, y: string): bool {.magic: "LeStr", noSideEffect.}
   ##     assert a <= b
   ##     assert a <= a
   ##     assert (a <= c) == false
-proc `<=`*(x, y: char): bool {.magic: "LeCh", noSideEffect.}
+func `<=`*(x, y: char): bool {.magic: "LeCh".}
   ## Compares two chars and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   ##
@@ -65,7 +65,7 @@ proc `<=`*(x, y: char): bool {.magic: "LeCh", noSideEffect.}
   ##     assert a <= b
   ##     assert a <= a
   ##     assert (a <= c) == false
-proc `<=`*[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
+func `<=`*[T](x, y: set[T]): bool {.magic: "LeSet".}
   ## Returns true if `x` is a subset of `y`.
   ##
   ## A subset `x` has all of its members in `y` and `y` doesn't necessarily
@@ -79,12 +79,12 @@ proc `<=`*[T](x, y: set[T]): bool {.magic: "LeSet", noSideEffect.}
   ##   assert a <= b
   ##   assert a <= a
   ##   assert (a <= c) == false
-proc `<=`*(x, y: bool): bool {.magic: "LeB", noSideEffect.}
-proc `<=`*[T](x, y: ref T): bool {.magic: "LePtr", noSideEffect.}
-proc `<=`*(x, y: pointer): bool {.magic: "LePtr", noSideEffect.}
+func `<=`*(x, y: bool): bool {.magic: "LeB".}
+func `<=`*[T](x, y: ref T): bool {.magic: "LePtr".}
+func `<=`*(x, y: pointer): bool {.magic: "LePtr".}
 
-proc `<`*[Enum: enum](x, y: Enum): bool {.magic: "LtEnum", noSideEffect.}
-proc `<`*(x, y: string): bool {.magic: "LtStr", noSideEffect.}
+func `<`*[Enum: enum](x, y: Enum): bool {.magic: "LtEnum".}
+func `<`*(x, y: string): bool {.magic: "LtStr".}
   ## Compares two strings and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   ##
@@ -96,7 +96,7 @@ proc `<`*(x, y: string): bool {.magic: "LtStr", noSideEffect.}
   ##     assert a < b
   ##     assert (a < a) == false
   ##     assert (a < c) == false
-proc `<`*(x, y: char): bool {.magic: "LtCh", noSideEffect.}
+func `<`*(x, y: char): bool {.magic: "LtCh".}
   ## Compares two chars and returns true if `x` is lexicographically
   ## before `y` (uppercase letters come before lowercase letters).
   ##
@@ -108,7 +108,7 @@ proc `<`*(x, y: char): bool {.magic: "LtCh", noSideEffect.}
   ##     assert a < b
   ##     assert (a < a) == false
   ##     assert (a < c) == false
-proc `<`*[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
+func `<`*[T](x, y: set[T]): bool {.magic: "LtSet".}
   ## Returns true if `x` is a strict or proper subset of `y`.
   ##
   ## A strict or proper subset `x` has all of its members in `y` but `y` has
@@ -122,10 +122,10 @@ proc `<`*[T](x, y: set[T]): bool {.magic: "LtSet", noSideEffect.}
   ##   assert a < b
   ##   assert (a < a) == false
   ##   assert (a < c) == false
-proc `<`*(x, y: bool): bool {.magic: "LtB", noSideEffect.}
-proc `<`*[T](x, y: ref T): bool {.magic: "LtPtr", noSideEffect.}
-proc `<`*[T](x, y: ptr T): bool {.magic: "LtPtr", noSideEffect.}
-proc `<`*(x, y: pointer): bool {.magic: "LtPtr", noSideEffect.}
+func `<`*(x, y: bool): bool {.magic: "LtB".}
+func `<`*[T](x, y: ref T): bool {.magic: "LtPtr".}
+func `<`*[T](x, y: ptr T): bool {.magic: "LtPtr".}
+func `<`*(x, y: pointer): bool {.magic: "LtPtr".}
 
 template `!=`*(x, y: untyped): untyped =
   ## Unequals operator. This is a shorthand for ``not (x == y)``.
@@ -140,35 +140,35 @@ template `>`*(x, y: untyped): untyped =
   y < x
 
 
-proc `==`*(x, y: int): bool {.magic: "EqI", noSideEffect.}
+func `==`*(x, y: int): bool {.magic: "EqI".}
   ## Compares two integers for equality.
-proc `==`*(x, y: int8): bool {.magic: "EqI", noSideEffect.}
-proc `==`*(x, y: int16): bool {.magic: "EqI", noSideEffect.}
-proc `==`*(x, y: int32): bool {.magic: "EqI", noSideEffect.}
-proc `==`*(x, y: int64): bool {.magic: "EqI", noSideEffect.}
+func `==`*(x, y: int8): bool {.magic: "EqI".}
+func `==`*(x, y: int16): bool {.magic: "EqI".}
+func `==`*(x, y: int32): bool {.magic: "EqI".}
+func `==`*(x, y: int64): bool {.magic: "EqI".}
 
-proc `<=`*(x, y: int): bool {.magic: "LeI", noSideEffect.}
+func `<=`*(x, y: int): bool {.magic: "LeI".}
   ## Returns true if `x` is less than or equal to `y`.
-proc `<=`*(x, y: int8): bool {.magic: "LeI", noSideEffect.}
-proc `<=`*(x, y: int16): bool {.magic: "LeI", noSideEffect.}
-proc `<=`*(x, y: int32): bool {.magic: "LeI", noSideEffect.}
-proc `<=`*(x, y: int64): bool {.magic: "LeI", noSideEffect.}
+func `<=`*(x, y: int8): bool {.magic: "LeI".}
+func `<=`*(x, y: int16): bool {.magic: "LeI".}
+func `<=`*(x, y: int32): bool {.magic: "LeI".}
+func `<=`*(x, y: int64): bool {.magic: "LeI".}
 
-proc `<`*(x, y: int): bool {.magic: "LtI", noSideEffect.}
+func `<`*(x, y: int): bool {.magic: "LtI".}
   ## Returns true if `x` is less than `y`.
-proc `<`*(x, y: int8): bool {.magic: "LtI", noSideEffect.}
-proc `<`*(x, y: int16): bool {.magic: "LtI", noSideEffect.}
-proc `<`*(x, y: int32): bool {.magic: "LtI", noSideEffect.}
-proc `<`*(x, y: int64): bool {.magic: "LtI", noSideEffect.}
+func `<`*(x, y: int8): bool {.magic: "LtI".}
+func `<`*(x, y: int16): bool {.magic: "LtI".}
+func `<`*(x, y: int32): bool {.magic: "LtI".}
+func `<`*(x, y: int64): bool {.magic: "LtI".}
 
 
-proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
+func `<=%`*(x, y: IntMax32): bool {.magic: "LeU".}
+func `<=%`*(x, y: int64): bool {.magic: "LeU64".}
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) <= unsigned(y)``.
 
-proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
+func `<%`*(x, y: IntMax32): bool {.magic: "LtU".}
+func `<%`*(x, y: int64): bool {.magic: "LtU64".}
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) < unsigned(y)``.
 
@@ -181,63 +181,63 @@ template `>%`*(x, y: untyped): untyped = y <% x
   ## Returns true if ``unsigned(x) > unsigned(y)``.
 
 
-proc `==`*(x, y: uint): bool {.magic: "EqI", noSideEffect.}
+func `==`*(x, y: uint): bool {.magic: "EqI".}
   ## Compares two unsigned integers for equality.
-proc `==`*(x, y: uint8): bool {.magic: "EqI", noSideEffect.}
-proc `==`*(x, y: uint16): bool {.magic: "EqI", noSideEffect.}
-proc `==`*(x, y: uint32): bool {.magic: "EqI", noSideEffect.}
-proc `==`*(x, y: uint64): bool {.magic: "EqI", noSideEffect.}
+func `==`*(x, y: uint8): bool {.magic: "EqI".}
+func `==`*(x, y: uint16): bool {.magic: "EqI".}
+func `==`*(x, y: uint32): bool {.magic: "EqI".}
+func `==`*(x, y: uint64): bool {.magic: "EqI".}
 
 
-proc `<=`*(x, y: uint): bool {.magic: "LeU", noSideEffect.}
+func `<=`*(x, y: uint): bool {.magic: "LeU".}
   ## Returns true if ``x <= y``.
-proc `<=`*(x, y: uint8): bool {.magic: "LeU", noSideEffect.}
-proc `<=`*(x, y: uint16): bool {.magic: "LeU", noSideEffect.}
-proc `<=`*(x, y: uint32): bool {.magic: "LeU", noSideEffect.}
-proc `<=`*(x, y: uint64): bool {.magic: "LeU", noSideEffect.}
+func `<=`*(x, y: uint8): bool {.magic: "LeU".}
+func `<=`*(x, y: uint16): bool {.magic: "LeU".}
+func `<=`*(x, y: uint32): bool {.magic: "LeU".}
+func `<=`*(x, y: uint64): bool {.magic: "LeU".}
 
-proc `<`*(x, y: uint): bool {.magic: "LtU", noSideEffect.}
+func `<`*(x, y: uint): bool {.magic: "LtU".}
   ## Returns true if ``unsigned(x) < unsigned(y)``.
-proc `<`*(x, y: uint8): bool {.magic: "LtU", noSideEffect.}
-proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
-proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
-proc `<`*(x, y: uint64): bool {.magic: "LtU", noSideEffect.}
+func `<`*(x, y: uint8): bool {.magic: "LtU".}
+func `<`*(x, y: uint16): bool {.magic: "LtU".}
+func `<`*(x, y: uint32): bool {.magic: "LtU".}
+func `<`*(x, y: uint64): bool {.magic: "LtU".}
 
 
 {.push stackTrace: off.}
 
-proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int): int {.magic: "MinI".} =
   if x <= y: x else: y
-proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int8): int8 {.magic: "MinI".} =
   if x <= y: x else: y
-proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int16): int16 {.magic: "MinI".} =
   if x <= y: x else: y
-proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int32): int32 {.magic: "MinI".} =
   if x <= y: x else: y
-proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int64): int64 {.magic: "MinI".} =
   ## The minimum value of two integers.
   if x <= y: x else: y
 
-proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int): int {.magic: "MaxI".} =
   if y <= x: x else: y
-proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int8): int8 {.magic: "MaxI".} =
   if y <= x: x else: y
-proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int16): int16 {.magic: "MaxI".} =
   if y <= x: x else: y
-proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int32): int32 {.magic: "MaxI".} =
   if y <= x: x else: y
-proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int64): int64 {.magic: "MaxI".} =
   ## The maximum value of two integers.
   if y <= x: x else: y
 
 
-proc min*[T](x: openArray[T]): T =
+func min*[T](x: openArray[T]): T =
   ## The minimum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
   for i in 1..high(x):
     if x[i] < result: result = x[i]
 
-proc max*[T](x: openArray[T]): T =
+func max*[T](x: openArray[T]): T =
   ## The maximum value of `x`. ``T`` needs to have a ``<`` operator.
   result = x[0]
   for i in 1..high(x):
@@ -246,7 +246,7 @@ proc max*[T](x: openArray[T]): T =
 {.pop.} # stackTrace: off
 
 
-proc clamp*[T](x, a, b: T): T =
+func clamp*[T](x, a, b: T): T =
   ## Limits the value ``x`` within the interval [a, b].
   ##
   ## .. code-block:: Nim
@@ -257,13 +257,13 @@ proc clamp*[T](x, a, b: T): T =
   return x
 
 
-proc `==`*[I, T](x, y: array[I, T]): bool =
+func `==`*[I, T](x, y: array[I, T]): bool =
   for f in low(x)..high(x):
     if x[f] != y[f]:
       return
   result = true
 
-proc `==`*[T](x, y: openArray[T]): bool =
+func `==`*[T](x, y: openArray[T]): bool =
   if x.len != y.len:
     return false
   for f in low(x)..high(x):
@@ -272,7 +272,7 @@ proc `==`*[T](x, y: openArray[T]): bool =
   result = true
 
 
-proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
+func `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   ## Generic equals operator for sequences: relies on a equals operator for
   ## the element type `T`.
   when nimvm:

@@ -406,7 +406,7 @@ when defined(nimArrIdx):
   func `[]`*[I: Ordinal;T](a: T; i: I): T {.magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
-  proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
+  func `=`*[T](dest: var T; src: T) {.magic: "Asgn".}
 
   func arrGet[I: Ordinal;T](a: T; i: I): T {.magic: "ArrGet".}
   proc arrPut[I: Ordinal;T,S](a: T; i: I;
@@ -1067,7 +1067,7 @@ when taintMode:
                                         ## ``string`` if the taint mode is not
                                         ## turned on.
 
-  proc len*(s: TaintedString): int {.borrow.}
+  func len*(s: TaintedString): int {.borrow.}
 else:
   type TaintedString* = string          ## A distinct string type that
                                         ## is `tainted`:idx:, see `taint mode

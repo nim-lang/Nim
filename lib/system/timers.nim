@@ -71,7 +71,7 @@ elif defined(posixRealtime):
     clock_gettime(CLOCK_REALTIME, t)
     result = Ticks(int64(t.tv_sec) * 1000000000'i64 + int64(t.tv_nsec))
 
-  proc `-`(a, b: Ticks): Nanos {.borrow.}
+  func `-`(a, b: Ticks): Nanos {.borrow.}
 
 else:
   # fallback Posix implementation:
@@ -96,4 +96,4 @@ else:
     result = Ticks(int64(t.tv_sec) * 1000_000_000'i64 +
                     int64(t.tv_usec) * 1000'i64)
 
-  proc `-`(a, b: Ticks): Nanos {.borrow.}
+  func `-`(a, b: Ticks): Nanos {.borrow.}

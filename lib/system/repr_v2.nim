@@ -4,48 +4,48 @@ proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## imported from typetraits
 
-proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
+func repr*(x: NimNode): string {.magic: "Repr".}
 
-proc repr*(x: int): string {.magic: "IntToStr", noSideEffect.}
+func repr*(x: int): string {.magic: "IntToStr".}
   ## repr for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc repr*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
+func repr*(x: int64): string {.magic: "Int64ToStr".}
   ## repr for an integer argument. Returns `x`
   ## converted to a decimal string.
 
-proc repr*(x: float): string {.magic: "FloatToStr", noSideEffect.}
+func repr*(x: float): string {.magic: "FloatToStr".}
   ## repr for a float argument. Returns `x`
   ## converted to a decimal string.
 
-proc repr*(x: bool): string {.magic: "BoolToStr", noSideEffect.}
+func repr*(x: bool): string {.magic: "BoolToStr".}
   ## repr for a boolean argument. Returns `x`
   ## converted to the string "false" or "true".
 
-proc repr*(x: char): string {.magic: "CharToStr", noSideEffect.}
+func repr*(x: char): string {.magic: "CharToStr".}
   ## repr for a character argument. Returns `x`
   ## converted to a string.
   ##
   ## .. code-block:: Nim
   ##   assert $'c' == "c"
 
-proc repr*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
+func repr*(x: cstring): string {.magic: "CStrToStr".}
   ## repr for a CString argument. Returns `x`
   ## converted to a string.
 
-proc repr*(x: string): string {.magic: "StrToStr", noSideEffect.}
+func repr*(x: string): string {.magic: "StrToStr".}
   ## repr for a string argument. Returns `x`
   ## as it is. This operator is useful for generic code, so
   ## that ``$expr`` also works if ``expr`` is already a string.
 
-proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
+func repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr".}
   ## repr for an enumeration argument. This works for
   ## any enumeration type thanks to compiler magic.
   ##
   ## If a `repr` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
-proc repr*(p: pointer): string =
+func repr*(p: pointer): string =
   ## repr of pointer as its hexadecimal value
   if p == nil: 
     result = "nil"
@@ -87,7 +87,7 @@ proc reprObject[T: tuple|object](res: var string, x: T) =
   res.add(')')
 
 
-proc repr*[T: tuple|object](x: T): string =
+func repr*[T: tuple|object](x: T): string =
   ## Generic `repr` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
@@ -99,11 +99,11 @@ proc repr*[T: tuple|object](x: T): string =
     result = $typeof(x)
   reprObject(result, x)
  
-proc repr*[T](x: ptr T): string =
+func repr*[T](x: ptr T): string =
   result.add repr(pointer(x)) & " "
   result.add repr(x[])
 
-proc repr*[T](x: ref T | ptr T): string =
+func repr*[T](x: ref T | ptr T): string =
   if isNil(x): return "nil"
   result = $typeof(x)
   reprObject(result, x[])
@@ -119,7 +119,7 @@ proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
     result.add repr(value)
   result.add(suffix)
 
-proc repr*[T](x: set[T]): string =
+func repr*[T](x: set[T]): string =
   ## Generic `repr` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##
@@ -127,7 +127,7 @@ proc repr*[T](x: set[T]): string =
   ##   ${23, 45} == "{23, 45}"
   collectionToRepr(x, "{", ", ", "}")
 
-proc repr*[T](x: seq[T]): string =
+func repr*[T](x: seq[T]): string =
   ## Generic `repr` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
@@ -135,7 +135,7 @@ proc repr*[T](x: seq[T]): string =
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToRepr(x, "@[", ", ", "]")
 
-proc repr*[T, U](x: HSlice[T, U]): string =
+func repr*[T, U](x: HSlice[T, U]): string =
   ## Generic `repr` operator for slices that is lifted from the components
   ## of `x`. Example:
   ##
@@ -145,11 +145,11 @@ proc repr*[T, U](x: HSlice[T, U]): string =
   result.add(" .. ")
   result.add(repr(x.b))
 
-proc repr*[T, IDX](x: array[IDX, T]): string =
+func repr*[T, IDX](x: array[IDX, T]): string =
   ## Generic `repr` operator for arrays that is lifted from the components.
   collectionToRepr(x, "[", ", ", "]")
 
-proc repr*[T](x: openArray[T]): string =
+func repr*[T](x: openArray[T]): string =
   ## Generic `repr` operator for openarrays that is lifted from the components
   ## of `x`. Example:
   ##
