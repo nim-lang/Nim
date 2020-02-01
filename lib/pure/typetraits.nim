@@ -64,8 +64,17 @@ proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
   ##
   ## Other languages name a type like these `blob`:idx:.
 
-proc isNamedTuple*(T: typedesc): bool {.magic: "TypeTrait".}
-  ## Return true for named tuples, false for any other type.
+proc isNamedTuple(T: typedesc): bool =
+  # Taken from typetraits.
+  when T isnot tuple: result = false
+  else:
+    var t: T
+    for name, _ in t.fieldPairs:
+      when name == "Field0":
+        return compiles(t.Field0)
+      else:
+        return true
+    return false
 
 proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
