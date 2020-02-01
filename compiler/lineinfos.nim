@@ -229,7 +229,7 @@ type
   ERecoverableError* = object of ValueError
   ESuggestDone* = object of Exception
 
-proc `==`*(a, b: FileIndex): bool {.borrow.}
+func `==`*(a, b: FileIndex): bool {.borrow.}
 
 proc raiseRecoverableError*(msg: string) {.noinline.} =
   raise newException(ERecoverableError, msg)

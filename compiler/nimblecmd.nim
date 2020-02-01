@@ -19,7 +19,7 @@ proc addPath*(conf: ConfigRef; path: AbsoluteDir, info: TLineInfo) =
 type
   Version* = distinct string
 
-proc `$`*(ver: Version): string {.borrow.}
+func `$`*(ver: Version): string {.borrow.}
 
 proc newVersion*(ver: string): Version =
   doAssert(ver.len == 0 or ver[0] in {'#', '\0'} + Digits,

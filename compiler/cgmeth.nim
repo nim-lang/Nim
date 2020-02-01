@@ -143,8 +143,8 @@ proc fixupDispatcher(meth, disp: PSym; conf: ConfigRef) =
   # The following code works only with lock levels, so we disable
   # it when they're not available.
   when declared(TLockLevel):
-    proc `<`(a, b: TLockLevel): bool {.borrow.}
-    proc `==`(a, b: TLockLevel): bool {.borrow.}
+    func `<`(a, b: TLockLevel): bool {.borrow.}
+    func `==`(a, b: TLockLevel): bool {.borrow.}
     if disp.typ.lockLevel == UnspecifiedLockLevel:
       disp.typ.lockLevel = meth.typ.lockLevel
     elif meth.typ.lockLevel != UnspecifiedLockLevel and

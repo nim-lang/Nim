@@ -15,7 +15,7 @@ type
 proc `++`(x, y: DI): DI {.borrow.}
 proc `++`(x, y: DF): DF {.borrow.}
 
-proc `$`(x: DI): string {.borrow.}
-proc `$`(x: DF): string {.borrow.}
+func `$`(x: DI): string {.borrow.}
+func `$`(x: DF): string {.borrow.}
 
 echo  4544.DI ++ 343.DI, " ", (4.5.DF ++ 0.5.DF).float == 5.0
