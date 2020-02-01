@@ -215,6 +215,26 @@ macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): 
     copyNimNode(call).add callsons,
     tmp)
 
+proc replaceOutplace(lhs, n: NimNode): NimNode =
+  case n.kind
+  of nnkDotExpr, nnkBracketExpr:
+    result = copyNimTree(n)
+    result[0] = replaceOutplace(lhs, result[0])
+  of nnkCall:
+    result = newCall(bindSym"outplace", [lhs, n])
+  else:
+    doAssert false, "\n" & n.treeRepr
+
+macro `.@`*(lhs, rhs): untyped {.since: (1,1).} =
+  ## outplace operator, syntax sugar for `outplace`
+  runnableExamples:
+    import algorithm, strutils
+    doAssert @[2,1,3].@sort() == @[1,2,3]
+    doAssert "".@addQuoted("foX").toUpper == "\"FOX\""
+    doAssert "A".@addQuoted("foo").toUpper[0..1].toLower == "a\""
+  result = copyNimTree(rhs)
+  result = replaceOutplace(lhs, result)
+
 proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
