@@ -223,7 +223,7 @@ proc replaceOutplace(lhs, n: NimNode): NimNode =
   of nnkCall:
     result = newCall(bindSym"outplace", [lhs, n])
   else:
-    doAssert false, "\n" & n.treeRepr
+    doAssert false, "unpexpected kind: " & $n.kind
 
 macro `.@`*(lhs, rhs): untyped {.since: (1,1).} =
   ## outplace operator, syntax sugar for `outplace`
