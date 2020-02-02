@@ -99,14 +99,13 @@ proc mkdtemp*(prefix: string): string =
     raise newException(OSError, $strerror(errno))
   return $tmpl
 
-when defined(amd64):
-  proc getDiskUsage*(path: string): tuple[total: uint, used: uint, free: uint] {.inline.} =
-    ## Convenience proc for ``statvfs`` to get disk usage statistics in bytes.
-    ## This proc is available for 64 Bit architectures and operating systems.
-    ##
-    ## .. code-block:: nim
-    ##   echo getDiskUsage(".") ## (total: ..., used: ..., free: ...)
-    ##
-    var t = Statvfs()
-    discard statvfs(path, t)
-    (total: uint(t.f_blocks * t.f_frsize), used: uint((t.f_blocks - t.f_bfree) * t.f_frsize), free: uint(t.f_bavail * t.f_frsize))
+
+proc getDiskUsage*(path: string): tuple[total: uint64, used: uint64, free: uint64] {.inline.} =
+  ## Convenience proc for ``statvfs`` to get disk usage statistics in bytes.
+  ##
+  ## .. code-block:: nim
+  ##   echo getDiskUsage(".") ## (total: ..., used: ..., free: ...)
+  ##
+  var t = Statvfs()
+  if statvfs(path, t) != 0.cint: raise newException(OSError, $strerror(errno))
+  result = (total: t.f_blocks.uint64 * t.f_frsize.uint64, used: uint64(t.f_blocks.uint64 - t.f_bfree.uint64) * t.f_frsize.uint64, free: t.f_bavail.uint64 * t.f_frsize.uint64)
