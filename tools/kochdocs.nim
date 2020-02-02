@@ -70,16 +70,16 @@ proc execCleanPath*(cmd: string,
 
 proc nimexec*(cmd: string) =
   # Consider using `nimCompile` instead
-  exec findNim() & " " & cmd
+  exec findNim().quoteShell() & " " & cmd
 
 proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let output = outputDir / input.splitFile.name.exe
-  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
 proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
   let output = outputDir / input.splitFile.name.exe
-  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
 const
@@ -299,7 +299,7 @@ proc buildDocSamples(nimArgs, destPath: string) =
   ##
   ## TODO: consider integrating into the existing generic documentation builders
   ## now that we have a single `doc` command.
-  exec(findNim() & " doc $# -o:$# $#" %
+  exec(findNim().quoteShell() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
 proc buildDoc(nimArgs, destPath: string) =
@@ -307,7 +307,7 @@ proc buildDoc(nimArgs, destPath: string) =
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
     i = 0
-  let nim = findNim()
+  let nim = findNim().quoteShell()
   for d in items(rst2html):
     commands[i] = nim & " rst2html $# --git.url:$# -o:$# --index:on $#" %
       [nimArgs, gitUrl,
@@ -339,7 +339,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
   else:
     const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(pdf):
-      exec(findNim() & " rst2tex $# $#" % [nimArgs, d])
+      exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
       # call LaTeX twice to get cross references right:
       exec(pdflatexcmd & changeFileExt(d, "tex"))
       exec(pdflatexcmd & changeFileExt(d, "tex"))
@@ -356,9 +356,9 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(changeFileExt(d, "tex"))
 
 proc buildJS() =
-  exec(findNim() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
+  exec(findNim().quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
-  exec(findNim() & " js " & (docHackDir / "dochack.nim"))
+  exec(findNim().quoteShell() & " js " & (docHackDir / "dochack.nim"))
 
 proc buildDocs*(args: string) =
   const
