@@ -259,7 +259,7 @@ when false:
 
   proc pdf(args="") =
     exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-        [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
+        [findNim().quoteShell(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 
@@ -297,7 +297,7 @@ proc boot(args: string) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
-  let nimStart = findStartNim()
+  let nimStart = findStartNim().quoteShell()
   for i in 0..2:
     let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
@@ -455,7 +455,7 @@ proc temp(args: string) =
       "threads" notin programArgs and
       "js" notin programArgs:
     bootArgs.add " -d:leanCompiler"
-  let nimexec = findNim()
+  let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
   setCurrentDir(origDir)
