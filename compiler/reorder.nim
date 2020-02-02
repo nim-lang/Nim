@@ -35,7 +35,7 @@ proc newDepN(id: int, pnode: PNode): DepN =
 
 proc accQuoted(cache: IdentCache; n: PNode): PIdent =
   var id = ""
-  for i in 0 ..< n.len:
+  for i in 0..<n.len:
     let x = n[i]
     case x.kind
     of nkIdent: id.add(x.ident.s)
@@ -75,8 +75,8 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkLetSection, nkVarSection, nkUsingStmt:
     for a in n:
       if a.kind in {nkIdentDefs, nkVarTuple}:
-        for j in 0 .. a.len-3: decl(a[j])
-        for j in a.len-2..a.len-1: deps(a[j])
+        for j in 0..<a.len-2: decl(a[j])
+        for j in a.len-2..<a.len: deps(a[j])
   of nkConstSection, nkTypeSection:
     for a in n:
       if a.len >= 3:
@@ -95,19 +95,19 @@ proc computeDeps(cache: IdentCache; n: PNode, declares, uses: var IntSet; topLev
   of nkSym: uses.incl n.sym.name.id
   of nkAccQuoted: uses.incl accQuoted(cache, n).id
   of nkOpenSymChoice, nkClosedSymChoice:
-    uses.incl n.sons[0].sym.name.id
+    uses.incl n[0].sym.name.id
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
-    for i in 0..<len(n): computeDeps(cache, n[i], declares, uses, topLevel)
+    for i in 0..<n.len: computeDeps(cache, n[i], declares, uses, topLevel)
   of nkPragma:
-    let a = n.sons[0]
-    if a.kind == nkExprColonExpr and a.sons[0].kind == nkIdent and
-       a.sons[0].ident.s == "pragma":
+    let a = n[0]
+    if a.kind == nkExprColonExpr and a[0].kind == nkIdent and
+       a[0].ident.s == "pragma":
         # user defined pragma
-        decl(a.sons[1])
+        decl(a[1])
     else:
-      for i in 0..<safeLen(n): deps(n[i])
+      for i in 0..<n.safeLen: deps(n[i])
   else:
-    for i in 0..<safeLen(n): deps(n[i])
+    for i in 0..<n.safeLen: deps(n[i])
 
 proc cleanPath(s: string): string =
   # Here paths may have the form A / B or "A/B"
@@ -136,7 +136,7 @@ proc hasIncludes(n:PNode): bool =
     if a.kind == nkIncludeStmt:
       return true
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
   result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(FileIndex s.position, fileIdx)
@@ -150,7 +150,7 @@ proc expandIncludes(graph: ModuleGraph, module: PSym, n: PNode,
   for a in n:
     if a.kind == nkIncludeStmt:
       for i in 0..<a.len:
-        var f = checkModuleName(graph.config, a.sons[i])
+        var f = checkModuleName(graph.config, a[i])
         if f != InvalidFileIdx:
           if containsOrIncl(includedFiles, f.int):
             localError(graph.config, a.info, "recursive dependency: '$1'" %
@@ -206,7 +206,7 @@ proc mergeSections(conf: ConfigRef; comps: seq[seq[DepN]], res: PNode) =
         # need to merge them
         var sn = newNode(kind)
         for dn in cs:
-          sn.add dn.pnode.sons[0]
+          sn.add dn.pnode[0]
         res.add sn
       else:
           # Problematic circular dependency, we arrange the nodes into
@@ -340,7 +340,7 @@ proc buildGraph(n: PNode, deps: seq[(IntSet, IntSet)]): DepG =
   # Build a dependency graph
   result = newSeqOfCap[DepN](deps.len)
   for i in 0..<deps.len:
-    result.add newDepN(i, n.sons[i])
+    result.add newDepN(i, n[i])
   for i in 0..<deps.len:
     var ni = result[i]
     let uses = deps[i][1]

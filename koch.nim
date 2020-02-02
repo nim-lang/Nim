@@ -24,7 +24,7 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "icons/koch-i386-windows-vcc.res".}
 
 import
-  os, strutils, parseopt, osproc, streams
+  os, strutils, parseopt, osproc
 
 import tools / kochdocs
 
@@ -45,6 +45,7 @@ Options:
   --help, -h               shows this help and quits
   --latest                 bundle the installers with a bleeding edge Nimble
   --stable                 bundle the installers with a stable Nimble (default)
+  --nim:path               use specified path for nim binary
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -258,7 +259,7 @@ when false:
 
   proc pdf(args="") =
     exec("$# cc -r tools/nimweb.nim $# --pdf web/website.ini --putenv:nimversion=$#" %
-        [findNim(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
+        [findNim().quoteShell(), args, VersionAsString], additionalPATH=findNim().splitFile.dir)
 
 # -------------- boot ---------------------------------------------------------
 
@@ -296,7 +297,7 @@ proc boot(args: string) =
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
-  let nimStart = findStartNim()
+  let nimStart = findStartNim().quoteShell()
   for i in 0..2:
     let defaultCommand = if useCpp: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
@@ -454,7 +455,7 @@ proc temp(args: string) =
       "threads" notin programArgs and
       "js" notin programArgs:
     bootArgs.add " -d:leanCompiler"
-  let nimexec = findNim()
+  let nimexec = findNim().quoteShell()
   exec(nimexec & " c -d:debug --debugger:native -d:nimBetterRun " & bootArgs & " " & (d / "compiler" / "nim"), 125)
   copyExe(output, finalDest)
   setCurrentDir(origDir)
@@ -605,6 +606,7 @@ when isMainModule:
       case normalize(op.key)
       of "latest": latest = true
       of "stable": latest = false
+      of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)

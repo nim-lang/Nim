@@ -134,7 +134,7 @@ else:
   # where available.
 
   type
-    Trivial = SomeNumber | bool | ptr | pointer
+    Trivial = SomeNumber | bool | enum | ptr | pointer
       # A type that is known to be atomic and whose size is known at
       # compile time to be 8 bytes or less
 

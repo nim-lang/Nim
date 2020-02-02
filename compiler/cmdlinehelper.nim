@@ -89,6 +89,13 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)
+  # XXX This is hacky. We need to find a better way.
+  case conf.command
+  of "cpp", "compiletocpp":
+    conf.cmd = cmdCompileToCpp
+  else:
+    discard
+
   self.processCmdLine(passCmd2, "", conf)
   if conf.command == "":
     rawMessage(conf, errGenerated, "command missing")

@@ -151,7 +151,7 @@ proc hash*[A](x: openArray[A]): Hash
 proc hash*[A](x: set[A]): Hash
 
 
-when defined(JS):
+when defined(js):
   proc imul(a, b: uint32): uint32 =
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
     let mask = 0xffff'u32
@@ -267,7 +267,7 @@ proc hash*(x: cstring): Hash =
       inc i
     result = !$result
   else:
-    when not defined(JS) and defined(nimToOpenArrayCString):
+    when not defined(js) and defined(nimToOpenArrayCString):
       murmurHash(toOpenArrayByte(x, 0, x.high))
     else:
       let xx = $x

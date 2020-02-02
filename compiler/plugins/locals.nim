@@ -32,7 +32,7 @@ proc semLocals*(c: PContext, n: PNode): PNode =
           field.position = counter
           inc(counter)
 
-          addSon(tupleType.n, newSymNode(field))
+          tupleType.n.add newSymNode(field)
           addSonSkipIntLit(tupleType, field.typ)
 
           var a = newSymNode(it, result.info)

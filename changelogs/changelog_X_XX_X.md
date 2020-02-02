@@ -1,5 +1,8 @@
 # vx.xx.x - yyyy-mm-dd
 
+This is an example file.
+The changes should go to changelog.md!
+
 
 ## Changes affecting backwards compatibility
 
@@ -13,10 +16,8 @@
 
 
 ## Library additions
-- `set[T].len` is now an alias for `set[T].card` (cardinality)
 
 ## Library changes
-
 
 ## Language additions
 

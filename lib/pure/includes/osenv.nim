@@ -68,7 +68,7 @@ when defined(windows) and not defined(nimscript):
 
 else:
   const
-    useNSGetEnviron = (defined(macosx) and not defined(ios)) or defined(nimscript)
+    useNSGetEnviron = (defined(macosx) and not defined(ios) and not defined(emscripten)) or defined(nimscript)
 
   when useNSGetEnviron:
     # From the manual:

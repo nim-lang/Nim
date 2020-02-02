@@ -458,6 +458,11 @@ proc eraseScreen*(f: File) =
   else:
     f.write("\e[2J")
 
+when not defined(windows):
+  var
+    gFG {.threadvar.}: int
+    gBG {.threadvar.}: int
+
 proc resetAttributes*(f: File) =
   ## Resets all attributes.
   when defined(windows):
@@ -468,6 +473,8 @@ proc resetAttributes*(f: File) =
       discard setConsoleTextAttribute(term.hStdout, term.oldStdoutAttr)
   else:
     f.write(ansiResetCode)
+    gFG = 0
+    gBG = 0
 
 type
   Style* = enum        ## different styles for text output
@@ -480,11 +487,6 @@ type
     styleReverse,      ## reverse
     styleHidden,       ## hidden text
     styleStrikethrough ## strikethrough
-
-when not defined(windows):
-  var
-    gFG {.threadvar.}: int
-    gBG {.threadvar.}: int
 
 proc ansiStyleCode*(style: int): string =
   result = fmt"{stylePrefix}{style}m"
@@ -937,6 +939,11 @@ when not defined(testing) and isMainModule:
   stdout.styledWriteLine(fgWhite, bgRed, "white text in red background")
   stdout.styledWriteLine(" ordinary text ")
   stdout.styledWriteLine(fgGreen, "green text")
+
+  writeStyled("underscored text", {styleUnderscore})
+  stdout.styledWrite(fgRed, " red text ")
+  writeStyled("bright text ", {styleBright})
+  echo "ordinary text"
 
   stdout.styledWrite(fgRed, "red text ")
   stdout.styledWrite(fgWhite, bgRed, "white text in red background")

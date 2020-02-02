@@ -14,7 +14,7 @@
 
 import
   ropes, os, strutils, osproc, platform, condsyms, options, msgs,
-  lineinfos, std / sha1, streams, pathutils, sequtils, times
+  lineinfos, std / sha1, streams, pathutils, sequtils, times, strtabs
 
 type
   TInfoCCProp* = enum         # properties of the C compiler:
@@ -48,6 +48,7 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
+    produceAsm: string,   # Format how to produce assembler listings
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -57,6 +58,9 @@ type
 
 template compiler(name, settings: untyped): untyped =
   proc name: TInfoCC {.compileTime.} = settings
+
+const
+  gnuAsmListing = "-Wa,-acdl=$asmfile -g -fverbose-asm -masm=intel"
 
 # GNU C and C++ Compiler
 compiler gcc:
@@ -80,6 +84,7 @@ compiler gcc:
     pic: "-fPIC",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -105,6 +110,7 @@ compiler nintendoSwitchGCC:
     pic: "-fPIE",
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
+    produceAsm: gnuAsmListing,
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -151,6 +157,7 @@ compiler vcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "/Fa$asmfile",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 compiler clangcl:
@@ -196,6 +203,7 @@ compiler lcc:
     pic: "",
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Borland C Compiler
@@ -220,6 +228,7 @@ compiler bcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
@@ -245,6 +254,7 @@ compiler dmc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -269,6 +279,7 @@ compiler wcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -291,9 +302,10 @@ compiler tcc:
     linkLibCmd: "", # XXX: not supported yet
     debug: " -g ",
     pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
+    asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $2",
-    props: {hasSwitchRange, hasComputedGoto})
+    produceAsm: gnuAsmListing,
+    props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
 # Pelles C Compiler
 compiler pcc:
@@ -318,6 +330,7 @@ compiler pcc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 # Your C Compiler
@@ -342,6 +355,7 @@ compiler ucc:
     pic: "",
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
+    produceAsm: "",
     props: {})
 
 const
@@ -370,13 +384,13 @@ proc libNameTmpl(conf: ConfigRef): string {.inline.} =
 proc nameToCC*(name: string): TSystemCC =
   ## Returns the kind of compiler referred to by `name`, or ccNone
   ## if the name doesn't refer to any known compiler.
-  for i in succ(ccNone) .. high(TSystemCC):
+  for i in succ(ccNone)..high(TSystemCC):
     if cmpIgnoreStyle(name, CC[i].name) == 0:
       return i
   result = ccNone
 
 proc listCCnames(): seq[string] =
-  for i in succ(ccNone) .. high(TSystemCC):
+  for i in succ(ccNone)..high(TSystemCC):
     result.add CC[i].name
 
 proc isVSCompatible*(conf: ConfigRef): bool =
@@ -397,8 +411,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     else:
       suffix
 
-  if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
-      optCompileOnly notin conf.globalOptions:
+  if optCompileOnly notin conf.globalOptions:
     let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
@@ -417,12 +430,12 @@ proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
-  for i in low(CC) .. high(CC): undefSymbol(conf.symbols, CC[i].name)
+  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
 
 proc addOpt(dest: var string, src: string) =
-  if len(dest) == 0 or dest[len(dest)-1] != ' ': add(dest, " ")
-  add(dest, src)
+  if dest.len == 0 or dest[^1] != ' ': dest.add(" ")
+  dest.add(src)
 
 proc addLinkOption*(conf: ConfigRef; option: string) =
   addOpt(conf.linkOptions, option)
@@ -439,11 +452,11 @@ proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
 
 proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
-  for i in low(CC) .. high(CC): undefSymbol(conf.symbols, CC[i].name)
+  for i in low(CC)..high(CC): undefSymbol(conf.symbols, CC[i].name)
   defineSymbol(conf.symbols, CC[conf.cCompiler].name)
   addCompileOption(conf, getConfigVar(conf, conf.cCompiler, ".options.always"))
   #addLinkOption(getConfigVar(cCompiler, ".options.linker"))
-  if len(conf.cCompilerPath) == 0:
+  if conf.cCompilerPath.len == 0:
     conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
 
 proc completeCfilePath*(conf: ConfigRef; cfile: AbsoluteFile,
@@ -456,6 +469,13 @@ proc toObjFile*(conf: ConfigRef; filename: AbsoluteFile): AbsoluteFile =
 
 proc addFileToCompile*(conf: ConfigRef; cf: Cfile) =
   conf.toCompile.add(cf)
+
+proc addLocalCompileOption*(conf: ConfigRef; option: string; nimfile: AbsoluteFile) =
+  let key = completeCfilePath(conf, withPackageName(conf, nimfile)).string
+  var value = conf.cfileSpecificOptions.getOrDefault(key)
+  if strutils.find(value, option, 0) < 0:
+    addOpt(value, option)
+    conf.cfileSpecificOptions[key] = value
 
 proc resetCompilationLists*(conf: ConfigRef) =
   conf.toCompile.setLen 0
@@ -481,10 +501,7 @@ proc generateScript(conf: ConfigRef; script: Rope) =
   let (_, name, _) = splitFile(conf.outFile.string)
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
-  if writeRope(script, filename):
-    copyFile(conf.libpath / RelativeFile"nimbase.h",
-             getNimcacheDir(conf) / RelativeFile"nimbase.h")
-  else:
+  if not writeRope(script, filename):
     rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
 
 proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
@@ -509,8 +526,10 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
-proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
+proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
+
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
@@ -531,20 +550,19 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname: string): string =
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
 proc getCompileOptions(conf: ConfigRef): string =
-  result = cFileSpecificOptions(conf, "__dummy__")
+  result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")
 
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  case conf.target.targetCPU
-  of cpuI386:
-    result = " --platform:x86"
-  of cpuArm:
-    result = " --platform:arm"
-  of cpuAmd64:
-    result = " --platform:amd64"
-  else:
-    result = ""
+  if conf.cCompiler == ccVcc: 
+    let exe = getConfigVar(conf, conf.cCompiler, ".exe")
+    if "vccexe.exe" == extractFilename(exe):
+      result = case conf.target.targetCPU
+        of cpuI386: " --platform:x86"
+        of cpuArm: " --platform:arm"
+        of cpuAmd64: " --platform:amd64"
+        else: ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -572,28 +590,29 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
            elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
-proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): string =
-  var c = conf.cCompiler
-  var options = cFileSpecificOptions(conf, cfile.nimname)
+proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
+                         isMainFile = false; produceOutput = false): string =
+  let c = conf.cCompiler
+  # We produce files like module.nim.cpp, so the absolute Nim filename is not
+  # cfile.name but `cfile.cname.changeFileExt("")`:
+  var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
   if needsExeExt(conf): exe = addFileExt(exe, "exe")
   if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
-    add(options, ' ' & CC[c].pic)
+    options.add(' ' & CC[c].pic)
 
-  var includeCmd, compilePattern: string
+  var compilePattern: string
+  # compute include paths:
+  var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
   if not noAbsolutePaths(conf):
-    # compute include paths:
-    includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
-
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
@@ -614,19 +633,30 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile, isMainFile = false): str
 
   # D files are required by nintendo switch libs for
   # compilation. They are basically a list of all includes.
-  let dfile = objfile.changeFileExt(".d").quoteShell()
+  let dfile = objfile.changeFileExt(".d").quoteShell
 
-  objfile = quoteShell(objfile)
   let cfsh = quoteShell(cf)
   result = quoteShell(compilePattern % [
     "dfile", dfile,
-    "file", cfsh, "objfile", objfile, "options", options,
+    "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string])
-  add(result, ' ')
-  addf(result, CC[c].compileTmpl, [
+
+  if optProduceAsm in conf.globalOptions:
+    if CC[conf.cCompiler].produceAsm.len > 0:
+      let asmfile = objfile.changeFileExt(".asm").quoteShell
+      addOpt(result, CC[conf.cCompiler].produceAsm % ["asmfile", asmfile])
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Produced assembler here: " & asmfile)
+    else:
+      if produceOutput:
+        rawMessage(conf, hintUserRaw, "Couldn't produce assembler listing " &
+          "for the selected C compiler: " & CC[conf.cCompiler].name)
+
+  result.add(' ')
+  result.addf(CC[c].compileTmpl, [
     "dfile", dfile,
-    "file", cfsh, "objfile", objfile,
+    "file", cfsh, "objfile", quoteShell(objfile),
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
     "lib", quoteShell(conf.libpath),
@@ -641,7 +671,7 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM}:
+  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM, cmdNone}:
     return false
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
@@ -680,15 +710,15 @@ proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var
   for it in list:
     # call the C compiler for the .c file:
     if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1)
+    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1, produceOutput=true)
     inc currIdx
     if optCompileOnly notin conf.globalOptions:
-      add(cmds, compileCmd)
+      cmds.add(compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      add(prettyCmds, if hintCC in conf.notes: "CC: " & demanglePackageName(name) else: "")
+      prettyCmds.add(if hintCC in conf.notes: "CC: " & demanglePackageName(name) else: "")
     if optGenScript in conf.globalOptions:
-      add(script, compileCmd)
-      add(script, "\n")
+      script.add(compileCmd)
+      script.add("\n")
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
@@ -704,7 +734,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                                             "objfiles", objfiles]
   else:
     var linkerExe = getConfigVar(conf, conf.cCompiler, ".linkerexe")
-    if len(linkerExe) == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
+    if linkerExe.len == 0: linkerExe = getLinkerExe(conf, conf.cCompiler)
     # bug #6452: We must not use ``quoteShell`` here for ``linkerExe``
     if needsExeExt(conf): linkerExe = addFileExt(linkerExe, "exe")
     if noAbsolutePaths(conf): result = linkerExe
@@ -734,7 +764,7 @@ proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
         "buildgui", buildgui, "options", linkOptions, "objfiles", objfiles,
         "exefile", exefile, "nim", getPrefixDir(conf).string, "lib", conf.libpath.string])
     result.add ' '
-    addf(result, linkTmpl, ["builddll", builddll,
+    result.addf(linkTmpl, ["builddll", builddll,
         "mapfile", mapfile,
         "buildgui", buildgui, "options", linkOptions,
         "objfiles", objfiles, "exefile", exefile,
@@ -799,8 +829,16 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
 
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
-    execExternalProgram(conf, linkCmd,
-      if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
+    execExternalProgram(conf, linkCmd, hintLinking)
+
+proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
+  when defined(osx):
+    if optCDebug notin conf.globalOptions: return
+    # if needed, add an option to skip or override location
+    let cmd = "dsymutil " & $(exe).quoteShell
+    conf.extraCmds.add cmd
+    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+      execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
@@ -812,7 +850,7 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
   if conf.numberOfProcessors == 0: conf.numberOfProcessors = countProcessors()
   var res = 0
   if conf.numberOfProcessors <= 1:
-    for i in 0 .. high(cmds):
+    for i in 0..high(cmds):
       tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
         res = execWithEcho(conf, cmds[i])
       if res != 0:
@@ -892,8 +930,8 @@ proc callCCompiler*(conf: ConfigRef) =
     var objfiles = ""
     for it in conf.externalToLink:
       let objFile = if noAbsolutePaths(conf): it.extractFilename else: it
-      add(objfiles, ' ')
-      add(objfiles, quoteShell(
+      objfiles.add(' ')
+      objfiles.add(quoteShell(
           addFileExt(objFile, CC[conf.cCompiler].objExt)))
 
     if conf.hcrOn: # lets assume that optCompileOnly isn't on
@@ -910,7 +948,7 @@ proc callCCompiler*(conf: ConfigRef) =
         let objFile = conf.getObjFilePath(x)
         let buildDll = idx != mainFileIdx
         let linkTarget = conf.hcrLinkTargetName(objFile, not buildDll)
-        add(cmds, getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
+        cmds.add(getLinkCmd(conf, linkTarget, objfiles & " " & quoteShell(objFile), buildDll))
         # try to remove all .pdb files for the current binary so they don't accumulate endlessly in the nimcache
         # for more info check the comment inside of getLinkCmd() where the /PDB:<filename> MSVC flag is used
         if isVSCompatible(conf):
@@ -929,8 +967,8 @@ proc callCCompiler*(conf: ConfigRef) =
     else:
       for x in conf.toCompile:
         let objFile = if noAbsolutePaths(conf): x.obj.extractFilename else: x.obj.string
-        add(objfiles, ' ')
-        add(objfiles, quoteShell(objFile))
+        objfiles.add(' ')
+        objfiles.add(quoteShell(objFile))
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
                        else: AbsoluteFile(conf.projectName)
       linkCmd = getLinkCmd(conf, mainOutput, objfiles)
@@ -943,11 +981,12 @@ proc callCCompiler*(conf: ConfigRef) =
           linkViaResponseFile(conf, linkCmd)
         else:
           execLinkCmd(conf, linkCmd)
+        maybeRunDsymutil(conf, mainOutput)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
-    add(script, linkCmd)
-    add(script, "\n")
+    script.add(linkCmd)
+    script.add("\n")
     generateScript(conf, script)
 
 #from json import escapeJson
@@ -985,30 +1024,31 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       let objfile = if noAbsolutePaths(conf): it.extractFilename
                     else: it
       let objstr = addFileExt(objfile, CC[conf.cCompiler].objExt)
-      add(objfiles, ' ')
-      add(objfiles, objstr)
+      objfiles.add(' ')
+      objfiles.add(objstr)
       if pastStart: lit ",\L"
       str objstr
       pastStart = true
 
     for it in clist:
       let objstr = quoteShell(it.obj)
-      add(objfiles, ' ')
-      add(objfiles, objstr)
+      objfiles.add(' ')
+      objfiles.add(objstr)
       if pastStart: lit ",\L"
       str objstr
       pastStart = true
     lit "\L"
 
-  proc nimfiles(conf: ConfigRef; f: File) =
+  proc depfiles(conf: ConfigRef; f: File) =
     var i = 0
     for it in conf.m.fileInfos:
-      if isAbsolute(it.fullPath.string):
+      let path = it.fullPath.string
+      if isAbsolute(path): # TODO: else?
         if i > 0: lit "],\L"
         lit "["
-        str it.fullPath.string
+        str path
         lit ", "
-        str $secureHashFile(it.fullPath.string)
+        str $secureHashFile(path)
         inc i
     lit "]\L"
 
@@ -1029,11 +1069,14 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
+    lit ",\L\"extraCmds\": "
+    lit $(%* conf.extraCmds)
+
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
-      lit ",\L\"nimfiles\":[\L"
-      nimfiles(conf, f)
+      lit ",\L\"depfiles\":[\L"
+      depfiles(conf, f)
       lit "],\L\"nimexe\": \L"
       str hashNimExe()
       lit "\L"
@@ -1048,22 +1091,22 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
   result = false
   try:
     let data = json.parseFile(jsonFile.string)
-    if not data.hasKey("nimfiles") or not data.hasKey("cmdline"):
+    if not data.hasKey("depfiles") or not data.hasKey("cmdline"):
       return true
     let oldCmdLine = data["cmdline"].getStr
     if conf.commandLine != oldCmdLine:
       return true
     if hashNimExe() != data["nimexe"].getStr:
       return true
-    let nimfilesPairs = data["nimfiles"]
-    doAssert nimfilesPairs.kind == JArray
-    for p in nimfilesPairs:
+    let depfilesPairs = data["depfiles"]
+    doAssert depfilesPairs.kind == JArray
+    for p in depfilesPairs:
       doAssert p.kind == JArray
       # >= 2 for forwards compatibility with potential later .json files:
       doAssert p.len >= 2
-      let nimFilename = p[0].getStr
+      let depFilename = p[0].getStr
       let oldHashValue = p[1].getStr
-      let newHashValue = $secureHashFile(nimFilename)
+      let newHashValue = $secureHashFile(depFilename)
       if oldHashValue != newHashValue:
         return true
   except IOError, OSError, ValueError:
@@ -1082,9 +1125,9 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
       doAssert c.kind == JArray
       doAssert c.len >= 2
 
-      add(cmds, c[1].getStr)
+      cmds.add(c[1].getStr)
       let (_, name, _) = splitFile(c[0].getStr)
-      add(prettyCmds, "CC: " & demanglePackageName(name))
+      prettyCmds.add("CC: " & demanglePackageName(name))
 
     let prettyCb = proc (idx: int) =
       when declared(echo):
@@ -1094,6 +1137,14 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
     execLinkCmd(conf, linkCmd.getStr)
+    if data.hasKey("extraCmds"):
+      let extraCmds = data["extraCmds"]
+      doAssert extraCmds.kind == JArray
+      for cmd in extraCmds:
+        doAssert cmd.kind == JString, $cmd.kind
+        let cmd2 = cmd.getStr
+        execExternalProgram(conf, cmd2, hintExecuting)
+
   except:
     when declared(echo):
       echo getCurrentException().getStackTrace()
@@ -1101,23 +1152,23 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
-    addf(result, "--file:r\"$1\"$N", [rope(it.cname.string)])
+    result.addf("--file:r\"$1\"$N", [rope(it.cname.string)])
 
 proc writeMapping*(conf: ConfigRef; symbolMapping: Rope) =
   if optGenMapping notin conf.globalOptions: return
   var code = rope("[C_Files]\n")
-  add(code, genMappingFiles(conf, conf.toCompile))
-  add(code, "\n[C_Compiler]\nFlags=")
-  add(code, strutils.escape(getCompileOptions(conf)))
+  code.add(genMappingFiles(conf, conf.toCompile))
+  code.add("\n[C_Compiler]\nFlags=")
+  code.add(strutils.escape(getCompileOptions(conf)))
 
-  add(code, "\n[Linker]\nFlags=")
-  add(code, strutils.escape(getLinkOptions(conf) & " " &
+  code.add("\n[Linker]\nFlags=")
+  code.add(strutils.escape(getLinkOptions(conf) & " " &
                             getConfigVar(conf, conf.cCompiler, ".options.linker")))
 
-  add(code, "\n[Environment]\nlibpath=")
-  add(code, strutils.escape(conf.libpath.string))
+  code.add("\n[Environment]\nlibpath=")
+  code.add(strutils.escape(conf.libpath.string))
 
-  addf(code, "\n[Symbols]$n$1", [symbolMapping])
+  code.addf("\n[Symbols]$n$1", [symbolMapping])
   let filename = conf.projectPath / RelativeFile"mapping.txt"
   if not writeRope(code, filename):
     rawMessage(conf, errGenerated, "could not write to file: " & filename.string)

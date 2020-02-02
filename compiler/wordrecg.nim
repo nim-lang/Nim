@@ -58,7 +58,7 @@ type
     wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
     wPragma,
     wCompileTime, wNoInit,
-    wPassc, wPassl, wBorrow, wDiscardable,
+    wPassc, wPassl, wLocalPassc, wBorrow, wDiscardable,
     wFieldChecks,
     wSubsChar, wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
     wInjectStmt, wExperimental,
@@ -146,7 +146,7 @@ const
     "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",
     "compiletime", "noinit",
-    "passc", "passl", "borrow", "discardable", "fieldchecks",
+    "passc", "passl", "localpassc", "borrow", "discardable", "fieldchecks",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "computedgoto", "injectstmt", "experimental",
     "write", "gensym", "inject", "dirty", "inheritable", "threadvar", "emit",
@@ -174,7 +174,7 @@ const
     ]
 
 proc findStr*(a: openArray[string], s: string): int =
-  for i in low(a) .. high(a):
+  for i in low(a)..high(a):
     if cmpIgnoreStyle(a[i], s) == 0:
       return i
   result = - 1
@@ -209,4 +209,5 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wImplicitStatic: "implicitStatic"
   of wCodegenDecl: "codegenDecl"
   of wLiftLocals: "liftLocals"
+  of wLocalPassc: "localPassc"
   else: specialWords[w]
