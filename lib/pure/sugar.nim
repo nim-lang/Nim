@@ -184,7 +184,7 @@ macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1)
   ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
   var params = @[newIdentNode("auto")]
   for arg in locals:
-    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeImpl arg))
+    params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
