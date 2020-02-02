@@ -54,6 +54,8 @@
 - Added `minIndex` and `maxIndex` to the `sequtils` module
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
+- Added `jsconsole.trace`, `jsconsole.table`, `jsconsole.exception` for JavaScript target.
+
 
 ## Library changes
 
