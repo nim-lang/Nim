@@ -24,13 +24,12 @@ when defined(nimfix):
   import nimfix/prettybase
 
 when not defined(leanCompiler):
-  import spawn, semparallel
+  import spawn
 
 # implementation
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.procvar.}
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.
-  procvar.}
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
@@ -128,17 +127,17 @@ proc commonType*(x, y: PType): PType =
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind == tyArray)
-    if a.sons[idx].kind == tyEmpty: return y
+    if a[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
     for i in 0..<a.len:
-      let aEmpty = isEmptyContainer(a.sons[i])
-      let bEmpty = isEmptyContainer(b.sons[i])
+      let aEmpty = isEmptyContainer(a[i])
+      let bEmpty = isEmptyContainer(b[i])
       if aEmpty != bEmpty:
         if nt.isNil: nt = copyType(a, a.owner, false)
-        nt.sons[i] = if aEmpty: b.sons[i] else: a.sons[i]
+        nt[i] = if aEmpty: b[i] else: a[i]
     if not nt.isNil: result = nt
-    #elif b.sons[idx].kind == tyEmpty: return x
+    #elif b[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
     # consider:  (range[0..3], range[0..4]) here. We should make that
     # range[0..4]. But then why is (range[0..4], 6) not range[0..6]?
@@ -278,7 +277,7 @@ when false:
 
 proc hasCycle(n: PNode): bool =
   incl n.flags, nfNone
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     if nfNone in n[i].flags or hasCycle(n[i]):
       result = true
       break
@@ -382,7 +381,7 @@ when false:
   # hopefully not required:
   proc resetSemFlag(n: PNode) =
     excl n.flags, nfSem
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
@@ -400,10 +399,10 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   result = macroResult
   excl(result.flags, nfSem)
   #resetSemFlag n
-  if s.typ.sons[0] == nil:
+  if s.typ[0] == nil:
     result = semStmt(c, result, flags)
   else:
-    var retType = s.typ.sons[0]
+    var retType = s.typ[0]
     if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
         retType.len == 1:
       # bug #11941: template fails(T: type X, v: auto): T
@@ -417,7 +416,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
       # More restrictive version.
       result = semExprWithType(c, result, flags)
     of tyTypeDesc:
-      if result.kind == nkStmtList: result.kind = nkStmtListType
+      if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
       var typ = semTypeNode(c, result, nil)
       if typ == nil:
         localError(c.config, result.info, "expression has no type: " &
@@ -441,7 +440,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
 
       result = semExpr(c, result, flags)
       result = fitNode(c, retType, result, result.info)
-      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
+      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 
@@ -496,13 +495,13 @@ proc semConceptBody(c: PContext, n: PNode): PNode
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
-  for i in c.lastGenericIdx ..< c.generics.len:
+  for i in c.lastGenericIdx..<c.generics.len:
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
-      if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
+      if prc.ast == nil or prc.ast[bodyPos] == nil:
         internalError(c.config, prc.info, "no code for " & prc.name.s)
       else:
-        addSon(n, prc.ast)
+        n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
@@ -575,9 +574,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     if c.lastGenericIdx < c.generics.len:
       var a = newNodeI(nkStmtList, n.info)
       addCodeForGenerics(c, a)
-      if len(a) > 0:
+      if a.len > 0:
         # a generic has been added to `a`:
-        if result.kind != nkEmpty: addSon(a, result)
+        if result.kind != nkEmpty: a.add result
         result = a
   result = hloStmt(c, result)
   if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):

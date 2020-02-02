@@ -1055,6 +1055,7 @@ when defined(nimFixedForwardGeneric):
       jsonPath.setLen originalJsonPathLen
 
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string) =
+    verifyJsonKind(jsonNode, {JObject, JNull}, jsonPath)
     if jsonNode.kind == JNull:
       dst = nil
     else:
@@ -1135,7 +1136,7 @@ when defined(nimFixedForwardGeneric):
         when defined js:
           `tmpSym`.`kindSym` = kindTmp
         else:
-          when nimVm:
+          when nimvm:
             `tmpSym`.`kindSym` = kindTmp
           else:
             # fuck it, assign kind field anyway

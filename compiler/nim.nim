@@ -40,19 +40,31 @@ proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   else:
     result = f
 
+proc addCmdPrefix*(result: var string, kind: CmdLineKind) =
+  # consider moving this to std/parseopt
+  case kind
+  of cmdLongOption: result.add "--"
+  of cmdShortOption: result.add "-"
+  of cmdArgument, cmdEnd: discard
+
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
+
+  config.commandLine.setLen 0
+    # bugfix: otherwise, config.commandLine ends up duplicated
+
   while true:
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
     of cmdLongOption, cmdShortOption:
       config.commandLine.add " "
-      config.commandLine.add p.key
+      config.commandLine.addCmdPrefix p.kind
+      config.commandLine.add p.key.quoteShell # quoteShell to be future proof
       if p.val.len > 0:
         config.commandLine.add ':'
-        config.commandLine.add p.val
+        config.commandLine.add p.val.quoteShell
 
       if p.key == " ":
         p.key = "-"
@@ -61,7 +73,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         processSwitch(pass, p, config)
     of cmdArgument:
       config.commandLine.add " "
-      config.commandLine.add p.key
+      config.commandLine.add p.key.quoteShell
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and

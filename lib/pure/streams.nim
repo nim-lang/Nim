@@ -96,6 +96,8 @@
 
 include "system/inclrtl"
 
+const taintMode = compileOption("taintmode")
+
 proc newEIO(msg: string): owned(ref IOError) =
   new(result)
   result.msg = msg
@@ -901,7 +903,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
   else:
     # fallback
     when nimvm: #Bug #12282
-      line.setLen(0)
+      when taintMode:
+        line.string.setLen(0)
+      else:
+        line.setLen(0)
     else:
       line.string.setLen(0)
     while true:
@@ -914,7 +919,10 @@ proc readLine*(s: Stream, line: var TaintedString): bool =
         if line.len > 0: break
         else: return false
       when nimvm: #Bug #12282
-        line.add(c)
+        when taintMode:
+          line.string.add(c)
+        else:
+          line.add(c)
       else:
         line.string.add(c)
     result = true

@@ -98,12 +98,13 @@ Advanced options:
   --skipProjCfg:on|off      do not read the project's configuration file
   --gc:refc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
+  --exceptions:setjmp|cpp|goto|quirky
+                            select the exception handling implementation
   --index:on|off            turn index file generation on|off
   --putenv:key=value        set an environment variable
   --NimblePath:PATH         add a path for Nimble support
   --noNimblePath            deactivate the Nimble path
   --clearNimblePath         empty the list of Nimble package search paths
-  --noCppExceptions         use default exception handling with C++ backend
   --cppCompileToNamespace:namespace
                             use the provided namespace for the generated C++ code,
                             if no namespace is provided "Nim" will be used
@@ -116,12 +117,15 @@ Advanced options:
                             dynlib: "liblua.so.3"
   --dynlibOverrideAll
                             disables the effects of the dynlib pragma
-  --listCmd                 list the commands used to execute external programs
+  --listCmd                 list the compilation commands; can be combined with:
+                            --hint:exec:on and --hint:link:on
+  --asm                     produce assembler code
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
   --incremental:on|off      only recompile the changed modules (experimental!)
   --verbosity:0|1|2|3       set Nim's verbosity level (1 is default)
   --errorMax:N              stop compilation after N errors; 0 means unlimited
+  --maxLoopIterationsVM:N   set max iterations for all VM loops
   --experimental:$1
                             enable experimental language feature
   --legacy:$2

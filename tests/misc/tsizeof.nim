@@ -74,19 +74,22 @@ proc strAlign(arg: string): string =
   for i in 0 ..< minLen - arg.len:
     result &= ' '
 
-macro c_offsetof(a: typed, b: untyped): int32 =
+macro c_offsetof(fieldAccess: typed): int32 =
   ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let bliteral =
-    if b.kind == nnkStrLit:
-      b
-    else:
-      newLit(repr(b))
+  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0] 
+          else: fieldAccess
+  let a = s[0].getTypeInst
+  let b = s[1]
   result = quote do:
     var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
+    {.emit: [res, " = offsetof(", `a`, ", ", `b`, ");"] .}
     res
+
+template c_offsetof(t: typedesc, a: untyped): int32 =
+  var x: ptr t
+  c_offsetof(x[].a)
 
 macro c_sizeof(a: typed): int32 =
   ## Bullet proof implementation that works using the sizeof operator
@@ -336,10 +339,10 @@ testinstance:
       a: int32
       b: T
 
-    # this type mixes `packed` with `alignas`.
+    # this type mixes `packed` with `align`.
     MyCustomAlignPackedObject {.objectconfig.} = object
       a: char
-      b {.alignas: 32.}: int32 # alignas overrides `packed` for this field.
+      b {.align: 32.}: int32 # align overrides `packed` for this field.
       c: char
       d: int32  # unaligned
 
@@ -496,11 +499,11 @@ type
 
   MyCustomAlignUnion {.union.} = object
     c: char
-    a {.alignas: 32.}: int
+    a {.align: 32.}: int
 
   MyCustomAlignObject = object
     c: char
-    a {.alignas: 32.}: int
+    a {.align: 32.}: int
 
 doAssert sizeof(MyUnionType) == 4
 doAssert sizeof(MyCustomAlignUnion) == 32

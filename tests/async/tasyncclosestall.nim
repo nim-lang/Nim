@@ -13,8 +13,8 @@ else:
 # This reproduces a case where a socket remains stuck waiting for writes
 # even when the socket is closed.
 const
-  port = Port(50726)
-  timeout = 5000
+  timeout = 8000
+var port = Port(0)
 
 var sent = 0
 
@@ -86,6 +86,8 @@ proc server() {.async.} =
   s.setSockOpt(OptReuseAddr, true)
   s.bindAddr(port)
   s.listen()
+  let (addr2, port2) = s.getLocalAddr
+  port = port2
 
   # We're now ready to accept connections, so start the client
   asyncCheck startClient()

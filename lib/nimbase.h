@@ -17,6 +17,7 @@ __DMC__
 __POCC__
 __TINYC__
 __clang__
+__AVR__
 */
 
 
@@ -158,7 +159,13 @@ __clang__
 #  define NIM_CAST(type, ptr) ((type)(ptr))
 #endif
 
+
 /* ------------------------------------------------------------------- */
+#ifdef  __cplusplus
+#  define NIM_EXTERNC extern "C"
+#else
+#  define NIM_EXTERNC
+#endif
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
 #  define N_LIB_PRIVATE
@@ -175,10 +182,11 @@ __clang__
 #  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
 #  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C" __declspec(dllexport)
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
 #  else
-#    define N_LIB_EXPORT  extern __declspec(dllexport)
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
 #  endif
+#  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
 #  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
@@ -207,11 +215,8 @@ __clang__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C"
-#  else
-#    define N_LIB_EXPORT  extern
-#  endif
+#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
+#  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -220,7 +225,7 @@ __clang__
 #define N_NOCONV_PTR(rettype, name) rettype (*name)
 
 #if defined(__GNUC__) || defined(__ICC__)
-#  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
+#  define N_NOINLINE(rettype, name) rettype __attribute__((__noinline__)) name
 #elif defined(_MSC_VER)
 #  define N_NOINLINE(rettype, name) __declspec(noinline) rettype name
 #else
@@ -256,19 +261,30 @@ __clang__
 
 #include <limits.h>
 #include <stddef.h>
-#include <stdalign.h>
 
 /* C99 compiler? */
-#if (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))
+#if (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))
 #  define HAVE_STDINT_H
 #endif
 
-#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__)
+/* Known compiler with stdint.h that doesn't fit the general pattern? */
+#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__) || \
+  defined(__AVR__) || (defined(__cplusplus) && (__cplusplus < 201103))
 #  define HAVE_STDINT_H
 #endif
+
+#if (!defined(HAVE_STDINT_H) && defined(__cplusplus) && (__cplusplus >= 201103))
+#  define HAVE_CSTDINT
+#endif
+
 
 /* wrap all Nim typedefs into namespace Nim */
 #ifdef USE_NIM_NAMESPACE
+#ifdef HAVE_CSTDINT
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
 namespace USE_NIM_NAMESPACE {
 #endif
 
@@ -309,32 +325,79 @@ namespace USE_NIM_NAMESPACE {
 typedef signed char NI8;
 typedef signed short int NI16;
 typedef signed int NI32;
+typedef __int64 NI64;
 /* XXX: Float128? */
 typedef unsigned char NU8;
 typedef unsigned short int NU16;
-typedef unsigned __int64 NU64;
-typedef __int64 NI64;
 typedef unsigned int NU32;
+typedef unsigned __int64 NU64;
 #elif defined(HAVE_STDINT_H)
+#ifndef USE_NIM_NAMESPACE
 #  include <stdint.h>
+#endif
 typedef int8_t NI8;
 typedef int16_t NI16;
 typedef int32_t NI32;
 typedef int64_t NI64;
-typedef uint64_t NU64;
 typedef uint8_t NU8;
 typedef uint16_t NU16;
 typedef uint32_t NU32;
+typedef uint64_t NU64;
+#elif defined(HAVE_CSTDINT)
+#ifndef USE_NIM_NAMESPACE
+#  include <cstdint>
+#endif
+typedef std::int8_t NI8;
+typedef std::int16_t NI16;
+typedef std::int32_t NI32;
+typedef std::int64_t NI64;
+typedef std::uint8_t NU8;
+typedef std::uint16_t NU16;
+typedef std::uint32_t NU32;
+typedef std::uint64_t NU64;
+#else
+/* Unknown compiler/version, do our best */
+#ifdef __INT8_TYPE__
+typedef __INT8_TYPE__ NI8;
 #else
 typedef signed char NI8;
+#endif
+#ifdef __INT16_TYPE__
+typedef __INT16_TYPE__ NI16;
+#else
 typedef signed short int NI16;
+#endif
+#ifdef __INT32_TYPE__
+typedef __INT32_TYPE__ NI32;
+#else
 typedef signed int NI32;
-/* XXX: Float128? */
-typedef unsigned char NU8;
-typedef unsigned short int NU16;
-typedef unsigned long long int NU64;
+#endif
+#ifdef __INT64_TYPE__
+typedef __INT64_TYPE__ NI64;
+#else
 typedef long long int NI64;
+#endif
+/* XXX: Float128? */
+#ifdef __UINT8_TYPE__
+typedef __UINT8_TYPE__ NU8;
+#else
+typedef unsigned char NU8;
+#endif
+#ifdef __UINT16_TYPE__
+typedef __UINT16_TYPE__ NU16;
+#else
+typedef unsigned short int NU16;
+#endif
+#ifdef __UINT32_TYPE__
+typedef __UINT32_TYPE__ NU32;
+#else
 typedef unsigned int NU32;
+#endif
+#ifdef __UINT64_TYPE__
+typedef __UINT64_TYPE__ NU64;
+#else
+typedef unsigned long long int NU64;
+#endif
 #endif
 
 #ifdef NIM_INTBITS
@@ -461,10 +524,10 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 }
 #endif
 
-#ifdef  __cplusplus
-#  define NIM_EXTERNC extern "C"
+#if defined(_MSC_VER)
+#  define NIM_ALIGN(x)  __declspec(align(x))
 #else
-#  define NIM_EXTERNC
+#  define NIM_ALIGN(x)  __attribute__((aligned(x)))
 #endif
 
 /* ---------------- platform specific includes ----------------------- */
