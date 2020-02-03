@@ -644,6 +644,8 @@ proc resizeShared[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].}
 proc freeShared[T](p: ptr T) {.inline, benign, raises: [].}
 proc createShared(T: typedesc, size = 1.Positive): ptr T {.inline.}
 
+proc newSeq[T](s: var seq[T], len: Natural) {.noSideEffect.}
+
 proc newSeq*[T](s: var seq[T], len: Natural) {.noSideEffect.} =
   if len > s.capacity:
     # CHECKME: shared or not?
