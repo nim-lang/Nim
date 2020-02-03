@@ -581,6 +581,12 @@ template `+`[T](p: ptr T, off: int): ptr T =
 
 proc len*[T](a: seq[T]): int = a.size
 
+proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.magic: "Slice".}
+# proc toOpenArray*[T](x: seq[T]; first, last: int): var openArray[T] {.magic: "Slice".}
+# converter toOpenArray2*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
+# converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
+converter toOpenArray2*[T](a: seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
+
 proc checkAux(cond: bool)
 
 proc `[]`*[T](a: seq[T], index: int): var T =
@@ -593,12 +599,6 @@ proc `[]=`*[T](a: seq[T], index: int, val: T) =
   checkAux(index >= 0)
   checkAux(index < a.size)
   (a.elems + index)[] = val
-
-iterator items*[T](a: seq[T]): T =
-  var i=0
-  while i < len(a):
-    yield (a.elems + i)[]
-    i.inc
 
 proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   ## Generic equals operator for sequences: relies on a equals operator for
@@ -640,20 +640,12 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
 
 include "system/exceptions"
 
-proc resizeShared[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].}
-proc freeShared[T](p: ptr T) {.inline, benign, raises: [].}
-proc createShared(T: typedesc, size = 1.Positive): ptr T {.inline.}
+# proc resizeShared[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].}
+# proc freeShared[T](p: ptr T) {.inline, benign, raises: [].}
+# proc createShared(T: typedesc, size = 1.Positive): ptr T {.inline.}
 
-proc newSeq[T](s: var seq[T], len: Natural) {.noSideEffect.}
-
-proc newSeq*[T](s: var seq[T], len: Natural) {.noSideEffect.} =
-  if len > s.capacity:
-    # CHECKME: shared or not?
-    {.noSideEffect.}:
-      s.elems = resizeShared(s.elems, len)
-    s.capacity = len
-  s.size = len
-  # TODO: destroy/release other elems?
+proc newSeq*[T](s: var seq[T], len: Natural) {.noSideEffect.}
+proc newSeqOfCap*[T](cap: Natural): seq[T] {.noSideEffect.}
 
 proc newSeq*[T](len = 0.Natural): seq[T] =
   ## Creates a new sequence of type ``seq[T]`` with length ``len``.
@@ -674,18 +666,6 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##   inputStrings[2] = "would crash"
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
-
-proc newSeqOfCap*[T](cap: Natural): seq[T] {.noSideEffect.} =
-  ## Creates a new sequence of type ``seq[T]`` with length zero and capacity
-  ## ``cap``.
-  ##
-  ## .. code-block:: Nim
-  ##   var x = newSeqOfCap[int](5)
-  ##   assert len(x) == 0
-  ##   x.add(10)
-  ##   assert len(x) == 1
-  result.elems = createShared(T, cap)
-  result.capacity = cap
 
 when not defined(js):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
@@ -738,14 +718,13 @@ proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ##   echo len(arr) # => 5
   ##   echo len(array[3..8, int]) # => 6
 
-# when false: # PRTEMP
-proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
+when false: # PRTEMP
+ proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## Returns the length of a sequence.
   ##
   ## .. code-block:: Nim
   ##   var s = @[1, 1, 1, 1, 1]
   ##   echo len(s) # => 5
-
 
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## Returns the internal `int` value of an ordinal value ``x``.
@@ -1509,11 +1488,34 @@ const
 
 include "system/memalloc"
 
+proc newSeq[T](s: var seq[T], len: Natural) {.noSideEffect.} =
+  if len > s.capacity:
+    # CHECKME: shared or not?
+    {.noSideEffect.}:
+      when declared(resizeShared): # PRTEMP
+        s.elems = resizeShared(s.elems, len)
+    s.capacity = len
+  s.size = len
+  # TODO: destroy/release other elems?
+
+proc newSeqOfCap[T](cap: Natural): seq[T] {.noSideEffect.} =
+  ## Creates a new sequence of type ``seq[T]`` with length zero and capacity
+  ## ``cap``.
+  ##
+  ## .. code-block:: Nim
+  ##   var x = newSeqOfCap[int](5)
+  ##   assert len(x) == 0
+  ##   x.add(10)
+  ##   assert len(x) == 1
+  when declared(createShared): # PRTEMP
+    result.elems = createShared(T, cap)
+  result.capacity = cap
 
 
 proc `=destroy`*[T](x: var seq[T]) =
   # echo "in destroy"
-  freeShared(x.elems)
+  when declared(freeShared): # PRTEMP
+    freeShared(x.elems)
 
 proc `|`*(a, b: typedesc): typedesc = discard
 
@@ -2969,8 +2971,8 @@ when not defined(js):
     proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
       magic: "Slice".}
 
-proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
-  magic: "Slice".}
+# proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
+#   magic: "Slice".}
 proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
 proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.

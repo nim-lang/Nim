@@ -407,7 +407,7 @@ template oldSplit(s, seps, maxsplit) =
       dec(splits)
 
 template accResult(iter: untyped) =
-  result = @[]
+  result = default(type(result))
   for x in iter: add(result, x)
 
 
