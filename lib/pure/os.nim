@@ -2127,7 +2127,8 @@ proc `$`*(s: WalkStep): string =
   of wsEntryBad: "(wsEntryBad | '$1'$2)" % [s.path, err]
   of wsInterrupted: "(wsInterrupted | '$1'$2)"  % [s.path, err]
 
-iterator tryWalkDir*(dir: string, relative=false): WalkStep =
+iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
+  tags: [ReadDirEffect], raises: [], noNimScript.} =
   ## Walks over the directory `dir` and yields for each directory or file
   ## in `dir`, non-recursively. It's a version of
   ## `walkDir iterator <#walkDir.i,string>`_  with more thorough error
@@ -2138,11 +2139,12 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep =
   ## 
   ## - ``kind=wsOpenDir``: yielded once after opening, contains ``openStatus``
   ##                       of type ``OpenDirStatus``
-  ## - ``kind=wsEntryOk``: signifies normal entries with
-  ##                       path component ``entryType``
-  ## - ``kind=wsEntryBad``: broken symlink on posix without path component
-  ## - ``kind=wsInterrupted``: signifies that a rare OS error happenned and
-  ##                           the walking was terminated
+  ## - then it yields zero or more entries, each can be of the following kind:
+  ##    - ``kind=wsEntryOk``: signifies normal entries with
+  ##                          path component ``entryType``
+  ##    - ``kind=wsEntryBad``: broken symlink (without path component)
+  ##    - ``kind=wsInterrupted``: signifies that a rare OS error happenned and
+  ##                              the walking was terminated
   ##
   ## An example of usage with full error checking:
   ## .. code-block:: Nim
