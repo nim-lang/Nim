@@ -30,6 +30,8 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
+include "system/inclrtl"
+
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
