@@ -33,7 +33,8 @@ build_nim_csources(){
       if [ "$unamestr" = 'FreeBSD' ]; then
         makeX=gmake
       fi
-      which $makeX && echo_run $makeX -C csources -j -l $(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1) || build_nim_csources_via_script
+      nCPU=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
+      which $makeX && echo_run $makeX -C csources -j -l $nCPU || build_nim_csources_via_script
     fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
