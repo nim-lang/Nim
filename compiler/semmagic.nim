@@ -170,11 +170,11 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     case arg.kind
     of tyGenericInst:
       result = getTypeDescNode(arg.base, operand.owner, traitCall.info)
-    # of tySequence:
+    # of tySequence: # this doesn't work
     #   var resType = newType(tySequence, operand.owner)
     #   result = toNode(resType, traitCall.info) # doesn't work yet
-    else: # there might be more kinds we can support later, eg `tySequence` etc
-      localError(c.config, traitCall.info, "expected $1, got: $2 of type $3" % [tyGenericInst.toHumanStr, arg.kind.toHumanStr, typeToString(operand)])
+    else:
+      localError(c.config, traitCall.info, "expected generic type, got: type $2 of kind $1" % [arg.kind.toHumanStr, typeToString(operand)])
       result = newType(tyError, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)

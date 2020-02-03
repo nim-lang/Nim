@@ -1403,7 +1403,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
     # not generic.
-    localError(c.config, n.info, errNoGenericParamsAllowedForX % $(s.name.s, t.kind.toHumanStr))
+    localError(c.config, n.info, errNoGenericParamsAllowedForX % s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
     var m = newCandidate(c, t)
