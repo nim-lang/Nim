@@ -234,7 +234,6 @@ type
                                       ## pointer to the array data and a
                                       ## length field.
   varargs*[T]{.magic: "Varargs".}     ## Generic type to construct a varargs type.
-  seq*[T]{.magic: "Seq".}             ## Generic type to construct sequences.
   set*[T]{.magic: "Set".}             ## Generic type to construct bit sets.
 
 when defined(nimUncheckedArrayTyp):
@@ -518,8 +517,6 @@ type
   RootRef* = ref RootObj ## Reference to `RootObj`.
 
 
-include "system/exceptions"
-
 when defined(js) or defined(nimdoc):
   type
     JsRoot* = ref object of RootObj
@@ -574,24 +571,87 @@ when defined(nimtypedescfixed):
   proc sizeof*(x: typedesc): int {.magic: "SizeOf", noSideEffect.}
 
 
-proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
-  ## Creates a new sequence of type ``seq[T]`` with length ``len``.
-  ##
-  ## This is equivalent to ``s = @[]; setlen(s, len)``, but more
-  ## efficient since no reallocation is needed.
-  ##
-  ## Note that the sequence will be filled with zeroed entries.
-  ## After the creation of the sequence you should assign entries to
-  ## the sequence instead of adding them. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   var inputStrings : seq[string]
-  ##   newSeq(inputStrings, 3)
-  ##   assert len(inputStrings) == 3
-  ##   inputStrings[0] = "The fourth"
-  ##   inputStrings[1] = "assignment"
-  ##   inputStrings[2] = "would crash"
-  ##   #inputStrings[3] = "out of bounds"
+type seq*[T] = object
+  capacity: int
+  size: int
+  elems: ptr T
+
+template `+`[T](p: ptr T, off: int): ptr T =
+  cast[ptr T](cast[ByteAddress](p) +% off * sizeof(T))
+
+proc len*[T](a: seq[T]): int = a.size
+
+proc checkAux(cond: bool)
+
+proc `[]`*[T](a: seq[T], index: int): var T =
+  # TODO: instead RangeCheck
+  checkAux(index >= 0)
+  checkAux(index < a.size)
+  (a.elems + index)[]
+
+proc `[]=`*[T](a: seq[T], index: int, val: T) =
+  checkAux(index >= 0)
+  checkAux(index < a.size)
+  (a.elems + index)[] = val
+
+iterator items*[T](a: seq[T]): T =
+  var i=0
+  while i < len(a):
+    yield (a.elems + i)[]
+    i.inc
+
+proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
+  ## Generic equals operator for sequences: relies on a equals operator for
+  ## the element type `T`.
+  when nimvm:
+    when not defined(nimNoNil):
+      if x.isNil and y.isNil:
+        return true
+    else:
+      if x.len == 0 and y.len == 0:
+        return true
+  else:
+    when not defined(js):
+      proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
+        when defined(nimSeqsV2):
+          result = cast[NimSeqV2[T]](x).p
+        else:
+          result = cast[pointer](x)
+
+      if seqToPtr(x) == seqToPtr(y):
+        return true
+    else:
+      var sameObject = false
+      asm """`sameObject` = `x` === `y`"""
+      if sameObject: return true
+
+  when not defined(nimNoNil):
+    if x.isNil or y.isNil:
+      return false
+
+  if x.len != y.len:
+    return false
+
+  for i in 0..x.len-1:
+    if x[i] != y[i]:
+      return false
+
+  return true
+
+include "system/exceptions"
+
+proc resizeShared[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].}
+proc freeShared[T](p: ptr T) {.inline, benign, raises: [].}
+proc createShared(T: typedesc, size = 1.Positive): ptr T {.inline.}
+
+proc newSeq*[T](s: var seq[T], len: Natural) {.noSideEffect.} =
+  if len > s.capacity:
+    # CHECKME: shared or not?
+    {.noSideEffect.}:
+      s.elems = resizeShared(s.elems, len)
+    s.capacity = len
+  s.size = len
+  # TODO: destroy/release other elems?
 
 proc newSeq*[T](len = 0.Natural): seq[T] =
   ## Creates a new sequence of type ``seq[T]`` with length ``len``.
@@ -613,8 +673,7 @@ proc newSeq*[T](len = 0.Natural): seq[T] =
   ##   #inputStrings[3] = "out of bounds"
   newSeq(result, len)
 
-proc newSeqOfCap*[T](cap: Natural): seq[T] {.
-  magic: "NewSeqOfCap", noSideEffect.} =
+proc newSeqOfCap*[T](cap: Natural): seq[T] {.noSideEffect.} =
   ## Creates a new sequence of type ``seq[T]`` with length zero and capacity
   ## ``cap``.
   ##
@@ -623,7 +682,8 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ##   assert len(x) == 0
   ##   x.add(10)
   ##   assert len(x) == 1
-  discard
+  result.elems = createShared(T, cap)
+  result.capacity = cap
 
 when not defined(js):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
@@ -676,6 +736,7 @@ proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ##   echo len(arr) # => 5
   ##   echo len(array[3..8, int]) # => 6
 
+# when false: # PRTEMP
 proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
   ## Returns the length of a sequence.
   ##
@@ -1447,6 +1508,11 @@ const
 include "system/memalloc"
 
 
+
+proc `=destroy`*[T](x: var seq[T]) =
+  # echo "in destroy"
+  freeShared(x.elems)
+
 proc `|`*(a, b: typedesc): typedesc = discard
 
 include "system/iterators_1"
@@ -1679,6 +1745,9 @@ when defined(nimV2):
 
 import system/assertions
 export assertions
+
+proc checkAux(cond: bool) =
+  assert(cond)
 
 import system/iterators
 export iterators

@@ -406,8 +406,8 @@ when not defined(nimble):
     backend*: string     ## Nimble support: The package's backend.
 
     skipDirs*, skipFiles*, skipExt*, installDirs*, installFiles*,
-      installExt*, bin*: seq[string] = @[] ## Nimble metadata.
-    requiresData*: seq[string] = @[] ## Exposes the list of requirements for read
+      installExt*, bin*: seq[string] ## Nimble metadata.
+    requiresData*: seq[string] ## Exposes the list of requirements for read
                                      ## and write accesses.
 
   proc requires*(deps: varargs[string]) =
