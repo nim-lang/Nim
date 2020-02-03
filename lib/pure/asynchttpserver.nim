@@ -130,19 +130,30 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc parseUppercaseMethod(name: string): HttpMethod =
-  result =
-    case name
-    of "GET": HttpGet
-    of "POST": HttpPost
-    of "HEAD": HttpHead
-    of "PUT": HttpPut
-    of "DELETE": HttpDelete
-    of "PATCH": HttpPatch
-    of "OPTIONS": HttpOptions
-    of "CONNECT": HttpConnect
-    of "TRACE": HttpTrace
-    else: raise newException(ValueError, "Invalid HTTP method " & name)
+proc readBody(
+  req: FutureVar[Request],
+  contentLength: int
+): Future[bool] {.since: (1, 1), async.} =
+
+  var remainder = contentLength
+  while remainder > 0:
+    let readSize = min(remainder, chunkSize)
+    let data = await req.mget().client.recv(read_size)
+    if data.len != read_size:
+      return true
+    await req.mget().bodyStream.write(data)
+    remainder -= data.len
+
+  req.mget().bodyStream.complete()
+  return false
+
+proc readBody(
+  req: FutureVar[Request],
+  contentLength: int
+): Future[bool] {.async.} =
+
+  req.mget().body = await req.mget().client.recv(contentLength)
+  return if req.mget().body.len == contentLength: false else: true
 
 proc processRequest(
   server: AsyncHttpServer,
@@ -190,9 +201,17 @@ proc processRequest(
   for linePart in lineFut.mget.split(' '):
     case i
     of 0:
-      try:
-        request.reqMethod = parseUppercaseMethod(linePart)
-      except ValueError:
+      case linePart
+      of "GET": request.reqMethod = HttpGet
+      of "POST": request.reqMethod = HttpPost
+      of "HEAD": request.reqMethod = HttpHead
+      of "PUT": request.reqMethod = HttpPut
+      of "DELETE": request.reqMethod = HttpDelete
+      of "PATCH": request.reqMethod = HttpPatch
+      of "OPTIONS": request.reqMethod = HttpOptions
+      of "CONNECT": request.reqMethod = HttpConnect
+      of "TRACE": request.reqMethod = HttpTrace
+      else:
         asyncCheck request.respondError(Http400)
         return true # Retry processing of request
     of 1:
@@ -245,32 +264,22 @@ proc processRequest(
   # - Check for Content-length header
   if request.headers.hasKey("Content-Length"):
     var contentLength = 0
-    if parseSaturatedNatural(request.headers["Content-Length"],
-        contentLength) == 0:
+    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
       await request.respond(Http400, "Bad Request. Invalid Content-Length.")
       return true
     else:
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
-
-      var remainder = contentLength
-      while remainder > 0:
-        let readSize = min(remainder, chunkSize)
-        let data = await client.recv(read_size)
-        if data.len != read_size:
-          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-          return true
-        await request.bodyStream.write(data)
-        remainder -= data.len
-
-      request.bodyStream.complete()
-
+        
+      if await req.readBody(contentLength):
+        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+        return true
+      
       ## request.body = await client.recv(contentLength)
       ## if request.body.len != contentLength:
-      ##  await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+      ##   await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
       ##   return true
-  
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
