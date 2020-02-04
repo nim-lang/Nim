@@ -29,18 +29,18 @@ proc replaceOutplace(lhs, n: NimNode): NimNode =
   else:
     doAssert false, "unexpected kind: " & $n.kind
 
-macro `./`*(lhs, rhs): untyped {.since: (1, 1).} =
+macro `.>`*(lhs, rhs): untyped {.since: (1, 1).} =
   ## Outplace operator: turns an `in-place`:idx: algorithm into one that works on
   ## a copy and returns this copy. A placeholder `_` can optionally be used to
   ## specify an output parameter of position > 0.
   ## **Since**: Version 1.2.
   runnableExamples:
     import algorithm, strutils
-    doAssert @[2,1,3]./sort() == @[1,2,3]
-    doAssert ""./addQuoted("foX").toUpper == "\"FOX\""
-    doAssert "A"./addQuoted("foo").toUpper[0..1].toLower == "a\""
+    doAssert @[2,1,3].>sort() == @[1,2,3]
+    doAssert "".>addQuoted("foX").toUpper == "\"FOX\""
+    doAssert "A".>addQuoted("foo").toUpper[0..1].toLower == "a\""
     proc bar(x: int, ret: var int) = ret += x
-    doAssert 3./bar(4, _) == 3 + 4 # use placeholder `_` to specify a position > 0
-    doAssert @[2,1,3]./sort(_) == @[1,2,3] # `_` works but unneeded in position 0
+    doAssert 3.>bar(4, _) == 3 + 4 # use placeholder `_` to specify a position > 0
+    doAssert @[2,1,3].>sort(_) == @[1,2,3] # `_` works but unneeded in position 0
   result = copyNimTree(rhs)
   result = replaceOutplace(lhs, result)
