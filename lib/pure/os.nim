@@ -2518,6 +2518,7 @@ proc parseCmdLine*(c: string): seq[string] {.
   ## * `paramStr proc <#paramStr,int>`_
   ## * `commandLineParams proc <#commandLineParams>`_
 
+  result = @[]
   var i = 0
   var a = ""
   while true:
@@ -2718,6 +2719,7 @@ when declared(paramCount) or defined(nimdoc):
     ##     # Use commandLineParams() here
     ##   else:
     ##     # Do something else!
+    result = @[]
     for i in 1..paramCount():
       result.add(paramStr(i))
 

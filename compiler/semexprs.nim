@@ -1634,27 +1634,10 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   checkSonsLen(n, 2, c.config)
   var a = n[0]
   if n[1].renderTree == "@[]": # HACK
-    echo0b n.renderTree
-    echo0b n[0].renderTree
-    echo0b n[1].renderTree
-    echo0b n.len
     var n2 = newNodeI(nkCall, n.info)
     n2.add newIdentNode(getIdent(c.cache, "reset"), n.info)
     n2.add a
-    echo0b n2.renderTree
-    # n2.add newIdentNode(c.p.resultSym)
-    # n2.add newSymNode(c.p.resultSym)
-    # var call = newNodeIT(nkCall, n.info, n.typ)
-    # call.add(n[0])
-
-    # var n2 = newNodeI(nkAsgn, n.info)
-    # a.add newSymNode(c.p.resultSym)
-    # n2.add n[0]
-    # n2.add n[0]
-    # n[0] = semAsgn(c, a)
     return semExpr(c, n2)
-    # return semAsgn(c, n2, mode)
-    # return semAsgn(c, n, mode)
 
   case a.kind
   of nkDotExpr:
