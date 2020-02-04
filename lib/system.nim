@@ -584,8 +584,6 @@ type seq*[T] = object
 template `+`[T](p: ptr T, off: int): ptr T =
   cast[ptr T](cast[ByteAddress](p) +% off * sizeof(T))
 
-proc len*[T](a: seq[T]): int = a.size
-
 when false:
   converter toOpenArray3*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
   converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
@@ -717,13 +715,13 @@ proc len*(x: (type array)|array): int {.magic: "LengthArray", noSideEffect.}
   ##   echo len(arr) # => 5
   ##   echo len(array[3..8, int]) # => 6
 
-when false: # PRTEMP
- proc len*[T](x: seq[T]): int {.magic: "LengthSeq", noSideEffect.}
+proc len*[T](x: seq[T]): int {.noSideEffect.} =
   ## Returns the length of a sequence.
   ##
   ## .. code-block:: Nim
   ##   var s = @[1, 1, 1, 1, 1]
   ##   echo len(s) # => 5
+  x.size
 
 
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
