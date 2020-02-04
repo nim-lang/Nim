@@ -480,7 +480,7 @@ proc runCI(cmd: string) =
   when defined(posix): # appveyor (on windows) didn't run this
     kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release -d:danger")
+  kochExecFold("Boot in release mode", "boot -d:release")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
