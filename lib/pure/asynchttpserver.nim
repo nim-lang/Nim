@@ -30,8 +30,6 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-include "system/inclrtl"
-
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
@@ -135,7 +133,7 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
 proc readBody(
   req: FutureVar[Request],
   contentLength: int
-): Future[bool] {.since: (1, 1), async.} =
+): Future[bool] {.async.} =
 
   var remainder = contentLength
   while remainder > 0:
@@ -148,14 +146,6 @@ proc readBody(
 
   req.mget().bodyStream.complete()
   return false
-
-proc readBody(
-  req: FutureVar[Request],
-  contentLength: int
-): Future[bool] {.async.} =
-
-  req.mget().body = await req.mget().client.recv(contentLength)
-  return if req.mget().body.len == contentLength: false else: true
 
 proc processRequest(
   server: AsyncHttpServer,
