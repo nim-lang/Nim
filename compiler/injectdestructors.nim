@@ -13,6 +13,10 @@
 
 ## See doc/destructors.rst for a spec of the implemented rewrite rules
 
+## XXX Optimization to implement: if a local variable is only assigned
+## string literals as in ``let x = conf: "foo" else: "bar"`` do not
+## produce a destructor call for ``x``. The address of ``x`` must also
+## not have been taken. ``x = "abc"; x.add(...)``
 
 import
   intsets, ast, msgs, renderer, magicsys, types, idents,
@@ -34,7 +38,7 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop, canRaise: int
+    inLoop, hasUnstructuredCf: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
@@ -287,7 +291,7 @@ proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
   sym.typ = typ
   result = newSymNode(sym)
-  c.addTopVar(result)
+  #c.addTopVar(result)
 
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
@@ -341,10 +345,9 @@ proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
-  # XXX This is only required if we are in a loop. Since we move temporaries
-  # out of loops we need to mark it as 'wasMoved'.
-  result.add genWasMoved(tmp, c)
   if hasDestructor(n.typ):
+    if c.inLoop > 0:
+      result.add genWasMoved(tmp, c)
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
@@ -356,6 +359,8 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     if c.graph.config.selectedGC in {gcArc, gcOrc}:
       assert(not containsGarbageCollectedRef(n.typ))
     result.add newTree(nkAsgn, tmp, p(n, c, normal))
+  # Since we know somebody will take over the produced copy, there is
+  # no need to destroy it.
   result.add tmp
 
 proc isDangerousSeq(t: PType): bool {.inline.} =
@@ -378,7 +383,7 @@ proc containsConstSeq(n: PNode): bool =
   else: discard
 
 proc handleTmpDestroys(c: var Con; body: PNode; oldCanRaise: int): PNode =
-  if c.canRaise == oldCanRaise:
+  if c.hasUnstructuredCf == oldCanRaise:
     for i in countdown(c.tempDestroys.high, 0):
       body.add c.tempDestroys[i]
     result = body
@@ -393,7 +398,7 @@ template handleNested(n: untyped, processCall: untyped) =
   case n.kind
   of nkStmtList, nkStmtListExpr:
     if n.len == 0: return n
-    let oldCanRaise = c.canRaise
+    let oldCanRaise = c.hasUnstructuredCf
     result = shallowCopy(n)
     let l = n.len - 1
     for i in 0..<l:
@@ -404,10 +409,12 @@ template handleNested(n: untyped, processCall: untyped) =
     # not destroy it too early:
     if n.typ == nil or isEmptyType(n.typ):
       result[l] = processCall
-      result = handleTmpDestroys(c, result, oldCanRaise)
+      if c.tempDestroys.len > 0:
+        result = handleTmpDestroys(c, result, oldCanRaise)
     else:
       setLen(result.sons, l)
-      result = handleTmpDestroys(c, result, oldCanRaise)
+      if c.tempDestroys.len > 0:
+        result = handleTmpDestroys(c, result, oldCanRaise)
       if result.kind != nkFinally:
         result.add processCall
       else:
@@ -423,12 +430,12 @@ template handleNested(n: untyped, processCall: untyped) =
       var branch = copyNode(son)
       if son.kind in {nkElifBranch, nkElifExpr}:
         template node: untyped = son[1]
-        branch.add p(son[0], c, normal) #The condition
-        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+        branch.add p(son[0], c, normal) # The condition
+        branch.add if node.typ == nil: p(node, c, normal) # noreturn
                    else: processCall
       else:
         template node: untyped = son[0]
-        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+        branch.add if node.typ == nil: p(node, c, normal) # noreturn
                    else: processCall
       result.add branch
   of nkCaseStmt:
@@ -439,18 +446,18 @@ template handleNested(n: untyped, processCall: untyped) =
       if n[i].kind == nkOfBranch:
         branch = n[i] # of branch conditions are constants
         template node: untyped = n[i][^1]
-        branch[^1] = if node.typ == nil: p(node, c, normal) #noreturn
+        branch[^1] = if node.typ == nil: p(node, c, normal) # noreturn
                      else: processCall
       elif n[i].kind in {nkElifBranch, nkElifExpr}:
         branch = copyNode(n[i])
-        branch.add p(n[i][0], c, normal) #The condition
+        branch.add p(n[i][0], c, normal) # The condition
         template node: untyped = n[i][1]
-        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+        branch.add if node.typ == nil: p(node, c, normal) # noreturn
                    else: processCall
       else:
         branch = copyNode(n[i])
         template node: untyped = n[i][0]
-        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+        branch.add if node.typ == nil: p(node, c, normal) # noreturn
                    else: processCall
       result.add branch
   of nkWhen: # This should be a "when nimvm" node.
@@ -467,9 +474,18 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = getTemp(c, arg.typ, arg.info)
-    result.add genSink(c, tmp, arg)
+    when false:
+      # since we do not initialize these temporaries anymore, we
+      # use raw assignments instead of =sink:
+      result.add genSink(c, tmp, arg)
+    else:
+      # XXX This is deeply problematic for 'or' expressions, consider
+      # if cond or (let x = nonTrivialDestroyHere(); condB(x))
+      # If we always destroy 'x' we better initialize it first...
+      # The same is true for 'elif' sections.
+      result.add newTree(nkFastAsgn, tmp, arg)
     result.add tmp
-    c.destroys.add genDestroy(c, tmp)
+    c.tempDestroys.add genDestroy(c, tmp)
   else:
     result = arg
 
@@ -595,7 +611,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result = newTree(nkStmtList, destroyOld, result)
       else:
         result[0] = p(n[0], c, normal)
-      if canRaise(n[0]): inc c.canRaise
+      if canRaise(n[0]): inc c.hasUnstructuredCf
       if mode == normal:
         result = ensureDestruction(result, c)
     of nkDiscardStmt: # Small optimization
@@ -657,6 +673,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result.add call
         else:
           let tmp = getTemp(c, n[0].typ, n.info)
+          c.addTopVar(tmp)
           var m = genCopyNoCheck(c, tmp, n[0])
           m.add p(n[0], c, normal)
           result = newTree(nkStmtList, genWasMoved(tmp, c), m)
@@ -671,7 +688,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result.add p(n[0], c, sinkArg)
         else:
           result.add copyNode(n[0])
-      inc c.canRaise
+      inc c.hasUnstructuredCf
     of nkWhileStmt:
       result = copyNode(n)
       inc c.inLoop
@@ -683,6 +700,14 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
        nkExportStmt, nkPragma, nkCommentStmt, nkBreakStmt, nkBreakState:
       result = n
+    of nkBreakStmt:
+      inc c.hasUnstructuredCf
+      result = n
+    of nkReturnStmt:
+      result = shallowCopy(n)
+      for i in 0..<n.len:
+        result[i] = p(n[i], c, mode)
+      inc c.hasUnstructuredCf
     else:
       result = shallowCopy(n)
       for i in 0..<n.len:
