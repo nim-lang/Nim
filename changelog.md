@@ -40,9 +40,6 @@
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
-- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
-  operations that work on a copy of the data and return the mutated copy. As the existing
-  `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
@@ -57,8 +54,10 @@
 - Added `minIndex` and `maxIndex` to the `sequtils` module
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-- Added new `outplaces` module with `./` outplace operator: `@[2,1,3]./sort()` to avoid duplicating API's
-  with inplace and outplace variants; instead only the inplace variant is needed now.
+- Added new `outplaces` module with `./` outplace operator: `@[2,1,3]./sort()`.
+  It turn in-place algorithms like `sort` and `shuffle` into operations that work on a copy of
+  the data and return the mutated copy. As the existing `sorted` does. This avoids duplicating API's with
+  outplace variants.
 
 
 ## Library changes
