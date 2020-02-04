@@ -583,8 +583,6 @@ proc len*[T](a: seq[T]): int = a.size
 
 proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.magic: "Slice".}
 # proc toOpenArray*[T](x: seq[T]; first, last: int): var openArray[T] {.magic: "Slice".}
-# converter toOpenArray2*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
-# converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
 converter toOpenArray3*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
 converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
 
