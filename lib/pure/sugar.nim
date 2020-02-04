@@ -189,58 +189,6 @@ macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
 
-macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1), deprecated: "use sugar.`.@`".} =
-  expectKind call, nnkCallKinds
-  let tmp = genSym(nskVar, "outplaceResult")
-  var callsons = call[0..^1]
-  callsons.insert(tmp, inplaceArgPosition)
-  result = newTree(nnkStmtListExpr,
-    newVarStmt(tmp, arg),
-    copyNimNode(call).add callsons,
-    tmp)
-
-proc outplaceImpl(arg, call: NimNode): NimNode =
-  expectKind call, nnkCallKinds
-  let tmp = genSym(nskVar, "outplaceResult")
-  var callsons = call[0..^1]
-  var found = false
-  for i in 1..<len(callsons):
-    if callsons[i].kind == nnkIdent and callsons[i].strVal == "_":
-      callsons[i] = tmp
-      found = true
-      break
-  if not found: callsons.insert(tmp, 1)
-  result = newTree(nnkStmtListExpr,
-    newVarStmt(tmp, arg),
-    copyNimNode(call).add callsons,
-    tmp)
-
-proc replaceOutplace(lhs, n: NimNode): NimNode =
-  case n.kind
-  of nnkDotExpr, nnkBracketExpr:
-    result = copyNimTree(n)
-    result[0] = replaceOutplace(lhs, result[0])
-  of nnkCall:
-    result = outplaceImpl(lhs, n)
-  else:
-    doAssert false, "unexpected kind: " & $n.kind
-
-macro `.@`*(lhs, rhs): untyped {.since: (1, 1).} =
-  ## Outplace operator: turns an `in-place`:idx: algorithm into one that works on
-  ## a copy and returns this copy. A placeholder `_` can optionally be used to
-  ## specify an output parameter of position > 0.
-  ## **Since**: Version 1.2.
-  runnableExamples:
-    import algorithm, strutils
-    doAssert @[2,1,3].@sort() == @[1,2,3]
-    doAssert "".@addQuoted("foX").toUpper == "\"FOX\""
-    doAssert "A".@addQuoted("foo").toUpper[0..1].toLower == "a\""
-    proc bar(x: int, ret: var int) = ret += x
-    doAssert 3.@bar(4, _) == 3 + 4 # use placeholder `_` to specify a position > 0
-    doAssert @[2,1,3].@sort(_) == @[1,2,3] # `_` works but unneeded in position 0
-  result = copyNimTree(rhs)
-  result = replaceOutplace(lhs, result)
-
 proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
@@ -277,6 +225,16 @@ proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.
       bracketExpr.add(newCall(bindSym"typeof", newEmptyNode()))
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
+
+macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1), deprecated: "use outplaces.`.@`".} =
+  expectKind call, nnkCallKinds
+  let tmp = genSym(nskVar, "outplaceResult")
+  var callsons = call[0..^1]
+  callsons.insert(tmp, inplaceArgPosition)
+  result = newTree(nnkStmtListExpr,
+    newVarStmt(tmp, arg),
+    copyNimNode(call).add callsons,
+    tmp)
 
 macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   ## Comprehension for seq/set/table collections. ``init`` is
@@ -333,28 +291,6 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
 
 when isMainModule:
   since (1, 1):
-    import algorithm
-
-    block:
-      var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert a.@sort() == sorted(a)
-      #Chaining:
-      var aCopy = a
-      aCopy.insert(10)
-      doAssert a.@insert(10).@sort() == sorted(aCopy)
-      doAssert @[1,3,2].@sort().@sort(order = SortOrder.Descending) == @[3,2,1]
-        # using 2 `.@` chained together
-
-      proc bar(x: int, ret: var int) = ret += x
-      doAssert 3.@bar(4, _) == 3 + 4
-
-    import random
-
-    const b = @[0, 1, 2]
-    let c = b.@shuffle()
-    doAssert c[0] == 1
-    doAssert c[1] == 0
-
     #test collect
     import sets, tables
 
