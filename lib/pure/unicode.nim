@@ -1004,8 +1004,7 @@ iterator splitWhitespace*(s: string): string =
   splitCommon(s, unicodeSpaces, -1)
 
 template accResult(iter: untyped) =
-  # result = @[]
-  result = default(type(result))
+  result = @[]
   for x in iter: add(result, x)
 
 proc splitWhitespace*(s: string): seq[string] {.noSideEffect,
