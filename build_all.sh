@@ -23,7 +23,7 @@ build_nim_csources_via_script(){
 build_nim_csources(){
   # avoid changing dir in case of failure
   (
-    if [[ $# -ne 0 ]]; then
+    if [ $# -ne 0 ]; then
       # some args were passed (eg: `--cpu i386`), need to call build.sh
       build_nim_csources_via_script "$@"
     else
@@ -33,7 +33,8 @@ build_nim_csources(){
       if [ "$unamestr" = 'FreeBSD' ]; then
         makeX=gmake
       fi
-      which $makeX && echo_run $makeX -C csources -j -l 80 || build_nim_csources_via_script
+      nCPU=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
+      which $makeX && echo_run $makeX -C csources -j $((nCPU + 2)) -l $nCPU || build_nim_csources_via_script
     fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
