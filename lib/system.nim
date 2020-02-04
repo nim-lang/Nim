@@ -585,7 +585,8 @@ proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.magic: "Slice"
 # proc toOpenArray*[T](x: seq[T]; first, last: int): var openArray[T] {.magic: "Slice".}
 # converter toOpenArray2*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
 # converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
-converter toOpenArray2*[T](a: seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
+converter toOpenArray3*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
+converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
 
 proc checkAux(cond: bool)
 
@@ -908,8 +909,8 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## can differ between operating systems!
 
 when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
-    magic: "ArrToSeq", noSideEffect.}
+  # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
+  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
     ## Turns an array into a sequence.
     ##
     ## This most often useful for constructing
@@ -923,6 +924,13 @@ when defined(nimHasDefault):
     ##
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
+    var i=0
+    let n = len(a)
+    let first = low(a) # IMPROVE SPEED when...
+    result = newSeq[T](n)
+    while i<n:
+      result[i] = a[first + i]
+      i.inc
 
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
@@ -939,8 +947,7 @@ else:
   else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
-proc setLen*[T](s: var seq[T], newlen: Natural) {.
-  magic: "SetLengthSeq", noSideEffect.}
+proc setLen*[T](s: var seq[T], newlen: Natural) {.noSideEffect.} =
   ## Sets the length of seq `s` to `newlen`. ``T`` may be any sequence type.
   ##
   ## If the current length is greater than the new length,
@@ -953,6 +960,7 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ##   assert x == @[10, 20, 0, 0, 50]
   ##   x.setLen(1)
   ##   assert x == @[10]
+  newSeq[T](s, newlen) # CHECKME
 
 proc setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
@@ -1211,7 +1219,8 @@ when notJSnotNims and hostOS != "standalone" and hostOS != "any":
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when defined(nimscript) or not defined(nimSeqsV2):
+when false:
+ when defined(nimscript) or not defined(nimSeqsV2):
   proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
@@ -1219,6 +1228,20 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## containers should also call their adding proc `add` for consistency.
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
+
+when defined(nimscript) or not defined(nimSeqsV2):
+  proc add*[T](x: var seq[T], y: T) {.noSideEffect.} =
+    ## Generic proc for adding a data item `y` to a container `x`.
+    ##
+    ## For containers that have an order, `add` means *append*. New generic
+    ## containers should also call their adding proc `add` for consistency.
+    ## Generic code becomes much easier to write if the Nim naming scheme is
+    ## respected.
+    # CHECKME: SPEED: use doubling
+    let length = x.len
+    newSeq[T](x, length + 1)
+    x[length] = y
+
 
 proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a container `y` to a container `x`.
