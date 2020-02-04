@@ -1633,7 +1633,7 @@ proc goodLineInfo(arg: PNode): TLineInfo =
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   checkSonsLen(n, 2, c.config)
   var a = n[0]
-  if n[1].renderTree == "@[]": # HACK
+  if n[1].renderTree == "@[]": # HACK D20200203T184833:here
     var n2 = newNodeI(nkCall, n.info)
     n2.add newIdentNode(getIdent(c.cache, "reset"), n.info)
     n2.add a

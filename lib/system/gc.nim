@@ -191,8 +191,6 @@ proc nimGCref(p: pointer) {.compilerproc.} =
   add(gch.additionalRoots, c)
   incRef(c)
 
-proc nimGCrefImpl2(p: pointer) {.exportc.} = nimGCref(p)
-
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
   addZCT(gch.zct, c)

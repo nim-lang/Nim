@@ -945,9 +945,10 @@ else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
 when false:
-  proc `=`*[T](a: var T, b: type(@[])) =
-    # BUG: doesn't seem to work for: `var a = @[1,2]; a = @[]`; gives: type mismatch: got <seq[empty]> but expected 'seq[system.int]'
-    a.setLen 0
+  # attempt at fixing this:
+  # `var a = @[1,2]; a = @[]`; gives: type mismatch: got <seq[empty]> but expected 'seq[system.int]'
+  # this workaround didn't work, instead see HACK D20200203T184833
+  proc `=`*[T](a: var T, b: type(@[])) = a.setLen 0
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.noSideEffect.} =
   ## Sets the length of seq `s` to `newlen`. ``T`` may be any sequence type.
@@ -1498,15 +1499,12 @@ const
 
 include "system/memalloc"
 
-# proc nimGCref*(p: pointer) {.compilerproc.}
-proc nimGCrefImpl(p: pointer) {.importc: "nimGCrefImpl2".}
 proc newSeq[T](s: var seq[T], len: Natural) {.noSideEffect.} =
   if len > s.capacity:
-    # CHECKME: shared or not?
     {.noSideEffect.}:
-      when declared(resizeShared): # PRTEMP
+      # CHECKME: shared or not?
+      when declared(resizeShared):
         s.elems = resizeShared(s.elems, len)
-        nimGCrefImpl(s.elems)
     s.capacity = len
   s.size = len
   # TODO: destroy/release other elems?
