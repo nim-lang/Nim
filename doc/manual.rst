@@ -633,13 +633,13 @@ has the second lowest precedence.
 Otherwise precedence is determined by the first character.
 
 ================  ===============================================  ==================  ===============
-Precedence level    Operators                                      First character     Terminal symbol
+Precedence level    Operators                                      First characters    Terminal symbol
 ================  ===============================================  ==================  ===============
  10 (highest)                                                      ``$  ^``            OP10
   9               ``*    /    div   mod   shl  shr  %``            ``*  %  \  /``      OP9
   8               ``+    -``                                       ``+  -  ~  |``      OP8
   7               ``&``                                            ``&``               OP7
-  6               ``..``                                           ``.``               OP6
+  6               ``..    ..<``                                    ``..``              OP6
   5               ``==  <= < >= > !=  in notin is isnot not of``   ``=  <  >  !``      OP5
   4               ``and``                                                              OP4
   3               ``or xor``                                                           OP3
