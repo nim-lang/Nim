@@ -7,7 +7,8 @@ import std/[strformat,os,osproc]
 proc main() =
   const nim = getCurrentCompilerExe()
   const file = currentSourcePath().parentDir / "mevalffi.nim"
-  let cmd = fmt"{nim} c -f --experimental:compiletimeFFI --hints:off {file}"
+  # strangely, --hint:cc:off was needed
+  let cmd = fmt"{nim} c -f --experimental:compiletimeFFI --hints:off --hint:cc:off {file}"
   let (output, exitCode) = execCmdEx(cmd)
   let expected = """
 hello world stderr
