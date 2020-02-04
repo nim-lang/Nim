@@ -1528,13 +1528,9 @@ proc `=destroy`*[T](x: var seq[T]) =
   # echo "in destroy"
   var i=0
   while i < len(x):
-    # `=destroy`(x[i])
     reset(x[i])
     i.inc
-  # for i in 0..high(x):
-  #   # `=destroy`(x[i])
-  #   reset(x[i])
-  when declared(freeShared): # PRTEMP
+  when declared(freeShared):
     if x.elems != nil:
       freeShared(x.elems)
   x.elems = nil
