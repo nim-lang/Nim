@@ -226,7 +226,7 @@ proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1), deprecated: "use outplaces.`.@`".} =
+macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1), deprecated: "use outplaces.`./`".} =
   expectKind call, nnkCallKinds
   let tmp = genSym(nskVar, "outplaceResult")
   var callsons = call[0..^1]
