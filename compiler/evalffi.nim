@@ -17,7 +17,7 @@ when defined(windows):
   const libcDll = "msvcrt.dll"
 elif defined(linux):
   const libcDll = "libc.so(.6|.5|)"
-elif defined(freebsd):
+elif defined(bsd):
   const libcDll = "/lib/libc.so.7"
 elif defined(osx):
   const libcDll = "/usr/lib/libSystem.dylib"
