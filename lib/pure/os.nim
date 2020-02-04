@@ -2139,6 +2139,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
   ## 
   ## - ``kind=wsOpenDir`` is yielded once after opening, contains ``openStatus``
   ##                      of type ``OpenDirStatus``
+  ##                      (when `relative=true` the path is '.')
   ## - then it yields zero or more entries, each can be of the following kind:
   ##    - ``kind=wsEntryOk``: signifies normal entries with
   ##                          path component ``entryType``
@@ -2207,7 +2208,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
         of ERROR_ACCESS_DENIED: odAccessDenied
         else: odUnknownError
       else: odOpenOk
-    step = sOpenDir(status, dir)
+    step = sOpenDir(status, if relative: "." else: dir)
 
     var firstStep = true
     while true:
@@ -2278,7 +2279,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
           elif errno == EACCES: odAccessDenied
           else: odUnknownError
       else: odOpenOk
-    step = sOpenDir(status, dir)
+    step = sOpenDir(status, if relative: "." else: dir)
 
     while true:
       if not skip:
