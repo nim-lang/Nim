@@ -963,7 +963,11 @@ proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
     of '+', '-', '|': considerAsgn(8)
     of '&': considerAsgn(7)
     of '=', '<', '>', '!': result = 5
-    of '.': considerAsgn(6)
+    of '.':
+      if tok.ident.s.len > 1 and tok.ident.s[1] == '.':
+        considerAsgn(6)
+      else:
+        considerAsgn(11)
     of '?': result = 2
     else: considerAsgn(2)
   of tkDiv, tkMod, tkShl, tkShr: result = 9
