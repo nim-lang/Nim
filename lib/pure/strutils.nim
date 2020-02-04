@@ -782,7 +782,7 @@ proc rsplit*(s: string, sep: char, maxsplit: int = -1): seq[string]
   ## * `splitLines proc<#splitLines,string>`_
   ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
   accResult(rsplit(s, sep, maxsplit))
-  # result.reverse()
+  # result.reverse() # TODO
 
 proc rsplit*(s: string, seps: set[char] = Whitespace,
              maxsplit: int = -1): seq[string]
@@ -810,7 +810,7 @@ proc rsplit*(s: string, seps: set[char] = Whitespace,
   ## * `splitLines proc<#splitLines,string>`_
   ## * `splitWhitespace proc<#splitWhitespace,string,int>`_
   accResult(rsplit(s, seps, maxsplit))
-  # result.reverse()
+  # result.reverse() # TODO
 
 proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
              {.noSideEffect, rtl, extern: "nsuRSplitString".} =
@@ -846,7 +846,7 @@ proc rsplit*(s: string, sep: string, maxsplit: int = -1): seq[string]
     doAssert "a  largely    spaced sentence".rsplit(" ") == @["a", "",
         "largely", "", "", "", "spaced", "sentence"]
   accResult(rsplit(s, sep, maxsplit))
-  # result.reverse()
+  # result.reverse() # TODO
 
 proc splitLines*(s: string, keepEol = false): seq[string] {.noSideEffect,
   rtl, extern: "nsuSplitLines".} =

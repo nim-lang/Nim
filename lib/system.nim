@@ -643,10 +643,6 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
 
 include "system/exceptions"
 
-# proc resizeShared[T](p: ptr T, newSize: Natural): ptr T {.inline, raises: [].}
-# proc freeShared[T](p: ptr T) {.inline, benign, raises: [].}
-# proc createShared(T: typedesc, size = 1.Positive): ptr T {.inline.}
-
 proc newSeq*[T](s: var seq[T], len: Natural) {.noSideEffect.}
 proc newSeqOfCap*[T](cap: Natural): seq[T] {.noSideEffect.}
 
@@ -910,8 +906,6 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
-type VoidSeq* = object
-
 when defined(nimHasDefault):
   # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
   # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
@@ -931,16 +925,12 @@ when defined(nimHasDefault):
     ##   echo @b # => @['f', 'o', 'o']
     {.noSideEffect.}: # IMPROVE" should move this to the relevant proc
       const n = len(a)
-      when n > 0:
-        var i=0
-        let first = low(a) # IMPROVE SPEED when...
-        result = newSeq[T](n)
-        while i<n:
-          result[i] = a[first + i]
-          i.inc
-      else:
-        # result = seq[VoidSeq]()
-        result = VoidSeq()
+      var i=0
+      let first = low(a) # IMPROVE SPEED when...
+      result = newSeq[T](n)
+      while i<n:
+        result[i] = a[first + i]
+        i.inc
 
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
@@ -958,7 +948,7 @@ else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
 when false:
-  proc `=`*[T](a: var T, b: VoidSeq) =
+  proc `=`*[T](a: var T, b: type(@[])) =
     # BUG: doesn't seem to work for: `var a = @[1,2]; a = @[]`; gives: type mismatch: got <seq[empty]> but expected 'seq[system.int]'
     a.setLen 0
 
