@@ -2128,17 +2128,17 @@ proc `$`*(s: WalkStep): string =
   of wsInterrupted: "(wsInterrupted | '$1'$2)"  % [s.path, err]
 
 iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
-  tags: [ReadDirEffect], raises: [], noNimScript.} =
-  ## Walks over the directory `dir` and yields for each directory or file
-  ## in `dir`, non-recursively. It's a version of
+  tags: [ReadDirEffect], raises: [], noNimScript, since: (1, 1).} =
+  ## Walks over the directory `dir` and yields *steps* for each
+  ## directory or file in `dir`, non-recursively. It's a version of
   ## `walkDir iterator <#walkDir.i,string>`_  with more thorough error
-  ## checking. It never raises an exception.
+  ## checking. Never raises an exception.
   ##
-  ## Yields *steps* of walking through `dir`, each step contains
-  ## its path ``path``, OS error code ``code`` and additional tag ``kind``:
+  ## Each step is object variant ``WalkStep``, which  contains corresponding
+  ## path ``path``, OS error code ``code`` and discriminator ``kind``:
   ## 
-  ## - ``kind=wsOpenDir``: yielded once after opening, contains ``openStatus``
-  ##                       of type ``OpenDirStatus``
+  ## - ``kind=wsOpenDir`` is yielded once after opening, contains ``openStatus``
+  ##                      of type ``OpenDirStatus``
   ## - then it yields zero or more entries, each can be of the following kind:
   ##    - ``kind=wsEntryOk``: signifies normal entries with
   ##                          path component ``entryType``
@@ -2146,7 +2146,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
   ##    - ``kind=wsInterrupted``: signifies that a rare OS error happenned and
   ##                              the walking was terminated
   ##
-  ## An example of usage with full error checking:
+  ## An example of usage with full error logging:
   ## .. code-block:: Nim
   ##   for step in tryWalkDir("dirA"):
   ##     let err = " (" & $step.code & " - " & osErrorMsg(step.code) & ")"
@@ -2172,7 +2172,6 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
   ##       of wsEntryOk: yield (step.entryType, step.path)
   ##       of wsEntryBad: yield (pcLinkToFile, step.path)
   ##       of wsInterrupted: raiseOSError(step.code)
-
 
   var step: WalkStep
   var skip = false
