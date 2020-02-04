@@ -36,7 +36,7 @@ type
 # text file handling:
 when not defined(nimscript) and not defined(js):
   # duplicated between io and ansi_c
-  const stdioUsesMacros = defined(osx) and not defined(emscripten)
+  const stdioUsesMacros = (defined(osx) or defined(bsd)) and not defined(emscripten)
   const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
   const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
   const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
