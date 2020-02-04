@@ -33,6 +33,7 @@ macro `.>`*(lhs, rhs): untyped {.since: (1, 1).} =
   ## Outplace operator: turns an `in-place`:idx: algorithm into one that works on
   ## a copy and returns this copy. A placeholder `_` can optionally be used to
   ## specify an output parameter of position > 0.
+  ##
   ## **Since**: Version 1.2.
   runnableExamples:
     import algorithm, strutils
