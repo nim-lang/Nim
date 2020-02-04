@@ -1565,7 +1565,8 @@ proc `=destroy`*[T](x: var seq[T]) =
   #   # `=destroy`(x[i])
   #   reset(x[i])
   when declared(freeShared): # PRTEMP
-    freeShared(x.elems)
+    if x.elems != nil:
+      freeShared(x.elems)
   x.elems = nil
 
 proc `|`*(a, b: typedesc): typedesc = discard
