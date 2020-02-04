@@ -7,20 +7,11 @@ import std/[strformat,os,osproc]
 proc main() =
   const nim = getCurrentCompilerExe()
   const file = currentSourcePath().parentDir / "mevalffi.nim"
-  let cmd = fmt"{nim} c -r -f --experimental:compiletimeFFI --hints:off {file}"
+  let cmd = fmt"{nim} c -f --experimental:compiletimeFFI --hints:off {file}"
   let (output, exitCode) = execCmdEx(cmd)
   let expected = """
 hello world stderr
 hi stderr
-hello world stderr
-hi stderr
-foo
-foo:100
-foo:101
-foo:102:103
-foo:102:103:104
-foo:0.03:asdf:103:105
-ret={s1:foobar s2:foobar age:25 pi:3.14}
 foo
 foo:100
 foo:101
