@@ -184,7 +184,6 @@ iterator items*[T](a: seq[T]): T {.inline.} =
   var i = 0
   let L = len(a)
   while i < L:
-    # echo (L, i)
     yield a[i]
     inc(i)
     assert(len(a) == L, "the length of the seq changed while iterating over it")

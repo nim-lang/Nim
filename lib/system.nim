@@ -586,10 +586,9 @@ template `+`[T](p: ptr T, off: int): ptr T =
 
 proc len*[T](a: seq[T]): int = a.size
 
-proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.magic: "Slice".}
-# proc toOpenArray*[T](x: seq[T]; first, last: int): var openArray[T] {.magic: "Slice".}
-converter toOpenArray3*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
-converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
+when false:
+  converter toOpenArray3*[T](a: seq[T]): openArray[T] = toOpenArray(a, 0, len(a)-1)
+  converter toOpenArray2*[T](a: var seq[T]): var openArray[T] = toOpenArray(a, 0, len(a)-1)
 
 proc checkAux(cond: bool)
 
@@ -912,6 +911,7 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## can differ between operating systems!
 
 type VoidSeq* = object
+
 when defined(nimHasDefault):
   # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
   # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
@@ -957,10 +957,6 @@ else:
   else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
-# proc `=`*[T](a: var seq[T], b: type(@[])) =
-# proc `=`*[T](a: var seq[T], b: type(@[])) =
-# proc `=`*[T](a: var seq[T], b: seq[VoidSeq]) =
-# proc `=`*[T](a: var T, b: seq[VoidSeq]) =
 when false:
   proc `=`*[T](a: var T, b: VoidSeq) =
     # BUG: doesn't seem to work for: `var a = @[1,2]; a = @[]`; gives: type mismatch: got <seq[empty]> but expected 'seq[system.int]'
@@ -3023,8 +3019,8 @@ when not defined(js):
     proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
       magic: "Slice".}
 
-# proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
-#   magic: "Slice".}
+proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
+  magic: "Slice".}
 proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
 proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
