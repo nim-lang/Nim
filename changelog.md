@@ -51,7 +51,7 @@
 - Added `minIndex` and `maxIndex` to the `sequtils` module
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-- Added new `outplaces` module with `./` outplace operator: `@[2,1,3]./sort()`.
+- Added new `outplaces` module with `.>` outplace operator: `@[2,1,3].>sort()`.
   It turn in-place algorithms like `sort` and `shuffle` into operations that work on a copy of
   the data and return the mutated copy. As the existing `sorted` does. This avoids duplicating API's with
   outplace variants.
