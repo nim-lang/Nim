@@ -2974,7 +2974,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
     of tyObject:
       result = genConstObjConstr(p, n, isConst)
     of tyString, tyCString:
-      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit:
+      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
         result = genStringLiteralV2Const(p.module, n, isConst)
       else:
         var d: TLoc
