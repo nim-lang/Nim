@@ -1,8 +1,4 @@
-import std/outplaces
-import algorithm
-# import random
-# import ./random
-import "."/random
+import std/[outplaces, algorithm, random, os]
 
 proc main() =
   var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -28,5 +24,8 @@ proc main() =
     doAssert "ab"./add("cd") == "abcd"
     let ret = "ab"./add "cd" # example with `nnkCommand`
     doAssert ret == "abcd"
+
+  when defined(posix):
+    doAssert "foo./bar///"./normalizePathEnd() == "foo./bar"
 
 main()
