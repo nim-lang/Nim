@@ -122,7 +122,7 @@ type
     mq_maxmsg*: clong  ## Maximum number of messages.
     mq_msgsize*: clong ## Maximum message size.
     mq_curmsgs*: clong ## Number of messages currently queued.
-    pad: array[4, clong]
+    pad {.importc: "__pad".}: array[4, clong]
 
   Passwd* {.importc: "struct passwd", header: "<pwd.h>",
              final, pure.} = object ## struct passwd
@@ -153,35 +153,35 @@ type
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = cint
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>",
                   pure, final.} = object
-    abi: array[56 div sizeof(clong), clong]
+    abi {.importc: "__size".}: array[56 div sizeof(clong), clong]
 
   Pthread_barrier* {.importc: "pthread_barrier_t",
                       header: "<sys/types.h>", pure, final.} = object
-    abi: array[32 div sizeof(clong), clong]
+    abi {.importc: "__size".}: array[32 div sizeof(clong), clong]
   Pthread_barrierattr* {.importc: "pthread_barrierattr_t",
                           header: "<sys/types.h>", pure, final.} = object
-    abi: array[4 div sizeof(cint), cint]
+    abi {.importc: "__size".}: array[4 div sizeof(cint), cint]
 
   Pthread_cond* {.importc: "pthread_cond_t", header: "<sys/types.h>",
                   pure, final.} = object
-    abi: array[48 div sizeof(clonglong), clonglong]
+    abi {.importc: "__size".}: array[48 div sizeof(clonglong), clonglong]
   Pthread_condattr* {.importc: "pthread_condattr_t",
                        header: "<sys/types.h>", pure, final.} = object
-    abi: array[4 div sizeof(cint), cint]
+    abi {.importc: "__size".}: array[4 div sizeof(cint), cint]
   Pthread_key* {.importc: "pthread_key_t", header: "<sys/types.h>".} = cuint
   Pthread_mutex* {.importc: "pthread_mutex_t", header: "<sys/types.h>",
                    pure, final.} = object
-    abi: array[48 div sizeof(clong), clong]
+    abi {.importc: "__size".}: array[48 div sizeof(clong), clong]
   Pthread_mutexattr* {.importc: "pthread_mutexattr_t",
                         header: "<sys/types.h>", pure, final.} = object
-    abi: array[4 div sizeof(cint), cint]
+    abi {.importc: "__size".}: array[4 div sizeof(cint), cint]
   Pthread_once* {.importc: "pthread_once_t", header: "<sys/types.h>".} = cint
   Pthread_rwlock* {.importc: "pthread_rwlock_t",
                      header: "<sys/types.h>", pure, final.} = object
-    abi: array[56 div sizeof(clong), clong]
+    abi {.importc: "__size".}: array[56 div sizeof(clong), clong]
   Pthread_rwlockattr* {.importc: "pthread_rwlockattr_t",
                          header: "<sys/types.h>".} = object
-    abi: array[8 div sizeof(clong), clong]
+    abi {.importc: "__size".}: array[8 div sizeof(clong), clong]
   Pthread_spinlock* {.importc: "pthread_spinlock_t",
                        header: "<sys/types.h>".} = cint
   Pthread* {.importc: "pthread_t", header: "<sys/types.h>".} = culong
@@ -204,21 +204,21 @@ type
       domainname*: array[65, char]
 
   Sem* {.importc: "sem_t", header: "<semaphore.h>", final, pure.} = object
-    abi: array[32 div sizeof(clong), clong]
+    abi {.importc: "__size".}: array[32 div sizeof(clong), clong]
 
   Ipc_perm* {.importc: "struct ipc_perm",
                header: "<sys/ipc.h>", final, pure.} = object ## struct ipc_perm
-    key: Key
+    key {.importc: "__key".}: Key
     uid*: Uid    ## Owner's user ID.
     gid*: Gid    ## Owner's group ID.
     cuid*: Uid   ## Creator's user ID.
     cgid*: Gid   ## Creator's group ID.
     mode*: cshort  ## Read/write permission.
-    pad1: cshort
-    seq1: cshort
-    pad2: cshort
-    reserved1: culong
-    reserved2: culong
+    pad1 {.importc: "__pad1".}: cshort
+    seq1 {.importc: "__seq".}: cshort
+    pad2 {.importc: "__pad2".}: cshort
+    reserved1 {.importc: "__glibc_reserved1".}: culong
+    reserved2 {.importc: "__glibc_reserved2".}: culong
 
   Stat* {.importc: "struct stat",
            header: "<sys/stat.h>", final, pure.} = object ## struct stat
@@ -228,7 +228,7 @@ type
     st_mode*: Mode        ## Mode of file (see below).
     st_uid*: Uid          ## User ID of file.
     st_gid*: Gid          ## Group ID of file.
-    pad0: cint
+    pad0 {.importc: "__pad0".}: cint
     st_rdev*: Dev         ## Device ID (if file is character or block special).
     st_size*: Off         ## For regular files, the file size in bytes.
                            ## For symbolic links, the length in bytes of the
@@ -244,7 +244,7 @@ type
     st_atim*: Timespec   ## Time of last access.
     st_mtim*: Timespec   ## Time of last data modification.
     st_ctim*: Timespec   ## Time of last status change.
-    reserved: array[3, clong]
+    reserved {.importc: "__glibc_reserved".}: array[3, clong]
 
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
@@ -263,7 +263,7 @@ type
     f_fsid*: culong         ## File system ID.
     f_flag*: culong         ## Bit mask of f_flag values.
     f_namemax*: culong      ## Maximum filename length.
-    f_spare: array[6, cint]
+    f_spare {.importc: "__f_spare".}: array[6, cint]
 
   # No Posix_typed_mem_info
 
@@ -291,7 +291,7 @@ type
     ## accessed as an atomic entity, even in the presence of asynchronous
     ## interrupts.
   Sigset* {.importc: "sigset_t", header: "<signal.h>", final, pure.} = object
-    abi: array[1024 div (8 * sizeof(culong)), culong]
+    abi {.importc: "__val".}: array[1024 div (8 * sizeof(culong)), culong]
 
   SigEvent* {.importc: "struct sigevent",
                header: "<signal.h>", final, pure.} = object ## struct sigevent
@@ -300,7 +300,7 @@ type
     sigev_notify*: cint           ## Notification type.
     sigev_notify_function*: proc (x: SigVal) {.noconv.} ## Notification func.
     sigev_notify_attributes*: ptr Pthread_attr ## Notification attributes.
-    abi: array[12, int]
+    abi {.importc: "_sigev_un._pad".}: array[12, int]
 
   SigVal* {.importc: "union sigval",
              header: "<signal.h>", final, pure.} = object ## struct sigval
@@ -339,7 +339,7 @@ type
     si_status*: cint   ## Exit value or signal.
     si_band*: int      ## Band event for SIGPOLL.
     si_value*: SigVal  ## Signal value.
-    pad {.importc: "_pad"}: array[128 - 56, uint8]
+    pad {.importc: "__pad0"}: array[128 - 56, uint8]
 
   Nl_item* {.importc: "nl_item", header: "<nl_types.h>".} = cint
   Nl_catd* {.importc: "nl_catd", header: "<nl_types.h>".} = pointer
@@ -355,13 +355,13 @@ type
     tv_usec*: Suseconds ## Microseconds.
   TFdSet* {.importc: "fd_set", header: "<sys/select.h>",
            final, pure.} = object
-    abi: array[1024 div (8 * sizeof(clong)), clong]
+    abi {.importc: "fds_bits".}: array[1024 div (8 * sizeof(clong)), clong]
 
   Mcontext* {.importc: "mcontext_t", header: "<ucontext.h>",
                final, pure.} = object
     gregs: array[23, clonglong]
     fpregs: pointer
-    reserved1: array[8, clonglong]
+    reserved1 {.importc: "__reserved1".}: array[8, clonglong]
 
   Ucontext* {.importc: "ucontext_t", header: "<ucontext.h>",
                final, pure.} = object ## ucontext_t
@@ -384,33 +384,33 @@ type
     aio_buf*: pointer         ## Location of buffer.
     aio_nbytes*: csize_t        ## Length of transfer.
     aio_sigevent*: SigEvent   ## Signal number and value.
-    next_prio: pointer
-    abs_prio: cint
-    policy: cint
-    error_Code: cint
-    return_value: clong
+    next_prio {.importc: "__next_prio".}: pointer
+    abs_prio {.importc: "__abs_prio".}: cint
+    policy {.importc: "__policy".}: cint
+    error_Code {.importc: "__error_code".}: cint
+    return_value {.importc: "__return_value".}: clong
     aio_offset*: Off          ## File offset.
-    reserved: array[32, uint8]
+    reserved {.importc: "__glibc_reserved".}: array[32, uint8]
 
 
 when hasSpawnH:
   type
     Tposix_spawnattr* {.importc: "posix_spawnattr_t",
                         header: "<spawn.h>", final, pure.} = object
-      flags: cshort
-      pgrp: Pid
-      sd: Sigset
-      ss: Sigset
-      sp: Sched_param
-      policy: cint
-      pad: array[16, cint]
+      flags {.importc: "__flags".}: cshort
+      pgrp {.importc: "__pgrp".}: Pid
+      sd {.importc: "__sd".}: Sigset
+      ss {.importc: "__ss".}: Sigset
+      sp {.importc: "__sp".}: Sched_param
+      policy {.importc: "__policy".}: cint
+      pad {.importc: "__pad".}: array[16, cint]
 
     Tposix_spawn_file_actions* {.importc: "posix_spawn_file_actions_t",
                                  header: "<spawn.h>", final, pure.} = object
-      allocated: cint
-      used: cint
-      actions: pointer
-      pad: array[16, cint]
+      allocated {.importc: "__allocated".}: cint
+      used {.importc: "__used".}: cint
+      actions {.importc: "__actions".}: pointer
+      pad {.importc: "__pad".}: array[16, cint]
 
 # from sys/un.h
 const Sockaddr_un_path_length* = 108
@@ -433,8 +433,8 @@ type
                        header: "<sys/socket.h>",
                        pure, final.} = object ## struct sockaddr_storage
     ss_family*: TSa_Family ## Address family.
-    ss_padding: array[128 - sizeof(cshort) - sizeof(culong), char]
-    ss_align: clong
+    ss_padding {.importc: "__ss_padding".}: array[128 - sizeof(cshort) - sizeof(culong), char]
+    ss_align {.importc: "__ss_align".}: clong
 
   Tif_nameindex* {.importc: "struct if_nameindex", final,
                    pure, header: "<net/if.h>".} = object ## struct if_nameindex
