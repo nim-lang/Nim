@@ -2176,6 +2176,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
 
   var step: WalkStep
   var skip = false
+  let outDir = if relative: "." else: dir
   proc sOpenDir(s: OpenDirStatus, path: string): WalkStep =
     let code = if s == odOpenOk: OSErrorCode(0) else: osLastError()
     result = WalkStep(kind: wsOpenDir, openStatus: s, code: code, path: path)
@@ -2208,7 +2209,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
         of ERROR_ACCESS_DENIED: odAccessDenied
         else: odUnknownError
       else: odOpenOk
-    step = sOpenDir(status, if relative: "." else: dir)
+    step = sOpenDir(status, outDir)
 
     var firstStep = true
     while true:
@@ -2225,7 +2226,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
             break  # normal end, yielding nothing
           else:
             skip = false
-            step = sGetError(wsInterrupted, dir)
+            step = sGetError(wsInterrupted, outDir)
             continue
       skip = skipFindData(f)
       if not skip:
@@ -2279,7 +2280,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
           elif errno == EACCES: odAccessDenied
           else: odUnknownError
       else: odOpenOk
-    step = sOpenDir(status, if relative: "." else: dir)
+    step = sOpenDir(status, outDir)
 
     while true:
       if not skip:
@@ -2295,7 +2296,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
           break  # normal end, yielding nothing
         else:
           skip = false
-          step = sGetError(wsInterrupted, dir)
+          step = sGetError(wsInterrupted, outDir)
           continue
       when defined(nimNoArrayToCstringConversion):
         var y = $cstring(addr x.d_name)
