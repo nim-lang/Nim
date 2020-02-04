@@ -604,32 +604,6 @@ proc `[]=`*[T](a: seq[T], index: int, val: T) =
 proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
   ## Generic equals operator for sequences: relies on a equals operator for
   ## the element type `T`.
-  when nimvm:
-    when not defined(nimNoNil):
-      if x.isNil and y.isNil:
-        return true
-    else:
-      if x.len == 0 and y.len == 0:
-        return true
-  else:
-    when not defined(js):
-      proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
-        when defined(nimSeqsV2):
-          result = cast[NimSeqV2[T]](x).p
-        else:
-          result = cast[pointer](x)
-
-      if seqToPtr(x) == seqToPtr(y):
-        return true
-    else:
-      var sameObject = false
-      asm """`sameObject` = `x` === `y`"""
-      if sameObject: return true
-
-  when not defined(nimNoNil):
-    if x.isNil or y.isNil:
-      return false
-
   if x.len != y.len:
     return false
 
@@ -1499,12 +1473,28 @@ const
 
 include "system/memalloc"
 
+proc c_printf(frmt: cstring): cint {.importc: "printf", header: "<stdio.h>", varargs, discardable.}
+
 proc newSeq[T](s: var seq[T], len: Natural) {.noSideEffect.} =
+  let oldLen = s.len
   if len > s.capacity:
     {.noSideEffect.}:
       # CHECKME: shared or not?
       when declared(resizeShared):
-        s.elems = resizeShared(s.elems, len)
+        discard c_printf("len: %d %d %x\n", cast[int](len), cast[int](oldLen), s.elems)
+        # s.elems = resizeShared(s.elems, len)
+        s.elems = cast[ptr T](reallocShared0(s.elems, T.sizeof * s.capacity, T.sizeof * len))
+        discard c_printf("len.2: %d %d %x\n", cast[int](len), cast[int](oldLen), s.elems)
+        when T is int:
+          s.size = len
+          for i in 0 .. (len-1):
+            # let ci = s.elems[i]
+            let ci = s[i]
+            discard c_printf("leni.3: i:%d %d\n", cast[cint](i), cast[cint](ci))
+
+      # for i in s.capacity .. (len-1):
+      #   s.elems[i]
+
     s.capacity = len
   s.size = len
   # TODO: destroy/release other elems?
