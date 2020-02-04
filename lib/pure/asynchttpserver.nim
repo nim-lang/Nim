@@ -41,10 +41,12 @@ export httpcore except parseHeader
 # Also, maybe move `client` out of `Request` object and into the args for
 # the proc.
 
+const
+  maxLine = 8*1024
+
 when (NimMajor, NimMinor) >= (1, 1):
   const
-    maxLine = 8*1024
-    chunkSize = 1048
+    chunkSize = 8*1048 ## This seems perfectly reasonable for default chunkSize.
 
   type
     Request* = object
@@ -57,9 +59,6 @@ when (NimMajor, NimMinor) >= (1, 1):
       body*: string
       bodyStream*: FutureStream[string]
 else:
-  const
-    maxLine = 8*1024
-
   type
     Request* = object
       client*: AsyncSocket # TODO: Separate this into a Response object?
