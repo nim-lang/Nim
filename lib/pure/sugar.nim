@@ -226,16 +226,6 @@ proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1), deprecated: "use outplaces.`./`".} =
-  expectKind call, nnkCallKinds
-  let tmp = genSym(nskVar, "outplaceResult")
-  var callsons = call[0..^1]
-  callsons.insert(tmp, inplaceArgPosition)
-  result = newTree(nnkStmtListExpr,
-    newVarStmt(tmp, arg),
-    copyNimNode(call).add callsons,
-    tmp)
-
 macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   ## Comprehension for seq/set/table collections. ``init`` is
   ## the init call, and so custom collections are supported.
