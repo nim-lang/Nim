@@ -35,26 +35,42 @@ import httpcore
 
 export httpcore except parseHeader
 
-const
-  maxLine = 8*1024
-  chunkSize = 1048
-
 # TODO: If it turns out that the decisions that asynchttpserver makes
 # explicitly, about whether to close the client sockets or upgrade them are
 # wrong, then add a return value which determines what to do for the callback.
 # Also, maybe move `client` out of `Request` object and into the args for
 # the proc.
-type
-  Request* = object
-    client*: AsyncSocket # TODO: Separate this into a Response object?
-    reqMethod*: HttpMethod
-    headers*: HttpHeaders
-    protocol*: tuple[orig: string, major, minor: int]
-    url*: Uri
-    hostname*: string    ## The hostname of the client that made the request.
-    body*: string
-    bodyStream*: FutureStream[string]
 
+when (NimMajor, NimMinor) >= (1, 1):
+  const
+    maxLine = 8*1024
+    chunkSize = 1048
+
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
+      bodyStream*: FutureStream[string]
+else:
+  const
+    maxLine = 8*1024
+
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
+
+type
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
@@ -130,23 +146,6 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc readBody(
-  req: FutureVar[Request],
-  contentLength: int
-): Future[bool] {.async.} =
-
-  var remainder = contentLength
-  while remainder > 0:
-    let readSize = min(remainder, chunkSize)
-    let data = await req.mget().client.recv(read_size)
-    if data.len != read_size:
-      return true
-    await req.mget().bodyStream.write(data)
-    remainder -= data.len
-
-  req.mget().bodyStream.complete()
-  return false
-
 proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
@@ -168,7 +167,8 @@ proc processRequest(
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
-  request.bodyStream = newFutureStream[string]()
+  when (NimMajor, NimMinor) >= (1, 1):
+    request.bodyStream = newFutureStream[string]()
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
@@ -263,15 +263,23 @@ proc processRequest(
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
-        
-      if await req.readBody(contentLength):
-        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return true
-      
-      ## request.body = await client.recv(contentLength)
-      ## if request.body.len != contentLength:
-      ##   await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-      ##   return true
+
+      when (NimMajor, NimMinor) >= (1, 1):
+        var remainder = contentLength
+        while remainder > 0:
+          let readSize = min(remainder, chunkSize)
+          let data = await client.recv(read_size)
+          if data.len != read_size:
+            await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+            return true
+          await request.bodyStream.write(data)
+          remainder -= data.len
+        request.bodyStream.complete()
+      else:
+        request.body = await client.recv(contentLength)
+        if request.body.len != contentLength:
+          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+          return true
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
