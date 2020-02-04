@@ -2107,7 +2107,7 @@ type
     wsEntryBad     ## a broken symlink on posix, where it's unclear if it
                    ## points to a file or directory
     wsInterrupted  ## the directory handle got invalidated during reading
-  WalkStep = object  ## step of walking through directory
+  WalkStep* = object  ## step of walking through directory
     path*: string                ## the path that this step applies to
     code*: OSErrorCode           ## OS error code for the step
     case kind*: WalkStepKind     ## discriminator
