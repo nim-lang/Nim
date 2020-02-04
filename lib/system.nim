@@ -725,6 +725,7 @@ when false: # PRTEMP
   ##   var s = @[1, 1, 1, 1, 1]
   ##   echo len(s) # => 5
 
+
 proc ord*[T: Ordinal|enum](x: T): int {.magic: "Ord", noSideEffect.}
   ## Returns the internal `int` value of an ordinal value ``x``.
   ##
@@ -907,9 +908,7 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## can differ between operating systems!
 
 when defined(nimHasDefault):
-  # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
-  # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
-  proc `@`* [IDX, T](a: sink array[IDX, T]): auto {.noSideEffect.} =
+  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
     ## Turns an array into a sequence.
     ##
     ## This most often useful for constructing
@@ -1224,28 +1223,17 @@ when notJSnotNims and hostOS != "standalone" and hostOS != "any":
 when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
-when false:
- when defined(nimscript) or not defined(nimSeqsV2):
-  proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
-    ## Generic proc for adding a data item `y` to a container `x`.
-    ##
-    ## For containers that have an order, `add` means *append*. New generic
-    ## containers should also call their adding proc `add` for consistency.
-    ## Generic code becomes much easier to write if the Nim naming scheme is
-    ## respected.
-
-when defined(nimscript) or not defined(nimSeqsV2):
-  proc add*[T](x: var seq[T], y: T) {.noSideEffect.} =
-    ## Generic proc for adding a data item `y` to a container `x`.
-    ##
-    ## For containers that have an order, `add` means *append*. New generic
-    ## containers should also call their adding proc `add` for consistency.
-    ## Generic code becomes much easier to write if the Nim naming scheme is
-    ## respected.
-    # CHECKME: SPEED: use doubling
-    let length = x.len
-    newSeq[T](x, length + 1)
-    x[length] = y
+proc add*[T](x: var seq[T], y: T) {.noSideEffect.} =
+  ## Generic proc for adding a data item `y` to a container `x`.
+  ##
+  ## For containers that have an order, `add` means *append*. New generic
+  ## containers should also call their adding proc `add` for consistency.
+  ## Generic code becomes much easier to write if the Nim naming scheme is
+  ## respected.
+  # CHECKME: SPEED: use doubling
+  let length = x.len
+  newSeq[T](x, length + 1)
+  x[length] = y
 
 
 proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
