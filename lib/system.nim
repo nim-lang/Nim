@@ -54,6 +54,11 @@ type
 
 include "system/basic_types"
 
+type
+  ByteAddress* = int
+    ## is the signed integer type that should be used for converting
+    ## pointers to integer addresses for readability.
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
@@ -906,9 +911,11 @@ proc cmp*(x, y: string): int {.noSideEffect, procvar.}
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
+type VoidSeq* = object
 when defined(nimHasDefault):
   # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.magic: "ArrToSeq", noSideEffect.}
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
+  # proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.noSideEffect.} =
+  proc `@`* [IDX, T](a: sink array[IDX, T]): auto {.noSideEffect.} =
     ## Turns an array into a sequence.
     ##
     ## This most often useful for constructing
@@ -922,13 +929,18 @@ when defined(nimHasDefault):
     ##
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
-    var i=0
-    let n = len(a)
-    let first = low(a) # IMPROVE SPEED when...
-    result = newSeq[T](n)
-    while i<n:
-      result[i] = a[first + i]
-      i.inc
+    {.noSideEffect.}: # IMPROVE" should move this to the relevant proc
+      const n = len(a)
+      when n > 0:
+        var i=0
+        let first = low(a) # IMPROVE SPEED when...
+        result = newSeq[T](n)
+        while i<n:
+          result[i] = a[first + i]
+          i.inc
+      else:
+        # result = seq[VoidSeq]()
+        result = VoidSeq()
 
   proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
@@ -944,6 +956,15 @@ else:
     proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
   else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+
+# proc `=`*[T](a: var seq[T], b: type(@[])) =
+# proc `=`*[T](a: var seq[T], b: type(@[])) =
+# proc `=`*[T](a: var seq[T], b: seq[VoidSeq]) =
+# proc `=`*[T](a: var T, b: seq[VoidSeq]) =
+when false:
+  proc `=`*[T](a: var T, b: VoidSeq) =
+    # BUG: doesn't seem to work for: `var a = @[1,2]; a = @[]`; gives: type mismatch: got <seq[empty]> but expected 'seq[system.int]'
+    a.setLen 0
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.noSideEffect.} =
   ## Sets the length of seq `s` to `newlen`. ``T`` may be any sequence type.
@@ -1342,10 +1363,6 @@ when not defined(nimV2):
     ##  echo repr(i) # => 0x1055ed050[1, 2, 3, 4, 5]
 
 type
-  ByteAddress* = int
-    ## is the signed integer type that should be used for converting
-    ## pointers to integer addresses for readability.
-
   BiggestFloat* = float64
     ## is an alias for the biggest floating point type the Nim
     ## compiler supports. Currently this is ``float64``, but it is
@@ -1509,12 +1526,15 @@ const
 
 include "system/memalloc"
 
+# proc nimGCref*(p: pointer) {.compilerproc.}
+proc nimGCrefImpl(p: pointer) {.importc: "nimGCrefImpl2".}
 proc newSeq[T](s: var seq[T], len: Natural) {.noSideEffect.} =
   if len > s.capacity:
     # CHECKME: shared or not?
     {.noSideEffect.}:
       when declared(resizeShared): # PRTEMP
         s.elems = resizeShared(s.elems, len)
+        nimGCrefImpl(s.elems)
     s.capacity = len
   s.size = len
   # TODO: destroy/release other elems?
@@ -1530,13 +1550,23 @@ proc newSeqOfCap[T](cap: Natural): seq[T] {.noSideEffect.} =
   ##   assert len(x) == 1
   when declared(createShared): # PRTEMP
     result.elems = createShared(T, cap)
+    nimGCrefImpl(result.elems)
   result.capacity = cap
 
 
 proc `=destroy`*[T](x: var seq[T]) =
   # echo "in destroy"
+  var i=0
+  while i < len(x):
+    # `=destroy`(x[i])
+    reset(x[i])
+    i.inc
+  # for i in 0..high(x):
+  #   # `=destroy`(x[i])
+  #   reset(x[i])
   when declared(freeShared): # PRTEMP
     freeShared(x.elems)
+  x.elems = nil
 
 proc `|`*(a, b: typedesc): typedesc = discard
 

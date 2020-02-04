@@ -185,11 +185,18 @@ proc incRef(c: PCell) {.inline.} =
   # and not colorMask
   logCell("incRef", c)
 
-proc nimGCref(p: pointer) {.compilerproc.} =
+proc nimGCref*(p: pointer) {.compilerproc.} =
+# proc nimGCref*(p: pointer) {.compilerproc, exportc.} =
+# proc nimGCref(p: pointer) {.compilerproc, exportc.} =
   # we keep it from being collected by pretending it's not even allocated:
   let c = usrToCell(p)
   add(gch.additionalRoots, c)
   incRef(c)
+
+# when not declared(nimGCrefImpl):
+static: echo "D20200203T175609: nimGCrefImpl"
+# proc nimGCrefImpl(p: pointer) {.exportc.} = nimGCref(p)
+proc nimGCrefImpl2(p: pointer) {.exportc.} = nimGCref(p)
 
 proc rtlAddZCT(c: PCell) {.rtl, inl.} =
   # we MUST access gch as a global here, because this crosses DLL boundaries!
