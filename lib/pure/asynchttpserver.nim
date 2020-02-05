@@ -29,6 +29,54 @@
 ##      await req.respond(Http200, "Hello World")
 ##
 ##    waitFor server.serve(Port(8080), cb)
+##
+## Basic Post request handle
+## =========================
+##
+## This example will create an HTTP server on port 8080. The server will
+## respond with a page with the body length readed and the expected body
+## length after submitting a file.
+##
+## .. code-block::nim
+##    import asynchttpserver, asyncdispatch
+##    import strutils, strformat
+##
+##    proc htmlpage(contentLength, bodyLength: int): string =
+##      return &"""
+##    <!Doctype html>
+##    <html lang="en">
+##      <head>
+##        <meta charset="utf-8"/>
+##      </head>
+##      <body>
+##        <form action="/" method="post" enctype="multipart/form-data">
+##          File: <input type="file" name="testfile" accept="text/*"><br />
+##          <input style="margin:10px 0;" type="submit">
+##        </form><br />
+##        Expected Body Length: {contentLength} bytes<br />
+##        Readed Body Length: {bodyLength} bytes
+##      </body>
+##    </html>
+##    """
+##
+##    proc cb(req: Request) {.async.} =
+##      var
+##        content_length = 0
+##        bodyLength = 0
+##      if req.reqMethod == HttpPost:
+##        content_length = req.headers["Content-length"].parseInt
+##        if content_length < 8*1024: # the default chunkSize
+##          # read the request body at once
+##          let body = await req.bodyStream.readAll();
+##          bodyLength = body.len
+##        else:
+##          # read 8*1024 bytes at a time
+##          while (let data = await req.bodyStream.read(); data[0]):
+##            bodyLength += data[1].len
+##      await req.respond(Http200, htmlpage(content_length, bodyLength))
+##
+##    let server = newAsyncHttpServer(maxBody = 10485760) # 10 MB
+##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
@@ -56,7 +104,6 @@ when (NimMajor, NimMinor) >= (1, 1):
       protocol*: tuple[orig: string, major, minor: int]
       url*: Uri
       hostname*: string    ## The hostname of the client that made the request.
-      body*: string
       bodyStream*: FutureStream[string]
 else:
   type
@@ -162,12 +209,13 @@ proc processRequest(
   # Header: val
   # \n
   request.headers.clear()
-  request.body = ""
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
   when (NimMajor, NimMinor) >= (1, 1):
     request.bodyStream = newFutureStream[string]()
+  else:
+    request.body = ""
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
