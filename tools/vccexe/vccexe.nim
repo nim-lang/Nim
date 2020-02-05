@@ -32,7 +32,7 @@ proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
 
   # All attempts to discover vcc failed
 
-const 
+const
   vccversionPrefix = "--vccversion"
   printPathPrefix = "--printPath"
   vcvarsallPrefix = "--vcvarsall"
@@ -49,7 +49,7 @@ const
   platformSepIdx = platformPrefix.len
   sdktypeSepIdx = sdktypePrefix.len
   sdkversionSepIdx = sdkversionPrefix.len
-  
+
   vcvarsallDefaultPath = "vcvarsall.bat"
 
   helpText = """
@@ -104,8 +104,8 @@ Microsoft (R) C/C++ Optimizing Compiler if no secondary
 command was specified
 """
 
-proc parseVccexeCmdLine(argseq: seq[TaintedString], 
-vccversionArg: var seq[string], printPathArg: var bool, 
+proc parseVccexeCmdLine(argseq: seq[TaintedString],
+vccversionArg: var seq[string], printPathArg: var bool,
 vcvarsallArg: var string, commandArg: var string, noCommandArg: var bool,
 platformArg: var VccArch, sdkTypeArg: var VccPlatformType,
 sdkVersionArg: var string, verboseArg: var bool,
@@ -164,7 +164,8 @@ when isMainModule:
 
   let wrapperArgs = commandLineParams()
   parseVccexeCmdLine(wrapperArgs, vccversionArg, printPathArg, vcvarsallArg,
-    commandArg, noCommandArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg,
+    commandArg, noCommandArg, platformArg, sdkTypeArg, sdkVersionArg,
+    verboseArg,
     clArgs)
 
   # Support for multiple specified versions. Attempt VCC discovery for each version
