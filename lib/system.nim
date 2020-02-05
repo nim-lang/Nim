@@ -1506,7 +1506,7 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## ``== nil``.
 
 
-proc `@`*[T](a: openArray[T]): seq[T] =
+func `@`*[T](a: openArray[T]): seq[T] =
   ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
@@ -1514,7 +1514,7 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   newSeq(result, a.len)
   for i in 0..a.len-1: result[i] = a[i]
 
-proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+func `&`*[T](x, y: seq[T]): seq[T] =
   ## Concatenates two sequences.
   ##
   ## Requires copying of the sequences.
@@ -1530,7 +1530,7 @@ proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
   for i in 0..y.len-1:
     result[i+x.len] = y[i]
 
-proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+func `&`*[T](x: seq[T], y: T): seq[T] =
   ## Appends element y to the end of the sequence.
   ##
   ## Requires copying of the sequence.
@@ -1545,7 +1545,7 @@ proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
     result[i] = x[i]
   result[x.len] = y
 
-proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+func `&`*[T](x: T, y: seq[T]): seq[T] =
   ## Prepends the element x to the beginning of the sequence.
   ##
   ## Requires copying of the sequence.

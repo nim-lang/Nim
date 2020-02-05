@@ -61,7 +61,7 @@ proc isNamedTuple(T: typedesc): bool =
         return true
     return false
 
-func `$`*[T: tuple|object](x: T): string =
+proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
