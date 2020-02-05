@@ -34,8 +34,8 @@
 ## =========================
 ##
 ## This example will create an HTTP server on port 8080. The server will
-## respond with a page with the body length readed and the expected body
-## length after submitting a file.
+## respond with a page with the actual and expected body length after
+## submitting a file.
 ##
 ## .. code-block::nim
 ##    import asynchttpserver, asyncdispatch
@@ -54,18 +54,18 @@
 ##          <input style="margin:10px 0;" type="submit">
 ##        </form><br />
 ##        Expected Body Length: {contentLength} bytes<br />
-##        Readed Body Length: {bodyLength} bytes
+##        Actual Body Length: {bodyLength} bytes
 ##      </body>
 ##    </html>
 ##    """
 ##
 ##    proc cb(req: Request) {.async.} =
 ##      var
-##        content_length = 0
+##        contentLength = 0
 ##        bodyLength = 0
 ##      if req.reqMethod == HttpPost:
-##        content_length = req.headers["Content-length"].parseInt
-##        if content_length < 8*1024: # the default chunkSize
+##        contentLength = req.headers["Content-length"].parseInt
+##        if contentLength < 8*1024: # the default chunkSize
 ##          # read the request body at once
 ##          let body = await req.bodyStream.readAll();
 ##          bodyLength = body.len
@@ -73,7 +73,7 @@
 ##          # read 8*1024 bytes at a time
 ##          while (let data = await req.bodyStream.read(); data[0]):
 ##            bodyLength += data[1].len
-##      await req.respond(Http200, htmlpage(content_length, bodyLength))
+##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
 ##
 ##    let server = newAsyncHttpServer(maxBody = 10485760) # 10 MB
 ##    waitFor server.serve(Port(8080), cb)
