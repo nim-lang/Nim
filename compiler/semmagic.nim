@@ -167,9 +167,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     if arg.kind in NumberLikeTypes:
       # needed otherwise we could get different ids, see tests
       arg = getSysType(c.graph, traitCall[1].info, arg.kind)
-    result = newIntNode(nkIntLit, arg.id)
+    result = newStrNode(nkStrLit, $arg.id)
       # `id` better than cast[int](arg) so that it's reproducible across compiles
-    result.typ = getSysType(c.graph, traitCall[1].info, tyInt)
+    result.typ = getSysType(c.graph, traitCall[1].info, tyString)
     result.info = traitCall.info
   of "genericHead":
     var arg = operand
