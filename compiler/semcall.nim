@@ -657,7 +657,8 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       x = t.baseOfDistinct
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
-    var resolved = semOverloadedCall(c, call, call, {fn.kind}, {})
+    let filter = if fn.kind == skProc: {skProc, skFunc} else: {fn.kind
+    var resolved = semOverloadedCall(c, call, call, {filter}, {})
     if resolved != nil:
       result = resolved[0].sym
       if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):
@@ -665,3 +666,5 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
       elif result.magic in {mArrPut, mArrGet}:
         # cannot borrow these magics for now
         result = nil
+      if fn.kind != result.kind:
+        message(c.config, fn.ast.info, warnDeprecated, "borrowing func as proc is deprecated, please update borrowing signature to use func keyword")
