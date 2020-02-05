@@ -94,7 +94,7 @@ const
 
 when (NimMajor, NimMinor) >= (1, 1):
   const
-    chunkSize = 8*1048 ## This seems perfectly reasonable for default chunkSize.
+    chunkSize = 8*1024 ## This seems perfectly reasonable for default chunkSize.
 
   type
     Request* = object
