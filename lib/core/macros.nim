@@ -252,11 +252,11 @@ when defined(nimSymKind):
     ## See also:
     ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
 
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
+  func `$`*(i: NimIdent): string {.magic: "NStrVal", deprecated:
     "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## Converts a Nim identifier to a string.
 
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
+  func `$`*(s: NimSym): string {.magic: "NStrVal", deprecated:
     "Deprecated since version 0.18.1; Use 'strVal' instead.".}
     ## Converts a Nim symbol to a string.
 
@@ -266,9 +266,9 @@ else: # bootstrapping substitute
 
   proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
 
-  proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
+  func `$`*(s: NimSym): string {.magic: "IdentToStr".}
 
-  proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
+  func `$`*(i: NimIdent): string {.magic: "IdentToStr".}
 
   proc strVal*(n: NimNode): string =
     if n.kind == nnkIdent:

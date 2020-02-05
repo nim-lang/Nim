@@ -285,7 +285,7 @@ proc nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
+func `$`*(x: uint64): string {.raises: [].} =
   ## The stringify operator for an unsigned integer argument. Returns `x`
   ## converted to a decimal string.
   if x == 0:

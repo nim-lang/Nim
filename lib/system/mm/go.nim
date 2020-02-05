@@ -35,7 +35,7 @@ proc goMalloc(size: uint): pointer {.importc: "go_malloc", dynlib: goLib.}
 proc goSetFinalizer(obj: pointer, f: pointer) {.importc: "set_finalizer", codegenDecl:"$1 $2$3 __asm__ (\"main.Set_finalizer\");\n$1 $2$3", dynlib: goLib.}
 proc writebarrierptr(dest: PPointer, src: pointer) {.importc: "writebarrierptr", codegenDecl:"$1 $2$3 __asm__ (\"main.Atomic_store_pointer\");\n$1 $2$3", dynlib: goLib.}
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].}
+func `$`*(x: uint64): string {.raises: [].}
 
 proc GC_getStatistics(): string =
   var mstats = goMemStats()
