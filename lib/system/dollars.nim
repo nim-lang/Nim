@@ -124,7 +124,7 @@ func `$`*[T](x: set[T]): string =
   ##   ${23, 45} == "{23, 45}"
   collectionToString(x, "{", ", ", "}")
 
-func `$`*[T](x: seq[T]): string =
+proc `$`*[T](x: seq[T]): string =
   ## Generic ``$`` operator for seqs that is lifted from the components
   ## of `x`. Example:
   ##
@@ -132,7 +132,7 @@ func `$`*[T](x: seq[T]): string =
   ##   $(@[23, 45]) == "@[23, 45]"
   collectionToString(x, "@[", ", ", "]")
 
-func `$`*[T, U](x: HSlice[T, U]): string =
+proc `$`*[T, U](x: HSlice[T, U]): string =
   ## Generic ``$`` operator for slices that is lifted from the components
   ## of `x`. Example:
   ##
@@ -144,11 +144,11 @@ func `$`*[T, U](x: HSlice[T, U]): string =
 
 
 when not defined(nimNoArrayToString):
-  func `$`*[T, IDX](x: array[IDX, T]): string =
+  proc `$`*[T, IDX](x: array[IDX, T]): string =
     ## Generic ``$`` operator for arrays that is lifted from the components.
     collectionToString(x, "[", ", ", "]")
 
-func `$`*[T](x: openArray[T]): string =
+proc `$`*[T](x: openArray[T]): string =
   ## Generic ``$`` operator for openarrays that is lifted from the components
   ## of `x`. Example:
   ##
