@@ -105,11 +105,11 @@ command was specified
 """
 
 proc parseVccexeCmdLine(argseq: seq[TaintedString],
-vccversionArg: var seq[string], printPathArg: var bool,
-vcvarsallArg: var string, commandArg: var string, noCommandArg: var bool,
-platformArg: var VccArch, sdkTypeArg: var VccPlatformType,
-sdkVersionArg: var string, verboseArg: var bool,
-clArgs: var seq[TaintedString]) =
+    vccversionArg: var seq[string], printPathArg: var bool,
+    vcvarsallArg: var string, commandArg: var string, noCommandArg: var bool,
+    platformArg: var VccArch, sdkTypeArg: var VccPlatformType,
+    sdkVersionArg: var string, verboseArg: var bool,
+    clArgs: var seq[TaintedString]) =
   ## Cannot use usual command-line argument parser here
   ## Since vccexe command-line arguments are intermingled
   ## with the secondary command-line arguments which have
