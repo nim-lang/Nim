@@ -15,7 +15,7 @@ when defined(nimHasUsed):
   {.used.}
 
 import
-  lexer, options, idents, strutils, ast, msgs, lineinfos
+  lexer, options, idents, strutils, ast, msgs, lineinfos, wordrecg
 
 type
   TRenderFlag* = enum
@@ -500,9 +500,14 @@ proc lsub(g: TSrcGen; n: PNode): int =
     else:
       result = len("enum")
   of nkEnumFieldDef: result = lsons(g, n) + 3
-  of nkVarSection, nkLetSection:
+  of nkVarSection, nkLetSection, nkCustomDefSection:
     if n.len > 1: result = MaxLineLen + 1
-    else: result = lsons(g, n) + len("var_")
+    else:
+      if n.kind == nkCustomDefSection:
+        let kw = whichKeyword(n[0].ident)
+        result = lsons(g, n, start = 1) + len(specialWords[kw]) + 1
+      else:
+        result = lsons(g, n) + len("var_")
   of nkUsingStmt:
     if n.len > 1: result = MaxLineLen + 1
     else: result = lsons(g, n) + len("using_")
@@ -1344,21 +1349,30 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     initContext(a)
     incl(a.flags, rfInConstExpr)
     gsection(g, n, a, tkConst, "const")
-  of nkVarSection, nkLetSection, nkUsingStmt:
+  of nkVarSection, nkLetSection, nkCustomDefSection, nkUsingStmt:
     if n.len == 0: return
+    var firstDefIndex = 0
     if n.kind == nkVarSection: putWithSpace(g, tkVar, "var")
     elif n.kind == nkLetSection: putWithSpace(g, tkLet, "let")
+    elif n.kind == nkCustomDefSection:
+      firstDefIndex = 1
+      let kw = whichKeyword(n[0].ident)
+      case kw
+      of wByAddr:  # we can have more keywords like that, treated in same way
+        putWithSpace(g, tkByAddr, specialWords[wByAddr])
+      else:
+        doAssert false, $kw
     else: putWithSpace(g, tkUsing, "using")
-    if n.len > 1:
+    if n.len > 1 + firstDefIndex:
       gcoms(g)
       indentNL(g)
-      for i in 0..<n.len:
+      for i in firstDefIndex..<n.len:
         optNL(g)
         gsub(g, n[i])
         gcoms(g)
       dedent(g)
     else:
-      gsub(g, n[0])
+      gsub(g, n[firstDefIndex])
   of nkReturnStmt:
     putWithSpace(g, tkReturn, "return")
     if n.len > 0 and n[0].kind == nkAsgn:
@@ -1561,7 +1575,7 @@ proc renderModule*(n: PNode, infile, outfile: string,
     gsub(g, n[i])
     optNL(g)
     case n[i].kind
-    of nkTypeSection, nkConstSection, nkVarSection, nkLetSection,
+    of nkTypeSection, nkConstSection, nkVarSection, nkLetSection, nkCustomDefSection,
        nkCommentStmt: putNL(g)
     else: discard
   gcoms(g)

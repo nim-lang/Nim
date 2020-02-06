@@ -51,7 +51,7 @@ type
     nnkElifBranch, nnkExceptBranch, nnkElse,
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt,
     nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
-    nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,
+    nnkTypeSection, nnkVarSection, nnkLetSection, nnkCustomDefSection, nnkConstSection,
     nnkConstDef, nnkTypeDef,
     nnkYieldStmt, nnkDefer, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,

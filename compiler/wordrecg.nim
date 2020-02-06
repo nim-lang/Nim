@@ -30,7 +30,8 @@ type
     wMacro, wMethod, wMixin, wMod, wNil,
     wNot, wNotin, wObject, wOf, wOr, wOut, wProc, wPtr, wRaise, wRef, wReturn,
     wShl, wShr, wStatic, wTemplate, wTry, wTuple, wType, wUsing, wVar,
-    wWhen, wWhile, wXor, wYield,
+    wWhen, wWhile, wXor, wYield, wByAddr,
+    # end of keywords here
 
     wColon, wColonColon, wEquals, wDot, wDotDot,
     wStar, wMinus,
@@ -116,7 +117,7 @@ const
     "shl", "shr", "static",
     "template", "try", "tuple", "type", "using", "var",
     "when", "while", "xor",
-    "yield",
+    "yield", "byaddr",
 
     ":", "::", "=", ".", "..",
     "*", "-",

@@ -538,7 +538,7 @@ proc semiStmtList(p: var TParser, result: PNode) =
 
 proc parsePar(p: var TParser): PNode =
   #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
-  #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
+  #|         | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let' | 'byaddr'
   #|         | 'when' | 'var' | 'mixin'
   #| par = '(' optInd
   #|           ( &parKeyw complexOrSimpleStmt ^+ ';'
@@ -557,7 +557,7 @@ proc parsePar(p: var TParser): PNode =
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase,
                        tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock,
                        tkConst, tkLet, tkWhen, tkVar, tkFor,
-                       tkMixin}:
+                       tkMixin} + customDefTokens:
     # XXX 'bind' used to be an expression, so we exclude it here;
     # tests/reject/tbind2 fails otherwise.
     semiStmtList(p, result)
@@ -1793,9 +1793,11 @@ type
   TDefParser = proc (p: var TParser): PNode {.nimcall.}
 
 proc parseSection(p: var TParser, kind: TNodeKind,
-                  defparser: TDefParser): PNode =
+                  defparser: TDefParser, tokType = default(TTokType)): PNode =
   #| section(RULE) = COMMENT? RULE / (IND{>} (RULE / COMMENT)^+IND{=} DED)
   result = newNodeP(kind, p)
+  if kind == nkCustomDefSection:
+    result.add newIdentNodeP(p.lex.cache.getIdent(TokTypeToStr[tokType]), p)
   if kind != nkTypeSection: getTok(p)
   skipComment(p, result)
   if realInd(p):
@@ -2199,10 +2201,11 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   #|                     | 'converter' routine
   #|                     | 'type' section(typeDef)
   #|                     | 'const' section(constant)
-  #|                     | ('let' | 'var' | 'using') section(variable)
+  #|                     | ('let' | 'var' | 'using' | 'byaddr') section(variable)
   #|                     | bindStmt | mixinStmt)
   #|                     / simpleStmt
-  case p.tok.tokType
+  let tokType = p.tok.tokType
+  case tokType
   of tkIf: result = parseIfOrWhen(p, nkIfStmt)
   of tkWhile: result = parseWhile(p)
   of tkCase: result = parseCase(p)
@@ -2237,6 +2240,9 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   of tkLet:
     prettySection:
       result = parseSection(p, nkLetSection, parseVariable)
+  of customDefTokens:
+    prettySection:
+      result = parseSection(p, nkCustomDefSection, parseVariable, tokType)
   of tkVar:
     prettySection:
       result = parseSection(p, nkVarSection, parseVariable)

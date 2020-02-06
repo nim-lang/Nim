@@ -49,7 +49,7 @@ type
     tkTemplate,
     tkTry, tkTuple, tkType, tkUsing,
     tkVar, tkWhen, tkWhile, tkXor,
-    tkYield, # end of keywords
+    tkYield, tkByAddr, # end of keywords
     tkIntLit, tkInt8Lit, tkInt16Lit, tkInt32Lit, tkInt64Lit,
     tkUIntLit, tkUInt8Lit, tkUInt16Lit, tkUInt32Lit, tkUInt64Lit,
     tkFloatLit, tkFloat32Lit, tkFloat64Lit, tkFloat128Lit,
@@ -65,6 +65,8 @@ type
     tkSpaces, tkInfixOpr, tkPrefixOpr, tkPostfixOpr
 
   TTokTypes* = set[TTokType]
+
+const customDefTokens* = {tkByAddr}
 
 const
   weakTokens = {tkComma, tkSemiColon, tkColon,
@@ -90,7 +92,7 @@ const
     "template",
     "try", "tuple", "type", "using",
     "var", "when", "while", "xor",
-    "yield",
+    "yield", specialWords[wByAddr],
     "tkIntLit", "tkInt8Lit", "tkInt16Lit", "tkInt32Lit", "tkInt64Lit",
     "tkUIntLit", "tkUInt8Lit", "tkUInt16Lit", "tkUInt32Lit", "tkUInt64Lit",
     "tkFloatLit", "tkFloat32Lit", "tkFloat64Lit", "tkFloat128Lit",
@@ -1338,7 +1340,7 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
   var prevToken = tkEof
   while tok.tokType != tkEof:
     rawGetTok(lex, tok)
-    if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing}:
+    if tok.indent > 0 and prevToken in {tkColon, tkEquals, tkType, tkConst, tkLet, tkVar, tkUsing} + customDefTokens:
       result = tok.indent
       if result > 0: break
     prevToken = tok.tokType

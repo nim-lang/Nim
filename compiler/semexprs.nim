@@ -2742,6 +2742,15 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkVarSection: result = semVarOrLet(c, n, skVar)
   of nkLetSection: result = semVarOrLet(c, n, skLet)
   of nkConstSection: result = semConst(c, n)
+  of nkCustomDefSection:
+    # cleaner to let user code define it than hard code via `semTemplateDef(c, n)`
+    result = newTree(nkCall)
+    result.add newIdentNode(getIdent(c.cache, "byAddrImpl"), n.info)
+    result.add n
+    result.add n[1][0]
+    result.add n[1][1]
+    result.add n[1][2]
+    result = semExpr(c, result, flags)
   of nkTypeSection: result = semTypeSection(c, n)
   of nkDiscardStmt: result = semDiscard(c, n)
   of nkWhileStmt: result = semWhile(c, n, flags)

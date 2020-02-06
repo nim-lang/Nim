@@ -33,7 +33,7 @@ qualifiedIdent = symbol ('.' optInd symbol)?
 setOrTableConstr = '{' ((exprColonEqExpr comma)* | ':' ) '}'
 castExpr = 'cast' '[' optInd typeDesc optPar ']' '(' optInd expr optPar ')'
 parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
-        | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let'
+        | 'finally' | 'except' | 'for' | 'block' | 'const' | 'let' | 'byaddr'
         | 'when' | 'var' | 'mixin'
 par = '(' optInd
           ( &parKeyw complexOrSimpleStmt ^+ ';'
@@ -200,7 +200,7 @@ complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | 'converter' routine
                     | 'type' section(typeDef)
                     | 'const' section(constant)
-                    | ('let' | 'var' | 'using') section(variable)
+                    | ('let' | 'var' | 'using' | 'byaddr') section(variable)
                     | bindStmt | mixinStmt)
                     / simpleStmt
 stmt = (IND{>} complexOrSimpleStmt^+(IND{=} / ';') DED)

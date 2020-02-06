@@ -4,7 +4,7 @@
 import std / [strutils, sets]
 
 import ".." / compiler / [
-  llstream, ast, lexer, options, msgs, idents,
+  llstream, lexer, options, msgs, idents,
   lineinfos, pathutils]
 
 proc checkGrammarFileImpl(cache: IdentCache, config: ConfigRef) =
