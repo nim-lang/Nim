@@ -293,7 +293,9 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
+      var lazyPaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
+      for dir in conf.lazyPaths: lazyPaths.elems.add(%dir.string)
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
@@ -311,6 +313,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "lazyPaths", val: %lazyPaths),
         (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),

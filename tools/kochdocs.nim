@@ -319,9 +319,11 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(doc):
-    commands[i] = nim & " doc $# --git.url:$# -o:$# --index:on $#" %
-      [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    var nimArgs2 = nimArgs
+    if d.isRelativeTo("compiler"):
+      nimArgs2.add " --docroot"
+    commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
+      [nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %

@@ -1026,6 +1026,26 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+
+proc getnimblePkg*(a: PSym): PSym =
+  result = a
+  while result != nil:
+    case result.kind
+    of skModule:
+      result = result.owner
+      assert result.kind == skPackage
+    of skPackage:
+      if result.owner == nil:
+        break
+      else:
+        result = result.owner
+    else:
+      assert false, $result.kind
+
+proc getnimblePkgId*(a: PSym): int =
+  let b = a.getnimblePkg
+  result = if b == nil: -1 else: b.id
+
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 #var
 #  gMainPackageId*: int

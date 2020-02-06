@@ -22,8 +22,8 @@ type
     config: ConfigRef
   PGen = ref TGen
 
-template shouldProcess(g): bool =
-  (g.module.owner.id == g.doc.conf.mainPackageId and optWholeProject in g.doc.conf.globalOptions) or
+proc shouldProcess(g: PGen): bool =
+  (optWholeProject in g.doc.conf.globalOptions and g.module.getnimblePkgId == g.doc.conf.mainPackageId) or
       sfMainModule in g.module.flags or g.config.projectMainIdx == g.module.info.fileIndex
 
 template closeImpl(body: untyped) {.dirty.} =
