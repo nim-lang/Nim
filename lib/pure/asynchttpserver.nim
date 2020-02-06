@@ -104,6 +104,7 @@ when (NimMajor, NimMinor) >= (1, 1):
       protocol*: tuple[orig: string, major, minor: int]
       url*: Uri
       hostname*: string    ## The hostname of the client that made the request.
+      body*: string # For future removal
       bodyStream*: FutureStream[string]
 else:
   type
@@ -214,8 +215,11 @@ proc processRequest(
   request.client = client
   when (NimMajor, NimMinor) >= (1, 1):
     request.bodyStream = newFutureStream[string]()
-  else:
-    request.body = ""
+  # To uncomment in the future after compatibility issues
+  # with third parties are solved
+  # else:
+  #   request.body = ""
+  request.body = "" # Temporary fix for future removal
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
