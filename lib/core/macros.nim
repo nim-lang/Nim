@@ -51,7 +51,7 @@ type
     nnkElifBranch, nnkExceptBranch, nnkElse,
     nnkAsmStmt, nnkPragma, nnkPragmaBlock, nnkIfStmt, nnkWhenStmt,
     nnkForStmt, nnkParForStmt, nnkWhileStmt, nnkCaseStmt,
-    nnkTypeSection, nnkVarSection, nnkLetSection, nnkCustomDefSection, nnkConstSection,
+    nnkTypeSection, nnkVarSection, nnkLetSection, nnkConstSection,
     nnkConstDef, nnkTypeDef,
     nnkYieldStmt, nnkDefer, nnkTryStmt, nnkFinally, nnkRaiseStmt,
     nnkReturnStmt, nnkBreakStmt, nnkContinueStmt, nnkBlockStmt, nnkStaticStmt,
@@ -84,7 +84,8 @@ type
     nnkState,
     nnkBreakState,
     nnkFuncDef,
-    nnkTupleConstr
+    nnkTupleConstr,
+    nnkCustomDefSection,
 
   NimNodeKinds* = set[NimNodeKind]
   NimTypeKind* = enum  # some types are no longer used, see ast.nim

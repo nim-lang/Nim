@@ -157,7 +157,6 @@ type
     nkTypeSection,        # a type section (consists of type definitions)
     nkVarSection,         # a var section
     nkLetSection,         # a let section
-    nkCustomDefSection,   # a custom definition section, eg `byAddr foo = bar`
     nkConstSection,       # a const section
     nkConstDef,           # a const definition
     nkTypeDef,            # a type definition
@@ -225,6 +224,7 @@ type
     nkBreakState,         # special break statement for easier code generation
     nkFuncDef,            # a func
     nkTupleConstr         # a tuple constructor
+    nkCustomDefSection,   # a custom definition section, eg `byAddr foo = bar`
 
   TNodeKinds* = set[TNodeKind]
 
