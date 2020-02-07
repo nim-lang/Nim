@@ -546,7 +546,9 @@ proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
 
 proc markUsed(c: PContext; info: TLineInfo; s: PSym) =
   let conf = c.config
-  incl(s.flags, sfUsed)
+  # bug #10837: do not mark it as used since it's a recursive call:
+  if c.p == nil and c.p.owner != s:
+    incl(s.flags, sfUsed)
   if s.kind == skEnumField and s.owner != nil:
     incl(s.owner.flags, sfUsed)
     if sfDeprecated in s.owner.flags:
