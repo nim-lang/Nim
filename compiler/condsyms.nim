@@ -103,6 +103,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimHasCursor")
   defineSymbol("nimHasExceptionsQuery")
+  defineSymbol("nimHasIsNamedTuple")
 
   when defined(nimHasLibFFI):
     # Renaming as we can't conflate input vs output define flags; e.g. this
