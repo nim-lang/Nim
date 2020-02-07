@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+## This is a part of ``system.nim``, you should not manually import it.
+
+
 include inclrtl
 import formatfloat
 
