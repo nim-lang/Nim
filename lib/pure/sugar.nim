@@ -183,7 +183,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   ##   let r = l.mapIt(it("be"))
   ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
   var params = @[newIdentNode("auto")]
-  var locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
+  let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
                else: locals
   for arg in locals:
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
