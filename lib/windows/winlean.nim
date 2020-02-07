@@ -487,9 +487,9 @@ type
   Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
                       header: "winsock2.h".} = object
     ss_family*: uint16
-    ss_pad1: array[6, byte]
-    ss_align: int64
-    ss_pad2: array[112, byte]
+    ss_pad1 {.importc: "__ss_pad1".}: array[6, byte]
+    ss_align {.importc: "__ss_align".}: int64
+    ss_pad2 {.importc: "__ss_pad2".}: array[112, byte]
 
   Servent* = object
     s_name*: cstring
@@ -517,7 +517,7 @@ type
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: csize_t        ## Length of socket address.
+    ai_addrlen*: csize        ## Length of socket address.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
