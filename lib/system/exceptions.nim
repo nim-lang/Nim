@@ -16,7 +16,10 @@ type
     procname*: cstring      ## Name of the proc that is currently executing.
     line*: int              ## Line number of the proc that is currently executing.
     filename*: cstring      ## Filename of the proc that is currently executing.
-    pframe*: PFrame
+    frameMsg*: string       ## When a stacktrace is generated in a given frame and
+                            ## rendered at a later time, we should ensure the stacktrace
+                            ## data isn't invalidated; any pointer into PFrame is
+                            ## subject to being invalidated so shouldn't be stored.
 
   Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
     ## Base exception class.

@@ -489,7 +489,7 @@ struct TFrame_ {
   NCSTRING filename;
   NI16 len;
   NI16 calldepth;
-  NI frameMsgLen; // should that be int64?
+  NI frameMsgLen;
 };
 
 #define NIM_POSIX_INIT  __attribute__((constructor))

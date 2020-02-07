@@ -6,9 +6,6 @@ proc main2(n: int) =
     main2(n-1)
 
 proc main(n: int) =
-  #[
-  TODO: instead, simply allow setting custom frame msg
-  ]#
   setFrameMsg $(n,)
   proc bar() =
     setFrameMsg "in bar "

@@ -55,6 +55,7 @@ type
 
 var
   framePtr {.threadvar.}: PFrame
+  frameMsgBuf* {.threadvar.}: string
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
@@ -221,17 +222,19 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
       s.setLen(last+1)
   it = f
   while it != nil:
+    let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
-                              filename: it.filename,
-                              pframe: it)
+                              filename: it.filename)
+    let msgLen = it.frameMsgLen - first
+    if msgLen > 0:
+      s[last].frameMsg.setLen(msgLen)
+      # somehow string slicing not available here
+      for i in first .. it.frameMsgLen-1: s[last].frameMsg[i-first] = frameMsgBuf[i]
     it = it.prev
     dec last
 
-var
-  frameMsgBuf* {.threadvar.}: string # TODO: more lowlevel, like cstring + malloc? eg for gc
-
-template addFrameEntry(s, f: untyped) =
+template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
   add(s, f.filename)
   if f.line > 0:
@@ -240,11 +243,11 @@ template addFrameEntry(s, f: untyped) =
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
-  add(s, " ")
-  let pframe = when type(f) is StackTraceEntry: f.pframe
-  else: f
-  var old = if pframe.prev == nil: 0 else: pframe.prev.frameMsgLen
-  for i in old..<pframe.frameMsgLen: add(s, frameMsgBuf[i])
+  when type(f) is StackTraceEntry:
+    add(s, f.frameMsg)
+  else:
+    var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
+    for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
 proc `$`(s: seq[StackTraceEntry]): string =
