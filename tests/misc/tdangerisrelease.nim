@@ -1,5 +1,7 @@
 discard """
-  cmd: "nim c -d:danger -r $file"
+  cmd: "nim $target $options -r $file"
+  targets: "c cpp"
+  matrix: "-d:danger; -d:release"
   output: '''
 a
 b
