@@ -381,7 +381,7 @@ proc backup_pagecount*(pBackup: PSqlite3_Backup): int32 {.cdecl, mylib, importc:
 
 proc backup_remaining*(pBackup: PSqlite3_Backup): int32 {.cdecl, mylib, importc: "sqlite3_backup_remaining".}
 
-proc sleep*(t: int64): int64 {.cdecl, mylib, importc: "sqlite3_sleep".}
+proc sqlite3_sleep*(t: int64): int64 {.cdecl, mylib, importc: "sqlite3_sleep".}
 
   #function sqlite3_key(db:Psqlite3; pKey:pointer; nKey:longint):longint;cdecl; external Sqlite3Lib name 'sqlite3_key';
   #function sqlite3_rekey(db:Psqlite3; pKey:pointer; nKey:longint):longint;cdecl; external Sqlite3Lib name 'sqlite3_rekey';
