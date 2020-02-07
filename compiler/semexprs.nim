@@ -10,6 +10,9 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -2553,8 +2556,6 @@ proc shouldBeBracketExpr(n: PNode): bool =
           for i in 1..<a.len: be.add(a[i])
           n[0] = be
           return true
-
-import std/stackframes
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   when defined(nimCompilerStackraceHints):

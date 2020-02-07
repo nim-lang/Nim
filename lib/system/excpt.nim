@@ -222,13 +222,12 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
       s.setLen(last+1)
   it = f
   while it != nil:
-    let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
                               filename: it.filename)
-    let msgLen = it.frameMsgLen - first
-    if msgLen > 0:
-      s[last].frameMsg.setLen(msgLen)
+    let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
+    if it.frameMsgLen > first:
+      s[last].frameMsg.setLen(it.frameMsgLen - first)
       # somehow string slicing not available here
       for i in first .. it.frameMsgLen-1: s[last].frameMsg[i-first] = frameMsgBuf[i]
     it = it.prev
