@@ -2554,8 +2554,11 @@ proc shouldBeBracketExpr(n: PNode): bool =
           n[0] = be
           return true
 
+import std/stackframes
+
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
+  setFrameMsg c.config$n.info & " " & $n.kind
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind

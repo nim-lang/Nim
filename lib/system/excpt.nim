@@ -223,9 +223,13 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
   while it != nil:
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
-                              filename: it.filename)
+                              filename: it.filename,
+                              pframe: it)
     it = it.prev
     dec last
+
+var
+  frameMsgBuf* {.threadvar.}: string # TODO: more lowlevel, like cstring + malloc? eg for gc
 
 template addFrameEntry(s, f: untyped) =
   var oldLen = s.len
@@ -236,6 +240,11 @@ template addFrameEntry(s, f: untyped) =
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
+  add(s, " ")
+  let pframe = when type(f) is StackTraceEntry: f.pframe
+  else: f
+  var old = if pframe.prev == nil: 0 else: pframe.prev.frameMsgLen
+  for i in old..<pframe.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
 proc `$`(s: seq[StackTraceEntry]): string =
@@ -519,7 +528,12 @@ proc callDepthLimitReached() {.noinline.} =
   quit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
-  s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  if framePtr == nil:
+    s.calldepth = 0
+    s.frameMsgLen = 0
+  else:
+    s.calldepth = framePtr.calldepth+1
+    s.frameMsgLen = framePtr.frameMsgLen
   s.prev = framePtr
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()

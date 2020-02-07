@@ -16,6 +16,7 @@ type
     procname*: cstring      ## Name of the proc that is currently executing.
     line*: int              ## Line number of the proc that is currently executing.
     filename*: cstring      ## Filename of the proc that is currently executing.
+    pframe*: PFrame
 
   Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
     ## Base exception class.
