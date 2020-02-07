@@ -124,13 +124,13 @@ proc csource(args: string) =
 
 proc bundleC2nim(args: string) =
   if not dirExists("dist/c2nim/.git"):
-    exec("git clone https://github.com/nim-lang/c2nim.git dist/c2nim")
+    exec("git clone -q https://github.com/nim-lang/c2nim.git dist/c2nim")
   nimCompile("dist/c2nim/c2nim",
              options = "--noNimblePath --path:. " & args)
 
 proc bundleNimbleExe(latest: bool, args: string) =
   if not dirExists("dist/nimble/.git"):
-    exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
+    exec("git clone -q https://github.com/nim-lang/nimble.git dist/nimble")
   if not latest:
     withDir("dist/nimble"):
       exec("git fetch")
@@ -152,7 +152,7 @@ proc buildNimble(latest: bool, args: string) =
         while dirExists("dist/nimble" & $id):
           inc id
         installDir = "dist/nimble" & $id
-      exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
+      exec("git clone -q https://github.com/nim-lang/nimble.git " & installDir)
     withDir(installDir):
       if latest:
         exec("git checkout -f master")
