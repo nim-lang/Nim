@@ -6,6 +6,8 @@ block: # isNamedTuple
   type Foo2 = (Field0:1,).type
   type Foo3 = ().type
   type Foo4 = object
+  type Foo5[T] = tuple[x:int, y: T]
+  type Foo6[T] = (T,)
 
   doAssert (a:1,).type.isNamedTuple
   doAssert Foo1.isNamedTuple
@@ -14,6 +16,9 @@ block: # isNamedTuple
   doAssert not Foo3.isNamedTuple
   doAssert not Foo4.isNamedTuple
   doAssert not (1,).type.isNamedTuple
+  doAssert isNamedTuple(Foo5[int8])
+  doAssert not isNamedTuple(Foo5)
+  doAssert not isNamedTuple(Foo6[int8])
 
 proc typeToString*(t: typedesc, prefer = "preferTypeName"): string {.magic: "TypeTrait".}
   ## Returns the name of the given type, with more flexibility than `name`,
