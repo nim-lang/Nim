@@ -184,6 +184,10 @@ type
 const floatSerializationPrecision = 17
   # must be high enought to avoid roundrip serialization issues see #13196
   # this works with nextafter(1.0, Inf).
+  # note that 17 seems enough, unlike what is mentioned here for D which recommended 18, quoting:
+  # > ceil(log(pow(2.0, double.mant_dig - 1)) / log(10.0) + 1) == (double.dig + 2)
+  # see:
+  # https://github.com/dlang/phobos/blob/b885f607e26750673aba694c46899583779d2361/std/json.d#L1644
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.

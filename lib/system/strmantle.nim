@@ -85,7 +85,7 @@ import formatfloat
 
 proc addFloat*(result: var string; x: float, precision: static int = -1) =
   ## Converts float to its string representation and appends it to `result`.
-  ## passing `precision >=0 ` can override the default precision.
+  ## passing `precision >=0` can override the default precision.
   ##
   ## .. code-block:: Nim
   ##   var
