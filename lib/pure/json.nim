@@ -181,6 +181,8 @@ type
     of JArray:
       elems*: seq[JsonNode]
 
+const floatSerializationPrecision = 18
+
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
   result = JsonNode(kind: JString, str: s)
@@ -647,7 +649,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     # Fixme: implement new system.add ops for the JS target
     when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum)
+    else: result.addFloat(node.fnum, precision = floatSerializationPrecision)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -726,7 +728,7 @@ proc toUgly*(result: var string, node: JsonNode) =
     else: result.addInt(node.num)
   of JFloat:
     when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum)
+    else: result.addFloat(node.fnum, precision = floatSerializationPrecision)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
@@ -1486,3 +1488,10 @@ when isMainModule:
   doAssert not isRefSkipDistinct(MyObject)
   doAssert isRefSkipDistinct(MyDistinct)
   doAssert isRefSkipDistinct(MyOtherDistinct)
+
+  # issue #13196
+  # some arbitrary float, not caring about actually significant places here
+  let x = 0.12345678901234567890123456789
+  let y = ($(%* x)).parseJson().getFloat()
+  doAssert x == y
+  doAssert $0.6 == "0.6"
