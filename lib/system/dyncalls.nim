@@ -167,14 +167,14 @@ elif defined(windows) or defined(dos):
 
 elif defined(genode):
 
-  proc nimUnloadLibrary(lib: LibHandle) {.
-    error: "nimUnloadLibrary not implemented".}
+  proc nimUnloadLibrary(lib: LibHandle) =
+    raiseAssert("nimUnloadLibrary not implemented")
 
-  proc nimLoadLibrary(path: string): LibHandle {.
-    error: "nimLoadLibrary not implemented".}
+  proc nimLoadLibrary(path: string): LibHandle =
+    raiseAssert("nimLoadLibrary not implemented")
 
-  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
-    error: "nimGetProcAddr not implemented".}
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    raiseAssert("nimGetProcAddr not implemented")
 
 elif defined(nintendoswitch) or defined(freertos):
   proc nimUnloadLibrary(lib: LibHandle) =
