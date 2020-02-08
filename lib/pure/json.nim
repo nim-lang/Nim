@@ -1010,8 +1010,14 @@ when defined(nimFixedForwardGeneric):
       dst = T(jsonNode.num)
 
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
-    verifyJsonKind(jsonNode, {JString}, jsonPath)
-    dst = parseEnum[T](jsonNode.getStr)
+    verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
+    if jsonNode.kind == JInt:
+      let i = jsonNode.getBiggestInt
+      if (i <= low(T).int or i >= high(T).int) or $i.T == $i & " (invalid data!)":
+        raise newException(ValueError, "invalid enum value: " & $i)
+      dst = i.T
+    else:
+      dst = parseEnum[T](jsonNode.getStr)
 
   proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JArray}, jsonPath)
