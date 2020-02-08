@@ -181,7 +181,9 @@ type
     of JArray:
       elems*: seq[JsonNode]
 
-const floatSerializationPrecision = 18
+const floatSerializationPrecision = 17
+  # must be high enought to avoid roundrip serialization issues see #13196
+  # this works with nextafter(1.0, Inf).
 
 proc newJString*(s: string): JsonNode =
   ## Creates a new `JString JsonNode`.
