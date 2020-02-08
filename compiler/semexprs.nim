@@ -396,7 +396,7 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       res = false
   else:
-    if t1.skipTypes({tyAlias}).kind != tyGenericBody:
+    if t1.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct}).kind != tyGenericBody:
       maybeLiftType(t2, c, n.info)
     else:
       #[

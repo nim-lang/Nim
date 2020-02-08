@@ -134,6 +134,17 @@ block genericHead:
   type FooInst = Foo[int, float]
   type Foo2 = genericHead(FooInst)
   doAssert Foo2 is Foo # issue #13066
+
+  block:
+    type Goo[T] = object
+    type Moo[U] = object
+    type Hoo = Goo[Moo[float]]
+    type Koo = genericHead(Hoo)
+    doAssert Koo is Goo
+    doAssert genericParams(Hoo) is (Moo[float],)
+    doAssert genericParams(Hoo).get(0) is Moo[float]
+    doAssert genericHead(genericParams(Hoo).get(0)) is Moo
+
   type Foo2Inst = Foo2[int, float]
   doAssert FooInst.default == Foo2Inst.default
   doAssert FooInst.default.x2 == 0.0
