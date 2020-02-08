@@ -2843,6 +2843,35 @@ expanded into a list of its elements:
     of '0'..'9': echo "a number"
     else: echo "other"
 
+The ``case`` statement doesn't produce an l-value, so the following example
+won't work:
+
+.. code-block:: nim
+  type
+    Foo = ref object
+      x: seq[string]
+
+  proc get_x(x: Foo): var seq[string] =
+    # doesn't work
+    case true
+    of true:
+      x.x
+    else:
+      x.x
+
+  var foo = Foo(x: @[])
+  foo.get_x().add("asd")
+
+This can be fixed by explicitly using ``return``:
+
+.. code-block:: nim
+  proc get_x(x: Foo): var seq[string] =
+    case true
+    of true:
+      return x.x
+    else:
+      return x.x
+
 
 When statement
 --------------
