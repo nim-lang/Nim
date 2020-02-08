@@ -734,11 +734,13 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
+    var subPath = p.key.string
+    if subPath.isAbsolute: subPath = subPath.relativePath(getCurrentDir())
     # at least one directory is required in the path, to use as a category name
-    let pathParts = split(p.key.string, {DirSep, AltSep})
+    let pathParts = split(subPath, {DirSep, AltSep})
     # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
     let cat = Category(pathParts[0])
-    let subPath = joinPath(pathParts[1..^1])
+    subPath = joinPath(pathParts[1..^1])
     processSingleTest(r, cat, p.cmdLineRest.string, subPath)
   of "html":
     generateHtml(resultsFile, optFailing)
