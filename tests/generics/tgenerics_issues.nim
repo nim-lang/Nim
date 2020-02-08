@@ -6,7 +6,7 @@ discard """
 perm: 22 det: 22
 TMatrix[3, 3, system.int]
 3
-@[0.875, 0.125]
+@[0.9, 0.1]
 U[3]
 U[(f: 3)]
 U[[3]]
@@ -20,9 +20,9 @@ concrete 88
 2
 3
 !!Hi!!
-G:0,1:0.125
-G:0,1:0.125
-H:1:0.125
+G:0,1:0.1
+G:0,1:0.1
+H:1:0.1
 '''
 joinable: false
 """
@@ -370,7 +370,7 @@ block t2304:
   type TV2[T:SomeNumber] = array[0..1, T]
   proc newV2T[T](x, y: T=0): TV2[T] = [x, y]
 
-  let x = newV2T[float](0.875, 0.125)
+  let x = newV2T[float](0.9, 0.1)
   echo(@x)
 
 
@@ -711,7 +711,7 @@ block t4863:
   proc q[j: static[int]](x:H[j]) = echo "H:", j, ":", x.v
 
   var
-    g0 = G[0,1](v: 0.125)
+    g0 = G[0,1](v: 0.1)
     h0:H[1] = g0
   p(g0)
   p(h0)

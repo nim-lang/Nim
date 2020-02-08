@@ -677,7 +677,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ## Similar to prettyprint in Python.
   runnableExamples:
     let j = %* {"name": "Isaac", "books": ["Robot Dreams"],
-                "details": {"age": 35, "number": 3.125}}
+                "details": {"age": 35, "pi": 3.1415}}
     doAssert pretty(j) == """
 {
   "name": "Isaac",
@@ -686,7 +686,7 @@ proc pretty*(node: JsonNode, indent = 2): string =
   ],
   "details": {
     "age": 35,
-    "number": 3.125
+    "pi": 3.1415
   }
 }"""
   result = ""

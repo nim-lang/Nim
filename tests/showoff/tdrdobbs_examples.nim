@@ -1,7 +1,7 @@
 discard """
   output: '''108
 11 -1 1936
-0.5
+0.4
 true
 truefalse'''
 """
@@ -75,7 +75,7 @@ proc evaluate(n: Formula, varToVal: proc (name: string): float): float =
   of fkMul: evaluate(n.left, varToVal) * evaluate(n.right, varToVal)
   of fkExp: pow(evaluate(n.left, varToVal), evaluate(n.right, varToVal))
 
-echo evaluate(Formula(kind: fkLit, value: 0.5), nil)
+echo evaluate(Formula(kind: fkLit, value: 0.4), nil)
 
 proc isPolyTerm(n: Formula): bool =
   n.kind == fkMul and n.left.kind == fkLit and (let e = n.right;

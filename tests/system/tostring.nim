@@ -11,6 +11,10 @@ doAssert """["", "foo", "bar"]""" == $(@["", "foo", "bar"].toOpenArray(0, 2))
 # bug #2395
 let alphaSet: set[char] = {'a'..'c'}
 doAssert "{'a', 'b', 'c'}" == $alphaSet
+doAssert "2.3242" == $(2.3242)
+doAssert "2.982" == $(2.982)
+doAssert "123912.1" == $(123912.1)
+doAssert "123912.1823" == $(123912.1823)
 doAssert "5.0" == $(5.0)
 doAssert "1e+100" == $(1e100)
 doAssert "inf" == $(1e1000000)
