@@ -58,7 +58,7 @@ proc f(a1: string; a2: varargs[string]; a3: float; a4: var string)
   required type for a4: var string
   but expression '"bad"' is immutable, not 'var'
 
-expression: f("asdf", "1", "2", "3", "4", 2.25, "bad")
+expression: f("asdf", "1", "2", "3", "4", 2.3, "bad")
 tsigmatch.nim(164, 4) Error: type mismatch: got <string, a0: int literal(12)>
 but expected one of:
 proc f(x: string; a0: var int)
@@ -153,7 +153,7 @@ block:
   # sigmatch gets confused with param/arg position after varargs
   proc f(a1: int) = discard
   proc f(a1: string, a2: varargs[string], a3: float, a4: var string) = discard
-  f("asdf", "1", "2", "3", "4", 2.25, "bad")
+  f("asdf", "1", "2", "3", "4", 2.3, "bad")
 
 block:
   # bug: https://github.com/nim-lang/Nim/issues/11061#issuecomment-508970046
@@ -169,3 +169,4 @@ block:
   proc fun1(a1: MyInt, a2: Mystring) = discard
   proc fun1(a1: float, a2: Mystring) = discard
   fun1(Mystring.default, "asdf")
+
