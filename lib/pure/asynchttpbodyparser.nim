@@ -504,7 +504,7 @@ proc processRequestBody(
 proc newAsyncHttpBodyParser*(req: Request): Future[AsyncHttpBodyParser] {.async.} =
 
   ## Creates a new ``AsyncHttpBodyParser`` instance.
-  when (NimMajor, NimMinor) >= (1, 0):
+  when (NimMajor, NimMinor) >= (1, 1):
     if not req.headers.hasKey("Content-type"):
       # 400 Bad Request
       bodyParserError(Http400, "No Content-Type header was found")
