@@ -977,9 +977,8 @@ const
     tyPointer,
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
-  NumberLikeTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
-    tyFloat..tyFloat128, tyUInt..tyUInt64}
-  IntegralTypes* = NumberLikeTypes + {tyEnum} # weird name because it contains tyFloat
+  IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
+    tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,

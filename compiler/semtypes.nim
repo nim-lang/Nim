@@ -1781,7 +1781,8 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         assignType(prev, s.typ)
         # bugfix: keep the fresh id for aliases to integral types:
-        if s.typ.kind notin NumberLikeTypes:
+        if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+                             tyUInt..tyUInt64}:
           prev.id = s.typ.id
         result = prev
   of nkSym:
