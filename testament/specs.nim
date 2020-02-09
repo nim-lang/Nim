@@ -69,6 +69,7 @@ type
     maxCodeSize*: int
     err*: TResultEnum
     targets*: set[TTarget]
+    matrix*: seq[string]
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
@@ -265,6 +266,9 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetJS)
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "matrix":
+        for v in e.value.split(';'):
+          result.matrix.add(v.strip)
       else:
         result.parseErrors.addLine "invalid key for test spec: ", e.key
 
