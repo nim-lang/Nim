@@ -65,7 +65,6 @@ else:
           return true
       return false
 
-
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
