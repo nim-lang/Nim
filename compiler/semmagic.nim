@@ -164,7 +164,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.info = traitCall.info
   of "getTypeid":
     var arg = operand
-    if arg.kind in NumberLikeTypes:
+    if arg.kind in IntegralTypes - {tyEnum}:
       # needed otherwise we could get different ids, see tests
       arg = getSysType(c.graph, traitCall[1].info, arg.kind)
     result = newStrNode(nkStrLit, $arg.id)
