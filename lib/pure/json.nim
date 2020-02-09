@@ -1013,7 +1013,7 @@ when defined(nimFixedForwardGeneric):
     verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
     if jsonNode.kind == JInt:
       let i = jsonNode.getBiggestInt
-      if (i <= low(T).int or i >= high(T).int) or $i.T == $i & " (invalid data!)":
+      if (i <= low(T).BiggestInt or i >= high(T).BiggestInt) or $i.T == $i & " (invalid data!)":
         raise newException(ValueError, "invalid enum value: " & $i)
       dst = i.T
     else:
