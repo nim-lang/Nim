@@ -1027,7 +1027,7 @@ when defined(nimFixedForwardGeneric):
       of nnkIdent:
         result.add newLit(i)
       else:
-        child.expectkind({nnkEnumFieldDef, nnkIdent})
+        child.expectKind({nnkEnumFieldDef, nnkIdent})
       i += 1
 
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
