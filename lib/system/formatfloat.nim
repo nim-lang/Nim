@@ -16,7 +16,7 @@ proc writeToBuffer(buf: var array[65, char]; value: cstring) =
     buf[i] = value[i]
     inc i
 
-proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat, precision: static int = -1): int =
+proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat, precision = -1): int =
   ## This is the implementation to format floats in the Nim
   ## programming language. The specific format for floating point
   ## numbers is not specified in the Nim programming language and
@@ -29,8 +29,10 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat, precisio
   ## * `buf` - A buffer to write into. The buffer does not need to be
   ##           initialized and it will be overridden.
   ##
-  const precision2 = if precision == -1: 16 else: precision
-  const format = "%." & $precision2 & "g"
+  let precision2 = if precision == -1: 16 else: precision
+  var format = "%."
+  format.addInt(precision2)
+  format.add 'g'
   var n: int = c_sprintf(addr buf, format, value)
   var hasDot = false
   for i in 0..n-1:

@@ -181,8 +181,15 @@ type
     of JArray:
       elems*: seq[JsonNode]
 
-const floatSerializationPrecision = 17
-  # must be high enough to avoid roundtrip serialization issues see #13196
+const precisionDefault* = -1
+  ## default precision for stringification of float; semantics are subject to
+  ## future implementation improvements, see https://github.com/nim-lang/Nim/issues/13365
+  # -1 is tied to strmantle.nim and formatfloat.nim (we could also expose that symbol
+  # to avoid DRY issues)
+
+const precisionRoundtrip* = 17
+  ## precision for stringification of float that is high enough to be roundtrip safe
+  ## to avoid issue #13196.
   # this works with nextafter(1.0, Inf).
   # note that 17 seems enough, unlike what is mentioned here for D which recommended 18, quoting:
   # > ceil(log(pow(2.0, double.mant_dig - 1)) / log(10.0) + 1) == (double.dig + 2)
@@ -620,7 +627,7 @@ proc escapeJson*(s: string): string =
   escapeJson(s, result)
 
 proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
-              lstArr = false, currIndent = 0) =
+              lstArr = false, currIndent = 0, precision = precisionDefault) =
   case node.kind
   of JObject:
     if lstArr: result.indent(currIndent) # Indentation
@@ -655,7 +662,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     # Fixme: implement new system.add ops for the JS target
     when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum, precision = floatSerializationPrecision)
+    else: result.addFloat(node.fnum, precision = precision)
   of JBool:
     if lstArr: result.indent(currIndent)
     result.add(if node.bval: "true" else: "false")
@@ -678,7 +685,7 @@ proc toPretty(result: var string, node: JsonNode, indent = 2, ml = true,
     if lstArr: result.indent(currIndent)
     result.add("null")
 
-proc pretty*(node: JsonNode, indent = 2): string =
+proc pretty*(node: JsonNode, indent = 2, precision = precisionDefault): string =
   ## Returns a JSON Representation of `node`, with indentation and
   ## on multiple lines.
   ##
@@ -697,10 +704,11 @@ proc pretty*(node: JsonNode, indent = 2): string =
     "number": 3.125
   }
 }"""
+    doAssert pretty(j["details"]["number"], precision = 2) == "3.1"
   result = ""
-  toPretty(result, node, indent)
+  toPretty(result, node, indent, precision = precision)
 
-proc toUgly*(result: var string, node: JsonNode) =
+proc toUgly*(result: var string, node: JsonNode, precision = precisionDefault) =
   ## Converts `node` to its JSON Representation, without
   ## regard for human readability. Meant to improve ``$`` string
   ## conversion performance.
@@ -734,16 +742,16 @@ proc toUgly*(result: var string, node: JsonNode) =
     else: result.addInt(node.num)
   of JFloat:
     when defined(js): result.add($node.fnum)
-    else: result.addFloat(node.fnum, precision = floatSerializationPrecision)
+    else: result.addFloat(node.fnum, precision = precision)
   of JBool:
     result.add(if node.bval: "true" else: "false")
   of JNull:
     result.add "null"
 
-proc `$`*(node: JsonNode): string =
+proc `$`*(node: JsonNode, precision = precisionDefault): string =
   ## Converts `node` to its JSON Representation on one line.
   result = newStringOfCap(node.len shl 1)
-  toUgly(result, node)
+  toUgly(result, node, precision = precision)
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
@@ -1495,9 +1503,10 @@ when isMainModule:
   doAssert isRefSkipDistinct(MyDistinct)
   doAssert isRefSkipDistinct(MyOtherDistinct)
 
-  # issue #13196
-  # some arbitrary float, not caring about actually significant places here
-  let x = 0.12345678901234567890123456789
-  let y = ($(%* x)).parseJson().getFloat()
-  doAssert x == y
-  doAssert $0.6 == "0.6"
+  block: # issue #13196
+    # some arbitrary float, not caring about actually significant places here
+    let x = 0.12345678901234567890123456789
+    let j = %* x
+    let y = (`$`(j, precision = precisionRoundtrip)).parseJson().getFloat()
+    doAssert x == y
+    doAssert $0.6 == "0.6"
