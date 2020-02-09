@@ -1901,7 +1901,7 @@ template newException*(exceptn: typedesc, message: string;
   new(e)
   e.msg = message
   e.parent = parentException
-  move(e)
+  e
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
