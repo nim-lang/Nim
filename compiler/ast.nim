@@ -11,6 +11,7 @@
 
 import
   lineinfos, hashes, options, ropes, idents, idgen, int128
+from strutils import toLowerAscii
 
 export int128
 
@@ -977,7 +978,7 @@ const
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
-    tyFloat..tyFloat128, tyUInt..tyUInt64}
+    tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
@@ -1908,3 +1909,16 @@ proc canRaise*(fn: PNode): bool =
     result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
       (fn.typ.n[0][exceptionEffects] != nil and
       fn.typ.n[0][exceptionEffects].safeLen > 0))
+
+proc toHumanStrImpl[T](kind: T, num: static int): string =
+  result = $kind
+  result = result[num..^1]
+  result[0] = result[0].toLowerAscii
+
+proc toHumanStr*(kind: TSymKind): string =
+  ## strips leading `sk`
+  result = toHumanStrImpl(kind, 2)
+
+proc toHumanStr*(kind: TTypeKind): string =
+  ## strips leading `tk`
+  result = toHumanStrImpl(kind, 2)

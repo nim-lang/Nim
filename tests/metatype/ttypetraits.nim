@@ -47,7 +47,7 @@ block: # typeToString
   doAssert MyInt.name3 == "MyInt{int}"
   doAssert (tuple[a: MyInt, b: float]).name3 == "tuple[a: MyInt{int}, b: float]"
   doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
-    "tuple[a: C2b{C}[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
+    "tuple[a: C[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
 
 block distinctBase:
   block:
@@ -126,3 +126,32 @@ static:
   doAssert(not string.supportsCopyMem)
   doAssert x.T is string          # true
   doAssert x.raw_buffer is seq
+
+block genericHead:
+  type Foo[T1,T2] = object
+    x1: T1
+    x2: T2
+  type FooInst = Foo[int, float]
+  type Foo2 = genericHead(FooInst)
+  doAssert Foo2 is Foo # issue #13066
+
+  block:
+    type Goo[T] = object
+    type Moo[U] = object
+    type Hoo = Goo[Moo[float]]
+    type Koo = genericHead(Hoo)
+    doAssert Koo is Goo
+    doAssert genericParams(Hoo) is (Moo[float],)
+    doAssert genericParams(Hoo).get(0) is Moo[float]
+    doAssert genericHead(genericParams(Hoo).get(0)) is Moo
+
+  type Foo2Inst = Foo2[int, float]
+  doAssert FooInst.default == Foo2Inst.default
+  doAssert FooInst.default.x2 == 0.0
+  doAssert Foo2Inst is FooInst
+  doAssert FooInst is Foo2Inst
+  doAssert compiles(genericHead(FooInst))
+  doAssert not compiles(genericHead(Foo))
+  type Bar = object
+  doAssert not compiles(genericHead(Bar))
+  # doAssert seq[int].genericHead is seq
