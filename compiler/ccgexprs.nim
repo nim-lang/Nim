@@ -1832,7 +1832,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       if size <= 4: unaryExprChar(p, e, d, "#countBits32($1)")
       else: unaryExprChar(p, e, d, "#countBits64($1)")
-    of mLtSet: binaryExprChar(p, e, d, "(($1 & ~ $2 ==0)&&($1 != $2))")
+    of mLtSet: binaryExprChar(p, e, d, "((($1 & ~ $2)==0)&&($1 != $2))")
     of mLeSet: binaryExprChar(p, e, d, "(($1 & ~ $2)==0)")
     of mEqSet: binaryExpr(p, e, d, "($1 == $2)")
     of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
@@ -2974,7 +2974,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
     of tyObject:
       result = genConstObjConstr(p, n, isConst)
     of tyString, tyCString:
-      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit:
+      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
         result = genStringLiteralV2Const(p.module, n, isConst)
       else:
         var d: TLoc

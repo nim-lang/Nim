@@ -288,10 +288,6 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var o: TOverloadIter
     var sym = initOverloadIter(o, c, f)
     while sym != nil:
-      proc toHumanStr(kind: TSymKind): string =
-        result = $kind
-        assert result.startsWith "sk"
-        result = result[2..^1].toLowerAscii
       result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
       sym = nextOverloadIter(o, c, f)
 

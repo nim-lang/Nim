@@ -48,6 +48,47 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
+proc nativeToUnix(path: string): string =
+  doAssert not path.isAbsolute # absolute files need more care for the drive
+  when DirSep == '\\':
+    result = replace(path, '\\', '/')
+  else: result = path
+
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
+  ## returns a relative file that will be appended to outDir
+  let file2 = $file
+  template bail() =
+    result = relativeTo(file, conf.projectPath)
+  proc nimbleDir(): AbsoluteDir =
+    getNimbleFile(conf, file2).parentDir.AbsoluteDir
+  case conf.docRoot:
+  of "@default": # using `@` instead of `$` to avoid shell quoting complications
+    result = getRelativePathFromConfigPath(conf, file)
+    let dir = nimbleDir()
+    if not dir.isEmpty:
+      let result2 = relativeTo(file, dir)
+      if not result2.isEmpty and (result.isEmpty or result2.string.len < result.string.len):
+        result = result2
+    if result.isEmpty: bail()
+  of "@pkg":
+    let dir = nimbleDir()
+    if dir.isEmpty: bail()
+    else: result = relativeTo(file, dir)
+  of "@path":
+    result = getRelativePathFromConfigPath(conf, file)
+    if result.isEmpty: bail()
+  elif conf.docRoot.len > 0:
+    doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
+    doAssert conf.docRoot.existsDir, conf.docRoot
+    result = relativeTo(file, conf.docRoot.AbsoluteDir)
+  else:
+    bail()
+  if isTitle:
+    result = result.string.nativeToUnix.RelativeFile
+  else:
+    result = result.string.replace("..", "@@").RelativeFile ## refs #13223
+  doAssert not result.isEmpty
+
 proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
     if d.types.strTableContains(n.sym):
@@ -175,7 +216,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if execShellCmd(c2) != status:
         rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
                                 outExt, htmldocsDir, false)
   result.thisDir = result.destFile.splitFile.dir
 
@@ -295,14 +336,13 @@ proc getPlainDocstring(n: PNode): string =
       if result.len > 0: return
 
 proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
-  result = module.kind == skModule and module.owner != nil and
-      module.owner.id == conf.mainPackageId
+  result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
-  if optWholeProject in d.conf.globalOptions:
+  if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
-        htmldocsDir, sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
+                          htmldocsDir, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -1031,11 +1071,12 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = extractFilename(changeFileExt(d.filename, ""))
+    # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
+    title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
@@ -1060,9 +1101,13 @@ proc generateIndex*(d: PDoc) =
     let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
               else: d.conf.projectPath / htmldocsDir
     createDir(dir)
-    let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
-                                              d.conf.projectPath), IndexExt)
+    let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
+
+proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
+  if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
+    if d.conf.outFile.isEmpty and not d.conf.outDir.isEmpty:
+      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1073,7 +1118,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
     createDir(outfile.splitFile.dir)
-    d.conf.outFile = outfile.extractFilename.RelativeFile
+    updateOutfile(d, outfile)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
@@ -1100,7 +1145,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
-      d.conf.outFile = d.destFile.extractFilename.RelativeFile
+      updateOutfile(d, d.destFile)
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
                  warnUser, "unable to open file \"" & d.destFile.string &
