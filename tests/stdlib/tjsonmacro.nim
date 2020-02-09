@@ -201,7 +201,7 @@ proc testJson() =
       "field": %0
     }
 
-    var invalidIntNode() = %{
+    var invalidIntNode = %{
       "field": %2
     }
 
