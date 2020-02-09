@@ -2412,7 +2412,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   let xa = a ^^ x.a
   let L = (a ^^ x.b) - xa + 1
   if L == b.len:
-    for i in 0..<L: a[Idx(i + xa)] = move(b[i])
+    for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
     sysFatal(RangeError, "different lengths for slice assignment")
 
