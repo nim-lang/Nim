@@ -1178,7 +1178,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
+proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a container `y` to a container `x`.
   ##
   ## For containers that have an order, `add` means *append*. New generic
@@ -1194,7 +1194,7 @@ proc add*[T](x: var seq[T], y: sink openArray[T]) {.noSideEffect.} =
   ##   s.add("test") # s <- @[test2, test2, test]
   let xl = x.len
   setLen(x, xl + y.len)
-  for i in 0..high(y): x[xl+i] = move(y[i])
+  for i in 0..high(y): x[xl+i] = y[i]
 
 when defined(nimSeqsV2):
   template movingCopy(a, b) =
@@ -1517,13 +1517,13 @@ proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## ``== nil``.
 
 
-proc `@`*[T](a: sink openArray[T]): seq[T] =
+proc `@`*[T](a: openArray[T]): seq[T] =
   ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
   ## as it always copies every element of `a`.
   newSeq(result, a.len)
-  for i in 0..a.len-1: result[i] = move(a[i])
+  for i in 0..a.len-1: result[i] = a[i]
 
 proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
   ## Concatenates two sequences.
@@ -2402,7 +2402,7 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: sink openArray[T]) =
+proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2428,7 +2428,7 @@ proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: sink openArray[T]) =
+proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2441,7 +2441,7 @@ proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: sink openArray[T]) =
   let a = s ^^ x.a
   let L = (s ^^ x.b) - a + 1
   if L == b.len:
-    for i in 0 ..< L: s[i+a] = move(b[i])
+    for i in 0 ..< L: s[i+a] = b[i]
   else:
     spliceImpl(s, a, L, b)
 
