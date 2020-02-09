@@ -1456,7 +1456,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   elif t.kind != tyGenericBody:
     # we likely got code of the form TypeA[TypeB] where TypeA is
     # not generic.
-    localError(c.config, n.info, errNoGenericParamsAllowedForX % $(s.name.s, t.kind))
+    localError(c.config, n.info, errNoGenericParamsAllowedForX % s.name.s)
     return newOrPrevType(tyError, prev, c)
   else:
     var m = newCandidate(c, t)
@@ -1927,7 +1927,9 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       else:
         assignType(prev, s.typ)
         # bugfix: keep the fresh id for aliases to integral types:
-        if s.typ.kind notin IntegralTypes - {tyEnum}:
+        # could use simply: `IntegralTypes - {tyEnum}`
+        if s.typ.kind notin {tyBool, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
+                             tyUInt..tyUInt64}:
           prev.itemId = s.typ.itemId
         result = prev
   of nkSym:
