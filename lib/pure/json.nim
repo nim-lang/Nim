@@ -182,7 +182,7 @@ type
       elems*: seq[JsonNode]
 
 const floatSerializationPrecision = 17
-  # must be high enought to avoid roundrip serialization issues see #13196
+  # must be high enough to avoid roundtrip serialization issues see #13196
   # this works with nextafter(1.0, Inf).
   # note that 17 seems enough, unlike what is mentioned here for D which recommended 18, quoting:
   # > ceil(log(pow(2.0, double.mant_dig - 1)) / log(10.0) + 1) == (double.dig + 2)
