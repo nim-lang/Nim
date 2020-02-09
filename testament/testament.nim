@@ -43,7 +43,7 @@ Options:
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
-  --colors:on|off           Turn messagescoloring on|off.
+  --colors:on|off           Turn messages coloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
   --megatest:on|off         Enable or disable megatest. Default is on.
   --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
@@ -134,15 +134,14 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
   result = "nimcache" / (filename & '_' & hashInput.getMD5)
 
 proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
-                     target: TTarget, extraOptions=""): seq[string] =
-  let options = options & " " & quoteShell("--nimCache:" & nimcache) & extraOptions
+                     target: TTarget, extraOptions = ""): seq[string] =
+  let options = options & " " & quoteShell("--nimCache:" & nimcache) & " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir()])
 
 proc callCompiler(cmdTemplate, filename, options, nimcache: string,
-                  target: TTarget,
-                  extraOptions=""): TSpec =
+                  target: TTarget, extraOptions = ""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   result.cmd = quoteShellCommand(c)
@@ -421,14 +420,16 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
-proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarget, nimcache: string) =
+proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
+                    target: TTarget, nimcache: string, extraOptions = "") =
   case expected.action
   of actionCompile:
     var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
           extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target)
+    var given = callCompiler(expected.getCmd, test.name, test.options,
+                             nimcache, target, extraOptions)
     if given.err != reSuccess:
       r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
     else:
@@ -484,6 +485,18 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
                               nimcache, target)
     cmpMsgs(r, expected, given, test, target)
 
+proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
+  for target in expected.targets:
+    inc(r.total)
+    if target notin gTargets:
+      r.addResult(test, target, "", "", reDisabled)
+      inc(r.skipped)
+    elif simulate:
+      inc count
+      echo "testSpec count: ", count, " expected: ", expected
+    else:
+      let nimcache = nimcacheDir(test.name, test.options, target)
+      testSpecHelper(r, test, expected, target, nimcache, extraOptions)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -498,17 +511,11 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   # still no target specified at all
   if expected.targets == {}:
     expected.targets = {getTestSpecTarget()}
-  for target in expected.targets:
-    inc(r.total)
-    if target notin gTargets:
-      r.addResult(test, target, "", "", reDisabled)
-      inc(r.skipped)
-    elif simulate:
-      inc count
-      echo "testSpec count: ", count, " expected: ", expected
-    else:
-      let nimcache = nimcacheDir(test.name, test.options, target)
-      testSpecHelper(r, test, expected, target, nimcache)
+  if test.spec.matrix.len > 0:
+    for m in test.spec.matrix:
+      targetHelper(r, test, expected, m)
+  else:
+    targetHelper(r, test, expected)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
   if not checkDisabled(r, test): return
