@@ -1032,7 +1032,8 @@ macro intValuesSet[T: enum](arg: typedesc[T]): untyped =
     verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
     if jsonNode.kind == JInt:
       let i = jsonNode.getBiggestInt
-      if (i <= low(T).BiggestInt or i >= high(T).BiggestInt) or $i.T == $i & " (invalid data!)":
+      const validValues = intValuesSet(T)
+      if i in validValues:
         raise newException(ValueError, "invalid enum value: " & $i)
       dst = i.T
     else:
