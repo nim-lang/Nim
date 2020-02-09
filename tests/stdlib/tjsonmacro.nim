@@ -194,12 +194,29 @@ proc testJson() =
       TestEnum = object
         field: EnumType
 
-    var node = %{
+    var strNode = %{
       "field": %"Bar"
     }
+    var intNode = %{
+      "field": %0
+    }
 
-    var result = to(node, TestEnum)
+    var invalidIntNode() = %{
+      "field": %2
+    }
+
+    var result = to(strNode, TestEnum)
     doAssert result.field == Bar
+    result = to(intNode, TestEnum)
+    doAssert result.field == Foo
+
+    try:
+      result = to(invalidIntNode, TestEnum)
+      doAssert false
+    except ValueError as exc:
+      doAssert("2" in exc.msg)
+    except:
+      doAssert false
 
   # Test ref type in field.
   block:
