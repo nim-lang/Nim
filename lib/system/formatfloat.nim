@@ -30,10 +30,17 @@ proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat, precisio
   ##           initialized and it will be overridden.
   ##
   let precision2 = if precision == -1: 16 else: precision
-  var format = "%."
-  format.addInt(precision2)
-  format.add 'g'
-  var n: int = c_sprintf(addr buf, format, value)
+
+  var buf2 {.noinit.}: array[6, char] # 6 is just enough to hold `%.16g`
+  var n2: int = c_sprintf(addr buf2,  "%%.%dg", precision2.cint)
+  # if n2 <= 0: quit(1) # if want to be exact
+
+  # this would fail for `tests/manyloc/standalone/barebone.nim`
+  # var format = "%."
+  # format.addInt(precision2)
+  # format.add 'g'
+
+  var n: int = c_sprintf(addr buf, addr buf2, value)
   var hasDot = false
   for i in 0..n-1:
     if buf[i] == ',':
