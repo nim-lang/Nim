@@ -1938,7 +1938,8 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semExpr(c, call)
+  result = c.semTryExpr(c, call)
+
   if result != nil:
     if result.typ == nil: return nil
     # resulting type must be consistent with the other arguments:

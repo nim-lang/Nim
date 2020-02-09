@@ -68,7 +68,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyUInt64: result = sysTypeFromName("uint64")
     of tyFloat: result = sysTypeFromName("float")
     of tyFloat32: result = sysTypeFromName("float32")
-    of tyFloat64: return sysTypeFromName("float64")
+    of tyFloat64: result = sysTypeFromName("float64")
     of tyFloat128: result = sysTypeFromName("float128")
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
@@ -79,7 +79,9 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     else: internalError(g.config, "request for typekind: " & $kind)
     g.sysTypes[kind] = result
   if result.kind != kind:
-    internalError(g.config, "wanted: " & $kind & " got: " & $result.kind)
+    if kind == tyFloat64 and result.kind == tyFloat: discard # because of aliasing
+    else:
+      internalError(g.config, "wanted: " & $kind & " got: " & $result.kind)
   if result == nil: internalError(g.config, "type not found: " & $kind)
 
 proc resetSysTypes*(g: ModuleGraph) =

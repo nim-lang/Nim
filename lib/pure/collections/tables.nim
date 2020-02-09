@@ -2304,13 +2304,6 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
 
-proc mget*[A](t: var CountTable[A], key: A): var int =
-  ## Retrieves the value at ``t[key]``. The value can be modified.
-  ##
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  assert(not t.isSorted, "CountTable must not be used after sorting")
-  get(t, key)
-
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
@@ -2673,12 +2666,6 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
   ##   is in the table
   result = t[][key]
-
-proc mget*[A](t: CountTableRef[A], key: A): var int =
-  ## Retrieves the value at ``t[key]``. The value can be modified.
-  ##
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  mget(t[], key)
 
 proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.

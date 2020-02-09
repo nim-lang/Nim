@@ -631,7 +631,7 @@ macro check*(conditions: untyped): untyped =
 
     var counter = 0
 
-    if exp[0].kind == nnkIdent and
+    if exp[0].kind in {nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym} and
         $exp[0] in ["not", "in", "notin", "==", "<=",
                     ">=", "<", ">", "!=", "is", "isnot"]:
 
