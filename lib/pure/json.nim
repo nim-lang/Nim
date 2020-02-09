@@ -1008,26 +1008,28 @@ when defined(nimFixedForwardGeneric):
       dst = T(jsonNode.fnum)
     else:
       dst = T(jsonNode.num)
-macro intValuesSet[T: enum](arg: typedesc[T]): untyped =
-  ## Takes an enum and returns a set of integers that contains all
-  ## valid enum integer representations of that enum.
 
-  let typedescImpl = getTypeImpl(arg)
-  let impl = typedescImpl[1].getImpl[2]
-  result = newNimNode(nnkCurly)
-  var i = 0
-  for idx in 1 ..< impl.len:
-    let child = impl[idx]
-    case child.kind
-    of nnkEnumFieldDef:
-      child[1].expectKind nnkIntLit
-      result.add child[1]
-      i = int(child[1].intVal)
-    of nnkIdent:
-      result.add newLit(i)
-    else:
-      child.expectkind({nnkEnumFieldDef, nnkIdent})
-    i += 1
+  macro intValuesSet[T: enum](arg: typedesc[T]): untyped =
+    ## Takes an enum and returns a set of integers that contains all
+    ## valid enum integer representations of that enum.
+
+    let typedescImpl = getTypeImpl(arg)
+    let impl = typedescImpl[1].getImpl[2]
+    result = newNimNode(nnkCurly)
+    var i = 0
+    for idx in 1 ..< impl.len:
+      let child = impl[idx]
+      case child.kind
+      of nnkEnumFieldDef:
+        child[1].expectKind nnkIntLit
+        result.add child[1]
+        i = int(child[1].intVal)
+      of nnkIdent:
+        result.add newLit(i)
+      else:
+        child.expectkind({nnkEnumFieldDef, nnkIdent})
+      i += 1
+
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string) =
     verifyJsonKind(jsonNode, {JInt, JString}, jsonPath)
     if jsonNode.kind == JInt:
