@@ -30,7 +30,9 @@ runnableExamples:
   type C[T] = enum h0 = 2, h1 = 4
   assert C[float] is HoleyEnum
 
-proc getTypeid*(t: typedesc): string {.magic: "TypeTrait", since: (1, 1).} =
+type
+  Typeid* = distinct string ## opaque, used by `getTypeid`
+proc getTypeid*(t: typedesc): Typeid {.magic: "TypeTrait", since: (1, 1).} =
   ## returns a unique string id representing a type; the id is stable across
   ## recompilations of the same program, but may differ if the program source
   ## changes.
