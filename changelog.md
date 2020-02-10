@@ -21,6 +21,10 @@
   compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
 - `CountTable.mget` has been removed from `tables.nim`. It didn't work, and it
   was an oversight to be included in v1.0.
+- `tables.merge(CountTable, CountTable): CountTable` has been removed.
+  It didn't work well together with the existing inplace version of the same proc
+  (`tables.merge(var CountTable, CountTable)`).
+  It was an oversight to be included in v1.0.
 
 
 ### Breaking changes in the compiler

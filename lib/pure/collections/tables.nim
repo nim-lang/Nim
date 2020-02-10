@@ -2487,18 +2487,19 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   for key, value in t:
     s.inc(key, value)
 
-proc merge*[A](s, t: CountTable[A]): CountTable[A] =
-  ## Merges the two tables into a new one.
-  runnableExamples:
-    let
-      a = toCountTable("aaabbc")
-      b = toCountTable("bcc")
-    doAssert merge(a, b) == toCountTable("aaabbbccc")
+when (NimMajor, NimMinor) <= (1, 0):
+  proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+    ## Merges the two tables into a new one.
+    runnableExamples:
+      let
+        a = toCountTable("aaabbc")
+        b = toCountTable("bcc")
+      doAssert merge(a, b) == toCountTable("aaabbbccc")
 
-  result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
-  for table in @[s, t]:
-    for key, value in table:
-      result.inc(key, value)
+    result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
+    for table in @[s, t]:
+      for key, value in table:
+        result.inc(key, value)
 
 proc `$`*[A](t: CountTable[A]): string =
   ## The ``$`` operator for count tables. Used internally when calling `echo`
