@@ -29,10 +29,7 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
   if self.supportsStdinFile and conf.projectName == "-":
-    conf.projectName = "stdinfile"
-    conf.projectFull = AbsoluteFile "stdinfile"
-    conf.projectPath = AbsoluteDir getCurrentDir()
-    conf.projectIsStdin = true
+    handleStdinInput(conf)
   elif conf.projectName != "":
     try:
       conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
