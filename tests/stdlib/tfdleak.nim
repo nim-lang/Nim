@@ -1,6 +1,7 @@
 discard """
   exitcode: 0
   output: ""
+  matrix: "; -d:nimInheritHandles"
 """
 
 import os, osproc, strutils, nativesockets, net, selectors
@@ -9,7 +10,7 @@ when defined(windows):
 else:
   import posix
 
-proc leakCheck(f: int | FileHandle | SocketHandle, msg: string, expectLeak = false) =
+proc leakCheck(f: int | FileHandle | SocketHandle, msg: string, expectLeak = defined(nimInheritHandles)) =
   discard startProcess(
     getAppFilename(),
     args = @[$f.int, msg, $expectLeak],
@@ -62,7 +63,9 @@ proc main() =
     leakCheck(input.getFd, "accept()")
 
     # ioselectors_select doesn't support returning a handle.
-    when not defined(windows):
+    # -d:nimInheritHandles does not affect whether handles from
+    # ioselectors are inheritable or not.
+    when not defined(windows) and not defined(nimInheritHandles):
       let selector = newSelector[int]()
       leakCheck(selector.getFd, "selector()")
   else:

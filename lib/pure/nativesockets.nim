@@ -205,8 +205,8 @@ when declared(setInheritable) or useWinVersion or defined(nimdoc):
     else:
       setInheritable(FileHandle s, inheritable)
 
-proc createNativeSocket*(domain: cint, sockType: cint,
-                         protocol: cint, inheritable: bool = false): SocketHandle =
+proc createNativeSocket*(domain: cint, sockType: cint, protocol: cint,
+                         inheritable: bool = defined(nimInheritHandles)): SocketHandle =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## `inheritable` decides if the resulting SocketHandle can be inherited
@@ -228,7 +228,7 @@ proc createNativeSocket*(domain: cint, sockType: cint,
 proc createNativeSocket*(domain: Domain = AF_INET,
                          sockType: SockType = SOCK_STREAM,
                          protocol: Protocol = IPPROTO_TCP,
-                         inheritable: bool = false): SocketHandle =
+                         inheritable: bool = defined(nimInheritHandles)): SocketHandle =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
   ##
   ## `inheritable` decides if the resulting SocketHandle can be inherited
@@ -679,7 +679,7 @@ proc selectWrite*(writefds: var seq[SocketHandle],
 
   pruneSocketSet(writefds, (wr))
 
-proc accept*(fd: SocketHandle, inheritable = false): (SocketHandle, string) =
+proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (SocketHandle, string) =
   ## Accepts a new client connection.
   ##
   ## `inheritable` decides if the resulting SocketHandle can be inherited by

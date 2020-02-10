@@ -210,7 +210,7 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
     setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
 
 proc newSocket*(domain, sockType, protocol: cint, buffered = true,
-                inheritable = false): owned(Socket) =
+                inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
   ## The SocketHandle associated with the resulting Socket will not be
@@ -226,7 +226,7 @@ proc newSocket*(domain, sockType, protocol: cint, buffered = true,
 
 proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
                 protocol: Protocol = IPPROTO_TCP, buffered = true,
-                inheritable = false): owned(Socket) =
+                inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
   ## The SocketHandle associated with the resulting Socket will not be
@@ -790,7 +790,8 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
-                 flags = {SocketFlag.SafeDisconn}, inheritable = false) {.
+                 flags = {SocketFlag.SafeDisconn},
+                 inheritable = defined(nimInheritHandles)) {.
                  tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
@@ -886,7 +887,8 @@ when false: #defineSsl:
         doHandshake()
 
 proc accept*(server: Socket, client: var owned(Socket),
-             flags = {SocketFlag.SafeDisconn}, inheritable = false)
+             flags = {SocketFlag.SafeDisconn},
+             inheritable = defined(nimInheritHandles))
             {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.

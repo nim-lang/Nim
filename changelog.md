@@ -25,7 +25,12 @@
   It didn't work well together with the existing inplace version of the same proc
   (`tables.merge(var CountTable, CountTable)`).
   It was an oversight to be included in v1.0.
-
+- File handles created from high-level abstractions in the stdlib will no longer
+  be inherited by child processes. A `setInheritable` proc is also introduced
+  to allow marking explicitly which file handles should be inherited.
+  For a transistion period, define `nimInheritHandles` to enable file handle
+  inheritance by default. This flag does **not** affect the `selectors` module
+  due to the differing semantics between operating systems.
 
 ### Breaking changes in the compiler
 
@@ -64,7 +69,8 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-
+- Added `system.setInheritable` and `nativesockets.setInheritable` for setting
+  file handle inheritance. Not all platform have these proc defined.
 
 ## Library changes
 
@@ -87,6 +93,12 @@
   serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
+- File handles created via `system`, `nativesockets`, `net`, and `selectors`
+  modules are no longer inheritable by default.
+- For procs that create handles in `nativesockets` and `net`, a `inheritable` flag
+  is added to control whether the resulting handle is inheritable. This flag is
+  provided to ease writing multi-process servers, where creating inheritable sockets
+  is common.
 
 
 ## Language additions
@@ -99,7 +111,7 @@
 
 
 ## Language changes
-
+ 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
 - Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
   versions. The documentation was improved to acknowledge this special case.
@@ -125,3 +137,5 @@
 
 - The `FD` variant of `selector.unregister` for `ioselector_epoll` and
   `ioselector_select` now properly handle the `Event.User` select event type.
+- The file descriptors created for internal bookkeeping by `ioselector_kqueue`
+  and `ioselector_epoll` will no longer be leaked to child processes.
