@@ -41,6 +41,7 @@ from modulegraphs import ModuleGraph, PPassContext
 type
   TJSGen = object of PPassContext
     module: PSym
+    outputFiles*: TableRef[string, TJSGen]
     s*: TJSFileSections        # sections of the JS file    
     graph: ModuleGraph
     config: ConfigRef
@@ -100,7 +101,7 @@ type
   TProc = object
     procDef: PNode
     prc: PSym
-    globals, locals, body: Rope
+    globals, locals, header, footer, body: Rope
     options: TOptions
     module: BModule
     g: PGlobals
@@ -2699,8 +2700,10 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
 
   p.unique = globals.unique
   genModule(p, n)
+  p.g.code.add(p.header)
   p.g.code.add(p.locals)
   p.g.code.add(p.body)
+  p.g.code.add(p.footer)
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
   let globals = PGlobals(graph.backend)

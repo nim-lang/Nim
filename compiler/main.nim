@@ -182,7 +182,18 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
-  case conf.command.normalize
+  var cmd = conf.command.normalize
+  var targetExt = ""
+  if cmd.startsWith("js"):
+    let arrCmd = cmd.split(":")
+    let ext = arrCmd[1]
+    cmd = "js"
+    if ext == "":
+      targetExt = "js" 
+    else: 
+      targetExt = ext
+      
+  case cmd
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
@@ -205,11 +216,12 @@ proc mainCommand*(graph: ModuleGraph) =
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
-  of "js", "compiletojs":
+  of "js":
     when defined(leanCompiler):
       quit "compiler wasn't built with JS code generator"
     else:
       conf.cmd = cmdCompileToJS
+      conf.targetExt = targetExt
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier

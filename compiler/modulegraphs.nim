@@ -33,6 +33,7 @@ type
 
   ModuleGraph* = ref object
     modules*: seq[PSym]  ## indexed by int32 fileIdx
+    targetExt*: string
     packageSyms*: TStrTable
     deps*: IntSet # the dependency graph or potentially its transitive closure.
     importDeps*: Table[FileIndex, seq[FileIndex]] # explicit import module dependencies
