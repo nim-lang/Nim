@@ -4,7 +4,7 @@ discard """
   matrix: "; -d:nimInheritHandles"
 """
 
-import os, osproc, strutils, nativesockets, net, selectors
+import os, osproc, strutils, nativesockets, net, selectors, memfiles
 when defined(windows):
   import winlean
 else:
@@ -28,10 +28,10 @@ proc isValidHandle(f: int): bool =
 proc main() =
   if paramCount() == 0:
     # Parent process
-    let f = open("__test_fdleak", fmReadWrite)
+    let f = system.open("__test_fdleak", fmReadWrite)
     defer: close f
 
-    leakCheck(f.getOsFileHandle, "open(string)")
+    leakCheck(f.getOsFileHandle, "system.open()")
 
     doAssert f.reopen("__test_fdleak2", fmReadWrite), "reopen failed"
 
@@ -63,11 +63,17 @@ proc main() =
     leakCheck(input.getFd, "accept()")
 
     # ioselectors_select doesn't support returning a handle.
-    # -d:nimInheritHandles does not affect whether handles from
-    # ioselectors are inheritable or not.
-    when not defined(windows) and not defined(nimInheritHandles):
+    when not defined(windows):
       let selector = newSelector[int]()
-      leakCheck(selector.getFd, "selector()")
+      leakCheck(selector.getFd, "selector()", false)
+
+    var mf = memfiles.open("__test_fdleak3", fmReadWrite, newFileSize = 1)
+    defer: close mf
+    when defined(windows):
+      leakCheck(mf.fHandle, "memfiles.open().fHandle", false)
+      leakCheck(mf.mapHandle, "memfiles.open().mapHandle", false)
+    else:
+      leakCheck(mf.handle, "memfiles.open().handle", false)
   else:
     let
       fd = parseInt(paramStr 1)
