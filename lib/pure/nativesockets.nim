@@ -194,16 +194,13 @@ proc close*(socket: SocketHandle) =
   # TODO: These values should not be discarded. An OSError should be raised.
   # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
-when declared(setInheritable) or useWinVersion or defined(nimdoc):
+when declared(setInheritable) or defined(nimdoc):
   proc setInheritable*(s: SocketHandle, inheritable: bool): bool {.inline.} =
     ## Set whether a socket is inheritable by child processes.
     ##
     ## This function is not implemented on all platform, test for availability
     ## with `declared() <system.html#declared,untyped>`.
-    when useWinVersion:
-      setHandleInformation(Handle s, HANDLE_FLAG_INHERIT, DWORD inheritable) != 0
-    else:
-      setInheritable(FileHandle s, inheritable)
+    setInheritable(FileHandle s, inheritable)
 
 proc createNativeSocket*(domain: cint, sockType: cint, protocol: cint,
                          inheritable: bool = defined(nimInheritHandles)): SocketHandle =

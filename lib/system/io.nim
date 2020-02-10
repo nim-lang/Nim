@@ -324,9 +324,8 @@ proc getOsFileHandle*(f: File): FileHandle =
 when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
   proc setInheritable*(f: FileHandle, inheritable: bool): bool =
     ## control whether a file handle can be inherited by child processes. Returns
-    ## ``true`` on success.
-    ##
-    ## On Windows, use the handle from `getFileHandle <#getFileHandle,File>`_.
+    ## ``true`` on success. This requires the OS file handle, which can be
+    ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
     ##
     ## This procedure is not guaranteed to be available for all platforms. Test for
     ## availability with `declared() <system.html#declared,untyped>`.
@@ -339,8 +338,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      let handle = getOsfhandle(f)
-      result = setHandleInformation(handle, HANDLE_FLAG_INHERIT, culong inheritable) != 0
+      result = setHandleInformation(f, HANDLE_FLAG_INHERIT, culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -617,7 +615,7 @@ proc open*(f: var File, filename: string,
         return false
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
-      if not setInheritable(getFileHandle(f2), false):
+      if not setInheritable(getOsFileHandle(f2), false):
         close(f2)
         return false
 
@@ -640,7 +638,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   if freopen(filename, FormatOpen[mode], f) != nil:
     when not defined(nimInheritHandles) and declared(setInheritable) and
          NoInheritFlag.len == 0:
-      if not setInheritable(getFileHandle(f), false):
+      if not setInheritable(getOsFileHandle(f), false):
         close(f)
         return false
     result = true
@@ -653,7 +651,8 @@ proc open*(f: var File, filehandle: FileHandle,
   ##
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
-    if not setInheritable(filehandle, false):
+    let oshandle = when defined(windows): getOsfhandle(filehandle) else: filehandle
+    if not setInheritable(oshandle, false):
       return false
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
