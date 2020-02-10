@@ -1305,66 +1305,15 @@ proc genAsmStmt(p: BProc, t: PNode) =
     p.s(cpsStmts).add indentLine(p, runtimeFormat(CC[
         p.config.cCompiler].asmStmtFrmt, [s]))
 
-proc isSectionAvailableInTarget(sectionId: string, targetSections: seq[auto] = @[]): bool =
-  sectionId in targetSections
-
-proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto] = @[]): bool =
-  var isAvailable = isSectionAvailableInTarget(secStr, targetSections)
-  secStr.startsWith("/*" & sectionMarker & "SECTION*/") and isAvailable
-
-proc determineSection(n: PNode, targetSections: seq[auto] = @[]): TCFileSection =
-  result = cfsProcHeaders
-  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
-    let sec = n[0].strVal
-    if useSection(sec, "TYPE", targetSections): result = cfsTypes
-    elif useSection(sec, "VAR", targetSections): result = cfsVars
-    elif useSection(sec, "INCLUDE", targetSections): result = cfsHeaders
-
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t[1])
-  echo "genEmit"
-  echo p.config.options
-  
-  let config = p.config
 
-  # echo "include sections and Include"
-  p.options.incl optSections
-  p.options.incl optIncludeSection
-  # echo p.options
-  let opts = p.options
-  echo opts
-  var hasSections, hasVarSection, hasIncludeSection, hasTypeSection = false
-  if opts.len > 0:
-    echo "has options"
-    hasSections = optSections in opts
-    hasVarSection = optVarSection in opts
-    hasIncludeSection = optIncludeSection in opts
-    hasTypeSection = optTypeSection in opts
-
-  var targetSections: seq[string] = @[]
-  if hasIncludeSection:
-    targetSections.add "INCLUDE" 
-  if hasTypeSection:
-    targetSections.add "TYPE" 
-  if hasVarSection:
-    targetSections.add "VAR" 
-        
-  echo "hasSections: " & $hasSections    
-  var hasNoPrc = p.prc == nil
-  echo "hasNoPrc:" & $hasNoPrc  
-
-  var useSections = hasSections or hasNoPrc
-  echo "useSections:" & $useSections
-  echo targetSections
-
-  if useSections:
-    echo "using sections for emit"
+  if p.prc == nil:
     # top level emit pragma?
     let section = determineSection(t[1], targetSections)
     genCLineDir(p.module.s[section], t.info, p.config)
     p.module.s[section].add(s)
   else:
-    echo "NOT using sections for emit"
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
@@ -1375,10 +1324,8 @@ proc genPragma(p: BProc, n: PNode) =
     echo prag
     case prag
     of wEmit: 
-      echo "wEmit"
       genEmit(p, it)
     of wInjectStmt:
-      echo "wInjectStmt"
       var p = newProc(nil, p.module)
       p.options = p.options - {optLineTrace, optStackTrace}
       genStmts(p, it[1])

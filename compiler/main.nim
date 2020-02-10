@@ -113,7 +113,10 @@ when not defined(leanCompiler):
     if conf.outDir.isEmpty:
       conf.outDir = conf.projectPath
     if conf.outFile.isEmpty:
-      conf.outFile = RelativeFile(conf.projectName & ".js")
+      var ext = "js"
+      if conf.outExt.len > 0: 
+        ext = conf.outExt
+      conf.outFile = RelativeFile(conf.projectName & "." & ext)
 
     #incl(gGlobalOptions, optSafeCode)
     setTarget(graph.config.target, osJS, cpuJS)
@@ -221,7 +224,7 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with JS code generator"
     else:
       conf.cmd = cmdCompileToJS
-      conf.targetExt = targetExt
+      conf.outExt = targetExt
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier

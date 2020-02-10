@@ -42,6 +42,7 @@ type
   TJSGen = object of PPassContext
     module: PSym
     outputFiles*: TableRef[string, TJSGen]
+    g*: PGlobals
     s*: TJSFileSections        # sections of the JS file    
     graph: ModuleGraph
     config: ConfigRef
@@ -91,7 +92,7 @@ type
     isLoop: bool # whether it's a 'block' or 'while'
 
   PGlobals = ref object of RootObj
-    typeInfo, constants, code: Rope
+    typeInfo, constants, code, header, footer, types: Rope
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
@@ -101,7 +102,7 @@ type
   TProc = object
     procDef: PNode
     prc: PSym
-    globals, locals, header, footer, body: Rope
+    globals, locals, body: Rope
     options: TOptions
     module: BModule
     g: PGlobals
@@ -905,31 +906,32 @@ proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto]
   var isAvailable = isSectionAvailableInTarget(secStr, targetSections)
   secStr.startsWith("/*" & sectionMarker & "SECTION*/") and isAvailable
 
-proc determineSection(n: PNode, targetSections: seq[auto] = @[]): TJSFileSection =
-  result = jsfsMain
+proc lengthOfSectionMarker(sectionMarker: string): int = 
+  ("/*" & sectionMarker & "SECTION*/").len
+
+proc determineSection(n: PNode, targetSections: seq[auto] = @[]): tuple[fs: TJSFileSection, str: string] =
+  result = (jsfsMain, "")
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
-    if useSection(sec, "TYPE", targetSections): result = jsfsTypes
-    elif useSection(sec, "TOP", targetSections): result = jsfsHeader
-    elif useSection(sec, "BOTTOM", targetSections): result = jsfsFooter
-
+    if useSection(sec, "TYPE", targetSections): 
+      var index = lengthOfSectionMarker("TYPE")
+      result = (jsfsTypes, sec[index..^1])
+    elif useSection(sec, "HEADER", targetSections): 
+      var index = lengthOfSectionMarker("HEADER")
+      result = (jsfsHeader, sec[index..^1])
+    elif useSection(sec, "FOOTER", targetSections): 
+      var index = lengthOfSectionMarker("FOOTER")
+      result = (jsfsFooter, sec[index..^1])
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
-  echo "genAsmOrEmitStmt"
-  echo n
-  echo "module sections"
-  echo p.module.s
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
   for i in 0..<n.len:
     let it = n[i]
-    echo "kind:" & $(it.kind)
     case it.kind
     of nkStrLit..nkTripleStrLit:
-      echo "strlit:" & it.strVal
       p.body.add(it.strVal)
     of nkSym:
-      echo "nkSym:" & $(it.sym)
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
       if false:
@@ -951,14 +953,9 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
 
         p.body.add(r.rdLoc)        
     else:
-      echo "other"
-      echo it
       var r: TCompRes
       gen(p, it, r)
       p.body.add(r.rdLoc)
-
-  echo "body"
-  echo p.body
   p.body.add "\L"
   p  
 
@@ -968,28 +965,26 @@ proc genEmit(p: PProc, n: PNode) =
   echo p.config.options
   
   let config = p.config
-
-  # echo "include sections and Include"
   p.options.incl optSections
-  p.options.incl optIncludeSection
-  # echo p.options
+  p.options.incl optHeaderSection
+  p.options.incl optFooterSection
+
   let opts = p.options
-  echo opts
-  var hasSections, hasVarSection, hasIncludeSection, hasTypeSection = false
+  var hasSections, hasHeaderSection, hasFooterSection, hasTypeSection = false
+
   if opts.len > 0:
-    echo "has options"
     hasSections = optSections in opts
-    hasVarSection = optVarSection in opts
-    hasIncludeSection = optIncludeSection in opts
+    hasHeaderSection = optHeaderSection in opts
+    hasFooterSection = optFooterSection in opts
     hasTypeSection = optTypeSection in opts
 
   var targetSections: seq[string] = @[]
-  if hasIncludeSection:
-    targetSections.add "INCLUDE" 
+  if hasHeaderSection:
+    targetSections.add "HEADER" 
+  if hasFooterSection:
+    targetSections.add "FOOTER" 
   if hasTypeSection:
     targetSections.add "TYPE" 
-  if hasVarSection:
-    targetSections.add "VAR" 
         
   echo "hasSections: " & $hasSections    
   var hasNoPrc = p.prc == nil
@@ -1000,12 +995,27 @@ proc genEmit(p: PProc, n: PNode) =
   echo targetSections
 
   if useSections:
-    echo "using sections for emit"
+    # echo "using sections for emit"
     # top level emit pragma?
-    let section = determineSection(n, targetSections)
-    p.module.s[section].add(s.body)
+    let (section, emitStr) = determineSection(n, targetSections)
+    # add to code section array
+    p.module.s[section].add(emitStr)
+
+    # experimental use of outputFiles to add additional file output 
+    var filePath = "x"
+    var fileContent = "hello"
+    p.module.outputFiles[filePath].g.code.add(fileContent)
+
+    if section == jsfsHeader:
+      p.g.header.add(emitStr)
+    elif section == jsfsFooter:
+      p.g.footer.add(emitStr)
+    elif section == jsfsTypes:
+      p.g.types.add(emitStr)
+    else:
+      p.g.code.add(s.body)
+  
   else:
-    echo "NOT using sections for emit"
     discard genAsmOrEmitStmt(p, n)
     
 
@@ -2693,17 +2703,10 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   let options = m.module.options
   var p = newProc(globals, m, nil, m.module.options)
   
-  # echo "jsmyProcess"
-  # echo "module:" & $(m.module.options)
-  # echo " config: " & $(m.config.options)
-  # echo " p: " & $(p.options)
-
   p.unique = globals.unique
   genModule(p, n)
-  p.g.code.add(p.header)
   p.g.code.add(p.locals)
   p.g.code.add(p.body)
-  p.g.code.add(p.footer)
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
   let globals = PGlobals(graph.backend)
@@ -2719,7 +2722,7 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newProc(globals, m, nil, m.module.options)
       attachProc(p, prc)
 
-  result = globals.typeInfo & globals.constants & globals.code
+  result = globals.header & globals.typeInfo & globals.constants & globals.code & globals.footer
 
 proc getClassName(t: PType): Rope =
   var s = t.sym
@@ -2740,6 +2743,14 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags:
     let code = wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
+    if m.outputFiles.len > 0:
+      echo "has extra files to be output"
+      for filePath, file in m.outputFiles:        
+        let outFile = m.config.prepareToWriteAdditionalOutput(filePath)
+        echo "output:" & filePath
+        var code = genHeader() & file.g.code
+        discard writeRopeIfNotEqual(code, outFile)
+
     discard writeRopeIfNotEqual(genHeader() & code, outFile)
 
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =

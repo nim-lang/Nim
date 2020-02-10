@@ -41,8 +41,8 @@ type # please make sure we have under 32 options
     optNilSeqs,
     optOldAst,
     optSections,
-    optIncludeSection,
-    optVarSection,
+    optHeaderSection,
+    optFooterSection,
     optTypeSection
 
   TOptions* = set[TOption]
@@ -252,6 +252,7 @@ type
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
     outDir*: AbsoluteDir
+    outExt*: string
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string           # holds a name like 'nim'
@@ -519,6 +520,13 @@ proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   if dirExists(result.string):
     result.string.add ".out"
 
+proc prepareToWriteAdditionalOutput*(conf: ConfigRef, outFilePath: string): AbsoluteFile =
+  ## Create the output directory and returns a full path to the output file
+  createDir conf.outDir
+  result = conf.outDir / RelativeFile(outFilePath)
+  if dirExists(result.string):
+    result.string.add ".out"
+    
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
   ##
