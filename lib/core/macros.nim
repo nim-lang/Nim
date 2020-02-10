@@ -796,7 +796,7 @@ macro undistinct[T: distinct](arg: T): untyped =
   let baseTyp = getTypeImpl(arg)[0]
   result = newCall(baseTyp, arg)
 
-proc newLit*[T : distinct](arg: T): NimNode {.compileTime.} =
+proc newLit*[T : distinct](arg: T): NimNode {.compileTime, since: (1,1).} =
   result = newCall(bindSym"T", newLit(undistinct(arg)))
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
