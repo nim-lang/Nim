@@ -3007,13 +3007,6 @@ when isMainModule:
   t2l.inc("foo", 4)
   t2l.inc("bar")
   t2l.inc("baz", 11)
-  let
-    t1merging = t1l
-    t2merging = t2l
-  let merged = merge(t1merging, t2merging)
-  assert(merged["foo"] == 5)
-  assert(merged["bar"] == 3)
-  assert(merged["baz"] == 14)
 
   block:
     const testKey = "TESTKEY"
