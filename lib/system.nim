@@ -1952,10 +1952,13 @@ template likely*(val: bool): bool =
   ##
   ## On backends without branch prediction (JS and the nimscript VM), this
   ## template will not affect code execution.
-  when nimvm or defined(js):
+  when nimvm:
     val
   else:
-    likelyProc(val)
+    when defined(js):
+      val
+    else:
+      likelyProc(val)
 
 template unlikely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be false.
@@ -1973,10 +1976,13 @@ template unlikely*(val: bool): bool =
   ##
   ## On backends without branch prediction (JS and the nimscript VM), this
   ## template will not affect code execution.
-  when nimvm or defined(js):
+  when nimvm:
     val
   else:
-    unlikelyProc(val)
+    when defined(js):
+      val
+    else:
+      unlikelyProc(val)
 
 
 import system/dollars
