@@ -938,7 +938,7 @@ proc determineExternalFile(n: PNode): tuple[filePath: string, fileContent: strin
     let sec = n[0].strVal
     var filePath = findEmitFilePath(sec, "FILE")
     if filePath.len > 0:
-      var index = lengthOfSectionMarker(filePath)
+      var index = lengthOfSectionMarker(":" & filePath & ":")
       var content = sec[index..^1]
       result = (filePath, content)
 
