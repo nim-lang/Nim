@@ -21,25 +21,28 @@ const
   hasFFI* = defined(nimHasLibFFI)
   copyrightYear* = "2019"
 
-type                          # please make sure we have under 32 options
+type # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
-  TOption* = enum             # **keep binary compatible**
+  TOption* = enum      # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
-    optLineTrace,             # line tracing support (includes stack tracing)
-    optByRef,                 # use pass by ref for objects
-                              # (for interfacing with C)
-    optProfiler,              # profiler turned on
-    optImplicitStatic,        # optimization: implicit at compile time
-                              # evaluation
-    optTrMacros,              # en/disable pattern matching
+    optLineTrace,      # line tracing support (includes stack tracing)
+    optByRef,          # use pass by ref for objects
+                       # (for interfacing with C)
+    optProfiler,       # profiler turned on
+    optImplicitStatic, # optimization: implicit at compile time
+                       # evaluation
+    optTrMacros,       # en/disable pattern matching
     optMemTracker,
     optLaxStrings,
     optNilSeqs,
-    optOldAst
+    optOldAst,
+    optSections,
+    optIncludeSection,
+    optTypeSection
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -97,24 +100,24 @@ const
                       optUseColors, optStdout}
 
 type
-  TCommands* = enum           # Nim's commands
-                              # **keep binary compatible**
+  TCommands* = enum # Nim's commands
+                    # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
     cmdCompileToJS,
     cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
-    cmdCheck,                 # semantic checking for whole project
-    cmdParse,                 # parse a single file (for debugging)
-    cmdScan,                  # scan a single file (for debugging)
-    cmdIdeTools,              # ide tools
-    cmdDef,                   # def feature (find definition for IDEs)
-    cmdRst2html,              # convert a reStructuredText file to HTML
-    cmdRst2tex,               # convert a reStructuredText file to TeX
-    cmdInteractive,           # start interactive session
-    cmdRun,                   # run the project via TCC backend
-    cmdJsonScript             # compile a .json build file
+    cmdCheck,       # semantic checking for whole project
+    cmdParse,       # parse a single file (for debugging)
+    cmdScan,        # scan a single file (for debugging)
+    cmdIdeTools,    # ide tools
+    cmdDef,         # def feature (find definition for IDEs)
+    cmdRst2html,    # convert a reStructuredText file to HTML
+    cmdRst2tex,     # convert a reStructuredText file to TeX
+    cmdInteractive, # start interactive session
+    cmdRun,         # run the project via TCC backend
+    cmdJsonScript   # compile a .json build file
   TStringSeq* = seq[string]
-  TGCMode* = enum             # the selected GC
+  TGCMode* = enum # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
     gcHooks,
     gcRefc, gcV2, gcGo
@@ -125,7 +128,7 @@ type
     ideNone, ideSug, ideCon, ideDef, ideUse, ideDus, ideChk, ideMod,
     ideHighlight, ideOutline, ideKnown, ideMsg, ideProject
 
-  Feature* = enum  ## experimental features; DO NOT RENAME THESE!
+  Feature* = enum ## experimental features; DO NOT RENAME THESE!
     implicitDeref,
     dotOperators,
     callOperator,
@@ -138,14 +141,14 @@ type
     codeReordering,
     compiletimeFFI,
       ## This requires building nim with `-d:nimHasLibFFI`
-      ## which itself requires `nimble install libffi`, see #10150
-      ## Note: this feature can't be localized with {.push.}
+        ## which itself requires `nimble install libffi`, see #10150
+        ## Note: this feature can't be localized with {.push.}
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
       ## Allows to modify a NimNode where the type has already been
-      ## flagged with nfSem. If you actually do this, it will cause
-      ## bugs.
+        ## flagged with nfSem. If you actually do this, it will cause
+        ## bugs.
     checkUnsignedConversions
       ## Historically and especially in version 1.0.0 of the language
       ## conversions to unsigned numbers were checked. In 1.0.4 they
@@ -155,7 +158,8 @@ type
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
-    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
+    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc,
+        ccWcc, ccVcc,
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   ExceptionSystem* = enum
@@ -166,8 +170,8 @@ type
     excQuirky  # quirky exception handling
 
   CfileFlag* {.pure.} = enum
-    Cached,    ## no need to recompile this time
-    External   ## file was introduced via .compile pragma
+    Cached,  ## no need to recompile this time
+    External ## file was introduced via .compile pragma
 
   Cfile* = object
     nimname*: string
@@ -178,16 +182,16 @@ type
   Suggest* = ref object
     section*: IdeCmd
     qualifiedPath*: seq[string]
-    name*: ptr string         # not used beyond sorting purposes; name is also
-                              # part of 'qualifiedPath'
+    name*: ptr string                        # not used beyond sorting purposes; name is also
+                                             # part of 'qualifiedPath'
     filePath*: string
-    line*: int                   # Starts at 1
-    column*: int                 # Starts at 0
-    doc*: string           # Not escaped (yet)
-    forth*: string               # type
-    quality*: range[0..100]   # matching quality
-    isGlobal*: bool # is a global variable
-    contextFits*: bool # type/non-type context matches
+    line*: int                               # Starts at 1
+    column*: int                             # Starts at 0
+    doc*: string                             # Not escaped (yet)
+    forth*: string                           # type
+    quality*: range[0..100]                  # matching quality
+    isGlobal*: bool                          # is a global variable
+    contextFits*: bool                       # type/non-type context matches
     prefix*: PrefixMatch
     symkind*: byte
     scope*, localUsages*, globalUsages*: int # more usages is better
@@ -195,34 +199,34 @@ type
     version*: int
   Suggestions* = seq[Suggest]
 
-  ConfigRef* = ref object ## every global configuration
-                          ## fields marked with '*' are subject to
-                          ## the incremental compilation mechanisms
-                          ## (+) means "part of the dependency"
-    target*: Target       # (+)
-    linesCompiled*: int  # all lines that have been compiled
-    options*: TOptions    # (+)
+  ConfigRef* = ref object          ## every global configuration
+                                   ## fields marked with '*' are subject to
+                                   ## the incremental compilation mechanisms
+                                   ## (+) means "part of the dependency"
+    target*: Target                # (+)
+    linesCompiled*: int            # all lines that have been compiled
+    options*: TOptions             # (+)
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
     m*: MsgConfig
     evalTemplateCounter*: int
     evalMacroCounter*: int
     exitcode*: int8
-    cmd*: TCommands  # the command
-    selectedGC*: TGCMode       # the selected GC (+)
+    cmd*: TCommands                # the command
+    selectedGC*: TGCMode           # the selected GC (+)
     exc*: ExceptionSystem
-    verbosity*: int            # how verbose the compiler is
-    numberOfProcessors*: int   # number of processors
-    evalExpr*: string          # expression for idetools --eval
-    lastCmdTime*: float        # when caas is enabled, we measure each command
+    verbosity*: int                # how verbose the compiler is
+    numberOfProcessors*: int       # number of processors
+    evalExpr*: string              # expression for idetools --eval
+    lastCmdTime*: float            # when caas is enabled, we measure each command
     symbolFiles*: SymbolFilesOption
 
-    cppDefines*: HashSet[string] # (*)
+    cppDefines*: HashSet[string]   # (*)
     headerFile*: string
     features*: set[Feature]
     legacyFeatures*: set[LegacyFeature]
-    arguments*: string ## the arguments to be passed to the program that
-                       ## should be run
+    arguments*: string             ## the arguments to be passed to the program that
+                                   ## should be run
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
@@ -236,11 +240,11 @@ type
     hintCounter*: int
     warnCounter*: int
     errorMax*: int
-    maxLoopIterationsVM*: int ## VM: max iterations of all loops
+    maxLoopIterationsVM*: int      ## VM: max iterations of all loops
     configVars*: StringTableRef
-    symbols*: StringTableRef ## We need to use a StringTableRef here as defined
-                             ## symbols are always guaranteed to be style
-                             ## insensitive. Otherwise hell would break lose.
+    symbols*: StringTableRef       ## We need to use a StringTableRef here as defined
+                                   ## symbols are always guaranteed to be style
+                                   ## insensitive. Otherwise hell would break lose.
     packageCache*: StringTableRef
     nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
@@ -249,45 +253,47 @@ type
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
-    projectName*: string # holds a name like 'nim'
-    projectPath*: AbsoluteDir # holds a path like /home/alice/projects/nim/compiler/
-    projectFull*: AbsoluteFile # projectPath/projectName
-    projectIsStdin*: bool # whether we're compiling from stdin
-    projectMainIdx*: FileIndex # the canonical path id of the main module
-    command*: string # the main command (e.g. cc, check, scan, etc)
-    commandArgs*: seq[string] # any arguments after the main command
+    projectName*: string           # holds a name like 'nim'
+    projectPath*: AbsoluteDir      # holds a path like /home/alice/projects/nim/compiler/
+    projectFull*: AbsoluteFile     # projectPath/projectName
+    projectIsStdin*: bool          # whether we're compiling from stdin
+    projectMainIdx*: FileIndex     # the canonical path id of the main module
+    command*: string               # the main command (e.g. cc, check, scan, etc)
+    commandArgs*: seq[string]      # any arguments after the main command
     commandLine*: string
-    extraCmds*: seq[string] # for writeJsonBuildInstructions
-    keepComments*: bool # whether the parser needs to keep comments
-    implicitImports*: seq[string] # modules that are to be implicitly imported
+    extraCmds*: seq[string]        # for writeJsonBuildInstructions
+    keepComments*: bool            # whether the parser needs to keep comments
+    implicitImports*: seq[string]  # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
-    docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
+    docSeeSrcUrl*: string          # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
-    docRoot*: string ## see nim --fullhelp for --docRoot
+    docRoot*: string               ## see nim --fullhelp for --docRoot
 
-     # the used compiler
-    cIncludes*: seq[AbsoluteDir]  # directories to search for included files
-    cLibs*: seq[AbsoluteDir]      # directories to search for lib files
-    cLinkedLibs*: seq[string]     # libraries to link
+      # the used compiler
+    cIncludes*: seq[AbsoluteDir]   # directories to search for included files
+    cLibs*: seq[AbsoluteDir]       # directories to search for lib files
+    cLinkedLibs*: seq[string]      # libraries to link
 
-    externalToLink*: seq[string]  # files to link in addition to the file
-                                  # we compiled (*)
+    externalToLink*: seq[string]   # files to link in addition to the file
+                                   # we compiled (*)
     linkOptionsCmd*: string
     compileOptionsCmd*: seq[string]
-    linkOptions*: string          # (*)
-    compileOptions*: string       # (*)
+    linkOptions*: string           # (*)
+    compileOptions*: string        # (*)
     cCompilerPath*: string
-    toCompile*: CfileList         # (*)
+    toCompile*: CfileList          # (*)
     suggestionResultHook*: proc (result: Suggest) {.closure.}
     suggestVersion*: int
     suggestMaxResults*: int
     lastLineInfo*: TLineInfo
-    writelnHook*: proc (output: string) {.closure.} # cannot make this gcsafe yet because of Nimble
+    writelnHook*: proc (output: string) {.
+        closure.}                  # cannot make this gcsafe yet because of Nimble
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
-proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
+proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in
+    conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
   fn(target)
@@ -344,7 +350,8 @@ proc newConfigRef*(): ConfigRef =
     m: initMsgConfig(),
     evalExpr: "",
     cppDefines: initHashSet[string](),
-    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {hintProcessing, warnUnknownMagic,
+    headerFile: "", features: {}, legacyFeatures: {}, foreignPackageNotes: {
+    hintProcessing, warnUnknownMagic,
     hintQuitCalled, hintExecuting},
     notes: NotesVerbosity[1], mainPackageNotes: NotesVerbosity[1],
     configVars: newStringTable(modeStyleInsensitive),
@@ -371,9 +378,9 @@ proc newConfigRef*(): ConfigRef =
     implicitImports: @[], # modules that are to be implicitly imported
     implicitIncludes: @[], # modules that are to be implicitly included
     docSeeSrcUrl: "",
-    cIncludes: @[],   # directories to search for included files
-    cLibs: @[],       # directories to search for lib files
-    cLinkedLibs: @[],  # libraries to link
+    cIncludes: @[], # directories to search for included files
+    cLibs: @[], # directories to search for lib files
+    cLinkedLibs: @[], # libraries to link
 
     externalToLink: @[],
     linkOptionsCmd: "",
@@ -438,8 +445,10 @@ proc isDefined*(conf: ConfigRef; symbol: string): bool =
     of "sunos": result = conf.target.targetOS == osSolaris
     of "nintendoswitch":
       result = conf.target.targetOS == osNintendoSwitch
-    of "littleendian": result = CPU[conf.target.targetCPU].endian == platform.littleEndian
-    of "bigendian": result = CPU[conf.target.targetCPU].endian == platform.bigEndian
+    of "littleendian": result = CPU[conf.target.targetCPU].endian ==
+        platform.littleEndian
+    of "bigendian": result = CPU[conf.target.targetCPU].endian ==
+        platform.bigEndian
     of "cpu8": result = CPU[conf.target.targetCPU].bit == 8
     of "cpu16": result = CPU[conf.target.targetCPU].bit == 16
     of "cpu32": result = CPU[conf.target.targetCPU].bit == 32
@@ -487,13 +496,14 @@ proc mainCommandArg*(conf: ConfigRef): string =
 proc existsConfigVar*(conf: ConfigRef; key: string): bool =
   result = hasKey(conf.configVars, key)
 
-proc getConfigVar*(conf: ConfigRef; key: string, default = ""): string =
+proc getConfigVar*(conf: ConfigRef; key: string; default = ""): string =
   result = conf.configVars.getOrDefault(key, default)
 
 proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
-proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
+proc getOutFile*(conf: ConfigRef; filename: RelativeFile;
+    ext: string): AbsoluteFile =
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
@@ -588,7 +598,8 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
-               (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
+               (if isDefined(conf, "release") or isDefined(conf,
+                   "danger"): "_r" else: "_d"))
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
@@ -611,13 +622,13 @@ iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   else:
     yield p
 
-proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile,
+proc toGeneratedFile*(conf: ConfigRef; path: AbsoluteFile;
                       ext: string): AbsoluteFile =
   ## converts "/home/a/mymodule.nim", "rod" to "/home/a/nimcache/mymodule.rod"
   let (head, tail) = splitPath(path.string)
   result = getNimcacheDir(conf) / RelativeFile changeFileExt(tail, ext)
 
-proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
+proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile;
                                 createSubDir: bool = true): AbsoluteFile =
   let (head, tail) = splitPath(f.string)
   let subdir = getNimcacheDir(conf)
@@ -630,7 +641,8 @@ proc completeGeneratedFilePath*(conf: ConfigRef; f: AbsoluteFile,
   result = subdir / RelativeFile tail
   #echo "completeGeneratedFilePath(", f, ") = ", result
 
-proc rawFindFile(conf: ConfigRef; f: RelativeFile; suppressStdlib: bool): AbsoluteFile =
+proc rawFindFile(conf: ConfigRef; f: RelativeFile;
+    suppressStdlib: bool): AbsoluteFile =
   for it in conf.searchPaths:
     if suppressStdlib and it.string.startsWith(conf.libpath.string):
       continue
@@ -665,7 +677,8 @@ when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
-proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
+proc getRelativePathFromConfigPath*(conf: ConfigRef;
+    f: AbsoluteFile): RelativeFile =
   let f = $f
   template search(paths) =
     for it in paths:
@@ -675,7 +688,8 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeF
   search(conf.searchPaths)
   search(conf.lazyPaths)
 
-proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
+proc findFile*(conf: ConfigRef; f: string;
+    suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
     result = if f.existsFile: AbsoluteFile(f) else: AbsoluteFile""
   else:
@@ -695,7 +709,8 @@ const stdlibDirs = [
   "wrappers", "wrappers/linenoise",
   "windows", "posix", "js"]
 
-proc findModule*(conf: ConfigRef; modulename, currentModule: string): AbsoluteFile =
+proc findModule*(conf: ConfigRef; modulename,
+    currentModule: string): AbsoluteFile =
   # returns path to module
   const pkgPrefix = "pkg/"
   const stdPrefix = "std/"

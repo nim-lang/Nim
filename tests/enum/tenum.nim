@@ -19,7 +19,8 @@ block tenum1:
   en = a
 
   # Bug #4066
-  macro genEnum(): untyped = newNimNode(nnkEnumTy).add(newEmptyNode(), newIdentNode("geItem1"))
+  macro genEnum(): untyped = newNimNode(nnkEnumTy).add(newEmptyNode(),
+      newIdentNode("geItem1"))
   type GeneratedEnum = genEnum()
   doAssert(type(geItem1) is GeneratedEnum)
 
@@ -62,10 +63,10 @@ block tenum3:
 block tbasic:
   type
     MyEnum = enum
-      A,B,C,D
+      A, B, C, D
   # trick the optimizer with an seq:
-  var x = @[A,B,C,D]
-  echo x[0],x[1],x[2],x[3],MyEnum(2)
+  var x = @[A, B, C, D]
+  echo x[0], x[1], x[2], x[3], MyEnum(2)
 
 
 
@@ -81,13 +82,14 @@ block talias:
 
 block thole:
   type Holed = enum
-    hFirst = (0,"first")
-    hSecond = (32,"second")
-    hThird = (64,"third")
-    
-  var x = @[0,32,64] # This is just to avoid the compiler inlining the value of the enum
+    hFirst = (0, "first")
+    hSecond = (32, "second")
+    hThird = (64, "third")
 
-  echo Holed(x[0]),ord Holed(x[0]),Holed(x[1]),ord Holed(x[1]),Holed(x[2]),ord Holed(x[2])
+  var x = @[0, 32, 64] # This is just to avoid the compiler inlining the value of the enum
+
+  echo Holed(x[0]), ord Holed(x[0]), Holed(x[1]), ord Holed(x[1]), Holed(x[2]),
+      ord Holed(x[2])
 
 
 
@@ -102,11 +104,12 @@ block toffset:
       valueC,
       valueD = (4, "abc")
 
-  proc getValue(i:int): TMyEnum = TMyEnum(i)
+  proc getValue(i: int): TMyEnum = TMyEnum(i)
 
   # trick the optimizer with a variable:
   var x = getValue(4)
-  echo getValue(1), ord(valueA), getValue(2), ord(valueB), getValue(3), getValue(4), ord(valueD), x
+  echo getValue(1), ord(valueA), getValue(2), ord(valueB), getValue(3),
+      getValue(4), ord(valueD), x
 
 
 
@@ -134,7 +137,7 @@ block toptions:
       optNone, optForceFullMake, optBoehmGC, optRefcGC, optRangeCheck,
       optBoundsCheck, optOverflowCheck, optNilCheck, optAssert, optLineDir,
       optWarns, optHints, optListCmd, optCompileOnly,
-      optSafeCode,             # only allow safe code
+      optSafeCode, # only allow safe code
       optStyleCheck, optOptimizeSpeed, optOptimizeSize, optGenDynLib,
       optGenGuiApp, optStackTrace
 

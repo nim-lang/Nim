@@ -106,8 +106,8 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   for arg in args:
     result.cmdLine.add ' '
     result.cmdLine.add quoteShell(arg)
-  var p = startProcess(command, workingDir=workingDir, args=args,
-                       options={poStdErrToStdOut, poUsePath})
+  var p = startProcess(command, workingDir = workingDir, args = args,
+                       options = {poStdErrToStdOut, poUsePath})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process
@@ -117,7 +117,7 @@ proc execCmdEx2(command: string, args: openArray[string]; workingDir, input: str
   instream.write(input)
   close instream
 
-  result.exitCode =  -1
+  result.exitCode = -1
   var line = newStringOfCap(120).TaintedString
   while true:
     if outp.readLine(line):
@@ -145,8 +145,8 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
   let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   result.cmd = quoteShellCommand(c)
-  var p = startProcess(command=c[0], args=c[1 .. ^1],
-                       options={poStdErrToStdOut, poUsePath})
+  var p = startProcess(command = c[0], args = c[1 .. ^1],
+                       options = {poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var suc = ""
   var err = ""
@@ -195,8 +195,8 @@ proc callCCompiler(cmdTemplate, filename, options: string,
   let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                        "options", options, "file", filename.quoteShell,
                        "filedir", filename.getFileDir()])
-  var p = startProcess(command="gcc", args=c[5 .. ^1],
-                       options={poStdErrToStdOut, poUsePath})
+  var p = startProcess(command = "gcc", args = c[5 .. ^1],
+                       options = {poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
   var x = newStringOfCap(120)
   result.nimout = ""
@@ -257,7 +257,8 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   name.add " " & $target & test.options
 
   let duration = epochTime() - test.startTime
-  let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
+  let success = if test.spec.timeout > 0.0 and duration >
+      test.spec.timeout: reTimeout
                 else: successOrig
 
   let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
@@ -271,14 +272,16 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue,
+        " (", durationStr, " secs)"
   elif success == reDisabled:
     maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   elif success == reJoined:
     maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
   else:
     maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
-    maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
+    maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"",
+        " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
       # expected is empty, no reason to print it.
@@ -300,34 +303,38 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
       of reBuildFailed, reNimcCrash, reInstallFailed:
         ("Failed", "Failure: " & $success & "\n" & given)
       else:
-        ("Failed", "Failure: " & $success & "\nExpected:\n" & expected & "\n\n" & "Gotten:\n" & given)
+        ("Failed", "Failure: " & $success & "\nExpected:\n" & expected &
+            "\n\n" & "Gotten:\n" & given)
     if isAzure:
       azure.addTestResult(name, test.cat.string, int(duration * 1000), msg, success)
     else:
-      var p = startProcess("appveyor", args=["AddTest", test.name.replace("\\", "/") & test.options,
+      var p = startProcess("appveyor", args = ["AddTest", test.name.replace("\\", "/") & test.options,
                            "-Framework", "nim-testament", "-FileName",
                            test.cat.string,
                            "-Outcome", outcome, "-ErrorMessage", msg,
                            "-Duration", $(duration*1000).int],
-                           options={poStdErrToStdOut, poUsePath, poParentStreams})
+                           options = {poStdErrToStdOut, poUsePath,
+                               poParentStreams})
       discard waitForExit(p)
       close(p)
 
-proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest, target: TTarget) =
+proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
+    target: TTarget) =
   if strip(expected.msg) notin strip(given.msg):
     r.addResult(test, target, expected.msg, given.msg, reMsgsDiffer)
-  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin given.nimout.normalizeMsg:
+  elif expected.nimout.len > 0 and expected.nimout.normalizeMsg notin
+      given.nimout.normalizeMsg:
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
-  elif expected.tfile == "" and extractFilename(expected.file) != extractFilename(given.file) and
-      "internal error:" notin expected.msg:
+  elif expected.tfile == "" and extractFilename(expected.file) !=
+      extractFilename(given.file) and"internal error:" notin expected.msg:
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
     r.addResult(test, target, $expected.line & ':' & $expected.column,
                       $given.line & ':' & $given.column,
                       reLinesDiffer)
-  elif expected.tfile != "" and extractFilename(expected.tfile) != extractFilename(given.tfile) and
-      "internal error:" notin expected.msg:
+  elif expected.tfile != "" and extractFilename(expected.tfile) !=
+      extractFilename(given.tfile) and"internal error:" notin expected.msg:
     r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer)
   elif expected.tline != given.tline and expected.tline != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
@@ -344,7 +351,8 @@ proc generatedFile(test: TTest, target: TTarget): string =
   else:
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]
-    result = nimcacheDir(test.name, test.options, target) / "@m" & name.changeFileExt(ext)
+    result = nimcacheDir(test.name, test.options, target) / "@m" &
+        name.changeFileExt(ext)
 
 proc needsCodegenCheck(spec: TSpec): bool =
   result = spec.maxCodeSize > 0 or spec.ccodeCheck.len > 0
@@ -459,7 +467,8 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
             if expected.useValgrind:
               args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"
-          var (_, buf, exitCode) = execCmdEx2(exeCmd, args, input = expected.input)
+          var (_, buf, exitCode) = execCmdEx2(exeCmd, args,
+              input = expected.input)
           # Treat all failure codes from nodejs as 1. Older versions of nodejs used
           # to return other codes, but for us it is sufficient to know that it's not 0.
           if exitCode != 0: exitCode = 1
@@ -485,7 +494,8 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
                               nimcache, target)
     cmpMsgs(r, expected, given, test, target)
 
-proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
+proc targetHelper(r: var TResults, test: TTest, expected: TSpec,
+    extraOptions = "") =
   for target in expected.targets:
     inc(r.total)
     if target notin gTargets:
@@ -689,7 +699,8 @@ proc main() =
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
 
     var cats: seq[string]
-    let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
+    let rest = if p.cmdLineRest.string.len > 0: " " &
+        p.cmdLineRest.string else: ""
     for kind, dir in walkDir(testsDir):
       assert testsDir.startsWith(testsDir)
       let cat = dir[testsDir.len .. ^1]
@@ -697,7 +708,6 @@ proc main() =
         cats.add cat
     cats.add AdditionalCategories
     if useMegatest: cats.add MegaTestCat
-
     var cmds: seq[string]
     for cat in cats:
       let runtype = if useMegatest: " pcat " else: " cat "
@@ -710,15 +720,18 @@ proc main() =
       skips = loadSkipFrom(skipFrom)
       for i, cati in cats:
         progressStatus(i)
-        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
+        processCategory(r, Category(cati), p.cmdLineRest.string, testsDir,
+            runJoinableTests = false)
     else:
       addQuitProc azure.finalize
-      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
+      quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath,
+          poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir,
+        runJoinableTests = true)
   of "pcat":
     skips = loadSkipFrom(skipFrom)
     # 'pcat' is used for running a category in parallel. Currently the only
@@ -727,7 +740,8 @@ proc main() =
     isMainProcess = false
     var cat = Category(p.key)
     p.next
-    processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = false)
+    processCategory(r, cat, p.cmdLineRest.string, testsDir,
+        runJoinableTests = false)
   of "p", "pat", "pattern":
     skips = loadSkipFrom(skipFrom)
     let pattern = p.key

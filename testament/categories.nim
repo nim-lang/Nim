@@ -50,7 +50,8 @@ proc isTestFile*(file: string): bool =
 
 # ---------------- IC tests ---------------------------------------------
 
-proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) =
+proc icTests(r: var TResults; testsDir: string; cat: Category;
+    options: string) =
   const
     tooltests = ["compiler/nim.nim", "tools/nimgrep.nim"]
     writeOnly = " --incremental:writeonly "
@@ -93,7 +94,7 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
 
 # --------------------- flags tests -------------------------------------------
 
-proc flagTests(r: var TResults, cat: Category, options: string) =
+proc flagTests(r: var TResults; cat: Category; options: string) =
   # --genscript
   const filename = testsDir/"flags"/"tgenscript"
   const genopts = " --genscript"
@@ -113,7 +114,7 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
 
 # --------------------- DLL generation tests ----------------------------------
 
-proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
+proc runBasicDLLTest(c, r: var TResults; cat: Category; options: string) =
   const rpath = when defined(macosx):
       " --passL:-rpath --passL:@loader_path"
     else:
@@ -122,13 +123,16 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
   var test1 = makeTest("lib/nimrtl.nim", options & " --outdir:tests/dll", cat)
   test1.spec.action = actionCompile
   testSpec c, test1
-  var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" & rpath, cat)
+  var test2 = makeTest("tests/dll/server.nim", options & " --threads:on" &
+      rpath, cat)
   test2.spec.action = actionCompile
   testSpec c, test2
-  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" & rpath, cat)
+  var test3 = makeTest("lib/nimhcr.nim", options & " --outdir:tests/dll" &
+      rpath, cat)
   test3.spec.action = actionCompile
   testSpec c, test3
-  var test4 = makeTest("tests/dll/visibility.nim", options & " --app:lib" & rpath, cat)
+  var test4 = makeTest("tests/dll/visibility.nim", options & " --app:lib" &
+      rpath, cat)
   test4.spec.action = actionCompile
   testSpec c, test4
 
@@ -139,23 +143,27 @@ proc runBasicDLLTest(c, r: var TResults, cat: Category, options: string) =
                        else: "LD_LIBRARY_PATH"
     var libpath = getEnv(libpathenv).string
     # Temporarily add the lib directory to LD_LIBRARY_PATH:
-    putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" & libpath else: ""))
+    putEnv(libpathenv, "tests/dll" & (if libpath.len > 0: ":" &
+        libpath else: ""))
     defer: putEnv(libpathenv, libpath)
 
-  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" & rpath, cat)
+  testSpec r, makeTest("tests/dll/client.nim", options & " --threads:on" &
+      rpath, cat)
   testSpec r, makeTest("tests/dll/nimhcr_unit.nim", options & rpath, cat)
   testSpec r, makeTest("tests/dll/visibility.nim", options & rpath, cat)
 
   if "boehm" notin options:
     # force build required - see the comments in the .nim file for more details
     var hcri = makeTest("tests/dll/nimhcr_integration.nim",
-                                   options & " --forceBuild --hotCodeReloading:on" & rpath, cat)
+                                   options &
+                                   " --forceBuild --hotCodeReloading:on" &
+                                   rpath, cat)
     let nimcache = nimcacheDir(hcri.name, hcri.options, getTestSpecTarget())
     hcri.args = prepareTestArgs(hcri.spec.getCmd, hcri.name,
                                 hcri.options, nimcache, getTestSpecTarget())
     testSpec r, hcri
 
-proc dllTests(r: var TResults, cat: Category, options: string) =
+proc dllTests(r: var TResults; cat: Category; options: string) =
   # dummy compile result:
   var c = initResults()
 
@@ -168,7 +176,7 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------------ GC tests -------------------------------------
 
-proc gcTests(r: var TResults, cat: Category, options: string) =
+proc gcTests(r: var TResults; cat: Category; options: string) =
   template testWithNone(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options &
                   " --gc:none", cat)
@@ -226,7 +234,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "stackrefleak"
   test "cyclecollector"
 
-proc longGCTests(r: var TResults, cat: Category, options: string) =
+proc longGCTests(r: var TResults; cat: Category; options: string) =
   when defined(windows):
     let cOptions = "-ldl -DWIN"
   else:
@@ -241,7 +249,7 @@ proc longGCTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- threading tests -----------------------------------
 
-proc threadTests(r: var TResults, cat: Category, options: string) =
+proc threadTests(r: var TResults; cat: Category; options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
     testSpec r, makeTest(filename, options & " -d:release", cat)
@@ -251,7 +259,7 @@ proc threadTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- IO tests ------------------------------------------
 
-proc ioTests(r: var TResults, cat: Category, options: string) =
+proc ioTests(r: var TResults; cat: Category; options: string) =
   # We need readall_echo to be compiled for this test to run.
   # dummy compile result:
   var c = initResults()
@@ -259,7 +267,7 @@ proc ioTests(r: var TResults, cat: Category, options: string) =
   testSpec r, makeTest("tests/system/tio", options, cat)
 
 # ------------------------- async tests ---------------------------------------
-proc asyncTests(r: var TResults, cat: Category, options: string) =
+proc asyncTests(r: var TResults; cat: Category; options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options, cat)
   for t in os.walkFiles("tests/async/t*.nim"):
@@ -267,14 +275,14 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- debugger tests ------------------------------------
 
-proc debuggerTests(r: var TResults, cat: Category, options: string) =
+proc debuggerTests(r: var TResults; cat: Category; options: string) =
   var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
   t.spec.action = actionCompile
   testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 
-proc jsTests(r: var TResults, cat: Category, options: string) =
+proc jsTests(r: var TResults; cat: Category; options: string) =
   template test(filename: untyped) =
     testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
     testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
@@ -295,7 +303,7 @@ proc jsTests(r: var TResults, cat: Category, options: string) =
 
 # ------------------------- nim in action -----------
 
-proc testNimInAction(r: var TResults, cat: Category, options: string) =
+proc testNimInAction(r: var TResults; cat: Category; options: string) =
   let options = options & " --nilseqs:on"
 
   template test(filename: untyped) =
@@ -388,13 +396,13 @@ proc findMainFile(dir: string): string =
   var nimFiles = 0
   for kind, file in os.walkDir(dir):
     if kind == pcFile:
-      if file.endsWith(cfgExt): return file[.. ^(cfgExt.len+1)] & ".nim"
+      if file.endsWith(cfgExt): return file[ .. ^(cfgExt.len+1)] & ".nim"
       elif file.endsWith(".nim"):
         if result.len == 0: result = file
         inc nimFiles
   if nimFiles != 1: result.setLen(0)
 
-proc manyLoc(r: var TResults, cat: Category, options: string) =
+proc manyLoc(r: var TResults; cat: Category; options: string) =
   for kind, dir in os.walkDir("tests/manyloc"):
     if kind == pcDir:
       when defined(windows):
@@ -406,13 +414,13 @@ proc manyLoc(r: var TResults, cat: Category, options: string) =
         test.spec.action = actionCompile
         testSpec r, test
 
-proc compileExample(r: var TResults, pattern, options: string, cat: Category) =
+proc compileExample(r: var TResults; pattern, options: string; cat: Category) =
   for test in os.walkFiles(pattern):
     var test = makeTest(test, options, cat)
     test.spec.action = actionCompile
     testSpec r, test
 
-proc testStdlib(r: var TResults, pattern, options: string, cat: Category) =
+proc testStdlib(r: var TResults; pattern, options: string; cat: Category) =
   var files: seq[string]
 
   proc isValid(file: string): bool =
@@ -455,7 +463,7 @@ let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
 
-iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
+iterator listPackages(): tuple[name, url, cmd: string; hasDeps: bool] =
   let defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
   for n, cmd, hasDeps, url in important_packages.packages.items:
@@ -474,13 +482,13 @@ iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
 
-proc makeSupTest(test, options: string, cat: Category): TTest =
+proc makeSupTest(test, options: string; cat: Category): TTest =
   result.cat = cat
   result.name = test
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults, cat: Category) =
+proc testNimblePackages(r: var TResults; cat: Category) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -499,13 +507,15 @@ proc testNimblePackages(r: var TResults, cat: Category) =
       if not existsDir(buildPath):
         if hasDep:
           let installName = if url.len != 0: url else: name
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
+          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble",
+              ["install", "-y", installName])
           if nimbleStatus != QuitSuccess:
             let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
-        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
+        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", [
+            "clone", url, buildPath])
         if installStatus != QuitSuccess:
           let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
           r.addResult(test, targetC, "", message, reInstallFailed)
@@ -513,7 +523,8 @@ proc testNimblePackages(r: var TResults, cat: Category) =
 
       let cmdArgs = parseCmdLine(cmd)
 
-      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0], cmdArgs[1..^1], workingDir=buildPath)
+      let (buildCmdLine, buildOutput, buildStatus) = execCmdEx2(cmdArgs[0],
+          cmdArgs[1..^1], workingDir = buildPath)
       if buildStatus != QuitSuccess:
         let message = "package test failed\n$ " & buildCmdLine & "\n" & buildOutput
         r.addResult(test, targetC, "", message, reBuildFailed)
@@ -546,7 +557,7 @@ proc `&.?`(a, b: string): string =
   # candidate for the stdlib?
   result = if b.startsWith(a): b else: a & b
 
-proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
+proc processSingleTest(r: var TResults; cat: Category; options, test: string) =
   let test = testsDir &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
   if existsFile(test):
@@ -582,7 +593,7 @@ proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
-proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
+proc runJoinedTest(r: var TResults; cat: Category; testsDir: string) =
   ## returns a list of tests that have problems
   var specs: seq[TSpec] = @[]
   for kind, dir in walkDir(testsDir):
@@ -595,8 +606,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
           if isJoinableSpec(spec):
             specs.add spec
 
-  proc cmp(a: TSpec, b:TSpec): auto = cmp(a.file, b.file)
-  sort(specs, cmp=cmp) # reproducible order
+  proc cmp(a: TSpec; b: TSpec): auto = cmp(a.file, b.file)
+  sort(specs, cmp = cmp) # reproducible order
   echo "joinable specs: ", specs.len
 
   if simulate:
@@ -630,7 +641,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
               "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
 
-  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
+  var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix,
+      args = args, input = "")
   if exitCode != 0:
     echo "$ ", cmdLine
     echo buf.string
@@ -664,8 +676,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
 # ---------------------------------------------------------------------------
 
-proc processCategory(r: var TResults, cat: Category,
-                     options, testsDir: string,
+proc processCategory(r: var TResults; cat: Category;
+                     options, testsDir: string;
                      runJoinableTests: bool) =
   case cat.string.normalize
   of "rodfiles":
@@ -734,7 +746,7 @@ proc processCategory(r: var TResults, cat: Category,
     if testsRun == 0:
       echo "[Warning] - Invalid category specified \"", cat.string, "\", no tests were run"
 
-proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
+proc processPattern(r: var TResults; pattern, options: string; simulate: bool) =
   var testsRun = 0
   for name in walkPattern(pattern):
     if simulate:

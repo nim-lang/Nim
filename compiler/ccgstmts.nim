@@ -10,8 +10,8 @@
 # included from cgen.nim
 
 const
-  RangeExpandLimit = 256      # do not generate ranges
-                              # over 'RangeExpandLimit' elements
+  RangeExpandLimit = 256 # do not generate ranges
+                         # over 'RangeExpandLimit' elements
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
@@ -99,7 +99,7 @@ proc genVarTuple(p: BProc, n: PNode) =
         registerTraverseProc(p, v, traverseProc)
     else:
       assignLocalVar(p, vn)
-      initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
+      initLocalVar(p, v, immediateAsgn = isAssignedImmediately(p.config, n[^1]))
     initLoc(field, locExpr, vn, tup.storage)
     if t.kind == tyTuple:
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
@@ -108,7 +108,8 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
+      hcrGlobals.add((loc: v.loc, tp: if traverseProc ==
+          nil: ~"NULL" else: traverseProc))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -120,7 +121,8 @@ proc genVarTuple(p: BProc, n: PNode) =
     lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
     for curr in hcrGlobals:
       lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
-              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
+              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module,
+                  n[0].sym), curr.tp])
 
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
@@ -240,7 +242,7 @@ proc genGotoState(p: BProc, n: PNode) =
   p.flags.incl beforeRetNeeded
   lineF(p, cpsStmts, "case -1:$n", [])
   blockLeaveActions(p,
-    howManyTrys    = p.nestedTryStmts.len,
+    howManyTrys = p.nestedTryStmts.len,
     howManyExcepts = p.inExceptBlockLen)
   lineF(p, cpsStmts, " goto BeforeRet_;$n", [])
   var statesCounter = lastOrd(p.config, n[0].typ)
@@ -275,8 +277,10 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
     result = nil
-  elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value, p.module.compileToCpp) and
-      p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
+  elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value,
+      p.module.compileToCpp) and
+
+p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     result = genBracedInit(p, value, isConst = false)
   else:
@@ -361,7 +365,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
     # put it in the locals section - mainly because of loops which
     # use the var in a call to resetLoc() in the statements section
     lineCg(targetProc, cpsLocals, "hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1);$n",
-           [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
+            [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     # nothing special left to do later on - let's avoid closing and reopening blocks
     forHcr = false
 
@@ -370,7 +374,7 @@ proc genSingleVar(p: BProc, v: PSym; vn, value: PNode) =
   # be able to re-run it but without the top level code - just the init of globals
   if forHcr:
     lineCg(targetProc, cpsStmts, "if (hcrRegisterGlobal($3, \"$1\", sizeof($2), $4, (void**)&$1))$N",
-           [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
+            [v.loc.r, rdLoc(v.loc), getModuleDllPath(p.module, v), traverseProc])
     startBlock(targetProc)
   if value.kind != nkEmpty and valueAsRope == nil:
     genLineDir(targetProc, vn)
@@ -458,7 +462,7 @@ proc genReturnStmt(p: BProc, t: PNode) =
   genLineDir(p, t)
   if (t[0].kind != nkEmpty): genStmts(p, t[0])
   blockLeaveActions(p,
-    howManyTrys    = p.nestedTryStmts.len,
+    howManyTrys = p.nestedTryStmts.len,
     howManyExcepts = p.inExceptBlockLen)
   if (p.finallySafePoints.len > 0) and noSafePoints notin p.flags:
     # If we're in a finally block, and we came here by exception
@@ -590,10 +594,10 @@ proc genWhileStmt(p: BProc, t: PNode) =
     var loopBody = t[1]
     if loopBody.stmtsContainPragma(wComputedGoto) and
        hasComputedGoto in CC[p.config.cCompiler].props:
-         # for closure support weird loop bodies are generated:
-      if loopBody.len == 2 and loopBody[0].kind == nkEmpty:
-        loopBody = loopBody[1]
-      genComputedGoto(p, loopBody)
+      # for closure support weird loop bodies are generated:
+    if loopBody.len == 2 and loopBody[0].kind == nkEmpty:
+      loopBody = loopBody[1]
+    genComputedGoto(p, loopBody)
     else:
       p.breakIdx = startBlock(p, "while (1) {$n")
       p.blocks[p.breakIdx].isLoop = true
@@ -754,7 +758,7 @@ template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
       initLocExpr(p, b[i][0], x)
       initLocExpr(p, b[i][1], y)
       lineCg(p, cpsStmts, rangeFormat,
-           [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
+            [rdCharLoc(e), rdCharLoc(x), rdCharLoc(y), labl])
     else:
       initLocExpr(p, b[i], x)
       lineCg(p, cpsStmts, eqFormat, [rdCharLoc(e), rdCharLoc(x), labl])
@@ -812,7 +816,7 @@ proc genCaseStringBranch(p: BProc, b: PNode, e: TLoc, labl: TLabel,
     assert(b[i].kind in {nkStrLit..nkTripleStrLit})
     var j = int(hashString(p.config, b[i].strVal) and high(branches))
     appcg(p.module, branches[j], "if (#eqStrings($1, $2)) goto $3;$n",
-         [rdLoc(e), rdLoc(x), labl])
+          [rdLoc(e), rdLoc(x), labl])
 
 proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
   # count how many constant strings there are in the case:
@@ -840,7 +844,7 @@ proc genStringCase(p: BProc, t: PNode, d: var TLoc) =
     for j in 0..high(branches):
       if branches[j] != nil:
         lineF(p, cpsStmts, "case $1: $n$2break;$n",
-             [intLiteral(j), branches[j]])
+              [intLiteral(j), branches[j]])
     lineF(p, cpsStmts, "}$n", []) # else statement:
     if t[^1].kind != nkOfBranch:
       lineF(p, cpsStmts, "goto LA$1_;$n", [rope(p.labels)])
@@ -990,10 +994,11 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         if t[i][j].isInfixAs():
           let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
           fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnUnknown)
-          startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc))
+          startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][
+              1].typ), rdLoc(exvar.sym.loc))
         else:
           startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
-        genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
+        genExceptBranchBody(t[i][^1]) # exception handler body will duplicated for every type
         endBlock(p)
 
   discard pop(p.nestedTryStmts)
@@ -1080,7 +1085,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
         else:
           genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
-        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)",
+            [memberName, checkFor])
 
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
@@ -1114,7 +1120,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       #    error back to nil.
       # 3. finally is run for exception handling code without any 'except'
       #    handler present or only handlers that did not match.
-      linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n", [lab])
+      linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n",
+          [lab])
     raiseExit(p)
     endBlock(p)
   # restore the real error value:
@@ -1210,7 +1217,8 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
         else:
           genTypeInfo(p.module, t[i][j].typ, t[i][j].info)
         let memberName = if p.module.compileToCpp: "m_type" else: "Sup.m_type"
-        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)", [memberName, checkFor])
+        appcg(p.module, orExpr, "#isObj(#nimBorrowCurrentException()->$1, $2)",
+            [memberName, checkFor])
 
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
@@ -1229,14 +1237,15 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
     # pretend we handled the exception in a 'finally' so that we don't
     # re-raise the unhandled one but instead keep the old one (it was
     # not popped either):
-    if not quirkyExceptions and getCompilerProc(p.module.g.graph, "nimLeaveFinally") != nil:
+    if not quirkyExceptions and getCompilerProc(p.module.g.graph,
+        "nimLeaveFinally") != nil:
       linefmt(p, cpsStmts, "if ($1.status != 0) #nimLeaveFinally();$n", [safePoint])
     endBlock(p)
     discard pop(p.finallySafePoints)
   if not quirkyExceptions:
     linefmt(p, cpsStmts, "if ($1.status != 0) #reraiseException();$n", [safePoint])
 
-proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
+proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt = false): Rope =
   var res = ""
   for it in t.sons:
     case it.kind
@@ -1257,7 +1266,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
           # if no name has already been given,
           # it doesn't matter much:
           r = mangleName(p.module, sym)
-          sym.loc.r = r       # but be consequent!
+          sym.loc.r = r # but be consequent!
         res.add($r)
     of nkTypeOfExpr:
       res.add($getTypeDesc(p.module, it.typ))
@@ -1288,29 +1297,66 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
 proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
   genLineDir(p, t)
-  var s = genAsmOrEmitStmt(p, t, isAsmStmt=true)
+  var s = genAsmOrEmitStmt(p, t, isAsmStmt = true)
   # see bug #2362, "top level asm statements" seem to be a mis-feature
   # but even if we don't do this, the example in #2362 cannot possibly
   # work:
   if p.prc == nil:
     # top level asm statement?
-    p.module.s[cfsProcHeaders].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
+    p.module.s[cfsProcHeaders].add runtimeFormat(CC[
+        p.config.cCompiler].asmStmtFrmt, [s])
   else:
-    p.s(cpsStmts).add indentLine(p, runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s]))
+    p.s(cpsStmts).add indentLine(p, runtimeFormat(CC[
+        p.config.cCompiler].asmStmtFrmt, [s]))
 
-proc determineSection(n: PNode): TCFileSection =
+proc isSectionAvailableInTarget(sectionId: string, targetSections: seq[auto]): bool =
+  sectionId in sections
+
+proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto] = @[])
+  var isAvailable = isSectionAvailableInTarget(secStr, targetSections)
+  sec.startsWith("/*" sectionId "SECTION*/") and isAvailable
+
+proc determineSection(n: PNode, targetSections: seq[auto] = @[]): TCFileSection =
   result = cfsProcHeaders
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
-    if sec.startsWith("/*TYPESECTION*/"): result = cfsTypes
-    elif sec.startsWith("/*VARSECTION*/"): result = cfsVars
-    elif sec.startsWith("/*INCLUDESECTION*/"): result = cfsHeaders
+    if useSection(sec, "TYPE", targetSections): result = cfsTypes
+    elif useSection(sec, "VAR", targetSections): result = cfsVars
+    elif useSection(sec, "INCLUDE", targetSections): result = cfsHeaders
 
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t[1])
-  if p.prc == nil:
+  echo "genEmit: options"
+  echo p.options
+
+  var hasSections
+  var prc = p.prc
+  if prc and prc.options:
+    var opts = prc.options
+    hasSections = optSections in opts
+    hasVarSection = optVarSection in opts
+    hasIncludeSection = optIncludeSection in opts
+    hasTypeSection = optTypeSection in opts
+
+  var targetSections = @[]
+  if hasIncludeSection:
+    targetSections.add "INCLUDE" 
+  if hasTypeSection:
+    targetSections.add "TYPE" 
+  if hasVarSection:
+    targetSections.add "VAR" 
+        
+  echo "hasSections: " & $hasSections    
+  var hasNoPrc = prc == nil
+  echo "hasNoPrc:" & $hasNoPrc  
+
+  var useSections = hasSectionsOpt or hasNoPrc
+  echo "useSections:" & $useSections
+  echo targetSections
+
+  if useSections:
     # top level emit pragma?
-    let section = determineSection(t[1])
+    let section = determineSection(t[1], targetSections)
     genCLineDir(p.module.s[section], t.info, p.config)
     p.module.s[section].add(s)
   else:
