@@ -52,6 +52,8 @@ type
     targetCpp = "C++"
     targetObjC = "ObjC"
     targetJS = "JS"
+    targetMJS = "MJS"
+    targetTS = "TS"
 
   TSpec* = object
     action*: TTestAction
@@ -84,8 +86,8 @@ proc getCmd*(s: TSpec): string =
     result = s.cmd
 
 const
-  targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
-  targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
+  targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js", "mjs", "ts"]
+  targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js", "mjs", "ts"]
 
 when not declared(parseCfgBool):
   # candidate for the stdlib:

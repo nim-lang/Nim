@@ -41,9 +41,18 @@ from modulegraphs import ModuleGraph, PPassContext
 type
   TJSGen = object of PPassContext
     module: PSym
+    s*: TJSFileSections        # sections of the JS file    
     graph: ModuleGraph
     config: ConfigRef
     sigConflicts: CountTable[SigHash]
+
+  TJSFileSection* = enum       # the sections a generated C file consists of
+    jsfsHeader,               # top file section typically used for JS require/import statements
+    jsfsTypes,                 # type section (such as interfaces/types for TypeScript interop)
+    jsfsMain,                  # main code
+    jsfsFooter                # bottom section often used for exports 
+
+  TJSFileSections* = array[TJSFileSection, Rope] # represents a generated JS file
 
   BModule = ref TJSGen
   TJSTypeKind = enum # necessary JS "types"
@@ -888,15 +897,38 @@ proc genBreakStmt(p: PProc, n: PNode) =
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
   lineF(p, "break L$1;$n", [rope(p.blocks[idx].id)])
 
-proc genAsmOrEmitStmt(p: PProc, n: PNode) =
+proc isSectionAvailableInTarget(sectionId: string, targetSections: seq[auto] = @[]): bool =
+  sectionId in targetSections
+
+proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto] = @[]): bool =
+  var isAvailable = isSectionAvailableInTarget(secStr, targetSections)
+  secStr.startsWith("/*" & sectionMarker & "SECTION*/") and isAvailable
+
+proc determineSection(n: PNode, targetSections: seq[auto] = @[]): TJSFileSection =
+  result = jsfsMain
+  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
+    let sec = n[0].strVal
+    if useSection(sec, "TYPE", targetSections): result = jsfsTypes
+    elif useSection(sec, "TOP", targetSections): result = jsfsHeader
+    elif useSection(sec, "BOTTOM", targetSections): result = jsfsFooter
+
+
+proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
+  echo "genAsmOrEmitStmt"
+  echo n
+  echo "module sections"
+  echo p.module.s
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
   for i in 0..<n.len:
     let it = n[i]
+    echo "kind:" & $(it.kind)
     case it.kind
     of nkStrLit..nkTripleStrLit:
+      echo "strlit:" & it.strVal
       p.body.add(it.strVal)
     of nkSym:
+      echo "nkSym:" & $(it.sym)
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
       if false:
@@ -916,12 +948,65 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode) =
           r.address = nil
           r.typ = etyNone
 
-        p.body.add(r.rdLoc)
+        p.body.add(r.rdLoc)        
     else:
+      echo "other"
+      echo it
       var r: TCompRes
       gen(p, it, r)
       p.body.add(r.rdLoc)
+
+  echo "body"
+  echo p.body
   p.body.add "\L"
+  p  
+
+proc genEmit(p: PProc, n: PNode) =
+  var s = genAsmOrEmitStmt(p, n)
+  echo "genEmit"
+  echo p.config.options
+  
+  let config = p.config
+
+  # echo "include sections and Include"
+  p.options.incl optSections
+  p.options.incl optIncludeSection
+  # echo p.options
+  let opts = p.options
+  echo opts
+  var hasSections, hasVarSection, hasIncludeSection, hasTypeSection = false
+  if opts.len > 0:
+    echo "has options"
+    hasSections = optSections in opts
+    hasVarSection = optVarSection in opts
+    hasIncludeSection = optIncludeSection in opts
+    hasTypeSection = optTypeSection in opts
+
+  var targetSections: seq[string] = @[]
+  if hasIncludeSection:
+    targetSections.add "INCLUDE" 
+  if hasTypeSection:
+    targetSections.add "TYPE" 
+  if hasVarSection:
+    targetSections.add "VAR" 
+        
+  echo "hasSections: " & $hasSections    
+  var hasNoPrc = p.prc == nil
+  echo "hasNoPrc:" & $hasNoPrc  
+
+  var useSections = hasSections or hasNoPrc
+  echo "useSections:" & $useSections
+  echo targetSections
+
+  if useSections:
+    echo "using sections for emit"
+    # top level emit pragma?
+    let section = determineSection(n, targetSections)
+    p.module.s[section].add(s.body)
+  else:
+    echo "NOT using sections for emit"
+    discard genAsmOrEmitStmt(p, n)
+    
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
   var cond, stmt: TCompRes
@@ -2339,9 +2424,12 @@ proc genStmt(p: PProc, n: PNode) =
   if r.res != nil: lineF(p, "$#;$n", [r.res])
 
 proc genPragma(p: PProc, n: PNode) =
+  echo "jsGenPragma"
   for it in n.sons:
     case whichPragma(it)
-    of wEmit: genAsmOrEmitStmt(p, it[1])
+    of wEmit: 
+      echo it
+      discard genAsmOrEmitStmt(p, it[1])
     else: discard
 
 proc genCast(p: PProc, n: PNode, r: var TCompRes) =
@@ -2384,8 +2472,8 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     r.typ = etyObject
 
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
-  echo "options"
-  echo p.options
+  # echo "jsGen"
+  # echo n.kind
   r.typ = etyNone
   if r.kind != resCallee: r.kind = resNone
   #r.address = nil
@@ -2500,7 +2588,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n[0], r)
-  of nkAsmStmt: genAsmOrEmitStmt(p, n)
+  of nkAsmStmt: discard genAsmOrEmitStmt(p, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
@@ -2567,11 +2655,6 @@ proc addHcrInitGuards(p: PProc, n: PNode,
     genStmt(p, n)
 
 proc genModule(p: PProc, n: PNode) =
-  var prc = p.prc
-  if prc != nil:
-    prc.options.incl optSections
-    prc.options.incl optIncludeSection
-
   if optStackTrace in p.options:
     p.body.add(frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
@@ -2606,7 +2689,14 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if passes.skipCodegen(m.config, n): return n
   if m.module == nil: internalError(m.config, n.info, "myProcess")
   let globals = PGlobals(m.graph.backend)
+  let options = m.module.options
   var p = newProc(globals, m, nil, m.module.options)
+  
+  # echo "jsmyProcess"
+  # echo "module:" & $(m.module.options)
+  # echo " config: " & $(m.config.options)
+  # echo " p: " & $(p.options)
+
   p.unique = globals.unique
   genModule(p, n)
   p.g.code.add(p.locals)

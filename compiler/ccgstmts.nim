@@ -10,8 +10,8 @@
 # included from cgen.nim
 
 const
-  RangeExpandLimit = 256 # do not generate ranges
-                         # over 'RangeExpandLimit' elements
+  RangeExpandLimit = 256      # do not generate ranges
+                              # over 'RangeExpandLimit' elements
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
@@ -99,7 +99,7 @@ proc genVarTuple(p: BProc, n: PNode) =
         registerTraverseProc(p, v, traverseProc)
     else:
       assignLocalVar(p, vn)
-      initLocalVar(p, v, immediateAsgn = isAssignedImmediately(p.config, n[^1]))
+      initLocalVar(p, v, immediateAsgn=isAssignedImmediately(p.config, n[^1]))
     initLoc(field, locExpr, vn, tup.storage)
     if t.kind == tyTuple:
       field.r = "$1.Field$2" % [rdLoc(tup), rope(i)]
@@ -108,8 +108,7 @@ proc genVarTuple(p: BProc, n: PNode) =
       field.r = "$1.$2" % [rdLoc(tup), mangleRecFieldName(p.module, t.n[i].sym)]
     putLocIntoDest(p, v.loc, field)
     if forHcr or isGlobalInBlock:
-      hcrGlobals.add((loc: v.loc, tp: if traverseProc ==
-          nil: ~"NULL" else: traverseProc))
+      hcrGlobals.add((loc: v.loc, tp: if traverseProc == nil: ~"NULL" else: traverseProc))
 
   if forHcr:
     # end the block where the tuple gets initialized
@@ -121,8 +120,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
     for curr in hcrGlobals:
       lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
-              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module,
-                  n[0].sym), curr.tp])
+              [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
 
 
 proc loadInto(p: BProc, le, ri: PNode, a: var TLoc) {.inline.} =
@@ -242,7 +240,7 @@ proc genGotoState(p: BProc, n: PNode) =
   p.flags.incl beforeRetNeeded
   lineF(p, cpsStmts, "case -1:$n", [])
   blockLeaveActions(p,
-    howManyTrys = p.nestedTryStmts.len,
+    howManyTrys    = p.nestedTryStmts.len,
     howManyExcepts = p.inExceptBlockLen)
   lineF(p, cpsStmts, " goto BeforeRet_;$n", [])
   var statesCounter = lastOrd(p.config, n[0].typ)
@@ -273,14 +271,12 @@ proc genGotoVar(p: BProc; value: PNode) =
     lineF(p, cpsStmts, "goto NIMSTATE_$#;$n", [value.intVal.rope])
 
 proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope
-
 proc potentialValueInit(p: BProc; v: PSym; value: PNode): Rope =
   if lfDynamicLib in v.loc.flags or sfThread in v.flags or p.hcrOn:
     result = nil
   elif sfGlobal in v.flags and value != nil and isDeepConstExpr(value,
       p.module.compileToCpp) and
-
-p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
+      p.withinLoop == 0 and not containsGarbageCollectedRef(v.typ):
     #echo "New code produced for ", v.name.s, " ", p.config $ value.info
     result = genBracedInit(p, value, isConst = false)
   else:
@@ -594,10 +590,10 @@ proc genWhileStmt(p: BProc, t: PNode) =
     var loopBody = t[1]
     if loopBody.stmtsContainPragma(wComputedGoto) and
        hasComputedGoto in CC[p.config.cCompiler].props:
-      # for closure support weird loop bodies are generated:
-    if loopBody.len == 2 and loopBody[0].kind == nkEmpty:
-      loopBody = loopBody[1]
-    genComputedGoto(p, loopBody)
+         # for closure support weird loop bodies are generated:
+      if loopBody.len == 2 and loopBody[0].kind == nkEmpty:
+        loopBody = loopBody[1]
+      genComputedGoto(p, loopBody)
     else:
       p.breakIdx = startBlock(p, "while (1) {$n")
       p.blocks[p.breakIdx].isLoop = true
@@ -1309,12 +1305,12 @@ proc genAsmStmt(p: BProc, t: PNode) =
     p.s(cpsStmts).add indentLine(p, runtimeFormat(CC[
         p.config.cCompiler].asmStmtFrmt, [s]))
 
-proc isSectionAvailableInTarget(sectionId: string, targetSections: seq[auto]): bool =
-  sectionId in sections
+proc isSectionAvailableInTarget(sectionId: string, targetSections: seq[auto] = @[]): bool =
+  sectionId in targetSections
 
-proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto] = @[])
+proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto] = @[]): bool =
   var isAvailable = isSectionAvailableInTarget(secStr, targetSections)
-  sec.startsWith("/*" sectionId "SECTION*/") and isAvailable
+  secStr.startsWith("/*" & sectionMarker & "SECTION*/") and isAvailable
 
 proc determineSection(n: PNode, targetSections: seq[auto] = @[]): TCFileSection =
   result = cfsProcHeaders
@@ -1326,19 +1322,26 @@ proc determineSection(n: PNode, targetSections: seq[auto] = @[]): TCFileSection 
 
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t[1])
-  echo "genEmit: options"
-  echo p.options
+  echo "genEmit"
+  echo p.config.options
+  
+  let config = p.config
 
-  var hasSections
-  var prc = p.prc
-  if prc and prc.options:
-    var opts = prc.options
+  # echo "include sections and Include"
+  p.options.incl optSections
+  p.options.incl optIncludeSection
+  # echo p.options
+  let opts = p.options
+  echo opts
+  var hasSections, hasVarSection, hasIncludeSection, hasTypeSection = false
+  if opts.len > 0:
+    echo "has options"
     hasSections = optSections in opts
     hasVarSection = optVarSection in opts
     hasIncludeSection = optIncludeSection in opts
     hasTypeSection = optTypeSection in opts
 
-  var targetSections = @[]
+  var targetSections: seq[string] = @[]
   if hasIncludeSection:
     targetSections.add "INCLUDE" 
   if hasTypeSection:
@@ -1347,27 +1350,35 @@ proc genEmit(p: BProc, t: PNode) =
     targetSections.add "VAR" 
         
   echo "hasSections: " & $hasSections    
-  var hasNoPrc = prc == nil
+  var hasNoPrc = p.prc == nil
   echo "hasNoPrc:" & $hasNoPrc  
 
-  var useSections = hasSectionsOpt or hasNoPrc
+  var useSections = hasSections or hasNoPrc
   echo "useSections:" & $useSections
   echo targetSections
 
   if useSections:
+    echo "using sections for emit"
     # top level emit pragma?
     let section = determineSection(t[1], targetSections)
     genCLineDir(p.module.s[section], t.info, p.config)
     p.module.s[section].add(s)
   else:
+    echo "NOT using sections for emit"
     genLineDir(p, t)
     line(p, cpsStmts, s)
 
 proc genPragma(p: BProc, n: PNode) =
+  # echo "c: genPragma"
   for it in n.sons:
-    case whichPragma(it)
-    of wEmit: genEmit(p, it)
+    let prag = whichPragma(it)
+    echo prag
+    case prag
+    of wEmit: 
+      echo "wEmit"
+      genEmit(p, it)
     of wInjectStmt:
+      echo "wInjectStmt"
       var p = newProc(nil, p.module)
       p.options = p.options - {optLineTrace, optStackTrace}
       genStmts(p, it[1])

@@ -326,7 +326,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
       given.nimout.normalizeMsg:
     r.addResult(test, target, expected.nimout, given.nimout, reMsgsDiffer)
   elif expected.tfile == "" and extractFilename(expected.file) !=
-      extractFilename(given.file) and"internal error:" notin expected.msg:
+      extractFilename(given.file) and "internal error:" notin expected.msg:
     r.addResult(test, target, expected.file, given.file, reFilesDiffer)
   elif expected.line != given.line and expected.line != 0 or
        expected.column != given.column and expected.column != 0:
@@ -334,7 +334,7 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
                       $given.line & ':' & $given.column,
                       reLinesDiffer)
   elif expected.tfile != "" and extractFilename(expected.tfile) !=
-      extractFilename(given.tfile) and"internal error:" notin expected.msg:
+      extractFilename(given.tfile) and "internal error:" notin expected.msg:
     r.addResult(test, target, expected.tfile, given.tfile, reFilesDiffer)
   elif expected.tline != given.tline and expected.tline != 0 or
        expected.tcolumn != given.tcolumn and expected.tcolumn != 0:
@@ -348,6 +348,10 @@ proc cmpMsgs(r: var TResults, expected, given: TSpec, test: TTest,
 proc generatedFile(test: TTest, target: TTarget): string =
   if target == targetJS:
     result = test.name.changeFileExt("js")
+  elif target == targetMJS:
+    result = test.name.changeFileExt("mjs")
+  elif target == targetTS:
+    result = test.name.changeFileExt("ts")  
   else:
     let (_, name, _) = test.name.splitFile
     let ext = targetToExt[target]

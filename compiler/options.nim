@@ -42,6 +42,7 @@ type # please make sure we have under 32 options
     optOldAst,
     optSections,
     optIncludeSection,
+    optVarSection,
     optTypeSection
 
   TOptions* = set[TOption]
