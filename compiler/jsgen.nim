@@ -923,6 +923,25 @@ proc determineSection(n: PNode, targetSections: seq[auto] = @[]): tuple[fs: TJSF
       var index = lengthOfSectionMarker("FOOTER")
       result = (jsfsFooter, sec[index..^1])
 
+import re
+
+proc findEmitFilePath*(emitStr: string, marker: string): string = 
+  var xpr = re"""\/\*FILEPATH:(\S+):\*\/"""  
+  # var line = "/*FILEPATH:index.d.ts:*/"
+  result = ""
+  if emitStr =~ xpr:
+    result = matches[0]
+
+proc determineExternalFile(n: PNode): tuple[filePath: string, fileContent: string] =
+  result = ("", "")
+  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
+    let sec = n[0].strVal
+    var filePath = findEmitFilePath(sec, "FILE")
+    if filePath.len > 0:
+      var index = lengthOfSectionMarker(filePath)
+      var content = sec[index..^1]
+      result = (filePath, content)
+
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
@@ -994,17 +1013,16 @@ proc genEmit(p: PProc, n: PNode) =
   echo "useSections:" & $useSections
   echo targetSections
 
-  if useSections:
+  let (filePath, fileContent) = determineExternalFile(n)
+  if filePath.len > 0:
+    p.module.outputFiles[filePath].g.code.add(fileContent)
+
+  elif useSections:
     # echo "using sections for emit"
     # top level emit pragma?
     let (section, emitStr) = determineSection(n, targetSections)
     # add to code section array
-    p.module.s[section].add(emitStr)
-
-    # experimental use of outputFiles to add additional file output 
-    var filePath = "x"
-    var fileContent = "hello"
-    p.module.outputFiles[filePath].g.code.add(fileContent)
+    # p.module.s[section].add(emitStr)
 
     if section == jsfsHeader:
       p.g.header.add(emitStr)
