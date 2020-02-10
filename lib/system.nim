@@ -222,6 +222,7 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   discard
 
 proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  # move is noop if type T doesn't have a destructor
   result = x
   wasMoved(x)
 
@@ -1901,7 +1902,7 @@ template newException*(exceptn: typedesc, message: string;
   new(e)
   e.msg = message
   e.parent = parentException
-  e
+  move(e)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
