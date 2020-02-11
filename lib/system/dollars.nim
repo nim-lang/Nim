@@ -85,8 +85,8 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(": ")
 
     when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
+      when value is ptr or value is ref or value is pointer:
+        if value == nil: result.add "nil"
         else: result.addQuoted(value)
       else:
         result.addQuoted(value)
