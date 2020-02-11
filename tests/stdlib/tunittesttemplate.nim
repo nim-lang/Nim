@@ -1,12 +1,12 @@
 discard """
   exitcode: 1
   outputsub: '''
-    tunittesttemplate.nim(20, 12): Check failed: a.b ==
-    2
+    tunittesttemplate.nim(20, 12): Check failed: a.b == 2
     a.b was 0
   [FAILED] 1
 '''
 """
+
 
 # bug #6736
 
