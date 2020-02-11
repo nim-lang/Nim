@@ -1035,7 +1035,7 @@ when defined(nimFixedForwardGeneric):
     if jsonNode.kind == JInt:
       let i = jsonNode.getBiggestInt
       const validValues = intValuesSet(T)
-      if i in validValues:
+      if i notin validValues:
         raise newException(ValueError, "invalid enum value: " & $i)
       dst = i.T
     else:
