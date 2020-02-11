@@ -899,29 +899,29 @@ proc genBreakStmt(p: PProc, n: PNode) =
   p.blocks[idx].id = abs(p.blocks[idx].id) # label is used
   lineF(p, "break L$1;$n", [rope(p.blocks[idx].id)])
 
-proc isSectionAvailableInTarget(sectionId: string, targetSections: seq[auto] = @[]): bool =
-  sectionId in targetSections
+proc useSection(secStr: string, sectionMarker: string): bool =
+  secStr.startsWith("/*" & sectionMarker & "SECTION*/")
 
-proc useSection(secStr: string, sectionMarker: string, targetSections: seq[auto] = @[]): bool =
-  var isAvailable = isSectionAvailableInTarget(secStr, targetSections)
-  secStr.startsWith("/*" & sectionMarker & "SECTION*/") and isAvailable
+proc matchSection(secStr: string): string =
+  result = ""
+  for marker in ["HEADER", "FOOTER", "TYPE"]:
+    if useSection(secStr, marker):
+      result = marker
 
 proc lengthOfSectionMarker(sectionMarker: string): int = 
   ("/*" & sectionMarker & "SECTION*/").len
 
-proc determineSection(n: PNode, targetSections: seq[auto] = @[]): tuple[fs: TJSFileSection, str: string] =
+proc getSection(sec, marker: string): tuple[fs: TJSFileSection, str: string] =
+  var index = lengthOfSectionMarker(marker)
+  result = (jsfsTypes, sec[index..^1])
+
+proc determineSection(n: PNode): tuple[fs: TJSFileSection, str: string] =
   result = (jsfsMain, "")
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
-    if useSection(sec, "TYPE", targetSections): 
-      var index = lengthOfSectionMarker("TYPE")
-      result = (jsfsTypes, sec[index..^1])
-    elif useSection(sec, "HEADER", targetSections): 
-      var index = lengthOfSectionMarker("HEADER")
-      result = (jsfsHeader, sec[index..^1])
-    elif useSection(sec, "FOOTER", targetSections): 
-      var index = lengthOfSectionMarker("FOOTER")
-      result = (jsfsFooter, sec[index..^1])
+    let secMarker = matchSection(sec)
+    if secMarker != "":
+      result = getSection(sec, secMarker)
 
 import re
 
@@ -980,60 +980,24 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
 
 proc genEmit(p: PProc, n: PNode): PProc =
   var s = genAsmOrEmitStmt(p, n)
-  echo "genEmit"
-  echo p.config.options
-  
-  let config = p.config
-  p.options.incl optSections
-  p.options.incl optHeaderSection
-  p.options.incl optFooterSection
-
-  let opts = p.options
-  var hasSections, hasHeaderSection, hasFooterSection, hasTypeSection = false
-
-  if opts.len > 0:
-    hasSections = optSections in opts
-    hasHeaderSection = optHeaderSection in opts
-    hasFooterSection = optFooterSection in opts
-    hasTypeSection = optTypeSection in opts
-
-  var targetSections: seq[string] = @[]
-  if hasHeaderSection:
-    targetSections.add "HEADER" 
-  if hasFooterSection:
-    targetSections.add "FOOTER" 
-  if hasTypeSection:
-    targetSections.add "TYPE" 
-        
-  echo "hasSections: " & $hasSections    
-  var hasNoPrc = p.prc == nil
-  echo "hasNoPrc:" & $hasNoPrc  
-
-  var useSections = hasSections or hasNoPrc
-  echo "useSections:" & $useSections
-  echo targetSections
-
   let (filePath, fileContent) = determineExternalFile(n)
   if filePath.len > 0:
     p.module.outputFiles[filePath].g.code.add(fileContent)
 
-  elif useSections:
-    # echo "using sections for emit"
-    # top level emit pragma?
-    let (section, emitStr) = determineSection(n, targetSections)
-    # add to code section array
-    # p.module.s[section].add(emitStr)
+  # echo "using sections for emit"
+  # top level emit pragma?
+  let (section, emitStr) = determineSection(n)
+  # add to code section array
+  # p.module.s[section].add(emitStr)
 
-    if section == jsfsHeader:
-      p.g.header.add(emitStr)
-    elif section == jsfsFooter:
-      p.g.footer.add(emitStr)
-    elif section == jsfsTypes:
-      p.g.types.add(emitStr)
-    else:
-      p.g.code.add(s.body)
+  if section == jsfsHeader:
+    p.g.header.add(emitStr)
+  elif section == jsfsFooter:
+    p.g.footer.add(emitStr)
+  elif section == jsfsTypes:
+    p.g.types.add(emitStr)
   else:
-    return genAsmOrEmitStmt(p, n)
+    p.g.code.add(s.body)
   result = p
     
 
