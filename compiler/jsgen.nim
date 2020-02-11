@@ -978,7 +978,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   p.body.add "\L"
   p  
 
-proc genEmit(p: PProc, n: PNode) =
+proc genEmit(p: PProc, n: PNode): PProc =
   var s = genAsmOrEmitStmt(p, n)
   echo "genEmit"
   echo p.config.options
@@ -1032,9 +1032,9 @@ proc genEmit(p: PProc, n: PNode) =
       p.g.types.add(emitStr)
     else:
       p.g.code.add(s.body)
-  
   else:
-    discard genAsmOrEmitStmt(p, n)
+    return genAsmOrEmitStmt(p, n)
+  result = p
     
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
@@ -2457,8 +2457,7 @@ proc genPragma(p: PProc, n: PNode) =
   for it in n.sons:
     case whichPragma(it)
     of wEmit: 
-      echo it
-      discard genAsmOrEmitStmt(p, it[1])
+      discard genEmit(p, it[1])
     else: discard
 
 proc genCast(p: PProc, n: PNode, r: var TCompRes) =
@@ -2617,7 +2616,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     if n[0].kind != nkEmpty:
       genLineDir(p, n)
       gen(p, n[0], r)
-  of nkAsmStmt: discard genAsmOrEmitStmt(p, n)
+  of nkAsmStmt: discard genEmit(p, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(p, n, r)
   of nkRaiseStmt: genRaiseStmt(p, n)
   of nkTypeSection, nkCommentStmt, nkIteratorDef, nkIncludeStmt,
