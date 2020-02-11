@@ -1,5 +1,4 @@
 discard """
-  disabled: "macosx"
   output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
