@@ -438,7 +438,7 @@ proc write*[T: tuple|object](f: File; arg: T) =
 
     when compiles($value):
       when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
+        if value.isNil: f.write "nil"
         else: f.writeQuoted(value)
       else:
         f.writeQuoted(value)
