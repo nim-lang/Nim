@@ -127,6 +127,7 @@ type
 
     opcNccValue, opcNccInc, opcNcsAdd, opcNcsIncl, opcNcsLen, opcNcsAt,
     opcNctPut, opcNctLen, opcNctGet, opcNctHasNext, opcNctNext, opcNodeId,
+    opcNIsUnion
 
     opcSlurp,
     opcGorge,

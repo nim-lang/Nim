@@ -1619,6 +1619,16 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         regs[ra].intVal = regs[rb].node.id
       else:
         regs[ra].intVal = -1
+    of opcNIsUnion:
+      decodeB(rkInt)
+      let a = regs[rb].node
+      if a == nil or a.typ == nil:
+        stackTrace(c, tos, pc, "node has no type")
+      let typ = skipTypes(a.typ, {tyTypeDesc, tyAlias, tyGenericInst});
+      if typ.kind == tyObject and tfUnion in typ.flags:
+        regs[ra].intVal = 1
+      else:
+        regs[ra].intVal = 0
     of opcNGetType:
       let rb = instr.regB
       let rc = instr.regC

@@ -1613,6 +1613,15 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   if result.kind == nnkEmpty:
     error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
 
+when defined(nimMacrosIsUnion):
+  proc isUnion*(arg: NimNode): bool {.magic: "NIsUnion", noSideEffect, since: (1,1).}
+    ## Expects a type symbol or expression as argument. Returns
+    ## ``true`` if the underlying type is a union type. Raises, when
+    ## the argument has no type.
+
+  macro isUnion*(arg: typed): bool {.since: (1,1).} =
+    ## Returns ``true`` if the type of the argument is a union type.
+    newLit(isUnion(arg))
 
 when not defined(booting):
   template emit*(e: static[string]): untyped {.deprecated.} =
