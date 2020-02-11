@@ -380,6 +380,76 @@ proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
 proc write*(f: File, c: char) {.tags: [WriteIOEffect], benign.} =
   discard c_putc(cint(c), f)
 
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  # Taken from typetraits.
+
+proc writeEscapedChar(f: File, c: char) {.inline.} =
+  # Analogue to `sysetm.addEscapedChar`.
+  case c
+  of '\a': f.write "\\a" # \x07
+  of '\b': f.write "\\b" # \x08
+  of '\t': f.write "\\t" # \x09
+  of '\L': f.write "\\n" # \x0A
+  of '\v': f.write "\\v" # \x0B
+  of '\f': f.write "\\f" # \x0C
+  of '\c': f.write "\\c" # \x0D
+  of '\e': f.write "\\e" # \x1B
+  of '\\': f.write("\\\\")
+  of '\'': f.write("\\'")
+  of '\"': f.write("\\\"")
+  of {'\32'..'\126'} - {'\\', '\'', '\"'}: f.write(c)
+  else:
+    f.write("\\x")
+    const HexChars = "0123456789ABCDEF"
+    let n = ord(c)
+    f.write(HexChars[int((n and 0xF0) shr 4)])
+    f.write(HexChars[int(n and 0xF)])
+
+proc writeQuoted[T](f: File, arg: T) =
+  # analogue to `addQuoted` in `system`
+  when T is string or T is cstring:
+    f.write("\"")
+    for c in arg:
+      # Only ASCII chars are escaped to avoid butchering
+      # multibyte UTF-8 characters.
+      if c <= 127.char:
+        f.writeEscapedChar(c)
+      else:
+        f.write c
+    f.write("\"")
+  elif T is char:
+    f.write("'")
+    f.addEscapedChar(x)
+    f.write("'")
+  # prevent temporary string allocation
+  else:
+    f.write(x)
+
+proc write*[T: tuple|object](f: File; arg: T) =
+  f.write "("
+  const isNamed = isNamedTuple(T)
+  var count = 0
+  for name, value in fieldPairs(arg):
+    if count != 0:
+      f.write(", ")
+
+    when isNamed:
+      f.write(name, ": ")
+
+    when compiles($value):
+      when value isnot string and value isnot seq and compiles(value.isNil):
+        if value.isNil: result.add "nil"
+        else: f.writeQuoted(value)
+      else:
+        f.writeQuoted(value)
+    else:
+      f.write("...")
+    inc count
+
+  if not isNamed and count == 1:
+    f.write(",") # one tuple needs post comma, e.g. ``("abc",)``
+  f.write(")")
+
 when defined(harmfulOverloadOfWrite):
   proc write*(f: File, a: varargs[string, `$`]) {.tags: [WriteIOEffect], benign.} =
     for x in items(a): write(f, x)
