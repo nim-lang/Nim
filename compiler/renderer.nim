@@ -16,8 +16,6 @@ when defined(nimHasUsed):
 
 import
   lexer, options, idents, strutils, ast, msgs, lineinfos
-from compiler/renderer2 import nil
-template renderTree2(a): untyped = renderer2.renderTree(a)
 
 type
   TRenderFlag* = enum
