@@ -1942,6 +1942,8 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
   if result != nil:
     if result.typ == nil: return nil
+    # bug #13378, ensure we produce a real generic instantiation:
+    result = c.semExpr(c, call)
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil
