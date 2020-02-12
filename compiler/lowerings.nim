@@ -59,7 +59,6 @@ proc newFastAsgnStmt*(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
-
 proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   assert n.kind == nkVarTuple
   let value = n.lastSon
