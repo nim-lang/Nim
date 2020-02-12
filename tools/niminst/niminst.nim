@@ -506,11 +506,15 @@ proc writeInstallScripts(c: var ConfigData) =
     inclFilePermissions(deinstallShFile, {fpUserExec, fpGroupExec, fpOthersExec})
 
 proc srcdist(c: var ConfigData) =
-  if not existsDir(getOutputDir(c) / "c_code"):
-    createDir(getOutputDir(c) / "c_code")
+  let cCodeDir = getOutputDir(c) / "c_code"
+  if not existsDir(cCodeDir):
+    createDir(cCodeDir)
+  template copyFileTo(x) =
+    when false: echo(cCodeDir / extractFilename(x))
+    copyFile(dest = cCodeDir / extractFilename(x), source=x)
   for x in walkFiles(c.libpath / "lib/*.h"):
-    when false: echo(getOutputDir(c) / "c_code" / extractFilename(x))
-    copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
+    copyFileTo x
+  copyFileTo "lib/wrappers/linenoise/linenoise.h"
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
