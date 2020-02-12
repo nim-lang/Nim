@@ -8,6 +8,7 @@ K=string V=int
 K=int64 V=string
 K=int V=int
 '''
+disabled: true
 """
 
 import tables, typetraits
