@@ -10,7 +10,7 @@
 ## This module implements the pattern matching features for term rewriting
 ## macro support.
 
-import strutils, ast, astalgo, types, msgs, idents, renderer, wordrecg, trees,
+import strutils, ast, types, msgs, idents, renderer, wordrecg, trees,
   options
 
 # we precompile the pattern here for efficiency into some internal
@@ -46,7 +46,7 @@ proc patternError(n: PNode; conf: ConfigRef) =
   localError(conf, n.info, "illformed AST: " & renderTree(n, {renderNoComments}))
 
 proc add(code: var TPatternCode, op: TOpcode) {.inline.} =
-  add(code, chr(ord(op)))
+  code.add chr(ord(op))
 
 proc whichAlias*(p: PSym): TAliasRequest =
   if p.constraint != nil:
@@ -57,29 +57,29 @@ proc whichAlias*(p: PSym): TAliasRequest =
 proc compileConstraints(p: PNode, result: var TPatternCode; conf: ConfigRef) =
   case p.kind
   of nkCallKinds:
-    if p.sons[0].kind != nkIdent:
-      patternError(p.sons[0], conf)
+    if p[0].kind != nkIdent:
+      patternError(p[0], conf)
       return
-    let op = p.sons[0].ident
+    let op = p[0].ident
     if p.len == 3:
       if op.s == "|" or op.id == ord(wOr):
-        compileConstraints(p.sons[1], result, conf)
-        compileConstraints(p.sons[2], result, conf)
+        compileConstraints(p[1], result, conf)
+        compileConstraints(p[2], result, conf)
         result.add(ppOr)
       elif op.s == "&" or op.id == ord(wAnd):
-        compileConstraints(p.sons[1], result, conf)
-        compileConstraints(p.sons[2], result, conf)
+        compileConstraints(p[1], result, conf)
+        compileConstraints(p[2], result, conf)
         result.add(ppAnd)
       else:
         patternError(p, conf)
     elif p.len == 2 and (op.s == "~" or op.id == ord(wNot)):
-      compileConstraints(p.sons[1], result, conf)
+      compileConstraints(p[1], result, conf)
       result.add(ppNot)
     else:
       patternError(p, conf)
   of nkAccQuoted, nkPar:
     if p.len == 1:
-      compileConstraints(p.sons[0], result, conf)
+      compileConstraints(p[0], result, conf)
     else:
       patternError(p, conf)
   of nkIdent:
@@ -138,7 +138,7 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
   case n.kind
   of nkCallKinds:
     # only calls can produce side effects:
-    let op = n.sons[0]
+    let op = n[0]
     if op.kind == nkSym and isRoutine(op.sym):
       let s = op.sym
       if sfSideEffect in s.flags:
@@ -152,8 +152,8 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
       # indirect call: assume side effect:
       return seSideEffect
     # we need to check n[0] too: (FwithSideEffectButReturnsProcWithout)(args)
-    for i in 0 ..< n.len:
-      let ret = checkForSideEffects(n.sons[i])
+    for i in 0..<n.len:
+      let ret = checkForSideEffects(n[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
         result = seUnknown
@@ -163,8 +163,8 @@ proc checkForSideEffects*(n: PNode): TSideEffectAnalysis =
   else:
     # assume no side effect:
     result = seNoSideEffect
-    for i in 0 ..< n.len:
-      let ret = checkForSideEffects(n.sons[i])
+    for i in 0..<n.len:
+      let ret = checkForSideEffects(n[i])
       if ret == seSideEffect: return ret
       elif ret == seUnknown and result == seNoSideEffect:
         result = seUnknown
@@ -218,45 +218,47 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   of nkSym:
     let kinds = if isUnsafeAddr: {skVar, skResult, skTemp, skParam, skLet, skForVar}
                 else: {skVar, skResult, skTemp}
-    if n.sym.kind in kinds:
+    if n.sym.kind == skParam and n.sym.typ.kind in {tyVar, tySink}:
+      result = arLValue
+    elif isUnsafeAddr and n.sym.kind == skParam:
+      result = arLValue
+    elif n.sym.kind in kinds:
       if owner != nil and owner == n.sym.owner and
           sfGlobal notin n.sym.flags:
         result = arLocalLValue
       else:
         result = arLValue
-    elif n.sym.kind == skParam and n.sym.typ.kind == tyVar:
-      result = arLValue
     elif n.sym.kind == skType:
       let t = n.sym.typ.skipTypes({tyTypeDesc})
       if t.kind == tyVar: result = arStrange
   of nkDotExpr:
-    let t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
-    if t.kind in {tyVar, tyPtr, tyRef}:
+    let t = skipTypes(n[0].typ, abstractInst-{tyTypeDesc})
+    if t.kind in {tyVar, tySink, tyPtr, tyRef}:
       result = arLValue
     elif isUnsafeAddr and t.kind == tyLent:
       result = arLValue
     else:
-      result = isAssignable(owner, n.sons[0], isUnsafeAddr)
+      result = isAssignable(owner, n[0], isUnsafeAddr)
     if result != arNone and n[1].kind == nkSym and
         sfDiscriminant in n[1].sym.flags:
       result = arDiscriminant
   of nkBracketExpr:
-    let t = skipTypes(n.sons[0].typ, abstractInst-{tyTypeDesc})
-    if t.kind in {tyVar, tyPtr, tyRef}:
+    let t = skipTypes(n[0].typ, abstractInst-{tyTypeDesc})
+    if t.kind in {tyVar, tySink, tyPtr, tyRef}:
       result = arLValue
     elif isUnsafeAddr and t.kind == tyLent:
       result = arLValue
     else:
-      result = isAssignable(owner, n.sons[0], isUnsafeAddr)
+      result = isAssignable(owner, n[0], isUnsafeAddr)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     # Object and tuple conversions are still addressable, so we skip them
     # XXX why is 'tyOpenArray' allowed here?
     if skipTypes(n.typ, abstractPtrs-{tyTypeDesc}).kind in
         {tyOpenArray, tyTuple, tyObject}:
-      result = isAssignable(owner, n.sons[1], isUnsafeAddr)
-    elif compareTypes(n.typ, n.sons[1].typ, dcEqIgnoreDistinct):
+      result = isAssignable(owner, n[1], isUnsafeAddr)
+    elif compareTypes(n.typ, n[1].typ, dcEqIgnoreDistinct):
       # types that are equal modulo distinction preserve l-value:
-      result = isAssignable(owner, n.sons[1], isUnsafeAddr)
+      result = isAssignable(owner, n[1], isUnsafeAddr)
   of nkHiddenDeref:
     if isUnsafeAddr and n[0].typ.kind == tyLent: result = arLValue
     elif n[0].typ.kind == tyLent: result = arDiscriminant
@@ -264,11 +266,11 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = isAssignable(owner, n.sons[0], isUnsafeAddr)
+    result = isAssignable(owner, n[0], isUnsafeAddr)
   of nkCallKinds:
     # builtin slice keeps lvalue-ness:
     if getMagic(n) in {mArrGet, mSlice}:
-      result = isAssignable(owner, n.sons[1], isUnsafeAddr)
+      result = isAssignable(owner, n[1], isUnsafeAddr)
     elif n.typ != nil and n.typ.kind == tyVar:
       result = arLValue
     elif isUnsafeAddr and n.typ != nil and n.typ.kind == tyLent:

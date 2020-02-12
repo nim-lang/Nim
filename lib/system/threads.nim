@@ -136,17 +136,20 @@ else:
       when TArg is void:
         thrd.dataFn()
       else:
-        var x: TArg
-        deepCopy(x, thrd.data)
-        thrd.dataFn(x)
+        when defined(nimV2):
+          thrd.dataFn(thrd.data)
+        else:
+          var x: TArg
+          deepCopy(x, thrd.data)
+          thrd.dataFn(x)
     finally:
       afterThreadRuns()
 
 proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
-  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not defined(gcDestructors):
-    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall.} =
+  elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
+    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall, gcsafe.} =
       threadProcWrapDispatch[TArg]
     # init the GC for refc/markandsweep
     nimGC_setStackBottom(addr(p))
@@ -309,11 +312,12 @@ else:
     when TArg isnot void: t.data = param
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
-    var a {.noinit.}: PthreadAttr
-    pthread_attr_init(a)
-    pthread_attr_setstacksize(a, ThreadStackSize)
+    var a {.noinit.}: Pthread_attr
+    doAssert pthread_attr_init(a) == 0
+    doAssert pthread_attr_setstacksize(a, ThreadStackSize) == 0
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
+    doAssert pthread_attr_destroy(a) == 0
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
@@ -324,7 +328,7 @@ else:
       var s {.noinit.}: CpuSet
       cpusetZero(s)
       cpusetIncl(cpu.cint, s)
-      setAffinity(t.sys, sizeof(s), s)
+      setAffinity(t.sys, csize_t(sizeof(s)), s)
 
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)

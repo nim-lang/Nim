@@ -11,13 +11,8 @@
 
 include "system/inclrtl"
 
-import strutils, os
-
 when not defined(windows):
   import posix
-
-when defined(linux):
-  import linux
 
 when defined(freebsd) or defined(macosx):
   {.emit:"#include <sys/types.h>".}
@@ -34,7 +29,7 @@ when defined(macosx) or defined(bsd):
     HW_AVAILCPU = 25
     HW_NCPU = 3
   proc sysctl(x: ptr array[0..3, cint], y: cint, z: pointer,
-              a: var csize, b: pointer, c: int): cint {.
+              a: var csize_t, b: pointer, c: csize_t): cint {.
               importc: "sysctl", nodecl.}
 
 when defined(genode):
@@ -52,7 +47,7 @@ when defined(haiku):
                                                     header: "<OS.h>".}
 
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
-  ## returns the numer of the processors/cores the machine has.
+  ## returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
   when defined(windows):
     type
@@ -78,10 +73,9 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
     var
       mib: array[0..3, cint]
       numCPU: int
-      len: csize
     mib[0] = CTL_HW
     mib[1] = HW_AVAILCPU
-    len = sizeof(numCPU)
+    var len = sizeof(numCPU).csize_t
     discard sysctl(addr(mib), 2, addr(numCPU), len, nil, 0)
     if numCPU < 1:
       mib[1] = HW_NCPU

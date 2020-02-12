@@ -213,7 +213,7 @@ proc dealloc(r: var MemRegion; p: pointer; size: int) =
   if it.typ != nil and it.typ.finalizer != nil:
     (cast[Finalizer](it.typ.finalizer))(p)
   it.typ = nil
-  # it is benefitial to not use the free lists here:
+  # it is beneficial to not use the free lists here:
   if r.bump -! size == p:
     dec r.bump, size
   when false:
@@ -377,16 +377,21 @@ proc asgnRef(dest: PPointer, src: pointer) {.compilerproc, inline.} =
 proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
   deprecated: "old compiler compat".} = asgnRef(dest, src)
 
-proc alloc(size: Natural): pointer =
-  result = c_malloc(size)
+proc allocImpl(size: Natural): pointer =
+  result = c_malloc(cast[csize_t](size))
   if result == nil: raiseOutOfMem()
-proc alloc0(size: Natural): pointer =
+proc alloc0Impl(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
-proc realloc(p: pointer, newsize: Natural): pointer =
-  result = c_realloc(p, newsize)
+proc reallocImpl(p: pointer, newsize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newsize))
   if result == nil: raiseOutOfMem()
-proc dealloc(p: pointer) = c_free(p)
+proc realloc0Impl(p: pointer, oldsize, newsize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newsize))
+  if result == nil: raiseOutOfMem()
+  if newsize > oldsize:
+    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+proc deallocImpl(p: pointer) = c_free(p)
 
 proc alloc0(r: var MemRegion; size: Natural): pointer =
   # ignore the region. That is correct for the channels module
@@ -400,16 +405,21 @@ proc alloc(r: var MemRegion; size: Natural): pointer =
 
 proc dealloc(r: var MemRegion; p: pointer) = dealloc(p)
 
-proc allocShared(size: Natural): pointer =
-  result = c_malloc(size)
+proc allocSharedImpl(size: Natural): pointer =
+  result = c_malloc(cast[csize_t](size))
   if result == nil: raiseOutOfMem()
-proc allocShared0(size: Natural): pointer =
+proc allocShared0Impl(size: Natural): pointer =
   result = alloc(size)
   zeroMem(result, size)
-proc reallocShared(p: pointer, newsize: Natural): pointer =
-  result = c_realloc(p, newsize)
+proc reallocSharedImpl(p: pointer, newsize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newsize))
   if result == nil: raiseOutOfMem()
-proc deallocShared(p: pointer) = c_free(p)
+proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer =
+  result = c_realloc(p, cast[csize_t](newsize))
+  if result == nil: raiseOutOfMem()
+  if newsize > oldsize:
+    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+proc deallocSharedImpl(p: pointer) = c_free(p)
 
 when hasThreadSupport:
   proc getFreeSharedMem(): int = 0

@@ -8,7 +8,7 @@
 #
 
 import
-  options, strutils, os, tables, ropes, platform, terminal, macros,
+  options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
 
 proc toCChar*(c: char; result: var string) =
@@ -26,13 +26,13 @@ proc makeCString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
-  add(res, "\"")
-  for i in countup(0, len(s) - 1):
+  res.add("\"")
+  for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
-      add(res, "\"\L\"")
+      res.add("\"\L\"")
     toCChar(s[i], res)
-  add(res, '\"')
-  add(result, rope(res))
+  res.add('\"')
+  result.add(rope(res))
 
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
@@ -40,9 +40,8 @@ proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   #shallow(result.fullPath)
   result.projPath = projPath
   #shallow(result.projPath)
-  let fileName = fullPath.extractFilename
-  result.shortName = fileName.changeFileExt("")
-  result.quotedName = fileName.makeCString
+  result.shortName = fullPath.extractFilename
+  result.quotedName = result.shortName.makeCString
   result.quotedFullName = fullPath.string.makeCString
   result.lines = @[]
   when defined(nimpretty):
@@ -82,6 +81,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     pseudoPath = true
 
   if conf.m.filenameToIndexTbl.hasKey(canon.string):
+    isKnownFile = true
     result = conf.m.filenameToIndexTbl[canon.string]
   else:
     isKnownFile = false
@@ -96,14 +96,20 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
 
 proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
   result.fileIndex = fileInfoIdx
-  result.line = uint16(line)
-  result.col = int16(col)
+  if line < int high(uint16):
+    result.line = uint16(line)
+  else:
+    result.line = high(uint16)
+  if col < int high(int16):
+    result.col = int16(col)
+  else:
+    result.col = -1
 
 proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
 
-proc concat(strings: openarray[string]): string =
+proc concat(strings: openArray[string]): string =
   var totalLen = 0
   for s in strings: totalLen += s.len
   result = newStringOfCap totalLen
@@ -147,26 +153,32 @@ proc pushInfoContext*(conf: ConfigRef; info: TLineInfo; detail: string = "") =
   conf.m.msgContext.add((info, detail))
 
 proc popInfoContext*(conf: ConfigRef) =
-  setLen(conf.m.msgContext, len(conf.m.msgContext) - 1)
+  setLen(conf.m.msgContext, conf.m.msgContext.len - 1)
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
-  let L = conf.m.msgContext.len
-  let i = if index < 0: L + index else: index
-  if i >=% L: result = unknownLineInfo()
+  let i = if index < 0: conf.m.msgContext.len + index else: index
+  if i >=% conf.m.msgContext.len: result = unknownLineInfo
   else: result = conf.m.msgContext[i].info
+
+const
+  commandLineDesc = "command line"
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
-    "???"
+    (if fileIdx == commandLineIdx: commandLineDesc else: "???")
   else:
-    if optListFullPaths in conf.globalOptions:
-      conf.m.fileInfos[fileIdx.int32].fullPath.string
-    else:
-      conf.m.fileInfos[fileIdx.int32].projPath.string
+    conf.m.fileInfos[fileIdx.int32].shortName
+
+proc toProjPath*(conf: ConfigRef; fileIdx: FileIndex): string =
+  if fileIdx.int32 < 0 or conf == nil:
+    (if fileIdx == commandLineIdx: commandLineDesc else: "???")
+  else: conf.m.fileInfos[fileIdx.int32].projPath.string
 
 proc toFullPath*(conf: ConfigRef; fileIdx: FileIndex): string =
-  if fileIdx.int32 < 0 or conf == nil: result = "???"
-  else: result = conf.m.fileInfos[fileIdx.int32].fullPath.string
+  if fileIdx.int32 < 0 or conf == nil:
+    result = (if fileIdx == commandLineIdx: commandLineDesc else: "???")
+  else:
+    result = conf.m.fileInfos[fileIdx.int32].fullPath.string
 
 proc setDirtyFile*(conf: ConfigRef; fileIdx: FileIndex; filename: AbsoluteFile) =
   assert fileIdx.int32 >= 0
@@ -183,7 +195,7 @@ proc getHash*(conf: ConfigRef; fileIdx: FileIndex): string =
 
 proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile =
   if fileIdx.int32 < 0:
-    result = AbsoluteFile"???"
+    result = AbsoluteFile(if fileIdx == commandLineIdx: commandLineDesc else: "???")
   elif not conf.m.fileInfos[fileIdx.int32].dirtyFile.isEmpty:
     result = conf.m.fileInfos[fileIdx.int32].dirtyFile
   else:
@@ -192,22 +204,28 @@ proc toFullPathConsiderDirty*(conf: ConfigRef; fileIdx: FileIndex): AbsoluteFile
 template toFilename*(conf: ConfigRef; info: TLineInfo): string =
   toFilename(conf, info.fileIndex)
 
+template toProjPath*(conf: ConfigRef; info: TLineInfo): string =
+  toProjPath(conf, info.fileIndex)
+
 template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
   toFullPath(conf, info.fileIndex)
 
 template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
-proc toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
-  if info.fileIndex.int32 < 0:
-    result = "???"
-    return
-  let absPath = conf.m.fileInfos[info.fileIndex.int32].fullPath.string
-  if optListFullPaths in conf.globalOptions:
-    result = absPath
-  else:
-    let relPath = conf.m.fileInfos[info.fileIndex.int32].projPath.string
-    result = if relPath.count("..") > 2: absPath else: relPath
+proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
+  let
+    absPath = toFullPath(conf, info)
+    relPath = toProjPath(conf, info)
+  result = if (optListFullPaths in conf.globalOptions) or
+              (relPath.len > absPath.len) or
+              (relPath.count("..") > 2):
+             absPath
+           else:
+             relPath
+
+template toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
+  toMsgFilename(conf, info.fileIndex)
 
 proc toLinenumber*(info: TLineInfo): int {.inline.} =
   result = int info.line
@@ -215,12 +233,9 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
-proc toFileLine*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  result = toFilename(conf, info) & ":" & $info.line
-
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   # consider calling `helpers.lineInfoToString` instead
-  result = toFilename(conf, info) & "(" & $info.line & ", " &
+  result = toMsgFilename(conf, info) & "(" & $info.line & ", " &
     $(info.col + ColOffset) & ")"
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
@@ -318,7 +333,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc log*(s: string) {.procvar.} =
+proc log*(s: string) =
   var f: File
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
@@ -359,7 +374,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
   const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
-  for i in 0 ..< len(conf.m.msgContext):
+  for i in 0..<conf.m.msgContext.len:
     let context = conf.m.msgContext[i]
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
@@ -390,14 +405,14 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   case msg
   of errMin..errMax:
     sev = Severity.Error
-    writeContext(conf, unknownLineInfo())
+    writeContext(conf, unknownLineInfo)
     title = ErrorTitle
     color = ErrorColor
   of warnMin..warnMax:
     sev = Severity.Warning
     if optWarns notin conf.options: return
     if msg notin conf.notes: return
-    writeContext(conf, unknownLineInfo())
+    writeContext(conf, unknownLineInfo)
     title = WarningTitle
     color = WarningColor
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
@@ -413,7 +428,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let s = msgKindToString(msg) % args
 
   if conf.structuredErrorHook != nil:
-    conf.structuredErrorHook(conf, unknownLineInfo(),
+    conf.structuredErrorHook(conf, unknownLineInfo,
       s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
@@ -452,7 +467,8 @@ proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
 proc writeSurroundingSrc(conf: ConfigRef; info: TLineInfo) =
   const indent = "  "
   msgWriteln(conf, indent & $sourceLine(conf, info))
-  msgWriteln(conf, indent & spaces(info.col) & '^')
+  if info.col >= 0:
+    msgWriteln(conf, indent & spaces(info.col) & '^')
 
 proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): string =
   let title = case msg
@@ -532,7 +548,7 @@ proc localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
 proc localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
   liMessage(conf, info, errGenerated, arg, doNothing)
 
-proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openarray[string]) =
+proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
   localError(conf, info, format % params)
 
 proc message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
@@ -545,7 +561,7 @@ proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
-  writeContext(conf, unknownLineInfo())
+  writeContext(conf, unknownLineInfo)
   rawMessage(conf, errInternal, errMsg)
 
 template assertNotNil*(conf: ConfigRef; e): untyped =
@@ -556,8 +572,9 @@ template internalAssert*(conf: ConfigRef, e: bool) =
   if not e: internalError(conf, $instantiationInfo())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
-  assert i.fileIndex.int32 >= 0
-  if optExcessiveStackTrace in conf.globalOptions:
+  if i.fileIndex.int32 < 0:
+    result = makeCString "???"
+  elif optExcessiveStackTrace in conf.globalOptions:
     result = conf.m.fileInfos[i.fileIndex.int32].quotedFullName
   else:
     result = conf.m.fileInfos[i.fileIndex.int32].quotedName
@@ -577,3 +594,10 @@ proc listHints*(conf: ConfigRef) =
       if hint in conf.notes: "x" else: " ",
       lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
     ])
+
+proc lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
+  let m = "'$2' should be: '$1'" % [beau, got]
+  if optStyleError in conf.globalOptions:
+    localError(conf, info, m)
+  else:
+    message(conf, info, hintName, m)

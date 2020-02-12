@@ -1,10 +1,12 @@
 discard """
   output: '''top level statements are executed!
+(ival: 10, fval: 2.0)
 2.0
 my secret
 11
 12
 '''
+  joinable: "false"
 """
 
 ## Example program that demonstrates how to use the

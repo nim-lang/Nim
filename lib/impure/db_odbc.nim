@@ -272,7 +272,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop may cause a driver error
-  ## for subsequenct queries
+  ## for subsequent queries
   ##
   ## Rows are retrieved from the server at each iteration.
   var
@@ -303,7 +303,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                 {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the interator body.
+  ## on demand using []. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
     sz: TSqlInteger = 0
@@ -330,7 +330,11 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
 
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row
-  row.row[col]
+  $row.row[col]
+
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row

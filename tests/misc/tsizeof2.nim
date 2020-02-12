@@ -1,5 +1,5 @@
 discard """
-errormsg: "cannot evaluate 'sizeof/alignof' because its type is not defined completely"
+errormsg: "cannot evaluate 'sizeof' because its type is not defined completely"
 line: 9
 """
 

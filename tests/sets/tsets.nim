@@ -207,6 +207,10 @@ echo warnUninit in gNotes
 doAssert {-1.int8, -2, -2}.card == 2
 doAssert {1, 2, 2, 3..5, 4..6}.card == 6
 
+# merely test the alias
+doAssert {-1.int8, -2, -2}.len == 2
+doAssert {1, 2, 2, 3..5, 4..6}.len == 6
+
 type Foo = enum
   Foo1 = 0
   Foo2 = 1

@@ -119,9 +119,12 @@ procs ``GC_ref`` and ``GC_unref`` to mark objects as referenced to avoid them
 being freed by the GC. Other useful procs from `system <system.html>`_ you can
 use to keep track of memory are:
 
-* getTotalMem(): returns the amount of total memory managed by the GC.
-* getOccupiedMem(): bytes reserved by the GC and used by objects.
-* getFreeMem(): bytes reserved by the GC and not in use.
+* ``getTotalMem()`` Returns the amount of total memory managed by the GC.
+* ``getOccupiedMem()`` Bytes reserved by the GC and used by objects.
+* ``getFreeMem()`` Bytes reserved by the GC and not in use.
+
+These numbers are usually only for the running thread, not for the whole heap,
+with the exception of ``--gc:boehm`` and ``--gc:go``.
 
 In addition to ``GC_ref`` and ``GC_unref`` you can avoid the GC by manually
 allocating memory with procs like ``alloc``, ``allocShared``, or
@@ -144,3 +147,25 @@ The numbers count the number of objects in all GC heaps, they refer to
 all running threads, not only to the current thread. (The current thread
 would be the thread that calls ``dumpNumberOfInstances``.) This might
 change in later versions.
+
+
+Garbage collector options
+-------------------------
+
+You can choose which garbage collector to use when compiling source code,
+you can pass ``--gc:`` on the compile command with the choosed garbage collector.
+
+- ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with cycle detection, `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_, default.
+- ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector, `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector, `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_, `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:go`` Go lang like garbage collector, `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_, `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:regions`` `Stack <https://en.wikipedia.org/wiki/Memory_management#Stack_allocation>`_ based garbage collector.
+- ``--gc:none`` No garbage collector.
+
+The same Nim code can be compiled to use any of the garbage collectors;
+the Nim syntax generally will not change from one garbage collector to another.
+No garbage collector is used for `JavaScript and NodeJS
+<backends.html#backends-the-javascript-target>`_ compilation targets.
+`NimScript <nims.html>`_ target uses Nim VM garbage collector.
+
+If you are new to Nim and just starting, the default garbage collector is balanced to fit most common use cases.

@@ -8,9 +8,14 @@
 #
 
 # Atomic operations for Nim.
-{.push stackTrace:off.}
+{.push stackTrace:off, profiler:off.}
 
 const someGcc = defined(gcc) or defined(llvm_gcc) or defined(clang)
+const someVcc = defined(vcc) or defined(clang_cl)
+
+type
+  AtomType* = SomeNumber|pointer|ptr|char|bool
+    ## Type Class representing valid types for use with atomic procs
 
 when someGcc and hasThreadSupport:
   type AtomMemModel* = distinct cint
@@ -36,10 +41,6 @@ when someGcc and hasThreadSupport:
     ## Full barrier in both directions and synchronizes
     ## with acquire loads
     ## and release stores in all threads.
-
-  type
-    AtomType* = SomeNumber|pointer|ptr|char|bool
-      ## Type Class representing valid types for use with atomic procs
 
   proc atomicLoadN*[T: AtomType](p: ptr T, mem: AtomMemModel): T {.
     importc: "__atomic_load_n", nodecl.}
@@ -163,7 +164,35 @@ when someGcc and hasThreadSupport:
     ## ignore this parameter.
 
   template fence*() = atomicThreadFence(ATOMIC_SEQ_CST)
-elif defined(vcc) and hasThreadSupport:
+elif someVcc and hasThreadSupport:
+  type AtomMemModel* = distinct cint
+
+  const
+    ATOMIC_RELAXED = 0.AtomMemModel
+    ATOMIC_CONSUME = 1.AtomMemModel
+    ATOMIC_ACQUIRE = 2.AtomMemModel
+    ATOMIC_RELEASE = 3.AtomMemModel
+    ATOMIC_ACQ_REL = 4.AtomMemModel
+    ATOMIC_SEQ_CST = 5.AtomMemModel
+
+  proc `==`(x1, x2: AtomMemModel): bool {.borrow.}
+
+  proc readBarrier() {.importc: "_ReadBarrier",  header: "<intrin.h>".}
+  proc writeBarrier() {.importc: "_WriteBarrier",  header: "<intrin.h>".}
+  proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
+
+  template barrier(mem: AtomMemModel) =
+    when mem == ATOMIC_RELAXED: discard
+    elif mem == ATOMIC_CONSUME: readBarrier()
+    elif mem == ATOMIC_ACQUIRE: writeBarrier()
+    elif mem == ATOMIC_RELEASE: fence()
+    elif mem == ATOMIC_ACQ_REL: fence()
+    elif mem == ATOMIC_SEQ_CST: fence()
+
+  proc atomicLoadN*[T: AtomType](p: ptr T, mem: static[AtomMemModel]): T =
+    result = p[]
+    barrier(mem)
+
   when defined(cpp):
     when sizeof(int) == 8:
       proc addAndFetch*(p: ptr int, val: int): int {.
@@ -181,8 +210,6 @@ elif defined(vcc) and hasThreadSupport:
       proc addAndFetch*(p: ptr int, val: int): int {.
         importc: "_InterlockedExchangeAdd", header: "<intrin.h>".}
 
-  proc fence*() {.importc: "_ReadWriteBarrier", header: "<intrin.h>".}
-
 else:
   proc addAndFetch*(p: ptr int, val: int): int {.inline.} =
     inc(p[], val)
@@ -190,8 +217,8 @@ else:
 
 proc atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    result = atomic_add_fetch(memLoc.addr, x, ATOMIC_RELAXED)
-  elif defined(vcc) and hasThreadSupport:
+    result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
+  elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, x)
     inc(result, x)
   else:
@@ -200,18 +227,18 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
 
 proc atomicDec*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
-    when declared(atomic_sub_fetch):
-      result = atomic_sub_fetch(memLoc.addr, x, ATOMIC_RELAXED)
+    when declared(atomicSubFetch):
+      result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
     else:
-      result = atomic_add_fetch(memLoc.addr, -x, ATOMIC_RELAXED)
-  elif defined(vcc) and hasThreadSupport:
+      result = atomicAddFetch(memLoc.addr, -x, ATOMIC_RELAXED)
+  elif someVcc and hasThreadSupport:
     result = addAndFetch(memLoc.addr, -x)
     dec(result, x)
   else:
     dec(memLoc, x)
     result = memLoc
 
-when defined(vcc):
+when someVcc:
   when defined(cpp):
     proc interlockedCompareExchange64(p: pointer; exchange, comparand: int64): int64
       {.importcpp: "_InterlockedCompareExchange64(static_cast<NI64 volatile *>(#), #, #)", header: "<intrin.h>".}
@@ -285,6 +312,9 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
     {.importc: "__tcc_cas", nodecl.}
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
     tcc_cas(cast[ptr int](p), cast[int](oldValue), cast[int](newValue))
+elif declared(atomicCompareExchangeN):
+  proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool =
+    atomicCompareExchangeN(p, oldValue.unsafeAddr, newValue, false, ATOMIC_SEQ_CST, ATOMIC_SEQ_CST)
 else:
   # this is valid for GCC and Intel C++
   proc cas*[T: bool|int|ptr](p: ptr T; oldValue, newValue: T): bool
@@ -292,7 +322,7 @@ else:
   # XXX is this valid for 'int'?
 
 
-when (defined(x86) or defined(amd64)) and defined(vcc):
+when (defined(x86) or defined(amd64)) and someVcc:
   proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
 elif (defined(x86) or defined(amd64)) and (someGcc or defined(bcc)):
   proc cpuRelax* {.inline.} =

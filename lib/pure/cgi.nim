@@ -58,11 +58,11 @@ proc xmlEncode*(s: string): string =
   for i in 0..len(s)-1: addXmlChar(result, s[i])
 
 type
-  CgiError* = object of IOError  ## exception that is raised if a CGI error occurs
-  RequestMethod* = enum  ## the used request method
-    methodNone,          ## no REQUEST_METHOD environment variable
-    methodPost,          ## query uses the POST method
-    methodGet            ## query uses the GET method
+  CgiError* = object of IOError ## exception that is raised if a CGI error occurs
+  RequestMethod* = enum ## the used request method
+    methodNone,         ## no REQUEST_METHOD environment variable
+    methodPost,         ## query uses the POST method
+    methodGet           ## query uses the GET method
 
 proc cgiError*(msg: string) {.noreturn.} =
   ## raises an ECgi exception with message `msg`.
@@ -77,6 +77,8 @@ proc getEncodedData(allowedMethods: set[RequestMethod]): string =
     if methodPost notin allowedMethods:
       cgiError("'REQUEST_METHOD' 'POST' is not supported")
     var L = parseInt(getEnv("CONTENT_LENGTH").string)
+    if L == 0:
+      return ""
     result = newString(L)
     if readBuffer(stdin, addr(result[0]), L) != L:
       cgiError("cannot read from stdin")

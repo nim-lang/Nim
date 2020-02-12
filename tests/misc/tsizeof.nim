@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   output: '''
 body executed
 body executed
@@ -6,6 +7,14 @@ OK
 macros api OK
 '''
 """
+
+# This is for Azure. The keyword ``alignof`` only exists in ``c++11``
+# and newer. On Azure gcc does not default to c++11 yet.
+when defined(cpp) and not defined(windows):
+  {.passC: "-std=c++11".}
+
+# Object offsets are different for inheritance objects when compiling
+# to c++.
 
 type
   TMyEnum = enum
@@ -65,22 +74,25 @@ proc strAlign(arg: string): string =
   for i in 0 ..< minLen - arg.len:
     result &= ' '
 
-macro c_offsetof(a: typed, b: untyped): int32 =
-  ## Buffet proof implementation that works on actual offsetof operator
+macro c_offsetof(fieldAccess: typed): int32 =
+  ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let bliteral =
-    if b.kind == nnkStrLit:
-      b
-    else:
-      newLit(repr(b))
+  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0] 
+          else: fieldAccess
+  let a = s[0].getTypeInst
+  let b = s[1]
   result = quote do:
     var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
+    {.emit: [res, " = offsetof(", `a`, ", ", `b`, ");"] .}
     res
 
+template c_offsetof(t: typedesc, a: untyped): int32 =
+  var x: ptr t
+  c_offsetof(x[].a)
+
 macro c_sizeof(a: typed): int32 =
-  ## Buffet proof implementation that works using the sizeof operator
+  ## Bullet proof implementation that works using the sizeof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
   result = quote do:
@@ -89,7 +101,7 @@ macro c_sizeof(a: typed): int32 =
     res
 
 macro c_alignof(arg: untyped): untyped =
-  ## Buffet proof implementation that works on actual alignment
+  ## Bullet proof implementation that works on actual alignment
   ## behavior measured at runtime.
   let typeSym = genSym(nskType, "AlignTestType"&arg.repr)
   result = quote do:
@@ -143,6 +155,14 @@ type
     ValueA
     ValueB
 
+  # Must have more than 32 elements so that set[MyEnum33] will become compile to an int64.
+  MyEnum33 {.pure.} = enum
+    Value1, Value2, Value3, Value4, Value5, Value6,
+    Value7, Value8, Value9, Value10, Value11, Value12,
+    Value13, Value14, Value15, Value16, Value17, Value18,
+    Value19, Value20, Value21, Value22, Value23, Value24,
+    Value25, Value26, Value27, Value28, Value29, Value30,
+    Value31, Value32, Value33
 
 proc transformObjectconfigPacked(arg: NimNode): NimNode =
   let debug = arg.kind == nnkPragmaExpr
@@ -296,6 +316,10 @@ testinstance:
         b: int8
       c: int8
 
+    PaddingOfSetEnum33 {.objectconfig.} = object
+      cause: int8
+      theSet: set[MyEnum33]
+
     Bazing {.objectconfig.} = object of RootObj
       a: int64
       # TODO test on 32 bit system
@@ -311,9 +335,16 @@ testinstance:
       c: char
 
     # from issue 4763
-    GenericObject[T] = object
+    GenericObject[T] {.objectconfig.} = object
       a: int32
       b: T
+
+    # this type mixes `packed` with `align`.
+    MyCustomAlignPackedObject {.objectconfig.} = object
+      a: char
+      b {.align: 32.}: int32 # align overrides `packed` for this field.
+      c: char
+      d: int32  # unaligned
 
   const trivialSize = sizeof(TrivialType) # needs to be able to evaluate at compile time
 
@@ -328,6 +359,8 @@ testinstance:
     var g : RecursiveStuff
     var ro : RootObj
     var go : GenericObject[int64]
+    var po : PaddingOfSetEnum33
+    var capo: MyCustomAlignPackedObject
 
     var
       e1: Enum1
@@ -346,16 +379,15 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go, e1, e2, e4, e8, eoa, eob)
+    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo)
 
-    when not defined(cpp):
-      type
-        WithBitsize {.objectconfig.} = object
-          bitfieldA {.bitsize: 16.}: uint32
-          bitfieldB {.bitsize: 16.}: uint32
+    type
+      WithBitsize {.objectconfig.} = object
+        bitfieldA {.bitsize: 16.}: uint32
+        bitfieldB {.bitsize: 16.}: uint32
 
-      var wbs: WithBitsize
-      testSize(wbs)
+    var wbs: WithBitsize
+    testSize(wbs)
 
     testOffsetOf(TrivialType, x)
     testOffsetOf(TrivialType, y)
@@ -383,11 +415,13 @@ testinstance:
 
     testOffsetOf(Foobar, c)
 
-    when not defined(cpp):
-      testOffsetOf(Bazing, a)
-      testOffsetOf(InheritanceA, a)
-      testOffsetOf(InheritanceB, b)
-      testOffsetOf(InheritanceC, c)
+    testOffsetOf(PaddingOfSetEnum33, cause)
+    testOffsetOf(PaddingOfSetEnum33, theSet)
+
+    testOffsetOf(Bazing, a)
+    testOffsetOf(InheritanceA, a)
+    testOffsetOf(InheritanceB, b)
+    testOffsetOf(InheritanceC, c)
 
     testOffsetOf(EnumObjectA, a)
     testOffsetOf(EnumObjectA, b)
@@ -408,6 +442,11 @@ testinstance:
     testOffsetOf(RecursiveStuff, cc)
     testOffsetOf(RecursiveStuff, d1)
     testOffsetOf(RecursiveStuff, d2)
+
+    testOffsetOf(MyCustomAlignPackedObject, a)
+    testOffsetOf(MyCustomAlignPackedObject, b)
+    testOffsetOf(MyCustomAlignPackedObject, c)
+    testOffsetOf(MyCustomAlignPackedObject, d)
 
     echo "body executed" # sanity check to ensure this logic isn't skipped entirely
 
@@ -458,7 +497,24 @@ type
     a: int32
     b: float32
 
+  MyCustomAlignUnion {.union.} = object
+    c: char
+    a {.align: 32.}: int
+
+  MyCustomAlignObject = object
+    c: char
+    a {.align: 32.}: int
+
 doAssert sizeof(MyUnionType) == 4
+doAssert sizeof(MyCustomAlignUnion) == 32
+doAssert alignof(MyCustomAlignUnion) == 32
+doAssert sizeof(MyCustomAlignObject) == 64
+doAssert alignof(MyCustomAlignObject) == 32
+
+
+
+
+
 
 ##########################################
 # bug #9794
@@ -536,3 +592,97 @@ proc main() =
   typeProcessing(mylocal)
 
 main()
+
+# issue #11320 use UncheckedArray
+
+type
+  Payload = object
+    something: int8
+    vals: UncheckedArray[int32]
+
+proc payloadCheck() =
+  doAssert offsetOf(Payload, vals) == 4
+  doAssert sizeof(Payload) == 4
+
+payloadCheck()
+
+# offsetof tuple types
+
+type
+  MyTupleType = tuple
+    a: float64
+    b: float64
+    c: float64
+
+  MyOtherTupleType = tuple
+    a: float64
+    b: imported_double
+    c: float64
+
+  MyCaseObject = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+doAssert offsetof(MyTupleType, a) == 0
+doAssert offsetof(MyTupleType, b) == 8
+doAssert offsetof(MyTupleType, c) == 16
+
+doAssert offsetof(MyOtherTupleType, a) == 0
+doAssert offsetof(MyOtherTupleType, b) == 8
+
+# The following expression can only work if the offsetof expression is
+# properly forwarded for the C code generator.
+doAssert offsetof(MyOtherTupleType, c) == 16
+doAssert offsetof(Bar, foo) == 4
+doAssert offsetof(MyCaseObject, val1) == 0
+doAssert offsetof(MyCaseObject, kind) == 8
+doAssert offsetof(MyCaseObject, val2) == 12
+doAssert offsetof(MyCaseObject, val3) == 16
+doAssert offsetof(MyCaseObject, val4) == 12
+doAssert offsetof(MyCaseObject, val5) == 16
+
+template reject(e) =
+  static: assert(not compiles(e))
+
+reject:
+  const off1 = offsetof(MyOtherTupleType, c)
+
+reject:
+  const off2 = offsetof(MyOtherTupleType, b)
+
+reject:
+  const off3 = offsetof(MyCaseObject, kind)
+
+
+type
+  MyPackedCaseObject {.packed.} = object
+    val1: imported_double
+    case kind: bool
+    of true:
+      val2,val3: float32
+    else:
+      val4,val5: int32
+
+# packed case object
+
+doAssert offsetof(MyPackedCaseObject, val1) == 0
+doAssert offsetof(MyPackedCaseObject, val2) == 9
+doAssert offsetof(MyPackedCaseObject, val3) == 13
+doAssert offsetof(MyPackedCaseObject, val4) == 9
+doAssert offsetof(MyPackedCaseObject, val5) == 13
+
+reject:
+  const off5 = offsetof(MyPackedCaseObject, val2)
+
+reject:
+  const off6 = offsetof(MyPackedCaseObject, val3)
+
+reject:
+  const off7 = offsetof(MyPackedCaseObject, val4)
+
+reject:
+  const off8 = offsetof(MyPackedCaseObject, val5)

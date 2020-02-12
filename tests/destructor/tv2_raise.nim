@@ -1,12 +1,12 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
-  output: '''OK 2
-4 1'''
+  valgrind: true
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
+  output: '''OK 3
+(allocCount: 8, deallocCount: 3)'''
 """
 
 import strutils, math
 import system / ansi_c
-import core / allocators
 
 proc mainA =
   try:
@@ -36,7 +36,18 @@ except ValueError:
 except:
   discard
 
-echo "OK ", ok
+#  bug #11577
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)
+proc newError*: owned(ref Exception) {.noinline.} =
+  new(result)
+
+proc mainC =
+  raise newError()
+
+try:
+  mainC()
+except:
+  inc ok
+
+echo "OK ", ok
+echo getAllocStats()

@@ -75,40 +75,40 @@
 ##   generator
 ## * `stats module<stats.html>`_ for statistical analysis
 ## * `list of cryptographic and hashing modules
-##   <lib.html#pure-libraries-cryptography-and-hashing>`_
+##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm                    #For upperBound
+import algorithm #For upperBound
 
 include "system/inclrtl"
-{.push debugger:off.}
+{.push debugger: off.}
 
-when defined(JS):
-  type ui = uint32
+when defined(js):
+  type Ui = uint32
 
   const randMax = 4_294_967_295u32
 else:
-  type ui = uint64
+  type Ui = uint64
 
   const randMax = 18_446_744_073_709_551_615u64
 
 type
   Rand* = object ## State of a random number generator.
-    ##
-    ## Create a new Rand state using the `initRand proc<#initRand,int64>`_.
-    ##
-    ## The module contains a default Rand state for convenience.
-    ## It corresponds to the default random number generator's state.
-    ## The default Rand state always starts with the same values, but the
-    ## `randomize proc<#randomize>`_ can be used to seed the default generator
-    ## with a value based on the current time.
-    ##
-    ## Many procs have two variations: one that takes in a Rand parameter and
-    ## another that uses the default generator. The procs that use the default
-    ## generator are **not** thread-safe!
-    a0, a1: ui
+                 ##
+                 ## Create a new Rand state using the `initRand proc<#initRand,int64>`_.
+                 ##
+                 ## The module contains a default Rand state for convenience.
+                 ## It corresponds to the default random number generator's state.
+                 ## The default Rand state always starts with the same values, but the
+                 ## `randomize proc<#randomize>`_ can be used to seed the default generator
+                 ## with a value based on the current time.
+                 ##
+                 ## Many procs have two variations: one that takes in a Rand parameter and
+                 ## another that uses the default generator. The procs that use the default
+                 ## generator are **not** thread-safe!
+    a0, a1: Ui
 
-when defined(JS):
+when defined(js):
   var state = Rand(
     a0: 0x69B4C98Cu32,
     a1: 0xFED1DD30u32) # global for backwards compatibility
@@ -118,8 +118,8 @@ else:
     a0: 0x69B4C98CB8530805u64,
     a1: 0xFED1DD3004688D67CAu64) # global for backwards compatibility
 
-proc rotl(x, k: ui): ui =
-  result = (x shl k) or (x shr (ui(64) - k))
+proc rotl(x, k: Ui): Ui =
+  result = (x shl k) or (x shr (Ui(64) - k))
 
 proc next*(r: var Rand): uint64 =
   ## Computes a random ``uint64`` number using the given state.
@@ -190,48 +190,44 @@ proc skipRandomNumbers*(s: var Rand) =
   ##
   ## See also:
   ## * `next proc<#next,Rand>`_
-  when defined(JS):
+  when defined(js):
     const helper = [0xbeac0467u32, 0xd86b048bu32]
   else:
     const helper = [0xbeac0467eba5facbu64, 0xd86b048b86aa9922u64]
   var
-    s0 = ui 0
-    s1 = ui 0
+    s0 = Ui 0
+    s1 = Ui 0
   for i in 0..high(helper):
     for b in 0 ..< 64:
-      if (helper[i] and (ui(1) shl ui(b))) != 0:
+      if (helper[i] and (Ui(1) shl Ui(b))) != 0:
         s0 = s0 xor s.a0
         s1 = s1 xor s.a1
       discard next(s)
   s.a0 = s0
   s.a1 = s1
 
-proc random*(max: int): int {.benign, deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand(int)<#rand,int>`_ instead.
+proc random*(max: int): int {.benign, deprecated:
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   while true:
     let x = next(state)
-    if x < randMax - (randMax mod ui(max)):
+    if x < randMax - (randMax mod Ui(max)):
       return int(x mod uint64(max))
 
-proc random*(max: float): float {.benign, deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand(float)<#rand,float>`_ instead.
+proc random*(max: float): float {.benign, deprecated:
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   let x = next(state)
-  when defined(JS):
+  when defined(js):
     result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc random*[T](x: HSlice[T, T]): T {.deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `rand[T](HSlice[T, T])<#rand,HSlice[T,T]>`_ instead.
+proc random*[T](x: HSlice[T, T]): T {.deprecated:
+  "Deprecated since v0.18.0; use 'rand' instead".} =
   result = T(random(x.b - x.a)) + x.a
 
-proc random*[T](a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.18.0:**
-  ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
+proc random*[T](a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.18.0; use 'sample' instead".} =
   result = a[random(a.low..a.len)]
 
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
@@ -251,7 +247,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign.} =
   if max == 0: return
   while true:
     let x = next(r)
-    if x <= randMax - (randMax mod ui(max)):
+    if x <= randMax - (randMax mod Ui(max)):
       return int(x mod (uint64(max)+1u64))
 
 proc rand*(max: int): int {.benign.} =
@@ -291,7 +287,7 @@ proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign.} =
     let f = r.rand(1.0)
     ## f = 8.717181376738381e-07
   let x = next(r)
-  when defined(JS):
+  when defined(js):
     result = (float(x) / float(high(uint32))) * max
   else:
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
@@ -318,9 +314,11 @@ proc rand*(max: float): float {.benign.} =
     ## f = 8.717181376738381e-07
   rand(state, max)
 
-proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b` using the given
   ## state.
+  ##
+  ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## See also:
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
@@ -333,10 +331,17 @@ proc rand*[T: Ordinal](r: var Rand; x: HSlice[T, T]): T =
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 4
     doAssert r.rand(1..6) == 6
-  result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
+    let f = r.rand(-1.0 .. 1.0)
+    ## f = 0.8741183448756229
+  when T is SomeFloat:
+    result = rand(r, x.b - x.a) + x.a
+  else: # Integers and Enum types
+    result = T(rand(r, int(x.b) - int(x.a)) + int(x.a))
 
-proc rand*[T: Ordinal](x: HSlice[T, T]): T =
+proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
   ## For a slice `a..b`, returns a value in the range `a..b`.
+  ##
+  ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
@@ -357,9 +362,8 @@ proc rand*[T: Ordinal](x: HSlice[T, T]): T =
     doAssert rand(1..6) == 6
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](Rand, openArray[T])<#sample,Rand,openArray[T]>`_ instead.
+proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(r, a.low..a.high)]
 
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
@@ -391,21 +395,51 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
   else:
     result = cast[T](state.next)
 
-proc rand*[T](a: openArray[T]): T {.deprecated.} =
-  ## **Deprecated since version 0.20.0:**
-  ## Use `sample[T](openArray[T])<#sample,openArray[T]>`_ instead.
+proc rand*[T](a: openArray[T]): T {.deprecated:
+  "Deprecated since v0.20.0; use 'sample' instead".} =
   result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
-  ## returns a random element from a set
+  ## Returns a random element from the set ``s`` using the given state.
+  ##
+  ## See also:
+  ## * `sample proc<#sample,set[T]>`_ that uses the default random number
+  ##   generator
+  ## * `sample proc<#sample,Rand,openArray[T]>`_ for openarrays
+  ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
+  ##   cumulative distribution function
+  runnableExamples:
+    var r = initRand(987)
+    let s = {1, 3, 5, 7, 9}
+    doAssert r.sample(s) == 5
+    doAssert r.sample(s) == 7
+    doAssert r.sample(s) == 1
   assert card(s) != 0
   var i = rand(r, card(s) - 1)
   for e in s:
     if i == 0: return e
     dec(i)
-    
+
 proc sample*[T](s: set[T]): T =
-  ## returns a random element from a set
+  ## Returns a random element from the set ``s``.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  ##
+  ## See also:
+  ## * `sample proc<#sample,Rand,set[T]>`_ that uses a provided state
+  ## * `sample proc<#sample,openArray[T]>`_ for openarrays
+  ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
+  ##   cumulative distribution function
+  runnableExamples:
+    randomize(987)
+    let s = {1, 3, 5, 7, 9}
+    doAssert sample(s) == 5
+    doAssert sample(s) == 7
+    doAssert sample(s) == 1
   sample(state, s)
 
 proc sample*[T](r: var Rand; a: openArray[T]): T =
@@ -416,6 +450,7 @@ proc sample*[T](r: var Rand; a: openArray[T]): T =
   ##   random number generator
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
+  ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     var r = initRand(456)
@@ -437,6 +472,7 @@ proc sample*[T](a: openArray[T]): T =
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that uses a provided state
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
+  ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     randomize(456)
@@ -445,7 +481,7 @@ proc sample*[T](a: openArray[T]): T =
     doAssert sample(marbles) == "red"
   result = a[rand(a.low..a.high)]
 
-proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
+proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from ``a`` using a cumulative distribution function
   ## (CDF) and the given state.
   ##
@@ -462,6 +498,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that also utilizes
   ##   a CDF but uses the default random number generator
   ## * `sample proc<#sample,Rand,openArray[T]>`_ that does not use a CDF
+  ## * `sample proc<#sample,Rand,set[T]>`_ for sets
   runnableExamples:
     from math import cumsummed
 
@@ -472,14 +509,14 @@ proc sample*[T, U](r: var Rand; a: openArray[T], cdf: openArray[U]): T =
     doAssert r.sample(marbles, cdf) == "red"
     doAssert r.sample(marbles, cdf) == "green"
     doAssert r.sample(marbles, cdf) == "blue"
-  assert(cdf.len == a.len)              # Two basic sanity checks.
+  assert(cdf.len == a.len) # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
   #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
   #awfully expensive even in debugging modes.
   let u = r.rand(float(cdf[^1]))
   a[cdf.upperBound(U(u))]
 
-proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
+proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
   ## Returns an element from ``a`` using a cumulative distribution function
   ## (CDF).
   ##
@@ -498,6 +535,7 @@ proc sample*[T, U](a: openArray[T], cdf: openArray[U]): T =
   ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that also utilizes
   ##   a CDF but uses a provided state
   ## * `sample proc<#sample,openArray[T]>`_ that does not use a CDF
+  ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
     from math import cumsummed
 
@@ -532,8 +570,8 @@ proc initRand*(seed: int64): Rand =
     let now = getTime()
     var r2 = initRand(now.toUnix * 1_000_000_000 + now.nanosecond)
   doAssert seed != 0 # 0 causes `rand(int)` to always return 0 for example.
-  result.a0 = ui(seed shr 16)
-  result.a1 = ui(seed and 0xffff)
+  result.a0 = Ui(seed shr 16)
+  result.a1 = Ui(seed and 0xffff)
   discard next(result)
 
 proc randomize*(seed: int64) {.benign.} =
@@ -587,7 +625,7 @@ proc shuffle*[T](x: var openArray[T]) =
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   shuffle(state, x)
 
-when not defined(nimscript):
+when not defined(nimscript) and not defined(standalone):
   import times
 
   proc randomize*() {.benign.} =
@@ -604,7 +642,7 @@ when not defined(nimscript):
     ## * `randomize proc<#randomize,int64>`_ that accepts a seed
     ## * `initRand proc<#initRand,int64>`_
     when defined(js):
-      let time = int64(times.epochTime() * 1_000_000_000)
+      let time = int64(times.epochTime() * 1000) and 0x7fff_ffff
       randomize(time)
     else:
       let now = times.getTime()
@@ -632,7 +670,7 @@ when isMainModule:
     doAssert a[1] == 0
 
     doAssert rand(0) == 0
-    doAssert rand("a") == 'a'
+    doAssert sample("a") == 'a'
 
     when compileOption("rangeChecks"):
       try:

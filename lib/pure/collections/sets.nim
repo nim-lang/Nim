@@ -61,7 +61,7 @@ when not defined(nimhygiene):
 type
   KeyValuePair[A] = tuple[hcode: Hash, key: A]
   KeyValuePairSeq[A] = seq[KeyValuePair[A]]
-  HashSet* {.myShallow.} [A] = object ## \
+  HashSet*[A] {.myShallow.} = object ## \
     ## A generic hash set.
     ##
     ## Use `init proc <#init,HashSet[A],int>`_ or `initHashSet proc <#initHashSet,int>`_
@@ -73,7 +73,7 @@ type
   OrderedKeyValuePair[A] = tuple[
     hcode: Hash, next: int, key: A]
   OrderedKeyValuePairSeq[A] = seq[OrderedKeyValuePair[A]]
-  OrderedSet* {.myShallow.} [A] = object ## \
+  OrderedSet*[A] {.myShallow.} = object ## \
     ## A generic hash set that remembers insertion order.
     ##
     ## Use `init proc <#init,OrderedSet[A],int>`_ or `initOrderedSet proc
@@ -99,8 +99,8 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ##
   ## The `initialSize` parameter needs to be a power of two (default: 64).
   ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo>`_ or `rightSize proc
-  ## <#rightSize,Natural>`_ from this module.
+  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
+  ## `rightSize proc <#rightSize,Natural>`_ from this module.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
@@ -233,7 +233,7 @@ proc toHashSet*[A](keys: openArray[A]): HashSet[A] =
 iterator items*[A](s: HashSet[A]): A =
   ## Iterates over elements of the set `s`.
   ##
-  ## If you need a sequence with the elelments you can use `sequtils.toSeq
+  ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::
@@ -439,7 +439,7 @@ proc difference*[A](s1, s2: HashSet[A]): HashSet[A] =
   ##
   ## The same as `s1 - s2 <#-,HashSet[A],HashSet[A]>`_.
   ##
-  ## The difference of two sets is represented mathematically as *A \ B* and is
+  ## The difference of two sets is represented mathematically as *A ∖ B* and is
   ## the set of all objects that are members of `s1` and not members of `s2`.
   ##
   ## See also:
@@ -559,7 +559,7 @@ proc `==`*[A](s, t: HashSet[A]): bool =
   s.counter == t.counter and s <= t
 
 proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
-  ## Returns a new set after applying `op` pric on each of the elements of
+  ## Returns a new set after applying `op` proc on each of the elements of
   ##`data` set.
   ##
   ## You can use this proc to transform the elements from a set.
@@ -600,21 +600,17 @@ proc rightSize*(count: Natural): int {.inline.} =
   ## expected extra amount to the parameter before calling this.
   ##
   ## Internally, we want `mustRehash(rightSize(x), x) == false`.
-  result = nextPowerOfTwo(count * 3 div 2  +  4)
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `initHashSet`"} = initHashSet[A](initialSize)
-  ## Deprecated since v0.20, use `initHashSet <#initHashSet,int>`_.
+     "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
-     "Deprecated since v0.20, use `toHashSet`"} = toHashSet[A](keys)
-  ## Deprecated since v0.20, use `toHashSet <#toHashSet,openArray[A]>`_.
+     "Deprecated since v0.20, use 'toHashSet'".} = toHashSet[A](keys)
 
 proc isValid*[A](s: HashSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default"} =
-  ## **Deprecated since v0.20; sets are initialized by default**
-  ##
+     "Deprecated since v0.20; sets are initialized by default".} =
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initHashSet,int>`_ or `init proc <#init,HashSet[A],int>`_).
   ##
@@ -649,8 +645,8 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ##
   ## The `initialSize` parameter needs to be a power of two (default: 64).
   ## If you need to accept runtime values for this, you can use
-  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo>`_ or `rightSize proc
-  ## <#rightSize,Natural>`_ from this module.
+  ## `math.nextPowerOfTwo proc <math.html#nextPowerOfTwo,int>`_ or
+  ## `rightSize proc <#rightSize,Natural>`_ from this module.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
   ## not necessary to call this function explicitly.
@@ -908,7 +904,7 @@ proc `$`*[A](s: OrderedSet[A]): string =
 iterator items*[A](s: OrderedSet[A]): A =
   ## Iterates over keys in the ordered set `s` in insertion order.
   ##
-  ## If you need a sequence with the elelments you can use `sequtils.toSeq
+  ## If you need a sequence with the elements you can use `sequtils.toSeq
   ## template <sequtils.html#toSeq.t,untyped>`_.
   ##
   ## .. code-block::
@@ -941,8 +937,7 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
 
 proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default"} =
-  ## **Deprecated since v0.20; sets are initialized by default**
+     "Deprecated since v0.20; sets are initialized by default".} =
   ##
   ## Returns `true` if the set has been initialized (with `initHashSet proc
   ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
@@ -1024,9 +1019,9 @@ when isMainModule and not defined(release):
       # --> {1, 3, 5}
 
     block toSeqAndString:
-      var a = toHashSet([2, 4, 5])
+      var a = toHashSet([2, 7, 5])
       var b = initHashSet[int]()
-      for x in [2, 4, 5]: b.incl(x)
+      for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a
       #echo toHashSet(["no", "esc'aping", "is \" provided"])
@@ -1167,8 +1162,8 @@ when isMainModule and not defined(release):
       var aa = initOrderedSet[pair]()
       var bb = initOrderedSet[pair]()
 
-      var x = (a:1,b:2)
-      var y = (a:3,b:4)
+      var x = (a: 1, b: 2)
+      var y = (a: 3, b: 4)
 
       aa.incl(x)
       aa.incl(y)

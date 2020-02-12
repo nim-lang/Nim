@@ -12,31 +12,29 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##
 ##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
+##    var outp: seq[string]
 ##
 ##    for log in logs:
 ##      var res: string
 ##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
-##        echo res & " - " & captureBetween(log, ' ', '_')
-##        # => 2019-01-10 - OK
+##        outp.add(res & " - " & captureBetween(log, ' ', '_'))
+##    doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##    from strutils import Digits, parseInt
 ##
-##    let userInput1 = "2019 school start"
-##    let userInput2 = "3 years back"
-##
-##    let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
-##    let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
-##
-##    echo "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack))
-##
+##    let
+##      input1 = "2019 school start"
+##      input2 = "3 years back"
+##      startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
+##      yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
+##      examYear = parseInt(startYear) + parseInt(yearsBack)
+##    doAssert "Examination is in " & $examYear == "Examination is in 2022"
 ##
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
@@ -48,9 +46,9 @@
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
 
 
-{.deadCodeElim: on.}  # dce option deprecated
+{.deadCodeElim: on.} # dce option deprecated
 
-{.push debugger:off .} # the user does not want to trace a part
+{.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
 include "system/inclrtl"
@@ -64,8 +62,8 @@ const
 proc toLower(c: char): char {.inline.} =
   result = if c in {'A'..'Z'}: chr(ord(c)-ord('A')+ord('a')) else: c
 
-proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.noSideEffect.} =
+proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0,
+    maxLen = 0): int {.noSideEffect.} =
   ## Parses a binary number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -74,7 +72,7 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-bin character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -111,8 +109,8 @@ proc parseBin*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     number = output
     result = i - start
 
-proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.noSideEffect.} =
+proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0,
+    maxLen = 0): int {.noSideEffect.} =
   ## Parses an octal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -121,7 +119,7 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-oct character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -158,8 +156,8 @@ proc parseOct*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
     number = output
     result = i - start
 
-proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0): int
-  {.noSideEffect.} =
+proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0,
+    maxLen = 0): int {.noSideEffect.} =
   ## Parses a hexadecimal number and stores its value in ``number``.
   ##
   ## Returns the number of the parsed characters or 0 in case of an error.
@@ -168,7 +166,7 @@ proc parseHex*[T: SomeInteger](s: string, number: var T, start = 0, maxLen = 0):
   ## If ``maxLen == 0``, the parsing continues until the first non-hex character
   ## or to the end of the string. Otherwise, no more than ``maxLen`` characters
   ## are parsed starting from the ``start`` position.
-  ## 
+  ##
   ## It does not check for overflow. If the value represented by the string is
   ## too big to fit into ``number``, only the value of last fitting characters
   ## will be stored in ``number`` without producing an error.
@@ -468,7 +466,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
     number = int(res)
 
 proc parseSaturatedNatural*(s: string, b: var int, start = 0): int {.
-  raises: [].}=
+    raises: [].} =
   ## Parses a natural number into ``b``. This cannot raise an overflow
   ## error. ``high(int)`` is returned for an overflow.
   ## The number of processed character is returned.
@@ -573,33 +571,29 @@ proc parseFloat*(s: string, number: var float, start = 0): int {.
     number = bf
 
 type
-  InterpolatedKind* = enum   ## Describes for `interpolatedFragments`
-                             ## which part of the interpolated string is
-                             ## yielded; for example in "str$$$var${expr}"
-    ikStr,                   ## ``str`` part of the interpolated string
-    ikDollar,                ## escaped ``$`` part of the interpolated string
-    ikVar,                   ## ``var`` part of the interpolated string
-    ikExpr                   ## ``expr`` part of the interpolated string
+  InterpolatedKind* = enum ## Describes for `interpolatedFragments`
+                           ## which part of the interpolated string is
+                           ## yielded; for example in "str$$$var${expr}"
+    ikStr,                 ## ``str`` part of the interpolated string
+    ikDollar,              ## escaped ``$`` part of the interpolated string
+    ikVar,                 ## ``var`` part of the interpolated string
+    ikExpr                 ## ``expr`` part of the interpolated string
 
 iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
-  ##     echo "(", k, ", \"", v, "\")"
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##   (ikString, "  ")
-  ##   (ikExpr, "this")
-  ##   (ikString, " is ")
-  ##   (ikExpr, "an  example")
-  ##   (ikString, "  ")
-  ##   (ikDollar, "$")
+  runnableExamples:
+    var outp: seq[tuple[kind: InterpolatedKind, value: string]]
+    for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
+      outp.add (k, v)
+    doAssert outp == @[(ikStr, "  "),
+                       (ikVar, "this"),
+                       (ikStr, " is "),
+                       (ikExpr, "an  example"),
+                       (ikStr, "  "),
+                       (ikDollar, "$")]
+
   var i = 0
   var kind: InterpolatedKind
   while true:
@@ -634,7 +628,7 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
         kind = ikDollar
       else:
         raise newException(ValueError,
-          "Unable to parse a varible name at " & substr(s, i, s.high))
+          "Unable to parse a variable name at " & substr(s, i, s.high))
     else:
       while j < s.len and s[j] != '$': inc j
       kind = ikStr
@@ -649,7 +643,7 @@ when isMainModule:
   import sequtils
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
-                   (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
+                    (ikStr, " is "), (ikExpr, "an{  example}"), (ikStr, "  ")]
   doAssert toSeq(interpolatedFragments(input)) == expected
 
   var value = 0

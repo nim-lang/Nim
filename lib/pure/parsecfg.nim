@@ -115,34 +115,34 @@ include "system/inclrtl"
 
 type
   CfgEventKind* = enum ## enumeration of all events that may occur when parsing
-    cfgEof,             ## end of file reached
-    cfgSectionStart,    ## a ``[section]`` has been parsed
-    cfgKeyValuePair,    ## a ``key=value`` pair has been detected
-    cfgOption,          ## a ``--key=value`` command line option
-    cfgError            ## an error occurred during parsing
+    cfgEof,            ## end of file reached
+    cfgSectionStart,   ## a ``[section]`` has been parsed
+    cfgKeyValuePair,   ## a ``key=value`` pair has been detected
+    cfgOption,         ## a ``--key=value`` command line option
+    cfgError           ## an error occurred during parsing
 
   CfgEvent* = object of RootObj ## describes a parsing event
     case kind*: CfgEventKind    ## the kind of the event
     of cfgEof: nil
     of cfgSectionStart:
-      section*: string           ## `section` contains the name of the
-                                 ## parsed section start (syntax: ``[section]``)
+      section*: string          ## `section` contains the name of the
+                                ## parsed section start (syntax: ``[section]``)
     of cfgKeyValuePair, cfgOption:
-      key*, value*: string       ## contains the (key, value) pair if an option
-                                 ## of the form ``--key: value`` or an ordinary
-                                 ## ``key= value`` pair has been parsed.
-                                 ## ``value==""`` if it was not specified in the
-                                 ## configuration file.
-    of cfgError:                 ## the parser encountered an error: `msg`
-      msg*: string               ## contains the error message. No exceptions
-                                 ## are thrown if a parse error occurs.
+      key*, value*: string      ## contains the (key, value) pair if an option
+                                ## of the form ``--key: value`` or an ordinary
+                                ## ``key= value`` pair has been parsed.
+                                ## ``value==""`` if it was not specified in the
+                                ## configuration file.
+    of cfgError:                ## the parser encountered an error: `msg`
+      msg*: string              ## contains the error message. No exceptions
+                                ## are thrown if a parse error occurs.
 
   TokKind = enum
     tkInvalid, tkEof,
     tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
-  Token = object             # a token
-    kind: TokKind            # the type of the token
-    literal: string          # the parsed (string) literal
+  Token = object    # a token
+    kind: TokKind   # the type of the token
+    literal: string # the parsed (string) literal
 
   CfgParser* = object of BaseLexer ## the parser object.
     tok: Token
@@ -203,7 +203,7 @@ proc handleDecChars(c: var CfgParser, xi: var int) =
     inc(c.bufpos)
 
 proc getEscapedChar(c: var CfgParser, tok: var Token) =
-  inc(c.bufpos)               # skip '\'
+  inc(c.bufpos) # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N':
     add(tok.literal, "\n")
@@ -258,11 +258,11 @@ proc handleCRLF(c: var CfgParser, pos: int): int =
   else: result = pos
 
 proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
-  var pos = c.bufpos + 1          # skip "
+  var pos = c.bufpos + 1 # skip "
   tok.kind = tkSymbol
   if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"'):
     # long string literal:
-    inc(pos, 2)               # skip ""
+    inc(pos, 2) # skip ""
                               # skip leading newline:
     pos = handleCRLF(c, pos)
     while true:
@@ -280,13 +280,13 @@ proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
       else:
         add(tok.literal, c.buf[pos])
         inc(pos)
-    c.bufpos = pos + 3       # skip the three """
+    c.bufpos = pos + 3 # skip the three """
   else:
     # ordinary string literal
     while true:
       var ch = c.buf[pos]
       if ch == '"':
-        inc(pos)              # skip '"'
+        inc(pos) # skip '"'
         break
       if ch in {'\c', '\L', lexbase.EndOfFile}:
         tok.kind = tkInvalid
@@ -320,7 +320,7 @@ proc skip(c: var CfgParser) =
     of '\c', '\L':
       pos = handleCRLF(c, pos)
     else:
-      break                   # EndOfFile also leaves the loop
+      break # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc rawGetTok(c: var CfgParser, tok: var Token) =
@@ -354,7 +354,7 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
   of '[':
     tok.kind = tkBracketLe
     inc(c.bufpos)
-    tok.literal = "]"
+    tok.literal = "["
   of ']':
     tok.kind = tkBracketRi
     inc(c.bufpos)
@@ -370,13 +370,13 @@ proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted error message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Error: $4",
-               [c.filename, $getLine(c), $getColumn(c), msg])
+                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted warning message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Warning: $4",
-               [c.filename, $getLine(c), $getColumn(c), msg])
+                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted warning message containing that
@@ -391,29 +391,29 @@ proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
 
 proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
   if c.tok.kind == tkSymbol:
-    result.kind = kind
-    result.key = c.tok.literal
-    result.value = ""
+    case kind
+    of cfgOption, cfgKeyValuePair:
+      result = CfgEvent(kind: kind, key: c.tok.literal, value: "")
+    else: discard
     rawGetTok(c, c.tok)
     if c.tok.kind in {tkEquals, tkColon}:
       rawGetTok(c, c.tok)
       if c.tok.kind == tkSymbol:
         result.value = c.tok.literal
       else:
-        reset result
-        result.kind = cfgError
-        result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+        result = CfgEvent(kind: cfgError,
+          msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
       rawGetTok(c, c.tok)
   else:
-    result.kind = cfgError
-    result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
     rawGetTok(c, c.tok)
 
 proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   ## retrieves the first/next event. This controls the parser.
   case c.tok.kind
   of tkEof:
-    result.kind = cfgEof
+    result = CfgEvent(kind: cfgEof)
   of tkDashDash:
     rawGetTok(c, c.tok)
     result = getKeyValPair(c, cfgOption)
@@ -422,21 +422,19 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   of tkBracketLe:
     rawGetTok(c, c.tok)
     if c.tok.kind == tkSymbol:
-      result.kind = cfgSectionStart
-      result.section = c.tok.literal
+      result = CfgEvent(kind: cfgSectionStart, section: c.tok.literal)
     else:
-      result.kind = cfgError
-      result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
     rawGetTok(c, c.tok)
     if c.tok.kind == tkBracketRi:
       rawGetTok(c, c.tok)
     else:
-      reset(result)
-      result.kind = cfgError
-      result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "']' expected, but found: " & c.tok.literal))
   of tkInvalid, tkEquals, tkColon, tkBracketRi:
-    result.kind = cfgError
-    result.msg = errorStr(c, "invalid token: " & c.tok.literal)
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "invalid token: " & c.tok.literal))
     rawGetTok(c, c.tok)
 
 # ---------------- Configuration file related operations ----------------
@@ -494,12 +492,12 @@ proc replace(s: string): string =
   while i < s.len():
     if s[i] == '\\':
       d.add(r"\\")
-    elif s[i] == '\c' and s[i+1] == '\L':
-      d.add(r"\n")
+    elif s[i] == '\c' and s[i+1] == '\l':
+      d.add(r"\c\l")
       inc(i)
     elif s[i] == '\c':
       d.add(r"\n")
-    elif s[i] == '\L':
+    elif s[i] == '\l':
       d.add(r"\n")
     else:
       d.add(s[i])
@@ -563,8 +561,8 @@ proc writeConfig*(dict: Config, filename: string) =
   dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =
-  ## Gets the Key value of the specified Section.
-  if dict.haskey(section):
+  ## Gets the Key value of the specified Section, returns an empty string if the key does not exist.
+  if dict.hasKey(section):
     if dict[section].hasKey(key):
       result = dict[section][key]
     else:
@@ -586,9 +584,9 @@ proc delSection*(dict: var Config, section: string) =
 
 proc delSectionKey*(dict: var Config, section, key: string) =
   ## Delete the key of the specified section.
-  if dict.haskey(section):
+  if dict.hasKey(section):
     if dict[section].hasKey(key):
-      if dict[section].len() == 1:
+      if dict[section].len == 1:
         dict.del(section)
       else:
         dict[section].del(key)

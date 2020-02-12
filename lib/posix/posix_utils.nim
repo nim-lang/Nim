@@ -83,7 +83,7 @@ proc sendSignal*(pid: Pid, signal: int) =
 proc mkstemp*(prefix: string): (string, File) =
   ## Creates a unique temporary file from a prefix string. Adds a six chars suffix.
   ## The file is created with perms 0600.
-  ## Returs the filename and a file opened in r/w mode.
+  ## Returns the filename and a file opened in r/w mode.
   var tmpl = cstring(prefix & "XXXXXX")
   let fd = mkstemp(tmpl)
   var f: File

@@ -29,30 +29,95 @@
 ##      await req.respond(Http200, "Hello World")
 ##
 ##    waitFor server.serve(Port(8080), cb)
+##
+## Basic Post request handle
+## =========================
+##
+## This example will create an HTTP server on port 8080. The server will
+## respond with a page with the actual and expected body length after
+## submitting a file.
+##
+## .. code-block::nim
+##    import asynchttpserver, asyncdispatch
+##    import strutils, strformat
+##
+##    proc htmlpage(contentLength, bodyLength: int): string =
+##      return &"""
+##    <!Doctype html>
+##    <html lang="en">
+##      <head>
+##        <meta charset="utf-8"/>
+##      </head>
+##      <body>
+##        <form action="/" method="post" enctype="multipart/form-data">
+##          File: <input type="file" name="testfile" accept="text/*"><br />
+##          <input style="margin:10px 0;" type="submit">
+##        </form><br />
+##        Expected Body Length: {contentLength} bytes<br />
+##        Actual Body Length: {bodyLength} bytes
+##      </body>
+##    </html>
+##    """
+##
+##    proc cb(req: Request) {.async.} =
+##      var
+##        contentLength = 0
+##        bodyLength = 0
+##      if req.reqMethod == HttpPost:
+##        contentLength = req.headers["Content-length"].parseInt
+##        if contentLength < 8*1024: # the default chunkSize
+##          # read the request body at once
+##          let body = await req.bodyStream.readAll();
+##          bodyLength = body.len
+##        else:
+##          # read 8*1024 bytes at a time
+##          while (let data = await req.bodyStream.read(); data[0]):
+##            bodyLength += data[1].len
+##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
+##
+##    let server = newAsyncHttpServer(maxBody = 10485760) # 10 MB
+##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
 export httpcore except parseHeader
 
-const
-  maxLine = 8*1024
-
 # TODO: If it turns out that the decisions that asynchttpserver makes
 # explicitly, about whether to close the client sockets or upgrade them are
 # wrong, then add a return value which determines what to do for the callback.
 # Also, maybe move `client` out of `Request` object and into the args for
 # the proc.
-type
-  Request* = object
-    client*: AsyncSocket # TODO: Separate this into a Response object?
-    reqMethod*: HttpMethod
-    headers*: HttpHeaders
-    protocol*: tuple[orig: string, major, minor: int]
-    url*: Uri
-    hostname*: string ## The hostname of the client that made the request.
-    body*: string
 
+const
+  maxLine = 8*1024
+
+when (NimMajor, NimMinor) >= (1, 1):
+  const
+    chunkSize = 8*1024 ## This seems perfectly reasonable for default chunkSize.
+
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string # For future removal
+      bodyStream*: FutureStream[string]
+else:
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
+
+type
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
@@ -128,20 +193,6 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc parseUppercaseMethod(name: string): HttpMethod =
-  result =
-    case name
-    of "GET": HttpGet
-    of "POST": HttpPost
-    of "HEAD": HttpHead
-    of "PUT": HttpPut
-    of "DELETE": HttpDelete
-    of "PATCH": HttpPatch
-    of "OPTIONS": HttpOptions
-    of "CONNECT": HttpConnect
-    of "TRACE": HttpTrace
-    else: raise newException(ValueError, "Invalid HTTP method " & name)
-
 proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
@@ -159,17 +210,23 @@ proc processRequest(
   # Header: val
   # \n
   request.headers.clear()
-  request.body = ""
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
+  when (NimMajor, NimMinor) >= (1, 1):
+    request.bodyStream = newFutureStream[string]()
+  # To uncomment in the future after compatibility issues
+  # with third parties are solved
+  # else:
+  #   request.body = ""
+  request.body = "" # Temporary fix for future removal
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
   for i in 0..1:
     lineFut.mget().setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine) # TODO: Timeouts.
+    await client.recvLineInto(lineFut, maxLength = maxLine) # TODO: Timeouts.
 
     if lineFut.mget == "":
       client.close()
@@ -187,9 +244,17 @@ proc processRequest(
   for linePart in lineFut.mget.split(' '):
     case i
     of 0:
-      try:
-        request.reqMethod = parseUppercaseMethod(linePart)
-      except ValueError:
+      case linePart
+      of "GET": request.reqMethod = HttpGet
+      of "POST": request.reqMethod = HttpPost
+      of "HEAD": request.reqMethod = HttpHead
+      of "PUT": request.reqMethod = HttpPut
+      of "DELETE": request.reqMethod = HttpDelete
+      of "PATCH": request.reqMethod = HttpPatch
+      of "OPTIONS": request.reqMethod = HttpOptions
+      of "CONNECT": request.reqMethod = HttpConnect
+      of "TRACE": request.reqMethod = HttpTrace
+      else:
         asyncCheck request.respondError(Http400)
         return true # Retry processing of request
     of 1:
@@ -214,7 +279,7 @@ proc processRequest(
     i = 0
     lineFut.mget.setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine)
+    await client.recvLineInto(lineFut, maxLength = maxLine)
 
     if lineFut.mget == "":
       client.close(); return false
@@ -249,10 +314,23 @@ proc processRequest(
       if contentLength > server.maxBody:
         await request.respondError(Http413)
         return false
-      request.body = await client.recv(contentLength)
-      if request.body.len != contentLength:
-        await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
-        return true
+
+      when (NimMajor, NimMinor) >= (1, 1):
+        var remainder = contentLength
+        while remainder > 0:
+          let readSize = min(remainder, chunkSize)
+          let data = await client.recv(read_size)
+          if data.len != read_size:
+            await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+            return true
+          await request.bodyStream.write(data)
+          remainder -= data.len
+        request.bodyStream.complete()
+      else:
+        request.body = await client.recv(contentLength)
+        if request.body.len != contentLength:
+          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+          return true
   elif request.reqMethod == HttpPost:
     await request.respond(Http411, "Content-Length required.")
     return true
@@ -296,7 +374,7 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     if not retry: break
 
 proc serve*(server: AsyncHttpServer, port: Port,
-            callback: proc (request: Request): Future[void] {.closure,gcsafe.},
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.

@@ -1,11 +1,10 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''button
 clicked!
-3 3  alloc/dealloc pairs: 0'''
+(allocCount: 9, deallocCount: 9)'''
 """
 
-import core / allocators
 import system / ansi_c
 
 type
@@ -52,8 +51,10 @@ proc main =
 
   var b = newButton("button", nil)
   let u = unown b
+  var clicked = "clicked"
   b.onclick = proc () =
-    b.caption = "clicked!"
+    clicked.add "!"
+    u.caption = clicked
   w.add b
 
   w.draw()
@@ -62,7 +63,10 @@ proc main =
 
   w.draw()
 
-main()
+  # bug #11257
+  var a: owned proc()
+  if a != nil:
+    a()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld  alloc/dealloc pairs: %ld\n", a, d, allocs)
+dumpAllocStats:
+  main()

@@ -15,7 +15,7 @@ import
   strutils, streams
 
 const
-  EndOfFile* = '\0'           ## end of file marker
+  EndOfFile* = '\0' ## end of file marker
   NewLines* = {'\c', '\L'}
 
 # Buffer handling:
@@ -27,13 +27,13 @@ const
 type
   BaseLexer* = object of RootObj ## the base lexer. Inherit your lexer from
                                  ## this object.
-    bufpos*: int              ## the current position within the buffer
-    buf*: string           ## the buffer itself
-    input: Stream            ## the input stream
-    lineNumber*: int          ## the current line number
+    bufpos*: int                 ## the current position within the buffer
+    buf*: string                 ## the buffer itself
+    input: Stream                ## the input stream
+    lineNumber*: int             ## the current line number
     sentinel: int
-    lineStart: int            # index of last line start in buffer
-    offsetBase*: int          # use ``offsetBase + bufpos`` to get the offset
+    lineStart: int               # index of last line start in buffer
+    offsetBase*: int             # use ``offsetBase + bufpos`` to get the offset
     refillChars: set[char]
 
 proc close*(L: var BaseLexer) =
@@ -65,11 +65,11 @@ proc fillBuffer(L: var BaseLexer) =
   charsRead = L.input.readDataStr(L.buf, toCopy ..< toCopy + L.sentinel + 1)
   s = toCopy + charsRead
   if charsRead < L.sentinel + 1:
-    L.buf[s] = EndOfFile      # set end marker
+    L.buf[s] = EndOfFile # set end marker
     L.sentinel = s
   else:
     # compute sentinel:
-    dec(s)                    # BUGFIX (valgrind)
+    dec(s) # BUGFIX (valgrind)
     while true:
       assert(s < L.buf.len)
       while s >= 0 and L.buf[s] notin L.refillChars: dec(s)
@@ -92,7 +92,7 @@ proc fillBuffer(L: var BaseLexer) =
 proc fillBaseLexer(L: var BaseLexer, pos: int): int =
   assert(pos <= L.sentinel)
   if pos < L.sentinel:
-    result = pos + 1          # nothing to do
+    result = pos + 1 # nothing to do
   else:
     fillBuffer(L)
     L.offsetBase += pos
@@ -100,7 +100,7 @@ proc fillBaseLexer(L: var BaseLexer, pos: int): int =
     result = 0
 
 proc handleCR*(L: var BaseLexer, pos: int): int =
-  ## Call this if you scanned over '\c' in the buffer; it returns the the
+  ## Call this if you scanned over '\c' in the buffer; it returns the
   ## position to continue the scanning from. `pos` must be the position
   ## of the '\c'.
   assert(L.buf[pos] == '\c')
@@ -111,7 +111,7 @@ proc handleCR*(L: var BaseLexer, pos: int): int =
   L.lineStart = result
 
 proc handleLF*(L: var BaseLexer, pos: int): int =
-  ## Call this if you scanned over '\L' in the buffer; it returns the the
+  ## Call this if you scanned over '\L' in the buffer; it returns the
   ## position to continue the scanning from. `pos` must be the position
   ## of the '\L'.
   assert(L.buf[pos] == '\L')
@@ -120,7 +120,8 @@ proc handleLF*(L: var BaseLexer, pos: int): int =
   L.lineStart = result
 
 proc handleRefillChar*(L: var BaseLexer, pos: int): int =
-  ## To be documented.
+  ## Call this if a terminator character other than a new line is scanned
+  ## at `pos`; it returns the position to continue the scanning from.
   assert(L.buf[pos] in L.refillChars)
   result = fillBaseLexer(L, pos) #L.lastNL := result-1; // BUGFIX: was: result;
 
@@ -141,7 +142,7 @@ proc open*(L: var BaseLexer, input: Stream, bufLen: int = 8192;
   L.buf = newString(bufLen)
   L.sentinel = bufLen - 1
   L.lineStart = 0
-  L.lineNumber = 1            # lines start at 1
+  L.lineNumber = 1 # lines start at 1
   fillBuffer(L)
   skipUtf8Bom(L)
 

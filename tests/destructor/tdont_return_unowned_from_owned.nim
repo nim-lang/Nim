@@ -1,21 +1,33 @@
 discard """
   cmd: "nim check --newruntime --hints:off $file"
-  nimout: '''tdont_return_unowned_from_owned.nim(24, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
-tdont_return_unowned_from_owned.nim(27, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
-tdont_return_unowned_from_owned.nim(30, 6) Error: type mismatch: got <Obj>
+  nimout: '''tdont_return_unowned_from_owned.nim(36, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
+tdont_return_unowned_from_owned.nim(39, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(Obj)' as the return type
+tdont_return_unowned_from_owned.nim(42, 6) Error: type mismatch: got <Obj>
 but expected one of:
 proc new[T](a: var ref T; finalizer: proc (x: ref T) {.nimcall.})
+  first type mismatch at position: 2
+  missing parameter: finalizer
 2 other mismatching symbols have been suppressed; compile with --showAllMismatches:on to see them
 
 expression: new(result)
-tdont_return_unowned_from_owned.nim(30, 6) Error: illformed AST:
-tdont_return_unowned_from_owned.nim(38, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
-tdont_return_unowned_from_owned.nim(39, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
-tdont_return_unowned_from_owned.nim(43, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type
+tdont_return_unowned_from_owned.nim(42, 6) Error: illformed AST:
+tdont_return_unowned_from_owned.nim(50, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
+tdont_return_unowned_from_owned.nim(51, 13) Error: assignment produces a dangling ref: the unowned ref lives longer than the owned ref
+tdont_return_unowned_from_owned.nim(55, 10) Error: cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type
 '''
   errormsg: "cannot return an owned pointer as an unowned pointer; use 'owned(RootRef)' as the return type"
-  line: 43
+  line: 55
 """
+
+
+
+
+
+
+
+
+
+## line 30
 # bug #11073
 type
   Obj = ref object

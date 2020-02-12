@@ -8,7 +8,7 @@
 #
 
 ## Declaration of the Document Object Model for the `JavaScript backend
-## <backends.html#the-javascript-target>`_.
+## <backends.html#backends-the-javascript-target>`_.
 
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
@@ -408,6 +408,7 @@ type
     maxWidth*: cstring
     minHeight*: cstring
     minWidth*: cstring
+    opacity*: cstring
     overflow*: cstring
     padding*: cstring
     paddingBottom*: cstring
@@ -922,6 +923,7 @@ type
     port*: cstring
     protocol*: cstring
     search*: cstring
+    origin*: cstring
 
   History* = ref HistoryObj
   HistoryObj {.importc.} = object of RootObj
@@ -1268,6 +1270,7 @@ proc inViewport*(el: Node): bool =
            rect.right <= clientWidth().float
 
 proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
+proc `scrollTop=`*(e: Node, value: int) {.importcpp: "#.scrollTop = #", nodecl.}
 proc scrollLeft*(e: Node): int {.importcpp: "#.scrollLeft", nodecl.}
 proc scrollHeight*(e: Node): int {.importcpp: "#.scrollHeight", nodecl.}
 proc scrollWidth*(e: Node): int {.importcpp: "#.scrollWidth", nodecl.}

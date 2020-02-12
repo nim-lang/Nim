@@ -81,3 +81,8 @@ when false:
 
 rmDir("tempXYZ")
 assert dirExists("tempXYZ") == false
+
+putEnv("dummy", "myval")
+doAssert(existsEnv("dummy") == true)
+delEnv("dummy")
+doAssert(existsEnv("dummy") == false)

@@ -36,7 +36,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 template rawGetKnownHCImpl() {.dirty.} =
   if t.dataLen == 0:
     return -1
-  var h: Hash = hc and maxHash(t)   # start with real hash value
+  var h: Hash = hc and maxHash(t) # start with real hash value
   while isFilled(t.data[h].hcode):
     # Compare hc THEN key with boolean short circuit. This makes the common case
     # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
@@ -45,15 +45,15 @@ template rawGetKnownHCImpl() {.dirty.} =
     if t.data[h].hcode == hc and t.data[h].key == key:
       return h
     h = nextTry(h, maxHash(t))
-  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
+  result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
   rawGetKnownHCImpl()
 
 template genHashImpl(key, hc: typed) =
   hc = hash(key)
-  if hc == 0:       # This almost never taken branch should be very predictable.
-    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
+  if hc == 0: # This almost never taken branch should be very predictable.
+    hc = 314159265 # Value doesn't matter; Any non-zero favorite is fine.
 
 template genHash(key: typed): Hash =
   var res: Hash

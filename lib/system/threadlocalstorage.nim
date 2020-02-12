@@ -108,10 +108,10 @@ elif defined(genode):
 
 else:
   when not (defined(macosx) or defined(haiku)):
-    {.passL: "-pthread".}
+    {.passl: "-pthread".}
 
   when not defined(haiku):
-    {.passC: "-pthread".}
+    {.passc: "-pthread".}
 
   const
     schedh = "#define _GNU_SOURCE\n#include <sched.h>"
@@ -132,6 +132,13 @@ else:
         abi: array[56 div sizeof(clong), clong]
       ThreadVarSlot {.importc: "pthread_key_t",
                     header: "<sys/types.h>".} = distinct cuint
+  elif defined(openbsd) and defined(amd64):
+    type
+      SysThread* {.importc: "pthread_t", header: "<pthread.h>".} = object
+      Pthread_attr {.importc: "pthread_attr_t",
+                       header: "<pthread.h>".} = object
+      ThreadVarSlot {.importc: "pthread_key_t",
+                     header: "<pthread.h>".} = cint
   else:
     type
       SysThread* {.importc: "pthread_t", header: "<sys/types.h>".} = object
@@ -144,12 +151,14 @@ else:
       tv_sec: Time
       tv_nsec: clong
 
-  proc pthread_attr_init(a1: var PthreadAttr) {.
+  proc pthread_attr_init(a1: var Pthread_attr): cint {.
     importc, header: pthreadh.}
-  proc pthread_attr_setstacksize(a1: var PthreadAttr, a2: int) {.
+  proc pthread_attr_setstacksize(a1: var Pthread_attr, a2: int): cint {.
+    importc, header: pthreadh.}
+  proc pthread_attr_destroy(a1: var Pthread_attr): cint {.
     importc, header: pthreadh.}
 
-  proc pthread_create(a1: var SysThread, a2: var PthreadAttr,
+  proc pthread_create(a1: var SysThread, a2: var Pthread_attr,
             a3: proc (x: pointer): pointer {.noconv.},
             a4: pointer): cint {.importc: "pthread_create",
             header: pthreadh.}
@@ -185,7 +194,7 @@ else:
   proc cpusetIncl(cpu: cint; s: var CpuSet) {.
     importc: "CPU_SET", header: schedh.}
 
-  proc setAffinity(thread: SysThread; setsize: csize; s: var CpuSet) {.
+  proc setAffinity(thread: SysThread; setsize: csize_t; s: var CpuSet) {.
     importc: "pthread_setaffinity_np", header: pthreadh.}
 
 
@@ -225,7 +234,7 @@ when emulatedThreadVars:
   proc GetThreadLocalVars(): pointer {.compilerRtl, inl.} =
     result = addr(cast[PGcThread](threadVarGetValue(globalsSlot)).tls)
 
-  proc initThreadVarsEmulation() {.compilerProc, inline.} =
+  proc initThreadVarsEmulation() {.compilerproc, inline.} =
     when not defined(useNimRtl):
       globalsSlot = threadVarAlloc()
       when declared(mainThread):

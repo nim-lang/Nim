@@ -35,7 +35,7 @@ proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", 
 
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   case classify(f)
-  of fcNaN:
+  of fcNan:
     result = "NAN"
   of fcNegZero:
     result = "-0.0" & literalPostfix
@@ -46,20 +46,15 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
   of fcNegInf:
     result = "-INF"
   else:
-    when defined(nimNoArrayToCstringConversion):
-      result = newString(81)
-      let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
-      setLen(result, n)
-    else:
-      var buf: array[0..80, char]
-      discard c_snprintf(buf.cstring, buf.len.uint, "%#.16e%s", f, literalPostfix.cstring)
-      result = $buf.cstring
+    result = newString(81)
+    let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
+    setLen(result, n)
 
 proc encodeStr*(s: string, result: var string) =
-  for i in countup(0, len(s) - 1):
+  for i in 0..<s.len:
     case s[i]
-    of 'a'..'z', 'A'..'Z', '0'..'9', '_': add(result, s[i])
-    else: add(result, '\\' & toHex(ord(s[i]), 2))
+    of 'a'..'z', 'A'..'Z', '0'..'9', '_': result.add(s[i])
+    else: result.add('\\' & toHex(ord(s[i]), 2))
 
 proc hexChar(c: char, xi: var int) =
   case c
@@ -78,9 +73,9 @@ proc decodeStr*(s: cstring, pos: var int): string =
       var xi = 0
       hexChar(s[i-2], xi)
       hexChar(s[i-1], xi)
-      add(result, chr(xi))
+      result.add(chr(xi))
     of 'a'..'z', 'A'..'Z', '0'..'9', '_':
-      add(result, s[i])
+      result.add(s[i])
       inc(i)
     else: break
   pos = i
@@ -101,7 +96,7 @@ template encodeIntImpl(self) =
   var v = x
   var rem = v mod 190
   if rem < 0:
-    add(result, '-')
+    result.add('-')
     v = - (v div 190)
     rem = - rem
   else:
@@ -110,7 +105,7 @@ template encodeIntImpl(self) =
   if idx < 62: d = chars[idx]
   else: d = chr(idx - 62 + 128)
   if v != 0: self(v, result)
-  add(result, d)
+  result.add(d)
 
 proc encodeVBiggestIntAux(x: BiggestInt, result: var string) =
   ## encode a biggest int as a variable length base 190 int.

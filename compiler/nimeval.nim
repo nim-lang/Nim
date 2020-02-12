@@ -46,7 +46,7 @@ proc selectUniqueSymbol*(i: Interpreter; name: string;
     s = nextIdentIter(it, i.mainModule.tab)
 
 proc selectRoutine*(i: Interpreter; name: string): PSym =
-  ## Selects a declared rountine (proc/func/etc) from the main module.
+  ## Selects a declared routine (proc/func/etc) from the main module.
   ## The routine needs to have the export marker ``*``. The only matching
   ## routine is returned and ``nil`` if it is overloaded.
   result = selectUniqueSymbol(i, name, {skTemplate, skMacro, skFunc,

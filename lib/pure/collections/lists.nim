@@ -69,51 +69,60 @@
 ## See also
 ## ========
 ##
-## * `deques module <#deques.html>`_ for double-ended queues
-## * `sharedlist module <#sharedlist.html>`_ for shared singly-linked lists
+## * `deques module <deques.html>`_ for double-ended queues
+## * `sharedlist module <sharedlist.html>`_ for shared singly-linked lists
 
 
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
+when not defined(nimHasCursor):
+  {.pragma: cursor.}
+
 type
-  DoublyLinkedNodeObj*[T] = object ## A node a doubly linked list consists of.
+  DoublyLinkedNodeObj*[T] = object ## \
+    ## A node a doubly linked list consists of.
     ##
     ## It consists of a `value` field, and pointers to `next` and `prev`.
     next*: <//>(ref DoublyLinkedNodeObj[T])
-    prev*: ref DoublyLinkedNodeObj[T]
+    prev* {.cursor.}: ref DoublyLinkedNodeObj[T]
     value*: T
   DoublyLinkedNode*[T] = ref DoublyLinkedNodeObj[T]
 
-  SinglyLinkedNodeObj*[T] = object ## A node a singly linked list consists of.
+  SinglyLinkedNodeObj*[T] = object ## \
+    ## A node a singly linked list consists of.
     ##
     ## It consists of a `value` field, and a pointer to `next`.
     next*: <//>(ref SinglyLinkedNodeObj[T])
     value*: T
   SinglyLinkedNode*[T] = ref SinglyLinkedNodeObj[T]
 
-  SinglyLinkedList*[T] = object ## A singly linked list.
+  SinglyLinkedList*[T] = object ## \
+    ## A singly linked list.
     ##
     ## Use `initSinglyLinkedList proc <#initSinglyLinkedList>`_ to create
     ## a new empty list.
     head*: <//>(SinglyLinkedNode[T])
-    tail*: SinglyLinkedNode[T]
+    tail* {.cursor.}: SinglyLinkedNode[T]
 
-  DoublyLinkedList*[T] = object ## A doubly linked list.
+  DoublyLinkedList*[T] = object ## \
+    ## A doubly linked list.
     ##
     ## Use `initDoublyLinkedList proc <#initDoublyLinkedList>`_ to create
     ## a new empty list.
     head*: <//>(DoublyLinkedNode[T])
-    tail*: DoublyLinkedNode[T]
+    tail* {.cursor.}: DoublyLinkedNode[T]
 
-  SinglyLinkedRing*[T] = object ## A singly linked ring.
+  SinglyLinkedRing*[T] = object ## \
+    ## A singly linked ring.
     ##
     ## Use `initSinglyLinkedRing proc <#initSinglyLinkedRing>`_ to create
     ## a new empty ring.
     head*: <//>(SinglyLinkedNode[T])
-    tail*: SinglyLinkedNode[T]
+    tail* {.cursor.}: SinglyLinkedNode[T]
 
-  DoublyLinkedRing*[T] = object ## A doubly linked ring.
+  DoublyLinkedRing*[T] = object ## \
+    ## A doubly linked ring.
     ##
     ## Use `initDoublyLinkedRing proc <#initDoublyLinkedRing>`_ to create
     ## a new empty ring.

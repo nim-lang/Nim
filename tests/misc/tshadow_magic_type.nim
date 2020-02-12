@@ -21,9 +21,7 @@ proc seq*() =
   discard
 
 proc lrange*(key: string): TRedisList =
-  var foo: TListItem
-  foo.kind = RedisString
-  foo.str = key
+  var foo = TListItem(kind: RedisString, str: key)
   result = @[foo]
 
 var p = lrange("mylist")

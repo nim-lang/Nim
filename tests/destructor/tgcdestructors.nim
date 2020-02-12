@@ -1,15 +1,18 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''hi
 ho
 ha
 @["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
 @[1, 2, 3]
 @["red", "yellow", "orange", "rtrt1", "pink"]
-30 30'''
+a: @[4, 2, 3]
+0
+30
+true
+(allocCount: 41, deallocCount: 41)'''
 """
 
-import allocators
 include system / ansi_c
 
 proc main =
@@ -169,6 +172,32 @@ proc testWarm =
 
 testWarm()
 
-#echo s
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)
+proc mutConstSeq() =
+  # bug #11524
+  var a = @[1,2,3]
+  a[0] = 4
+  echo "a: ", a
+
+mutConstSeq()
+
+proc mainSeqOfCap =
+  # bug #11098
+  var s = newSeqOfCap[int](10)
+  echo s.len
+
+  var s2 = newSeqUninitialized[int](30)
+  echo s2.len
+
+mainSeqOfCap()
+
+# bug #11614
+
+let ga = "foo"
+
+proc takeAinArray =
+  let b = [ga]
+
+takeAinArray()
+echo ga == "foo"
+
+echo getAllocStats()
