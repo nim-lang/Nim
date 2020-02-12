@@ -109,7 +109,7 @@ type
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
-    stream: bool ## By default, the body of the response is readed immediately
+    stream: bool ## By default (stream = false), the body of the request is readed immediately
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608, stream = false): AsyncHttpServer =
