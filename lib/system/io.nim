@@ -427,7 +427,7 @@ proc writeQuoted[T](f: File, arg: T) =
 
 proc write*[T: tuple|object](f: File; arg: T) =
   f.write "("
-  const isNamed = isNamedTuple(T)
+  const isNamed = T is object or isNamedTuple(T)
   var count = 0
   for name, value in fieldPairs(arg):
     if count != 0:

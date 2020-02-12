@@ -43,7 +43,7 @@ proc writeln(a: auto, x: varargs[string, `$`]) =
   write a, x
   stdout.write "\n"
 
-proc write() = write(stdout)
+proc write() = discard
 proc writeln() =
   stdout.write "\n"
 
