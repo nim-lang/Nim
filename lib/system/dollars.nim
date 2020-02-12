@@ -75,7 +75,7 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
-  let isNamed = isNamedTuple(T)
+  const isNamed = x is object or isNamedTuple(T)
   var count = 0
   for name, value in fieldPairs(x):
     if count != 0:
