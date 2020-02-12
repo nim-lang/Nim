@@ -1438,7 +1438,7 @@ proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
   ## case, compilation aborts with an error message. This is useful
   ## for writing macros that check the AST that is passed to them.
   if not eqIdent(n, name):
-    error("macro expects an identifier `" & name & "` here", n)
+    error("Expected identifier to be `" & name & "` here", n)
 
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
