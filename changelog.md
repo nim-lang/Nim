@@ -50,9 +50,6 @@
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
-- Added `typetraits.lenTuple` to get number of elements of a tuple/type tuple,
-  and `typetraits.get` to get the ith element of a type tuple.
-- Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
 - Added `os.normalizePathEnd` for additional path sanitization.
 - Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
 - Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
