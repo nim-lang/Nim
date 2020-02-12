@@ -505,16 +505,20 @@ proc writeInstallScripts(c: var ConfigData) =
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
     inclFilePermissions(deinstallShFile, {fpUserExec, fpGroupExec, fpOthersExec})
 
+template gatherFiles(fun, libpath, outDir) =
+  block:
+    template copySrc(src) =
+      let dst = outDir / extractFilename(src)
+      when false: echo (dst, dst)
+      fun(src, dst)
+
+    for f in walkFiles(libpath / "lib/*.h"): copySrc(f)
+    copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
+
 proc srcdist(c: var ConfigData) =
   let cCodeDir = getOutputDir(c) / "c_code"
-  if not existsDir(cCodeDir):
-    createDir(cCodeDir)
-  template copyFileTo(x) =
-    when false: echo(cCodeDir / extractFilename(x))
-    copyFile(dest = cCodeDir / extractFilename(x), source=x)
-  for x in walkFiles(c.libpath / "lib/*.h"):
-    copyFileTo x
-  copyFileTo "lib/wrappers/linenoise/linenoise.h"
+  if not existsDir(cCodeDir): createDir(cCodeDir)
+  gatherFiles(copyFile, c.libpath, cCodeDir)
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
@@ -607,8 +611,9 @@ when haveZipLib:
       addFile(z, proj / makeFile, "build" / makeFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
-      for f in walkFiles(c.libpath / "lib/*.h"):
-        addFile(z, proj / "c_code" / extractFilename(f), f)
+
+      template addFileAux(src, dst) = addFile(z, dst, src)
+      gatherFiles(addFileAux, c.libpath, proj / "c_code")
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:
           var dir = buildDir(osA, cpuA)
@@ -651,8 +656,8 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
     processFile(proj / makeFile, "build" / makeFile)
     processFile(proj / installShFile, installShFile)
     processFile(proj / deinstallShFile, deinstallShFile)
-    for f in walkFiles(c.libpath / "lib/*.h"):
-      processFile(proj / "c_code" / extractFilename(f), f)
+    template processFileAux(src, dst) = processFile(dst, src)
+    gatherFiles(processFileAux, c.libpath, proj / "c_code")
     for osA in 1..c.oses.len:
       for cpuA in 1..c.cpus.len:
         var dir = buildDir(osA, cpuA)
@@ -726,8 +731,7 @@ proc debDist(c: var ConfigData) =
   copyNimDist(makeFile, makeFile)
   copyNimDist(installShFile, installShFile)
   createDir(workingDir / upstreamSource / "build")
-  for f in walkFiles(c.libpath / "lib/*.h"):
-    copyNimDist(f, "build" / extractFilename(f))
+  gatherFiles(copyNimDist, c.libpath, "build")
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
       var dir = buildDir(osA, cpuA)
