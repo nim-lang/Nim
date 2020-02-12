@@ -1,5 +1,5 @@
 discard """
-errormsg: "macro expects an identifier `foo` here"
+errormsg: "Expected identifier to be `foo` here"
 line: 18
 """
 
