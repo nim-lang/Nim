@@ -94,6 +94,6 @@ import strutils
 proc procStat() =
   for line in @["a b", "c d", "e f"]:
     let cols = line.splitWhitespace(maxSplit=1)
-    echo cols[0]
+    let x = cols[0]
     let (nm, rest) = (cols[0], cols[1])
 procStat()
