@@ -2095,86 +2095,92 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             yield (k, y)
 
 type
-  WalkStepKind* = enum  ## status of the step of walking through directory.
-                        ## Due to differences between operating systems,
-                        ## opening directory status may not have exactly
-                        ## the same meaning.
-    wsDirFailure,  ## opening directory error: unrecognized OS-specific
-    wsDirNotFound, ## opening directory error: no such path
-    wsDirNoAccess, ## opening directory error: access denied a.k.a.
-                   ## permission denied error for the specified path
-                   ## (may have happened at its parent directory on posix)
-    wsNotDir,      ## opening directory error: not a directory
-                   ## (a normal file with the same path exists)
-    wsDirOpened,   ## opening directory OK, the directory can be read
-    wsEntryOk,     ## entry OK: path component is right
-    wsEntryBad     ## entry error: a broken symlink (on posix), where it's
-                   ## unclear if it points to a file or directory
-    wsInterrupted  ## reading directory entries was interrupted
-  WalkStep* = object  ## step of walking through directory
-    path*: string                ## the path that this step applies to
-    code*: OSErrorCode           ## OS error code for the step
-    case kind*: WalkStepKind     ## discriminator
-    of wsEntryOk:
-      entryType*: PathComponent  ## path component
-    of wsDirFailure, wsDirNoAccess, wsDirNotFound, wsNotDir,
-       wsDirOpened, wsEntryBad, wsInterrupted:
-      discard
+  WalkStatus* = enum  ## status of the step of walking through directory;
+                      ## due to differences between operating systems,
+                      ## opening directory status may not have exactly
+                      ## the same meaning.
+    wsOpenUnknown,  ## opening directory error: unrecognized OS-specific one
+    wsOpenOk,       ## opening directory OK, the directory can be read
+    wsOpenNotFound, ## opening directory error: no such path
+    wsOpenNoAccess, ## opening directory error: access denied a.k.a.
+                    ## permission denied error for the specified path
+                    ## (may have happened at its parent directory on posix)
+    wsOpenNotDir,   ## opening directory error: not a directory
+                    ## (a normal file with the same path exists)
+    wsEntryOk,      ## entry OK: path component is correct
+    wsEntryBad      ## entry error: a broken symlink (on posix), where it's
+                    ## unclear if it points to a file or directory
+    wsInterrupted   ## reading directory entries was interrupted
 
-iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
+iterator tryWalkDir*(dir: string, relative=false):
+  tuple[status: WalkStatus, kind: PathComponent, path: string,
+        code: OSErrorCode] {.
   tags: [ReadDirEffect], raises: [], noNimScript, since: (1, 1).} =
   ## Walks over the directory `dir` and yields *steps* for each
   ## directory or file in `dir`, non-recursively. It's a version of
   ## `walkDir iterator <#walkDir.i,string>`_  with more thorough error
   ## checking. Never raises an exception.
   ##
-  ## Each step is object variant ``WalkStep``, which  contains corresponding
-  ## path ``path``, OS error code ``code`` and discriminator ``kind``:
+  ## Each step is a tuple, which  contains ``status: WalkStatus``,
+  ## path ``path``, entry type ``kind: PathCompenent``, OS error code ``code``.
   ## 
-  ## - it yields open directory status once after opening
+  ## - it yields open directory status **once** after opening
   ##   (when `relative=true` the path is '.'),
-  ##   ``kind`` is one of ``wsDirOpened``, ``wsDirNoAccess``,
-  ##   ``wsDirNotFound``, ``wsNotDir``, ``wsDirFailure``
-  ## - then it yields zero or more entries, each can be of the following kind:
-  ##    - ``kind=wsEntryOk``: signifies normal entries with
-  ##      path component ``entryType``
-  ##    - ``kind=wsEntryBad``: broken symlink (without path component)
-  ##    - ``kind=wsInterrupted``: signifies that a rare OS-specific I/O error
+  ##   ``status`` is one of ``wsOpenOk``, ``wsOpenNoAccess``,
+  ##   ``wsOpenNotFound``, ``wsOpenNotDir``, ``wsOpenUnknown``
+  ## - then it yields zero or more entries, each can be of the following type:
+  ##    - ``status=wsEntryOk``: signifies normal entries with
+  ##      path component ``kind``
+  ##    - ``status=wsEntryBad``: broken symlink (without path component)
+  ##    - ``status=wsInterrupted``: signifies that a rare OS-specific I/O error
   ##      happenned and the walking was terminated.
   ##
-  ## An example of usage with just minimal error logging:
+  ## Path component ``kind`` is only meaningful when ``status=wsEntryOk``.
+  ##
+  ## An example of usage with just a minimal error logging:
   ## .. code-block:: Nim
-  ##   for step in tryWalkDir("dirA"):
-  ##     case step.kind
-  ##     of wsDirOpened: discard
-  ##     of wsEntryOk: echo step.path & " is entry of kind " & $step.entryType
-  ##     else: echo "got error " & osErrorMsg(step.code) & " on " & step.path
+  ##   for status, kind, path, code in tryWalkDir("dirA"):
+  ##     case status
+  ##     of wsOpenOk: discard
+  ##     of wsEntryOk: echo path & " is entry of kind " & $kind
+  ##     else: echo "got error " & osErrorMsg(code) & " on " & path
+  ##
+  ## To just check whether the directory can be opened or not :
+  ## .. code-block:: Nim
+  ##   proc tryOpenDir(dir: string): WalkStatus =
+  ##     for status, _, _, _ in tryWalkDir(dir):
+  ##       case status
+  ##       of wsOpenOk, wsOpenUnknown, wsOpenNoAccess, wsOpenNotFound, wsOpenNotDir:
+  ##         return status
+  ##       else: continue  # can not happen
+  ##   echo "can be opened: ", tryOpenDir("dirA") == wsOpenOk
   ##
   ## Iterator ``walkDir`` itself may be implemented using tryWalkDir:
   ## .. code-block:: Nim
   ##   iterator myWalkDir(path: string, relative: bool):
   ##                     tuple[kind: PathComponent, path: string] =
-  ##     for step in tryWalkDir(path, relative):
-  ##       case step.kind
-  ##       of wsDirOpened, wsDirNotFound,
-  ##          wsDirNoAccess, wsDirNoAccess, wsNotDir: discard
-  ##       of wsEntryOk: yield (step.entryType, step.path)
-  ##       of wsEntryBad: yield (pcLinkToFile, step.path)
-  ##       of wsInterrupted: raiseOSError(step.code)
+  ##     for (status, kind, path, code) in tryWalkDir(path, relative):
+  ##       case status
+  ##       of wsOpenOk, wsOpenNotFound,
+  ##          wsOpenUnknown, wsOpenNoAccess, wsOpenNotDir: discard
+  ##       of wsEntryOk: yield (kind, path)
+  ##       of wsEntryBad: yield (pcLinkToFile, path)
+  ##       of wsInterrupted: raiseOSError(code)
 
-  var step: WalkStep
+  var step: tuple[status: WalkStatus, kind: PathComponent,
+                  path: string, code: OSErrorCode]
   var skip = false
   let outDir = if relative: "." else: dir
-  proc openStatus(s: WalkStepKind, path: string): WalkStep =
-    let code = if s == wsDirOpened: OSErrorCode(0) else: osLastError()
-    result = WalkStep(kind: s, code: code, path: path)
-  proc entryOk(pc: PathComponent, path: string): WalkStep =
-    WalkStep(kind: wsEntryOk, entryType: pc, code: OSErrorCode(0), path: path)
-  proc entryError(k: WalkStepKind, path: string): WalkStep =
-    WalkStep(kind: k, code: osLastError(), path: path)
+  template openStatus(s, p): auto =
+    let code = if s == wsOpenOk: OSErrorCode(0) else: osLastError()
+    (status: s, kind: pcDir, path: p, code: code)
+  template entryOk(pc, p): auto =
+    (status: wsEntryOk, kind: pc, path: p, code: OSErrorCode(0))
+  template entryError(s, p): auto =
+    (status: s, kind: pcLinkToFile, path: p, code: osLastError())
 
   when defined(windows):
-    template resolveFile(fdat: WIN32_FIND_DATA, relative: bool): WalkStep =
+    template resolveFile(fdat: WIN32_FIND_DATA, relative: bool): auto =
       var k: PathComponent
       if (fdat.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY) != 0'i32:
         k = pcDir
@@ -2191,20 +2197,20 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
         findClose(h)
     let status =
       if h != -1:
-        wsDirOpened
+        wsOpenOk
       else:
         case getLastError()
-        of ERROR_PATH_NOT_FOUND: wsDirNotFound
-        of ERROR_DIRECTORY: wsNotDir
-        of ERROR_ACCESS_DENIED: wsDirNoAccess
-        else: wsDirFailure
+        of ERROR_PATH_NOT_FOUND: wsOpenNotFound
+        of ERROR_DIRECTORY: wsOpenNotDir
+        of ERROR_ACCESS_DENIED: wsOpenNoAccess
+        else: wsOpenUnknown
     step = openStatus(status, outDir)
 
     var firstStep = true
     while true:
       if not skip:
         yield step
-      if h == -1 or step.kind == wsInterrupted:
+      if h == -1 or step.status == wsInterrupted:
         break
       if firstStep:  # use file obtained by findFirstFile
         firstStep = false
@@ -2224,7 +2230,7 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
             skip = false
             step = entryError(wsInterrupted, outDir)
   else:
-    proc resolveFile(x: ptr Dirent, path: string, y: string): WalkStep =
+    proc resolveFile(x: ptr Dirent, path: string, y: string): auto =
       var k = pcFile
       when defined(linux) or defined(macosx) or
            defined(bsd) or defined(genode) or defined(nintendoswitch):
@@ -2266,18 +2272,18 @@ iterator tryWalkDir*(dir: string, relative=false): WalkStep {.
         discard closedir(d)
     let status =
       if d != nil:
-        wsDirOpened
+        wsOpenOk
       else:
-        if errno == ENOENT: wsDirNotFound
-        elif errno == ENOTDIR: wsNotDir
-        elif errno == EACCES: wsDirNoAccess
-        else: wsDirFailure
+        if errno == ENOENT: wsOpenNotFound
+        elif errno == ENOTDIR: wsOpenNotDir
+        elif errno == EACCES: wsOpenNoAccess
+        else: wsOpenUnknown
     step = openStatus(status, outDir)
 
     while true:
       if not skip:
         yield step
-      if d == nil or step.kind == wsInterrupted:
+      if d == nil or step.status == wsInterrupted:
         break
       let errnoSave = errno
       errno = 0
