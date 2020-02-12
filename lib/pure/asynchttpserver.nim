@@ -75,7 +75,7 @@
 ##            bodyLength += data[1].len
 ##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
 ##
-##    let server = newAsyncHttpServer(maxBody = 10485760) # 10 MB
+##    let server = newAsyncHttpServer(maxBody = 10485760, stream = true) # 10 MB
 ##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
@@ -91,46 +91,34 @@ export httpcore except parseHeader
 
 const
   maxLine = 8*1024
-
-when (NimMajor, NimMinor) >= (1, 1):
-  const
-    chunkSize = 8*1024 ## This seems perfectly reasonable for default chunkSize.
-
-  type
-    Request* = object
-      client*: AsyncSocket # TODO: Separate this into a Response object?
-      reqMethod*: HttpMethod
-      headers*: HttpHeaders
-      protocol*: tuple[orig: string, major, minor: int]
-      url*: Uri
-      hostname*: string    ## The hostname of the client that made the request.
-      body*: string # For future removal
-      bodyStream*: FutureStream[string]
-else:
-  type
-    Request* = object
-      client*: AsyncSocket # TODO: Separate this into a Response object?
-      reqMethod*: HttpMethod
-      headers*: HttpHeaders
-      protocol*: tuple[orig: string, major, minor: int]
-      url*: Uri
-      hostname*: string    ## The hostname of the client that made the request.
-      body*: string
+  chunkSize = 8*1024 ## This seems perfectly reasonable for default chunkSize.
 
 type
+  Request* = object
+    client*: AsyncSocket # TODO: Separate this into a Response object?
+    reqMethod*: HttpMethod
+    headers*: HttpHeaders
+    protocol*: tuple[orig: string, major, minor: int]
+    url*: Uri
+    hostname*: string    ## The hostname of the client that made the request.
+    body*: string
+    bodyStream*: FutureStream[string]
+
   AsyncHttpServer* = ref object
     socket: AsyncSocket
     reuseAddr: bool
     reusePort: bool
     maxBody: int ## The maximum content-length that will be read for the body.
+    stream: bool ## By default, the body of the response is readed immediately
 
 proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
-                         maxBody = 8388608): AsyncHttpServer =
+                         maxBody = 8388608, stream = false): AsyncHttpServer =
   ## Creates a new ``AsyncHttpServer`` instance.
   new result
   result.reuseAddr = reuseAddr
   result.reusePort = reusePort
   result.maxBody = maxBody
+  result.stream = stream
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -213,13 +201,10 @@ proc processRequest(
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
-  when (NimMajor, NimMinor) >= (1, 1):
+  if server.stream:
     request.bodyStream = newFutureStream[string]()
-  # To uncomment in the future after compatibility issues
-  # with third parties are solved
-  # else:
-  #   request.body = ""
-  request.body = "" # Temporary fix for future removal
+  else:
+    request.body = ""
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
@@ -315,7 +300,7 @@ proc processRequest(
         await request.respondError(Http413)
         return false
 
-      when (NimMajor, NimMinor) >= (1, 1):
+      if server.stream:
         var remainder = contentLength
         while remainder > 0:
           let readSize = min(remainder, chunkSize)
