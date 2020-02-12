@@ -15,6 +15,8 @@ const
   stringCaseThreshold = 8
     # above X strings a hash-switch for strings is generated
 
+proc genVarStmt(p: BProc, n: PNode)
+
 proc getTraverseProc(p: BProc, v: PSym): Rope =
   if p.config.selectedGC in {gcMarkAndSweep, gcHooks, gcV2, gcRefc} and
       optOwnedRefs notin p.config.globalOptions and
@@ -66,7 +68,7 @@ proc genVarTuple(p: BProc, n: PNode) =
   # if we have a something that's been captured, use the lowering instead:
   for i in 0..<n.len-2:
     if n[i].kind != nkSym:
-      genStmts(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
+      genVarStmt(p, lowerTupleUnpacking(p.module.g.graph, n, p.prc))
       return
 
   # check only the first son

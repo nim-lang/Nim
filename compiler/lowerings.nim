@@ -62,20 +62,18 @@ proc newFastAsgnStmt*(le, ri: PNode): PNode =
 proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   assert n.kind == nkVarTuple
   let value = n.lastSon
-  result = newNodeI(nkStmtList, n.info)
 
   var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
 
-  var v = newNodeI(nkVarSection, value.info)
+  result = newNodeI(nkVarSection, value.info)
   let tempAsNode = newSymNode(temp)
-  v.addVar(tempAsNode, value)
-  result.add(v)
+  result.addVar(tempAsNode, value)
 
   for i in 0..<n.len-2:
-    if n[i].kind == nkSym: v.addVar(n[i])
-    result.add newAsgnStmt(n[i], newTupleAccess(g, tempAsNode, i))
+    if n[i].kind == nkSym:
+      result.addVar(n[i], newTupleAccess(g, tempAsNode, i))
 
 proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
