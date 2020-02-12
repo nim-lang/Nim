@@ -1724,7 +1724,8 @@ proc genVarStmt(p: PProc, n: PNode) =
     var a = n[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
-        genVarStmt(p, lowerTupleUnpacking(p.module.graph, a, p.prc))
+        let unpacked = lowerTupleUnpacking(p.module.graph, a, p.prc)
+        genStmt(p, unpacked)
       else:
         assert(a.kind == nkIdentDefs)
         assert(a[0].kind == nkSym)
