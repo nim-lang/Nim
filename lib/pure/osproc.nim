@@ -72,8 +72,8 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
 
 const useShPath {.strdefine.} =
   when defined(windows): "cmd"
-  elif not defined(android): "/bin/sh"
-  else: "/system/bin/sh"
+  elif defined(android): "/system/bin/sh"
+  else: "/bin/sh"
 
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
