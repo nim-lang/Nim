@@ -175,7 +175,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbconf patchFile:
     let key = a.getString(0) & "_" & a.getString(1)
     var val = a.getString(2).addFileExt(NimExt)
-    if {'$', '~'} in val:
+    if val.shouldPathSubs:
       val = pathSubs(conf, val, vthisDir)
     elif not isAbsolute(val):
       val = vthisDir / val

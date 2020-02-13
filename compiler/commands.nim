@@ -309,7 +309,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
 
 proc processPath(conf: ConfigRef; path: string, info: TLineInfo,
                  notRelativeToProj = false): AbsoluteDir =
-  let p = if os.isAbsolute(path) or '$' in path:
+  let p = if os.isAbsolute(path) or path.shouldPathSubs:
             path
           elif notRelativeToProj:
             getCurrentDir() / path
@@ -325,7 +325,7 @@ proc processCfgPath(conf: ConfigRef; path: string, info: TLineInfo): AbsoluteDir
   let path = if path.len > 0 and path[0] == '"': strutils.unescape(path)
              else: path
   let basedir = toFullPath(conf, info).splitFile().dir
-  let p = if os.isAbsolute(path) or '$' in path:
+  let p = if os.isAbsolute(path) or path.shouldPathSubs:
             path
           else:
             basedir / path

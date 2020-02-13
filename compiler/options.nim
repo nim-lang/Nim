@@ -590,9 +590,13 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
                (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
 
+proc shouldPathSubs*(input: string): bool =
+  {'$', '@', '~'} in input
+
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
-  result = unixToNativePath(p % [
+  result = ""
+  result.addf2(p, subs = {'$', '@'}, [
     "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string,
     "home", home,
@@ -600,14 +604,15 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
     "projectname", conf.projectName,
     "projectpath", conf.projectPath.string,
     "projectdir", conf.projectPath.string,
-    "nimcache", getNimcacheDir(conf).string]).expandTilde
+    "nimcache", getNimcacheDir(conf).string])
+  result = unixToNativePath(result).expandTilde
 
 iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   let pl = p.toLowerAscii
   if "$nimblepath" in pl or "$nimbledir" in pl:
     for i in countdown(conf.nimblePaths.len-1, 0):
       let nimblePath = removeTrailingDirSep(conf.nimblePaths[i].string)
-      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath]
+      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath] # TODO
   else:
     yield p
 

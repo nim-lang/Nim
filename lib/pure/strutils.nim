@@ -2623,68 +2623,73 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
 proc invalidFormatString() {.noinline.} =
   raise newException(ValueError, "invalid format string")
 
-proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
-  noSideEffect, rtl, extern: "nsuAddf".} =
+proc addf2*(s: var string, formatstr: string, subs = {'$'}, a: varargs[string, `$`]) {.
+  noSideEffect, rtl, extern: "nsuAddf2".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = 0
   var num = 0
   while i < len(formatstr):
-    if formatstr[i] == '$' and i+1 < len(formatstr):
-      case formatstr[i+1]
-      of '#':
-        if num > a.high: invalidFormatString()
-        add s, a[num]
-        inc i, 2
-        inc num
-      of '$':
-        add s, '$'
+    if formatstr[i] in subs and i+1 < len(formatstr):
+      if formatstr[i+1] == formatstr[i]:
+        add s, formatstr[i]
         inc(i, 2)
-      of '1'..'9', '-':
-        var j = 0
-        inc(i) # skip $
-        var negative = formatstr[i] == '-'
-        if negative: inc i
-        while i < formatstr.len and formatstr[i] in Digits:
-          j = j * 10 + ord(formatstr[i]) - ord('0')
-          inc(i)
-        let idx = if not negative: j-1 else: a.len-j
-        if idx < 0 or idx > a.high: invalidFormatString()
-        add s, a[idx]
-      of '{':
-        var j = i+2
-        var k = 0
-        var negative = formatstr[j] == '-'
-        if negative: inc j
-        var isNumber = 0
-        while j < formatstr.len and formatstr[j] notin {'\0', '}'}:
-          if formatstr[j] in Digits:
-            k = k * 10 + ord(formatstr[j]) - ord('0')
-            if isNumber == 0: isNumber = 1
-          else:
-            isNumber = -1
-          inc(j)
-        if isNumber == 1:
-          let idx = if not negative: k-1 else: a.len-k
+      else:
+        case formatstr[i+1]
+        of '#':
+          if num > a.high: invalidFormatString()
+          add s, a[num]
+          inc i, 2
+          inc num
+        of '1'..'9', '-':
+          var j = 0
+          inc(i) # skip subs
+          var negative = formatstr[i] == '-'
+          if negative: inc i
+          while i < formatstr.len and formatstr[i] in Digits:
+            j = j * 10 + ord(formatstr[i]) - ord('0')
+            inc(i)
+          let idx = if not negative: j-1 else: a.len-j
           if idx < 0 or idx > a.high: invalidFormatString()
           add s, a[idx]
-        else:
-          var x = findNormalized(substr(formatstr, i+2, j-1), a)
+        of '{':
+          var j = i+2
+          var k = 0
+          var negative = formatstr[j] == '-'
+          if negative: inc j
+          var isNumber = 0
+          while j < formatstr.len and formatstr[j] notin {'\0', '}'}:
+            if formatstr[j] in Digits:
+              k = k * 10 + ord(formatstr[j]) - ord('0')
+              if isNumber == 0: isNumber = 1
+            else:
+              isNumber = -1
+            inc(j)
+          if isNumber == 1:
+            let idx = if not negative: k-1 else: a.len-k
+            if idx < 0 or idx > a.high: invalidFormatString()
+            add s, a[idx]
+          else:
+            var x = findNormalized(substr(formatstr, i+2, j-1), a)
+            if x >= 0 and x < high(a): add s, a[x+1]
+            else: invalidFormatString()
+          i = j+1
+        of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
+          var j = i+1
+          while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
+          var x = findNormalized(substr(formatstr, i+1, j-1), a)
           if x >= 0 and x < high(a): add s, a[x+1]
           else: invalidFormatString()
-        i = j+1
-      of 'a'..'z', 'A'..'Z', '\128'..'\255', '_':
-        var j = i+1
-        while j < formatstr.len and formatstr[j] in PatternChars: inc(j)
-        var x = findNormalized(substr(formatstr, i+1, j-1), a)
-        if x >= 0 and x < high(a): add s, a[x+1]
-        else: invalidFormatString()
-        i = j
-      else:
-        invalidFormatString()
+          i = j
+        else:
+          invalidFormatString()
     else:
       add s, formatstr[i]
       inc(i)
+
+proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
+  noSideEffect, rtl, extern: "nsuAddf".} =
+  addf2(s, formatstr, subs = {'$'}, a)
 
 proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
   rtl, extern: "nsuFormatOpenArray".} =
