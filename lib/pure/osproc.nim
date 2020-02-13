@@ -70,6 +70,10 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
                                          ## Now `ProcessOption` uses the correct spelling ("daemon"),
                                          ## and this is needed just for backward compatibility.
 
+const useShPath {.strdefine.} =
+  when defined(windows): "sh"
+  elif not defined(android): "/bin/sh"
+  else: "/system/bin/sh"
 
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
@@ -604,8 +608,9 @@ when defined(Windows) and not defined(useNimRtl):
     var cmdl: cstring
     var cmdRoot: string
     if poEvalCommand in options:
-      cmdl = command
-      assert args.len == 0
+      cmdRoot = useShPath & " -c " & command.quoteShellWindowsForSh
+      cmdl = cstring(cmdRoot)
+      assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
       cmdRoot = buildCommandLine(command, args)
       cmdl = cstring(cmdRoot)
@@ -849,9 +854,6 @@ elif not defined(useNimRtl):
     var data: StartProcessData
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
-      const useShPath {.strdefine.} =
-        when not defined(android): "/bin/sh"
-        else: "/system/bin/sh"
       data.sysCommand = useShPath
       sysArgsRaw = @[data.sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
@@ -1386,6 +1388,10 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##
   ## .. code-block:: Nim
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
+  runnableExamples:
+    let (outp, errC) = execCmdEx("echo ok1 && echo ok2")
+    doAssert errC == 0
+    doAssert outp == "ok1\nok2\n"
 
   var p = startProcess(command, options = options + {poEvalCommand})
   var outp = outputStream(p)
