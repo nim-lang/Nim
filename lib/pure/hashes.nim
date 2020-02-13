@@ -91,11 +91,17 @@ proc hashData*(data: pointer, size: int): Hash =
 
 proc hashBiggestIntVM(x: BiggestInt): Hash = discard # in vmops
 
+proc hash*(x: string): Hash
+
 proc hashBiggestInt*(x: BiggestInt): Hash {.inline.} =
   ## for internal use; user code should prefer `hash` overloads
   when nimvm: hashBiggestIntVM(x)
-  else: hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
-
+  else:
+    when defined(js):
+      # could use BigInt, see https://github.com/nim-lang/RFCs/issues/187
+      hash($x)
+    else:
+      hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
 
 proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
   ## Efficient hashing of numbers, ordinals (eg enum), char.
