@@ -965,37 +965,6 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
   if needQuote:
     result.add("\"")
 
-when defined(windows):
-  proc quoteShellWindowsForSh*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
-    ## Quote `s`, so it can be safely passed to Windows sh / bash. This handles quoting of `\`
-    ## differently from `quoteShellWindows`, to support: sh -c 'echo C:\foo\bar'
-    ## This is not needed if using standard `cmd` as done via `execCmdEx("echo ok1 && echo ok2")`
-    let needQuote = {' ', '\t'} in s or s.len == 0
-    result = ""
-    var backslashBuff = ""
-    if needQuote:
-      result.add("\"")
-
-    for c in s:
-      if c == '\\':
-        ## modification: see https://stackoverflow.com/questions/60204063/why-does-sh-exe-swallow-and-how-to-escape
-        backslashBuff.add(c)
-        backslashBuff.add(c)
-        backslashBuff.add(c)
-      elif c == '\"':
-        result.add(backslashBuff)
-        result.add(backslashBuff)
-        backslashBuff.setLen(0)
-        result.add("\\\"")
-      else:
-        if backslashBuff.len != 0:
-          result.add(backslashBuff)
-          backslashBuff.setLen(0)
-        result.add(c)
-
-    if needQuote:
-      result.add("\"")
-
 proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote ``s``, so it can be safely passed to POSIX shell.
   ## Based on Python's `pipes.quote`.
