@@ -2623,9 +2623,14 @@ proc findNormalized(x: string, inArray: openArray[string]): int =
 proc invalidFormatString() {.noinline.} =
   raise newException(ValueError, "invalid format string")
 
-proc addf2*(s: var string, formatstr: string, subs = {'$'}, a: varargs[string, `$`]) {.
+proc addfCustom*(s: var string, formatstr: string, subs = {'$'}, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf2".} =
   ## The same as ``add(s, formatstr % a)``, but more efficient.
+  runnableExamples:
+    var s = "start:"
+    s.addfCustom("$foo @bar $$ @@ $", subs = {'$', '@'}, ["foo", "FOO", "bar", "BAR"])
+    doAssert s == "start:FOO BAR $ @ $"
+
   const PatternChars = {'a'..'z', 'A'..'Z', '0'..'9', '\128'..'\255', '_'}
   var i = 0
   var num = 0
@@ -2689,7 +2694,8 @@ proc addf2*(s: var string, formatstr: string, subs = {'$'}, a: varargs[string, `
 
 proc addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.
   noSideEffect, rtl, extern: "nsuAddf".} =
-  addf2(s, formatstr, subs = {'$'}, a)
+  ## Wrapper around `addfCustom` with subs = {'$'}
+  addfCustom(s, formatstr, subs = {'$'}, a)
 
 proc `%` *(formatstr: string, a: openArray[string]): string {.noSideEffect,
   rtl, extern: "nsuFormatOpenArray".} =

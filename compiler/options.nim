@@ -590,13 +590,15 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &
                (if isDefined(conf, "release") or isDefined(conf, "danger"): "_r" else: "_d"))
 
+const subs = {'$', '@'}
+
 proc shouldPathSubs*(input: string): bool =
-  {'$', '@', '~'} in input
+  input.contains(subs + {'~'})
 
 proc pathSubs*(conf: ConfigRef; p, config: string): string =
   let home = removeTrailingDirSep(os.getHomeDir())
   result = ""
-  result.addf2(p, subs = {'$', '@'}, [
+  result.addfCustom(p, subs = subs, [
     "nim", getPrefixDir(conf).string,
     "lib", conf.libpath.string,
     "home", home,
@@ -609,10 +611,12 @@ proc pathSubs*(conf: ConfigRef; p, config: string): string =
 
 iterator nimbleSubs*(conf: ConfigRef; p: string): string =
   let pl = p.toLowerAscii
-  if "$nimblepath" in pl or "$nimbledir" in pl:
+  if "$nimblepath" in pl or "$nimbledir" in pl or "@nimblepath" in pl or "@nimbledir" in pl:
     for i in countdown(conf.nimblePaths.len-1, 0):
       let nimblePath = removeTrailingDirSep(conf.nimblePaths[i].string)
-      yield p % ["nimblepath", nimblePath, "nimbledir", nimblePath] # TODO
+      var ret = ""
+      ret.addfCustom(p, subs = subs, ["nimblepath", nimblePath, "nimbledir", nimblePath])
+      yield ret
   else:
     yield p
 
