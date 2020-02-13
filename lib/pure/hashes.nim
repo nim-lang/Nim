@@ -144,14 +144,8 @@ proc hash*(x: pointer): Hash {.inline.} =
       }
     """
   else:
-    #[
-    3 bug fixes:
-    * s/cast[Hash]()/hash()/ (#11764)
-    * s/uint/BiggestInt/
-    * s/x shr 3/x/ (no reason to skip the alignment)
     # note that we can't use unsigned because nimscript doesn't have `$`(uint)
-    ]#
-    result = hash(cast[ByteAddress](x)) # skip the alignment
+    result = hash(cast[ByteAddress](x))
 
 proc hash*[T: proc](x: T): Hash {.inline.} =
   ## Efficient hashing of proc vars. Closures are supported too.
