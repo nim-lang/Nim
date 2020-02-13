@@ -1,6 +1,6 @@
-==========================
-Nim's Garbage Collector
-==========================
+=======================
+Nim's Memory Management
+=======================
 
 :Author: Andreas Rumpf
 :Version: |nimversion|
@@ -148,11 +148,11 @@ would be the thread that calls ``dumpNumberOfInstances``.) This might
 change in later versions.
 
 
-Garbage collector options
-=========================
+Memory Management Strategies
+============================
 
-You can choose which garbage collector to use when compiling source code,
-you can pass ``--gc:`` on the compile command with the choosed garbage collector.
+You can choose the memory management to use when compiling source code,
+you can pass ``--gc:`` on the compile command with the choosed memory management.
 
 - ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
   with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_,
@@ -166,7 +166,7 @@ you can pass ``--gc:`` on the compile command with the choosed garbage collector
   `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
   `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
 - ``--gc:regions`` `Stack <https://en.wikipedia.org/wiki/Memory_management#Stack_allocation>`_ based garbage collector.
-- ``--gc:arc`` Plain `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with
+- ``--gc:arc`` Not a garbage collector. Plain `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with
   `move semantic optimizations <destructors.html#move-semantics>`_,
   `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
   can be optimized with `sink <destructors.html#sink-parameters>`_ and `lent <destructors.html#lent-type>`_ annotations,
@@ -175,23 +175,20 @@ you can pass ``--gc:`` on the compile command with the choosed garbage collector
   basically it is like a shared heap with subgraphs with a single owner,
   this is not the same as Swift and ObjectiveC lang ARC because those can not handle cycles,
   can use `GOTO based Exception handling <https://nim-lang.org/araq/gotobased_exceptions.html>`_,
-  may become default after or near Nim ``2.0``.
-- ``--gc:orc`` Similar to ``--gc:arc`` but with improved
+  may become default in future releases.
+- ``--gc:orc`` Not a garbage collector. Similar to ``--gc:arc`` but with improved
   `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_.
   `Cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
   will not be the default, because by definition it conflicts with
   `deterministic memory management <https://en.wikipedia.org/wiki/Deterministic_memory>`_.
-- ``--gc:none`` No garbage collector.
+- ``--gc:none`` No memory management strategy nor garbage collector.
   You should use `Manual memory management <https://en.wikipedia.org/wiki/Manual_memory_management>`_ with it.
 
-The same Nim code can be compiled to use any of the garbage collectors;
-the Nim syntax generally will not change from one garbage collector to another.
+The same Nim code can be compiled to use any of the  memory management strategies;
+the Nim syntax generally will not change from one memory management strategy to another.
 
-No garbage collector is used for `JavaScript and NodeJS
+No garbage collector nor memory management is used for `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.
-`NimScript <nims.html>`_ target uses Nim VM garbage collector.
+`NimScript <nims.html>`_ target uses Nim VM memory management strategy.
 
-Some memory management strategies that Nim uses may or may not fit the traditional "Garbage Collector" definition,
-but to keep things simple for new users Nim just names them "--gc:" and "Garbage Collector" for all of them.
-
-If you are new to Nim and just starting, the default garbage collector is balanced to fit most common use cases.
+If you are new to Nim and just starting, the default memory management strategy is balanced to fit most common use cases.
