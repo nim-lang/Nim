@@ -101,7 +101,7 @@ proc flagTests(r: var TResults, cat: Category, options: string) =
   testSpec r, makeTest(filename, genopts, cat)
 
   when defined(windows):
-    testExec r, makeTest(filename, " cmd /c cd " & nimcache &
+    testExec r, makeTest(filename, " cd " & nimcache &
                          " && compile_tgenscript.bat", cat)
 
   elif defined(posix):
