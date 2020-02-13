@@ -53,6 +53,7 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
+  ## Uses Jenkins hash: https://en.wikipedia.org/wiki/Jenkins_hash_function
   let h = cast[uint](h)
   let val = cast[uint](val)
   var res = h + val
@@ -72,6 +73,8 @@ proc `!$`*(h: Hash): Hash {.inline.} =
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
+  # should probably reuse `proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash`
+  # which uses better murmurhash algorithm.
   var h: Hash = 0
   when defined(js):
     var p: cstring
@@ -85,6 +88,44 @@ proc hashData*(data: pointer, size: int): Hash =
     inc(i)
     dec(s)
   result = !$h
+
+proc hashBiggestIntVM(x: BiggestInt): Hash = discard # in vmops
+
+proc hashBiggestInt*(x: BiggestInt): Hash {.inline.} =
+  ## for internal use; user code should prefer `hash` overloads
+  when nimvm: hashBiggestIntVM(x)
+  else: hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
+
+
+proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
+  ## Efficient hashing of numbers, ordinals (eg enum), char.
+  when T.sizeof >= 4:
+    # fix #11764: `ord(x)`, `toU32(x)` or similar are up to 4X faster to compute
+    # compared to jenkins `hashData` but result in very poor hashes, leading to
+    # collisions; this can lead to several order magnitude (eg 1e3) slowdowns
+    # e.g. when used in hash tables, so we prefer to use slower to compute good
+    # hashes here. Murmur3 would improve speed of hash computation.
+    when T is SomeFloat:
+      # 0.0 vs -0.0 should map to same hash to avoid weird behavior.
+      # the only non nan value that can cause clash is 0 according to
+      # https://stackoverflow.com/questions/31087915/are-there-denormalized-floats-that-evaluate-to-the-same-value-apart-from-0-0
+      # bugfix: the previous code was using `x = x + 1.0` (presumably for
+      # handling negative 0), however this leads to collisions for small x due
+      # to FP finite precision.
+      let x: BiggestInt =
+        if x == 0: 0.BiggestInt
+        else:
+          when sizeof(BiggestInt) == sizeof(T):
+            cast[BiggestInt](x)
+          else: # for nimvm
+            cast[int32](x).BiggestInt
+    else:
+      let x = x.BiggestInt
+    hashBiggestInt(x)
+  else:
+    # empirically better for small types, the collision risk is limited anyway
+    # due to cardinality of at most 2^16=65536
+    ord(x)
 
 when defined(js):
   var objectID = 0
@@ -103,7 +144,14 @@ proc hash*(x: pointer): Hash {.inline.} =
       }
     """
   else:
-    result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
+    #[
+    3 bug fixes:
+    * s/cast[Hash]()/hash()/ (#11764)
+    * s/uint/BiggestInt/
+    * s/x shr 3/x/ (no reason to skip the alignment)
+    # note that we can't use unsigned because nimscript doesn't have `$`(uint)
+    ]#
+    result = hash(cast[ByteAddress](x)) # skip the alignment
 
 proc hash*[T: proc](x: T): Hash {.inline.} =
   ## Efficient hashing of proc vars. Closures are supported too.
@@ -111,39 +159,6 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
     result = hash(rawProc(x)) !& hash(rawEnv(x))
   else:
     result = hash(pointer(x))
-
-const
-  prime = uint(11)
-
-proc hash*(x: int): Hash {.inline.} =
-  ## Efficient hashing of integers.
-  result = cast[Hash](cast[uint](x) * prime)
-
-proc hash*(x: int64): Hash {.inline.} =
-  ## Efficient hashing of `int64` integers.
-  result = cast[Hash](cast[uint](x) * prime)
-
-proc hash*(x: uint): Hash {.inline.} =
-  ## Efficient hashing of unsigned integers.
-  result = cast[Hash](x * prime)
-
-proc hash*(x: uint64): Hash {.inline.} =
-  ## Efficient hashing of `uint64` integers.
-  result = cast[Hash](cast[uint](x) * prime)
-
-proc hash*(x: char): Hash {.inline.} =
-  ## Efficient hashing of characters.
-  result = cast[Hash](cast[uint](ord(x)) * prime)
-
-proc hash*[T: Ordinal](x: T): Hash {.inline.} =
-  ## Efficient hashing of other ordinal types (e.g. enums).
-  result = cast[Hash](cast[uint](ord(x)) * prime)
-
-proc hash*(x: float): Hash {.inline.} =
-  ## Efficient hashing of floats.
-  var y = x + 1.0
-  result = cast[ptr Hash](addr(y))[]
-
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
