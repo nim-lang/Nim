@@ -117,9 +117,10 @@ type
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
 # duplicated between io and ansi_c
-const stderrName = when defined(osx): "__stderrp" else: "stderr"
-const stdoutName = when defined(osx): "__stdoutp" else: "stdout"
-const stdinName = when defined(osx): "__stdinp" else: "stdin"
+const stdioUsesMacros = (defined(osx) or defined(bsd)) and not defined(emscripten)
+const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
+const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
+const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
 
 var
   cstderr* {.importc: stderrName, header: "<stdio.h>".}: CFilePtr
@@ -140,6 +141,8 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
 
 proc c_malloc*(size: csize_t): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
+proc c_calloc*(nmemb, size: csize_t): pointer {.
+  importc: "calloc", header: "<stdlib.h>".}
 proc c_free*(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 proc c_realloc*(p: pointer, newsize: csize_t): pointer {.

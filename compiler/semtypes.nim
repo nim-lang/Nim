@@ -698,7 +698,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   father.add a
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType, hasCaseFields = false) =
+                      father: PNode, rectype: PType, hasCaseFields: bool) =
   if n == nil: return
   case n.kind
   of nkRecWhen:
@@ -727,12 +727,12 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         assign(newCheck, check)
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
-        semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype)
+        semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype, hasCaseFields)
         it[idx] = if newf.len == 1: newf[0] else: newf
     if c.inGenericContext > 0:
       father.add n
     elif branch != nil:
-      semRecordNodeAux(c, branch, check, pos, father, rectype)
+      semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
   of nkRecCase:
     semRecordCase(c, n, check, pos, father, rectype)
   of nkNilLit:
@@ -741,7 +741,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     # attempt to keep the nesting at a sane level:
     var a = if father.kind == nkRecList: father else: copyNode(n)
     for i in 0..<n.len:
-      semRecordNodeAux(c, n[i], check, pos, a, rectype)
+      semRecordNodeAux(c, n[i], check, pos, a, rectype, hasCaseFields)
     if a != father: father.add a
   of nkIdentDefs:
     checkMinSonsLen(n, 3, c.config)
@@ -851,7 +851,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
-             "to enable inheritance write '" & typeToString(realBase) & " of RootObj'")
+             "for " & typeToString(realBase) & " to be inheritable it must be " &
+             "'object of RootObj' instead of 'object'")
         base = nil
         realBase = nil
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
@@ -1382,7 +1383,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
-  if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
+  if t.kind in {tyCompositeTypeClass, tyAlias} and t.base.kind == tyGenericBody:
     t = t.base
 
   result = newOrPrevType(tyGenericInvocation, prev, c)
@@ -1453,7 +1454,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward} and prev != nil:
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody} and prev != nil:
     result = newTypeS(tyAlias, c)
     result.rawAddSon typeExpr
     result.sym = prev.sym

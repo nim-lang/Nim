@@ -67,7 +67,7 @@ when true:
 
   proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
     let base = postProcessBase(base)
-    assert(not isAbsolute(f.string))
+    assert(not isAbsolute(f.string), f.string)
     result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
     addNormalizePath(base.string, result.string, state)
@@ -83,7 +83,10 @@ when true:
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
-    RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
+    # this currently fails for `tests/compilerapi/tcompilerapi.nim`
+    # it's needed otherwise would returns an absolute path
+    # assert not baseFilename.isEmpty, $fullPath
+    result = RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
 
   proc toAbsolute*(file: string; base: AbsoluteDir): AbsoluteFile =
     if isAbsolute(file): result = AbsoluteFile(file)

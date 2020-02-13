@@ -51,11 +51,6 @@ when defined(macosx):
   proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
     header: "<mach/mach_time.h>".}
 
-  let machAbsoluteTimeFreq = block:
-    var freq: MachTimebaseInfoData
-    mach_timebase_info(freq)
-    freq
-
 when defined(js):
   proc getJsTicks: float =
     ## Returns ticks in the unit seconds
@@ -88,11 +83,6 @@ elif defined(windows):
   proc QueryPerformanceFrequency(res: var uint64) {.
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
-  let queryPerformanceCounterFreq = block:
-    var freq: uint64
-    QueryPerformanceFrequency(freq)
-    1_000_000_000'u64 div freq
-
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## Get the current `MonoTime` timestamp.
   ##
@@ -105,6 +95,8 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
     result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
   elif defined(macosx):
     let ticks = mach_absolute_time()
+    var machAbsoluteTimeFreq: MachTimebaseInfoData
+    mach_timebase_info(machAbsoluteTimeFreq)
     result = MonoTime(ticks: ticks * machAbsoluteTimeFreq.numer div
       machAbsoluteTimeFreq.denom)
   elif defined(posix):
@@ -115,6 +107,10 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   elif defined(windows):
     var ticks: uint64
     QueryPerformanceCounter(ticks)
+
+    var freq: uint64
+    QueryPerformanceFrequency(freq)
+    let queryPerformanceCounterFreq = 1_000_000_000'u64 div freq
     result = MonoTime(ticks: (ticks * queryPerformanceCounterFreq).int64)
 
 proc ticks*(t: MonoTime): int64 =

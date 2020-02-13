@@ -19,6 +19,13 @@
 - Global variable `lc` has been removed from sugar.nim.
 - `distinctBase` has been moved from sugar.nim to typetraits and now implemented as
   compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
+- `CountTable.mget` has been removed from `tables.nim`. It didn't work, and it
+  was an oversight to be included in v1.0.
+- `tables.merge(CountTable, CountTable): CountTable` has been removed.
+  It didn't work well together with the existing inplace version of the same proc
+  (`tables.merge(var CountTable, CountTable)`).
+  It was an oversight to be included in v1.0.
+
 
 ### Breaking changes in the compiler
 
@@ -50,13 +57,15 @@
 - Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
 - Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
   This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
-  Eg: `echo ?.n.typ.kind`
+  E.g. `echo ?.n.typ.kind`
 - Added `minIndex` and `maxIndex` to the `sequtils` module
-
 - Added `os.isRelativeTo` to tell whether a path is relative to another
+- Added `resetOutputFormatters` to `unittest`
+
 
 ## Library changes
 
+- `asynchttpserver` now the request body is a FutureStream.
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
   and only returns once all pending async operations are guaranteed to have completed.
 - `asyncdispatch.drain` now consistently uses the passed timeout value for all
@@ -70,9 +79,10 @@
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 - `macros.basename` and `basename=` got support for `PragmaExpr`,
   so that an expression like `MyEnum {.pure.}` is handled correctly.
-- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values serve no purpose whatsoever.
-- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers` argument to set initial HTTP Headers,
-  instead of a hardcoded empty `newHttpHeader()`.
+- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values
+  serve no purpose whatsoever.
+- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
+  argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
 - `uri.encodeQuery` added `usePrefix` parameter which adds a prefix `?` at the start of the result string.
 
 

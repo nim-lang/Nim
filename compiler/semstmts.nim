@@ -945,9 +945,9 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       checkSonsLen(x, 1, c.config)
       x[0] = semExprBranchScope(c, x[0])
       typ = commonType(typ, x[0])
-      hasElse = true
-      if chckCovered and covered == toCover(c, n[0].typ):
+      if (chckCovered and covered == toCover(c, n[0].typ)) or hasElse:
         localError(c.config, x.info, "invalid else, all cases are already covered")
+      hasElse = true
       chckCovered = false
     else:
       illFormedAst(x, c.config)

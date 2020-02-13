@@ -93,8 +93,8 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
     # XXX This is only correct for 'attachedSink'!
     var localEnforceDefaultOp = enforceDefaultOp
     if c.kind == attachedSink:
-      ## the value needs to be destroyed before we assign the selector
-      ## or the value is lost
+      # the value needs to be destroyed before we assign the selector
+      # or the value is lost
       let prevKind = c.kind
       c.kind = attachedDestructor
       fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
@@ -704,7 +704,10 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBodyObjT(c, t, body, x, y)
+      if c.kind in {attachedAsgn, attachedSink} and t.sym != nil and sfImportc in t.sym.flags:
+        body.add newAsgnStmt(x, y)
+      else:
+        fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
       fillBody(c, t[0], body, x, y)

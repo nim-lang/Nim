@@ -1,6 +1,9 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  output: '''5'''
+  output: '''5
+(w: 5)
+(w: -5)
+'''
 """
 
 # move bug
@@ -62,3 +65,24 @@ proc main =
 
 main()
 echo destroyCounter
+
+# bug #13314
+
+type
+  O = object
+    v: int
+  R = ref object
+    w: int
+
+proc `$`(r: R): string = $r[]
+
+proc tbug13314 =
+  var t5 = R(w: 5)
+  var execute = proc () =
+    echo t5
+
+  execute()
+  t5.w = -5
+  execute()
+
+tbug13314()
