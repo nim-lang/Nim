@@ -64,7 +64,7 @@ block:
       proc fun(): string =
         var t: Table[T, string]
         let n = 10
-        for i in 0..<n:
+        for i in 0.int64..<n.int64:
           let i2 = when T.sizeof == type(i).sizeof: i else: i.int32
           let k = cast[T](i2)
             # cast intentional for regression testing,

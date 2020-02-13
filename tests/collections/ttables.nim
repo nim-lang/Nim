@@ -227,14 +227,14 @@ block tablesref:
   block tableTest1:
     var t = newTable[tuple[x, y: int], string]()
     t[(0,0)] = "00"
+    doAssert $t == """{(x: 0, y: 0): "00"}"""
     t[(1,0)] = "10"
     t[(0,1)] = "01"
     t[(1,1)] = "11"
     for x in 0..1:
       for y in 0..1:
         assert t[(x,y)] == $x & $y
-    assert($t ==
-      """{(x: 0, y: 1): "01", (x: 1, y: 0): "10", (x: 0, y: 0): "00", (x: 1, y: 1): "11"}""")
+    doAssert toSeq(t.pairs).sorted == @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
 
   block tableTest2:
     var t = newTable[string, float]()

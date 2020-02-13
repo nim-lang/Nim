@@ -3,7 +3,7 @@ discard """
   output: '''true'''
 """
 
-import hashes, tables, sharedtables
+import hashes, tables, sharedtables, sequtils, algorithm
 
 const
   data = {
@@ -47,8 +47,8 @@ block tableTest1:
   for x in 0..1:
     for y in 0..1:
       assert t[(x,y)] == $x & $y
-  assert($t ==
-    """{(x: 0, y: 1): "01", (x: 1, y: 0): "10", (x: 0, y: 0): "00", (x: 1, y: 1): "11"}""")
+  doAssert toSeq(t.pairs).sorted ==
+    @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
 
 block tableTest2:
   var t = initTable[string, float]()

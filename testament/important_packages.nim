@@ -5,7 +5,10 @@ template pkg(name: string; cmd = "nimble test"; hasDeps = false; url = ""): unty
 var packages*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
 
 proc toCommand(cmd: string): string =
-  # refs https://github.com/nim-lang/Nim/pull/13408
+  ## useful for running shell commands, eg in case a package is broken and needs
+  ## a hotfix you can write:
+  ## pkg "foo", "git checkout hotfix && nimble test".toCommand, url = "https://github.com/username/foo"
+  ## see also: https://github.com/nim-lang/Nim/pull/13408
   when defined(windows): "cmd /c " & cmd else: cmd
 
 pkg "argparse"
@@ -39,7 +42,7 @@ pkg "gnuplot"
 pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "illwill", "nimble examples"
 pkg "inim"
-pkg "itertools", "git checkout pr_fix_for_new_hashes && nim doc src/itertools.nim".toCommand, url = "https://github.com/timotheecour/itertools"
+pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
 pkg "karax", "nim c -r tests/tester.nim"
