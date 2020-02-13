@@ -91,7 +91,7 @@ proc hashData*(data: pointer, size: int): Hash =
 
 proc hashBiggestIntVM(x: BiggestInt): Hash = discard # in vmops
 
-proc hash*(x: string): Hash
+proc hash*(x: string): Hash {.noSideEffect.}
 
 proc hashBiggestInt*(x: BiggestInt): Hash {.inline.} =
   ## for internal use; user code should prefer `hash` overloads

@@ -337,8 +337,7 @@ proc pop*[A](s: var HashSet[A]): A =
   ## * `clear proc <#clear,HashSet[A]>`_
   runnableExamples:
     var s = toHashSet([2, 1])
-    assert s.pop == 1
-    assert s.pop == 2
+    assert [s.pop, s.pop] in [[1, 2], [2,1]] # order unspecified
     doAssertRaises(KeyError, echo s.pop)
 
   for h in 0 .. high(s.data):
@@ -1020,7 +1019,7 @@ when isMainModule and not defined(release):
 
     block toSeqAndString:
       var a = toHashSet([2, 7, 5])
-      var b = initHashSet[int]()
+      var b = initHashSet[int](rightSize(a.len))
       for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a
