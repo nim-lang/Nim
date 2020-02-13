@@ -1149,9 +1149,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             f.n[i] = tryResolvingStaticExpr(c, f.n[i])
         result = typeRangeRel(f, a)
     else:
-      if skipTypes(f, {tyRange}).kind == a.kind:
+      let f = skipTypes(f, {tyRange})
+      if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
         result = isIntConv
-      elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
+      elif isConvertibleToRange(f, a):
         result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
@@ -1937,9 +1938,12 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semExpr(c, call)
+  result = c.semTryExpr(c, call)
+
   if result != nil:
     if result.typ == nil: return nil
+    # bug #13378, ensure we produce a real generic instantiation:
+    result = c.semExpr(c, call)
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil

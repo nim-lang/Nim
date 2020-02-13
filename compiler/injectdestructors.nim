@@ -485,7 +485,8 @@ proc cycleCheck(n: PNode; c: var Con) =
       break
 
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
-  if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt, nkIfExpr, nkCaseStmt, nkWhen}:
+  if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
+                nkIfExpr, nkCaseStmt, nkWhen}:
     handleNested(n): p(node, c, mode)
   elif mode == sinkArg:
     if n.containsConstSeq:
@@ -493,7 +494,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       # sink parameter (bug #11524). Note that the string implementation is
       # different and can deal with 'const string sunk into var'.
       result = passCopyToSink(n, c)
-    elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure} + nkCallKinds + nkLiterals:
+    elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
+         nkCallKinds + nkLiterals:
       result = p(n, c, consumed)
     elif n.kind == nkSym and isSinkParam(n.sym):
       # Sinked params can be consumed only once. We need to reset the memory

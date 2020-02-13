@@ -22,9 +22,9 @@ tasks:
 - test: |
     cd Nim
     if ! ./koch runCI; then
-       nim c -r tools/ci_testresults.nim
-       exit 1
-     fi
+      nim c -r tools/ci_testresults.nim
+      exit 1
+    fi
 triggers:
 - action: email
   condition: failure

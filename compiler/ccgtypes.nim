@@ -432,7 +432,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
     appcg(m, m.s[cfsTypes], """$N
 $3ifndef $2_Content_PP
 $3define $2_Content_PP
-struct $2_Content { NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];};
+struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE];};
 $3endif$N
       """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check), result, rope"#"])
 
@@ -508,15 +508,15 @@ proc mangleRecFieldName(m: BModule; field: PSym): Rope =
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
-                        check: var IntSet): Rope =
+                        check: var IntSet, unionPrefix = ""): Rope =
   result = nil
   case n.kind
   of nkRecList:
     for i in 0..<n.len:
-      result.add(genRecordFieldsAux(m, n[i], rectype, check))
+      result.add(genRecordFieldsAux(m, n[i], rectype, check, unionPrefix))
   of nkRecCase:
     if n[0].kind != nkSym: internalError(m.config, n.info, "genRecordFieldsAux")
-    result.add(genRecordFieldsAux(m, n[0], rectype, check))
+    result.add(genRecordFieldsAux(m, n[0], rectype, check, unionPrefix))
     # prefix mangled name with "_U" to avoid clashes with other field names,
     # since identifiers are not allowed to start with '_'
     var unionBody: Rope = nil
@@ -525,7 +525,8 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
       of nkOfBranch, nkElse:
         let k = lastSon(n[i])
         if k.kind != nkSym:
-          let a = genRecordFieldsAux(m, k, rectype, check)
+          let structName = "_" & mangleRecFieldName(m, n[0].sym) & "_" & $i
+          let a = genRecordFieldsAux(m, k, rectype, check, unionPrefix & $structName & ".")
           if a != nil:
             if tfPacked notin rectype.flags:
               unionBody.add("struct {")
@@ -535,11 +536,11 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               else:
                 unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
             unionBody.add(a)
-            unionBody.addf("};$n", [])
+            unionBody.addf("} $1;$n", [structName])
             if tfPacked in rectype.flags and hasAttribute notin CC[m.config.cCompiler].props:
               unionBody.addf("#pragma pack(pop)$n", [])
         else:
-          unionBody.add(genRecordFieldsAux(m, k, rectype, check))
+          unionBody.add(genRecordFieldsAux(m, k, rectype, check, unionPrefix))
       else: internalError(m.config, "genRecordFieldsAux(record case branch)")
     if unionBody != nil:
       result.addf("union{$n$1};$n", [unionBody])
@@ -548,7 +549,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    fillLoc(field.loc, locField, n, sname, OnUnknown)
+    fillLoc(field.loc, locField, n, unionPrefix & sname, OnUnknown)
     if field.alignment > 0:
       result.addf "NIM_ALIGN($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't
@@ -607,7 +608,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check)])
-      if typ.isException:
+      if typ.isException and m.config.exc == excCpp:
         appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
         when false:
           if typ.sym.magic == mException:
@@ -954,7 +955,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
       result.add "N_LIB_EXPORT "
   elif prc.typ.callConv == ccInline or asPtr or isNonReloadable(m, prc):
     result.add "static "
-  elif {sfImportc, sfExportc} * prc.flags == {}:
+  elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
@@ -1026,7 +1027,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     m.hcrCreateTypeInfosProc.addf("\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
          [name, getModuleDllPath(m, m.module)])
   else:
-    m.s[cfsData].addf("TNimType $1;$n", [name])
+    m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1301,7 +1302,7 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
   else:
     typeName = rope("NIM_NIL")
 
-  m.s[cfsData].addf("TNimType $1;$n", [name])
+  m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)

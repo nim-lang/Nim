@@ -91,3 +91,6 @@ megatest.nim
 *.dSYM
 
 nimdoc.out.css
+
+# for `nim c -r nimdoc/tester` etc; this can be in multiple places
+htmldocs

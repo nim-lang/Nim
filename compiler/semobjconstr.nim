@@ -388,3 +388,6 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
       # 2) No such field exists in the constructed type
       localError(c.config, field.info, errUndeclaredFieldX % id.s)
       return
+
+  if initResult == initFull:
+    incl result.flags, nfAllFieldsSet

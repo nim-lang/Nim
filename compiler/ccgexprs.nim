@@ -1197,7 +1197,7 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
-proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
+proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
   var sizeExpr = sizeExpr
   let typ = a.t
   var b: TLoc
@@ -1209,8 +1209,12 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
   if optTinyRtti in p.config.globalOptions:
-    b.r = ropecg(p.module, "($1) #nimNewObj($2)",
-        [getTypeDesc(p.module, typ), sizeExpr])
+    if needsInit:
+      b.r = ropecg(p.module, "($1) #nimNewObj($2)",
+          [getTypeDesc(p.module, typ), sizeExpr])
+    else:
+      b.r = ropecg(p.module, "($1) #nimNewObjUninit($2)",
+          [getTypeDesc(p.module, typ), sizeExpr])
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
@@ -1254,9 +1258,9 @@ proc genNew(p: BProc, e: PNode) =
   if e.len == 3:
     var se: TLoc
     initLocExpr(p, e[2], se)
-    rawGenNew(p, a, se.rdLoc)
+    rawGenNew(p, a, se.rdLoc, needsInit = true)
   else:
-    rawGenNew(p, a, nil)
+    rawGenNew(p, a, nil, needsInit = true)
   gcUsage(p.config, e)
 
 proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
@@ -1325,7 +1329,7 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
           [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
@@ -1356,7 +1360,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     getTemp(p, t, tmp)
     r = rdLoc(tmp)
     if isRef:
-      rawGenNew(p, tmp, nil)
+      rawGenNew(p, tmp, nil, needsInit = nfAllFieldsSet notin e.flags)
       t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
@@ -1828,7 +1832,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       if size <= 4: unaryExprChar(p, e, d, "#countBits32($1)")
       else: unaryExprChar(p, e, d, "#countBits64($1)")
-    of mLtSet: binaryExprChar(p, e, d, "(($1 & ~ $2 ==0)&&($1 != $2))")
+    of mLtSet: binaryExprChar(p, e, d, "((($1 & ~ $2)==0)&&($1 != $2))")
     of mLeSet: binaryExprChar(p, e, d, "(($1 & ~ $2)==0)")
     of mEqSet: binaryExpr(p, e, d, "($1 == $2)")
     of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
@@ -2037,15 +2041,15 @@ proc genDestroy(p: BProc; n: PNode) =
     of tyString:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*));$n" &
+      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+        " #deallocShared($1.p);$n" &
         " $1.p = NIM_NIL; }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*));$n" &
+      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+        " #deallocShared($1.p);$n" &
         " $1.p = NIM_NIL; }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
@@ -2180,7 +2184,7 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     if optTinyRtti in p.config.globalOptions:
       var a: TLoc
       initLocExpr(p, e[1], a)
-      rawGenNew(p, a, nil)
+      rawGenNew(p, a, nil, needsInit = true)
       gcUsage(p.config, e)
     else:
       genNewFinalize(p, e)
@@ -2204,12 +2208,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let tname = getTypeDesc(p.module, t)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
-      else:
-        rope(dotExpr[1].sym.name.s)
-    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
+      else: dotExpr[1].sym.loc.r
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [tname, member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2508,7 +2512,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
          [getTypeDesc(p.module, t), tmp, genBracedInit(p, n, isConst = true)])
 
   if d.k == locNone:
@@ -2782,17 +2786,50 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
   of nkRecCase:
     getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
     if count > 0: result.add ", "
-    # XXX select default case branch here!
-    #for i in 1..<obj.len:
-    let selectedBranch = 1
-    result.add "{" # struct inside union
-    if lastSon(obj[selectedBranch]).kind != nkSym:
-      result.add "{"
+    var branch = Zero
+    if constOrNil != nil:
+      ## find kind value, default is zero if not specified
+      for i in 1..<constOrNil.len:
+        if constOrNil[i].kind == nkExprColonExpr:
+          if constOrNil[i][0].sym.name.id == obj[0].sym.name.id:
+            branch = getOrdValue(constOrNil[i][1])
+            break
+        elif i == obj[0].sym.position:
+          branch = getOrdValue(constOrNil[i])
+          break
+
+    var selectedBranch = -1
+    block branchSelection:
+      for i in 1 ..< obj.len:
+        for j in 0 .. obj[i].len - 2:
+          if obj[i][j].kind == nkRange:
+              let x = getOrdValue(obj[i][j][0])
+              let y = getOrdValue(obj[i][j][1])
+              if branch >= x and branch <= y:
+                selectedBranch = i
+                break branchSelection
+          elif getOrdValue(obj[i][j]) == branch:
+            selectedBranch = i
+            break branchSelection
+        if obj[i].len == 1:
+          # else branch
+          selectedBranch = i
+    assert(selectedBranch >= 1)
+
+    result.add "{"
     var countB = 0
-    getNullValueAux(p, t, lastSon(obj[selectedBranch]), constOrNil, result, countB, isConst, info)
-    if lastSon(obj[selectedBranch]).kind != nkSym:
+    let b = lastSon(obj[selectedBranch])
+    # designated initilization is the only way to init non first element of unions
+    # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
+    if  b.kind == nkRecList and b.len > 0:
+      result.add "._" &  mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
+    elif b.kind == nkSym:
+      result.add "." & mangleRecFieldName(p.module, b.sym) & " = "
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
     result.add "}"
+
   of nkSym:
     if count > 0: result.add ", "
     inc count
@@ -2863,7 +2900,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
-        "$5 struct {$n" &
+        "static $5 struct {$n" &
         "  #TGenericSeq Sup;$n" &
         "  $1 data[$2];$n" &
         "} $3 = $4;$n", [
@@ -2884,8 +2921,8 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
 
   appcg(p.module, cfsData,
     "static $5 struct {$n" &
-    "  NI cap; void* allocator; $1 data[$2];$n" &
-    "} $3 = {$2, NIM_NIL, $4};$n", [
+    "  NI cap; $1 data[$2];$n" &
+    "} $3 = {$2 | NIM_STRLIT_FLAG, $4};$n", [
     getTypeDesc(p.module, base), n.len, payload, data,
     if isConst: "const" else: ""])
   result = "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
@@ -2937,7 +2974,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
     of tyObject:
       result = genConstObjConstr(p, n, isConst)
     of tyString, tyCString:
-      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit:
+      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
         result = genStringLiteralV2Const(p.module, n, isConst)
       else:
         var d: TLoc
