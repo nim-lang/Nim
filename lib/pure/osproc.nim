@@ -71,7 +71,7 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
                                          ## and this is needed just for backward compatibility.
 
 const useShPath {.strdefine.} =
-  when defined(windows): "sh"
+  when defined(windows): "cmd"
   elif not defined(android): "/bin/sh"
   else: "/system/bin/sh"
 
@@ -437,6 +437,9 @@ when not defined(useNimRtl):
 template streamAccess(p) =
   assert poParentStreams notin p.options, "API usage error: stream access not allowed when you use poParentStreams"
 
+template checkEmpty(args) =
+  assert args.len == 0, "`args` has to be empty when using poEvalCommand."
+
 when defined(Windows) and not defined(useNimRtl):
   # We need to implement a handle stream for Windows:
   type
@@ -608,9 +611,9 @@ when defined(Windows) and not defined(useNimRtl):
     var cmdl: cstring
     var cmdRoot: string
     if poEvalCommand in options:
-      cmdRoot = useShPath & " -c " & command.quoteShellWindowsForSh
+      cmdRoot = useShPath & " /c " & command
       cmdl = cstring(cmdRoot)
-      assert args.len == 0, "`args` has to be empty when using poEvalCommand."
+      checkEmpty(args)
     else:
       cmdRoot = buildCommandLine(command, args)
       cmdl = cstring(cmdRoot)
@@ -856,7 +859,7 @@ elif not defined(useNimRtl):
     if poEvalCommand in options:
       data.sysCommand = useShPath
       sysArgsRaw = @[data.sysCommand, "-c", command]
-      assert args.len == 0, "`args` has to be empty when using poEvalCommand."
+      checkEmpty(args)
     else:
       data.sysCommand = command
       sysArgsRaw = @[command]

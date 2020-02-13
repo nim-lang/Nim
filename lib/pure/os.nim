@@ -969,6 +969,7 @@ when defined(windows):
   proc quoteShellWindowsForSh*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     ## Quote `s`, so it can be safely passed to Windows sh / bash. This handles quoting of `\`
     ## differently from `quoteShellWindows`, to support: sh -c 'echo C:\foo\bar'
+    ## This is not needed if using standard `cmd` as done via `execCmdEx("echo ok1 && echo ok2")`
     let needQuote = {' ', '\t'} in s or s.len == 0
     result = ""
     var backslashBuff = ""
