@@ -65,7 +65,8 @@
 
 ## Library changes
 
-- `asynchttpserver` now the request body is a FutureStream.
+- `asynchttpserver` added an iterator that allows the request body to be read in
+   chunks of data when new server "stream" option is set to true.
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
   and only returns once all pending async operations are guaranteed to have completed.
 - `asyncdispatch.drain` now consistently uses the passed timeout value for all
