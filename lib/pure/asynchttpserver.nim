@@ -37,6 +37,9 @@
 ## respond with a page with the actual and expected body length after
 ## submitting a file.
 ##
+## With option stream set to true:
+## -------------------------------
+##
 ## .. code-block::nim
 ##    import asynchttpserver, asyncdispatch
 ##    import strutils, strformat
@@ -65,17 +68,58 @@
 ##        bodyLength = 0
 ##      if req.reqMethod == HttpPost:
 ##        contentLength = req.headers["Content-length"].parseInt
-##        if contentLength < 8*1024: # the default chunkSize
-##          # read the request body at once
-##          let body = await req.bodyStream.readAll();
-##          bodyLength = body.len
-##        else:
-##          # read 8*1024 bytes at a time
-##          while (let data = await req.bodyStream.read(); data[0]):
-##            bodyLength += data[1].len
+##        # Read 8*1024 bytes at a time
+##        for length, data in req.bodyStream():
+##          let content = await data
+##          if length == content.len:
+##            bodyLength += content.len
+##          else:
+##            # Handle exception
+##            await req.respond(Http400,
+##              "Bad Request. Data read has a different length than the expected.")
+##            return
 ##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
 ##
 ##    let server = newAsyncHttpServer(maxBody = 10485760, stream = true) # 10 MB
+##    waitFor server.serve(Port(8080), cb)
+##
+## With default option stream (false is the default):
+## --------------------------------------------------
+##
+## .. code-block::nim
+##    import asynchttpserver, asyncdispatch
+##    import strutils, strformat
+##
+##    proc htmlpage(contentLength, bodyLength: int): string =
+##      return &"""
+##    <!Doctype html>
+##    <html lang="en">
+##      <head>
+##        <meta charset="utf-8"/>
+##      </head>
+##      <body>
+##        <form action="/" method="post" enctype="multipart/form-data">
+##          File: <input type="file" name="testfile" accept="text/*"><br />
+##          <input style="margin:10px 0;" type="submit">
+##        </form><br />
+##        Expected Body Length: {contentLength} bytes<br />
+##        Actual Body Length: {bodyLength} bytes
+##      </body>
+##    </html>
+##    """
+##
+##    proc cb(req: Request) {.async.} =
+##      var
+##        contentLength = 0
+##        bodyLength = 0
+##      if req.reqMethod == HttpPost:
+##        contentLength = req.headers["Content-length"].parseInt
+##        # Read all body at once
+##        let body = req.body
+##        bodyLength = body.len
+##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
+##
+##    let server = newAsyncHttpServer(maxBody = 10485760) # 10 MB
 ##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
@@ -91,34 +135,61 @@ export httpcore except parseHeader
 
 const
   maxLine = 8*1024
-  chunkSize = 8*1024 ## This seems perfectly reasonable for default chunkSize.
 
-type
-  Request* = object
-    client*: AsyncSocket # TODO: Separate this into a Response object?
-    reqMethod*: HttpMethod
-    headers*: HttpHeaders
-    protocol*: tuple[orig: string, major, minor: int]
-    url*: Uri
-    hostname*: string    ## The hostname of the client that made the request.
-    body*: string
-    bodyStream*: FutureStream[string]
+when (NimMajor, NimMinor) >= (1, 1):
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
+      contentLength*: int
 
-  AsyncHttpServer* = ref object
-    socket: AsyncSocket
-    reuseAddr: bool
-    reusePort: bool
-    maxBody: int ## The maximum content-length that will be read for the body.
-    stream: bool ## By default (stream = false), the body of the request is readed immediately
+  type
+    AsyncHttpServer* = ref object
+      socket: AsyncSocket
+      reuseAddr: bool
+      reusePort: bool
+      maxBody: int ## The maximum content-length that will be read for the body.
+      stream: bool ## By default (stream = false), the body of the request is read immediately
+else:
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
 
-proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
+  type
+    AsyncHttpServer* = ref object
+      socket: AsyncSocket
+      reuseAddr: bool
+      reusePort: bool
+      maxBody: int ## The maximum content-length that will be read for the body.
+
+when (NimMajor, NimMinor) >= (1, 1):
+  proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
                          maxBody = 8388608, stream = false): AsyncHttpServer =
-  ## Creates a new ``AsyncHttpServer`` instance.
-  new result
-  result.reuseAddr = reuseAddr
-  result.reusePort = reusePort
-  result.maxBody = maxBody
-  result.stream = stream
+    ## Creates a new ``AsyncHttpServer`` instance.
+    new result
+    result.reuseAddr = reuseAddr
+    result.reusePort = reusePort
+    result.maxBody = maxBody
+    result.stream = stream
+else:
+  proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
+                         maxBody = 8388608): AsyncHttpServer =
+    ## Creates a new ``AsyncHttpServer`` instance.
+    new result
+    result.reuseAddr = reuseAddr
+    result.reusePort = reusePort
+    result.maxBody = maxBody
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -181,13 +252,28 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
+when (NimMajor, NimMinor) >= (1, 1):
+  ## chunkSize is optional and default value is 8*1024 bytes.
+  iterator bodyStream*(
+    request: Request,
+    chunkSize: int = 8*1024): (int, Future[string]) =
+
+    var remainder = request.contentLength
+    while remainder > 0:
+      let readSize = min(remainder, chunkSize)
+      let data = request.client.recv(readSize)
+      if data.failed:
+        raise newException(ValueError, "Error reading POST data from client.")
+      yield (readSize, data)
+      remainder -= readSize
+
 proc processRequest(
   server: AsyncHttpServer,
   req: FutureVar[Request],
   client: AsyncSocket,
   address: string,
   lineFut: FutureVar[string],
-  callback: proc (request: Request): Future[void] {.closure, gcsafe.},
+  callback: proc (request: Request): Future[void] {.closure, gcsafe.}
 ): Future[bool] {.async.} =
 
   # Alias `request` to `req.mget()` so we don't have to write `mget` everywhere.
@@ -201,10 +287,9 @@ proc processRequest(
   request.hostname.shallowCopy(address)
   assert client != nil
   request.client = client
-  if server.stream:
-    request.bodyStream = newFutureStream[string]()
-  else:
-    request.body = ""
+  request.body = ""
+  when (NimMajor, NimMinor) >= (1, 1):
+    request.contentLength = 0
 
   # We should skip at least one empty line before the request
   # https://tools.ietf.org/html/rfc7230#section-3.5
@@ -300,17 +385,13 @@ proc processRequest(
         await request.respondError(Http413)
         return false
 
-      if server.stream:
-        var remainder = contentLength
-        while remainder > 0:
-          let readSize = min(remainder, chunkSize)
-          let data = await client.recv(read_size)
-          if data.len != read_size:
+      when (NimMajor, NimMinor) >= (1, 1):
+        request.contentLength = contentLength
+        if not server.stream:
+          request.body = await client.recv(contentLength)
+          if request.body.len != contentLength:
             await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
             return true
-          await request.bodyStream.write(data)
-          remainder -= data.len
-        request.bodyStream.complete()
       else:
         request.body = await client.recv(contentLength)
         if request.body.len != contentLength:
