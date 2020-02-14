@@ -12,9 +12,9 @@
 import
   pathutils
 
-template imp(x) = import x
-const hasRstdin = compiles(imp(rdstdin))
-when hasRstdin: import rdstdin
+# support '-d:useGnuReadline' for backwards compatibility:
+when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise)):
+  import rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
@@ -67,7 +67,7 @@ proc llStreamClose*(s: PLLStream) =
   of llsFile:
     close(s.f)
 
-when not hasRstdin:
+when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
     stderr.write(prompt)
