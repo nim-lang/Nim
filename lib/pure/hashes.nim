@@ -89,13 +89,12 @@ proc hashData*(data: pointer, size: int): Hash =
     dec(s)
   result = !$h
 
-proc hashBiggestIntVM(x: BiggestInt): Hash = discard # in vmops
-
 proc hash*(x: string): Hash {.noSideEffect.}
 
 proc hashBiggestInt*(x: BiggestInt): Hash {.inline.} =
   ## for internal use; user code should prefer `hash` overloads
-  when nimvm: hashBiggestIntVM(x)
+  when nimvm: # in vmops
+    doAssert false
   else:
     when defined(js):
       # could use BigInt, see https://github.com/nim-lang/RFCs/issues/187

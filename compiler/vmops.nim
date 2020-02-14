@@ -185,7 +185,7 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImpl", hashVmImpl
 
-  registerCallback c, "stdlib.hashes.hashBiggestIntVM", proc (a: VmArgs) {.nimcall.} =
+  registerCallback c, "stdlib.hashes.hashBiggestInt", proc (a: VmArgs) {.nimcall.} =
     a.setResult hashBiggestInt(getInt(a, 0))
 
   proc hashVmImplByte(a: VmArgs) =
