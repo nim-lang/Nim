@@ -164,11 +164,10 @@ block tableconstr:
 
 block ttables2:
   proc TestHashIntInt() =
-    var tab = initTable[int, int]()
-    const n = 1_000_000 # bottleneck: 50 seconds on OSX in debug mode
-    for i in 1..n:
+    var tab = initTable[int,int]()
+    for i in 1..1_000_000:
       tab[i] = i
-    for i in 1..n:
+    for i in 1..1_000_000:
       var x = tab[i]
       if x != i : echo "not found ", i
 
@@ -184,6 +183,7 @@ block ttables2:
     delTab[i] = i
     delTab.del(i)
   delTab[5] = 5
+
 
   run1()
   echo "2"
@@ -340,7 +340,8 @@ block tablesref:
   block anonZipTest:
     let keys = @['a','b','c']
     let values = @[1, 2, 3]
-    doAssert "{'a': 1, 'b': 2, 'c': 3}" == $ toTable zip(keys, values)
+    var t = toTable(zip(keys, values))
+    doAssert toSeq(t.pairs).sorted == @[('a', 1), ('b', 2), ('c', 3)]
 
   block clearTableTest:
     var t = newTable[string, float]()

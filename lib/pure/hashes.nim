@@ -98,7 +98,6 @@ proc hashUInt64*(x: uint64): Hash {.inline.} =
     doAssert false
   else:
     # would orders of magnitude worse, see thashes_perf toHighOrderBits
-    # faster than using murmurhash or Jenkins via
     # hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
 
     # would a bit worse, see thashes_perf toInt64
@@ -118,14 +117,12 @@ proc hashUInt64*(x: uint64): Hash {.inline.} =
 
 proc hashUInt32*(x: uint32): Hash {.inline.} =
   ## for internal use; user code should prefer `hash` overloads
-  # calling `hashUInt64(x)` would perform 1.736 worse, see thashes_perf toInt32
+  # calling `hashUInt64(x)` would perform 1.7X slower, see thashes_perf toInt32
   when nimvm: # in vmops
     doAssert false
   else:
     # inspired from https://gist.github.com/badboy/6267743
     var x = x xor ((x shr 20) xor (x shr 12))
-    # debugEcho ("hashUInt32", x)
-    # return cast[Hash](x xor (x shr 7) xor (x shr 4))
     result = cast[Hash](x xor (x shr 7) xor (x shr 4))
 
 proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
