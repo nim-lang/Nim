@@ -29,6 +29,52 @@ To force a full collection call ``GC_fullCollect``. Note that it is generally
 better to let the GC do its work and not enforce a full collection.
 
 
+Memory Management Strategies
+============================
+
+You can choose the memory management strategy to use when compiling source code,
+you can pass ``--gc:`` on the compile command with the selected memory management strategy.
+
+- ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
+  with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_,
+  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_, default.
+- ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector,
+  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector,
+  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
+  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:go`` Go lang like garbage collector,
+  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
+  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
+- ``--gc:regions`` `Stack <https://en.wikipedia.org/wiki/Memory_management#Stack_allocation>`_ based garbage collector.
+- ``--gc:arc`` Not a garbage collector. Plain `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with
+  `move semantic optimizations <destructors.html#move-semantics>`_,
+  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
+  can be optimized with `sink <destructors.html#sink-parameters>`_ and `lent <destructors.html#lent-type>`_ annotations,
+  designed to work well with `WebAssembly <https://webassembly.org>`_, `Emscripten <https://emscripten.org>`_,
+  `hot code reloading <hcr.html>`_ and `address sanitizers <https://en.wikipedia.org/wiki/AddressSanitizer>`_,
+  basically it is like a shared heap with subgraphs with a single owner,
+  this is not the same as Swift and ObjectiveC lang ARC because those can not handle cycles,
+  can use `GOTO based Exception handling <https://nim-lang.org/araq/gotobased_exceptions.html>`_,
+  may become default in future releases.
+- ``--gc:orc`` Not a garbage collector. Similar to ``--gc:arc`` but with improved
+  `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_.
+  `Cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
+  will not be the default, because by definition it conflicts with
+  `deterministic memory management <https://en.wikipedia.org/wiki/Deterministic_memory>`_.
+- ``--gc:none`` No memory management strategy nor garbage collector.
+  You should use `Manual memory management <https://en.wikipedia.org/wiki/Manual_memory_management>`_ with it.
+
+The same Nim code can be compiled to use any of the  memory management strategies;
+the Nim syntax generally will not change from one memory management strategy to another.
+
+No garbage collector nor memory management is used for `JavaScript and NodeJS
+<backends.html#backends-the-javascript-target>`_ compilation targets.
+`NimScript <nims.html>`_ target uses Nim VM memory management strategy.
+
+If you are new to Nim and just starting, the default memory management strategy is balanced to fit most common use cases.
+
+
 Cycle collector for garbage collectors
 ======================================
 
@@ -148,49 +194,3 @@ The numbers count the number of objects in all garbage collector heaps, they ref
 all running threads, not only to the current thread. (The current thread
 would be the thread that calls ``dumpNumberOfInstances``.) This might
 change in later versions.
-
-
-Memory Management Strategies
-============================
-
-You can choose the memory management strategy to use when compiling source code,
-you can pass ``--gc:`` on the compile command with the selected memory management strategy.
-
-- ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
-  with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_,
-  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_, default.
-- ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector,
-  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector,
-  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
-  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:go`` Go lang like garbage collector,
-  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
-  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:regions`` `Stack <https://en.wikipedia.org/wiki/Memory_management#Stack_allocation>`_ based garbage collector.
-- ``--gc:arc`` Not a garbage collector. Plain `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with
-  `move semantic optimizations <destructors.html#move-semantics>`_,
-  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
-  can be optimized with `sink <destructors.html#sink-parameters>`_ and `lent <destructors.html#lent-type>`_ annotations,
-  designed to work well with `WebAssembly <https://webassembly.org>`_, `Emscripten <https://emscripten.org>`_,
-  `hot code reloading <hcr.html>`_ and `address sanitizers <https://en.wikipedia.org/wiki/AddressSanitizer>`_,
-  basically it is like a shared heap with subgraphs with a single owner,
-  this is not the same as Swift and ObjectiveC lang ARC because those can not handle cycles,
-  can use `GOTO based Exception handling <https://nim-lang.org/araq/gotobased_exceptions.html>`_,
-  may become default in future releases.
-- ``--gc:orc`` Not a garbage collector. Similar to ``--gc:arc`` but with improved
-  `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_.
-  `Cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
-  will not be the default, because by definition it conflicts with
-  `deterministic memory management <https://en.wikipedia.org/wiki/Deterministic_memory>`_.
-- ``--gc:none`` No memory management strategy nor garbage collector.
-  You should use `Manual memory management <https://en.wikipedia.org/wiki/Manual_memory_management>`_ with it.
-
-The same Nim code can be compiled to use any of the  memory management strategies;
-the Nim syntax generally will not change from one memory management strategy to another.
-
-No garbage collector nor memory management is used for `JavaScript and NodeJS
-<backends.html#backends-the-javascript-target>`_ compilation targets.
-`NimScript <nims.html>`_ target uses Nim VM memory management strategy.
-
-If you are new to Nim and just starting, the default memory management strategy is balanced to fit most common use cases.
