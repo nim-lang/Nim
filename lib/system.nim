@@ -221,10 +221,12 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## ideally be optimized away.
   discard
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
-  # move is noop if type T doesn't have a destructor
-  result = x
-  wasMoved(x)
+when defined(nimHasMoveFix):
+  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.}
+    # returns x enforces move semantics, resets  `X` to its initial (binary zero) value if x has a destructor
+else:
+  proc move*[T](x: var T): T = x
+    # for compiler bootstrapping only
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
