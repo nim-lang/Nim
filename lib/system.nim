@@ -223,7 +223,7 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
 
 when defined(nimHasMoveFix):
   proc move*[T](x: var T): T {.magic: "Move", noSideEffect.}
-    # returns x enforces move semantics, resets  `X` to its initial (binary zero) value if x has a destructor
+    # returns `x`, enforces move semantics. Resets  `X` to its initial (binary zero) value if x has a destructor
 else:
   proc move*[T](x: var T): T = x
     # for compiler bootstrapping only
