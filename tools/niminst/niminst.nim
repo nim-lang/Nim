@@ -513,7 +513,10 @@ template gatherFiles(fun, libpath, outDir) =
       fun(src, dst)
 
     for f in walkFiles(libpath / "lib/*.h"): copySrc(f)
-    copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
+    let f = libpath / "lib/wrappers/linenoise/linenoise.h"
+    # optional, see https://github.com/nim-lang/Nim/commit/2b368bcdd705a5c7f0558df706fde01d217f5e9d#commitcomment-37273026
+    if f.existsFile: copySrc(f)
+    else: echo "(non-fatal) missing: " & f
 
 proc srcdist(c: var ConfigData) =
   let cCodeDir = getOutputDir(c) / "c_code"
