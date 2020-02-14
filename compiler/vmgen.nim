@@ -1359,10 +1359,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     let a = c.genx(arg)
     if dest < 0: dest = c.getTemp(arg.typ)
     gABC(c, arg, whichAsgnOpc(arg, requiresCopy=false), dest, a)
-    # XXX use ldNullOpcode() here?
-    c.gABx(n, opcLdNull, a, c.genType(arg.typ))
-    c.gABx(n, opcNodeToReg, a, a)
-    c.genAsgnPatch(arg, a)
+    if hasDestructor(arg.typ.skipTypes({tyVar, tyAlias, tyGenericInst})):
+      # XXX use ldNullOpcode() here?
+      c.gABx(n, opcLdNull, a, c.genType(arg.typ))
+      c.gABx(n, opcNodeToReg, a, a)
+      c.genAsgnPatch(arg, a)
     c.freeTemp(a)
   of mNodeId:
     c.genUnaryABC(n, dest, opcNodeId)
