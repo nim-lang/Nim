@@ -612,20 +612,20 @@ proc expectMinLen*(n: NimNode, min: int) {.compileTime.} =
   ## Checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len < min: error("macro expects a node with " & $min & " children", n)
+  if n.len < min: error("Expected a node with at least " & $min & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## Checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len != len: error("macro expects a node with " & $len & " children", n)
+  if n.len != len: error("Expected a node with " & $len & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
   ## Checks that `n` has a number of children in the range ``min..max``.
   ## If this is not the case, compilation aborts with an error message.
   ## This is useful for writing macros that check its number of arguments.
   if n.len < min or n.len > max:
-    error("macro expects a node with " & $min & ".." & $max & " children", n)
+    error("Expected a node with " & $min & ".." & $max & " children, got " & $n.len, n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =

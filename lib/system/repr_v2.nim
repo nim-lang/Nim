@@ -1,3 +1,11 @@
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  ## imported from typetraits
+
+proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
+  ## imported from typetraits
+
+proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
+
 proc repr*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## repr for an integer argument. Returns `x`
   ## converted to a decimal string.
@@ -37,19 +45,47 @@ proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
   ## If a `repr` operator for a concrete enumeration is provided, this is
   ## used instead. (In other words: *Overwriting* is possible.)
 
-template repr(t: typedesc): string = $t
-
-proc isNamedTuple(T: typedesc): bool =
-  # Taken from typetraits.
-  when T isnot tuple: result = false
+proc repr*(p: pointer): string =
+  ## repr of pointer as its hexadecimal value
+  if p == nil: 
+    result = "nil"
   else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    return false
+    when nimvm:
+      result = "ptr"
+    else:
+      const HexChars = "0123456789ABCDEF"
+      const len = sizeof(pointer) * 2
+      var n = cast[uint](p)
+      result = newString(len)
+      for j in countdown(len-1, 0):
+        result[j] = HexChars[n and 0xF]
+        n = n shr 4
+
+template repr*(x: distinct): string =
+  repr(distinctBase(typeof(x))(x))
+
+template repr*(t: typedesc): string = $t
+
+proc reprObject[T: tuple|object](res: var string, x: T) = 
+  res.add '('
+  var firstElement = true
+  const isNamed = T is object or isNamedTuple(T)
+  when not isNamed:
+    var count = 0
+  for name, value in fieldPairs(x):
+    if not firstElement: res.add(", ")
+    when isNamed:
+      res.add(name)
+      res.add(": ")
+    else:
+      count.inc
+    res.add repr(value)
+    firstElement = false
+  when not isNamed:
+    if count == 1:
+      res.add(',') # $(1,) should print as the semantically legal (1,)
+  res.add(')')
+
 
 proc repr*[T: tuple|object](x: T): string =
   ## Generic `repr` operator for tuples that is lifted from the components
@@ -61,56 +97,16 @@ proc repr*[T: tuple|object](x: T): string =
   ##   $() == "()"
   when T is object:
     result = $typeof(x)
-  else:
-    result = ""
-  result.add '('
-  var firstElement = true
-  const isNamed = T is object or isNamedTuple(T)
-  when not isNamed:
-    var count = 0
-  for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
-    when isNamed:
-      result.add(name)
-      result.add(": ")
-    else:
-      count.inc
-    when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
-        else: result.addQuoted(value)
-      else:
-        result.addQuoted(value)
-      firstElement = false
-    else:
-      result.add("...")
-      firstElement = false
-  when not isNamed:
-    if count == 1:
-      result.add(',') # $(1,) should print as the semantically legal (1,)
-  result.add(')')
+  reprObject(result, x)
+ 
+proc repr*[T](x: ptr T): string =
+  result.add repr(pointer(x)) & " "
+  result.add repr(x[])
 
-proc repr*[T: (ref object)](x: T): string =
-  ## Generic `repr` operator for tuples that is lifted from the components
-  ## of `x`.
-  if x == nil: return "nil"
-  result = $typeof(x) & "("
-  var firstElement = true
-  for name, value in fieldPairs(x[]):
-    if not firstElement: result.add(", ")
-    result.add(name)
-    result.add(": ")
-    when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
-        else: result.addQuoted(value)
-      else:
-        result.addQuoted(value)
-      firstElement = false
-    else:
-      result.add("...")
-      firstElement = false
-  result.add(')')
+proc repr*[T](x: ref T | ptr T): string =
+  if isNil(x): return "nil"
+  result = $typeof(x)
+  reprObject(result, x[])
 
 proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
@@ -120,15 +116,7 @@ proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
       firstElement = false
     else:
       result.add(separator)
-
-    when value isnot string and value isnot seq and compiles(value.isNil):
-      # this branch should not be necessary
-      if value.isNil:
-        result.add "nil"
-      else:
-        result.addQuoted(value)
-    else:
-      result.addQuoted(value)
+    result.add repr(value)
   result.add(suffix)
 
 proc repr*[T](x: set[T]): string =
@@ -153,9 +141,9 @@ proc repr*[T, U](x: HSlice[T, U]): string =
   ##
   ## .. code-block:: Nim
   ##  $(1 .. 5) == "1 .. 5"
-  result = $x.a
+  result = repr(x.a)
   result.add(" .. ")
-  result.add($x.b)
+  result.add(repr(x.b))
 
 proc repr*[T, IDX](x: array[IDX, T]): string =
   ## Generic `repr` operator for arrays that is lifted from the components.

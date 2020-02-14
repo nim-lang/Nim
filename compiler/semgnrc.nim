@@ -163,7 +163,7 @@ proc fuzzyLookup(c: PContext, n: PNode, flags: TSemGenericFlags,
         let syms = semGenericStmtSymbol(c, n, s, ctx, flags, fromDotExpr=true)
         if syms.kind == nkSym:
           let choice = symChoice(c, n, s, scForceOpen)
-          choice.kind = nkClosedSymChoice
+          choice.transitionSonsKind(nkClosedSymChoice)
           result = newDot(result, choice)
         else:
           result = newDot(result, syms)

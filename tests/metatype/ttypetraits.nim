@@ -6,6 +6,8 @@ block: # isNamedTuple
   type Foo2 = (Field0:1,).type
   type Foo3 = ().type
   type Foo4 = object
+  type Foo5[T] = tuple[x:int, y: T]
+  type Foo6[T] = (T,)
 
   doAssert (a:1,).type.isNamedTuple
   doAssert Foo1.isNamedTuple
@@ -14,6 +16,9 @@ block: # isNamedTuple
   doAssert not Foo3.isNamedTuple
   doAssert not Foo4.isNamedTuple
   doAssert not (1,).type.isNamedTuple
+  doAssert isNamedTuple(Foo5[int8])
+  doAssert not isNamedTuple(Foo5)
+  doAssert not isNamedTuple(Foo6[int8])
 
 proc typeToString*(t: typedesc, prefer = "preferTypeName"): string {.magic: "TypeTrait".}
   ## Returns the name of the given type, with more flexibility than `name`,
@@ -42,7 +47,7 @@ block: # typeToString
   doAssert MyInt.name3 == "MyInt{int}"
   doAssert (tuple[a: MyInt, b: float]).name3 == "tuple[a: MyInt{int}, b: float]"
   doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
-    "tuple[a: C2b{C}[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
+    "tuple[a: C[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
 
 block distinctBase:
   block:
@@ -101,3 +106,52 @@ block genericParams:
   static: doAssert (int, float).lenTuple == 2
   static: doAssert (1, ).lenTuple == 1
   static: doAssert ().lenTuple == 0
+
+
+##############################################
+# bug 13095
+
+type
+  CpuStorage[T] {.shallow.} = ref object
+    when supportsCopyMem(T):
+      raw_buffer*: ptr UncheckedArray[T] # 8 bytes
+      memalloc*: pointer                 # 8 bytes
+      isMemOwner*: bool                  # 1 byte
+    else: # Tensors of strings, other ref types or non-trivial destructors
+      raw_buffer*: seq[T]                # 8 bytes (16 for seq v2 backed by destructors?)
+
+var x = CpuStorage[string]()
+
+static:
+  doAssert(not string.supportsCopyMem)
+  doAssert x.T is string          # true
+  doAssert x.raw_buffer is seq
+
+block genericHead:
+  type Foo[T1,T2] = object
+    x1: T1
+    x2: T2
+  type FooInst = Foo[int, float]
+  type Foo2 = genericHead(FooInst)
+  doAssert Foo2 is Foo # issue #13066
+
+  block:
+    type Goo[T] = object
+    type Moo[U] = object
+    type Hoo = Goo[Moo[float]]
+    type Koo = genericHead(Hoo)
+    doAssert Koo is Goo
+    doAssert genericParams(Hoo) is (Moo[float],)
+    doAssert genericParams(Hoo).get(0) is Moo[float]
+    doAssert genericHead(genericParams(Hoo).get(0)) is Moo
+
+  type Foo2Inst = Foo2[int, float]
+  doAssert FooInst.default == Foo2Inst.default
+  doAssert FooInst.default.x2 == 0.0
+  doAssert Foo2Inst is FooInst
+  doAssert FooInst is Foo2Inst
+  doAssert compiles(genericHead(FooInst))
+  doAssert not compiles(genericHead(Foo))
+  type Bar = object
+  doAssert not compiles(genericHead(Bar))
+  # doAssert seq[int].genericHead is seq

@@ -29,10 +29,7 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
   self.processCmdLine(passCmd1, "", conf)
   if self.supportsStdinFile and conf.projectName == "-":
-    conf.projectName = "stdinfile"
-    conf.projectFull = AbsoluteFile "stdinfile"
-    conf.projectPath = AbsoluteDir getCurrentDir()
-    conf.projectIsStdin = true
+    handleStdinInput(conf)
   elif conf.projectName != "":
     try:
       conf.projectFull = canonicalizePath(conf, AbsoluteFile conf.projectName)
@@ -89,6 +86,13 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   # now process command line arguments again, because some options in the
   # command line can overwrite the config file's settings
   extccomp.initVars(conf)
+  # XXX This is hacky. We need to find a better way.
+  case conf.command
+  of "cpp", "compiletocpp":
+    conf.cmd = cmdCompileToCpp
+  else:
+    discard
+
   self.processCmdLine(passCmd2, "", conf)
   if conf.command == "":
     rawMessage(conf, errGenerated, "command missing")

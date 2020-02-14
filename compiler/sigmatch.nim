@@ -1149,9 +1149,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             f.n[i] = tryResolvingStaticExpr(c, f.n[i])
         result = typeRangeRel(f, a)
     else:
-      if skipTypes(f, {tyRange}).kind == a.kind:
+      let f = skipTypes(f, {tyRange})
+      if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
         result = isIntConv
-      elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
+      elif isConvertibleToRange(f, a):
         result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
@@ -1714,7 +1715,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result == isGeneric:
         var concrete = a
         if tfWildcard in a.flags:
-          a.sym.kind = skType
+          a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         else:
           concrete = concreteType(c, a, f)
@@ -1937,13 +1938,16 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semExpr(c, call)
+  result = c.semTryExpr(c, call)
+
   if result != nil:
     if result.typ == nil: return nil
+    # bug #13378, ensure we produce a real generic instantiation:
+    result = c.semExpr(c, call)
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil
-    if result.kind == nkCall: result.kind = nkHiddenCallConv
+    if result.kind == nkCall: result.transitionSonsKind(nkHiddenCallConv)
     inc(m.convMatches)
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
@@ -2602,7 +2606,7 @@ when not declared(tests):
   template tests(s: untyped) = discard
 
 tests:
-  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())
+  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, unknownLineInfo)
 
   proc `|` (t1, t2: PType): PType =
     result = newType(tyOr, dummyOwner)
@@ -2625,7 +2629,7 @@ tests:
   proc array(x: int, t: PType): PType =
     result = newType(tyArray, dummyOwner)
 
-    var n = newNodeI(nkRange, UnknownLineInfo())
+    var n = newNodeI(nkRange, unknownLineInfo)
     n.add newIntNode(nkIntLit, 0)
     n.add newIntNode(nkIntLit, x)
     let range = newType(tyRange, dummyOwner)
@@ -2643,14 +2647,14 @@ tests:
       number = int | float
 
     var TFoo = newType(tyObject, dummyOwner)
-    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, UnknownLineInfo())
+    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, unknownLineInfo)
 
     var T1 = newType(tyGenericParam, dummyOwner)
-    T1.sym = newSym(skType, getIdent"T1", dummyOwner, UnknownLineInfo())
+    T1.sym = newSym(skType, getIdent"T1", dummyOwner, unknownLineInfo)
     T1.sym.position = 0
 
     var T2 = newType(tyGenericParam, dummyOwner)
-    T2.sym = newSym(skType, getIdent"T2", dummyOwner, UnknownLineInfo())
+    T2.sym = newSym(skType, getIdent"T2", dummyOwner, unknownLineInfo)
     T2.sym.position = 1
 
     setup:

@@ -3,6 +3,9 @@ discard """
 @[1, 2, 3]
 Success
 @["a", "b", "c"]
+Hello
+1
+2
 0'''
   cmd: '''nim c --gc:arc $file'''
 """
@@ -113,5 +116,32 @@ proc bug12964*() =
   tokens.add token
 
 bug12964()
+
+# bug #13119
+import streams
+
+proc bug13119 =
+  var m = newStringStream("Hello world")
+  let buffer = m.readStr(5)
+  echo buffer
+  m.close
+
+bug13119()
+
+# bug #13105
+
+type
+  Result[T, E] = object
+    a: T
+    b: E
+  D = ref object
+    x: int
+  R = Result[D, int]
+
+proc bug13105 =
+  for n in [R(b: 1), R(b: 2)]:
+    echo n.b
+
+bug13105()
 
 echo getOccupiedMem() - startMem
