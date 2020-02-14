@@ -81,7 +81,7 @@
 ##          bodyLength += req.body.len
 ##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
 ##
-##    let server = newAsyncHttpServer(maxBody = 10485760, stream = true) # 10 MB
+##    let server = newAsyncHttpServer(maxBody = 10485760, stream = stream) # 10 MB
 ##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
