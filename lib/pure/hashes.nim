@@ -89,18 +89,44 @@ proc hashData*(data: pointer, size: int): Hash =
     dec(s)
   result = !$h
 
-proc hash*(x: string): Hash {.noSideEffect.}
+when defined(js):
+  proc hash*(x: string): Hash {.noSideEffect.}
 
-proc hashBiggestInt*(x: BiggestInt): Hash {.inline.} =
+proc hashUInt64*(x: uint64): Hash {.inline.} =
   ## for internal use; user code should prefer `hash` overloads
   when nimvm: # in vmops
     doAssert false
   else:
-    when defined(js):
-      # could use BigInt, see https://github.com/nim-lang/RFCs/issues/187
-      hash($x)
-    else:
-      hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
+    # would orders of magnitude worse, see thashes_perf toHighOrderBits
+    # faster than using murmurhash or Jenkins via
+    # hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
+
+    # would a bit worse, see thashes_perf toInt64
+    # type ByteArr = array[int64.sizeof, uint8]
+    # result = murmurHash(cast[ptr ByteArr](unsafeAddr x)[])
+
+    # inspired from https://gist.github.com/badboy/6267743#64-bit-mix-functions
+    var x = x
+    x = (not x) + (x shl 21) # x = (x shl 21) - x - 1;
+    x = x xor (x shr 24)
+    x = (x + (x shl 3)) + (x shl 8) # x * 265
+    x = x xor (x shr 14)
+    x = (x + (x shl 2)) + (x shl 4) # x * 21
+    x = x xor (x shr 28)
+    x = x + (x shl 31)
+    result = cast[Hash](x)
+
+proc hashUInt32*(x: uint32): Hash {.inline.} =
+  ## for internal use; user code should prefer `hash` overloads
+  # calling `hashUInt64(x)` would perform 1.736 worse, see thashes_perf toInt32
+  when nimvm: # in vmops
+    doAssert false
+  else:
+    # inspired from https://gist.github.com/badboy/6267743
+    var x = x xor ((x shr 20) xor (x shr 12))
+    # debugEcho ("hashUInt32", x)
+    # return cast[Hash](x xor (x shr 7) xor (x shr 4))
+    result = cast[Hash](x xor (x shr 7) xor (x shr 4))
 
 proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
   ## Efficient hashing of numbers, ordinals (eg enum), char.
@@ -117,14 +143,16 @@ proc hash*[T: SomeNumber | Ordinal | char](x: T): Hash {.inline.} =
       # bugfix: the previous code was using `x = x + 1.0` (presumably for
       # handling negative 0), however this leads to collisions for small x due
       # to FP finite precision.
-      let x = block:
-        when sizeof(BiggestInt) == sizeof(T):
-          cast[BiggestInt](x + T(0))
-        else: # for nimvm
-          cast[int32](x + T(0)).BiggestInt
+      let x = x + T(0)
+    when defined(js):
+      when nimvm:
+        # this could also be `hashUInt64(cast[uint64](x))` on a 32 bit machine,
+        # but we can't query for int.sizeof since that's hardcoded for nim js
+        hashUInt64(cast[uint64](x))
+      else: hash($x.float)
     else:
-      let x = x.BiggestInt
-    hashBiggestInt(x)
+      when sizeof(T) == sizeof(uint64): hashUInt64(cast[uint64](x))
+      else: hashUInt32(cast[uint32](x))
   else:
     # empirically better for small types, the collision risk is limited anyway
     # due to cardinality of at most 2^16=65536

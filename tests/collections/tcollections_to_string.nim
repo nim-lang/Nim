@@ -7,6 +7,7 @@ import tables
 import deques
 import lists
 import critbits
+import sequtils, algorithm
 
 # Tests for tuples
 doAssert $(1, 2, 3) == "(1, 2, 3)"
@@ -26,9 +27,11 @@ doAssert $(toOrderedSet([1, 2, 3])) == "{1, 2, 3}"
 doAssert $(toOrderedSet(["1", "2", "3"])) == """{"1", "2", "3"}"""
 doAssert $(toOrderedSet(['1', '2', '3'])) == """{'1', '2', '3'}"""
 
+proc toStrSorted(t: Table): string = $(toSeq(pairs(t)).sorted)
+
 # Tests for tables
-doAssert $({1: "1", 2: "2"}.toTable) == """{1: "1", 2: "2"}"""
-doAssert $({"1": 1, "2": 2}.toTable) == """{"1": 1, "2": 2}"""
+doAssert {1: "1", 2: "2"}.toTable.toStrSorted == """@[(1, "1"), (2, "2")]"""
+doAssert {"1": 1, "2": 2}.toTable.toStrSorted == """@[("1", 1), ("2", 2)]"""
 
 # Tests for deques
 block:

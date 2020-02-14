@@ -18,7 +18,7 @@ from md5 import getMD5
 from sighashes import symBodyDigest
 from times import cpuTime
 
-from hashes import hash, hashBiggestInt
+from hashes import hash, hashUInt64, hashUInt32
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -185,8 +185,10 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImpl", hashVmImpl
 
-  registerCallback c, "stdlib.hashes.hashBiggestInt", proc (a: VmArgs) {.nimcall.} =
-    a.setResult hashBiggestInt(getInt(a, 0))
+  registerCallback c, "stdlib.hashes.hashUInt64", proc (a: VmArgs) {.nimcall.} =
+    a.setResult hashUInt64(cast[uint64](getInt(a, 0)))
+  registerCallback c, "stdlib.hashes.hashUInt32", proc (a: VmArgs) {.nimcall.} =
+    a.setResult hashUInt32(cast[uint32](getInt(a, 0)))
 
   proc hashVmImplByte(a: VmArgs) =
     # nkBracket[...]

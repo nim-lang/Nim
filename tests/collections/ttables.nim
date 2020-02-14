@@ -164,7 +164,7 @@ block tableconstr:
 
 block ttables2:
   proc TestHashIntInt() =
-    var tab = initTable[int,int]()
+    var tab = initTable[int, int]()
     const n = 1_000_000 # bottleneck: 50 seconds on OSX in debug mode
     for i in 1..n:
       tab[i] = i
@@ -184,7 +184,6 @@ block ttables2:
     delTab[i] = i
     delTab.del(i)
   delTab[5] = 5
-
 
   run1()
   echo "2"
