@@ -65,6 +65,7 @@ Commands for core developers:
   runCI                    runs continuous integration (CI), eg from travis
   docs [options]           generates the full documentation
   csource -d:release       builds the C sources for installation
+                           can also pass extra flags, eg `-dnimBundleNimExtras`
   pdf                      builds the PDF documentation
   zip                      builds the installation zip package
   xz                       builds the installation tar.xz package
