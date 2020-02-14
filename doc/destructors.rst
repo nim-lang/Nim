@@ -266,8 +266,8 @@ Rewrite rules
    around the complete routine body.
 2. The produced ``finally`` section is wrapped around the enclosing scope.
 
-The current implementation follows strategy (1). This means that resources are
-not destroyed at the scope exit, but at the proc exit.
+The current implementation follows strategy (2). This means that resources are
+destroyed at the scope exit.
 
 ::
 
@@ -434,6 +434,7 @@ for expressions of type ``lent T`` or of type ``var T``.
     result = Tree(kids: kids)
     # converted into:
     `=sink`(result.kids, kids); wasMoved(kids)
+    `=destroy`(kids)
 
   proc `[]`*(x: Tree; i: int): lent Tree =
     result = x.kids[i]
