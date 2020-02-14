@@ -95,9 +95,9 @@ The garbage collectors's way of measuring time uses
 As such it supports a resolution of nanoseconds internally; however the API
 uses microseconds for convenience.
 
-Define the symbol ``reportMissedDeadlines`` to make the GC output whenever it
-missed a deadline. The reporting will be enhanced and supported by the API in
-later versions of the collector.
+Define the symbol ``reportMissedDeadlines`` to make the
+garbage collector output whenever it missed a deadline.
+The reporting will be enhanced and supported by the API in later versions of the collector.
 
 
 Tweaking the garbage collector
@@ -128,7 +128,7 @@ with the exception of ``--gc:boehm`` and ``--gc:go``.
 
 In addition to ``GC_ref`` and ``GC_unref`` you can avoid the garbage collector by manually
 allocating memory with procs like ``alloc``, ``alloc0``, ``allocShared``, ``allocShared0`` or ``allocCStringArray``.
-The GC won't try to free them, you need to call their respective *dealloc* pairs
+The garbage collector won't try to free them, you need to call their respective *dealloc* pairs
 (``dealloc``, ``deallocShared``, ``deallocCStringArray``, etc)
 when you are done with them or they will leak.
 
