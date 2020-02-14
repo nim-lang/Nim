@@ -66,6 +66,9 @@ No garbage collector nor memory management is used for `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.
 `NimScript <nims.html>`_ target uses Nim VM memory management strategy.
 
+All memory management strategies are supported equally on Nim when possible and aplicable,
+even if there is a default one, all others should also work as documented.
+
 If you are new to Nim and just starting, the default memory management strategy is balanced to fit most common use cases.
 
 
