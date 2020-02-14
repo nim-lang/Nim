@@ -37,20 +37,17 @@
 ## respond with a page with the actual and expected body length after
 ## submitting a file.
 ##
-## With option stream set to true:
-## -------------------------------
-##
 ## .. code-block::nim
 ##    import asynchttpserver, asyncdispatch
 ##    import strutils, strformat
+##
+##    const stream = true # for test purposes switch from true to false
 ##
 ##    proc htmlpage(contentLength, bodyLength: int): string =
 ##      return &"""
 ##    <!Doctype html>
 ##    <html lang="en">
-##      <head>
-##        <meta charset="utf-8"/>
-##      </head>
+##      <head><meta charset="utf-8"/></head>
 ##      <body>
 ##        <form action="/" method="post" enctype="multipart/form-data">
 ##          File: <input type="file" name="testfile" accept="text/*"><br />
@@ -68,58 +65,23 @@
 ##        bodyLength = 0
 ##      if req.reqMethod == HttpPost:
 ##        contentLength = req.headers["Content-length"].parseInt
-##        # Read 8*1024 bytes at a time
-##        for length, data in req.bodyStream():
-##          let content = await data
-##          if length == content.len:
-##            bodyLength += content.len
-##          else:
-##            # Handle exception
-##            await req.respond(Http400,
-##              "Bad Request. Data read has a different length than the expected.")
-##            return
+##        if stream:
+##          # Read 8*1024 bytes at a time
+##          # optional chunkSize parameter. The default is 8*1024
+##          for length, data in req.bodyStream(8*1024):
+##            let content = await data
+##            if length == content.len:
+##              bodyLength += content.len
+##            else:
+##              # Handle exception
+##              await req.respond(Http400,
+##                "Bad Request. Data read has a different length than the expected.")
+##              return
+##        else:
+##          bodyLength += req.body.len
 ##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
 ##
 ##    let server = newAsyncHttpServer(maxBody = 10485760, stream = true) # 10 MB
-##    waitFor server.serve(Port(8080), cb)
-##
-## With default option stream (false is the default):
-## --------------------------------------------------
-##
-## .. code-block::nim
-##    import asynchttpserver, asyncdispatch
-##    import strutils, strformat
-##
-##    proc htmlpage(contentLength, bodyLength: int): string =
-##      return &"""
-##    <!Doctype html>
-##    <html lang="en">
-##      <head>
-##        <meta charset="utf-8"/>
-##      </head>
-##      <body>
-##        <form action="/" method="post" enctype="multipart/form-data">
-##          File: <input type="file" name="testfile" accept="text/*"><br />
-##          <input style="margin:10px 0;" type="submit">
-##        </form><br />
-##        Expected Body Length: {contentLength} bytes<br />
-##        Actual Body Length: {bodyLength} bytes
-##      </body>
-##    </html>
-##    """
-##
-##    proc cb(req: Request) {.async.} =
-##      var
-##        contentLength = 0
-##        bodyLength = 0
-##      if req.reqMethod == HttpPost:
-##        contentLength = req.headers["Content-length"].parseInt
-##        # Read all body at once
-##        let body = req.body
-##        bodyLength = body.len
-##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
-##
-##    let server = newAsyncHttpServer(maxBody = 10485760) # 10 MB
 ##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
@@ -253,11 +215,13 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
 when (NimMajor, NimMinor) >= (1, 1):
-  ## chunkSize is optional and default value is 8*1024 bytes.
   iterator bodyStream*(
     request: Request,
     chunkSize: int = 8*1024): (int, Future[string]) =
-
+    ## The chunkSize parameter is optional and default value is 8*1024 bytes.
+    ##
+    ## This iterator return a tuple with the length of the data that was read
+    ## and a future.
     var remainder = request.contentLength
     while remainder > 0:
       let readSize = min(remainder, chunkSize)
