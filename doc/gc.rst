@@ -14,30 +14,24 @@ Nim's Memory Management
 Introduction
 ============
 
-This document describes how the GC works and how to tune it for
-(soft) `realtime systems`:idx:.
-
-The basic algorithm is *Deferred Reference Counting* with cycle detection.
-References on the stack are not counted for better performance (and easier C
-code generation). Cycle detection is currently done by a simple Mark&Sweep
-GC that has to scan the full (thread local heap).
-
-The GC is only triggered in a memory allocation operation. It is not triggered
-by some timer and does not run in a background thread.
-
-To force a full collection call ``GC_fullCollect``. Note that it is generally
-better to let the GC do its work and not enforce a full collection.
+This document describes how the multi-paradigm memory management strategies work.
+How to tune the garbage collectors for your needs, like (soft) `realtime systems`:idx:,
+and how the memory management strategies that are not garbage collectors work.
 
 
-Memory Management Strategies
-============================
+Multi-paradigm Memory Management Strategies
+===========================================
 
 You can choose the memory management strategy to use when compiling source code,
 you can pass ``--gc:`` on the compile command with the selected memory management strategy.
 
 - ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
-  with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_,
-  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_, default.
+  with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
+  by a simple Mark&Sweep that has to scan the full heap,
+  is only triggered in a memory allocation operation and
+  it is not triggered by some timer and does not run in a background thread,
+  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
+  references on the stack are not counted for better performance (and easier C code generation), default.
 - ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector,
   `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
 - ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector,
