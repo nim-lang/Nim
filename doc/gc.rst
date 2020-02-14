@@ -151,8 +151,8 @@ change in later versions.
 Memory Management Strategies
 ============================
 
-You can choose the memory management to use when compiling source code,
-you can pass ``--gc:`` on the compile command with the choosed memory management.
+You can choose the memory management strategy to use when compiling source code,
+you can pass ``--gc:`` on the compile command with the selected memory management strategy.
 
 - ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
   with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_,
