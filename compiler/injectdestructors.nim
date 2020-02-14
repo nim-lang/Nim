@@ -251,7 +251,8 @@ proc canBeMoved(c: Con; t: PType): bool {.inline.} =
     result = t.attachedOps[attachedSink] != nil
 
 proc genSink(c: var Con; dest, ri: PNode): PNode =
-  if isFirstWrite(dest, c): # optimize sink call into a bitwise memcopy
+  if isUnpackedTuple(dest) or isFirstWrite(dest, c):
+    # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
     let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -592,6 +593,9 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
               # make sure it's destroyed at the end of the proc:
               if not isUnpackedTuple(v):
                 c.destroys.add genDestroy(c, v)
+              elif c.inLoop > 0:
+                # unpacked tuple needs reset at every loop iteration
+                result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
             if ri.kind == nkEmpty and c.inLoop > 0:
               ri = genDefaultCall(v.typ, c, v.info)
             if ri.kind != nkEmpty:
@@ -660,14 +664,11 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   case ri.kind
   of nkCallKinds:
-    if isUnpackedTuple(dest):
-      result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
-    else:
-      result = genSink(c, dest, p(ri, c, consumed))
+    result = genSink(c, dest, p(ri, c, consumed))
   of nkBracketExpr:
     if isUnpackedTuple(ri[0]):
-      # unpacking of tuple: take over elements
-      result = newTree(nkFastAsgn, dest, p(ri, c, consumed))
+      # unpacking of tuple: take over the elements
+      result = genSink(c, dest, p(ri, c, consumed))
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         not aliases(dest, ri):
       # Rule 3: `=sink`(x, z); wasMoved(z)
