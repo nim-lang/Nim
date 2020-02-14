@@ -69,6 +69,7 @@ type
     nimArgs: string
     debOpts: TDebOptions
     nimblePkgName: string
+    withLinenoise: bool
 
 const
   unixDirVars: array[fcConfig..fcLib, string] = [
@@ -106,6 +107,7 @@ proc iniConfigData(c: var ConfigData) =
   c.debOpts.pkgDepends = ""
   c.debOpts.shortDesc = ""
   c.debOpts.licenses = @[]
+  c.withLinenoise = true
 
 proc firstBinPath(c: ConfigData): string =
   if c.binPaths.len > 0: result = c.binPaths[0]
@@ -144,22 +146,29 @@ const
 Usage:
   niminst [options] command[;command2...] ini-file[.ini] [compile_options]
 Command:
-  csource             build C source code for source based installations
-  scripts             build install and deinstall scripts
-  zip                 build the ZIP file
-  inno                build the Inno Setup installer
-  nsis                build the NSIS Setup installer
-  deb                 create files for debhelper
+  csource                build C source code for source based installations
+  scripts                build install and deinstall scripts
+  zip                    build the ZIP file
+  inno                   build the Inno Setup installer
+  nsis                   build the NSIS Setup installer
+  deb                    create files for debhelper
 Options:
-  -o, --output:dir    set the output directory
-  -m, --main:file     set the main nim file, by default ini-file with .nim
-                      extension
-  --var:name=value    set the value of a variable
-  -h, --help          shows this help
-  -v, --version       shows the version
+  -o, --output:dir       set the output directory
+  -m, --main:file        set the main nim file, by default ini-file with .nim
+                         extension
+  --var:name=value       set the value of a variable
+  --withLinenoise:on|off whether to include linenoise.h, on by default
+  -h, --help             shows this help
+  -v, --version          shows the version
 Compile_options:
   will be passed to the Nim compiler
 """
+
+proc parseOnOff(val: string): bool =
+  case val.string:
+  of "on": result = true
+  of "off": result = false
+  else: quit Usage
 
 proc parseCmdLine(c: var ConfigData) =
   var p = initOptParser()
@@ -195,6 +204,7 @@ proc parseCmdLine(c: var ConfigData) =
         quit(0)
       of "o", "output": c.outdir = val
       of "m", "main": c.mainfile = changeFileExt(val, "nim")
+      of "withlinenoise": c.withlinenoise = val.parseOnOff
       of "var":
         var idx = val.find('=')
         if idx < 0: quit("invalid command line")
@@ -513,10 +523,10 @@ template gatherFiles(fun, libpath, outDir) =
       fun(src, dst)
 
     for f in walkFiles(libpath / "lib/*.h"): copySrc(f)
-    let f = libpath / "lib/wrappers/linenoise/linenoise.h"
-    # optional, see https://github.com/nim-lang/Nim/commit/2b368bcdd705a5c7f0558df706fde01d217f5e9d#commitcomment-37273026
-    if f.existsFile: copySrc(f)
-    else: echo "(non-fatal) missing: " & f
+    if c.withLinenoise:
+      let f = libpath / "lib/wrappers/linenoise/linenoise.h"
+      # see https://github.com/nim-lang/Nim/commit/2b368bcdd705a5c7f0558df706fde01d217f5e9d#commitcomment-37273026
+      copySrc(f)
 
 proc srcdist(c: var ConfigData) =
   let cCodeDir = getOutputDir(c) / "c_code"
