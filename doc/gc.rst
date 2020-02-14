@@ -29,19 +29,20 @@ To force a full collection call ``GC_fullCollect``. Note that it is generally
 better to let the GC do its work and not enforce a full collection.
 
 
-Cycle collector
-===============
+Cycle collector for garbage collectors
+======================================
 
 The cycle collector can be en-/disabled independently from the other parts of
-the GC with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
+the garbage collector with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
 
 
-Realtime support
-================
+Realtime support for garbage collectors
+=======================================
 
 To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
 defined via ``--define:useRealtimeGC`` (you can put this into your config
-file as well). With this switch the GC supports the following operations:
+file as well).
+With this switch the garbage collector supports the following operations:
 
 .. code-block:: nim
   proc GC_setMaxPause*(maxPauseInUs: int)
@@ -49,14 +50,14 @@ file as well). With this switch the GC supports the following operations:
 
 The unit of the parameters ``maxPauseInUs`` and ``us`` is microseconds.
 
-These two procs are the two modus operandi of the realtime GC:
+These two procs are the two modus operandi of the realtime garbage collector:
 
 (1) GC_SetMaxPause Mode
 
     You can call ``GC_SetMaxPause`` at program startup and then each triggered
-    GC run tries to not take longer than ``maxPause`` time. However, it is
+    garbage collector run tries to not take longer than ``maxPause`` time. However, it is
     possible (and common) that the work is nevertheless not evenly distributed
-    as each call to ``new`` can trigger the GC and thus take  ``maxPause``
+    as each call to ``new`` can trigger the garbage collector and thus take  ``maxPause``
     time.
 
 (2) GC_step Mode
@@ -79,11 +80,11 @@ time will be met in almost all cases on modern CPUs (with the cycle collector
 disabled).
 
 
-Time measurement
-----------------
+Time measurement with garbage collectors
+----------------------------------------
 
-The GC's way of measuring time uses (see ``lib/system/timers.nim`` for the
-implementation):
+The garbage collectors's way of measuring time uses
+(see ``lib/system/timers.nim`` for the implementation):
 
 1) ``QueryPerformanceCounter`` and ``QueryPerformanceFrequency`` on Windows.
 2) ``mach_absolute_time`` on Mac OS X.
@@ -92,14 +93,13 @@ implementation):
 As such it supports a resolution of nanoseconds internally; however the API
 uses microseconds for convenience.
 
-
 Define the symbol ``reportMissedDeadlines`` to make the GC output whenever it
 missed a deadline. The reporting will be enhanced and supported by the API in
 later versions of the collector.
 
 
-Tweaking the GC
----------------
+Tweaking the garbage collector
+------------------------------
 
 The collector checks whether there is still time left for its work after
 every ``workPackage``'th iteration. This is currently set to 100 which means
@@ -108,23 +108,23 @@ that up to 100 objects are traversed and freed before it checks again. Thus
 highly specialized environments or for older hardware.
 
 
-Keeping track of memory
------------------------
+Keeping track of memory with garbage collectors
+-----------------------------------------------
 
 If you need to pass around memory allocated by Nim to C, you can use the
 procs ``GC_ref`` and ``GC_unref`` to mark objects as referenced to avoid them
-being freed by the GC. Other useful procs from `system <system.html>`_ you can
-use to keep track of memory are:
+being freed by the garbage collector.
+Other useful procs from `system <system.html>`_ you can use to keep track of memory are:
 
-* ``getTotalMem()`` Returns the amount of total memory managed by the GC.
-* ``getOccupiedMem()`` Bytes reserved by the GC and used by objects.
-* ``getFreeMem()`` Bytes reserved by the GC and not in use.
+* ``getTotalMem()`` Returns the amount of total memory managed by the garbage collector.
+* ``getOccupiedMem()`` Bytes reserved by the garbage collector and used by objects.
+* ``getFreeMem()`` Bytes reserved by the garbage collector and not in use.
 * ``GC_getStatistics()`` Garbage collector statistics as a human-readable string.
 
 These numbers are usually only for the running thread, not for the whole heap,
 with the exception of ``--gc:boehm`` and ``--gc:go``.
 
-In addition to ``GC_ref`` and ``GC_unref`` you can avoid the GC by manually
+In addition to ``GC_ref`` and ``GC_unref`` you can avoid the garbage collector by manually
 allocating memory with procs like ``alloc``, ``alloc0``, ``allocShared``, ``allocShared0`` or ``allocCStringArray``.
 The GC won't try to free them, you need to call their respective *dealloc* pairs
 (``dealloc``, ``deallocShared``, ``deallocCStringArray``, etc)
@@ -142,7 +142,7 @@ the total amount of object instances for this type as well as the total
 amount of bytes these instances take up. This list is currently unsorted!
 You need to use external shell script hacking to sort it.
 
-The numbers count the number of objects in all GC heaps, they refer to
+The numbers count the number of objects in all garbage collector heaps, they refer to
 all running threads, not only to the current thread. (The current thread
 would be the thread that calls ``dumpNumberOfInstances``.) This might
 change in later versions.
