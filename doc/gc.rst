@@ -62,12 +62,14 @@ These two procs are the two modus operandi of the realtime garbage collector:
 
 (2) GC_step Mode
 
-    This allows the GC to perform some work for up to ``us`` time. This is
-    useful to call in a main loop to ensure the GC can do its work. To
-    bind all GC activity to a ``GC_step`` call, deactivate the GC with
-    ``GC_disable`` at program startup. If ``strongAdvice`` is set to ``true``,
-    GC will be forced to perform collection cycle. Otherwise, GC may decide not
-    to do anything, if there is not much garbage to collect.
+    This allows the garbage collector to perform some work for up to ``us`` time.
+    This is useful to call in a main loop to ensure the garbage collector can do its work.
+    To bind all garbage collector activity to a ``GC_step`` call,
+    deactivate the garbage collector with ``GC_disable`` at program startup.
+    If ``strongAdvice`` is set to ``true``,
+    then the garbage collector will be forced to perform collection cycle.
+    Otherwise, the garbage collector may decide not to do anything,
+    if there is not much garbage to collect.
     You may also specify the current stack size via ``stackSize`` parameter.
     It can improve performance, when you know that there are no unique Nim
     references below certain point on the stack. Make sure the size you specify
