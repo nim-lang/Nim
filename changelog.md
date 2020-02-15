@@ -44,6 +44,7 @@
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
+- Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
 - Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
