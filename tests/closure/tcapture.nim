@@ -2,7 +2,9 @@ discard """
   output: '''
 to be, or not to be
 (v: 1)
+(w: -1)
 (v: 1)
+(w: -1)
 '''
   joinable: false
 """
@@ -14,13 +16,19 @@ var l = m.mapIt(capture([it], proc (s: string): string = it(s)))
 let r = l.mapIt(it("be"))
 echo r[0] & ", or " & r[1]
 
-type O = object
-  v: int
+type
+  O = object
+    v: int
+  U = object
+    w: int
 var o = O(v: 1)
+var u = U(w: -1)
 var execute: proc()
-capture [o]:
+capture o, u:
   execute = proc() =
     echo o
+    echo u
 execute()
 o.v = -1
+u.w = 1
 execute()

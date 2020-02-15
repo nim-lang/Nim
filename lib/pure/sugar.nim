@@ -165,7 +165,7 @@ template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase fr
   ## reverses ``type T = distinct A``; works recursively.
   typetraits.distinctBase(T)
 
-macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1).} =
+macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values. Example:
   ##
@@ -175,14 +175,16 @@ macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1)
   ##   for i in 5..7:
   ##     for j in 7..9:
   ##       if i * j == 42:
-  ##         capture [i, j]:
+  ##         capture i, j:
   ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
   ##   myClosure() # output: 6 * 7 == 42
   ##   let m = @[proc (s: string): string = "to " & s, proc (s: string): string = "not to " & s]
-  ##   var l = m.mapIt(capture([it], proc (s: string): string = it(s)))
+  ##   var l = m.mapIt(capture(it, proc (s: string): string = it(s)))
   ##   let r = l.mapIt(it("be"))
   ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
   var params = @[newIdentNode("auto")]
+  let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
+               else: locals
   for arg in locals:
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
