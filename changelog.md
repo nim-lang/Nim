@@ -18,6 +18,7 @@
 
 ## Library additions
 
+- Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
 
 
 ## Library changes
