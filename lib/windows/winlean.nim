@@ -312,6 +312,7 @@ const
   MOVEFILE_FAIL_IF_NOT_TRACKABLE* = 0x20'i32
   MOVEFILE_REPLACE_EXISTING* = 0x1'i32
   MOVEFILE_WRITE_THROUGH* = 0x8'i32
+  REPARSE_TAG_NAME_SURROGATE* = 0x20000000'u32
 
 type
   WIN32_FIND_DATA* {.pure.} = object
@@ -321,7 +322,7 @@ type
     ftLastWriteTime*: FILETIME
     nFileSizeHigh*: int32
     nFileSizeLow*: int32
-    dwReserved0: int32
+    dwReserved0*: uint32
     dwReserved1: int32
     cFileName*: array[0..(MAX_PATH) - 1, WinChar]
     cAlternateFileName*: array[0..13, WinChar]
@@ -703,6 +704,7 @@ const
   ERROR_NO_MORE_FILES* = 18
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
+  ERROR_INVALID_NAME* = 123
   ERROR_BAD_ARGUMENTS* = 165
   ERROR_DIRECTORY* = 267
 
