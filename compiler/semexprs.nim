@@ -396,12 +396,21 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       res = false
   else:
-    maybeLiftType(t2, c, n.info)
+    if t1.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct}).kind != tyGenericBody:
+      maybeLiftType(t2, c, n.info)
+    else:
+      #[
+      for this case:
+      type Foo = object[T]
+      Foo is Foo
+      ]#
+      discard
     var m = newCandidate(c, t2)
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
     res = typeRel(m, t2, t1) >= isSubtype # isNone
+    # `res = sameType(t1, t2)` would be wrong, eg for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
   result.typ = n.typ
@@ -884,7 +893,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     if n0.kind == nkDotCall:
       # it is a static call!
       result = n0
-      result.kind = nkCall
+      result.transitionSonsKind(nkCall)
       result.flags.incl nfExplicitCall
       for i in 1..<n.len: result.add n[i]
       return semExpr(c, result, flags)
@@ -1509,7 +1518,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
         else:
           # We are processing macroOrTmpl[] not in call. Transform it to the
           # macro or template call with generic arguments here.
-          n.kind = nkCall
+          n.transitionSonsKind(nkCall)
           case s.kind
           of skMacro: result = semMacroExpr(c, n, n, s, flags)
           of skTemplate: result = semTemplateExpr(c, n, s, flags)
@@ -1601,7 +1610,7 @@ proc borrowCheck(c: PContext, n, le, ri: PNode) =
   proc scopedLifetime(c: PContext; ri: PNode): bool {.inline.} =
     let n = getRoot(ri, followDeref = false)
     result = (ri.kind in nkCallKinds+{nkObjConstr}) or
-      (n.kind == nkSym and n.sym.owner == c.p.owner)
+      (n.kind == nkSym and n.sym.owner == c.p.owner and n.sym.kind != skResult)
 
   proc escapes(c: PContext; le: PNode): bool {.inline.} =
     # param[].foo[] = self  definitely escapes, we don't need to
@@ -1646,7 +1655,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
       # possible:
       a = dotTransformation(c, n[0])
       if a.kind == nkDotCall:
-        a.kind = nkCall
+        a.transitionSonsKind(nkCall)
         a = semExprWithType(c, a, {efLValue})
   of nkBracketExpr:
     # a[i] = x
@@ -1789,12 +1798,12 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
       let e = skipTypes(t[i], {tyGenericInst, tyAlias, tySink})
       if e.kind in {tyVar, tyLent}:
         e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
-        if n[0].kind in {nkPar, nkTupleConstr}:
-          n[0][i] = takeImplicitAddr(c, n[0][i], e.kind == tyLent)
-        elif n[0].kind in {nkHiddenStdConv, nkHiddenSubConv} and
-             n[0][1].kind in {nkPar, nkTupleConstr}:
-          var a = n[0][1]
-          a[i] = takeImplicitAddr(c, a[i], e.kind == tyLent)
+        let tupleConstr = if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}: n[0][1] else: n[0]
+        if tupleConstr.kind in {nkPar, nkTupleConstr}:
+          if tupleConstr[i].kind == nkExprColonExpr:
+            tupleConstr[i][1] = takeImplicitAddr(c, tupleConstr[i][1], e.kind == tyLent)
+          else:
+            tupleConstr[i] = takeImplicitAddr(c, tupleConstr[i], e.kind == tyLent)
         else:
           localError(c.config, n[0].info, errXExpected, "tuple constructor")
   else: discard
@@ -2429,7 +2438,7 @@ proc semTupleFieldsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semTuplePositionsConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result = n                  # we don't modify n, but compute the type:
-  result.kind = nkTupleConstr
+  result.transitionSonsKind(nkTupleConstr)
   var typ = newTypeS(tyTuple, c)  # leave typ.n nil!
   for i in 0..<n.len:
     n[i] = semExprWithType(c, n[i], flags*{efAllowDestructor})
@@ -2455,8 +2464,8 @@ proc semBlock(c: PContext, n: PNode; flags: TExprFlags): PNode =
     onDef(n[0].info, labl)
   n[1] = semExpr(c, n[1], flags)
   n.typ = n[1].typ
-  if isEmptyType(n.typ): n.kind = nkBlockStmt
-  else: n.kind = nkBlockExpr
+  if isEmptyType(n.typ): n.transitionSonsKind(nkBlockStmt)
+  else: n.transitionSonsKind(nkBlockExpr)
   closeScope(c)
   dec(c.p.nestedBlockCounter)
 
@@ -2608,7 +2617,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkDotExpr:
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
-      result.kind = nkCall
+      result.transitionSonsKind(nkCall)
       result = semExpr(c, result, flags)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")

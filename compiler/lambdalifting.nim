@@ -353,6 +353,7 @@ proc createUpField(c: var DetectionPass; dest, dep: PSym; info: TLineInfo) =
   # with cycles properly, so it's better to produce a weak ref (=ptr) here.
   # This seems to be generally correct but since it's a bit risky it's disabled
   # for now.
+  # XXX This is wrong for the 'hamming' test, so remove this logic again.
   let fieldType = if isDefined(c.graph.config, "nimCycleBreaker"):
                     c.getEnvTypeForOwnerUp(dep, info) #getHiddenParam(dep).typ
                   else:
@@ -836,12 +837,12 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   # pretend 'fn' is a closure iterator for the analysis:
   let oldKind = fn.kind
   let oldCC = fn.typ.callConv
-  fn.kind = skIterator
+  fn.transitionRoutineSymKind(skIterator)
   fn.typ.callConv = ccClosure
   d.ownerToType[fn.id] = ptrType
   detectCapturedVars(body, fn, d)
   result = liftCapturedVars(body, fn, d, c)
-  fn.kind = oldKind
+  fn.transitionRoutineSymKind(oldKind)
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
@@ -958,7 +959,7 @@ proc liftForLoop*(g: ModuleGraph; body: PNode; owner: PSym): PNode =
   var vpart = newNodeI(if body.len == 3: nkIdentDefs else: nkVarTuple, body.info)
   for i in 0..<body.len-2:
     if body[i].kind == nkSym:
-      body[i].sym.kind = skLet
+      body[i].sym.transitionToLet()
     vpart.add body[i]
 
   vpart.add newNodeI(nkEmpty, body.info) # no explicit type

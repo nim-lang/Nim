@@ -96,6 +96,8 @@
 import
   macros, strutils, streams, times, sets, sequtils
 
+include "system/inclrtl"
+
 when declared(stdout):
   import os
 
@@ -186,6 +188,9 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
   keepIf(formatters, proc (x: OutputFormatter): bool =
     x != formatter)
 
+proc resetOutputFormatters* {.since: (1, 1).} =
+  formatters = @[]
+    
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
@@ -626,7 +631,7 @@ macro check*(conditions: untyped): untyped =
 
     var counter = 0
 
-    if exp[0].kind == nnkIdent and
+    if exp[0].kind in {nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym} and
         $exp[0] in ["not", "in", "notin", "==", "<=",
                     ">=", "<", ">", "!=", "is", "isnot"]:
 

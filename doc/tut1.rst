@@ -645,7 +645,7 @@ is possible, and actually an idiom:
     :test: "nim c $1"
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
-    for i in 0 .. <nprinted:
+    for i in 0 ..< nprinted:
       echo s[i]
 
 If the procedure needs to modify the argument for the
@@ -1393,7 +1393,7 @@ define operators which accept Slice objects to define ranges.
     :test: "nim c $1"
 
   var
-    a = "Nim is a progamming language"
+    a = "Nim is a programming language"
     b = "Slices are useless."
 
   echo a[7..12] # --> 'a prog'

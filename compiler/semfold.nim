@@ -451,7 +451,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       if check: rangeCheck(n, val, g)
       result = newIntNodeT(val, n, g)
       if dstTyp.kind in {tyUInt..tyUInt64}:
-        result.kind = nkUIntLit
+        result.transitionIntKind(nkUIntLit)
     else:
       result = a
       result.typ = n.typ

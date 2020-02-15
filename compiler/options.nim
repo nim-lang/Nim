@@ -71,7 +71,6 @@ type                          # please make sure we have under 32 options
                               # also: generate header file
     optIdeDebug               # idetools: debug mode
     optIdeTerse               # idetools: use terse descriptions
-    optNoCppExceptions        # use C exception handling even with CPP
     optExcessiveStackTrace    # fully qualified module filenames
     optShowAllMismatches      # show all overloading resolution candidates
     optWholeProject           # for 'doc2': output any dependency
@@ -116,7 +115,7 @@ type
     cmdJsonScript             # compile a .json build file
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
-    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcDestructors,
+    gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
     gcHooks,
     gcRefc, gcV2, gcGo
     # gcRefc and the GCs that follow it use a write barrier,
@@ -158,6 +157,13 @@ type
   TSystemCC* = enum
     ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
+
+  ExceptionSystem* = enum
+    excNone,   # no exception system selected yet
+    excSetjmp, # setjmp based exception handling
+    excCpp,    # use C++'s native exception handling
+    excGoto,   # exception handling based on goto (should become the new default for C)
+    excQuirky  # quirky exception handling
 
   CfileFlag* {.pure.} = enum
     Cached,    ## no need to recompile this time
@@ -204,6 +210,7 @@ type
     exitcode*: int8
     cmd*: TCommands  # the command
     selectedGC*: TGCMode       # the selected GC (+)
+    exc*: ExceptionSystem
     verbosity*: int            # how verbose the compiler is
     numberOfProcessors*: int   # number of processors
     evalExpr*: string          # expression for idetools --eval
@@ -229,6 +236,7 @@ type
     hintCounter*: int
     warnCounter*: int
     errorMax*: int
+    maxLoopIterationsVM*: int ## VM: max iterations of all loops
     configVars*: StringTableRef
     symbols*: StringTableRef ## We need to use a StringTableRef here as defined
                              ## symbols are always guaranteed to be style
@@ -249,11 +257,13 @@ type
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
+    extraCmds*: seq[string] # for writeJsonBuildInstructions
     keepComments*: bool # whether the parser needs to keep comments
     implicitImports*: seq[string] # modules that are to be implicitly imported
     implicitIncludes*: seq[string] # modules that are to be implicitly included
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
+    docRoot*: string ## see nim --fullhelp for --docRoot
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
@@ -373,7 +383,8 @@ proc newConfigRef*(): ConfigRef =
     ccompilerpath: "",
     toCompile: @[],
     arguments: "",
-    suggestMaxResults: 10_000
+    suggestMaxResults: 10_000,
+    maxLoopIterationsVM: 10_000_000,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
@@ -502,6 +513,9 @@ proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ##
   ## This is overridden by some tools (namely nimsuggest) via the ``conf.prefixDir``
   ## field.
+  ## This should resolve to root of nim sources, whether running nim from a local
+  ##  clone or using installed nim, so that these exist: `result/doc/advopt.txt`
+  ## and `result/lib/system.nim`
   if not conf.prefixDir.isEmpty: result = conf.prefixDir
   else: result = AbsoluteDir splitPath(getAppDir()).head
 
@@ -642,6 +656,24 @@ template patchModule(conf: ConfigRef) {.dirty.} =
     if conf.moduleOverrides.hasKey(key):
       let ov = conf.moduleOverrides[key]
       if ov.len > 0: result = AbsoluteFile(ov)
+
+when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
+  proc isRelativeTo(path, base: string): bool =
+    # pending #13212 use os.isRelativeTo
+    let path = path.normalizedPath
+    let base = base.normalizedPath
+    let ret = relativePath(path, base)
+    result = path.len > 0 and not ret.startsWith ".."
+
+proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeFile =
+  let f = $f
+  template search(paths) =
+    for it in paths:
+      let it = $it
+      if f.isRelativeTo(it):
+        return relativePath(f, it).RelativeFile
+  search(conf.searchPaths)
+  search(conf.lazyPaths)
 
 proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:

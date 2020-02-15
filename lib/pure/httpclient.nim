@@ -367,7 +367,7 @@ proc addFiles*(p: var MultipartData, xs: openArray[tuple[name, file: string]]):
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = m.getMimetype(ext[1..ext.high], "")
-    p.add(name, readFile(file), fName & ext, contentType)
+    p.add(name, readFile(file).string, fName & ext, contentType)
   result = p
 
 proc `[]=`*(p: var MultipartData, name, content: string) =
@@ -450,10 +450,11 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string,
   result.add(" HTTP/1.1\c\L")
 
   # Host header.
-  if requestUrl.port == "":
-    add(result, "Host: " & requestUrl.hostname & "\c\L")
-  else:
-    add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
+  if not headers.hasKey("Host"):
+    if requestUrl.port == "":
+      add(result, "Host: " & requestUrl.hostname & "\c\L")
+    else:
+      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & "\c\L")
 
   # Connection header.
   if not headers.hasKey("Connection"):
@@ -485,7 +486,7 @@ type
     connected: bool
     currentURL: Uri       ## Where we are currently connected.
     headers*: HttpHeaders ## Headers to send in requests.
-    maxRedirects: int
+    maxRedirects: Natural ## Maximum redirects, set to ``0`` to disable.
     userAgent: string
     timeout*: int         ## Only used for blocking HttpClient for now.
     proxy: Proxy
@@ -512,7 +513,7 @@ type
 
 proc newHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = getDefaultSSL(), proxy: Proxy = nil,
-    timeout = -1): HttpClient =
+    timeout = -1, headers = newHttpHeaders()): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -528,8 +529,10 @@ proc newHttpClient*(userAgent = defUserAgent,
   ##
   ## ``timeout`` specifies the number of milliseconds to allow before a
   ## ``TimeoutError`` is raised.
+  ##
+  ## ``headers`` specifies the HTTP Headers.
   new result
-  result.headers = newHttpHeaders()
+  result.headers = headers
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   result.proxy = proxy
@@ -545,7 +548,7 @@ type
 
 proc newAsyncHttpClient*(userAgent = defUserAgent,
     maxRedirects = 5, sslContext = getDefaultSSL(),
-    proxy: Proxy = nil): AsyncHttpClient =
+    proxy: Proxy = nil, headers = newHttpHeaders()): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -558,8 +561,10 @@ proc newAsyncHttpClient*(userAgent = defUserAgent,
   ##
   ## ``proxy`` specifies an HTTP proxy to use for this HTTP client's
   ## connections.
+  ##
+  ## ``headers`` specifies the HTTP Headers.
   new result
-  result.headers = newHttpHeaders()
+  result.headers = headers
   result.userAgent = userAgent
   result.maxRedirects = maxRedirects
   result.proxy = proxy
@@ -633,7 +638,7 @@ proc parseChunks(client: HttpClient | AsyncHttpClient): Future[void]
                  {.multisync.} =
   while true:
     var chunkSize = 0
-    var chunkSizeStr = await client.socket.recvLine()
+    var chunkSizeStr = (await client.socket.recvLine()).string
     var i = 0
     if chunkSizeStr == "":
       httpError("Server terminated connection prematurely")
@@ -733,9 +738,9 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   while true:
     linei = 0
     when client is HttpClient:
-      line = await client.socket.recvLine(client.timeout)
+      line = (await client.socket.recvLine(client.timeout)).string
     else:
-      line = await client.socket.recvLine()
+      line = (await client.socket.recvLine()).string
     if line == "":
       # We've been disconnected.
       client.close()

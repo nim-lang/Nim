@@ -1,6 +1,6 @@
 discard """
 cmd: "nim check $options $file"
-errormsg: "power of two or 0 expected"
+errormsg: "power of two expected"
 """
 
 proc foobar() =

@@ -17,6 +17,7 @@ import strutils, intsets, tables, ropes, db_sqlite, msgs, options,
 ## - Dependency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
 ## - Patch the rest of the compiler to do lazy loading of proc bodies.
+## - serialize the AST in a smarter way (avoid storing some ASTs twice!)
 
 template db(): DbConn = g.incr.db
 
@@ -172,7 +173,7 @@ proc encodeLoc(g: ModuleGraph; loc: TLoc, result: var string) =
     encodeVInt(cast[int32](loc.flags), result)
   if loc.lode != nil:
     result.add('^')
-    encodeNode(g, unknownLineInfo(), loc.lode, result)
+    encodeNode(g, unknownLineInfo, loc.lode, result)
   if loc.r != nil:
     result.add('!')
     encodeStr($loc.r, result)
@@ -199,7 +200,7 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     result.add('+')
     encodeVInt(t.id, result)
   if t.n != nil:
-    encodeNode(g, unknownLineInfo(), t.n, result)
+    encodeNode(g, unknownLineInfo, t.n, result)
   if t.flags != {}:
     result.add('$')
     encodeVInt(cast[int32](t.flags), result)
@@ -317,7 +318,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
   if s.annex != nil: encodeLib(g, s.annex, s.info, result)
   if s.constraint != nil:
     result.add('#')
-    encodeNode(g, unknownLineInfo(), s.constraint, result)
+    encodeNode(g, unknownLineInfo, s.constraint, result)
   case s.kind
   of skType, skGenericParam:
     for t in s.typeInstCache:
@@ -604,7 +605,7 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     result.id = result.uniqueId
   # here this also avoids endless recursion for recursive type
   g.incr.r.types.add(result.uniqueId, result)
-  if b.s[b.pos] == '(': result.n = decodeNode(g, b, unknownLineInfo())
+  if b.s[b.pos] == '(': result.n = decodeNode(g, b, unknownLineInfo)
   if b.s[b.pos] == '$':
     inc(b.pos)
     result.flags = cast[TTypeFlags](int32(decodeVInt(b.s, b.pos)))
@@ -751,7 +752,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
   result.annex = decodeLib(g, b, info)
   if b.s[b.pos] == '#':
     inc(b.pos)
-    result.constraint = decodeNode(g, b, unknownLineInfo())
+    result.constraint = decodeNode(g, b, unknownLineInfo)
   case result.kind
   of skType, skGenericParam:
     while b.s[b.pos] == '\14':

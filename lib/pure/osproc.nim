@@ -70,10 +70,6 @@ const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
                                          ## Now `ProcessOption` uses the correct spelling ("daemon"),
                                          ## and this is needed just for backward compatibility.
 
-const osOpen* =
-  when defined(macos): "open" elif defined(windows): "start" else: "xdg-open" ## \
-  ## Alias for the operating system specific *"open"* command,
-  ## ``"open"`` on MacOS, ``"start"`` on Windows, ``"xdg-open"`` on Linux, BSD, etc.
 
 proc execProcess*(command: string, workingDir: string = "",
     args: openArray[string] = [], env: StringTableRef = nil,
@@ -543,7 +539,7 @@ when defined(Windows) and not defined(useNimRtl):
       FILE_ATTRIBUTE_NORMAL,
       0 # no template file for OPEN_EXISTING
     )
-    if si.hStdOutput == INVALID_HANDLE_VALUE:
+    if si.hStdInput == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
     stdin = myDup(pipeIn, 0)
@@ -621,7 +617,7 @@ when defined(Windows) and not defined(useNimRtl):
     when useWinUnicode:
       var tmp = newWideCString(cmdl)
       var ee =
-        if e.str.isNil: nil
+        if e.str.isNil: newWideCString(cstring(nil))
         else: newWideCString(e.str, e.len)
       var wwd = newWideCString(wd)
       var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT

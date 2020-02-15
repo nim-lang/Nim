@@ -30,10 +30,11 @@ pkg "easygl", "nim c -o:egl -r src/easygl.nim", true, "https://github.com/jackmo
 pkg "elvis"
 pkg "fragments", "nim c -r fragments/dsl.nim"
 pkg "gara"
+pkg "ggplotnim", "nimble testCI", true
 pkg "glob"
 pkg "gnuplot"
 # pkg "godot", "nim c -r godot/godot.nim" # not yet compatible with Nim 0.19
-pkg "hts", "nim c -o:htss -r src/hts.nim"
+pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "illwill", "nimble examples"
 pkg "inim"
 pkg "itertools", "nim doc src/itertools.nim"
@@ -54,7 +55,7 @@ pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
 pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
 pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
 # pkg "nimlsp", "", true
-pkg "nimly", "nim c -r tests/test_nimly", true
+pkg "nimly", "", true
 # pkg "nimongo", "nimble test_ci", true
 pkg "nimpy", "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"

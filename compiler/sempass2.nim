@@ -167,9 +167,7 @@ proc guardDotAccess(a: PEffects; n: PNode) =
     guardGlobal(a, n, g)
 
 proc makeVolatile(a: PEffects; s: PSym) {.inline.} =
-  template compileToCpp(a): untyped =
-    a.config.cmd == cmdCompileToCpp or sfCompileToCpp in getModule(a.owner).flags
-  if a.inTryStmt > 0 and not compileToCpp(a):
+  if a.inTryStmt > 0 and a.config.exc == excSetjmp:
     incl(s.flags, sfVolatile)
 
 proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
@@ -708,6 +706,8 @@ proc track(tracked: PEffects, n: PNode) =
   of nkCallKinds:
     # p's effects are ours too:
     var a = n[0]
+    #if canRaise(a):
+    #  echo "this can raise ", tracked.config $ n.info
     let op = a.typ
     if n.typ != nil:
       if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
@@ -758,6 +758,7 @@ proc track(tracked: PEffects, n: PNode) =
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
+        # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
 
     if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
           tracked.owner.kind != skMacro:
@@ -872,6 +873,9 @@ proc track(tracked: PEffects, n: PNode) =
         createTypeBoundOps(tracked, x[1].typ, n.info)
     setLen(tracked.guards.s, oldFacts)
     if tracked.owner.kind != skMacro:
+      # XXX n.typ can be nil in runnableExamples, we need to do something about it.
+      if n.typ != nil and n.typ.skipTypes(abstractInst).kind == tyRef:
+        createTypeBoundOps(tracked, n.typ.lastSon, n.info)
       createTypeBoundOps(tracked, n.typ, n.info)
   of nkTupleConstr:
     for i in 0..<n.len:
@@ -902,10 +906,26 @@ proc track(tracked: PEffects, n: PNode) =
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
-  of nkCast, nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    if n.len == 2: track(tracked, n[1])
+  of nkCast:
+    if n.len == 2:
+      track(tracked, n[1])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n.typ, n.info)
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if n.len == 2:
+      track(tracked, n[1])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n.typ, n.info)
+        # This is a hacky solution in order to fix bug #13110. Hopefully
+        # a better solution will come up eventually.
+        if n[1].typ.kind != tyString:
+          createTypeBoundOps(tracked, n[1].typ, n[1].info)
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
-    if n.len == 1: track(tracked, n[0])
+    if n.len == 1:
+      track(tracked, n[0])
+      if tracked.owner.kind != skMacro:
+        createTypeBoundOps(tracked, n.typ, n.info)
+        createTypeBoundOps(tracked, n[0].typ, n[0].info)
   of nkBracket:
     for i in 0..<n.safeLen: track(tracked, n[i])
     if tracked.owner.kind != skMacro:
@@ -1016,7 +1036,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     for i in 1..<params.len:
       let param = params[i].sym
       if isSinkTypeForParam(param.typ):
-        createTypeBoundOps(t.graph, t.c, param.typ, param.info)
+        createTypeBoundOps(t, param.typ, param.info)
 
   if not isEmptyType(s.typ[0]) and
       ({tfNeedsInit, tfNotNil} * s.typ[0].flags != {} or

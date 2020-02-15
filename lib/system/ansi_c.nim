@@ -116,9 +116,16 @@ type
           incompleteStruct.} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
+# duplicated between io and ansi_c
+const stdioUsesMacros = (defined(osx) or defined(bsd)) and not defined(emscripten)
+const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
+const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
+const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
+
 var
-  cstderr* {.importc: "stderr", header: "<stdio.h>".}: CFilePtr
-  cstdout* {.importc: "stdout", header: "<stdio.h>".}: CFilePtr
+  cstderr* {.importc: stderrName, header: "<stdio.h>".}: CFilePtr
+  cstdout* {.importc: stdoutName, header: "<stdio.h>".}: CFilePtr
+  cstdin* {.importc: stdinName, header: "<stdio.h>".}: CFilePtr
 
 proc c_fprintf*(f: CFilePtr, frmt: cstring): cint {.
   importc: "fprintf", header: "<stdio.h>", varargs, discardable.}
@@ -134,6 +141,8 @@ proc c_sprintf*(buf, frmt: cstring): cint {.
 
 proc c_malloc*(size: csize_t): pointer {.
   importc: "malloc", header: "<stdlib.h>".}
+proc c_calloc*(nmemb, size: csize_t): pointer {.
+  importc: "calloc", header: "<stdlib.h>".}
 proc c_free*(p: pointer) {.
   importc: "free", header: "<stdlib.h>".}
 proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
@@ -142,8 +151,12 @@ proc c_realloc*(p: pointer, newsize: csize_t): pointer {.
 proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
   importc: "fwrite", header: "<stdio.h>".}
 
+proc c_fflush(f: CFilePtr): cint {.
+  importc: "fflush", header: "<stdio.h>".}
+
 proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
   discard c_fwrite(s, 1, cast[csize_t](s.len), f)
+  discard c_fflush(f)
 
 {.pop.}

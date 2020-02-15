@@ -2304,13 +2304,6 @@ proc `[]`*[A](t: CountTable[A], key: A): int =
   assert(not t.isSorted, "CountTable must not be used after sorting")
   ctget(t, key, 0)
 
-proc mget*[A](t: var CountTable[A], key: A): var int =
-  ## Retrieves the value at ``t[key]``. The value can be modified.
-  ##
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  assert(not t.isSorted, "CountTable must not be used after sorting")
-  get(t, key)
-
 proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
@@ -2320,11 +2313,14 @@ proc `[]=`*[A](t: var CountTable[A], key: A, val: int) =
   ##   value of a key
   assert(not t.isSorted, "CountTable must not be used after sorting")
   assert val >= 0
-  let h = rawGet(t, key)
-  if h >= 0:
-    t.data[h].val = val
+  if val == 0:
+    t.remove(key)
   else:
-    insertImpl()
+    let h = rawGet(t, key)
+    if h >= 0:
+      t.data[h].val = val
+    else:
+      insertImpl()
 
 proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   ## Increments ``t[key]`` by ``val`` (default: 1).
@@ -2491,18 +2487,19 @@ proc merge*[A](s: var CountTable[A], t: CountTable[A]) =
   for key, value in t:
     s.inc(key, value)
 
-proc merge*[A](s, t: CountTable[A]): CountTable[A] =
-  ## Merges the two tables into a new one.
-  runnableExamples:
-    let
-      a = toCountTable("aaabbc")
-      b = toCountTable("bcc")
-    doAssert merge(a, b) == toCountTable("aaabbbccc")
+when (NimMajor, NimMinor) <= (1, 0):
+  proc merge*[A](s, t: CountTable[A]): CountTable[A] =
+    ## Merges the two tables into a new one.
+    runnableExamples:
+      let
+        a = toCountTable("aaabbc")
+        b = toCountTable("bcc")
+      doAssert merge(a, b) == toCountTable("aaabbbccc")
 
-  result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
-  for table in @[s, t]:
-    for key, value in table:
-      result.inc(key, value)
+    result = initCountTable[A](nextPowerOfTwo(max(s.len, t.len)))
+    for table in @[s, t]:
+      for key, value in table:
+        result.inc(key, value)
 
 proc `$`*[A](t: CountTable[A]): string =
   ## The ``$`` operator for count tables. Used internally when calling `echo`
@@ -2670,12 +2667,6 @@ proc `[]`*[A](t: CountTableRef[A], key: A): int =
   ## * `hasKey proc<#hasKey,CountTableRef[A],A>`_ for checking if a key
   ##   is in the table
   result = t[][key]
-
-proc mget*[A](t: CountTableRef[A], key: A): var int =
-  ## Retrieves the value at ``t[key]``. The value can be modified.
-  ##
-  ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
-  mget(t[], key)
 
 proc `[]=`*[A](t: CountTableRef[A], key: A, val: int) =
   ## Inserts a ``(key, value)`` pair into ``t``.
@@ -3016,13 +3007,6 @@ when isMainModule:
   t2l.inc("foo", 4)
   t2l.inc("bar")
   t2l.inc("baz", 11)
-  let
-    t1merging = t1l
-    t2merging = t2l
-  let merged = merge(t1merging, t2merging)
-  assert(merged["foo"] == 5)
-  assert(merged["bar"] == 3)
-  assert(merged["baz"] == 14)
 
   block:
     const testKey = "TESTKEY"
@@ -3112,6 +3096,13 @@ when isMainModule:
     t_mut['z'] = 1
     doAssert t_mut['z'] == 1
     doAssert t_mut.hasKey('z') == true
+
+  block: #12813 #13079
+    var t = toCountTable("abracadabra")
+    doAssert len(t) == 5
+
+    t['a'] = 0 # remove a key
+    doAssert len(t) == 4
 
   block:
     var tp: Table[string, string] = initTable[string, string]()

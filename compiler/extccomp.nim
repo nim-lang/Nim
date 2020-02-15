@@ -302,10 +302,10 @@ compiler tcc:
     linkLibCmd: "", # XXX: not supported yet
     debug: " -g ",
     pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
+    asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $2",
-    produceAsm: "",
-    props: {hasSwitchRange, hasComputedGoto})
+    produceAsm: gnuAsmListing,
+    props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
 # Pelles C Compiler
 compiler pcc:
@@ -501,10 +501,7 @@ proc generateScript(conf: ConfigRef; script: Rope) =
   let (_, name, _) = splitFile(conf.outFile.string)
   let filename = getNimcacheDir(conf) / RelativeFile(addFileExt("compile_" & name,
                                      platform.OS[conf.target.targetOS].scriptExt))
-  if writeRope(script, filename):
-    copyFile(conf.libpath / RelativeFile"nimbase.h",
-             getNimcacheDir(conf) / RelativeFile"nimbase.h")
-  else:
+  if not writeRope(script, filename):
     rawMessage(conf, errGenerated, "could not write to file: " & filename.string)
 
 proc getOptSpeed(conf: ConfigRef; c: TSystemCC): string =
@@ -558,15 +555,14 @@ proc getCompileOptions(conf: ConfigRef): string =
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  case conf.target.targetCPU
-  of cpuI386:
-    result = " --platform:x86"
-  of cpuArm:
-    result = " --platform:arm"
-  of cpuAmd64:
-    result = " --platform:amd64"
-  else:
-    result = ""
+  if conf.cCompiler == ccVcc: 
+    let exe = getConfigVar(conf, conf.cCompiler, ".exe")
+    if "vccexe.exe" == extractFilename(exe):
+      result = case conf.target.targetCPU
+        of cpuI386: " --platform:x86"
+        of cpuArm: " --platform:arm"
+        of cpuAmd64: " --platform:amd64"
+        else: ""
 
 proc getLinkOptions(conf: ConfigRef): string =
   result = conf.linkOptions & " " & conf.linkOptionsCmd & " "
@@ -596,7 +592,7 @@ proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
                          isMainFile = false; produceOutput = false): string =
-  var c = conf.cCompiler
+  let c = conf.cCompiler
   # We produce files like module.nim.cpp, so the absolute Nim filename is not
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
@@ -608,17 +604,15 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
 
-  var includeCmd, compilePattern: string
+  var compilePattern: string
+  # compute include paths:
+  var includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
   if not noAbsolutePaths(conf):
-    # compute include paths:
-    includeCmd = CC[c].includeCmd & quoteShell(conf.libpath)
-
     for includeDir in items(conf.cIncludes):
       includeCmd.add(join([CC[c].includeCmd, includeDir.quoteShell]))
 
     compilePattern = joinPath(conf.cCompilerPath, exe)
   else:
-    includeCmd = ""
     compilePattern = getCompilerExe(conf, c, cfile.cname)
 
   includeCmd.add(join([CC[c].includeCmd, quoteShell(conf.projectPath.string)]))
@@ -835,8 +829,16 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
 
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
-    execExternalProgram(conf, linkCmd,
-      if optListCmd in conf.globalOptions or conf.verbosity > 1: hintExecuting else: hintLinking)
+    execExternalProgram(conf, linkCmd, hintLinking)
+
+proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
+  when defined(osx):
+    if optCDebug notin conf.globalOptions: return
+    # if needed, add an option to skip or override location
+    let cmd = "dsymutil " & $(exe).quoteShell
+    conf.extraCmds.add cmd
+    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+      execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
@@ -979,6 +981,7 @@ proc callCCompiler*(conf: ConfigRef) =
           linkViaResponseFile(conf, linkCmd)
         else:
           execLinkCmd(conf, linkCmd)
+        maybeRunDsymutil(conf, mainOutput)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
@@ -1066,6 +1069,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit "],\L\"linkcmd\": "
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
+    lit ",\L\"extraCmds\": "
+    lit $(%* conf.extraCmds)
+
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
@@ -1131,6 +1137,14 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     let linkCmd = data["linkcmd"]
     doAssert linkCmd.kind == JString
     execLinkCmd(conf, linkCmd.getStr)
+    if data.hasKey("extraCmds"):
+      let extraCmds = data["extraCmds"]
+      doAssert extraCmds.kind == JArray
+      for cmd in extraCmds:
+        doAssert cmd.kind == JString, $cmd.kind
+        let cmd2 = cmd.getStr
+        execExternalProgram(conf, cmd2, hintExecuting)
+
   except:
     when declared(echo):
       echo getCurrentException().getStackTrace()

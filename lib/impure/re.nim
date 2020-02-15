@@ -45,6 +45,12 @@ type
   RegexError* = object of ValueError
     ## is raised if the pattern is no valid regular expression.
 
+when defined(gcDestructors):
+  proc `=destroy`(x: var RegexDesc) =
+    pcre.free_substring(cast[cstring](x.h))
+    if not isNil(x.e):
+      pcre.free_study(x.e)
+
 proc raiseInvalidRegex(msg: string) {.noinline, noreturn.} =
   var e: ref RegexError
   new(e)
@@ -72,8 +78,15 @@ proc re*(s: string, flags = {reStudy}): Regex =
   ##
   ## Note that Nim's
   ## extended raw string literals support the syntax ``re"[abc]"`` as
-  ## a short form for ``re(r"[abc]")``.
-  new(result, finalizeRegEx)
+  ## a short form for ``re(r"[abc]")``. Also note that since this
+  ## compiles the regular expression, which is expensive, you should
+  ## avoid putting it directly in the arguments of the functions like
+  ## the examples show below if you plan to use it a lot of times, as
+  ## this will hurt performance immensely. (e.g. outside a loop, ...)
+  when defined(gcDestructors):
+    result = Regex()
+  else:
+    new(result, finalizeRegEx)
   result.h = rawCompile(s, cast[cint](flags - {reStudy}))
   if reStudy in flags:
     var msg: cstring = ""

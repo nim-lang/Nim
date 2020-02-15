@@ -202,6 +202,41 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
+proc minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+  ## Returns the index of the minimum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = @[6, 5, 4, 3]
+      c = [2, -7, 8, -5]
+      d = "ziggy"
+    assert minIndex(a) == 0
+    assert minIndex(b) == 3
+    assert minIndex(c) == 1
+    assert minIndex(d) == 2
+
+  for i in 1..high(s):
+    if s[i] < s[result]: result = i
+
+proc maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+  ## Returns the index of the maximum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = @[6, 5, 4, 3]
+      c = [2, -7, 8, -5]
+      d = "ziggy"
+    assert maxIndex(a) == 3
+    assert maxIndex(b) == 0
+    assert maxIndex(c) == 2
+    assert maxIndex(d) == 0
+
+  for i in 1..high(s):
+    if s[i] > s[result]: result = i
+
+
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.

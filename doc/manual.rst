@@ -555,6 +555,9 @@ following characters::
        @     $     ~     &     %     |
        !     ?     ^     .     :     \
 
+(The grammar uses the terminal OPR to refer to operator symbols as
+defined here.)
+
 These keywords are also operators:
 ``and or not xor shl shr div mod in notin is isnot of``.
 
@@ -2840,6 +2843,35 @@ expanded into a list of its elements:
     of '0'..'9': echo "a number"
     else: echo "other"
 
+The ``case`` statement doesn't produce an l-value, so the following example
+won't work:
+
+.. code-block:: nim
+  type
+    Foo = ref object
+      x: seq[string]
+
+  proc get_x(x: Foo): var seq[string] =
+    # doesn't work
+    case true
+    of true:
+      x.x
+    else:
+      x.x
+
+  var foo = Foo(x: @[])
+  foo.get_x().add("asd")
+
+This can be fixed by explicitly using ``return``:
+
+.. code-block:: nim
+  proc get_x(x: Foo): var seq[string] =
+    case true
+    of true:
+      return x.x
+    else:
+      return x.x
+
 
 When statement
 --------------
@@ -3521,7 +3553,8 @@ Creating closures in loops
 
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope
-<system.html#closureScope.t,untyped>`_ for details on how to change this behavior.
+<system.html#closureScope.t,untyped>`_ and `capture
+<sugar.html#capture.m,openArray[typed],untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
@@ -4139,7 +4172,7 @@ A custom exception is a custom type:
 .. code-block:: nim
   type
     LoadError* = object of Exception
-  
+
 Ending the custom exception's name with ``Error`` is recommended.
 
 Custom exceptions can be raised like any others, e.g.:
@@ -6017,8 +6050,32 @@ The ``noreturn`` pragma is used to mark a proc that never returns.
 
 acyclic pragma
 --------------
-The ``acyclic`` pragma applies to type declarations. It is deprecated and
-ignored.
+The ``acyclic`` pragma can be used for object types to mark them as acyclic
+even though they seem to be cyclic. This is an **optimization** for the garbage
+collector to not consider objects of this type as part of a cycle:
+
+.. code-block:: nim
+  type
+    Node = ref NodeObj
+    NodeObj {.acyclic.} = object
+      left, right: Node
+      data: string
+
+Or if we directly use a ref object:
+
+.. code-block:: nim
+  type
+    Node {.acyclic.} = ref object
+      left, right: Node
+      data: string
+
+In the example a tree structure is declared with the ``Node`` type. Note that
+the type definition is recursive and the GC has to assume that objects of
+this type may form a cyclic graph. The ``acyclic`` pragma passes the
+information that this cannot happen to the GC. If the programmer uses the
+``acyclic`` pragma for data types that are in reality cyclic, the memory leaks
+can be the result, but memory safety is preserved.
+
 
 
 final pragma
@@ -6479,7 +6536,7 @@ alignment requirement of the type are ignored.
 
    type
      sseType = object
-       sseData {.align(16).}: array[4,float32]
+       sseData {.align(16).}: array[4, float32]
 
      # every object will be aligned to 128-byte boundary
      Data = object

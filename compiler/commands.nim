@@ -219,6 +219,7 @@ const
   errNoneBoehmRefcExpectedButXFound = "'none', 'boehm' or 'refc' expected, but '$1' found"
   errNoneSpeedOrSizeExpectedButXFound = "'none', 'speed' or 'size' expected, but '$1' found"
   errGuiConsoleOrLibExpectedButXFound = "'gui', 'console' or 'lib' expected, but '$1' found"
+  errInvalidExceptionSystem = "'goto', 'setjump', 'cpp' or 'quirky' expected, but '$1' found"
 
 proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo): bool =
   case switch.normalize
@@ -229,7 +230,8 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     of "v2": result = false
     of "markandsweep": result = conf.selectedGC == gcMarkAndSweep
     of "generational": result = false
-    of "destructors", "arc": result = conf.selectedGC == gcDestructors
+    of "destructors", "arc": result = conf.selectedGC == gcArc
+    of "orc": result = conf.selectedGC == gcOrc
     of "hooks": result = conf.selectedGC == gcHooks
     of "go": result = conf.selectedGC == gcGo
     of "none": result = conf.selectedGC == gcNone
@@ -253,6 +255,13 @@ proc testCompileOptionArg*(conf: ConfigRef; switch, arg: string, info: TLineInfo
     else: localError(conf, info, errGuiConsoleOrLibExpectedButXFound % arg)
   of "dynliboverride":
     result = isDynlibOverride(conf, arg)
+  of "exceptions":
+    case arg.normalize
+    of "cpp": result = conf.exc == excCpp
+    of "setjmp": result = conf.exc == excSetjmp
+    of "quirky": result = conf.exc == excQuirky
+    of "goto": result = conf.exc == excGoto
+    else: localError(conf, info, errInvalidExceptionSystem % arg)
   else: invalidCmdLineOption(conf, passCmd1, switch, info)
 
 proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool =
@@ -360,6 +369,14 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
     expectArg(conf, switch, arg, pass, info)
     options.inclDynlibOverride(conf, arg)
 
+proc handleStdinInput*(conf: ConfigRef) =
+  conf.projectName = "stdinfile"
+  conf.projectFull = conf.projectName.AbsoluteFile
+  conf.projectPath = AbsoluteDir getCurrentDir()
+  conf.projectIsStdin = true
+  if conf.outDir.isEmpty:
+    conf.outDir = getNimcacheDir(conf)
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -404,14 +421,20 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
+  of "docroot":
+    conf.docRoot = if arg.len == 0: "@default" else: arg
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
     expectArg(conf, switch, arg, pass, info)
     if {':', '='} in arg:
       splitSwitch(conf, arg, key, val, pass, info)
+      if cmpIgnoreStyle(key, "nimQuirky") == 0:
+        conf.exc = excQuirky
       defineSymbol(conf.symbols, key, val)
     else:
+      if cmpIgnoreStyle(arg, "nimQuirky") == 0:
+        conf.exc = excQuirky
       defineSymbol(conf.symbols, arg)
   of "undef", "u":
     expectArg(conf, switch, arg, pass, info)
@@ -455,8 +478,22 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         conf.selectedGC = gcMarkAndSweep
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
-        conf.selectedGC = gcDestructors
+        conf.selectedGC = gcArc
+        if conf.cmd != cmdCompileToCpp:
+          conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcarc")
+        incl conf.globalOptions, optSeqDestructors
+        incl conf.globalOptions, optTinyRtti
+        if pass in {passCmd2, passPP}:
+          defineSymbol(conf.symbols, "nimSeqsV2")
+          defineSymbol(conf.symbols, "nimV2")
+      of "orc":
+        conf.selectedGC = gcOrc
+        if conf.cmd != cmdCompileToCpp:
+          conf.exc = excGoto
+        defineSymbol(conf.symbols, "gcdestructors")
+        defineSymbol(conf.symbols, "gcorc")
         incl conf.globalOptions, optSeqDestructors
         incl conf.globalOptions, optTinyRtti
         if pass in {passCmd2, passPP}:
@@ -649,6 +686,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
+  of "maxloopiterationsvm":
+    expectArg(conf, switch, arg, pass, info)
+    conf.maxLoopIterationsVM = parseInt(arg)
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
@@ -764,8 +804,15 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "unknown obsolete feature")
   of "nocppexceptions":
     expectNoArg(conf, switch, arg, pass, info)
-    incl(conf.globalOptions, optNoCppExceptions)
+    conf.exc = low(ExceptionSystem)
     defineSymbol(conf.symbols, "noCppExceptions")
+  of "exceptions":
+    case arg.normalize
+    of "cpp": conf.exc = excCpp
+    of "setjmp": conf.exc = excSetjmp
+    of "quirky": conf.exc = excQuirky
+    of "goto": conf.exc = excGoto
+    else: localError(conf, info, errInvalidExceptionSystem % arg)
   of "cppdefine":
     expectArg(conf, switch, arg, pass, info)
     if conf != nil:
@@ -790,7 +837,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "stylecheck":
     case arg.normalize
     of "off": conf.globalOptions = conf.globalOptions - {optStyleHint, optStyleError}
-    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint}
+    of "hint": conf.globalOptions = conf.globalOptions + {optStyleHint} - {optStyleError}
     of "error": conf.globalOptions = conf.globalOptions + {optStyleError}
     else: localError(conf, info, errOffHintsError % arg)
   of "showallmismatches":
@@ -822,8 +869,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
-  of "":
-    conf.projectName = "-"
+  of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
+    handleStdinInput(conf)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)
