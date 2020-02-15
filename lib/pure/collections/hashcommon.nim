@@ -26,8 +26,14 @@ proc isEmpty(hcode: Hash): bool {.inline.} =
 proc isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = (h + 1) and maxHash
+
+proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+  # result = ((5*h) + 1 + perturb and maxHash)
+  const PERTURB_SHIFT = 5
+  perturb = perturb shr PERTURB_SHIFT
+  result = ((5*h) + 1 + perturb) and maxHash
+  # echo (h, result)
+  # result = (h + 1) and maxHash
 
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
@@ -37,14 +43,16 @@ template rawGetKnownHCImpl() {.dirty.} =
   if t.dataLen == 0:
     return -1
   var h: Hash = hc and maxHash(t) # start with real hash value
+  var perturb = hc
   while isFilled(t.data[h].hcode):
     # Compare hc THEN key with boolean short circuit. This makes the common case
     # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
     # It does slow down succeeding lookups by one extra Hash cmp&and..usually
     # just a few clock cycles, generally worth it for any non-integer-like A.
+    # TODO: optimize this: depending on type(key), skip hc comparison
     if t.data[h].hcode == hc and t.data[h].key == key:
       return h
-    h = nextTry(h, maxHash(t))
+    h = nextTry(h, maxHash(t), perturb)
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =

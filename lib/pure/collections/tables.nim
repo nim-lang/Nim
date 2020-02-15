@@ -273,8 +273,9 @@ proc enlarge[A, B](t: var Table[A, B]) =
     let eh = n[i].hcode
     if isFilled(eh):
       var j: Hash = eh and maxHash(t)
+      var perturb = eh
       while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t))
+        j = nextTry(j, maxHash(t), perturb)
       when defined(js):
         rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
       else:
