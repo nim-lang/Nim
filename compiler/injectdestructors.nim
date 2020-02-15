@@ -384,20 +384,58 @@ proc containsConstSeq(n: PNode): bool =
 
 proc handleTmpDestroys(c: var Con; body: PNode; oldHasUnstructuredCf: int) =
   if c.hasUnstructuredCf == oldHasUnstructuredCf:
+    # no need for a try-finally statement:
     if body.kind == nkStmtList:
       for i in countdown(c.tempDestroys.high, 0):
         body.add c.tempDestroys[i]
-    elif n.typ == nil or isEmptyType(n.typ):
+    elif body.typ == nil or isEmptyType(body.typ):
+      var n = newNodeI(nkStmtList, body.info)
+      n.add body[^1]
+      for i in countdown(c.tempDestroys.high, 0):
+        n.add c.tempDestroys[i]
+      body[^1] = n
+    elif body.kind == nkStmtListExpr and body.len > 0 and body[^1].kind == nkSym:
+      # special case: Do not translate (x; y; sym) into
+      # (x; y; tmp = sym; destroy(x); destroy(y); tmp )
+      # but into
+      # (x; y; destroy(x); destroy(y); sym )
+      let sym = body[^1]
+      body[^1] = c.tempDestroys[^1]
+      for i in countdown(c.tempDestroys.high - 1, 0):
+        body.add c.tempDestroys[i]
+      body.add sym
+    else:
+      # fun ahead: We have to transform (x; y; E()) into
+      # (x; y; tmp = E(); destroy(x); destroy(y); tmp )
+      let tmp = getTemp(c, body.typ, body.info)
+      # the tmp does not have to be initialized
+      var n = newNodeIT(nkStmtListExpr, body.info, body.typ)
+      n.add newTree(nkFastAsgn, tmp, body[^1])
+      for i in countdown(c.tempDestroys.high, 0):
+        n.add c.tempDestroys[i]
+      n.add tmp
+      body[^1] = n
+  else:
+    # unstructured control flow was used, use a 'try finally' to ensure
+    # destruction:
+    if body.typ == nil or isEmptyType(body.typ):
       var n = newNodeI(nkStmtList, body.info)
       for i in countdown(c.tempDestroys.high, 0):
         n.add c.tempDestroys[i]
+      body[^1] = newTryFinally(body[^1], n)
+    else:
+      # fun ahead: We have to transform (x; y; E()) into
+      # ((try: tmp = (x; y; E()); finally: destroy(x); destroy(y)); tmp )
+      let tmp = getTemp(c, body.typ, body.info)
+      # the tmp does not have to be initialized
+      var fin = newNodeI(nkStmtList, body.info)
+      for i in countdown(c.tempDestroys.high, 0):
+        fin.add c.tempDestroys[i]
+      var n = newNodeIT(nkStmtListExpr, body.info, body.typ)
+      n.add newTryFinally(newTree(nkFastAsgn, tmp, body[^1]), fin)
+      n.add tmp
+      body[^1] = n
 
-    result = body
-  else:
-    var n = newNodeI(nkStmtList, body.info)
-    for i in countdown(c.tempDestroys.high, 0):
-      n.add c.tempDestroys[i]
-    result = newTryFinally(body, n)
   c.tempDestroys.setLen 0
 
 proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
@@ -421,11 +459,11 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
     if n.typ == nil or isEmptyType(n.typ):
       result[last] = processCall(n[last], false)
       if c.tempDestroys.len > 0:
-        result = handleTmpDestroys(c, result, oldHasUnstructuredCf)
+        handleTmpDestroys(c, result, oldHasUnstructuredCf)
     else:
       setLen(result.sons, last)
       if c.tempDestroys.len > 0:
-        result = handleTmpDestroys(c, result, oldHasUnstructuredCf)
+        handleTmpDestroys(c, result, oldHasUnstructuredCf)
       if result.kind != nkFinally:
         result.add processCall(n[last], false)
       else:
