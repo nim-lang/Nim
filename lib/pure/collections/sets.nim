@@ -68,6 +68,7 @@ type
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
+    countDeleted: int
 
 type
   OrderedKeyValuePair[A] = tuple[
@@ -80,6 +81,7 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
+    countDeleted: int
 
 const
   defaultInitialSize* = 64

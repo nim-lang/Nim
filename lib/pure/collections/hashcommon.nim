@@ -46,6 +46,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4) # synchronize with `rightSize`
 
 proc mustRehash2[T](t: T): bool {.inline.} =
+  # static: echo $T
   let counter2 = t.counter + t.countDeleted
   result = mustRehash(t.dataLen, counter2)
 
@@ -64,7 +65,6 @@ template rawGetKnownHCImpl() {.dirty.} =
       # TODO: optimize this: depending on type(key), skip hc comparison
       if t.data[h].hcode == hc and t.data[h].key == key:
         return h
-      # echo (h, perturb, maxHash(t))
       h = nextTry(h, maxHash(t), perturb)
     elif t.data[h].hcode == deletedMarker:
       if deletedIndex == -1:

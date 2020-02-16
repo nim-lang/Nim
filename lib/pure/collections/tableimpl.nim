@@ -89,34 +89,13 @@ template delImplIdx(t, i) =
   if i >= 0:
     dec(t.counter)
     inc(t.countDeleted)
-    when true:
-      t.data[i].hcode = deletedMarker
-      t.data[i].key = default(type(t.data[i].key))
-      t.data[i].val = default(type(t.data[i].val))
-      # maybe not needed because counter+countDeleted doesn't change, unless formula is not a simple +
-      # if mustRehash2(t):
-      #   enlarge(t) # RENAME enlarge...
-        # i = rawGetKnownHC(t, key, hc) # TODO
-    else:
-      block outer:
-        while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-          var j = i         # The correctness of this depends on (h+1) in nextTry,
-                            # though may be adaptable to other simple sequences.
-          t.data[i].hcode = 0              # mark current EMPTY
-          t.data[i].key = default(type(t.data[i].key))
-          t.data[i].val = default(type(t.data[i].val))
-          while true:
-            i = (i + 1) and msk            # increment mod table size
-            if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
-              break outer
-            var r = t.data[i].hcode and msk    # "home" location of key@i
-            if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-              break
-          # TODO: can we instead just move the last in the chain?
-          when defined(js):
-            t.data[j] = t.data[i]
-          else:
-            t.data[j] = move(t.data[i]) # data[i] will be marked EMPTY next loop
+    t.data[i].hcode = deletedMarker
+    t.data[i].key = default(type(t.data[i].key))
+    t.data[i].val = default(type(t.data[i].val))
+    # maybe not needed because counter+countDeleted doesn't change, unless formula is not a simple +
+    # if mustRehash2(t):
+    #   enlarge(t) # RENAME enlarge...
+      # i = rawGetKnownHC(t, key, hc) # TODO
 
 template delImpl() {.dirty.} =
   var hc: Hash

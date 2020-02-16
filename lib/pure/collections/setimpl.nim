@@ -68,11 +68,6 @@ template containsOrInclImpl() {.dirty.} =
     rawInsert(s, s.data, key, hc, -1 - index)
     inc(s.counter)
 
-template doWhile(a, b) =
-  while true:
-    b
-    if not a: break
-
 proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
   var hc: Hash
   var i = rawGet(s, key, hc)
@@ -82,17 +77,9 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
   if i >= 0:
     result = false
     dec(s.counter)
-    while true: # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-      var j = i # The correctness of this depends on (h+1) in nextTry,
-      var r = j # though may be adaptable to other simple sequences.
-      s.data[i].hcode = 0 # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
-      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-        i = (i + 1) and msk # increment mod table size
-        if isEmpty(s.data[i].hcode): # end of collision cluster; So all done
-          return
-        r = s.data[i].hcode and msk # "home" location of key@i
-      s.data[j] = move(s.data[i]) # data[i] will be marked EMPTY next loop
+    inc(s.countDeleted)
+    s.data[i].hcode = deletedMarker
+    s.data[i].key = default(type(s.data[i].key))
 
 template dollarImpl() {.dirty.} =
   result = "{"

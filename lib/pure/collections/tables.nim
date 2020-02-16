@@ -1263,6 +1263,8 @@ type
     ## <#initOrderedTable,int>`_.
     data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
+    countDeleted: int
+
   OrderedTableRef*[A, B] = ref OrderedTable[A, B] ## Ref version of
     ## `OrderedTable<#OrderedTable>`_.
     ##
@@ -1292,18 +1294,20 @@ proc rawInsert[A, B](t: var OrderedTable[A, B],
 
 proc enlarge[A, B](t: var OrderedTable[A, B]) =
   var n: OrderedKeyValuePairSeq[A, B]
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, t.counter.rightSize)
   var h = t.first
   t.first = -1
   t.last = -1
   swap(t.data, n)
+  t.countDeleted = 0
   while h >= 0:
     var nxt = n[h].next
     let eh = n[h].hcode
-    if isFilled(eh):
+    if isFilledValid(eh):
       var j: Hash = eh and maxHash(t)
+      var perturb = eh
       while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t))
+        j = nextTry(j, maxHash(t), perturb)
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
@@ -2255,6 +2259,7 @@ type
     ## <#initCountTable,int>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
+    countDeleted: int
     isSorted: bool
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
@@ -2267,8 +2272,9 @@ type
 
 proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  var h: Hash = hash(key) and high(data)
-  while data[h].val != 0: h = nextTry(h, high(data))
+  var perturb = hash(key)
+  var h: Hash = perturb and high(data)
+  while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: hadnle deletedMarker
   data[h].key = key
   data[h].val = val
 
@@ -2295,10 +2301,11 @@ proc remove[A](t: var CountTable[A], key: A) =
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
-  var h: Hash = hash(key) and high(t.data) # start with real hash value
-  while t.data[h].val != 0:
+  var perturb = hash(key)
+  var h: Hash = perturb and high(t.data) # start with real hash value
+  while t.data[h].val != 0: # TODO: may need to handle t.data[h].hcode == deletedMarker?
     if t.data[h].key == key: return h
-    h = nextTry(h, high(t.data))
+    h = nextTry(h, high(t.data), perturb)
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 template ctget(t, key, default: untyped): untyped =
