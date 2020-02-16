@@ -103,6 +103,7 @@ type
     procDef: PNode
     prc: PSym
     globals, locals, body: Rope
+    lastVarName: string
     options: TOptions
     module: BModule
     g: PGlobals
@@ -942,6 +943,10 @@ proc determineExternalFile(n: PNode): tuple[filePath: string, fileContent: strin
       var content = sec[index..^1]
       result = (filePath, content)
 
+# replace $ID special ref placeholder with stored lastVarName
+proc replaceSpecial(p: PProc, strVal: string): string = 
+    strVal.replace "$ID", p.lastVarName
+
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   genLineDir(p, n)
   p.body.add p.indentLine(nil)
@@ -949,7 +954,8 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
-      p.body.add(it.strVal)
+      var strVal = replaceSpecial(p, it.strVal)
+      p.body.add(strVal)
     of nkSym:
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
@@ -1744,6 +1750,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     s: Rope
     varCode: string
     varName = mangleName(p.module, v)
+    # store varName on p so that we can reference it later
+    p.lastVarName = varName
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
 
   if v.constraint.isNil:
