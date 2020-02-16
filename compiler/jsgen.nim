@@ -91,8 +91,11 @@ type
                  # has been used (i.e. the label should be emitted)
     isLoop: bool # whether it's a 'block' or 'while'
 
+  SrcCode
+    src: Rope
+
   PGlobals = ref object of RootObj
-    typeInfo, constants, code, header, footer, types: Rope
+    typeInfo, constants, code, header, footer, types: SrcCode
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
@@ -102,7 +105,7 @@ type
   TProc = object
     procDef: PNode
     prc: PSym
-    globals, locals, body: Rope
+    globals, locals, body: SrcCode
     lastVarName: string
     options: TOptions
     module: BModule
@@ -114,6 +117,22 @@ type
     extraIndent: int
     up: PProc   # up the call chain; required for closure support
     declaredGlobals: IntSet
+    
+proc add(self: SrcCode, code: string) =
+  self.src.add code
+
+proc len(self: SrcCode) = 
+  self.src.len
+
+proc `&`(a, b: SrcCode) =
+  a.srcCode & b.srcCode
+
+proc insertAt(self: SrcCode, index: int, code: string): int =
+  var seqBefore = self.src[0..index]
+  var nextIndex = index + 1
+  var seqAfter = self.src[nextIndex..^]
+  self.src = seqBefore & code & seqAfter
+  nextIndex
 
 template config*(p: PProc): ConfigRef = p.module.config
 
