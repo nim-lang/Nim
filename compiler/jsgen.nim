@@ -91,21 +91,33 @@ type
                  # has been used (i.e. the label should be emitted)
     isLoop: bool # whether it's a 'block' or 'while'
 
-  SrcCode
-    src: Rope
+  TIdTableEntry = 
+    startIndex, endIndex: int
+
+  TLookupTable =
+      idMap: TableRef[string, TIdTableEntry]
+      currentId: string
+
+  PLookupTable = ref TLookupTable
+
+  TSrcCode
+    srcList: ref seq[Rope] # mutable sequence of ropes/strings
+  
+  PSrcCode = ref TSrcCode
 
   PGlobals = ref object of RootObj
-    typeInfo, constants, code, header, footer, types: SrcCode
+    typeInfo, constants, code, header, footer, types: PSrcCode
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
     unique: int # for temp identifier generation
-
+  
   PProc = ref TProc
   TProc = object
     procDef: PNode
     prc: PSym
-    globals, locals, body: SrcCode
+    idLookupTable: PLookupTable
+    globals, locals, body: PSrcCode
     lastVarName: string
     options: TOptions
     module: BModule
@@ -117,22 +129,53 @@ type
     extraIndent: int
     up: PProc   # up the call chain; required for closure support
     declaredGlobals: IntSet
-    
+
+# TLookupTable
+
+proc add(self: TLookupTable, id: string, startIndex, endIndex: int) =
+  self.idMap[id].startIndex = startIndex
+  self.idMap[id].endIndex = endIndex
+  self.currentId = id
+
+proc current(self: TLookupTable): TIdTableEntry = 
+  self.idMap[self.currentId]
+
+proc setCurrent(self: TLookupTable, startIndex, endIndex = p.body.len) =
+  self.current.endIndex = endIndex
+
+proc bumpFollowingIdLocationRefs(self: TLookupTable, id: string, lineCount: int) =
+  var idEntry = self.idMap[id]
+  for entry in self.idMap
+    if entry.startIndex > idEntry.startIndex
+    entry.startIndex = entry.startIndex + lineCount
+    entry.endIndex = entry.endIndex + lineCount
+
+# SrcCode
+
 proc add(self: SrcCode, code: string) =
-  self.src.add code
+  self.srcList.add code
 
 proc len(self: SrcCode) = 
-  self.src.len
+  self.srcList.len
 
 proc `&`(a, b: SrcCode) =
-  a.srcCode & b.srcCode
+  a.srcList & b.srcList
 
-proc insertAt(self: SrcCode, index: int, code: string): int =
-  var seqBefore = self.src[0..index]
+proc source(self: SrcCode) = 
+  self.srcList.join("\n")
+
+proc insertAt*(self: SrcCode, index: int, code: seq[Rope]): int =
+  var seqBefore = self.srcList[0..index]
   var nextIndex = index + 1
-  var seqAfter = self.src[nextIndex..^]
-  self.src = seqBefore & code & seqAfter
-  nextIndex
+  var seqAfter = self.srcList[nextIndex..^]
+  self.srcList = seqBefore & code & seqAfter
+  code.len
+
+proc insertAt(p: PProc, srcCode: PSrcCode, id: string, code: string) =
+  var srcCodeStartIndex = p.idLookupTable.find(id).startIndex
+  var insertedLineCount = srcCode.insertAt(srcCodeStartIndex, code)
+  p.bumpFollowingIdLocationRefs(id, insertedLineCount)
+
 
 template config*(p: PProc): ConfigRef = p.module.config
 
@@ -1772,6 +1815,11 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     # store varName on p so that we can reference it later
     p.lastVarName = varName
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
+    
+  # add var id mapping to idLookupTable
+  # line adds a line to body p.body.add(indentLine(p, added))
+  var srcCodeStartIndex = p.body.len + 1
+  p.idLookupTable.add(v, srcCodeIndex)
 
   if v.constraint.isNil:
     if useReloadingGuard:
@@ -1825,6 +1873,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
                     [tmp, a.res, v.loc.r])
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
+
+      p.idLookupTable.setCurrent(endIndex = p.body.len)
       return
     else:
       s = a.res
@@ -1836,6 +1886,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   if useReloadingGuard:
     dec p.extraIndent
     lineF(p, "}$n")
+  # return
+  p.idLookupTable.setCurrent(endIndex = p.body.len)
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
