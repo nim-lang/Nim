@@ -35,9 +35,8 @@ proc isFilled(hcode: Hash): bool {.inline.} =
 
 
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
-  # TODO: shouldn't perturb be unsigned?
   const PERTURB_SHIFT = 5
-  # SPEED IMPROVE
+  # TODO: make perturb (maybe even Hash) unsigned everywhere to avoid back and forth conversions
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)
   result = ((5*h) + 1 + perturb) and maxHash
@@ -48,9 +47,7 @@ proc mustRehash(length, counter: int): bool {.inline.} =
 
 proc mustRehash2[T](t: T): bool {.inline.} =
   let counter2 = t.counter + t.countDeleted
-  # echo (t.dataLen, t.counter, t.countDeleted, counter2)
   result = mustRehash(t.dataLen, counter2)
-  # echo ("mustRehash2", t.dataLen, t.counter, t.countDeleted, counter2, result)
 
 template rawGetKnownHCImpl() {.dirty.} =
   if t.dataLen == 0:
@@ -76,7 +73,7 @@ template rawGetKnownHCImpl() {.dirty.} =
     else:
       break
   if deletedIndex == -1:
-    result = -1 - h # < 0 => MISSING; insert idx = -1 - result # TODO
+    result = -1 - h # < 0 => MISSING; insert idx = -1 - result
   else:
     # we prefer returning a (in fact the 1st found) deleted index
     result = -1 - deletedIndex
