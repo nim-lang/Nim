@@ -25,8 +25,7 @@
   It didn't work well together with the existing inplace version of the same proc
   (`tables.merge(var CountTable, CountTable)`).
   It was an oversight to be included in v1.0.
-- `move` proc has been changed, it now resets memory location only if argument 
-   Stype has destructor.
+
 
 ### Breaking changes in the compiler
 

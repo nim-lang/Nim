@@ -1,12 +1,9 @@
 
 discard """
-  cmd: '''nim c --gc:arc $file'''
-  output: '''destroyed!
-(f: 3)
-(f: 0)
+  output: '''3
+0
+0
 10
-true
-destroyed!
 destroyed!
 '''
 joinable: false
@@ -22,13 +19,12 @@ proc `=destroy`*(x: var myseq) =
 var
   x: myseq
 x.f = 3
-echo move(x)
-echo x
+echo move(x.f)
+echo x.f
 
 # bug #9743
-var a = new(int)
+let a = create int
 a[] = 10
 var b = move a[]
 echo a[]
-let c = move(a)
-echo a == nil
+echo b

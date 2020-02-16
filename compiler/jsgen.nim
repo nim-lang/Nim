@@ -1896,8 +1896,7 @@ proc genMove(p: PProc; n: PNode; r: var TCompRes) =
   r.res = p.getTemp()
   gen(p, n[1], a)
   lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
-  if hasDestructor(n[1].typ.skipTypes({tyVar, tyAlias, tyGenericInst})):
-    genReset(p, n)
+  genReset(p, n)
   #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
