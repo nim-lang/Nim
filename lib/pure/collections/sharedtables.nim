@@ -32,7 +32,7 @@ template maxHash(t): untyped = t.dataLen-1
 include tableimpl
 
 template st_maybeRehashPutImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter):
+  if mustRehash2(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index # important to transform for mgetOrPutImpl

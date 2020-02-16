@@ -233,6 +233,7 @@ type
     ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
+    countDeleted: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc
@@ -267,11 +268,12 @@ template get(t, key): untyped =
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, t.counter.rightSize)
   swap(t.data, n)
+  t.countDeleted = 0
   for i in countup(0, high(n)):
     let eh = n[i].hcode
-    if isFilled(eh):
+    if isFilledValid(eh):
       var j: Hash = eh and maxHash(t)
       var perturb = eh
       while isFilled(t.data[j].hcode):
@@ -671,7 +673,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledValid(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -693,7 +695,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledValid(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -714,7 +716,7 @@ iterator keys*[A, B](t: Table[A, B]): A =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledValid(t.data[h].hcode):
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -735,7 +737,7 @@ iterator values*[A, B](t: Table[A, B]): B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledValid(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -757,7 +759,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledValid(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -822,7 +824,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   # const N = 20000 # can optimize this
   var cache1 {.noinit.}: array[N, Hash]
   var cache2: IntSet
-  while isFilled(t.data[h].hcode):
+  while isFilled(t.data[h].hcode): # CHECKME isFilledValid ??
     if t.data[h].key == key:
       if not inCache():
         yield t.data[h].val
@@ -1282,7 +1284,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
-  rawInsertImpl()
+  rawInsertImpl(t)
   data[h].next = -1
   if t.first < 0: t.first = h
   if t.last >= 0: data[t.last].next = h
