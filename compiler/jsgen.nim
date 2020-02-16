@@ -164,18 +164,29 @@ proc `&`(a, b: SrcCode) =
 proc source(self: SrcCode) = 
   self.srcList.join("\n")
 
-proc insertAt*(self: SrcCode, index: int, code: seq[Rope]): int =
-  var seqBefore = self.srcList[0..index]
-  var nextIndex = index + 1
-  var seqAfter = self.srcList[nextIndex..^]
-  self.srcList = seqBefore & code & seqAfter
+proc insertBeforeAt(self: SrcCode, index: int, code: string): int =
+  var items = self.srcList
+  var indexBefore = index-1
+  var seqBefore = items[0..indexBefore]
+  var nextIndex = indexBefore + 1
+  var seqAfter = items[nextIndex..<items.len]
+  items = seqBefore & code & seqAfter
   code.len
 
-proc insertAt(p: PProc, srcCode: PSrcCode, id: string, code: string) =
-  var srcCodeStartIndex = p.idLookupTable.find(id).startIndex
-  var insertedLineCount = srcCode.insertAt(srcCodeStartIndex, code)
-  p.bumpFollowingIdLocationRefs(id, insertedLineCount)
+proc insertAfterAt(self: SrcCode, index: int, code: string): int =
+  var items = self.srcList
+  var indexBefore = index
+  var seqBefore = items[0..indexBefore]
+  var nextIndex = indexBefore + 1
+  var seqAfter = items[nextIndex..<items.len]
+  items = seqBefore & code & seqAfter
+  code.len
+  
 
+proc insertCodeBeforeAt(p: PProc, srcCode: PSrcCode, id: string, code: string) =
+  var srcCodeStartIndex = p.idLookupTable.find(id).startIndex
+  var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
+  p.bumpFollowingIdLocationRefs(id, insertedLineCount)
 
 template config*(p: PProc): ConfigRef = p.module.config
 
