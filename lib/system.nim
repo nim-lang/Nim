@@ -221,12 +221,9 @@ proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## ideally be optimized away.
   discard
 
-when defined(nimHasMoveFix):
-  proc move*[T](x: var T): T {.magic: "Move", noSideEffect.}
-    # returns `x`, enforces move semantics. Resets  `X` to its initial (binary zero) value if x has a destructor
-else:
-  proc move*[T](x: var T): T = x
-    # for compiler bootstrapping only
+proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+  result = x
+  wasMoved(x)
 
 type
   range*[T]{.magic: "Range".}         ## Generic type to construct range types.
@@ -1530,7 +1527,7 @@ proc `@`*[T](a: openArray[T]): seq[T] =
 
 
 when defined(nimSeqsV2):
-  
+
   proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
     ## Concatenates two sequences.
     ##
