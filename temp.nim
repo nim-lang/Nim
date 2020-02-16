@@ -24,6 +24,7 @@ proc parseJunk(s: string; res: var int) =
 
 var res: int
 parseJunk("abcdefASDSFAF0090", res)
+echo res
 
 when false:
   proc canRaise(p: int) =

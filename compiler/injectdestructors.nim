@@ -382,88 +382,111 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc handleTmpDestroys(c: var Con; body: PNode; oldCanRaise: int): PNode =
-  if c.hasUnstructuredCf == oldCanRaise:
-    for i in countdown(c.tempDestroys.high, 0):
-      body.add c.tempDestroys[i]
-    result = body
+proc handleTmpDestroys(c: var Con; body: PNode; oldHasUnstructuredCf: int) =
+  if c.hasUnstructuredCf == oldHasUnstructuredCf:
+    # no need for a try-finally statement:
+    if body.kind == nkStmtList:
+      for i in countdown(c.tempDestroys.high, 0):
+        body.add c.tempDestroys[i]
+    elif body.typ == nil or isEmptyType(body.typ):
+      var n = newNodeI(nkStmtList, body.info)
+      n.add body[^1]
+      for i in countdown(c.tempDestroys.high, 0):
+        n.add c.tempDestroys[i]
+      body[^1] = n
+    elif body.kind == nkStmtListExpr and body.len > 0 and body[^1].kind == nkSym:
+      # special case: Do not translate (x; y; sym) into
+      # (x; y; tmp = sym; destroy(x); destroy(y); tmp )
+      # but into
+      # (x; y; destroy(x); destroy(y); sym )
+      let sym = body[^1]
+      body[^1] = c.tempDestroys[^1]
+      for i in countdown(c.tempDestroys.high - 1, 0):
+        body.add c.tempDestroys[i]
+      body.add sym
+    else:
+      # fun ahead: We have to transform (x; y; E()) into
+      # (x; y; tmp = E(); destroy(x); destroy(y); tmp )
+      let tmp = getTemp(c, body.typ, body.info)
+      # the tmp does not have to be initialized
+      var n = newNodeIT(nkStmtListExpr, body.info, body.typ)
+      n.add newTree(nkFastAsgn, tmp, body[^1])
+      for i in countdown(c.tempDestroys.high, 0):
+        n.add c.tempDestroys[i]
+      n.add tmp
+      body[^1] = n
   else:
-    var n = newNodeI(nkStmtList, body.info)
-    for i in countdown(c.tempDestroys.high, 0):
-      n.add c.tempDestroys[i]
-    result = newTryFinally(body, n)
+    # unstructured control flow was used, use a 'try finally' to ensure
+    # destruction:
+    if body.typ == nil or isEmptyType(body.typ):
+      var n = newNodeI(nkStmtList, body.info)
+      for i in countdown(c.tempDestroys.high, 0):
+        n.add c.tempDestroys[i]
+      body[^1] = newTryFinally(body[^1], n)
+    else:
+      # fun ahead: We have to transform (x; y; E()) into
+      # ((try: tmp = (x; y; E()); finally: destroy(x); destroy(y)); tmp )
+      let tmp = getTemp(c, body.typ, body.info)
+      # the tmp does not have to be initialized
+      var fin = newNodeI(nkStmtList, body.info)
+      for i in countdown(c.tempDestroys.high, 0):
+        fin.add c.tempDestroys[i]
+      var n = newNodeIT(nkStmtListExpr, body.info, body.typ)
+      n.add newTryFinally(newTree(nkFastAsgn, tmp, body[^1]), fin)
+      n.add tmp
+      body[^1] = n
+
   c.tempDestroys.setLen 0
 
-template handleNested(n: untyped, processCall: untyped) =
-  case n.kind
-  of nkStmtList, nkStmtListExpr:
-    if n.len == 0: return n
-    let oldCanRaise = c.hasUnstructuredCf
+proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
+  template processCall(node: PNode; useP: bool): PNode =
+    if (useP and node.typ == nil) or dest == nil:
+      p(node, c, mode)
+    else:
+      moveOrCopy(dest, node, c)
+
+  proc handleScope(n, dest: PNode; takeOver: Natural; c: var Con; mode: ProcessMode): PNode =
+    let oldHasUnstructuredCf = c.hasUnstructuredCf
     result = shallowCopy(n)
-    let l = n.len - 1
-    for i in 0..<l:
+    for i in 0..<takeOver:
+      result[i] = n[i]
+    let last = n.len - 1
+    for i in takeOver..<last:
       result[i] = p(n[i], c, normal)
 
-    template node: untyped = n[l]
     # if we have an expression producing a temporary, we must
     # not destroy it too early:
     if n.typ == nil or isEmptyType(n.typ):
-      result[l] = processCall
+      result[last] = processCall(n[last], false)
       if c.tempDestroys.len > 0:
-        result = handleTmpDestroys(c, result, oldCanRaise)
+        handleTmpDestroys(c, result, oldHasUnstructuredCf)
     else:
-      setLen(result.sons, l)
+      setLen(result.sons, last)
       if c.tempDestroys.len > 0:
-        result = handleTmpDestroys(c, result, oldCanRaise)
+        handleTmpDestroys(c, result, oldHasUnstructuredCf)
       if result.kind != nkFinally:
-        result.add processCall
+        result.add processCall(n[last], false)
       else:
-        result = newTree(nkStmtListExpr, result, processCall)
+        result = newTree(nkStmtListExpr, result, processCall(n[last], false))
+
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    if n.len == 0: return n
+    result = handleScope(n, dest, 0, c, mode)
   of nkBlockStmt, nkBlockExpr:
-    result = copyNode(n)
-    result.add n[0]
-    template node: untyped = n[1]
-    result.add processCall
+    result = handleScope(n, dest, 1, c, mode)
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
     for son in n:
-      var branch = copyNode(son)
-      if son.kind in {nkElifBranch, nkElifExpr}:
-        template node: untyped = son[1]
-        branch.add p(son[0], c, normal) # The condition
-        branch.add if node.typ == nil: p(node, c, normal) # noreturn
-                   else: processCall
-      else:
-        template node: untyped = son[0]
-        branch.add if node.typ == nil: p(node, c, normal) # noreturn
-                   else: processCall
-      result.add branch
+      result.add handleScope(son, dest, son.len - 1, c, mode)
   of nkCaseStmt:
     result = copyNode(n)
     result.add p(n[0], c, normal)
     for i in 1..<n.len:
-      var branch: PNode
-      if n[i].kind == nkOfBranch:
-        branch = n[i] # of branch conditions are constants
-        template node: untyped = n[i][^1]
-        branch[^1] = if node.typ == nil: p(node, c, normal) # noreturn
-                     else: processCall
-      elif n[i].kind in {nkElifBranch, nkElifExpr}:
-        branch = copyNode(n[i])
-        branch.add p(n[i][0], c, normal) # The condition
-        template node: untyped = n[i][1]
-        branch.add if node.typ == nil: p(node, c, normal) # noreturn
-                   else: processCall
-      else:
-        branch = copyNode(n[i])
-        template node: untyped = n[i][0]
-        branch.add if node.typ == nil: p(node, c, normal) # noreturn
-                   else: processCall
-      result.add branch
+      result.add handleScope(n[i], dest, n[i].len - 1, c, mode)
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
-    template node: untyped = n[1][0]
-    result[1][0] = processCall
+    result[1][0] = handleScope(n[1][0], dest, 0, c, mode)
   else: assert(false)
 
 proc ensureDestruction(arg: PNode; c: var Con): PNode =
@@ -533,7 +556,7 @@ proc cycleCheck(n: PNode; c: var Con) =
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen}:
-    handleNested(n): p(node, c, mode)
+    result = handleNested(n, nil, c, mode)
   elif mode == sinkArg:
     if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
@@ -698,7 +721,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
        nkMethodDef, nkIteratorDef, nkMacroDef, nkTemplateDef, nkLambda, nkDo,
        nkFuncDef, nkConstSection, nkConstDef, nkIncludeStmt, nkImportStmt,
-       nkExportStmt, nkPragma, nkCommentStmt, nkBreakStmt, nkBreakState:
+       nkExportStmt, nkPragma, nkCommentStmt, nkBreakState:
       result = n
     of nkBreakStmt:
       inc c.hasUnstructuredCf
@@ -773,7 +796,7 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     else:
       result = genSink(c, dest, p(ri, c, sinkArg))
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
-    handleNested(ri): moveOrCopy(dest, node, c)
+    result = handleNested(ri, dest, c, normal)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(c, dest.typ):
