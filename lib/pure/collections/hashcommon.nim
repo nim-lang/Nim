@@ -28,12 +28,11 @@ proc isFilled(hcode: Hash): bool {.inline.} =
 
 
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
-  # result = ((5*h) + 1 + perturb and maxHash)
+  # TODO: shouldn't perturb be unsigned?
   const PERTURB_SHIFT = 5
   perturb = perturb shr PERTURB_SHIFT
+  # perturb = cast[uint](perturb) shr PERTURB_SHIFT # TODO
   result = ((5*h) + 1 + perturb) and maxHash
-  # echo (h, result)
-  # result = (h + 1) and maxHash
 
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)

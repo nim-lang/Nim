@@ -54,22 +54,27 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+# FACTOR
+proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+  const PERTURB_SHIFT = 5
+  perturb = perturb shr PERTURB_SHIFT
+  result = ((5*h) + 1 + perturb) and maxHash
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   result = nil
 
 proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
+  var perturb = desc.key
   while data[h] != nil:
     assert(data[h] != desc)
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   assert(data[h] == nil)
   data[h] = desc
 
@@ -84,14 +89,16 @@ proc intSetEnlarge(t: var IntSet) =
 
 proc intSetPut(t: var IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   if mustRehash(t.max + 1, t.counter): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
-  while t.data[h] != nil: h = nextTry(h, t.max)
+  perturb = key
+  while t.data[h] != nil: h = nextTry(h, t.max, perturb)
   assert(t.data[h] == nil)
   new(result)
   result.next = t.head
@@ -393,7 +400,8 @@ proc assign*(dest: var IntSet, src: IntSet) =
     var it = src.head
     while it != nil:
       var h = it.key and dest.max
-      while dest.data[h] != nil: h = nextTry(h, dest.max)
+      var perturb = it.key
+      while dest.data[h] != nil: h = nextTry(h, dest.max, perturb)
       assert(dest.data[h] == nil)
       var n: PTrunk
       new(n)
