@@ -1559,7 +1559,7 @@ when defined(nimSeqsV2):
       result[i] = move(x[i])
     result[x.len] = move(y)
 
-  proc `&`*[T](x: T, y: sink seq[T]): seq[T] {.noSideEffect.} =
+  proc `&`*[T](x: sink T, y: sink seq[T]): seq[T] {.noSideEffect.} =
     ## Prepends the element x to the beginning of the sequence.
     ##
     ## Requires copying of the sequence.
@@ -1567,7 +1567,7 @@ when defined(nimSeqsV2):
     ## .. code-block:: Nim
     ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
     newSeq(result, y.len + 1)
-    result[0] = x
+    result[0] = move(x)
     for i in 0..y.len-1:
       result[i+1] = move(y[i])
 
