@@ -18,15 +18,11 @@ when not defined(nimHasDefault):
     var v: T
     v
 
-# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
-# two procs retain clarity of that encoding without the space cost of an enum.
-when false:
-  proc isEmpty(hcode: Hash): bool {.inline.} =
-    result = hcode == 0
-
 const freeMarker = 0
 const deletedMarker = -1
 
+# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
+# two procs retain clarity of that encoding without the space cost of an enum.
 proc isFilledAndValid(hcode: Hash): bool {.inline.} =
   result = hcode != 0 and hcode != deletedMarker # SPEED: could improve w bit magic
 
