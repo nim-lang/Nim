@@ -2100,16 +2100,19 @@ type
                       ## opening directory status may not have exactly
                       ## the same meaning.
     wsOpenUnknown,  ## opening directory error: unrecognized OS-specific one
-    wsOpenNotFound, ## opening directory error: no such path or path is invalid
+    wsOpenNotFound, ## opening directory error: no such path
     wsOpenNoAccess, ## opening directory error: access denied a.k.a.
                     ## permission denied error for the specified path
                     ## (may have happened at its parent directory on posix)
     wsOpenNotDir,   ## opening directory error: not a directory
-                    ## (a normal file with the same path exists)
+                    ## (a normal file with the same path exists or path is a
+                    ## loop of symlinks)
+    wsOpenBadPath,  ## opening directory error: path is invalid (too long or,
+                    ## in Windows, contains illegal characters)
     wsOpenOk,       ## opening directory OK, the directory can be read
     wsEntryOk,      ## entry OK: path component is correct
     wsEntrySpecial  ## special OS-specific entry: non-data file like
-                    ## domain socket, Posix pipe, etc
+                    ## Posix domain sockets, FIFOs, etc
     wsEntryBad,     ## entry error: a broken symlink (on posix), where it's
                     ## unclear if it points to a file or directory
     wsInterrupted   ## reading directory entries was interrupted
@@ -2198,8 +2201,8 @@ iterator tryWalkDir*(dir: string, relative=false):
         if (fdat.dwReserved0 and REPARSE_TAG_NAME_SURROGATE) != 0'u32:
           k = succ(k)  # it's a "surrogate", that is symlink (or junction)
           entryOk(k, xx)
-        else:  # some strange reparse point
-          entrySpecial(k, xx)
+        else:  # some strange reparse point, considering it a normal file
+          entryOk(k, xx)
       else:
         entryOk(k, xx)
 
@@ -2210,7 +2213,8 @@ iterator tryWalkDir*(dir: string, relative=false):
         wsOpenOk
       else:
         case getLastError()
-        of ERROR_PATH_NOT_FOUND, ERROR_INVALID_NAME: wsOpenNotFound
+        of ERROR_PATH_NOT_FOUND: wsOpenNotFound
+        of ERROR_INVALID_NAME: wsOpenBadPath
         of ERROR_DIRECTORY: wsOpenNotDir
         of ERROR_ACCESS_DENIED: wsOpenNoAccess
         else: wsOpenUnknown
@@ -2285,8 +2289,9 @@ iterator tryWalkDir*(dir: string, relative=false):
         wsOpenOk
       else:
         if errno == ENOENT: wsOpenNotFound
-        elif errno == ENOTDIR: wsOpenNotDir
+        elif errno == ENOTDIR or errno == ELOOP: wsOpenNotDir
         elif errno == EACCES: wsOpenNoAccess
+        elif errno == ENAMETOOLONG: wsOpenBadPath
         else: wsOpenUnknown
     step = openStatus(status, outDir)
     var name: string
