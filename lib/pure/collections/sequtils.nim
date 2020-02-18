@@ -290,6 +290,8 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) =
       unzipped2 = @['a', 'b', 'c']
     assert zipped.unzip() == (unzipped1, unzipped2)
     assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
+  result[0] = newSeqOfCap[S](s.len)
+  result[1] = newSeqOfCap[T](s.len)
   for elem in s:
     result[0].add(elem[0])
     result[1].add(elem[1])
