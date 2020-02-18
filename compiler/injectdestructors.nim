@@ -415,6 +415,7 @@ proc handleTmpDestroys(c: var Con; body: PNode; oldHasUnstructuredCf: int) =
         n.add c.tempDestroys[i]
       n.add tmp
       body[^1] = n
+      #c.tempDestroys.add genDestroy(c, tmp)
   else:
     # unstructured control flow was used, use a 'try finally' to ensure
     # destruction:
@@ -435,6 +436,7 @@ proc handleTmpDestroys(c: var Con; body: PNode; oldHasUnstructuredCf: int) =
       n.add newTryFinally(newTree(nkFastAsgn, tmp, body[^1]), fin)
       n.add tmp
       body[^1] = n
+      #c.tempDestroys.add genDestroy(c, tmp)
 
   c.tempDestroys.setLen 0
 
@@ -880,7 +882,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       g.globalDestructors.add c.destroys
     else:
       fin = newTryFinally(body, c.destroys)
-    for i in countdown(c.tempDestroys.high, 0): fin[1].add c.tempDestroys[i]
+    for i in countdown(c.tempDestroys.high, 0): fin[1][0].add c.tempDestroys[i]
     result.add fin
   else:
     result.add body
