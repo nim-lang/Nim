@@ -7224,8 +7224,8 @@ The string literal passed to ``exportc`` can be a format string:
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
-Should the symbol be exported to a dynamic library, the ``dynlib`` pragma should
-be used in conjunction with ``exportc``. See
+If the symbol should also be exported to a dynamic library, the ``dynlib``
+pragma should be used in addition to the ``exportc`` pragma. See
 `Dynlib pragma for export <#foreign-function-interface-dynlib-pragma-for-export>`_.
 
 
