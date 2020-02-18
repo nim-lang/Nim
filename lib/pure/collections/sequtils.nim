@@ -281,6 +281,19 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
+proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) =
+  ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
+  runnableExamples:
+    let
+      zipped = @[(1, 'a'), (2, 'b'), (3, 'c')]
+      unzipped1 = @[1, 2, 3]
+      unzipped2 = @['a', 'b', 'c']
+    assert zipped.unzip() == (unzipped1, unzipped2)
+    assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
+  for elem in s:
+    result[0].add(elem[0])
+    result[1].add(elem[1])
+
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
   ##
