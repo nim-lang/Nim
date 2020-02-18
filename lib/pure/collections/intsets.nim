@@ -51,13 +51,15 @@ type
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
 proc mustRehash(length, counter: int): bool {.inline.} =
+  # FACTOR with hashcommon.mustRehash
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
 
-# FACTOR
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+  # FACTOR with hashcommon.nextTry
   const PERTURB_SHIFT = 5
-  perturb = perturb shr PERTURB_SHIFT
+  var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
+  perturb = cast[Hash](perturb2)
   result = ((5*h) + 1 + perturb) and maxHash
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
