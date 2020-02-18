@@ -193,6 +193,23 @@ block ttables2:
   run1()
   echo "2"
 
+block allValues:
+  var t: Table[int, string]
+  var key = 0
+  let n = 1000
+  for i in 0..<n: t.add(i, $i)
+  const keys = [0, -1, 12]
+  for i in 0..1:
+    for key in keys:
+      t.add(key, $key & ":" & $i)
+  for i in 0..<n:
+    if i notin keys:
+      t.del(i)
+  doAssert t.sortedPairs == @[(-1, "-1:0"), (-1, "-1:1"), (0, "0"), (0, "0:0"), (0, "0:1"), (12, "12"), (12, "12:0"), (12, "12:1")]
+  doAssert sortedItems(t.allValues(0)) == @["0", "0:0", "0:1"]
+  doAssert sortedItems(t.allValues(-1)) == @["-1:0", "-1:1"]
+  doAssert sortedItems(t.allValues(12)) == @["12", "12:0", "12:1"]
+  doAssert sortedItems(t.allValues(1)) == @[]
 
 block tablesref:
   const
@@ -374,3 +391,4 @@ block tablesref:
 
   orderedTableSortTest()
   echo "3"
+

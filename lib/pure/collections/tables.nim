@@ -786,19 +786,13 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## Used if you have a table with duplicate keys (as a result of using
   ## `add proc<#add,Table[A,B],A,B>`_).
   ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = {'a': 3, 'b': 5}.toTable
-  ##   for i in 1..3:
-  ##     a.add('z', 10*i)
-  ##   echo a # {'a': 3, 'b': 5, 'z': 10, 'z': 20, 'z': 30}
-  ##
-  ##   for v in a.allValues('z'):
-  ##     echo v
-  ##   # 10
-  ##   # 20
-  ##   # 30
+  runnableExamples:
+    import testutils
+    var a = {'a': 3, 'b': 5}.toTable
+    for i in 1..3: a.add('z', 10*i)
+    doAssert a.sortedPairs == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
+    doAssert sortedItems(a.allValues('z')) == @[10, 20, 30]
+
   let hc = genHash(key)
   var h: Hash = hc and high(t.data)
   let L = len(t)
@@ -806,8 +800,8 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
 
   var num = 0
   var cache: seq[Hash]
-  while isFilled(t.data[h].hcode): # CHECKME isFilledAndValid ??
-    if t.data[h].key == key:
+  while isFilled(t.data[h].hcode): # `isFilledAndValid` would be incorrect, see test for `allValues`
+    if t.data[h].hcode == hc and t.data[h].key == key:
       if not hasKeyOrPutCache(cache, h):
         yield t.data[h].val
         assert(len(t) == L, "the length of the table changed while iterating over it")
