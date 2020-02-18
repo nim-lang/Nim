@@ -346,8 +346,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
   if hasDestructor(n.typ):
-    if c.inLoop > 0:
-      result.add genWasMoved(tmp, c)
+    result.add genWasMoved(tmp, c)
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
