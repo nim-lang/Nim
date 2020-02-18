@@ -32,7 +32,9 @@
 - Implicit conversions for `const` behave correctly now, meaning that code like
   `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
   Simply write `const SOMECONST = 0` instead.
-
+- The `{.dynlib.}` pragma is now required for exporting symbols when making
+  shared objects on POSIX and macOS, which make it consistent with the behavior
+  on Windows.
 
 
 ## Library additions
