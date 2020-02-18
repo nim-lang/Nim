@@ -27,7 +27,7 @@ when false:
 const freeMarker = 0
 const deletedMarker = -1
 
-proc isFilledValid(hcode: Hash): bool {.inline.} =
+proc isFilledAndValid(hcode: Hash): bool {.inline.} =
   result = hcode != 0 and hcode != deletedMarker # SPEED: could improve w bit magic
 
 proc isFilled(hcode: Hash): bool {.inline.} =
@@ -57,7 +57,7 @@ template rawGetKnownHCImpl() {.dirty.} =
   var perturb = hc
   var deletedIndex = -1
   while true:
-    if isFilledValid(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       # Compare hc THEN key with boolean short circuit. This makes the common case
       # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
       # It does slow down succeeding lookups by one extra Hash cmp&and..usually

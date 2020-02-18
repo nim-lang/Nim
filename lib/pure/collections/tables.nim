@@ -273,7 +273,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
   t.countDeleted = 0
   for i in countup(0, high(n)):
     let eh = n[i].hcode
-    if isFilledValid(eh):
+    if isFilledAndValid(eh):
       var j: Hash = eh and maxHash(t)
       var perturb = eh
       while isFilled(t.data[j].hcode):
@@ -673,7 +673,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledValid(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -695,7 +695,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledValid(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -716,7 +716,7 @@ iterator keys*[A, B](t: Table[A, B]): A =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledValid(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -737,7 +737,7 @@ iterator values*[A, B](t: Table[A, B]): B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledValid(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -759,7 +759,7 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledValid(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -824,7 +824,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   # const N = 20000 # can optimize this
   var cache1 {.noinit.}: array[N, Hash]
   var cache2: IntSet
-  while isFilled(t.data[h].hcode): # CHECKME isFilledValid ??
+  while isFilled(t.data[h].hcode): # CHECKME isFilledAndValid ??
     if t.data[h].key == key:
       if not inCache():
         yield t.data[h].val
@@ -1303,7 +1303,7 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
   while h >= 0:
     var nxt = n[h].next
     let eh = n[h].hcode
-    if isFilledValid(eh):
+    if isFilledAndValid(eh):
       var j: Hash = eh and maxHash(t)
       var perturb = eh
       while isFilled(t.data[j].hcode):
