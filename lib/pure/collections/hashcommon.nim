@@ -42,7 +42,6 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   result = (length * 2 < counter * 3) or (length - counter < 4) # synchronize with `rightSize`
 
 proc mustRehash2[T](t: T): bool {.inline.} =
-  # static: echo $T
   let counter2 = t.counter + t.countDeleted
   result = mustRehash(t.dataLen, counter2)
 

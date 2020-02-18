@@ -8,7 +8,12 @@ And we get here
 '''
 joinable: false
 """
-import hashes, sequtils, tables, algorithm
+import hashes, sequtils, tables, algorithm, testutils
+
+block tableDollar:
+  # other tests should use `sortedPairs` to be robust to future table/hash
+  # implementation changes
+  doAssert ${1: 'a', 2: 'b'}.toTable in ["{1: 'a', 2: 'b'}", "{2: 'b', 1: 'a'}"]
 
 # test should not be joined because it takes too long.
 block tableadds:
@@ -232,8 +237,8 @@ block tablesref:
     for x in 0..1:
       for y in 0..1:
         assert t[(x,y)] == $x & $y
-    assert($t ==
-      "{(x: 1, y: 1): \"11\", (x: 0, y: 0): \"00\", (x: 0, y: 1): \"01\", (x: 1, y: 0): \"10\"}")
+    assert t.sortedPairs ==
+      @[((x: 0, y: 0), "00"), ((x: 0, y: 1), "01"), ((x: 1, y: 0), "10"), ((x: 1, y: 1), "11")]
 
   block tableTest2:
     var t = newTable[string, float]()
@@ -340,7 +345,7 @@ block tablesref:
   block anonZipTest:
     let keys = @['a','b','c']
     let values = @[1, 2, 3]
-    doAssert "{'c': 3, 'a': 1, 'b': 2}" == $ toTable zip(keys, values)
+    doAssert zip(keys, values).toTable.sortedPairs == @[('a', 1), ('b', 2), ('c', 3)]
 
   block clearTableTest:
     var t = newTable[string, float]()

@@ -46,6 +46,7 @@ type
   IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
     elems: int           # only valid for small numbers
     counter, max: int
+    countDeleted: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
@@ -54,6 +55,11 @@ proc mustRehash(length, counter: int): bool {.inline.} =
   # FACTOR with hashcommon.mustRehash
   assert(length > counter)
   result = (length * 2 < counter * 3) or (length - counter < 4)
+
+proc mustRehash2[T](t: T): bool {.inline.} =
+  # FACTOR with hashcommon.mustRehash2
+  let counter2 = t.counter + t.countDeleted
+  result = mustRehash(t.max + 1, counter2)
 
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
   # FACTOR with hashcommon.nextTry
@@ -96,7 +102,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
     if t.data[h].key == key:
       return t.data[h]
     h = nextTry(h, t.max, perturb)
-  if mustRehash(t.max + 1, t.counter): intSetEnlarge(t)
+  if mustRehash2(t): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
   perturb = key
@@ -109,6 +115,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc bitincl(s: var IntSet, key: int) {.inline.} =
+  var ret: PTrunk
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or

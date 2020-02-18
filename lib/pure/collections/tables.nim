@@ -763,37 +763,22 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
-import intsets
-
-template inCache(): bool =
-  # TODO: instead modify how add works for table w multiple identical keys, eg usign instead hash((key, keyCount)) ?
-  if num <= N:
-    # short cache optimization: linear search, to avoid overhead of IntSet for common case
-    var found = false
-    for i in 0..<num:
-      if cache1[i] == h:
-        found = true
-        break
-    if not found:
-      if num < N:
-        cache1[num] = h
-        num.inc
-      else:
-        # replace cache1 with cache2
-        num.inc
-        cache2 = initIntSet()
-        for ai in cache1:
-          cache2.incl ai
-        cache2.incl h
-    found
-  else:
-    # large cache via IntSet to avoid quadratic behavior
-    if h notin cache2:
-      cache2.incl h
-      # optimization: we don't care about `num.inc`
-      false
-    else:
-      true
+template hasKeyOrPutCache(cache, h): bool =
+  # using `IntSet` would be an option worth considering to avoid quadratic
+  # behavior in case user misuses Table with lots of duplicate keys; but it
+  # has overhead in the common case of small number of duplicates.
+  # However: when lots of duplicates are used, all operations would be slow
+  # anyway because the full `hash(key)` is identical for these, which makes
+  # `nextTry` follow the exact same path for each key, resulting in large
+  # collision clusters. Alternatives could involve modifying the hash/retrieval
+  # based on duplicate key count.
+  var ret = false
+  for hi in cache:
+    if hi == h:
+      ret = true
+      break
+  if not ret: cache.add h
+  ret
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
@@ -820,13 +805,10 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   var perturb = hc
 
   var num = 0
-  const N = 0 # can optimize this
-  # const N = 20000 # can optimize this
-  var cache1 {.noinit.}: array[N, Hash]
-  var cache2: IntSet
+  var cache: seq[Hash]
   while isFilled(t.data[h].hcode): # CHECKME isFilledAndValid ??
     if t.data[h].key == key:
-      if not inCache():
+      if not hasKeyOrPutCache(cache, h):
         yield t.data[h].val
         assert(len(t) == L, "the length of the table changed while iterating over it")
     h = nextTry(h, high(t.data), perturb)
