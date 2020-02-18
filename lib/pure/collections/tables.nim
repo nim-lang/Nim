@@ -2619,6 +2619,28 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
+iterator take*[A](t: CountTable[A], n: Natural): (A, int) =
+  let L = len(t)
+  var n = n
+  for h in 0 .. high(t.data):
+    if n == 0: break
+    if t.data[h].val != 0:
+      dec n
+      yield (t.data[h].key, t.data[h].val)
+      assert(len(t) == L, "the length of the table changed while iterating over it")
+
+iterator takeWhile*[A](t: CountTable[A], fun: proc(key: A, val: int): bool): (A, int) =
+  let L = len(t)
+  for h in 0 .. high(t.data):
+    if t.data[h].val != 0:
+      let
+        key = t.data[h].key
+        val = t.data[h].val
+      if fun(key, val):
+        yield (key, val)
+        assert(len(t) == L, "the length of the table changed while iterating over it")
+      else: break
+
 
 
 
