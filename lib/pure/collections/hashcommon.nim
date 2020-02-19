@@ -24,7 +24,8 @@ const deletedMarker = -1
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
 proc isFilledAndValid(hcode: Hash): bool {.inline.} =
-  result = hcode != 0 and hcode != deletedMarker # SPEED: could improve w bit magic
+  result = hcode != 0 and hcode != deletedMarker
+    # performance: we could use bit magic if needed
 
 proc isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
@@ -72,7 +73,7 @@ template rawGetKnownHCImpl() {.dirty.} =
       # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
       # It does slow down succeeding lookups by one extra Hash cmp&and..usually
       # just a few clock cycles, generally worth it for any non-integer-like A.
-      # TODO: optimize this: depending on type(key), skip hc comparison
+      # performance: we optimize this: depending on type(key), skip hc comparison
       if t.data[h].hcode == hc and t.data[h].key == key:
         return h
       h = nextTry(h, maxHash(t), perturb)

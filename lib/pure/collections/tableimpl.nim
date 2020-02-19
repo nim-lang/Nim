@@ -92,10 +92,7 @@ template delImplIdx(t, i) =
     t.data[i].hcode = deletedMarker
     t.data[i].key = default(type(t.data[i].key))
     t.data[i].val = default(type(t.data[i].val))
-    # maybe not needed because counter+countDeleted doesn't change, unless formula is not a simple +
-    # if mustRehash2(t):
-    #   enlarge(t) # RENAME enlarge...
-      # i = rawGetKnownHC(t, key, hc) # TODO
+    # mustRehash2 + enlarge not needed because counter+countDeleted doesn't change
 
 template delImpl() {.dirty.} =
   var hc: Hash
