@@ -8,7 +8,10 @@ And we get here
 '''
 joinable: false
 """
-import hashes, sequtils, tables, algorithm, testutils
+import hashes, sequtils, tables, algorithm
+
+proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
+template sortedItems(t: untyped): untyped = sorted(toSeq(t))
 
 block tableDollar:
   # other tests should use `sortedPairs` to be robust to future table/hash

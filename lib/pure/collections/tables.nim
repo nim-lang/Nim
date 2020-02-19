@@ -776,11 +776,12 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## `add proc<#add,Table[A,B],A,B>`_).
   ##
   runnableExamples:
-    import testutils
+    import sequtils, algorithm
+
     var a = {'a': 3, 'b': 5}.toTable
     for i in 1..3: a.add('z', 10*i)
-    doAssert a.sortedPairs == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
-    doAssert sortedItems(a.allValues('z')) == @[10, 20, 30]
+    doAssert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
+    doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
 
   let hc = genHash(key)
   var h: Hash = hc and high(t.data)

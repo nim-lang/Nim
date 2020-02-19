@@ -3,7 +3,9 @@ discard """
   output: '''true'''
 """
 
-import hashes, tables, sharedtables, testutils
+import hashes, tables, sharedtables, algorithm, sequtils
+
+proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
 
 const
   data = {
