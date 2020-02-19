@@ -21,6 +21,8 @@ when not defined(nimHasDefault):
 const freeMarker = 0
 const deletedMarker = -1
 
+type UHash = uint
+
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
 proc isFilledAndValid(hcode: Hash): bool {.inline.} =
@@ -30,7 +32,6 @@ proc isFilledAndValid(hcode: Hash): bool {.inline.} =
 proc isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
 
-type UHash* = uint
 
 proc translateBits(a: UHash, numBitsMask: int): UHash {.inline.} =
   result = (a shr numBitsMask) or (a shl (UHash.sizeof * 8 - numBitsMask))

@@ -1,4 +1,6 @@
-## utilities to help writing tests
+## Utilities to help writing tests
+##
+## Unstable, experimental API.
 
 import std/[sequtils, algorithm]
 
