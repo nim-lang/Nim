@@ -18,6 +18,10 @@
 ## produce a destructor call for ``x``. The address of ``x`` must also
 ## not have been taken. ``x = "abc"; x.add(...)``
 
+# Todo:
+# - make variables scope based too
+# - ensure correctness for 'or' and 'elif' constructs
+
 import
   intsets, ast, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
@@ -346,8 +350,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
   if hasDestructor(n.typ):
-    if c.inLoop > 0:
-      result.add genWasMoved(tmp, c)
+    result.add genWasMoved(tmp, c)
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
@@ -415,6 +418,7 @@ proc handleTmpDestroys(c: var Con; body: PNode; oldHasUnstructuredCf: int) =
         n.add c.tempDestroys[i]
       n.add tmp
       body[^1] = n
+      #c.tempDestroys.add genDestroy(c, tmp)
   else:
     # unstructured control flow was used, use a 'try finally' to ensure
     # destruction:
@@ -435,6 +439,7 @@ proc handleTmpDestroys(c: var Con; body: PNode; oldHasUnstructuredCf: int) =
       n.add newTryFinally(newTree(nkFastAsgn, tmp, body[^1]), fin)
       n.add tmp
       body[^1] = n
+      #c.tempDestroys.add genDestroy(c, tmp)
 
   c.tempDestroys.setLen 0
 
@@ -497,6 +502,8 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = getTemp(c, arg.typ, arg.info)
+    tmp.sym.flags.incl sfNoInit
+    c.addTopVar(tmp)
     when false:
       # since we do not initialize these temporaries anymore, we
       # use raw assignments instead of =sink:
@@ -880,7 +887,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       g.globalDestructors.add c.destroys
     else:
       fin = newTryFinally(body, c.destroys)
-    for i in countdown(c.tempDestroys.high, 0): fin[1].add c.tempDestroys[i]
+    for i in countdown(c.tempDestroys.high, 0): fin[1][0].add c.tempDestroys[i]
     result.add fin
   else:
     result.add body
