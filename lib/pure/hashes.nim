@@ -112,30 +112,13 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-proc hashUInt32*(x: uint32): Hash {.inline.} =
-  ## for internal use; user code should prefer `hash` overloads
-  # calling `hashUInt64(x)` would perform 1.736 worse, see thashes_perf toInt32
-  when nimvm: # in vmops
-    doAssert false
-  else:
-    # inspired from https://gist.github.com/badboy/6267743
-    var x = x xor ((x shr 20) xor (x shr 12))
-    result = cast[Hash](x xor (x shr 7) xor (x shr 4))
-
-const prime = uint(11)
 proc hash*(x: int|int64|uint|uint64|char|Ordinal): Hash {.inline.} =
   ## Efficient hashing of integers.
-  when sizeof(x) < 4:
-    cast[Hash](x)
-  elif sizeof(x) == 4:
-    cast[Hash](cast[uint](x) * prime)
-    # hashUInt32(x)
-  else:
-    cast[Hash](cast[uint](x) * prime)
+  cast[Hash](ord(x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
-  var y = x + 0.0
+  var y = x + 0.0 # for denormalization
   result = hash(cast[ptr Hash](addr(y))[])
 
 # Forward declarations before methods that hash containers. This allows

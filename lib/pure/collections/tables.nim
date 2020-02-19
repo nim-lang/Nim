@@ -2250,7 +2250,7 @@ proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
   var perturb = hash(key)
   var h: Hash = perturb and high(data)
-  while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: hadnle deletedMarker
+  while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: handle deletedMarker
   data[h].key = key
   data[h].val = val
 
