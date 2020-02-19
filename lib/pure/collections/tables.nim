@@ -2248,8 +2248,9 @@ type
 
 proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  var perturb = t.getPerturb(hash(key))
-  var h: Hash = perturb and high(data)
+  let hc = hash(key)
+  var perturb = t.getPerturb(hc)
+  var h: Hash = hc and high(data)
   while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: handle deletedMarker
   data[h].key = key
   data[h].val = val
@@ -2277,8 +2278,9 @@ proc remove[A](t: var CountTable[A], key: A) =
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
-  var perturb = t.getPerturb(hash(key))
-  var h: Hash = perturb and high(t.data) # start with real hash value
+  let hc = hash(key)
+  var perturb = t.getPerturb(hc)
+  var h: Hash = hc and high(t.data) # start with real hash value
   while t.data[h].val != 0: # TODO: may need to handle t.data[h].hcode == deletedMarker?
     if t.data[h].key == key: return h
     h = nextTry(h, high(t.data), perturb)
