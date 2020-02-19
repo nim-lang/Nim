@@ -39,7 +39,7 @@ proc nextTry(h, maxHash: Hash, perturb: var UHash): Hash {.inline.} =
   # and then switch to the formula below, to get "best of both worlds": good
   # cache locality, except when a collision cluster is detected (ie, large number
   # of iterations).
-  const PERTURB_SHIFT = 5 # consider using instead `numBitsMask=fastLog2(t.dataLen)`
+  const PERTURB_SHIFT = 5 # consider tying this to `numBitsMask = fastLog2(t.dataLen)`
   result = cast[Hash]((5*cast[uint](h) + 1 + perturb) and cast[uint](maxHash))
   perturb = perturb shr PERTURB_SHIFT
 
@@ -51,11 +51,10 @@ proc mustRehash2[T](t: T): bool {.inline.} =
   let counter2 = t.counter + t.countDeleted
   result = mustRehash(t.dataLen, counter2)
 
-# from bitops import fastLog2 # PRTEMP
-
 template getPerturb*(t: typed, hc: Hash): UHash =
-  # let numBitsMask = fastLog2(dataLen(t)) # TODO: cache/store in t if needed
-  let numBitsMask = 16 # PRTEMP can't use fastLog2
+  # we can't use `fastLog2(dataLen(t))` because importing `bitops` would cause codegen errors
+  # so we use a practical value of half the bit width (eg 64 / 2 = 32 on 64bit machines)
+  let numBitsMask = sizeof(Hash) * 4 # ie, sizeof(Hash) * 8 / 2
   # this makes a major difference for cases like #13393; it causes the bits
   # that were masked out in 1st position so they'll be masked in instead, and
   # influence the recursion in nextTry earlier rather than later.
