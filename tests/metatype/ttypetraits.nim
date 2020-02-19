@@ -92,7 +92,7 @@ block distinctBase:
         doAssert($distinctBase(typeof(b2)) == "string")
         doAssert($distinctBase(typeof(c2)) == "int")
 
-block lenTuple:
+block: # lenTuple
   type
     VectorElementType = SomeNumber | bool
     Vec[N : static[int], T: VectorElementType] = object
@@ -101,7 +101,9 @@ block lenTuple:
     Vec4f = Vec4[float32]
 
     MyTupleType = (int,float,string)
+
   static: doAssert MyTupleType.lenTuple == 3
+  doAssert not compiles(lenTuple(Vec4f))
 
   type
     MyGenericTuple[T] = (T,int,float)
