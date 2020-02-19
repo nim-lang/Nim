@@ -18,6 +18,10 @@
 ## produce a destructor call for ``x``. The address of ``x`` must also
 ## not have been taken. ``x = "abc"; x.add(...)``
 
+# Todo:
+# - make variables scope based too
+# - ensure correctness for 'or' and 'elif' constructs
+
 import
   intsets, ast, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
@@ -498,6 +502,8 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = getTemp(c, arg.typ, arg.info)
+    tmp.sym.flags.incl sfNoInit
+    c.addTopVar(tmp)
     when false:
       # since we do not initialize these temporaries anymore, we
       # use raw assignments instead of =sink:
