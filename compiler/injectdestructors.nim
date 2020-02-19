@@ -42,9 +42,10 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop, hasUnstructuredCf: int
+    inLoop, hasUnstructuredCf, inBranch: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
+    hasRaise: bool
 
 const toDebug {.strdefine.} = ""
 
@@ -628,12 +629,20 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
     of nkCallKinds:
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
+
+      #if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
+      #  inc c.inBranch
+
       result = shallowCopy(n)
       for i in 1..<n.len:
         if i < L and isSinkTypeForParam(parameters[i]):
           result[i] = p(n[i], c, sinkArg)
         else:
           result[i] = p(n[i], c, normal)
+
+      #if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
+      #  dec c.inBranch
+
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
         if c.graph.config.selectedGC in {gcHooks, gcArc, gcOrc}:
@@ -719,6 +728,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           result.add copyNode(n[0])
       inc c.hasUnstructuredCf
+      c.hasRaise = true
     of nkWhileStmt:
       result = copyNode(n)
       inc c.inLoop
@@ -879,7 +889,8 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
-  if c.destroys.len > 0 or c.tempDestroys.len > 0:
+  if c.destroys.len > 0 or c.tempDestroys.len > 0 or
+      (c.hasRaise and owner.kind == skModule):
     reverse c.destroys.sons
     var fin: PNode
     if owner.kind == skModule:
