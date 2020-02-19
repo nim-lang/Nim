@@ -112,38 +112,14 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-const
-  prime = uint(11)
-
-proc hash*(x: int): Hash {.inline.} =
+proc hash*(x: int|int64|uint|uint64|char|Ordinal): Hash {.inline.} =
   ## Efficient hashing of integers.
-  result = cast[Hash](cast[uint](x) * prime)
-
-proc hash*(x: int64): Hash {.inline.} =
-  ## Efficient hashing of `int64` integers.
-  result = cast[Hash](cast[uint](x) * prime)
-
-proc hash*(x: uint): Hash {.inline.} =
-  ## Efficient hashing of unsigned integers.
-  result = cast[Hash](x * prime)
-
-proc hash*(x: uint64): Hash {.inline.} =
-  ## Efficient hashing of `uint64` integers.
-  result = cast[Hash](cast[uint](x) * prime)
-
-proc hash*(x: char): Hash {.inline.} =
-  ## Efficient hashing of characters.
-  result = cast[Hash](cast[uint](ord(x)) * prime)
-
-proc hash*[T: Ordinal](x: T): Hash {.inline.} =
-  ## Efficient hashing of other ordinal types (e.g. enums).
-  result = cast[Hash](cast[uint](ord(x)) * prime)
+  cast[Hash](ord(x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
-  var y = x + 1.0
-  result = cast[ptr Hash](addr(y))[]
-
+  var y = x + 0.0 # for denormalization
+  result = hash(cast[ptr Hash](addr(y))[])
 
 # Forward declarations before methods that hash containers. This allows
 # containers to contain other containers
