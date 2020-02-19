@@ -2095,27 +2095,29 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             yield (k, y)
 
 type
-  WalkStatus* = enum  ## status of the step of walking through directory;
-                      ## due to differences between operating systems,
-                      ## opening directory status may not have exactly
-                      ## the same meaning.
-    wsOpenUnknown,  ## opening directory error: unrecognized OS-specific one
-    wsOpenNotFound, ## opening directory error: no such path
-    wsOpenNoAccess, ## opening directory error: access denied a.k.a.
+  WalkStatus* = enum  ## status of a step got from walking through directory.
+                      ## Due to differences between operating systems,
+                      ## this status may not have exactly the same meaning.
+                      ## It's yielded by
+                      ## `tryWalkDir iterator <#tryWalkDir.i,string>`.
+    wsOpenUnknown,  ## open directory error: unrecognized OS-specific one
+    wsOpenNotFound, ## open directory error: no such path
+    wsOpenNoAccess, ## open directory error: access denied a.k.a.
                     ## permission denied error for the specified path
-                    ## (may have happened at its parent directory on posix)
-    wsOpenNotDir,   ## opening directory error: not a directory
+                    ## (it may have happened at its parent directory on posix)
+    wsOpenNotDir,   ## open directory error: not a directory
                     ## (a normal file with the same path exists or path is a
                     ## loop of symlinks)
-    wsOpenBadPath,  ## opening directory error: path is invalid (too long or,
-                    ## in Windows, contains illegal characters)
-    wsOpenOk,       ## opening directory OK, the directory can be read
-    wsEntryOk,      ## entry OK: path component is correct
-    wsEntrySpecial  ## special OS-specific entry: non-data file like
-                    ## Posix domain sockets, FIFOs, etc
-    wsEntryBad,     ## entry error: a broken symlink (on posix), where it's
-                    ## unclear if it points to a file or directory
-    wsInterrupted   ## reading directory entries was interrupted
+    wsOpenBadPath,  ## open directory error: path is invalid (too long or,
+                    ## in Windows, it contains illegal characters)
+    wsOpenOk,       ## open directory OK: the directory can be read
+    wsEntryOk,      ## get entry OK: path component is correct
+    wsEntrySpecial  ## get entry OK: OS-specific entry
+                    ## ("special" or "device" file, not a normal data file)
+                    ## like Posix domain sockets, FIFOs, etc
+    wsEntryBad,     ## get entry error: its path is a broken symlink (on Posix),
+                    ## where it's unclear if it points to a file or directory
+    wsInterrupted   ## walking was interrupted while getting the next entry
 
 iterator tryWalkDir*(dir: string, relative=false):
   tuple[status: WalkStatus, kind: PathComponent, path: string,
@@ -2124,16 +2126,18 @@ iterator tryWalkDir*(dir: string, relative=false):
   ## Walks over the directory `dir` and yields *steps* for each
   ## directory or file in `dir`, non-recursively. It's a version of
   ## `walkDir iterator <#walkDir.i,string>`_  with more thorough error
-  ## checking. Never raises an exception.
+  ## checking and reporting of "special" files or "defice" files.
+  ## Never raises an exception.
   ##
-  ## Each step is a tuple, which  contains ``status: WalkStatus``,
-  ## path ``path``, entry type ``kind: PathCompenent``, OS error code ``code``.
+  ## Each step is a tuple containing ``status: WalkStatus``, path ``path``,
+  ## entry type ``kind: PathComponent``, OS error code ``code``.
   ## 
   ## - it yields open directory status **once** after opening
   ##   (when `relative=true` the path is '.'),
   ##   ``status`` is one of ``wsOpenOk``, ``wsOpenNoAccess``,
   ##   ``wsOpenNotFound``, ``wsOpenNotDir``, ``wsOpenUnknown``
-  ## - then it yields zero or more entries, each can be of the following type:
+  ## - then it yields zero or more entries,
+  ##   each can be one of the following type:
   ##    - ``status=wsEntryOk``: signifies normal entries with
   ##      path component ``kind``
   ##    - ``status=wsEntrySpecial``: signifies special (non-data) files with
@@ -2145,8 +2149,10 @@ iterator tryWalkDir*(dir: string, relative=false):
   ## Path component ``kind`` value is reliable only when ``status=wsEntryOk``
   ## or ``wsEntrySpecial``.
   ##
-  ## An example of usage with just a minimal error logging:
+  ## **Examples:**
+  ##
   ## .. code-block:: Nim
+  ##   # An example of usage with just a minimal error logging:
   ##   for status, kind, path, code in tryWalkDir("dirA"):
   ##     case status
   ##     of wsOpenOk: discard
@@ -2154,24 +2160,22 @@ iterator tryWalkDir*(dir: string, relative=false):
   ##     of wsEntrySpecial: echo path & " is a special file " & $kind
   ##     else: echo "got error " & osErrorMsg(code) & " on " & path
   ##
-  ## To just check whether the directory can be opened or not :
-  ## .. code-block:: Nim
+  ##   # To just check whether the directory can be opened or not:
   ##   proc tryOpenDir(dir: string): WalkStatus =
   ##     for status, _, _, _ in tryWalkDir(dir):
   ##       case status
-  ##       of wsOpenOk, wsOpenUnknown, wsOpenNoAccess, wsOpenNotFound, wsOpenNotDir:
-  ##         return status
+  ##       of wsOpenOk, wsOpenUnknown, wsOpenNotFound,
+  ##          wsOpenNoAccess, wsOpenNotDir, wsOpenBadPath: return status
   ##       else: continue  # can not happen
   ##   echo "can be opened: ", tryOpenDir("dirA") == wsOpenOk
   ##
-  ## Iterator ``walkDir`` itself may be implemented using tryWalkDir:
-  ## .. code-block:: Nim
+  ##   # Iterator walkDir itself may be implemented using tryWalkDir:
   ##   iterator myWalkDir(path: string, relative: bool):
   ##                     tuple[kind: PathComponent, path: string] =
   ##     for status, kind, path, code in tryWalkDir(path, relative):
   ##       case status
-  ##       of wsOpenOk, wsOpenNotFound,
-  ##          wsOpenUnknown, wsOpenNoAccess, wsOpenNotDir: discard
+  ##       of wsOpenOk, wsOpenUnknown, wsOpenNotFound,
+  ##          wsOpenNoAccess, wsOpenNotDir, wsOpenBadPath: discard
   ##       of wsEntryOk, wsEntrySpecial: yield (kind, path)
   ##       of wsEntryBad: yield (pcLinkToFile, path)
   ##       of wsInterrupted: raiseOSError(code)
