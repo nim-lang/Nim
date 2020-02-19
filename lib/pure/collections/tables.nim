@@ -251,8 +251,6 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
-proc rightSize*(count: Natural): int {.inline.}
-
 template get(t, key): untyped =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
@@ -581,15 +579,6 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
     doAssert a == b
 
   equalsImpl(s, t)
-
-proc rightSize*(count: Natural): int {.inline.} =
-  ## Return the value of ``initialSize`` to support ``count`` items.
-  ##
-  ## If more items are expected to be added, simply add that
-  ## expected extra amount to the parameter before calling this.
-  ##
-  ## Internally, we want mustRehash(rightSize(x), x) == false.
-  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.

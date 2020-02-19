@@ -51,18 +51,15 @@ type
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
-proc mustRehash(length, counter: int): bool {.inline.} =
-  # FACTOR with hashcommon.mustRehash
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
-
-proc mustRehash2[T](t: T): bool {.inline.} =
-  # FACTOR with hashcommon.mustRehash2
+proc mustRehash[T](t: T): bool {.inline.} =
+  # FACTOR between hashcommon.mustRehash, intsets.mustRehash
   let counter2 = t.counter + t.countDeleted
-  result = mustRehash(t.max + 1, counter2)
+  let length = t.max + 1
+  assert length > counter2
+  result = (length * 2 < counter2 * 3) or (length - counter2 < 4)
 
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
-  # FACTOR with hashcommon.nextTry
+  # FACTOR between hashcommon.nextTry, intsets.nextTry
   const PERTURB_SHIFT = 5
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)
@@ -102,7 +99,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
     if t.data[h].key == key:
       return t.data[h]
     h = nextTry(h, t.max, perturb)
-  if mustRehash2(t): intSetEnlarge(t)
+  if mustRehash(t): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
   perturb = key

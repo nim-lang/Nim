@@ -37,6 +37,7 @@ proc translateBits(a: UHash, numBitsMask: int): UHash {.inline.} =
   result = (a shr numBitsMask) or (a shl (UHash.sizeof * 8 - numBitsMask))
 
 proc nextTry(h, maxHash: Hash, perturb: var UHash): Hash {.inline.} =
+  # FACTOR between hashcommon.nextTry, intsets.nextTry
   # an optimization would be to use `(h + 1) and maxHash` for a few iterations
   # and then switch to the formula below, to get "best of both worlds": good
   # cache locality, except when a collision cluster is detected (ie, large number
@@ -45,15 +46,24 @@ proc nextTry(h, maxHash: Hash, perturb: var UHash): Hash {.inline.} =
   result = cast[Hash]((5*cast[uint](h) + 1 + perturb) and cast[uint](maxHash))
   perturb = perturb shr PERTURB_SHIFT
 
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4) # synchronize with `rightSize`
-
-proc mustRehash2[T](t: T): bool {.inline.} =
+proc mustRehash[T](t: T): bool {.inline.} =
+  # FACTOR between hashcommon.mustRehash, intsets.mustRehash
   let counter2 = t.counter + t.countDeleted
-  result = mustRehash(t.dataLen, counter2)
+  let length = t.dataLen
+  assert(length > counter2)
+  result = (length * 2 < counter2 * 3) or (length - counter2 < 4) # synchronize with `rightSize`
 
-template getPerturb*(t: typed, hc: Hash): UHash =
+proc rightSize*(count: Natural): int {.inline.} =
+  ## Return the value of `initialSize` to support `count` items.
+  ##
+  ## If more items are expected to be added, simply add that
+  ## expected extra amount to the parameter before calling this.
+  ##
+  ## Internally, we want `mustRehash(t) == false` for t that was just resized.
+  # Make sure to synchronize with `mustRehash`
+  result = nextPowerOfTwo(count * 3 div 2 + 4)
+
+template getPerturb(t: typed, hc: Hash): UHash =
   # we can't use `fastLog2(dataLen(t))` because importing `bitops` would cause codegen errors
   # so we use a practical value of half the bit width (eg 64 / 2 = 32 on 64bit machines)
   let numBitsMask = sizeof(Hash) * 4 # ie, sizeof(Hash) * 8 / 2

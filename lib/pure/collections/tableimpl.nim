@@ -44,14 +44,14 @@ template checkIfInitialized() =
 
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  if mustRehash2(t): enlarge(t)
+  if mustRehash(t): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
-  if mustRehash2(t):
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index                  # important to transform for mgetOrPutImpl
@@ -92,7 +92,7 @@ template delImplIdx(t, i) =
     t.data[i].hcode = deletedMarker
     t.data[i].key = default(type(t.data[i].key))
     t.data[i].val = default(type(t.data[i].val))
-    # mustRehash2 + enlarge not needed because counter+countDeleted doesn't change
+    # mustRehash + enlarge not needed because counter+countDeleted doesn't change
 
 template delImpl() {.dirty.} =
   var hc: Hash
@@ -117,7 +117,7 @@ template initImpl(result: typed, size: int) =
 
 template insertImpl() = # for CountTable
   checkIfInitialized()
-  if mustRehash2(t): enlarge(t)
+  if mustRehash(t): enlarge(t)
   ctRawInsert(t, t.data, key, val)
   inc(t.counter)
 
