@@ -10,12 +10,8 @@
 # An ``include`` file which contains common code for
 # hash sets and tables.
 
-# type Hash = uint
-
 const
   growthFactor = 2
-
-from bitops import fastLog2
 
 when not defined(nimHasDefault):
   template default[T](t: typedesc[T]): T =
@@ -55,8 +51,11 @@ proc mustRehash2[T](t: T): bool {.inline.} =
   let counter2 = t.counter + t.countDeleted
   result = mustRehash(t.dataLen, counter2)
 
+# from bitops import fastLog2 # PRTEMP
+
 template getPerturb*(t: typed, hc: Hash): UHash =
-  let numBitsMask=fastLog2(dataLen(t)) # TODO: cache/store in t if needed
+  # let numBitsMask = fastLog2(dataLen(t)) # TODO: cache/store in t if needed
+  let numBitsMask = 16 # PRTEMP can't use fastLog2
   # this makes a major difference for cases like #13393; it causes the bits
   # that were masked out in 1st position so they'll be masked in instead, and
   # influence the recursion in nextTry earlier rather than later.
