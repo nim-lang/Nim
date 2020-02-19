@@ -187,6 +187,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+  of "lenTuple":
+    var operand = operand.skipTypes({tyGenericInst})
+    assert operand.kind == tyTuple, $operand.kind
+    result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
     if arg.kind == tyDistinct:

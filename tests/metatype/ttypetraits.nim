@@ -92,7 +92,43 @@ block distinctBase:
         doAssert($distinctBase(typeof(b2)) == "string")
         doAssert($distinctBase(typeof(c2)) == "int")
 
+block: # lenTuple
+  doAssert not compiles(lenTuple(int))
+
+  type
+    MyTupleType = (int,float,string)
+
+  static: doAssert MyTupleType.lenTuple == 3
+
+  type
+    MyGenericTuple[T] = (T,int,float)
+    MyGenericAlias = MyGenericTuple[string]
+  static: doAssert MyGenericAlias.lenTuple == 3
+
+  type
+    MyGenericTuple2[T,U] = (T,U,string)
+    MyGenericTuple2Alias[T] =  MyGenericTuple2[T,int]
+
+    MyGenericTuple2Alias2 =   MyGenericTuple2Alias[float]
+  static: doAssert MyGenericTuple2Alias2.lenTuple == 3
+
+  static: doAssert (int, float).lenTuple == 2
+  static: doAssert (1, ).lenTuple == 1
+  static: doAssert ().lenTuple == 0
+
+  let x = (1,2,)
+  doAssert x.lenTuple == 2
+  doAssert ().lenTuple == 0
+  doAssert (1,).lenTuple == 1
+  doAssert (int,).lenTuple == 1
+  doAssert type(x).lenTuple == 2
+  doAssert type(x).default.lenTuple == 2
+  type T1 = (int,float)
+  type T2 = T1
+  doAssert T2.lenTuple == 2
+
 block genericParams:
+
   type Foo[T1, T2]=object
   doAssert genericParams(Foo[float, string]) is (float, string)
   type Foo1 = Foo[float, int]
@@ -103,10 +139,6 @@ block genericParams:
   doAssert genericParams(Foo2).get(1) is Foo1
   doAssert (int,).get(0) is int
   doAssert (int, float).get(1) is float
-  static: doAssert (int, float).lenTuple == 2
-  static: doAssert (1, ).lenTuple == 1
-  static: doAssert ().lenTuple == 0
-
 
 ##############################################
 # bug 13095
