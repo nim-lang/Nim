@@ -10,8 +10,12 @@
 # An ``include`` file which contains common code for
 # hash sets and tables.
 
+# type Hash = uint
+
 const
   growthFactor = 2
+
+from bitops import fastLog2
 
 when not defined(nimHasDefault):
   template default[T](t: typedesc[T]): T =
@@ -29,13 +33,19 @@ proc isFilledAndValid(hcode: Hash): bool {.inline.} =
 proc isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
 
+type UHash* = uint
 
-proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
-  const PERTURB_SHIFT = 5
-  # TODO: make perturb (maybe even Hash) unsigned everywhere to avoid back and forth conversions
-  var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
-  perturb = cast[Hash](perturb2)
-  result = ((5*h) + 1 + perturb) and maxHash
+proc translateBits(a: UHash, numBitsMask: int): UHash {.inline.} =
+  result = (a shr numBitsMask) or (a shl (UHash.sizeof * 8 - numBitsMask))
+
+proc nextTry(h, maxHash: Hash, perturb: var UHash): Hash {.inline.} =
+  # an optimization would be to use `(h + 1) and maxHash` for a few iterations
+  # and then switch to the formula below, to get "best of both worlds": good
+  # cache locality, except when a collision cluster is detected (ie, large number
+  # of iterations).
+  const PERTURB_SHIFT = 5 # consider using instead `numBitsMask=fastLog2(t.dataLen)`
+  result = cast[Hash]((5*cast[uint](h) + 1 + perturb) and cast[uint](maxHash))
+  perturb = perturb shr PERTURB_SHIFT
 
 proc mustRehash(length, counter: int): bool {.inline.} =
   assert(length > counter)
@@ -45,11 +55,18 @@ proc mustRehash2[T](t: T): bool {.inline.} =
   let counter2 = t.counter + t.countDeleted
   result = mustRehash(t.dataLen, counter2)
 
+template getPerturb*(t: typed, hc: Hash): UHash =
+  let numBitsMask=fastLog2(dataLen(t)) # TODO: cache/store in t if needed
+  # this makes a major difference for cases like #13393; it causes the bits
+  # that were masked out in 1st position so they'll be masked in instead, and
+  # influence the recursion in nextTry earlier rather than later.
+  translateBits(cast[uint](hc), numBitsMask)
+
 template rawGetKnownHCImpl() {.dirty.} =
   if t.dataLen == 0:
     return -1
   var h: Hash = hc and maxHash(t) # start with real hash value
-  var perturb = hc
+  var perturb = t.getPerturb(hc)
   var deletedIndex = -1
   while true:
     if isFilledAndValid(t.data[h].hcode):

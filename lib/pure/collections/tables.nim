@@ -275,7 +275,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
     let eh = n[i].hcode
     if isFilledAndValid(eh):
       var j: Hash = eh and maxHash(t)
-      var perturb = eh
+      var perturb = t.getPerturb(eh)
       while isFilled(t.data[j].hcode):
         j = nextTry(j, maxHash(t), perturb)
       when defined(js):
@@ -796,7 +796,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   let hc = genHash(key)
   var h: Hash = hc and high(t.data)
   let L = len(t)
-  var perturb = hc
+  var perturb = t.getPerturb(hc)
 
   var num = 0
   var cache: seq[Hash]
@@ -1281,7 +1281,7 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
     let eh = n[h].hcode
     if isFilledAndValid(eh):
       var j: Hash = eh and maxHash(t)
-      var perturb = eh
+      var perturb = t.getPerturb(eh)
       while isFilled(t.data[j].hcode):
         j = nextTry(j, maxHash(t), perturb)
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
@@ -2248,7 +2248,7 @@ type
 
 proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  var perturb = hash(key)
+  var perturb = t.getPerturb(hash(key))
   var h: Hash = perturb and high(data)
   while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: handle deletedMarker
   data[h].key = key
@@ -2277,7 +2277,7 @@ proc remove[A](t: var CountTable[A], key: A) =
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
-  var perturb = hash(key)
+  var perturb = t.getPerturb(hash(key))
   var h: Hash = perturb and high(t.data) # start with real hash value
   while t.data[h].val != 0: # TODO: may need to handle t.data[h].hcode == deletedMarker?
     if t.data[h].key == key: return h

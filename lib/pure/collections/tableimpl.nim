@@ -14,7 +14,7 @@ include hashcommon
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
-  var perturb = hc
+  var perturb = t.getPerturb(hc)
   while true:
     let hcode = t.data[h].hcode
     if hcode == deletedMarker or hcode == freeMarker:

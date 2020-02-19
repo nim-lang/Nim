@@ -50,7 +50,7 @@ proc enlarge[A, B](t: var SharedTable[A, B]) =
   for i in 0..<oldSize:
     let eh = n[i].hcode
     if isFilled(eh):
-      var perturb = eh
+      var perturb = t.getPerturb(eh)
       var j: Hash = eh and maxHash(t)
       while isFilled(t.data[j].hcode):
         j = nextTry(j, maxHash(t), perturb)

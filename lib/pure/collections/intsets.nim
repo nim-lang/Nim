@@ -22,6 +22,8 @@
 import
   hashes
 
+# from hashcommon import UHash
+
 type
   BitScalar = uint
 
