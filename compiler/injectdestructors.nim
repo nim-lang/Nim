@@ -385,14 +385,14 @@ proc containsConstSeq(n: PNode): bool =
       if containsConstSeq(son): return true
   else: discard
 
-proc handleTmpDestroys(c: var Con; body: PNode;
+proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
                        oldHasUnstructuredCf, oldTmpDestroysLen: int) =
   if c.hasUnstructuredCf == oldHasUnstructuredCf:
     # no need for a try-finally statement:
     if body.kind == nkStmtList:
       for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
         body.add c.tempDestroys[i]
-    elif body.typ == nil or isEmptyType(body.typ):
+    elif isEmptyType(t):
       var n = newNodeI(nkStmtList, body.info)
       n.add body[^1]
       for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
@@ -411,9 +411,10 @@ proc handleTmpDestroys(c: var Con; body: PNode;
     else:
       # fun ahead: We have to transform (x; y; E()) into
       # (x; y; tmp = E(); destroy(x); destroy(y); tmp )
-      let tmp = getTemp(c, body.typ, body.info)
+      let t2 = body[^1].typ
+      let tmp = getTemp(c, t2, body.info)
       # the tmp does not have to be initialized
-      var n = newNodeIT(nkStmtListExpr, body.info, body.typ)
+      var n = newNodeIT(nkStmtListExpr, body.info, t2)
       n.add newTree(nkFastAsgn, tmp, body[^1])
       for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
         n.add c.tempDestroys[i]
@@ -423,7 +424,7 @@ proc handleTmpDestroys(c: var Con; body: PNode;
   else:
     # unstructured control flow was used, use a 'try finally' to ensure
     # destruction:
-    if body.typ == nil or isEmptyType(body.typ):
+    if isEmptyType(t):
       var n = newNodeI(nkStmtList, body.info)
       for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
         n.add c.tempDestroys[i]
@@ -431,12 +432,13 @@ proc handleTmpDestroys(c: var Con; body: PNode;
     else:
       # fun ahead: We have to transform (x; y; E()) into
       # ((try: tmp = (x; y; E()); finally: destroy(x); destroy(y)); tmp )
-      let tmp = getTemp(c, body.typ, body.info)
+      let t2 = body[^1].typ
+      let tmp = getTemp(c, t2, body.info)
       # the tmp does not have to be initialized
       var fin = newNodeI(nkStmtList, body.info)
       for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
         fin.add c.tempDestroys[i]
-      var n = newNodeIT(nkStmtListExpr, body.info, body.typ)
+      var n = newNodeIT(nkStmtListExpr, body.info, t2)
       n.add newTryFinally(newTree(nkFastAsgn, tmp, body[^1]), fin)
       n.add tmp
       body[^1] = n
@@ -451,7 +453,8 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
     else:
       moveOrCopy(dest, node, c)
 
-  proc handleScope(n, dest: PNode; takeOver: Natural; c: var Con; mode: ProcessMode): PNode =
+  proc handleScope(n, dest: PNode; t: PType;
+                   takeOver: Natural; c: var Con; mode: ProcessMode): PNode =
     let oldHasUnstructuredCf = c.hasUnstructuredCf
     let oldTmpDestroysLen = c.tempDestroys.len
     result = shallowCopy(n)
@@ -463,41 +466,42 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
 
     # if we have an expression producing a temporary, we must
     # not destroy it too early:
-    if n.typ == nil or isEmptyType(n.typ):
+    if isEmptyType(t):
       result[last] = processCall(n[last])
       if c.tempDestroys.len > oldTmpDestroysLen:
-        handleTmpDestroys(c, result, oldHasUnstructuredCf, oldTmpDestroysLen)
+        handleTmpDestroys(c, result, t, oldHasUnstructuredCf, oldTmpDestroysLen)
     else:
       setLen(result.sons, last)
       if c.tempDestroys.len > oldTmpDestroysLen:
-        handleTmpDestroys(c, result, oldHasUnstructuredCf, oldTmpDestroysLen)
+        handleTmpDestroys(c, result, t, oldHasUnstructuredCf, oldTmpDestroysLen)
       if result.kind != nkFinally:
         result.add processCall(n[last])
       else:
         result = newTree(nkStmtListExpr, result, processCall(n[last]))
+        result.typ = t
 
   case n.kind
   of nkStmtList, nkStmtListExpr:
     if n.len == 0: return n
-    result = handleScope(n, dest, 0, c, mode)
+    result = handleScope(n, dest, n.typ, 0, c, mode)
   of nkBlockStmt, nkBlockExpr:
-    result = handleScope(n, dest, 1, c, mode)
+    result = handleScope(n, dest, n.typ, 1, c, mode)
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
     for son in n:
-      result.add handleScope(son, dest, 0, c, mode)
+      result.add handleScope(son, dest, son[^1].typ, 0, c, mode)
   of nkCaseStmt:
     result = copyNode(n)
     result.add p(n[0], c, normal)
     for i in 1..<n.len:
-      result.add handleScope(n[i], dest, n[i].len - 1, c, mode)
+      result.add handleScope(n[i], dest, n[i][^1].typ, n[i].len - 1, c, mode)
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
-    result[1][0] = handleScope(n[1][0], dest, 0, c, mode)
+    result[1][0] = handleScope(n[1][0], dest, n[1][0][^1].typ, 0, c, mode)
   of nkWhileStmt:
     #result = copyNode(n)
     inc c.inLoop
-    result = handleScope(n, dest, 0, c, mode)
+    result = handleScope(n, dest, nil, 0, c, mode)
     #result.add p(n[0], c, normal)
     #result.add p(n[1], c, normal)
     dec c.inLoop
@@ -522,10 +526,6 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
       # use raw assignments instead of =sink:
       result.add genSink(c, tmp, arg)
     else:
-      # XXX This is deeply problematic for 'or' expressions, consider
-      # if cond or (let x = nonTrivialDestroyHere(); condB(x))
-      # If we always destroy 'x' we better initialize it first...
-      # The same is true for 'elif' sections.
       result.add newTree(nkFastAsgn, tmp, arg)
     result.add tmp
     c.tempDestroys.add genDestroy(c, tmp)
