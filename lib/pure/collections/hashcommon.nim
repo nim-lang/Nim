@@ -75,19 +75,33 @@ template getPerturb(t: typed, hc: Hash): UHash =
 template findCell(t: typed, hc, mustNextTry): int =
   let m = maxHash(t)
   var index: Hash = hc and m
-  var perturb: UHash = getPerturb(t, hc)
+  var perturb = getPerturb(t, hc)
   var depth = 0
-  const depthThres = 20 # PARAM
+
+  ## PARAM: this param can affect performance and could be exposed to users whoe
+  ## need to optimize for their specific key distribution. If clusters are to be
+  ## expected, it's better to set it low; for really random data, it's better to
+  ## set it high. We pick a sensible default that works across a range of key
+  ## distributions.
+  ##
+  ## depthThres=0 will just use pseudorandom probing
+  ## depthThres=int.high will just use linear probing
+  ## depthThres in between will switch
+  const depthThres = 20
+
   while mustNextTry(t.data[index], index):
     depth.inc
     if depth <= depthThres:
+      ## linear probing, cache friendly
       index = (index + 1) and m
     else:
+      ## pseudorandom probing, "bad" case was detected
       index = nextTry(index, m, perturb)
   index
 
 template rawGetKnownHCImpl() {.dirty.} =
-  if t.dataLen == 0: return -1
+  if t.dataLen == 0:
+    return -1
   var deletedIndex = -1
   template mustNextTry(cell, index): bool =
     if isFilledAndValid(cell.hcode):
@@ -97,15 +111,14 @@ template rawGetKnownHCImpl() {.dirty.} =
       # just a few clock cycles, generally worth it for any non-integer-like A.
       # performance: we optimize this: depending on type(key), skip hc comparison
       if cell.hcode == hc and cell.key == key:
-        deletedIndex = -2
+        deletedIndex = -2 # found
         false
-      else:
-        true
+      else: true # keep going
     elif cell.hcode == deletedMarker:
       if deletedIndex == -1:
-        deletedIndex = index
-      true
-    else: false
+        deletedIndex = index # remember 1st tombstone found before continuing
+      true # keep going
+    else: false # not found
 
   let index = findCell(t, hc, mustNextTry)
   if deletedIndex == -2:

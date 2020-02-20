@@ -87,3 +87,17 @@ block: # we use Table as groundtruth, it's well tested elsewhere
   var t0: Table[int, int]
   testDel(t, t0)
   deinitSharedTable(t)
+
+block: # CHECKME:redundant w above?
+  let n = 100
+  let n2 = n * 2
+  for i in 0..<n:
+    table[i] = i
+    assert table.hasKeyOrPut(i, i)
+
+  for i in n..<n2:
+    assert not table.hasKeyOrPut(i, i)
+
+  for i in 0..<n2:
+    assert table.mgetOrPut(i, i) == i
+    assert table.mget(i) == i

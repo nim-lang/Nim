@@ -782,18 +782,17 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
     doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
 
   let hc = genHash(key)
-  var h: Hash = hc and high(t.data)
   let L = len(t)
-  var perturb = t.getPerturb(hc)
-
-  var num = 0
   var cache: seq[Hash]
-  while isFilled(t.data[h].hcode): # `isFilledAndValid` would be incorrect, see test for `allValues`
-    if t.data[h].hcode == hc and t.data[h].key == key:
-      if not hasKeyOrPutCache(cache, h):
-        yield t.data[h].val
-        assert(len(t) == L, "the length of the table changed while iterating over it")
-    h = nextTry(h, high(t.data), perturb)
+  template mustNextTry(cell, index): bool =
+    if isFilled(cell.hcode):
+      if cell.hcode == hc and cell.key == key:
+        if not hasKeyOrPutCache(cache, index):
+          yield cell.val
+          assert(len(t) == L, "the length of the table changed while iterating over it")
+      true
+    else: false
+  let index = findCell(t, hc, mustNextTry)
 
 
 
@@ -1268,10 +1267,8 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
     var nxt = n[h].next
     let eh = n[h].hcode
     if isFilledAndValid(eh):
-      var j: Hash = eh and maxHash(t)
-      var perturb = t.getPerturb(eh)
-      while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t), perturb)
+      template mustNextTry(cell, index): bool = isFilled(cell.hcode)
+      let j = findCell(t, eh, mustNextTry)
       rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
@@ -2228,6 +2225,10 @@ type
     data: seq[tuple[key: A, val: int]]
     counter: int
     countDeleted: int
+      # using this and creating tombstones as in `Table` would make `remove`
+      # amortized O(1) instead of O(n); this requires updating remove,
+      # and changing `val != 0` to what's used in Table. Or simply make CountTable
+      # a thin wrapper around Table (which would also enable `dec`, etc)
     isSorted: bool
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
@@ -2238,45 +2239,46 @@ type
 
 # ------------------------------ helpers ---------------------------------
 
-proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
-                  key: A, val: int) =
-  let hc = hash(key)
-  var perturb = t.getPerturb(hc)
-  var h: Hash = hc and high(data)
-  while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: handle deletedMarker
-  data[h].key = key
-  data[h].val = val
+proc ctRawInsert[A](t: var CountTable[A], key: A, val: int) =
+  let hc = genHash(key)
+  template mustNextTry(cell, index): bool = cell.val != 0
+  let h = findCell(t, hc, mustNextTry)
+  t.data[h].key = key
+  t.data[h].val = val
 
 proc enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
-  for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
+  for i in countup(0, high(n)):
+    if n[i].val != 0: ctRawInsert(t, move n[i].key, move n[i].val)
 
 proc remove[A](t: var CountTable[A], key: A) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data))
+  swap(t.data, n)
   var removed: bool
-  for i in countup(0, high(t.data)):
-    if t.data[i].val != 0:
-      if t.data[i].key != key:
-        ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
+  for i in countup(0, high(n)):
+    if n[i].val != 0:
+      if n[i].key != key:
+        ctRawInsert(t, move n[i].key, move n[i].val)
       else:
         removed = true
-  swap(t.data, n)
   if removed: dec(t.counter)
 
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
-  let hc = hash(key)
-  var perturb = t.getPerturb(hc)
-  var h: Hash = hc and high(t.data) # start with real hash value
-  while t.data[h].val != 0: # TODO: may need to handle t.data[h].hcode == deletedMarker?
-    if t.data[h].key == key: return h
-    h = nextTry(h, high(t.data), perturb)
-  result = -1 - h # < 0 => MISSING; insert idx = -1 - result
+  var found = false
+  template mustNextTry(cell, index): bool =
+    if cell.val == 0: false # not found
+    elif cell.key != key: true # keep going
+    else:
+      found = true
+      false
+  let hc = genHash(key)
+  let h = findCell(t, hc, mustNextTry)
+  result = if found: h else: -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 template ctget(t, key, default: untyped): untyped =
   var index = rawGet(t, key)
@@ -2358,7 +2360,7 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
-    if t.data[index].val == 0: dec(t.counter)
+    if t.data[index].val == 0: dec(t.counter) # how could this happen?
   else:
     insertImpl()
 

@@ -436,3 +436,37 @@ block: # https://github.com/nim-lang/Nim/issues/13496
   testDel(): (let t = newOrderedTable[int, int]())
   testDel(): (var t: CountTable[int])
   testDel(): (let t = newCountTable[int]())
+
+block:
+  # check CountTable using Table as groundtruth
+  proc main() =
+    var t: CountTable[string]
+    var t0: Table[string, int]
+    let n = 1000
+    let n1 = n div 2
+    template inc2(key: string, val = 1) =
+      t.inc(key, val)
+      if key in t0: t0[key]+=val else: t0[key]=val
+
+    template del2(key) =
+      t.del(key)
+      t0.del(key)
+
+    template check() =
+      for k,v in t:
+        doAssert t0[k] == v
+      for k,v in t0:
+        doAssert t[k] == v
+
+    let m = 2
+    for j in 0..<m:
+      for i in 0..<n: inc2($i)
+    check()
+
+    for i in 0..<n1: del2($i)
+    check()
+
+    for i in 0..<n: inc2($i)
+    check()
+
+  main()

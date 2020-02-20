@@ -13,15 +13,9 @@ include hashcommon
 
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
-  var h: Hash = hc and maxHash(t)
-  var perturb = t.getPerturb(hc)
-  while true:
-    let hcode = t.data[h].hcode
-    if hcode == deletedMarker or hcode == freeMarker:
-      break
-    else:
-      h = nextTry(h, maxHash(t), perturb)
-  result = h
+  template mustNextTry(cell, index): bool = cell.hcode != deletedMarker and cell.hcode != freeMarker
+  result = findCell(t, hc, mustNextTry)
+
 
 template rawInsertImpl(t) {.dirty.} =
   data[h].key = key
@@ -128,7 +122,7 @@ template initImpl(result: typed, size: int) =
 template insertImpl() = # for CountTable
   checkIfInitialized()
   if mustRehash(t): enlarge(t)
-  ctRawInsert(t, t.data, key, val)
+  ctRawInsert(t, key, val)
   inc(t.counter)
 
 template getOrDefaultImpl(t, key): untyped =
