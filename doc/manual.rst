@@ -4221,7 +4221,7 @@ Raise statement
 
 Example:
 
-.. code-block:: nim/
+.. code-block:: nim
   raise newException(IOError, "IO failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
