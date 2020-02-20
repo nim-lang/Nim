@@ -74,6 +74,9 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
+template noNimScriptIgnore(body: untyped) {.dirty.} =
+  when not defined(nimscript): body
+
 when weirdTarget and defined(nimErrorProcCanHaveBody):
   {.pragma: noNimScript, error: "this proc is not available on the NimScript target".}
 else:
@@ -97,6 +100,8 @@ type
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
 include "includes/osseps"
+
+proc absolutePathInternal(path: string): string
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -360,8 +365,8 @@ when doslikeFileSystem:
         else:
           return false
 
-proc relativePath*(path, base: string; sep = DirSep): string {.
-  noSideEffect, rtl, extern: "nos$1", raises: [].} =
+proc relativePath*(path, base: string, sep = DirSep): string {.
+  rtl, extern: "nos$1".} =
   ## Converts `path` to a path relative to `base`.
   ##
   ## The `sep` (default: `DirSep <#DirSep>`_) is used for the path normalizations,
@@ -390,6 +395,12 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
   var path = path
   path.normalizePathAux
   base.normalizePathAux
+  let a1 = isAbsolute(path)
+  let a2 = isAbsolute(base)
+  if a1 and not a2:
+    base = absolutePathInternal(base)
+  elif a2 and not a1:
+    path = absolutePathInternal(path)
 
   when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):
@@ -1293,7 +1304,7 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
   else:
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
-proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
+proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScriptIgnore.} =
   ## Returns the `current working directory`:idx: i.e. where the built
   ## binary is run.
   ##
@@ -1306,7 +1317,13 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
   ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
   ## * `getProjectPath proc <macros.html#getProjectPath>`_
-  when defined(windows):
+  when defined(nodejs):
+    var ret: cstring
+    {.emit: "`ret` = process.cwd();".}
+    return $ret
+  elif defined(js):
+    doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
+  elif defined(windows):
     var bufsize = MAX_PATH.int32
     when useWinUnicode:
       var res = newWideCString("", bufsize)
@@ -1348,6 +1365,11 @@ proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
         else:
           raiseOSError(osLastError())
 
+proc relativePath*(path: string, sep = DirSep): string =
+  ## returns `path` relative to current directory
+  let base = if path.isAbsolute: getCurrentDir() else: "."
+  relativePath(path, base, sep)
+
 proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   ## Sets the `current working directory`:idx:; `OSError`
   ## is raised if `newDir` cannot been set.
@@ -1366,23 +1388,26 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
 
-when not weirdTarget:
-  proc absolutePath*(path: string, root = getCurrentDir()): string {.noNimScript.} =
-    ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
-    ## default: current directory).
-    ## If `path` is absolute, return it, ignoring `root`.
-    ##
-    ## See also:
-    ## * `normalizedPath proc <#normalizedPath,string>`_
-    ## * `normalizePath proc <#normalizePath,string>`_
-    runnableExamples:
-      assert absolutePath("a") == getCurrentDir() / "a"
 
-    if isAbsolute(path): path
-    else:
-      if not root.isAbsolute:
-        raise newException(ValueError, "The specified root is not absolute: " & root)
-      joinPath(root, path)
+proc absolutePath*(path: string, root = getCurrentDir()): string =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
+  ## default: current directory).
+  ## If `path` is absolute, return it, ignoring `root`.
+  ##
+  ## See also:
+  ## * `normalizedPath proc <#normalizedPath,string>`_
+  ## * `normalizePath proc <#normalizePath,string>`_
+  runnableExamples:
+    assert absolutePath("a") == getCurrentDir() / "a"
+
+  if isAbsolute(path): path
+  else:
+    if not root.isAbsolute:
+      raise newException(ValueError, "The specified root is not absolute: " & root)
+    joinPath(root, path)
+
+proc absolutePathInternal(path: string): string =
+  absolutePath(path, getCurrentDir())
 
 proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.

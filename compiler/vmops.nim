@@ -13,7 +13,7 @@ from math import sqrt, ln, log10, log2, exp, round, arccos, arcsin,
   arctan, arctan2, cos, cosh, hypot, sinh, sin, tan, tanh, pow, trunc,
   floor, ceil, `mod`
 
-from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename
+from os import getEnv, existsEnv, dirExists, fileExists, putEnv, walkDir, getAppFilename, getCurrentDir
 from md5 import getMD5
 from sighashes import symBodyDigest
 from times import cpuTime
@@ -198,6 +198,8 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
+  registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
+    setResult(a, getCurrentDir())
 
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
     let n = getNode(a, 0)
