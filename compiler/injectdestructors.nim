@@ -445,8 +445,8 @@ proc handleTmpDestroys(c: var Con; body: PNode;
   c.tempDestroys.setLen oldTmpDestroysLen
 
 proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
-  template processCall(node: PNode; useP: bool): PNode =
-    if (useP and node.typ == nil) or dest == nil:
+  template processCall(node: PNode): PNode =
+    if node.typ == nil or dest == nil:
       p(node, c, mode)
     else:
       moveOrCopy(dest, node, c)
@@ -464,7 +464,7 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
     # if we have an expression producing a temporary, we must
     # not destroy it too early:
     if n.typ == nil or isEmptyType(n.typ):
-      result[last] = processCall(n[last], false)
+      result[last] = processCall(n[last])
       if c.tempDestroys.len > oldTmpDestroysLen:
         handleTmpDestroys(c, result, oldHasUnstructuredCf, oldTmpDestroysLen)
     else:
@@ -472,9 +472,9 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
       if c.tempDestroys.len > oldTmpDestroysLen:
         handleTmpDestroys(c, result, oldHasUnstructuredCf, oldTmpDestroysLen)
       if result.kind != nkFinally:
-        result.add processCall(n[last], false)
+        result.add processCall(n[last])
       else:
-        result = newTree(nkStmtListExpr, result, processCall(n[last], false))
+        result = newTree(nkStmtListExpr, result, processCall(n[last]))
 
   case n.kind
   of nkStmtList, nkStmtListExpr:
@@ -609,6 +609,9 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
     elif n.kind in {nkObjDownConv, nkObjUpConv}:
       result = copyTree(n)
       result[0] = p(n[0], c, sinkArg)
+    elif n.typ == nil:
+      # 'raise X' can be part of a 'case' expression. Deal with it here:
+      result = p(n, c, normal)
     else:
       # copy objects that are not temporary but passed to a 'sink' parameter
       result = passCopyToSink(n, c)
