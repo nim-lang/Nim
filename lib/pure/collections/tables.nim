@@ -272,10 +272,8 @@ proc enlarge[A, B](t: var Table[A, B]) =
   for i in countup(0, high(n)):
     let eh = n[i].hcode
     if isFilledAndValid(eh):
-      var j: Hash = eh and maxHash(t)
-      var perturb = t.getPerturb(eh)
-      while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t), perturb)
+      template mustNextTry(cell, index): bool = isFilled(cell.hcode)
+      let j = findCell(t, eh, mustNextTry)
       when defined(js):
         rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
       else:

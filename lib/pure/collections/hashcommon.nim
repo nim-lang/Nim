@@ -72,30 +72,46 @@ template getPerturb(t: typed, hc: Hash): UHash =
   # influence the recursion in nextTry earlier rather than later.
   translateBits(cast[uint](hc), numBitsMask)
 
+template findCell(t: typed, hc, mustNextTry): int =
+  let m = maxHash(t)
+  var index: Hash = hc and m
+  var perturb: UHash = getPerturb(t, hc)
+  var depth = 0
+  const depthThres = 20 # PARAM
+  while mustNextTry(t.data[index], index):
+    depth.inc
+    if depth <= depthThres:
+      index = (index + 1) and m
+    else:
+      index = nextTry(index, m, perturb)
+  index
+
 template rawGetKnownHCImpl() {.dirty.} =
-  if t.dataLen == 0:
-    return -1
-  var h: Hash = hc and maxHash(t) # start with real hash value
-  var perturb = t.getPerturb(hc)
+  if t.dataLen == 0: return -1
   var deletedIndex = -1
-  while true:
-    if isFilledAndValid(t.data[h].hcode):
+  template mustNextTry(cell, index): bool =
+    if isFilledAndValid(cell.hcode):
       # Compare hc THEN key with boolean short circuit. This makes the common case
       # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
       # It does slow down succeeding lookups by one extra Hash cmp&and..usually
       # just a few clock cycles, generally worth it for any non-integer-like A.
       # performance: we optimize this: depending on type(key), skip hc comparison
-      if t.data[h].hcode == hc and t.data[h].key == key:
-        return h
-      h = nextTry(h, maxHash(t), perturb)
-    elif t.data[h].hcode == deletedMarker:
+      if cell.hcode == hc and cell.key == key:
+        deletedIndex = -2
+        false
+      else:
+        true
+    elif cell.hcode == deletedMarker:
       if deletedIndex == -1:
-        deletedIndex = h
-      h = nextTry(h, maxHash(t), perturb)
-    else:
-      break
-  if deletedIndex == -1:
-    result = -1 - h # < 0 => MISSING; insert idx = -1 - result
+        deletedIndex = index
+      true
+    else: false
+
+  let index = findCell(t, hc, mustNextTry)
+  if deletedIndex == -2:
+    result = index
+  elif deletedIndex == -1:
+    result = -1 - index # < 0 => MISSING; insert idx = -1 - result
   else:
     # we prefer returning a (in fact the 1st found) deleted index
     result = -1 - deletedIndex
