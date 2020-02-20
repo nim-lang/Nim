@@ -20,7 +20,6 @@
 
 # Todo:
 # - make variables scope based too
-# - ensure correctness for 'or' and 'elif' constructs
 
 import
   intsets, ast, msgs, renderer, magicsys, types, idents,
@@ -42,7 +41,7 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop, hasUnstructuredCf, inBranch: int
+    inLoop, hasUnstructuredCf, inDangerousBranch: int
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
     hasRaise: bool
@@ -486,7 +485,7 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
     for son in n:
-      result.add handleScope(son, dest, son.len - 1, c, mode)
+      result.add handleScope(son, dest, 0, c, mode)
   of nkCaseStmt:
     result = copyNode(n)
     result.add p(n[0], c, normal)
@@ -512,7 +511,11 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = getTemp(c, arg.typ, arg.info)
-    tmp.sym.flags.incl sfNoInit
+    # if we're inside a dangerous 'or' or 'and' expression, we
+    # do need to initialize it. 'elif' is not among this problem
+    # as we have a separate scope for 'elif' to attach the destructors to.
+    if c.inDangerousBranch == 0:
+      tmp.sym.flags.incl sfNoInit
     c.addTopVar(tmp)
     when false:
       # since we do not initialize these temporaries anymore, we
@@ -639,8 +642,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
 
-      #if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
-      #  inc c.inBranch
+      var isDangerous = false
+      if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
+        inc c.inDangerousBranch
+        isDangerous = true
 
       result = shallowCopy(n)
       for i in 1..<n.len:
@@ -649,8 +654,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           result[i] = p(n[i], c, normal)
 
-      #if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
-      #  dec c.inBranch
+      if isDangerous:
+        dec c.inDangerousBranch
 
       if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
         result[0] = copyTree(n[0])
