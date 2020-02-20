@@ -4106,6 +4106,8 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
+  from strutils import parseInt
+  
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -4220,7 +4222,7 @@ Raise statement
 Example:
 
 .. code-block:: nim
-  raise newEOS("operating system failed")
+  raise newException(IOError, "IO failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
 the ``raise`` statement is the only way to raise an exception.
