@@ -196,7 +196,8 @@ proc close*(socket: SocketHandle) =
 
 when declared(setInheritable) or defined(nimdoc):
   proc setInheritable*(s: SocketHandle, inheritable: bool): bool {.inline.} =
-    ## Set whether a socket is inheritable by child processes.
+    ## Set whether a socket is inheritable by child processes. Returns `true`
+    ## on success.
     ##
     ## This function is not implemented on all platform, test for availability
     ## with `declared() <system.html#declared,untyped>`.
