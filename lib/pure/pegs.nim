@@ -1420,7 +1420,7 @@ type
 
   PegLexer {.inheritable.} = object ## the lexer object.
     bufpos: int                     ## the current position within the buffer
-    buf: cstring                    ## the buffer itself
+    buf: string                     ## the buffer itself
     lineNumber: int                 ## the current line number
     lineStart: int                  ## index of last line start in buffer
     colOffset: int                  ## column to add
@@ -1661,6 +1661,13 @@ proc getTok(c: var PegLexer, tok: var Token) =
   setLen(tok.literal, 0)
   skip(c)
 
+  if c.bufpos >= c.buf.len:
+    tok.kind = tkEof
+    tok.literal = "[EOF]"
+    add(tok.literal, '\0')
+    inc(c.bufpos)
+    return
+
   case c.buf[c.bufpos]
   of '{':
     inc(c.bufpos)
@@ -1700,6 +1707,8 @@ proc getTok(c: var PegLexer, tok: var Token) =
   of '$': getDollar(c, tok)
   of 'a'..'z', 'A'..'Z', '\128'..'\255':
     getSymbol(c, tok)
+    if c.bufpos >= c.buf.len:
+      return
     if c.buf[c.bufpos] in {'\'', '"'} or
         c.buf[c.bufpos] == '$' and c.bufpos+1 < c.buf.len and
         c.buf[c.bufpos+1] in {'0'..'9'}:
@@ -1768,7 +1777,9 @@ proc arrowIsNextTok(c: PegLexer): bool =
   # the only look ahead we need
   var pos = c.bufpos
   while pos < c.buf.len and c.buf[pos] in {'\t', ' '}: inc(pos)
-  result = c.buf[pos] == '<' and (pos+1 < c.buf.len) and c.buf[pos+1] == '-'
+  if pos+1 >= c.buf.len:
+    return
+  result = c.buf[pos] == '<' and c.buf[pos+1] == '-'
 
 # ----------------------------- parser ----------------------------------------
 
