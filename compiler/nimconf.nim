@@ -238,7 +238,7 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
+template startConfigs* {.dirty.} =
   setDefaultLibpath(conf)
 
   var configFiles = newSeq[AbsoluteFile]()
@@ -247,6 +247,14 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
     let configPath = path
     if readConfigFile(configPath, cache, conf):
       configFiles.add(configPath)
+
+template endConfigs* {.dirty.} =
+  for filename in configFiles:
+    # delayed to here so that `hintConf` is honored
+    rawMessage(conf, hintConf, filename.string)
+
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
+  startConfigs()
 
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
@@ -269,6 +277,4 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
         projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig)
 
-  for filename in configFiles:
-    # delayed to here so that `hintConf` is honored
-    rawMessage(conf, hintConf, filename.string)
+  endConfigs()
