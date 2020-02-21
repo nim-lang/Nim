@@ -293,8 +293,8 @@ proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
   result[0] = newSeq[S](s.len)
   result[1] = newSeq[T](s.len)
   for i in 0..<s.len:
-    result[0][i]=s[i][0]
-    result[1][i]=s[i][1]
+    result[0][i] = s[i][0]
+    result[1][i] = s[i][1]
 
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
