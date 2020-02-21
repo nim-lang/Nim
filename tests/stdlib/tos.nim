@@ -360,6 +360,7 @@ block ospaths:
   doAssert joinPath("", "") == unixToNativePath""
   doAssert joinPath("/" / "") == unixToNativePath"/"
   doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
+  doAssert joinPath("foo/","") == unixToNativePath"foo/"
 
 block getTempDir:
   block TMPDIR:
