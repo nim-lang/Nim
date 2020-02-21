@@ -1571,7 +1571,7 @@ proc getString(c: var PegLexer, tok: var Token) =
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  if c.buf[pos] in {'0'..'9'}:
+  if pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
     while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
@@ -1586,54 +1586,55 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   tok.charset = {}
   var pos = c.bufpos + 1
   var caret = false
-  if c.buf[pos] == '^':
-    inc(pos)
-    caret = true
-  while pos < c.buf.len:
-    var ch: char
-    case c.buf[pos]
-    of ']':
-      if pos < c.buf.len: inc(pos)
-      break
-    of '\\':
-      c.bufpos = pos
-      getEscapedChar(c, tok)
-      pos = c.bufpos
-      ch = tok.literal[tok.literal.len-1]
-    of '\C', '\L', '\0':
-      tok.kind = tkInvalid
-      break
-    else:
-      ch = c.buf[pos]
+  if pos < c.buf.len:
+    if c.buf[pos] == '^':
       inc(pos)
-    incl(tok.charset, ch)
-    if c.buf[pos] == '-':
-      if pos+1 < c.buf.len and c.buf[pos+1] == ']':
-        incl(tok.charset, '-')
-        inc(pos)
+      caret = true
+    while pos < c.buf.len:
+      var ch: char
+      case c.buf[pos]
+      of ']':
+        if pos < c.buf.len: inc(pos)
+        break
+      of '\\':
+        c.bufpos = pos
+        getEscapedChar(c, tok)
+        pos = c.bufpos
+        ch = tok.literal[tok.literal.len-1]
+      of '\C', '\L', '\0':
+        tok.kind = tkInvalid
+        break
       else:
-        if pos+1 < c.buf.len:
+        ch = c.buf[pos]
+        inc(pos)
+      incl(tok.charset, ch)
+      if c.buf[pos] == '-':
+        if pos+1 < c.buf.len and c.buf[pos+1] == ']':
+          incl(tok.charset, '-')
           inc(pos)
         else:
-          break
-        var ch2: char
-        case c.buf[pos]
-        of '\\':
-          c.bufpos = pos
-          getEscapedChar(c, tok)
-          pos = c.bufpos
-          ch2 = tok.literal[tok.literal.len-1]
-        of '\C', '\L', '\0':
-          tok.kind = tkInvalid
-          break
-        else:
           if pos+1 < c.buf.len:
-            ch2 = c.buf[pos]
             inc(pos)
           else:
             break
-        for i in ord(ch)+1 .. ord(ch2):
-          incl(tok.charset, chr(i))
+          var ch2: char
+          case c.buf[pos]
+          of '\\':
+            c.bufpos = pos
+            getEscapedChar(c, tok)
+            pos = c.bufpos
+            ch2 = tok.literal[tok.literal.len-1]
+          of '\C', '\L', '\0':
+            tok.kind = tkInvalid
+            break
+          else:
+            if pos+1 < c.buf.len:
+              ch2 = c.buf[pos]
+              inc(pos)
+            else:
+              break
+          for i in ord(ch)+1 .. ord(ch2):
+            incl(tok.charset, chr(i))
   c.bufpos = pos
   if caret: tok.charset = {'\1'..'\xFF'} - tok.charset
 
