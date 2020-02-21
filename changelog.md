@@ -25,6 +25,8 @@
   It didn't work well together with the existing inplace version of the same proc
   (`tables.merge(var CountTable, CountTable)`).
   It was an oversight to be included in v1.0.
+- `options` now treats `proc` like other pointer types, meaning `nil` proc variables
+  are converted to `None`.
 
 
 ### Breaking changes in the compiler
