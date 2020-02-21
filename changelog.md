@@ -26,8 +26,9 @@
   (`tables.merge(var CountTable, CountTable)`).
   It was an oversight to be included in v1.0.
 - File handles created from high-level abstractions in the stdlib will no longer
-  be inherited by child processes. A `setInheritable` proc is also introduced
-  to allow marking explicitly which file handles should be inherited.
+  be inherited by child processes. See below for a list of affected modules.
+  A `setInheritable` proc is also introduced to allow marking explicitly which
+  file handles should be inherited.
   For a transistion period, define `nimInheritHandles` to enable file handle
   inheritance by default. This flag does **not** affect the `selectors` module
   due to the differing semantics between operating systems.
@@ -94,8 +95,9 @@
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
 - File handles created via `system`, `nativesockets`, `net`, and `selectors`
-  modules are no longer inheritable by default.
-- For procs that create handles in `nativesockets` and `net`, a `inheritable` flag
+  modules are no longer inheritable by default. Use `-d:nimInheritHandles`
+  for a transistion period. See above for an overview of these changes.
+- For procs that create handles in `nativesockets` and `net`, an `inheritable` flag
   is added to control whether the resulting handle is inheritable. This flag is
   provided to ease writing multi-process servers, where creating inheritable sockets
   is common.
@@ -111,7 +113,7 @@
 
 
 ## Language changes
- 
+
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
 - Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
   versions. The documentation was improved to acknowledge this special case.
