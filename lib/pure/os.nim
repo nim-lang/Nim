@@ -98,7 +98,7 @@ type
 
 include "includes/osseps"
 
-proc absolutePathInternal(path: string): string
+proc absolutePathInternal(path: string): string {.gcsafe.}
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
