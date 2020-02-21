@@ -417,7 +417,8 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     if not f.hasNext(path): break
     ff = f.next(path)
 
-  if result.len == 0: result.add "."
+  when not defined(nimOldRelativePathBehavior):
+    if result.len == 0: result.add "."
 
 proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   ## Returns true if `path` is relative to `base`.

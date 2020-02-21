@@ -27,7 +27,9 @@
   It was an oversight to be included in v1.0.
 - `options` now treats `proc` like other pointer types, meaning `nil` proc variables
   are converted to `None`.
-
+- `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
+  behavioe
 
 ### Breaking changes in the compiler
 
