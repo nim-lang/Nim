@@ -33,6 +33,18 @@ type
   SomeInteger* = SomeSignedInt|SomeUnsignedInt
     ## Type class matching all integer types.
 
+  SomeInteger8* = int8|uint8
+    ## Type class matching 8-bit integer types.
+
+  SomeInteger16* = int16|uint16
+    ## Type class matching 16-bit integer types.
+
+  SomeInteger32* = int32|uint32
+    ## Type class matching 32-bit integer types.
+
+  SomeInteger64* = int64|uint64
+    ## Type class matching 64-bit integer types.
+
   SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint|uint8|uint16|uint32|uint64
     ## Type class matching all ordinal types; however this includes enums with
     ## holes.

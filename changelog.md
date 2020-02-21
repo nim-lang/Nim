@@ -104,6 +104,7 @@
   serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
+- `endians` introduces a new and improved API and deprecates the existing API.
 
 
 ## Language additions

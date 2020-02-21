@@ -74,6 +74,12 @@ type
   SomeNumber* = SomeInteger|SomeFloat
     ## Type class matching all number types.
 
+  SomeNumber32* = SomeInteger32|float32
+    ## Type class matching all 32-bit number types.
+
+  SomeNumber64* = SomeInteger64|float64
+    ## Type class matching all 64-bit number types.
+
 proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ## Special compile-time procedure that checks whether `x` is
   ## defined.
