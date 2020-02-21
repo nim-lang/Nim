@@ -1481,6 +1481,9 @@ proc handleHexChar(c: var PegLexer, xi: var int) =
 
 proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
+  if c.bufpos >= len(c.buf):
+    tok.kind = tkInvalid
+    return
   case c.buf[c.bufpos]
   of 'r', 'R', 'c', 'C':
     add(tok.literal, '\c')
@@ -1508,6 +1511,9 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
     inc(c.bufpos)
   of 'x', 'X':
     inc(c.bufpos)
+    if c.bufpos >= len(c.buf):
+      tok.kind = tkInvalid
+      return
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
@@ -1517,7 +1523,7 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
     var val = ord(c.buf[c.bufpos]) - ord('0')
     inc(c.bufpos)
     var i = 1
-    while (i <= 3) and (c.buf[c.bufpos] in {'0'..'9'}):
+    while (c.bufpos < len(c.buf)) and (i <= 3) and (c.buf[c.bufpos] in {'0'..'9'}):
       val = val * 10 + ord(c.buf[c.bufpos]) - ord('0')
       inc(c.bufpos)
       inc(i)
