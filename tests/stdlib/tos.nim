@@ -25,7 +25,7 @@ Raises
 """
 # test os path creation, iteration, and deletion
 
-import os, strutils, pathnorm
+import os, strutils, pathnorm, algorithm
 
 block fileOperations:
   let files = @["these.txt", "are.x", "testing.r", "files.q"]
@@ -166,10 +166,41 @@ block walkDirRec:
 when not defined(windows):
   block walkDirRelative:
     createDir("walkdir_test")
-    createSymlink(".", "walkdir_test/c")
+    createSymlink(".", "walkdir_test/c_goodlink")
     for k, p in walkDir("walkdir_test", true):
       doAssert k == pcLinkToDir
+
+    var dir: seq[(WalkStatus, PathComponent, string, OSErrorCode)]
+    createDir("walkdir_test/d_dir")
+    createSymlink("walkdir_test/non_existent", "walkdir_test/e_broken")
+    open("walkdir_test/f_file.txt", fmWrite).close()
+    for step in tryWalkDir("walkdir_test", true):
+      dir.add(step)
+    proc myCmp(x, y: (WalkStatus, PathComponent, string, OSErrorCode)): int =
+      system.cmp(x[2], y[2])  # sort by entry name, self "." will be the first
+    dir.sort(myCmp)
+    doAssert dir.len == 5
+    # open step
+    doAssert dir[0][0] == wsOpenOk
+    doAssert dir[0][2] == "."
+    doAssert dir[0][3] == OSErrorCode(0)
+    # c_goodlink
+    doAssert dir[1] == (wsEntryOk, pcLinkToDir, "c_goodlink", OSErrorCode(0))
+    # d_dir
+    doAssert dir[2] == (wsEntryOk, pcDir, "d_dir", OSErrorCode(0))
+    # e_broken
+    doAssert dir[3][0] == wsEntryBad
+    doAssert dir[3][2] == "e_broken"
+    # f_file.txt
+    doAssert dir[4] == (wsEntryOk, pcFile, "f_file.txt", OSErrorCode(0))
     removeDir("walkdir_test")
+    # after remove tryWalkDir returns error:
+    dir = @[]
+    for step in tryWalkDir("walkdir_test", true):
+      dir.add(step)
+    doAssert dir.len == 1
+    doAssert dir[0][0] == wsOpenNotFound
+    doAssert dir[0][2] == "."
 
 block normalizedPath:
   doAssert normalizedPath("") == ""
