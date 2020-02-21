@@ -1413,7 +1413,7 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
 
 proc normalizePathAux(path: var string) = normalizePath(path)
 
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns a normalized path for the current OS.
   ##
   ## See also:
