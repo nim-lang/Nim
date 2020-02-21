@@ -74,9 +74,6 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-template noNimScriptIgnore(body: untyped) {.dirty.} =
-  when not defined(nimscript): body
-
 when weirdTarget and defined(nimErrorProcCanHaveBody):
   {.pragma: noNimScript, error: "this proc is not available on the NimScript target".}
 else:
@@ -1304,66 +1301,67 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
   else:
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
-proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScriptIgnore.} =
-  ## Returns the `current working directory`:idx: i.e. where the built
-  ## binary is run.
-  ##
-  ## So the path returned by this proc is determined at run time.
-  ##
-  ## See also:
-  ## * `getHomeDir proc <#getHomeDir>`_
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
-  ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
-  ## * `getProjectPath proc <macros.html#getProjectPath>`_
-  when defined(nodejs):
-    var ret: cstring
-    {.emit: "`ret` = process.cwd();".}
-    return $ret
-  elif defined(js):
-    doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
-  elif defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getCurrentDirectoryW(bufsize, res)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
+when not defined(nimscript):
+  proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
+    ## Returns the `current working directory`:idx: i.e. where the built
+    ## binary is run.
+    ##
+    ## So the path returned by this proc is determined at run time.
+    ##
+    ## See also:
+    ## * `getHomeDir proc <#getHomeDir>`_
+    ## * `getConfigDir proc <#getConfigDir>`_
+    ## * `getTempDir proc <#getTempDir>`_
+    ## * `setCurrentDir proc <#setCurrentDir,string>`_
+    ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
+    ## * `getProjectPath proc <macros.html#getProjectPath>`_
+    when defined(nodejs):
+      var ret: cstring
+      {.emit: "`ret` = process.cwd();".}
+      return $ret
+    elif defined(js):
+      doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
+    elif defined(windows):
+      var bufsize = MAX_PATH.int32
+      when useWinUnicode:
+        var res = newWideCString("", bufsize)
+        while true:
+          var L = getCurrentDirectoryW(bufsize, res)
+          if L == 0'i32:
+            raiseOSError(osLastError())
+          elif L > bufsize:
+            res = newWideCString("", L)
+            bufsize = L
+          else:
+            result = res$L
+            break
+      else:
+        result = newString(bufsize)
+        while true:
+          var L = getCurrentDirectoryA(bufsize, result)
+          if L == 0'i32:
+            raiseOSError(osLastError())
+          elif L > bufsize:
+            result = newString(L)
+            bufsize = L
+          else:
+            setLen(result, L)
+            break
     else:
+      var bufsize = 1024 # should be enough
       result = newString(bufsize)
       while true:
-        var L = getCurrentDirectoryA(bufsize, result)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
+        if getcwd(result, bufsize) != nil:
+          setLen(result, c_strlen(result))
           break
-  else:
-    var bufsize = 1024 # should be enough
-    result = newString(bufsize)
-    while true:
-      if getcwd(result, bufsize) != nil:
-        setLen(result, c_strlen(result))
-        break
-      else:
-        let err = osLastError()
-        if err.int32 == ERANGE:
-          bufsize = bufsize shl 1
-          doAssert(bufsize >= 0)
-          result = newString(bufsize)
         else:
-          raiseOSError(osLastError())
+          let err = osLastError()
+          if err.int32 == ERANGE:
+            bufsize = bufsize shl 1
+            doAssert(bufsize >= 0)
+            result = newString(bufsize)
+          else:
+            raiseOSError(osLastError())
 
 proc relativePath*(path: string, sep = DirSep): string =
   ## returns `path` relative to current directory
