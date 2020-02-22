@@ -357,14 +357,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mCompileOptionArg:
     result = newIntNodeT(toInt128(ord(
       testCompileOptionArg(g.config, getStr(a), getStr(b), n.info))), n, g)
-  of mCompileSetting:
-    result = newStrNodeT(testCompileSetting(g.config, getStr(a), n.info), n, g)
-  of mCompileSettingSeq:
-    result = newNodeIT(nkBracket, n.info, n.typ)
-    for i in testCompileSettingSeq(g.config, getStr(a), n.info):
-      var s = newStrNode(nkStrLit, i)
-      s.typ = getSysType(g, n.info, tyString)
-      result.add s
   of mEqProc:
     result = newIntNodeT(toInt128(ord(
         exprStructuralEquivalent(a, b, strictSymEquality=true))), n, g)

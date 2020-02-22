@@ -651,7 +651,7 @@ type
     mVoidType, mPNimrodNode, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
-    mCompileOption, mCompileOptionArg, mCompileSetting, mCompileSettingSeq,
+    mCompileOption, mCompileOptionArg,
     mNLen, mNChild, mNSetChild, mNAdd, mNAddMultiple, mNDel,
     mNKind, mNSymKind,
 
