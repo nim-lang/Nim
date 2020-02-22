@@ -30,6 +30,7 @@
 - `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
   and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
   behavioe
+- `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
 
 ### Breaking changes in the compiler
 
