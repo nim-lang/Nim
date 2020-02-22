@@ -147,7 +147,9 @@ proc joinPath*(head, tail: string): string {.
   runnableExamples:
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
-      assert joinPath("usr", "") == "usr/"
+      assert joinPath("usr", "lib/") == "usr/lib/"
+      assert joinPath("usr", "") == "usr"
+      assert joinPath("usr/", "") == "usr/"
       assert joinPath("", "") == ""
       assert joinPath("", "lib") == "lib"
       assert joinPath("", "/lib") == "/lib"
@@ -210,10 +212,10 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
-      assert "usr" / "" == "usr/"
+      assert "usr" / "" == "usr"
       assert "" / "lib" == "lib"
       assert "" / "/lib" == "/lib"
-      assert "usr/" / "/lib" == "usr/lib"
+      assert "usr/" / "/lib/" == "usr/lib/"
       assert "usr" / "lib" / "../bin" == "usr/bin"
 
   return joinPath(head, tail)
