@@ -299,8 +299,10 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
     result = path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
-  elif defined(posix):
+  elif defined(posix) or defined(js):
     result = path[0] == '/'
+  else:
+    doAssert false # if ever hits here, adapt as needed
 
 when FileSystemCaseSensitive:
   template `!=?`(a, b: char): bool = a != b
