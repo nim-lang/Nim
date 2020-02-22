@@ -1795,26 +1795,6 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("$1 || [])" % [a.res])
 
-proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
-  # we map mArray to PHP's array constructor, a mild hack:
-  var a, b: TCompRes
-  r.kind = resExpr
-  r.res = rope("array(")
-  let x = skipConv(n[1])
-  if x.kind == nkBracket:
-    for i in 0..<x.len:
-      let it = x[i]
-      if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
-        if i > 0: r.res.add(", ")
-        gen(p, it[0], a)
-        gen(p, it[1], b)
-        r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
-      else:
-        localError(p.config, it.info, "'toArray' needs tuple constructors")
-  else:
-    localError(p.config, x.info, "'toArray' needs an array literal")
-  r.res.add(")")
-
 proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = nil) =
   useMagic(p, magic)
   r.res.add(magic & "(")
