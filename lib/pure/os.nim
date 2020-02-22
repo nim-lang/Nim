@@ -300,6 +300,8 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
   elif defined(RISCOS):
     result = path[0] == '$'
   elif defined(posix) or defined(js):
+    # `or defined(js)` wouldn't be needed pending https://github.com/nim-lang/Nim/issues/13469
+    # This works around the problem for posix, but windows is still broken with nim js -d:nodejs
     result = path[0] == '/'
   else:
     doAssert false # if ever hits here, adapt as needed
