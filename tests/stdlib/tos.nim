@@ -384,10 +384,10 @@ block ospaths:
   # cases related to issue #13455
   doAssert joinPath("foo", "", "") == "foo"
   doAssert joinPath("foo", "") == "foo"
-  doAssert joinPath("foo/", "") == "foo/"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
   doAssert joinPath("foo/", ".") == "foo"
-  doAssert joinPath("foo", "./") == "foo/"
-  doAssert joinPath("foo", "", "bar/") == "foo/bar/"
+  doAssert joinPath("foo", "./") == unixToNativePath"foo/"
+  doAssert joinPath("foo", "", "bar/") == unixToNativePath"foo/bar/"
 
 block getTempDir:
   block TMPDIR:
