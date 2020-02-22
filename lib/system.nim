@@ -3874,10 +3874,10 @@ elif defined(JS):
   proc deallocShared(p: pointer) = discard
   proc reallocShared(p: pointer, newsize: Natural): pointer = discard
 
-  when defined(JS) and not defined(nimscript):
+  when not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
-  elif defined(nimscript):
+  else:
     proc cmp(x, y: string): int =
       if x == y: return 0
       if x < y: return -1
