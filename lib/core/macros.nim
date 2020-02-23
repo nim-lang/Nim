@@ -1471,7 +1471,7 @@ macro expandMacros*(body: typed): untyped =
   ## For instance,
   ##
   ## .. code-block:: nim
-  ##   import future, macros
+  ##   import sugar, macros
   ##
   ##   let
   ##     x = 10
