@@ -129,3 +129,5 @@
 
 - The `FD` variant of `selector.unregister` for `ioselector_epoll` and
   `ioselector_select` now properly handle the `Event.User` select event type.
+- `joinPath` path normalization when `/` is the first argument works correctly:
+  `assert "/" / "/a" == "/a"`. Fixed the edgecase: `assert "" / "" == ""`.

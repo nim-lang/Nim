@@ -141,6 +141,7 @@ proc joinPath*(head, tail: string): string {.
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
       assert joinPath("usr", "") == "usr/"
+      assert joinPath("", "") == ""
       assert joinPath("", "lib") == "lib"
       assert joinPath("", "/lib") == "/lib"
       assert joinPath("usr/", "/lib") == "usr/lib"
@@ -149,7 +150,7 @@ proc joinPath*(head, tail: string): string {.
   result = newStringOfCap(head.len + tail.len)
   var state = 0
   addNormalizePath(head, result, state, DirSep)
-  if tail.len == 0:
+  if result.len != 0 and result[^1] notin {DirSep, AltSep} and tail.len == 0:
     result.add DirSep
   else:
     addNormalizePath(tail, result, state, DirSep)
