@@ -139,13 +139,11 @@ proc joinPath*(head, tail: string): string {.
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
       assert joinPath("usr", "") == "usr/"
+      assert joinPath("", "") == ""
       assert joinPath("", "lib") == "lib"
       assert joinPath("", "/lib") == "/lib"
       assert joinPath("usr/", "/lib") == "usr/lib"
       assert joinPath("usr/lib", "../bin") == "usr/bin"
-      since((1, 1)):
-        assert joinPath("", "") == ""
-        assert joinPath("/", "/usr/lib") == "/usr/lib"
 
   result = newStringOfCap(head.len + tail.len)
   var state = 0
