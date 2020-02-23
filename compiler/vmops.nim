@@ -102,7 +102,7 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
-proc compileSettingImpl(conf: ConfigRef, switch: string): string =
+proc compileSettingImpl(a: VmArgs, conf: ConfigRef, switch: string): string =
   case switch.normalize
   of "arguments": result = conf.arguments
   of "outfile": result = conf.outFile.string
@@ -116,22 +116,20 @@ proc compileSettingImpl(conf: ConfigRef, switch: string): string =
   of "linkoptions": result = conf.linkOptions
   of "compileoptions": result = conf.compileOptions
   of "ccompilerpath": result = conf.cCompilerPath
-  else: discard
+  else: globalError(conf, a.currentLineInfo, "Unsupported switch: " & switch)
 
-proc compileSettingSeqImpl(conf: ConfigRef, switch: string): seq[string] =
+proc compileSettingSeqImpl(a: VmArgs, conf: ConfigRef, switch: string): seq[string] =
+  template copySeq(field: untyped): untyped =
+    for i in field: result.add i.string
+
   case switch.normalize
-  of "nimblepaths":
-    for i in conf.nimblePaths: result.add i.string
-  of "searchpaths":
-    for i in conf.searchPaths: result.add i.string
-  of "lazypaths":
-    for i in conf.lazyPaths: result.add i.string
+  of "nimblepaths": copySeq(conf.nimblePaths)
+  of "searchpaths": copySeq(conf.searchPaths)
+  of "lazypaths": copySeq(conf.lazyPaths)
   of "commandargs": result = conf.commandArgs
-  of "cincludes":
-    for i in conf.cIncludes: result.add i.string
-  of "clibs":
-    for i in conf.cLibs: result.add i.string
-  else: discard
+  of "cincludes": copySeq(conf.cIncludes)
+  of "clibs": copySeq(conf.cLibs)
+  else: globalError(conf, a.currentLineInfo, "Unsupported switch: " & switch)
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
@@ -184,9 +182,9 @@ proc registerAdditionalOps*(c: PCtx) =
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     registerCallback c, "stdlib.compilesettings.compileSetting", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, compileSettingImpl(c.config, getString(a, 0)))
+      setResult(a, compileSettingImpl(a, c.config, getString(a, 0)))
     registerCallback c, "stdlib.compilesettings.compileSettingSeq", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, compileSettingSeqImpl(c.config, getString(a, 0)))
+      setResult(a, compileSettingSeqImpl(a, c.config, getString(a, 0)))
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"
