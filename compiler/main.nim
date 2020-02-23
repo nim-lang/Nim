@@ -114,10 +114,10 @@ when not defined(leanCompiler):
       conf.outDir = conf.projectPath
     if conf.outFile.isEmpty:
       var ext = "js"
-      if conf.outExt.len > 0: 
-        ext = conf.outExt
-      elif conf.jsMode.len > 0: 
+      if conf.jsMode.len > 0: 
         ext = conf.jsMode
+      elif conf.outExt.len > 0: 
+        ext = conf.outExt
       conf.outFile = RelativeFile(conf.projectName & "." & ext)
 
     #incl(gGlobalOptions, optSafeCode)
@@ -187,17 +187,7 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
-  var cmd = conf.command.normalize
-  var targetExt = ""
-  if cmd.startsWith("js"):
-    let arrCmd = cmd.split(":")
-    let ext = arrCmd[1]
-    cmd = "js"
-    if ext == "":
-      targetExt = "js" 
-    else: 
-      targetExt = ext
-      
+  var cmd = conf.command.normalize      
   case cmd
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
@@ -224,9 +214,9 @@ proc mainCommand*(graph: ModuleGraph) =
   of "js":
     when defined(leanCompiler):
       quit "compiler wasn't built with JS code generator"
-    else:
+    else:      
       conf.cmd = cmdCompileToJS
-      conf.outExt = targetExt
+      conf.outExt = "js"
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier
