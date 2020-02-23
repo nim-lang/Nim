@@ -266,6 +266,8 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetObjC)
           of "js":
             result.targets.incl(targetJS)
+          of "mjs":
+            result.targets.incl(targetMJS)  
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
       of "matrix":

@@ -407,6 +407,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
     conf.outFile = RelativeFile f.name & f.ext
     conf.outDir = toAbsoluteDir f.dir
+  of "jsmode":
+    expectArg(conf, switch, arg, pass, info)
+    conf.jsMode = if arg.len == 0: "js" else: arg
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
     conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)

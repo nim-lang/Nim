@@ -116,6 +116,8 @@ when not defined(leanCompiler):
       var ext = "js"
       if conf.outExt.len > 0: 
         ext = conf.outExt
+      elif conf.jsMode.len > 0: 
+        ext = conf.jsMode
       conf.outFile = RelativeFile(conf.projectName & "." & ext)
 
     #incl(gGlobalOptions, optSafeCode)
