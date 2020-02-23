@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sequtils
+  transf, injectdestructors, tables
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -110,7 +110,8 @@ type
   PSrcCode* = ref TSrcCode
 
   PGlobals = ref object of RootObj
-    typeInfo, constants, code, header, footer, types: PSrcCode
+    typeInfo, constants: Rope
+    code, header, footer, types: PSrcCode
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
@@ -121,7 +122,8 @@ type
     procDef: PNode
     prc: PSym
     idLookupTable: PLookupTable
-    globals, locals, body: PSrcCode
+    body: PSrcCode
+    globals, locals: Rope
     lastVarName: Rope
     options: TOptions
     module: BModule
@@ -136,11 +138,21 @@ type
 
 # TLookupTable
 
+proc newIdTableEntry(startIndex: int = 0): PIdTableEntry =
+  new(result)
+  result.startIndex = startIndex
+
+proc newLookupTable(): PLookupTable =
+  new(result)
+  result.idMap = newTable[string, PIdTableEntry]()
+  result.current = newIdTableEntry()
+
 proc find(self: PLookupTable, id: string): PIdTableEntry =
   self.idMap[id]
 
 proc addEntry(self: PLookupTable, id: string, startIndex: int) =
-  self.idMap[id].startIndex = startIndex
+  var entry = newIdTableEntry(startIndex)
+  self.idMap[id] = entry
   self.currentId = id
   
 proc addEntry(self: PLookupTable, id: string, startIndex, endIndex: int) =
@@ -168,9 +180,11 @@ proc add(self: PSrcCode, code: string = "") =
 proc add(self: PSrcCode, code: Rope) =
   self.srcList.add code
 
-
+proc init(self: PSrcCode) =
+  self.srcList = @[]
 
 proc add(self: PSrcCode, srcCode: PSrcCode) =
+  echo "initialised src code lists"
   self.srcList = self.srcList & srcCode.srcList
   
 proc addf(self: PSrcCode, formatstr: string; args: varargs[string, `$`]) =
@@ -184,6 +198,9 @@ proc len(self: PSrcCode): int =
 proc `&`(a, b: PSrcCode): seq[Rope]  =
   a.srcList & b.srcList
 
+proc `&`(a: PSrcCode, r: Rope): Rope  =
+  $a.srcList & r
+  
 proc `&`(a: seq[Rope], b: PSrcCode): seq[Rope]  =
   a & b.srcList
 
@@ -191,7 +208,10 @@ proc `&`(a: seq[Rope], b: string): seq[Rope]  =
   a & rope(b)
   
 proc `$`(self: PSrcCode): string = 
-  self.srcList.join("\n")
+  if self.srcList.len == 0:
+    result = "<empty>"
+  else:
+    result = self.srcList.join("\n")
 
 proc source(self: PSrcCode): string = 
   self.srcList.join("\n")
@@ -249,9 +269,20 @@ template nested(p, body) =
   body
   dec p.extraIndent
 
+proc newSrcCode(): PSrcCode =
+  new(result)
+  result.srcList = @[]
+  
+
 proc newGlobals(): PGlobals =
   new(result)
   result.forwarded = @[]
+
+  result.code = newSrcCode()
+  result.header = newSrcCode()
+  result.footer = newSrcCode()
+  result.types = newSrcCode()
+
   result.generatedSyms = initIntSet()
   result.typeInfoGenerated = initIntSet()
 
@@ -272,6 +303,8 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
              options: TOptions): PProc =
   result = PProc(
     blocks: @[],
+    body: newSrcCode(),
+    idLookupTable: newLookupTable(),
     options: options,
     module: module,
     procDef: procDef,
@@ -1056,7 +1089,9 @@ proc replaceSpecial(p: PProc, strVal: string): string =
     strVal.replace "$ID", $(p.lastVarName)
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
+  echo "genAsmOrEmitStmt"
   genLineDir(p, n)
+  echo "add indentLine to p.body"
   p.body.add p.indentLine(nil)
   for i in 0..<n.len:
     let it = n[i]
@@ -1093,14 +1128,19 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   p  
 
 proc genEmit(p: PProc, n: PNode): PProc =
+  echo "genEmit"
   var s = genAsmOrEmitStmt(p, n)
+  echo "back from genAsmOrEmitStmt"
   let (filePath, fileContent) = determineExternalFile(n)
+  echo "external file:" & filePath & " content: " & fileContent
   if filePath.len > 0:
     p.module.outputFiles[filePath].g.code.add(fileContent)
 
   # echo "using sections for emit"
   # top level emit pragma?
   let (section, emitStr) = determineSection(n)
+  echo section
+  echo "section:" &  emitStr
   # add to code section array
   # p.module.s[section].add(emitStr)
 
@@ -1959,10 +1999,10 @@ proc genVarStmt(p: PProc, n: PNode) =
 proc genConstant(p: PProc, c: PSym) =
   if lfNoDecl notin c.loc.flags and not p.g.generatedSyms.containsOrIncl(c.id):
     let oldBody = p.body
-    p.body = nil
+    p.body = newSrcCode()
     #genLineDir(p, c.ast)
     genVarInit(p, c, c.ast)
-    p.g.constants.add(p.body)
+    p.g.constants.add($p.body)
     p.body = oldBody
 
 proc genNew(p: PProc, n: PNode) =
@@ -2547,10 +2587,17 @@ proc genStmt(p: PProc, n: PNode) =
   if r.res != nil: lineF(p, "$#;$n", [r.res])
 
 proc genPragma(p: PProc, n: PNode) =
-  echo "jsGenPragma"
+  echo "jsGenPragma::"
+  echo n.sons.len
+  echo "loop sons:" & $n.sons.len
   for it in n.sons:
-    case whichPragma(it)
+    echo it
+    let pragmaType = whichPragma(it)
+    echo "type:" & $pragmaType
+    case pragmaType
     of wEmit: 
+      echo "run genEmit"
+      echo it[1]
       discard genEmit(p, it[1])
     else: discard
 
@@ -2732,6 +2779,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
 proc newModule(g: ModuleGraph; module: PSym): BModule =
   new(result)
   result.module = module
+  result.outputFiles = newTable[string, TJSGen]()
   result.sigConflicts = initCountTable[SigHash]()
   if g.backend == nil:
     g.backend = newGlobals()
@@ -2816,8 +2864,21 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   
   p.unique = globals.unique
   genModule(p, n)
-  p.g.code.add(p.locals)
-  p.g.code.add(p.body)
+  echo "code: add"
+  echo p.g.code
+
+  if  p.locals == nil:
+    echo "locals is nil"
+  else:
+    echo p.locals
+    p.g.code.add(p.locals)
+  
+  if  p.body == nil:
+    echo "body is nil"
+    p.body = newSrcCode()
+  else:
+    echo p.body
+    p.g.code.add(p.body)
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
   let globals = PGlobals(graph.backend)
@@ -2833,8 +2894,13 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newProc(globals, m, nil, m.module.options)
       attachProc(p, prc)
 
-  var lines = globals.header & globals.typeInfo & globals.constants & globals.code & globals.footer
-  result = rope(lines.join("\n"))
+  var hd = globals.header & (globals.typeInfo & globals.constants)
+  echo "hd: " & hd
+  var code = globals.code & globals.footer
+  echo "code:" & $code
+  var lines = hd & $code
+  echo "lines:" & lines
+  result = lines
 
 proc getClassName(t: PType): Rope =
   var s = t.sym
@@ -2846,6 +2912,7 @@ proc getClassName(t: PType): Rope =
   else: result = rope(s.name.s)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
+  echo "myClose"
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
@@ -2855,6 +2922,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags:
     let code = wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
+    echo "outFile:"
+    echo $m.config.outDir.string
+    echo $m.config.outFile.string
     if m.outputFiles.len > 0:
       echo "has extra files to be output"
       for filePath, file in m.outputFiles:        
@@ -2863,6 +2933,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
         var code = genHeader() & $file.g.code
         discard writeRopeIfNotEqual(code, outFile)
 
+    echo "write file"
+    echo code
     discard writeRopeIfNotEqual(genHeader() & code, outFile)
 
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
