@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors
+  transf, injectdestructors, sequtils
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -91,19 +91,23 @@ type
                  # has been used (i.e. the label should be emitted)
     isLoop: bool # whether it's a 'block' or 'while'
 
-  TIdTableEntry = 
-    startIndex, endIndex: int
+  TIdTableEntry = object
+    startIndex: int
+    endIndex: int
 
-  TLookupTable =
-      idMap: TableRef[string, TIdTableEntry]
-      currentId: string
+  PIdTableEntry = ref TIdTableEntry
+
+  TLookupTable = object
+    idMap: TableRef[string, PIdTableEntry]
+    currentId: string
+    current: PIdTableEntry
 
   PLookupTable = ref TLookupTable
 
-  TSrcCode
-    srcList: ref seq[Rope] # mutable sequence of ropes/strings
+  TSrcCode = object
+    srcList: seq[Rope] # mutable sequence of ropes/strings
   
-  PSrcCode = ref TSrcCode
+  PSrcCode* = ref TSrcCode
 
   PGlobals = ref object of RootObj
     typeInfo, constants, code, header, footer, types: PSrcCode
@@ -118,7 +122,7 @@ type
     prc: PSym
     idLookupTable: PLookupTable
     globals, locals, body: PSrcCode
-    lastVarName: string
+    lastVarName: Rope
     options: TOptions
     module: BModule
     g: PGlobals
@@ -132,39 +136,70 @@ type
 
 # TLookupTable
 
-proc add(self: TLookupTable, id: string, startIndex, endIndex: int) =
-  self.idMap[id].startIndex = startIndex
-  self.idMap[id].endIndex = endIndex
-  self.currentId = id
+proc find(self: PLookupTable, id: string): PIdTableEntry =
+  self.idMap[id]
 
-proc current(self: TLookupTable): TIdTableEntry = 
+proc addEntry(self: PLookupTable, id: string, startIndex: int) =
+  self.idMap[id].startIndex = startIndex
+  self.currentId = id
+  
+proc addEntry(self: PLookupTable, id: string, startIndex, endIndex: int) =
+  self.addEntry(id, startIndex)
+  self.idMap[id].endIndex = endIndex
+
+proc current(self: PLookupTable): PIdTableEntry = 
   self.idMap[self.currentId]
 
-proc setCurrent(self: TLookupTable, startIndex, endIndex = p.body.len) =
+proc setCurrentEndIndex(self: PLookupTable, endIndex: int) =
   self.current.endIndex = endIndex
 
-proc bumpFollowingIdLocationRefs(self: TLookupTable, id: string, lineCount: int) =
+proc bumpFollowingIdLocationRefs(self: PLookupTable, id: string, lineCount: int) =
   var idEntry = self.idMap[id]
-  for entry in self.idMap
-    if entry.startIndex > idEntry.startIndex
-    entry.startIndex = entry.startIndex + lineCount
+  for key, entry in self.idMap:
+    if entry.startIndex > idEntry.startIndex:
+      entry.startIndex = entry.startIndex + lineCount
     entry.endIndex = entry.endIndex + lineCount
 
-# SrcCode
+# PSrcCode
 
-proc add(self: SrcCode, code: string) =
+proc add(self: PSrcCode, code: string = "") =
+  self.srcList.add rope(code)
+  
+proc add(self: PSrcCode, code: Rope) =
   self.srcList.add code
 
-proc len(self: SrcCode) = 
+
+
+proc add(self: PSrcCode, srcCode: PSrcCode) =
+  self.srcList = self.srcList & srcCode.srcList
+  
+proc addf(self: PSrcCode, formatstr: string; args: varargs[string, `$`]) =
+  var code = ""
+  code.addf(formatstr, args)
+  self.add(code)
+  
+proc len(self: PSrcCode): int = 
   self.srcList.len
 
-proc `&`(a, b: SrcCode) =
+proc `&`(a, b: PSrcCode): seq[Rope]  =
   a.srcList & b.srcList
 
-proc source(self: SrcCode) = 
+proc `&`(a: seq[Rope], b: PSrcCode): seq[Rope]  =
+  a & b.srcList
+
+proc `&`(a: seq[Rope], b: string): seq[Rope]  =
+  a & rope(b)
+  
+proc `$`(self: PSrcCode): string = 
   self.srcList.join("\n")
 
-proc insertBeforeAt(self: SrcCode, index: int, code: string): int =
+proc source(self: PSrcCode): string = 
+  self.srcList.join("\n")
+
+proc rop(self: PSrcCode): Rope = 
+  rope(self.source())
+
+proc insertBeforeAt(self: PSrcCode, index: int, code: string): int =
   var items = self.srcList
   var indexBefore = index-1
   var seqBefore = items[0..indexBefore]
@@ -173,7 +208,7 @@ proc insertBeforeAt(self: SrcCode, index: int, code: string): int =
   items = seqBefore & code & seqAfter
   code.len
 
-proc insertAfterAt(self: SrcCode, index: int, code: string): int =
+proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
   var items = self.srcList
   var indexBefore = index
   var seqBefore = items[0..indexBefore]
@@ -186,7 +221,7 @@ proc insertAfterAt(self: SrcCode, index: int, code: string): int =
 proc insertCodeBeforeAt(p: PProc, srcCode: PSrcCode, id: string, code: string) =
   var srcCodeStartIndex = p.idLookupTable.find(id).startIndex
   var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
-  p.bumpFollowingIdLocationRefs(id, insertedLineCount)
+  p.idLookupTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
 
 template config*(p: PProc): ConfigRef = p.module.config
 
@@ -1018,7 +1053,7 @@ proc determineExternalFile(n: PNode): tuple[filePath: string, fileContent: strin
 
 # replace $ID special ref placeholder with stored lastVarName
 proc replaceSpecial(p: PProc, strVal: string): string = 
-    strVal.replace "$ID", p.lastVarName
+    strVal.replace "$ID", $(p.lastVarName)
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   genLineDir(p, n)
@@ -1821,16 +1856,18 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   var
     a: TCompRes
     s: Rope
-    varCode: string
+    varCode: string  
     varName = mangleName(p.module, v)
-    # store varName on p so that we can reference it later
-    p.lastVarName = varName
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
-    
+  
+  # store varName on p so that we can reference it later
+  p.lastVarName = varName
+
   # add var id mapping to idLookupTable
   # line adds a line to body p.body.add(indentLine(p, added))
   var srcCodeStartIndex = p.body.len + 1
-  p.idLookupTable.add(v, srcCodeIndex)
+
+  p.idLookupTable.addEntry($varName, srcCodeStartIndex)
 
   if v.constraint.isNil:
     if useReloadingGuard:
@@ -1885,7 +1922,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
 
-      p.idLookupTable.setCurrent(endIndex = p.body.len)
+      p.idLookupTable.setCurrentEndIndex(endIndex = p.body.len)
       return
     else:
       s = a.res
@@ -1898,7 +1935,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     dec p.extraIndent
     lineF(p, "}$n")
   # return
-  p.idLookupTable.setCurrent(endIndex = p.body.len)
+  p.idLookupTable.setCurrentEndIndex(endIndex = p.body.len)
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
@@ -2409,10 +2446,10 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
     result = nil
   if p.beforeRetNeeded:
     result.add p.indentLine(~"BeforeRet: do {$n")
-    result.add p.body
+    result.add $p.body
     result.add p.indentLine(~"} while (false);$n")
   else:
-    result.add(p.body)
+    result.add($p.body)
   if prc.typ.callConv == ccSysCall:
     result = ("try {$n$1} catch (e) {$n" &
       " alert(\"Unhandled exception:\\n\" + e.message + \"\\n\"$n}") % [result]
@@ -2425,6 +2462,9 @@ proc optionalLine(p: Rope): Rope =
   else:
     return p & "\L"
 
+proc optionalLine(p: PSrcCode): Rope =
+  optionalLine(p.rop())
+    
 proc genProc(oldProc: PProc, prc: PSym): Rope =
   var
     resultSym: PSym
@@ -2793,7 +2833,8 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newProc(globals, m, nil, m.module.options)
       attachProc(p, prc)
 
-  result = globals.header & globals.typeInfo & globals.constants & globals.code & globals.footer
+  var lines = globals.header & globals.typeInfo & globals.constants & globals.code & globals.footer
+  result = rope(lines.join("\n"))
 
 proc getClassName(t: PType): Rope =
   var s = t.sym
@@ -2819,7 +2860,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       for filePath, file in m.outputFiles:        
         let outFile = m.config.prepareToWriteAdditionalOutput(filePath)
         echo "output:" & filePath
-        var code = genHeader() & file.g.code
+        var code = genHeader() & $file.g.code
         discard writeRopeIfNotEqual(code, outFile)
 
     discard writeRopeIfNotEqual(genHeader() & code, outFile)

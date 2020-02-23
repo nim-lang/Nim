@@ -68,6 +68,9 @@ proc genObjectFields(p: PProc, typ: PType, n: PNode): Rope =
         rope(lengthOrd(p.config, field.typ)), makeJSString(field.name.s), result]
   else: internalError(p.config, n.info, "genObjectFields")
 
+proc prepend(src: PSrcCode, str: Rope) =
+  src.srcList[0] = str & src.srcList[0]
+
 proc objHasTypeField(t: PType): bool {.inline.} =
   tfInheritable in t.flags or t[0] != nil
 
