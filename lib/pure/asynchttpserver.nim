@@ -68,15 +68,12 @@
 ##        if stream:
 ##          # Read 8*1024 bytes at a time
 ##          # optional chunkSize parameter. The default is 8*1024
-##          for length, data in req.bodyStream(8*1024):
-##            let content = await data
-##            if length == content.len:
-##              bodyLength += content.len
-##            else:
-##              # Handle exception
-##              await req.respond(Http400,
-##                "Bad Request. Data read has a different length than the expected.")
-##              return
+##          for data in req.bodyStream(8*1024):
+##            bodyLength += data.len
+##          if bodyLength != contentLength:
+##            await req.respond(Http400,
+##              "Bad Request. Data read has a different length than the expected.")
+##            return
 ##        else:
 ##          bodyLength += req.body.len
 ##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
@@ -217,7 +214,7 @@ proc sendStatus(client: AsyncSocket, status: string): Future[void] =
 when (NimMajor, NimMinor) >= (1, 1):
   iterator bodyStream*(
     request: Request,
-    chunkSize: int = 8*1024): (int, Future[string]) =
+    chunkSize: int = 8*1024): string =
     ## The chunkSize parameter is optional and default value is 8*1024 bytes.
     ##
     ## This iterator return a tuple with the length of the data that was read
@@ -225,10 +222,10 @@ when (NimMajor, NimMinor) >= (1, 1):
     var remainder = request.contentLength
     while remainder > 0:
       let readSize = min(remainder, chunkSize)
-      let data = request.client.recv(readSize)
-      if data.failed:
+      let data = waitFor request.client.recv(readSize)
+      if data.len != readSize:
         raise newException(ValueError, "Error reading POST data from client.")
-      yield (readSize, data)
+      yield data
       remainder -= readSize
 
 proc processRequest(
