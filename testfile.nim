@@ -1,2 +1,5 @@
 import macros, jsffi
-{.emit: "import { x as x$$  } from './aba'".}
+{.emit: "/*HEADERSECTION*/import { x as x$$  } from './aba'".}
+
+var
+  x {.importjs: "$ID = x$$".}: JsObject

@@ -1053,17 +1053,19 @@ proc matchSection(secStr: string): string =
 proc lengthOfSectionMarker(sectionMarker: string): int = 
   ("/*" & sectionMarker & "SECTION*/").len
 
-proc getSection(sec, marker: string): tuple[fs: TJSFileSection, str: string] =
+proc getHeaderSection(sec, marker: string): tuple[fs: TJSFileSection, str: string] =
   var index = lengthOfSectionMarker(marker)
-  result = (jsfsTypes, sec[index..^1])
+  result = (jsfsHeader, sec[index..^1])
 
 proc determineSection(n: PNode): tuple[fs: TJSFileSection, str: string] =
   result = (jsfsMain, "")
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
+    echo "sec str:" & sec
     let secMarker = matchSection(sec)
-    if secMarker != "":
-      result = getSection(sec, secMarker)
+    echo "secMarker:" & secMarker
+    if secMarker == "HEADER":
+      result = getHeaderSection(sec, secMarker)
 
 import re
 
@@ -1129,15 +1131,6 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
 
 proc genEmit(p: PProc, n: PNode): PProc =
   echo "genEmit"
-  var s = genAsmOrEmitStmt(p, n)
-  echo "back from genAsmOrEmitStmt"
-  let (filePath, fileContent) = determineExternalFile(n)
-  echo "external file:" & filePath & " content: " & fileContent
-  if filePath.len > 0:
-    p.module.outputFiles[filePath].g.code.add(fileContent)
-
-  # echo "using sections for emit"
-  # top level emit pragma?
   let (section, emitStr) = determineSection(n)
   echo section
   echo "section:" &  emitStr
@@ -1151,7 +1144,20 @@ proc genEmit(p: PProc, n: PNode): PProc =
   elif section == jsfsTypes:
     p.g.types.add(emitStr)
   else:
+    # p.g.code.add(s.body)
+    var s = genAsmOrEmitStmt(p, n)
     p.g.code.add(s.body)
+    echo "back from genAsmOrEmitStmt"
+
+  let (filePath, fileContent) = determineExternalFile(n)
+  echo "external file:" & filePath & " content: " & fileContent
+  if filePath.len > 0:
+    p.module.outputFiles[filePath].g.code.add(fileContent)
+
+  # echo "using sections for emit"
+  # top level emit pragma?
+  # let (section, emitStr) = determineSection(n)
+
   result = p
     
 
@@ -2894,9 +2900,9 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       var p = newProc(globals, m, nil, m.module.options)
       attachProc(p, prc)
 
-  var hd = globals.header & (globals.typeInfo & globals.constants)
+  var hd = $globals.header & "\n" & (globals.typeInfo & globals.constants)
   echo "hd: " & hd
-  var code = globals.code & globals.footer
+  var code = $globals.code & $globals.footer
   echo "code:" & $code
   var lines = hd & $code
   echo "lines:" & lines
