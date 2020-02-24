@@ -30,6 +30,7 @@ Runtime checks (see -x):
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
+  --jsmode:MODE             set the Javascript compiler mode. Also sets default extensions of output files
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
