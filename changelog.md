@@ -25,6 +25,11 @@
   It didn't work well together with the existing inplace version of the same proc
   (`tables.merge(var CountTable, CountTable)`).
   It was an oversight to be included in v1.0.
+- `options` now treats `proc` like other pointer types, meaning `nil` proc variables
+  are converted to `None`.
+- `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
+  behavioe
 - File handles created from high-level abstractions in the stdlib will no longer
   be inherited by child processes. See below for a list of affected modules.
   A `setInheritable` proc is also introduced to allow marking explicitly which
@@ -32,6 +37,7 @@
   For a transistion period, define `nimInheritHandles` to enable file handle
   inheritance by default. This flag does **not** affect the `selectors` module
   due to the differing semantics between operating systems.
+
 
 ### Breaking changes in the compiler
 
@@ -137,6 +143,8 @@
 
 ## Bugfixes
 
+- `joinPath` path normalization when `/` is the first argument works correctly:
+  `assert "/" / "/a" == "/a"`. Fixed the edgecase: `assert "" / "" == ""`.
 - The `FD` variant of `selector.unregister` for `ioselector_epoll` and
   `ioselector_select` now properly handle the `Event.User` select event type.
 - The file descriptors created for internal bookkeeping by `ioselector_kqueue`
