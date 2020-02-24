@@ -232,7 +232,7 @@ elif defined(posix):
 
   when defined(macosx):
     proc gettimeofday(tp: var Timeval, unused: pointer = nil)
-      {.importc: "gettimeofday", header: "<sys/time.h>".}
+      {.importc: "gettimeofday", header: "<sys/time.h>", sideEffect.}
 
 elif defined(windows):
   import winlean, std/time_t
@@ -254,7 +254,7 @@ elif defined(windows):
       tm_yday*: cint  ## Day of year [0,365].
       tm_isdst*: cint ## Daylight Savings flag.
 
-  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>".}
+  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>", sideEffect.}
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``,
@@ -2527,7 +2527,7 @@ when not defined(js):
     Clock {.importc: "clock_t".} = distinct int
 
   proc getClock(): Clock
-      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used.}
+      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used, sideEffect.}
 
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int

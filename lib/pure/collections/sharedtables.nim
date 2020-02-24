@@ -25,6 +25,7 @@ type
   SharedTable*[A, B] = object ## generic hash SharedTable
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
+    countDeleted: int
     lock: Lock
 
 template maxHash(t): untyped = t.dataLen-1
@@ -32,7 +33,7 @@ template maxHash(t): untyped = t.dataLen-1
 include tableimpl
 
 template st_maybeRehashPutImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter):
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index # important to transform for mgetOrPutImpl
@@ -49,9 +50,10 @@ proc enlarge[A, B](t: var SharedTable[A, B]) =
   for i in 0..<oldSize:
     let eh = n[i].hcode
     if isFilled(eh):
+      var perturb = t.getPerturb(eh)
       var j: Hash = eh and maxHash(t)
       while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t))
+        j = nextTry(j, maxHash(t), perturb)
       rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
   deallocShared(n)
 

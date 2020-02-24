@@ -27,7 +27,7 @@ build_nim_csources(){
       # some args were passed (eg: `--cpu i386`), need to call build.sh
       build_nim_csources_via_script "$@"
     else
-      # no args, use multhreaded (5X faster on 16 cores: 10s instead of 50s)
+      # no args, use multiple Make jobs (5X faster on 16 cores: 10s instead of 50s)
       makeX=make
       unamestr=$(uname)
       if [ "$unamestr" = 'FreeBSD' ]; then
@@ -47,5 +47,6 @@ build_nim_csources(){
 # Note: if fails, may need to `cd csources && git pull`
 echo_run bin/nim c --skipUserCfg --skipParentCfg koch
 
-echo_run ./koch boot -d:release
-echo_run ./koch tools # Compile Nimble and other tools.
+echo_run ./koch boot -d:release --skipUserCfg --skipParentCfg
+echo_run ./koch tools --skipUserCfg --skipParentCfg # Compile Nimble and other tools.
+
