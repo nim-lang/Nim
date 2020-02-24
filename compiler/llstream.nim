@@ -12,8 +12,10 @@
 import
   pathutils
 
-template imp(x) = import x
-const hasRstdin = compiles(imp(rdstdin))
+# support `useGnuReadline`, `useLinenoise` for backwards compatibility
+const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
+  not defined(windows)
+
 when hasRstdin: import rdstdin
 
 type

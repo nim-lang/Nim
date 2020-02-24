@@ -528,7 +528,7 @@ for further information.
 
   The Nim compiler supports an interactive mode. This is also known as
   a `REPL`:idx: (*read eval print loop*). If Nim has been built with the
-  ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
+  ``-d:nimUseLinenoise`` switch, it uses the GNU readline library for terminal
   input management. To start Nim in interactive mode use the command
   ``nim secret``. To quit use the ``quit()`` command. To determine whether an input
   line is an incomplete statement to be continued these rules are used:
