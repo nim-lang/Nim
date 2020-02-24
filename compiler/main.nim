@@ -211,7 +211,7 @@ proc mainCommand*(graph: ModuleGraph) =
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
-  of "js":
+  of "js", "compiletojs":
     when defined(leanCompiler):
       quit "compiler wasn't built with JS code generator"
     else:      
