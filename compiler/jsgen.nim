@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, tables
+  transf, injectdestructors, tables, re
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -112,7 +112,7 @@ type
   PGlobals = ref object of RootObj
     typeInfo, constants: Rope
     lastVarName: Rope
-    code, header, footer, types: PSrcCode
+    code, header, imports, footer, types: PSrcCode
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
@@ -1045,32 +1045,24 @@ proc useSection(secStr: string, sectionMarker: string): bool =
 
 proc matchSection(secStr: string): string =
   result = ""
-  for marker in ["HEADER", "FOOTER", "TYPE"]:
+  for marker in ["HEADER", "IMPORTS", "FOOTER", "TYPE"]:
     if useSection(secStr, marker):
       result = marker
 
 proc lengthOfSectionMarker(sectionMarker: string): int = 
   ("/*" & sectionMarker & "SECTION*/").len
 
-proc getHeaderSection(sec, marker: string): tuple[fs: TJSFileSection, str: string] =
-  var index = lengthOfSectionMarker(marker)
-  result = (jsfsHeader, sec[index..^1])
 
-proc getFooterSection(sec, marker: string): tuple[fs: TJSFileSection, str: string] =
+proc getSection(sec, marker: string): tuple[fs: string, str: string] =
   var index = lengthOfSectionMarker(marker)
-  result = (jsfsFooter, sec[index..^1])
+  result = (marker, sec[index..^1])
   
-proc determineSection(n: PNode): tuple[fs: TJSFileSection, str: string] =
-  result = (jsfsMain, "")
+proc determineSection(n: PNode): tuple[fs: string, str: string] =
+  result = ("main", "")
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
     let secMarker = matchSection(sec)
-    if secMarker == "HEADER":
-      result = getHeaderSection(sec, secMarker)
-    if secMarker == "FOOTER":
-      result = getFooterSection(sec, secMarker)  
-
-import re
+    result = getSection(sec, secMarker)
 
 proc findEmitFilePath*(emitStr: string, marker: string): string = 
   var xpr = re"""\/\*FILEPATH:(\S+):\*\/"""  
@@ -1135,14 +1127,17 @@ proc genEmit(p: PProc, n: PNode): PProc =
   # add to code section array
   # p.module.s[section].add(emitStr)
 
-  if section == jsfsHeader:
+  case section 
+  of "HEADER":
     p.g.header.add(emitStr)
-  elif section == jsfsFooter:
+  of "IMPORTS":
+    p.g.imports.add(emitStr)
+  of "FOOTER":
     p.g.footer.add(emitStr)
-  elif section == jsfsTypes:
+  of "TYPES":
     p.g.types.add(emitStr)
   else:
-    var s = genAsmOrEmitStmt(p, n)
+    discard genAsmOrEmitStmt(p, n)
 
   let (filePath, fileContent) = determineExternalFile(n)  
   if filePath.len > 0:

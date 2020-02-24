@@ -124,16 +124,9 @@ proc isRange*(n: PNode): bool {.inline.} =
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  # echo "whichPragma"
   let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
-  # echo "key"
-  # echo key.kind
-  if key.kind == nkIdent: 
-    let ident = key.ident
-    # echo "ident: " & ident.s
-    let keyword = whichKeyword(ident)
-    # echo keyword
-    result = keyword
+  if key.kind == nkIdent:
+    result = whichKeyword(key.ident)
 
 proc findPragma*(n: PNode, which: TSpecialWord): PNode =
   if n.kind == nkPragma:
