@@ -34,17 +34,26 @@ type
   TypeId* = distinct string ## opaque, used by `getTypeId`
 
 proc `==`*(x, y: TypeId): bool {.borrow.}
+proc `$`*(x: TypeId): string {.borrow.}
 
 proc getTypeIdImpl(t: typedesc): string {.magic: "TypeTrait", since: (1, 1).}
 
 proc getTypeId*(t: typedesc): TypeId {.since: (1, 1).} =
   ## Returns a unique id representing a type; the id is stable across
   ## recompilations of the same program, but may differ if the program source
-  ## changes. In particular serializing it will be meaningless after source
-  ## change + recompilation: ids are reused in an un-specified manner.
+  ## changes. In particular serializing it will be meaningless after source change
+  ## and recompilation: ids are reused in an un-specified manner.
   ##
-  ## Example use cases: using ids as keys in Tables (eg for Type hashing),  for Comparisons? Store into sets to prevent recursions during type traversal?
-  ## Example use case: passing a callback
+  ## Example use cases that are impossible / hard without such feature:
+  ## 1: using ids as keys in Tables (eg for Type hashing) or to prevent recursions during type traversal
+  ## 2: passing a callback proc that can handle multiple types to a routine
+  ## 3: defining an exportc proc that can handle multiple types, this can be used
+  ##    as workaround for lack of cyclic imports
+  ##
+  ## See examples for those use cases in ttypetraits.nim; in each case the
+  ## callback is called via:
+  ## `callbackFun(cast[pointer](a), getTypeId(type(a)), ...)`
+
   runnableExamples:
     type Foo[T] = object
     type Foo2 = Foo

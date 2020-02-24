@@ -379,7 +379,7 @@ block: # getTypeId
 
   doAssert int.getTypeId is TypeId
 
-block: # example use case for `getTypeId`:
+block: # example use case for `getTypeId`: passing a callback that handles multiple types
   ## this would be in a library, say prettys.nim:
   type Callback = proc(result: var string, a: pointer, id: TypeId): bool
 
@@ -433,3 +433,23 @@ block: # example use case for `getTypeId`:
     doAssert pretty(f, callback2) == """(b1: ("custom2:", 12), b2: abc, )"""
 
   main()
+
+type Foo3* = object
+  x3*: int
+
+import ./mtypetraits_types
+
+block:
+  # example use case for `getTypeId`: exportc proc that handles multiple types.
+  # This can be used in cases where we want to define implementation for a
+  # proc in a separate module (here, mtypetraits_impl), to avoid cyclic import
+  # issues or avoid dragging many dependencies for users of the proc, which can
+  # be declared in another import module (here, mtypetraits_types).
+  # This mimicks the use of headers vs source files in C.
+
+  doAssert callbackFun(Foo1(x1: 1)) == """("custom1", (x1: 1))"""
+  doAssert callbackFun(Foo2(x2: 2)) == """("custom2", (x2: 2))"""
+  doAssert callbackFun(Foo3(x3: 3)) == """("custom3", (x3: 3))"""
+
+import ./mtypetraits_impl
+  # this could be imported from any module; it defines our exportc proc
