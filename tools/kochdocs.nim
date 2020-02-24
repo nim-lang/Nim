@@ -232,7 +232,10 @@ compiler/ccgstmts.nim
 compiler/ccgthreadvars.nim
 compiler/ccgtrav.nim
 compiler/ccgtypes.nim
+compiler/hlo.nim
 compiler/jstypes.nim
+compiler/packagehandling.nim
+compiler/rodimpl.nim
 compiler/semcall.nim
 compiler/semexprs.nim
 compiler/semfields.nim
@@ -245,30 +248,33 @@ compiler/semtempl.nim
 compiler/semtypes.nim
 compiler/sizealignoffsetimpl.nim
 compiler/suggest.nim
-compiler/packagehandling.nim
-compiler/hlo.nim
-compiler/rodimpl.nim
-compiler/vmops.nim
 compiler/vmhooks.nim
+compiler/vmops.nim
 """.splitWhitespace()
 
   # not include files but doesn't work; not included/imported anywhere; dead code?
   const bad = """
-compiler/debuginfo.nim
 compiler/canonicalizer.nim
+compiler/debuginfo.nim
 compiler/forloops.nim
 """.splitWhitespace()
 
   # these cause errors even though they're imported (some of which are mysterious)
   const bad2 = """
+compiler/aliases.nim
+compiler/ast.nim
+compiler/astalgo.nim
 compiler/closureiters.nim
-compiler/tccgen.nim
+compiler/evalffi.nim
 compiler/lambdalifting.nim
 compiler/layouter.nim
-compiler/evalffi.nim
 compiler/nimfix/nimfix.nim
 compiler/plugins/active.nim
 compiler/plugins/itersgen.nim
+compiler/renderer.nim
+compiler/tccgen.nim
+compiler/trees.nim
+compiler/types.nim
 """.splitWhitespace()
 
   for a in walkDirRec("compiler"):
