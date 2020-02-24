@@ -111,6 +111,7 @@ type
 
   PGlobals = ref object of RootObj
     typeInfo, constants: Rope
+    lastVarName: Rope
     code, header, footer, types: PSrcCode
     forwarded: seq[PSym]
     generatedSyms: IntSet
@@ -184,7 +185,6 @@ proc init(self: PSrcCode) =
   self.srcList = @[]
 
 proc add(self: PSrcCode, srcCode: PSrcCode) =
-  echo "initialised src code lists"
   self.srcList = self.srcList & srcCode.srcList
   
 proc addf(self: PSrcCode, formatstr: string; args: varargs[string, `$`]) =
@@ -209,12 +209,12 @@ proc `&`(a: seq[Rope], b: string): seq[Rope]  =
   
 proc `$`(self: PSrcCode): string = 
   if self.srcList.len == 0:
-    result = "<empty>"
+    result = ""
   else:
-    result = self.srcList.join("\n")
+    result = self.srcList.join("")
 
 proc source(self: PSrcCode): string = 
-  self.srcList.join("\n")
+  self.srcList.join("")
 
 proc rop(self: PSrcCode): Rope = 
   rope(self.source())
@@ -1057,15 +1057,19 @@ proc getHeaderSection(sec, marker: string): tuple[fs: TJSFileSection, str: strin
   var index = lengthOfSectionMarker(marker)
   result = (jsfsHeader, sec[index..^1])
 
+proc getFooterSection(sec, marker: string): tuple[fs: TJSFileSection, str: string] =
+  var index = lengthOfSectionMarker(marker)
+  result = (jsfsFooter, sec[index..^1])
+  
 proc determineSection(n: PNode): tuple[fs: TJSFileSection, str: string] =
   result = (jsfsMain, "")
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
-    echo "sec str:" & sec
     let secMarker = matchSection(sec)
-    echo "secMarker:" & secMarker
     if secMarker == "HEADER":
       result = getHeaderSection(sec, secMarker)
+    if secMarker == "FOOTER":
+      result = getFooterSection(sec, secMarker)  
 
 import re
 
@@ -1088,17 +1092,16 @@ proc determineExternalFile(n: PNode): tuple[filePath: string, fileContent: strin
 
 # replace $ID special ref placeholder with stored lastVarName
 proc replaceSpecial(p: PProc, strVal: string): string = 
-    strVal.replace "$ID", $(p.lastVarName)
+    strVal.replace "%ID%", $(p.g.lastVarName)
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
-  echo "genAsmOrEmitStmt"
   genLineDir(p, n)
-  echo "add indentLine to p.body"
   p.body.add p.indentLine(nil)
   for i in 0..<n.len:
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
+      # echo "last varname =" & $p.g.lastVarName
       var strVal = replaceSpecial(p, it.strVal)
       p.body.add(strVal)
     of nkSym:
@@ -1130,10 +1133,7 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   p  
 
 proc genEmit(p: PProc, n: PNode): PProc =
-  echo "genEmit"
   let (section, emitStr) = determineSection(n)
-  echo section
-  echo "section:" &  emitStr
   # add to code section array
   # p.module.s[section].add(emitStr)
 
@@ -1146,12 +1146,11 @@ proc genEmit(p: PProc, n: PNode): PProc =
   else:
     # p.g.code.add(s.body)
     var s = genAsmOrEmitStmt(p, n)
-    p.g.code.add(s.body)
-    echo "back from genAsmOrEmitStmt"
+    # p.g.code.add(s.body)
 
-  let (filePath, fileContent) = determineExternalFile(n)
-  echo "external file:" & filePath & " content: " & fileContent
+  let (filePath, fileContent) = determineExternalFile(n)  
   if filePath.len > 0:
+    # echo "external file:" & filePath & " content: " & fileContent
     p.module.outputFiles[filePath].g.code.add(fileContent)
 
   # echo "using sections for emit"
@@ -1907,12 +1906,12 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
   
   # store varName on p so that we can reference it later
-  p.lastVarName = varName
+  p.g.lastVarName = varName
 
   # add var id mapping to idLookupTable
   # line adds a line to body p.body.add(indentLine(p, added))
   var srcCodeStartIndex = p.body.len + 1
-
+  
   p.idLookupTable.addEntry($varName, srcCodeStartIndex)
 
   if v.constraint.isNil:
@@ -1930,14 +1929,23 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode = v.constraint.strVal
 
   if n.kind == nkEmpty:
+    # echo "empty"
     if not isIndirect(v) and
       v.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and mapType(p,
           v.typ) == etyBaseIndex:
+      # echo "ty"
       lineF(p, "var $1 = null;$n", [varName])
       lineF(p, "var $1_Idx = 0;$n", [varName])
     else:
-      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName,
-          createVar(p, v.typ, isIndirect(v))]))
+      # echo "NO ty"
+      # echo v.typ
+      # echo isIndirect(v)
+      # let hasNoAssign = lfNoAssign in v.loc.flags
+      # if hasNoAssign:      
+        # lineF(p, "var $1;$n", varName)
+      # else:
+      var varVal = createVar(p, v.typ, isIndirect(v))
+      line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName, varVal]))
   else:
     gen(p, n, a)
     case mapType(p, v.typ)
@@ -1973,6 +1981,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       s = a.res
     if isIndirect(v):
+      # echo "indirect"
       line(p, runtimeFormat(varCode & " = [$3];$n", [returnType, v.loc.r, s]))
     else:
       line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, s]))
@@ -1988,13 +1997,16 @@ proc genVarStmt(p: PProc, n: PNode) =
     var a = n[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
+        # echo "var tuple"
         let unpacked = lowerTupleUnpacking(p.module.graph, a, p.prc)
         genStmt(p, unpacked)
       else:
         assert(a.kind == nkIdentDefs)
         assert(a[0].kind == nkSym)
         var v = a[0].sym
-        if lfNoDecl notin v.loc.flags and sfImportc notin v.flags:
+        let hasNoDecl = lfNoDecl notin v.loc.flags
+        let hasNoImport = sfImportc notin v.flags
+        if hasNoDecl and hasNoImport:
           genLineDir(p, a)
           if sfCompileTime notin v.flags:
             genVarInit(p, v, a[2])
@@ -2593,17 +2605,10 @@ proc genStmt(p: PProc, n: PNode) =
   if r.res != nil: lineF(p, "$#;$n", [r.res])
 
 proc genPragma(p: PProc, n: PNode) =
-  echo "jsGenPragma::"
-  echo n.sons.len
-  echo "loop sons:" & $n.sons.len
   for it in n.sons:
-    echo it
     let pragmaType = whichPragma(it)
-    echo "type:" & $pragmaType
     case pragmaType
     of wEmit: 
-      echo "run genEmit"
-      echo it[1]
       discard genEmit(p, it[1])
     else: discard
 
@@ -2647,8 +2652,6 @@ proc genCast(p: PProc, n: PNode, r: var TCompRes) =
     r.typ = etyObject
 
 proc gen(p: PProc, n: PNode, r: var TCompRes) =
-  # echo "jsGen"
-  # echo n.kind
   r.typ = etyNone
   if r.kind != resCallee: r.kind = resNone
   #r.address = nil
@@ -2870,21 +2873,13 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   
   p.unique = globals.unique
   genModule(p, n)
-  echo "code: add"
-  echo p.g.code
 
-  if  p.locals == nil:
-    echo "locals is nil"
-  else:
-    echo p.locals
-    p.g.code.add(p.locals)
+  p.g.code.add(p.locals)
   
   if  p.body == nil:
-    echo "body is nil"
     p.body = newSrcCode()
-  else:
-    echo p.body
-    p.g.code.add(p.body)
+  
+  p.g.code.add(p.body)
 
 proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
   let globals = PGlobals(graph.backend)
@@ -2901,11 +2896,8 @@ proc wholeCode(graph: ModuleGraph; m: BModule): Rope =
       attachProc(p, prc)
 
   var hd = $globals.header & "\n" & (globals.typeInfo & globals.constants)
-  echo "hd: " & hd
   var code = $globals.code & $globals.footer
-  echo "code:" & $code
   var lines = hd & $code
-  echo "lines:" & lines
   result = lines
 
 proc getClassName(t: PType): Rope =
@@ -2918,7 +2910,6 @@ proc getClassName(t: PType): Rope =
   else: result = rope(s.name.s)
 
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
-  echo "myClose"
   result = myProcess(b, n)
   var m = BModule(b)
   if sfMainModule in m.module.flags:
@@ -2928,19 +2919,15 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags:
     let code = wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
-    echo "outFile:"
-    echo $m.config.outDir.string
-    echo $m.config.outFile.string
+    # echo "outFile:"
     if m.outputFiles.len > 0:
-      echo "has extra files to be output"
+      # echo "has extra files to be output"
       for filePath, file in m.outputFiles:        
         let outFile = m.config.prepareToWriteAdditionalOutput(filePath)
-        echo "output:" & filePath
+        # echo "output:" & filePath
         var code = genHeader() & $file.g.code
         discard writeRopeIfNotEqual(code, outFile)
 
-    echo "write file"
-    echo code
     discard writeRopeIfNotEqual(genHeader() & code, outFile)
 
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
