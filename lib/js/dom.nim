@@ -103,6 +103,10 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
+  Selection* {.importc.} = ref object
+
+  LocalStorage* {.importc.} = ref object
+
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
     document*: Document
@@ -129,6 +133,7 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
+    localStorage*: LocalStorage
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -165,10 +170,13 @@ type
     parentNode*: Node
     previousSibling*: Node
     innerHTML*: cstring
+    innerText*: cstring
+    textContent *: cstring
     style*: Style
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
+    activeElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -237,6 +245,13 @@ type
   FileObj {.importc.} = object of Blob
     lastModified*: int
     name*: cstring
+
+  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement
+  TextAreaElement* = ref object of ElementObj
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
 
   # https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement
   InputElement* = ref InputElementObj
@@ -354,6 +369,7 @@ type
     backgroundImage*: cstring
     backgroundPosition*: cstring
     backgroundRepeat*: cstring
+    backgroundSize*: cstring
     border*: cstring
     borderBottom*: cstring
     borderBottomColor*: cstring
@@ -364,6 +380,7 @@ type
     borderLeftColor*: cstring
     borderLeftStyle*: cstring
     borderLeftWidth*: cstring
+    borderRadius*: cstring
     borderRight*: cstring
     borderRightColor*: cstring
     borderRightStyle*: cstring
@@ -375,6 +392,8 @@ type
     borderTopWidth*: cstring
     borderWidth*: cstring
     bottom*: cstring
+    boxSizing*: cstring
+    boxShadow*: cstring
     captionSide*: cstring
     clear*: cstring
     clip*: cstring
@@ -409,7 +428,10 @@ type
     minHeight*: cstring
     minWidth*: cstring
     opacity*: cstring
+    outline*: cstring
     overflow*: cstring
+    overflowX*: cstring
+    overflowY*: cstring
     padding*: cstring
     paddingBottom*: cstring
     paddingLeft*: cstring
@@ -419,6 +441,7 @@ type
     pageBreakBefore*: cstring
     pointerEvents*: cstring
     position*: cstring
+    resize*: cstring
     right*: cstring
     scrollbar3dLightColor*: cstring
     scrollbarArrowColor*: cstring
@@ -1136,7 +1159,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): cstring
+proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
 proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1222,6 +1245,19 @@ proc checkValidity*(e: InputElement): bool
 
 # Blob "methods"
 proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: cstring = "")
+
+# Performance "methods"
+proc now*(p: Performance): float
+
+# Selection "methods"
+proc removeAllRanges*(s: Selection)
+
+# LocalStorage "methods"
+proc getItem*(ls: LocalStorage, key: cstring): cstring
+proc setItem*(ls: LocalStorage, key, value: cstring)
+proc hasItem*(ls: LocalStorage, key: cstring): bool
+proc clear*(ls: LocalStorage)
+proc removeItem*(ls: LocalStorage, key: cstring)
 
 {.pop.}
 
