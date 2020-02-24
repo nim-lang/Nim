@@ -65,7 +65,7 @@ const
     wGuard, wBitsize, wCursor} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
-    wNoInit, wCompileTime, wGlobal, wNoassign,
+    wNoInit, wCompileTime, wGlobal, 
     wGensym, wInject, wCodegenDecl, wGuard, wGoto, wCursor}
   constPragmas* = declPragmas + {wHeader, wMagic,
     wGensym, wInject,
@@ -826,9 +826,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNodecl:
         noVal(c, it)
         incl(sym.loc.flags, lfNoDecl)
-      of wNoassign:
-        noVal(c, it)
-        incl(sym.loc.flags, lfNoAssign)  
       of wPure, wAsmNoStackFrame:
         noVal(c, it)
         if sym != nil:

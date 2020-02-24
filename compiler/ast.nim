@@ -750,7 +750,6 @@ type
       # no format string.
     lfNoDeepCopy,             # no need for a deep copy
     lfNoDecl,                 # do not declare it in C
-    lfNoAssign,               # do not assign value
     lfDynamicLib,             # link symbol to dynamic library
     lfExportLib,              # export symbol for dynamic library generation
     lfHeader,                 # include header file for symbol

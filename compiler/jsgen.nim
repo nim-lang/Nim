@@ -125,7 +125,6 @@ type
     idLookupTable: PLookupTable
     body: PSrcCode
     globals, locals: Rope
-    lastVarName: Rope
     options: TOptions
     module: BModule
     g: PGlobals
@@ -1101,7 +1100,6 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
-      # echo "last varname =" & $p.g.lastVarName
       var strVal = replaceSpecial(p, it.strVal)
       p.body.add(strVal)
     of nkSym:
@@ -1144,19 +1142,12 @@ proc genEmit(p: PProc, n: PNode): PProc =
   elif section == jsfsTypes:
     p.g.types.add(emitStr)
   else:
-    # p.g.code.add(s.body)
     var s = genAsmOrEmitStmt(p, n)
-    # p.g.code.add(s.body)
 
   let (filePath, fileContent) = determineExternalFile(n)  
   if filePath.len > 0:
     # echo "external file:" & filePath & " content: " & fileContent
     p.module.outputFiles[filePath].g.code.add(fileContent)
-
-  # echo "using sections for emit"
-  # top level emit pragma?
-  # let (section, emitStr) = determineSection(n)
-
   result = p
     
 
@@ -1929,21 +1920,12 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode = v.constraint.strVal
 
   if n.kind == nkEmpty:
-    # echo "empty"
     if not isIndirect(v) and
       v.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and mapType(p,
           v.typ) == etyBaseIndex:
-      # echo "ty"
       lineF(p, "var $1 = null;$n", [varName])
       lineF(p, "var $1_Idx = 0;$n", [varName])
     else:
-      # echo "NO ty"
-      # echo v.typ
-      # echo isIndirect(v)
-      # let hasNoAssign = lfNoAssign in v.loc.flags
-      # if hasNoAssign:      
-        # lineF(p, "var $1;$n", varName)
-      # else:
       var varVal = createVar(p, v.typ, isIndirect(v))
       line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName, varVal]))
   else:
@@ -1981,7 +1963,6 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     else:
       s = a.res
     if isIndirect(v):
-      # echo "indirect"
       line(p, runtimeFormat(varCode & " = [$3];$n", [returnType, v.loc.r, s]))
     else:
       line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, s]))
@@ -1997,7 +1978,6 @@ proc genVarStmt(p: PProc, n: PNode) =
     var a = n[i]
     if a.kind != nkCommentStmt:
       if a.kind == nkVarTuple:
-        # echo "var tuple"
         let unpacked = lowerTupleUnpacking(p.module.graph, a, p.prc)
         genStmt(p, unpacked)
       else:
@@ -2919,12 +2899,11 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if sfMainModule in m.module.flags:
     let code = wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
-    # echo "outFile:"
+
     if m.outputFiles.len > 0:
       # echo "has extra files to be output"
       for filePath, file in m.outputFiles:        
         let outFile = m.config.prepareToWriteAdditionalOutput(filePath)
-        # echo "output:" & filePath
         var code = genHeader() & $file.g.code
         discard writeRopeIfNotEqual(code, outFile)
 
