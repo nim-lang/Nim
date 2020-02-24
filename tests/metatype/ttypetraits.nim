@@ -351,18 +351,18 @@ block: # enum.len
     doAssert OtherEnum.enumLen == 3
     doAssert MyFlag.enumLen == 4
 
-block: # getTypeid
-  const c1 = getTypeid(type(12))
-  const a1 = getTypeid(type(12))
-  const a2 = getTypeid(type(12))
-  let a3 = getTypeid(type(12))
+block: # getTypeId
+  const c1 = getTypeId(type(12))
+  const a1 = getTypeId(type(12))
+  const a2 = getTypeId(type(12))
+  let a3 = getTypeId(type(12))
   doAssert a1 == a2
     # we need to check that because nim uses different id's
     # for different instances of tyInt (etc), so we make sure implementation of
-    # `getTypeid` is robust to that
+    # `getTypeId` is robust to that
   doAssert a1 == a3
-  doAssert getTypeid(type(12.0)) != getTypeid(type(12))
-  doAssert getTypeid(type(12.0)) == getTypeid(float)
+  doAssert getTypeId(type(12.0)) != getTypeId(type(12))
+  doAssert getTypeId(type(12.0)) == getTypeId(float)
 
   type Foo = object
     x1: int
@@ -371,8 +371,65 @@ block: # getTypeid
     x1: int
   type Foo2 = Foo
   type FooT2 = FooT
-  doAssert Foo.getTypeid == Foo2.getTypeid
-  doAssert FooT2.getTypeid == FooT.getTypeid
-  doAssert FooT2[float].getTypeid == FooT[type(1.2)].getTypeid
-  doAssert FooT2[float].getTypeid != FooT[type(1)].getTypeid
-  doAssert Foo.x1.type.getTypeid == int.getTypeid
+  doAssert Foo.getTypeId == Foo2.getTypeId
+  doAssert FooT2.getTypeId == FooT.getTypeId
+  doAssert FooT2[float].getTypeId == FooT[type(1.2)].getTypeId
+  doAssert FooT2[float].getTypeId != FooT[type(1)].getTypeId
+  doAssert Foo.x1.type.getTypeId == int.getTypeId
+
+  doAssert int.getTypeId is TypeId
+
+block: # example use case for `getTypeId`:
+  ## this would be in a library, say prettys.nim:
+  type Callback = proc(result: var string, a: pointer, id: TypeId): bool
+
+  proc pretty[T](result: var string, a: T, callback: Callback) =
+    when T is object:
+      result.add "("
+      for k,v in fieldPairs(a):
+        result.add $k & ": "
+        pretty(result, v, callback)
+        result.add ", "
+      result.add ")"
+    elif T is ref|ptr:
+      if callback(result, cast[pointer](a), getTypeId(T)):
+        discard
+      elif a == nil:
+        result.add "nil"
+      else:
+        pretty(result, a[], callback)
+    else:
+      result.add $a
+
+  proc pretty[T](a: T, callback: Callback): string = pretty(result, a, callback)
+
+  ## this would be in user code, say main.nim:
+  proc main()=
+    type Foo = ref object
+      x: int
+    type Bar = object
+      b1: Foo
+      b2: string
+
+    let f = Bar(b1: Foo(x: 12), b2: "abc")
+
+    proc callback(ret: var string, a: pointer, id: TypeId): bool =
+      case id
+      of Foo.getTypeId:
+        ret.add $("custom:", cast[Foo](a).x)
+        return true
+      else:
+        discard
+
+    proc callback2(ret: var string, a: pointer, id: TypeId): bool =
+      case id
+      of Foo.getTypeId:
+        ret.add $("custom2:", cast[Foo](a).x)
+        return true
+      else:
+        discard
+
+    doAssert pretty(f, callback) == """(b1: ("custom:", 12), b2: abc, )"""
+    doAssert pretty(f, callback2) == """(b1: ("custom2:", 12), b2: abc, )"""
+
+  main()

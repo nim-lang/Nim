@@ -31,16 +31,26 @@ runnableExamples:
   assert C[float] is HoleyEnum
 
 type
-  Typeid* = distinct string ## opaque, used by `getTypeid`
-proc getTypeid*(t: typedesc): Typeid {.magic: "TypeTrait", since: (1, 1).} =
-  ## returns a unique string id representing a type; the id is stable across
+  TypeId* = distinct string ## opaque, used by `getTypeId`
+
+proc `==`*(x, y: TypeId): bool {.borrow.}
+
+proc getTypeIdImpl(t: typedesc): string {.magic: "TypeTrait", since: (1, 1).}
+
+proc getTypeId*(t: typedesc): TypeId {.since: (1, 1).} =
+  ## Returns a unique id representing a type; the id is stable across
   ## recompilations of the same program, but may differ if the program source
-  ## changes.
+  ## changes. In particular serializing it will be meaningless after source
+  ## change + recompilation: ids are reused in an un-specified manner.
+  ##
+  ## Example use cases: using ids as keys in Tables (eg for Type hashing),  for Comparisons? Store into sets to prevent recursions during type traversal?
+  ## Example use case: passing a callback
   runnableExamples:
     type Foo[T] = object
     type Foo2 = Foo
-    doAssert Foo[int].getTypeid == Foo2[type(1)].getTypeid
-    doAssert Foo[int].getTypeid != Foo[float].getTypeid
+    doAssert Foo[int].getTypeId == Foo2[type(1)].getTypeId
+    doAssert Foo[int].getTypeId != Foo[float].getTypeId
+  TypeId(getTypeIdImpl(t))
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.

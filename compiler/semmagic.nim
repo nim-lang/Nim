@@ -162,7 +162,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result = newIntNode(nkIntLit, operand.len - ord(operand.kind==tyProc))
     result.typ = newType(tyInt, nextTypeId c.idgen, context)
     result.info = traitCall.info
-  of "getTypeid":
+  of "getTypeIdImpl":
     var arg = operand
     if arg.kind in IntegralTypes - {tyEnum}:
       # needed otherwise we could get different ids, see tests
