@@ -1045,7 +1045,7 @@ proc useSection(secStr: string, sectionMarker: string): bool =
 
 proc matchSection(secStr: string): string =
   result = ""
-  for marker in ["HEADER", "IMPORTS", "FOOTER", "TYPE"]:
+  for marker in ["HEADER", "IMPORT", "FOOTER", "TYPE"]:
     if useSection(secStr, marker):
       result = marker
 
@@ -1130,7 +1130,7 @@ proc genEmit(p: PProc, n: PNode): PProc =
   case section 
   of "HEADER":
     p.g.header.add(emitStr)
-  of "IMPORTS":
+  of "IMPORT":
     p.g.imports.add(emitStr)
   of "FOOTER":
     p.g.footer.add(emitStr)
