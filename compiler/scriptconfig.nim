@@ -199,7 +199,6 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =
-  rawMessage(conf, hintConf, scriptName.string)
   let oldSymbolFiles = conf.symbolFiles
   conf.symbolFiles = disabledSf
 
@@ -224,7 +223,7 @@ proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
   incl(m.flags, sfMainModule)
   graph.vm = setupVM(m, cache, scriptName.string, graph)
 
-  graph.compileSystemModule() # TODO: see why this unsets hintConf in conf.notes
+  graph.compileSystemModule()
   discard graph.processModule(m, llStreamOpen(scriptName, fmRead))
 
   # watch out, "newruntime" can be set within NimScript itself and then we need

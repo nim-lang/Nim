@@ -251,6 +251,7 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
   template runNimScriptIfExists(path: AbsoluteFile) =
     let p = path # eval once
     if fileExists(p):
+      configFiles.add(p)
       runNimScript(cache, p, freshDefines = false, conf)
 
   if optSkipSystemConfigFile notin conf.globalOptions:
