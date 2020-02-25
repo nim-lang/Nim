@@ -117,7 +117,7 @@ type
 
   PGlobals = ref object of RootObj
     typeInfo, constants: Rope
-    lastVarName: Rope
+    lastDeclId: Rope
     code, header, imports, footer, types: PSrcCode
     typeLookupTable: PTypeLookupTable
     forwarded: seq[PSym]
@@ -144,9 +144,10 @@ type
 
 # TLookupTable
 
-proc newIdTableEntry(startIndex: int = 0): PIdTableEntry =
+proc newIdTableEntry(startIndex: int = 0, id: string = ""): PIdTableEntry =
   new(result)
   result.startIndex = startIndex
+  result.id = id
 
 proc newIdLookupTable(): PIdLookupTable =
   new(result)
@@ -160,7 +161,7 @@ proc find(self: PIdLookupTable, id: string): PIdTableEntry =
   self.idMap[id]
 
 proc addEntry(self: PIdLookupTable, id: string, startIndex: int) =
-  var entry = newIdTableEntry(startIndex)
+  var entry = newIdTableEntry(startIndex = startIndex)
   self.idMap[id] = entry
   self.currentId = id
   
@@ -168,8 +169,8 @@ proc addEntry(self: PIdLookupTable, id: string, startIndex, endIndex: int) =
   self.addEntry(id, startIndex)
   self.idMap[id].endIndex = endIndex
 
-proc setEntry(self: PIdLookupTable, id: string) =
-  self.idMap[id] = newIdTableEntry()
+proc setEntry(self: PIdLookupTable, id: string, declId: string) =
+  self.idMap[id] = newIdTableEntry(id = declId)
   self.currentId = id
   
 proc current(self: PIdLookupTable): PIdTableEntry = 
@@ -205,10 +206,10 @@ proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: in
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
   self.find(myTypeId).addEntry(id, startIndex)
 
-proc setEntry(self: PTypeLookupTable, typeId: string, id: string) =
+proc setEntry(self: PTypeLookupTable, typeId: string, id: string, declId: string) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
   var table = self.find(myTypeId)
-  table.setEntry(id)
+  table.setEntry(id, declId)
   self.currentType = typeId
   
 proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
@@ -1138,9 +1139,9 @@ proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: st
     var content = sec[index..^1]
     result = (filePath, content)
 
-# replace $ID special ref placeholder with stored lastVarName
+# replace $ID special ref placeholder with stored lastDeclId
 proc replaceSpecial(p: PProc, strVal: string): string = 
-    strVal.replace "%ID%", $(p.g.lastVarName)
+    strVal.replace "%ID%", $(p.g.lastDeclId)
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   genLineDir(p, n)
@@ -1187,7 +1188,7 @@ proc storeTypeAndAlias(p: PProc, str: string) =
   var typeId, alias: string
   (typeId, alias) = findSetStoreTypeAndAlias(str)
   if typeId.len > 0 and alias.len > 0:
-    p.g.typeLookupTable.setEntry(typeId, alias)
+    p.g.typeLookupTable.setEntry(typeId, alias, $p.g.lastDeclId)
 
 proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry] =
   var typeId, alias: string
@@ -1978,7 +1979,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
   
   # store varName on p so that we can reference it later
-  p.g.lastVarName = varName
+  p.g.lastDeclId = varName
 
   # add var id mapping to idLookupTable
   # line adds a line to body p.body.add(indentLine(p, added))
