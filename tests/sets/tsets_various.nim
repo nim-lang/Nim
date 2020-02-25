@@ -198,3 +198,26 @@ block tsets3:
     assert disjoint(s1, s3)
     assert(not disjoint(s2, s3))
     assert(not disjoint(s2, s2))
+
+
+block: # https://github.com/nim-lang/Nim/issues/13496
+  template testDel(body) =
+    block:
+      body
+      t.incl(15)
+      t.incl(19)
+      t.incl(17)
+      t.incl(150)
+      t.del(150)
+      doAssert t.len == 3
+      doAssert sortedItems(t) == @[15, 17, 19]
+      var s = newSeq[int]()
+      for v in t.values: s.add(v)
+      assert s.len == 3
+      doAssert sortedItems(s) == @[1, 2, 3]
+      when t is OrderedSet:
+        doAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
+        doAssert toSeq(t) == @[15, 19, 17]
+
+  testDel(): (var t: HashSet[int])
+  testDel(): (var t: OrderedSet[int])
