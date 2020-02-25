@@ -9,7 +9,7 @@ import sets, hashes
 
 
 block tsetpop:
-  var a = initSet[int]()
+  var a = initHashSet[int]()
   for i in 1..1000:
     a.incl(i)
   doAssert len(a) == 1000
@@ -50,7 +50,7 @@ block tsets2:
       "80"]
 
   block tableTest1:
-    var t = initSet[tuple[x, y: int]]()
+    var t = initHashSet[tuple[x, y: int]]()
     t.incl((0,0))
     t.incl((1,0))
     assert(not t.containsOrIncl((0,1)))
@@ -63,7 +63,7 @@ block tsets2:
     #  "{(x: 0, y: 0), (x: 0, y: 1), (x: 1, y: 0), (x: 1, y: 1)}")
 
   block setTest2:
-    var t = initSet[string]()
+    var t = initHashSet[string]()
     t.incl("test")
     t.incl("111")
     t.incl("123")
@@ -102,9 +102,9 @@ block tsets2:
 
 block tsets3:
   let
-    s1: HashSet[int] = toSet([1, 2, 4, 8, 16])
-    s2: HashSet[int] = toSet([1, 2, 3, 5, 8])
-    s3: HashSet[int] = toSet([3, 5, 7])
+    s1: HashSet[int] = toHashSet([1, 2, 4, 8, 16])
+    s2: HashSet[int] = toHashSet([1, 2, 3, 5, 8])
+    s3: HashSet[int] = toHashSet([3, 5, 7])
 
   block union:
     let
@@ -172,7 +172,7 @@ block tsets3:
       assert i in s1_s3 xor i in s1
       assert i in s2_s3 xor i in s2
 
-    assert((s3 -+- s3) == initSet[int]())
+    assert((s3 -+- s3) == initHashSet[int]())
     assert((s3 -+- s1) == s1_s3)
 
   block difference:
@@ -191,7 +191,7 @@ block tsets3:
     for i in s2:
       assert i in s2_s3 xor i in s3
 
-    assert((s2 - s2) == initSet[int]())
+    assert((s2 - s2) == initHashSet[int]())
 
   block disjoint:
     assert(not disjoint(s1, s2))
