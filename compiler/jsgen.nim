@@ -2627,6 +2627,18 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var returnStmt: Rope = nil
   var resultAsgn: Rope = nil
   var name = mangleName(p.module, prc)
+
+  varCode: string  
+  varName = mangleName(p.module, v)    
+  useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
+
+  # to store the nim var name (useful for clean module exports)
+  let nimVarName = v.name.s 
+
+  # store varName on p so that we can reference it later
+  p.g.lastDeclGenId = varName
+  p.g.lastDeclId = rope(nimVarName)
+
   let header = generateHeader(p, prc.typ)
   if prc.typ[0] != nil and sfPure notin prc.flags:
     resultSym = prc.ast[resultPos].sym
