@@ -97,12 +97,17 @@ type
 
   PIdTableEntry = ref TIdTableEntry
 
-  TLookupTable = object
+  TIdLookupTable = object
     idMap: TableRef[string, PIdTableEntry]
     currentId: string
-    current: PIdTableEntry
 
-  PLookupTable = ref TLookupTable
+  PIdLookupTable = ref TIdLookupTable
+
+  TTypeLookupTable = object
+    typeMap: TableRef[string, PIdLookupTable]
+    currentType: string
+
+  PTypeLookupTable = ref TTypeLookupTable
 
   TSrcCode = object
     srcList: seq[Rope] # mutable sequence of ropes/strings
@@ -113,6 +118,7 @@ type
     typeInfo, constants: Rope
     lastVarName: Rope
     code, header, imports, footer, types: PSrcCode
+    typeLookupTable: PTypeLookupTable
     forwarded: seq[PSym]
     generatedSyms: IntSet
     typeInfoGenerated: IntSet
@@ -122,7 +128,6 @@ type
   TProc = object
     procDef: PNode
     prc: PSym
-    idLookupTable: PLookupTable
     body: PSrcCode
     globals, locals: Rope
     options: TOptions
@@ -142,36 +147,64 @@ proc newIdTableEntry(startIndex: int = 0): PIdTableEntry =
   new(result)
   result.startIndex = startIndex
 
-proc newLookupTable(): PLookupTable =
+proc newIdLookupTable(): PIdLookupTable =
   new(result)
   result.idMap = newTable[string, PIdTableEntry]()
-  result.current = newIdTableEntry()
 
-proc find(self: PLookupTable, id: string): PIdTableEntry =
+proc newTypeLookupTable(): PTypeLookupTable =
+  new(result)
+  result.typeMap = newTable[string, PIdLookupTable]()
+  
+proc find(self: PIdLookupTable, id: string): PIdTableEntry =
   self.idMap[id]
 
-proc addEntry(self: PLookupTable, id: string, startIndex: int) =
+proc addEntry(self: PIdLookupTable, id: string, startIndex: int) =
   var entry = newIdTableEntry(startIndex)
   self.idMap[id] = entry
   self.currentId = id
   
-proc addEntry(self: PLookupTable, id: string, startIndex, endIndex: int) =
+proc addEntry(self: PIdLookupTable, id: string, startIndex, endIndex: int) =
   self.addEntry(id, startIndex)
   self.idMap[id].endIndex = endIndex
 
-proc current(self: PLookupTable): PIdTableEntry = 
+proc current(self: PIdLookupTable): PIdTableEntry = 
   self.idMap[self.currentId]
 
-proc setCurrentEndIndex(self: PLookupTable, endIndex: int) =
+proc setCurrentEndIndex(self: PIdLookupTable, endIndex: int) =
   self.current.endIndex = endIndex
 
-proc bumpFollowingIdLocationRefs(self: PLookupTable, id: string, lineCount: int) =
+proc bumpFollowingIdLocationRefs(self: PIdLookupTable, id: string, lineCount: int) =
   var idEntry = self.idMap[id]
   for key, entry in self.idMap:
     if entry.startIndex > idEntry.startIndex:
       entry.startIndex = entry.startIndex + lineCount
     entry.endIndex = entry.endIndex + lineCount
+    
+proc current(self: PTypeLookupTable): PIdLookupTable = 
+  self.typeMap[self.currentType]
 
+proc currentIdEntry(self: PTypeLookupTable): PIdTableEntry = 
+  self.current.current
+
+proc setCurrentEndIndex(self: PTypeLookupTable, endIndex: int) =
+  self.currentIdEntry.endIndex = endIndex
+  
+proc find(self: PTypeLookupTable, typeId: string): PIdLookupTable =
+  self.typeMap[typeId]
+    
+proc find(self: PTypeLookupTable, typeId: string, id: string): PIdTableEntry =
+  var myTypeId = if typeId.len == 0: typeId else: self.currentType
+  self.typeMap[myTypeId].idMap[id]
+
+proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: int) =
+  var myTypeId = if typeId.len == 0: typeId else: self.currentType
+  self.find(myTypeId).addEntry(id, startIndex)
+  
+proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
+  var myTypeId = if typeId.len == 0: typeId else: self.currentType
+  var table = self.find(myTypeId)
+  table.bumpFollowingIdLocationRefs(id, lineCount)
+  
 # PSrcCode
 
 proc add(self: PSrcCode, code: string = "") =
@@ -237,10 +270,12 @@ proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
   code.len
   
 
-proc insertCodeBeforeAt(p: PProc, srcCode: PSrcCode, id: string, code: string) =
-  var srcCodeStartIndex = p.idLookupTable.find(id).startIndex
+proc insertCodeBeforeAt(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
+  var table = p.g.typeLookupTable
+  var srcCodeStartIndex = table.find(typeId, id).startIndex
   var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
-  p.idLookupTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
+  var idTable = table.find(typeId)
+  idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
 
 template config*(p: PProc): ConfigRef = p.module.config
 
@@ -276,12 +311,13 @@ proc newSrcCode(): PSrcCode =
 proc newGlobals(): PGlobals =
   new(result)
   result.forwarded = @[]
-
+  
   result.code = newSrcCode()
   result.header = newSrcCode()
   result.footer = newSrcCode()
   result.types = newSrcCode()
 
+  result.typeLookupTable = newTypeLookupTable()
   result.generatedSyms = initIntSet()
   result.typeInfoGenerated = initIntSet()
 
@@ -303,7 +339,6 @@ proc newProc(globals: PGlobals, module: BModule, procDef: PNode,
   result = PProc(
     blocks: @[],
     body: newSrcCode(),
-    idLookupTable: newLookupTable(),
     options: options,
     module: module,
     procDef: procDef,
@@ -1064,22 +1099,36 @@ proc determineSection(n: PNode): tuple[fs: string, str: string] =
     let secMarker = matchSection(sec)
     result = getSection(sec, secMarker)
 
+# /*FILEPATH:index.d.ts:*/
 proc findEmitFilePath*(emitStr: string, marker: string): string = 
   var xpr = re"""\/\*FILEPATH:(\S+):\*\/"""  
-  # var line = "/*FILEPATH:index.d.ts:*/"
   result = ""
   if emitStr =~ xpr:
     result = matches[0]
 
-proc determineExternalFile(n: PNode): tuple[filePath: string, fileContent: string] =
+# %[STOREID:property=A.abc]%  
+proc findSetStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
+  var xpr = re"""%\[STOREID:(\S+)=(\S+)\]%"""   
+  var typeId, alias: string
+  if emitStr =~ xpr:
+    (typeId, alias) = matches
+    result = (typeId, alias)
+
+# %[GETID:property(A.abc)]% 
+proc findGetStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
+  var xpr = re"""%\[GETID:(\S+)\((\S+)\)\]%"""   
+  var typeId, alias: string
+  if emitStr =~ xpr:
+    (typeId, alias) = matches
+    result = (typeId, alias)
+ 
+proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: string] =
   result = ("", "")
-  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
-    let sec = n[0].strVal
-    var filePath = findEmitFilePath(sec, "FILE")
-    if filePath.len > 0:
-      var index = lengthOfSectionMarker(":" & filePath & ":")
-      var content = sec[index..^1]
-      result = (filePath, content)
+  var filePath = findEmitFilePath(sec, "FILE")
+  if filePath.len > 0:
+    var index = lengthOfSectionMarker(":" & filePath & ":")
+    var content = sec[index..^1]
+    result = (filePath, content)
 
 # replace $ID special ref placeholder with stored lastVarName
 proc replaceSpecial(p: PProc, strVal: string): string = 
@@ -1122,6 +1171,11 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   p.body.add "\L"
   p  
 
+proc nToString(n: PNode): string =
+  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
+    result = n[0].strVal
+
+
 proc genEmit(p: PProc, n: PNode): PProc =
   let (section, emitStr) = determineSection(n)
   # add to code section array
@@ -1139,7 +1193,14 @@ proc genEmit(p: PProc, n: PNode): PProc =
   else:
     discard genAsmOrEmitStmt(p, n)
 
-  let (filePath, fileContent) = determineExternalFile(n)  
+  var str = n.nToString()
+  var typeId, alias: string
+  (typeId, alias) = findSetStoreTypeAndAlias(str)
+
+  if typeId.len == 0:
+    (typeId, alias) = findGetStoreTypeAndAlias(str)  
+
+  let (filePath, fileContent) = determineExternalFile(str)  
   if filePath.len > 0:
     # echo "external file:" & filePath & " content: " & fileContent
     p.module.outputFiles[filePath].g.code.add(fileContent)
@@ -1898,7 +1959,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   # line adds a line to body p.body.add(indentLine(p, added))
   var srcCodeStartIndex = p.body.len + 1
   
-  p.idLookupTable.addEntry($varName, srcCodeStartIndex)
+  p.g.typeLookupTable.addEntry("var", $varName, srcCodeStartIndex)
 
   if v.constraint.isNil:
     if useReloadingGuard:
@@ -1953,7 +2014,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
 
-      p.idLookupTable.setCurrentEndIndex(endIndex = p.body.len)
+      p.g.typeLookupTable.setCurrentEndIndex(endIndex = p.body.len)
       return
     else:
       s = a.res
@@ -1966,7 +2027,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     dec p.extraIndent
     lineF(p, "}$n")
   # return
-  p.idLookupTable.setCurrentEndIndex(endIndex = p.body.len)
+  p.g.typeLookupTable.setCurrentEndIndex(endIndex = p.body.len)
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
