@@ -118,6 +118,7 @@ type
 
   PGlobals = ref object of RootObj
     typeInfo, constants: Rope
+    lastDeclGenId: Rope
     lastDeclId: Rope
     code, header, imports, footer, types: PSrcCode
     typeLookupTable: PTypeLookupTable
@@ -145,10 +146,11 @@ type
 
 # TLookupTable
 
-proc newIdTableEntry(startIndex: int = 0, id: string = ""): PIdTableEntry =
+proc newIdTableEntry(startIndex: int = 0, id: string = "", genId: string = ""): PIdTableEntry =
   new(result)
   result.startIndex = startIndex
   result.id = id
+  result.genId = genId
 
 proc newIdLookupTable(): PIdLookupTable =
   new(result)
@@ -170,8 +172,8 @@ proc addEntry(self: PIdLookupTable, id: string, startIndex, endIndex: int) =
   self.addEntry(id, startIndex)
   self.idMap[id].endIndex = endIndex
 
-proc setEntry(self: PIdLookupTable, id: string, declId: string) =
-  self.idMap[id] = newIdTableEntry(id = declId)
+proc setEntry(self: PIdLookupTable, id: string, declId: string, declGenId: string) =
+  self.idMap[id] = newIdTableEntry(id = declId, genId = declGenId)
   self.currentId = id
   
 proc current(self: PIdLookupTable): PIdTableEntry = 
@@ -207,10 +209,10 @@ proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: in
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
   self.find(myTypeId).addEntry(id, startIndex)
 
-proc setEntry(self: PTypeLookupTable, typeId: string, id: string, declId: string) =
+proc setEntry(self: PTypeLookupTable, typeId: string, id: string, declId: string, declGenId: string) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
   var table = self.find(myTypeId)
-  table.setEntry(id, declId)
+  table.setEntry(id, declId, declGenId)
   self.currentType = typeId
   
 proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
@@ -1149,8 +1151,11 @@ proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: st
     result = (filePath, content)
 
 # replace $ID special ref placeholder with stored lastDeclId
-proc replaceSpecial(p: PProc, strVal: string): string = 
+proc replaceDeclId(p: PProc, strVal: string): string = 
     strVal.replace "%ID%", $(p.g.lastDeclId)
+
+proc replaceDeclGenId(p: PProc, strVal: string): string = 
+  strVal.replace "%GENID%", $(p.g.lastDeclGenId)
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   genLineDir(p, n)
@@ -1159,8 +1164,10 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
     let it = n[i]
     case it.kind
     of nkStrLit..nkTripleStrLit:
-      var strVal = replaceSpecial(p, it.strVal)
-      p.body.add(strVal)
+      var str = it.strVal
+      str = replaceDeclId(p, str)
+      str = replaceDeclGenId(p, str)    
+      p.body.add(str)
     of nkSym:
       let v = it.sym
       # for backwards compatibility we don't deref syms here :-(
@@ -1197,7 +1204,7 @@ proc storeTypeAndAlias(p: PProc, str: string) =
   var typeId, alias: string
   (typeId, alias) = findSetStoreTypeAndAlias(str)
   if typeId.len > 0 and alias.len > 0:
-    p.g.typeLookupTable.setEntry(typeId, alias, $p.g.lastDeclId)
+    p.g.typeLookupTable.setEntry(typeId, alias, $p.g.lastDeclId, $p.g.lastDeclGenId)
 
 proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry, propName: string] =
   var typeId, alias: string
@@ -1215,7 +1222,10 @@ proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: P
     result = (marker, entry, propName)
     
 proc genEmit(p: PProc, n: PNode): PProc =
-  var str = n.nToString()  
+  var str = n.nToString()
+  str = replaceDeclId(p, str)
+  str = replaceDeclGenId(p, str)
+
   var (marker, entry, propName) = getTypeAndAliasEntry(p, str)
   if marker.len > 0:
     var id = if propName == "id": entry.id else: entry.genId
@@ -1991,11 +2001,15 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     a: TCompRes
     s: Rope
     varCode: string  
-    varName = mangleName(p.module, v)
+    varName = mangleName(p.module, v)    
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
   
+  # to store the nim var name (useful for clean module exports)
+  let nimVarName = v.name.s 
+
   # store varName on p so that we can reference it later
-  p.g.lastDeclId = varName
+  p.g.lastDeclGenId = varName
+  p.g.lastDeclId = rope(nimVarName)
 
   # add var id mapping to idLookupTable
   # line adds a line to body p.body.add(indentLine(p, added))
