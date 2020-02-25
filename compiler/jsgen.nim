@@ -92,6 +92,7 @@ type
     isLoop: bool # whether it's a 'block' or 'while'
 
   TIdTableEntry = object
+    id: string
     startIndex: int
     endIndex: int
 
@@ -167,6 +168,10 @@ proc addEntry(self: PIdLookupTable, id: string, startIndex, endIndex: int) =
   self.addEntry(id, startIndex)
   self.idMap[id].endIndex = endIndex
 
+proc setEntry(self: PIdLookupTable, id: string) =
+  self.idMap[id] = newIdTableEntry()
+  self.currentId = id
+  
 proc current(self: PIdLookupTable): PIdTableEntry = 
   self.idMap[self.currentId]
 
@@ -199,6 +204,12 @@ proc find(self: PTypeLookupTable, typeId: string, id: string): PIdTableEntry =
 proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: int) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
   self.find(myTypeId).addEntry(id, startIndex)
+
+proc setEntry(self: PTypeLookupTable, typeId: string, id: string) =
+  var myTypeId = if typeId.len == 0: typeId else: self.currentType
+  var table = self.find(myTypeId)
+  table.setEntry(id)
+  self.currentType = typeId
   
 proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
@@ -1087,17 +1098,14 @@ proc matchSection(secStr: string): string =
 proc lengthOfSectionMarker(sectionMarker: string): int = 
   ("/*" & sectionMarker & "SECTION*/").len
 
-
 proc getSection(sec, marker: string): tuple[fs: string, str: string] =
   var index = lengthOfSectionMarker(marker)
   result = (marker, sec[index..^1])
   
-proc determineSection(n: PNode): tuple[fs: string, str: string] =
+proc determineSection(str: string): tuple[fs: string, str: string] =
   result = ("main", "")
-  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
-    let sec = n[0].strVal
-    let secMarker = matchSection(sec)
-    result = getSection(sec, secMarker)
+  let secMarker = matchSection(str)
+  result = getSection(str, secMarker)
 
 # /*FILEPATH:index.d.ts:*/
 proc findEmitFilePath*(emitStr: string, marker: string): string = 
@@ -1175,11 +1183,39 @@ proc nToString(n: PNode): string =
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     result = n[0].strVal
 
+proc storeTypeAndAlias(p: PProc, str: string) =
+  var typeId, alias: string
+  (typeId, alias) = findSetStoreTypeAndAlias(str)
+  if typeId.len > 0 and alias.len > 0:
+    p.g.typeLookupTable.setEntry(typeId, alias)
 
+proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry] =
+  var typeId, alias: string
+  (typeId, alias) = findSetStoreTypeAndAlias(str)
+  if typeId.len > 0 and alias.len > 0:
+    var entry = p.g.typeLookupTable.find(typeId, alias)
+    var marker = "%[GETID:" & typeId & "(" & alias & ")]%"
+    result = (marker, entry)
+    
 proc genEmit(p: PProc, n: PNode): PProc =
-  let (section, emitStr) = determineSection(n)
+  var str = n.nToString()  
+  var (marker, entry) = getTypeAndAliasEntry(p, str)
+  if marker.len > 0:
+    var id = entry.id
+    if id.len != 0:
+      str = str.replace(marker, id)
+
+  let (section, emitStr) = determineSection(str)
+
   # add to code section array
   # p.module.s[section].add(emitStr)
+  
+  storeTypeAndAlias(p, str)
+
+  let (filePath, fileContent) = determineExternalFile(str)  
+  if filePath.len > 0:
+    # echo "external file:" & filePath & " content: " & fileContent
+    p.module.outputFiles[filePath].g.code.add(fileContent)
 
   case section 
   of "HEADER":
@@ -1192,18 +1228,7 @@ proc genEmit(p: PProc, n: PNode): PProc =
     p.g.types.add(emitStr)
   else:
     discard genAsmOrEmitStmt(p, n)
-
-  var str = n.nToString()
-  var typeId, alias: string
-  (typeId, alias) = findSetStoreTypeAndAlias(str)
-
-  if typeId.len == 0:
-    (typeId, alias) = findGetStoreTypeAndAlias(str)  
-
-  let (filePath, fileContent) = determineExternalFile(str)  
-  if filePath.len > 0:
-    # echo "external file:" & filePath & " content: " & fileContent
-    p.module.outputFiles[filePath].g.code.add(fileContent)
+    
   result = p
     
 
