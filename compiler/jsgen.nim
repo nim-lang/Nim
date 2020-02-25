@@ -2628,15 +2628,11 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   var resultAsgn: Rope = nil
   var name = mangleName(p.module, prc)
 
-  varCode: string  
-  varName = mangleName(p.module, v)    
-  useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
+  # store the nim var name
+  let nimVarName = prc.name.s
 
-  # to store the nim var name (useful for clean module exports)
-  let nimVarName = v.name.s 
-
-  # store varName on p so that we can reference it later
-  p.g.lastDeclGenId = varName
+  # store nim proc name and generated (mangled) proc name so we can reference it later
+  p.g.lastDeclGenId = name
   p.g.lastDeclId = rope(nimVarName)
 
   let header = generateHeader(p, prc.typ)
