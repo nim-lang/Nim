@@ -93,6 +93,7 @@ type
 
   TIdTableEntry = object
     id: string
+    genId: string
     startIndex: int
     endIndex: int
 
@@ -1123,14 +1124,22 @@ proc findSetStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] =
     (typeId, alias) = matches
     result = (typeId, alias)
 
-# %[GETID:property(A.abc)]% 
-proc findGetStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
-  var xpr = re"""%\[GETID:(\S+)\((\S+)\)\]%"""   
+# %[ID:property(A.abc)]% 
+proc findIdStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
+  var xpr = re"""%\[ID:(\S+)\((\S+)\)\]%"""   
   var typeId, alias: string
   if emitStr =~ xpr:
     (typeId, alias) = matches
     result = (typeId, alias)
- 
+
+# %[ID:property(A.abc)]% 
+proc findGenIdStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
+  var xpr = re"""%\[GENID:(\S+)\((\S+)\)\]%"""   
+  var typeId, alias: string
+  if emitStr =~ xpr:
+    (typeId, alias) = matches
+    result = (typeId, alias)
+
 proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: string] =
   result = ("", "")
   var filePath = findEmitFilePath(sec, "FILE")
@@ -1190,19 +1199,26 @@ proc storeTypeAndAlias(p: PProc, str: string) =
   if typeId.len > 0 and alias.len > 0:
     p.g.typeLookupTable.setEntry(typeId, alias, $p.g.lastDeclId)
 
-proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry] =
+proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry, propName: string] =
   var typeId, alias: string
-  (typeId, alias) = findSetStoreTypeAndAlias(str)
+  var command = "ID"
+  var propName = "id"
+  (typeId, alias) = findGenIdStoreTypeAndAlias(str)
+  if typeId.len == 0:
+    command = "GENID"
+    propName = "genId"
+    (typeId, alias) = findIdStoreTypeAndAlias(str)
+
   if typeId.len > 0 and alias.len > 0:
     var entry = p.g.typeLookupTable.find(typeId, alias)
-    var marker = "%[GETID:" & typeId & "(" & alias & ")]%"
-    result = (marker, entry)
+    var marker = "%[" & command & ":" & typeId & "(" & alias & ")]%"
+    result = (marker, entry, propName)
     
 proc genEmit(p: PProc, n: PNode): PProc =
   var str = n.nToString()  
-  var (marker, entry) = getTypeAndAliasEntry(p, str)
+  var (marker, entry, propName) = getTypeAndAliasEntry(p, str)
   if marker.len > 0:
-    var id = entry.id
+    var id = if propName == "id": entry.id else: entry.genId
     if id.len != 0:
       str = str.replace(marker, id)
 
