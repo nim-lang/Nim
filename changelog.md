@@ -156,6 +156,9 @@ echo f
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
 
+- new syntax for lvalue references: `var b {.byaddr.} = expr`
+
+
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
