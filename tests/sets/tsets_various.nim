@@ -7,6 +7,11 @@ set is empty
 
 import sets, hashes
 
+from sequtils import toSeq
+from algorithm import sorted
+
+proc sortedPairs[T](t: T): auto = toSeq(t.pairs).sorted
+template sortedItems(t: untyped): untyped = sorted(toSeq(t))
 
 block tsetpop:
   var a = initHashSet[int]()
@@ -199,7 +204,6 @@ block tsets3:
     assert(not disjoint(s2, s3))
     assert(not disjoint(s2, s2))
 
-
 block: # https://github.com/nim-lang/Nim/issues/13496
   template testDel(body) =
     block:
@@ -208,15 +212,15 @@ block: # https://github.com/nim-lang/Nim/issues/13496
       t.incl(19)
       t.incl(17)
       t.incl(150)
-      t.del(150)
+      t.excl(150)
       doAssert t.len == 3
       doAssert sortedItems(t) == @[15, 17, 19]
       var s = newSeq[int]()
-      for v in t.values: s.add(v)
+      for v in t: s.add(v)
       assert s.len == 3
-      doAssert sortedItems(s) == @[1, 2, 3]
+      doAssert sortedItems(s) == @[15, 17, 19]
       when t is OrderedSet:
-        doAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
+        doAssert sortedPairs(t) == @[(a: 0, b: 15), (a: 1, b: 19), (a: 2, b: 17)]
         doAssert toSeq(t) == @[15, 19, 17]
 
   testDel(): (var t: HashSet[int])
