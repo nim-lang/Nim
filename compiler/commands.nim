@@ -204,11 +204,17 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     incl(conf.notes, n)
     incl(conf.mainPackageNotes, n)
     incl(conf.enableNotes, n)
+    if conf.isCmdLine:
+      incl(conf.cmdLineNotes, n)
+      excl(conf.cmdLineDisabledNotes, n)
   of "off":
     excl(conf.notes, n)
     excl(conf.mainPackageNotes, n)
     incl(conf.disableNotes, n)
     excl(conf.foreignPackageNotes, n)
+    if conf.isCmdLine:
+      incl(conf.cmdLineDisabledNotes, n)
+      excl(conf.cmdLineNotes, n)
   else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
 
 proc processCompile(conf: ConfigRef; filename: string) =

@@ -231,6 +231,8 @@ type
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds
     mainPackageNotes*: TNoteKinds
+    cmdLineNotes*: TNoteKinds
+    cmdLineDisabledNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
     hintCounter*: int
@@ -286,6 +288,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    isCmdLine*: bool # whether we are currently processing cmdline args, not cfg files
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
   optHints in conf.options and note in conf.notes
@@ -391,6 +394,7 @@ proc newConfigRef*(): ConfigRef =
     arguments: "",
     suggestMaxResults: 10_000,
     maxLoopIterationsVM: 10_000_000,
+    isCmdLine: false,
   )
   setTargetFromSystem(result.target)
   # enable colors by default on terminals
