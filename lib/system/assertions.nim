@@ -54,6 +54,27 @@ template doAssert*(cond: untyped, msg = "") =
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 
+proc assertFalse*[](msg = "") {.noreturn.} =
+  ## Using `assertFalse` is preferable to `doAssert(false)`, as it has {.noreturn.}
+  runnableExamples:
+    proc fun(a: string): int =
+      case a
+      of "foo": 1
+      of "bar": 2
+      of "bad1":
+        doAssert false
+        0 ## awkard, it requires specifying an `expr`, eg `default(typeof(result))`
+      of "bad2": assertFalse() ## better; {.noreturn.} so no `expr` needed
+      else: assertFalse(a)
+    doAssertRaises(AssertionError): discard fun("bad")
+
+  # Note: `[]` forces a generic so that `instantiationInfo` works.
+  const
+    loc = instantiationInfo(fullPaths = compileOption("excessiveStackTrace"))
+    ploc = $loc
+  {.line: loc.}:
+    failedAssertImpl(ploc & " `assertFalse` failed: " & msg)
+
 template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
   ## Sets an assertion failure handler that will intercept any assert
   ## statements following `onFailedAssert` in the current module scope.
