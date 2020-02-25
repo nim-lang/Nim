@@ -20,10 +20,6 @@ const
   off* = false  ## Alias for ``false``.
 
 type
-  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
-                                 ## bool, character, and enumeration types
-                                 ## as well as their subtypes.
-
   SomeSignedInt* = int|int8|int16|int32|int64
     ## Type class matching all signed integer types.
 
@@ -35,7 +31,7 @@ type
 
   SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint|uint8|uint16|uint32|uint64
     ## Type class matching all ordinal types; however this includes enums with
-    ## holes.
+    ## holes. See also `Ordinal`
 
   BiggestInt* = int64
     ## is an alias for the biggest signed integer type the Nim compiler
