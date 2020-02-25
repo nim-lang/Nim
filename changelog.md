@@ -158,7 +158,6 @@ echo f
 
 - new syntax for lvalue references: `var b {.byaddr.} = expr`
 
-
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
