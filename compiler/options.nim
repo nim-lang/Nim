@@ -287,6 +287,12 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
+proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  optHints in conf.options and note in conf.notes
+
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+  optWarns in conf.options and note in conf.notes
+
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
