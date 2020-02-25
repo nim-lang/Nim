@@ -173,9 +173,14 @@ block tableconstr:
 block ttables2:
   proc TestHashIntInt() =
     var tab = initTable[int,int]()
-    for i in 1..1_000_000:
+    when defined(nimTestsTablesDisableSlow):
+      # helps every single time when this test needs to be debugged
+      let n = 1_000
+    else:
+      let n = 1_000_000
+    for i in 1..n:
       tab[i] = i
-    for i in 1..1_000_000:
+    for i in 1..n:
       var x = tab[i]
       if x != i : echo "not found ", i
 
@@ -395,3 +400,20 @@ block tablesref:
   orderedTableSortTest()
   echo "3"
 
+
+block: # https://github.com/nim-lang/Nim/issues/13496
+  let t = newTable[int, int]()
+  t[15] = 1
+  t[19] = 2
+  t[17] = 3
+  t[150] = 4
+  doAssert t.len == 4
+  t.del(150)
+  doAssert t.len == 3
+  doAssert sortedItems(t.values) == @[1, 2, 3]
+  doAssert sortedItems(t.keys) == @[15, 17, 19]
+  doAssert sortedPairs(t) == @[(15, 1), (17, 3), (19, 2)]
+  var s = newSeq[int]()
+  for v in t.values: s.add(v)
+  assert s.len == 3
+  doAssert sortedItems(s) == @[1, 2, 3]

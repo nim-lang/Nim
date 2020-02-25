@@ -1161,7 +1161,7 @@ iterator keys*[A, B](t: TableRef[A, B]): A =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
