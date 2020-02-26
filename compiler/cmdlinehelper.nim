@@ -27,9 +27,7 @@ proc initDefinesProg*(self: NimProg, conf: ConfigRef, name: string) =
   defineSymbol conf.symbols, name
 
 proc processCmdLineAndProjectPath*(self: NimProg, conf: ConfigRef) =
-  conf.isCmdLine = true
   self.processCmdLine(passCmd1, "", conf)
-  conf.isCmdLine = false
   if self.supportsStdinFile and conf.projectName == "-":
     handleStdinInput(conf)
   elif conf.projectName != "":

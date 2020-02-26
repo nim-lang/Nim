@@ -421,7 +421,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
     if msg in conf.cmdLineDisabledNotes: return # eg: `--hints:conf:off` passed on cmdline
     # handle `--hints:off` (regardless of cmdline/cfg file)
     # handle `--hints:conf:on` on cmdline
-    if not conf.hasHint(msg) and not (optHints in conf.options and msg in conf.cmdLineNotes)): return
+    if not conf.hasHint(msg) and not (optHints in conf.options and msg in conf.cmdLineNotes): return
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
