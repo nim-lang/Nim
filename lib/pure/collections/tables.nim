@@ -233,6 +233,7 @@ type
     ## For creating an empty Table, use `initTable proc<#initTable,int>`_.
     data: KeyValuePairSeq[A, B]
     counter: int
+    countDeleted: int
   TableRef*[A, B] = ref Table[A, B] ## Ref version of `Table<#Table>`_.
     ##
     ## For creating a new empty TableRef, use `newTable proc
@@ -250,8 +251,6 @@ template dataLen(t): untyped = len(t.data)
 
 include tableimpl
 
-proc rightSize*(count: Natural): int {.inline.}
-
 template get(t, key): untyped =
   ## retrieves the value at ``t[key]``. The value can be modified.
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
@@ -267,14 +266,16 @@ template get(t, key): untyped =
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, t.counter.rightSize)
   swap(t.data, n)
+  t.countDeleted = 0
   for i in countup(0, high(n)):
     let eh = n[i].hcode
-    if isFilled(eh):
+    if isFilledAndValid(eh):
       var j: Hash = eh and maxHash(t)
+      var perturb = t.getPerturb(eh)
       while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t))
+        j = nextTry(j, maxHash(t), perturb)
       when defined(js):
         rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
       else:
@@ -579,15 +580,6 @@ proc `==`*[A, B](s, t: Table[A, B]): bool =
 
   equalsImpl(s, t)
 
-proc rightSize*(count: Natural): int {.inline.} =
-  ## Return the value of ``initialSize`` to support ``count`` items.
-  ##
-  ## If more items are expected to be added, simply add that
-  ## expected extra amount to the parameter before calling this.
-  ##
-  ## Internally, we want mustRehash(rightSize(x), x) == false.
-  result = nextPowerOfTwo(count * 3 div 2 + 4)
-
 proc indexBy*[A, B, C](collection: A, index: proc(x: B): C): Table[C, B] =
   ## Index the collection with the proc provided.
   # TODO: As soon as supported, change collection: A to collection: A[B]
@@ -670,7 +662,7 @@ iterator pairs*[A, B](t: Table[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -692,7 +684,7 @@ iterator mpairs*[A, B](t: var Table[A, B]): (A, var B) =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -713,7 +705,7 @@ iterator keys*[A, B](t: Table[A, B]): A =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -734,7 +726,7 @@ iterator values*[A, B](t: Table[A, B]): B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -756,9 +748,26 @@ iterator mvalues*[A, B](t: var Table[A, B]): var B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilled(t.data[h].hcode):
+    if isFilledAndValid(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
+
+template hasKeyOrPutCache(cache, h): bool =
+  # using `IntSet` would be an option worth considering to avoid quadratic
+  # behavior in case user misuses Table with lots of duplicate keys; but it
+  # has overhead in the common case of small number of duplicates.
+  # However: when lots of duplicates are used, all operations would be slow
+  # anyway because the full `hash(key)` is identical for these, which makes
+  # `nextTry` follow the exact same path for each key, resulting in large
+  # collision clusters. Alternatives could involve modifying the hash/retrieval
+  # based on duplicate key count.
+  var ret = false
+  for hi in cache:
+    if hi == h:
+      ret = true
+      break
+  if not ret: cache.add h
+  ret
 
 iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## Iterates over any value in the table ``t`` that belongs to the given ``key``.
@@ -766,26 +775,27 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B =
   ## Used if you have a table with duplicate keys (as a result of using
   ## `add proc<#add,Table[A,B],A,B>`_).
   ##
-  ## **Examples:**
-  ##
-  ## .. code-block::
-  ##   var a = {'a': 3, 'b': 5}.toTable
-  ##   for i in 1..3:
-  ##     a.add('z', 10*i)
-  ##   echo a # {'a': 3, 'b': 5, 'z': 10, 'z': 20, 'z': 30}
-  ##
-  ##   for v in a.allValues('z'):
-  ##     echo v
-  ##   # 10
-  ##   # 20
-  ##   # 30
-  var h: Hash = genHash(key) and high(t.data)
+  runnableExamples:
+    import sequtils, algorithm
+
+    var a = {'a': 3, 'b': 5}.toTable
+    for i in 1..3: a.add('z', 10*i)
+    doAssert toSeq(a.pairs).sorted == @[('a', 3), ('b', 5), ('z', 10), ('z', 20), ('z', 30)]
+    doAssert sorted(toSeq(a.allValues('z'))) == @[10, 20, 30]
+
+  let hc = genHash(key)
+  var h: Hash = hc and high(t.data)
   let L = len(t)
-  while isFilled(t.data[h].hcode):
-    if t.data[h].key == key:
-      yield t.data[h].val
-      assert(len(t) == L, "the length of the table changed while iterating over it")
-    h = nextTry(h, high(t.data))
+  var perturb = t.getPerturb(hc)
+
+  var num = 0
+  var cache: seq[Hash]
+  while isFilled(t.data[h].hcode): # `isFilledAndValid` would be incorrect, see test for `allValues`
+    if t.data[h].hcode == hc and t.data[h].key == key:
+      if not hasKeyOrPutCache(cache, h):
+        yield t.data[h].val
+        assert(len(t) == L, "the length of the table changed while iterating over it")
+    h = nextTry(h, high(t.data), perturb)
 
 
 
@@ -1219,6 +1229,8 @@ type
     ## <#initOrderedTable,int>`_.
     data: OrderedKeyValuePairSeq[A, B]
     counter, first, last: int
+    countDeleted: int
+
   OrderedTableRef*[A, B] = ref OrderedTable[A, B] ## Ref version of
     ## `OrderedTable<#OrderedTable>`_.
     ##
@@ -1240,7 +1252,7 @@ proc rawGet[A, B](t: OrderedTable[A, B], key: A, hc: var Hash): int =
 proc rawInsert[A, B](t: var OrderedTable[A, B],
                      data: var OrderedKeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
-  rawInsertImpl()
+  rawInsertImpl(t)
   data[h].next = -1
   if t.first < 0: t.first = h
   if t.last >= 0: data[t.last].next = h
@@ -1248,18 +1260,20 @@ proc rawInsert[A, B](t: var OrderedTable[A, B],
 
 proc enlarge[A, B](t: var OrderedTable[A, B]) =
   var n: OrderedKeyValuePairSeq[A, B]
-  newSeq(n, len(t.data) * growthFactor)
+  newSeq(n, t.counter.rightSize)
   var h = t.first
   t.first = -1
   t.last = -1
   swap(t.data, n)
+  t.countDeleted = 0
   while h >= 0:
     var nxt = n[h].next
     let eh = n[h].hcode
-    if isFilled(eh):
+    if isFilledAndValid(eh):
       var j: Hash = eh and maxHash(t)
+      var perturb = t.getPerturb(eh)
       while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t))
+        j = nextTry(j, maxHash(t), perturb)
       rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
     h = nxt
 
@@ -2211,6 +2225,7 @@ type
     ## <#initCountTable,int>`_.
     data: seq[tuple[key: A, val: int]]
     counter: int
+    countDeleted: int
     isSorted: bool
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
@@ -2223,8 +2238,10 @@ type
 
 proc ctRawInsert[A](t: CountTable[A], data: var seq[tuple[key: A, val: int]],
                   key: A, val: int) =
-  var h: Hash = hash(key) and high(data)
-  while data[h].val != 0: h = nextTry(h, high(data))
+  let hc = hash(key)
+  var perturb = t.getPerturb(hc)
+  var h: Hash = hc and high(data)
+  while data[h].val != 0: h = nextTry(h, high(data), perturb) # TODO: handle deletedMarker
   data[h].key = key
   data[h].val = val
 
@@ -2251,10 +2268,12 @@ proc remove[A](t: var CountTable[A], key: A) =
 proc rawGet[A](t: CountTable[A], key: A): int =
   if t.data.len == 0:
     return -1
-  var h: Hash = hash(key) and high(t.data) # start with real hash value
-  while t.data[h].val != 0:
+  let hc = hash(key)
+  var perturb = t.getPerturb(hc)
+  var h: Hash = hc and high(t.data) # start with real hash value
+  while t.data[h].val != 0: # TODO: may need to handle t.data[h].hcode == deletedMarker?
     if t.data[h].key == key: return h
-    h = nextTry(h, high(t.data))
+    h = nextTry(h, high(t.data), perturb)
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
 template ctget(t, key, default: untyped): untyped =

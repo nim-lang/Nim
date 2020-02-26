@@ -71,21 +71,22 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
 
-import std/macros
 
-macro lenTuple*(t: tuple): int {.since: (1, 1).} =
-  ## Return number of elements of `t`
-  newLit t.len
-
-macro lenTuple*(t: typedesc[tuple]): int {.since: (1, 1).} =
+proc lenTuple*(T: typedesc[tuple]): int {.magic: "TypeTrait", since: (1, 1).}
   ## Return number of elements of `T`
-  newLit t.len
+
+since (1, 1):
+  template lenTuple*(t: tuple): int =
+    ## Return number of elements of `t`
+    lenTuple(type(t))
 
 since (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
     ## Return `i`th element of `T`
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     type(default(T)[i])
+
+import std/macros
 
 macro genericParams*(T: typedesc): untyped {.since: (1, 1).} =
   ## return tuple of generic params for generic `T`

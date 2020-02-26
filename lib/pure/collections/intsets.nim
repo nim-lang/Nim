@@ -46,30 +46,40 @@ type
   IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
     elems: int           # only valid for small numbers
     counter, max: int
+    countDeleted: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
+proc mustRehash[T](t: T): bool {.inline.} =
+  # FACTOR between hashcommon.mustRehash, intsets.mustRehash
+  let counter2 = t.counter + t.countDeleted
+  let length = t.max + 1
+  assert length > counter2
+  result = (length * 2 < counter2 * 3) or (length - counter2 < 4)
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = ((5 * h) + 1) and maxHash
+proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
+  # FACTOR between hashcommon.nextTry, intsets.nextTry
+  const PERTURB_SHIFT = 5
+  var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
+  perturb = cast[Hash](perturb2)
+  result = ((5*h) + 1 + perturb) and maxHash
 
 proc intSetGet(t: IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   result = nil
 
 proc intSetRawInsert(t: IntSet, data: var TrunkSeq, desc: PTrunk) =
   var h = desc.key and t.max
+  var perturb = desc.key
   while data[h] != nil:
     assert(data[h] != desc)
-    h = nextTry(h, t.max)
+    h = nextTry(h, t.max, perturb)
   assert(data[h] == nil)
   data[h] = desc
 
@@ -84,14 +94,16 @@ proc intSetEnlarge(t: var IntSet) =
 
 proc intSetPut(t: var IntSet, key: int): PTrunk =
   var h = key and t.max
+  var perturb = key
   while t.data[h] != nil:
     if t.data[h].key == key:
       return t.data[h]
-    h = nextTry(h, t.max)
-  if mustRehash(t.max + 1, t.counter): intSetEnlarge(t)
+    h = nextTry(h, t.max, perturb)
+  if mustRehash(t): intSetEnlarge(t)
   inc(t.counter)
   h = key and t.max
-  while t.data[h] != nil: h = nextTry(h, t.max)
+  perturb = key
+  while t.data[h] != nil: h = nextTry(h, t.max, perturb)
   assert(t.data[h] == nil)
   new(result)
   result.next = t.head
@@ -100,6 +112,7 @@ proc intSetPut(t: var IntSet, key: int): PTrunk =
   t.data[h] = result
 
 proc bitincl(s: var IntSet, key: int) {.inline.} =
+  var ret: PTrunk
   var t = intSetPut(s, `shr`(key, TrunkShift))
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or
@@ -393,7 +406,8 @@ proc assign*(dest: var IntSet, src: IntSet) =
     var it = src.head
     while it != nil:
       var h = it.key and dest.max
-      while dest.data[h] != nil: h = nextTry(h, dest.max)
+      var perturb = it.key
+      while dest.data[h] != nil: h = nextTry(h, dest.max, perturb)
       assert(dest.data[h] == nil)
       var n: PTrunk
       new(n)

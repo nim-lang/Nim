@@ -18,7 +18,8 @@ template bootSwitch(name, expr, userString) =
 
 bootSwitch(usedRelease, defined(release), "-d:release")
 bootSwitch(usedDanger, defined(danger), "-d:danger")
-bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
+# `useLinenoise` deprecated in favor of `nimUseLinenoise`, kept for backward compatibility
+bootSwitch(useLinenoise, defined(nimUseLinenoise) or defined(useLinenoise), "-d:nimUseLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
@@ -101,7 +102,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
-      usedTinyC & usedGnuReadline & usedNativeStacktrace &
+      usedTinyC & useLinenoise & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
@@ -865,6 +866,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "NimMinor", "0")
       # always be compatible with 1.0.2 for now:
       defineSymbol(conf.symbols, "NimPatch", "2")
+      # old behaviors go here:
+      defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":

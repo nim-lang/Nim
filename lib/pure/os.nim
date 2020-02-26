@@ -65,6 +65,8 @@ when weirdTarget and defined(nimErrorProcCanHaveBody):
 else:
   {.pragma: noNimScript.}
 
+proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
+
 type
   ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read
                                             ## from an environment variable.
@@ -139,6 +141,7 @@ proc joinPath*(head, tail: string): string {.
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
       assert joinPath("usr", "") == "usr/"
+      assert joinPath("", "") == ""
       assert joinPath("", "lib") == "lib"
       assert joinPath("", "/lib") == "/lib"
       assert joinPath("usr/", "/lib") == "usr/lib"
@@ -147,7 +150,7 @@ proc joinPath*(head, tail: string): string {.
   result = newStringOfCap(head.len + tail.len)
   var state = 0
   addNormalizePath(head, result, state, DirSep)
-  if tail.len == 0:
+  if result.len != 0 and result[^1] notin {DirSep, AltSep} and tail.len == 0:
     result.add DirSep
   else:
     addNormalizePath(tail, result, state, DirSep)
@@ -359,9 +362,13 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
     assert relativePath("foo", ".", '/') == "foo"
+    assert relativePath("foo", "foo", '/') == "."
 
   if path.len == 0: return ""
-  let base = if base == ".": "" else: base
+  var base = if base == ".": "" else: base
+  var path = path
+  path.normalizePathAux
+  base.normalizePathAux
 
   when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):
@@ -410,6 +417,9 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
         result.add path[i + ff[0]]
     if not f.hasNext(path): break
     ff = f.next(path)
+
+  when not defined(nimOldRelativePathBehavior):
+    if result.len == 0: result.add "."
 
 proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   ## Returns true if `path` is relative to `base`.
@@ -1353,7 +1363,7 @@ when not weirdTarget:
         raise newException(ValueError, "The specified root is not absolute: " & root)
       joinPath(root, path)
 
-proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScript.} =
+proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.
   ##
   ## Consecutive directory separators are collapsed, including an initial double slash.
@@ -1402,7 +1412,9 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScr
     else:
       path = "."
 
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
+proc normalizePathAux(path: var string) = normalizePath(path)
+
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns a normalized path for the current OS.
   ##
   ## See also:
