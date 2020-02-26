@@ -262,7 +262,7 @@ proc useVar(a: PEffects, n: PNode) =
     if s.guard != nil: guardGlobal(a, n, s.guard)
     if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
         (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
-      #if warnGcUnsafe in gNotes: warnAboutGcUnsafe(n)
+      #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
       markGcUnsafe(a, s)
       markSideEffect(a, s)
     else:
@@ -463,7 +463,7 @@ proc propagateEffects(tracked: PEffects, n: PNode, s: PSym) =
   mergeTags(tracked, tagSpec, n)
 
   if notGcSafe(s.typ) and sfImportc notin s.flags:
-    if warnGcUnsafe in tracked.config.notes: warnAboutGcUnsafe(n, tracked.config)
+    if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
     markGcUnsafe(tracked, s)
   if tfNoSideEffect notin s.typ.flags:
     markSideEffect(tracked, s)
@@ -544,7 +544,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
         assumeTheWorst(tracked, n, op)
       # assume GcUnsafe unless in its type; 'forward' does not matter:
       if notGcSafe(op) and not isOwnedProcVar(a, tracked.owner):
-        if warnGcUnsafe in tracked.config.notes: warnAboutGcUnsafe(n, tracked.config)
+        if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags and not isOwnedProcVar(a, tracked.owner):
         markSideEffect(tracked, a)
@@ -552,7 +552,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
       mergeEffects(tracked, effectList[exceptionEffects], n)
       mergeTags(tracked, effectList[tagEffects], n)
       if notGcSafe(op):
-        if warnGcUnsafe in tracked.config.notes: warnAboutGcUnsafe(n, tracked.config)
+        if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
@@ -584,7 +584,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
   let stringCase = skipTypes(n[0].typ,
         abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString}
   let interesting = not stringCase and interestingCaseExpr(n[0]) and
-        warnProveField in tracked.config.notes
+        tracked.config.hasWarn(warnProveField)
   var inter: TIntersection = @[]
   var toCover = 0
   for i in 1..<n.len:
@@ -678,7 +678,7 @@ proc track(tracked: PEffects, n: PNode) =
     if notGcSafe(op) and not importedFromC(a):
       # and it's not a recursive call:
       if not (a.kind == nkSym and a.sym == tracked.owner):
-        if warnGcUnsafe in tracked.config.notes: warnAboutGcUnsafe(n, tracked.config)
+        if tracked.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n, tracked.config)
         markGcUnsafe(tracked, a)
     if tfNoSideEffect notin op.flags and not importedFromC(a):
       # and it's not a recursive call:
@@ -779,7 +779,7 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0..<n.len: track(tracked, n[i])
   of nkCheckedFieldExpr:
     track(tracked, n[0])
-    if warnProveField in tracked.config.notes:
+    if tracked.config.hasWarn(warnProveField):
       checkFieldAccess(tracked.guards, n, tracked.config)
   of nkTryStmt: trackTryStmt(tracked, n)
   of nkPragma: trackPragmaStmt(tracked, n)
