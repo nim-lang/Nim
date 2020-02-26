@@ -1,3 +1,5 @@
+import std/pragmas
+
 block:
   var s = @[10,11,12]
   var a {.byaddr.} = s[0]
@@ -31,3 +33,17 @@ block:
 
   doAssert compiles(block:
     var b2 {.byaddr.}: int = s[2])
+
+## We can define custom pragmas in user code
+template byUnsafeAddr(lhs, typ, expr) =
+  when typ is type(nil):
+    let tmp = unsafeAddr(expr)
+  else:
+    let tmp: ptr typ = unsafeAddr(expr)
+  template lhs: untyped = tmp[]
+
+block:
+  let s = @["foo", "bar"]
+  let a {.byUnsafeAddr.} = s[0]
+  doAssert a == "foo"
+  doAssert a[0].unsafeAddr == s[0][0].unsafeAddr

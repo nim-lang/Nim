@@ -176,25 +176,6 @@ proc unsafeAddr*[T](x: T): ptr T {.magic: "Addr", noSideEffect.} =
   ## Cannot be overloaded.
   discard
 
-template byaddrImpl*(name, expr) =
-  ## Internal lowering used by {.byaddr.}. This allows a syntax for lvalue
-  ## reference, exact analog to `auto& a = expr;` in C++.
-  runnableExamples:
-    var s = @[10,11,12]
-    var a {.byaddr.} = s[0]
-    a+=100
-    doAssert s == @[110,11,12]
-    doAssert a is int
-    var b {.byaddr.}: int = s[0]
-    doAssert a.addr == b.addr
-  let tmp = addr(expr)
-  template name: untyped = tmp[]
-
-template byaddrImpl*(name, typ, expr) =
-  ## Overload that specifies an optional type `typ`.
-  let tmp: ptr typ = addr(expr)
-  template name: untyped = tmp[]
-
 when defined(nimNewTypedesc):
   type
     `static`*[T] {.magic: "Static".}

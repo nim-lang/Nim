@@ -57,7 +57,7 @@ type
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
     wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
     wPragma,
-    wCompileTime, wNoInit, wByaddr,
+    wCompileTime, wNoInit,
     wPassc, wPassl, wLocalPassc, wBorrow, wDiscardable,
     wFieldChecks,
     wSubsChar, wAcyclic, wShallow, wUnroll, wLinearScanEnd, wComputedGoto,
@@ -145,7 +145,7 @@ const
     "deadcodeelim",  # deprecated, dead code elim always happens
     "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",
-    "compiletime", "noinit", "byaddr",
+    "compiletime", "noinit",
     "passc", "passl", "localpassc", "borrow", "discardable", "fieldchecks",
     "subschar", "acyclic", "shallow", "unroll", "linearscanend",
     "computedgoto", "injectstmt", "experimental",

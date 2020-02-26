@@ -431,33 +431,46 @@ proc setVarType(c: PContext; v: PSym, typ: PType) =
         "; new type is: " & typeToString(typ, preferDesc))
   v.typ = typ
 
-proc semByAddr(c: PContext, a: PNode, n: PNode): PNode =
+proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
   var b = a[0]
   if b.kind == nkPragmaExpr:
-    if b[1][0].whichPragma == wByaddr:
-      let lhs = b[0]
-      if n.kind != nkVarSection:
-        localError(c.config, b[1][0].info, $wByaddr & " currently only supported with `var`")
-      let clash = strTableGet(c.currentScope.symbols, lhs.ident)
-      if clash != nil:
-        wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
-      result = newTree(nkCall)
-      result.add newIdentNode(getIdent(c.cache, "byaddrImpl"), a.info)
+    if b[1].len != 1: return nil
+    let nodePragma = b[1][0]
+    # see: `singlePragma`
+    let ident = considerQuotedIdent(c, nodePragma)
+    var userPragma = strTableGet(c.userPragmas, ident)
+    if userPragma != nil: return nil
+
+    let w = nodePragma.whichPragma
+    if n.kind == nkVarSection and w in varPragmas or
+      n.kind == nkLetSection and w in letPragmas or
+      n.kind == nkConstSection and w in constPragmas:
+      return nil
+
+    let lhs = b[0]
+    let clash = strTableGet(c.currentScope.symbols, lhs.ident)
+    if clash != nil:
       # refs https://github.com/nim-lang/Nim/issues/8275
-      result.add lhs
-      if a[1].kind != nkEmpty:
-        result.add a[1]
-      result.add a[2]
-      result.info = a.info
-      let ret = newNodeI(nkStmtList, a.info)
-      ret.add result
-      pushInfoContext(c.config, a.info)
-      result = semExprNoType(c, ret)
-      popInfoContext(c.config)
+      wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
+
+    result = newTree(nkCall)
+    # we could in future support pragmas w args eg: `var foo {.bar:"goo".} = expr`
+    doAssert nodePragma.kind == nkIdent, $nodePragma.kind
+    result.add nodePragma
+    result.add lhs
+    if a[1].kind != nkEmpty:
+      result.add a[1]
+    else:
+      result.add newNodeIT(nkNilLit, a.info, c.graph.sysTypes[tyNil])
+    result.add a[2]
+    result.info = a.info
+    let ret = newNodeI(nkStmtList, a.info)
+    ret.add result
+    result = semExprNoType(c, ret)
 
 proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
   if n.len == 1:
-    result = semByAddr(c, n[0], n)
+    result = semLowerLetVarCustomPragma(c, n[0], n)
     if result!=nil: return result
 
   var b: PNode
