@@ -226,13 +226,11 @@ type
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
-    enableNotes*: TNoteKinds
-    disableNotes*: TNoteKinds
+    modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
+    cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
-    notes*: TNoteKinds
+    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
     mainPackageNotes*: TNoteKinds
-    cmdLineNotes*: TNoteKinds
-    cmdLineDisabledNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
     hintCounter*: int
@@ -288,6 +286,10 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+
+proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  if note notin conf.cmdlineNotes:
+    if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
   optHints in conf.options and note in conf.notes
