@@ -580,11 +580,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcCastIntToFloat32:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+      regs[ra].floatVal = cast[float32](regs[rb].intVal)
     of opcCastIntToFloat64:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
+      regs[ra].floatVal = cast[float64](regs[rb].intVal)
 
     of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
       decodeBImm(rkInt)
