@@ -132,3 +132,5 @@
   `ioselector_select` now properly handle the `Event.User` select event type.
 - `joinPath` path normalization when `/` is the first argument works correctly:
   `assert "/" / "/a" == "/a"`. Fixed the edgecase: `assert "" / "" == ""`.
+- `xmltree` now adds indentation consistently to child nodes for any number
+  of children nodes.
