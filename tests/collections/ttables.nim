@@ -165,9 +165,14 @@ block tableconstr:
 block ttables2:
   proc TestHashIntInt() =
     var tab = initTable[int,int]()
-    for i in 1..1_000_000:
+    when defined(nimTestsTablesDisableSlow):
+      # helps every single time when this test needs to be debugged
+      let n = 1_000
+    else:
+      let n = 1_000_000
+    for i in 1..n:
       tab[i] = i
-    for i in 1..1_000_000:
+    for i in 1..n:
       var x = tab[i]
       if x != i : echo "not found ", i
 
