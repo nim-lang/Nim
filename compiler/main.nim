@@ -89,6 +89,7 @@ proc commandCompileToC(graph: ModuleGraph) =
       graph.config.notes = graph.config.mainPackageNotes
       return
 
+  graph.config.projectRecompiled = true
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
@@ -386,6 +387,7 @@ proc mainCommand*(graph: ModuleGraph) =
       "build", build,
       "project", project,
       "output", output,
+      "projectRecompiled", $conf.projectRecompiled,
       ])
 
   when PrintRopeCacheStats:
