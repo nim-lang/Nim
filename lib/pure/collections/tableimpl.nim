@@ -14,13 +14,20 @@ include hashcommon
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
-  while isFilled(t.data[h].hcode):
-    h = nextTry(h, maxHash(t))
+  var perturb = t.getPerturb(hc)
+  while true:
+    let hcode = t.data[h].hcode
+    if hcode == deletedMarker or hcode == freeMarker:
+      break
+    else:
+      h = nextTry(h, maxHash(t), perturb)
   result = h
 
-template rawInsertImpl() {.dirty.} =
+template rawInsertImpl(t) {.dirty.} =
   data[h].key = key
   data[h].val = val
+  if data[h].hcode == deletedMarker:
+    t.countDeleted.dec
   data[h].hcode = hc
 
 proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
@@ -28,7 +35,7 @@ proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
 
 proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
-  rawInsertImpl()
+  rawInsertImpl(t)
 
 template checkIfInitialized() =
   when compiles(defaultInitialSize):
@@ -37,15 +44,14 @@ template checkIfInitialized() =
 
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  if mustRehash(t.dataLen, t.counter): enlarge(t)
+  if mustRehash(t): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
-  checkIfInitialized()
-  if mustRehash(t.dataLen, t.counter):
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index                  # important to transform for mgetOrPutImpl
@@ -82,24 +88,11 @@ template delImplIdx(t, i) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
-    block outer:
-      while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-        var j = i         # The correctness of this depends on (h+1) in nextTry,
-        var r = j         # though may be adaptable to other simple sequences.
-        t.data[i].hcode = 0              # mark current EMPTY
-        t.data[i].key = default(type(t.data[i].key))
-        t.data[i].val = default(type(t.data[i].val))
-        while true:
-          i = (i + 1) and msk            # increment mod table size
-          if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
-            break outer
-          r = t.data[i].hcode and msk    # "home" location of key@i
-          if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-            break
-        when defined(js):
-          t.data[j] = t.data[i]
-        else:
-          t.data[j] = move(t.data[i]) # data[j] will be marked EMPTY next loop
+    inc(t.countDeleted)
+    t.data[i].hcode = deletedMarker
+    t.data[i].key = default(type(t.data[i].key))
+    t.data[i].val = default(type(t.data[i].val))
+    # mustRehash + enlarge not needed because counter+countDeleted doesn't change
 
 template delImpl() {.dirty.} =
   var hc: Hash
@@ -123,8 +116,8 @@ template initImpl(result: typed, size: int) =
     result.last = -1
 
 template insertImpl() = # for CountTable
-  if t.dataLen == 0: initImpl(t, defaultInitialSize)
-  if mustRehash(len(t.data), t.counter): enlarge(t)
+  checkIfInitialized()
+  if mustRehash(t): enlarge(t)
   ctRawInsert(t, t.data, key, val)
   inc(t.counter)
 

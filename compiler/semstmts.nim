@@ -129,7 +129,7 @@ proc fixNilType(c: PContext; n: PNode) =
     if n.kind != nkNilLit and n.typ != nil:
       localError(c.config, n.info, errDiscardValueX % n.typ.typeToString)
   elif n.kind in {nkStmtList, nkStmtListExpr}:
-    n.kind = nkStmtList
+    n.transitionSonsKind(nkStmtList)
     for it in n: fixNilType(c, it)
   n.typ = nil
 
@@ -172,7 +172,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
   if isEmptyType(typ) or typ.kind in {tyNil, tyUntyped} or
       (not hasElse and efInTypeof notin flags):
     for it in n: discardCheck(c, it.lastSon, flags)
-    result.kind = nkIfStmt
+    result.transitionSonsKind(nkIfStmt)
     # propagate any enforced VoidContext:
     if typ == c.enforceVoidContext: result.typ = c.enforceVoidContext
   else:
@@ -180,7 +180,7 @@ proc semIf(c: PContext, n: PNode; flags: TExprFlags): PNode =
       let j = it.len-1
       if not endsInNoReturn(it[j]):
         it[j] = fitNode(c, typ, it[j], it[j].info)
-    result.kind = nkIfExpr
+    result.transitionSonsKind(nkIfExpr)
     result.typ = typ
 
 proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
@@ -867,7 +867,7 @@ proc semFor(c: PContext, n: PNode; flags: TExprFlags): PNode =
       call[0].sym.magic in {mFields, mFieldPairs, mOmpParFor}:
     if call[0].sym.magic == mOmpParFor:
       result = semForVars(c, n, flags)
-      result.kind = nkParForStmt
+      result.transitionSonsKind(nkParForStmt)
     else:
       result = semForFields(c, n, call[0].sym.magic)
   elif isCallExpr and isClosureIterator(call[0].typ.skipTypes(abstractInst)):
@@ -945,9 +945,9 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       checkSonsLen(x, 1, c.config)
       x[0] = semExprBranchScope(c, x[0])
       typ = commonType(typ, x[0])
-      hasElse = true
-      if chckCovered and covered == toCover(c, n[0].typ):
+      if (chckCovered and covered == toCover(c, n[0].typ)) or hasElse:
         localError(c.config, x.info, "invalid else, all cases are already covered")
+      hasElse = true
       chckCovered = false
     else:
       illFormedAst(x, c.config)
@@ -1603,6 +1603,15 @@ proc prevDestructor(c: PContext; prevOp: PSym; obj: PType; info: TLineInfo) =
     msg.add "; previous declaration was here: " & (c.config $ prevOp.info)
   localError(c.config, info, errGenerated, msg)
 
+proc whereToBindTypeHook(c: PContext; t: PType): PType =
+  result = t
+  while true:
+    if result.kind in {tyGenericBody, tyGenericInst}: result = result.lastSon
+    elif result.kind == tyGenericInvocation: result = result[0]
+    else: break
+  if result.kind in {tyObject, tyDistinct, tySequence, tyString}:
+    result = canonType(c, result)
+
 proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
   let t = s.typ
   var noError = false
@@ -1961,7 +1970,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
   if n[patternPos].kind != nkEmpty:
     c.patterns.add(s)
   if isAnon:
-    n.kind = nkLambda
+    n.transitionSonsKind(nkLambda)
     result.typ = s.typ
     if optOwnedRefs in c.config.globalOptions:
       result.typ = makeVarType(c, result.typ, tyOwned)
@@ -1980,7 +1989,7 @@ proc semIterator(c: PContext, n: PNode): PNode =
   if n[namePos].kind == nkSym:
     # gensym'ed iterators might need to become closure iterators:
     n[namePos].sym.owner = getCurrOwner(c)
-    n[namePos].sym.kind = skIterator
+    n[namePos].sym.transitionRoutineSymKind(skIterator)
   result = semProcAux(c, n, skIterator, iteratorPragmas)
   # bug #7093: if after a macro transformation we don't have an
   # nkIteratorDef aynmore, return. The iterator then might have been
@@ -2157,7 +2166,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
   const
     LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
-  result.kind = nkStmtList
+  result.transitionSonsKind(nkStmtList)
   var voidContext = false
   var last = n.len-1
   # by not allowing for nkCommentStmt etc. we ensure nkStmtListExpr actually
@@ -2194,12 +2203,12 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
       n.typ = c.enforceVoidContext
     if i == last and (n.len == 1 or ({efWantValue, efInTypeof} * flags != {})):
       n.typ = n[i].typ
-      if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+      if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
     elif i != last or voidContext:
       discardCheck(c, n[i], flags)
     else:
       n.typ = n[i].typ
-      if not isEmptyType(n.typ): n.kind = nkStmtListExpr
+      if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
     if n[i].kind in LastBlockStmts or
         n[i].kind in nkCallKinds and n[i][0].kind == nkSym and
         sfNoReturn in n[i][0].sym.flags:

@@ -437,7 +437,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkTableConstr:
     result = if n.len > 0: lcomma(g, n) + 2 else: len("{:}")
   of nkClosedSymChoice, nkOpenSymChoice:
-    result = lsons(g, n) + len("()") + n.len - 1
+    if n.len > 0: result += lsub(g, n[0])
   of nkTupleTy: result = lcomma(g, n) + len("tuple[]")
   of nkTupleClassTy: result = len("tuple")
   of nkDotExpr: result = lsons(g, n) + 1
@@ -529,10 +529,12 @@ proc lsub(g: TSrcGen; n: PNode): int =
     if n[0].kind != nkEmpty: result = result + lsub(g, n[0]) + 2
   of nkExceptBranch:
     result = lcomma(g, n, 0, -2) + lsub(g, lastSon(n)) + len("except_:_")
+  of nkObjectTy:
+    result = len("object_")
   else: result = MaxLineLen + 1
 
 proc fits(g: TSrcGen, x: int): bool =
-  result = x + g.lineLen <= MaxLineLen
+  result = x <= MaxLineLen
 
 type
   TSubFlag = enum
@@ -572,7 +574,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
   for i in start..n.len + theEnd:
     var c = i < n.len + theEnd
     var sublen = lsub(g, n[i]) + ord(c)
-    if not fits(g, sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
+    if not fits(g, g.lineLen + sublen) and (ind + sublen < MaxLineLen): optNL(g, ind)
     let oldLen = g.tokens.len
     gsub(g, n[i])
     if c:
@@ -1139,10 +1141,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
     putWithSpace(g, tkColon, ":")
     gsub(g, n, 1)
   of nkInfix:
+    let oldLineLen = g.lineLen # we cache this because lineLen gets updated below
     infixArgument(g, n, 1)
     put(g, tkSpaces, Space)
     gsub(g, n, 0)        # binary operator
-    if n.len == 3 and not fits(g, lsub(g, n[2]) + lsub(g, n[0]) + 1):
+    # eg: `n1 == n2` decompses as following sum:
+    if n.len == 3 and not fits(g, oldLineLen + lsub(g, n[1]) + lsub(g, n[2]) + lsub(g, n[0]) + len("  ")):
       optNL(g, g.indent + longIndentWid)
     else:
       put(g, tkSpaces, Space)

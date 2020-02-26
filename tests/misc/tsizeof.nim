@@ -74,19 +74,22 @@ proc strAlign(arg: string): string =
   for i in 0 ..< minLen - arg.len:
     result &= ' '
 
-macro c_offsetof(a: typed, b: untyped): int32 =
+macro c_offsetof(fieldAccess: typed): int32 =
   ## Bullet proof implementation that works on actual offsetof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  let bliteral =
-    if b.kind == nnkStrLit:
-      b
-    else:
-      newLit(repr(b))
+  let s = if fieldAccess.kind == nnkCheckedFieldExpr: fieldAccess[0] 
+          else: fieldAccess
+  let a = s[0].getTypeInst
+  let b = s[1]
   result = quote do:
     var res: int32
-    {.emit: [res, " = offsetof(", `a`, ", ", `bliteral`, ");"] .}
+    {.emit: [res, " = offsetof(", `a`, ", ", `b`, ");"] .}
     res
+
+template c_offsetof(t: typedesc, a: untyped): int32 =
+  var x: ptr t
+  c_offsetof(x[].a)
 
 macro c_sizeof(a: typed): int32 =
   ## Bullet proof implementation that works using the sizeof operator

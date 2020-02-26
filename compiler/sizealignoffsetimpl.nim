@@ -366,11 +366,11 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           OffsetAccum(maxAlign: 1)
       if tfUnion in typ.flags:
         if tfPacked in typ.flags:
-          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo
           localError(conf, info, "union type may not be packed.")
           accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
         elif accum.offset != 0:
-          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo()
+          let info = if typ.sym != nil: typ.sym.info else: unknownLineInfo
           localError(conf, info, "union type may not have an object header")
           accum = OffsetAccum(offset: szUnknownSize, maxAlign: szUnknownSize)
         else:

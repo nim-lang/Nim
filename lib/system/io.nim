@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+## This is a part of ``system.nim``, you should not manually import it.
+
+
 include inclrtl
 import formatfloat
 
@@ -35,12 +38,18 @@ type
 
 # text file handling:
 when not defined(nimscript) and not defined(js):
+  # duplicated between io and ansi_c
+  const stdioUsesMacros = (defined(osx) or defined(bsd)) and not defined(emscripten)
+  const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
+  const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
+  const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
+
   var
-    stdin* {.importc: "stdin", header: "<stdio.h>".}: File
+    stdin* {.importc: stdinName, header: "<stdio.h>".}: File
       ## The standard input stream.
-    stdout* {.importc: "stdout", header: "<stdio.h>".}: File
+    stdout* {.importc: stdoutName, header: "<stdio.h>".}: File
       ## The standard output stream.
-    stderr* {.importc: "stderr", header: "<stdio.h>".}: File
+    stderr* {.importc: stderrName, header: "<stdio.h>".}: File
       ## The standard error stream.
 
 when defined(useStdoutAsStdmsg):
@@ -115,8 +124,8 @@ proc c_fprintf(f: File, frmt: cstring): cint {.
 proc c_fputc(c: char, f: File): cint {.
   importc: "fputc", header: "<stdio.h>".}
 
-## When running nim in android app, stdout goes nowhere, so echo gets ignored
-## To redirect echo to the android logcat, use -d:androidNDK
+# When running nim in android app, stdout goes nowhere, so echo gets ignored
+# To redirect echo to the android logcat, use -d:androidNDK
 when defined(androidNDK):
   const ANDROID_LOG_VERBOSE = 2.cint
   proc android_log_print(prio: cint, tag: cstring, fmt: cstring): cint
@@ -136,6 +145,7 @@ proc strerror(errnum: cint): cstring {.importc, header: "<string.h>".}
 when not defined(NimScript):
   var
     errno {.importc, header: "<errno.h>".}: cint ## error variable
+    EINTR {.importc: "EINTR", header: "<errno.h>".}: cint
 
 proc checkErr(f: File) =
   when not defined(NimScript):
@@ -310,8 +320,20 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
     # fgets doesn't append an \L
     for i in 0..<sp: line.string[pos+i] = '\L'
 
-    var fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
-    if not fgetsSuccess: checkErr(f)
+    var fgetsSuccess: bool
+    while true:
+      # fixes #9634; this pattern may need to be abstracted as a template if reused;
+      # likely other io procs need this for correctness.
+      fgetsSuccess = c_fgets(addr line.string[pos], sp.cint, f) != nil
+      if fgetsSuccess: break
+      when not defined(NimScript):
+        if errno == EINTR:
+          errno = 0
+          c_clearerr(f)
+          continue
+      checkErr(f)
+      break
+
     let m = c_memchr(addr line.string[pos], '\L'.ord, cast[csize_t](sp))
     if m != nil:
       # \l found: Could be our own or the one by fgets, in any case, we're done
@@ -610,7 +632,7 @@ when declared(stdout):
       android_log_print(ANDROID_LOG_VERBOSE, "nim", s)
     else:
       # flockfile deadlocks some versions of Android 5.x.x
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         proc flockfile(f: File) {.importc, nodecl.}
         proc funlockfile(f: File) {.importc, nodecl.}
         flockfile(stdout)
@@ -624,7 +646,7 @@ when declared(stdout):
       const linefeed = "\n"
       discard c_fwrite(linefeed.cstring, linefeed.len, 1, stdout)
       discard c_fflush(stdout)
-      when not defined(windows) and not defined(android) and not defined(nintendoswitch):
+      when not defined(windows) and not defined(android) and not defined(nintendoswitch) and hostOS != "any":
         funlockfile(stdout)
       when defined(windows) and compileOption("threads"):
         releaseSys echoLock

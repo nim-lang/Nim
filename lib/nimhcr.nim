@@ -196,7 +196,7 @@
 #     block. Perhaps something can be done about this - some way of re-allocating
 #     the state and transferring the old...
 
-when not defined(JS) and (defined(hotcodereloading) or
+when not defined(js) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
                           defined(testNimHcr)):
   const
@@ -612,7 +612,7 @@ when defined(createNimHcr):
             global.markerProc()
 
 elif defined(hotcodereloading) or defined(testNimHcr):
-  when not defined(JS):
+  when not defined(js):
     const
       nimhcrLibname = when defined(windows): "nimhcr." & dllExt
                       elif defined(macosx): "libnimhcr." & dllExt

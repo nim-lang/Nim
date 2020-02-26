@@ -106,13 +106,6 @@ proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
     # should therefore really be revisited.
     onError
 
-proc getOrdValue64*(n: PNode): BiggestInt {.deprecated: "use getOrdvalue".} =
-  case n.kind
-  of nkCharLit..nkUInt64Lit: n.intVal
-  of nkNilLit: 0
-  of nkHiddenStdConv: getOrdValue64(n[1])
-  else: high(BiggestInt)
-
 proc getFloatValue*(n: PNode): BiggestFloat =
   case n.kind
   of nkFloatLiterals: n.floatVal
@@ -373,8 +366,8 @@ proc canFormAcycleAux(marker: var IntSet, typ: PType, startId: int): bool =
   else: discard
 
 proc isFinal*(t: PType): bool =
-  var t = t.skipTypes(abstractInst)
-  result = t.kind != tyObject or tfFinal in t.flags
+  let t = t.skipTypes(abstractInst)
+  result = t.kind != tyObject or tfFinal in t.flags or isPureObject(t)
 
 proc canFormAcycle*(typ: PType): bool =
   var marker = initIntSet()

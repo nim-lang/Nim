@@ -157,7 +157,7 @@ proc popInfoContext*(conf: ConfigRef) =
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   let i = if index < 0: conf.m.msgContext.len + index else: index
-  if i >=% conf.m.msgContext.len: result = unknownLineInfo()
+  if i >=% conf.m.msgContext.len: result = unknownLineInfo
   else: result = conf.m.msgContext[i].info
 
 const
@@ -405,14 +405,14 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   case msg
   of errMin..errMax:
     sev = Severity.Error
-    writeContext(conf, unknownLineInfo())
+    writeContext(conf, unknownLineInfo)
     title = ErrorTitle
     color = ErrorColor
   of warnMin..warnMax:
     sev = Severity.Warning
     if optWarns notin conf.options: return
     if msg notin conf.notes: return
-    writeContext(conf, unknownLineInfo())
+    writeContext(conf, unknownLineInfo)
     title = WarningTitle
     color = WarningColor
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
@@ -428,7 +428,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let s = msgKindToString(msg) % args
 
   if conf.structuredErrorHook != nil:
-    conf.structuredErrorHook(conf, unknownLineInfo(),
+    conf.structuredErrorHook(conf, unknownLineInfo,
       s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
@@ -561,7 +561,7 @@ proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
-  writeContext(conf, unknownLineInfo())
+  writeContext(conf, unknownLineInfo)
   rawMessage(conf, errInternal, errMsg)
 
 template assertNotNil*(conf: ConfigRef; e): untyped =

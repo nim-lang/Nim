@@ -9,6 +9,10 @@
 
 # included from cgen.nim
 
+proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
+                      result: var Rope; count: var int;
+                      isConst: bool, info: TLineInfo)
+
 # -------------------------- constant expressions ------------------------
 
 proc int64Literal(i: BiggestInt): Rope =
@@ -336,7 +340,7 @@ proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags) =
     else:
       linefmt(p, cpsStmts, "$1 = $2;$n", [rdLoc(dest), rdLoc(src)])
   of tyArray:
-    if containsGarbageCollectedRef(dest.t):
+    if containsGarbageCollectedRef(dest.t) and p.config.selectedGC notin {gcArc, gcOrc, gcHooks}:
       genGenericAsgn(p, dest, src, flags)
     else:
       linefmt(p, cpsStmts,
@@ -1193,7 +1197,7 @@ proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
   else: resetLoc(p, d)
 
-proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
+proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope; needsInit: bool) =
   var sizeExpr = sizeExpr
   let typ = a.t
   var b: TLoc
@@ -1205,8 +1209,12 @@ proc rawGenNew(p: BProc, a: var TLoc, sizeExpr: Rope) =
     sizeExpr = "sizeof($1)" % [getTypeDesc(p.module, bt)]
 
   if optTinyRtti in p.config.globalOptions:
-    b.r = ropecg(p.module, "($1) #nimNewObj($2)",
-        [getTypeDesc(p.module, typ), sizeExpr])
+    if needsInit:
+      b.r = ropecg(p.module, "($1) #nimNewObj($2)",
+          [getTypeDesc(p.module, typ), sizeExpr])
+    else:
+      b.r = ropecg(p.module, "($1) #nimNewObjUninit($2)",
+          [getTypeDesc(p.module, typ), sizeExpr])
     genAssignment(p, a, b, {})
   else:
     let ti = genTypeInfo(p.module, typ, a.lode.info)
@@ -1250,9 +1258,9 @@ proc genNew(p: BProc, e: PNode) =
   if e.len == 3:
     var se: TLoc
     initLocExpr(p, e[2], se)
-    rawGenNew(p, a, se.rdLoc)
+    rawGenNew(p, a, se.rdLoc, needsInit = true)
   else:
-    rawGenNew(p, a, nil)
+    rawGenNew(p, a, nil, needsInit = true)
   gcUsage(p.config, e)
 
 proc genNewSeqAux(p: BProc, dest: TLoc, length: Rope; lenIsZero: bool) =
@@ -1321,7 +1329,7 @@ proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
           [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
@@ -1352,7 +1360,7 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
     getTemp(p, t, tmp)
     r = rdLoc(tmp)
     if isRef:
-      rawGenNew(p, tmp, nil)
+      rawGenNew(p, tmp, nil, needsInit = nfAllFieldsSet notin e.flags)
       t = t.lastSon.skipTypes(abstractInstOwned)
       r = "(*$1)" % [r]
       gcUsage(p.config, e)
@@ -1453,7 +1461,7 @@ proc genArrToSeq(p: BProc, n: PNode, d: var TLoc) =
       genAssignment(p, elem, arr, {needToCopy})
   else:
     var i: TLoc
-    getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i)
+    getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",  [i.r, L])
     initLoc(elem, locExpr, lodeTyp elemType(skipTypes(n.typ, abstractInst)), OnHeap)
     elem.r = ropecg(p.module, "$1$3[$2]", [rdLoc(d), rdLoc(i), dataField(p)])
@@ -1824,7 +1832,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mCard:
       if size <= 4: unaryExprChar(p, e, d, "#countBits32($1)")
       else: unaryExprChar(p, e, d, "#countBits64($1)")
-    of mLtSet: binaryExprChar(p, e, d, "(($1 & ~ $2 ==0)&&($1 != $2))")
+    of mLtSet: binaryExprChar(p, e, d, "((($1 & ~ $2)==0)&&($1 != $2))")
     of mLeSet: binaryExprChar(p, e, d, "(($1 & ~ $2)==0)")
     of mEqSet: binaryExpr(p, e, d, "($1 == $2)")
     of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
@@ -1843,10 +1851,10 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e[1], a)
       putIntoDest(p, d, e, ropecg(p.module, "#cardSet($1, $2)", [rdCharLoc(a), size]))
     of mLtSet, mLeSet:
-      getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i) # our counter
+      getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
       initLocExpr(p, e[2], b)
-      if d.k == locNone: getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyBool), d)
+      if d.k == locNone: getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyBool), d)
       if op == mLtSet:
         linefmt(p, cpsStmts, lookupOpr[mLtSet],
            [rdLoc(i), size, rdLoc(d), rdLoc(a), rdLoc(b)])
@@ -1862,7 +1870,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       putIntoDest(p, d, e, ropecg(p.module, "(#nimCmpMem($1, $2, $3)==0)", [a.rdCharLoc, b.rdCharLoc, size]))
     of mMulSet, mPlusSet, mMinusSet, mSymDiffSet:
       # we inline the simple for loop for better code generation:
-      getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), i) # our counter
+      getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
       initLocExpr(p, e[2], b)
       if d.k == locNone: getTemp(p, setType, d)
@@ -2033,15 +2041,15 @@ proc genDestroy(p: BProc; n: PNode) =
     of tyString:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, $1.p->cap + 1 + sizeof(NI) + sizeof(void*));$n" &
+      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+        " #deallocShared($1.p);$n" &
         " $1.p = NIM_NIL; }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
-      linefmt(p, cpsStmts, "if ($1.p && $1.p->allocator) {$n" &
-        " $1.p->allocator->dealloc($1.p->allocator, $1.p, ($1.p->cap * sizeof($2)) + sizeof(NI) + sizeof(void*));$n" &
+      linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
+        " #deallocShared($1.p);$n" &
         " $1.p = NIM_NIL; }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
@@ -2172,7 +2180,14 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       genRepr(p, e, d)
   of mOf: genOf(p, e, d)
   of mNew: genNew(p, e)
-  of mNewFinalize: genNewFinalize(p, e)
+  of mNewFinalize:
+    if optTinyRtti in p.config.globalOptions:
+      var a: TLoc
+      initLocExpr(p, e[1], a)
+      rawGenNew(p, a, nil, needsInit = true)
+      gcUsage(p.config, e)
+    else:
+      genNewFinalize(p, e)
   of mNewSeq: genNewSeq(p, e)
   of mNewSeqOfCap: genNewSeqOfCap(p, e, d)
   of mSizeOf:
@@ -2193,12 +2208,12 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       else:
         internalError(p.config, e.info, "unknown ast")
     let t = dotExpr[0].typ.skipTypes({tyTypeDesc})
+    let tname = getTypeDesc(p.module, t)
     let member =
       if t.kind == tyTuple:
         "Field" & rope(dotExpr[1].sym.position)
-      else:
-        rope(dotExpr[1].sym.name.s)
-    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [getTypeDesc(p.module, t), member])
+      else: dotExpr[1].sym.loc.r
+    putIntoDest(p,d,e, "((NI)offsetof($1, $2))" % [tname, member])
   of mChr: genSomeCast(p, e, d)
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
@@ -2311,7 +2326,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
           [rdLoc(d), getTypeDesc(p.module, e.typ)])
       for it in e.sons:
         if it.kind == nkRange:
-          getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), idx) # our counter
+          getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), idx) # our counter
           initLocExpr(p, it[0], a)
           initLocExpr(p, it[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
@@ -2327,7 +2342,7 @@ proc genSetConstr(p: BProc, e: PNode, d: var TLoc) =
       lineF(p, cpsStmts, "$1 = 0;$n", [rdLoc(d)])
       for it in e.sons:
         if it.kind == nkRange:
-          getTemp(p, getSysType(p.module.g.graph, unknownLineInfo(), tyInt), idx) # our counter
+          getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), idx) # our counter
           initLocExpr(p, it[0], a)
           initLocExpr(p, it[1], b)
           lineF(p, cpsStmts, "for ($1 = $3; $1 <= $4; $1++) $n" &
@@ -2497,7 +2512,7 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
-    p.module.s[cfsData].addf("NIM_CONST $1 $2 = $3;$n",
+    p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
          [getTypeDesc(p.module, t), tmp, genBracedInit(p, n, isConst = true)])
 
   if d.k == locNone:
@@ -2738,11 +2753,10 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
     else:
       result = rope"{NIM_NIL, NIM_NIL}"
   of tyObject:
-    # XXX Needs to be recursive!
-    if not isObjLackingTypeField(t):
-      result = "{{$1}}" % [genTypeInfo(p.module, t, info)]
-    else:
-      result = rope"{}"
+    var count = 0
+    result.add "{"
+    getNullValueAuxT(p, t, t, t.n, nil, result, count, true, info)
+    result.add "}"
   of tyTuple:
     result = rope"{"
     for i in 0..<t.len:
@@ -2762,56 +2776,95 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)
 
-proc getNullValueAux(p: BProc; t: PType; obj, cons: PNode,
+proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
                      result: var Rope; count: var int;
-                     isConst: bool) =
+                     isConst: bool, info: TLineInfo) =
   case obj.kind
   of nkRecList:
     for it in obj.sons:
-      getNullValueAux(p, t, it, cons, result, count, isConst)
+      getNullValueAux(p, t, it, constOrNil, result, count, isConst, info)
   of nkRecCase:
-    getNullValueAux(p, t, obj[0], cons, result, count, isConst)
+    getNullValueAux(p, t, obj[0], constOrNil, result, count, isConst, info)
     if count > 0: result.add ", "
-    result.add "{{" # struct inside union
-    # XXX select default case branch here!
-    #for i in 1..<obj.len:
+    var branch = Zero
+    if constOrNil != nil:
+      ## find kind value, default is zero if not specified
+      for i in 1..<constOrNil.len:
+        if constOrNil[i].kind == nkExprColonExpr:
+          if constOrNil[i][0].sym.name.id == obj[0].sym.name.id:
+            branch = getOrdValue(constOrNil[i][1])
+            break
+        elif i == obj[0].sym.position:
+          branch = getOrdValue(constOrNil[i])
+          break
+
+    var selectedBranch = -1
+    block branchSelection:
+      for i in 1 ..< obj.len:
+        for j in 0 .. obj[i].len - 2:
+          if obj[i][j].kind == nkRange:
+              let x = getOrdValue(obj[i][j][0])
+              let y = getOrdValue(obj[i][j][1])
+              if branch >= x and branch <= y:
+                selectedBranch = i
+                break branchSelection
+          elif getOrdValue(obj[i][j]) == branch:
+            selectedBranch = i
+            break branchSelection
+        if obj[i].len == 1:
+          # else branch
+          selectedBranch = i
+    assert(selectedBranch >= 1)
+
+    result.add "{"
     var countB = 0
-    getNullValueAux(p, t, lastSon(obj[1]), cons, result, countB, isConst)
-    result.add "}}"
+    let b = lastSon(obj[selectedBranch])
+    # designated initilization is the only way to init non first element of unions
+    # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
+    if  b.kind == nkRecList and b.len > 0:
+      result.add "._" &  mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
+      result.add "}"
+    elif b.kind == nkSym:
+      result.add "." & mangleRecFieldName(p.module, b.sym) & " = "
+      getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
+    result.add "}"
+
   of nkSym:
     if count > 0: result.add ", "
     inc count
     let field = obj.sym
-    for i in 1..<cons.len:
-      if cons[i].kind == nkExprColonExpr:
-        if cons[i][0].sym.name.id == field.name.id:
-          result.add genBracedInit(p, cons[i][1], isConst)
+    if constOrNil != nil:
+      for i in 1..<constOrNil.len:
+        if constOrNil[i].kind == nkExprColonExpr:
+          if constOrNil[i][0].sym.name.id == field.name.id:
+            result.add genBracedInit(p, constOrNil[i][1], isConst)
+            return
+        elif i == field.position:
+          result.add genBracedInit(p, constOrNil[i], isConst)
           return
-      elif i == field.position:
-        result.add genBracedInit(p, cons[i], isConst)
-        return
     # not found, produce default value:
-    result.add getDefaultValue(p, field.typ, cons.info)
+    result.add getDefaultValue(p, field.typ, info)
   else:
-    localError(p.config, cons.info, "cannot create null element for: " & $obj)
+    localError(p.config, info, "cannot create null element for: " & $obj)
 
-proc getNullValueAuxT(p: BProc; orig, t: PType; obj, cons: PNode,
+proc getNullValueAuxT(p: BProc; orig, t: PType; obj, constOrNil: PNode,
                       result: var Rope; count: var int;
-                      isConst: bool) =
+                      isConst: bool, info: TLineInfo) =
   var base = t[0]
   let oldRes = result
-  if not p.module.compileToCpp: result.add "{"
   let oldcount = count
   if base != nil:
+    result.add "{"
     base = skipTypes(base, skipPtrs)
-    getNullValueAuxT(p, orig, base, base.n, cons, result, count, isConst)
+    getNullValueAuxT(p, orig, base, base.n, constOrNil, result, count, isConst, info)
+    result.add "}"
   elif not isObjLackingTypeField(t):
-    result.addf("{$1}", [genTypeInfo(p.module, orig, obj.info)])
+    result.add genTypeInfo(p.module, orig, obj.info)
     inc count
-  getNullValueAux(p, t, obj, cons, result, count, isConst)
+  getNullValueAux(p, t, obj, constOrNil, result, count, isConst, info)
   # do not emit '{}' as that is not valid C:
   if oldcount == count: result = oldRes
-  elif not p.module.compileToCpp: result.add "}"
 
 proc genConstObjConstr(p: BProc; n: PNode; isConst: bool): Rope =
   result = nil
@@ -2821,9 +2874,8 @@ proc genConstObjConstr(p: BProc; n: PNode; isConst: bool): Rope =
   #  result.addf("{$1}", [genTypeInfo(p.module, t)])
   #  inc count
   if t.kind == tyObject:
-    getNullValueAuxT(p, t, t, t.n, n, result, count, isConst)
-  if p.module.compileToCpp:
-    result = "{$1}$n" % [result]
+    getNullValueAuxT(p, t, t, t.n, n, result, count, isConst, n.info)
+  result = "{$1}$n" % [result]
 
 proc genConstSimpleList(p: BProc, n: PNode; isConst: bool): Rope =
   result = rope("{")
@@ -2848,7 +2900,7 @@ proc genConstSeq(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
   let base = t.skipTypes(abstractInst)[0]
 
   appcg(p.module, cfsData,
-        "$5 struct {$n" &
+        "static $5 struct {$n" &
         "  #TGenericSeq Sup;$n" &
         "  $1 data[$2];$n" &
         "} $3 = $4;$n", [
@@ -2869,8 +2921,8 @@ proc genConstSeqV2(p: BProc, n: PNode, t: PType; isConst: bool): Rope =
 
   appcg(p.module, cfsData,
     "static $5 struct {$n" &
-    "  NI cap; void* allocator; $1 data[$2];$n" &
-    "} $3 = {$2, NIM_NIL, $4};$n", [
+    "  NI cap; $1 data[$2];$n" &
+    "} $3 = {$2 | NIM_STRLIT_FLAG, $4};$n", [
     getTypeDesc(p.module, base), n.len, payload, data,
     if isConst: "const" else: ""])
   result = "{$1, ($2*)&$3}" % [rope(n.len), getSeqPayloadType(p.module, t), payload]
@@ -2922,7 +2974,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
     of tyObject:
       result = genConstObjConstr(p, n, isConst)
     of tyString, tyCString:
-      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit:
+      if optSeqDestructors in p.config.globalOptions and n.kind != nkNilLit and ty == tyString:
         result = genStringLiteralV2Const(p.module, n, isConst)
       else:
         var d: TLoc

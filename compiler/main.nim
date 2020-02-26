@@ -185,11 +185,12 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
-    conf.exc = excCpp
+    if conf.exc == excNone: conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":
@@ -292,7 +293,9 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
+      var lazyPaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
+      for dir in conf.lazyPaths: lazyPaths.elems.add(%dir.string)
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
@@ -305,9 +308,12 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "prefixdir", val: %conf.getPrefixDir().string),
+        (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "lazyPaths", val: %lazyPaths),
         (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),
@@ -364,7 +370,8 @@ proc mainCommand*(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    let output = if optListFullPaths in conf.globalOptions: $conf.getOutFileFull else: $conf.outFile
+    var output = $conf.absOutFile
+    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,

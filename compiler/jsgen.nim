@@ -1795,26 +1795,6 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("$1 || [])" % [a.res])
 
-proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
-  # we map mArray to PHP's array constructor, a mild hack:
-  var a, b: TCompRes
-  r.kind = resExpr
-  r.res = rope("array(")
-  let x = skipConv(n[1])
-  if x.kind == nkBracket:
-    for i in 0..<x.len:
-      let it = x[i]
-      if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
-        if i > 0: r.res.add(", ")
-        gen(p, it[0], a)
-        gen(p, it[1], b)
-        r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
-      else:
-        localError(p.config, it.info, "'toArray' needs tuple constructors")
-  else:
-    localError(p.config, x.info, "'toArray' needs an array literal")
-  r.res.add(")")
-
 proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = nil) =
   useMagic(p, magic)
   r.res.add(magic & "(")
@@ -1889,6 +1869,15 @@ proc genReset(p: PProc, n: PNode) =
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     lineF(p, "$1 = genericReset($3, $2);$n", [a,
                   genTypeInfo(p, n[1].typ), tmp])
+
+proc genMove(p: PProc; n: PNode; r: var TCompRes) =
+  var a: TCompRes
+  r.kind = resVal
+  r.res = p.getTemp()
+  gen(p, n[1], a)
+  lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
+  genReset(p, n)
+  #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
 
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   var
@@ -2014,7 +2003,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
   of mDefault: genDefault(p, n, r)
-  of mReset: genReset(p, n)
+  of mReset, mWasMoved: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n[0].sym.name.s)
@@ -2037,6 +2026,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[3], z)
     r.res = "($1.slice($2, $3+1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
     r.kind = resExpr
+  of mMove:
+    genMove(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);
