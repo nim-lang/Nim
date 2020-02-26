@@ -328,6 +328,7 @@ proc processNote(c: PContext, n: PNode) =
     n[1] = x
     if x.kind == nkIntLit and x.intVal != 0: incl(c.config.notes, nk)
     else: excl(c.config.notes, nk)
+    # checkme: honor cmdlineNotes with: c.setNote(nk, x.kind == nkIntLit and x.intVal != 0)
   else:
     invalidPragma(c, n)
 
