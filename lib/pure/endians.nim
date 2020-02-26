@@ -223,13 +223,10 @@ func swapEndian*[T: SomeNumber](value: T): T {.inline.} =
     else:       cast[T](    swap64(cast[uint64](value)))
 
 
-var a = 1
-
-proc swapEndian*(T: typedesc[SomeNumber],
+func swapEndian*(T: typedesc[SomeNumber],
                  buf: pointer) {.inline, since: (1,1).} =
   ## Swaps the byte order of a number at a memory location in-place. The type
   ## of the number must be passed in as an argument.
-  a = 2
   runnableExamples:
     var i = 0xdeadbeef'i32
     swapEndian(int32, i.addr)
@@ -239,7 +236,7 @@ proc swapEndian*(T: typedesc[SomeNumber],
   cast[ptr T](buf)[] = swapEndian(value)
 
 
-proc swapEndian*(T: typedesc[SomeNumber], buf: var openArray[byte],
+func swapEndian*(T: typedesc[SomeNumber], buf: var openArray[byte],
                  startIndex: Natural) {.inline, since: (1,1).} =
   ## Swaps the byte order of a number stored as a byte sequence in `buf`
   ## starting at `startIndex`. The type of the number must be passed in as an
@@ -315,7 +312,7 @@ func fromLE*[T: SomeNumber](value: T): T {.inline, since: (1,1).} =
   ## Consider using `fromBytesLE` instead to make the intent clearer.
   toLE(value)
 
-proc toBytesBE*[T: SomeNumber](value: T, buf: pointer)
+func toBytesBE*[T: SomeNumber](value: T, buf: pointer)
     {.inline, since: (1,1).} =
   ## Writes a number to a memory location as a big-endian byte sequence.
   runnableExamples:
@@ -328,7 +325,7 @@ proc toBytesBE*[T: SomeNumber](value: T, buf: pointer)
   else: cast[ptr T](buf)[] = swapEndian(value)
 
 
-proc slowToBytes[T: SomeNumber](destEndian: Endianness,
+func slowToBytes[T: SomeNumber](destEndian: Endianness,
                                 value: T, buf: var openArray[byte],
                                 startIndex: Natural) =
   template toBytes(S: typedesc[SomeInteger]) =
@@ -343,7 +340,7 @@ proc slowToBytes[T: SomeNumber](destEndian: Endianness,
   elif sizeof(T) == 8: toBytes(uint64)
 
 
-proc toBytesBE*[T: SomeNumber](value: T, buf: var openArray[byte],
+func toBytesBE*[T: SomeNumber](value: T, buf: var openArray[byte],
                                startIndex: Natural)
     {.inline, since: (1,1).} =
   ## Writes a number to `buf` starting at index `startIndex` as a big-endian
@@ -361,7 +358,7 @@ proc toBytesBE*[T: SomeNumber](value: T, buf: var openArray[byte],
     toBytesBE(value, buf[startIndex].addr)
 
 
-proc toBytesLE*[T: SomeNumber](value: T,
+func toBytesLE*[T: SomeNumber](value: T,
                                buf: pointer) {.inline, since: (1,1).} =
   ## Writes a number to a memory location as a little-endian byte sequence.
   runnableExamples:
@@ -373,7 +370,7 @@ proc toBytesLE*[T: SomeNumber](value: T,
   when system.cpuEndian == littleEndian: cast[ptr T](buf)[] = value
   else: cast[ptr T](buf)[] = swapEndian(value)
 
-proc toBytesLE*[T: SomeNumber](value: T, buf: var openArray[byte],
+func toBytesLE*[T: SomeNumber](value: T, buf: var openArray[byte],
                                startIndex: Natural)
     {.inline, since: (1,1).} =
   ## Writes a number to `buf` at index `startIndex` as a little-endian byte
