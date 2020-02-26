@@ -166,36 +166,19 @@ lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 """.splitWhitespace()
-  # some of these (eg lib/posix/posix_macos_amd64.nim) are include files
-  # but contain potentially valuable docs on OS-specific symbols (eg OSX) that
-  # don't end up in the main docs; we ignore these for now.
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
-    # pending #13212 use os.isRelativeTo
     let path = path.normalizedPath
     let base = base.normalizedPath
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
-  var t: HashSet[string]
-  for a in doc0:
-    doAssert a notin t
-    t.incl a
-  for a in withoutIndex:
-    doAssert a notin t, a
-    t.incl a
-
-  for a in ignoredModules:
-    doAssert a notin t, a
-    t.incl a
-
-  var t2: HashSet[string]
-  template myadd(a)=
-    result.add a
-    doAssert a notin t2, a
-    t2.incl a
+  var docIgnore: HashSet[string]
+  for a in doc0: docIgnore.incl a
+  for a in withoutIndex: docIgnore.incl a
+  for a in ignoredModules: docIgnore.incl a
 
   # don't ignore these even though in lib/system
   const goodSystem = """
@@ -208,81 +191,15 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   for a in walkDirRec("lib"):
-    if a.splitFile.ext != ".nim": continue
-    if a.isRelativeTo("lib/pure/includes"): continue
-    if a.isRelativeTo("lib/genode"): continue
-    if a.isRelativeTo("lib/deprecated"):
-      if a notin @["lib/deprecated/pure/ospaths.nim"]: # REMOVE
-        continue
-    if a.isRelativeTo("lib/system"):
-      if a notin goodSystem:
-        continue
-    if a notin t:
-      result.add a
-      doAssert a notin t2, a
-      t2.incl a
-
-  myadd "nimsuggest/sexp.nim"
-  # these are include files, even though some of them don't specify `included from ...`
-  const ignore = """
-compiler/ccgcalls.nim
-compiler/ccgexprs.nim
-compiler/ccgliterals.nim
-compiler/ccgstmts.nim
-compiler/ccgthreadvars.nim
-compiler/ccgtrav.nim
-compiler/ccgtypes.nim
-compiler/hlo.nim
-compiler/jstypes.nim
-compiler/packagehandling.nim
-compiler/rodimpl.nim
-compiler/semcall.nim
-compiler/semexprs.nim
-compiler/semfields.nim
-compiler/semgnrc.nim
-compiler/seminst.nim
-compiler/semmagic.nim
-compiler/semobjconstr.nim
-compiler/semstmts.nim
-compiler/semtempl.nim
-compiler/semtypes.nim
-compiler/sizealignoffsetimpl.nim
-compiler/suggest.nim
-compiler/vmhooks.nim
-compiler/vmops.nim
-""".splitWhitespace()
-
-  # not include files but doesn't work; not included/imported anywhere; dead code?
-  const bad = """
-compiler/canonicalizer.nim
-compiler/debuginfo.nim
-compiler/forloops.nim
-""".splitWhitespace()
-
-  # these cause errors even though they're imported (some of which are mysterious)
-  const bad2 = """
-compiler/aliases.nim
-compiler/ast.nim
-compiler/astalgo.nim
-compiler/closureiters.nim
-compiler/evalffi.nim
-compiler/lambdalifting.nim
-compiler/layouter.nim
-compiler/nimfix/nimfix.nim
-compiler/plugins/active.nim
-compiler/plugins/itersgen.nim
-compiler/renderer.nim
-compiler/tccgen.nim
-compiler/trees.nim
-compiler/types.nim
-""".splitWhitespace()
-
-  for a in walkDirRec("compiler"):
-    if a.splitFile.ext != ".nim": continue
-    if a in ignore: continue
-    if a in bad: continue
-    if a in bad2: continue
+    if a.splitFile.ext != ".nim" or
+       a.isRelativeTo("lib/pure/includes") or
+       a.isRelativeTo("lib/genode") or
+       a.isRelativeTo("lib/deprecated") or
+       (a.isRelativeTo("lib/system") and a notin goodSystem) or
+       a in docIgnore:
+         continue
     result.add a
+  result.add "nimsuggest/sexp.nim"
 
 let doc = getDocList()
 
