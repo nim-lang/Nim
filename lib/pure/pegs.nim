@@ -2058,6 +2058,8 @@ proc escapePeg*(s: string): string =
 when isMainModule:
   assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
   assert match("(a b c)", peg"'(' @ ')'")
+  static:
+    assert match("(a b c)", peg"'(' @ ')'")
   assert match("W_HI_Le", peg"\y 'while'")
   assert(not match("W_HI_L", peg"\y 'while'"))
   assert(not match("W_HI_Le", peg"\y v'while'"))
