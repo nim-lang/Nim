@@ -16,11 +16,11 @@
 
 import macros, private / underscored_calls
 
-macro with*(x: typed; calls: varargs[untyped]) =
+macro with*(arg: typed; calls: varargs[untyped]): untyped =
   ## This macro provides the `chaining`:idx: of function calls.
   ## It does so by patching every call in `calls` to
-  ## use `x` as the first argument.
-  ## **This evaluates `x` multiple times!**
+  ## use `arg` as the first argument.
+  ## **This evaluates `arg` multiple times!**
   runnableExamples:
     var x = "yay"
     with x:
@@ -34,7 +34,7 @@ macro with*(x: typed; calls: varargs[untyped]) =
       -= 5
     doAssert a == 43
 
-  result = newNimNode(nnkStmtList, x)
+  result = newNimNode(nnkStmtList, arg)
   expectKind calls, nnkArgList
   let body =
     if calls.len == 1 and calls[0].kind in {nnkStmtList, nnkStmtListExpr}:
@@ -42,7 +42,7 @@ macro with*(x: typed; calls: varargs[untyped]) =
     else:
       calls
   for call in body:
-    result.add underscoredCall(call, x)
+    result.add underscoredCall(call, arg)
 
 when isMainModule:
   type
