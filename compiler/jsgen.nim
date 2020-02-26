@@ -285,13 +285,20 @@ proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
   code.len
   
 
-proc insertCodeBeforeAt(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
+proc insertCodeBefore(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
   var table = p.g.typeLookupTable
   var srcCodeStartIndex = table.find(typeId, id).startIndex
   var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
   var idTable = table.find(typeId)
   idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
 
+proc insertCodeAfter(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
+  var table = p.g.typeLookupTable
+  var srcCodeStartIndex = table.find(typeId, id).startIndex
+  var insertedLineCount = srcCode.insertAfterAt(srcCodeStartIndex, code)
+  var idTable = table.find(typeId)
+  idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
+  
 template config*(p: PProc): ConfigRef = p.module.config
 
 proc indentLine(p: PProc, r: Rope): Rope =
@@ -1220,11 +1227,44 @@ proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: P
     var entry = p.g.typeLookupTable.find(typeId, alias)
     var marker = "%[" & command & ":" & typeId & "(" & alias & ")]%"
     result = (marker, entry, propName)
-    
+
+# %[BEFORE:property(A.abc)]% 
+proc findBeforeStoreTypeAndAlias(emitStr: string): tuple[typeId, alias: string] = 
+  var xpr = re"""%\[BEFORE:(\S+)\((\S+)\)\]%"""   
+  var typeId, alias: string
+  if emitStr =~ xpr:
+    (typeId, alias) = matches
+    result = (typeId, alias)
+
+proc findAfterStoreTypeAndAlias(emitStr: string): tuple[typeId, alias: string] = 
+  var xpr = re"""%\[AFTER:(\S+)\((\S+)\)\]%"""
+  var typeId, alias: string
+  if emitStr =~ xpr:
+    (typeId, alias) = matches
+    result = (typeId, alias)
+
+proc injectionMarker(command, typeId, alias: string): string =  
+  "%[" & command & ":" & typeId & "(" & alias & ")]%"
+
+proc injectEmit(p: PProc, str: string) =
+  var typeId, alias: string
+  (typeId, alias) = findBeforeStoreTypeAndAlias(str)
+  if typeId.len == 0:
+    (typeId, alias) = findAfterStoreTypeAndAlias(str)
+    var marker = injectionMarker("BEFORE", typeId, alias)
+    var code = str.replace(marker, "")
+    p.insertCodeBefore(p.g.code, typeId, alias, code)
+  else:
+    var marker = injectionMarker("BEFORE", typeId, alias)
+    var code = str.replace(marker, "")
+    p.insertCodeAfter(p.g.code, typeId, alias, code)
+
 proc genEmit(p: PProc, n: PNode): PProc =
   var str = n.nToString()
   str = replaceDeclId(p, str)
   str = replaceDeclGenId(p, str)
+
+  injectEmit(p, str)
 
   var (marker, entry, propName) = getTypeAndAliasEntry(p, str)
   if marker.len > 0:
