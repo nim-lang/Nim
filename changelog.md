@@ -52,7 +52,7 @@
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
 - Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
-- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
+- Added `sugar.dup` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
@@ -69,6 +69,18 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
+
+
+- Added a `with` macro for easy function chaining that's available
+  everywhere, there is no need to concern your APIs with returning the first argument
+  to enable "chaining", instead use the dedicated macro `with` that
+  was designed for it. For example:
+
+```nim
+
+
+
+```
 
 
 ## Library changes
