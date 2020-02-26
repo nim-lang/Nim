@@ -1172,8 +1172,6 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
     case it.kind
     of nkStrLit..nkTripleStrLit:
       var str = it.strVal
-      str = replaceDeclId(p, str)
-      str = replaceDeclGenId(p, str)    
       p.body.add(str)
     of nkSym:
       let v = it.sym
@@ -1203,8 +1201,11 @@ proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   p.body.add "\L"
   p  
 
+proc nodeIsStr(n: PNode): bool =
+  n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}
+
 proc nToString(n: PNode): string =
-  if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
+  if nodeIsStr(n):
     result = n[0].strVal
 
 proc storeTypeAndAlias(p: PProc, str: string) =
@@ -1259,7 +1260,7 @@ proc injectEmit(p: PProc, str: string) =
     var code = str.replace(marker, "")
     p.insertCodeAfter(p.g.code, typeId, alias, code)
 
-proc genEmit(p: PProc, n: PNode): PProc =
+proc handleSpecialtEmitStr(p: PProc, n: PNode): PProc =
   var str = n.nToString()
   str = replaceDeclId(p, str)
   str = replaceDeclGenId(p, str)
@@ -1293,10 +1294,13 @@ proc genEmit(p: PProc, n: PNode): PProc =
     p.g.footer.add(emitStr)
   of "TYPES":
     p.g.types.add(emitStr)
-  else:
-    discard genAsmOrEmitStmt(p, n)
-    
   result = p
+
+proc genEmit(p: PProc, n: PNode): PProc =
+  if nodeIsStr(n):
+    handleSpecialtEmitStr(p, n)
+  else:
+    genAsmOrEmitStmt(p, n)
     
 
 proc genIf(p: PProc, n: PNode, r: var TCompRes) =
