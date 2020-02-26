@@ -19,7 +19,7 @@
 ## not have been taken. ``x = "abc"; x.add(...)``
 
 # Todo:
-# - make variables scope based too
+# - eliminate 'wasMoved(x); destroy(x)' pairs as a post processing step.
 
 import
   intsets, ast, msgs, renderer, magicsys, types, idents,
@@ -35,9 +35,9 @@ type
     g: ControlFlowGraph
     jumpTargets: IntSet
     destroys, topLevelVars: PNode
-    tempDestroys: seq[PNode] # used as a stack that pop from
-                             # at strategic places which try to
-                             # mimic the natural scope.
+    scopeDestroys: seq[PNode] # used as a stack that pop from
+                              # at strategic places which try to
+                              # mimic the natural scope.
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
@@ -391,13 +391,13 @@ proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
   if c.hasUnstructuredCf == oldHasUnstructuredCf:
     # no need for a try-finally statement:
     if body.kind == nkStmtList:
-      for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
-        body.add c.tempDestroys[i]
+      for i in countdown(c.scopeDestroys.high, oldTmpDestroysLen):
+        body.add c.scopeDestroys[i]
     elif isEmptyType(t):
       var n = newNodeI(nkStmtList, body.info)
       n.add body[^1]
-      for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
-        n.add c.tempDestroys[i]
+      for i in countdown(c.scopeDestroys.high, oldTmpDestroysLen):
+        n.add c.scopeDestroys[i]
       body[^1] = n
     elif body.kind == nkStmtListExpr and body.len > 0 and body[^1].kind == nkSym:
       # special case: Do not translate (x; y; sym) into
@@ -405,9 +405,9 @@ proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
       # but into
       # (x; y; destroy(x); destroy(y); sym )
       let sym = body[^1]
-      body[^1] = c.tempDestroys[^1]
-      for i in countdown(c.tempDestroys.high - 1, oldTmpDestroysLen):
-        body.add c.tempDestroys[i]
+      body[^1] = c.scopeDestroys[^1]
+      for i in countdown(c.scopeDestroys.high - 1, oldTmpDestroysLen):
+        body.add c.scopeDestroys[i]
       body.add sym
     else:
       # fun ahead: We have to transform (x; y; E()) into
@@ -417,18 +417,18 @@ proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
       # the tmp does not have to be initialized
       var n = newNodeIT(nkStmtListExpr, body.info, t2)
       n.add newTree(nkFastAsgn, tmp, body[^1])
-      for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
-        n.add c.tempDestroys[i]
+      for i in countdown(c.scopeDestroys.high, oldTmpDestroysLen):
+        n.add c.scopeDestroys[i]
       n.add tmp
       body[^1] = n
-      #c.tempDestroys.add genDestroy(c, tmp)
+      #c.scopeDestroys.add genDestroy(c, tmp)
   else:
     # unstructured control flow was used, use a 'try finally' to ensure
     # destruction:
     if isEmptyType(t):
       var n = newNodeI(nkStmtList, body.info)
-      for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
-        n.add c.tempDestroys[i]
+      for i in countdown(c.scopeDestroys.high, oldTmpDestroysLen):
+        n.add c.scopeDestroys[i]
       body[^1] = newTryFinally(body[^1], n)
     else:
       # fun ahead: We have to transform (x; y; E()) into
@@ -437,15 +437,15 @@ proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
       let tmp = getTemp(c, t2, body.info)
       # the tmp does not have to be initialized
       var fin = newNodeI(nkStmtList, body.info)
-      for i in countdown(c.tempDestroys.high, oldTmpDestroysLen):
-        fin.add c.tempDestroys[i]
+      for i in countdown(c.scopeDestroys.high, oldTmpDestroysLen):
+        fin.add c.scopeDestroys[i]
       var n = newNodeIT(nkStmtListExpr, body.info, t2)
       n.add newTryFinally(newTree(nkFastAsgn, tmp, body[^1]), fin)
       n.add tmp
       body[^1] = n
-      #c.tempDestroys.add genDestroy(c, tmp)
+      #c.scopeDestroys.add genDestroy(c, tmp)
 
-  c.tempDestroys.setLen oldTmpDestroysLen
+  c.scopeDestroys.setLen oldTmpDestroysLen
 
 proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
   template processCall(node: PNode): PNode =
@@ -457,7 +457,7 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
   proc handleScope(n, dest: PNode; t: PType;
                    takeOver: Natural; c: var Con; mode: ProcessMode): PNode =
     let oldHasUnstructuredCf = c.hasUnstructuredCf
-    let oldTmpDestroysLen = c.tempDestroys.len
+    let oldTmpDestroysLen = c.scopeDestroys.len
     result = shallowCopy(n)
     for i in 0..<takeOver:
       result[i] = n[i]
@@ -469,11 +469,11 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
     # not destroy it too early:
     if isEmptyType(t):
       result[last] = processCall(n[last])
-      if c.tempDestroys.len > oldTmpDestroysLen:
+      if c.scopeDestroys.len > oldTmpDestroysLen:
         handleTmpDestroys(c, result, t, oldHasUnstructuredCf, oldTmpDestroysLen)
     else:
       setLen(result.sons, last)
-      if c.tempDestroys.len > oldTmpDestroysLen:
+      if c.scopeDestroys.len > oldTmpDestroysLen:
         handleTmpDestroys(c, result, t, oldHasUnstructuredCf, oldTmpDestroysLen)
       if result.kind != nkFinally:
         result.add processCall(n[last])
@@ -529,7 +529,7 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     else:
       result.add newTree(nkFastAsgn, tmp, arg)
     result.add tmp
-    c.tempDestroys.add genDestroy(c, tmp)
+    c.scopeDestroys.add genDestroy(c, tmp)
   else:
     result = arg
 
@@ -690,18 +690,42 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
             let v = it[j]
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
-              # move the variable declaration to the top of the frame:
-              c.addTopVar v
-              # make sure it's destroyed at the end of the proc:
-              if not isUnpackedTuple(v):
-                c.destroys.add genDestroy(c, v)
-              elif c.inLoop > 0:
-                # unpacked tuple needs reset at every loop iteration
-                result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-            if ri.kind == nkEmpty and c.inLoop > 0:
-              ri = genDefaultCall(v.typ, c, v.info)
-            if ri.kind != nkEmpty:
-              result.add moveOrCopy(v, ri, c)
+              if isUnpackedTuple(v):
+                c.addTopVar(v)
+                if c.inLoop > 0:
+                  # unpacked tuple needs reset at every loop iteration
+                  result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+                  if ri.kind == nkEmpty:
+                    ri = genDefaultCall(v.typ, c, v.info)
+                if ri.kind != nkEmpty:
+                  result.add moveOrCopy(v, ri, c)
+              else:
+                # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
+                # the destruction at the loop end will free the resources. Other assignments
+                # will destroy the old value inside 'v'. If we have 'var v' without an initial
+                # default value we translate it into 'var v = default()'. We translate
+                # 'var x = someGlobal' into 'var v = default(); `=`(v, someGlobal). The
+                # lack of copy constructors is really beginning to hurt us. :-(
+                #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
+                c.addTopVar(v)
+                if ri.kind == nkEmpty:
+                  ri = genDefaultCall(v.typ, c, v.info)
+                result.add moveOrCopy(v, ri, c)
+                c.scopeDestroys.add genDestroy(c, v)
+              when false:
+                # move the variable declaration to the top of the frame:
+                c.addTopVar v
+                # make sure it's destroyed at the end of the proc:
+                if not isUnpackedTuple(v):
+                  c.destroys.add genDestroy(c, v)
+                elif c.inLoop > 0:
+                  # unpacked tuple needs reset at every loop iteration
+                  result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+            else:
+              if ri.kind == nkEmpty and c.inLoop > 0:
+                ri = genDefaultCall(v.typ, c, v.info)
+              if ri.kind != nkEmpty:
+                result.add moveOrCopy(v, ri, c)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -903,7 +927,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
-  if c.destroys.len > 0 or c.tempDestroys.len > 0 or
+  if c.destroys.len > 0 or c.scopeDestroys.len > 0 or
       (c.hasRaise and owner.kind == skModule):
     reverse c.destroys.sons
     var fin: PNode
@@ -912,7 +936,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       g.globalDestructors.add c.destroys
     else:
       fin = newTryFinally(body, c.destroys)
-    for i in countdown(c.tempDestroys.high, 0): fin[1][0].add c.tempDestroys[i]
+    for i in countdown(c.scopeDestroys.high, 0): fin[1][0].add c.scopeDestroys[i]
     result.add fin
   else:
     result.add body
