@@ -202,7 +202,8 @@ else:
   template swap64(a: uint64): uint64 = slowSwap64(a)
 
 
-func swapEndian*[T: SomeNumber](value: T): T {.inline, since: (1,1).} =
+# TODO had to remove {.since: (1,1).} because it broke `koch runCI`
+func swapEndian*[T: SomeNumber](value: T): T {.inline.} =
   ## Swaps the byte order of a number.
   runnableExamples:
     doAssert swapEndian(0xdeadbeef'i32) == 0xefbeadde'i32
