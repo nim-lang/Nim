@@ -330,6 +330,15 @@ proc excl*(s: var IntSet, other: IntSet) =
 
   for item in other: excl(s, item)
 
+proc len*(s: IntSet): int {.inline.} =
+  ## Returns the number of elements in `s`.
+  if s.elems < s.a.len:
+    result = s.elems
+  else:
+    result = 0
+    for _ in s:
+      inc(result)
+
 proc missingOrExcl*(s: var IntSet, key: int): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
@@ -348,9 +357,9 @@ proc missingOrExcl*(s: var IntSet, key: int): bool =
     assert a.missingOrExcl(5) == false
     assert a.missingOrExcl(5) == true
 
-  var count = s.elems
+  var count = s.len
   exclImpl(s, key)
-  result = count == s.elems
+  result = count == s.len
 
 proc clear*(result: var IntSet) =
   ## Clears the IntSet back to an empty state.
@@ -513,15 +522,6 @@ proc disjoint*(s1, s2: IntSet): bool =
     if contains(s2, item):
       return false
   return true
-
-proc len*(s: IntSet): int {.inline.} =
-  ## Returns the number of elements in `s`.
-  if s.elems < s.a.len:
-    result = s.elems
-  else:
-    result = 0
-    for _ in s:
-      inc(result)
 
 proc card*(s: IntSet): int {.inline.} =
   ## Alias for `len() <#len,IntSet>`_.
