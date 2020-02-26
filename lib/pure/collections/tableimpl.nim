@@ -107,13 +107,23 @@ template clearImpl() {.dirty.} =
     t.data[i].val = default(type(t.data[i].val))
   t.counter = 0
 
+template ctAnd(a, b): bool =
+  # pending https://github.com/nim-lang/Nim/issues/13502
+  when a:
+    when b: true
+    else: false
+  else: false
+
 template initImpl(result: typed, size: int) =
-  assert isPowerOfTwo(size)
-  result.counter = 0
-  newSeq(result.data, size)
-  when compiles(result.first):
-    result.first = -1
-    result.last = -1
+  when ctAnd(declared(SharedTable), type(result) is SharedTable):
+    init(result, size)
+  else:
+    assert isPowerOfTwo(size)
+    result.counter = 0
+    newSeq(result.data, size)
+    when compiles(result.first):
+      result.first = -1
+      result.last = -1
 
 template insertImpl() = # for CountTable
   checkIfInitialized()

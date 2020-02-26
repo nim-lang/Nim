@@ -225,3 +225,32 @@ block: # https://github.com/nim-lang/Nim/issues/13496
 
   testDel(): (var t: HashSet[int])
   testDel(): (var t: OrderedSet[int])
+
+block: # test correctness after a number of inserts/deletes
+  template testDel(body) =
+    block:
+      body
+      var expected: seq[int]
+      let n = 100
+      let n2 = n*2
+      for i in 0..<n:
+        t.incl(i)
+      for i in 0..<n:
+        if i mod 3 == 0:
+          t.excl(i)
+      for i in n..<n2:
+        t.incl(i)
+      for i in 0..<n2:
+        if i mod 7 == 0:
+          t.excl(i)
+
+      for i in 0..<n2:
+        if (i>=n or i mod 3 != 0) and i mod 7 != 0:
+          expected.add i
+
+      for i in expected: doAssert i in t
+      doAssert t.len == expected.len
+      doAssert sortedItems(t) == expected
+
+  testDel(): (var t: HashSet[int])
+  testDel(): (var t: OrderedSet[int])

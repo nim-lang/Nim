@@ -1282,6 +1282,10 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
     var h = t.first
     while h >= 0:
       var nxt = t.data[h].next
+       # For OrderedTable/OrderedTableRef, isFilled is ok because `del` is O(n)
+       # and doesn't create tombsones, but if it does start using tombstones,
+       # carefully replace `isFilled` by `isFilledAndValid` as appropriate for these
+       # table types only, ditto with `OrderedSet`.
       if isFilled(t.data[h].hcode):
         yieldStmt
       h = nxt
