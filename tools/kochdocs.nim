@@ -248,6 +248,7 @@ lib/std/sha1.nim
 lib/std/sums.nim
 lib/std/varints.nim
 lib/std/time_t.nim
+lib/std/with.nim
 lib/impure/rdstdin.nim
 lib/wrappers/linenoise/linenoise.nim
 lib/pure/strformat.nim
