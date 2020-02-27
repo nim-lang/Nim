@@ -120,7 +120,7 @@ const
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind == nkRaiseStmt or
+  result = n.kind in nkLastBlockStmts or
            (isCallExpr(n) and n[0].kind == nkSym and
            sfDiscardable in n[0].sym.flags)
 
@@ -2162,9 +2162,6 @@ proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
   typ.n = res
 
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # these must be last statements in a block:
-  const
-    LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
   result.transitionSonsKind(nkStmtList)
   var voidContext = false
@@ -2209,7 +2206,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
-    if n[i].kind in LastBlockStmts or
+    if n[i].kind in nkLastBlockStmts or
         n[i].kind in nkCallKinds and n[i][0].kind == nkSym and
         sfNoReturn in n[i][0].sym.flags:
       for j in i + 1..<n.len:

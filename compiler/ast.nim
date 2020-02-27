@@ -336,6 +336,8 @@ const
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
   effectListLen* = 5    # list of effects list
+  nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}  
+                        # these must be last statements in a block
 
 type
   TTypeKind* = enum  # order is important!
