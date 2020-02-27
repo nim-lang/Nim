@@ -484,7 +484,14 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
   case n.kind
   of nkStmtList, nkStmtListExpr:
     if n.len == 0: return n
-    result = handleScope(n, dest, n.typ, 0, c, mode)
+    result = shallowCopy(n)
+    let last = n.len - 1
+    for i in 0..<last:
+      result[i] = p(n[i], c, normal)
+    result[last] = processCall(n[last])
+    # A statement list does not introduce a scope, the AST can
+    # contain silly nested statement lists.
+    #result = handleScope(n, dest, n.typ, 0, c, mode)
   of nkBlockStmt, nkBlockExpr:
     result = handleScope(n, dest, n.typ, 1, c, mode)
   of nkIfStmt, nkIfExpr:
@@ -697,6 +704,13 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
                   result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
                   if ri.kind == nkEmpty:
                     ri = genDefaultCall(v.typ, c, v.info)
+                if ri.kind != nkEmpty:
+                  result.add moveOrCopy(v, ri, c)
+              elif sfGlobal in v.sym.flags:
+                c.addTopVar v
+                c.destroys.add genDestroy(c, v)
+                if ri.kind == nkEmpty and c.inLoop > 0:
+                  ri = genDefaultCall(v.typ, c, v.info)
                 if ri.kind != nkEmpty:
                   result.add moveOrCopy(v, ri, c)
               else:
