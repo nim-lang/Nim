@@ -18,15 +18,19 @@ proc exe*(f: string): string =
   when defined(windows):
     result = result.replace('/','\\')
 
-proc findNim*(): string =
-  if nimExe.len > 0: return nimExe
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
+proc findNimImpl*(): tuple[path: string, ok: bool] =
+  if nimExe.len > 0: return (nimExe, true)
+  let nim = "nim".exe
+  result.path = "bin" / nim
+  result.ok = true
+  if existsFile(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
+    result.path = dir / nim
+    if existsFile(result.path): return
   # assume there is a symlink to the exe or something:
-  return nim
+  return (nim, false)
+
+proc findNim*(): string = findNimImpl().path
 
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
