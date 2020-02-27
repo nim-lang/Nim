@@ -22,7 +22,7 @@ proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
   ##   echo pred(5)    # => 4
   ##   echo pred(5, 3) # => 2
 
-proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
+proc inc*[T: Ordinal](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
   ## Increments the ordinal ``x`` by ``y``.
   ##
   ## If such a value does not exist, ``OverflowError`` is raised or a compile
@@ -33,7 +33,7 @@ proc inc*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Inc", noSideEffect.
   ##  inc(i)    # i <- 3
   ##  inc(i, 3) # i <- 6
 
-proc dec*[T: Ordinal|uint|uint64](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
+proc dec*[T: Ordinal](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
   ## Decrements the ordinal ``x`` by ``y``.
   ##
   ## If such a value does not exist, ``OverflowError`` is raised or a compile
