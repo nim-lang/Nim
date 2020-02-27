@@ -395,7 +395,7 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if c.config.evalTemplateCounter > evalTemplateLimit:
     globalError(c.config, s.info, "template instantiation too nested")
   c.friendModules.add(s.owner.getModule)
-
+  idSynchronizationPoint(5000)
   result = macroResult
   excl(result.flags, nfSem)
   #resetSemFlag n
