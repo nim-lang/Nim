@@ -340,7 +340,7 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or hintStackTrace in conf.notes:
+  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
@@ -410,8 +410,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
     color = ErrorColor
   of warnMin..warnMax:
     sev = Severity.Warning
-    if optWarns notin conf.options: return
-    if msg notin conf.notes: return
+    if not conf.hasWarn(msg): return
     writeContext(conf, unknownLineInfo)
     title = WarningTitle
     color = WarningColor
@@ -419,8 +418,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
-    if optHints notin conf.options: return
-    if msg notin conf.notes: return
+    if not conf.hasHint(msg): return
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -500,7 +498,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     conf.m.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
-    ignoreMsg = optWarns notin conf.options or msg notin conf.notes
+    ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg: writeContext(conf, info)
     title = WarningTitle
     color = WarningColor
@@ -508,7 +506,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
-    ignoreMsg = optHints notin conf.options or msg notin conf.notes
+    ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -526,7 +524,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if hintSource in conf.notes:
+      if conf.hasHint(hintSource):
         conf.writeSurroundingSrc(info)
   handleError(conf, msg, eh, s)
 

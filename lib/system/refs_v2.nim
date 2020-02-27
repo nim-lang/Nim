@@ -57,8 +57,6 @@ template head(p: pointer): Cell =
 const
   traceCollector = defined(traceArc)
 
-var allocs*: int
-
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
@@ -71,10 +69,23 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
-  when hasThreadSupport:
-    atomicInc allocs
+  when traceCollector:
+    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
+
+proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+  # Same as 'newNewObj' but do not initialize the memory to zero.
+  # The codegen proved for us that this is not necessary.
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    var orig = cast[ptr RefHeader](c_malloc(cuint s))
+  elif compileOption("threads"):
+    var orig = cast[ptr RefHeader](allocShared(s))
   else:
-    inc allocs
+    var orig = cast[ptr RefHeader](alloc(s))
+  orig.rc = 0
+  result = orig +! sizeof(RefHeader)
   when traceCollector:
     cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
 
@@ -100,14 +111,6 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       deallocShared(p -! sizeof(RefHeader))
     else:
       dealloc(p -! sizeof(RefHeader))
-    if allocs > 0:
-      when hasThreadSupport:
-        discard atomicDec(allocs)
-      else:
-        dec allocs
-    else:
-      cstderr.rawWrite "[FATAL] unpaired dealloc\n"
-      quit 1
 
 template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)

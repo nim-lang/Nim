@@ -167,6 +167,8 @@ proc main() =
   var elapsed = epochTime() - t
   printDiagnostics()
   echo("Completed in " & $elapsed & "s. Success!")
+  when declared(getMaxMem):
+    echo "Max memory ", formatSize getMaxMem()
 
 when defined(GC_setMaxPause):
   GC_setMaxPause 2_000

@@ -166,23 +166,23 @@ proc IN6ADDR_LOOPBACK_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
 
 # dirent.h
 proc closedir*(a1: ptr DIR): cint  {.importc, header: "<dirent.h>".}
-proc opendir*(a1: cstring): ptr DIR {.importc, header: "<dirent.h>".}
-proc readdir*(a1: ptr DIR): ptr Dirent  {.importc, header: "<dirent.h>".}
+proc opendir*(a1: cstring): ptr DIR {.importc, header: "<dirent.h>", sideEffect.}
+proc readdir*(a1: ptr DIR): ptr Dirent  {.importc, header: "<dirent.h>", sideEffect.}
 proc readdir_r*(a1: ptr DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
-                importc, header: "<dirent.h>".}
+                importc, header: "<dirent.h>", sideEffect.}
 proc rewinddir*(a1: ptr DIR)  {.importc, header: "<dirent.h>".}
 proc seekdir*(a1: ptr DIR, a2: int)  {.importc, header: "<dirent.h>".}
 proc telldir*(a1: ptr DIR): int {.importc, header: "<dirent.h>".}
 
 # dlfcn.h
-proc dlclose*(a1: pointer): cint {.importc, header: "<dlfcn.h>".}
-proc dlerror*(): cstring {.importc, header: "<dlfcn.h>".}
-proc dlopen*(a1: cstring, a2: cint): pointer {.importc, header: "<dlfcn.h>".}
-proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>".}
+proc dlclose*(a1: pointer): cint {.importc, header: "<dlfcn.h>", sideEffect.}
+proc dlerror*(): cstring {.importc, header: "<dlfcn.h>", sideEffect.}
+proc dlopen*(a1: cstring, a2: cint): pointer {.importc, header: "<dlfcn.h>", sideEffect.}
+proc dlsym*(a1: pointer, a2: cstring): pointer {.importc, header: "<dlfcn.h>", sideEffect.}
 
-proc creat*(a1: cstring, a2: Mode): cint {.importc, header: "<fcntl.h>".}
-proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
-proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>".}
+proc creat*(a1: cstring, a2: Mode): cint {.importc, header: "<fcntl.h>", sideEffect.}
+proc fcntl*(a1: cint | SocketHandle, a2: cint): cint {.varargs, importc, header: "<fcntl.h>", sideEffect.}
+proc open*(a1: cstring, a2: cint): cint {.varargs, importc, header: "<fcntl.h>", sideEffect.}
 proc posix_fadvise*(a1: cint, a2, a3: Off, a4: cint): cint {.
   importc, header: "<fcntl.h>".}
 proc posix_fallocate*(a1: cint, a2, a3: Off): cint {.
@@ -205,7 +205,7 @@ when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch):
 
 proc glob*(a1: cstring, a2: cint,
           a3: proc (x1: cstring, x2: cint): cint {.noconv.},
-          a4: ptr Glob): cint {.importc, header: "<glob.h>".}
+          a4: ptr Glob): cint {.importc, header: "<glob.h>", sideEffect.}
   ## Filename globbing. Use `os.walkPattern() <os.html#glob_1>`_ and similar.
 
 proc globfree*(a1: ptr Glob) {.importc, header: "<glob.h>".}
@@ -234,7 +234,7 @@ proc dirname*(a1: cstring): cstring {.importc, header: "<libgen.h>".}
 
 proc localeconv*(): ptr Lconv {.importc, header: "<locale.h>".}
 proc setlocale*(a1: cint, a2: cstring): cstring {.
-                importc, header: "<locale.h>".}
+                importc, header: "<locale.h>", sideEffect.}
 
 proc strfmon*(a1: cstring, a2: int, a3: cstring): int {.varargs,
    importc, header: "<monetary.h>".}
@@ -459,54 +459,54 @@ proc dup*(a1: cint): cint {.importc, header: "<unistd.h>".}
 proc dup2*(a1, a2: cint): cint {.importc, header: "<unistd.h>".}
 proc encrypt*(a1: array[0..63, char], a2: cint) {.importc, header: "<unistd.h>".}
 
-proc execl*(a1, a2: cstring): cint {.varargs, importc, header: "<unistd.h>".}
-proc execle*(a1, a2: cstring): cint {.varargs, importc, header: "<unistd.h>".}
-proc execlp*(a1, a2: cstring): cint {.varargs, importc, header: "<unistd.h>".}
-proc execv*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>".}
+proc execl*(a1, a2: cstring): cint {.varargs, importc, header: "<unistd.h>", sideEffect.}
+proc execle*(a1, a2: cstring): cint {.varargs, importc, header: "<unistd.h>", sideEffect.}
+proc execlp*(a1, a2: cstring): cint {.varargs, importc, header: "<unistd.h>", sideEffect.}
+proc execv*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>", sideEffect.}
 proc execve*(a1: cstring, a2, a3: cstringArray): cint {.
-  importc, header: "<unistd.h>".}
-proc execvp*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>".}
-proc execvpe*(a1: cstring, a2: cstringArray, a3: cstringArray): cint {.importc, header: "<unistd.h>".}
-proc fchown*(a1: cint, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>".}
-proc fchdir*(a1: cint): cint {.importc, header: "<unistd.h>".}
+  importc, header: "<unistd.h>", sideEffect.}
+proc execvp*(a1: cstring, a2: cstringArray): cint {.importc, header: "<unistd.h>", sideEffect.}
+proc execvpe*(a1: cstring, a2: cstringArray, a3: cstringArray): cint {.importc, header: "<unistd.h>", sideEffect.}
+proc fchown*(a1: cint, a2: Uid, a3: Gid): cint {.importc, header: "<unistd.h>", sideEffect.}
+proc fchdir*(a1: cint): cint {.importc, header: "<unistd.h>", sideEffect.}
 proc fdatasync*(a1: cint): cint {.importc, header: "<unistd.h>".}
-proc fork*(): Pid {.importc, header: "<unistd.h>".}
+proc fork*(): Pid {.importc, header: "<unistd.h>", sideEffect.}
 proc fpathconf*(a1, a2: cint): int {.importc, header: "<unistd.h>".}
 proc fsync*(a1: cint): cint {.importc, header: "<unistd.h>".}
  ## synchronize a file's buffer cache to the storage device
 
 proc ftruncate*(a1: cint, a2: Off): cint {.importc, header: "<unistd.h>".}
-proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>".}
-proc getuid*(): Uid {.importc, header: "<unistd.h>".}
+proc getcwd*(a1: cstring, a2: int): cstring {.importc, header: "<unistd.h>", sideEffect.}
+proc getuid*(): Uid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the real user ID of the calling process
 
-proc geteuid*(): Uid {.importc, header: "<unistd.h>".}
+proc geteuid*(): Uid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the effective user ID of the calling process
 
-proc getgid*(): Gid {.importc, header: "<unistd.h>".}
+proc getgid*(): Gid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the real group ID of the calling process
 
-proc getegid*(): Gid {.importc, header: "<unistd.h>".}
+proc getegid*(): Gid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the effective group ID of the calling process
 
 proc getgroups*(a1: cint, a2: ptr array[0..255, Gid]): cint {.
   importc, header: "<unistd.h>".}
-proc gethostid*(): int {.importc, header: "<unistd.h>".}
-proc gethostname*(a1: cstring, a2: int): cint {.importc, header: "<unistd.h>".}
-proc getlogin*(): cstring {.importc, header: "<unistd.h>".}
-proc getlogin_r*(a1: cstring, a2: int): cint {.importc, header: "<unistd.h>".}
+proc gethostid*(): int {.importc, header: "<unistd.h>", sideEffect.}
+proc gethostname*(a1: cstring, a2: int): cint {.importc, header: "<unistd.h>", sideEffect.}
+proc getlogin*(): cstring {.importc, header: "<unistd.h>", sideEffect.}
+proc getlogin_r*(a1: cstring, a2: int): cint {.importc, header: "<unistd.h>", sideEffect.}
 
 proc getopt*(a1: cint, a2: cstringArray, a3: cstring): cint {.
   importc, header: "<unistd.h>".}
 proc getpgid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
 proc getpgrp*(): Pid {.importc, header: "<unistd.h>".}
-proc getpid*(): Pid {.importc, header: "<unistd.h>".}
+proc getpid*(): Pid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns  the process ID (PID) of the calling process
 
-proc getppid*(): Pid {.importc, header: "<unistd.h>".}
+proc getppid*(): Pid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the process ID of the parent of the calling process
 
-proc getsid*(a1: Pid): Pid {.importc, header: "<unistd.h>".}
+proc getsid*(a1: Pid): Pid {.importc, header: "<unistd.h>", sideEffect.}
  ## returns the session ID of the calling process
 
 proc getwd*(a1: cstring): cstring {.importc, header: "<unistd.h>".}
@@ -584,11 +584,11 @@ proc statvfs*(a1: cstring, a2: var Statvfs): cint {.
 proc fstatvfs*(a1: cint, a2: var Statvfs): cint {.
   importc, header: "<sys/statvfs.h>".}
 
-proc chmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
-proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
-proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
-proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>".}
-proc mkdir*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
+proc chmod*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+proc fchmod*(a1: cint, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+proc fstat*(a1: cint, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+proc lstat*(a1: cstring, a2: var Stat): cint {.importc, header: "<sys/stat.h>", sideEffect.}
+proc mkdir*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>", sideEffect.}
   ## Use `os.createDir() <os.html#createDir,string>`_ and similar.
 
 proc mkfifo*(a1: cstring, a2: Mode): cint {.importc, header: "<sys/stat.h>".}
@@ -649,17 +649,17 @@ proc shm_unlink*(a1: cstring): cint {.importc, header: "<sys/mman.h>".}
 proc asctime*(a1: var Tm): cstring{.importc, header: "<time.h>".}
 
 proc asctime_r*(a1: var Tm, a2: cstring): cstring {.importc, header: "<time.h>".}
-proc clock*(): Clock {.importc, header: "<time.h>".}
+proc clock*(): Clock {.importc, header: "<time.h>", sideEffect.}
 proc clock_getcpuclockid*(a1: Pid, a2: var ClockId): cint {.
-  importc, header: "<time.h>".}
+  importc, header: "<time.h>", sideEffect.}
 proc clock_getres*(a1: ClockId, a2: var Timespec): cint {.
-  importc, header: "<time.h>".}
+  importc, header: "<time.h>", sideEffect.}
 proc clock_gettime*(a1: ClockId, a2: var Timespec): cint {.
-  importc, header: "<time.h>".}
+  importc, header: "<time.h>", sideEffect.}
 proc clock_nanosleep*(a1: ClockId, a2: cint, a3: var Timespec,
-               a4: var Timespec): cint {.importc, header: "<time.h>".}
+               a4: var Timespec): cint {.importc, header: "<time.h>", sideEffect.}
 proc clock_settime*(a1: ClockId, a2: var Timespec): cint {.
-  importc, header: "<time.h>".}
+  importc, header: "<time.h>", sideEffect.}
 
 proc `==`*(a, b: Time): bool {.borrow.}
 proc `-`*(a, b: Time): Time {.borrow.}
@@ -673,11 +673,11 @@ proc localtime*(a1: var Time): ptr Tm {.importc, header: "<time.h>".}
 proc localtime_r*(a1: var Time, a2: var Tm): ptr Tm {.importc, header: "<time.h>".}
 proc mktime*(a1: var Tm): Time  {.importc, header: "<time.h>".}
 proc timegm*(a1: var Tm): Time  {.importc, header: "<time.h>".}
-proc nanosleep*(a1, a2: var Timespec): cint {.importc, header: "<time.h>".}
+proc nanosleep*(a1, a2: var Timespec): cint {.importc, header: "<time.h>", sideEffect.}
 proc strftime*(a1: cstring, a2: int, a3: cstring,
            a4: var Tm): int {.importc, header: "<time.h>".}
 proc strptime*(a1, a2: cstring, a3: var Tm): cstring {.importc, header: "<time.h>".}
-proc time*(a1: var Time): Time {.importc, header: "<time.h>".}
+proc time*(a1: var Time): Time {.importc, header: "<time.h>", sideEffect.}
 proc timer_create*(a1: ClockId, a2: var SigEvent,
                a3: var Timer): cint {.importc, header: "<time.h>".}
 proc timer_delete*(a1: Timer): cint {.importc, header: "<time.h>".}
@@ -689,11 +689,11 @@ proc timer_settime*(a1: Timer, a2: cint, a3: var Itimerspec,
 proc tzset*() {.importc, header: "<time.h>".}
 
 
-proc wait*(a1: ptr cint): Pid {.importc, discardable, header: "<sys/wait.h>".}
+proc wait*(a1: ptr cint): Pid {.importc, discardable, header: "<sys/wait.h>", sideEffect.}
 proc waitid*(a1: cint, a2: Id, a3: var SigInfo, a4: cint): cint {.
-  importc, header: "<sys/wait.h>".}
+  importc, header: "<sys/wait.h>", sideEffect.}
 proc waitpid*(a1: Pid, a2: var cint, a3: cint): Pid {.
-  importc, header: "<sys/wait.h>".}
+  importc, header: "<sys/wait.h>", sideEffect.}
 
 type Rusage* {.importc: "struct rusage", header: "<sys/resource.h>",
                bycopy.} = object
@@ -704,7 +704,7 @@ type Rusage* {.importc: "struct rusage", header: "<sys/resource.h>",
     ru_nsignals*, ru_nvcsw*, ru_nivcsw*: clong        # switching activity
 
 proc wait4*(pid: Pid, status: ptr cint, options: cint, rusage: ptr Rusage): Pid
-  {.importc, header: "<sys/wait.h>".}
+  {.importc, header: "<sys/wait.h>", sideEffect.}
 
 const
   RUSAGE_SELF* = cint(0)
@@ -717,8 +717,8 @@ proc getrusage*(who: cint, rusage: ptr Rusage): cint
 
 proc bsd_signal*(a1: cint, a2: proc (x: pointer) {.noconv.}) {.
   importc, header: "<signal.h>".}
-proc kill*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>".}
-proc killpg*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>".}
+proc kill*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>", sideEffect.}
+proc killpg*(a1: Pid, a2: cint): cint {.importc, header: "<signal.h>", sideEffect.}
 proc pthread_kill*(a1: Pthread, a2: cint): cint {.importc, header: "<signal.h>".}
 proc pthread_sigmask*(a1: cint, a2, a3: var Sigset): cint {.
   importc, header: "<signal.h>".}
@@ -892,7 +892,7 @@ const
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
@@ -909,21 +909,21 @@ proc getsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: ptr SockLen): 
   importc, header: "<sys/socket.h>".}
 
 proc listen*(a1: SocketHandle, a2: cint): cint {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc recv*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc recvfrom*(a1: SocketHandle, a2: pointer, a3: int, a4: cint,
         a5: ptr SockAddr, a6: ptr SockLen): int {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc recvmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc send*(a1: SocketHandle, a2: pointer, a3: int, a4: cint): int {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc sendmsg*(a1: SocketHandle, a2: ptr Tmsghdr, a3: cint): int {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc sendto*(a1: SocketHandle, a2: pointer, a3: int, a4: cint, a5: ptr SockAddr,
              a6: SockLen): int {.
-  importc, header: "<sys/socket.h>".}
+  importc, header: "<sys/socket.h>", sideEffect.}
 proc setsockopt*(a1: SocketHandle, a2, a3: cint, a4: pointer, a5: SockLen): cint {.
   importc, header: "<sys/socket.h>".}
 proc shutdown*(a1: SocketHandle, a2: cint): cint {.
@@ -1021,21 +1021,21 @@ proc setprotoent*(a1: cint) {.importc, header: "<netdb.h>".}
 proc setservent*(a1: cint) {.importc, header: "<netdb.h>".}
 
 proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
-  importc, header: "<poll.h>".}
+  importc, header: "<poll.h>", sideEffect.}
 
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}
 
-proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>".}
+proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
   ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
   ## can't be a string literal. If in doubt copy the string before passing it.
 
-proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>".}
+proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
 
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
-  importc: "utimes", header: "<sys/time.h>".}
+  importc: "utimes", header: "<sys/time.h>", sideEffect.}
   ## Sets file access and modification times.
   ##
   ## Pass the filename and an array of times to set the access and modification

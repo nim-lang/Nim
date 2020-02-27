@@ -555,7 +555,7 @@ proc getCompileOptions(conf: ConfigRef): string =
 proc vccplatform(conf: ConfigRef): string =
   # VCC specific but preferable over the config hacks people
   # had to do before, see #11306
-  if conf.cCompiler == ccVcc: 
+  if conf.cCompiler == ccVcc:
     let exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if "vccexe.exe" == extractFilename(exe):
       result = case conf.target.targetCPU
@@ -715,7 +715,7 @@ proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var
     if optCompileOnly notin conf.globalOptions:
       cmds.add(compileCmd)
       let (_, name, _) = splitFile(it.cname)
-      prettyCmds.add(if hintCC in conf.notes: "CC: " & demanglePackageName(name) else: "")
+      prettyCmds.add(if conf.hasHint(hintCC): "CC: " & demanglePackageName(name) else: "")
     if optGenScript in conf.globalOptions:
       script.add(compileCmd)
       script.add("\n")
@@ -845,8 +845,7 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
     let exitCode = p.peekExitCode
     if exitCode != 0:
       rawMessage(conf, errGenerated, "execution of an external compiler program '" &
-        cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n" &
-        p.outputStream.readAll.strip)
+        cmds[idx] & "' failed with exit code: " & $exitCode & "\n\n")
   if conf.numberOfProcessors == 0: conf.numberOfProcessors = countProcessors()
   var res = 0
   if conf.numberOfProcessors <= 1:
@@ -859,13 +858,13 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
   else:
     tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
       if optListCmd in conf.globalOptions or conf.verbosity > 1:
-        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath},
+        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
                             conf.numberOfProcessors, afterRunEvent=runCb)
       elif conf.verbosity == 1:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
                             conf.numberOfProcessors, prettyCb, afterRunEvent=runCb)
       else:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath},
+        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
                             conf.numberOfProcessors, afterRunEvent=runCb)
   if res != 0:
     if conf.numberOfProcessors <= 1:

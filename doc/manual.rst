@@ -2843,6 +2843,35 @@ expanded into a list of its elements:
     of '0'..'9': echo "a number"
     else: echo "other"
 
+The ``case`` statement doesn't produce an l-value, so the following example
+won't work:
+
+.. code-block:: nim
+  type
+    Foo = ref object
+      x: seq[string]
+
+  proc get_x(x: Foo): var seq[string] =
+    # doesn't work
+    case true
+    of true:
+      x.x
+    else:
+      x.x
+
+  var foo = Foo(x: @[])
+  foo.get_x().add("asd")
+
+This can be fixed by explicitly using ``return``:
+
+.. code-block:: nim
+  proc get_x(x: Foo): var seq[string] =
+    case true
+    of true:
+      return x.x
+    else:
+      return x.x
+
 
 When statement
 --------------
@@ -4077,6 +4106,8 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
+  from strutils import parseInt
+  
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -4191,7 +4222,7 @@ Raise statement
 Example:
 
 .. code-block:: nim
-  raise newEOS("operating system failed")
+  raise newException(IOError, "IO failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
 the ``raise`` statement is the only way to raise an exception.
@@ -7195,6 +7226,9 @@ The string literal passed to ``exportc`` can be a format string:
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
+If the symbol should also be exported to a dynamic library, the ``dynlib``
+pragma should be used in addition to the ``exportc`` pragma. See
+`Dynlib pragma for export <#foreign-function-interface-dynlib-pragma-for-export>`_.
 
 
 Extern pragma
@@ -7334,10 +7368,7 @@ conjunction with the ``exportc`` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command line option. This pragma only has an effect for the code
-generation on the Windows target, so when this pragma is forgotten and the dynamic
-library is only tested on Mac and/or Linux, there won't be an error. On Windows
-this pragma adds ``__declspec(dllexport)`` to the function declaration.
+``--app:lib`` command line option.
 
 
 

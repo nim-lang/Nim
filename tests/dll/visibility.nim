@@ -1,6 +1,5 @@
 discard """
-  output: "could not import: foo"
-  exitcode: 1
+  output: ""
 """
 
 const LibName {.used.} =
@@ -12,8 +11,33 @@ const LibName {.used.} =
     "libvisibility.so"
 
 when compileOption("app", "lib"):
-  proc foo() {.exportc.} =
-    echo "failed"
+  var
+    bar {.exportc.}: int
+    thr {.exportc, threadvar.}: int
+  proc foo() {.exportc.} = discard
+
+  var
+    exported {.exportc, dynlib.}: int
+    exported_thr {.exportc, threadvar, dynlib.}: int
+  proc exported_func() {.exportc, dynlib.} = discard
 elif isMainModule:
-  proc foo() {.importc, dynlib: LibName.}
-  foo()
+  import dynlib
+
+  let handle = loadLib(LibName)
+
+  template check(sym: untyped) =
+    const s = astToStr(sym)
+    if handle.symAddr(s) != nil:
+      echo s, " is exported"
+  template checkE(sym: untyped) =
+    const s = astToStr(sym)
+    if handle.symAddr(s) == nil:
+      echo s, " is not exported"
+
+  check foo
+  check bar
+  check thr
+
+  checkE exported
+  checkE exported_thr
+  checkE exported_func

@@ -61,7 +61,7 @@ var
   currException {.threadvar.}: ref Exception
   gcFramePtr {.threadvar.}: GcFrame
 
-when defined(cpp) and not defined(noCppExceptions):
+when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
   var
     raiseCounter {.threadvar.}: uint
 
@@ -410,7 +410,7 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
     discard()
 
 proc nimLeaveFinally() {.compilerRtl.} =
-  when defined(cpp) and not defined(noCppExceptions):
+  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     {.emit: "throw;".}
   else:
     if excHandler != nil:
@@ -439,7 +439,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
-  when defined(cpp) and not defined(noCppExceptions):
+  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     if e == currException:
       {.emit: "throw;".}
     else:
@@ -544,7 +544,7 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
-when defined(cpp) and appType != "lib" and
+when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
 

@@ -93,7 +93,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   self.processCmdLineAndProjectPath(conf)
   if not self.loadConfigsAndRunMainCommand(cache, conf): return
-  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:

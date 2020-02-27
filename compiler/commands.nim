@@ -18,7 +18,8 @@ template bootSwitch(name, expr, userString) =
 
 bootSwitch(usedRelease, defined(release), "-d:release")
 bootSwitch(usedDanger, defined(danger), "-d:danger")
-bootSwitch(usedGnuReadline, defined(useLinenoise), "-d:useLinenoise")
+# `useLinenoise` deprecated in favor of `nimUseLinenoise`, kept for backward compatibility
+bootSwitch(useLinenoise, defined(nimUseLinenoise) or defined(useLinenoise), "-d:nimUseLinenoise")
 bootSwitch(usedBoehm, defined(boehmgc), "--gc:boehm")
 bootSwitch(usedMarkAndSweep, defined(gcmarkandsweep), "--gc:markAndSweep")
 bootSwitch(usedGenerational, defined(gcgenerational), "--gc:generational")
@@ -101,7 +102,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
-      usedTinyC & usedGnuReadline & usedNativeStacktrace &
+      usedTinyC & useLinenoise & usedNativeStacktrace &
       usedFFI & usedBoehm & usedMarkAndSweep & usedGenerational & usedGoGC & usedNoGC,
                {msgStdout})
     msgQuit(0)
@@ -369,6 +370,14 @@ proc dynlibOverride(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, in
     expectArg(conf, switch, arg, pass, info)
     options.inclDynlibOverride(conf, arg)
 
+proc handleStdinInput*(conf: ConfigRef) =
+  conf.projectName = "stdinfile"
+  conf.projectFull = conf.projectName.AbsoluteFile
+  conf.projectPath = AbsoluteDir getCurrentDir()
+  conf.projectIsStdin = true
+  if conf.outDir.isEmpty:
+    conf.outDir = getNimcacheDir(conf)
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -413,6 +422,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
+  of "docroot":
+    conf.docRoot = if arg.len == 0: "@default" else: arg
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
@@ -469,9 +480,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
         conf.selectedGC = gcArc
-        when true:
-          if conf.cmd != cmdCompileToCpp:
-            conf.exc = excGoto
+        if conf.cmd != cmdCompileToCpp:
+          conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
         defineSymbol(conf.symbols, "gcarc")
         incl conf.globalOptions, optSeqDestructors
@@ -481,9 +491,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
           defineSymbol(conf.symbols, "nimV2")
       of "orc":
         conf.selectedGC = gcOrc
-        when true:
-          if conf.cmd != cmdCompileToCpp:
-            conf.exc = excGoto
+        if conf.cmd != cmdCompileToCpp:
+          conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
         defineSymbol(conf.symbols, "gcorc")
         incl conf.globalOptions, optSeqDestructors
@@ -678,6 +687,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       setTarget(conf.target, conf.target.targetOS, cpu)
   of "run", "r":
     processOnOffSwitchG(conf, {optRun}, arg, pass, info)
+  of "maxloopiterationsvm":
+    expectArg(conf, switch, arg, pass, info)
+    conf.maxLoopIterationsVM = parseInt(arg)
   of "errormax":
     expectArg(conf, switch, arg, pass, info)
     # Note: `nim check` (etc) can overwrite this.
@@ -854,12 +866,14 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "NimMinor", "0")
       # always be compatible with 1.0.2 for now:
       defineSymbol(conf.symbols, "NimPatch", "2")
+      # old behaviors go here:
+      defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
-  of "":
-    conf.projectName = "-"
+  of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
+    handleStdinInput(conf)
   else:
     if strutils.find(switch, '.') >= 0: options.setConfigVar(conf, switch, arg)
     else: invalidCmdLineOption(conf, pass, switch, info)

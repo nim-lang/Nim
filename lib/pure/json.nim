@@ -586,7 +586,7 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\b': result.add("\\b")
     of '\f': result.add("\\f")
     of '\t': result.add("\\t")
-    of '\v': result.add("\\v")
+    of '\v': result.add("\\u000b")
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
     of '\0'..'\7': result.add("\\u000" & $ord(c))
@@ -739,33 +739,33 @@ proc `$`*(node: JsonNode): string =
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
-  assert node.kind == JArray
+  assert node.kind == JArray, ": items() can not iterate a JsonNode of kind " & $node.kind
   for i in items(node.elems):
     yield i
 
 iterator mitems*(node: var JsonNode): var JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray. Items can be
   ## modified.
-  assert node.kind == JArray
+  assert node.kind == JArray, ": mitems() can not iterate a JsonNode of kind " & $node.kind
   for i in mitems(node.elems):
     yield i
 
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
-  assert node.kind == JObject
+  assert node.kind == JObject, ": pairs() can not iterate a JsonNode of kind " & $node.kind
   for key, val in pairs(node.fields):
     yield (key, val)
 
 iterator keys*(node: JsonNode): string =
   ## Iterator for the keys in `node`. `node` has to be a JObject.
-  assert node.kind == JObject
+  assert node.kind == JObject, ": keys() can not iterate a JsonNode of kind " & $node.kind
   for key in node.fields.keys:
     yield key
 
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   ## Values can be modified
-  assert node.kind == JObject
+  assert node.kind == JObject, ": mpairs() can not iterate a JsonNode of kind " & $node.kind
   for key, val in mpairs(node.fields):
     yield (key, val)
 

@@ -232,7 +232,7 @@ elif defined(posix):
 
   when defined(macosx):
     proc gettimeofday(tp: var Timeval, unused: pointer = nil)
-      {.importc: "gettimeofday", header: "<sys/time.h>".}
+      {.importc: "gettimeofday", header: "<sys/time.h>", sideEffect.}
 
 elif defined(windows):
   import winlean, std/time_t
@@ -254,7 +254,7 @@ elif defined(windows):
       tm_yday*: cint  ## Day of year [0,365].
       tm_isdst*: cint ## Daylight Savings flag.
 
-  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>".}
+  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>", sideEffect.}
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``,
@@ -1327,7 +1327,7 @@ proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].}
     '-' & intToStr(dt.monthday, 2)
 
 proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
-  ## Gets the current local clock time as a string of the format ``HH:MM:SS``.
+  ## Gets the current local clock time as a string of the format ``HH:mm:ss``.
   runnableExamples:
     echo getClockStr(now() - 1.hours)
   result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
@@ -2339,9 +2339,10 @@ proc format*(dt: DateTime, f: static[string]): string {.raises: [].} =
   const f2 = initTimeFormat(f)
   result = dt.format(f2)
 
-template formatValue*(result: var string; value: DateTime, specifier: string) =
+proc formatValue*(result: var string; value: DateTime, specifier: string) =
   ## adapter for strformat. Not intended to be called directly.
-  result.add format(value, specifier)
+  result.add format(value,
+    if specifier.len == 0: "yyyy-MM-dd'T'HH:mm:sszzz" else: specifier)
 
 proc format*(time: Time, f: string, zone: Timezone = local()): string
     {.raises: [TimeFormatParseError].} =
@@ -2526,7 +2527,7 @@ when not defined(js):
     Clock {.importc: "clock_t".} = distinct int
 
   proc getClock(): Clock
-      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used.}
+      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used, sideEffect.}
 
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int

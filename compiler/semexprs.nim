@@ -396,12 +396,21 @@ proc isOpImpl(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       res = false
   else:
-    maybeLiftType(t2, c, n.info)
+    if t1.skipTypes({tyGenericInst, tyAlias, tySink, tyDistinct}).kind != tyGenericBody:
+      maybeLiftType(t2, c, n.info)
+    else:
+      #[
+      for this case:
+      type Foo = object[T]
+      Foo is Foo
+      ]#
+      discard
     var m = newCandidate(c, t2)
     if efExplain in flags:
       m.diagnostics = @[]
       m.diagnosticsEnabled = true
     res = typeRel(m, t2, t1) >= isSubtype # isNone
+    # `res = sameType(t1, t2)` would be wrong, eg for `int is (int|float)`
 
   result = newIntNode(nkIntLit, ord(res))
   result.typ = n.typ
@@ -981,7 +990,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
-  let isPush = hintExtendedContext in c.config.notes
+  let isPush = c.config.hasHint(hintExtendedContext)
   if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
   discardCheck(c, result, {})

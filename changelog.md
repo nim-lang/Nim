@@ -19,13 +19,27 @@
 - Global variable `lc` has been removed from sugar.nim.
 - `distinctBase` has been moved from sugar.nim to typetraits and now implemented as
   compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
+- `CountTable.mget` has been removed from `tables.nim`. It didn't work, and it
+  was an oversight to be included in v1.0.
+- `tables.merge(CountTable, CountTable): CountTable` has been removed.
+  It didn't work well together with the existing inplace version of the same proc
+  (`tables.merge(var CountTable, CountTable)`).
+  It was an oversight to be included in v1.0.
+- `options` now treats `proc` like other pointer types, meaning `nil` proc variables
+  are converted to `None`.
+- `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
+  behavior
+- `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
 
 ### Breaking changes in the compiler
 
 - Implicit conversions for `const` behave correctly now, meaning that code like
   `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
   Simply write `const SOMECONST = 0` instead.
-
+- The `{.dynlib.}` pragma is now required for exporting symbols when making
+  shared objects on POSIX and macOS, which make it consistent with the behavior
+  on Windows.
 
 
 ## Library additions
@@ -37,7 +51,8 @@
 - introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
-- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
+- Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
+- Added `sugar.dup` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
@@ -50,11 +65,28 @@
 - Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
 - Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
   This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
-  Eg: `echo ?.n.typ.kind`
-- Added `minIndex` and `maxIndex` to the `sequtils` module
+  E.g. `echo ?.n.typ.kind`
+- Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
+- Added `os.isRelativeTo` to tell whether a path is relative to another
+- Added `resetOutputFormatters` to `unittest`
+
+
+- Added a `with` macro for easy function chaining that's available
+  everywhere, there is no need to concern your APIs with returning the first argument
+  to enable "chaining", instead use the dedicated macro `with` that
+  was designed for it. For example:
+
+```nim
+
+
+
+```
+
 
 ## Library changes
 
+- `asynchttpserver` added an iterator that allows the request body to be read in
+   chunks of data when new server "stream" option is set to true.
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
   and only returns once all pending async operations are guaranteed to have completed.
 - `asyncdispatch.drain` now consistently uses the passed timeout value for all
@@ -68,6 +100,10 @@
 - `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
 - `macros.basename` and `basename=` got support for `PragmaExpr`,
   so that an expression like `MyEnum {.pure.}` is handled correctly.
+- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values
+  serve no purpose whatsoever.
+- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
+  argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
 
 
 ## Language additions
@@ -106,3 +142,7 @@
 
 - The `FD` variant of `selector.unregister` for `ioselector_epoll` and
   `ioselector_select` now properly handle the `Event.User` select event type.
+- `joinPath` path normalization when `/` is the first argument works correctly:
+  `assert "/" / "/a" == "/a"`. Fixed the edgecase: `assert "" / "" == ""`.
+- `xmltree` now adds indentation consistently to child nodes for any number
+  of children nodes.

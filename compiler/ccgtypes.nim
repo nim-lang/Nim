@@ -432,7 +432,7 @@ proc seqV2ContentType(m: BModule; t: PType; check: var IntSet) =
     appcg(m, m.s[cfsTypes], """$N
 $3ifndef $2_Content_PP
 $3define $2_Content_PP
-struct $2_Content { NI cap;#AllocatorObj* allocator;$1 data[SEQ_DECL_SIZE];};
+struct $2_Content { NI cap; $1 data[SEQ_DECL_SIZE];};
 $3endif$N
       """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check), result, rope"#"])
 
@@ -608,7 +608,7 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
     elif m.compileToCpp:
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check)])
-      if typ.isException:
+      if typ.isException and m.config.exc == excCpp:
         appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
         if typ.sym.magic == mException:
           # Add cleanup destructor to Exception base class
@@ -1026,7 +1026,7 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
     m.hcrCreateTypeInfosProc.addf("\thcrRegisterGlobal($2, \"$1\", sizeof(TNimType), NULL, (void**)&$1);$n",
          [name, getModuleDllPath(m, m.module)])
   else:
-    m.s[cfsData].addf("TNimType $1;$n", [name])
+    m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
 
 proc genTypeInfoAux(m: BModule, typ, origType: PType, name: Rope;
                     info: TLineInfo) =
@@ -1301,7 +1301,7 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
   else:
     typeName = rope("NIM_NIL")
 
-  m.s[cfsData].addf("TNimType $1;$n", [name])
+  m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)

@@ -184,3 +184,12 @@ proc testMinMax(a,b: float32) =
 
 testMinMax(0.0, NaN)
 testMinMax(NaN, 0.0)
+
+
+block:
+  type Foo = enum
+    k1, k2
+  var
+    a = {k1}
+    b = {k1,k2}
+  doAssert a < b

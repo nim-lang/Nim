@@ -206,11 +206,11 @@ block isHidden:
   when defined(posix):
     doAssert ".foo.txt".isHidden
     doAssert "bar/.foo.ext".isHidden
-    doAssert: not "bar".isHidden
-    doAssert: not "foo/".isHidden
-    # Corner cases: paths are not normalized when determining `isHidden`
-    doAssert: not ".foo/.".isHidden
-    doAssert: not ".foo/..".isHidden
+    doAssert not "bar".isHidden
+    doAssert not "foo/".isHidden
+    doAssert ".foo/.".isHidden
+    # Corner cases: `isHidden` is not yet `..` aware
+    doAssert not ".foo/..".isHidden
 
 block absolutePath:
   doAssertRaises(ValueError): discard absolutePath("a", "b")
@@ -329,10 +329,18 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
-  doAssert relativePath("/foo", "/Foo", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
-  doAssert relativePath("/Foo", "/foo", '/') == (when FileSystemCaseSensitive: "../Foo" else: "")
-  doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
-  doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: "")
+  doAssert relativePath("/foo", "/Foo", '/') == (when FileSystemCaseSensitive: "../foo" else: ".")
+  doAssert relativePath("/Foo", "/foo", '/') == (when FileSystemCaseSensitive: "../Foo" else: ".")
+  doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: ".")
+  doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: ".")
+
+  doAssert relativePath("foo", ".", '/') == "foo"
+  doAssert relativePath(".", ".", '/') == "."
+  doAssert relativePath("..", ".", '/') == ".."
+
+  doAssert relativePath("foo", "foo") == "."
+  doAssert relativePath("", "foo") == ""
+  doAssert relativePath("././/foo", "foo//./") == "."
 
   when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
@@ -349,10 +357,37 @@ block ospaths:
     doAssert relativePath(r"\\foo\bar\baz.nim", r"\foo") == r"\\foo\bar\baz.nim"
     doAssert relativePath(r"c:\foo.nim", r"\foo") == r"c:\foo.nim"
 
-  doAssert joinPath("usr", "") == unixToNativePath"usr/"
+  doAssert joinPath("usr", "") == unixToNativePath"usr"
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
+  doAssert joinPath("", "") == unixToNativePath"" # issue #13455
+  doAssert joinPath("", "/") == unixToNativePath"/"
+  doAssert joinPath("/", "/") == unixToNativePath"/"
+  doAssert joinPath("/", "") == unixToNativePath"/"
+  doAssert joinPath("/" / "") == unixToNativePath"/" # weird test case...
+  doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
+  doAssert joinPath("foo/","") == unixToNativePath"foo/"
+  doAssert joinPath("foo/","abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("foo//./","abc/.//") == unixToNativePath"foo/abc/"
+  doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("","abc") == unixToNativePath"abc"
+
+  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+
+  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # on linux, `./foo` and `foo` are treated a bit differently for executables
+  # but not `./foo/bar` and `foo/bar`
+  doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
+  doAssert joinPath(".","abc") == unixToNativePath"./abc"
+  
+  # cases related to issue #13455
+  doAssert joinPath("foo", "", "") == "foo"
+  doAssert joinPath("foo", "") == "foo"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
+  doAssert joinPath("foo/", ".") == "foo"
+  doAssert joinPath("foo", "./") == unixToNativePath"foo/"
+  doAssert joinPath("foo", "", "bar/") == unixToNativePath"foo/bar/"
 
 block getTempDir:
   block TMPDIR:
@@ -378,3 +413,15 @@ block osenv:
     doAssert existsEnv(dummyEnvVar) == false
     delEnv(dummyEnvVar)         # deleting an already deleted env var
     doAssert existsEnv(dummyEnvVar) == false
+
+block isRelativeTo:
+  doAssert isRelativeTo("/foo", "/")
+  doAssert isRelativeTo("/foo/bar", "/foo")
+  doAssert isRelativeTo("foo/bar", "foo")
+  doAssert isRelativeTo("/foo/bar.nim", "/foo/bar.nim")
+  doAssert isRelativeTo("./foo/", "foo")
+  doAssert isRelativeTo("foo", "./foo/")
+  doAssert isRelativeTo(".", ".")
+  doAssert isRelativeTo("foo/bar", ".")
+  doAssert not isRelativeTo("foo/bar.nims", "foo/bar.nim")
+  doAssert not isRelativeTo("/foo2", "/foo")

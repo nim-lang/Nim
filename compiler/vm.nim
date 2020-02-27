@@ -486,11 +486,11 @@ proc compile(c: PCtx, s: PSym): int =
 template handleJmpBack() {.dirty.} =
   if c.loopIterations <= 0:
     if allowInfiniteLoops in c.features:
-      c.loopIterations = MaxLoopIterations
+      c.loopIterations = c.config.maxLoopIterationsVM
     else:
       msgWriteln(c.config, "stack trace: (most recent call last)")
       stackTraceAux(c, tos, pc)
-      globalError(c.config, c.debug[pc], errTooManyIterations)
+      globalError(c.config, c.debug[pc], errTooManyIterations % $c.config.maxLoopIterationsVM)
   dec(c.loopIterations)
 
 proc recSetFlagIsRef(arg: PNode) =
@@ -513,8 +513,7 @@ const
   errConstantDivisionByZero = "division by zero"
   errIllegalConvFromXtoY = "illegal conversion from '$1' to '$2'"
   errTooManyIterations = "interpretation requires too many iterations; " &
-    "if you are sure this is not a bug in your code edit " &
-    "compiler/vmdef.MaxLoopIterations and rebuild the compiler"
+    "if you are sure this is not a bug in your code, compile with `--maxLoopIterationsVM:number` (current value: $1)"
   errFieldXNotFound = "node lacks field: "
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
@@ -581,11 +580,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcCastIntToFloat32:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+      regs[ra].floatVal = cast[float32](regs[rb].intVal)
     of opcCastIntToFloat64:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
+      regs[ra].floatVal = cast[float64](regs[rb].intVal)
 
     of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
       decodeBImm(rkInt)
@@ -2188,7 +2187,6 @@ proc evalConstExprAux(module: PSym;
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode
-  defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
@@ -2199,6 +2197,7 @@ proc evalConstExprAux(module: PSym;
   #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
+  c.mode = oldMode
 
 proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, g, nil, e, emConst)
