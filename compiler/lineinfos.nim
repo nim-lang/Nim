@@ -52,8 +52,8 @@ type
     hintUser, hintUserRaw,
     hintExtendedContext
 
-const
-  MsgKindToStr*: array[TMsgKind, string] = [
+var
+  msgKindToStr*: array[TMsgKind, string] = [
     errUnknown: "unknown error",
     errInternal: "internal error: $1",
     errIllFormedAstX: "illformed AST: $1",
@@ -102,7 +102,10 @@ const
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output recompiled: $projectRecompiled",
+    # can be overriden with -d:nimHintSuccessX:"custom msg; recompiled: $projectRecompiled"
+    # for the set of valid keys and details on formatting, see code near:
+    # `rawMessage(conf, hintSuccessX`
+    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
