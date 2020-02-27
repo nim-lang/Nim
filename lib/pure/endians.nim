@@ -17,9 +17,7 @@
 ## intrinsics.
 ##
 ## Most of the API is compatible with NimVM, except the procs that take
-## `pointer` arguments. Also note that `float32` is currently not supported on
-## NimVM, so calling functions that operate on `float32` arguments would
-## trigger compiler crashes on that backend.
+## `pointer` arguments.
 ##
 
 include "system/inclrtl"
@@ -477,7 +475,7 @@ func fromBytesLE*(T: typedesc[SomeNumber], buf: openArray[byte],
     fromBytesLE(T, buf[startIndex].unsafeAddr)
 
 
-when defined(testing) and isMainModule:
+when isMainModule:
   const
     i8 = 0xf2'i8
     u8 = 0xf2'u8
@@ -499,356 +497,7 @@ when defined(testing) and isMainModule:
     f32_rev = 0xa1b2c3d4'f32
     f64_rev = 0xa1b2c3d4e5f6f7f8'f64
 
-  assert slowSwap16(u16) == u16_rev
-  assert slowSwap32(u32) == u32_rev
-  assert slowSwap64(u64) == u64_rev
-
-  assert swapEndian(i8)  == i8
-  assert swapEndian(u8)  == u8
-  assert swapEndian(i16) == i16_rev
-  assert swapEndian(u16) == u16_rev
-
-  assert swapEndian(i32) == i32_rev
-  assert swapEndian(u32) == u32_rev
-  assert swapEndian(i64) == i64_rev
-  assert swapEndian(u64) == u64_rev
-  assert swapEndian(f32) == f32_rev
-  assert swapEndian(f64) == f64_rev
-
-  var buf: array[11, byte]
-  buf[3] = 0xde
-  buf[4] = 0xad
-  buf[5] = 0xbe
-  buf[6] = 0xef
-  buf[7] = 0xca
-  buf[8] = 0xfe
-  buf[9] = 0xba
-  buf[10] = 0xbe
-
-  const magicValue64 = 0xdeadbeefcafebabe'u64
-  swapEndian(int8, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-  swapEndian(uint8, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-  swapEndian(int8, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-  swapEndian(uint8, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-
-  swapEndian(int16, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == 0xaddebeefcafebabe'u64
-  swapEndian(uint16, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-  swapEndian(int16, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == 0xaddebeefcafebabe'u64
-  swapEndian(uint16, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-
-  swapEndian(int32, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == 0xefbeaddecafebabe'u64
-  swapEndian(uint32, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-  swapEndian(int32, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == 0xefbeaddecafebabe'u64
-  swapEndian(uint32, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-
-  swapEndian(int64, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == 0xbebafecaefbeadde'u64
-  swapEndian(uint64, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-  swapEndian(int64, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == 0xbebafecaefbeadde'u64
-  swapEndian(uint64, buf[3].addr)
-  assert fromBytesBE(uint64, buf, 3) == magicValue64
-
-  swapEndian(float32, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == 0xefbeaddecafebabe'u64
-  swapEndian(float32, buf, 3)
-  assert fromBytesBE(uint64, buf[3].addr) == magicValue64
-
-  swapEndian(float64, buf, 3)
-  assert fromBytesBE(uint64, buf, 3) == 0xbebafecaefbeadde'u64
-  swapEndian(float64, buf, 3)
-  assert fromBytesBE(uint64, buf[3].addr) == magicValue64
-
-  var
-    i8_var = 0xf2'i8
-    u8_var = 0xf2'u8
-    i16_var = 0xf1b2'i16
-    u16_var = 0xf1b2'u16
-    i32_var = 0xf4c3b2a1'i32
-    u32_var = 0xf4c3b2a1'u32
-    i64_var = 0xf8f7f6e5d4c3b2a1'i64
-    u64_var = 0xf8f7f6e5d4c3b2a1'u64
-    f32_var = 0xd4c3b2a1'f32
-    f64_var = 0xf8f7f6e5d4c3b2a1'f64
-
-    i8_out: int8
-    u8_out: uint8
-    i16_out: int16
-    u16_out: uint16
-    i32_out: int32
-    u32_out: uint32
-    i64_out: int64
-    u64_out: uint64
-    f32_out: float32
-    f64_out: float64
-
-  when system.cpuEndian == bigEndian:
-    assert toBE( i8) == i8
-    assert toBE( u8) == u8
-    assert toBE(i16) == i16
-    assert toBE(u16) == u16
-    assert toBE(i32) == i32
-    assert toBE(u32) == u32
-    assert toBE(i64) == i64
-    assert toBE(u64) == u64
-    assert toBE(f32) == f32
-    assert toBE(f64) == f64
-
-    assert toLE( i8) == i8
-    assert toLE( u8) == u8
-    assert toLE(i16) == i16_rev
-    assert toLE(u16) == u16_rev
-    assert toLE(i32) == i32_rev
-    assert toLE(u32) == u32_rev
-    assert toLE(i64) == i64_rev
-    assert toLE(u64) == u64_rev
-    assert toLE(f32) == f32_rev
-    assert toLE(f64) == f64_rev
-
-    assert fromBytesBE(   int8,  i8_var.addr) == i8
-    assert fromBytesBE(  uint8,  u8_var.addr) == u8
-    assert fromBytesBE(  int16, i16_var.addr) == i16
-    assert fromBytesBE( uint16, u16_var.addr) == u16
-    assert fromBytesBE(  int32, i32_var.addr) == i32
-    assert fromBytesBE( uint32, u32_var.addr) == u32
-    assert fromBytesBE(  int64, i64_var.addr) == i64
-    assert fromBytesBE( uint64, u64_var.addr) == u64
-    assert fromBytesBE(float32, f32_var.addr) == f32
-    assert fromBytesBE(float64, f64_var.addr) == f64
-
-    assert fromBytesBE(   int8, buf, 3) == 0xde'i8
-    assert fromBytesBE(  uint8, buf, 3) == 0xde'u8
-    assert fromBytesBE(  int16, buf, 3) == 0xdead'i16
-    assert fromBytesBE( uint16, buf, 3) == 0xdead'u16
-    assert fromBytesBE(  int32, buf, 3) == 0xdeadbeef'i32
-    assert fromBytesBE( uint32, buf, 3) == 0xdeadbeef'u32
-    assert fromBytesBE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
-    assert fromBytesBE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-    assert fromBytesBE(float32, buf, 3) == 0xdeadbeef'f32
-    assert fromBytesBE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
-
-    assert fromBytesLE(   int8,  i8_var.addr) == i8
-    assert fromBytesLE(  uint8,  u8_var.addr) == u8
-    assert fromBytesLE(  int16, i16_var.addr) == i16_rev
-    assert fromBytesLE( uint16, u16_var.addr) == u16_rev
-    assert fromBytesLE(  int32, i32_var.addr) == i32_rev
-    assert fromBytesLE( uint32, u32_var.addr) == u32_rev
-    assert fromBytesLE(  int64, i64_var.addr) == i64_rev
-    assert fromBytesLE( uint64, u64_var.addr) == u64_rev
-    assert fromBytesLE(float32, f32_var.addr) == f32_rev
-    assert fromBytesLE(float64, f64_var.addr) == f64_rev
-
-    swapEndian(int64, buf, 3)
-
-    assert fromBytesLE(   int8, buf, 3) == 0xbe'i8
-    assert fromBytesLE(  uint8, buf, 3) == 0xbe'u8
-    assert fromBytesLE(  int16, buf, 3) == 0xbabe'i16
-    assert fromBytesLE( uint16, buf, 3) == 0xbabe'u16
-    assert fromBytesLE(  int32, buf, 3) == 0xcafebabe'i32
-    assert fromBytesLE( uint32, buf, 3) == 0xcafebabe'u32
-    assert fromBytesLE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
-    assert fromBytesLE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-    assert fromBytesLE(float32, buf, 3) == 0xcafebabe'f32
-    assert fromBytesLE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
-
-    toBytesBE(i8 ,  i8_out.addr); assert  i8_out == i8
-    toBytesBE(u8 ,  u8_out.addr); assert  u8_out == u8
-    toBytesBE(i16, i16_out.addr); assert i16_out == i16
-    toBytesBE(u16, u16_out.addr); assert u16_out == u16
-    toBytesBE(i32, i32_out.addr); assert i32_out == i32
-    toBytesBE(u32, u32_out.addr); assert u32_out == u32
-    toBytesBE(i64, i64_out.addr); assert i64_out == i64
-    toBytesBE(u64, u64_out.addr); assert u64_out == u64
-    toBytesBE(f32, f32_out.addr); assert f32_out == f32
-    toBytesBE(f64, f64_out.addr); assert f64_out == f64
-
-    toBytesBE(i8 , buf, 3); assert fromBytesBE(   int8, buf, 3) == i8
-    toBytesBE(u8 , buf, 3); assert fromBytesBE(  uint8, buf, 3) == u8
-    toBytesBE(i16, buf, 3); assert fromBytesBE(  int16, buf, 3) == i16
-    toBytesBE(u16, buf, 3); assert fromBytesBE( uint16, buf, 3) == u16
-    toBytesBE(i32, buf, 3); assert fromBytesBE(  int32, buf, 3) == i32
-    toBytesBE(u32, buf, 3); assert fromBytesBE( uint32, buf, 3) == u32
-    toBytesBE(i64, buf, 3); assert fromBytesBE(  int64, buf, 3) == i64
-    toBytesBE(u64, buf, 3); assert fromBytesBE( uint64, buf, 3) == u64
-    toBytesBE(f32, buf, 3); assert fromBytesBE(float32, buf, 3) == f32
-    toBytesBE(f64, buf, 3); assert fromBytesBE(float64, buf, 3) == f64
-
-    toBytesLE(i8 ,  i8_out.addr); assert  i8_out == i8
-    toBytesLE(u8 ,  u8_out.addr); assert  u8_out == u8
-    toBytesLE(i16, i16_out.addr); assert i16_out == i16_rev
-    toBytesLE(u16, u16_out.addr); assert u16_out == u16_rev
-    toBytesLE(i32, i32_out.addr); assert i32_out == i32_rev
-    toBytesLE(u32, u32_out.addr); assert u32_out == u32_rev
-    toBytesLE(i64, i64_out.addr); assert i64_out == i64_rev
-    toBytesLE(u64, u64_out.addr); assert u64_out == u64_rev
-    toBytesLE(f32, f32_out.addr); assert f32_out == f32_rev
-    toBytesLE(f64, f64_out.addr); assert f64_out == f64_rev
-
-    toBytesLE(i8 , buf, 3); assert fromBytesLE(   int8, buf, 3) == i8
-    toBytesLE(u8 , buf, 3); assert fromBytesLE(  uint8, buf, 3) == u8
-    toBytesLE(i16, buf, 3); assert fromBytesLE(  int16, buf, 3) == i16
-    toBytesLE(u16, buf, 3); assert fromBytesLE( uint16, buf, 3) == u16
-    toBytesLE(i32, buf, 3); assert fromBytesLE(  int32, buf, 3) == i32
-    toBytesLE(u32, buf, 3); assert fromBytesLE( uint32, buf, 3) == u32
-    toBytesLE(i64, buf, 3); assert fromBytesLE(  int64, buf, 3) == i64
-    toBytesLE(u64, buf, 3); assert fromBytesLE( uint64, buf, 3) == u64
-    toBytesLE(f32, buf, 3); assert fromBytesLE(float32, buf, 3) == f32
-    toBytesLE(f64, buf, 3); assert fromBytesLE(float64, buf, 3) == f64
-
-  else:  # little-endian
-    assert toBE( i8) == i8
-    assert toBE( u8) == u8
-    assert toBE(i16) == i16_rev
-    assert toBE(u16) == u16_rev
-    assert toBE(i32) == i32_rev
-    assert toBE(u32) == u32_rev
-    assert toBE(i64) == i64_rev
-    assert toBE(u64) == u64_rev
-    assert toBE(f32) == f32_rev
-    assert toBE(f64) == f64_rev
-
-    assert toLE( i8) == i8
-    assert toLE( u8) == u8
-    assert toLE(i16) == i16
-    assert toLE(u16) == u16
-    assert toLE(i32) == i32
-    assert toLE(u32) == u32
-    assert toLE(i64) == i64
-    assert toLE(u64) == u64
-    assert toLE(f32) == f32
-    assert toLE(f64) == f64
-
-    assert fromBytesBE(   int8,  i8_var.addr) == i8
-    assert fromBytesBE(  uint8,  u8_var.addr) == u8
-    assert fromBytesBE(  int16, i16_var.addr) == i16_rev
-    assert fromBytesBE( uint16, u16_var.addr) == u16_rev
-    assert fromBytesBE(  int32, i32_var.addr) == i32_rev
-    assert fromBytesBE( uint32, u32_var.addr) == u32_rev
-    assert fromBytesBE(  int64, i64_var.addr) == i64_rev
-    assert fromBytesBE( uint64, u64_var.addr) == u64_rev
-    assert fromBytesBE(float32, f32_var.addr) == f32_rev
-    assert fromBytesBE(float64, f64_var.addr) == f64_rev
-
-    assert fromBytesBE(   int8, buf, 3) == 0xde'i8
-    assert fromBytesBE(  uint8, buf, 3) == 0xde'u8
-    assert fromBytesBE(  int16, buf, 3) == 0xdead'i16
-    assert fromBytesBE( uint16, buf, 3) == 0xdead'u16
-    assert fromBytesBE(  int32, buf, 3) == 0xdeadbeef'i32
-    assert fromBytesBE( uint32, buf, 3) == 0xdeadbeef'u32
-    assert fromBytesBE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
-    assert fromBytesBE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-    assert fromBytesBE(float32, buf, 3) == 0xdeadbeef'f32
-    assert fromBytesBE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
-
-    assert fromBytesLE(   int8,  i8_var.addr) == i8
-    assert fromBytesLE(  uint8,  u8_var.addr) == u8
-    assert fromBytesLE(  int16, i16_var.addr) == i16
-    assert fromBytesLE( uint16, u16_var.addr) == u16
-    assert fromBytesLE(  int32, i32_var.addr) == i32
-    assert fromBytesLE( uint32, u32_var.addr) == u32
-    assert fromBytesLE(  int64, i64_var.addr) == i64
-    assert fromBytesLE( uint64, u64_var.addr) == u64
-    assert fromBytesLE(float32, f32_var.addr) == f32
-    assert fromBytesLE(float64, f64_var.addr) == f64
-
-    swapEndian(int64, buf, 3)
-
-    assert fromBytesLE(   int8, buf, 3) == 0xbe'i8
-    assert fromBytesLE(  uint8, buf, 3) == 0xbe'u8
-    assert fromBytesLE(  int16, buf, 3) == 0xbabe'i16
-    assert fromBytesLE( uint16, buf, 3) == 0xbabe'u16
-    assert fromBytesLE(  int32, buf, 3) == 0xcafebabe'i32
-    assert fromBytesLE( uint32, buf, 3) == 0xcafebabe'u32
-    assert fromBytesLE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
-    assert fromBytesLE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-    assert fromBytesLE(float32, buf, 3) == 0xcafebabe'f32
-    assert fromBytesLE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
-
-    toBytesBE(i8 ,  i8_out.addr); assert  i8_out == i8
-    toBytesBE(u8 ,  u8_out.addr); assert  u8_out == u8
-    toBytesBE(i16, i16_out.addr); assert i16_out == i16_rev
-    toBytesBE(u16, u16_out.addr); assert u16_out == u16_rev
-    toBytesBE(i32, i32_out.addr); assert i32_out == i32_rev
-    toBytesBE(u32, u32_out.addr); assert u32_out == u32_rev
-    toBytesBE(i64, i64_out.addr); assert i64_out == i64_rev
-    toBytesBE(u64, u64_out.addr); assert u64_out == u64_rev
-    toBytesBE(f32, f32_out.addr); assert f32_out == f32_rev
-    toBytesBE(f64, f64_out.addr); assert f64_out == f64_rev
-
-    toBytesBE(i8 , buf, 3); assert fromBytesBE(   int8, buf, 3) == i8
-    toBytesBE(u8 , buf, 3); assert fromBytesBE(  uint8, buf, 3) == u8
-    toBytesBE(i16, buf, 3); assert fromBytesBE(  int16, buf, 3) == i16
-    toBytesBE(u16, buf, 3); assert fromBytesBE( uint16, buf, 3) == u16
-    toBytesBE(i32, buf, 3); assert fromBytesBE(  int32, buf, 3) == i32
-    toBytesBE(u32, buf, 3); assert fromBytesBE( uint32, buf, 3) == u32
-    toBytesBE(i64, buf, 3); assert fromBytesBE(  int64, buf, 3) == i64
-    toBytesBE(u64, buf, 3); assert fromBytesBE( uint64, buf, 3) == u64
-    toBytesBE(f32, buf, 3); assert fromBytesBE(float32, buf, 3) == f32
-    toBytesBE(f64, buf, 3); assert fromBytesBE(float64, buf, 3) == f64
-
-    toBytesLE(i8 ,  i8_out.addr); assert  i8_out == i8
-    toBytesLE(u8 ,  u8_out.addr); assert  u8_out == u8
-    toBytesLE(i16, i16_out.addr); assert i16_out == i16
-    toBytesLE(u16, u16_out.addr); assert u16_out == u16
-    toBytesLE(i32, i32_out.addr); assert i32_out == i32
-    toBytesLE(u32, u32_out.addr); assert u32_out == u32
-    toBytesLE(i64, i64_out.addr); assert i64_out == i64
-    toBytesLE(u64, u64_out.addr); assert u64_out == u64
-    toBytesLE(f32, f32_out.addr); assert f32_out == f32
-    toBytesLE(f64, f64_out.addr); assert f64_out == f64
-
-    toBytesLE(i8 , buf, 3); assert fromBytesLE(   int8, buf, 3) == i8
-    toBytesLE(u8 , buf, 3); assert fromBytesLE(  uint8, buf, 3) == u8
-    toBytesLE(i16, buf, 3); assert fromBytesLE(  int16, buf, 3) == i16
-    toBytesLE(u16, buf, 3); assert fromBytesLE( uint16, buf, 3) == u16
-    toBytesLE(i32, buf, 3); assert fromBytesLE(  int32, buf, 3) == i32
-    toBytesLE(u32, buf, 3); assert fromBytesLE( uint32, buf, 3) == u32
-    toBytesLE(i64, buf, 3); assert fromBytesLE(  int64, buf, 3) == i64
-    toBytesLE(u64, buf, 3); assert fromBytesLE( uint64, buf, 3) == u64
-    toBytesLE(f32, buf, 3); assert fromBytesLE(float32, buf, 3) == f32
-    toBytesLE(f64, buf, 3); assert fromBytesLE(float64, buf, 3) == f64
-
-
-  # NimVM tests
-  # -----------
-  # Most float32 tests are commented out because they crash the VM.
-  # This is a known limitation, the VM only supports float64 currently.
-  #
-  static:
-    const
-      i8 = 0xf2'i8
-      u8 = 0xf2'u8
-      i16 = 0xf1b2'i16
-      u16 = 0xf1b2'u16
-      i32 = 0xf4c3b2a1'i32
-      u32 = 0xf4c3b2a1'u32
-      i64 = 0xf8f7f6e5d4c3b2a1'i64
-      u64 = 0xf8f7f6e5d4c3b2a1'u64
-      f32 = 0xd4c3b2a1'f32
-      f64 = 0xf8f7f6e5d4c3b2a1'f64
-
-      i16_rev = 0xb2f1'i16
-      u16_rev = 0xb2f1'u16
-      i32_rev = 0xa1b2c3f4'i32
-      u32_rev = 0xa1b2c3f4'u32
-      i64_rev = 0xa1b2c3d4e5f6f7f8'i64
-      u64_rev = 0xa1b2c3d4e5f6f7f8'u64
-      f32_rev = 0xa1b2c3d4'f32
-      f64_rev = 0xa1b2c3d4e5f6f7f8'f64
-
+  template nimVMTests() =
     assert slowSwap16(u16) == u16_rev
     assert slowSwap32(u32) == u32_rev
     assert slowSwap64(u64) == u64_rev
@@ -862,7 +511,7 @@ when defined(testing) and isMainModule:
     assert swapEndian(u32) == u32_rev
     assert swapEndian(i64) == i64_rev
     assert swapEndian(u64) == u64_rev
-#    assert swapEndian(f32) == f32_rev
+    assert swapEndian(f32) == f32_rev
     assert swapEndian(f64) == f64_rev
 
     var buf: array[11, byte]
@@ -924,7 +573,7 @@ when defined(testing) and isMainModule:
       assert toLE(u32) == u32_rev
       assert toLE(i64) == i64_rev
       assert toLE(u64) == u64_rev
-#      assert toLE(f32) == f32_rev
+      assert toLE(f32) == f32_rev
       assert toLE(f64) == f64_rev
 
       assert fromBytesBE(   int8, buf, 3) == 0xde'i8
@@ -935,7 +584,7 @@ when defined(testing) and isMainModule:
       assert fromBytesBE( uint32, buf, 3) == 0xdeadbeef'u32
       assert fromBytesBE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
       assert fromBytesBE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-#      assert fromBytesBE(float32, buf, 3) == 0xdeadbeef'f32
+      assert fromBytesBE(float32, buf, 3) == 0xdeadbeef'f32
       assert fromBytesBE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
 
       swapEndian(int64, buf, 3)
@@ -948,7 +597,7 @@ when defined(testing) and isMainModule:
       assert fromBytesLE( uint32, buf, 3) == 0xcafebabe'u32
       assert fromBytesLE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
       assert fromBytesLE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-#      assert fromBytesLE(float32, buf, 3) == 0xcafebabe'f32
+      assert fromBytesLE(float32, buf, 3) == 0xcafebabe'f32
       assert fromBytesLE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
 
       toBytesBE(i8 , buf, 3); assert fromBytesBE(   int8, buf, 3) == i8
@@ -959,7 +608,7 @@ when defined(testing) and isMainModule:
       toBytesBE(u32, buf, 3); assert fromBytesBE( uint32, buf, 3) == u32
       toBytesBE(i64, buf, 3); assert fromBytesBE(  int64, buf, 3) == i64
       toBytesBE(u64, buf, 3); assert fromBytesBE( uint64, buf, 3) == u64
-#      toBytesBE(f32, buf, 3); assert fromBytesBE(float32, buf, 3) == f32
+      toBytesBE(f32, buf, 3); assert fromBytesBE(float32, buf, 3) == f32
       toBytesBE(f64, buf, 3); assert fromBytesBE(float64, buf, 3) == f64
 
       toBytesLE(i8 , buf, 3); assert fromBytesLE(   int8, buf, 3) == i8
@@ -970,7 +619,7 @@ when defined(testing) and isMainModule:
       toBytesLE(u32, buf, 3); assert fromBytesLE( uint32, buf, 3) == u32
       toBytesLE(i64, buf, 3); assert fromBytesLE(  int64, buf, 3) == i64
       toBytesLE(u64, buf, 3); assert fromBytesLE( uint64, buf, 3) == u64
-#      toBytesLE(f32, buf, 3); assert fromBytesLE(float32, buf, 3) == f32
+      toBytesLE(f32, buf, 3); assert fromBytesLE(float32, buf, 3) == f32
       toBytesLE(f64, buf, 3); assert fromBytesLE(float64, buf, 3) == f64
 
     else:  # little-endian
@@ -982,7 +631,7 @@ when defined(testing) and isMainModule:
       assert toBE(u32) == u32_rev
       assert toBE(i64) == i64_rev
       assert toBE(u64) == u64_rev
-#      assert toBE(f32) == f32_rev
+      assert toBE(f32) == f32_rev
       assert toBE(f64) == f64_rev
 
       assert toLE( i8) == i8
@@ -1004,7 +653,7 @@ when defined(testing) and isMainModule:
       assert fromBytesBE( uint32, buf, 3) == 0xdeadbeef'u32
       assert fromBytesBE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
       assert fromBytesBE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-#      assert fromBytesBE(float32, buf, 3) == 0xdeadbeef'f32
+      assert fromBytesBE(float32, buf, 3) == 0xdeadbeef'f32
       assert fromBytesBE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
 
       swapEndian(int64, buf, 3)
@@ -1017,7 +666,7 @@ when defined(testing) and isMainModule:
       assert fromBytesLE( uint32, buf, 3) == 0xcafebabe'u32
       assert fromBytesLE(  int64, buf, 3) == 0xdeadbeefcafebabe'i64
       assert fromBytesLE( uint64, buf, 3) == 0xdeadbeefcafebabe'u64
-#      assert fromBytesLE(float32, buf, 3) == 0xcafebabe'f32
+      assert fromBytesLE(float32, buf, 3) == 0xcafebabe'f32
       assert fromBytesLE(float64, buf, 3) == 0xdeadbeefcafebabe'f64
 
       toBytesBE(i8 , buf, 3); assert fromBytesBE(   int8, buf, 3) == i8
@@ -1028,7 +677,7 @@ when defined(testing) and isMainModule:
       toBytesBE(u32, buf, 3); assert fromBytesBE( uint32, buf, 3) == u32
       toBytesBE(i64, buf, 3); assert fromBytesBE(  int64, buf, 3) == i64
       toBytesBE(u64, buf, 3); assert fromBytesBE( uint64, buf, 3) == u64
-#      toBytesBE(f32, buf, 3); assert fromBytesBE(float32, buf, 3) == f32
+      toBytesBE(f32, buf, 3); assert fromBytesBE(float32, buf, 3) == f32
       toBytesBE(f64, buf, 3); assert fromBytesBE(float64, buf, 3) == f64
 
       toBytesLE(i8 , buf, 3); assert fromBytesLE(   int8, buf, 3) == i8
@@ -1039,6 +688,170 @@ when defined(testing) and isMainModule:
       toBytesLE(u32, buf, 3); assert fromBytesLE( uint32, buf, 3) == u32
       toBytesLE(i64, buf, 3); assert fromBytesLE(  int64, buf, 3) == i64
       toBytesLE(u64, buf, 3); assert fromBytesLE( uint64, buf, 3) == u64
-#      toBytesLE(f32, buf, 3); assert fromBytesLE(float32, buf, 3) == f32
+      toBytesLE(f32, buf, 3); assert fromBytesLE(float32, buf, 3) == f32
       toBytesLE(f64, buf, 3); assert fromBytesLE(float64, buf, 3) == f64
+
+  static:
+    nimVmTests()
+
+  # Runtime tests
+  nimVmTests()
+
+  var buf: array[11, byte]
+  buf[3] = 0xde
+  buf[4] = 0xad
+  buf[5] = 0xbe
+  buf[6] = 0xef
+  buf[7] = 0xca
+  buf[8] = 0xfe
+  buf[9] = 0xba
+  buf[10] = 0xbe
+
+  const magicValue64 = 0xdeadbeefcafebabe'u64
+  swapEndian(int8, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == magicValue64
+  swapEndian(uint8, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == magicValue64
+
+  swapEndian(int16, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == 0xaddebeefcafebabe'u64
+  swapEndian(uint16, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == magicValue64
+
+  swapEndian(int32, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == 0xefbeaddecafebabe'u64
+  swapEndian(uint32, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == magicValue64
+
+  swapEndian(int64, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == 0xbebafecaefbeadde'u64
+  swapEndian(uint64, buf[3].addr)
+  assert fromBytesBE(uint64, buf, 3) == magicValue64
+
+  swapEndian(float32, buf, 3)
+  assert fromBytesBE(uint64, buf[3].addr) == 0xefbeaddecafebabe'u64
+  swapEndian(float32, buf, 3)
+  assert fromBytesBE(uint64, buf[3].addr) == magicValue64
+
+  swapEndian(float64, buf, 3)
+  assert fromBytesBE(uint64, buf, 3) == 0xbebafecaefbeadde'u64
+  swapEndian(float64, buf, 3)
+  assert fromBytesBE(uint64, buf[3].addr) == magicValue64
+
+  var
+    i8_var = 0xf2'i8
+    u8_var = 0xf2'u8
+    i16_var = 0xf1b2'i16
+    u16_var = 0xf1b2'u16
+    i32_var = 0xf4c3b2a1'i32
+    u32_var = 0xf4c3b2a1'u32
+    i64_var = 0xf8f7f6e5d4c3b2a1'i64
+    u64_var = 0xf8f7f6e5d4c3b2a1'u64
+    f32_var = 0xd4c3b2a1'f32
+    f64_var = 0xf8f7f6e5d4c3b2a1'f64
+
+    i8_out: int8
+    u8_out: uint8
+    i16_out: int16
+    u16_out: uint16
+    i32_out: int32
+    u32_out: uint32
+    i64_out: int64
+    u64_out: uint64
+    f32_out: float32
+    f64_out: float64
+
+  when system.cpuEndian == bigEndian:
+    assert fromBytesBE(   int8,  i8_var.addr) == i8
+    assert fromBytesBE(  uint8,  u8_var.addr) == u8
+    assert fromBytesBE(  int16, i16_var.addr) == i16
+    assert fromBytesBE( uint16, u16_var.addr) == u16
+    assert fromBytesBE(  int32, i32_var.addr) == i32
+    assert fromBytesBE( uint32, u32_var.addr) == u32
+    assert fromBytesBE(  int64, i64_var.addr) == i64
+    assert fromBytesBE( uint64, u64_var.addr) == u64
+    assert fromBytesBE(float32, f32_var.addr) == f32
+    assert fromBytesBE(float64, f64_var.addr) == f64
+
+    assert fromBytesLE(   int8,  i8_var.addr) == i8
+    assert fromBytesLE(  uint8,  u8_var.addr) == u8
+    assert fromBytesLE(  int16, i16_var.addr) == i16_rev
+    assert fromBytesLE( uint16, u16_var.addr) == u16_rev
+    assert fromBytesLE(  int32, i32_var.addr) == i32_rev
+    assert fromBytesLE( uint32, u32_var.addr) == u32_rev
+    assert fromBytesLE(  int64, i64_var.addr) == i64_rev
+    assert fromBytesLE( uint64, u64_var.addr) == u64_rev
+    assert fromBytesLE(float32, f32_var.addr) == f32_rev
+    assert fromBytesLE(float64, f64_var.addr) == f64_rev
+
+    swapEndian(int64, buf, 3)
+
+    toBytesBE(i8 ,  i8_out.addr); assert  i8_out == i8
+    toBytesBE(u8 ,  u8_out.addr); assert  u8_out == u8
+    toBytesBE(i16, i16_out.addr); assert i16_out == i16
+    toBytesBE(u16, u16_out.addr); assert u16_out == u16
+    toBytesBE(i32, i32_out.addr); assert i32_out == i32
+    toBytesBE(u32, u32_out.addr); assert u32_out == u32
+    toBytesBE(i64, i64_out.addr); assert i64_out == i64
+    toBytesBE(u64, u64_out.addr); assert u64_out == u64
+    toBytesBE(f32, f32_out.addr); assert f32_out == f32
+    toBytesBE(f64, f64_out.addr); assert f64_out == f64
+
+    toBytesLE(i8,   i8_out.addr); assert  i8_out == i8
+    toBytesLE(u8,   u8_out.addr); assert  u8_out == u8
+    toBytesLE(i16, i16_out.addr); assert i16_out == i16_rev
+    toBytesLE(u16, u16_out.addr); assert u16_out == u16_rev
+    toBytesLE(i32, i32_out.addr); assert i32_out == i32_rev
+    toBytesLE(u32, u32_out.addr); assert u32_out == u32_rev
+    toBytesLE(i64, i64_out.addr); assert i64_out == i64_rev
+    toBytesLE(u64, u64_out.addr); assert u64_out == u64_rev
+    toBytesLE(f32, f32_out.addr); assert f32_out == f32_rev
+    toBytesLE(f64, f64_out.addr); assert f64_out == f64_rev
+
+  else:  # little-endian
+    assert fromBytesBE(   int8,  i8_var.addr) == i8
+    assert fromBytesBE(  uint8,  u8_var.addr) == u8
+    assert fromBytesBE(  int16, i16_var.addr) == i16_rev
+    assert fromBytesBE( uint16, u16_var.addr) == u16_rev
+    assert fromBytesBE(  int32, i32_var.addr) == i32_rev
+    assert fromBytesBE( uint32, u32_var.addr) == u32_rev
+    assert fromBytesBE(  int64, i64_var.addr) == i64_rev
+    assert fromBytesBE( uint64, u64_var.addr) == u64_rev
+    assert fromBytesBE(float32, f32_var.addr) == f32_rev
+    assert fromBytesBE(float64, f64_var.addr) == f64_rev
+
+    assert fromBytesLE(   int8,  i8_var.addr) == i8
+    assert fromBytesLE(  uint8,  u8_var.addr) == u8
+    assert fromBytesLE(  int16, i16_var.addr) == i16
+    assert fromBytesLE( uint16, u16_var.addr) == u16
+    assert fromBytesLE(  int32, i32_var.addr) == i32
+    assert fromBytesLE( uint32, u32_var.addr) == u32
+    assert fromBytesLE(  int64, i64_var.addr) == i64
+    assert fromBytesLE( uint64, u64_var.addr) == u64
+    assert fromBytesLE(float32, f32_var.addr) == f32
+    assert fromBytesLE(float64, f64_var.addr) == f64
+
+    swapEndian(int64, buf, 3)
+
+    toBytesBE(i8,   i8_out.addr); assert  i8_out == i8
+    toBytesBE(u8,   u8_out.addr); assert  u8_out == u8
+    toBytesBE(i16, i16_out.addr); assert i16_out == i16_rev
+    toBytesBE(u16, u16_out.addr); assert u16_out == u16_rev
+    toBytesBE(i32, i32_out.addr); assert i32_out == i32_rev
+    toBytesBE(u32, u32_out.addr); assert u32_out == u32_rev
+    toBytesBE(i64, i64_out.addr); assert i64_out == i64_rev
+    toBytesBE(u64, u64_out.addr); assert u64_out == u64_rev
+    toBytesBE(f32, f32_out.addr); assert f32_out == f32_rev
+    toBytesBE(f64, f64_out.addr); assert f64_out == f64_rev
+
+    toBytesLE(i8,   i8_out.addr); assert  i8_out == i8
+    toBytesLE(u8,   u8_out.addr); assert  u8_out == u8
+    toBytesLE(i16, i16_out.addr); assert i16_out == i16
+    toBytesLE(u16, u16_out.addr); assert u16_out == u16
+    toBytesLE(i32, i32_out.addr); assert i32_out == i32
+    toBytesLE(u32, u32_out.addr); assert u32_out == u32
+    toBytesLE(i64, i64_out.addr); assert i64_out == i64
+    toBytesLE(u64, u64_out.addr); assert u64_out == u64
+    toBytesLE(f32, f32_out.addr); assert f32_out == f32
+    toBytesLE(f64, f64_out.addr); assert f64_out == f64
 
