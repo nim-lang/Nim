@@ -1629,7 +1629,7 @@ else:
       result[i+1] = y[i]
 
 
-proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+proc astToStr*(x: untyped): string {.magic: "AstToStr", noSideEffect.}
   ## Converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
 
