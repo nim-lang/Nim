@@ -480,6 +480,24 @@ include "system/arithmetics"
 include "system/comparisons"
 
 const
+  NimMajor* {.intdefine.}: int = 1
+    ## is the major number of Nim's version.
+
+  NimMinor* {.intdefine.}: int = 1
+    ## is the minor number of Nim's version.
+
+  NimPatch* {.intdefine.}: int = 1
+    ## is the patch number of Nim's version.
+
+template since2(version, body: untyped) {.dirty.} =
+  ## poor-man's version of inclrtl.since without `>=` defined
+  const
+    v0 = version[0]
+    v1 = version[1]
+  when NimMajor > v0 or NimMajor == v0 and NimMinor >= v1:
+    body
+
+const
   appType* {.magic: "AppType"}: string = ""
     ## A string that describes the application type. Possible values:
     ## `"console"`, `"gui"`, `"lib"`.
@@ -909,7 +927,7 @@ else:
   else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
-when (NimMajor, NimMinor) >= (1, 1):
+since2 (1, 1):
   proc isDefault*[T](a: T): bool {.inline.} =
     ## returns whether `a` is equal to its default value
     runnableExamples:
@@ -2080,15 +2098,6 @@ import system/dollars
 export dollars
 
 const
-  NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 1
-    ## is the minor number of Nim's version.
-
-  NimPatch* {.intdefine.}: int = 1
-    ## is the patch number of Nim's version.
-
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
