@@ -18,7 +18,7 @@ when not defined(windows):
   writeLine(stdout, u.release)
   writeLine(stdout, u.machine)
 
-
-  block:
-    # lib/posix/posix_utils.nim
-    doAssert posix_utils.isSsd(diskLetter = 'a') is bool
+  when defined(linux):
+    block:
+      # lib/posix/posix_utils.nim
+      doAssert posix_utils.isSsd(diskLetter = 'a') is bool
