@@ -380,7 +380,11 @@ proc mainCommand*(graph: ModuleGraph) =
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
     var output = $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
-    rawMessage(conf, hintSuccessX, [
+
+    let fmtDefault = "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output"
+    # can be overriden to format differently/show additional fields
+    let msg = getConfigVar(conf, "msgs.hintSuccessX", fmtDefault)
+    rawMessage(conf, hintSuccessX, msg % [
       "loc", loc,
       "sec", sec,
       "mem", mem,

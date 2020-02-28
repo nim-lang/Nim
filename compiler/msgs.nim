@@ -325,7 +325,7 @@ proc coordToStr(coord: int): string =
 
 proc msgKindToString*(kind: TMsgKind): string =
   # later versions may provide translated error messages
-  result = msgKindToStr[kind]
+  result = MsgKindToStr[kind]
 
 proc getMessageStr(msg: TMsgKind, arg: string): string =
   result = msgKindToString(msg) % [arg]

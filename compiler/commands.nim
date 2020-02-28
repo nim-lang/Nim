@@ -438,8 +438,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       splitSwitch(conf, arg, key, val, pass, info)
       if cmpIgnoreStyle(key, "nimQuirky") == 0:
         conf.exc = excQuirky
-      elif cmpIgnoreStyle(key, "nimHintSuccessX") == 0:
-        msgKindToStr[hintSuccessX] = val
       defineSymbol(conf.symbols, key, val)
     else:
       if cmpIgnoreStyle(arg, "nimQuirky") == 0:
