@@ -106,4 +106,4 @@ when defined(linux):
     ## .. code-block:: nim
     ##   echo isSsd('a') ## 'a' for /dev/sda, 'b' for /dev/sdb, ...
     ##
-    try: readFile("/sys/block/sd" & diskLetter & "/queue/rotational") == "0\n" except: false
+    try: readFile("/sys/block/sd" & $diskLetter & "/queue/rotational") == "0\n" except: false
