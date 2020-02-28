@@ -928,7 +928,7 @@ else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
 since2 (1, 1):
-  proc isDefault*[T](a: T): bool {.inline.} =
+  template isDefault*[T](a: T): bool =
     ## returns whether `a` is equal to its default value
     runnableExamples:
       doAssert "".isDefault
@@ -949,7 +949,8 @@ since2 (1, 1):
       doAssert Foo1().notDefault
       doAssert Foo2().isDefault
 
-    a == default(T)
+    # BUG: default(T) would not work but should
+    a == default(type(a))
 
   template isDefault*(a: string): bool =
     ## overloaded for efficiency
