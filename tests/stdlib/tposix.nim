@@ -6,7 +6,7 @@ outputsub: ""
 
 when not defined(windows):
 
-  import posix
+  import posix, posix_utils
 
   var
     u: Utsname
@@ -17,3 +17,8 @@ when not defined(windows):
   writeLine(stdout, u.nodename)
   writeLine(stdout, u.release)
   writeLine(stdout, u.machine)
+
+
+  block:
+    # lib/posix/posix_utils.nim
+    doAssert posix_utils.isSsd(diskLetter = 'a') is bool

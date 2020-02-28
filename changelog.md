@@ -69,7 +69,7 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-
+- Added `posix_utils.isSsd` proc that returns `true` if disk is SSD (Solid).
 
 - Added a `with` macro for easy function chaining that's available
   everywhere, there is no need to concern your APIs with returning the first argument
