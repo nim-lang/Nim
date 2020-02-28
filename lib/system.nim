@@ -910,7 +910,7 @@ else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
 when defined(nimHasDefault):
-  proc isDefault*[T: not seq](a: T): bool {.inline.} =
+  proc isDefault*[T](a: T): bool {.inline.} =
     ## returns whether `a` is equal to its default value
     runnableExamples:
       doAssert "".isDefault
@@ -933,7 +933,7 @@ template isDefault*(a: string): bool =
   ## overloaded for efficiency
   a.len == 0
 
-template isDefault*(a: seq): bool =
+template isDefault*[T](a: seq[T]): bool =
   ## overloaded for efficiency
   a.len == 0
 
