@@ -86,7 +86,7 @@ since (1, 1):
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     type(default(T)[i])
 
-  type WrapStatic*[Val] = object
+  type StaticParam*[value] = object
     ## used to wrap a static value in `genericParams`
 
 import std/macros
@@ -111,7 +111,7 @@ macro genericParamsImpl(T: typedesc): untyped =
           var ret: NimNode
           case ai.typeKind
           of ntyStatic:
-            ret = newTree(nnkBracketExpr, @[bindSym"WrapStatic", ai])
+            ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           of ntyTypeDesc:
             ret = ai
           else:
@@ -128,8 +128,8 @@ since (1, 1):
       type Foo[T1, T2]=object
       doAssert genericParams(Foo[float, string]) is (float, string)
       type Bar[N: static float, T] = object
-      doAssert genericParams(Bar[1.0, string]) is (WrapStatic[1.0], string)
-      doAssert genericParams(Bar[1.0, string]).get(0).Val == 1.0
+      doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
+      doAssert genericParams(Bar[1.0, string]).get(0).value == 1.0
 
     type T2 = T
     genericParamsImpl(T2)

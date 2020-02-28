@@ -141,10 +141,10 @@ block genericParams:
 
   type Bar[N: static int, T] = object
   type Bar3 = Bar[3, float]
-  doAssert genericParams(Bar3) is (WrapStatic[3], float)
-  doAssert genericParams(Bar3).get(0) is WrapStatic
-  doAssert genericParams(Bar3).get(0).Val == 3
-  doAssert genericParams(Bar[3, float]).get(0).Val == 3
+  doAssert genericParams(Bar3) is (StaticParam[3], float)
+  doAssert genericParams(Bar3).get(0) is StaticParam
+  doAssert genericParams(Bar3).get(0).value == 3
+  doAssert genericParams(Bar[3, float]).get(0).value == 3
 
   type
     VectorElementType = SomeNumber | bool
@@ -166,22 +166,22 @@ block genericParams:
   doAssert genericParams(MyGenericTuple2[float, int]) is (float, int)
   doAssert genericParams(MyGenericAlias) is (string,)
   doAssert genericParams(Vec4f) is (float32,)
-  doAssert genericParams(Vec[4, bool]) is (WrapStatic[4], bool)
+  doAssert genericParams(Vec[4, bool]) is (StaticParam[4], bool)
 
   block:
     type Foo[T1, T2]=object
     doAssert genericParams(Foo[float, string]) is (float, string)
     type Bar[N: static float, T] = object
-    doAssert genericParams(Bar[1.0, string]) is (WrapStatic[1.0], string)
+    doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
     type Bar2 = Bar[2.0, string]
-    doAssert genericParams(Bar2) is (WrapStatic[2.0], string)
+    doAssert genericParams(Bar2) is (StaticParam[2.0], string)
     type Bar3 = Bar[1.0 + 2.0, string]
-    doAssert genericParams(Bar3) is (WrapStatic[3.0], string)
+    doAssert genericParams(Bar3) is (StaticParam[3.0], string)
 
     const F = 5.0
     type Bar4 = Bar[F, string]
-    doAssert genericParams(Bar4) is (WrapStatic[5.0], string)
-    doAssert genericParams(Bar[F, string]) is (WrapStatic[5.0], string)
+    doAssert genericParams(Bar4) is (StaticParam[5.0], string)
+    doAssert genericParams(Bar[F, string]) is (StaticParam[5.0], string)
 
 ##############################################
 # bug 13095
