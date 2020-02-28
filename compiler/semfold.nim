@@ -172,6 +172,14 @@ proc fitLiteral(c: ConfigRef, n: PNode): PNode {.deprecated: "no substitute".} =
   if typ.kind in tyUInt..tyUInt32:
     result.intVal = result.intVal and castToInt64(lastOrd(c, typ))
 
+proc castToSizeSigned*(a: BiggestInt, numBits: int): BiggestInt =
+  # consider moving somewhere more general
+  if numBits == 8: result = cast[int8](a)
+  elif numBits == 16: result = cast[int16](a)
+  elif numBits == 32: result = cast[int32](a)
+  elif numBits == 64: result = cast[int64](a)
+  else: doAssert false, $numBits
+
 proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   # b and c may be nil
   result = nil
@@ -297,7 +305,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mBitorI, mOr: result = newIntNodeT(bitor(getInt(a), getInt(b)), n, g)
   of mBitxorI, mXor: result = newIntNodeT(bitxor(getInt(a), getInt(b)), n, g)
   of mAddU:
-    let val = maskBytes(getInt(a) + getInt(b), int(n.typ.size))
+    let val = castToSizeSigned(cast[BiggestInt](getInt(a) + getInt(b)), int(n.typ.size)*8)
     result = newIntNodeT(val, n, g)
   of mSubU:
     let val = maskBytes(getInt(a) - getInt(b), int(n.typ.size))

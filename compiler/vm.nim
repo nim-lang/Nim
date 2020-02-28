@@ -18,7 +18,7 @@ import
   vmmarshal, gorgeimpl, lineinfos, tables, btrees, macrocacheimpl,
   modulegraphs, sighashes, int128
 
-from semfold import leValueConv, ordinalValToString
+from semfold import leValueConv, ordinalValToString, castToSizeSigned
 from evaltempl import evalTemplate
 
 const
@@ -1493,7 +1493,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, "unhandled exception: value out of range")
     of opcNarrowU:
       decodeB(rkInt)
-      regs[ra].intVal = regs[ra].intVal and ((1'i64 shl rb)-1)
+      var ret = regs[ra].intVal and ((1'i64 shl rb)-1)
+      regs[ra].intVal = castToSizeSigned(ret, rb)
     of opcSignExtend:
       # like opcNarrowS, but no out of range possible
       decodeB(rkInt)
