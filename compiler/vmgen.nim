@@ -2094,12 +2094,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genWhile(c, n)
   of nkBlockExpr, nkBlockStmt: genBlock(c, n, dest)
   of nkReturnStmt:
-    unused(c, n, dest)
     genReturn(c, n)
   of nkRaiseStmt:
     genRaise(c, n)
   of nkBreakStmt:
-    unused(c, n, dest)
     genBreak(c, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(c, n, dest)
   of nkStmtList:
