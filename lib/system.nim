@@ -946,6 +946,7 @@ since2 (1, 1):
       type Foo1 = ref object
       type Foo2 = object
       doAssert not Foo1().isDefault
+      doAssert Foo1().notDefault
       doAssert Foo2().isDefault
 
     a == default(T)
@@ -957,6 +958,10 @@ since2 (1, 1):
   template isDefault*[T](a: seq[T]): bool =
     ## overloaded for efficiency
     a.len == 0
+
+  template notDefault*(a): untyped =
+    ## negation of `isDefault`
+    not isDefault(a)
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
