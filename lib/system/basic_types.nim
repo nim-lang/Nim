@@ -50,6 +50,13 @@ proc `and`*(x, y: bool): bool {.magic: "And", noSideEffect.}
   ## are true).
   ##
   ## Evaluation is lazy: if ``x`` is false, ``y`` will not even be evaluated.
+  ## Semantic check is lazy in VM, to allow `when declared(Foo) and T is Foo`
+
+template nimInternalAndVM*(x: bool, y: untyped): bool =
+  ## Internal lowering used by `and` in VM to enable shortcuiting semcheck
+  when x: y
+  else: false
+
 proc `or`*(x, y: bool): bool {.magic: "Or", noSideEffect.}
   ## Boolean ``or``; returns true if ``not (not x and not y)`` (if any of
   ## the arguments is true).

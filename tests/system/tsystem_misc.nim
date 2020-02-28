@@ -210,3 +210,20 @@ block: # Ordinal
   # doAssert enum is Ordinal # fails
   # doAssert Ordinal is SomeOrdinal
   # doAssert SomeOrdinal is Ordinal
+
+block: # and VM shortcircuits semcheck
+  doAssert not compiles(nonexistant)
+  const a1 = false and nonexistant
+  doAssert not a1
+  const a2 = true and false
+  doAssert not a2
+  const a3 = true and true
+  doAssert a3
+
+  static:
+    const a4 = false and nonexistant
+    doAssert not a4
+    let a5 = false and nonexistant # still works, we're inside a static context
+    doAssert not a5
+    const a6 = 2 and 3 # make sure we don't break bitwise and
+    doAssert a6 == 2

@@ -2153,6 +2153,25 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result[0] = newSymNode(s, n[0].info)
     result[1] = semAddrArg(c, n[1], s.name.s == "unsafeAddr")
     result.typ = makePtrType(c, result[1].typ)
+  of mBitandI:
+    # somehow, `true and true` falls here and not under mAnd, IIUC this is because
+    # magic overloads (`and`) don't do overload resolution since semcheck
+    # hasn't been done yet
+    if c.inStaticContext > 0:
+      let lhs = semExprWithType(c, n[1])
+      if lhs.typ.kind == tyBool:
+        result = newTree(nkCall)
+        result.add newIdentNode(getIdent(c.cache, "nimInternalAndVM"), n.info)
+        result.add lhs
+        result.add n[2]
+        result = semExpr(c, result)
+      else:
+        let n2 = copyNode(n)
+        n2.sons = n.sons
+        n2[1] = lhs
+        result = semDirectOp(c, n2, flags)
+    else:
+      result = semDirectOp(c, n, flags)
   of mTypeOf:
     markUsed(c, n.info, s)
     result = semTypeOf(c, n)
