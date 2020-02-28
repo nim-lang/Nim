@@ -149,7 +149,7 @@ compiler vcc:
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$options $builddll$vccplatform /Fe$exefile $objfiles $buildgui",
+    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui $options",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
