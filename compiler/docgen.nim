@@ -794,6 +794,35 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
     result["description"] = %comm
   if r.buf.len > 0:
     result["code"] = %r.buf
+  if k in routineKinds:
+    result["signature"] = newJObject()
+    if n[paramsPos][0].kind != nkEmpty:
+      result["signature"]["return"] = %($n[paramsPos][0])
+    if n[paramsPos].len > 1:
+      result["signature"]["arguments"] = newJArray()
+    for paramIdx in 1 ..< n[paramsPos].len:
+      for identIdx in 0 ..< n[paramsPos][paramIdx].len - 2:
+        let
+          paramName = $n[paramsPos][paramIdx][identIdx]
+          paramType = $n[paramsPos][paramIdx][^2]
+        if n[paramsPos][paramIdx][^1].kind != nkEmpty:
+          let paramDefault = $n[paramsPos][paramIdx][^1]
+          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType, "default": %paramDefault}
+        else:
+          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType}
+    if n[pragmasPos].kind != nkEmpty:
+      result["signature"]["pragmas"] = newJArray()
+      for pragma in n[pragmasPos]:
+        result["signature"]["pragmas"].add %($pragma)
+    if n[genericParamsPos].kind != nkEmpty:
+      result["signature"]["genericParams"] = newJArray()
+      for genericParam in n[genericParamsPos]:
+        var param = %{"name": %($genericParam)}
+        if genericParam.sym.typ.sons.len > 0:
+          param["types"] = newJArray()
+        for kind in genericParam.sym.typ.sons:
+          param["types"].add %($kind)
+        result["signature"]["genericParams"].add param
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
