@@ -909,18 +909,21 @@ else:
   else:
     proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
-when defined(nimHasDefault):
+when (NimMajor, NimMinor) >= (1, 1):
   proc isDefault*[T](a: T): bool {.inline.} =
     ## returns whether `a` is equal to its default value
     runnableExamples:
       doAssert "".isDefault
       doAssert not "a".isDefault
-      doAssert (-0.0).isDefault
       doAssert not @[0].isDefault
+
+      ## semantic differences with something like isEmpty:
       doAssert [0].isDefault # whereas [0].len != 0
+      doAssert not "".cstring.isDefault # whereas "".cstring.len == 0
 
       type Kind = enum kUnknown, kRed, kGreen
       doAssert kUnknown.isDefault
+      doAssert (-0.0).isDefault
 
       type Foo1 = ref object
       type Foo2 = object
@@ -929,13 +932,13 @@ when defined(nimHasDefault):
 
     a == default(T)
 
-template isDefault*(a: string): bool =
-  ## overloaded for efficiency
-  a.len == 0
+  template isDefault*(a: string): bool =
+    ## overloaded for efficiency
+    a.len == 0
 
-template isDefault*[T](a: seq[T]): bool =
-  ## overloaded for efficiency
-  a.len == 0
+  template isDefault*[T](a: seq[T]): bool =
+    ## overloaded for efficiency
+    a.len == 0
 
 proc setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
