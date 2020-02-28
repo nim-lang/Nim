@@ -81,6 +81,7 @@
 
 
 ```
+- Added `system.isDefault(a)` to tell whether `a` is equal to its default value
 
 
 ## Library changes
