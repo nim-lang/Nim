@@ -169,7 +169,7 @@ proc `<=`*(x, y: uint32): bool {.magic: "LeU", noSideEffect.}
 proc `<=`*(x, y: uint64): bool {.magic: "LeU", noSideEffect.}
 
 proc `<`*(x, y: uint): bool {.magic: "LtU", noSideEffect.}
-  ## Returns true if ``unsigned(x) < unsigned(y)``.
+  ## Returns true if ``x < y``.
 proc `<`*(x, y: uint8): bool {.magic: "LtU", noSideEffect.}
 proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
 proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
