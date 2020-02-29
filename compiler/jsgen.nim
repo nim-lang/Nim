@@ -240,9 +240,9 @@ proc `$`(self: PTypeLookupTable): string =
 
 proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: int) =
   var myTypeId = if typeId.len != 0: typeId else: self.currentType
-  echo "addEntry key: " & myTypeId
-  echo "id:" & id & ", typeId: " & typeId & ", currentType: " & self.currentType
-  echo self
+  # echo "addEntry key: " & myTypeId
+  # echo "id:" & id & ", typeId: " & typeId & ", currentType: " & self.currentType
+  # echo self
   if not self.typeMap.hasKey(myTypeId):
     self[myTypeId] = newIdLookupTable()
   var idTable = self[myTypeId]
@@ -1158,7 +1158,8 @@ proc getSection(sec, marker: string): tuple[fs: string, str: string] =
 proc determineSection(str: string): tuple[fs: string, str: string] =
   result = ("main", "")
   let secMarker = matchSection(str)
-  result = getSection(str, secMarker)
+  if secMarker != "":
+    result = getSection(str, secMarker)
 
 # /*FILEPATH:index.d.ts:*/
 proc findEmitFilePath*(emitStr: string, marker: string): string = 
