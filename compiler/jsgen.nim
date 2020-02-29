@@ -161,7 +161,9 @@ proc newTypeLookupTable(): PTypeLookupTable =
   result.typeMap = newTable[string, PIdLookupTable]()
   
 proc find(self: PIdLookupTable, id: string): PIdTableEntry =
-  self.idMap[id]
+  var myId = if id.len > 0: id else: self.currentId
+  discard self.idMap.hasKeyOrPut(myId, newIdTableEntry())
+  self.idMap[myId]
 
 proc addEntry(self: PIdLookupTable, id: string, startIndex: int) =
   var entry = newIdTableEntry(startIndex = startIndex)
@@ -177,7 +179,10 @@ proc setEntry(self: PIdLookupTable, id: string, declId: string, declGenId: strin
   self.currentId = id
   
 proc current(self: PIdLookupTable): PIdTableEntry = 
-  self.idMap[self.currentId]
+  var key = self.currentId
+  if not self.idMap.hasKey(key):
+    self.idMap[key] = newIdTableEntry()  
+  self.idMap[key]
 
 proc setCurrentEndIndex(self: PIdLookupTable, endIndex: int) =
   self.current.endIndex = endIndex
@@ -190,35 +195,72 @@ proc bumpFollowingIdLocationRefs(self: PIdLookupTable, id: string, lineCount: in
     entry.endIndex = entry.endIndex + lineCount
     
 proc current(self: PTypeLookupTable): PIdLookupTable = 
-  self.typeMap[self.currentType]
+  var key = self.currentType
+  if not self.typeMap.hasKey(key):
+    self.typeMap[key] = newIdLookupTable()  
+  self.typeMap[key]
 
 proc currentIdEntry(self: PTypeLookupTable): PIdTableEntry = 
   self.current.current
 
 proc setCurrentEndIndex(self: PTypeLookupTable, endIndex: int) =
   self.currentIdEntry.endIndex = endIndex
-  
-proc find(self: PTypeLookupTable, typeId: string): PIdLookupTable =
-  self.typeMap[typeId]
-    
+      
 proc find(self: PTypeLookupTable, typeId: string, id: string): PIdTableEntry =
-  var myTypeId = if typeId.len == 0: typeId else: self.currentType
-  self.typeMap[myTypeId].idMap[id]
+  var myTypeId = if typeId.len > 0: typeId else: self.currentType
+  discard self.typeMap.hasKeyOrPut(myTypeId, newIdLookupTable())
+  self.typeMap[myTypeId].find(id)
+
+proc `[]`(table: PIdLookupTable, key: string): PIdTableEntry =
+  table.idMap[key]
+  
+proc `[]=`(table: PIdLookupTable, key: string, value: PIdTableEntry) =
+  table.idMap[key] = value
+
+proc `[]`(table: PTypeLookupTable, key: string): PIdLookupTable =
+  table.typeMap[key]
+  
+proc `[]=`(table: PTypeLookupTable, key: string, value: PIdLookupTable) =
+  table.typeMap[key] = value
+
+proc `$`(entry: PIdTableEntry): string =
+    $(entry.id, entry.genId, entry.startIndex, entry.endIndex)
+
+proc `$`(table: PIdLookupTable): string = 
+  result = "idMap:\n"
+  for k, v in table.idMap.pairs:
+    result &= "\t" & k & ": " & $v & "\n"
+  result.add("currentId: " & table.currentId) 
+
+proc `$`(self: PTypeLookupTable): string = 
+  result = "typeMap:\n"
+  for k, v in self.typeMap.pairs:
+    result &= "\t" & k & ": " & $v & "\n"
+  result.add("currentType: " & self.currentType)
 
 proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: int) =
-  var myTypeId = if typeId.len == 0: typeId else: self.currentType
-  self.find(myTypeId).addEntry(id, startIndex)
+  var myTypeId = if typeId.len != 0: typeId else: self.currentType
+  echo "addEntry key: " & myTypeId
+  echo "id:" & id & ", typeId: " & typeId & ", currentType: " & self.currentType
+  echo self
+  if not self.typeMap.hasKey(myTypeId):
+    self[myTypeId] = newIdLookupTable()
+  var idTable = self[myTypeId]
+  idTable.addEntry(id, startIndex)
+  
 
 proc setEntry(self: PTypeLookupTable, typeId: string, id: string, declId: string, declGenId: string) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
-  var table = self.find(myTypeId)
-  table.setEntry(id, declId, declGenId)
+  if not self.typeMap.hasKey(myTypeId):
+    self[myTypeId] = newIdLookupTable()
+  var idTable = self[myTypeId]
+  idTable.setEntry(id, declId, declGenId)
   self.currentType = typeId
   
 proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
-  var table = self.find(myTypeId)
-  table.bumpFollowingIdLocationRefs(id, lineCount)
+  var idTable = self[myTypeId]
+  idTable.bumpFollowingIdLocationRefs(id, lineCount)
   
 # PSrcCode
 
@@ -286,17 +328,17 @@ proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
   
 
 proc insertCodeBefore(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
-  var table = p.g.typeLookupTable
-  var srcCodeStartIndex = table.find(typeId, id).startIndex
+  var typeTable = p.g.typeLookupTable
+  var srcCodeStartIndex = typeTable.find(typeId, id).startIndex
   var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
-  var idTable = table.find(typeId)
+  var idTable = typeTable[typeId]
   idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
 
 proc insertCodeAfter(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
-  var table = p.g.typeLookupTable
-  var srcCodeStartIndex = table.find(typeId, id).startIndex
+  var typeTable = p.g.typeLookupTable
+  var srcCodeStartIndex = typeTable.find(typeId, id).startIndex
   var insertedLineCount = srcCode.insertAfterAt(srcCodeStartIndex, code)
-  var idTable = table.find(typeId)
+  var idTable = typeTable[typeId]
   idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
   
 template config*(p: PProc): ConfigRef = p.module.config
