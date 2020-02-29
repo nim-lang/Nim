@@ -1,7 +1,12 @@
 
+var 
+  x: string
 {.emit: "%[STOREID:var=x]%".}
 
-{.emit: "%[BEFORE:var(x)]%@enhance({x:1});".}
+{.emit: "%[BEFORE:var(x)]%/*@enhance({x:1});*/".}
+
+# echo x
+
 # {.emit: "%[AFTER:var(x)]%/*after-x*/;".}
 # {.emit: "%[BEFORE:var(y)]%/*ignore-before*/;".}
 # {.emit: "%[AFTER:var(y)]%/*ignore-after*/;".}
