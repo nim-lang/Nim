@@ -448,6 +448,7 @@ proc semByAddr(c: PContext, a: PNode, n: PNode): PNode =
       if a[1].kind != nkEmpty:
         result.add a[1]
       result.add a[2]
+      result.info = a.info
       let ret = newNodeI(nkStmtList, a.info)
       ret.add result
       pushInfoContext(c.config, a.info)
