@@ -95,5 +95,6 @@ nimdoc.out.css
 # for `nim c -r nimdoc/tester` etc; this can be in multiple places
 htmldocs
 
-testfile*
+testfile.js
+jstestfile.js
 xaba.js

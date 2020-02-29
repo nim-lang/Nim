@@ -118,8 +118,6 @@ type
 
   PGlobals = ref object of RootObj
     typeInfo, constants: Rope
-    lastDeclGenId: Rope
-    lastDeclId: Rope
     code, header, imports, footer, types: PSrcCode
     typeLookupTable: PTypeLookupTable
     forwarded: seq[PSym]
@@ -133,6 +131,8 @@ type
     prc: PSym
     body: PSrcCode
     globals, locals: Rope
+    lastDeclGenId: string
+    lastDeclId: string
     options: TOptions
     module: BModule
     g: PGlobals
@@ -146,7 +146,7 @@ type
 
 # TLookupTable
 
-proc newIdTableEntry(startIndex: int = 0, id: string = "", genId: string = ""): PIdTableEntry =
+proc newIdTableEntry(startIndex: int = -1, id: string = "", genId: string = ""): PIdTableEntry =
   new(result)
   result.startIndex = startIndex
   result.id = id
@@ -162,6 +162,8 @@ proc newTypeLookupTable(): PTypeLookupTable =
   
 proc find(self: PIdLookupTable, id: string): PIdTableEntry =
   var myId = if id.len > 0: id else: self.currentId
+  if not self.idMap.hasKey(myId):
+    return nil
   discard self.idMap.hasKeyOrPut(myId, newIdTableEntry())
   self.idMap[myId]
 
@@ -174,7 +176,10 @@ proc addEntry(self: PIdLookupTable, id: string, startIndex, endIndex: int) =
   self.addEntry(id, startIndex)
   self.idMap[id].endIndex = endIndex
 
-proc setEntry(self: PIdLookupTable, id: string, declId: string, declGenId: string) =
+proc setEntry(self: PIdLookupTable, id: string = "", declId: string, declGenId: string = "") =
+  echo "setEntry:" & id
+  echo "declId:" & declId
+  echo "declGenId:" & declGenId
   self.idMap[id] = newIdTableEntry(id = declId, genId = declGenId)
   self.currentId = id
   
@@ -208,6 +213,8 @@ proc setCurrentEndIndex(self: PTypeLookupTable, endIndex: int) =
       
 proc find(self: PTypeLookupTable, typeId: string, id: string): PIdTableEntry =
   var myTypeId = if typeId.len > 0: typeId else: self.currentType
+  if not self.typeMap.hasKey(myTypeId):
+    return nil
   discard self.typeMap.hasKeyOrPut(myTypeId, newIdLookupTable())
   self.typeMap[myTypeId].find(id)
 
@@ -240,21 +247,13 @@ proc `$`(self: PTypeLookupTable): string =
 
 proc addEntry(self: PTypeLookupTable, typeId: string, id: string, startIndex: int) =
   var myTypeId = if typeId.len != 0: typeId else: self.currentType
-  # echo "addEntry key: " & myTypeId
-  # echo "id:" & id & ", typeId: " & typeId & ", currentType: " & self.currentType
-  # echo self
-  if not self.typeMap.hasKey(myTypeId):
-    self[myTypeId] = newIdLookupTable()
-  var idTable = self[myTypeId]
-  idTable.addEntry(id, startIndex)
+  discard self.typeMap.hasKeyOrPut(myTypeId, newIdLookupTable())
+  self[myTypeId].addEntry(id, startIndex)
   
-
 proc setEntry(self: PTypeLookupTable, typeId: string, id: string, declId: string, declGenId: string) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
-  if not self.typeMap.hasKey(myTypeId):
-    self[myTypeId] = newIdLookupTable()
-  var idTable = self[myTypeId]
-  idTable.setEntry(id, declId, declGenId)
+  discard self.typeMap.hasKeyOrPut(myTypeId, newIdLookupTable())
+  self[myTypeId].setEntry(id, declId, declGenId)
   self.currentType = typeId
   
 proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
@@ -309,12 +308,18 @@ proc rop(self: PSrcCode): Rope =
   rope(self.source())
 
 proc insertBeforeAt(self: PSrcCode, index: int, code: string): int =
+  echo "insertBeforeAt"
   var items = self.srcList
-  var indexBefore = index-1
-  var seqBefore = items[0..indexBefore]
+  var indexBefore = if index > 0: index-1 else: 0
+  echo "indexBefore:" & $indexBefore
+  var seqBefore = if indexBefore > 0: items[0..indexBefore] else: @[]
   var nextIndex = indexBefore + 1
+  echo "nextIndex:" & $nextIndex
   var seqAfter = items[nextIndex..<items.len]
+  echo "seqAfter:" & $seqAfter
   items = seqBefore & code & seqAfter
+  echo "items:" & $items
+  echo "srcList:" & $self.srcList
   code.len
 
 proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
@@ -328,15 +333,39 @@ proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
   
 
 proc insertCodeBefore(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
+  echo "insertCodeBefore"
   var typeTable = p.g.typeLookupTable
-  var srcCodeStartIndex = typeTable.find(typeId, id).startIndex
+  var entry = typeTable.find(typeId, id)
+  if entry == nil:
+    echo typeTable
+    echo "no such type or id:" & typeId & ", id:" & id
+    return
+
+  var srcCodeStartIndex = entry.startIndex
+  if srcCodeStartIndex == -1:
+    echo "start index not set:" & $srcCodeStartIndex
+    return
+
+  echo "srcCodeStartIndex:" & $srcCodeStartIndex
   var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
   var idTable = typeTable[typeId]
   idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
 
 proc insertCodeAfter(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
+  echo "insertCodeAfter"
   var typeTable = p.g.typeLookupTable
-  var srcCodeStartIndex = typeTable.find(typeId, id).startIndex
+  var entry = typeTable.find(typeId, id)
+  if entry == nil:
+    echo typeTable
+    echo "no such type or id:" & typeId & ", id:" & id
+    return
+
+  var srcCodeStartIndex = entry.startIndex
+  if srcCodeStartIndex == -1:
+    echo "start index not set:" & $srcCodeStartIndex
+    return
+
+  echo "srcCodeStartIndex:" & $srcCodeStartIndex
   var insertedLineCount = srcCode.insertAfterAt(srcCodeStartIndex, code)
   var idTable = typeTable[typeId]
   idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
@@ -380,6 +409,7 @@ proc newGlobals(): PGlobals =
   result.header = newSrcCode()
   result.footer = newSrcCode()
   result.types = newSrcCode()
+  result.imports = newSrcCode()
 
   result.typeLookupTable = newTypeLookupTable()
   result.generatedSyms = initIntSet()
@@ -1172,8 +1202,10 @@ proc findEmitFilePath*(emitStr: string, marker: string): string =
 proc findSetStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
   var xpr = re"""%\[STOREID:(\S+)=(\S+)\]%"""   
   var typeId, alias: string
+  echo "findSetStoreTypeAndAlias:" & emitStr
   if emitStr =~ xpr:
     (typeId, alias) = matches
+    echo "match storeid:" & typeId & ", alias:" & alias 
     result = (typeId, alias)
 
 # %[ID:property(A.abc)]% 
@@ -1202,10 +1234,10 @@ proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: st
 
 # replace $ID special ref placeholder with stored lastDeclId
 proc replaceDeclId(p: PProc, strVal: string): string = 
-    strVal.replace "%ID%", $(p.g.lastDeclId)
+    strVal.replace "%ID%", $(p.lastDeclId)
 
 proc replaceDeclGenId(p: PProc, strVal: string): string = 
-  strVal.replace "%GENID%", $(p.g.lastDeclGenId)
+  strVal.replace "%GENID%", $(p.lastDeclGenId)
 
 proc genAsmOrEmitStmt(p: PProc, n: PNode): PProc =
   genLineDir(p, n)
@@ -1251,11 +1283,15 @@ proc nToString(n: PNode): string =
   if nodeIsStr(n):
     result = n[0].strVal
 
-proc storeTypeAndAlias(p: PProc, str: string) =
+proc storeTypeAndAlias(p: PProc, str: string): string =
   var typeId, alias: string
   (typeId, alias) = findSetStoreTypeAndAlias(str)
+  result = ""
   if typeId.len > 0 and alias.len > 0:
-    p.g.typeLookupTable.setEntry(typeId, alias, $p.g.lastDeclId, $p.g.lastDeclGenId)
+    var lastDeclId = $p.lastDeclId
+    var lastDeclGenId = $p.lastDeclGenId
+    echo "storeTypeAndAlias:setEntry: " & typeId & ", alias: " & alias & ", lastDeclId: " & lastDeclId & ", lastDeclGenId: " & lastDeclGenId
+    p.g.typeLookupTable.setEntry(typeId, alias, lastDeclId, lastDeclGenId)
 
 proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry, propName: string] =
   var typeId, alias: string
@@ -1264,20 +1300,24 @@ proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: P
   (typeId, alias) = findGenIdStoreTypeAndAlias(str)
   if typeId.len == 0:
     command = "GENID"
-    propName = "genId"
+    propName = "genId"    
     (typeId, alias) = findIdStoreTypeAndAlias(str)
-
+    
+  echo "getTypeAndAliasEntry: " & typeId & ", alias:" & alias
   if typeId.len > 0 and alias.len > 0:
     var entry = p.g.typeLookupTable.find(typeId, alias)
+    echo "entry:" & $entry
     var marker = "%[" & command & ":" & typeId & "(" & alias & ")]%"
+    echo "marker:" & marker
     result = (marker, entry, propName)
 
 # %[BEFORE:property(A.abc)]% 
 proc findBeforeStoreTypeAndAlias(emitStr: string): tuple[typeId, alias: string] = 
   var xpr = re"""%\[BEFORE:(\S+)\((\S+)\)\]%"""   
   var typeId, alias: string
-  if emitStr =~ xpr:
+  if emitStr =~ xpr:    
     (typeId, alias) = matches
+    echo "BEFORE typeId:" & typeId & ", alias:" & alias
     result = (typeId, alias)
 
 proc findAfterStoreTypeAndAlias(emitStr: string): tuple[typeId, alias: string] = 
@@ -1285,6 +1325,7 @@ proc findAfterStoreTypeAndAlias(emitStr: string): tuple[typeId, alias: string] =
   var typeId, alias: string
   if emitStr =~ xpr:
     (typeId, alias) = matches
+    echo "AFTER typeId:" & typeId & ", alias:" & alias
     result = (typeId, alias)
 
 proc injectionMarker(command, typeId, alias: string): string =  
@@ -1293,20 +1334,27 @@ proc injectionMarker(command, typeId, alias: string): string =
 proc injectEmit(p: PProc, str: string) =
   var typeId, alias: string
   (typeId, alias) = findBeforeStoreTypeAndAlias(str)
-  if typeId.len == 0:
-    (typeId, alias) = findAfterStoreTypeAndAlias(str)
+  if typeId.len > 0:
+    echo "inject before"
     var marker = injectionMarker("BEFORE", typeId, alias)
     var code = str.replace(marker, "")
+    echo "code to inject:" & code
     p.insertCodeBefore(p.g.code, typeId, alias, code)
   else:
-    var marker = injectionMarker("BEFORE", typeId, alias)
-    var code = str.replace(marker, "")
-    p.insertCodeAfter(p.g.code, typeId, alias, code)
+    (typeId, alias) = findAfterStoreTypeAndAlias(str)
+    if typeId.len > 0:
+      echo "inject after"
+      var marker = injectionMarker("AFTER", typeId, alias)
+      var code = str.replace(marker, "")
+      echo "code to inject:" & code
+      p.insertCodeAfter(p.g.code, typeId, alias, code)
 
-proc handleSpecialtEmitStr(p: PProc, n: PNode): PProc =
+proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
   var str = n.nToString()
   str = replaceDeclId(p, str)
+  echo "replaceDeclId:" & str
   str = replaceDeclGenId(p, str)
+  echo "replaceDeclGenId:" & str
 
   injectEmit(p, str)
 
@@ -1317,11 +1365,12 @@ proc handleSpecialtEmitStr(p: PProc, n: PNode): PProc =
       str = str.replace(marker, id)
 
   let (section, emitStr) = determineSection(str)
+  echo "section:" & section & ", emitStr:" & emitStr
 
   # add to code section array
   # p.module.s[section].add(emitStr)
   
-  storeTypeAndAlias(p, str)
+  str = storeTypeAndAlias(p, str)
 
   let (filePath, fileContent) = determineExternalFile(str)  
   if filePath.len > 0:
@@ -1335,14 +1384,19 @@ proc handleSpecialtEmitStr(p: PProc, n: PNode): PProc =
     p.g.imports.add(emitStr)
   of "FOOTER":
     p.g.footer.add(emitStr)
-  of "TYPES":
+  of "TYPE":
     p.g.types.add(emitStr)
+  else:
+    p.body.add(str)
   result = p
 
 proc genEmit(p: PProc, n: PNode): PProc =
-  if nodeIsStr(n):
-    handleSpecialtEmitStr(p, n)
+  var isStr = nodeIsStr(n)
+  if isStr:
+    echo "genEmit: isStr"
+    handleSpecialEmitStr(p, n)
   else:
+    echo "genEmit: not Str"
     genAsmOrEmitStmt(p, n)
     
 
@@ -2095,8 +2149,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   let nimVarName = v.name.s 
 
   # store varName on p so that we can reference it later
-  p.g.lastDeclGenId = varName
-  p.g.lastDeclId = rope(nimVarName)
+  p.lastDeclGenId = $varName
+  p.lastDeclId = $nimVarName
 
   # add var id mapping to idLookupTable
   # line adds a line to body p.body.add(indentLine(p, added))
@@ -2719,8 +2773,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
   let nimVarName = prc.name.s
 
   # store nim proc name and generated (mangled) proc name so we can reference it later
-  p.g.lastDeclGenId = name
-  p.g.lastDeclId = rope(nimVarName)
+  p.lastDeclGenId = $name
+  p.lastDeclId = $nimVarName
 
   let header = generateHeader(p, prc.typ)
   if prc.typ[0] != nil and sfPure notin prc.flags:
