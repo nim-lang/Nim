@@ -1,12 +1,12 @@
 discard """
-output: '''
-done tableadds
+  output: '''
 And we get here
 1
 2
 3
 '''
-joinable: false
+  joinable: false
+  matrix: "-d:nimBtrees; "
 """
 import hashes, sequtils, tables, algorithm
 
@@ -18,15 +18,14 @@ block tableDollar:
   # implementation changes
   doAssert ${1: 'a', 2: 'b'}.toTable in ["{1: 'a', 2: 'b'}", "{2: 'b', 1: 'a'}"]
 
+when not defined(nimBtrees):
 # test should not be joined because it takes too long.
-block tableadds:
-  proc main =
-    var tab = newTable[string, string]()
-    for i in 0..1000:
-      tab.add "key", "value " & $i
-
-  main()
-  echo "done tableadds"
+  block tableadds:
+    proc main =
+      var tab = newTable[string, string]()
+      for i in 0..1000:
+        tab.add "key", "value " & $i
+    main()
 
 
 block tcounttable:
@@ -78,16 +77,17 @@ block thashes:
     assert(t2[eB] == 2)
 
   # Test with range
-  block:
-    type
-      R = range[0..9]
-    var t = initTable[R,int]() # causes warning, why?
-    t[1] = 42 # causes warning, why?
-    t[2] = t[1] + 1
-    assert(t[1] == 42)
-    assert(t[2] == 43)
-    let t2 = {1.R: 1, 2.R: 2}.toTable
-    assert(t2[2.R] == 2)
+  when not defined(nimBtrees):
+    block:
+      type
+        R = range[0..9]
+      var t = initTable[R, int]() # causes warning, why?
+      t[1] = 42 # causes warning, why?
+      t[2] = t[1] + 1
+      assert(t[1] == 42)
+      assert(t[2] == 43)
+      let t2 = {1.R: 1, 2.R: 2}.toTable
+      assert(t2[2.R] == 2)
 
   # Test which combines the generics for tuples + ordinals
   block:
@@ -129,27 +129,28 @@ block thashes:
   echo "1"
 
 
-block tindexby:
-  doAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
+when not defined(nimBtrees):
+  block tindexby:
+    doAssert indexBy(newSeq[int](), proc(x: int):int = x) == initTable[int, int](), "empty int table"
 
-  var tbl1 = initTable[int, int]()
-  tbl1.add(1,1)
-  tbl1.add(2,2)
-  doAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
+    var tbl1 = initTable[int, int]()
+    tbl1[1] = 1
+    tbl1[2] = 2
+    doAssert indexBy(@[1,2], proc(x: int):int = x) == tbl1, "int table"
 
-  type
-    TElem = object
-      foo: int
-      bar: string
+    type
+      TElem = object
+        foo: int
+        bar: string
 
-  let
-    elem1 = TElem(foo: 1, bar: "bar")
-    elem2 = TElem(foo: 2, bar: "baz")
+    let
+      elem1 = TElem(foo: 1, bar: "bar")
+      elem2 = TElem(foo: 2, bar: "baz")
 
-  var tbl2 = initTable[string, TElem]()
-  tbl2.add("bar", elem1)
-  tbl2.add("baz", elem2)
-  doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
+    var tbl2 = initTable[string, TElem]()
+    tbl2["bar"] = elem1
+    tbl2["baz"] = elem2
+    doAssert indexBy(@[elem1,elem2], proc(x: TElem): string = x.bar) == tbl2, "element table"
 
 
 block tableconstr:
@@ -170,50 +171,53 @@ block tableconstr:
   assert 56 in ..60
 
 
-block ttables2:
-  proc TestHashIntInt() =
-    var tab = initTable[int,int]()
-    let n = 100_000
-    for i in 1..n:
-      tab[i] = i
-    for i in 1..n:
-      var x = tab[i]
-      if x != i : echo "not found ", i
+when not defined(nimBtrees):
+  block ttables2:
+    proc TestHashIntInt() =
+      var tab = initTable[int,int]()
+      let n = 100_000
+      for i in 1..n:
+        tab[i] = i
+      for i in 1..n:
+        var x = tab[i]
+        if x != i : echo "not found ", i
 
-  proc run1() =
-    for i in 1 .. 50:
-      TestHashIntInt()
+    proc run1() =
+      for i in 1 .. 50:
+        TestHashIntInt()
 
-  # bug #2107
+    # bug #2107
 
-  var delTab = initTable[int,int](4)
+    var delTab = initTable[int,int](4)
 
-  for i in 1..4:
-    delTab[i] = i
-    delTab.del(i)
-  delTab[5] = 5
+    for i in 1..4:
+      delTab[i] = i
+      delTab.del(i)
+    delTab[5] = 5
 
 
-  run1()
-  echo "2"
+    run1()
 
-block allValues:
-  var t: Table[int, string]
-  var key = 0
-  let n = 1000
-  for i in 0..<n: t.add(i, $i)
-  const keys = [0, -1, 12]
-  for i in 0..1:
-    for key in keys:
-      t.add(key, $key & ":" & $i)
-  for i in 0..<n:
-    if i notin keys:
-      t.del(i)
-  doAssert t.sortedPairs == @[(-1, "-1:0"), (-1, "-1:1"), (0, "0"), (0, "0:0"), (0, "0:1"), (12, "12"), (12, "12:0"), (12, "12:1")]
-  doAssert sortedItems(t.allValues(0)) == @["0", "0:0", "0:1"]
-  doAssert sortedItems(t.allValues(-1)) == @["-1:0", "-1:1"]
-  doAssert sortedItems(t.allValues(12)) == @["12", "12:0", "12:1"]
-  doAssert sortedItems(t.allValues(1)) == @[]
+echo "2"
+
+when not defined(nimBtrees):
+  block allValues:
+    var t: Table[int, string]
+    var key = 0
+    let n = 1000
+    for i in 0..<n: t.add(i, $i)
+    const keys = [0, -1, 12]
+    for i in 0..1:
+      for key in keys:
+        t.add(key, $key & ":" & $i)
+    for i in 0..<n:
+      if i notin keys:
+        t.del(i)
+    doAssert t.sortedPairs == @[(-1, "-1:0"), (-1, "-1:1"), (0, "0"), (0, "0:0"), (0, "0:1"), (12, "12"), (12, "12:0"), (12, "12:1")]
+    doAssert sortedItems(t.allValues(0)) == @["0", "0:0", "0:1"]
+    doAssert sortedItems(t.allValues(-1)) == @["-1:0", "-1:1"]
+    doAssert sortedItems(t.allValues(12)) == @["12", "12:0", "12:1"]
+    doAssert sortedItems(t.allValues(1)) == @[]
 
 block tablesref:
   const
@@ -310,20 +314,21 @@ block tablesref:
       x.inc("34", 1)
     assert t.largest()[0] == "90"
 
-    t.sort()
-    r.sort(SortOrder.Ascending)
-    var ps1 = toSeq t.pairs
-    var ps2 = toSeq r.pairs
-    ps2.reverse()
-    for ps in [ps1, ps2]:
-      var i = 0
-      for (k, v) in ps:
-        case i
-        of 0: assert k == "90" and v == 4
-        of 1: assert k == "12" and v == 3
-        of 2: assert k == "34" and v == 2
-        else: break
-        inc i
+    when not defined(nimBtrees):
+      t.sort()
+      r.sort(SortOrder.Ascending)
+      var ps1 = toSeq t.pairs
+      var ps2 = toSeq r.pairs
+      ps2.reverse()
+      for ps in [ps1, ps2]:
+        var i = 0
+        for (k, v) in ps:
+          case i
+          of 0: assert k == "90" and v == 4
+          of 1: assert k == "12" and v == 3
+          of 2: assert k == "34" and v == 2
+          else: break
+          inc i
 
   block SyntaxTest:
     var x = newTable[int, string]({:})
@@ -338,30 +343,31 @@ block tablesref:
     i = newTable[int, int]()
     assert i == j
 
-  proc orderedTableSortTest() =
-    var t = newOrderedTable[string, int](2)
-    for key, val in items(data): t[key] = val
-    for key, val in items(data): assert t[key] == val
-    proc cmper(x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key)
-    t.sort(cmper)
-    var i = 0
-    # `pairs` needs to yield in sorted order:
-    for key, val in pairs(t):
-      doAssert key == sorteddata[i][0]
-      doAssert val == sorteddata[i][1]
-      inc(i)
-    t.sort(cmper, order=SortOrder.Descending)
-    i = 0
-    for key, val in pairs(t):
-      doAssert key == sorteddata[high(data)-i][0]
-      doAssert val == sorteddata[high(data)-i][1]
-      inc(i)
+  when not defined(nimBtrees):
+    proc orderedTableSortTest() =
+      var t = newOrderedTable[string, int]()
+      for key, val in items(data): t[key] = val
+      for key, val in items(data): assert t[key] == val
+      proc cmper(x, y: tuple[key: string, val: int]): int = cmp(x.key, y.key)
+      t.sort(cmper)
+      var i = 0
+      # `pairs` needs to yield in sorted order:
+      for key, val in pairs(t):
+        doAssert key == sorteddata[i][0]
+        doAssert val == sorteddata[i][1]
+        inc(i)
+      t.sort(cmper, order=SortOrder.Descending)
+      i = 0
+      for key, val in pairs(t):
+        doAssert key == sorteddata[high(data)-i][0]
+        doAssert val == sorteddata[high(data)-i][1]
+        inc(i)
 
-    # check that lookup still works:
-    for key, val in pairs(t):
-      doAssert val == t[key]
-    # check that insert still works:
-    t["newKeyHere"] = 80
+      # check that lookup still works:
+      for key, val in pairs(t):
+        doAssert val == t[key]
+      # check that insert still works:
+      t["newKeyHere"] = 80
 
   block anonZipTest:
     let keys = @['a','b','c']
@@ -393,7 +399,8 @@ block tablesref:
     t.clear()
     assert t.len() == 0
 
-  orderedTableSortTest()
+  when not defined(nimBtrees):
+    orderedTableSortTest()
   echo "3"
 
 
