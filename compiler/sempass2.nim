@@ -16,6 +16,7 @@ when defined(useDfa):
   import dfa
 
 import liftdestructors
+include sinkparameter_inference
 
 #[ Second semantic checking pass over the AST. Necessary because the old
    way had some inherent problems. Performs:
@@ -774,6 +775,10 @@ proc track(tracked: PEffects, n: PNode) =
 
     for i in 0..<n.safeLen:
       track(tracked, n[i])
+    if op != nil and op.kind == tyProc:
+      for i in 1..<min(n.safeLen, op.len):
+        if op[i].kind == tySink:
+          checkForSink(tracked.config, tracked.owner, n[i])
   of nkDotExpr:
     guardDotAccess(tracked, n)
     for i in 0..<n.len: track(tracked, n[i])
@@ -793,6 +798,7 @@ proc track(tracked: PEffects, n: PNode) =
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n[0].typ, n.info)
+    checkForSink(tracked.config, tracked.owner, n[1])
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
@@ -871,6 +877,11 @@ proc track(tracked: PEffects, n: PNode) =
         addDiscriminantFact(tracked.guards, x)
       if tracked.owner.kind != skMacro:
         createTypeBoundOps(tracked, x[1].typ, n.info)
+
+      if x.kind == nkExprColonExpr:
+        checkForSink(tracked.config, tracked.owner, x[1])
+      else:
+        checkForSink(tracked.config, tracked.owner, x)
     setLen(tracked.guards.s, oldFacts)
     if tracked.owner.kind != skMacro:
       # XXX n.typ can be nil in runnableExamples, we need to do something about it.
@@ -882,6 +893,7 @@ proc track(tracked: PEffects, n: PNode) =
       track(tracked, n[i])
       if tracked.owner.kind != skMacro:
         createTypeBoundOps(tracked, n[i].typ, n.info)
+      checkForSink(tracked.config, tracked.owner, n[i])
   of nkPragmaBlock:
     let pragmaList = n[0]
     let oldLocked = tracked.locked.len
@@ -927,7 +939,9 @@ proc track(tracked: PEffects, n: PNode) =
         createTypeBoundOps(tracked, n.typ, n.info)
         createTypeBoundOps(tracked, n[0].typ, n[0].info)
   of nkBracket:
-    for i in 0..<n.safeLen: track(tracked, n[i])
+    for i in 0..<n.safeLen:
+      track(tracked, n[i])
+      checkForSink(tracked.config, tracked.owner, n[i])
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n.typ, n.info)
   else:
