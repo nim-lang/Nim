@@ -17,17 +17,17 @@ proc add[T](x: var seq[T]; y: openArray[T])
   first type mismatch at position: 1
   required type for x: var seq[T]
   but expression 'k' is of type: Alias
-proc add(result: var string; x: float)
+proc add(x: var string; y: cstring)
   first type mismatch at position: 1
-  required type for result: var string
+  required type for x: var string
   but expression 'k' is of type: Alias
 proc add[T](x: var seq[T]; y: T)
   first type mismatch at position: 1
   required type for x: var seq[T]
   but expression 'k' is of type: Alias
-proc add(x: var string; y: cstring)
+proc add(result: var string; x: float)
   first type mismatch at position: 1
-  required type for x: var string
+  required type for result: var string
   but expression 'k' is of type: Alias
 proc add(x: var string; y: char)
   first type mismatch at position: 1
