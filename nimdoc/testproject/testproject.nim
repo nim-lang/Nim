@@ -9,6 +9,22 @@ runnableExamples:
   # bug #11078
   for x in "xx": discard
 
+template myfn*() =
+  runnableExamples:
+    import std/strutils
+    ## line doc comment
+    # bar
+    doAssert "'foo" == "'foo"
+    ##[
+    foo
+    bar
+    ]##
+    doAssert: not "foo".startsWith "ba"
+    block:
+      discard 0xff # elu par cette crapule
+    # should be in
+  # should be out
+
 const
   C_A* = 0x7FF0000000000000'f64
   C_B* = 0o377'i8

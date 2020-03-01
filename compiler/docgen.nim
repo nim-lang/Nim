@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths
+  pathutils, trees, tables, nimpaths, renderverbatim
 
 const
   exportSection = skField
@@ -494,8 +494,8 @@ proc runAllExamples(d: PDoc) =
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
       # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
 
-proc prepareExample(d: PDoc; n: PNode): string =
-  ## returns `rdoccmd` for this runnableExamples
+proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
+  ## returns `rdoccmd` and source code for this runnableExamples
   var rdoccmd = ""
   if n.len < 2 or n.len > 3: globalError(d.conf, n.info, "runnableExamples invalid")
   if n.len == 3:
@@ -512,10 +512,11 @@ proc prepareExample(d: PDoc; n: PNode): string =
       docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
-
+  let ret = extractRunnableExamplesSource(d.conf, n)
   for a in n.lastSon: runnableExamples.add a
+  # we could also use `ret` instead here, to keep sources verbatim
   writeExample(d, runnableExamples, rdoccmd)
-  result = rdoccmd
+  result = (rdoccmd, ret)
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -529,39 +530,57 @@ proc prepareExample(d: PDoc; n: PNode): string =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
-proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previousIsRunnable: var bool) =
+proc renderNimCodeOld(d: PDoc, n: PNode, dest: var Rope) =
+  ## this is a rather hacky way to get rid of the initial indentation
+  ## that the renderer currently produces:
+  # deadcode
+  var i = 0
+  var body = n.lastSon
+  if body.len == 1 and body.kind == nkStmtList and
+      body.lastSon.kind == nkStmtList:
+    body = body.lastSon
+  for b in body:
+    if i > 0: dest.add "\n"
+    inc i
+    nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
+
+type RunnableState = enum
+  rsStart
+  rsComment
+  rsRunnable
+  rsDone
+
+proc getAllRunnableExamplesImpl(d: PDoc; n, orig: PNode; dest: var Rope, state: RunnableState): RunnableState =
   ##[
-  previousIsRunnable: keep track of whether previous sibling was a runnableExample (true if 1st sibling though).
-  This is to ensure this works:
+  Simple state machine to tell whether we render runnableExamples and doc comments.
+  This is to ensure that we can interleave runnableExamples and doc comments freely;
+  the logic is easy to change but currently a doc comment following another doc comment
+  will not render, to avoid rendering in following case:
+
   proc fn* =
     runnableExamples: discard
     ## d1
     runnableExamples: discard
     ## d2
 
-    ## d3 # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
-
-  It also works with:
-  proc fn* =
-    ## d0
-    runnableExamples: discard
-    ## d1
-
-    etc
+    ## internal explanation  # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
+    discard # some code
   ]##
-  # xxx: checkme: owner check instead? this fails with the $nim/nimdoc/tester.nim test
+
+  # xxx: orig is deadcode
+  # owner check instead? this fails with the $nim/nimdoc/tester.nim test
   # now that we're calling `genRecComment` only from here (to maintain correct order wrt runnableExample)
   # if n.info.fileIndex != orig.info.fileIndex: return
+
   case n.kind
   of nkCommentStmt:
-    if previousIsRunnable:
+    if state in {rsStart, rsRunnable}:
       dest.add genRecComment(d, n)
-    previousIsRunnable = false
+      return rsComment
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
-        n.len >= 2 and n.lastSon.kind == nkStmtList:
-      previousIsRunnable = true
-      let rdoccmd = prepareExample(d, n)
+        n.len >= 2 and n.lastSon.kind == nkStmtList and state in {rsStart, rsComment, rsRunnable}:
+      let (rdoccmd, code) = prepareExample(d, n)
       var msg = "Example:"
       if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
@@ -569,27 +588,52 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previous
       inc d.listingCounter
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
-      # this is a rather hacky way to get rid of the initial indentation
-      # that the renderer currently produces:
-      var i = 0
-      var body = n.lastSon
-      if body.len == 1 and body.kind == nkStmtList and
-          body.lastSon.kind == nkStmtList:
-        body = body.lastSon
-      for b in body:
-        if i > 0: dest.add "\n"
-        inc i
-        nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
+      when true:
+        var dest2 = ""
+        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        dest.add dest2
+      else:
+        renderNimCodeOld(d, n, dest)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
-  else: previousIsRunnable = false
+      return rsRunnable
+  else: discard
+  return rsDone
+    # change this to `rsStart` if you want to keep generating doc comments
+    # and runnableExamples that occur after some code in routine
 
-  var previousIsRunnable2 = true
-  for i in 0..<n.safeLen:
-    getAllRunnableExamplesRec(d, n[i], orig, dest, previousIsRunnable2)
+proc getRoutineBody(n: PNode): PNode =
+  ## works around a transf bug D20200526T163511 where `result` messes AST
+  # TODO: try w templates and macro, see if they're affected
+  result = n[^1]
+  case result.kind
+  of nkSym:
+    result = n[^2]
+    case result.kind
+      of nkAsgn:
+        doAssert result[0].kind == nkSym
+        doAssert result.len == 2
+        result = result[1]
+      else: # eg: nkStmtList
+        discard
+  else:
+    discard
 
-proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
-  var previousIsRunnable = true
-  getAllRunnableExamplesRec(d, n, n, dest, previousIsRunnable)
+proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
+  var n = n
+  let orig = n
+  var state = rsStart
+  template fn(n2) =
+    state = getAllRunnableExamplesImpl(d, n2, orig, dest, state)
+  case n.kind
+  of routineDefs:
+    n = n.getRoutineBody
+    case n.kind
+    of nkCommentStmt, nkCallKinds: fn(n)
+    else:
+      for i in 0..<n.safeLen:
+        fn(n[i])
+        if state == rsDone: return
+  else: fn(n)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -765,12 +809,11 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var literal, plainName = ""
   var kind = tkEof
   var comm: Rope = nil
-  # skipping this (and doing it inside getAllRunnableExamples) would fix order in
-  # case of a runnableExample appearing before a doccomment, but would cause other
-  # issues
-  comm.add genRecComment(d, n)
-  if n.kind in declarativeDefs:
+  if n.kind in routineDefs:
     getAllRunnableExamples(d, n, comm)
+  else:
+    comm.add genRecComment(d, n)
+
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
