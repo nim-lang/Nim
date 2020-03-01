@@ -69,6 +69,7 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
+- `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
 
 
 - Added a `with` macro for easy function chaining that's available
