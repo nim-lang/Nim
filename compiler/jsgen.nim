@@ -576,8 +576,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
   of mLeU: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtU: applyFormat("($1 < $2)", "($1 < $2)")
-  of mLeU64: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mLtU64: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")
