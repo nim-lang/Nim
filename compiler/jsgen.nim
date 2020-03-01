@@ -227,12 +227,20 @@ proc current(self: PIdLookupTable): PIdTableEntry =
 proc setCurrentEndIndex(self: PIdLookupTable, endIndex: int) =
   self.current.endIndex = endIndex
 
-proc bumpFollowingIdLocationRefs(self: PIdLookupTable, id: string, lineCount: int) =
+proc bumpFollowingIdLocationRefs(self: PIdLookupTable, id: string, lineCount: int, compareIndex: proc(a, b: PIdTableEntry): bool) =
+  echo "bumpFollowingIdLocationRefs:" & id & ", lineCount:" & $lineCount
   var idEntry = self.idMap[id]
+  if idEntry == nil:
+    return
   for key, entry in self.idMap:
-    if entry.startIndex > idEntry.startIndex:
+    echo "key:" & key
+    echo "startIndex: entry:" & $entry.startIndex & "vs idEntry: " & $idEntry.startIndex
+    if compareIndex(entry, idEntry):
+      echo "add lineCount to entry  startIndex"
       entry.startIndex = entry.startIndex + lineCount
-    entry.endIndex = entry.endIndex + lineCount
+      echo "add lineCount to entry endIndex"
+      entry.endIndex = entry.endIndex + lineCount
+    self.idMap[id] = entry
     
 proc current(self: PTypeLookupTable): PIdLookupTable = 
   var key = self.currentType
@@ -319,10 +327,10 @@ proc setEntry(self: PTypeLookupTable, typeId: string, id: string, declId: string
   echo self[myTypeId]
   self.currentType = typeId
   
-proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int) =
+proc bumpFollowingIdLocationRefs(self: PTypeLookupTable, typeId: string, id: string, lineCount: int, compare: proc(a,b: PIdTableEntry): bool) =
   var myTypeId = if typeId.len == 0: typeId else: self.currentType
   var idTable = self[myTypeId]
-  idTable.bumpFollowingIdLocationRefs(id, lineCount)
+  idTable.bumpFollowingIdLocationRefs(id, lineCount, compare)
   
 # PSrcCode
 
@@ -375,9 +383,11 @@ proc rop(self: PSrcCode): Rope =
 proc insertBeforeAt(self: PSrcCode, index: int, code: string): int =
   echo "insertBeforeAt"
   var items = self.srcList
+  var itemsBefore = items.len
   var indexBefore = if index > 0: index-1 else: 0
   echo "indexBefore:" & $indexBefore
   var seqBefore = if indexBefore > 0: items[0..indexBefore] else: @[]
+  echo "seqBefore:" & $seqBefore
   var nextIndex = indexBefore + 1
   echo "nextIndex:" & $nextIndex
   var seqAfter = items[nextIndex..<items.len]
@@ -386,16 +396,27 @@ proc insertBeforeAt(self: PSrcCode, index: int, code: string): int =
   echo "items:" & $items
   self.srcList = items
   echo "srcList:" & $self.srcList
-  code.len
+  var itemsAfter = items.len
+  var diffLen = itemsAfter - itemsBefore
+  echo "diff len:" & $diffLen
+  diffLen
 
 proc insertAfterAt(self: PSrcCode, index: int, code: string): int =
+  echo "insertAfterAt"
   var items = self.srcList
   var indexBefore = index
+  echo "indexBefore:" & $indexBefore
   var seqBefore = items[0..indexBefore]
+  echo "seqBefore:" & $seqBefore
   var nextIndex = indexBefore + 1
+  echo "nextIndex:" & $nextIndex
   var seqAfter = items[nextIndex..<items.len]
+  echo "seqAfter:" & $seqAfter
   items = seqBefore & code & seqAfter
-  code.len
+  echo "items:" & $items
+  self.srcList = items
+  echo "srcList:" & $self.srcList
+  1
   
 
 proc insertCodeBefore(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
@@ -415,7 +436,11 @@ proc insertCodeBefore(p: PProc, srcCode: PSrcCode, typeId: string, id: string, c
   echo "srcCodeStartIndex:" & $srcCodeStartIndex
   var insertedLineCount = srcCode.insertBeforeAt(srcCodeStartIndex, code)
   var idTable = typeTable[typeId]
-  idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
+  const compare = proc(a, b: PIdTableEntry): bool = 
+    echo "compare: " & $b.startIndex & " >= " & $a.startIndex
+    b.startIndex >= a.startIndex
+  
+  idTable.bumpFollowingIdLocationRefs(id, insertedLineCount, compare)
 
 proc insertCodeAfter(p: PProc, srcCode: PSrcCode, typeId: string, id: string, code: string) =
   echo "insertCodeAfter"
@@ -433,8 +458,13 @@ proc insertCodeAfter(p: PProc, srcCode: PSrcCode, typeId: string, id: string, co
 
   echo "srcCodeStartIndex:" & $srcCodeStartIndex
   var insertedLineCount = srcCode.insertAfterAt(srcCodeStartIndex, code)
+  echo "insertedLineCount:" & $insertedLineCount
   var idTable = typeTable[typeId]
-  idTable.bumpFollowingIdLocationRefs(id, insertedLineCount)
+  const compare = proc(a, b: PIdTableEntry): bool = 
+    echo "compare: " & $b.startIndex & " > " & $a.startIndex
+    b.startIndex > a.startIndex
+
+  idTable.bumpFollowingIdLocationRefs(id, insertedLineCount, compare)
   
 template config*(p: PProc): ConfigRef = p.module.config
 
@@ -2224,8 +2254,10 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
 
   # add var id mapping to idLookupTable
   # line adds a line to body p.body.add(indentLine(p, added))
-  var srcCodeStartIndex = p.body.len + 1
-  
+  var srcList = p.g.code.srcList
+  var srcCodeStartIndex = srcList.len + 1
+  echo "code:" & $srcList
+  echo "srcCodeStartIndex: " & $srcCodeStartIndex
   p.g.typeLookupTable.addEntry("var", $varName, srcCodeStartIndex)
   echo "var: after add entry:"
   echo $p.g.typeLookupTable
@@ -2283,8 +2315,6 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
 
-      p.g.typeLookupTable.setCurrentEndIndex(endIndex = p.body.len)
-      return
     else:
       s = a.res
     if isIndirect(v):
@@ -2296,7 +2326,11 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     dec p.extraIndent
     lineF(p, "}$n")
   # return
-  p.g.typeLookupTable.setCurrentEndIndex(endIndex = p.body.len)
+
+  var endIndex = srcList.len
+  echo "body after: " & $srcList
+  echo "var endIndex: " & $endIndex
+  p.g.typeLookupTable.setCurrentEndIndex(endIndex = endIndex)
 
 proc genVarStmt(p: PProc, n: PNode) =
   for i in 0..<n.len:
