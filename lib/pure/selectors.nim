@@ -27,7 +27,7 @@
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
-import os, strutils, nativesockets
+import os, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
