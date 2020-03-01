@@ -6,8 +6,6 @@ output: "OK"
 proc testUnsignedOps() =
   let a: int8 = -128
   let b: int8 = 127
-  let c: int8 = -1
-  let d: int8 = 1
 
   doAssert b +% 1 == -128
   doAssert b -% -1 == -128
