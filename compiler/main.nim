@@ -225,6 +225,7 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf)
       commandDoc(cache, conf)
   of "doc2", "doc":
+    conf.setNoteDefaults(warnLockLevel, false) # issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -233,6 +234,7 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       commandDoc2(graph, false)
   of "rst2html":
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
