@@ -163,12 +163,12 @@ proc `<`*(x, y: int64): bool {.magic: "LtI", noSideEffect.}
 
 
 proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
+proc `<=%`*(x, y: int64): bool {.magic: "LeU", noSideEffect.}
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) <= unsigned(y)``.
 
 proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
+proc `<%`*(x, y: int64): bool {.magic: "LtU", noSideEffect.}
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) < unsigned(y)``.
 
