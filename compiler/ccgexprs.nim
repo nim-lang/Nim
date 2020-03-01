@@ -2273,11 +2273,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
-  of mAccessTypeInfo:
-    var a: TLoc
-    var dummy: Rope
-    initLocExpr(p, e[1], a)
-    putIntoDest(p, d, e, rdMType(p, a, dummy))
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       "'toOpenArray' is only valid within a call expression")
