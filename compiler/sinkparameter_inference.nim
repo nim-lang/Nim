@@ -8,7 +8,7 @@
 #
 
 proc checkForSink*(config: ConfigRef; owner: PSym; arg: PNode) =
-  if true: return
+  #if true: return
   #[ Patterns we seek to detect:
 
     someLocation = p # ---> p: sink T

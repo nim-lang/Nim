@@ -23,7 +23,7 @@ const
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
-    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
+    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime, wMerge,
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
@@ -53,7 +53,7 @@ const
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wExperimental, wThis, wUsed}
   lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
-    wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
+    wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
   typePragmas* = declPragmas + {wMagic, wAcyclic,
@@ -889,6 +889,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNoDestroy:
         noVal(c, it)
         incl(sym.flags, sfGeneratedOp)
+      of wNosinks:
+        noVal(c, it)
+        incl(sym.flags, sfWasForwarded)
       of wDynlib:
         processDynLib(c, it, sym)
       of wCompilerProc, wCore:

@@ -1869,6 +1869,9 @@ proc isInlineIterator*(typ: PType): bool {.inline.} =
 proc isClosureIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
+proc isClosure*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and typ.callConv == ccClosure
+
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
 

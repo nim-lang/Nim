@@ -13,7 +13,7 @@ proc create(): T = T(s: @[], data: "abc")
 proc addX(x: T; data: string) =
   x.data = data
 
-proc addX(x: T; child: T) =
+proc addX(x: T; child: T) {.nosinks.} =
   x.s.add child
 
 proc main(rootName: string) =
