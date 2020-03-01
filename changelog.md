@@ -81,6 +81,7 @@
 
 
 ```
+- Added `times.isLeapDay`
 
 
 ## Library changes
