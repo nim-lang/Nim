@@ -230,6 +230,7 @@ when defined(nimdoc):
     ## For *poll* and *select* selectors ``-1`` is returned.
 
 else:
+  import strutils
   when hasThreadSupport:
     import locks
 
