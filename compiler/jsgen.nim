@@ -1226,7 +1226,6 @@ proc findEmitFilePath*(emitStr: string): tuple[filePath: string, marker: string]
   if emitStr =~ xpr:    
     var match = matches[0]
     var marker = "/*FILEPATH:" & match & ":*/"  
-    echo "matched:" & match & ", marker:" & marker
     result = (match, marker)
 
 # %[STOREID:property=A.abc]%  
@@ -1256,7 +1255,6 @@ proc findGenIdStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] 
 proc determineExternalFile(str: string): tuple[filePath: string, fileContent: string, marker: string] =
   result = ("", "", "")
   var (filePath, marker) = findEmitFilePath(str)
-  echo "filePath:" & filePath
   if filePath.len > 0:
     var index = lengthOfSectionMarker(":" & filePath & ":") + 1
     var content = str[index..^1]
@@ -1395,10 +1393,8 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
   var filePath, fileContent: string
   (filePath, fileContent, marker) = determineExternalFile(str)  
   if filePath.len > 0:
-    echo "external file:" & filePath & " content: " & fileContent    
     var fileEntry: PJSGen
     if not p.module.outputFiles.hasKey(filePath):
-      echo "new JsGen outputfile entry"
       fileEntry = newJsGen()
     else:
       fileEntry = p.module.outputFiles[filePath]
@@ -1406,9 +1402,6 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
     p.module.outputFiles[filePath] = fileEntry
     str = ""
     
-
-  echo "emit:" & str
-
   case section 
   of "HEADER":
     p.g.header.add(emitStr)
