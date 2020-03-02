@@ -10,9 +10,11 @@ var
 # {.emit: "%[BEFORE:var(y)]%/*ignore-before*/;".}
 # {.emit: "%[AFTER:var(y)]%/*ignore-after*/;".}
 
-{.emit: "%[GENID:var(x)]%/*genid:x*/".}
-{.emit: "%[ID:var(x)]%/*id:x*/".}
-{.emit: "%[GENID:var(y)]%/*ignore-genid:y*/".}
-{.emit: "%[ID:var(y)]%/*ignore-id:y*/".}
+# {.emit: "%[GENID:var(x)]%/*genid:x*/".}
+# {.emit: "%[ID:var(x)]%/*id:x*/".}
+# {.emit: "%[GENID:var(y)]%/*ignore-genid:y*/".}
+# {.emit: "%[ID:var(y)]%/*ignore-id:y*/".}
+
+{.emit: "/*FILEPATH:index.d.ts:*//* interface */".}
 
 # {.emit: "%GENID% = x$$".}

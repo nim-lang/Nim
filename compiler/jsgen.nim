@@ -41,12 +41,14 @@ from modulegraphs import ModuleGraph, PPassContext
 type
   TJSGen = object of PPassContext
     module: PSym
-    outputFiles*: TableRef[string, TJSGen]
+    outputFiles*: TableRef[string, PJSGen]
     g*: PGlobals
     s*: TJSFileSections        # sections of the JS file    
     graph: ModuleGraph
     config: ConfigRef
     sigConflicts: CountTable[SigHash]
+
+  PJSGen = ref TJSGen
 
   TJSFileSection* = enum       # the sections a generated C file consists of
     jsfsHeader,               # top file section typically used for JS require/import statements
@@ -143,7 +145,7 @@ type
     extraIndent: int
     up: PProc   # up the call chain; required for closure support
     declaredGlobals: IntSet
-
+    
 # TLookupTable
 
 proc newIdTableEntry(startIndex: int = -1, id: string = "", genId: string = ""): PIdTableEntry =
@@ -437,6 +439,10 @@ proc newGlobals(): PGlobals =
   result.generatedSyms = initIntSet()
   result.typeInfoGenerated = initIntSet()
 
+proc newJsGen(): PJSGen =
+  new(result)
+  result.g = newGlobals()
+  
 proc initCompRes(r: var TCompRes) =
   r.address = nil
   r.res = nil
@@ -1214,11 +1220,14 @@ proc determineSection(str: string): tuple[fs: string, str: string] =
     result = getSection(str, secMarker)
 
 # /*FILEPATH:index.d.ts:*/
-proc findEmitFilePath*(emitStr: string, marker: string): string = 
+proc findEmitFilePath*(emitStr: string): tuple[filePath: string, marker: string] = 
   var xpr = re"""\/\*FILEPATH:(\S+):\*\/"""  
-  result = ""
-  if emitStr =~ xpr:
-    result = matches[0]
+  result = ("", "")
+  if emitStr =~ xpr:    
+    var match = matches[0]
+    var marker = "/*FILEPATH:" & match & ":*/"  
+    echo "matched:" & match & ", marker:" & marker
+    result = (match, marker)
 
 # %[STOREID:property=A.abc]%  
 proc findSetStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] = 
@@ -1244,13 +1253,14 @@ proc findGenIdStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] 
     (typeId, alias) = matches
     result = (typeId, alias)
 
-proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: string] =
-  result = ("", "")
-  var filePath = findEmitFilePath(sec, "FILE")
+proc determineExternalFile(str: string): tuple[filePath: string, fileContent: string, marker: string] =
+  result = ("", "", "")
+  var (filePath, marker) = findEmitFilePath(str)
+  echo "filePath:" & filePath
   if filePath.len > 0:
-    var index = lengthOfSectionMarker(":" & filePath & ":")
-    var content = sec[index..^1]
-    result = (filePath, content)
+    var index = lengthOfSectionMarker(":" & filePath & ":") + 1
+    var content = str[index..^1]
+    result = (filePath, content, marker)
 
 # replace $ID special ref placeholder with stored lastDeclId
 proc replaceDeclId(p: PProc, strVal: string): string = 
@@ -1382,10 +1392,25 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
   # p.module.s[section].add(emitStr)
 
   str = storeTypeAndAlias(p, str)
-  let (filePath, fileContent) = determineExternalFile(str)  
+  var filePath, fileContent: string
+  (filePath, fileContent, marker) = determineExternalFile(str)  
   if filePath.len > 0:
-    # echo "external file:" & filePath & " content: " & fileContent
-    p.module.outputFiles[filePath].g.code.add(fileContent)
+    echo "external file:" & filePath & " content: " & fileContent    
+    var fileEntry: PJSGen
+    if not p.module.outputFiles.hasKey(filePath):
+      echo "new JsGen outputfile entry"
+      fileEntry = newJsGen()
+    else:
+      fileEntry = p.module.outputFiles[filePath]
+    echo "add to g.code"
+    fileEntry.g.code.add(fileContent)
+    p.module.outputFiles[filePath] = fileEntry
+    # echo "replace file marker:" & marker    
+    # str = str.replace(marker, "")
+    str = ""
+    
+
+  echo "emit:" & str
 
   case section 
   of "HEADER":
@@ -3035,7 +3060,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
 proc newModule(g: ModuleGraph; module: PSym): BModule =
   new(result)
   result.module = module
-  result.outputFiles = newTable[string, TJSGen]()
+  result.outputFiles = newTable[string, PJSGen]()
   result.sigConflicts = initCountTable[SigHash]()
   if g.backend == nil:
     g.backend = newGlobals()
@@ -3171,7 +3196,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       # echo "has extra files to be output"
       for filePath, file in m.outputFiles:        
         let outFile = m.config.prepareToWriteAdditionalOutput(filePath)
-        var code = genHeader() & $file.g.code
+        var code = rope($file.g.code)
         discard writeRopeIfNotEqual(code, outFile)
 
     discard writeRopeIfNotEqual(genHeader() & code, outFile)
