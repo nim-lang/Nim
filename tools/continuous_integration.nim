@@ -52,6 +52,5 @@ proc hostInfo*(): string =
   let branch = getEnv("NIM_CI_Build_SourceBranchName")
   let msg = getEnv("NIM_CI_Build_SourceVersionMessage").quoteShell
   let buildNum = getEnv("NIM_CI_Build_BuildNumber")
-  result.add "\n"
-  result.add fmt"""isPR:{isPR}, url: {url}, branch: {branch}, commit: {commit}, msg: {msg}, mode: {mode}, buildNum: {buildNum}"""
-  result.add "\n"
+  let nl = "\n"
+  result.add fmt"""{nl}isPR:{isPR}, url: {url}, branch: {branch}, commit: {commit}, mode: {mode}, buildNum: {buildNum}{nl}msg: {msg}{nl}"""
