@@ -1402,11 +1402,8 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
       fileEntry = newJsGen()
     else:
       fileEntry = p.module.outputFiles[filePath]
-    echo "add to g.code"
     fileEntry.g.code.add(fileContent)
     p.module.outputFiles[filePath] = fileEntry
-    # echo "replace file marker:" & marker    
-    # str = str.replace(marker, "")
     str = ""
     
 
