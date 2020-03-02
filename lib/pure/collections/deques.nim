@@ -362,7 +362,7 @@ proc peekLast*[T](deq: Deque[T]): T {.inline.} =
   emptyCheck(deq)
   result = deq.data[(deq.tail - 1) and deq.mask]
 
-proc peekFirst*[T](deq: var Deque[T]): var T {.inline.} =
+proc peekFirst*[T](deq: var Deque[T]): var T {.inline, since: (1, 1).} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
@@ -382,7 +382,7 @@ proc peekFirst*[T](deq: var Deque[T]): var T {.inline.} =
   emptyCheck(deq)
   result = deq.data[deq.head]
 
-proc peekLast*[T](deq: var Deque[T]): var T {.inline.} =
+proc peekLast*[T](deq: var Deque[T]): var T {.inline, since: (1, 1).} =
   ## Returns the last element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
