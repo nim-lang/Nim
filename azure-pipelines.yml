@@ -53,14 +53,23 @@ jobs:
 
     - task: NodeTool@0
       inputs:
-        versionSpec: '8.x'
-      displayName: 'Install node.js 8.x'
+        # versionSpec: '8.x'
+        versionSpec: '13.x'
+        # rerunFailedTests: True # Optional
+        # rerunMaxAttempts: '10' # Optional
+      # displayName: 'Install node.js 8.x'
+      displayName: 'Install node.js 13.x v3'
+      # workaround flaky test https://github.com/nim-lang/Nim/issues/13477
+      continueOnError: 'true'
+      # CHECKME
+      condition: eq(variables['Agent.OS'], 'Windows_NT')
 
     - bash: |
         sudo apt-fast update -qq
         DEBIAN_FRONTEND='noninteractive' \
           sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
+
       displayName: 'Install dependencies (amd64 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
@@ -107,7 +116,8 @@ jobs:
       displayName: 'Install dependencies (i386 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
 
-    - bash: brew install boehmgc make sfml
+    - bash: brew install --display-times boehmgc make sfml
+
       displayName: 'Install dependencies (OSX)'
       condition: eq(variables['Agent.OS'], 'Darwin')
 
@@ -161,4 +171,28 @@ jobs:
         ./koch runCI || echo '##vso[task.complete result=Failed]'
       displayName: 'Run CI'
       env:
+        # see https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+
+        NIM_CI_PR_SourceRepositoryURI: $(System.PullRequest.SourceRepositoryURI)
+        NIM_CI_PR_PullRequestNumber: $(System.PullRequest.PullRequestNumber)
+
+        NIM_CI_TeamProject: $(System.TeamProject)
+        NIM_CI_JobAttempt: $(System.JobAttempt)
+
+        NIM_CI_Build_ArtifactStagingDirectory: $(Build.ArtifactStagingDirectory)
+        NIM_CI_Build_BuildId: $(Build.BuildId)
+        NIM_CI_Build_BuildNumber: $(Build.BuildNumber)
+        NIM_CI_Build_BuildUri: $(Build.BuildUri)
+        NIM_CI_Build_BinariesDirectory: $(Build.BinariesDirectory)
+        NIM_CI_Build_DefinitionName: $(Build.DefinitionName)
+        NIM_CI_Build_Repository_ID: $(Build.Repository.ID)
+        NIM_CI_Build_Repository_Name: $(Build.Repository.Name)
+        NIM_CI_Build_Repository_Provider: $(Build.Repository.Provider)
+        NIM_CI_Build_Repository_Uri: $(Build.Repository.Uri)
+        NIM_CI_Build_SourceBranch: $(Build.SourceBranch)
+        NIM_CI_Build_SourceBranchName: $(Build.SourceBranchName)
+        NIM_CI_Build_SourcesDirectory: $(Build.SourcesDirectory)
+        NIM_CI_Build_SourceVersion: $(Build.SourceVersion)
+        NIM_CI_Build_SourceVersionMessage: $(Build.SourceVersionMessage)
+        NIM_CI_Build_Reason: $(Build.Reason)

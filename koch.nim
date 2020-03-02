@@ -30,8 +30,9 @@ when defined(i386) and defined(windows) and defined(vcc):
 import
   os, strutils, parseopt, osproc
 
-import tools / kochdocs
-import tools / deps
+import tools/kochdocs
+import tools/deps
+import tools/continuous_integration # could be conditional on whether we're in CI
 
 const VersionAsString = system.NimVersion
 
@@ -498,11 +499,6 @@ proc buildDrNim(args: string) =
   # always run the tests for now:
   exec("testament/testament".exe & " --nim:" & "drnim".exe & " pat drnim/tests")
 
-
-proc hostInfo(): string =
-  "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
-    [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
-
 proc installDeps(dep: string, commit = "") =
   # the hashes/urls are version controlled here, so can be changed seamlessly
   # and tied to a nim release (mimicking git submodules)
@@ -518,6 +514,7 @@ proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
   echo hostInfo()
+  installNode()
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
