@@ -1317,7 +1317,9 @@ proc findGenIdStoreTypeAndAlias*(emitStr: string): tuple[typeId, alias: string] 
   var xpr = re"""%\[GENID:(\S+)\((\S+)\)\]%"""   
   var typeId, alias: string
   if emitStr =~ xpr:
+    echo "GENID:" & $matches
     (typeId, alias) = matches
+    echo $(typeId, alias)
     result = (typeId, alias)
 
 proc determineExternalFile(sec: string): tuple[filePath: string, fileContent: string] =
@@ -1384,7 +1386,7 @@ proc storeTypeAndAlias(p: PProc, str: string): string =
   (typeId, alias) = findSetStoreTypeAndAlias(str)
   var lastDeclId = $p.g.lastDeclId
   var lastDeclGenId = $p.g.lastDeclGenId
-  result = ""
+  result = str
   if lastDeclId == "" or lastDeclGenId == "":
     echo "no decl ID (var or proc) has been defined yet - store ignored"
     echo "GLOBAL: lastDeclId: " & $p.g.lastDeclId & ", lastDeclGenId: " & $p.g.lastDeclGenId
@@ -1392,22 +1394,28 @@ proc storeTypeAndAlias(p: PProc, str: string): string =
   if typeId.len > 0 and alias.len > 0:
     echo "storeTypeAndAlias:setEntry: " & typeId & ", alias: " & alias & ", lastDeclId: " & lastDeclId & ", lastDeclGenId: " & lastDeclGenId
     p.g.typeLookupTable.setEntry(typeId, alias, lastDeclId, lastDeclGenId)
+    result = ""
 
 proc getTypeAndAliasEntry(p: PProc, str: string): tuple[marker: string, entry: PIdTableEntry, propName: string] =
   var typeId, alias: string
   var command = "ID"
   var propName = "id"
-  (typeId, alias) = findGenIdStoreTypeAndAlias(str)
+  (typeId, alias) = findIdStoreTypeAndAlias(str)
   if typeId.len == 0:
     command = "GENID"
     propName = "genId"    
-    (typeId, alias) = findIdStoreTypeAndAlias(str)
+    (typeId, alias) = findGenIdStoreTypeAndAlias(str)
     
   echo "getTypeAndAliasEntry: " & typeId & ", alias:" & alias
   if typeId.len > 0 and alias.len > 0:
-    var entry = p.g.typeLookupTable.find(typeId, alias)
-    echo "entry:" & $entry
     var marker = "%[" & command & ":" & typeId & "(" & alias & ")]%"
+
+    var entry = p.g.typeLookupTable.find(typeId, alias)    
+    if entry == nil:
+      return (marker, nil, "")
+
+    echo "entry:" & $entry
+    
     echo "marker:" & marker
     result = (marker, entry, propName)
 
@@ -1459,10 +1467,16 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
   injectEmit(p, str)
 
   var (marker, entry, propName) = getTypeAndAliasEntry(p, str)
-  if marker.len > 0:
+  echo marker & ", prop: " & propName
+  if propName.len > 0:    
     var id = if propName == "id": entry.id else: entry.genId
+    echo "has marker, use id: " & id
     if id.len != 0:
+      echo "replace marker by id: " & marker & ", id: " & id
       str = str.replace(marker, id)
+  else:
+    echo "remove id/genid marker with no match"
+    str = str.replace(marker, "")
 
   let (section, emitStr) = determineSection(str)
   echo "section:" & section & ", emitStr:" & emitStr
@@ -1471,6 +1485,7 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
   # p.module.s[section].add(emitStr)
   
   str = storeTypeAndAlias(p, str)
+  echo "str after store: " & str
 
   let (filePath, fileContent) = determineExternalFile(str)  
   if filePath.len > 0:
@@ -1487,6 +1502,7 @@ proc handleSpecialEmitStr(p: PProc, n: PNode): PProc =
   of "TYPE":
     p.g.types.add(emitStr)
   else:
+    echo "add to body: " & str
     p.body.add(str)
   result = p
 
