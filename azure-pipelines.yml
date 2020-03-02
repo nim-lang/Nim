@@ -166,27 +166,12 @@ jobs:
       displayName: 'Run CI'
       env:
         # see https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
+        # most useful entries among the numerous defined variables
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-
-        NIM_CI_PR_SourceRepositoryURI: $(System.PullRequest.SourceRepositoryURI)
-        NIM_CI_PR_PullRequestNumber: $(System.PullRequest.PullRequestNumber)
-
-        NIM_CI_TeamProject: $(System.TeamProject)
-        NIM_CI_JobAttempt: $(System.JobAttempt)
-
-        NIM_CI_Build_ArtifactStagingDirectory: $(Build.ArtifactStagingDirectory)
-        NIM_CI_Build_BuildId: $(Build.BuildId)
-        NIM_CI_Build_BuildNumber: $(Build.BuildNumber)
-        NIM_CI_Build_BuildUri: $(Build.BuildUri)
-        NIM_CI_Build_BinariesDirectory: $(Build.BinariesDirectory)
-        NIM_CI_Build_DefinitionName: $(Build.DefinitionName)
-        NIM_CI_Build_Repository_ID: $(Build.Repository.ID)
-        NIM_CI_Build_Repository_Name: $(Build.Repository.Name)
-        NIM_CI_Build_Repository_Provider: $(Build.Repository.Provider)
-        NIM_CI_Build_Repository_Uri: $(Build.Repository.Uri)
-        NIM_CI_Build_SourceBranch: $(Build.SourceBranch)
+        NIM_CI_System_PullRequest_PullRequestNumber: $(System.PullRequest.PullRequestNumber)
         NIM_CI_Build_SourceBranchName: $(Build.SourceBranchName)
-        NIM_CI_Build_SourcesDirectory: $(Build.SourcesDirectory)
+        NIM_CI_Build_Reason: $(Build.Reason)
+        NIM_CI_Build_Repository_Uri: $(Build.Repository.Uri)
         NIM_CI_Build_SourceVersion: $(Build.SourceVersion)
         NIM_CI_Build_SourceVersionMessage: $(Build.SourceVersionMessage)
-        NIM_CI_Build_Reason: $(Build.Reason)
+        NIM_CI_Build_BuildNumber: $(Build.BuildNumber)
