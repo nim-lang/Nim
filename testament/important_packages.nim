@@ -11,7 +11,7 @@ pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg "asyncmysql", "", true
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
-pkg "blscurve", "", true
+# pkg "blscurve", "", true # pending https://github.com/status-im/nim-blscurve/issues/39
 pkg "bncurve", "", true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
