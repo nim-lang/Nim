@@ -53,8 +53,8 @@ jobs:
 
     - task: NodeTool@0
       inputs:
-        versionSpec: '13.x'
-      displayName: 'Install node.js 13.x'
+        versionSpec: '8.x'
+      displayName: 'Install node.js 8.x'
       # workaround flaky test https://github.com/nim-lang/Nim/issues/13477
       # continueOnError: 'true' # this would cause error because system version
       # is too old, so instead we install via `installNode` on non-windows
