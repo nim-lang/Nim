@@ -53,15 +53,11 @@ jobs:
 
     - task: NodeTool@0
       inputs:
-        # versionSpec: '8.x'
         versionSpec: '13.x'
-        # rerunFailedTests: True # Optional
-        # rerunMaxAttempts: '10' # Optional
-      # displayName: 'Install node.js 8.x'
-      displayName: 'Install node.js 13.x v3'
+      displayName: 'Install node.js 13.x'
       # workaround flaky test https://github.com/nim-lang/Nim/issues/13477
-      continueOnError: 'true'
-      # CHECKME
+      # continueOnError: 'true' # this would cause error because system version
+      # is too old, so instead we install via `installNode` on non-windows
       condition: eq(variables['Agent.OS'], 'Windows_NT')
 
     - bash: |
@@ -69,7 +65,6 @@ jobs:
         DEBIAN_FRONTEND='noninteractive' \
           sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
-
       displayName: 'Install dependencies (amd64 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
@@ -117,7 +112,6 @@ jobs:
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i386'))
 
     - bash: brew install --display-times boehmgc make sfml
-
       displayName: 'Install dependencies (OSX)'
       condition: eq(variables['Agent.OS'], 'Darwin')
 
