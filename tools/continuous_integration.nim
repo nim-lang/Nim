@@ -45,12 +45,13 @@ proc hostInfo*(): string =
   let commit = getEnv("NIM_CI_Build_SourceVersion")
   if isPR:
     let id = getEnv("NIM_CI_System_PullRequest_PullRequestNumber")
-    url = "{url}/pull/{id}"
+    url = fmt"{url}/pull/{id}"
   else:
-    url = "{url}/commit/{commit}"
+    url = fmt"{url}/commit/{commit}"
 
   let branch = getEnv("NIM_CI_Build_SourceBranchName")
   let msg = getEnv("NIM_CI_Build_SourceVersionMessage").quoteShell
   let buildNum = getEnv("NIM_CI_Build_BuildNumber")
+  result.add "\n"
   result.add fmt"""isPR:{isPR}, url: {url}, branch: {branch}, commit: {commit}, msg: {msg}, mode: {mode}, buildNum: {buildNum}"""
   result.add "\n"
