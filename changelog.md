@@ -31,6 +31,10 @@
   and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
   behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
+- `times.parse` now only uses input to compute its result, and not `now`:
+  `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
+  `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
+  used on 29th, 30th, 31st of each month.
 
 ### Breaking changes in the compiler
 

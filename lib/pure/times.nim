@@ -2248,19 +2248,9 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
                 input: string): DateTime =
-  var month = mJan
-  var year: int
-  var monthday: int
-  # `now()` is an expensive call, so we avoid it when possible
-  (year, month, monthday) =
-    if p.year.isNone or p.month.isNone or p.monthday.isNone:
-      let n = now()
-      (p.year.get(n.year),
-        p.month.get(n.month.int).Month,
-        p.monthday.get(n.monthday))
-    else:
-      (p.year.get(), p.month.get().Month, p.monthday.get())
-
+  var year = p.year.get(0)
+  var month = p.month.get(1).Month
+  var monthday = p.monthday.get(1)
   year =
     case p.era
     of eraUnknown:
