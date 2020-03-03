@@ -140,7 +140,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
     return traitCall  ## too early to evaluate
-    
+
   let s = trait.sym.name.s
   case s
   of "or", "|":
@@ -479,8 +479,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-  of mRoof:
-    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:

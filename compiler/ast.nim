@@ -336,7 +336,7 @@ const
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
   effectListLen* = 5    # list of effects list
-  nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}  
+  nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
                         # these must be last statements in a block
 
 type
@@ -599,12 +599,11 @@ type
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
     mIs, mOf, mAddr, mType, mTypeOf,
-    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
+    mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
-    mUnaryLt, mInc, mDec, mOrd,
+    mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
-    mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
     mAddI, mSubI, mMulI, mDivI, mModI,
@@ -620,7 +619,7 @@ type
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqUntracedRef, mLePtr, mLtPtr,
+    mEqRef, mLePtr, mLtPtr,
     mXor, mEqCString, mEqProc,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
@@ -629,18 +628,18 @@ type
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mSlice,
     mDotDot, # this one is only necessary to give nice compile time warnings
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr, mExit,
+    mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
-    mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
+    mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mAccessTypeInfo, mReset,
+    mDefault, mUnown, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -648,8 +647,8 @@ type
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
     mBool, mChar, mString, mCstring,
-    mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
-    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
+    mPointer, mNil, mExpr, mStmt, mTypeDesc,
+    mVoidType, mPNimrodNode, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mCompileOption, mCompileOptionArg,
@@ -662,7 +661,7 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash, mNSizeOf,
-    mNBindSym, mLocals, mNCallSite,
+    mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
@@ -673,9 +672,9 @@ type
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
-  ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
+  ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mLengthStr, mLengthArray, mLengthSeq,
     mArrGet, mArrPut, mAsgn, mDestroy,
     mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI,
@@ -690,17 +689,16 @@ const
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
+    mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr,
-    mCopyStr, mCopyStrLast}
+    mInSet, mRepr}
 
 type
   PNode* = ref TNode
