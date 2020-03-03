@@ -412,7 +412,6 @@ const # magic checked op; magic unchecked op;
     mLeB: ["", ""],
     mLtB: ["", ""],
     mEqRef: ["", ""],
-    mEqUntracedRef: ["", ""],
     mLePtr: ["", ""],
     mLtPtr: ["", ""],
     mXor: ["", ""],
@@ -584,7 +583,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLeB: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtB: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqRef: applyFormat("($1 == $2)", "($1 == $2)")
-  of mEqUntracedRef: applyFormat("($1 == $2)", "($1 == $2)")
   of mLePtr: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtPtr: applyFormat("($1 < $2)", "($1 < $2)")
   of mXor: applyFormat("($1 != $2)", "($1 != $2)")
@@ -627,7 +625,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
-  of mEqRef, mEqUntracedRef:
+  of mEqRef:
     if mapType(n[1].typ) != etyBaseIndex:
       arithAux(p, n, r, op)
     else:
@@ -1886,10 +1884,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mAddI..mStrToStr: arith(p, n, r, op)
   of mRepr: genRepr(p, n, r)
   of mSwap: genSwap(p, n)
-  of mUnaryLt:
-    # XXX: range checking?
-    if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
-    else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
         "if ($1 != null) { addChar($3, $2); } else { $3 = [$2]; }")
@@ -1955,8 +1949,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $2.length : 0)")
-  of mXLenStr, mXLenSeq:
-    unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
     unaryExpr(p, n, r, "", "($1 != null ? ($2.length-1) : -1)")
   of mInc:
@@ -2003,8 +1995,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n[0].sym.name.s)
-  of mCopyStr:
-    binaryExpr(p, n, r, "", "($1.slice($2))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
     unaryExpr(p, n, r, "mnewString", "mnewString(0)")

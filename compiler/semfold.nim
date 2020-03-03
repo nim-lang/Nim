@@ -188,7 +188,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     else:
       result = newIntNodeT(bitnot(getInt(a)), n, g)
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
-  of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
+  of mLengthSeq, mLengthOpenArray, mLengthStr:
     if a.kind == nkNilLit:
       result = newIntNodeT(Zero, n, g)
     elif a.kind in {nkStrLit..nkTripleStrLit}:
@@ -198,7 +198,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   # XXX: Hides overflow/underflow
   of mAbsI: result = foldAbs(getInt(a), n, g)
-  of mUnaryLt: result = foldSub(getOrdValue(a), One, n, g)
   of mSucc: result = foldAdd(getOrdValue(a), getInt(b), n, g)
   of mPred: result = foldSub(getOrdValue(a), getInt(b), n, g)
   of mAddI: result = foldAdd(getInt(a), getInt(b), n, g)
@@ -330,9 +329,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mMinusSet:
     result = nimsets.diffSets(g.config, a, b)
     result.info = n.info
-  of mSymDiffSet:
-    result = nimsets.symdiffSets(g.config, a, b)
-    result.info = n.info
   of mConStrStr: result = newStrNodeT(getStrOrChar(a) & getStrOrChar(b), n, g)
   of mInSet: result = newIntNodeT(toInt128(ord(inSet(a, b))), n, g)
   of mRepr:
@@ -342,10 +338,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mBoolToStr:
     if getOrdValue(a) == 0: result = newStrNodeT("false", n, g)
     else: result = newStrNodeT("true", n, g)
-  of mCopyStr: result = newStrNodeT(substr(getStr(a), int(toInt64(getOrdValue(b)))), n, g)
-  of mCopyStrLast:
-    result = newStrNodeT(substr(getStr(a), toInt(getOrdValue(b)),
-                                           toInt(getOrdValue(c))), n, g)
   of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
     if a.kind == nkBracket:

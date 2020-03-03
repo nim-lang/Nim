@@ -128,7 +128,6 @@ block: # lenTuple
   doAssert T2.lenTuple == 2
 
 block genericParams:
-
   type Foo[T1, T2]=object
   doAssert genericParams(Foo[float, string]) is (float, string)
   type Foo1 = Foo[float, int]
@@ -139,6 +138,50 @@ block genericParams:
   doAssert genericParams(Foo2).get(1) is Foo1
   doAssert (int,).get(0) is int
   doAssert (int, float).get(1) is float
+
+  type Bar[N: static int, T] = object
+  type Bar3 = Bar[3, float]
+  doAssert genericParams(Bar3) is (StaticParam[3], float)
+  doAssert genericParams(Bar3).get(0) is StaticParam
+  doAssert genericParams(Bar3).get(0).value == 3
+  doAssert genericParams(Bar[3, float]).get(0).value == 3
+
+  type
+    VectorElementType = SomeNumber | bool
+    Vec[N: static[int], T: VectorElementType] = object
+      arr: array[N, T]
+    Vec4[T: VectorElementType] = Vec[4,T]
+    Vec4f = Vec4[float32]
+
+    MyTupleType = (int,float,string)
+    MyGenericTuple[T] = (T,int,float)
+    MyGenericAlias = MyGenericTuple[string]
+    MyGenericTuple2[T,U] = (T,U,string)
+    MyGenericTuple2Alias[T] =  MyGenericTuple2[T,int]
+    MyGenericTuple2Alias2 =   MyGenericTuple2Alias[float]
+
+  doAssert genericParams(MyGenericAlias) is (string,)
+  doAssert genericHead(MyGenericAlias) is MyGenericTuple
+  doAssert genericParams(MyGenericTuple2Alias2) is (float,)
+  doAssert genericParams(MyGenericTuple2[float, int]) is (float, int)
+  doAssert genericParams(MyGenericAlias) is (string,)
+  doAssert genericParams(Vec4f) is (float32,)
+  doAssert genericParams(Vec[4, bool]) is (StaticParam[4], bool)
+
+  block:
+    type Foo[T1, T2]=object
+    doAssert genericParams(Foo[float, string]) is (float, string)
+    type Bar[N: static float, T] = object
+    doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
+    type Bar2 = Bar[2.0, string]
+    doAssert genericParams(Bar2) is (StaticParam[2.0], string)
+    type Bar3 = Bar[1.0 + 2.0, string]
+    doAssert genericParams(Bar3) is (StaticParam[3.0], string)
+
+    const F = 5.0
+    type Bar4 = Bar[F, string]
+    doAssert genericParams(Bar4) is (StaticParam[5.0], string)
+    doAssert genericParams(Bar[F, string]) is (StaticParam[5.0], string)
 
 ##############################################
 # bug 13095
