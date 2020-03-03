@@ -191,10 +191,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
       if filename.len == 0:
-        inc(d.id)
         let nameOnly = splitFile(d.filename).name
         outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
                RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
