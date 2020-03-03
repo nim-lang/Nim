@@ -526,7 +526,7 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     # if we're inside a dangerous 'or' or 'and' expression, we
     # do need to initialize it. 'elif' is not among this problem
     # as we have a separate scope for 'elif' to attach the destructors to.
-    if c.inDangerousBranch == 0:
+    if c.inDangerousBranch == 0 and c.hasUnstructuredCf == 0:
       tmp.sym.flags.incl sfNoInit
     c.addTopVar(tmp)
     when false:
@@ -722,9 +722,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
                 # lack of copy constructors is really beginning to hurt us. :-(
                 #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
                 c.addTopVar(v)
-                if ri.kind == nkEmpty:
+                if ri.kind == nkEmpty and c.inLoop > 0:
                   ri = genDefaultCall(v.typ, c, v.info)
-                result.add moveOrCopy(v, ri, c)
+                if ri.kind != nkEmpty:
+                  result.add moveOrCopy(v, ri, c)
                 c.scopeDestroys.add genDestroy(c, v)
               when false:
                 # move the variable declaration to the top of the frame:
