@@ -1272,7 +1272,16 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   ## last child nodes of a type tree need to be searched. This is a really hot
   ## path within the compiler!
   result = t
-  while result.kind in kinds: result = lastSon(result)
+  while result.kind in kinds:
+    if result.sons.len == 0:
+      var
+        msg = "result is t: " & $(result == t)
+      msg &= "\nresult.kind = " & $result.kind
+      msg &= "\nkinds: " & $kinds
+      msg &= "\nuniqueId: " & $result.uniqueId
+      msg &= "\nflags: " & $result.flags
+      raise newException(Defect, "wtf: no sons - " & msg)
+    result = lastSon(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   let kind = skipTypes(typ, abstractVarRange).kind
@@ -1505,6 +1514,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
+    # this is where we're skipping types and crashing
     let elemB = elem.skipTypes({tyGenericInst, tyAlias, tySink})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then

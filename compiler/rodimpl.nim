@@ -248,10 +248,13 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     result.add('\21')
     encodeVInt(t.typeInst.uniqueId, result)
     pushType(w, t.typeInst)
+  # we have sons when we write the type,
+  # but we don't have them after reading it.
   for i in 0..<t.len:
     if t[i] == nil:
       result.add("^()")
     else:
+      # if i'm reading this right, there are three kids
       result.add('^')
       encodeVInt(t[i].uniqueId, result)
       pushType(w, t[i])
@@ -394,13 +397,14 @@ proc transitiveClosure(g: ModuleGraph) =
       doAssert false, "loop never ends!"
     if w.sstack.len > 0:
       let s = w.sstack.pop()
-      when false:
+      when true:
         echo "popped ", s.name.s, " ", s.id
       storeSym(g, s)
     elif w.tstack.len > 0:
       let t = w.tstack.pop()
       storeType(g, t)
-      when false:
+      when true:
+        # crashing
         echo "popped type ", typeToString(t), " ", t.uniqueId
     else:
       break
