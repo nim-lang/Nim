@@ -322,7 +322,7 @@ proc processRequest(
       client.close(); return false
     if lineFut.mget == "\c\L": break
     let (key, value) = parseHeader(lineFut.mget)
-    request.headers[key] = value
+    request.headers.add(key, value)
     # Ensure the client isn't trying to DoS us.
     if request.headers.len > headerLimit:
       await client.sendStatus("400 Bad Request")

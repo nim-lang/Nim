@@ -105,11 +105,15 @@ proc newHttpHeaders*(): HttpHeaders =
 
 proc newHttpHeaders*(keyValuePairs:
     openArray[tuple[key: string, val: string]]): HttpHeaders =
-  var pairs: seq[tuple[key: string, val: seq[string]]] = @[]
-  for pair in keyValuePairs:
-    pairs.add((pair.key.toLowerAscii(), @[pair.val]))
   new result
-  result.table = newTable[string, seq[string]](pairs)
+  result.table = newTable[string, seq[string]]()
+  for pair in keyValuePairs:
+    let key = pair.key.toLowerAscii()
+    if key in result.table:
+      result.table[key].add(pair.val)
+    else:
+      result.table[key] = @[pair.val]
+
 
 proc `$`*(headers: HttpHeaders): string =
   return $headers.table
