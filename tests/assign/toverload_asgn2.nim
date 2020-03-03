@@ -1,6 +1,7 @@
 discard """
   output: '''i value 88
 2aa'''
+  disabled: "true"
 """
 
 import moverload_asgn2

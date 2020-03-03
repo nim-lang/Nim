@@ -1,6 +1,6 @@
 discard """
-line: 12
 errormsg: "type mismatch"
+line: 12
 """
 
 proc first(it: iterator(): int): seq[int] =

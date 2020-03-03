@@ -3,10 +3,9 @@ discard """
   line: 11
 """
 # bug #2372
-macro foo(dummy: int): stmt =
+macro foo(dummy: int): untyped =
   discard
 
 proc takeStr(s: string) = echo s
 
 takeStr foo(12)
-

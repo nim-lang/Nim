@@ -1,9 +1,13 @@
+discard """
+action: compile
+"""
 
-template withOpenFile(f: expr, filename: string, mode: TFileMode,
-                      actions: stmt): stmt {.immediate.} =
+
+template withOpenFile(f: untyped, filename: string, mode: FileMode,
+                      actions: untyped): untyped =
   block:
     # test that 'f' is implicitly 'injecting':
-    var f: TFile
+    var f: File
     if open(f, filename, mode):
       try:
         actions
@@ -20,20 +24,20 @@ var
   myVar: array[0..1, int]
 
 # Test zero argument template:
-template ha: expr = myVar[0]
+template ha: untyped = myVar[0]
 
 ha = 1
 echo(ha)
 
 
 # Test identifier generation:
-template prefix(name: expr): expr {.immediate.} = `"hu" name`
+template prefix(name): untyped = `"hu" name`
 
 var `hu "XYZ"` = "yay"
 
 echo prefix(XYZ)
 
-template typedef(name: expr, typ: typeDesc) {.immediate, dirty.} =
+template typedef(name: untyped, typ: typeDesc) {.dirty.} =
   type
     `T name`* = typ
     `P name`* = ref `T name`
@@ -51,8 +55,29 @@ type
 proc initFoo(arg: int): Foo =
   result.arg = arg
 
-template create(typ: typeDesc, arg: expr): expr = `init typ`(arg)
+template create(typ: typeDesc, arg: untyped): untyped = `init typ`(arg)
 
 var ff = Foo.create(12)
 
 echo ff.arg
+
+
+import macros
+
+# bug #11494
+macro staticForEach(arr: untyped, body: untyped): untyped =
+  result = newNimNode(nnkStmtList)
+  arr.expectKind(nnkBracket)
+  for n in arr:
+    let b = copyNimTree(body)
+    result.add quote do:
+      block:
+        type it {.inject.} = `n`
+        `b`
+
+template forEveryMatchingEntity*() =
+  staticForEach([int, string, float]):
+    var a {.inject.}: it
+    echo a
+
+forEveryMatchingEntity()

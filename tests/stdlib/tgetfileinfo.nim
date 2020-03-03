@@ -1,5 +1,5 @@
 discard """
-  output: ""
+  output: "pcDir\npcFile\npcLinkToDir\npcLinkToFile\n"
 """
 
 import os, strutils
@@ -14,7 +14,7 @@ import os, strutils
 #  8 - Handle : Invalid Handle
 
 proc genBadFileName(limit = 100): string =
-    ## Generates a filename of a nonexistant file.
+    ## Generates a filename of a nonexistent file.
     ## Returns "" if generation fails.
     result = "a"
     var hitLimit = true
@@ -61,7 +61,7 @@ proc testGetFileInfo =
   block:
     let
       testFile = open(getAppFilename())
-      testHandle = fileHandle(testFile)
+      testHandle = getFileHandle(testFile)
     try:
       discard getFileInfo(testFile)
       #echo("Handle : Valid File : Success")
@@ -77,8 +77,8 @@ proc testGetFileInfo =
   # Case 6 and 8
   block:
     let
-      testFile: TFile = nil
-      testHandle = TFileHandle(-1)
+      testFile: File = nil
+      testHandle = FileHandle(-1)
     try:
       discard getFileInfo(testFile)
       echo("Handle : Invalid File : Failure")
@@ -92,5 +92,43 @@ proc testGetFileInfo =
     except IOError, OSError:
       discard
       #echo("Handle : Invalid File : Success")
+
+  # Test kind for files, directories and symlinks.
+  block:
+    let
+      tmp = getTempDir()
+      dirPath      = tmp / "test-dir"
+      filePath     = tmp / "test-file"
+      linkDirPath  = tmp / "test-link-dir"
+      linkFilePath = tmp / "test-link-file"
+
+    createDir(dirPath)
+    writeFile(filePath, "")
+    when defined(posix):
+      createSymlink(dirPath, linkDirPath)
+      createSymlink(filePath, linkFilePath)
+
+    let
+      dirInfo = getFileInfo(dirPath)
+      fileInfo = getFileInfo(filePath)
+    when defined(posix):
+      let
+        linkDirInfo = getFileInfo(linkDirPath, followSymlink = false)
+        linkFileInfo = getFileInfo(linkFilePath, followSymlink = false)
+
+    echo dirInfo.kind
+    echo fileInfo.kind
+    when defined(posix):
+      echo linkDirInfo.kind
+      echo linkFileInfo.kind
+    else:
+      echo pcLinkToDir
+      echo pcLinkToFile
+
+    removeDir(dirPath)
+    removeFile(filePath)
+    when defined(posix):
+      removeFile(linkDirPath)
+      removeFile(linkFilePath)
 
 testGetFileInfo()

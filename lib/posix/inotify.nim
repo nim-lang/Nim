@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 # Get the platform-dependent flags.
 # Structure describing an inotify event.
@@ -19,7 +19,6 @@ type
     cookie*{.importc: "cookie".}: uint32 # Cookie to synchronize two events.
     len*{.importc: "len".}: uint32 # Length (including NULs) of name.
     name*{.importc: "name".}: char # Name.
-{.deprecated: [Tinotify_event: InotifyEvent].}
 
 # Supported events suitable for MASK parameter of INOTIFY_ADD_WATCH.
 const

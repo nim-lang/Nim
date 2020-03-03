@@ -1,3 +1,7 @@
+discard """
+outputsub: ""
+"""
+
 # Test Posix interface
 
 when not defined(windows):
@@ -5,7 +9,7 @@ when not defined(windows):
   import posix
 
   var
-    u: Tutsname
+    u: Utsname
 
   discard uname(u)
 
@@ -13,4 +17,3 @@ when not defined(windows):
   writeLine(stdout, u.nodename)
   writeLine(stdout, u.release)
   writeLine(stdout, u.machine)
-

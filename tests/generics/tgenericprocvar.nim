@@ -34,3 +34,4 @@ proc test(data: seq[int], value: int): seq[int] =
 for x in items(test(@[1,2,3], 2)):
   stdout.write(x)
 
+stdout.write "\n"

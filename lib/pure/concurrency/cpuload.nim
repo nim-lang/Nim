@@ -9,6 +9,8 @@
 
 ## This module implements a helper for a thread pool to determine whether
 ## creating a thread is a good idea.
+##
+## Unstable API.
 
 when defined(windows):
   import winlean, os, strutils, math
@@ -45,12 +47,12 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
         procKernelDiff = procKernel - s.prevProcKernel
         procUserDiff = procUser - s.prevProcUser
 
-        sysTotal = int(sysKernelDiff + sysUserDiff)
-        procTotal = int(procKernelDiff + procUserDiff)
+        sysTotal = sysKernelDiff + sysUserDiff
+        procTotal = procKernelDiff + procUserDiff
       # total CPU usage < 85% --> create a new worker thread.
       # Measurements show that 100% and often even 90% is not reached even
       # if all my cores are busy.
-      if sysTotal == 0 or procTotal / sysTotal < 0.85:
+      if sysTotal == 0 or procTotal.float / sysTotal.float < 0.85:
         result = doCreateThread
     s.prevSysKernel = sysKernel
     s.prevSysUser = sysUser
@@ -60,17 +62,20 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     proc fscanf(c: File, frmt: cstring) {.varargs, importc,
       header: "<stdio.h>".}
 
-    var f = open("/proc/loadavg")
-    var b: float
-    var busy, total: int
-    fscanf(f,"%lf %lf %lf %ld/%ld",
-           addr b, addr b, addr b, addr busy, addr total)
-    f.close()
-    let cpus = countProcessors()
-    if busy-1 < cpus:
-      result = doCreateThread
-    elif busy-1 >= cpus*2:
-      result = doShutdownThread
+    var f: File
+    if f.open("/proc/loadavg"):
+      var b: float
+      var busy, total: int
+      fscanf(f,"%lf %lf %lf %ld/%ld",
+            addr b, addr b, addr b, addr busy, addr total)
+      f.close()
+      let cpus = countProcessors()
+      if busy-1 < cpus:
+        result = doCreateThread
+      elif busy-1 >= cpus*2:
+        result = doShutdownThread
+      else:
+        result = doNothing
     else:
       result = doNothing
   else:
@@ -78,7 +83,7 @@ proc advice*(s: var ThreadPoolState): ThreadPoolAdvice =
     result = doNothing
   inc s.calls
 
-when not defined(testing) and isMainModule:
+when not defined(testing) and isMainModule and not defined(nimdoc):
   import random
 
   proc busyLoop() =

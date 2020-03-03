@@ -2,7 +2,7 @@ discard """
   output: "x == 45ugh"
 """
 
-template myAssert(cond: expr) =
+template myAssert(cond: untyped) =
   when 3 <= 3:
     let c = cond.astToStr
     if not cond:

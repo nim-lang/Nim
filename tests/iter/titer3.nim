@@ -1,6 +1,13 @@
 discard """
-  file: "titer3.nim"
-  output: "1231"
+  output: '''1231
+4
+6
+8
+--------
+4
+6
+8
+'''
 """
 
 iterator count1_3: int =
@@ -17,6 +24,31 @@ iterator iter1(a: openArray[int]): int =
 
 var x = [[1, 2, 3], [4, 5, 6]]
 for y in iter1(x[0]): write(stdout, $y)
+writeLine(stdout, "")
 
-#OUT 1231
+# ensure closure and inline iterators have the same behaviour wrt
+# parameter passing
 
+iterator clo(a: int): int {.closure.} =
+  yield 0+a
+  yield 1+a
+  yield 2+a
+
+iterator inl(a: int): int {.inline.} =
+  yield 0+a
+  yield 1+a
+  yield 2+a
+
+proc main =
+  var y = 4
+  for i in clo(y):
+    echo i
+    inc y
+
+  echo "--------"
+  y = 4
+  for i in inl(y):
+    echo i
+    inc y
+
+main()

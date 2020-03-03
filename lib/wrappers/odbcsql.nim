@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when not defined(ODBCVER):
   const
@@ -19,6 +19,9 @@ when defined(windows):
 else:
   {.push callconv: cdecl.}
   const odbclib = "libodbc.so"
+
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
 # DATA TYPES CORRESPONDENCE
 #   BDE fields  ODBC types
@@ -60,17 +63,6 @@ type
   PSQLDOUBLE* = ptr TSqlDouble
   PSQLFLOAT* = ptr TSqlFloat
   PSQLHANDLE* = ptr SqlHandle
-{.deprecated: [
-    # TSqlChar: TSqlChar, # Name conflict if we drop`T`
-    # TSqlSmallInt: TSqlSmallInt, # Name conflict if we drop`T`
-    TSqlUSmallInt: SqlUSmallInt, TSqlHandle: SqlHandle, TSqlHEnv: SqlHEnv,
-    TSqlHDBC: SqlHDBC, TSqlHStmt: SqlHStmt, TSqlHDesc: SqlHDesc,
-    # TSqlInteger: TSqlInteger, # Name conflict if we drop `T`
-    TSqlUInteger: SqlUInteger, TSqlPointer: SqlPointer,
-    # TSqlReal: TSqlReal, # Name conflict if we drop`T`
-    # TSqlDouble: TSqlDouble, # Name conflict if we drop`T`
-    # TSqlFloat: TSqlFloat, # Name conflict if we drop `T`
-    TSqlHWND: SqlHWND].}
 
 const                         # SQL data type codes
   SQL_UNKNOWN_TYPE* = 0
@@ -841,7 +833,9 @@ proc SQLStatistics*(hstmt: SqlHStmt, CatalogName: PSQLCHAR,
 proc SQLErr*(henv: SqlHEnv, hdbc: SqlHDBC, hstmt: SqlHStmt,
               szSqlState, pfNativeError, szErrorMsg: PSQLCHAR,
               cbErrorMsgMax: TSqlSmallInt,
-              pcbErrorMsg: PSQLINTEGER): TSqlSmallInt {.
+              pcbErrorMsg: PSQLSMALLINT): TSqlSmallInt {.
                     dynlib: odbclib, importc: "SQLError".}
 
 {.pop.}
+when defined(nimHasStyleChecks):
+  {.pop.}

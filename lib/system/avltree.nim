@@ -56,8 +56,14 @@ proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
     t = allocAvlNode(a, key, upperBound)
   else:
     if key <% t.key:
+      when defined(avlcorruption):
+        if t.link[0] == nil:
+          cprintf("bug here %p\n", t)
       add(a, t.link[0], key, upperBound)
     elif key >% t.key:
+      when defined(avlcorruption):
+        if t.link[1] == nil:
+          cprintf("bug here B %p\n", t)
       add(a, t.link[1], key, upperBound)
     else:
       sysAssert false, "key already exists"
@@ -75,7 +81,7 @@ proc del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
   if t == a.last and not isBottom(a.deleted) and x == a.deleted.key:
     a.deleted.key = t.key
     a.deleted.upperBound = t.upperBound
-    a.deleted = bottom
+    a.deleted = getBottom(a)
     t = t.link[1]
     deallocAvlNode(a, a.last)
   elif t.link[0].level < t.level-1 or

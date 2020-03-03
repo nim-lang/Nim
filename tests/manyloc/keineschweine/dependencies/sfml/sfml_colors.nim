@@ -1,5 +1,5 @@
 import sfml
-{.deadCodeElim: on.}
+
 let
   Black*: TColor = color(0, 0, 0)
   White*: TColor = color(255, 255, 255)

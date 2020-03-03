@@ -1,5 +1,5 @@
 discard """
-  output: '''(a: 3, b: 4, s: abc)'''
+  output: '''(a: 3, b: 4, s: "abc")'''
 """
 
 type

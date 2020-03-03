@@ -1,3 +1,8 @@
+discard """
+outputsub: ""
+"""
+
+# output not testable because repr prints pointer addresses
 # test the new "repr" built-in proc
 
 type
@@ -6,7 +11,7 @@ type
 
   TPoint {.final.} = object
     x, y, z: int
-    s: array [0..1, string]
+    s: array[0..1, string]
     e: TEnum
 
 var

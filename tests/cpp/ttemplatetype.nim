@@ -1,3 +1,7 @@
+discard """
+  targets: "cpp"
+"""
+
 type
   Map {.importcpp: "std::map", header: "<map>".} [T,U] = object
 

@@ -15,7 +15,7 @@
 ##   * Computing an aliasing relation based on the assignments. This relation
 ##     is then used to compute the 'writes' and 'escapes' effects.
 
-import intsets, idents, ast, astalgo, trees, renderer, msgs, types
+import intsets, idents, ast, trees, msgs, types, options, lineinfos
 
 const
   debug = false
@@ -58,32 +58,32 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
       result.add(cast[ptr TSym](n.sym))
   of nkHiddenDeref, nkDerefExpr:
     incl(info, rootIsHeapAccess)
-    allRoots(n.sons[0], result, info)
+    allRoots(n[0], result, info)
   of nkDotExpr, nkBracketExpr, nkCheckedFieldExpr,
       nkHiddenAddr, nkObjUpConv, nkObjDownConv:
-    allRoots(n.sons[0], result, info)
+    allRoots(n[0], result, info)
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv, nkConv,
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     allRoots(n.lastSon, result, info)
   of nkCallKinds:
     if getMagic(n) == mSlice:
-      allRoots(n.sons[1], result, info)
+      allRoots(n[1], result, info)
     else:
       # we do significantly better here by using the available escape
       # information:
-      if n.sons[0].typ.isNil: return
-      var typ = n.sons[0].typ
+      if n[0].typ.isNil: return
+      var typ = n[0].typ
       if typ != nil:
         typ = skipTypes(typ, abstractInst)
         if typ.kind != tyProc: typ = nil
-        else: assert(sonsLen(typ) == sonsLen(typ.n))
+        else: assert(typ.len == typ.n.len)
 
-      for i in 1 ..< n.len:
-        let it = n.sons[i]
-        if typ != nil and i < sonsLen(typ):
-          assert(typ.n.sons[i].kind == nkSym)
-          let paramType = typ.n.sons[i]
+      for i in 1..<n.len:
+        let it = n[i]
+        if typ != nil and i < typ.len:
+          assert(typ.n[i].kind == nkSym)
+          let paramType = typ.n[i]
           if paramType.typ.isCompileTimeOnly: continue
           if sfEscapes in paramType.sym.flags or paramType.typ.kind == tyVar:
             allRoots(it, result, info)
@@ -91,7 +91,7 @@ proc allRoots(n: PNode; result: var seq[ptr TSym]; info: var set[RootInfo]) =
           allRoots(it, result, info)
   else:
     for i in 0..<n.safeLen:
-      allRoots(n.sons[i], result, info)
+      allRoots(n[i], result, info)
 
 proc addAsgn(a: var Assignment; dest, src: PNode; destInfo: set[RootInfo]) =
   a.dest = @[]
@@ -108,7 +108,7 @@ proc addAsgn(a: var Assignment; dest, src: PNode; destInfo: set[RootInfo]) =
   #echo "ADDING ", dest.info, " ", a.destInfo
 
 proc srcHasSym(a: Assignment; x: ptr TSym): bool =
-  for i in 0 ..< a.srcNoTc:
+  for i in 0..<a.srcNoTc:
     if a.src[i] == x: return true
 
 proc returnsNewExpr*(n: PNode): NewLocation =
@@ -120,17 +120,17 @@ proc returnsNewExpr*(n: PNode): NewLocation =
       nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkOfBranch,
       nkElifBranch, nkElse, nkExceptBranch, nkFinally, nkCast:
     result = returnsNewExpr(n.lastSon)
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure,
-      nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt:
+  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure,
+      nkIfExpr, nkIfStmt, nkWhenStmt, nkCaseStmt, nkTryStmt, nkHiddenTryStmt:
     result = newLit
-    for i in ord(n.kind == nkObjConstr) .. <n.len:
-      let x = returnsNewExpr(n.sons[i])
+    for i in ord(n.kind == nkObjConstr)..<n.len:
+      let x = returnsNewExpr(n[i])
       case x
       of newNone: return newNone
       of newLit: discard
       of newCall: result = newCall
   of nkCallKinds:
-    if n.sons[0].typ != nil and tfReturnsNew in n.sons[0].typ.flags:
+    if n[0].typ != nil and tfReturnsNew in n[0].typ.flags:
       result = newCall
   else:
     result = newNone
@@ -148,21 +148,20 @@ proc deps(w: var W; dest, src: PNode; destInfo: set[RootInfo]) =
   # rule out obviously innocent assignments like 'somebool = true'
   if dest.kind == nkSym and retNew == newLit: discard
   else:
-    let L = w.assignments.len
-    w.assignments.setLen(L+1)
-    addAsgn(w.assignments[L], dest, src, destInfo)
+    w.assignments.setLen(w.assignments.len+1)
+    addAsgn(w.assignments[^1], dest, src, destInfo)
 
 proc depsArgs(w: var W; n: PNode) =
-  if n.sons[0].typ.isNil: return
-  var typ = skipTypes(n.sons[0].typ, abstractInst)
+  if n[0].typ.isNil: return
+  var typ = skipTypes(n[0].typ, abstractInst)
   if typ.kind != tyProc: return
   # echo n.info, " ", n, " ", w.owner.name.s, " ", typeToString(typ)
-  assert(sonsLen(typ) == sonsLen(typ.n))
-  for i in 1 ..< n.len:
-    let it = n.sons[i]
-    if i < sonsLen(typ):
-      assert(typ.n.sons[i].kind == nkSym)
-      let paramType = typ.n.sons[i]
+  assert(typ.len == typ.n.len)
+  for i in 1..<n.len:
+    let it = n[i]
+    if i < typ.len:
+      assert(typ.n[i].kind == nkSym)
+      let paramType = typ.n[i]
       if paramType.typ.isCompileTimeOnly: continue
       var destInfo: set[RootInfo] = {}
       if sfWrittenTo in paramType.sym.flags or paramType.typ.kind == tyVar:
@@ -179,22 +178,22 @@ proc deps(w: var W; n: PNode) =
     for child in n:
       let last = lastSon(child)
       if last.kind == nkEmpty: continue
-      if child.kind == nkVarTuple and last.kind == nkPar:
-        internalAssert child.len-2 == last.len
-        for i in 0 .. child.len-3:
-          deps(w, child.sons[i], last.sons[i], {})
+      if child.kind == nkVarTuple and last.kind in {nkPar, nkTupleConstr}:
+        if child.len-2 != last.len: return
+        for i in 0..<child.len-2:
+          deps(w, child[i], last[i], {})
       else:
-        for i in 0 .. child.len-3:
-          deps(w, child.sons[i], last, {})
+        for i in 0..<child.len-2:
+          deps(w, child[i], last, {})
   of nkAsgn, nkFastAsgn:
-    deps(w, n.sons[0], n.sons[1], {})
+    deps(w, n[0], n[1], {})
   else:
-    for i in 0 ..< n.safeLen:
-      deps(w, n.sons[i])
+    for i in 0..<n.safeLen:
+      deps(w, n[i])
     if n.kind in nkCallKinds:
       if getMagic(n) in {mNew, mNewFinalize, mNewSeq}:
         # may not look like an assignment, but it is:
-        deps(w, n.sons[1], newNodeIT(nkObjConstr, n.info, n.sons[1].typ), {})
+        deps(w, n[1], newNodeIT(nkObjConstr, n.info, n[1].typ), {})
       else:
         depsArgs(w, n)
 
@@ -211,21 +210,22 @@ proc possibleAliases(w: var W; result: var seq[ptr TSym]) =
   while todo < result.len:
     let x = result[todo]
     inc todo
-    for a in mitems(w.assignments):
+    for i in 0..<w.assignments.len:
+      let a = addr(w.assignments[i])
       #if a.srcHasSym(x):
       #  # y = f(..., x, ...)
-      #  for i in 0 ..< a.destNoTc: addNoDup a.dest[i]
+      #  for i in 0..<a.destNoTc: addNoDup a.dest[i]
       if a.destNoTc > 0 and a.dest[0] == x and rootIsSym in a.destInfo:
         # x = f(..., y, ....)
-        for i in 0 ..< a.srcNoTc: addNoDup a.src[i]
+        for i in 0..<a.srcNoTc: addNoDup a.src[i]
 
-proc markWriteOrEscape(w: var W) =
+proc markWriteOrEscape(w: var W; conf: ConfigRef) =
   ## Both 'writes' and 'escapes' effects ultimately only care
   ## about *parameters*.
   ## However, due to aliasing, even locals that might not look as parameters
   ## have to count as parameters if they can alias a parameter:
   ##
-  ## .. code-block:: nim
+  ##..code-block:: nim
   ##   proc modifies(n: Node) {.writes: [n].} =
   ##     let x = n
   ##     x.data = "abc"
@@ -238,7 +238,8 @@ proc markWriteOrEscape(w: var W) =
   ## A write then looks like ``p[] = x``.
   ## An escape looks like ``p[] = q`` or more generally
   ## like ``p[] = f(q)`` where ``f`` can forward ``q``.
-  for a in mitems(w.assignments):
+  for i in 0..<w.assignments.len:
+    let a = addr(w.assignments[i])
     if a.destInfo != {}:
       possibleAliases(w, a.dest)
 
@@ -246,6 +247,8 @@ proc markWriteOrEscape(w: var W) =
       for p in a.dest:
         if p.kind == skParam and p.owner == w.owner:
           incl(p.flags, sfWrittenTo)
+          if w.owner.kind == skFunc and p.typ.kind != tyVar:
+            localError(conf, a.info, "write access to non-var parameter: " & p.name.s)
 
     if {rootIsResultOrParam, rootIsHeapAccess, markAsEscaping}*a.destInfo != {}:
       var destIsParam = false
@@ -259,14 +262,14 @@ proc markWriteOrEscape(w: var W) =
           if p.kind == skParam and p.owner == w.owner:
             incl(p.flags, sfEscapes)
 
-proc trackWrites*(owner: PSym; body: PNode) =
+proc trackWrites*(owner: PSym; body: PNode; conf: ConfigRef) =
   var w: W
   w.owner = owner
   w.assignments = @[]
   # Phase 1: Collect and preprocess any assignments in the proc body:
   deps(w, body)
   # Phase 2: Compute the 'writes' and 'escapes' effects:
-  markWriteOrEscape(w)
-  if w.returnsNew != asgnOther and not isEmptyType(owner.typ.sons[0]) and
-      containsGarbageCollectedRef(owner.typ.sons[0]):
+  markWriteOrEscape(w, conf)
+  if w.returnsNew != asgnOther and not isEmptyType(owner.typ[0]) and
+      containsGarbageCollectedRef(owner.typ[0]):
     incl(owner.typ.flags, tfReturnsNew)

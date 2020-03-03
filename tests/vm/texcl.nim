@@ -15,10 +15,10 @@ proc initOpts(): set[nlOptions] =
   result.incl nloDebug
   result.incl nloNone
   result.excl nloDebug
-  
+
 const cOpts = initOpts()
 
-macro nlo(): stmt =
+macro nlo() =
   nlOpts.incl(nloNone)
   nlOpts.excl(nloDebug)
   result = newEmptyNode()

@@ -9,6 +9,8 @@
 
 ## Contains functionality shared between the ``httpclient`` and
 ## ``asynchttpserver`` modules.
+##
+## Unstable API.
 
 import tables, strutils, parseutils
 
@@ -26,28 +28,24 @@ type
     HttpVer11,
     HttpVer10
 
-  HttpMethod* = enum  ## the requested HttpMethod
-    HttpHead,         ## Asks for the response identical to the one that would
-                      ## correspond to a GET request, but without the response
-                      ## body.
-    HttpGet,          ## Retrieves the specified resource.
-    HttpPost,         ## Submits data to be processed to the identified
-                      ## resource. The data is included in the body of the
-                      ## request.
-    HttpPut,          ## Uploads a representation of the specified resource.
-    HttpDelete,       ## Deletes the specified resource.
-    HttpTrace,        ## Echoes back the received request, so that a client
-                      ## can see what intermediate servers are adding or
-                      ## changing in the request.
-    HttpOptions,      ## Returns the HTTP methods that the server supports
-                      ## for specified address.
-    HttpConnect,      ## Converts the request connection to a transparent
-                      ## TCP/IP tunnel, usually used for proxies.
-    HttpPatch         ## Applies partial modifications to a resource.
-
-{.deprecated: [httpGet: HttpGet, httpHead: HttpHead, httpPost: HttpPost,
-               httpPut: HttpPut, httpDelete: HttpDelete, httpTrace: HttpTrace,
-               httpOptions: HttpOptions, httpConnect: HttpConnect].}
+  HttpMethod* = enum ## the requested HttpMethod
+    HttpHead,        ## Asks for the response identical to the one that would
+                     ## correspond to a GET request, but without the response
+                     ## body.
+    HttpGet,         ## Retrieves the specified resource.
+    HttpPost,        ## Submits data to be processed to the identified
+                     ## resource. The data is included in the body of the
+                     ## request.
+    HttpPut,         ## Uploads a representation of the specified resource.
+    HttpDelete,      ## Deletes the specified resource.
+    HttpTrace,       ## Echoes back the received request, so that a client
+                     ## can see what intermediate servers are adding or
+                     ## changing in the request.
+    HttpOptions,     ## Returns the HTTP methods that the server supports
+                     ## for specified address.
+    HttpConnect,     ## Converts the request connection to a transparent
+                     ## TCP/IP tunnel, usually used for proxies.
+    HttpPatch        ## Applies partial modifications to a resource.
 
 
 const
@@ -106,12 +104,15 @@ proc newHttpHeaders*(): HttpHeaders =
   result.table = newTable[string, seq[string]]()
 
 proc newHttpHeaders*(keyValuePairs:
-    openarray[tuple[key: string, val: string]]): HttpHeaders =
+    openArray[tuple[key: string, val: string]]): HttpHeaders =
   var pairs: seq[tuple[key: string, val: seq[string]]] = @[]
   for pair in keyValuePairs:
     pairs.add((pair.key.toLowerAscii(), @[pair.val]))
   new result
   result.table = newTable[string, seq[string]](pairs)
+
+proc `$`*(headers: HttpHeaders): string =
+  return $headers.table
 
 proc clear*(headers: HttpHeaders) =
   headers.table.clear()
@@ -154,6 +155,10 @@ proc add*(headers: HttpHeaders, key, value: string) =
   else:
     headers.table[key.toLowerAscii].add(value)
 
+proc del*(headers: HttpHeaders, key: string) =
+  ## Delete the header entries associated with ``key``
+  headers.table.del(key.toLowerAscii)
+
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
   ## Yields each key, value pair.
   for k, v in headers.table:
@@ -183,11 +188,11 @@ proc len*(headers: HttpHeaders): int = return headers.table.len
 proc parseList(line: string, list: var seq[string], start: int): int =
   var i = 0
   var current = ""
-  while line[start + i] notin {'\c', '\l', '\0'}:
+  while start+i < line.len and line[start + i] notin {'\c', '\l'}:
     i += line.skipWhitespace(start + i)
     i += line.parseUntil(current, {'\c', '\l', ','}, start + i)
     list.add(current)
-    if line[start + i] == ',':
+    if start+i < line.len and line[start + i] == ',':
       i.inc # Skip ,
     current.setLen(0)
 
@@ -202,6 +207,8 @@ proc parseHeader*(line: string): tuple[key: string, value: seq[string]] =
   inc(i) # skip :
   if i < len(line):
     i += parseList(line, result.value, i)
+  elif result.key.len > 0:
+    result.value = @[""]
   else:
     result.value = @[]
 
@@ -279,7 +286,7 @@ proc `$`*(code: HttpCode): string =
 proc `==`*(a, b: HttpCode): bool {.borrow.}
 
 proc `==`*(rawCode: string, code: HttpCode): bool =
-  return rawCode.toLower() == ($code).toLower()
+  return cmpIgnoreCase(rawCode, $code) == 0
 
 proc is2xx*(code: HttpCode): bool =
   ## Determines whether ``code`` is a 2xx HTTP status code.
@@ -298,7 +305,7 @@ proc is5xx*(code: HttpCode): bool =
   return code.int in {500 .. 599}
 
 proc `$`*(httpMethod: HttpMethod): string =
-  return (system.`$`(httpMethod))[4 .. ^1].toUpper()
+  return (system.`$`(httpMethod))[4 .. ^1].toUpperAscii()
 
 when isMainModule:
   var test = newHttpHeaders()
@@ -308,3 +315,12 @@ when isMainModule:
   test.add("Connection", "Test")
   doAssert test["Connection", 2] == "Test"
   doAssert "upgrade" in test["Connection"]
+
+  # Bug #5344.
+  doAssert parseHeader("foobar: ") == ("foobar", @[""])
+  let (key, value) = parseHeader("foobar: ")
+  test = newHttpHeaders()
+  test[key] = value
+  doAssert test["foobar"] == ""
+
+  doAssert parseHeader("foobar:") == ("foobar", @[""])

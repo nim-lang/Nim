@@ -22,10 +22,10 @@ proc runTask*(name: string) {.inline.}
 proc shell*(cmd: varargs[string, `$`]): int {.discardable.}
 proc cd*(dir: string) {.inline.}
 
-template nakeImports*(): stmt {.immediate.} =
+template nakeImports*() =
   import tables, parseopt, strutils, os
 
-template task*(name: string; description: string; body: stmt): stmt {.dirty, immediate.} =
+template task*(name: string; description: string; body: untyped) {.dirty.} =
   block:
     var t = newTask(description, proc() {.closure.} =
       body)
@@ -40,7 +40,7 @@ proc runTask*(name: string) = tasks[name].action()
 proc shell*(cmd: varargs[string, `$`]): int =
   result = execShellCmd(cmd.join(" "))
 proc cd*(dir: string) = setCurrentDir(dir)
-template withDir*(dir: string; body: stmt): stmt =
+template withDir*(dir: string; body: untyped) =
   ## temporary cd
   ## withDir "foo":
   ##   # inside foo
@@ -50,7 +50,7 @@ template withDir*(dir: string; body: stmt): stmt =
   body
   cd(curDir)
 
-when isMainModule:
+when true:
   if not existsFile("nakefile.nim"):
     echo "No nakefile.nim found. Current working dir is ", getCurrentDir()
     quit 1
@@ -67,7 +67,7 @@ else:
     for kind, key, val in getOpt():
       case kind
       of cmdLongOption, cmdShortOption:
-        case key.tolower
+        case key.tolowerAscii
         of "tasks", "t":
           printTaskList = true
         else:
@@ -75,7 +75,7 @@ else:
       of cmdArgument:
         task = key
       else: discard
-    if printTaskList or task.isNil or not(tasks.hasKey(task)):
+    if printTaskList or task.len == 0 or not(tasks.hasKey(task)):
       echo "Available tasks:"
       for name, task in pairs(tasks):
         echo name, " - ", task.desc

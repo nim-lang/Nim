@@ -142,7 +142,7 @@ var
   workersData: array[NumThreads, Worker]
 
 proc setup() =
-  for i in 0.. <NumThreads:
+  for i in 0 ..< NumThreads:
     workersData[i].taskArrived = createCondVar()
     workersData[i].taskStarted = createFastCondVar()
     createThread(workers[i], slave, addr(workersData[i]))
@@ -153,12 +153,12 @@ proc preferSpawn*(): bool =
   ## it is not necessary to call this directly; use 'spawnX' instead.
   result = gSomeReady.event
 
-proc spawn*(call: stmt) {.magic: "Spawn".}
+proc spawn*(call: typed) {.magic: "Spawn".}
   ## always spawns a new task, so that the 'call' is never executed on
   ## the calling thread. 'call' has to be proc call 'p(...)' where 'p'
   ## is gcsafe and has 'void' as the return type.
 
-template spawnX*(call: stmt) =
+template spawnX*(call: typed) =
   ## spawns a new task if a CPU core is ready, otherwise executes the
   ## call in the calling thread. Usually it is advised to
   ## use 'spawn' in order to not block the producer for an unknown

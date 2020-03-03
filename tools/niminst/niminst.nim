@@ -14,13 +14,15 @@ when haveZipLib:
   import zipfiles
 
 import
-  os, osproc, strutils, parseopt, parsecfg, strtabs, streams, debcreation
+  os, strutils, parseopt, parsecfg, strtabs, streams, debcreation,
+  std / sha1
 
 const
   maxOS = 20 # max number of OSes
   maxCPU = 20 # max number of CPUs
   buildShFile = "build.sh"
-  buildBatFile32 = "build.bat"
+  buildBatFile = "build.bat"
+  buildBatFile32 = "build32.bat"
   buildBatFile64 = "build64.bat"
   makeFile = "makefile"
   installShFile = "install.sh"
@@ -124,13 +126,13 @@ proc skipRoot(f: string): string =
     inc i
   if result.len == 0: result = f
 
-include "inno.tmpl"
-include "nsis.tmpl"
-include "buildsh.tmpl"
-include "makefile.tmpl"
-include "buildbat.tmpl"
-include "install.tmpl"
-include "deinstall.tmpl"
+include "inno.nimf"
+include "nsis.nimf"
+include "buildsh.nimf"
+include "makefile.nimf"
+include "buildbat.nimf"
+include "install.nimf"
+include "deinstall.nimf"
 
 # ------------------------- configuration file -------------------------------
 
@@ -183,7 +185,7 @@ proc parseCmdLine(c: var ConfigData) =
         c.infile = addFileExt(key.string, "ini")
         c.nimArgs = cmdLineRest(p).string
         break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
       case normalize(key.string)
       of "help", "h":
         stdout.write(Usage)
@@ -282,7 +284,7 @@ proc yesno(p: var CfgParser, v: string): bool =
   else: quit(errorStr(p, "unknown value; use: yes|no"))
 
 proc incl(s: var seq[string], x: string): int =
-  for i in 0.. <s.len:
+  for i in 0 ..< s.len:
     if cmpIgnoreStyle(s[i], x) == 0: return i
   s.add(x)
   result = s.len-1
@@ -313,7 +315,7 @@ proc parseIniFile(c: var ConfigData) =
       of cfgSectionStart:
         section = normalize(k.section)
       of cfgKeyValuePair:
-        var v = k.value % c.vars
+        var v = `%`(k.value, c.vars, {useEnvironment, useEmpty})
         c.vars[k.key] = v
 
         case section
@@ -447,7 +449,8 @@ proc readCFiles(c: var ConfigData, osA, cpuA: int) =
           # HACK: we conditionally add ``-lm -ldl``, so remove them from the
           # linker flags:
           c.linker.flags = c.linker.flags.replaceWord("-lm").replaceWord(
-                           "-ldl").strip
+                           "-ldl").replaceWord("-lroot").replaceWord(
+                           "-lnetwork").strip
         else:
           if cmpIgnoreStyle(k.key, "libpath") == 0:
             c.libpath = k.value
@@ -475,23 +478,24 @@ proc writeFile(filename, content, newline: string) =
   else:
     quit("Cannot open for writing: " & filename)
 
-proc removeDuplicateFiles(c: var ConfigData) =
-  for osA in countdown(c.oses.len, 1):
-    for cpuA in countdown(c.cpus.len, 1):
-      if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
+proc deduplicateFiles(c: var ConfigData) =
+  var tab = newStringTable()
+  let build = getOutputDir(c)
+  for osA in countup(1, c.oses.len):
+    for cpuA in countup(1, c.cpus.len):
+      when not defined(nimNoNilSeqs):
+        if c.cfiles[osA][cpuA].isNil: c.cfiles[osA][cpuA] = @[]
       if c.explicitPlatforms and not c.platforms[osA][cpuA]: continue
-      for i in 0..c.cfiles[osA][cpuA].len-1:
-        var dup = c.cfiles[osA][cpuA][i]
-        var f = extractFilename(dup)
-        for osB in 1..c.oses.len:
-          for cpuB in 1..c.cpus.len:
-            if osB != osA or cpuB != cpuA:
-              var orig = buildDir(osB, cpuB) / f
-              if existsFile(orig) and existsFile(dup) and
-                  sameFileContent(orig, dup):
-                # file is identical, so delete duplicate:
-                removeFile(dup)
-                c.cfiles[osA][cpuA][i] = orig
+      for dup in mitems(c.cfiles[osA][cpuA]):
+        let key = $secureHashFile(build / dup)
+        let val = buildDir(osA, cpuA) / extractFilename(dup)
+        let orig = tab.getOrDefault(key)
+        if orig.len > 0:
+          # file is identical, so delete duplicate:
+          removeFile(dup)
+          dup = orig
+        else:
+          tab[key] = val
 
 proc writeInstallScripts(c: var ConfigData) =
   if c.installScript:
@@ -501,12 +505,21 @@ proc writeInstallScripts(c: var ConfigData) =
     writeFile(deinstallShFile, generateDeinstallScript(c), "\10")
     inclFilePermissions(deinstallShFile, {fpUserExec, fpGroupExec, fpOthersExec})
 
+template gatherFiles(fun, libpath, outDir) =
+  block:
+    template copySrc(src) =
+      let dst = outDir / extractFilename(src)
+      when false: echo (dst, dst)
+      fun(src, dst)
+
+    for f in walkFiles(libpath / "lib/*.h"): copySrc(f)
+    # commenting out for now, see discussion in https://github.com/nim-lang/Nim/pull/13413
+    # copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
+
 proc srcdist(c: var ConfigData) =
-  if not existsDir(getOutputDir(c) / "c_code"):
-    createDir(getOutputDir(c) / "c_code")
-  for x in walkFiles(c.libpath / "lib/*.h"):
-    echo(getOutputDir(c) / "c_code" / extractFilename(x))
-    copyFile(dest=getOutputDir(c) / "c_code" / extractFilename(x), source=x)
+  let cCodeDir = getOutputDir(c) / "c_code"
+  if not existsDir(cCodeDir): createDir(cCodeDir)
+  gatherFiles(copyFile, c.libpath, cCodeDir)
   var winIndex = -1
   var intel32Index = -1
   var intel64Index = -1
@@ -535,23 +548,24 @@ proc srcdist(c: var ConfigData) =
         copyFile(dest=dest, source=c.cfiles[osA][cpuA][i])
         c.cfiles[osA][cpuA][i] = relDest
   # second pass: remove duplicate files
-  removeDuplicateFiles(c)
+  deduplicateFiles(c)
   writeFile(getOutputDir(c) / buildShFile, generateBuildShellScript(c), "\10")
   inclFilePermissions(getOutputDir(c) / buildShFile, {fpUserExec, fpGroupExec, fpOthersExec})
   writeFile(getOutputDir(c) / makeFile, generateMakefile(c), "\10")
   if winIndex >= 0:
+    if intel32Index >= 0 or intel64Index >= 0:
+      writeFile(getOutputDir(c) / buildBatFile,
+                generateBuildBatchScript(c, winIndex, intel32Index, intel64Index), "\13\10")
     if intel32Index >= 0:
-      writeFile(getOutputDir(c) / buildBatFile32,
-                generateBuildBatchScript(c, winIndex, intel32Index), "\13\10")
+      writeFile(getOutputDir(c) / buildBatFile32, "SET ARCH=32\nCALL build.bat\n")
     if intel64Index >= 0:
-      writeFile(getOutputDir(c) / buildBatFile64,
-                generateBuildBatchScript(c, winIndex, intel64Index), "\13\10")
+      writeFile(getOutputDir(c) / buildBatFile64, "SET ARCH=64\nCALL build.bat\n")
   writeInstallScripts(c)
 
 # --------------------- generate inno setup -----------------------------------
 proc setupDist(c: var ConfigData) =
   let scrpt = generateInnoSetup(c)
-  let n = "build" / "install_$#_$#.iss" % [toLower(c.name), c.version]
+  let n = "build" / "install_$#_$#.iss" % [toLowerAscii(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
   when defined(windows):
     if c.innosetup.path.len == 0:
@@ -568,7 +582,7 @@ proc setupDist(c: var ConfigData) =
 # --------------------- generate NSIS setup -----------------------------------
 proc setupDist2(c: var ConfigData) =
   let scrpt = generateNsisSetup(c)
-  let n = "build" / "install_$#_$#.nsi" % [toLower(c.name), c.version]
+  let n = "build" / "install_$#_$#.nsi" % [toLowerAscii(c.name), c.version]
   writeFile(n, scrpt, "\13\10")
   when defined(windows):
     if c.nsisSetup.path.len == 0:
@@ -585,20 +599,22 @@ proc setupDist2(c: var ConfigData) =
 # ------------------ generate ZIP file ---------------------------------------
 when haveZipLib:
   proc zipDist(c: var ConfigData) =
-    var proj = toLower(c.name) & "-" & c.version
+    var proj = toLowerAscii(c.name) & "-" & c.version
     var n = "$#.zip" % proj
     if c.outdir.len == 0: n = "build" / n
     else: n = c.outdir / n
     var z: ZipArchive
     if open(z, n, fmWrite):
+      addFile(z, proj / buildBatFile, "build" / buildBatFile)
       addFile(z, proj / buildBatFile32, "build" / buildBatFile32)
       addFile(z, proj / buildBatFile64, "build" / buildBatFile64)
       addFile(z, proj / buildShFile, "build" / buildShFile)
       addFile(z, proj / makeFile, "build" / makeFile)
       addFile(z, proj / installShFile, installShFile)
       addFile(z, proj / deinstallShFile, deinstallShFile)
-      for f in walkFiles(c.libpath / "lib/*.h"):
-        addFile(z, proj / "c_code" / extractFilename(f), f)
+
+      template addFileAux(src, dst) = addFile(z, dst, src)
+      gatherFiles(addFileAux, c.libpath, proj / "c_code")
       for osA in 1..c.oses.len:
         for cpuA in 1..c.cpus.len:
           var dir = buildDir(osA, cpuA)
@@ -616,48 +632,75 @@ when haveZipLib:
     else:
       quit("Cannot open for writing: " & n)
 
-proc xzDist(c: var ConfigData) =
-  let proj = toLower(c.name) & "-" & c.version
-  var n = "$#.tar.xz" % proj
+proc xzDist(c: var ConfigData; windowsZip=false) =
+  let proj = toLowerAscii(c.name) & "-" & c.version
   let tmpDir = if c.outdir.len == 0: "build" else: c.outdir
 
-  template processFile(z, dest, src) =
-    let s = src
-    let d = dest
-    echo "Copying ", s, " to ", tmpDir / d
-    let destdir = tmpdir / d.splitFile.dir
-    if not dirExists(destdir): createDir(destdir)
-    copyFileWithPermissions(s, tmpDir / d)
+  proc processFile(destFile, src: string) =
+    let dest = tmpDir / destFile
+    when false: echo "Copying ", src, " to ", dest
+    if not existsFile(src):
+      echo "[Warning] Source file doesn't exist: ", src
+    let destDir = dest.splitFile.dir
+    if not dirExists(destDir): createDir(destDir)
+    copyFileWithPermissions(src, dest)
 
-  processFile(z, proj / buildBatFile32, "build" / buildBatFile32)
-  processFile(z, proj / buildBatFile64, "build" / buildBatFile64)
-  processFile(z, proj / buildShFile, "build" / buildShFile)
-  processFile(z, proj / makeFile, "build" / makeFile)
-  processFile(z, proj / installShFile, installShFile)
-  processFile(z, proj / deinstallShFile, deinstallShFile)
-  for f in walkFiles(c.libpath / "lib/*.h"):
-    processFile(z, proj / "c_code" / extractFilename(f), f)
-  for osA in 1..c.oses.len:
-    for cpuA in 1..c.cpus.len:
-      var dir = buildDir(osA, cpuA)
-      for k, f in walkDir("build" / dir):
-        if k == pcFile: processFile(z, proj / dir / extractFilename(f), f)
+  if not windowsZip and not existsFile("build" / buildBatFile):
+    quit("No C sources found in ./build/, please build by running " &
+         "./koch csource -d:release.")
 
-  for cat in items({fcConfig..fcOther, fcUnix, fcNimble}):
+  if not windowsZip:
+    processFile(proj / buildBatFile, "build" / buildBatFile)
+    processFile(proj / buildBatFile32, "build" / buildBatFile32)
+    processFile(proj / buildBatFile64, "build" / buildBatFile64)
+    processFile(proj / buildShFile, "build" / buildShFile)
+    processFile(proj / makeFile, "build" / makeFile)
+    processFile(proj / installShFile, installShFile)
+    processFile(proj / deinstallShFile, deinstallShFile)
+    template processFileAux(src, dst) = processFile(dst, src)
+    gatherFiles(processFileAux, c.libpath, proj / "c_code")
+    for osA in 1..c.oses.len:
+      for cpuA in 1..c.cpus.len:
+        var dir = buildDir(osA, cpuA)
+        for k, f in walkDir("build" / dir):
+          if k == pcFile: processFile(proj / dir / extractFilename(f), f)
+  else:
+    for f in items(c.cat[fcWinBin]):
+      let filename = f.extractFilename
+      processFile(proj / "bin" / filename, f)
+
+  let osSpecific = if windowsZip: fcWindows else: fcUnix
+  for cat in items({fcConfig..fcOther, osSpecific, fcNimble}):
     echo("Current category: ", cat)
-    for f in items(c.cat[cat]): processFile(z, proj / f, f)
+    for f in items(c.cat[cat]): processFile(proj / f, f)
 
   # Copy the .nimble file over
   let nimbleFile = c.nimblePkgName & ".nimble"
-  processFile(z, proj / nimbleFile, nimbleFile)
+  processFile(proj / nimbleFile, nimbleFile)
 
   when true:
     let oldDir = getCurrentDir()
     setCurrentDir(tmpDir)
     try:
-      if execShellCmd("XZ_OPT=-9 gtar Jcf $1.tar.xz $1 --exclude=.DS_Store" % proj) != 0:
-        # try old 'tar' without --exclude feature:
-        if execShellCmd("XZ_OPT=-9 tar Jcf $1.tar.xz $1" % proj) != 0:
+      if windowsZip:
+        if execShellCmd("7z a -tzip $1.zip $1" % proj) != 0:
+          echo("External program failed (zip)")
+        when false:
+          writeFile("config.txt", """;!@Install@!UTF-8!
+Title="Nim v$1"
+BeginPrompt="Do you want to configure Nim v$1?"
+RunProgram="tools\downloader.exe"
+;!@InstallEnd@!""" % NimVersion)
+          if execShellCmd("7z a -sfx7zS2.sfx -t7z $1.exe $1" % proj) != 0:
+            echo("External program failed (7z)")
+      else:
+        if execShellCmd("gtar cf $1.tar --exclude=.DS_Store $1" %
+                        proj) != 0:
+          # try old 'tar' without --exclude feature:
+          if execShellCmd("tar cf $1.tar $1" % proj) != 0:
+            echo("External program failed")
+
+        if execShellCmd("xz -9f $1.tar" % proj) != 0:
           echo("External program failed")
     finally:
       setCurrentDir(oldDir)
@@ -676,11 +719,11 @@ proc debDist(c: var ConfigData) =
   echo("Copying source to tmp/niminst/deb/")
   var currentSource = getCurrentDir()
   var workingDir = getTempDir() / "niminst" / "deb"
-  var upstreamSource = (c.name.toLower() & "-" & c.version)
+  var upstreamSource = (c.name.toLowerAscii() & "-" & c.version)
 
   createDir(workingDir / upstreamSource)
 
-  template copyNimDist(f, dest: string): stmt =
+  template copyNimDist(f, dest: string) =
     createDir((workingDir / upstreamSource / dest).splitFile.dir)
     copyFile(currentSource / f, workingDir / upstreamSource / dest)
 
@@ -689,8 +732,7 @@ proc debDist(c: var ConfigData) =
   copyNimDist(makeFile, makeFile)
   copyNimDist(installShFile, installShFile)
   createDir(workingDir / upstreamSource / "build")
-  for f in walkFiles(c.libpath / "lib/*.h"):
-    copyNimDist(f, "build" / extractFilename(f))
+  gatherFiles(copyNimDist, c.libpath, "build")
   for osA in 1..c.oses.len:
     for cpuA in 1..c.cpus.len:
       var dir = buildDir(osA, cpuA)
@@ -724,10 +766,7 @@ if actionCSource in c.actions:
 if actionScripts in c.actions:
   writeInstallScripts(c)
 if actionZip in c.actions:
-  when haveZipLib:
-    zipDist(c)
-  else:
-    quit("libzip is not installed")
+  xzDist(c, true)
 if actionXz in c.actions:
   xzDist(c)
 if actionDeb in c.actions:

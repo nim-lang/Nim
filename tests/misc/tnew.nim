@@ -1,3 +1,11 @@
+discard """
+outputsub: '''
+Simple tree node allocation worked!
+Simple cycle allocation worked!
+'''
+joinable: false
+"""
+
 # Test the implementation of the new operator
 # and the code generation for gc walkers
 # (and the garbage collector):
@@ -9,7 +17,7 @@ type
     str: string
     le, ri: PNode
 
-  TStressTest = ref array [0..45, array [1..45, TNode]]
+  TStressTest = ref array[0..45, array[1..45, TNode]]
 
 proc finalizer(n: PNode) =
   write(stdout, n.data)

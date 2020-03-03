@@ -1,39 +1,39 @@
-discard """
-output: '''true
-false
-true
-false
-true
-false
-true
-false'''
-"""
-
 import macros
 
-macro test(a: typed, b: typed): expr =
+static:
+  let nodeA = newCommentStmtNode("this is a comment")
+  doAssert nodeA.repr == "## this is a comment"
+  doAssert nodeA.strVal == "this is a comment"
+  doAssert $nodeA == "this is a comment"
+
+  let nodeB = newCommentStmtNode("this is a comment")
+  doAssert nodeA == nodeB
+  nodeB.strVal = "this is a different comment"
+  doAssert nodeA != nodeB
+
+macro test(a: typed, b: typed): untyped =
   newLit(a == b)
 
-echo test(1, 1)
-echo test(1, 2)
+doAssert test(1, 1) == true
+doAssert test(1, 2) == false
 
 type
   Obj = object of RootObj
   Other = object of RootObj
 
-echo test(Obj, Obj)
-echo test(Obj, Other)
+doAssert test(Obj, Obj) == true
+doAssert test(Obj, Other) == false
 
 var a, b: int
 
-echo test(a, a)
-echo test(a, b)
+doAssert test(a, a) == true
+doAssert test(a, b) == false
 
-macro test2: expr =
+macro test2: untyped =
   newLit(bindSym"Obj" == bindSym"Obj")
 
-macro test3: expr =
+macro test3: untyped =
   newLit(bindSym"Obj" == bindSym"Other")
 
-echo test2()
-echo test3()
+doAssert test2() == true
+doAssert test3() == false

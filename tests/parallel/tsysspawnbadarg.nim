@@ -1,6 +1,6 @@
 discard """
-  line: 9
   errormsg: "'spawn' takes a call expression"
+  line: 9
   cmd: "nim $target --threads:on $options $file"
 """
 

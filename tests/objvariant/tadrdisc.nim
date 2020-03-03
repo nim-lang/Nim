@@ -1,9 +1,9 @@
 discard """
+  errormsg: "type mismatch: got <TKind>"
   file: "tadrdisc.nim"
   line: 20
-  errormsg: "type mismatch: got (TKind)"
 """
-# Test that the address of a dicriminants cannot be taken
+# Test that the address of a discriminants cannot be taken
 
 type
   TKind = enum ka, kb, kc

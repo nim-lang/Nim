@@ -1,6 +1,0 @@
-[Package]
-name          = "docutils"
-version       = "0.9.0"
-author        = "Andreas Rumpf"
-description   = "Nimrod's reStructuredText processor."
-license       = "MIT"

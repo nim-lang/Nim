@@ -1,7 +1,7 @@
 discard """
+  errormsg: "'bla' escapes its stack frame; context: 'bla'"
   file: "tvarres1.nim"
   line: 12
-  errormsg: "address of 'bla' may not escape its stack frame"
 """
 
 var
@@ -14,4 +14,3 @@ proc p(): var int =
 p() = 45
 
 echo g
-

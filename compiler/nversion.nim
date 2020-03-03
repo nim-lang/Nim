@@ -13,5 +13,8 @@
 const
   MaxSetElements* = 1 shl 16  # (2^16) to support unicode character sets?
   VersionAsString* = system.NimVersion
-  RodFileVersion* = "1221"       # modify this if the rod-format changes!
+  RodFileVersion* = "1223"       # modify this if the rod-format changes!
 
+  NimCompilerApiVersion* = 3 ## Check for the existence of this before accessing it
+                             ## as older versions of the compiler API do not
+                             ## declare this.

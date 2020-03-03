@@ -10,76 +10,30 @@
 # This module handles the conditional symbols.
 
 import
-  strtabs, platform, strutils, idents
+  strtabs
 
-# We need to use a StringTableRef here as defined symbols are always guaranteed
-# to be style insensitive. Otherwise hell would break lose.
-var gSymbols: StringTableRef
+from options import Feature
+from lineinfos import HintsToStr, WarningsToStr
 
-const
-  catNone = "false"
+proc defineSymbol*(symbols: StringTableRef; symbol: string, value: string = "true") =
+  symbols[symbol] = value
 
-proc defineSymbol*(symbol: string, value: string = "true") =
-  gSymbols[symbol] = value
+proc undefSymbol*(symbols: StringTableRef; symbol: string) =
+  symbols.del(symbol)
 
-proc undefSymbol*(symbol: string) =
-  gSymbols[symbol] = catNone
+#proc lookupSymbol*(symbols: StringTableRef; symbol: string): string =
+#  result = if isDefined(symbol): gSymbols[symbol] else: nil
 
-proc isDefined*(symbol: string): bool =
-  if gSymbols.hasKey(symbol):
-    result = gSymbols[symbol] != catNone
-  elif cmpIgnoreStyle(symbol, CPU[targetCPU].name) == 0:
-    result = true
-  elif cmpIgnoreStyle(symbol, platform.OS[targetOS].name) == 0:
-    result = true
-  else:
-    case symbol.normalize
-    of "x86": result = targetCPU == cpuI386
-    of "itanium": result = targetCPU == cpuIa64
-    of "x8664": result = targetCPU == cpuAmd64
-    of "posix", "unix":
-      result = targetOS in {osLinux, osMorphos, osSkyos, osIrix, osPalmos,
-                            osQnx, osAtari, osAix,
-                            osHaiku, osVxWorks, osSolaris, osNetbsd,
-                            osFreebsd, osOpenbsd, osMacosx}
-    of "bsd":
-      result = targetOS in {osNetbsd, osFreebsd, osOpenbsd}
-    of "emulatedthreadvars":
-      result = platform.OS[targetOS].props.contains(ospLacksThreadVars)
-    of "msdos": result = targetOS == osDos
-    of "mswindows", "win32": result = targetOS == osWindows
-    of "macintosh": result = targetOS in {osMacos, osMacosx}
-    of "sunos": result = targetOS == osSolaris
-    of "littleendian": result = CPU[targetCPU].endian == platform.littleEndian
-    of "bigendian": result = CPU[targetCPU].endian == platform.bigEndian
-    of "cpu8": result = CPU[targetCPU].bit == 8
-    of "cpu16": result = CPU[targetCPU].bit == 16
-    of "cpu32": result = CPU[targetCPU].bit == 32
-    of "cpu64": result = CPU[targetCPU].bit == 64
-    of "nimrawsetjmp":
-      result = targetOS in {osSolaris, osNetbsd, osFreebsd, osOpenbsd, osMacosx}
-    else: discard
+iterator definedSymbolNames*(symbols: StringTableRef): string =
+  for key, val in pairs(symbols):
+    yield key
 
-proc isDefined*(symbol: PIdent): bool = isDefined(symbol.s)
+proc countDefinedSymbols*(symbols: StringTableRef): int =
+  symbols.len
 
-proc lookupSymbol*(symbol: string): string =
-  result = if isDefined(symbol): gSymbols[symbol] else: nil
-
-proc lookupSymbol*(symbol: PIdent): string = lookupSymbol(symbol.s)
-
-iterator definedSymbolNames*: string =
-  for key, val in pairs(gSymbols):
-    if val != catNone: yield key
-
-proc countDefinedSymbols*(): int =
-  result = 0
-  for key, val in pairs(gSymbols):
-    if val != catNone: inc(result)
-
-proc initDefines*() =
-  gSymbols = newStringTable(modeStyleInsensitive)
-  defineSymbol("nimrod") # 'nimrod' is always defined
+proc initDefines*(symbols: StringTableRef) =
   # for bootstrapping purposes and old code:
+  template defineSymbol(s) = symbols.defineSymbol(s)
   defineSymbol("nimhygiene")
   defineSymbol("niminheritable")
   defineSymbol("nimmixin")
@@ -88,14 +42,72 @@ proc initDefines*() =
   defineSymbol("nimcomputedgoto")
   defineSymbol("nimunion")
   defineSymbol("nimnewshared")
+  defineSymbol("nimNewTypedesc")
   defineSymbol("nimrequiresnimframe")
   defineSymbol("nimparsebiggestfloatmagic")
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
   defineSymbol("nimnode")
-  defineSymbol("nimnomagic64")
   defineSymbol("nimvarargstyped")
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
-  defineSymbol("nimImmediateDeprecated")
+  defineSymbol("nimHasalignOf")
+  defineSymbol("nimDistros")
+  defineSymbol("nimHasCppDefine")
+  defineSymbol("nimGenericInOutFlags")
+  when false: defineSymbol("nimHasOpt")
+  defineSymbol("nimNoArrayToCstringConversion")
+  defineSymbol("nimNewRoof")
+  defineSymbol("nimHasRunnableExamples")
+  defineSymbol("nimNewDot")
+  defineSymbol("nimHasNilChecks")
+  defineSymbol("nimSymKind")
+  defineSymbol("nimVmEqIdent")
+  defineSymbol("nimNoNil")
+  defineSymbol("nimNoZeroTerminator")
+  defineSymbol("nimNotNil")
+  defineSymbol("nimVmExportFixed")
+  defineSymbol("nimHasSymOwnerInMacro")
+  defineSymbol("nimNewRuntime")
+  defineSymbol("nimIncrSeqV3")
+  defineSymbol("nimAshr")
+  defineSymbol("nimNoNilSeqs")
+  defineSymbol("nimNoNilSeqs2")
+  defineSymbol("nimHasUserErrors")
+  defineSymbol("nimUncheckedArrayTyp")
+  defineSymbol("nimHasTypeof")
+  defineSymbol("nimErrorProcCanHaveBody")
+  defineSymbol("nimHasInstantiationOfInMacro")
+  defineSymbol("nimHasHotCodeReloading")
+  defineSymbol("nimHasNilSeqs")
+  defineSymbol("nimHasSignatureHashInMacro")
+  defineSymbol("nimHasDefault")
+  defineSymbol("nimMacrosSizealignof")
+  defineSymbol("nimNoZeroExtendMagic")
+  defineSymbol("nimMacrosGetNodeId")
+  for f in low(Feature)..high(Feature):
+    defineSymbol("nimHas" & $f)
+
+  for s in WarningsToStr:
+    defineSymbol("nimHasWarning" & s)
+  for s in HintsToStr:
+    defineSymbol("nimHasHint" & s)
+
+  defineSymbol("nimFixedOwned")
+  defineSymbol("nimHasStyleChecks")
+  defineSymbol("nimToOpenArrayCString")
+  defineSymbol("nimHasUsed")
+  defineSymbol("nimFixedForwardGeneric")
+  defineSymbol("nimnomagic64")
+  defineSymbol("nimNewShiftOps")
+  defineSymbol("nimHasCursor")
+  defineSymbol("nimHasExceptionsQuery")
+  defineSymbol("nimHasIsNamedTuple")
+  defineSymbol("nimHashOrdinalFixed")
+
+  when defined(nimHasLibFFI):
+    # Renaming as we can't conflate input vs output define flags; e.g. this
+    # will report the right thing regardless of whether user adds
+    # `-d:nimHasLibFFI` in his user config.
+    defineSymbol("nimHasLibFFIEnabled")

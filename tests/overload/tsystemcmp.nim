@@ -1,12 +1,14 @@
 discard """
   cmd: r"nim c --hints:on $options --threads:on $file"
+  output: '''@["", "a", "ha", "hi", "ho", "huu"]'''
 """
 
 import algorithm
 
 # bug #1657
-var modules = @["hi", "ho", "ha", "huu"]
+var modules = @["hi", "ho", "", "a", "ha", "huu"]
 sort(modules, system.cmp)
+echo modules
 
 type
   MyType = object

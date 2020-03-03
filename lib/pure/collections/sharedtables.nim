@@ -11,6 +11,8 @@
 ## you'll be in trouble. Uses a single lock to protect the table, lockfree
 ## implementations welcome but if lock contention is so high that you need a
 ## lockfree hash table, you're doing it wrong.
+##
+## Unstable API.
 
 import
   hashes, math, locks
@@ -19,15 +21,24 @@ include "system/inclrtl"
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
-  KeyValuePairSeq[A, B] = ptr array[10_000_000, KeyValuePair[A, B]]
-  SharedTable* [A, B] = object ## generic hash SharedTable
+  KeyValuePairSeq[A, B] = ptr UncheckedArray[KeyValuePair[A, B]]
+  SharedTable*[A, B] = object ## generic hash SharedTable
     data: KeyValuePairSeq[A, B]
     counter, dataLen: int
+    countDeleted: int
     lock: Lock
 
-template maxHash(t): expr = t.dataLen-1
+template maxHash(t): untyped = t.dataLen-1
 
 include tableimpl
+
+template st_maybeRehashPutImpl(enlarge) {.dirty.} =
+  if mustRehash(t):
+    enlarge(t)
+    index = rawGetKnownHC(t, key, hc)
+  index = -1 - index # important to transform for mgetOrPutImpl
+  rawInsert(t, t.data, key, val, hc, index)
+  inc(t.counter)
 
 proc enlarge[A, B](t: var SharedTable[A, B]) =
   let oldSize = t.dataLen
@@ -39,9 +50,10 @@ proc enlarge[A, B](t: var SharedTable[A, B]) =
   for i in 0..<oldSize:
     let eh = n[i].hcode
     if isFilled(eh):
+      var perturb = t.getPerturb(eh)
       var j: Hash = eh and maxHash(t)
       while isFilled(t.data[j].hcode):
-        j = nextTry(j, maxHash(t))
+        j = nextTry(j, maxHash(t), perturb)
       rawInsert(t, t.data, n[i].key, n[i].val, eh, j)
   deallocShared(n)
 
@@ -130,6 +142,54 @@ proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
   withLock t:
     hasKeyOrPutImpl(enlarge)
 
+proc withKey*[A, B](t: var SharedTable[A, B], key: A,
+                    mapper: proc(key: A, val: var B, pairExists: var bool)) =
+  ## Computes a new mapping for the ``key`` with the specified ``mapper``
+  ## procedure.
+  ##
+  ## The ``mapper`` takes 3 arguments:
+  ##
+  ## 1. ``key`` - the current key, if it exists, or the key passed to
+  ##    ``withKey`` otherwise;
+  ## 2. ``val`` - the current value, if the key exists, or default value
+  ##    of the type otherwise;
+  ## 3. ``pairExists`` - ``true`` if the key exists, ``false`` otherwise.
+  ##
+  ## The ``mapper`` can can modify ``val`` and ``pairExists`` values to change
+  ## the mapping of the key or delete it from the table.
+  ## When adding a value, make sure to set ``pairExists`` to ``true`` along
+  ## with modifying the ``val``.
+  ##
+  ## The operation is performed atomically and other operations on the table
+  ## will be blocked while the ``mapper`` is invoked, so it should be short and
+  ## simple.
+  ##
+  ## Example usage:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   # If value exists, decrement it.
+  ##   # If it becomes zero or less, delete the key
+  ##   t.withKey(1'i64) do (k: int64, v: var int, pairExists: var bool):
+  ##     if pairExists:
+  ##       dec v
+  ##       if v <= 0:
+  ##         pairExists = false
+  withLock t:
+    var hc: Hash
+    var index = rawGet(t, key, hc)
+
+    var pairExists = index >= 0
+    if pairExists:
+      mapper(t.data[index].key, t.data[index].val, pairExists)
+      if not pairExists:
+        delImplIdx(t, index)
+    else:
+      var val: B
+      mapper(key, val, pairExists)
+      if pairExists:
+        st_maybeRehashPutImpl(enlarge)
+
 proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a (key, value)-pair into `t`.
   withLock t:
@@ -137,6 +197,7 @@ proc `[]=`*[A, B](t: var SharedTable[A, B], key: A, val: B) =
 
 proc add*[A, B](t: var SharedTable[A, B], key: A, val: B) =
   ## puts a new (key, value)-pair into `t` even if ``t[key]`` already exists.
+  ## This can introduce duplicate keys into the table!
   withLock t:
     addImpl(enlarge)
 
@@ -145,19 +206,36 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
   withLock t:
     delImpl()
 
-proc initSharedTable*[A, B](initialSize=64): SharedTable[A, B] =
+proc len*[A, B](t: var SharedTable[A, B]): int =
+  ## number of elements in `t`
+  withLock t:
+    result = t.counter
+
+proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
   ## creates a new hash table that is empty.
+  ##
+  ## This proc must be called before any other usage of `t`.
   ##
   ## `initialSize` needs to be a power of two. If you need to accept runtime
   ## values for this you could use the ``nextPowerOfTwo`` proc from the
   ## `math <math.html>`_ module or the ``rightSize`` proc from this module.
   assert isPowerOfTwo(initialSize)
-  result.counter = 0
-  result.dataLen = initialSize
-  result.data = cast[KeyValuePairSeq[A, B]](allocShared0(
+  t.counter = 0
+  t.dataLen = initialSize
+  t.data = cast[KeyValuePairSeq[A, B]](allocShared0(
                                       sizeof(KeyValuePair[A, B]) * initialSize))
-  initLock result.lock
+  initLock t.lock
 
 proc deinitSharedTable*[A, B](t: var SharedTable[A, B]) =
   deallocShared(t.data)
   deinitLock t.lock
+
+proc initSharedTable*[A, B](initialSize = 64): SharedTable[A, B] {.deprecated:
+  "use 'init' instead".} =
+  ## This is not posix compliant, may introduce undefined behavior.
+  assert isPowerOfTwo(initialSize)
+  result.counter = 0
+  result.dataLen = initialSize
+  result.data = cast[KeyValuePairSeq[A, B]](allocShared0(
+                                     sizeof(KeyValuePair[A, B]) * initialSize))
+  initLock result.lock

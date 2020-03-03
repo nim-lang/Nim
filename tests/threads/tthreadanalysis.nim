@@ -1,20 +1,19 @@
 discard """
-  outputsub: "101"
   errormsg: "'threadFunc' is not GC-safe"
-  line: 39
+  line: 38
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
 import os
 
 var
-  thr: array [0..5, Thread[tuple[a, b: int]]]
+  thr: array[0..5, Thread[tuple[a, b: int]]]
 
 proc doNothing() = discard
 
 type
   PNode = ref TNode
-  TNode = object {.pure.}
+  TNode {.pure.} = object
     le, ri: PNode
     data: string
 

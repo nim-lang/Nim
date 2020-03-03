@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (seq[empty])"
+  errormsg: "type mismatch: got <seq[empty]>"
   line: 16
 """
 

@@ -14,6 +14,9 @@
 when not defined(profiler) and not defined(memProfiler):
   {.error: "Profiling support is turned off! Enable profiling by passing `--profiler:on --stackTrace:on` to the compiler (see the Nim Compiler User Guide for more options).".}
 
+when defined(nimHasUsed):
+  {.used.}
+
 # We don't want to profile the profiling code ...
 {.push profiler: off.}
 
@@ -30,7 +33,6 @@ when not declared(system.StackTrace):
   type StackTrace = object
     lines: array[0..20, cstring]
     files: array[0..20, cstring]
-  {.deprecated: [TStackTrace: StackTrace].}
   proc `[]`*(st: StackTrace, i: int): cstring = st.lines[i]
 
 # We use a simple hash table of bounded size to keep track of the stack traces:
@@ -39,7 +41,6 @@ type
     total: int
     st: StackTrace
   ProfileData = array[0..64*1024-1, ptr ProfileEntry]
-{.deprecated: [TProfileEntry: ProfileEntry, TProfileData: ProfileData].}
 
 proc `==`(a, b: StackTrace): bool =
   for i in 0 .. high(a.lines):
@@ -120,13 +121,13 @@ when defined(memProfiler):
   var
     gTicker {.threadvar.}: int
 
-  proc requestedHook(): bool {.nimcall.} =
+  proc requestedHook(): bool {.nimcall, locks: 0.} =
     if gTicker == 0:
       gTicker = SamplingInterval
       result = true
     dec gTicker
 
-  proc hook(st: StackTrace, size: int) {.nimcall.} =
+  proc hook(st: StackTrace, size: int) {.nimcall, locks: 0.} =
     when defined(ignoreAllocationSize):
       hookAux(st, 1)
     else:
@@ -138,7 +139,7 @@ else:
     gTicker: int # we use an additional counter to
                  # avoid calling 'getTicks' too frequently
 
-  proc requestedHook(): bool {.nimcall.} =
+  proc requestedHook(): bool {.nimcall, locks: 0.} =
     if interval == 0: result = true
     elif gTicker == 0:
       gTicker = 500
@@ -147,7 +148,7 @@ else:
     else:
       dec gTicker
 
-  proc hook(st: StackTrace) {.nimcall.} =
+  proc hook(st: StackTrace) {.nimcall, locks: 0.} =
     #echo "profiling! ", interval
     if interval == 0:
       hookAux(st, 1)
@@ -200,7 +201,8 @@ proc writeProfile() {.noconv.} =
           let procname = profileData[i].st[ii]
           let filename = profileData[i].st.files[ii]
           if isNil(procname): break
-          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ": " & $procname, " ",
+                    perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:

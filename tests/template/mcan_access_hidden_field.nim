@@ -5,5 +5,4 @@ type
 
 proc createFoo*(a, b: int): Foo = Foo(fooa: a, foob: b)
 
-template geta*(f: Foo): expr = f.fooa
-
+template geta*(f: Foo): untyped = f.fooa

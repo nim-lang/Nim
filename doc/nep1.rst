@@ -1,7 +1,7 @@
 ==============================================
 Nim Enhancement Proposal #1 - Standard Library Style Guide
 ==============================================
-:Author: Clay Sweetser
+:Author: Clay Sweetser, Dominik Picheta
 :Version: |nimversion|
 
 .. contents::
@@ -60,7 +60,7 @@ Spacing and Whitespace Conventions
 
 
 Naming Conventions
--------------------------
+------------------
 
 Note: While the rules outlined below are the *current* naming conventions,
 these conventions have not always been in place. Previously, the naming
@@ -76,12 +76,15 @@ changed in the future.
   are not required to.
 
   .. code-block:: nim
+    # Constants can start with either a lower case or upper case letter.
     const aConstant = 42
     const FooBar = 4.2
 
-    var aVariable = "Meep"
+    var aVariable = "Meep" # Variables must start with a lowercase letter.
 
-    type FooBar = object
+    # Types must start with an uppercase letter.
+    type
+      FooBar = object
 
   For constants coming from a C/C++ wrapper, ALL_UPPERCASE are allowed, but ugly.
   (Why shout CONSTANT? Constants do no harm, variables do!)
@@ -94,115 +97,179 @@ changed in the future.
 
   .. code-block:: nim
     type
-      Handle = int64 # Will be used most often
+      Handle = object # Will be used most often
+        fd: int64
       HandleRef = ref Handle # Will be used less often
+
 - Exception and Error types should have the "Error" suffix.
 
   .. code-block:: nim
-    type UnluckyError = object of Exception
+    type
+      UnluckyError = object of Exception
+
 - Unless marked with the `{.pure.}` pragma, members of enums should have an
   identifying prefix, such as an abbreviation of the enum's name.
 
   .. code-block:: nim
-    type PathComponent = enum
-      pcDir
-      pcLinkToDir
-      pcFile
-      pcLinkToFile
+    type
+      PathComponent = enum
+        pcDir
+        pcLinkToDir
+        pcFile
+        pcLinkToFile
+
 - Non-pure enum values should use camelCase whereas pure enum values should use
   PascalCase.
 
   .. code-block:: nim
-    type PathComponent {.pure.} = enum
-      Dir
-      LinkToDir
-      File
-      LinkToFile
+    type
+      PathComponent {.pure.} = enum
+        Dir
+        LinkToDir
+        File
+        LinkToFile
+
 - In the age of HTTP, HTML, FTP, TCP, IP, UTF, WWW it is foolish to pretend
-  these are somewhat special words requiring all uppercase. Instead tread them as what they are: Real words. So it's ``parseUrl`` rather than ``parseURL``, ``checkHttpHeader`` instead of ``checkHTTPHeader`` etc.
+  these are somewhat special words requiring all uppercase. Instead treat them
+  as what they are: Real words. So it's ``parseUrl`` rather than
+  ``parseURL``, ``checkHttpHeader`` instead of ``checkHTTPHeader`` etc.
+
+- Operations like ``mitems`` or ``mpairs`` (or the now deprecated ``mget``)
+  that allow a *mutating view* into some data structure should start with an ``m``.
+- When both in-place mutation and 'returns transformed copy' are available the latter
+  is a past participle of the former:
+
+  - reverse and reversed in algorithm
+  - sort and sorted
+  - rotate and rotated
+
+- When the 'returns transformed copy' version already exists like ``strutils.replace``
+  an in-place version should get an ``-In`` suffix (``replaceIn`` for this example).
+
+
+The stdlib API is designed to be **easy to use** and consistent. Ease of use is
+measured by the number of calls to achieve a concrete high level action. The
+ultimate goal is that the programmer can *guess* a name.
+
+The library uses a simple naming scheme that makes use of common abbreviations
+to keep the names short but meaningful.
+
+
+-------------------     ------------   --------------------------------------
+English word            To use         Notes
+-------------------     ------------   --------------------------------------
+initialize              initT          ``init`` is used to create a
+                                       value type ``T``
+new                     newP           ``new`` is used to create a
+                                       reference type ``P``
+find                    find           should return the position where
+                                       something was found; for a bool result
+                                       use ``contains``
+contains                contains       often short for ``find() >= 0``
+append                  add            use ``add`` instead of ``append``
+compare                 cmp            should return an int with the
+                                       ``< 0`` ``== 0`` or ``> 0`` semantics;
+                                       for a bool result use ``sameXYZ``
+put                     put, ``[]=``   consider overloading ``[]=`` for put
+get                     get, ``[]``    consider overloading ``[]`` for get;
+                                       consider to not use ``get`` as a
+                                       prefix: ``len`` instead of ``getLen``
+length                  len            also used for *number of elements*
+size                    size, len      size should refer to a byte size
+capacity                cap
+memory                  mem            implies a low-level operation
+items                   items          default iterator over a collection
+pairs                   pairs          iterator over (key, value) pairs
+delete                  delete, del    del is supposed to be faster than
+                                       delete, because it does not keep
+                                       the order; delete keeps the order
+remove                  delete, del    inconsistent right now
+include                 incl
+exclude                 excl
+command                 cmd
+execute                 exec
+environment             env
+variable                var
+value                   value, val     val is preferred, inconsistent right
+                                       now
+executable              exe
+directory               dir
+path                    path           path is the string "/usr/bin" (for
+                                       example), dir is the content of
+                                       "/usr/bin"; inconsistent right now
+extension               ext
+separator               sep
+column                  col, column    col is preferred, inconsistent right
+                                       now
+application             app
+configuration           cfg
+message                 msg
+argument                arg
+object                  obj
+parameter               param
+operator                opr
+procedure               proc
+function                func
+coordinate              coord
+rectangle               rect
+point                   point
+symbol                  sym
+literal                 lit
+string                  str
+identifier              ident
+indentation             indent
+-------------------     ------------   --------------------------------------
 
 
 Coding Conventions
 ------------------
 
-- The 'return' statement should only be used when its control-flow properties
-  are required. Use a procedure's implicit 'result' variable instead. This
-  improves readability.
+- The 'return' statement should ideally be used when its control-flow properties
+  are required. Use a procedure's implicit 'result' variable whenever possible.
+  This improves readability.
 
-- Prefer to return `[]` and `""` instead of `nil`, or throw an exception if
-  that is appropriate.
+  .. code-block:: nim
+    proc repeat(text: string, x: int): string =
+      result = ""
+
+      for i in 0 .. x:
+        result.add($i)
 
 - Use a proc when possible, only using the more powerful facilities of macros,
   templates, iterators, and converters when necessary.
 
-- Use the 'let' statement (not the var statement) when declaring variables that
-  do not change within their scope. Using the let statement ensures that
+- Use the ``let`` statement (not the ``var`` statement) when declaring variables that
+  do not change within their scope. Using the ``let`` statement ensures that
   variables remain immutable, and gives those who read the code a better idea
   of the code's purpose.
-
-- For new types, it is usually recommended to have both 'ref' and 'object'
-  versions of the type available for others to use. By making both variants
-  available for use, the type may be allocated both on the stack and the heap.
 
 
 Conventions for multi-line statements and expressions
 -----------------------------------------------------
 
-- Any tuple type declarations that are longer than one line should use the
-  regular object type layout instead. This enhances the readability of the
-  tuple declaration by splitting its members' information across multiple lines.
+- Tuples which are longer than one line should indent their parameters to
+  align with the parameters above it.
 
   .. code-block:: nim
     type
-      ShortTuple = tuple[a: int, b: string]
+      LongTupleA = tuple[wordyTupleMemberOne: int, wordyTupleMemberTwo: string,
+                         wordyTupleMemberThree: float]
 
-      ReallyLongTuple = tuple
-        wordyTupleMemberOne: string
-        wordyTupleMemberTwo: int
-        wordyTupleMemberThree: double
-- Similarly, any procedure type declarations that are longer than one line
-  should be formatted in the style of a regular type.
+- Similarly, any procedure and procedure type declarations that are longer
+  than one line should do the same thing.
 
   .. code-block:: nim
     type
-      EventCallback = proc (
-        timeRecieved: Time
-        errorCode: int
-        event: Event
-      )
-- Multi-line procedure declarations/argument lists should continue on the same
-  column as the opening brace. This style is different from that of procedure
-  type declarations in order to distinguish between the heading of a procedure
-  and its body. If the procedure name is too long to make this style
-  convenient, then one of the styles for multi-line procedure calls (or
-  consider renaming your procedure).
+      EventCallback = proc (timeReceived: Time, errorCode: int, event: Event,
+                            output: var string)
 
-  .. code-block:: nim
-    proc lotsOfArguments(argOne: string, argTwo: int, argThree:float
+    proc lotsOfArguments(argOne: string, argTwo: int, argThree: float
                          argFour: proc(), argFive: bool): int
                         {.heyLookALongPragma.} =
-- Multi-line procedure calls should either have one argument per line (like
-  multi-line type declarations) or continue on the same column as the opening
-  parenthesis (like multi-line procedure declarations).  It is suggested that
-  the former style be used for procedure calls with complex argument
-  structures, and the latter style for procedure calls with simpler argument
-  structures.
+
+- Multi-line procedure calls should continue on the same column as the opening
+  parenthesis (like multi-line procedure declarations).
 
   .. code-block:: nim
-    # Each argument on a new line, like type declarations
-    # Best suited for 'complex' procedure calls.
-    readDirectoryChangesW(
-      directoryHandle.THandle,
-      buffer.start,
-      bufferSize.int32,
-      watchSubdir.WinBool,
-      filterFlags,
-      cast[ptr dword](nil),
-      cast[Overlapped](ol),
-      cast[OverlappedCompletionRoutine](nil)
-    )
-
-    # Multiple arguments on new lines, aligned to the opening parenthesis
-    # Best suited for 'simple' procedure calls
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)

@@ -5,7 +5,7 @@ import
   sg_gui, sg_assets, sound_buffer, enet_client
 when defined(profiler):
   import nimprof
-{.deadCodeElim: on.}
+
 type
   PPlayer* = ref TPlayer
   TPlayer* = object
@@ -40,7 +40,7 @@ type
     trailDelay*: float
     body: chipmunk.PBody
     shape: chipmunk.PShape
-import vehicles
+include vehicles
 const
   LGrabbable*  = (1 shl 0).TLayers
   LBorders*    = (1 shl 1).TLayers
@@ -212,9 +212,10 @@ proc free(obj: PLiveBullet) =
   obj.record = nil
 
 
-template newExplosion(obj, animation): stmt =
+template newExplosion(obj, animation) =
   explosions.add(newAnimation(animation, AnimOnce, obj.body.getPos.cp2sfml, obj.body.getAngle))
-template newExplosion(obj, animation, angle): stmt =
+
+template newExplosion(obj, animation, angle) =
   explosions.add(newAnimation(animation, AnimOnce, obj.body.getPos.cp2sfml, angle))
 
 proc explode*(b: PLiveBullet) =
@@ -229,7 +230,7 @@ proc explode*(b: PLiveBullet) =
 proc bulletUpdate(body: PBody, gravity: TVector, damping, dt: CpFloat){.cdecl.} =
   body.UpdateVelocity(gravity, damping, dt)
 
-template getPhysical() {.immediate.} =
+template getPhysical() {.dirty.} =
   result.body = space.addBody(newBody(
     record.physics.mass,
     record.physics.moment))
@@ -280,7 +281,7 @@ proc draw*(window: PRenderWindow; b: PLiveBullet) {.inline.} =
 
 
 proc free*(veh: PVehicle) =
-  ("Destroying vehicle "& veh.record.name).echo
+  ("Destroying vehicle " & veh.record.name).echo
   destroy(veh.sprite)
   if veh.shape.isNil: "Free'd vehicle's shape was NIL!".echo
   else: space.removeShape(veh.shape)
@@ -289,12 +290,12 @@ proc free*(veh: PVehicle) =
   veh.body.free()
   veh.shape.free()
   veh.sprite = nil
-  veh.body   = nil
+  veh.body = nil
   veh.shape  = nil
 
 
 proc newVehicle*(record: PVehicleRecord): PVehicle =
-  echo("Creating "& record.name)
+  echo("Creating " & record.name)
   new(result, free)
   result.record = record
   result.sprite = result.record.anim.spriteSheet.sprite.copy()
@@ -662,7 +663,7 @@ proc mainRender() =
 proc readyMainState() =
   specInputClient.setActive()
 
-when isMainModule:
+when true:
   import parseopt
 
   localPlayer = newPlayer()

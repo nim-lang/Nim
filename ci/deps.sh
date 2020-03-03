@@ -3,12 +3,11 @@ echo "Running on $CI_RUNNER_ID ($CI_RUNNER_DESCRIPTION) with tags $CI_RUNNER_TAG
 
 # Packages
 apt-get update -qq
-apt-get install -y -qq build-essential git libcurl4-openssl-dev libsdl1.2-dev libgc-dev nodejs fasm
+apt-get install -y -qq build-essential git libcurl4-openssl-dev libsdl1.2-dev libgc-dev nodejs
 
 gcc -v
 
-fasm -v
-export PATH=$(pwd)/bin:$PATH
+export PATH=$(pwd)/bin${PATH:+:$PATH}
 
 # Nimble deps
 nim e install_nimble.nims

@@ -74,14 +74,14 @@ type
     ## nothing prevents you from accessing directly the type of field you want
     ## if you expect only one kind.
     case kind*: Tparam_kind
-    of PK_EMPTY: nil
+    of PK_EMPTY: discard
     of PK_INT: int_val*: int
     of PK_BIGGEST_INT: big_int_val*: BiggestInt
     of PK_FLOAT: float_val*: float
     of PK_BIGGEST_FLOAT: big_float_val*: BiggestFloat
     of PK_STRING: str_val*: string
     of PK_BOOL: bool_val*: bool
-    of PK_HELP: nil
+    of PK_HELP: discard
 
   Tcommandline_results* = object of RootObj ## \
     ## Contains the results of the parsing.
@@ -174,7 +174,7 @@ template new_parsed_parameter*(tkind: Tparam_kind, expr): Tparsed_parameter =
   ##     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)
   ##     parsed_param2 = new_parsed_parameter(PK_BIGGEST_INT, 2358123 * 23123)
   ##     # The following line doesn't compile due to
-  ##     # type mismatch: got (string) but expected 'int'
+  ##     # type mismatch: got <string> but expected 'int'
   ##     #parsed_param3 = new_parsed_parameter(PK_INT, "231")
   var result {.gensym.}: Tparsed_parameter
   result.kind = tkind
@@ -209,7 +209,7 @@ proc `$`*(data: Tcommandline_results): string =
 
 # - Parse code
 
-template raise_or_quit(exception, message: expr): stmt {.immediate.} =
+template raise_or_quit(exception, message: untyped) =
   ## Avoids repeating if check based on the default quit_on_failure variable.
   ##
   ## As a special case, if message has a zero length the call to quit won't
@@ -230,15 +230,15 @@ template run_custom_proc(parsed_parameter: Tparsed_parameter,
   ##
   ## Pass in the string of the parameter triggering the call. If the
   if not custom_validator.isNil:
+    try:
+      let message = custom_validator(parameter, parsed_parameter)
+      if message.len > 0:
+        raise_or_quit(ValueError, ("Failed to validate value for " &
+          "parameter $1:\n$2" % [escape(parameter), message]))
     except:
       raise_or_quit(ValueError, ("Couldn't run custom proc for " &
         "parameter $1:\n$2" % [escape(parameter),
         getCurrentExceptionMsg()]))
-    let message = custom_validator(parameter, parsed_parameter)
-    if not message.isNil and message.len > 0:
-      raise_or_quit(ValueError, ("Failed to validate value for " &
-        "parameter $1:\n$2" % [escape(parameter), message]))
-
 
 proc parse_parameter(quit_on_failure: bool, param, value: string,
     param_kind: Tparam_kind): Tparsed_parameter =
@@ -319,7 +319,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
 
 
 proc parse*(expected: seq[Tparameter_specification] = @[],
-    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = nil,
+    type_of_positional_parameters = PK_STRING, args: seq[TaintedString] = @[],
     bad_prefixes = @["-", "--"], end_of_options = "--",
     quit_on_failure = true): Tcommandline_results =
   ## Parses parameters and returns results.
@@ -339,7 +339,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
   ##
   ## The args sequence should be the list of parameters passed to your program
   ## without the program binary (usually OSes provide the path to the binary as
-  ## the zeroth parameter). If args is nil, the list will be retrieved from the
+  ## the zeroth parameter). If args is empty, the list will be retrieved from the
   ## OS.
   ##
   ## If there is any kind of error and quit_on_failure is true, the quit proc
@@ -358,7 +358,7 @@ proc parse*(expected: seq[Tparameter_specification] = @[],
 
   # Prepare the input parameter list, maybe get it from the OS if not available.
   var args = args
-  if args == nil:
+  if args.len == 0:
     let total_params = paramCount()
     #echo "Got no explicit args, retrieving from OS. Count: ", total_params
     newSeq(args, total_params)
@@ -471,7 +471,7 @@ proc build_help*(expected: seq[Tparameter_specification] = @[],
   let width = prefixes.map(proc (x: string): int = 3 + len(x)).max
 
   for line in zip(prefixes, helps):
-    result.add(line.a & spaces(width - line.a.len) & line.b)
+    result.add(line[0] & spaces(width - line[0].len) & line[1])
 
 
 proc echo_help*(expected: seq[Tparameter_specification] = @[],
@@ -486,7 +486,7 @@ proc echo_help*(expected: seq[Tparameter_specification] = @[],
     echo line
 
 
-when isMainModule:
+when true:
   # Simply tests code embedded in docs.
   let
     parsed_param1 = new_parsed_parameter(PK_FLOAT, 3.41)

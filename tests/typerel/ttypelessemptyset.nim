@@ -1,5 +1,5 @@
 discard """
-  errormsg: "internal error: invalid kind for last(tyEmpty)"
+  errormsg: "internal error: invalid kind for lastOrd(tyEmpty)"
 """
 var q = false
 discard (if q: {} else: {})

@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (Future[system.int], void)"
+  errormsg: "type mismatch: got <Future[system.int], void>"
   line: 20
 """
 

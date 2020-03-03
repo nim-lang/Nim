@@ -1,16 +1,17 @@
 discard """
-  file: "tfloat6.nim"
-  output: '''passed.
+output: '''
 passed.
 passed.
 passed.
 passed.
 passed.
-passed.'''
+passed.
+passed.
+'''
 """
 
 import strutils
-template expect_fail(x: expr) =
+template expect_fail(x) =
   try:
     discard x
     echo("expected to fail!")

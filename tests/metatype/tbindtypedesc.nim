@@ -1,10 +1,5 @@
 discard """
-  msg: '''int int
-float float
-int int
-TFoo TFoo
-int float
-TFoo TFoo'''
+  output: '''ok'''
 """
 
 import typetraits
@@ -16,10 +11,10 @@ type
   TBar = tuple
     x, y: int
 
-template accept(e: expr) =
+template accept(e) =
   static: assert(compiles(e))
 
-template reject(e: expr) =
+template reject(e) =
   static: assert(not compiles(e))
 
 proc genericParamRepeated[T: typedesc](a: T, b: T) =
@@ -46,7 +41,7 @@ type
   type1 = typedesc
   type2 = typedesc
 
-proc typePairs(A, B: type1; C, D: type2) = nil
+proc typePairs(A, B: type1; C, D: type2) = discard
 
 accept typePairs(int, int, TFoo, TFOO)
 accept typePairs(TBAR, TBar, TBAR, TBAR)
@@ -55,7 +50,7 @@ accept typePairs(int, int, string, string)
 reject typePairs(TBAR, TBar, TBar, TFoo)
 reject typePairs(string, int, TBAR, TBAR)
 
-proc typePairs2[T: typedesc, U: typedesc](A, B: T; C, D: U) = nil
+proc typePairs2[T: typedesc, U: typedesc](A, B: T; C, D: U) = discard
 
 accept typePairs2(int, int, TFoo, TFOO)
 accept typePairs2(TBAR, TBar, TBAR, TBAR)
@@ -71,12 +66,12 @@ proc dontBind(a: typedesc, b: typedesc) =
 accept dontBind(int, float)
 accept dontBind(TFoo, TFoo)
 
-proc dontBind2(a, b: typedesc) = nil
+proc dontBind2(a, b: typedesc) = discard
 
 accept dontBind2(int, float)
 accept dontBind2(TBar, int)
 
-proc bindArg(T: typedesc, U: typedesc, a, b: T, c, d: U) = nil
+proc bindArg(T: typedesc, U: typedesc, a, b: T, c, d: U) = discard
 
 accept bindArg(int, string, 10, 20, "test", "nest")
 accept bindArg(int, int, 10, 20, 30, 40)
@@ -86,3 +81,15 @@ reject bindArg(int, int, 10, 20, 30, "test")
 reject bindArg(int, string, 10.0, 20, "test", "nest")
 reject bindArg(int, string, "test", "nest", 10, 20)
 
+echo "ok"
+
+#11058:
+template test(S: type, U: type) =
+  discard
+
+test(int, float)
+
+proc test2(S: type, U: type) =
+  discard
+
+test2(float, int)

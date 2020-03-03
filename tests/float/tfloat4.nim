@@ -1,15 +1,14 @@
 discard """
-  file: "tfloat4.nim"
   output: "passed all tests."
-  exitcode: 0
 """
-import math, strutils
+
+import strutils
 
 proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", varargs.}
 
 proc floatToStr(f: float64): string =
   var buffer: array[128, char]
-  c_sprintf(buffer, "%.16e", f)
+  c_sprintf(addr buffer, "%.16e", f)
   result = ""
   for ch in buffer:
     if ch == '\0':
@@ -30,8 +29,10 @@ let testFloats = [
   "0.00097656250000000021684043449710088680149056017398834228515625"
 ]
 
-for num in testFloats:
-  doAssert num.parseFloat.floatToStr.parseFloat == num.parseFloat
+when not defined(windows):
+  # Windows' sprintf produces niceties like -1.#INF...
+  for num in testFloats:
+    doAssert num.parseFloat.floatToStr.parseFloat == num.parseFloat
 
 doAssert "0".parseFloat == 0.0
 doAssert "-.1".parseFloat == -0.1
@@ -46,5 +47,11 @@ doAssert "2.71828182845904523536028747".parseFloat ==
        2.71828182845904523536028747
 doAssert 0.00097656250000000021684043449710088680149056017398834228515625 ==
      "0.00097656250000000021684043449710088680149056017398834228515625".parseFloat
+doAssert 0.00998333 == ".00998333".parseFloat
+doAssert 0.00128333 == ".00128333".parseFloat
+doAssert 999999999999999.0 == "999999999999999.0".parseFloat
+doAssert 9999999999999999.0 == "9999999999999999.0".parseFloat
+doAssert 0.999999999999999 == ".999999999999999".parseFloat
+doAssert 0.9999999999999999 == ".9999999999999999".parseFloat
 
 echo("passed all tests.")

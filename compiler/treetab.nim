@@ -29,11 +29,10 @@ proc hashTree(n: PNode): Hash =
     if (n.floatVal >= - 1000000.0) and (n.floatVal <= 1000000.0):
       result = result !& toInt(n.floatVal)
   of nkStrLit..nkTripleStrLit:
-    if not n.strVal.isNil:
-      result = result !& hash(n.strVal)
+    result = result !& hash(n.strVal)
   else:
-    for i in countup(0, sonsLen(n) - 1):
-      result = result !& hashTree(n.sons[i])
+    for i in 0..<n.len:
+      result = result !& hashTree(n[i])
 
 proc treesEquivalent(a, b: PNode): bool =
   if a == b:
@@ -47,9 +46,9 @@ proc treesEquivalent(a, b: PNode): bool =
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
-          if not treesEquivalent(a.sons[i], b.sons[i]): return
+      if a.len == b.len:
+        for i in 0..<a.len:
+          if not treesEquivalent(a[i], b[i]): return
         result = true
     if result: result = sameTypeOrNil(a.typ, b.typ)
 
@@ -83,9 +82,9 @@ proc nodeTablePut*(t: var TNodeTable, key: PNode, val: int) =
     assert(t.data[index].key != nil)
     t.data[index].val = val
   else:
-    if mustRehash(len(t.data), t.counter):
-      newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(t.data)):
+    if mustRehash(t.data.len, t.counter):
+      newSeq(n, t.data.len * GrowthFactor)
+      for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)
@@ -100,9 +99,9 @@ proc nodeTableTestOrSet*(t: var TNodeTable, key: PNode, val: int): int =
     assert(t.data[index].key != nil)
     result = t.data[index].val
   else:
-    if mustRehash(len(t.data), t.counter):
-      newSeq(n, len(t.data) * GrowthFactor)
-      for i in countup(0, high(t.data)):
+    if mustRehash(t.data.len, t.counter):
+      newSeq(n, t.data.len * GrowthFactor)
+      for i in 0..high(t.data):
         if t.data[i].key != nil:
           nodeTableRawInsert(n, t.data[i].h, t.data[i].key, t.data[i].val)
       swap(t.data, n)

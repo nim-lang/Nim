@@ -1,5 +1,6 @@
 discard """
   exitcode: 0
+  disabled: '''true'''
 """
 import moverloading_typedesc
 import tables
@@ -9,7 +10,7 @@ type
   LBar = object
 
 
-when isMainModule:
+when true:
   doAssert FBar.new() == 3
 
   proc new(_: typedesc[LFoo]): int = 0

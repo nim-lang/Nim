@@ -1,11 +1,12 @@
 discard """
   output: '''24
-(bar: bar)
+(bar: "bar")
 1244
 6
 abcdefghijklmnopqrstuvwxyz
 145 23
-3'''
+3
+2'''
 """
 
 import strutils
@@ -32,7 +33,7 @@ when true:
     if (var yy = 0; yy != 0):
       echo yy
     else:
-      echo(try: parseInt("1244") except EINvalidValue: -1)
+      echo(try: parseInt("1244") except ValueError: -1)
     result = case x
              of 23: 3
              of 64:
@@ -80,13 +81,13 @@ semiProblem()
 # bug #844
 
 import json
-proc parseResponse(): PJsonNode =
+proc parseResponse(): JsonNode =
   result = % { "key1": % { "key2": % "value" } }
   for key, val in result["key1"]:
     var excMsg = key & "("
     if (var n=result["key2"]; n != nil):
       excMsg &= n.str
-    raise newException(ESynch, excMsg)
+    raise newException(CatchableError, excMsg)
 
 
 
@@ -98,7 +99,7 @@ let b = (se[1] = 1; 1)
 # bug #1161
 
 type
-  PFooBase = ref object of PObject
+  PFooBase = ref object of RootRef
     field: int
 
   PFoo[T] = ref object of PFooBase
@@ -122,3 +123,41 @@ var testTry =
     PFooBase(field: 5)
 
 echo(testTry.field)
+
+# bug #6166
+
+proc quo(op: proc (x: int): bool): int =
+  result =
+     if op(3):
+        2
+     else:
+        0
+
+echo(
+  if true:
+     quo do (a: int) -> bool:
+        a mod 2 != 0
+  else:
+     quo do (a: int) -> bool:
+        a mod 3 != 0
+)
+
+# bug #6980
+
+proc fooBool: bool {.discardable.} =
+  true
+
+if true:
+  fooBool()
+else:
+  raise newException(ValueError, "argh")
+
+# bug #5374
+
+proc test1(): int64 {.discardable.} = discard
+proc test2(): int {.discardable.} = discard
+
+if true:
+  test1()
+else:
+  test2()

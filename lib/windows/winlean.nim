@@ -10,22 +10,22 @@
 ## This module implements a small wrapper for some needed Win API procedures,
 ## so that the Nim compiler does not depend on the huge Windows module.
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 import dynlib
 
-when defined(vcc):
-  {.passC: "-DWIN32_LEAN_AND_MEAN".}
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
+
+{.passc: "-DWIN32_LEAN_AND_MEAN".}
 
 const
   useWinUnicode* = not defined(useWinAnsi)
 
 when useWinUnicode:
   type WinChar* = Utf16Char
-  {.deprecated: [TWinChar: WinChar].}
 else:
   type WinChar* = char
-  {.deprecated: [TWinChar: WinChar].}
 
 type
   Handle* = int
@@ -96,10 +96,6 @@ type
     dwPlatformId*: DWORD
     szCSDVersion*: array[0..127, WinChar]
 
-{.deprecated: [THandle: Handle, TSECURITY_ATTRIBUTES: SECURITY_ATTRIBUTES,
-    TSTARTUPINFO: STARTUPINFO, TPROCESS_INFORMATION: PROCESS_INFORMATION,
-    TFILETIME: FILETIME, TBY_HANDLE_FILE_INFORMATION: BY_HANDLE_FILE_INFORMATION].}
-
 const
   STARTF_USESHOWWINDOW* = 1'i32
   STARTF_USESTDHANDLES* = 256'i32
@@ -111,6 +107,7 @@ const
   WAIT_TIMEOUT* = 0x00000102'i32
   WAIT_FAILED* = 0xFFFFFFFF'i32
   INFINITE* = -1'i32
+  STILL_ACTIVE* = 0x00000103'i32
 
   STD_INPUT_HANDLE* = -10'i32
   STD_OUTPUT_HANDLE* = -11'i32
@@ -128,39 +125,40 @@ const
   PIPE_ACCESS_OUTBOUND* = 2'i32
   PIPE_NOWAIT* = 0x00000001'i32
   SYNCHRONIZE* = 0x00100000'i32
-  FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
 when useWinUnicode:
-  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExW".}
+  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
+      stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
 else:
-  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.stdcall, dynlib: "kernel32", importc: "GetVersionExA".}
+  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
+      stdcall, dynlib: "kernel32", importc: "GetVersionExA", sideEffect.}
 
-proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion".}
+proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion", sideEffect.}
 
 proc closeHandle*(hObject: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "CloseHandle".}
 
-proc readFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToRead: int32,
+proc readFile*(hFile: Handle, buffer: pointer, nNumberOfBytesToRead: int32,
                lpNumberOfBytesRead: ptr int32, lpOverlapped: pointer): WINBOOL{.
-    stdcall, dynlib: "kernel32", importc: "ReadFile".}
+    stdcall, dynlib: "kernel32", importc: "ReadFile", sideEffect.}
 
-proc writeFile*(hFile: Handle, Buffer: pointer, nNumberOfBytesToWrite: int32,
+proc writeFile*(hFile: Handle, buffer: pointer, nNumberOfBytesToWrite: int32,
                 lpNumberOfBytesWritten: ptr int32,
                 lpOverlapped: pointer): WINBOOL{.
-    stdcall, dynlib: "kernel32", importc: "WriteFile".}
+    stdcall, dynlib: "kernel32", importc: "WriteFile", sideEffect.}
 
 proc createPipe*(hReadPipe, hWritePipe: var Handle,
                  lpPipeAttributes: var SECURITY_ATTRIBUTES,
                  nSize: int32): WINBOOL{.
-    stdcall, dynlib: "kernel32", importc: "CreatePipe".}
+    stdcall, dynlib: "kernel32", importc: "CreatePipe", sideEffect.}
 
 proc createNamedPipe*(lpName: WideCString,
                      dwOpenMode, dwPipeMode, nMaxInstances, nOutBufferSize,
                      nInBufferSize, nDefaultTimeOut: int32,
                      lpSecurityAttributes: ptr SECURITY_ATTRIBUTES): Handle {.
-    stdcall, dynlib: "kernel32", importc: "CreateNamedPipeW".}
+    stdcall, dynlib: "kernel32", importc: "CreateNamedPipeW", sideEffect.}
 
 proc peekNamedPipe*(hNamedPipe: Handle, lpBuffer: pointer=nil,
                     nBufferSize: int32 = 0,
@@ -177,7 +175,7 @@ when useWinUnicode:
                      lpEnvironment, lpCurrentDirectory: WideCString,
                      lpStartupInfo: var STARTUPINFO,
                      lpProcessInformation: var PROCESS_INFORMATION): WINBOOL{.
-    stdcall, dynlib: "kernel32", importc: "CreateProcessW".}
+    stdcall, dynlib: "kernel32", importc: "CreateProcessW", sideEffect.}
 
 else:
   proc createProcessA*(lpApplicationName, lpCommandLine: cstring,
@@ -187,19 +185,19 @@ else:
                        lpEnvironment: pointer, lpCurrentDirectory: cstring,
                        lpStartupInfo: var STARTUPINFO,
                        lpProcessInformation: var PROCESS_INFORMATION): WINBOOL{.
-      stdcall, dynlib: "kernel32", importc: "CreateProcessA".}
+      stdcall, dynlib: "kernel32", importc: "CreateProcessA", sideEffect.}
 
 
 proc suspendThread*(hThread: Handle): int32 {.stdcall, dynlib: "kernel32",
-    importc: "SuspendThread".}
+    importc: "SuspendThread", sideEffect.}
 proc resumeThread*(hThread: Handle): int32 {.stdcall, dynlib: "kernel32",
-    importc: "ResumeThread".}
+    importc: "ResumeThread", sideEffect.}
 
 proc waitForSingleObject*(hHandle: Handle, dwMilliseconds: int32): int32 {.
-    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject".}
+    stdcall, dynlib: "kernel32", importc: "WaitForSingleObject", sideEffect.}
 
 proc terminateProcess*(hProcess: Handle, uExitCode: int): WINBOOL {.stdcall,
-    dynlib: "kernel32", importc: "TerminateProcess".}
+    dynlib: "kernel32", importc: "TerminateProcess", sideEffect.}
 
 proc getExitCodeProcess*(hProcess: Handle, lpExitCode: var int32): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetExitCodeProcess".}
@@ -207,27 +205,27 @@ proc getExitCodeProcess*(hProcess: Handle, lpExitCode: var int32): WINBOOL {.
 proc getStdHandle*(nStdHandle: int32): Handle {.stdcall, dynlib: "kernel32",
     importc: "GetStdHandle".}
 proc setStdHandle*(nStdHandle: int32, hHandle: Handle): WINBOOL {.stdcall,
-    dynlib: "kernel32", importc: "SetStdHandle".}
+    dynlib: "kernel32", importc: "SetStdHandle", sideEffect.}
 proc flushFileBuffers*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
-    importc: "FlushFileBuffers".}
+    importc: "FlushFileBuffers", sideEffect.}
 
 proc getLastError*(): int32 {.importc: "GetLastError",
-    stdcall, dynlib: "kernel32".}
+    stdcall, dynlib: "kernel32", sideEffect.}
 
 proc setLastError*(error: int32) {.importc: "SetLastError",
-    stdcall, dynlib: "kernel32".}
+    stdcall, dynlib: "kernel32", sideEffect.}
 
 when useWinUnicode:
   proc formatMessageW*(dwFlags: int32, lpSource: pointer,
                       dwMessageId, dwLanguageId: int32,
                       lpBuffer: pointer, nSize: int32,
-                      Arguments: pointer): int32 {.
+                      arguments: pointer): int32 {.
                       importc: "FormatMessageW", stdcall, dynlib: "kernel32".}
 else:
   proc formatMessageA*(dwFlags: int32, lpSource: pointer,
                     dwMessageId, dwLanguageId: int32,
                     lpBuffer: pointer, nSize: int32,
-                    Arguments: pointer): int32 {.
+                    arguments: pointer): int32 {.
                     importc: "FormatMessageA", stdcall, dynlib: "kernel32".}
 
 proc localFree*(p: pointer) {.
@@ -236,30 +234,30 @@ proc localFree*(p: pointer) {.
 when useWinUnicode:
   proc getCurrentDirectoryW*(nBufferLength: int32,
                              lpBuffer: WideCString): int32 {.
-    importc: "GetCurrentDirectoryW", dynlib: "kernel32", stdcall.}
+    importc: "GetCurrentDirectoryW", dynlib: "kernel32", stdcall, sideEffect.}
   proc setCurrentDirectoryW*(lpPathName: WideCString): int32 {.
-    importc: "SetCurrentDirectoryW", dynlib: "kernel32", stdcall.}
+    importc: "SetCurrentDirectoryW", dynlib: "kernel32", stdcall, sideEffect.}
   proc createDirectoryW*(pathName: WideCString, security: pointer=nil): int32 {.
-    importc: "CreateDirectoryW", dynlib: "kernel32", stdcall.}
+    importc: "CreateDirectoryW", dynlib: "kernel32", stdcall, sideEffect.}
   proc removeDirectoryW*(lpPathName: WideCString): int32 {.
-    importc: "RemoveDirectoryW", dynlib: "kernel32", stdcall.}
+    importc: "RemoveDirectoryW", dynlib: "kernel32", stdcall, sideEffect.}
   proc setEnvironmentVariableW*(lpName, lpValue: WideCString): int32 {.
-    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableW".}
+    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableW", sideEffect.}
 
   proc getModuleFileNameW*(handle: Handle, buf: WideCString,
                            size: int32): int32 {.importc: "GetModuleFileNameW",
     dynlib: "kernel32", stdcall.}
 else:
   proc getCurrentDirectoryA*(nBufferLength: int32, lpBuffer: cstring): int32 {.
-    importc: "GetCurrentDirectoryA", dynlib: "kernel32", stdcall.}
+    importc: "GetCurrentDirectoryA", dynlib: "kernel32", stdcall, sideEffect.}
   proc setCurrentDirectoryA*(lpPathName: cstring): int32 {.
-    importc: "SetCurrentDirectoryA", dynlib: "kernel32", stdcall.}
+    importc: "SetCurrentDirectoryA", dynlib: "kernel32", stdcall, sideEffect.}
   proc createDirectoryA*(pathName: cstring, security: pointer=nil): int32 {.
-    importc: "CreateDirectoryA", dynlib: "kernel32", stdcall.}
+    importc: "CreateDirectoryA", dynlib: "kernel32", stdcall, sideEffect.}
   proc removeDirectoryA*(lpPathName: cstring): int32 {.
-    importc: "RemoveDirectoryA", dynlib: "kernel32", stdcall.}
+    importc: "RemoveDirectoryA", dynlib: "kernel32", stdcall, sideEffect.}
   proc setEnvironmentVariableA*(lpName, lpValue: cstring): int32 {.
-    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA".}
+    stdcall, dynlib: "kernel32", importc: "SetEnvironmentVariableA", sideEffect.}
 
   proc getModuleFileNameA*(handle: Handle, buf: cstring, size: int32): int32 {.
     importc: "GetModuleFileNameA", dynlib: "kernel32", stdcall.}
@@ -267,30 +265,54 @@ else:
 when useWinUnicode:
   proc createSymbolicLinkW*(lpSymlinkFileName, lpTargetFileName: WideCString,
                          flags: DWORD): int32 {.
-    importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall.}
+    importc:"CreateSymbolicLinkW", dynlib: "kernel32", stdcall, sideEffect.}
   proc createHardLinkW*(lpFileName, lpExistingFileName: WideCString,
                          security: pointer=nil): int32 {.
-    importc:"CreateHardLinkW", dynlib: "kernel32", stdcall.}
+    importc:"CreateHardLinkW", dynlib: "kernel32", stdcall, sideEffect.}
 else:
   proc createSymbolicLinkA*(lpSymlinkFileName, lpTargetFileName: cstring,
                            flags: DWORD): int32 {.
-    importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall.}
+    importc:"CreateSymbolicLinkA", dynlib: "kernel32", stdcall, sideEffect.}
   proc createHardLinkA*(lpFileName, lpExistingFileName: cstring,
                            security: pointer=nil): int32 {.
-    importc:"CreateHardLinkA", dynlib: "kernel32", stdcall.}
+    importc:"CreateHardLinkA", dynlib: "kernel32", stdcall, sideEffect.}
 
 const
-  FILE_ATTRIBUTE_ARCHIVE* = 32'i32
-  FILE_ATTRIBUTE_COMPRESSED* = 2048'i32
-  FILE_ATTRIBUTE_NORMAL* = 128'i32
-  FILE_ATTRIBUTE_DIRECTORY* = 16'i32
-  FILE_ATTRIBUTE_HIDDEN* = 2'i32
-  FILE_ATTRIBUTE_READONLY* = 1'i32
-  FILE_ATTRIBUTE_REPARSE_POINT* = 1024'i32
-  FILE_ATTRIBUTE_SYSTEM* = 4'i32
-  FILE_ATTRIBUTE_TEMPORARY* = 256'i32
+  FILE_ATTRIBUTE_READONLY* = 0x00000001'i32
+  FILE_ATTRIBUTE_HIDDEN* = 0x00000002'i32
+  FILE_ATTRIBUTE_SYSTEM* = 0x00000004'i32
+  FILE_ATTRIBUTE_DIRECTORY* = 0x00000010'i32
+  FILE_ATTRIBUTE_ARCHIVE* = 0x00000020'i32
+  FILE_ATTRIBUTE_DEVICE* = 0x00000040'i32
+  FILE_ATTRIBUTE_NORMAL* = 0x00000080'i32
+  FILE_ATTRIBUTE_TEMPORARY* = 0x00000100'i32
+  FILE_ATTRIBUTE_SPARSE_FILE* = 0x00000200'i32
+  FILE_ATTRIBUTE_REPARSE_POINT* = 0x00000400'i32
+  FILE_ATTRIBUTE_COMPRESSED* = 0x00000800'i32
+  FILE_ATTRIBUTE_OFFLINE* = 0x00001000'i32
+  FILE_ATTRIBUTE_NOT_CONTENT_INDEXED* = 0x00002000'i32
+
+  FILE_FLAG_FIRST_PIPE_INSTANCE* = 0x00080000'i32
+  FILE_FLAG_OPEN_NO_RECALL* = 0x00100000'i32
+  FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
+  FILE_FLAG_POSIX_SEMANTICS* = 0x01000000'i32
+  FILE_FLAG_BACKUP_SEMANTICS* = 0x02000000'i32
+  FILE_FLAG_DELETE_ON_CLOSE* = 0x04000000'i32
+  FILE_FLAG_SEQUENTIAL_SCAN* = 0x08000000'i32
+  FILE_FLAG_RANDOM_ACCESS* = 0x10000000'i32
+  FILE_FLAG_NO_BUFFERING* = 0x20000000'i32
+  FILE_FLAG_OVERLAPPED* = 0x40000000'i32
+  FILE_FLAG_WRITE_THROUGH* = 0x80000000'i32
 
   MAX_PATH* = 260
+
+  MOVEFILE_COPY_ALLOWED* = 0x2'i32
+  MOVEFILE_CREATE_HARDLINK* = 0x10'i32
+  MOVEFILE_DELAY_UNTIL_REBOOT* = 0x4'i32
+  MOVEFILE_FAIL_IF_NOT_TRACKABLE* = 0x20'i32
+  MOVEFILE_REPLACE_EXISTING* = 0x1'i32
+  MOVEFILE_WRITE_THROUGH* = 0x8'i32
+
 type
   WIN32_FIND_DATA* {.pure.} = object
     dwFileAttributes*: int32
@@ -303,22 +325,21 @@ type
     dwReserved1: int32
     cFileName*: array[0..(MAX_PATH) - 1, WinChar]
     cAlternateFileName*: array[0..13, WinChar]
-{.deprecated: [TWIN32_FIND_DATA: WIN32_FIND_DATA].}
 
 when useWinUnicode:
   proc findFirstFileW*(lpFileName: WideCString,
                       lpFindFileData: var WIN32_FIND_DATA): Handle {.
-      stdcall, dynlib: "kernel32", importc: "FindFirstFileW".}
+      stdcall, dynlib: "kernel32", importc: "FindFirstFileW", sideEffect.}
   proc findNextFileW*(hFindFile: Handle,
                      lpFindFileData: var WIN32_FIND_DATA): int32 {.
-      stdcall, dynlib: "kernel32", importc: "FindNextFileW".}
+      stdcall, dynlib: "kernel32", importc: "FindNextFileW", sideEffect.}
 else:
   proc findFirstFileA*(lpFileName: cstring,
                       lpFindFileData: var WIN32_FIND_DATA): Handle {.
-      stdcall, dynlib: "kernel32", importc: "FindFirstFileA".}
+      stdcall, dynlib: "kernel32", importc: "FindFirstFileA", sideEffect.}
   proc findNextFileA*(hFindFile: Handle,
                      lpFindFileData: var WIN32_FIND_DATA): int32 {.
-      stdcall, dynlib: "kernel32", importc: "FindNextFileA".}
+      stdcall, dynlib: "kernel32", importc: "FindNextFileA", sideEffect.}
 
 proc findClose*(hFindFile: Handle) {.stdcall, dynlib: "kernel32",
   importc: "FindClose".}
@@ -328,55 +349,61 @@ when useWinUnicode:
                         lpBuffer: WideCString,
                         lpFilePart: var WideCString): int32 {.
                         stdcall, dynlib: "kernel32",
-                        importc: "GetFullPathNameW".}
+                        importc: "GetFullPathNameW", sideEffect.}
   proc getFileAttributesW*(lpFileName: WideCString): int32 {.
                           stdcall, dynlib: "kernel32",
-                          importc: "GetFileAttributesW".}
+                          importc: "GetFileAttributesW", sideEffect.}
   proc setFileAttributesW*(lpFileName: WideCString,
                            dwFileAttributes: int32): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "SetFileAttributesW".}
+      stdcall, dynlib: "kernel32", importc: "SetFileAttributesW", sideEffect.}
 
   proc copyFileW*(lpExistingFileName, lpNewFileName: WideCString,
                  bFailIfExists: WINBOOL): WINBOOL {.
-    importc: "CopyFileW", stdcall, dynlib: "kernel32".}
+    importc: "CopyFileW", stdcall, dynlib: "kernel32", sideEffect.}
 
   proc moveFileW*(lpExistingFileName, lpNewFileName: WideCString): WINBOOL {.
-    importc: "MoveFileW", stdcall, dynlib: "kernel32".}
+    importc: "MoveFileW", stdcall, dynlib: "kernel32", sideEffect.}
+  proc moveFileExW*(lpExistingFileName, lpNewFileName: WideCString,
+                    flags: DWORD): WINBOOL {.
+    importc: "MoveFileExW", stdcall, dynlib: "kernel32", sideEffect.}
 
   proc getEnvironmentStringsW*(): WideCString {.
-    stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsW".}
+    stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsW", sideEffect.}
   proc freeEnvironmentStringsW*(para1: WideCString): int32 {.
-    stdcall, dynlib: "kernel32", importc: "FreeEnvironmentStringsW".}
+    stdcall, dynlib: "kernel32", importc: "FreeEnvironmentStringsW", sideEffect.}
 
   proc getCommandLineW*(): WideCString {.importc: "GetCommandLineW",
-    stdcall, dynlib: "kernel32".}
+    stdcall, dynlib: "kernel32", sideEffect.}
 
 else:
   proc getFullPathNameA*(lpFileName: cstring, nBufferLength: int32,
                         lpBuffer: cstring, lpFilePart: var cstring): int32 {.
                         stdcall, dynlib: "kernel32",
-                        importc: "GetFullPathNameA".}
+                        importc: "GetFullPathNameA", sideEffect.}
   proc getFileAttributesA*(lpFileName: cstring): int32 {.
                           stdcall, dynlib: "kernel32",
-                          importc: "GetFileAttributesA".}
+                          importc: "GetFileAttributesA", sideEffect.}
   proc setFileAttributesA*(lpFileName: cstring,
                            dwFileAttributes: int32): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "SetFileAttributesA".}
+      stdcall, dynlib: "kernel32", importc: "SetFileAttributesA", sideEffect.}
 
   proc copyFileA*(lpExistingFileName, lpNewFileName: cstring,
                  bFailIfExists: cint): cint {.
-    importc: "CopyFileA", stdcall, dynlib: "kernel32".}
+    importc: "CopyFileA", stdcall, dynlib: "kernel32", sideEffect.}
 
   proc moveFileA*(lpExistingFileName, lpNewFileName: cstring): WINBOOL {.
-    importc: "MoveFileA", stdcall, dynlib: "kernel32".}
+    importc: "MoveFileA", stdcall, dynlib: "kernel32", sideEffect.}
+  proc moveFileExA*(lpExistingFileName, lpNewFileName: cstring,
+                    flags: DWORD): WINBOOL {.
+    importc: "MoveFileExA", stdcall, dynlib: "kernel32", sideEffect.}
 
   proc getEnvironmentStringsA*(): cstring {.
-    stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsA".}
+    stdcall, dynlib: "kernel32", importc: "GetEnvironmentStringsA", sideEffect.}
   proc freeEnvironmentStringsA*(para1: cstring): int32 {.
-    stdcall, dynlib: "kernel32", importc: "FreeEnvironmentStringsA".}
+    stdcall, dynlib: "kernel32", importc: "FreeEnvironmentStringsA", sideEffect.}
 
   proc getCommandLineA*(): cstring {.
-    importc: "GetCommandLineA", stdcall, dynlib: "kernel32".}
+    importc: "GetCommandLineA", stdcall, dynlib: "kernel32", sideEffect.}
 
 proc rdFileTime*(f: FILETIME): int64 =
   result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
@@ -385,26 +412,26 @@ proc rdFileSize*(f: WIN32_FIND_DATA): int64 =
   result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
 
 proc getSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
-  importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall.}
+  importc: "GetSystemTimeAsFileTime", dynlib: "kernel32", stdcall, sideEffect.}
 
 proc sleep*(dwMilliseconds: int32){.stdcall, dynlib: "kernel32",
-                                    importc: "Sleep".}
+                                    importc: "Sleep", sideEffect.}
 
 when useWinUnicode:
-  proc shellExecuteW*(HWND: Handle, lpOperation, lpFile,
+  proc shellExecuteW*(hwnd: Handle, lpOperation, lpFile,
                      lpParameters, lpDirectory: WideCString,
                      nShowCmd: int32): Handle{.
-      stdcall, dynlib: "shell32.dll", importc: "ShellExecuteW".}
+      stdcall, dynlib: "shell32.dll", importc: "ShellExecuteW", sideEffect.}
 
 else:
-  proc shellExecuteA*(HWND: Handle, lpOperation, lpFile,
+  proc shellExecuteA*(hwnd: Handle, lpOperation, lpFile,
                      lpParameters, lpDirectory: cstring,
                      nShowCmd: int32): Handle{.
-      stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA".}
+      stdcall, dynlib: "shell32.dll", importc: "ShellExecuteA", sideEffect.}
 
 proc getFileInformationByHandle*(hFile: Handle,
   lpFileInformation: ptr BY_HANDLE_FILE_INFORMATION): WINBOOL{.
-    stdcall, dynlib: "kernel32", importc: "GetFileInformationByHandle".}
+    stdcall, dynlib: "kernel32", importc: "GetFileInformationByHandle", sideEffect.}
 
 const
   WSADESCRIPTION_LEN* = 256
@@ -419,14 +446,10 @@ const
 
   ws2dll = "Ws2_32.dll"
 
-  WSAEWOULDBLOCK* = 10035
-  WSAEINPROGRESS* = 10036
-
-proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll.}
+proc wsaGetLastError*(): cint {.importc: "WSAGetLastError", dynlib: ws2dll, sideEffect.}
 
 type
   SocketHandle* = distinct int
-{.deprecated: [TSocketHandle: SocketHandle].}
 
 type
   WSAData* {.importc: "WSADATA", header: "winsock2.h".} = object
@@ -437,8 +460,8 @@ type
     lpVendorInfo: cstring
 
   SockAddr* {.importc: "SOCKADDR", header: "winsock2.h".} = object
-    sa_family*: int16 # unsigned
-    sa_data: array[0..13, char]
+    sa_family*: uint16
+    sa_data*: array[0..13, char]
 
   PSockAddr = ptr SockAddr
 
@@ -447,7 +470,7 @@ type
 
   Sockaddr_in* {.importc: "SOCKADDR_IN",
                   header: "winsock2.h".} = object
-    sin_family*: int16
+    sin_family*: uint16
     sin_port*: uint16
     sin_addr*: InAddr
     sin_zero*: array[0..7, char]
@@ -457,17 +480,18 @@ type
 
   Sockaddr_in6* {.importc: "SOCKADDR_IN6",
                    header: "ws2tcpip.h".} = object
-    sin6_family*: int16
+    sin6_family*: uint16
     sin6_port*: uint16
     sin6_flowinfo*: int32 # unsigned
     sin6_addr*: In6_addr
     sin6_scope_id*: int32 # unsigned
 
-  Sockaddr_in6_old* = object
-    sin6_family*: int16
-    sin6_port*: int16 # unsigned
-    sin6_flowinfo*: int32 # unsigned
-    sin6_addr*: In6_addr
+  Sockaddr_storage* {.importc: "SOCKADDR_STORAGE",
+                      header: "winsock2.h".} = object
+    ss_family*: uint16
+    ss_pad1: array[6, byte]
+    ss_align: int64
+    ss_pad2: array[112, byte]
 
   Servent* = object
     s_name*: cstring
@@ -490,26 +514,26 @@ type
     fd_count*: cint # unsigned
     fd_array*: array[0..FD_SETSIZE-1, SocketHandle]
 
-  Timeval* = object
-    tv_sec*, tv_usec*: int32
-
   AddrInfo* = object
     ai_flags*: cint         ## Input flags.
     ai_family*: cint        ## Address family of socket.
     ai_socktype*: cint      ## Socket type.
     ai_protocol*: cint      ## Protocol of socket.
-    ai_addrlen*: int        ## Length of socket address.
+    ai_addrlen*: csize_t        ## Length of socket address.
     ai_canonname*: cstring  ## Canonical name of service location.
     ai_addr*: ptr SockAddr ## Socket address of socket.
     ai_next*: ptr AddrInfo ## Pointer to next in list.
 
   SockLen* = cuint
-{.deprecated: [TSockaddr_in: Sockaddr_in, TAddrinfo: AddrInfo,
-    TSockAddr: SockAddr, TSockLen: SockLen, TTimeval: Timeval,
-    TWSADATA: WSADATA, Thostent: Hostent, TServent: Servent,
-    TInAddr: InAddr, Tin6_addr: In6_addr, Tsockaddr_in6: Sockaddr_in6,
-    Tsockaddr_in6_old: Sockaddr_in6_old].}
 
+when defined(cpp):
+  type
+    Timeval* {.importc: "timeval", header: "<time.h>".} = object
+      tv_sec*, tv_usec*: int32
+else:
+  type
+    Timeval* = object
+      tv_sec*, tv_usec*: int32
 
 var
   SOMAXCONN* {.importc, header: "winsock2.h".}: cint
@@ -530,20 +554,24 @@ var
   SO_DONTLINGER* {.importc, header: "winsock2.h".}: cint
   SO_EXCLUSIVEADDRUSE* {.importc, header: "winsock2.h".}: cint # disallow local address reuse
   SO_ERROR* {.importc, header: "winsock2.h".}: cint
+  TCP_NODELAY* {.importc, header: "winsock2.h".}: cint
 
 proc `==`*(x, y: SocketHandle): bool {.borrow.}
 
 proc getservbyname*(name, proto: cstring): ptr Servent {.
-  stdcall, importc: "getservbyname", dynlib: ws2dll.}
+  stdcall, importc: "getservbyname", dynlib: ws2dll, sideEffect.}
 
 proc getservbyport*(port: cint, proto: cstring): ptr Servent {.
-  stdcall, importc: "getservbyport", dynlib: ws2dll.}
+  stdcall, importc: "getservbyport", dynlib: ws2dll, sideEffect.}
 
 proc gethostbyaddr*(ip: ptr InAddr, len: cuint, theType: cint): ptr Hostent {.
-  stdcall, importc: "gethostbyaddr", dynlib: ws2dll.}
+  stdcall, importc: "gethostbyaddr", dynlib: ws2dll, sideEffect.}
 
 proc gethostbyname*(name: cstring): ptr Hostent {.
-  stdcall, importc: "gethostbyname", dynlib: ws2dll.}
+  stdcall, importc: "gethostbyname", dynlib: ws2dll, sideEffect.}
+
+proc gethostname*(hostname: cstring, len: cint): cint {.
+  stdcall, importc: "gethostname", dynlib: ws2dll, sideEffect.}
 
 proc socket*(af, typ, protocol: cint): SocketHandle {.
   stdcall, importc: "socket", dynlib: ws2dll.}
@@ -630,7 +658,6 @@ const
 type
   WOHandleArray* = array[0..MAXIMUM_WAIT_OBJECTS - 1, Handle]
   PWOHandleArray* = ptr WOHandleArray
-{.deprecated: [TWOHandleArray: WOHandleArray].}
 
 proc waitForMultipleObjects*(nCount: DWORD, lpHandles: PWOHandleArray,
                              bWaitAll: WINBOOL, dwMilliseconds: DWORD): DWORD{.
@@ -650,34 +677,46 @@ const
   CREATE_ALWAYS* = 2'i32
   CREATE_NEW* = 1'i32
   OPEN_EXISTING* = 3'i32
+  OPEN_ALWAYS* = 4'i32
   FILE_BEGIN* = 0'i32
   INVALID_SET_FILE_POINTER* = -1'i32
   NO_ERROR* = 0'i32
+  PAGE_NOACCESS* = 0x01'i32
+  PAGE_EXECUTE* = 0x10'i32
+  PAGE_EXECUTE_READ* = 0x20'i32
+  PAGE_EXECUTE_READWRITE* = 0x40'i32
   PAGE_READONLY* = 2'i32
   PAGE_READWRITE* = 4'i32
   FILE_MAP_READ* = 4'i32
   FILE_MAP_WRITE* = 2'i32
   INVALID_FILE_SIZE* = -1'i32
 
-  FILE_FLAG_BACKUP_SEMANTICS* = 33554432'i32
-  FILE_FLAG_OPEN_REPARSE_POINT* = 0x00200000'i32
   DUPLICATE_SAME_ACCESS* = 2
   FILE_READ_DATA* = 0x00000001 # file & pipe
   FILE_WRITE_DATA* = 0x00000002 # file & pipe
 
 # Error Constants
 const
+  ERROR_FILE_NOT_FOUND* = 2
+  ERROR_PATH_NOT_FOUND* = 3
   ERROR_ACCESS_DENIED* = 5
+  ERROR_NO_MORE_FILES* = 18
+  ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
 
-proc duplicateHandle*(hSourceProcessHandle: HANDLE, hSourceHandle: HANDLE,
-                      hTargetProcessHandle: HANDLE,
-                      lpTargetHandle: ptr HANDLE,
+proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
+                      hTargetProcessHandle: Handle,
+                      lpTargetHandle: ptr Handle,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
-proc getCurrentProcess*(): HANDLE{.stdcall, dynlib: "kernel32",
+
+proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
+                           dwFlags: DWORD): WINBOOL {.stdcall,
+    dynlib: "kernel32", importc: "SetHandleInformation".}
+
+proc getCurrentProcess*(): Handle{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
 when useWinUnicode:
@@ -708,9 +747,16 @@ proc setFilePointer*(hFile: Handle, lDistanceToMove: LONG,
 proc getFileSize*(hFile: Handle, lpFileSizeHigh: ptr DWORD): DWORD{.stdcall,
     dynlib: "kernel32", importc: "GetFileSize".}
 
+when defined(cpu32):
+  type
+    WinSizeT* = uint32
+else:
+  type
+    WinSizeT* = uint64
+
 proc mapViewOfFileEx*(hFileMappingObject: Handle, dwDesiredAccess: DWORD,
                       dwFileOffsetHigh, dwFileOffsetLow: DWORD,
-                      dwNumberOfBytesToMap: DWORD,
+                      dwNumberOfBytesToMap: WinSizeT,
                       lpBaseAddress: pointer): pointer{.
     stdcall, dynlib: "kernel32", importc: "MapViewOfFileEx".}
 
@@ -731,6 +777,9 @@ when not useWinUnicode:
 proc unmapViewOfFile*(lpBaseAddress: pointer): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "UnmapViewOfFile".}
 
+proc flushViewOfFile*(lpBaseAddress: pointer, dwNumberOfBytesToFlush: DWORD): WINBOOL {.
+  stdcall, dynlib: "kernel32", importc: "FlushViewOfFile".}
+
 type
   OVERLAPPED* {.pure, inheritable.} = object
     internal*: PULONG
@@ -749,17 +798,20 @@ type
     D2*: int16
     D3*: int16
     D4*: array[0..7, int8]
-{.deprecated: [TOVERLAPPED: OVERLAPPED, TGUID: GUID].}
 
 const
   ERROR_IO_PENDING* = 997 # a.k.a WSA_IO_PENDING
-  FILE_FLAG_OVERLAPPED* = 1073741824
   WSAECONNABORTED* = 10053
   WSAEADDRINUSE* = 10048
   WSAECONNRESET* = 10054
   WSAEDISCON* = 10101
   WSAENETRESET* = 10052
   WSAETIMEDOUT* = 10060
+  WSANOTINITIALISED* = 10093
+  WSAENOTSOCK* = 10038
+  WSAEINPROGRESS* = 10036
+  WSAEINTR* = 10004
+  WSAEWOULDBLOCK* = 10035
   ERROR_NETNAME_DELETED* = 64
   STATUS_PENDING* = 0x103
 
@@ -785,17 +837,18 @@ template hasOverlappedIoCompleted*(lpOverlapped): bool =
   (cast[uint](lpOverlapped.internal) != STATUS_PENDING)
 
 const
- IOC_OUT* = 0x40000000
- IOC_IN*  = 0x80000000
- IOC_WS2* = 0x08000000
+ IOC_OUT* = 0x40000000'i32
+ IOC_IN*  = 0x80000000'i32
+ IOC_WS2* = 0x08000000'i32
  IOC_INOUT* = IOC_IN or IOC_OUT
 
-template WSAIORW*(x,y): expr = (IOC_INOUT or x or y)
+template WSAIORW*(x,y): untyped = (IOC_INOUT or x or y)
 
 const
   SIO_GET_EXTENSION_FUNCTION_POINTER* = WSAIORW(IOC_WS2,6).DWORD
   SO_UPDATE_ACCEPT_CONTEXT* = 0x700B
   AI_V4MAPPED* = 0x0008
+  AF_UNSPEC* = 0
   AF_INET* = 2
   AF_INET6* = 23
 
@@ -852,7 +905,7 @@ proc getProcessTimes*(hProcess: Handle; lpCreationTime, lpExitTime,
   dynlib: "kernel32", importc: "GetProcessTimes".}
 
 type inet_ntop_proc = proc(family: cint, paddr: pointer, pStringBuffer: cstring,
-                      stringBufSize: int32): cstring {.stdcall.}
+                      stringBufSize: int32): cstring {.gcsafe, stdcall, tags: [].}
 
 var inet_ntop_real: inet_ntop_proc = nil
 
@@ -956,7 +1009,7 @@ const
 type
   WAITORTIMERCALLBACK* = proc(para1: pointer, para2: int32): void {.stdcall.}
 
-proc postQueuedCompletionStatus*(CompletionPort: HANDLE,
+proc postQueuedCompletionStatus*(CompletionPort: Handle,
                                 dwNumberOfBytesTransferred: DWORD,
                                 dwCompletionKey: ULONG_PTR,
                                 lpOverlapped: pointer): bool
@@ -969,7 +1022,7 @@ proc registerWaitForSingleObject*(phNewWaitObject: ptr Handle, hObject: Handle,
                                  dwFlags: ULONG): bool
      {.stdcall, dynlib: "kernel32", importc: "RegisterWaitForSingleObject".}
 
-proc unregisterWait*(WaitHandle: HANDLE): DWORD
+proc unregisterWait*(WaitHandle: Handle): DWORD
      {.stdcall, dynlib: "kernel32", importc: "UnregisterWait".}
 
 proc openProcess*(dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
@@ -1034,3 +1087,31 @@ else:
   proc readConsoleInput*(hConsoleInput: Handle, lpBuffer: pointer, nLength: cint,
                         lpNumberOfEventsRead: ptr cint): cint
        {.stdcall, dynlib: "kernel32", importc: "ReadConsoleInputW".}
+
+type
+  LPFIBER_START_ROUTINE* = proc (param: pointer): void {.stdcall.}
+
+const
+  FIBER_FLAG_FLOAT_SWITCH* = 0x01
+
+proc CreateFiber*(stackSize: int, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc CreateFiberEx*(stkCommit: int, stkReserve: int, flags: int32, fn: LPFIBER_START_ROUTINE, param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc ConvertThreadToFiber*(param: pointer): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc ConvertThreadToFiberEx*(param: pointer, flags: int32): pointer {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
+proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
+
+proc toFILETIME*(t: int64): FILETIME =
+  ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
+  result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
+
+type
+  LPFILETIME* = ptr FILETIME
+
+proc setFileTime*(hFile: Handle, lpCreationTime: LPFILETIME,
+                 lpLastAccessTime: LPFILETIME, lpLastWriteTime: LPFILETIME): WINBOOL
+     {.stdcall, dynlib: "kernel32", importc: "SetFileTime".}
+
+when defined(nimHasStyleChecks):
+  {.pop.} # {.push styleChecks: off.}

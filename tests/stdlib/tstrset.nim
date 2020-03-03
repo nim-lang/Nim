@@ -7,10 +7,10 @@ type
     kind: TRadixNodeKind
   TRadixNodeLinear = object of TRadixNode
     len: int8
-    keys: array [0..31, char]
-    vals: array [0..31, PRadixNode]
+    keys: array[0..31, char]
+    vals: array[0..31, PRadixNode]
   TRadixNodeFull = object of TRadixNode
-    b: array [char, PRadixNode]
+    b: array[char, PRadixNode]
   TRadixNodeLeaf = object of TRadixNode
     s: string
   PRadixNodeLinear = ref TRadixNodeLinear

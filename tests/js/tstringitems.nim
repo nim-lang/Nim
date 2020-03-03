@@ -1,6 +1,9 @@
 discard """
   output: '''Hello
-Hello'''
+Hello
+c
+d
+e'''
 """
 
 block: # bug #2581
@@ -45,7 +48,7 @@ block: # Test compile-time binary data generation, invalid unicode
 block: # Test unicode strings
   const constStr = "Привет!"
   var jsStr : cstring
-  {.emit: """`jsStr`[0] = "Привет!";""".}
+  {.emit: """`jsStr` = "Привет!";""".}
 
   doAssert($jsStr == constStr)
   var runtimeStr = "При"
@@ -76,3 +79,17 @@ block: # String case of
   case s
   of "Привет!": discard
   else: doAssert(false)
+
+block: # String cmp
+  var a, b: string
+  doAssert(cmp(a, b) == 0)
+  doAssert(cmp("foo", "foo") == 0)
+  doAssert(cmp("foobar", "foo") == 3)
+  doAssert(cmp("foo", "foobar") == -3)
+  doAssert(cmp("fooz", "foog") == 19)
+  doAssert(cmp("foog", "fooz") == -19)
+
+proc main(x: openArray[char]) =
+  for c in x: echo c
+
+main(toOpenArray(['a', 'b', 'c', 'd', 'e'], 2, 4))

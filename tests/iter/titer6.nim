@@ -1,5 +1,4 @@
 discard """
-  file: "titer6.nim"
   output: "000"
 """
 # Test iterator with more than 1 yield statement
@@ -33,5 +32,4 @@ proc wordWrap2(s: string, maxLineWidth = 80,
   for word, isSep in tokenize2(s, seps):
     var w = 0
 
-
-
+stdout.write "\n"

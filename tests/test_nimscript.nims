@@ -9,17 +9,20 @@ import lists
 import math
 # import marshal
 import options
-import ospaths
+import os
 # import parsecfg
 # import parseopt
 import parseutils
 # import pegs
-import queues
+import deques
 import sequtils
 import strutils
-import subexes
 import tables
 import unicode
 import uri
+import macros
+
+block:
+  doAssert "./foo//./bar/".normalizedPath == "foo/bar".unixToNativePath
 
 echo "Nimscript imports are successful."

@@ -1,12 +1,16 @@
 discard """
+  errormsg: "type mismatch: got <string> but expected 'int'"
+  line: 33
   file: "tcaseexpr1.nim"
 
-  line: 29
-  errormsg: "type mismatch: got (string) but expected 'int'"
-
-  line: 23
-  errormsg: "not all cases are covered"
+  errormsg: "not all cases are covered; missing: {C}"
+  line: 27
+  file: "tcaseexpr1.nim"
 """
+
+# NOTE: This spec is wrong. Spec doesn't support multiple error
+# messages. The first one is simply overridden by the second one.
+# This just has never been noticed.
 
 type
   E = enum A, B, C
@@ -27,4 +31,3 @@ var t1 = case x:
 var t2 = case x:
   of A: 10
   of B, C: "23"
-

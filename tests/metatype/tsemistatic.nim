@@ -1,5 +1,5 @@
 discard """
-  msg: "static 10\ndynamic\nstatic 20\n"
+  nimout: "static 10\ndynamic\nstatic 20\n"
   output: "s\nd\nd\ns"
 """
 
@@ -7,7 +7,7 @@ type
   semistatic[T] =
     static[T] or T
 
-template isStatic*(x): expr =
+template isStatic*(x): bool =
   compiles(static(x))
 
 proc foo(x: semistatic[int]) =

@@ -1,5 +1,5 @@
 discard """
-  output: '''@[a, c]'''
+  output: '''@["a", "c"]'''
 """
 
 # bug #3230

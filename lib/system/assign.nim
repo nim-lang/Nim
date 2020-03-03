@@ -61,17 +61,30 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       unsureAsgnRef(x, s2)
       return
     sysAssert(dest != nil, "genericAssignAux 3")
-    unsureAsgnRef(x, newSeq(mt, seq.len))
-    var dst = cast[ByteAddress](cast[PPointer](dest)[])
-    for i in 0..seq.len-1:
-      genericAssignAux(
-        cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-        cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                     GenericSeqSize),
-        mt.base, shallow)
+    if ntfNoRefs in mt.base.flags:
+      var ss = nimNewSeqOfCap(mt, seq.len)
+      cast[PGenericSeq](ss).len = seq.len
+      unsureAsgnRef(x, ss)
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
+      copyMem(cast[pointer](dst +% GenericSeqSize),
+              cast[pointer](cast[ByteAddress](s2) +% GenericSeqSize),
+              seq.len * mt.base.size)
+    else:
+      unsureAsgnRef(x, newSeq(mt, seq.len))
+      var dst = cast[ByteAddress](cast[PPointer](dest)[])
+      for i in 0..seq.len-1:
+        genericAssignAux(
+          cast[pointer](dst +% i *% mt.base.size +% GenericSeqSize),
+          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
+                      GenericSeqSize),
+          mt.base, shallow)
   of tyObject:
-    if mt.base != nil:
-      genericAssignAux(dest, src, mt.base, shallow)
+    var it = mt.base
+    # don't use recursion here on the PNimType because the subtype
+    # check should only be done at the very end:
+    while it != nil:
+      genericAssignAux(dest, src, it.node, shallow)
+      it = it.base
     genericAssignAux(dest, src, mt.node, shallow)
     # we need to copy m_type field for tyObject, as it could be empty for
     # sequence reallocations:
@@ -80,22 +93,24 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
     #   if p of TB:
     #     var tbObj = TB(p)
     #     tbObj of TC # needs to be false!
+    #c_fprintf(stdout, "%s %s\n", pint[].name, mt.name)
+    chckObjAsgn(cast[ptr PNimType](src)[], mt)
     pint[] = mt # cast[ptr PNimType](src)[]
   of tyTuple:
     genericAssignAux(dest, src, mt.node, shallow)
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
-      genericAssignAux(cast[pointer](d +% i*% mt.base.size),
-                       cast[pointer](s +% i*% mt.base.size), mt.base, shallow)
+      genericAssignAux(cast[pointer](d +% i *% mt.base.size),
+                       cast[pointer](s +% i *% mt.base.size), mt.base, shallow)
   of tyRef:
     unsureAsgnRef(cast[PPointer](dest), cast[PPointer](s)[])
   else:
     copyMem(dest, src, mt.size) # copy raw bits
 
-proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+proc genericAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   genericAssignAux(dest, src, mt, false)
 
-proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   genericAssignAux(dest, src, mt, true)
 
 when false:
@@ -127,7 +142,7 @@ when false:
     cprintf("%s %ld\n", k, t.size)
     debugNimType(t.base)
 
-proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerProc.} =
+proc genericSeqAssign(dest, src: pointer, mt: PNimType) {.compilerproc.} =
   var src = src # ugly, but I like to stress the parser sometimes :-)
   genericAssign(dest, addr(src), mt)
 
@@ -137,10 +152,10 @@ proc genericAssignOpenArray(dest, src: pointer, len: int,
     d = cast[ByteAddress](dest)
     s = cast[ByteAddress](src)
   for i in 0..len-1:
-    genericAssign(cast[pointer](d +% i*% mt.base.size),
-                  cast[pointer](s +% i*% mt.base.size), mt.base)
+    genericAssign(cast[pointer](d +% i *% mt.base.size),
+                  cast[pointer](s +% i *% mt.base.size), mt.base)
 
-proc objectInit(dest: pointer, typ: PNimType) {.compilerProc, benign.}
+proc objectInit(dest: pointer, typ: PNimType) {.compilerproc, benign.}
 proc objectInitAux(dest: pointer, n: ptr TNimNode) {.benign.} =
   var d = cast[ByteAddress](dest)
   case n.kind
@@ -173,12 +188,7 @@ proc objectInit(dest: pointer, typ: PNimType) =
 
 # ---------------------- assign zero -----------------------------------------
 
-proc nimDestroyRange[T](r: T) {.compilerProc.} =
-  # internal proc used for destroying sequences and arrays
-  mixin `=destroy`
-  for i in countup(0, r.len - 1): `=destroy`(r[i])
-
-proc genericReset(dest: pointer, mt: PNimType) {.compilerProc, benign.}
+proc genericReset(dest: pointer, mt: PNimType) {.compilerproc, benign.}
 proc genericResetAux(dest: pointer, n: ptr TNimNode) =
   var d = cast[ByteAddress](dest)
   case n.kind
@@ -206,21 +216,28 @@ proc genericReset(dest: pointer, mt: PNimType) =
     pint[] = nil
   of tyArray, tyArrayConstr:
     for i in 0..(mt.size div mt.base.size)-1:
-      genericReset(cast[pointer](d +% i*% mt.base.size), mt.base)
+      genericReset(cast[pointer](d +% i *% mt.base.size), mt.base)
   else:
     zeroMem(dest, mt.size) # set raw bits to zero
 
 proc selectBranch(discVal, L: int,
-                  a: ptr array[0..0x7fff, ptr TNimNode]): ptr TNimNode =
+                  a: ptr array[0x7fff, ptr TNimNode]): ptr TNimNode =
   result = a[L] # a[L] contains the ``else`` part (but may be nil)
   if discVal <% L:
-    var x = a[discVal]
+    let x = a[discVal]
     if x != nil: result = x
 
 proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
-                            a: ptr array[0..0x7fff, ptr TNimNode],
-                            L: int) {.compilerProc.} =
-  var oldBranch = selectBranch(oldDiscVal, L, a)
-  var newBranch = selectBranch(newDiscVal, L, a)
-  if newBranch != oldBranch and oldDiscVal != 0:
-    sysFatal(FieldError, "assignment to discriminant changes object branch")
+                            a: ptr array[0x7fff, ptr TNimNode],
+                            L: int) {.compilerproc.} =
+  let oldBranch = selectBranch(oldDiscVal, L, a)
+  let newBranch = selectBranch(newDiscVal, L, a)
+  when defined(nimOldCaseObjects):
+    if newBranch != oldBranch and oldDiscVal != 0:
+      sysFatal(FieldError, "assignment to discriminant changes object branch")
+  else:
+    if newBranch != oldBranch:
+      if oldDiscVal != 0:
+        sysFatal(FieldError, "assignment to discriminant changes object branch")
+      else:
+        sysFatal(FieldError, "assignment to discriminant changes object branch; compile with -d:nimOldCaseObjects for a transition period")

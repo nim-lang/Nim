@@ -1,8 +1,8 @@
-
 #ifdef WIN
 #include <windows.h>
 #else
 #include <dlfcn.h>
+#include <unistd.h> /* for sleep(3) */
 #endif
 #include <stdio.h>
 #include <stdlib.h>

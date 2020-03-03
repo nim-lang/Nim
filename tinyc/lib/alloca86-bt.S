@@ -1,7 +1,5 @@
 /* ---------------------------------------------- */
-/* alloca86b.S */
-
-#include "../config.h"
+/* alloca86-bt.S */
 
 .globl __bound_alloca
 
@@ -13,13 +11,13 @@ __bound_alloca:
     and     $-4,%eax
     jz      p6
 
-#ifdef TCC_TARGET_PE
+#ifdef _WIN32
 p4:
     cmp     $4096,%eax
-    jle     p5
+    jbe     p5
+    test    %eax,-4096(%esp)
     sub     $4096,%esp
     sub     $4096,%eax
-    test    %eax,(%esp)
     jmp p4
 
 p5:
@@ -42,4 +40,8 @@ p6:
     push    %edx
     ret
 
+/* mark stack as nonexecutable */
+#if defined __ELF__ && defined __linux__
+    .section    .note.GNU-stack,"",@progbits
+#endif
 /* ---------------------------------------------- */

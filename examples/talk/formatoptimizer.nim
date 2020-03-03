@@ -5,7 +5,7 @@ import macros
 proc invalidFormatString() =
   echo "invalidFormatString"
 
-template formatImpl(handleChar: expr) =
+template formatImpl(handleChar: untyped) =
   var i = 0
   while i < f.len:
     if f[i] == '$':
@@ -24,11 +24,11 @@ template formatImpl(handleChar: expr) =
       i += 1
 
 proc `%`*(f: string, a: openArray[string]): string =
-  template identity(x: expr): expr = x
+  template identity(x: untyped): untyped = x
   result = ""
   formatImpl(identity)
 
-macro optFormat{`%`(f, a)}(f: string{lit}, a: openArray[string]): expr =
+macro optFormat{`%`(f, a)}(f: string{lit}, a: openArray[string]): untyped =
   result = newNimNode(nnkBracket)
   #newCall("&")
   let f = f.strVal

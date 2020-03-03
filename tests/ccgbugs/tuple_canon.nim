@@ -1,4 +1,9 @@
-
+discard """
+output: '''
+vidx 18
+0,0
+'''
+"""
 
 # bug #4626
 var foo: (int, array[1, int]) # Tuple must be of length > 1
@@ -7,8 +12,7 @@ foo = bar                     # No error if assigned directly
 
 # bug #2250
 
-import
-    math, strutils
+import math
 
 type
     Meters = float
@@ -59,7 +63,7 @@ let
             ((1,1), hiA),
             ((0,1), hiB)]
 
-template odd*(i: int) : expr =
+template odd*(i: int) : untyped =
     (i and 1) != 0
 
 proc vidx(hg: HexGrid; col, row: int; i: HexVtxIndex) : Index =
@@ -85,3 +89,31 @@ proc go() =
     echo "vidx ", $vidx(hg, 1, 2, hiC)
 
 go()
+
+# another sighashes problem: In tuples we have to ignore ranges.
+
+type
+  Position = tuple[x, y: int16]
+  n16 = range[0'i16..high(int16)]
+
+proc print(pos: Position) =
+  echo $pos.x, ",", $pos.y
+
+var x = 0.n16
+var y = 0.n16
+print((x, y))
+
+
+# bug #6889
+proc createProgressSetterWithPropSetter[T](setter: proc(v: T)) = discard
+
+type A = distinct array[4, float32]
+type B = distinct array[3, float32]
+
+type Foo[T] = tuple
+    setter: proc(v: T)
+
+proc getFoo[T](): Foo[T] = discard
+
+createProgressSetterWithPropSetter(getFoo[A]().setter)
+createProgressSetterWithPropSetter(getFoo[B]().setter)

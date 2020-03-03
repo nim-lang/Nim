@@ -1,6 +1,7 @@
 discard """
-  msg: "Warning: 'y' might not have been initialized [Uninit]"
+  nimout: "Warning: 'y' might not have been initialized [Uninit]"
   line:34
+  action: compile
 """
 
 import strutils
@@ -22,7 +23,7 @@ proc p =
 
     try:
       z = parseInt("1233")
-    except E_Base:
+    except Exception:
       case x
       of 34: z = 123
       of 13: z = 34

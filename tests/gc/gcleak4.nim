@@ -2,11 +2,8 @@ discard """
   outputsub: "no leak: "
 """
 
-when defined(GC_setMaxPause):
-  GC_setMaxPause 2_000
-
 type
-  TExpr = object {.inheritable.} ## abstract base class for an expression
+  TExpr {.inheritable.} = object ## abstract base class for an expression
   PLiteral = ref TLiteral
   TLiteral = object of TExpr
     x: int
@@ -15,7 +12,7 @@ type
     a, b: ref TExpr
     op2: string
 
-method eval(e: ref TExpr): int =
+method eval(e: ref TExpr): int {.base.} =
   # override this base method
   quit "to override!"
 
@@ -27,18 +24,16 @@ method eval(e: ref TPlusExpr): int =
 
 proc newLit(x: int): ref TLiteral =
   new(result)
-  {.watchpoint: result.}
   result.x = x
   result.op1 = $getOccupiedMem()
 
-proc newPlus(a, b: ref TExpr): ref TPlusExpr =
+proc newPlus(a, b: sink(ref TExpr)): ref TPlusExpr =
   new(result)
-  {.watchpoint: result.}
   result.a = a
   result.b = b
   result.op2 = $getOccupiedMem()
 
-const Limit = when compileOption("gc", "markAndSweep"): 5*1024*1024 else: 500_000
+const Limit = when compileOption("gc", "markAndSweep") or compileOption("gc", "boehm"): 5*1024*1024 else: 500_000
 
 for i in 0..100_000:
   var s: array[0..11, ref TExpr]

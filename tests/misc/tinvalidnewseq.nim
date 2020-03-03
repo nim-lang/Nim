@@ -1,7 +1,7 @@
 discard """
+  errormsg: "type mismatch: got <array[0..6, string], int literal(7)>"
   file: "tinvalidnewseq.nim"
   line: 15
-  errormsg: "type mismatch: got (array[0..6, string], int literal(7))"
 """
 import re, strutils
 
@@ -22,6 +22,3 @@ var r: TUrl
 
 r = parseUrl(r"http://google.com/search?var=bleahdhsad")
 echo(r.domain)
-
-
-

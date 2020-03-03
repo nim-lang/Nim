@@ -7,12 +7,12 @@
 #    distribution, for details about the copyright.
 #
 
+import pathutils
+
 template setX(k, field) {.dirty.} =
   var s: seq[TFullReg]
   move(s, cast[seq[TFullReg]](a.slots))
-  if s[a.ra].kind != k:
-    myreset(s[a.ra])
-    s[a.ra].kind = k
+  s[a.ra].ensureKind(k)
   s[a.ra].field = v
 
 proc setResult*(a: VmArgs; v: BiggestInt) = setX(rkInt, intVal)
@@ -24,26 +24,22 @@ proc setResult*(a: VmArgs; v: bool) =
 proc setResult*(a: VmArgs; v: string) =
   var s: seq[TFullReg]
   move(s, cast[seq[TFullReg]](a.slots))
-  if s[a.ra].kind != rkNode:
-    myreset(s[a.ra])
-    s[a.ra].kind = rkNode
+  s[a.ra].ensureKind(rkNode)
   s[a.ra].node = newNode(nkStrLit)
   s[a.ra].node.strVal = v
 
 proc setResult*(a: VmArgs; n: PNode) =
   var s: seq[TFullReg]
   move(s, cast[seq[TFullReg]](a.slots))
-  if s[a.ra].kind != rkNode:
-    myreset(s[a.ra])
-    s[a.ra].kind = rkNode
+  s[a.ra].ensureKind(rkNode)
   s[a.ra].node = n
+
+proc setResult*(a: VmArgs; v: AbsoluteDir) = setResult(a, v.string)
 
 proc setResult*(a: VmArgs; v: seq[string]) =
   var s: seq[TFullReg]
   move(s, cast[seq[TFullReg]](a.slots))
-  if s[a.ra].kind != rkNode:
-    myreset(s[a.ra])
-    s[a.ra].kind = rkNode
+  s[a.ra].ensureKind(rkNode)
   var n = newNode(nkBracket)
   for x in v: n.add newStrNode(nkStrLit, x)
   s[a.ra].node = n

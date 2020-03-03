@@ -84,7 +84,7 @@ proc createCopyright(pkgName, mtnName, mtnEmail, version: string,
     addN("Files: " & f)
     addN("License: " & license)
 
-proc formatDateTime(t: TimeInfo, timezone: string): string =
+proc formatDateTime(t: DateTime, timezone: string): string =
   var day = ($t.weekday)[0..2] & ", "
 
   return "$1$2 $3 $4 $5:$6:$7 $8" % [day, intToStr(t.monthday, 2),
@@ -148,7 +148,7 @@ proc prepDeb*(packName, version, mtnName, mtnEmail, shortDesc, desc: string,
   ## binaries/config/docs/lib: files relative to nim's root, that need to
   ##   be installed.
 
-  let pkgName = packName.toLower()
+  let pkgName = packName.toLowerAscii()
 
   var workingDir = getTempDir() / "niminst" / "deb"
   var upstreamSource = (pkgName & "-" & version)
@@ -168,7 +168,7 @@ proc prepDeb*(packName, version, mtnName, mtnEmail, shortDesc, desc: string,
   echo("Creating necessary files in debian/")
   createDir(workingDir / upstreamSource / "debian")
 
-  template writeDebian(f, s: string): expr =
+  template writeDebian(f, s: string) =
     writeFile(workingDir / upstreamSource / "debian" / f, s)
 
   var controlFile = createControl(pkgName, makeMtn(mtnName, mtnEmail),

@@ -1,11 +1,11 @@
 discard """
   output: '''true true false yes
 false
-false
+true
 false
 true
 true
-no'''
+yes'''
 """
 
 proc IsVoid[T](): string =
@@ -17,10 +17,10 @@ proc IsVoid[T](): string =
 const x = int is int
 echo x, " ", float is float, " ", float is string, " ", IsVoid[void]()
 
-template yes(e: expr): stmt =
+template yes(e): void =
   static: assert e
 
-template no(e: expr): stmt =
+template no(e): void =
   static: assert(not e)
 
 when false:
@@ -68,8 +68,8 @@ type SeqOrSet[E] = seq[E] or set[E]
 type SeqOfInt = seq[int]
 type SeqOrSetOfInt = SeqOrSet[int]
 
-# This prints "false", which seems less correct that (1) printing "true" or (2)
-# raising a compiler error.
+# This prints "true", as expected. Previously "false" was returned and that
+# seemed less correct that (1) printing "true" or (2) raising a compiler error.
 echo seq is SeqOrSet
 
 # This prints "false", as expected.
@@ -89,3 +89,23 @@ proc test[T](x: T) =
     echo "no"
 
 test(7)
+
+block:
+  # bug #13066
+  type Bar[T1,T2] = object
+  type Foo[T1,T2] = object
+  type Foo2 = Foo
+  doAssert Foo2 is Foo
+  doAssert Foo is Foo2
+  doAssert Foo is Foo
+  doAssert Foo2 is Foo2
+  doAssert Foo2 isnot Bar
+  doAssert Foo[int,float] is Foo2[int,float]
+
+  # other
+  doAssert Foo[int,float] isnot Foo2[float,float]
+  doAssert Foo[int,float] is Foo2
+  doAssert Foo[int,float|int] is Foo2
+  doAssert Foo2[int,float|int] is Foo
+  doAssert Foo2[int,float|int] isnot Bar
+  doAssert int is (int|float)

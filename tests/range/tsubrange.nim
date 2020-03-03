@@ -1,13 +1,13 @@
 discard """
-  line: 20
   errormsg: "cannot convert 60 to TRange"
+  line: 20
 """
 
 type
   TRange = range[0..40]
 
 proc p(r: TRange) =
-  nil
+  discard
 
 var
   r: TRange
@@ -18,4 +18,3 @@ p y
 
 const
   myConst: TRange = 60
-

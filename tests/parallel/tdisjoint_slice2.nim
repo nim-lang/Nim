@@ -11,12 +11,19 @@ discard """
   sortoutput: true
 """
 
-import threadpool
+import threadpool, locks
+
+var echoLock: Lock
+initLock echoLock
 
 proc f(a: openArray[int]) =
-  for x in a: echo x
+  for x in a:
+    withLock echoLock:
+      echo x
 
-proc f(a: int) = echo a
+proc f(a: int) =
+  withLock echoLock:
+    echo a
 
 proc main() =
   var a: array[0..9, int] = [0,1,2,3,4,5,6,7,8,9]

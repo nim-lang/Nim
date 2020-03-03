@@ -1,18 +1,18 @@
 discard """
-  line: 23
   errormsg: "type mismatch"
+  line: 23
 """
 
 type
   TObj = object {.pure, inheritable.}
   TObjB = object of TObj
     a, b, c: string
-    fn: proc (): int {.tags: [FReadIO].}
+    fn: proc (): int {.tags: [ReadIOEffect].}
 
-  EIO2 = ref object of EIO
 
-proc q() {.tags: [FIO].} =
-  nil
+
+proc q() {.tags: [IoEffect].} =
+  discard
 
 proc raiser(): int =
   writeLine stdout, "arg"
@@ -21,4 +21,3 @@ proc raiser(): int =
 
 var o: TObjB
 o.fn = raiser
-

@@ -31,7 +31,7 @@ type
     of nkList: sons: seq[PCaseNode]
     else: unused: seq[string]
 
-  TIdObj* = object of TObject
+  TIdObj* = object of RootObj
     id*: int  # unique id; use this for comparisons and not the pointers
 
   PIdObj* = ref TIdObj
@@ -45,19 +45,14 @@ var
   flip: int
 
 proc newCaseNode(data: string): PCaseNode =
-  new(result)
   if flip == 0:
-    result.kind = nkStr
-    result.data = data
+    result = PCaseNode(kind: nkStr, data: data)
   else:
-    result.kind = nkWhole
-    result.unused = @["", "abc", "abdc"]
+    result = PCaseNode(kind: nkWhole, unused: @["", "abc", "abdc"])
   flip = 1 - flip
 
 proc newCaseNode(a, b: PCaseNode): PCaseNode =
-  new(result)
-  result.kind = nkList
-  result.sons = @[a, b]
+  result = PCaseNode(kind: nkList, sons: @[a, b])
 
 proc caseTree(lvl: int = 0): PCaseNode =
   if lvl == 3: result = newCaseNode("data item")
@@ -66,8 +61,7 @@ proc caseTree(lvl: int = 0): PCaseNode =
 proc finalizeNode(n: PNode) =
   assert(n != nil)
   write(stdout, "finalizing: ")
-  if isNil(n.data): writeLine(stdout, "nil!")
-  else: writeLine(stdout, "not nil")
+  writeLine(stdout, "not nil")
 
 var
   id: int = 1
@@ -179,24 +173,38 @@ proc main() =
   write(stdout, "done!\n")
 
 var
-    father: TBNode
-    s: string
-s = ""
-s = ""
-writeLine(stdout, repr(caseTree()))
-father.t.data = @["ha", "lets", "stress", "it"]
-father.t.data = @["ha", "lets", "stress", "it"]
-var t = buildTree()
-write(stdout, repr(t[]))
-buildBTree(father)
-write(stdout, repr(father))
+  father {.threadvar.}: TBNode
+  s {.threadvar.}: string
 
-write(stdout, "starting main...\n")
-main()
+  fatherAsGlobal: TBNode
 
-GC_fullCollect()
-# the M&S GC fails with this call and it's unclear why. Definitely something
-# we need to fix!
-GC_fullCollect()
-writeLine(stdout, GC_getStatistics())
-write(stdout, "finished\n")
+proc start =
+  s = ""
+  s = ""
+  writeLine(stdout, repr(caseTree()))
+  father.t.data = @["ha", "lets", "stress", "it"]
+  father.t.data = @["ha", "lets", "stress", "it"]
+  var t = buildTree()
+  write(stdout, repr(t[]))
+  buildBTree(father)
+  write(stdout, repr(father))
+
+  write(stdout, "starting main...\n")
+  main()
+
+  GC_fullCollect()
+  # the M&S GC fails with this call and it's unclear why. Definitely something
+  # we need to fix!
+  #GC_fullCollect()
+  writeLine(stdout, GC_getStatistics())
+  write(stdout, "finished\n")
+
+fatherAsGlobal.t.data = @["ha", "lets", "stress", "it"]
+var tg = buildTree()
+buildBTree(fatherAsGlobal)
+
+var thr: array[8, Thread[void]]
+for i in low(thr)..high(thr):
+  createThread(thr[i], start)
+joinThreads(thr)
+start()

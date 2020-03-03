@@ -9,158 +9,229 @@
 
 ## This module implements a base64 encoder and decoder.
 ##
+## Unstable API.
+##
+## Base64 is an encoding and decoding technique used to convert binary
+## data to an ASCII string format.
+## Each Base64 digit represents exactly 6 bits of data. Three 8-bit
+## bytes (i.e., a total of 24 bits) can therefore be represented by
+## four 6-bit Base64 digits.
+##
+## Basic usage
+## ===========
+##
 ## Encoding data
 ## -------------
 ##
-## In order to encode some text simply call the ``encode`` procedure:
-##
-##   .. code-block::nim
-##      import base64
-##      let encoded = encode("Hello World")
-##      echo(encoded) # SGVsbG8gV29ybGQ=
+## .. code-block::nim
+##    import base64
+##    let encoded = encode("Hello World")
+##    assert encoded == "SGVsbG8gV29ybGQ="
 ##
 ## Apart from strings you can also encode lists of integers or characters:
 ##
-##   .. code-block::nim
-##      import base64
-##      let encodedInts = encode([1,2,3])
-##      echo(encodedInts) # AQID
-##      let encodedChars = encode(['h','e','y'])
-##      echo(encodedChars) # aGV5
+## .. code-block::nim
+##    import base64
+##    let encodedInts = encode([1,2,3])
+##    assert encodedInts == "AQID"
+##    let encodedChars = encode(['h','e','y'])
+##    assert encodedChars == "aGV5"
 ##
-## The ``encode`` procedure takes an ``openarray`` so both arrays and sequences
-## can be passed as parameters.
 ##
 ## Decoding data
 ## -------------
 ##
-## To decode a base64 encoded data string simply call the ``decode``
-## procedure:
+## .. code-block::nim
+##    import base64
+##    let decoded = decode("SGVsbG8gV29ybGQ=")
+##    assert decoded == "Hello World"
 ##
-##   .. code-block::nim
-##      import base64
-##      echo(decode("SGVsbG8gV29ybGQ=")) # Hello World
+##
+## See also
+## ========
+##
+## * `hashes module<hashes.html>`_ for efficient computations of hash values for diverse Nim types
+## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
+## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
 
 const
   cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  invalidChar = 255
 
-template encodeInternal(s: expr, lineLen: int, newLine: string): stmt {.immediate.} =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
-  var total = ((len(s) + 2) div 3) * 4
-  var numLines = (total + lineLen - 1) div lineLen
-  if numLines > 0: inc(total, (numLines-1) * newLine.len)
+template encodeInternal(s: typed): untyped =
+  ## encodes `s` into base64 representation.
+  proc encodeSize(size: int): int =
+    return (size * 4 div 3) + 6
 
-  result = newString(total)
-  var i = 0
-  var r = 0
-  var currLine = 0
-  while i < s.len - 2:
-    var a = ord(s[i])
-    var b = ord(s[i+1])
-    var c = ord(s[i+2])
-    result[r] = cb64[a shr 2]
-    result[r+1] = cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
-    result[r+2] = cb64[((b and 0x0F) shl 2) or ((c and 0xC0) shr 6)]
-    result[r+3] = cb64[c and 0x3F]
-    inc(r, 4)
-    inc(i, 3)
-    inc(currLine, 4)
-    if currLine >= lineLen and i != s.len-2:
-      for x in items(newLine):
-        result[r] = x
-        inc(r)
-      currLine = 0
+  result.setLen(encodeSize(s.len))
 
-  if i < s.len-1:
-    var a = ord(s[i])
-    var b = ord(s[i+1])
-    result[r] = cb64[a shr 2]
-    result[r+1] = cb64[((a and 3) shl 4) or ((b and 0xF0) shr 4)]
-    result[r+2] = cb64[((b and 0x0F) shl 2)]
-    result[r+3] = '='
-    if r+4 != result.len:
-      setLen(result, r+4)
-  elif i < s.len:
-    var a = ord(s[i])
-    result[r] = cb64[a shr 2]
-    result[r+1] = cb64[(a and 3) shl 4]
-    result[r+2] = '='
-    result[r+3] = '='
-    if r+4 != result.len:
-      setLen(result, r+4)
-  else:
-    if r != result.len:
-      setLen(result, r)
-    #assert(r == result.len)
-    discard
+  var
+    inputIndex = 0
+    outputIndex = 0
+    inputEnds = s.len - s.len mod 3
+    n: uint32
+    b: uint32
 
-proc encode*[T:SomeInteger|char](s: openarray[T], lineLen = 75, newLine="\13\10"): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+  template inputByte(exp: untyped) =
+    b = uint32(s[inputIndex])
+    n = exp
+    inc inputIndex
+
+  template outputChar(x: untyped) =
+    result[outputIndex] = cb64[x and 63]
+    inc outputIndex
+
+  template outputChar(c: char) =
+    result[outputIndex] = c
+    inc outputIndex
+
+  while inputIndex != inputEnds:
+    inputByte(b shl 16)
+    inputByte(n or b shl 8)
+    inputByte(n or b shl 0)
+    outputChar(n shr 18)
+    outputChar(n shr 12)
+    outputChar(n shr 6)
+    outputChar(n shr 0)
+
+  var padding = s.len mod 3
+  if padding == 1:
+    inputByte(b shl 16)
+    outputChar(n shr 18)
+    outputChar(n shr 12)
+    outputChar('=')
+    outputChar('=')
+
+  elif padding == 2:
+    inputByte(b shl 16)
+    inputByte(n or b shl 8)
+    outputChar(n shr 18)
+    outputChar(n shr 12)
+    outputChar(n shr 6)
+    outputChar('=')
+
+  result.setLen(outputIndex)
+
+proc encode*[T: SomeInteger|char](s: openArray[T]): string =
+  ## Encodes `s` into base64 representation.
   ##
   ## This procedure encodes an openarray (array or sequence) of either integers
   ## or characters.
-  encodeInternal(s, lineLen, newLine)
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,string>`_ for encoding a string
+  ## * `decode proc<#decode,string>`_ for decoding a string
+  runnableExamples:
+    assert encode(['n', 'i', 'm']) == "bmlt"
+    assert encode(@['n', 'i', 'm']) == "bmlt"
+    assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
+  encodeInternal(s)
 
-proc encode*(s: string, lineLen = 75, newLine="\13\10"): string =
-  ## encodes `s` into base64 representation. After `lineLen` characters, a
-  ## `newline` is added.
+proc encode*(s: string): string =
+  ## Encodes ``s`` into base64 representation.
   ##
   ## This procedure encodes a string.
-  encodeInternal(s, lineLen, newLine)
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
+  ## * `decode proc<#decode,string>`_ for decoding a string
+  runnableExamples:
+    assert encode("Hello World") == "SGVsbG8gV29ybGQ="
+  encodeInternal(s)
 
-proc decodeByte(b: char): int {.inline.} =
-  case b
-  of '+': result = ord('>')
-  of '0'..'9': result = ord(b) + 4
-  of 'A'..'Z': result = ord(b) - ord('A')
-  of 'a'..'z': result = ord(b) - 71
-  else: result = 63
+proc encodeMIME*(s: string, lineLen = 75, newLine = "\r\n"): string =
+  ## Encodes ``s`` into base64 representation as lines.
+  ## Used in email MIME forma, use ``lineLen`` and ``newline``.
+  ##
+  ## This procedure encodes a string according to MIME spec.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,string>`_ for encoding a string
+  ## * `decode proc<#decode,string>`_ for decoding a string
+  runnableExamples:
+    assert encodeMIME("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
+  for i, c in encode(s):
+    if i != 0 and (i mod lineLen == 0):
+      result.add(newLine)
+    result.add(c)
+
+proc initDecodeTable*(): array[256, char] =
+  # computes a decode table at compile time
+  for i in 0 ..< 256:
+    let ch = char(i)
+    var code = invalidChar
+    if ch >= 'A' and ch <= 'Z': code = i - 0x00000041
+    if ch >= 'a' and ch <= 'z': code = i - 0x00000047
+    if ch >= '0' and ch <= '9': code = i + 0x00000004
+    if ch == '+' or ch == '-': code = 0x0000003E
+    if ch == '/' or ch == '_': code = 0x0000003F
+    result[i] = char(code)
+
+const
+  decodeTable = initDecodeTable()
 
 proc decode*(s: string): string =
-  ## decodes a string in base64 representation back into its original form.
-  ## Whitespace is skipped.
-  const Whitespace = {' ', '\t', '\v', '\r', '\l', '\f'}
-  var total = ((len(s) + 3) div 4) * 3
-  # total is an upper bound, as we will skip arbitrary whitespace:
-  result = newString(total)
+  ## Decodes string ``s`` in base64 representation back into its original form.
+  ## The initial whitespace is skipped.
+  ##
+  ## **See also:**
+  ## * `encode proc<#encode,openArray[T]>`_ for encoding an openarray
+  ## * `encode proc<#encode,string>`_ for encoding a string
+  runnableExamples:
+    assert decode("SGVsbG8gV29ybGQ=") == "Hello World"
+    assert decode("  SGVsbG8gV29ybGQ=") == "Hello World"
+  if s.len == 0: return
 
-  var i = 0
-  var r = 0
-  while true:
-    while s[i] in Whitespace: inc(i)
-    if i < s.len-3:
-      var a = s[i].decodeByte
-      var b = s[i+1].decodeByte
-      var c = s[i+2].decodeByte
-      var d = s[i+3].decodeByte
+  proc decodeSize(size: int): int =
+    return (size * 3 div 4) + 6
 
-      result[r] = chr((a shl 2) and 0xff or ((b shr 4) and 0x03))
-      result[r+1] = chr((b shl 4) and 0xff or ((c shr 2) and 0x0F))
-      result[r+2] = chr((c shl 6) and 0xff or (d and 0x3F))
-      inc(r, 3)
-      inc(i, 4)
-    else: break
-  assert i == s.len
-  # adjust the length:
-  if i > 0 and s[i-1] == '=':
-    dec(r)
-    if i > 1 and s[i-2] == '=': dec(r)
-  setLen(result, r)
+  template inputChar(x: untyped) =
+    let x = int decodeTable[ord(s[inputIndex])]
+    inc inputIndex
+    if x == invalidChar:
+      raise newException(ValueError,
+        "Invalid base64 format character `" & s[inputIndex] &
+        "` (ord " & $s[inputIndex].ord & ") at location " & $inputIndex & ".")
 
-when isMainModule:
-  assert encode("leasure.") == "bGVhc3VyZS4="
-  assert encode("easure.") == "ZWFzdXJlLg=="
-  assert encode("asure.") == "YXN1cmUu"
-  assert encode("sure.") == "c3VyZS4="
+  template outputChar(x: untyped) =
+    result[outputIndex] = char(x and 255)
+    inc outputIndex
 
-  const longText = """Man is distinguished, not only by his reason, but by this
-    singular passion from other animals, which is a lust of the mind,
-    that by a perseverance of delight in the continued and indefatigable
-    generation of knowledge, exceeds the short vehemence of any carnal
-    pleasure."""
-  const tests = ["", "abc", "xyz", "man", "leasure.", "sure.", "easure.",
-                 "asure.", longText]
-  for t in items(tests):
-    assert decode(encode(t)) == t
+  # pre allocate output string once
+  result.setLen(decodeSize(s.len))
+  var
+    inputIndex = 0
+    outputIndex = 0
+    inputLen = s.len
+    inputEnds = 0
+  # strip trailing characters
+  while s[inputLen - 1] in {'\n', '\r', ' ', '='}:
+    dec inputLen
+  # hot loop: read 4 characters at at time
+  inputEnds = inputLen - 4
+  while inputIndex <= inputEnds:
+    while s[inputIndex] in {'\n', '\r', ' '}:
+      inc inputIndex
+    inputChar(a)
+    inputChar(b)
+    inputChar(c)
+    inputChar(d)
+    outputChar(a shl 2 or b shr 4)
+    outputChar(b shl 4 or c shr 2)
+    outputChar(c shl 6 or d shr 0)
+  # do the last 2 or 3 characters
+  var leftLen = abs((inputIndex - inputLen) mod 4)
+  if leftLen == 2:
+    inputChar(a)
+    inputChar(b)
+    outputChar(a shl 2 or b shr 4)
+  elif leftLen == 3:
+    inputChar(a)
+    inputChar(b)
+    inputChar(c)
+    outputChar(a shl 2 or b shr 4)
+    outputChar(b shl 4 or c shr 2)
+  result.setLen(outputIndex)
+
+
+

@@ -23,7 +23,6 @@ const Lib = "libchipmunk.so.6.1.1"
 
 when defined(MoreNim):
   {.hint: "MoreNim defined; some Chipmunk functions replaced in Nim".}
-{.deadCodeElim: on.}
 from math import sqrt, sin, cos, arctan2
 when defined(CpUseFloat):
   {.hint: "CpUseFloat defined; using float32 as float".}
@@ -389,13 +388,13 @@ type
     cdecl.}
 
 ##cp property emulators
-template defGetter(otype: typedesc, memberType: typedesc, memberName: expr, procName: expr): stmt {.immediate.} =
+template defGetter(otype: typedesc, memberType: typedesc, memberName, procName: untyped) =
   proc `get procName`*(obj: otype): memberType {.cdecl.} =
     return obj.memberName
-template defSetter(otype: typedesc, memberType: typedesc, memberName: expr, procName: expr): stmt {.immediate.} =
+template defSetter(otype: typedesc, memberType: typedesc, memberName, procName: untyped) =
   proc `set procName`*(obj: otype, value: memberType) {.cdecl.} =
     obj.memberName = value
-template defProp(otype: typedesc, memberType: typedesc, memberName: expr, procName: expr): stmt {.immediate.} =
+template defProp(otype: typedesc, memberType: typedesc, memberName, procName: untyped) =
   defGetter(otype, memberType, memberName, procName)
   defSetter(otype, memberType, memberName, procName)
 
@@ -456,7 +455,7 @@ proc removeCollisionHandler*(space: PSpace; a: TCollisionType;
 #/ If the shape is attached to a static body, it will be added as a static shape.
 proc addShape*(space: PSpace; shape: PShape): PShape{.
   cdecl, importc: "cpSpaceAddShape", dynlib: Lib.}
-#/ Explicity add a shape as a static shape to the simulation.
+#/ Explicitly add a shape as a static shape to the simulation.
 proc addStaticShape*(space: PSpace; shape: PShape): PShape{.
   cdecl, importc: "cpSpaceAddStaticShape", dynlib: Lib.}
 #/ Add a rigid body to the simulation.
@@ -909,7 +908,7 @@ proc getShapes*(arb: PArbiter, a, b: var PShape) {.inline.} =
 
 #/ A macro shortcut for defining and retrieving the shapes from an arbiter.
 #define CP_ARBITER_GET_SHAPES(arb, a, b) cpShape *a, *b; cpArbiterGetShapes(arb, &a, &b);
-template getShapes*(arb: PArbiter, name1, name2: expr): stmt {.immediate.} =
+template getShapes*(arb: PArbiter, name1, name2: untyped) =
   var name1, name2: PShape
   getShapes(arb, name1, name2)
 
@@ -924,7 +923,7 @@ template getShapes*(arb: PArbiter, name1, name2: expr): stmt {.immediate.} =
 
 #/ A macro shortcut for defining and retrieving the bodies from an arbiter.
 #define CP_ARBITER_GET_BODIES(arb, a, b) cpBody *a, *b; cpArbiterGetBodies(arb, &a, &b);
-template getBodies*(arb: PArbiter, name1, name2: expr): stmt {.immediate.} =
+template getBodies*(arb: PArbiter, name1, name2: untyped) =
   var name1, name2: PBOdy
   getBodies(arb, name1, name2)
 
@@ -948,11 +947,11 @@ proc getDepth*(arb: PArbiter; i: cint): CpFloat {.
   cdecl, importc: "cpArbiterGetDepth", dynlib: Lib.}
 
 ##Shapes
-template defShapeSetter(memberType: typedesc, memberName: expr, procName: expr, activates: bool): stmt {.immediate.} =
+template defShapeSetter(memberType: typedesc, memberName: untyped, procName: untyped, activates: bool) =
   proc `set procName`*(obj: PShape, value: memberType) {.cdecl.} =
     if activates and obj.body != nil: obj.body.activate()
     obj.memberName = value
-template defShapeProp(memberType: typedesc, memberName: expr, procName: expr, activates: bool): stmt {.immediate.} =
+template defShapeProp(memberType: typedesc, memberName: untyped, procName: untyped, activates: bool) =
   defGetter(PShape, memberType, memberName, procName)
   defShapeSetter(memberType, memberName, procName, activates)
 
@@ -1029,12 +1028,12 @@ proc getCircleRadius*(shape: PShape): CpFloat {.
 proc allocPolyShape*(): PPolyShape {.
   cdecl, importc: "cpPolyShapeAlloc", dynlib: Lib.}
 #/ Initialize a polygon shape.
-#/ A convex hull will be created from the vertexes.
+#/ A convex hull will be created from the vertices.
 proc init*(poly: PPolyShape; body: PBody, numVerts: cint;
             verts: ptr TVector; offset: TVector): PPolyShape {.
   cdecl, importc: "cpPolyShapeInit", dynlib: Lib.}
 #/ Allocate and initialize a polygon shape.
-#/ A convex hull will be created from the vertexes.
+#/ A convex hull will be created from the vertices.
 proc newPolyShape*(body: PBody; numVerts: cint; verts: ptr TVector;
                     offset: TVector): PShape {.
   cdecl, importc: "cpPolyShapeNew", dynlib: Lib.}
@@ -1051,7 +1050,7 @@ proc newBoxShape*(body: PBody; width, height: CpFloat): PShape {.
 proc newBoxShape*(body: PBody; box: TBB): PShape {.
   cdecl, importc: "cpBoxShapeNew2", dynlib: Lib.}
 
-#/ Check that a set of vertexes is convex and has a clockwise winding.
+#/ Check that a set of vertices is convex and has a clockwise winding.
 #/ NOTE: Due to floating point precision issues, hulls created with cpQuickHull() are not guaranteed to validate!
 proc validatePoly*(verts: ptr TVector; numVerts: cint): bool {.
   cdecl, importc: "cpPolyValidate", dynlib: Lib.}
@@ -1273,11 +1272,11 @@ proc activateBodies(constraint: PConstraint) {.inline.} =
 # 	cpConstraintActivateBodies(constraint); \
 # 	constraint->member = value; \
 # }
-template defConstraintSetter(memberType: typedesc, member: expr, name: expr): stmt {.immediate.} =
+template defConstraintSetter(memberType: typedesc, member, name: untyped) =
   proc `set name`*(constraint: PConstraint, value: memberType) {.cdecl.} =
     activateBodies(constraint)
     constraint.member = value
-template defConstraintProp(memberType: typedesc, member: expr, name: expr): stmt {.immediate.} =
+template defConstraintProp(memberType: typedesc, member, name: untyped) =
   defGetter(PConstraint, memberType, member, name)
   defConstraintSetter(memberType, member, name)
 # CP_DefineConstraintStructGetter(cpSpace*, CP_PRIVATE(space), Space)
@@ -1307,18 +1306,18 @@ proc getImpulse*(constraint: PConstraint): CpFloat {.inline.} =
 # 	cpConstraintActivateBodies(constraint); \
 # 	((struct *)constraint)->member = value; \
 # }
-template constraintCheckCast(constraint: PConstraint, ctype: expr): stmt {.immediate.} =
+template constraintCheckCast(constraint: PConstraint, ctype: untyped) =
   assert(constraint.klass == `ctype getClass`(), "Constraint is the wrong class")
-template defCGetter(ctype: expr, memberType: typedesc, member: expr, name: expr): stmt {.immediate.} =
+template defCGetter(ctype: untyped, memberType: typedesc, member, name: untyped) =
   proc `get ctype name`*(constraint: PConstraint): memberType {.cdecl.} =
     constraintCheckCast(constraint, ctype)
     result = cast[`P ctype`](constraint).member
-template defCSetter(ctype: expr, memberType: typedesc, member: expr, name: expr): stmt {.immediate.} =
+template defCSetter(ctype: untyped, memberType: typedesc, member, name: untyped) =
   proc `set ctype name`*(constraint: PConstraint, value: memberType) {.cdecl.} =
     constraintCheckCast(constraint, ctype)
     activateBodies(constraint)
     cast[`P ctype`](constraint).member = value
-template defCProp(ctype: expr, memberType: typedesc, member: expr, name: expr): stmt {.immediate.} =
+template defCProp(ctype: untyped, memberType: typedesc, member, name: untyped) =
   defCGetter(ctype, memberType, member, name)
   defCSetter(ctype, memberType, member, name)
 

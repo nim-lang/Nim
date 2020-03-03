@@ -1,14 +1,14 @@
 discard """
+  errormsg: "'threadFunc' is not GC-safe"
   file: "tthreadanalysis2.nim"
   line: 37
-  errormsg: "'threadFunc' is not GC-safe"
   cmd: "nim $target --hints:on --threads:on $options $file"
 """
 
 import os
 
 var
-  thr: array [0..5, Thread[tuple[a, b: int]]]
+  thr: array[0..5, Thread[tuple[a, b: int]]]
 
 proc doNothing() = discard
 
@@ -49,4 +49,3 @@ proc main =
   joinThreads(thr)
 
 main()
-

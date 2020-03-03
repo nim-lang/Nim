@@ -21,11 +21,11 @@ ttmpl(1)
 ttmpl[int](1) #<- crash case #1
 
 tproc[int]()
-discard tproc[int]
+let _ = tproc[int]
 ttmpl[int]()  #<- crash case #2
 ttmpl[int]    #<- crash case #3
 
 # but still allow normal use of [] on non-generic templates
 
-template tarr: expr = [1, 2, 3, 4]
+template tarr: untyped = [1, 2, 3, 4]
 echo tarr[1]

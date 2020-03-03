@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 # The current PCRE version information.
 
@@ -105,7 +105,7 @@ const
   NOTEMPTY_ATSTART*  = 0x10000000  #    E D J
   UCP*               = 0x20000000  # C3
 
-## Exec-time and get/set-time error codes
+# Exec-time and get/set-time error codes
 const
   ERROR_NOMATCH*          =  -1
   ERROR_NULL*             =  -2
@@ -146,7 +146,7 @@ const
   ERROR_BADLENGTH*        = -32
   ERROR_UNSET*            = -33
 
-## Specific error codes for UTF-8 validity checks
+# Specific error codes for UTF-8 validity checks
 const
   UTF8_ERR0*  =  0
   UTF8_ERR1*  =  1
@@ -172,7 +172,7 @@ const
   UTF8_ERR21* = 21
   UTF8_ERR22* = 22 # Unused (was non-character)
 
-## Specific error codes for UTF-16 validity checks
+# Specific error codes for UTF-16 validity checks
 const
   UTF16_ERR0* = 0
   UTF16_ERR1* = 1
@@ -180,14 +180,14 @@ const
   UTF16_ERR3* = 3
   UTF16_ERR4* = 4 # Unused (was non-character)
 
-## Specific error codes for UTF-32 validity checks
+# Specific error codes for UTF-32 validity checks
 const
   UTF32_ERR0* = 0
   UTF32_ERR1* = 1
   UTF32_ERR2* = 2 # Unused (was non-character)
   UTF32_ERR3* = 3
 
-## Request types for pcre_fullinfo()
+# Request types for pcre_fullinfo()
 const
   INFO_OPTIONS*             =  0
   INFO_SIZE*                =  1
@@ -217,8 +217,8 @@ const
   INFO_RECURSIONLIMIT*      = 24
   INFO_MATCH_EMPTY*         = 25
 
-## Request types for pcre_config(). Do not re-arrange, in order to remain
-## compatible.
+# Request types for pcre_config(). Do not re-arrange, in order to remain
+# compatible.
 const
   CONFIG_UTF8*                   =  0
   CONFIG_NEWLINE*                =  1
@@ -235,16 +235,16 @@ const
   CONFIG_UTF32*                  = 12
   CONFIG_PARENS_LIMIT*           = 13
 
-## Request types for pcre_study(). Do not re-arrange, in order to remain
-## compatible.
+# Request types for pcre_study(). Do not re-arrange, in order to remain
+# compatible.
 const
   STUDY_JIT_COMPILE*              = 0x0001
   STUDY_JIT_PARTIAL_SOFT_COMPILE* = 0x0002
   STUDY_JIT_PARTIAL_HARD_COMPILE* = 0x0004
   STUDY_EXTRA_NEEDED*             = 0x0008
 
-## Bit flags for the pcre[16|32]_extra structure. Do not re-arrange or redefine
-## these bits, just add new ones on the end, in order to remain compatible.
+# Bit flags for the pcre[16|32]_extra structure. Do not re-arrange or redefine
+# these bits, just add new ones on the end, in order to remain compatible.
 const
   EXTRA_STUDY_DATA*            = 0x0001
   EXTRA_MATCH_LIMIT*           = 0x0002
@@ -254,7 +254,7 @@ const
   EXTRA_MARK*                  = 0x0020
   EXTRA_EXECUTABLE_JIT*        = 0x0040
 
-## Types
+# Types
 type
   Pcre* = object
   Pcre16* = object
@@ -263,10 +263,12 @@ type
   JitStack16* = object
   JitStack32* = object
 
+when defined(nimHasStyleChecks):
+  {.push styleChecks: off.}
 
-## The structure for passing additional data to pcre_exec(). This is defined in
-## such as way as to be extensible. Always add new fields at the end, in order
-## to remain compatible.
+# The structure for passing additional data to pcre_exec(). This is defined in
+# such as way as to be extensible. Always add new fields at the end, in order
+# to remain compatible.
 type
   ExtraData* = object
     flags*: clong                  ## Bits for which fields are set
@@ -278,10 +280,10 @@ type
     mark*: pointer                 ## For passing back a mark pointer
     executable_jit*: pointer       ## Contains a pointer to a compiled jit code
 
-## The structure for passing out data via the pcre_callout_function. We use a
-## structure so that new fields can be added on the end in future versions,
-## without changing the API of the function, thereby allowing old clients to
-## work without modification.
+# The structure for passing out data via the pcre_callout_function. We use a
+# structure so that new fields can be added on the end in future versions,
+# without changing the API of the function, thereby allowing old clients to
+# work without modification.
 type
   CalloutBlock* = object
     version*         : cint       ## Identifies version of block
@@ -302,8 +304,10 @@ type
     mark*            : pointer    ## Pointer to current mark or NULL
     # ------------------------------------------------------------------
 
+when defined(nimHasStyleChecks):
+  {.pop.}
 
-## User defined callback which provides a stack just before the match starts.
+# User defined callback which provides a stack just before the match starts.
 type
   JitCallback* = proc (a: pointer): ptr JitStack {.cdecl.}
 
@@ -466,14 +470,6 @@ proc study*(code: ptr Pcre,
 {.pop.}
 
 
-{.deprecated: [MAJOR: PCRE_MAJOR, MINOR: PCRE_MINOR,
-               PRERELEASE: PCRE_PRERELEASE, DATE: PCRE_DATE].}
-
-{.deprecated: [TPcre: Pcre, TJitStack: JitStack].}
 type
   PPcre* {.deprecated.} = ptr Pcre
   PJitStack* {.deprecated.} = ptr JitStack
-
-{.deprecated: [TExtra: ExtraData].}
-{.deprecated: [TCalloutBlock: CalloutBlock].}
-{.deprecated: [TJitCallback: JitCallback].}

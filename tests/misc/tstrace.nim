@@ -1,3 +1,23 @@
+discard """
+exitcode: 1
+output: '''
+Traceback (most recent call last)
+tstrace.nim(36)          tstrace
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(28)          recTest
+tstrace.nim(31)          recTest
+SIGSEGV: Illegal storage access. (Attempt to read from nil?)
+'''
+"""
+
 # Test the new stacktraces (great for debugging!)
 
 {.push stack_trace: on.}

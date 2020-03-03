@@ -1,7 +1,7 @@
 discard """
-  tfile: "tnot.nim"
-  tline: 14
   errormsg: "type mismatch"
+  file: "tnot.nim"
+  line: 14
 """
 # BUG: following compiles, but should not:
 

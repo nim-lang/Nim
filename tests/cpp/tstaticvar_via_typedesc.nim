@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim cpp $file"
+  targets: "cpp"
   output: "42"
 """
 

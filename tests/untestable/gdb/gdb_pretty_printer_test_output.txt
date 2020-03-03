@@ -1,0 +1,3 @@
+Loading Nim Runtime support.
+NimEnumPrinter: lookup global symbol 'NTI__z9cu80OJCfNgw9bUdzn5ZEzw_ failed for tyEnum_MyOtherEnum__z9cu80OJCfNgw9bUdzn5ZEzw.
+8

@@ -17,22 +17,27 @@
 const
   NilLibHandle: LibHandle = nil
 
-proc rawWrite(f: File, s: string) =
-  # we cannot throw an exception here!
-  discard writeBuffer(f, cstring(s), s.len)
-
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not load: ")
-  stderr.rawWrite(path)
-  stderr.rawWrite("\n")
+  cstderr.rawWrite("could not load: ")
+  cstderr.rawWrite(path)
+  cstderr.rawWrite("\n")
+  when not defined(nimDebugDlOpen) and not defined(windows):
+    cstderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
+  when defined(windows) and defined(guiapp):
+    # Because console output is not shown in GUI apps, display error as message box:
+    const prefix = "could not load: "
+    var msg: array[1000, char]
+    copyMem(msg[0].addr, prefix.cstring, prefix.len)
+    copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
+    discard MessageBoxA(nil, msg[0].addr, nil, 0)
   quit(1)
 
-proc procAddrError(name: cstring) {.noinline.} =
+proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =
   # carefully written to avoid memory allocation:
-  stderr.rawWrite("could not import: ")
-  stderr.write(name)
-  stderr.rawWrite("\n")
+  cstderr.rawWrite("could not import: ")
+  cstderr.rawWrite(name)
+  cstderr.rawWrite("\n")
   quit(1)
 
 # this code was inspired from Lua's source code:
@@ -74,7 +79,8 @@ when defined(posix):
     when defined(nimDebugDlOpen):
       let error = dlerror()
       if error != nil:
-        c_fprintf(c_stderr, "%s\n", error)
+        cstderr.rawWrite(error)
+        cstderr.rawWrite("\n")
 
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = dlsym(lib, name)
@@ -112,18 +118,18 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
-    const decorated_length = 250
-    var decorated: array[decorated_length, char]
+    const decoratedLength = 250
+    var decorated: array[decoratedLength, char]
     decorated[0] = '_'
     var m = 1
-    while m < (decorated_length - 5):
+    while m < (decoratedLength - 5):
       if name[m - 1] == '\x00': break
       decorated[m] = name[m - 1]
       inc(m)
     decorated[m] = '@'
     for i in countup(0, 50):
       var k = i * 4
-      if k div 100 == 0: 
+      if k div 100 == 0:
         if k div 10 == 0:
           m = m + 1
         else:
@@ -136,9 +142,41 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      result = getProcAddress(cast[THINSTANCE](lib), decorated)
+      when defined(nimNoArrayToCstringConversion):
+        result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
+      else:
+        result = getProcAddress(cast[THINSTANCE](lib), decorated)
       if result != nil: return
     procAddrError(name)
+
+elif defined(genode):
+
+  proc nimUnloadLibrary(lib: LibHandle) {.
+    error: "nimUnloadLibrary not implemented".}
+
+  proc nimLoadLibrary(path: string): LibHandle {.
+    error: "nimLoadLibrary not implemented".}
+
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr {.
+    error: "nimGetProcAddr not implemented".}
+
+elif defined(nintendoswitch):
+  proc nimUnloadLibrary(lib: LibHandle) =
+    cstderr.rawWrite("nimUnLoadLibrary not implemented")
+    cstderr.rawWrite("\n")
+    quit(1)
+
+  proc nimLoadLibrary(path: string): LibHandle =
+    cstderr.rawWrite("nimLoadLibrary not implemented")
+    cstderr.rawWrite("\n")
+    quit(1)
+
+
+  proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
+    cstderr.rawWrite("nimGetProAddr not implemented")
+    cstderr.rawWrite(name)
+    cstderr.rawWrite("\n")
+    quit(1)
 
 else:
   {.error: "no implementation for dyncalls".}

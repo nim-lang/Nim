@@ -1,44 +1,28 @@
-/*
- * share.h
- *
- * Constants for file sharing functions.
- *
- * This file is part of the Mingw32 package.
- *
- * Contributors:
- *  Created by Colin Peters <colin@bird.fu.is.saga-u.ac.jp>
- *
- *  THIS SOFTWARE IS NOT COPYRIGHTED
- *
- *  This source code is offered for use in the public domain. You may
- *  use, modify or distribute it freely.
- *
- *  This code is distributed in the hope that it will be useful but
- *  WITHOUT ANY WARRANTY. ALL WARRANTIES, EXPRESS OR IMPLIED ARE HEREBY
- *  DISCLAIMED. This includes but is not limited to warranties of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- *
- * $Revision: 1.2 $
- * $Author: bellard $
- * $Date: 2005/04/17 13:14:29 $
- *
+/**
+ * This file has no copyright assigned and is placed in the Public Domain.
+ * This file is part of the w64 mingw-runtime package.
+ * No warranty is given; refer to the file DISCLAIMER within this package.
  */
+#ifndef _INC_SHARE
+#define _INC_SHARE
 
-#ifndef	__STRICT_ANSI__
+#ifndef _WIN32
+#error Only Win32 target is supported!
+#endif
 
-#ifndef	_SHARE_H_
-#define	_SHARE_H_
+#define _SH_COMPAT 0x00
+#define _SH_DENYRW 0x10
+#define _SH_DENYWR 0x20
+#define _SH_DENYRD 0x30
+#define _SH_DENYNO 0x40
+#define _SH_SECURE 0x80
 
-/* All the headers include this file. */
-#include <_mingw.h>
+#ifndef	NO_OLDNAMES
+#define SH_COMPAT _SH_COMPAT
+#define SH_DENYRW _SH_DENYRW
+#define SH_DENYWR _SH_DENYWR
+#define SH_DENYRD _SH_DENYRD
+#define SH_DENYNO _SH_DENYNO
+#endif
 
-#define SH_COMPAT	0x00	/* Compatibility */
-#define	SH_DENYRW	0x10	/* Deny read/write */
-#define	SH_DENYWR	0x20	/* Deny write */
-#define	SH_DENYRD	0x30	/* Deny read */
-#define	SH_DENYNO	0x40	/* Deny nothing */
-
-#endif	/* Not _SHARE_H_ */
-
-#endif	/* Not __STRICT_ANSI__ */
-
+#endif

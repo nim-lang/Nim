@@ -1,5 +1,6 @@
 discard """
-  cmd: "nim cpp $file"
+  targets: "cpp"
+outputsub: ""
 """
 
 import nativesockets

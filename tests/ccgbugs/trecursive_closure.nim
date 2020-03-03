@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 # bug #2233
 type MalType = object
   fun: proc: MalType

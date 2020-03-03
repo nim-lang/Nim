@@ -5,8 +5,8 @@ type
   TInputFinishedProc* = proc()
   TKeyCallback = proc()
   PKeyClient* = ref object
-    onKeyDown: TTable[int32, TKeyCallback]
-    onKeyUp: TTable[int32, TKeyCallback]
+    onKeyDown: Table[int32, TKeyCallback]
+    onKeyUp: Table[int32, TKeyCallback]
     name: string
   PTextInput* = ref object
     text*: string
@@ -134,5 +134,5 @@ iterator pollEvents*(window: PRenderWindow): PEvent =
     of EvtMouseButtonReleased: addButtonEvent(event.mouseButton.button, up)
     of EvtTextEntered: recordText(activeInput, event.text)
     of EvtMouseMoved: setMousePos(event.mouseMove.x, event.mouseMove.y)
-    else: nil
+    else: discard
     yield(addr event)

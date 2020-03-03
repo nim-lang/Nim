@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 from posix import SocketHandle
 
@@ -35,16 +35,13 @@ const
   EPOLL_CTL_MOD* = 3          # Change file descriptor epoll_event structure.
 
 type
-  epoll_data* {.importc: "union epoll_data",
+  EpollData* {.importc: "union epoll_data",
       header: "<sys/epoll.h>", pure, final.} = object # TODO: This is actually a union.
-    #thePtr* {.importc: "ptr".}: pointer
-    fd* {.importc: "fd".}: cint # \
-    #u32*: uint32
-    #u64*: uint64
+    u64* {.importc: "u64".}: uint64
 
-  epoll_event* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object
+  EpollEvent* {.importc: "struct epoll_event", header: "<sys/epoll.h>", pure, final.} = object
     events*: uint32 # Epoll events
-    data*: epoll_data # User data variable
+    data*: EpollData # User data variable
 
 proc epoll_create*(size: cint): cint {.importc: "epoll_create",
     header: "<sys/epoll.h>".}
@@ -58,7 +55,7 @@ proc epoll_create1*(flags: cint): cint {.importc: "epoll_create1",
   ## Same as epoll_create but with an FLAGS parameter.  The unused SIZE
   ##   parameter has been dropped.
 
-proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr epoll_event): cint {.
+proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr EpollEvent): cint {.
     importc: "epoll_ctl", header: "<sys/epoll.h>".}
   ## Manipulate an epoll instance "epfd". Returns 0 in case of success,
   ##   -1 in case of error ( the "errno" variable will contain the
@@ -67,7 +64,7 @@ proc epoll_ctl*(epfd: cint; op: cint; fd: cint | SocketHandle; event: ptr epoll_
   ##   operation. The "event" parameter describes which events the caller
   ##   is interested in and any associated user data.
 
-proc epoll_wait*(epfd: cint; events: ptr epoll_event; maxevents: cint;
+proc epoll_wait*(epfd: cint; events: ptr EpollEvent; maxevents: cint;
                  timeout: cint): cint {.importc: "epoll_wait",
     header: "<sys/epoll.h>".}
   ## Wait for events on an epoll instance "epfd". Returns the number of
@@ -82,7 +79,7 @@ proc epoll_wait*(epfd: cint; events: ptr epoll_event; maxevents: cint;
   ##   __THROW.
 
 
-#proc epoll_pwait*(epfd: cint; events: ptr epoll_event; maxevents: cint;
+#proc epoll_pwait*(epfd: cint; events: ptr EpollEvent; maxevents: cint;
 #                  timeout: cint; ss: ptr sigset_t): cint {.
 #    importc: "epoll_pwait", header: "<sys/epoll.h>".}
 # Same as epoll_wait, but the thread's signal mask is temporarily

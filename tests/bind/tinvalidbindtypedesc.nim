@@ -1,6 +1,6 @@
 discard """
+  errormsg: "type mismatch: got <type float, string>"
   line: 10
-  errormsg: "type mismatch: got (typedesc[float], string)"
 """
 
 proc foo(T: typedesc; some: T) =
@@ -8,4 +8,3 @@ proc foo(T: typedesc; some: T) =
 
 foo int, 4
 foo float, "bad"
-

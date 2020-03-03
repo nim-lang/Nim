@@ -103,14 +103,14 @@ union double_long {
 
 union float_long {
     float f;
-    long l;
+    unsigned int l;
 };
 
 /* XXX: we don't support several builtin supports for now */
-#ifndef __x86_64__
+#if !defined __x86_64__ && !defined __arm__
 
 /* XXX: use gcc/tcc intrinsic ? */
-#if defined(__i386__)
+#if defined __i386__
 #define sub_ddmmss(sh, sl, ah, al, bh, bl) \
   __asm__ ("subl %5,%1\n\tsbbl %3,%0"					\
 	   : "=r" ((USItype) (sh)),					\
@@ -162,7 +162,7 @@ static UDWtype __udivmoddi4 (UDWtype n, UDWtype d, UDWtype *rp)
   n0 = nn.s.low;
   n1 = nn.s.high;
 
-#if !UDIV_NEEDS_NORMALIZATION
+#if !defined(UDIV_NEEDS_NORMALIZATION)
   if (d1 == 0)
     {
       if (d0 > n1)
@@ -478,13 +478,6 @@ long long __ashldi3(long long a, int b)
 #endif
 }
 
-#if defined(__i386__)
-/* FPU control word for rounding to nearest mode */
-unsigned short __tcc_fpu_control = 0x137f;
-/* FPU control word for round to zero mode for int conversion */
-unsigned short __tcc_int_fpu_control = 0x137f | 0x0c00;
-#endif
-
 #endif /* !__x86_64__ */
 
 /* XXX: fix tcc's code generator to do this instead */
@@ -557,6 +550,13 @@ unsigned long long __fixunssfdi (float a1)
         return 0;
 }
 
+long long __fixsfdi (float a1)
+{
+    long long ret; int s;
+    ret = __fixunssfdi((s = a1 >= 0) ? a1 : -a1);
+    return s ? ret : -ret;
+}
+
 unsigned long long __fixunsdfdi (double a1)
 {
     register union double_long dl1;
@@ -582,6 +582,14 @@ unsigned long long __fixunsdfdi (double a1)
         return 0;
 }
 
+long long __fixdfdi (double a1)
+{
+    long long ret; int s;
+    ret = __fixunsdfdi((s = a1 >= 0) ? a1 : -a1);
+    return s ? ret : -ret;
+}
+
+#ifndef __arm__
 unsigned long long __fixunsxfdi (long double a1)
 {
     register union ldouble_long dl1;
@@ -605,3 +613,10 @@ unsigned long long __fixunsxfdi (long double a1)
         return 0;
 }
 
+long long __fixxfdi (long double a1)
+{
+    long long ret; int s;
+    ret = __fixunsxfdi((s = a1 >= 0) ? a1 : -a1);
+    return s ? ret : -ret;
+}
+#endif /* !ARM */

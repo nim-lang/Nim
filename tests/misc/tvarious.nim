@@ -1,3 +1,7 @@
+discard """
+action: compile
+"""
+
 # Test various aspects
 
 # bug #572

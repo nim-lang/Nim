@@ -1,0 +1,74 @@
+#compdef nim
+
+_nim() {
+  _arguments -C \
+    ':command:((
+      {compile,c}\:compile\ project\ with\ default\ code\ generator\ C
+      doc\:generate\ the\ documentation\ for\ inputfile
+      {compileToC,cc}\:compile\ project\ with\ C\ code\ generator
+      {compileToCpp,cpp}\:compile\ project\ to\ C++\ code
+      {compileToOC,objc}\:compile\ project\ to\ Objective\ C\ code
+      js\:compile\ project\ to\ Javascript
+      e\:run\ a\ Nimscript\ file
+      rst2html\:convert\ a\ reStructuredText\ file\ to\ HTML
+      rst2tex\:convert\ a\ reStructuredText\ file\ to\ TeX
+      jsondoc\:extract\ the\ documentation\ to\ a\ json\ file
+      buildIndex\:build\ an\ index\ for\ the\ whole\ documentation
+      genDepend\:generate\ a\ DOT\ file\ containing\ the\ module\ dependency\ graph
+      dump\:dump\ all\ defined\ conditionals\ and\ search\ paths
+      check\:checks\ the\ project\ for\ syntax\ and\ semantic
+    ))' \
+    '*-r[run the application]' \
+    '*--run[run the application]' \
+    '*-p=[add path to search paths]' \
+    '*--path=[add path to search paths]' \
+    '*-d=[define a conditional symbol]' \
+    '*--define=[define a conditional symbol]' \
+    '*-u=[undefine a conditional symbol]' \
+    '*--undef=[undefine a conditional symbol]' \
+    '*-f[force rebuilding of all modules]' \
+    '*--forceBuild[force rebuilding of all modules]' \
+    '*--stackTrace=on[turn stack tracing on]' \
+    '*--stackTrace=off[turn stack tracing off]' \
+    '*--lineTrace=on[turn line tracing on]' \
+    '*--lineTrace=off[turn line tracing off]' \
+    '*--threads=on[turn support for multi-threading on]' \
+    '*--threads=off[turn support for multi-threading off]' \
+    '*-x=on[turn all runtime checks on]' \
+    '*-x=off[turn all runtime checks off]' \
+    '*--checks=on[turn all runtime checks on]' \
+    '*--checks=off[turn all runtime checks off]' \
+    '*--objChecks=on[turn obj conversion checks on]' \
+    '*--objChecks=off[turn obj conversion checks off]' \
+    '*--fieldChecks=on[turn case variant field checks on]' \
+    '*--fieldChecks=off[turn case variant field checks off]' \
+    '*--rangeChecks=on[turn range checks on]' \
+    '*--rangeChecks=off[turn range checks off]' \
+    '*--boundChecks=on[turn bound checks on]' \
+    '*--boundChecks=off[turn bound checks off]' \
+    '*--overflowChecks=on[turn int over-/underflow checks on]' \
+    '*--overflowChecks=off[turn int over-/underflow checks off]' \
+    '*-a[turn assertions on]' \
+    '*-a[turn assertions off]' \
+    '*--assertions=on[turn assertions on]' \
+    '*--assertions=off[turn assertions off]' \
+    '*--floatChecks=on[turn all floating point (NaN/Inf) checks on]' \
+    '*--floatChecks=off[turn all floating point (NaN/Inf) checks off]' \
+    '*--nanChecks=on[turn NaN checks on]' \
+    '*--nanChecks=off[turn NaN checks off]' \
+    '*--infChecks=on[turn Inf checks on]' \
+    '*--infChecks=off[turn Inf checks off]' \
+    '*--nilChecks=on[turn nil checks on]' \
+    '*--nilChecks=off[turn nil checks off]' \
+    '*--opt=none[do not optimize]' \
+    '*--opt=speed[optimize for speed|size - use -d:release for a release build]' \
+    '*--opt=size[optimize for size]' \
+    '*--debugger:native[use native debugger (gdb)]' \
+    '*--app=console[generate a console app]' \
+    '*--app=gui[generate a GUI app]' \
+    '*--app=lib[generate a dynamic library]' \
+    '*--app=staticlib[generate a static library]' \
+    ':filename:_files -g"*.nim"'
+}
+
+_nim "$@"

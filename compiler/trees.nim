@@ -10,7 +10,7 @@
 # tree helper routines
 
 import
-  ast, astalgo, lexer, msgs, strutils, wordrecg
+  ast, wordrecg, idents
 
 proc cyclicTreeAux(n: PNode, visited: var seq[PNode]): bool =
   if n == nil: return
@@ -38,14 +38,15 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
         # don't go nuts here: same symbol as string is enough:
         result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+    of nkCommentStmt: result = a.comment == b.comment
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
-          if not exprStructuralEquivalent(a.sons[i], b.sons[i],
+      if a.len == b.len:
+        for i in 0..<a.len:
+          if not exprStructuralEquivalent(a[i], b[i],
                                           strictSymEquality): return
         result = true
 
@@ -62,21 +63,21 @@ proc sameTree*(a, b: PNode): bool =
       # don't go nuts here: same symbol as string is enough:
       result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
-    of nkCharLit..nkInt64Lit: result = a.intVal == b.intVal
+    of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
     of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
-      if sonsLen(a) == sonsLen(b):
-        for i in countup(0, sonsLen(a) - 1):
-          if not sameTree(a.sons[i], b.sons[i]): return
+      if a.len == b.len:
+        for i in 0..<a.len:
+          if not sameTree(a[i], b[i]): return
         result = true
 
 proc getMagic*(op: PNode): TMagic =
   case op.kind
   of nkCallKinds:
-    case op.sons[0].kind
-    of nkSym: result = op.sons[0].sym.magic
+    case op[0].kind
+    of nkSym: result = op[0].sym.magic
     else: result = mNone
   else: result = mNone
 
@@ -86,37 +87,61 @@ proc isConstExpr*(n: PNode): bool =
 
 proc isCaseObj*(n: PNode): bool =
   if n.kind == nkRecCase: return true
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     if n[i].isCaseObj: return true
 
-proc isDeepConstExpr*(n: PNode): bool =
+proc isDeepConstExpr*(n: PNode; preventInheritance = false): bool =
   case n.kind
-  of nkCharLit..nkInt64Lit, nkStrLit..nkTripleStrLit,
-      nkFloatLit..nkFloat64Lit, nkNilLit:
+  of nkCharLit..nkNilLit:
     result = true
   of nkExprEqExpr, nkExprColonExpr, nkHiddenStdConv, nkHiddenSubConv:
-    result = isDeepConstExpr(n.sons[1])
-  of nkCurly, nkBracket, nkPar, nkObjConstr, nkClosure:
-    for i in ord(n.kind == nkObjConstr) .. <n.len:
-      if not isDeepConstExpr(n.sons[i]): return false
+    result = isDeepConstExpr(n[1], preventInheritance)
+  of nkCurly, nkBracket, nkPar, nkTupleConstr, nkObjConstr, nkClosure, nkRange:
+    for i in ord(n.kind == nkObjConstr)..<n.len:
+      if not isDeepConstExpr(n[i], preventInheritance): return false
     if n.typ.isNil: result = true
     else:
-      let t = n.typ.skipTypes({tyGenericInst, tyDistinct})
-      if t.kind in {tyRef, tyPtr}: return false
-      if t.kind != tyObject or not isCaseObj(t.n):
+      let t = n.typ.skipTypes({tyGenericInst, tyDistinct, tyAlias, tySink, tyOwned})
+      if t.kind in {tyRef, tyPtr} or tfUnion in t.flags: return false
+      if t.kind == tyObject:
+        if preventInheritance and t[0] != nil:
+          result = false
+        elif isCaseObj(t.n):
+          result = false
+        else:
+          result = true
+      else:
         result = true
   else: discard
 
 proc isRange*(n: PNode): bool {.inline.} =
   if n.kind in nkCallKinds:
-    if n[0].kind == nkIdent and n[0].ident.id == ord(wDotDot) or
-        n[0].kind in {nkClosedSymChoice, nkOpenSymChoice} and
-        n[0][1].sym.name.id == ord(wDotDot):
+    let callee = n[0]
+    if (callee.kind == nkIdent and callee.ident.id == ord(wDotDot)) or
+       (callee.kind == nkSym and callee.sym.name.id == ord(wDotDot)) or
+       (callee.kind in {nkClosedSymChoice, nkOpenSymChoice} and
+        callee[1].sym.name.id == ord(wDotDot)):
       result = true
 
 proc whichPragma*(n: PNode): TSpecialWord =
-  let key = if n.kind == nkExprColonExpr: n.sons[0] else: n
+  let key = if n.kind in nkPragmaCallKinds and n.len > 0: n[0] else: n
   if key.kind == nkIdent: result = whichKeyword(key.ident)
+
+proc findPragma*(n: PNode, which: TSpecialWord): PNode =
+  if n.kind == nkPragma:
+    for son in n:
+      if whichPragma(son) == which:
+        return son
+
+proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  for i in 0..<n.len:
+    var it = n[i]
+    if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
+      result = it[1]
+      if result.kind notin {nkCurly, nkBracket}:
+        result = newNodeI(nkCurly, result.info)
+        result.add(it[1])
+      return
 
 proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:
@@ -128,8 +153,8 @@ proc flattenStmts*(n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   unnestStmts(n, result)
   if result.len == 1:
-    result = result.sons[0]
+    result = result[0]
 
 proc extractRange*(k: TNodeKind, n: PNode, a, b: int): PNode =
   result = newNodeI(k, n.info, b-a+1)
-  for i in 0 .. b-a: result.sons[i] = n.sons[i+a]
+  for i in 0..b-a: result[i] = n[i+a]

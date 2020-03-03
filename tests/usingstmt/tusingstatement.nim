@@ -1,5 +1,4 @@
 discard """
-  file: "tusingstatement.nim"
   output: "Using test.Closing test."
 """
 
@@ -12,7 +11,7 @@ import
 # Nim's destructors offer a mechanism for automatic
 # disposal of resources.
 #
-macro autoClose(e: expr): stmt {.immediate.} =
+macro autoClose(args: varargs[untyped]): untyped =
   let e = callsite()
   if e.len != 3:
     error "Using statement: unexpected number of arguments. Got " &
@@ -86,4 +85,4 @@ proc use(r: var TResource) =
 autoClose(r = openResource("test")):
   use r
 
-
+write stdout, "\n"

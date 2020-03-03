@@ -8,6 +8,7 @@
 #
 
 # Implementation of some runtime checks.
+include system/indexerrors
 
 proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   when hostOS == "standalone":
@@ -15,17 +16,23 @@ proc raiseRangeError(val: BiggestInt) {.compilerproc, noinline.} =
   else:
     sysFatal(RangeError, "value out of range: ", $val)
 
+proc raiseIndexError3(i, a, b: int) {.compilerproc, noinline.} =
+  sysFatal(IndexError, formatErrorIndexBound(i, a, b))
+
+proc raiseIndexError2(i, n: int) {.compilerproc, noinline.} =
+  sysFatal(IndexError, formatErrorIndexBound(i, n))
+
 proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexError, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
-  sysFatal(FieldError, f, " is not accessible")
+  sysFatal(FieldError, f)
 
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
     return i
   else:
-    raiseIndexError()
+    raiseIndexError3(i, a, b)
 
 proc chckRange(i, a, b: int): int =
   if i >= a and i <= b:
@@ -39,6 +46,12 @@ proc chckRange64(i, a, b: int64): int64 {.compilerproc.} =
   else:
     raiseRangeError(i)
 
+proc chckRangeU(i, a, b: uint64): uint64 {.compilerproc.} =
+  if i >= a and i <= b:
+    return i
+  else:
+    sysFatal(RangeError, "value out of range")
+
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
     return x
@@ -50,49 +63,59 @@ proc chckRangeF(x, a, b: float): float =
 
 proc chckNil(p: pointer) =
   if p == nil:
-    sysFatal(ValueError, "attempt to write to a nil address")
+    sysFatal(NilAccessError, "attempt to write to a nil address")
 
-proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
-  # checks if obj is of type subclass:
-  var x = obj
-  if x == subclass: return # optimized fast path
-  while x != subclass:
-    if x == nil:
-      sysFatal(ObjectConversionError, "invalid object conversion")
-      break
-    x = x.base
+proc chckNilDisp(p: pointer) {.compilerproc.} =
+  if p == nil:
+    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
 
-proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =
-  if a != b:
-    sysFatal(ObjectAssignmentError, "invalid object assignment")
+when not defined(nimV2):
 
-type ObjCheckCache = array[0..1, PNimType]
+  proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
+    # checks if obj is of type subclass:
+    var x = obj
+    if x == subclass: return # optimized fast path
+    while x != subclass:
+      if x == nil:
+        sysFatal(ObjectConversionError, "invalid object conversion")
+      x = x.base
 
-proc isObjSlowPath(obj, subclass: PNimType;
-                   cache: var ObjCheckCache): bool {.noinline.} =
-  # checks if obj is of type subclass:
-  var x = obj.base
-  while x != subclass:
-    if x == nil:
-      cache[0] = obj
-      return false
-    x = x.base
-  cache[1] = obj
-  return true
+  proc chckObjAsgn(a, b: PNimType) {.compilerproc, inline.} =
+    if a != b:
+      sysFatal(ObjectAssignmentError, "invalid object assignment")
 
-proc isObjWithCache(obj, subclass: PNimType;
-                    cache: var ObjCheckCache): bool {.compilerProc, inline.} =
-  if obj == subclass: return true
-  if obj.base == subclass: return true
-  if cache[0] == obj: return false
-  if cache[1] == obj: return true
-  return isObjSlowPath(obj, subclass, cache)
+  type ObjCheckCache = array[0..1, PNimType]
 
-proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
-  # checks if obj is of type subclass:
-  var x = obj
-  if x == subclass: return true # optimized fast path
-  while x != subclass:
-    if x == nil: return false
-    x = x.base
-  return true
+  proc isObjSlowPath(obj, subclass: PNimType;
+                    cache: var ObjCheckCache): bool {.noinline.} =
+    # checks if obj is of type subclass:
+    var x = obj.base
+    while x != subclass:
+      if x == nil:
+        cache[0] = obj
+        return false
+      x = x.base
+    cache[1] = obj
+    return true
+
+  proc isObjWithCache(obj, subclass: PNimType;
+                      cache: var ObjCheckCache): bool {.compilerproc, inline.} =
+    if obj == subclass: return true
+    if obj.base == subclass: return true
+    if cache[0] == obj: return false
+    if cache[1] == obj: return true
+    return isObjSlowPath(obj, subclass, cache)
+
+  proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =
+    # checks if obj is of type subclass:
+    var x = obj
+    if x == subclass: return true # optimized fast path
+    while x != subclass:
+      if x == nil: return false
+      x = x.base
+    return true
+
+when defined(nimV2):
+  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerproc.} =
+    if oldDiscVal != newDiscVal:
+      sysFatal(FieldError, "assignment to discriminant changes object branch")

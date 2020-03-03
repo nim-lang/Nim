@@ -1,8 +1,7 @@
 discard """
-  file: "tbug511622.nim"
   output: "3"
 """
-import StrUtils, Math
+import math
 
 proc FibonacciA(n: int): int64 =
   var fn = float64(n)
@@ -11,6 +10,3 @@ proc FibonacciA(n: int): int64 =
   return int64((pow(p, fn) + pow(q, fn)) / sqrt(5.0))
 
 echo FibonacciA(4) #OUT 3
-
-
-

@@ -11,7 +11,7 @@ discard """
 ## because it's more efficient than using procedure pointers and less
 ## verbose than defining a new callable type for every invocation of `map`.
 
-import future
+import sugar
 import macros
 import strutils
 
@@ -36,7 +36,7 @@ proc derefExpr(exprRef: string): NimNode {.compileTime.} =
 type Mapped[Input; predicate: static[string]] = object
   input: Input
 
-macro map(input, predicate: expr): expr =
+macro map(input, predicate: untyped): untyped =
   let predicate = callsite()[2]
   newNimNode(nnkObjConstr).add(
     newNimNode(nnkBracketExpr).add(
@@ -47,7 +47,7 @@ macro map(input, predicate: expr): expr =
       ident"input", input))
 
 proc `[]`(m: Mapped, i: int): auto =
-  macro buildResult: expr =
+  macro buildResult: untyped =
     newCall(
       derefExpr(m.predicate),
       newNimNode(nnkBracketExpr).add(

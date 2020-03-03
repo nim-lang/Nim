@@ -14,7 +14,7 @@
 ## `db_postgres <db_postgres.html>`_.
 ##
 ## Parameter substitution
-## ----------------------
+## ======================
 ##
 ## All ``db_*`` modules support the same form of parameter substitution.
 ## That is, using the ``?`` (question mark) to signify the place where a
@@ -25,10 +25,10 @@
 ##
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Opening a connection to a database
-## ==================================
+## ----------------------------------
 ##
 ## .. code-block:: Nim
 ##     import db_mysql
@@ -36,7 +36,7 @@
 ##     db.close()
 ##
 ## Creating a table
-## ================
+## ----------------
 ##
 ## .. code-block:: Nim
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
@@ -45,14 +45,14 @@
 ##                       name varchar(50) not null)"""))
 ##
 ## Inserting data
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Dominik")
 ##
 ## Larger example
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##
@@ -89,20 +89,19 @@ import db_common
 export db_common
 
 type
-  DbConn* = PMySQL     ## encapsulates a database connection
+  DbConn* = distinct PMySQL ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
                        ## converted to nil.
   InstantRow* = object ## a handle that can be used to get a row's
                        ## column text on demand
     row: cstringArray
     len: int
-{.deprecated: [TRow: Row, TDbConn: DbConn].}
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## raises a DbError exception.
   var e: ref DbError
   new(e)
-  e.msg = $mysql.error(db)
+  e.msg = $mysql.error(PMySQL db)
   raise e
 
 when false:
@@ -128,10 +127,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
   var a = 0
   for c in items(string(formatstr)):
     if c == '?':
-      if args[a] == nil:
-        add(result, "NULL")
-      else:
-        add(result, dbQuote(args[a]))
+      add(result, dbQuote(args[a]))
       inc(a)
     else:
       add(result, c)
@@ -140,17 +136,17 @@ proc tryExec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]): bool {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## tries to execute the query and returns true if successful, false otherwise.
   var q = dbFormat(query, args)
-  return mysql.realQuery(db, q, q.len) == 0'i32
+  return mysql.realQuery(PMySQL db, q, q.len) == 0'i32
 
 proc rawExec(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) =
   var q = dbFormat(query, args)
-  if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
+  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32: dbError(db)
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`]) {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## executes the query and raises EDB if not successful.
   var q = dbFormat(query, args)
-  if mysql.realQuery(db, q, q.len) != 0'i32: dbError(db)
+  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32: dbError(db)
 
 proc newRow(L: int): Row =
   newSeq(result, L)
@@ -171,20 +167,20 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   ## Breaking the fastRows() iterator during a loop will cause the next
   ## database query to raise an [EDb] exception ``Commands out of sync``.
   rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
+  var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
-    var L = int(mysql.numFields(sqlres))
-    var result = newRow(L)
-    var row: cstringArray
+    var
+      L = int(mysql.numFields(sqlres))
+      row: cstringArray
+      result: Row
+      backup: Row
+    newSeq(result, L)
     while true:
       row = mysql.fetchRow(sqlres)
       if row == nil: break
       for i in 0..L-1:
         setLen(result[i], 0)
-        if row[i] == nil:
-          result[i] = nil
-        else:
-          add(result[i], row[i])
+        result[i].add row[i]
       yield result
     properFreeResult(sqlres, row)
 
@@ -194,7 +190,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
   rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
+  var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
     let L = int(mysql.numFields(sqlres))
     var row: cstringArray
@@ -205,7 +201,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
     properFreeResult(sqlres, row)
 
 proc setTypeName(t: var DbType; f: PFIELD) =
-  shallowCopy(t.name, $f.name)
+  t.name = $f.name
   t.maxReprLen = Natural(f.max_length)
   if (NOT_NULL_FLAG and f.flags) != 0: t.notNull = true
   case f.ftype
@@ -274,7 +270,7 @@ iterator instantRows*(db: DbConn; columns: var DbColumns; query: SqlQuery;
   ## Same as fastRows but returns a handle that can be used to get column text
   ## on demand using []. Returned handle is valid only within the iterator body.
   rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
+  var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
     let L = int(mysql.numFields(sqlres))
     setColumnInfo(columns, sqlres, L)
@@ -290,6 +286,10 @@ proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row.
   $row.row[col]
 
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
+
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row.
   row.len
@@ -299,7 +299,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
   ## Retrieves a single row. If the query doesn't return any rows, this proc
   ## will return a Row with empty strings for each column.
   rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
+  var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
     var L = int(mysql.numFields(sqlres))
     result = newRow(L)
@@ -307,10 +307,7 @@ proc getRow*(db: DbConn, query: SqlQuery,
     if row != nil:
       for i in 0..L-1:
         setLen(result[i], 0)
-        if row[i] == nil:
-          result[i] = nil
-        else:
-          add(result[i], row[i])
+        add(result[i], row[i])
     properFreeResult(sqlres, row)
 
 proc getAllRows*(db: DbConn, query: SqlQuery,
@@ -318,7 +315,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   ## executes the query and returns the whole result dataset.
   result = @[]
   rawExec(db, query, args)
-  var sqlres = mysql.useResult(db)
+  var sqlres = mysql.useResult(PMySQL db)
   if sqlres != nil:
     var L = int(mysql.numFields(sqlres))
     var row: cstringArray
@@ -329,10 +326,7 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
       setLen(result, j+1)
       newSeq(result[j], L)
       for i in 0..L-1:
-        if row[i] == nil:
-          result[j][i] = nil
-        else:
-          result[j][i] = $row[i]
+        result[j][i] = $row[i]
       inc(j)
     mysql.freeResult(sqlres)
 
@@ -353,10 +347,10 @@ proc tryInsertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error.
   var q = dbFormat(query, args)
-  if mysql.realQuery(db, q, q.len) != 0'i32:
+  if mysql.realQuery(PMySQL db, q, q.len) != 0'i32:
     result = -1'i64
   else:
-    result = mysql.insertId(db)
+    result = mysql.insertId(PMySQL db)
 
 proc insertId*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
@@ -371,32 +365,33 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   ## runs the query (typically "UPDATE") and returns the
   ## number of affected rows
   rawExec(db, query, args)
-  result = mysql.affectedRows(db)
+  result = mysql.affectedRows(PMySQL db)
 
 proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## closes the database connection.
-  if db != nil: mysql.close(db)
+  if PMySQL(db) != nil: mysql.close(PMySQL db)
 
 proc open*(connection, user, password, database: string): DbConn {.
   tags: [DbEffect].} =
   ## opens a database connection. Raises `EDb` if the connection could not
   ## be established.
-  result = mysql.init(nil)
-  if result == nil: dbError("could not open database connection")
+  var res = mysql.init(nil)
+  if res == nil: dbError("could not open database connection")
   let
     colonPos = connection.find(':')
     host = if colonPos < 0: connection
            else: substr(connection, 0, colonPos-1)
     port: int32 = if colonPos < 0: 0'i32
                   else: substr(connection, colonPos+1).parseInt.int32
-  if mysql.realConnect(result, host, user, password, database,
+  if mysql.realConnect(res, host, user, password, database,
                        port, nil, 0) == nil:
-    var errmsg = $mysql.error(result)
-    db_mysql.close(result)
+    var errmsg = $mysql.error(res)
+    mysql.close(res)
     dbError(errmsg)
+  result = DbConn(res)
 
 proc setEncoding*(connection: DbConn, encoding: string): bool {.
   tags: [DbEffect].} =
   ## sets the encoding of a database connection, returns true for
   ## success, false for failure.
-  result = mysql.set_character_set(connection, encoding) == 0
+  result = mysql.set_character_set(PMySQL connection, encoding) == 0

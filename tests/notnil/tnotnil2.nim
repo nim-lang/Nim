@@ -4,14 +4,14 @@ discard """
 """
 
 import strutils
-
+{.experimental: "notnil".}
 
 type
   TObj = object
     x, y: int
 
 proc q(x: pointer not nil) =
-  nil
+  discard
 
 proc p() =
   var x: pointer

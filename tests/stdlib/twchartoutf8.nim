@@ -30,7 +30,6 @@ else:
     result = newString(size)
     let res = WideCharToMultiByte(CP_UTF8, 0'i32, cast[LPWCSTR](addr(wc[0])), wclen,
       cstring(result), size, cstring(nil), LPBOOL(nil))
-    result[size] = chr(0)
     doAssert size == res
 
   proc testCP(wc: WideCString, lo, hi: int) =

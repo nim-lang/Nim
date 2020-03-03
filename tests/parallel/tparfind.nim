@@ -4,7 +4,7 @@ discard """
 
 import threadpool, sequtils
 
-{.experimental.}
+{.experimental: "parallel".}
 
 proc linearFind(a: openArray[int]; x, offset: int): int =
   for i, y in a:

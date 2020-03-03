@@ -1,7 +1,7 @@
 
 import macros
 
-macro check(ex: expr): stmt =
+macro check(ex: untyped): typed =
   var info = ex.lineinfo
   var expString = ex.toStrLit
   result = quote do:

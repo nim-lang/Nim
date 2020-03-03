@@ -1,6 +1,6 @@
 discard """
+  errormsg: "invalid indentation"
   line: 24
-  errormsg: "expression expected, but found 'keyword else'"
 """
 
 import macros
@@ -11,17 +11,15 @@ var x = if 4 != 5:
   else:
     "no"
 
-macro mymacro(n: expr): stmt {.immediate.} = nil
+macro mymacro(n, b): untyped =
+  discard
 
 mymacro:
   echo "test"
 else:
   echo "else part"
 
-
 if 4 == 3:
   echo "bug"
   else:
   echo "no bug"
-
-

@@ -1,6 +1,37 @@
+import dom
+import fuzzysearch
 
+proc textContent(e: Element): cstring {.
+  importcpp: "#.textContent", nodecl.}
 
-import karax
+proc textContent(e: Node): cstring {.
+  importcpp: "#.textContent", nodecl.}
+
+proc tree(tag: string; kids: varargs[Element]): Element =
+  result = document.createElement tag
+  for k in kids:
+    result.appendChild k
+
+proc add(parent, kid: Element) =
+  if parent.nodeName == cstring"TR" and (
+      kid.nodeName == cstring"TD" or kid.nodeName == cstring"TH"):
+    let k = document.createElement("TD")
+    appendChild(k, kid)
+    appendChild(parent, k)
+  else:
+    appendChild(parent, kid)
+
+proc setClass(e: Element; value: string) =
+  e.setAttribute("class", value)
+proc text(s: string): Element = cast[Element](document.createTextNode(s))
+proc text(s: cstring): Element = cast[Element](document.createTextNode(s))
+
+proc getElementById(id: cstring): Element {.importc: "document.getElementById", nodecl.}
+
+proc replaceById(id: cstring; newTree: Node) =
+  let x = getElementById(id)
+  x.parentNode.replaceChild(newTree, x)
+  newTree.id = id
 
 proc findNodeWith(x: Element; tag, content: cstring): Element =
   if x.nodeName == tag and x.textContent == content:
@@ -29,7 +60,7 @@ proc parentWith(x: Element; tag: cstring): Element =
 
 proc extractItems(x: Element; items: var seq[Element]) =
   if x == nil: return
-  if x.nodeName == "A":
+  if x.nodeName == cstring"A":
     items.add x
   else:
     for i in 0..<x.len:
@@ -88,11 +119,11 @@ proc toHtml(x: TocEntry; isRoot=false): Element =
   if ul.len != 0: result.add ul
   if result.len == 0: result = nil
 
-proc containsWord(a, b: cstring): bool {.asmNoStackFrame.} =
-  {.emit: """
-     var escaped = `b`.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
-     return new RegExp("\\b" + escaped + "\\b").test(`a`);
-  """.}
+#proc containsWord(a, b: cstring): bool {.asmNoStackFrame.} =
+  #{.emit: """
+     #var escaped = `b`.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+     #return new RegExp("\\b" + escaped + "\\b").test(`a`);
+  #""".}
 
 proc isWhitespace(text: cstring): bool {.asmNoStackFrame.} =
   {.emit: """
@@ -100,19 +131,19 @@ proc isWhitespace(text: cstring): bool {.asmNoStackFrame.} =
   """.}
 
 proc isWhitespace(x: Element): bool =
-  x.nodeName == "#text" and x.textContent.isWhitespace or
-    x.nodeName == "#comment"
+  x.nodeName == cstring"#text" and x.textContent.isWhitespace or
+    x.nodeName == cstring"#comment"
 
 proc toToc(x: Element; father: TocEntry) =
-  if x.nodeName == "UL":
+  if x.nodeName == cstring"UL":
     let f = TocEntry(heading: nil, kids: @[], sortId: father.kids.len)
     var i = 0
     while i < x.len:
       var nxt = i+1
       while nxt < x.len and x[nxt].isWhitespace:
         inc nxt
-      if nxt < x.len and x[i].nodeName == "LI" and x[i].len == 1 and
-          x[nxt].nodeName == "UL":
+      if nxt < x.len and x[i].nodeName == cstring"LI" and x[i].len == 1 and
+          x[nxt].nodeName == cstring"UL":
         let e = TocEntry(heading: x[i][0], kids: @[], sortId: f.kids.len)
         let it = x[nxt]
         for j in 0..<it.len:
@@ -125,11 +156,11 @@ proc toToc(x: Element; father: TocEntry) =
     father.kids.add f
   elif isWhitespace(x):
     discard
-  elif x.nodeName == "LI":
+  elif x.nodeName == cstring"LI":
     var idx: seq[int] = @[]
     for i in 0 ..< x.len:
       if not x[i].isWhitespace: idx.add i
-    if idx.len == 2 and x[idx[1]].nodeName == "UL":
+    if idx.len == 2 and x[idx[1]].nodeName == cstring"UL":
       let e = TocEntry(heading: x[idx[0]], kids: @[],
                        sortId: father.kids.len)
       let it = x[idx[1]]
@@ -148,9 +179,9 @@ proc tocul(x: Element): Element =
   result = tree("UL")
   for i in 0..<x.len:
     let it = x[i]
-    if it.nodeName == "LI":
+    if it.nodeName == cstring"LI":
       result.add it.clone
-    elif it.nodeName == "UL":
+    elif it.nodeName == cstring"UL":
       result.add tocul(it)
 
 proc getSection(toc: Element; name: cstring): Element =
@@ -183,7 +214,7 @@ proc buildToc(orig: TocEntry; types, procs: seq[Element]): TocEntry =
     t.markElement()
     for p in procs:
       if not isMarked(p):
-        let xx = karax.getElementsByClass(p.parent, cstring"attachedType")
+        let xx = getElementsByClass(p.parent, cstring"attachedType")
         if xx.len == 1 and xx[0].textContent == t.textContent:
           #kout(cstring"found ", p.nodeName)
           let q = tree("A", text(p.title))
@@ -224,20 +255,20 @@ proc groupBy*(value: cstring) {.exportc.} =
     let ntoc = buildToc(tt, types, procs)
     let x = toHtml(ntoc, isRoot=true)
     alternative = tree("DIV", x)
-  if value == "type":
+  if value == cstring"type":
     replaceById("tocRoot", alternative)
   else:
     replaceById("tocRoot", tree("DIV"))
   togglevis(getElementById"toc-list")
 
 var
-  db: seq[Element]
+  db: seq[Node]
   contents: seq[cstring]
 
 template normalize(x: cstring): cstring = x.toLower.replace("_", "")
 
 proc dosearch(value: cstring): Element =
-  if db.isNil:
+  if db.len == 0:
     var stuff: Element
     {.emit: """
     var request = new XMLHttpRequest();
@@ -252,25 +283,29 @@ proc dosearch(value: cstring): Element =
 
     `stuff` = doc.documentElement;
     """.}
-    db = stuff.getElementsByClass"reference external"
+    db = stuff.getElementsByClass"reference"
     contents = @[]
     for ahref in db:
-      contents.add ahref.textContent.normalize
+      contents.add ahref.getAttribute("data-doc-search-tag")
   let ul = tree("UL")
   result = tree("DIV")
   result.setClass"search_results"
-  var matches: seq[(Element, int)] = @[]
-  let key = value.normalize
+  var matches: seq[(Node, int)] = @[]
   for i in 0..<db.len:
     let c = contents[i]
-    if c.containsWord(key):
-      matches.add((db[i], -(30_000 - c.len)))
-    elif c.contains(key):
-      matches.add((db[i], c.len))
-  matches.sort do (a, b: auto) -> int:
-    a[1] - b[1]
-  for i in 0..min(<matches.len, 19):
-    ul.add(tree("LI", matches[i][0]))
+    if c == cstring"Examples" or c == cstring"PEG construction":
+    # Some manual exclusions.
+    # Ideally these should be fixed in the index to be more
+    # descriptive of what they are.
+      continue
+    let (score, matched) = fuzzymatch(value, c)
+    if matched:
+      matches.add((db[i], score))
+
+  matches.sort(proc(a, b: auto): int = b[1] - a[1])
+  for i in 0 ..< min(matches.len, 19):
+    matches[i][0].innerHTML = matches[i][0].getAttribute("data-doc-search-tag")
+    ul.add(tree("LI", cast[Element](matches[i][0])))
   if ul.len == 0:
     result.add tree("B", text"no search results")
   else:
@@ -284,7 +319,7 @@ proc search*() {.exportc.} =
   proc wrapper() =
     let elem = getElementById("searchInput")
     let value = elem.value
-    if value != "":
+    if value.len != 0:
       if oldtoc.isNil:
         oldtoc = getElementById("tocRoot")
       let results = dosearch(value)

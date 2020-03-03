@@ -1,17 +1,17 @@
-import genpacket_enet, sockets, md5, enet
+import genpacket_enet, nativesockets, net, md5, enet
 defPacketImports()
 
 type
   PacketID* = char
 
-template idpacket(pktName, id, s2c, c2s: expr): stmt {.immediate, dirty.} =
+template idpacket(pktName, id, s2c, c2s: untyped) {.dirty.} =
   let `H pktName`* {.inject.} = id
   defPacket(`Sc pktName`, s2c)
   defPacket(`Cs pktName`, c2s)
 
 forwardPacketT(uint8, int8)
 forwardPacketT(uint16, int16)
-forwardPacketT(TPort, int16)
+forwardPacketT(Port, int16)
 
 idPacket(Login, 'a',
   tuple[id: int32; alias: string; sessionKey: string],
@@ -22,7 +22,7 @@ defPacket(CsZoneJoinReq, tuple[session: ScLogin])
 
 defPacket(ScZoneRecord, tuple[
   name: string = "", desc: string = "",
-  ip: string = "", port: TPort = 0.Tport])
+  ip: string = "", port: Port = 0.Port])
 idPacket(ZoneList, 'z',
   tuple[network: string = "", zones: seq[ScZoneRecord]],
   tuple[time: string])
@@ -92,7 +92,7 @@ defPacket(DsMsg, tuple[msg: string])
 let HVerifyClient* = 'v'
 defPacket(SdVerifyClient, tuple[session: ScLogin])
 
-when isMainModule:
+when true:
 
   var buf = newBuffer(100)
   var m = toMd5("hello there")

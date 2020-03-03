@@ -9,6 +9,11 @@
 
 ## This module contains Nim's support for locks and condition vars.
 
+
+when not compileOption("threads") and not defined(nimdoc):
+  when false: # fix #12330
+    {.error: "Locks requires --threads:on option.".}
+
 const insideRLocksModule = false
 include "system/syslocks"
 
@@ -17,7 +22,7 @@ type
                   ## or not is unspecified!
   Cond* = SysCond ## Nim condition variable
 
-{.deprecated: [TLock: Lock, TCond: Cond].}
+{.push stackTrace: off.}
 
 proc initLock*(lock: var Lock) {.inline.} =
   ## Initializes the given lock.
@@ -59,9 +64,12 @@ proc signal*(cond: var Cond) {.inline.} =
 template withLock*(a: Lock, body: untyped) =
   ## Acquires the given lock, executes the statements in body and
   ## releases the lock after the statements finish executing.
-  a.acquire()
+  mixin acquire, release
+  acquire(a)
   {.locks: [a].}:
     try:
       body
     finally:
-      a.release()
+      release(a)
+
+{.pop.}

@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-//#define ASSEMBLY_LISTING_C67
+#ifdef TARGET_DEFS_ONLY
+
+/* #define ASSEMBLY_LISTING_C67 */
 
 /* number of available registers */
 #define NB_REGS            24
@@ -85,12 +87,38 @@ enum {
     TREG_C67_B13,
 };
 
-int reg_classes[NB_REGS] = {
-						/* eax */ RC_INT | RC_FLOAT | RC_EAX,
-						// only allow even regs for floats (allow for doubles)
+/* return registers for function */
+#define REG_IRET TREG_C67_A4	/* single word int return register */
+#define REG_LRET TREG_C67_A5	/* second word return register (for long long) */
+#define REG_FRET TREG_C67_A4	/* float return register */
+
+/* defined if function parameters must be evaluated in reverse order */
+/* #define INVERT_FUNC_PARAMS */
+
+/* defined if structures are passed as pointers. Otherwise structures
+   are directly pushed on stack. */
+/* #define FUNC_STRUCT_PARAM_AS_PTR */
+
+/* pointer size, in bytes */
+#define PTR_SIZE 4
+
+/* long double size and alignment, in bytes */
+#define LDOUBLE_SIZE  12
+#define LDOUBLE_ALIGN 4
+/* maximum alignment (for aligned attribute support) */
+#define MAX_ALIGN     8
+
+/******************************************************/
+#else /* ! TARGET_DEFS_ONLY */
+/******************************************************/
+#include "tcc.h"
+
+ST_DATA const int reg_classes[NB_REGS] = {
+    /* eax */ RC_INT | RC_FLOAT | RC_EAX, 
+    // only allow even regs for floats (allow for doubles)
     /* ecx */ RC_INT | RC_ECX,
-								/* edx */ RC_INT | RC_INT_BSIDE | RC_FLOAT | RC_EDX,
-								// only allow even regs for floats (allow for doubles)
+    /* edx */ RC_INT | RC_INT_BSIDE | RC_FLOAT | RC_EDX,
+    // only allow even regs for floats (allow for doubles)
     /* st0 */ RC_INT | RC_INT_BSIDE | RC_ST0,
     /* A4  */ RC_C67_A4,
     /* A5  */ RC_C67_A5,
@@ -114,24 +142,11 @@ int reg_classes[NB_REGS] = {
     /* B13  */ RC_C67_B11
 };
 
-/* return registers for function */
-#define REG_IRET TREG_C67_A4	/* single word int return register */
-#define REG_LRET TREG_C67_A5	/* second word return register (for long long) */
-#define REG_FRET TREG_C67_A4	/* float return register */
-
-
-#define ALWAYS_ASSERT(x) \
-do {\
-   if (!(x))\
-       error("internal compiler error file at %s:%d", __FILE__, __LINE__);\
-} while (0)
-
 // although tcc thinks it is passing parameters on the stack,
 // the C67 really passes up to the first 10 params in special
 // regs or regs pairs (for 64 bit params).  So keep track of
 // the stack offsets so we can translate to the appropriate 
 // reg (pair)
-
 
 #define NoCallArgsPassedOnStack 10
 int NoOfCurFuncArgs;
@@ -139,41 +154,23 @@ int TranslateStackToReg[NoCallArgsPassedOnStack];
 int ParamLocOnStack[NoCallArgsPassedOnStack];
 int TotalBytesPushedOnStack;
 
-/* defined if function parameters must be evaluated in reverse order */
+#ifndef FALSE
+# define FALSE 0
+# define TRUE 1
+#endif
 
-//#define INVERT_FUNC_PARAMS
+#undef BOOL
+#define BOOL int
 
-/* defined if structures are passed as pointers. Otherwise structures
-   are directly pushed on stack. */
-//#define FUNC_STRUCT_PARAM_AS_PTR
-
-/* pointer size, in bytes */
-#define PTR_SIZE 4
-
-/* long double size and alignment, in bytes */
-#define LDOUBLE_SIZE  12
-#define LDOUBLE_ALIGN 4
-/* maximum alignment (for aligned attribute support) */
-#define MAX_ALIGN     8
+#define ALWAYS_ASSERT(x) \
+do {\
+   if (!(x))\
+       tcc_error("internal compiler error file at %s:%d", __FILE__, __LINE__);\
+} while (0)
 
 /******************************************************/
-/* ELF defines */
-
-#define EM_TCC_TARGET EM_C60
-
-/* relocation type for 32 bit data relocation */
-#define R_DATA_32   R_C60_32
-#define R_JMP_SLOT  R_C60_JMP_SLOT
-#define R_COPY      R_C60_COPY
-
-#define ELF_START_ADDR 0x00000400
-#define ELF_PAGE_SIZE  0x1000
-
-/******************************************************/
-
 static unsigned long func_sub_sp_offset;
 static int func_ret_sub;
-
 
 static BOOL C67_invert_test;
 static int C67_compare_reg;
@@ -182,11 +179,11 @@ static int C67_compare_reg;
 FILE *f = NULL;
 #endif
 
-
 void C67_g(int c)
 {
     int ind1;
-
+    if (nocode_wanted)
+        return;
 #ifdef ASSEMBLY_LISTING_C67
     fprintf(f, " %08X", c);
 #endif
@@ -236,14 +233,14 @@ void gsym(int t)
 
 // these are regs that tcc doesn't really know about, 
 // but assign them unique values so the mapping routines
-// can distinquish them
+// can distinguish them
 
 #define C67_A0 105
 #define C67_SP 106
 #define C67_B3 107
 #define C67_FP 108
 #define C67_B2 109
-#define C67_CREG_ZERO -1	// Special code for no condition reg test
+#define C67_CREG_ZERO -1	/* Special code for no condition reg test */
 
 
 int ConvertRegToRegClass(int r)
@@ -1552,23 +1549,23 @@ void C67_SHR(int r, int v)
 void load(int r, SValue * sv)
 {
     int v, t, ft, fc, fr, size = 0, element;
-    BOOL Unsigned = false;
+    BOOL Unsigned = FALSE;
     SValue v1;
 
     fr = sv->r;
     ft = sv->type.t;
-    fc = sv->c.ul;
+    fc = sv->c.i;
 
     v = fr & VT_VALMASK;
     if (fr & VT_LVAL) {
 	if (v == VT_LLOCAL) {
 	    v1.type.t = VT_INT;
 	    v1.r = VT_LOCAL | VT_LVAL;
-	    v1.c.ul = fc;
+	    v1.c.i = fc;
 	    load(r, &v1);
 	    fr = r;
 	} else if ((ft & VT_BTYPE) == VT_LDOUBLE) {
-	    error("long double not supported");
+	    tcc_error("long double not supported");
 	} else if ((ft & VT_TYPE) == VT_BYTE) {
 	    size = 1;
 	} else if ((ft & VT_TYPE) == (VT_BYTE | VT_UNSIGNED)) {
@@ -1716,13 +1713,13 @@ void store(int r, SValue * v)
     int fr, bt, ft, fc, size, t, element;
 
     ft = v->type.t;
-    fc = v->c.ul;
+    fc = v->c.i;
     fr = v->r & VT_VALMASK;
     bt = ft & VT_BTYPE;
     /* XXX: incorrect if float reg to reg */
 
     if (bt == VT_LDOUBLE) {
-	error("long double not supported");
+	tcc_error("long double not supported");
     } else {
 	if (bt == VT_SHORT)
 	    size = 2;
@@ -1869,6 +1866,13 @@ static void gcall_or_jmp(int is_jmp)
     }
 }
 
+/* Return the number of registers needed to return the struct, or 0 if
+   returning via struct pointer. */
+ST_FUNC int gfunc_sret(CType *vt, int variadic, CType *ret, int *ret_align, int *regsize) {
+    *ret_align = 1; // Never have to re-align return values for x86-64
+    return 0;
+}
+
 /* generate function call with address in (vtop->t, vtop->c) and free function
    context. Stack entry is popped */
 void gfunc_call(int nb_args)
@@ -1877,14 +1881,12 @@ void gfunc_call(int nb_args)
     int args_sizes[NoCallArgsPassedOnStack];
 
     if (nb_args > NoCallArgsPassedOnStack) {
-	error("more than 10 function params not currently supported");
+	tcc_error("more than 10 function params not currently supported");
 	// handle more than 10, put some on the stack
     }
 
     for (i = 0; i < nb_args; i++) {
 	if ((vtop->type.t & VT_BTYPE) == VT_STRUCT) {
-	    ALWAYS_ASSERT(FALSE);
-	} else if ((vtop->type.t & VT_BTYPE) == VT_STRUCT) {
 	    ALWAYS_ASSERT(FALSE);
 	} else {
 	    /* simple type (currently always same size) */
@@ -1892,9 +1894,9 @@ void gfunc_call(int nb_args)
 
 
 	    if ((vtop->type.t & VT_BTYPE) == VT_LLONG) {
-		error("long long not supported");
+		tcc_error("long long not supported");
 	    } else if ((vtop->type.t & VT_BTYPE) == VT_LDOUBLE) {
-		error("long double not supported");
+		tcc_error("long double not supported");
 	    } else if ((vtop->type.t & VT_BTYPE) == VT_DOUBLE) {
 		size = 8;
 	    } else {
@@ -1949,11 +1951,12 @@ void gfunc_prolog(CType * func_type)
     CType *type;
 
     sym = func_type->ref;
-    func_call = sym->r;
+    func_call = sym->f.func_call;
     addr = 8;
     /* if the function returns a structure, then add an
        implicit pointer parameter */
     func_vt = sym->type;
+    func_var = (sym->f.func_type == FUNC_ELLIPSIS);
     if ((func_vt.t & VT_BTYPE) == VT_STRUCT) {
 	func_vc = addr;
 	addr += 4;
@@ -2036,6 +2039,8 @@ void gfunc_epilog(void)
 int gjmp(int t)
 {
     int ind1 = ind;
+    if (nocode_wanted)
+        return t;
 
     C67_MVKL(C67_A0, t);	//r=reg to load,  constant
     C67_MVKH(C67_A0, t);	//r=reg to load,  constant
@@ -2068,7 +2073,9 @@ int gtst(int inv, int t)
     int v, *p;
 
     v = vtop->r & VT_VALMASK;
-    if (v == VT_CMP) {
+    if (nocode_wanted) {
+        ;
+    } else if (v == VT_CMP) {
 	/* fast case : can jump directly since flags are set */
 	// C67 uses B2 sort of as flags register
 	ind1 = ind;
@@ -2090,13 +2097,12 @@ int gtst(int inv, int t)
 	/* && or || optimization */
 	if ((v & 1) == inv) {
 	    /* insert vtop->c jump list in t */
-	    p = &vtop->c.i;
 
 	    // I guess the idea is to traverse to the
 	    // null at the end of the list and store t
 	    // there
 
-	    n = *p;
+	    n = vtop->c.i;
 	    while (n != 0) {
 		p = (int *) (cur_text_section->data + n);
 
@@ -2111,37 +2117,6 @@ int gtst(int inv, int t)
 	} else {
 	    t = gjmp(t);
 	    gsym(vtop->c.i);
-	}
-    } else {
-	if (is_float(vtop->type.t)) {
-	    vpushi(0);
-	    gen_op(TOK_NE);
-	}
-	if ((vtop->r & (VT_VALMASK | VT_LVAL | VT_SYM)) == VT_CONST) {
-	    /* constant jmp optimization */
-	    if ((vtop->c.i != 0) != inv)
-		t = gjmp(t);
-	} else {
-	    // I think we need to get the value on the stack
-	    // into a register, test it, and generate a branch
-	    // return the address of the branch, so it can be
-	    // later patched
-
-	    v = gv(RC_INT);	// get value into a reg 
-	    ind1 = ind;
-	    C67_MVKL(C67_A0, t);	//r=reg to load, constant
-	    C67_MVKH(C67_A0, t);	//r=reg to load, constant
-
-	    if (v != TREG_EAX &&	// check if not already in a conditional test reg
-		v != TREG_EDX && v != TREG_ST0 && v != C67_B2) {
-		C67_MV(v, C67_B2);
-		v = C67_B2;
-	    }
-
-	    C67_IREG_B_REG(inv, v, C67_A0);	// [!R] B.S2x  A0
-	    C67_NOP(5);
-	    t = ind1;		//return where we need to patch
-	    ind1 = ind;
 	}
     }
     vtop--;
@@ -2178,34 +2153,34 @@ void gen_opi(int op)
 
 	if (op == TOK_LT) {
 	    C67_CMPLT(r, fr, C67_B2);
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_GE) {
 	    C67_CMPLT(r, fr, C67_B2);
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == TOK_GT) {
 	    C67_CMPGT(r, fr, C67_B2);
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_LE) {
 	    C67_CMPGT(r, fr, C67_B2);
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == TOK_EQ) {
 	    C67_CMPEQ(r, fr, C67_B2);
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_NE) {
 	    C67_CMPEQ(r, fr, C67_B2);
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == TOK_ULT) {
 	    C67_CMPLTU(r, fr, C67_B2);
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_UGE) {
 	    C67_CMPLTU(r, fr, C67_B2);
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == TOK_UGT) {
 	    C67_CMPGTU(r, fr, C67_B2);
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_ULE) {
 	    C67_CMPGTU(r, fr, C67_B2);
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == '+')
 	    C67_ADD(fr, r);	// ADD  r,fr,r
 	else if (op == '-')
@@ -2250,7 +2225,7 @@ void gen_opi(int op)
 	r = vtop[-1].r;
 	fr = vtop[0].r;
 	vtop--;
-	C67_MPYI(fr, r);	// 32 bit bultiply  fr,r,fr
+	C67_MPYI(fr, r);	// 32 bit multiply  fr,r,fr
 	C67_NOP(8);		// NOP 8 for worst case
 	break;
     case TOK_SHL:
@@ -2307,7 +2282,7 @@ void gen_opi(int op)
 }
 
 /* generate a floating point operation 'v = t1 op t2' instruction. The
-   two operands are guaranted to have the same floating point type */
+   two operands are guaranteed to have the same floating point type */
 /* XXX: need to use ST1 too */
 void gen_opf(int op)
 {
@@ -2319,13 +2294,13 @@ void gen_opf(int op)
 	gv2(RC_FLOAT, RC_FLOAT);	// make sure src2 is on b side
 
     ft = vtop->type.t;
-    fc = vtop->c.ul;
+    fc = vtop->c.i;
     r = vtop->r;
     fr = vtop[-1].r;
 
 
     if ((ft & VT_BTYPE) == VT_LDOUBLE)
-	error("long doubles not supported");
+	tcc_error("long doubles not supported");
 
     if (op >= TOK_ULT && op <= TOK_GT) {
 
@@ -2340,42 +2315,42 @@ void gen_opf(int op)
 	    else
 		C67_CMPLTSP(r, fr, C67_B2);
 
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_GE) {
 	    if ((ft & VT_BTYPE) == VT_DOUBLE)
 		C67_CMPLTDP(r, fr, C67_B2);
 	    else
 		C67_CMPLTSP(r, fr, C67_B2);
 
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == TOK_GT) {
 	    if ((ft & VT_BTYPE) == VT_DOUBLE)
 		C67_CMPGTDP(r, fr, C67_B2);
 	    else
 		C67_CMPGTSP(r, fr, C67_B2);
 
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_LE) {
 	    if ((ft & VT_BTYPE) == VT_DOUBLE)
 		C67_CMPGTDP(r, fr, C67_B2);
 	    else
 		C67_CMPGTSP(r, fr, C67_B2);
 
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else if (op == TOK_EQ) {
 	    if ((ft & VT_BTYPE) == VT_DOUBLE)
 		C67_CMPEQDP(r, fr, C67_B2);
 	    else
 		C67_CMPEQSP(r, fr, C67_B2);
 
-	    C67_invert_test = false;
+	    C67_invert_test = FALSE;
 	} else if (op == TOK_NE) {
 	    if ((ft & VT_BTYPE) == VT_DOUBLE)
 		C67_CMPEQDP(r, fr, C67_B2);
 	    else
 		C67_CMPEQSP(r, fr, C67_B2);
 
-	    C67_invert_test = true;
+	    C67_invert_test = TRUE;
 	} else {
 	    ALWAYS_ASSERT(FALSE);
 	}
@@ -2477,7 +2452,7 @@ void gen_cvt_ftoi(int t)
     r = vtop->r;
 
     if (t != VT_INT)
-	error("long long not supported");
+	tcc_error("long long not supported");
     else {
 	if ((vtop->type.t & VT_BTYPE) == VT_DOUBLE) {
 	    C67_DPTRUNC(r, r);
@@ -2544,5 +2519,22 @@ void ggoto(void)
     vtop--;
 }
 
-/* end of X86 code generator */
+/* Save the stack pointer onto the stack and return the location of its address */
+ST_FUNC void gen_vla_sp_save(int addr) {
+    tcc_error("variable length arrays unsupported for this target");
+}
+
+/* Restore the SP from a location on the stack */
+ST_FUNC void gen_vla_sp_restore(int addr) {
+    tcc_error("variable length arrays unsupported for this target");
+}
+
+/* Subtract from the stack pointer, and push the resulting value onto the stack */
+ST_FUNC void gen_vla_alloc(CType *type, int align) {
+    tcc_error("variable length arrays unsupported for this target");
+}
+
+/* end of C67 code generator */
+/*************************************************************/
+#endif
 /*************************************************************/

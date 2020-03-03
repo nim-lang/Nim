@@ -17,11 +17,36 @@ __DMC__
 __POCC__
 __TINYC__
 __clang__
+__AVR__
 */
 
 
 #ifndef NIMBASE_H
 #define NIMBASE_H
+
+/*------------ declaring a custom attribute to support using LLVM's Address Sanitizer ------------ */
+
+/*
+   This definition exists to provide support for using the LLVM ASAN (Address SANitizer) tooling with Nim. This
+   should only be used to mark implementations of the GC system that raise false flags with the ASAN tooling, or
+   for functions that are hot and need to be disabled for performance reasons. Based on the official ASAN
+   documentation, both the clang and gcc compilers are supported. In addition to that, a check is performed to
+   verify that the necessary attribute is supported by the compiler.
+
+   To flag a proc as ignored, append the following code pragma to the proc declaration:
+      {.codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".}
+
+   For further information, please refer to the official documentation:
+     https://github.com/google/sanitizers/wiki/AddressSanitizer
+ */
+#define CLANG_NO_SANITIZE_ADDRESS
+#if defined(__clang__)
+#  if __has_attribute(no_sanitize_address)
+#    undef CLANG_NO_SANITIZE_ADDRESS
+#    define CLANG_NO_SANITIZE_ADDRESS __attribute__((no_sanitize_address))
+#  endif
+#endif
+
 
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
 #if defined(__GNUC__) || defined(__clang__)
@@ -39,12 +64,14 @@ __clang__
 #  pragma GCC diagnostic ignored "-Wswitch-bool"
 #  pragma GCC diagnostic ignored "-Wmacro-redefined"
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
+#  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
+#  pragma GCC diagnostic ignored "-Wconstant-conversion"
 #endif
 
 #if defined(_MSC_VER)
 #  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
 #  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4820 4996 4090)
+#  pragma warning(disable: 4710 4711 4774 4800 4809 4820 4996 4090 4297)
 #endif
 /* ------------------------------------------------------------------------- */
 
@@ -81,6 +108,8 @@ __clang__
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
+#define N_INLINE_PTR(rettype, name) rettype (*name)
+
 #if defined(__POCC__)
 #  define NIM_CONST /* PCC is really picky with const modifiers */
 #  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is
@@ -95,7 +124,7 @@ __clang__
   NIM_THREADVAR declaration based on
   http://stackoverflow.com/questions/18298280/how-to-declare-a-variable-as-thread-local-portably
 */
-#if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 #  define NIM_THREADVAR _Thread_local
 #elif defined _WIN32 && ( \
        defined _MSC_VER || \
@@ -103,13 +132,13 @@ __clang__
        defined __DMC__ || \
        defined __BORLANDC__ )
 #  define NIM_THREADVAR __declspec(thread)
+#elif defined(__TINYC__) || defined(__GENODE__)
+#  define NIM_THREADVAR
 /* note that ICC (linux) and Clang are covered by __GNUC__ */
 #elif defined __GNUC__ || \
        defined __SUNPRO_C || \
        defined __xlC__
 #  define NIM_THREADVAR __thread
-#elif defined __TINYC__
-#  define NIM_THREADVAR
 #else
 #  error "Cannot define NIM_THREADVAR"
 #endif
@@ -130,28 +159,37 @@ __clang__
 #  define NIM_CAST(type, ptr) ((type)(ptr))
 #endif
 
+
 /* ------------------------------------------------------------------- */
+#ifdef  __cplusplus
+#  define NIM_EXTERNC extern "C"
+#else
+#  define NIM_EXTERNC
+#endif
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
+#  define N_LIB_PRIVATE
 #  define N_CDECL(rettype, name) rettype __cdecl name
 #  define N_STDCALL(rettype, name) rettype __stdcall name
 #  define N_SYSCALL(rettype, name) rettype __syscall name
 #  define N_FASTCALL(rettype, name) rettype __fastcall name
-#  define N_SAFECALL(rettype, name) rettype __safecall name
+#  define N_SAFECALL(rettype, name) rettype __stdcall name
 /* function pointers with calling convention: */
 #  define N_CDECL_PTR(rettype, name) rettype (__cdecl *name)
 #  define N_STDCALL_PTR(rettype, name) rettype (__stdcall *name)
 #  define N_SYSCALL_PTR(rettype, name) rettype (__syscall *name)
 #  define N_FASTCALL_PTR(rettype, name) rettype (__fastcall *name)
-#  define N_SAFECALL_PTR(rettype, name) rettype (__safecall *name)
+#  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
 #  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C" __declspec(dllexport)
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
 #  else
-#    define N_LIB_EXPORT  extern __declspec(dllexport)
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
 #  endif
+#  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
+#  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
 #  if defined(__GNUC__)
 #    define N_CDECL(rettype, name) rettype name
 #    define N_STDCALL(rettype, name) rettype name
@@ -177,11 +215,8 @@ __clang__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C"
-#  else
-#    define N_LIB_EXPORT  extern
-#  endif
+#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
+#  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -190,7 +225,7 @@ __clang__
 #define N_NOCONV_PTR(rettype, name) rettype (*name)
 
 #if defined(__GNUC__) || defined(__ICC__)
-#  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
+#  define N_NOINLINE(rettype, name) rettype __attribute__((__noinline__)) name
 #elif defined(_MSC_VER)
 #  define N_NOINLINE(rettype, name) __declspec(noinline) rettype name
 #else
@@ -228,12 +263,29 @@ __clang__
 #include <stddef.h>
 
 /* C99 compiler? */
-#if (defined(__STD_VERSION__) && (__STD_VERSION__ >= 199901))
+#if (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))
 #  define HAVE_STDINT_H
 #endif
 
-#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__)
+/* Known compiler with stdint.h that doesn't fit the general pattern? */
+#if defined(__LCC__) || defined(__DMC__) || defined(__POCC__) || \
+  defined(__AVR__) || (defined(__cplusplus) && (__cplusplus < 201103))
 #  define HAVE_STDINT_H
+#endif
+
+#if (!defined(HAVE_STDINT_H) && defined(__cplusplus) && (__cplusplus >= 201103))
+#  define HAVE_CSTDINT
+#endif
+
+
+/* wrap all Nim typedefs into namespace Nim */
+#ifdef USE_NIM_NAMESPACE
+#ifdef HAVE_CSTDINT
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
+namespace USE_NIM_NAMESPACE {
 #endif
 
 /* bool types (C++ has it): */
@@ -245,14 +297,13 @@ __clang__
 #    define NIM_FALSE false
 #  endif
 #  define NIM_BOOL bool
-#  define NIM_NIL 0
-struct NimException
-{
-  NimException(struct Exception* exp, const char* msg): exp(exp), msg(msg) {}
-
-  struct Exception* exp;
-  const char* msg;
-};
+#  if __cplusplus >= 201103L
+#    /* nullptr is more type safe (less implicit conversions than 0) */
+#    define NIM_NIL nullptr
+#  else
+#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    define NIM_NIL 0
+#  endif
 #else
 #  ifdef bool
 #    define NIM_BOOL bool
@@ -274,32 +325,79 @@ struct NimException
 typedef signed char NI8;
 typedef signed short int NI16;
 typedef signed int NI32;
+typedef __int64 NI64;
 /* XXX: Float128? */
 typedef unsigned char NU8;
 typedef unsigned short int NU16;
-typedef unsigned __int64 NU64;
-typedef __int64 NI64;
 typedef unsigned int NU32;
+typedef unsigned __int64 NU64;
 #elif defined(HAVE_STDINT_H)
+#ifndef USE_NIM_NAMESPACE
 #  include <stdint.h>
+#endif
 typedef int8_t NI8;
 typedef int16_t NI16;
 typedef int32_t NI32;
 typedef int64_t NI64;
-typedef uint64_t NU64;
 typedef uint8_t NU8;
 typedef uint16_t NU16;
 typedef uint32_t NU32;
+typedef uint64_t NU64;
+#elif defined(HAVE_CSTDINT)
+#ifndef USE_NIM_NAMESPACE
+#  include <cstdint>
+#endif
+typedef std::int8_t NI8;
+typedef std::int16_t NI16;
+typedef std::int32_t NI32;
+typedef std::int64_t NI64;
+typedef std::uint8_t NU8;
+typedef std::uint16_t NU16;
+typedef std::uint32_t NU32;
+typedef std::uint64_t NU64;
+#else
+/* Unknown compiler/version, do our best */
+#ifdef __INT8_TYPE__
+typedef __INT8_TYPE__ NI8;
 #else
 typedef signed char NI8;
+#endif
+#ifdef __INT16_TYPE__
+typedef __INT16_TYPE__ NI16;
+#else
 typedef signed short int NI16;
+#endif
+#ifdef __INT32_TYPE__
+typedef __INT32_TYPE__ NI32;
+#else
 typedef signed int NI32;
-/* XXX: Float128? */
-typedef unsigned char NU8;
-typedef unsigned short int NU16;
-typedef unsigned long long int NU64;
+#endif
+#ifdef __INT64_TYPE__
+typedef __INT64_TYPE__ NI64;
+#else
 typedef long long int NI64;
+#endif
+/* XXX: Float128? */
+#ifdef __UINT8_TYPE__
+typedef __UINT8_TYPE__ NU8;
+#else
+typedef unsigned char NU8;
+#endif
+#ifdef __UINT16_TYPE__
+typedef __UINT16_TYPE__ NU16;
+#else
+typedef unsigned short int NU16;
+#endif
+#ifdef __UINT32_TYPE__
+typedef __UINT32_TYPE__ NU32;
+#else
 typedef unsigned int NU32;
+#endif
+#ifdef __UINT64_TYPE__
+typedef __UINT64_TYPE__ NU64;
+#else
+typedef unsigned long long int NU64;
+#endif
 #endif
 
 #ifdef NIM_INTBITS
@@ -320,7 +418,12 @@ typedef NU8 NU;
 #  endif
 #endif
 
+// for now there isn't an easy way for C code to reach the program result
+// when hot code reloading is ON - users will have to:
+// load the nimhcr.dll, get the hcrGetGlobal proc from there and use it
+#ifndef NIM_HOT_CODE_RELOADING
 extern NI nim_program_result;
+#endif
 
 typedef float NF32;
 typedef double NF64;
@@ -335,25 +438,13 @@ typedef char* NCSTRING;
 #  define NIM_IMAN 0
 #endif
 
-static N_INLINE(NI, float64ToInt32)(double x) {
-  /* nowadays no hack necessary anymore */
-  return x >= 0 ? (NI)(x+0.5) : (NI)(x-0.5);
-}
-
-static N_INLINE(NI32, float32ToInt32)(float x) {
-  /* nowadays no hack necessary anymore */
-  return x >= 0 ? (NI32)(x+0.5) : (NI32)(x-0.5);
-}
-
-#define float64ToInt64(x) ((NI64) (x))
+#define NIM_STRLIT_FLAG ((NU)(1) << ((NIM_INTBITS) - 2)) /* This has to be the same as system.strlitFlag! */
 
 #define STRING_LITERAL(name, str, length) \
-  static const struct {                   \
-    TGenericSeq Sup;                      \
-    NIM_CHAR data[(length) + 1];          \
-  } name = {{length, length}, str}
-
-typedef struct TStringDesc* string;
+   static const struct {                   \
+     TGenericSeq Sup;                      \
+     NIM_CHAR data[(length) + 1];          \
+  } name = {{length, (NI) ((NU)length | NIM_STRLIT_FLAG)}, str}
 
 /* declared size of a sequence/variable length array: */
 #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
@@ -368,15 +459,13 @@ typedef struct TStringDesc* string;
 #define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
-#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__i386__)
-#  ifndef NAN
-static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
-#    define NAN (*(double*) nimNaN)
-#  endif
-#endif
-
+// NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
 #ifndef NAN
-#  define NAN (0.0 / 0.0)
+#  ifndef _HUGE_ENUF
+#    define _HUGE_ENUF  1e+300  // _HUGE_ENUF*_HUGE_ENUF must overflow
+#  endif
+#  define NAN_INFINITY ((float)(_HUGE_ENUF * _HUGE_ENUF))
+#  define NAN ((float)(NAN_INFINITY * 0.0F))
 #endif
 
 #ifndef INF
@@ -392,8 +481,8 @@ static unsigned long nimNaN[2]={0xffffffff, 0x7fffffff};
 #  endif
 #endif
 
-typedef struct TFrame TFrame;
-struct TFrame {
+typedef struct TFrame_ TFrame;
+struct TFrame_ {
   TFrame* prev;
   NCSTRING procname;
   NI line;
@@ -402,30 +491,19 @@ struct TFrame {
   NI16 calldepth;
 };
 
-#define nimfr(proc, file) \
-  TFrame FR; \
-  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = 0; nimFrame(&FR);
-
-#define nimfrs(proc, file, slots, length) \
-  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR; \
-  FR.procname = proc; FR.filename = file; FR.line = 0; FR.len = length; nimFrame((TFrame*)&FR);
-
-#define nimln(n, file) \
-  FR.line = n; FR.filename = file;
-
 #define NIM_POSIX_INIT  __attribute__((constructor))
 
 #ifdef __GNUC__
-#  define likely(x) __builtin_expect(x, 1)
-#  define unlikely(x) __builtin_expect(x, 0)
+#  define NIM_LIKELY(x) __builtin_expect(x, 1)
+#  define NIM_UNLIKELY(x) __builtin_expect(x, 0)
 /* We need the following for the posix wrapper. In particular it will give us
    POSIX_SPAWN_USEVFORK: */
 #  ifndef _GNU_SOURCE
 #    define _GNU_SOURCE
 #  endif
 #else
-#  define likely(x) (x)
-#  define unlikely(x) (x)
+#  define NIM_LIKELY(x) (x)
+#  define NIM_UNLIKELY(x) (x)
 #endif
 
 #if 0 // defined(__GNUC__) || defined(__clang__)
@@ -441,12 +519,15 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
    On disagreement, your C compiler will say something like:
    "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
 typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+
+#ifdef USE_NIM_NAMESPACE
+}
 #endif
 
-#ifdef  __cplusplus
-#  define NIM_EXTERNC extern "C"
+#if defined(_MSC_VER)
+#  define NIM_ALIGN(x)  __declspec(align(x))
 #else
-#  define NIM_EXTERNC
+#  define NIM_ALIGN(x)  __attribute__((aligned(x)))
 #endif
 
 /* ---------------- platform specific includes ----------------------- */
@@ -459,3 +540,9 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #elif defined(__FreeBSD__)
 #  include <sys/types.h>
 #endif
+
+/* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
+#define NIM_CHECK_SIZE(typ, sz) \
+  _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
+
+#endif /* NIMBASE_H */

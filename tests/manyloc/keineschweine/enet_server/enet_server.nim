@@ -102,8 +102,8 @@ handlers[HZoneJoinReq] = proc(client: PClient; buffer: PBuffer) =
 
 
 
-when isMainModule:
-  import parseopt, matchers, os, json
+when true:
+  import parseopt, os, json
 
 
   if enetInit() != 0:

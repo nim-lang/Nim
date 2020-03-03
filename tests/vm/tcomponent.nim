@@ -11,7 +11,7 @@ FOO: blah'''
 
 import macros, sequtils, tables
 import strutils
-import future, meta
+import sugar, meta
 
 type
   Component = object
@@ -70,12 +70,12 @@ proc parse_component(body: NimNode): Component =
           result.procs_index.add(procdef.identifier.name)
       else: discard
 
-macro component*(name: expr, body: stmt): stmt {.immediate.} =
+macro component*(name, body: untyped): typed =
   let component = parse_component(body)
   registry.addComponent($name, component)
   parseStmt("discard")
 
-macro component_builtins(body: stmt): stmt {.immediate.} =
+macro component_builtins(body: untyped): typed =
   let builtin = parse_component(body)
   registry.field_index = builtin.field_index
   registry.procs_index = builtin.procs_index
@@ -88,7 +88,7 @@ proc bind_methods*(component: var Component, identifier: Ident): seq[NimNode] =
     procdef.params.insert(this_field, 0)
     result.add(procdef.render())
 
-macro bind_components*(type_name, component_names: expr): stmt {.immediate.} =
+macro bind_components*(type_name, component_names: untyped): typed =
   result = newStmtList()
   let identifier = newIdent(type_name)
   let components = newBracket(component_names)

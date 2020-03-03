@@ -34,7 +34,7 @@
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # ****************************************************************************
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(windows):
   const dllname = "iup(|30|27|26|25|24).dll"
@@ -57,7 +57,7 @@ type
 
   Icallback* = proc (arg: PIhandle): cint {.cdecl.}
 
-#                      pre-defineded dialogs
+#                      pre-defined dialogs
 proc fileDlg*: PIhandle {.importc: "IupFileDlg", dynlib: dllname, cdecl.}
 proc messageDlg*: PIhandle {.importc: "IupMessageDlg", dynlib: dllname, cdecl.}
 proc colorDlg*: PIhandle {.importc: "IupColorDlg", dynlib: dllname, cdecl.}

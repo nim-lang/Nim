@@ -1,6 +1,5 @@
-template accept(e: expr) =
+template accept(e) =
   static: assert(compiles(e))
 
-template reject(e: expr) =
+template reject(e) =
   static: assert(not compiles(e))
-

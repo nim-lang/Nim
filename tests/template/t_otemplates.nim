@@ -126,7 +126,7 @@ iterator parse_compound_statements(value, identifier: string, index: int): strin
     ## and returns the initialization of each as an empty statement
     ## i.e. if x == 5 { ... } becomes if x == 5: nil.
 
-    template get_next_ident(expected): stmt =
+    template get_next_ident(expected) =
         var nextIdent: string
         discard value.parseWhile(nextIdent, {'$'} + identChars, i)
 
@@ -312,14 +312,14 @@ proc parse_until_symbol(node: NimNode, value: string, index: var int): bool {.co
 
 
 proc parse_template(node: NimNode, value: string) =
-    ## Parses through entire template, outputing valid
+    ## Parses through entire template, outputting valid
     ## Nim code into the input `node` AST.
     var index = 0
     while index < value.len and
-          parse_until_symbol(node, value, index): nil
+          parse_until_symbol(node, value, index): discard
 
 
-macro tmpli*(body: expr): stmt =
+macro tmpli*(body: untyped): untyped =
     result = newStmtList()
 
     result.add parseExpr("result = \"\"")
@@ -330,7 +330,7 @@ macro tmpli*(body: expr): stmt =
     parse_template(result, reindent(value))
 
 
-macro tmpl*(body: expr): stmt =
+macro tmpl*(body: untyped): untyped =
     result = newStmtList()
 
     var value = if body.kind in nnkStrLit..nnkTripleStrLit: body.strVal
@@ -340,6 +340,6 @@ macro tmpl*(body: expr): stmt =
 
 
 # Run tests
-when isMainModule:
+when true:
     include otests
     echo "Success"

@@ -1,6 +1,10 @@
-# bug #3313
-import unittest, future
+discard """
+action: compile
+"""
 
+# bug #3313
+import unittest, sugar
+{.experimental: "notnil".}
 type
   ListNodeKind = enum
     lnkNil, lnkCons
@@ -88,11 +92,3 @@ proc foldLeft*[T,U](xs: List[T], z: U, f: (U, T) -> U): U =
   case xs.isEmpty
   of true: z
   else: foldLeft(xs.tail, f(z, xs.head), f)
-
-suite "unittest compilation error":
-
-  test "issue 3313":
-    let lst = lc[$x | (x <- 'a'..'z'), string].asList
-
-    let lstCopy = lst.dup
-    check: lstCopy == lst

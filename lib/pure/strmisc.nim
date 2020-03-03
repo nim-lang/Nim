@@ -12,11 +12,24 @@
 
 import strutils
 
-{.deadCodeElim: on.}
+{.deadCodeElim: on.} # dce option deprecated
 
 proc expandTabs*(s: string, tabSize: int = 8): string {.noSideEffect,
   procvar.} =
-  ## Expand tab characters in `s` by `tabSize` spaces
+  ## Expand tab characters in `s` replacing them by spaces.
+  ##
+  ## The amount of inserted spaces for each tab character is the difference
+  ## between the current column number and the next tab position. Tab positions
+  ## occur every `tabSize` characters.
+  ## The column number starts at 0 and is increased with every single character
+  ## and inserted space, except for newline, which resets the column number
+  ## back to 0.
+  runnableExamples:
+    doAssert expandTabs("\t", 4) == "    "
+    doAssert expandTabs("\tfoo\t", 4) == "    foo "
+    doAssert expandTabs("\tfoo\tbar", 4) == "    foo bar"
+    doAssert expandTabs("\tfoo\tbar\t", 4) == "    foo bar "
+    doAssert expandTabs("ab\tcd\n\txy\t", 3) == "ab cd\n   xy "
 
   result = newStringOfCap(s.len + s.len shr 2)
   var pos = 0
@@ -48,6 +61,13 @@ proc partition*(s: string, sep: string,
   ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
   ## (`s`, "", "") if `sep` is not found and `right` is false or
   ## ("", "", `s`) if `sep` is not found and `right` is true
+  runnableExamples:
+    doAssert partition("foo:bar", ":") == ("foo", ":", "bar")
+    doAssert partition("foobarbar", "bar") == ("foo", "bar", "bar")
+    doAssert partition("foobarbar", "bank") == ("foobarbar", "", "")
+    doAssert partition("foobarbar", "foo") == ("", "foo", "barbar")
+    doAssert partition("foofoobar", "bar") == ("foofoo", "bar", "")
+
   let position = if right: s.rfind(sep) else: s.find(sep)
   if position != -1:
     return (s[0 ..< position], sep, s[position + sep.len ..< s.len])
@@ -59,6 +79,13 @@ proc rpartition*(s: string, sep: string): (string, string, string)
   ##
   ## Returns a 3 string tuple of (beforeSep, `sep`, afterSep) or
   ## ("", "", `s`) if `sep` is not found
+  runnableExamples:
+    doAssert rpartition("foo:bar", ":") == ("foo", ":", "bar")
+    doAssert rpartition("foobarbar", "bar") == ("foobar", "bar", "")
+    doAssert rpartition("foobarbar", "bank") == ("", "", "foobarbar")
+    doAssert rpartition("foobarbar", "foo") == ("", "foo", "barbar")
+    doAssert rpartition("foofoobar", "bar") == ("foofoo", "bar", "")
+
   return partition(s, sep, right = true)
 
 when isMainModule:

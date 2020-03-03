@@ -3,7 +3,7 @@ import macros,json
 var decls{.compileTime.}: seq[NimNode] = @[]
 var impls{.compileTime.}: seq[NimNode] = @[]
 
-macro importImpl_forward(name, returns): stmt {.immediate.} =
+macro importImpl_forward(name, returns: untyped): untyped =
   result = newNimNode(nnkEmpty)
   var func_name = newNimNode(nnkAccQuoted)
   func_name.add newIdentNode("import")
@@ -19,7 +19,7 @@ macro importImpl_forward(name, returns): stmt {.immediate.} =
   res[3].add returns
   var p1 = newNimNode(nnkIdentDefs)
   p1.add newIdentNode("dat")
-  p1.add newIdentNOde("PJsonNode")
+  p1.add newIdentNOde("JsonNode")
   p1.add newNimNode(nnkEmpty)
   res[3].add p1
   var p2 = newNimNode(nnkIdentDefs)
@@ -38,7 +38,7 @@ macro importImpl_forward(name, returns): stmt {.immediate.} =
   decls.add res
   echo(repr(res))
 
-macro importImpl(name, returns: expr, body: stmt): stmt {.immediate.} =
+macro importImpl(name, returns, body: untyped) =
   #var res = getAST(importImpl_forward(name, returns))
   discard getAST(importImpl_forward(name, returns))
   var res = copyNimTree(decls[decls.high])
@@ -46,7 +46,7 @@ macro importImpl(name, returns: expr, body: stmt): stmt {.immediate.} =
   echo repr(res)
   impls.add res
 
-macro okayy:stmt =
+macro okayy() =
   result = newNimNode(nnkStmtList)
   for node in decls: result.add node
   for node in impls: result.add node

@@ -1,6 +1,6 @@
 discard """
-  line: 13
   errormsg: "duplicate case label"
+  line: 13
 """
 
 

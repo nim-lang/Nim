@@ -13,23 +13,25 @@ import
 
 from xmltree import escape
 
-const gitRepo = "https://github.com/nim-lang/Nim"
-
 type
   TKeyValPair = tuple[key, id, val: string]
   TConfigData = object of RootObj
     tabs, links: seq[TKeyValPair]
     doc, srcdoc, srcdoc2, webdoc, pdf: seq[string]
-    authors, projectName, projectTitle, logo, infile, outdir, ticker: string
+    authors, projectName, projectTitle, logo, infile, ticker: string
     vars: StringTableRef
+    nimCompiler: string
     nimArgs: string
+    gitURL: string
+    docHTMLOutput: string
+    webUploadOutput: string
     quotations: Table[string, tuple[quote, author: string]]
     numProcessors: int # Set by parallelBuild:n, only works for values > 0.
     gaId: string  # google analytics ID, nil means analytics are disabled
   TRssItem = object
     year, month, day, title, url, content: string
   TAction = enum
-    actAll, actOnlyWebsite, actPdf, actJson2
+    actAll, actOnlyWebsite, actPdf, actJson2, actOnlyDocs
 
   Sponsor = object
     logo: string
@@ -51,8 +53,10 @@ proc initConfigData(c: var TConfigData) =
   c.webdoc = @[]
   c.pdf = @[]
   c.infile = ""
-  c.outdir = ""
-  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off "
+  c.nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot "
+  c.gitURL = "https://github.com/nim-lang/Nim"
+  c.docHTMLOutput = "doc/html"
+  c.webUploadOutput = "web/upload"
   c.authors = ""
   c.projectTitle = ""
   c.projectName = ""
@@ -67,29 +71,36 @@ proc initConfigData(c: var TConfigData) =
       c.gitCommit = output.strip
   c.quotations = initTable[string, tuple[quote, author: string]]()
 
-include "website.tmpl"
+include "website.nimf"
 
 # ------------------------- configuration file -------------------------------
 
 const
-  version = "0.7"
+  version = "0.8"
   usage = "nimweb - Nim Website Generator Version " & version & """
 
   (c) 2015 Andreas Rumpf
 Usage:
   nimweb [options] ini-file[.ini] [compile_options]
 Options:
-  -o, --output:dir    set the output directory (default: same as ini-file)
-  --var:name=value    set the value of a variable
   -h, --help          shows this help
   -v, --version       shows the version
+  -o, --output        overrides output directory instead of default
+                      web/upload and doc/html
+  --nimCompiler       overrides nim compiler; default = bin/nim
+  --var:name=value    set the value of a variable
   --website           only build the website, not the full documentation
   --pdf               build the PDF version of the documentation
+  --json2             build JSON of the documentation
+  --onlyDocs          build only the documentation
+  --git.url           override base url in generated doc links
+  --git.commit        override commit/branch in generated doc links 'source'
+  --git.devel         override devel branch in generated doc links 'edit'
 Compile_options:
   will be passed to the Nim compiler
 """
 
-  rYearMonthDay = r"(\d{4})_(\d{2})_(\d{2})"
+  rYearMonthDay = r"on\s+(\d{2})\/(\d{2})\/(\d{4})"
   rssUrl = "http://nim-lang.org/news.xml"
   rssNewsUrl = "http://nim-lang.org/news.html"
   activeSponsors = "web/sponsors.csv"
@@ -143,7 +154,11 @@ proc parseCmdLine(c: var TConfigData) =
       of "version", "v":
         stdout.write(version & "\n")
         quit(0)
-      of "o", "output": c.outdir = val
+      of "output", "o":
+        c.webUploadOutput = val
+        c.docHTMLOutput = val / "docs"
+      of "nimcompiler":
+        c.nimCompiler = val
       of "parallelbuild":
         try:
           let num = parseInt(val)
@@ -157,11 +172,18 @@ proc parseCmdLine(c: var TConfigData) =
       of "website": action = actOnlyWebsite
       of "pdf": action = actPdf
       of "json2": action = actJson2
+      of "onlydocs": action = actOnlyDocs
       of "googleanalytics":
         c.gaId = val
         c.nimArgs.add("--doc.googleAnalytics:" & val & " ")
+      of "git.url":
+        c.gitURL = val
+      of "git.commit":
+        c.nimArgs.add("--git.commit:" & val & " ")
+      of "git.devel":
+        c.nimArgs.add("--git.devel:" & val & " ")
       else:
-        echo("Invalid argument $1" % [key])
+        echo("Invalid argument '$1'" % [key])
         quit(usage)
     of cmdEnd: break
   if c.infile.len == 0: quit(usage)
@@ -241,15 +263,14 @@ proc parseIniFile(c: var TConfigData) =
   close(p)
   if c.projectName.len == 0:
     c.projectName = changeFileExt(extractFilename(c.infile), "")
-  if c.outdir.len == 0:
-    c.outdir = splitFile(c.infile).dir
 
 # ------------------- main ----------------------------------------------------
 
 
 proc exe(f: string): string = return addFileExt(f, ExeExt)
 
-proc findNim(): string =
+proc findNim(c: TConfigData): string =
+  if c.nimCompiler.len > 0: return c.nimCompiler
   var nim = "nim".exe
   result = "bin" / nim
   if existsFile(result): return
@@ -260,8 +281,8 @@ proc findNim(): string =
 
 proc exec(cmd: string) =
   echo(cmd)
-  let (_, exitCode) = osproc.execCmdEx(cmd)
-  if exitCode != 0: quit("external program failed")
+  let (outp, exitCode) = osproc.execCmdEx(cmd)
+  if exitCode != 0: quit outp
 
 proc sexec(cmds: openarray[string]) =
   ## Serial queue wrapper around exec.
@@ -269,24 +290,23 @@ proc sexec(cmds: openarray[string]) =
 
 proc mexec(cmds: openarray[string], processors: int) =
   ## Multiprocessor version of exec
-  if processors < 2:
+  doAssert processors > 0, "nimweb needs at least one processor"
+  if processors == 1:
     sexec(cmds)
     return
-  if execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd}) != 0:
+  let r = execProcesses(cmds, {poStdErrToStdOut, poParentStreams, poEchoCmd},
+    n = processors)
+  if r != 0:
     echo "external program failed, retrying serial work queue for logs!"
     sexec(cmds)
 
 proc buildDocSamples(c: var TConfigData, destPath: string) =
   ## Special case documentation sample proc.
   ##
-  ## The docgen sample needs to be generated twice with different commands, so
-  ## it didn't make much sense to integrate into the existing generic
-  ## documentation builders.
-  const src = "doc"/"docgen_sample.nim"
-  exec(findNim() & " doc $# -o:$# $#" %
-    [c.nimArgs, destPath / "docgen_sample.html", src])
-  exec(findNim() & " doc2 $# -o:$# $#" %
-    [c.nimArgs, destPath / "docgen_sample2.html", src])
+  ## TODO: consider integrating into the existing generic documentation builders
+  ## now that we have a single `doc` command.
+  exec(findNim(c) & " doc $# -o:$# $#" %
+    [c.nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
 proc pathPart(d: string): string = splitFile(d).dir.replace('\\', '/')
 
@@ -296,33 +316,35 @@ proc buildDoc(c: var TConfigData, destPath: string) =
     commands = newSeq[string](len(c.doc) + len(c.srcdoc) + len(c.srcdoc2))
     i = 0
   for d in items(c.doc):
-    commands[i] = findNim() & " rst2html $# --git.url:$# -o:$# --index:on $#" %
-      [c.nimArgs, gitRepo,
+    commands[i] = findNim(c) & " rst2html $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc):
-    commands[i] = findNim() & " doc $# --git.url:$# -o:$# --index:on $#" %
-      [c.nimArgs, gitRepo,
+    commands[i] = findNim(c) & " doc0 $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(c.srcdoc2):
-    commands[i] = findNim() & " doc2 $# --git.url:$# -o:$# --index:on $#" %
-      [c.nimArgs, gitRepo,
+    commands[i] = findNim(c) & " doc2 $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
 
   mexec(commands, c.numProcessors)
-  exec(findNim() & " buildIndex -o:$1/theindex.html $1" % [destPath])
+  exec(findNim(c) & " buildIndex -o:$1/theindex.html $1" % [destPath])
 
 proc buildPdfDoc(c: var TConfigData, destPath: string) =
+  createDir(destPath)
   if os.execShellCmd("pdflatex -version") != 0:
     echo "pdflatex not found; no PDF documentation generated"
   else:
+    const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(c.pdf):
-      exec(findNim() & " rst2tex $# $#" % [c.nimArgs, d])
+      exec(findNim(c) & " rst2tex $# $#" % [c.nimArgs, d])
       # call LaTeX twice to get cross references right:
-      exec("pdflatex " & changeFileExt(d, "tex"))
-      exec("pdflatex " & changeFileExt(d, "tex"))
+      exec(pdflatexcmd & changeFileExt(d, "tex"))
+      exec(pdflatexcmd & changeFileExt(d, "tex"))
       # delete all the crappy temporary files:
       let pdf = splitFile(d).name & ".pdf"
       let dest = destPath / pdf
@@ -339,14 +361,15 @@ proc buildAddDoc(c: var TConfigData, destPath: string) =
   # build additional documentation (without the index):
   var commands = newSeq[string](c.webdoc.len)
   for i, doc in pairs(c.webdoc):
-    commands[i] = findNim() & " doc2 $# --git.url:$# -o:$# $#" %
-      [c.nimArgs, gitRepo,
+    commands[i] = findNim(c) & " doc2 $# --git.url:$# -o:$# $#" %
+      [c.nimArgs, c.gitURL,
       destPath / changeFileExt(splitFile(doc).name, "html"), doc]
   mexec(commands, c.numProcessors)
 
 proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
   # Goes through each news file, returns its date/title.
   result = @[]
+  var matches: array[3, string]
   let reYearMonthDay = re(rYearMonthDay)
   for kind, path in walkDir(inputFilename):
     let (dir, name, ext) = path.splitFile
@@ -354,8 +377,8 @@ proc parseNewsTitles(inputFilename: string): seq[TRssItem] =
       let content = readFile(path)
       let title = content.splitLines()[0]
       let urlPath = "news/" & name & ".html"
-      if name =~ reYearMonthDay:
-        result.add(TRssItem(year: matches[0], month: matches[1], day: matches[2],
+      if content.find(reYearMonthDay, matches) >= 0:
+        result.add(TRssItem(year: matches[2], month: matches[1], day: matches[0],
           title: title, url: "http://nim-lang.org/" & urlPath,
           content: content))
   result.reverse()
@@ -409,7 +432,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
           href = rss.url),
         updatedDate(rss.year, rss.month, rss.day),
         "<author><name>Nim</name></author>",
-        content(xmltree.escape(rss.content), `type` = "text"),
+        content(xmltree.escape(rss.content), `type` = "text")
       ))
 
   output.write("""</feed>""")
@@ -421,10 +444,6 @@ proc buildNewsRss(c: var TConfigData, destPath: string) =
     destFilename = destPath / changeFileExt(splitFile(srcFilename).name, "xml")
 
   generateRss(destFilename, parseNewsTitles(srcFilename))
-
-proc buildJS(destPath: string) =
-  exec(findNim() & " js -d:release --out:$1 web/nimblepkglist.nim" %
-      [destPath / "nimblepkglist.js"])
 
 proc readSponsors(sponsorsFile: string): seq[Sponsor] =
   result = @[]
@@ -455,7 +474,7 @@ const
   cmdRst2Html = " rst2html --compileonly $1 -o:web/$2.temp web/$2.rst"
 
 proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
-  exec(findNim() & cmdRst2Html % [c.nimArgs, file])
+  exec(findNim(c) & cmdRst2Html % [c.nimArgs, file])
   var temp = "web" / changeFileExt(file, "temp")
   var content: string
   try:
@@ -463,7 +482,7 @@ proc buildPage(c: var TConfigData, file, title, rss: string, assetDir = "") =
   except IOError:
     quit("[Error] cannot open: " & temp)
   var f: File
-  var outfile = "web/upload/$#.html" % file
+  var outfile = c.webUploadOutput / "$#.html" % file
   if not existsDir(outfile.splitFile.dir):
     createDir(outfile.splitFile.dir)
   if open(f, outfile, fmWrite):
@@ -493,19 +512,24 @@ proc buildWebsite(c: var TConfigData) =
     let rss = if file in ["news", "index"]: extractFilename(rssUrl) else: ""
     if '.' in file: continue
     buildPage(c, file, if file == "question": "FAQ" else: file, rss)
-  copyDir("web/assets", "web/upload/assets")
-  buildNewsRss(c, "web/upload")
-  buildSponsors(c, "web/upload")
-  buildNews(c, "web/news", "web/upload/news")
+  copyDir("web/assets", c.webUploadOutput / "assets")
+  buildNewsRss(c, c.webUploadOutput)
+  buildSponsors(c, c.webUploadOutput)
+  buildNews(c, "web/news", c.webUploadOutput / "news")
+
+proc onlyDocs(c: var TConfigData) =
+  createDir(c.docHTMLOutput)
+  buildDocSamples(c, c.docHTMLOutput)
+  buildDoc(c, c.docHTMLOutput)
 
 proc main(c: var TConfigData) =
   buildWebsite(c)
-  buildJS("web/upload")
-  buildAddDoc(c, "web/upload")
-  buildDocSamples(c, "web/upload")
-  buildDoc(c, "web/upload")
-  buildDocSamples(c, "doc")
-  buildDoc(c, "doc")
+  let docup = c.webUploadOutput / NimVersion
+  createDir(docup)
+  buildAddDoc(c, docup)
+  buildDocSamples(c, docup)
+  buildDoc(c, docup)
+  onlyDocs(c)
 
 proc json2(c: var TConfigData) =
   const destPath = "web/json2"
@@ -513,8 +537,8 @@ proc json2(c: var TConfigData) =
   var i = 0
   for d in items(c.srcdoc2):
     createDir(destPath / splitFile(d).dir)
-    commands[i] = findNim() & " jsondoc2 $# --git.url:$# -o:$# --index:on $#" %
-      [c.nimArgs, gitRepo,
+    commands[i] = findNim(c) & " jsondoc2 $# --git.url:$# -o:$# --index:on $#" %
+      [c.nimArgs, c.gitURL,
       destPath / changeFileExt(d, "json"), d]
     i.inc
 
@@ -526,6 +550,7 @@ parseCmdLine(c)
 parseIniFile(c)
 case action
 of actOnlyWebsite: buildWebsite(c)
-of actPdf: buildPdfDoc(c, "doc")
+of actPdf: buildPdfDoc(c, "doc/pdf")
+of actOnlyDocs: onlyDocs(c)
 of actAll: main(c)
 of actJson2: json2(c)

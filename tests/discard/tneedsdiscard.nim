@@ -1,10 +1,10 @@
 discard """
+  errormsg: '''expression 'open(f, "arg.txt", fmRead, -1)' is of type 'bool' and has to be discarded; start of expression here: tneedsdiscard.nim(7, 3)'''
   line: 10
-  errormsg: "value of type 'bool' has to be discarded"
 """
 
 proc p =
-  var f: TFile
+  var f: File
   echo "hi"
 
   open(f, "arg.txt")

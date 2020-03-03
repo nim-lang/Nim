@@ -1,5 +1,5 @@
 discard """
-  errormsg: "type mismatch: got (FooRef[system.string])"
+  errormsg: "type mismatch: got <FooRef[system.string]>"
   line: 15
 """
 

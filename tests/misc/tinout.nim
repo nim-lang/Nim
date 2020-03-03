@@ -1,7 +1,7 @@
 discard """
+  errormsg: "type mismatch: got <int literal(3)>"
   file: "tinout.nim"
   line: 12
-  errormsg: "type mismatch: got (int literal(3))"
 """
 # Test in out checking for parameters
 
@@ -12,5 +12,3 @@ proc b() =
     abc(3) #ERROR
 
 b()
-
-

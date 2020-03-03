@@ -1,12 +1,13 @@
 discard """
   cmd: "nim default $file"
   output: '''hello world! 0.5'''
-  msg: '''[NimScript] exec: gcc -v'''
+  nimout: '''[NimScript] exec: gcc -v'''
 """
 
 when not defined(definedefine):
   {.fatal: "wrong nim script configuration".}
 
-import math
+import math, mfriends
 
+discard gen[int]()
 echo "hello world! ", ln 2.0

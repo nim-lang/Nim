@@ -1,5 +1,5 @@
 discard """
-  errormsg: "identifier expected, but found 'keyword when'"
+  errormsg: "identifier expected, but got 'keyword when'"
 """
 
 # bug #2123

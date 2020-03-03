@@ -1,26 +1,27 @@
 discard """
-file: "tevents.nim"
-output: '''HandlePrintEvent: Output -> Handled print event
+output: '''
+HandlePrintEvent: Output -> Handled print event
 HandlePrintEvent2: Output -> printing for ME
-HandlePrintEvent2: Output -> printing for ME'''
+HandlePrintEvent2: Output -> printing for ME
+'''
 """
 
 import events
 
 type
-  TPrintEventArgs = object of TEventArgs
+  PrintEventArgs = object of EventArgs
     user*: string
 
-proc handleprintevent*(e: TEventArgs) =
+proc handleprintevent*(e: EventArgs) =
     write(stdout, "HandlePrintEvent: Output -> Handled print event\n")
 
-proc handleprintevent2*(e: TEventArgs) =
-    var args: TPrintEventArgs = TPrintEventArgs(e)
+proc handleprintevent2*(e: EventArgs) =
+    var args: PrintEventArgs = PrintEventArgs(e)
     write(stdout, "HandlePrintEvent2: Output -> printing for " & args.user)
 
 var ee = initEventEmitter()
 
-var eventargs: TPrintEventArgs
+var eventargs: PrintEventArgs
 eventargs.user = "ME\n"
 
 ##method one test
@@ -33,16 +34,15 @@ ee.emit("print", eventargs)
 ##method two test
 
 type
-  TSomeObject = object of TObject
-    PrintEvent: TEventHandler
+  SomeObject = object of RootObj
+    printEvent: EventHandler
 
-var obj: TSomeObject
-obj.PrintEvent = initEventHandler("print")
-obj.PrintEvent.addHandler(handleprintevent2)
+var obj: SomeObject
+obj.printEvent = initEventHandler("print")
+obj.printEvent.addHandler(handleprintevent2)
 
-ee.emit(obj.PrintEvent, eventargs)
+ee.emit(obj.printEvent, eventargs)
 
-obj.PrintEvent.removeHandler(handleprintevent2)
+obj.printEvent.removeHandler(handleprintevent2)
 
-ee.emit(obj.PrintEvent, eventargs)
-
+ee.emit(obj.printEvent, eventargs)

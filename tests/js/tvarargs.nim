@@ -1,3 +1,6 @@
+discard """
+  output: "Hello, world"
+"""
 
 # bug #3584
 
@@ -6,7 +9,7 @@ type
     log*: proc() {.nimcall varargs.}
   Console = ref ConsoleObj
 
-var console* {.importc nodecl.}: Console
+var console* {.importc.}: Console
 
-when isMainModule:
+when true:
   console.log "Hello, world"

@@ -1,12 +1,13 @@
 discard """
-  file: "toprprec.nim"
   output: "done"
 """
 # Test operator precedence:
 
-template `@` (x: expr): expr {.immediate.} = self.x
-template `@!` (x: expr): expr {.immediate.} = x
-template `===` (x: expr): expr {.immediate.} = x
+template `@@` (x: untyped): untyped =
+  `self`.x
+
+template `@!` (x: untyped): untyped = x
+template `===` (x: untyped): untyped = x
 
 type
   TO = object
@@ -14,11 +15,11 @@ type
   TA = tuple[a, b: int, obj: TO]
 
 proc init(self: var TA): string =
-  @a = 3
-  === @b = 4
-  @obj.x = 4
+  @@a = 3
+  === @@b = 4
+  @@obj.x = 4
   @! === result = "abc"
-  result = @b.`$`
+  result = @@b.`$`
 
 assert 3+5*5-2 == 28- -26-28
 
@@ -34,6 +35,3 @@ var s: TA
 assert init(s) == "4"
 
 echo "done"
-
-
-

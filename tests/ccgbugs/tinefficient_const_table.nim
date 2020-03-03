@@ -6,8 +6,8 @@ of
 words'''
   cmd: r"nim c --hints:on $options -d:release $file"
   ccodecheck: "! @'genericSeqAssign'"
+  target: "c"
 """
-
 
 # bug #4354
 import tables

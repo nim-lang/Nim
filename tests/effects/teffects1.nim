@@ -1,10 +1,10 @@
 discard """
-  file: "system.nim"
   errormsg: "can raise an unlisted exception: ref IOError"
+  file: "io.nim"
 """
 
 type
-  TObj = object {.pure, inheritable.}
+  TObj {.pure, inheritable.} = object
   TObjB = object of TObj
     a, b, c: string
 
@@ -17,4 +17,3 @@ proc lier(): int {.raises: [IO2Error].} =
 
 proc forw: int =
   raise newException(IOError, "arg")
-

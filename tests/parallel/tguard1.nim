@@ -1,3 +1,7 @@
+discard """
+output: "90"
+"""
+
 
 when false:
   template lock(a, b: ptr Lock; body: stmt) =
@@ -24,7 +28,7 @@ var
 
 c.i = 89
 
-template atomicRead(L, x): expr =
+template atomicRead(L, x): untyped =
   {.locks: [L].}:
     x
 

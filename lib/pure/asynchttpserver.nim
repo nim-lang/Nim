@@ -14,9 +14,8 @@
 ## application you should use a reverse proxy (for example nginx) instead of
 ## allowing users to connect directly to this server.
 ##
-##
-## Examples
-## --------
+## Basic usage
+## ===========
 ##
 ## This example will create an HTTP server on port 8080. The server will
 ## respond to all requests with a ``200 OK`` response code and "Hello World"
@@ -30,6 +29,60 @@
 ##      await req.respond(Http200, "Hello World")
 ##
 ##    waitFor server.serve(Port(8080), cb)
+##
+## Basic Post request handle
+## =========================
+##
+## This example will create an HTTP server on port 8080. The server will
+## respond with a page with the actual and expected body length after
+## submitting a file.
+##
+## .. code-block::nim
+##    import asynchttpserver, asyncdispatch
+##    import strutils, strformat
+##
+##    const stream = true # for test purposes switch from true to false
+##
+##    proc htmlpage(contentLength, bodyLength: int): string =
+##      return &"""
+##    <!Doctype html>
+##    <html lang="en">
+##      <head><meta charset="utf-8"/></head>
+##      <body>
+##        <form action="/" method="post" enctype="multipart/form-data">
+##          File: <input type="file" name="testfile" accept="text/*"><br />
+##          <input style="margin:10px 0;" type="submit">
+##        </form><br />
+##        Expected Body Length: {contentLength} bytes<br />
+##        Actual Body Length: {bodyLength} bytes
+##      </body>
+##    </html>
+##    """
+##
+##    proc cb(req: Request) {.async.} =
+##      var
+##        contentLength = 0
+##        bodyLength = 0
+##      if req.reqMethod == HttpPost:
+##        contentLength = req.headers["Content-length"].parseInt
+##        if stream:
+##          # Read 8*1024 bytes at a time
+##          # optional chunkSize parameter. The default is 8*1024
+##          for length, data in req.bodyStream(8*1024):
+##            let content = await data
+##            if length == content.len:
+##              bodyLength += content.len
+##            else:
+##              # Handle exception
+##              await req.respond(Http400,
+##                "Bad Request. Data read has a different length than the expected.")
+##              return
+##        else:
+##          bodyLength += req.body.len
+##      await req.respond(Http200, htmlpage(contentLength, bodyLength))
+##
+##    let server = newAsyncHttpServer(maxBody = 10485760, stream = stream) # 10 MB
+##    waitFor server.serve(Port(8080), cb)
 
 import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
@@ -41,29 +94,64 @@ export httpcore except parseHeader
 # wrong, then add a return value which determines what to do for the callback.
 # Also, maybe move `client` out of `Request` object and into the args for
 # the proc.
-type
-  Request* = object
-    client*: AsyncSocket # TODO: Separate this into a Response object?
-    reqMethod*: HttpMethod
-    headers*: HttpHeaders
-    protocol*: tuple[orig: string, major, minor: int]
-    url*: Uri
-    hostname*: string ## The hostname of the client that made the request.
-    body*: string
 
-  AsyncHttpServer* = ref object
-    socket: AsyncSocket
-    reuseAddr: bool
-    reusePort: bool
+const
+  maxLine = 8*1024
 
-{.deprecated: [TRequest: Request, PAsyncHttpServer: AsyncHttpServer,
-  THttpCode: HttpCode, THttpVersion: HttpVersion].}
+when (NimMajor, NimMinor) >= (1, 1):
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
+      contentLength*: int
 
-proc newAsyncHttpServer*(reuseAddr = true, reusePort = false): AsyncHttpServer =
-  ## Creates a new ``AsyncHttpServer`` instance.
-  new result
-  result.reuseAddr = reuseAddr
-  result.reusePort = reusePort
+  type
+    AsyncHttpServer* = ref object
+      socket: AsyncSocket
+      reuseAddr: bool
+      reusePort: bool
+      maxBody: int ## The maximum content-length that will be read for the body.
+      stream: bool ## By default (stream = false), the body of the request is read immediately
+else:
+  type
+    Request* = object
+      client*: AsyncSocket # TODO: Separate this into a Response object?
+      reqMethod*: HttpMethod
+      headers*: HttpHeaders
+      protocol*: tuple[orig: string, major, minor: int]
+      url*: Uri
+      hostname*: string    ## The hostname of the client that made the request.
+      body*: string
+
+  type
+    AsyncHttpServer* = ref object
+      socket: AsyncSocket
+      reuseAddr: bool
+      reusePort: bool
+      maxBody: int ## The maximum content-length that will be read for the body.
+
+when (NimMajor, NimMinor) >= (1, 1):
+  proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
+                         maxBody = 8388608, stream = false): AsyncHttpServer =
+    ## Creates a new ``AsyncHttpServer`` instance.
+    new result
+    result.reuseAddr = reuseAddr
+    result.reusePort = reusePort
+    result.maxBody = maxBody
+    result.stream = stream
+else:
+  proc newAsyncHttpServer*(reuseAddr = true, reusePort = false,
+                         maxBody = 8388608): AsyncHttpServer =
+    ## Creates a new ``AsyncHttpServer`` instance.
+    new result
+    result.reuseAddr = reuseAddr
+    result.reusePort = reusePort
+    result.maxBody = maxBody
 
 proc addHeaders(msg: var string, headers: HttpHeaders) =
   for k, v in headers:
@@ -81,10 +169,34 @@ proc respond*(req: Request, code: HttpCode, content: string,
   ## content.
   ##
   ## This procedure will **not** close the client socket.
+  ##
+  ## Example:
+  ##
+  ## .. code-block::nim
+  ##    import json
+  ##    proc handler(req: Request) {.async.} =
+  ##      if req.url.path == "/hello-world":
+  ##        let msg = %* {"message": "Hello World"}
+  ##        let headers = newHttpHeaders([("Content-Type","application/json")])
+  ##        await req.respond(Http200, $msg, headers)
+  ##      else:
+  ##        await req.respond(Http404, "Not Found")
   var msg = "HTTP/1.1 " & $code & "\c\L"
 
   if headers != nil:
     msg.addHeaders(headers)
+  msg.add("Content-Length: ")
+  # this particular way saves allocations:
+  msg.add content.len
+  msg.add "\c\L\c\L"
+  msg.add(content)
+  result = req.client.send(msg)
+
+proc respondError(req: Request, code: HttpCode): Future[void] =
+  ## Responds to the request with the specified ``HttpCode``.
+  let content = $code
+  var msg = "HTTP/1.1 " & content & "\c\L"
+
   msg.add("Content-Length: " & $content.len & "\c\L\c\L")
   msg.add(content)
   result = req.client.send(msg)
@@ -95,128 +207,204 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
     raise newException(ValueError, "Invalid request protocol. Got: " &
         protocol)
   result.orig = protocol
-  i.inc protocol.parseInt(result.major, i)
+  i.inc protocol.parseSaturatedNatural(result.major, i)
   i.inc # Skip .
-  i.inc protocol.parseInt(result.minor, i)
+  i.inc protocol.parseSaturatedNatural(result.minor, i)
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
-  client.send("HTTP/1.1 " & status & "\c\L")
+  client.send("HTTP/1.1 " & status & "\c\L\c\L")
 
-proc processClient(client: AsyncSocket, address: string,
-                   callback: proc (request: Request):
-                      Future[void] {.closure, gcsafe.}) {.async.} =
-  var request: Request
-  request.url = initUri()
-  request.headers = newHttpHeaders()
-  var lineFut = newFutureVar[string]("asynchttpserver.processClient")
-  lineFut.mget() = newStringOfCap(80)
-  var key, value = ""
+when (NimMajor, NimMinor) >= (1, 1):
+  iterator bodyStream*(
+    request: Request,
+    chunkSize: int = 8*1024): (int, Future[string]) =
+    ## The chunkSize parameter is optional and default value is 8*1024 bytes.
+    ##
+    ## This iterator return a tuple with the length of the data that was read
+    ## and a future.
+    var remainder = request.contentLength
+    while remainder > 0:
+      let readSize = min(remainder, chunkSize)
+      let data = request.client.recv(readSize)
+      if data.failed:
+        raise newException(ValueError, "Error reading POST data from client.")
+      yield (readSize, data)
+      remainder -= readSize
 
-  while not client.isClosed:
-    # GET /path HTTP/1.1
-    # Header: val
-    # \n
-    request.headers.clear()
-    request.body = ""
-    request.hostname.shallowCopy(address)
-    assert client != nil
-    request.client = client
+proc processRequest(
+  server: AsyncHttpServer,
+  req: FutureVar[Request],
+  client: AsyncSocket,
+  address: string,
+  lineFut: FutureVar[string],
+  callback: proc (request: Request): Future[void] {.closure, gcsafe.}
+): Future[bool] {.async.} =
 
-    # First line - GET /path HTTP/1.1
+  # Alias `request` to `req.mget()` so we don't have to write `mget` everywhere.
+  template request(): Request =
+    req.mget()
+
+  # GET /path HTTP/1.1
+  # Header: val
+  # \n
+  request.headers.clear()
+  request.hostname.shallowCopy(address)
+  assert client != nil
+  request.client = client
+  request.body = ""
+  when (NimMajor, NimMinor) >= (1, 1):
+    request.contentLength = 0
+
+  # We should skip at least one empty line before the request
+  # https://tools.ietf.org/html/rfc7230#section-3.5
+  for i in 0..1:
     lineFut.mget().setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut) # TODO: Timeouts.
+    await client.recvLineInto(lineFut, maxLength = maxLine) # TODO: Timeouts.
+
     if lineFut.mget == "":
       client.close()
-      return
+      return false
 
-    var i = 0
-    for linePart in lineFut.mget.split(' '):
-      case i
-      of 0:
-        try:
-          # TODO: this is likely slow.
-          request.reqMethod = parseEnum[HttpMethod]("http" & linePart)
-        except ValueError:
-          asyncCheck request.respond(Http400, "Invalid request method. Got: " &
-                                     linePart)
-          continue
-      of 1: parseUri(linePart, request.url)
-      of 2:
-        try:
-          request.protocol = parseProtocol(linePart)
-        except ValueError:
-          asyncCheck request.respond(Http400,
-            "Invalid request protocol. Got: " & linePart)
-          continue
-      else:
-        await request.respond(Http400, "Invalid request. Got: " & lineFut.mget)
-        continue
-      inc i
-
-    # Headers
-    while true:
-      i = 0
-      lineFut.mget.setLen(0)
-      lineFut.clean()
-      await client.recvLineInto(lineFut)
-
-      if lineFut.mget == "":
-        client.close(); return
-      if lineFut.mget == "\c\L": break
-      let (key, value) = parseHeader(lineFut.mget)
-      request.headers[key] = value
-      # Ensure the client isn't trying to DoS us.
-      if request.headers.len > headerLimit:
-        await client.sendStatus("400 Bad Request")
-        request.client.close()
-        return
-
-    if request.reqMethod == HttpPost:
-      # Check for Expect header
-      if request.headers.hasKey("Expect"):
-        if "100-continue" in request.headers["Expect"]:
-          await client.sendStatus("100 Continue")
-        else:
-          await client.sendStatus("417 Expectation Failed")
-
-    # Read the body
-    # - Check for Content-length header
-    if request.headers.hasKey("Content-Length"):
-      var contentLength = 0
-      if parseInt(request.headers["Content-Length"],
-                  contentLength) == 0:
-        await request.respond(Http400, "Bad Request. Invalid Content-Length.")
-        continue
-      else:
-        request.body = await client.recv(contentLength)
-        assert request.body.len == contentLength
-    elif request.reqMethod == HttpPost:
-      await request.respond(Http400, "Bad Request. No Content-Length.")
-      continue
-
-    # Call the user's callback.
-    await callback(request)
-
-    if "upgrade" in request.headers.getOrDefault("connection"):
-      return
-
-    # Persistent connections
-    if (request.protocol == HttpVer11 and
-        request.headers.getOrDefault("connection").normalize != "close") or
-       (request.protocol == HttpVer10 and
-        request.headers.getOrDefault("connection").normalize == "keep-alive"):
-      # In HTTP 1.1 we assume that connection is persistent. Unless connection
-      # header states otherwise.
-      # In HTTP 1.0 we assume that the connection should not be persistent.
-      # Unless the connection header states otherwise.
-      discard
-    else:
-      request.client.close()
+    if lineFut.mget.len > maxLine:
+      await request.respondError(Http413)
+      client.close()
+      return false
+    if lineFut.mget != "\c\L":
       break
 
+  # First line - GET /path HTTP/1.1
+  var i = 0
+  for linePart in lineFut.mget.split(' '):
+    case i
+    of 0:
+      case linePart
+      of "GET": request.reqMethod = HttpGet
+      of "POST": request.reqMethod = HttpPost
+      of "HEAD": request.reqMethod = HttpHead
+      of "PUT": request.reqMethod = HttpPut
+      of "DELETE": request.reqMethod = HttpDelete
+      of "PATCH": request.reqMethod = HttpPatch
+      of "OPTIONS": request.reqMethod = HttpOptions
+      of "CONNECT": request.reqMethod = HttpConnect
+      of "TRACE": request.reqMethod = HttpTrace
+      else:
+        asyncCheck request.respondError(Http400)
+        return true # Retry processing of request
+    of 1:
+      try:
+        parseUri(linePart, request.url)
+      except ValueError:
+        asyncCheck request.respondError(Http400)
+        return true
+    of 2:
+      try:
+        request.protocol = parseProtocol(linePart)
+      except ValueError:
+        asyncCheck request.respondError(Http400)
+        return true
+    else:
+      await request.respondError(Http400)
+      return true
+    inc i
+
+  # Headers
+  while true:
+    i = 0
+    lineFut.mget.setLen(0)
+    lineFut.clean()
+    await client.recvLineInto(lineFut, maxLength = maxLine)
+
+    if lineFut.mget == "":
+      client.close(); return false
+    if lineFut.mget.len > maxLine:
+      await request.respondError(Http413)
+      client.close(); return false
+    if lineFut.mget == "\c\L": break
+    let (key, value) = parseHeader(lineFut.mget)
+    request.headers[key] = value
+    # Ensure the client isn't trying to DoS us.
+    if request.headers.len > headerLimit:
+      await client.sendStatus("400 Bad Request")
+      request.client.close()
+      return false
+
+  if request.reqMethod == HttpPost:
+    # Check for Expect header
+    if request.headers.hasKey("Expect"):
+      if "100-continue" in request.headers["Expect"]:
+        await client.sendStatus("100 Continue")
+      else:
+        await client.sendStatus("417 Expectation Failed")
+
+  # Read the body
+  # - Check for Content-length header
+  if request.headers.hasKey("Content-Length"):
+    var contentLength = 0
+    if parseSaturatedNatural(request.headers["Content-Length"], contentLength) == 0:
+      await request.respond(Http400, "Bad Request. Invalid Content-Length.")
+      return true
+    else:
+      if contentLength > server.maxBody:
+        await request.respondError(Http413)
+        return false
+
+      when (NimMajor, NimMinor) >= (1, 1):
+        request.contentLength = contentLength
+        if not server.stream:
+          request.body = await client.recv(contentLength)
+          if request.body.len != contentLength:
+            await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+            return true
+      else:
+        request.body = await client.recv(contentLength)
+        if request.body.len != contentLength:
+          await request.respond(Http400, "Bad Request. Content-Length does not match actual.")
+          return true
+  elif request.reqMethod == HttpPost:
+    await request.respond(Http411, "Content-Length required.")
+    return true
+
+  # Call the user's callback.
+  await callback(request)
+
+  if "upgrade" in request.headers.getOrDefault("connection"):
+    return false
+
+  # The request has been served, from this point on returning `true` means the
+  # connection will not be closed and will be kept in the connection pool.
+
+  # Persistent connections
+  if (request.protocol == HttpVer11 and
+      cmpIgnoreCase(request.headers.getOrDefault("connection"), "close") != 0) or
+     (request.protocol == HttpVer10 and
+      cmpIgnoreCase(request.headers.getOrDefault("connection"), "keep-alive") == 0):
+    # In HTTP 1.1 we assume that connection is persistent. Unless connection
+    # header states otherwise.
+    # In HTTP 1.0 we assume that the connection should not be persistent.
+    # Unless the connection header states otherwise.
+    return true
+  else:
+    request.client.close()
+    return false
+
+proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string,
+                   callback: proc (request: Request):
+                      Future[void] {.closure, gcsafe.}) {.async.} =
+  var request = newFutureVar[Request]("asynchttpserver.processClient")
+  request.mget().url = initUri()
+  request.mget().headers = newHttpHeaders()
+  var lineFut = newFutureVar[string]("asynchttpserver.processClient")
+  lineFut.mget() = newStringOfCap(80)
+
+  while not client.isClosed:
+    let retry = await processRequest(
+      server, request, client, address, lineFut, callback
+    )
+    if not retry: break
+
 proc serve*(server: AsyncHttpServer, port: Port,
-            callback: proc (request: Request): Future[void] {.closure,gcsafe.},
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.
@@ -231,10 +419,8 @@ proc serve*(server: AsyncHttpServer, port: Port,
   server.socket.listen()
 
   while true:
-    # TODO: Causes compiler crash.
-    #var (address, client) = await server.socket.acceptAddr()
-    var fut = await server.socket.acceptAddr()
-    asyncCheck processClient(fut.client, fut.address, callback)
+    var (address, client) = await server.socket.acceptAddr()
+    asyncCheck processClient(server, client, address, callback)
     #echo(f.isNil)
     #echo(f.repr)
 

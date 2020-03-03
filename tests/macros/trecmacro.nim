@@ -1,10 +1,10 @@
 discard """
+  errormsg: "recursive dependency: 'dump'"
   file: "trecmacro.nim"
   line: 8
-  errormsg: "recursive dependency: 'dump'"
 """
 
-macro dump(n: stmt): stmt =
+macro dump(n: untyped): untyped =
   dump(n)
   if kind(n) == nnkNone:
     nil

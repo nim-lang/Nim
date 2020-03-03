@@ -12,23 +12,46 @@
 ## format, but much more powerful, as it is not a line based parser. String
 ## literals, raw string literals and triple quoted string literals are supported
 ## as in the Nim programming language.
-
-## This is an example of how a configuration file may look like:
+##
+## Example of how a configuration file may look like:
 ##
 ## .. include:: ../../doc/mytest.cfg
 ##     :literal:
-## The file ``examples/parsecfgex.nim`` demonstrates how to use the
-## configuration file parser:
+##
+## Here is an example of how to use the configuration file parser:
 ##
 ## .. code-block:: nim
-##     :file: ../../examples/parsecfgex.nim
+##
+##    import os, parsecfg, strutils, streams
+##
+##    var f = newFileStream(paramStr(1), fmRead)
+##    if f != nil:
+##      var p: CfgParser
+##      open(p, f, paramStr(1))
+##      while true:
+##        var e = next(p)
+##        case e.kind
+##        of cfgEof: break
+##        of cfgSectionStart:   ## a ``[section]`` has been parsed
+##          echo("new section: " & e.section)
+##        of cfgKeyValuePair:
+##          echo("key-value-pair: " & e.key & ": " & e.value)
+##        of cfgOption:
+##          echo("command: " & e.key & ": " & e.value)
+##        of cfgError:
+##          echo(e.msg)
+##      close(p)
+##    else:
+##      echo("cannot open: " & paramStr(1))
+##
 ##
 ## Examples
-## --------
+## ========
 ##
-## This is an example of a configuration file.
+## Configuration file example
+## --------------------------
 ##
-## ::
+## .. code-block:: nim
 ##
 ##     charset = "utf-8"
 ##     [Package]
@@ -39,8 +62,8 @@
 ##     qq = "10214028"
 ##     email = "lihaifeng@wxm.com"
 ##
-## Creating a configuration file.
-## ==============================
+## Creating a configuration file
+## -----------------------------
 ## .. code-block:: nim
 ##
 ##     import parsecfg
@@ -53,8 +76,8 @@
 ##     dict.setSectionKey("Author","email","lihaifeng@wxm.com")
 ##     dict.writeConfig("config.ini")
 ##
-## Reading a configuration file.
-## =============================
+## Reading a configuration file
+## ----------------------------
 ## .. code-block:: nim
 ##
 ##     import parsecfg
@@ -67,8 +90,8 @@
 ##     var email = dict.getSectionValue("Author","email")
 ##     echo pname & "\n" & name & "\n" & qq & "\n" & email
 ##
-## Modifying a configuration file.
-## ===============================
+## Modifying a configuration file
+## ------------------------------
 ## .. code-block:: nim
 ##
 ##     import parsecfg
@@ -76,8 +99,8 @@
 ##     dict.setSectionKey("Author","name","lhf")
 ##     dict.writeConfig("config.ini")
 ##
-## Deleting a section key in a configuration file.
-## ===============================================
+## Deleting a section key in a configuration file
+## ----------------------------------------------
 ## .. code-block:: nim
 ##
 ##     import parsecfg
@@ -86,47 +109,44 @@
 ##     dict.writeConfig("config.ini")
 
 import
-  hashes, strutils, lexbase, streams, tables
+  strutils, lexbase, streams, tables
 
 include "system/inclrtl"
 
 type
   CfgEventKind* = enum ## enumeration of all events that may occur when parsing
-    cfgEof,             ## end of file reached
-    cfgSectionStart,    ## a ``[section]`` has been parsed
-    cfgKeyValuePair,    ## a ``key=value`` pair has been detected
-    cfgOption,          ## a ``--key=value`` command line option
-    cfgError            ## an error occurred during parsing
+    cfgEof,            ## end of file reached
+    cfgSectionStart,   ## a ``[section]`` has been parsed
+    cfgKeyValuePair,   ## a ``key=value`` pair has been detected
+    cfgOption,         ## a ``--key=value`` command line option
+    cfgError           ## an error occurred during parsing
 
   CfgEvent* = object of RootObj ## describes a parsing event
     case kind*: CfgEventKind    ## the kind of the event
     of cfgEof: nil
     of cfgSectionStart:
-      section*: string           ## `section` contains the name of the
-                                 ## parsed section start (syntax: ``[section]``)
+      section*: string          ## `section` contains the name of the
+                                ## parsed section start (syntax: ``[section]``)
     of cfgKeyValuePair, cfgOption:
-      key*, value*: string       ## contains the (key, value) pair if an option
-                                 ## of the form ``--key: value`` or an ordinary
-                                 ## ``key= value`` pair has been parsed.
-                                 ## ``value==""`` if it was not specified in the
-                                 ## configuration file.
-    of cfgError:                 ## the parser encountered an error: `msg`
-      msg*: string               ## contains the error message. No exceptions
-                                 ## are thrown if a parse error occurs.
+      key*, value*: string      ## contains the (key, value) pair if an option
+                                ## of the form ``--key: value`` or an ordinary
+                                ## ``key= value`` pair has been parsed.
+                                ## ``value==""`` if it was not specified in the
+                                ## configuration file.
+    of cfgError:                ## the parser encountered an error: `msg`
+      msg*: string              ## contains the error message. No exceptions
+                                ## are thrown if a parse error occurs.
 
   TokKind = enum
     tkInvalid, tkEof,
     tkSymbol, tkEquals, tkColon, tkBracketLe, tkBracketRi, tkDashDash
-  Token = object             # a token
-    kind: TokKind            # the type of the token
-    literal: string          # the parsed (string) literal
+  Token = object    # a token
+    kind: TokKind   # the type of the token
+    literal: string # the parsed (string) literal
 
   CfgParser* = object of BaseLexer ## the parser object.
     tok: Token
     filename: string
-
-{.deprecated: [TCfgEventKind: CfgEventKind, TCfgEvent: CfgEvent,
-    TTokKind: TokKind, TToken: Token, TCfgParser: CfgParser].}
 
 # implementation
 
@@ -183,7 +203,7 @@ proc handleDecChars(c: var CfgParser, xi: var int) =
     inc(c.bufpos)
 
 proc getEscapedChar(c: var CfgParser, tok: var Token) =
-  inc(c.bufpos)               # skip '\'
+  inc(c.bufpos) # skip '\'
   case c.buf[c.bufpos]
   of 'n', 'N':
     add(tok.literal, "\n")
@@ -238,38 +258,35 @@ proc handleCRLF(c: var CfgParser, pos: int): int =
   else: result = pos
 
 proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
-  var pos = c.bufpos + 1          # skip "
-  var buf = c.buf                 # put `buf` in a register
+  var pos = c.bufpos + 1 # skip "
   tok.kind = tkSymbol
-  if (buf[pos] == '"') and (buf[pos + 1] == '"'):
+  if (c.buf[pos] == '"') and (c.buf[pos + 1] == '"'):
     # long string literal:
-    inc(pos, 2)               # skip ""
+    inc(pos, 2) # skip ""
                               # skip leading newline:
     pos = handleCRLF(c, pos)
-    buf = c.buf
     while true:
-      case buf[pos]
+      case c.buf[pos]
       of '"':
-        if (buf[pos + 1] == '"') and (buf[pos + 2] == '"'): break
+        if (c.buf[pos + 1] == '"') and (c.buf[pos + 2] == '"'): break
         add(tok.literal, '"')
         inc(pos)
       of '\c', '\L':
         pos = handleCRLF(c, pos)
-        buf = c.buf
         add(tok.literal, "\n")
       of lexbase.EndOfFile:
         tok.kind = tkInvalid
         break
       else:
-        add(tok.literal, buf[pos])
+        add(tok.literal, c.buf[pos])
         inc(pos)
-    c.bufpos = pos + 3       # skip the three """
+    c.bufpos = pos + 3 # skip the three """
   else:
     # ordinary string literal
     while true:
-      var ch = buf[pos]
+      var ch = c.buf[pos]
       if ch == '"':
-        inc(pos)              # skip '"'
+        inc(pos) # skip '"'
         break
       if ch in {'\c', '\L', lexbase.EndOfFile}:
         tok.kind = tkInvalid
@@ -285,28 +302,25 @@ proc getString(c: var CfgParser, tok: var Token, rawMode: bool) =
 
 proc getSymbol(c: var CfgParser, tok: var Token) =
   var pos = c.bufpos
-  var buf = c.buf
   while true:
-    add(tok.literal, buf[pos])
+    add(tok.literal, c.buf[pos])
     inc(pos)
-    if not (buf[pos] in SymChars): break
+    if not (c.buf[pos] in SymChars): break
   c.bufpos = pos
   tok.kind = tkSymbol
 
 proc skip(c: var CfgParser) =
   var pos = c.bufpos
-  var buf = c.buf
   while true:
-    case buf[pos]
+    case c.buf[pos]
     of ' ', '\t':
       inc(pos)
     of '#', ';':
-      while not (buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
+      while not (c.buf[pos] in {'\c', '\L', lexbase.EndOfFile}): inc(pos)
     of '\c', '\L':
       pos = handleCRLF(c, pos)
-      buf = c.buf
     else:
-      break                   # EndOfFile also leaves the loop
+      break # EndOfFile also leaves the loop
   c.bufpos = pos
 
 proc rawGetTok(c: var CfgParser, tok: var Token) =
@@ -320,9 +334,13 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
     tok.literal = "="
   of '-':
     inc(c.bufpos)
-    if c.buf[c.bufpos] == '-': inc(c.bufpos)
-    tok.kind = tkDashDash
-    tok.literal = "--"
+    if c.buf[c.bufpos] == '-':
+      inc(c.bufpos)
+      tok.kind = tkDashDash
+      tok.literal = "--"
+    else:
+      dec(c.bufpos)
+      getSymbol(c, tok)
   of ':':
     tok.kind = tkColon
     inc(c.bufpos)
@@ -336,7 +354,7 @@ proc rawGetTok(c: var CfgParser, tok: var Token) =
   of '[':
     tok.kind = tkBracketLe
     inc(c.bufpos)
-    tok.literal = "]"
+    tok.literal = "["
   of ']':
     tok.kind = tkBracketRi
     inc(c.bufpos)
@@ -352,13 +370,13 @@ proc errorStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted error message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Error: $4",
-               [c.filename, $getLine(c), $getColumn(c), msg])
+                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc warningStr*(c: CfgParser, msg: string): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted warning message containing current line and
   ## column information.
   result = `%`("$1($2, $3) Warning: $4",
-               [c.filename, $getLine(c), $getColumn(c), msg])
+                [c.filename, $getLine(c), $getColumn(c), msg])
 
 proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
   ## returns a properly formatted warning message containing that
@@ -373,29 +391,29 @@ proc ignoreMsg*(c: CfgParser, e: CfgEvent): string {.rtl, extern: "npc$1".} =
 
 proc getKeyValPair(c: var CfgParser, kind: CfgEventKind): CfgEvent =
   if c.tok.kind == tkSymbol:
-    result.kind = kind
-    result.key = c.tok.literal
-    result.value = ""
+    case kind
+    of cfgOption, cfgKeyValuePair:
+      result = CfgEvent(kind: kind, key: c.tok.literal, value: "")
+    else: discard
     rawGetTok(c, c.tok)
     if c.tok.kind in {tkEquals, tkColon}:
       rawGetTok(c, c.tok)
       if c.tok.kind == tkSymbol:
         result.value = c.tok.literal
       else:
-        reset result
-        result.kind = cfgError
-        result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+        result = CfgEvent(kind: cfgError,
+          msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
       rawGetTok(c, c.tok)
   else:
-    result.kind = cfgError
-    result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
     rawGetTok(c, c.tok)
 
 proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   ## retrieves the first/next event. This controls the parser.
   case c.tok.kind
   of tkEof:
-    result.kind = cfgEof
+    result = CfgEvent(kind: cfgEof)
   of tkDashDash:
     rawGetTok(c, c.tok)
     result = getKeyValPair(c, cfgOption)
@@ -404,65 +422,69 @@ proc next*(c: var CfgParser): CfgEvent {.rtl, extern: "npc$1".} =
   of tkBracketLe:
     rawGetTok(c, c.tok)
     if c.tok.kind == tkSymbol:
-      result.kind = cfgSectionStart
-      result.section = c.tok.literal
+      result = CfgEvent(kind: cfgSectionStart, section: c.tok.literal)
     else:
-      result.kind = cfgError
-      result.msg = errorStr(c, "symbol expected, but found: " & c.tok.literal)
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "symbol expected, but found: " & c.tok.literal))
     rawGetTok(c, c.tok)
     if c.tok.kind == tkBracketRi:
       rawGetTok(c, c.tok)
     else:
-      reset(result)
-      result.kind = cfgError
-      result.msg = errorStr(c, "']' expected, but found: " & c.tok.literal)
+      result = CfgEvent(kind: cfgError,
+        msg: errorStr(c, "']' expected, but found: " & c.tok.literal))
   of tkInvalid, tkEquals, tkColon, tkBracketRi:
-    result.kind = cfgError
-    result.msg = errorStr(c, "invalid token: " & c.tok.literal)
+    result = CfgEvent(kind: cfgError,
+      msg: errorStr(c, "invalid token: " & c.tok.literal))
     rawGetTok(c, c.tok)
 
 # ---------------- Configuration file related operations ----------------
 type
-  Config* = OrderedTableRef[string, OrderedTableRef[string, string]]
+  Config* = OrderedTableRef[string, <//>OrderedTableRef[string, string]]
 
 proc newConfig*(): Config =
   ## Create a new configuration table.
   ## Useful when wanting to create a configuration file.
-  result = newOrderedTable[string, OrderedTableRef[string, string]]()
+  result = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
 
-proc loadConfig*(filename: string): Config =
-  ## Load the specified configuration file into a new Config instance.
-  var dict = newOrderedTable[string, OrderedTableRef[string, string]]()
+proc loadConfig*(stream: Stream, filename: string = "[stream]"): <//>Config =
+  ## Load the specified configuration from stream into a new Config instance.
+  ## `filename` parameter is only used for nicer error messages.
+  var dict = newOrderedTable[string, <//>OrderedTableRef[string, string]]()
   var curSection = "" ## Current section,
                       ## the default value of the current section is "",
                       ## which means that the current section is a common
   var p: CfgParser
-  var fileStream = newFileStream(filename, fmRead)
-  if fileStream != nil:
-    open(p, fileStream, filename)
-    while true:
-      var e = next(p)
-      case e.kind
-      of cfgEof:
-        break
-      of cfgSectionStart: # Only look for the first time the Section
-        curSection = e.section
-      of cfgKeyValuePair:
-        var t = newOrderedTable[string, string]()
-        if dict.hasKey(curSection):
-          t = dict[curSection]
-        t[e.key] = e.value
-        dict[curSection] = t
-      of cfgOption:
-        var c = newOrderedTable[string, string]()
-        if dict.hasKey(curSection):
-          c = dict[curSection]
-        c["--" & e.key] = e.value
-        dict[curSection] = c
-      of cfgError:
-        break
-    close(p)
+  open(p, stream, filename)
+  while true:
+    var e = next(p)
+    case e.kind
+    of cfgEof:
+      break
+    of cfgSectionStart: # Only look for the first time the Section
+      curSection = e.section
+    of cfgKeyValuePair:
+      var t = newOrderedTable[string, string]()
+      if dict.hasKey(curSection):
+        t = dict[curSection]
+      t[e.key] = e.value
+      dict[curSection] = t
+    of cfgOption:
+      var c = newOrderedTable[string, string]()
+      if dict.hasKey(curSection):
+        c = dict[curSection]
+      c["--" & e.key] = e.value
+      dict[curSection] = c
+    of cfgError:
+      break
+  close(p)
   result = dict
+
+proc loadConfig*(filename: string): <//>Config =
+  ## Load the specified configuration file into a new Config instance.
+  let file = open(filename, fmRead)
+  let fileStream = newFileStream(file)
+  defer: fileStream.close()
+  result = fileStream.loadConfig(filename)
 
 proc replace(s: string): string =
   var d = ""
@@ -470,64 +492,77 @@ proc replace(s: string): string =
   while i < s.len():
     if s[i] == '\\':
       d.add(r"\\")
-    elif s[i] == '\c' and s[i+1] == '\L':
-      d.add(r"\n")
+    elif s[i] == '\c' and s[i+1] == '\l':
+      d.add(r"\c\l")
       inc(i)
     elif s[i] == '\c':
       d.add(r"\n")
-    elif s[i] == '\L':
+    elif s[i] == '\l':
       d.add(r"\n")
     else:
       d.add(s[i])
     inc(i)
   result = d
 
+proc writeConfig*(dict: Config, stream: Stream) =
+  ## Writes the contents of the table to the specified stream
+  ##
+  ## **Note:** Comment statement will be ignored.
+  for section, sectionData in dict.pairs():
+    if section != "": ## Not general section
+      if not allCharsInSet(section, SymChars): ## Non system character
+        stream.writeLine("[\"" & section & "\"]")
+      else:
+        stream.writeLine("[" & section & "]")
+    for key, value in sectionData.pairs():
+      var kv, segmentChar: string
+      if key.len > 1 and key[0] == '-' and key[1] == '-': ## If it is a command key
+        segmentChar = ":"
+        if not allCharsInSet(key[2..key.len()-1], SymChars):
+          kv.add("--\"")
+          kv.add(key[2..key.len()-1])
+          kv.add("\"")
+        else:
+          kv = key
+      else:
+        segmentChar = "="
+        kv = key
+      if value != "": ## If the key is not empty
+        if not allCharsInSet(value, SymChars):
+          if find(value, '"') == -1:
+            kv.add(segmentChar)
+            kv.add("\"")
+            kv.add(replace(value))
+            kv.add("\"")
+          else:
+            kv.add(segmentChar)
+            kv.add("\"\"\"")
+            kv.add(replace(value))
+            kv.add("\"\"\"")
+        else:
+          kv.add(segmentChar)
+          kv.add(value)
+      stream.writeLine(kv)
+
+proc `$`*(dict: Config): string =
+  ## Writes the contents of the table to string.
+  ## Note: Comment statement will be ignored.
+  let stream = newStringStream()
+  defer: stream.close()
+  dict.writeConfig(stream)
+  result = stream.data
+
 proc writeConfig*(dict: Config, filename: string) =
   ## Writes the contents of the table to the specified configuration file.
   ## Note: Comment statement will be ignored.
-  var file: File
-  if file.open(filename, fmWrite):
-    try:
-      var section, key, value, kv, segmentChar:string
-      for pair in dict.pairs():
-        section = pair[0]
-        if section != "": ## Not general section
-          if not allCharsInSet(section, SymChars): ## Non system character
-            file.writeLine("[\"" & section & "\"]")
-          else:
-            file.writeLine("[" & section & "]")
-        for pair2 in pair[1].pairs():
-          key = pair2[0]
-          value = pair2[1]
-          if key[0] == '-' and key[1] == '-': ## If it is a command key
-            segmentChar = ":"
-            if not allCharsInSet(key[2..key.len()-1], SymChars):
-              kv.add("--\"")
-              kv.add(key[2..key.len()-1])
-              kv.add("\"")
-            else:
-              kv = key
-          else:
-            segmentChar = "="
-            kv = key
-          if value != "": ## If the key is not empty
-            if not allCharsInSet(value, SymChars):
-              kv.add(segmentChar)
-              kv.add("\"")
-              kv.add(replace(value))
-              kv.add("\"")
-            else:
-              kv.add(segmentChar)
-              kv.add(value)
-          file.writeLine(kv)
-    except:
-      raise
-    finally:
-      file.close()
+  let file = open(filename, fmWrite)
+  defer: file.close()
+  let fileStream = newFileStream(file)
+  dict.writeConfig(fileStream)
 
 proc getSectionValue*(dict: Config, section, key: string): string =
-  ## Gets the Key value of the specified Section.
-  if dict.haskey(section):
+  ## Gets the Key value of the specified Section, returns an empty string if the key does not exist.
+  if dict.hasKey(section):
     if dict[section].hasKey(key):
       result = dict[section][key]
     else:
@@ -549,9 +584,9 @@ proc delSection*(dict: var Config, section: string) =
 
 proc delSectionKey*(dict: var Config, section, key: string) =
   ## Delete the key of the specified section.
-  if dict.haskey(section):
+  if dict.hasKey(section):
     if dict[section].hasKey(key):
-      if dict[section].len() == 1:
+      if dict[section].len == 1:
         dict.del(section)
       else:
         dict[section].del(key)

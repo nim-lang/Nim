@@ -2,13 +2,13 @@
 
 import macros
 
-template plus(a, b: expr): expr {.dirty} =
+template plus(a, b: untyped): untyped {.dirty} =
   a + b
 
-macro call(e: expr): expr =
+macro call(e: untyped): untyped =
   result = newCall("foo", newStrLitNode("bar"))
 
-macro dumpAST(n: stmt): stmt {.immediate.} =
+macro dumpAST(n: untyped): untyped =
   # dump AST as a side-effect and return the inner node
   let n = callsite()
   echo n.lispRepr
@@ -17,7 +17,7 @@ macro dumpAST(n: stmt): stmt {.immediate.} =
   var plusAst = getAst(plus(1, 2))
   echo plusAst.lispRepr
 
-  var callAst = getAst(call())
+  var callAst = getAst(call(4))
   echo callAst.lispRepr
 
   var e = parseExpr("foo(bar + baz)")
@@ -31,3 +31,20 @@ dumpAST:
 
   proc sub(x, y: int): int = return x - y
 
+macro fun() =
+  let n = quote do:
+    1+1 == 2
+  doAssert n.repr == "1 + 1 == 2", n.repr
+fun()
+
+macro fun2(): untyped =
+  let n = quote do:
+    1 + 2 * 3 == 1 + 6
+  doAssert n.repr == "1 + 2 * 3 == 1 + 6", n.repr
+fun2()
+
+macro fun3(): untyped =
+  let n = quote do:
+    int | float | array | seq | object | ptr | pointer | float32
+  doAssert n.repr == "int | float | array | seq | object | ptr | pointer | float32", n.repr
+fun3()

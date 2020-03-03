@@ -2,7 +2,10 @@ discard """
   output: '''140
 5-120-120
 359
-77'''
+77
+-4
+-1
+-1'''
 """
 #import math
 import sequtils
@@ -25,3 +28,11 @@ let a = [2,4,8].map do (d:int) -> int: d + 1
 echo a[0], a[1], a[2]
 
 echo(foo 8, foo 8)
+
+# bug #7582
+proc f(x: int): int = x
+
+echo f -4
+
+echo int -1 # doesn't compile
+echo int `-` 1 # compiles

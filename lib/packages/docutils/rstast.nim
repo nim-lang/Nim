@@ -8,6 +8,8 @@
 #
 
 ## This module implements an AST for the `reStructuredText`:idx: parser.
+##
+## **Note:** Import ``packages/docutils/rstast`` to use this module
 
 import strutils, json
 
@@ -70,8 +72,6 @@ type
                               ## the document or the section
     level*: int               ## valid for some node kinds
     sons*: RstNodeSeq        ## the node's sons
-{.deprecated: [TRstNodeKind: RstNodeKind, TRstNodeSeq: RstNodeSeq,
-              TRstNode: RstNode].}
 
 proc len*(n: PRstNode): int =
   result = len(n.sons)
@@ -91,6 +91,9 @@ proc lastSon*(n: PRstNode): PRstNode =
 proc add*(father, son: PRstNode) =
   add(father.sons, son)
 
+proc add*(father: PRstNode; s: string) =
+  add(father.sons, newRstNode(rnLeaf, s))
+
 proc addIfNotNil*(father, son: PRstNode) =
   if son != nil: add(father, son)
 
@@ -99,7 +102,6 @@ type
   RenderContext {.pure.} = object
     indent: int
     verbatim: int
-{.deprecated: [TRenderContext: RenderContext].}
 
 proc renderRstToRst(d: var RenderContext, n: PRstNode,
                     result: var string) {.gcsafe.}
@@ -296,9 +298,9 @@ proc renderRstToJsonNode(node: PRstNode): JsonNode =
       (key: "kind", val: %($node.kind)),
       (key: "level", val: %BiggestInt(node.level))
      ]
-  if node.text != nil:
+  if node.text.len > 0:
     result.add("text", %node.text)
-  if node.sons != nil and len(node.sons) > 0:
+  if len(node.sons) > 0:
     var accm = newSeq[JsonNode](len(node.sons))
     for i, son in node.sons:
       accm[i] = renderRstToJsonNode(son)

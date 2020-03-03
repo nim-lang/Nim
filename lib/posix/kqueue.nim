@@ -7,11 +7,10 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim:on.}
-
 from posix import Timespec
 
-when defined(macosx) or defined(freebsd) or defined(openbsd):
+when defined(macosx) or defined(freebsd) or defined(openbsd) or
+     defined(dragonfly):
   const
     EVFILT_READ*     = -1
     EVFILT_WRITE*    = -2
@@ -40,6 +39,11 @@ elif defined(freebsd):
     EVFILT_FS*       = -9  ## filesystem events
     EVFILT_LIO*      = -10 ## attached to lio requests
     EVFILT_USER*     = -11 ## user events
+elif defined(dragonfly):
+  const
+    EVFILT_EXCEPT*   = -8  ## exceptional conditions
+    EVFILT_USER*     = -9  ## user events
+    EVFILT_FS*       = -10 ## filesystem events
 
 # Actions:
 const
@@ -55,7 +59,7 @@ const
   EV_CLEAR*    = 0x0020 ## Clear event state after reporting.
   EV_RECEIPT*  = 0x0040 ## Force EV_ERROR on success, data == 0
   EV_DISPATCH* = 0x0080 ## Disable event after reporting.
-  
+
   EV_SYSFLAGS* = 0xF000 ## Reserved by system
   EV_DROP*     = 0x1000 ## Not should be dropped
   EV_FLAG1*    = 0x2000 ## Filter-specific flag
@@ -64,9 +68,9 @@ const
 const
   EV_EOF*      = 0x8000 ## EOF detected
   EV_ERROR*    = 0x4000 ## Error, data contains errno
+  EV_NODATA*   = 0x1000 ## EOF and no more data
 
-
-when defined(macosx) or defined(freebsd):
+when defined(macosx) or defined(freebsd) or defined(dragonfly):
   # EVFILT_USER is not supported by OpenBSD and NetBSD
   #
   # data/hint flags/masks for EVFILT_USER, shared with userspace
@@ -81,10 +85,10 @@ when defined(macosx) or defined(freebsd):
     NOTE_FFAND*      = 0x40000000'u32 ## AND fflags
     NOTE_FFOR*       = 0x80000000'u32 ## OR fflags
     NOTE_FFCOPY*     = 0xc0000000'u32 ## copy fflags
-    NOTE_FFCTRLMASK* = 0xc0000000'u32 ## masks for operations 
+    NOTE_FFCTRLMASK* = 0xc0000000'u32 ## masks for operations
     NOTE_FFLAGSMASK* = 0x00ffffff'u32
 
-    NOTE_TRIGGER*    = 0x01000000'u32 ## Cause the event to be triggered 
+    NOTE_TRIGGER*    = 0x01000000'u32 ## Cause the event to be triggered
                                       ## for output.
 
 # data/hint flags for EVFILT_{READ|WRITE}, shared with userspace
@@ -123,7 +127,7 @@ when defined(macosx) or defined(freebsd):
     NOTE_USECONDS*   = 0x00000004'u32 ## data is microseconds
     NOTE_NSECONDS*   = 0x00000008'u32 ## data is nanoseconds
 else:
-  # NetBSD and OpenBSD doesnt support NOTE_{TIME} constants, but
+  # NetBSD and OpenBSD doesn't support NOTE_{TIME} constants, but
   # support EVFILT_TIMER with granularity of milliseconds.
   const
     NOTE_MSECONDS*   = 0x00000000'u32
