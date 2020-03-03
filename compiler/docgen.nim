@@ -1135,8 +1135,8 @@ proc generateIndex*(d: PDoc) =
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outFile.isEmpty and not d.conf.outDir.isEmpty:
-      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.projectPath
+    if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
