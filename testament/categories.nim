@@ -10,7 +10,7 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
-# included from tester.nim
+# included from testament.nim
 
 import important_packages
 
@@ -456,10 +456,8 @@ let
   packageIndex = nimbleDir / "packages_official.json"
 
 iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
-  let defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
   for n, cmd, hasDeps, url in important_packages.packages.items:
-    let cmd = if cmd.len == 0: defaultCmd else: cmd
     if url.len != 0:
       yield (n, url, cmd, hasDeps)
     else:

@@ -1,96 +1,95 @@
 
-template pkg(name: string; cmd = "nimble test"; hasDeps = false; url = ""): untyped =
+template pkg(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
   packages.add((name, cmd, hasDeps, url))
 
 var packages*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
 
 
 pkg "argparse"
-pkg "arraymancer", "nim c tests/tests_cpu.nim", true
-pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
-pkg "asyncmysql", "", true
+pkg "arraymancer", true, "nim c tests/tests_cpu.nim"
+pkg "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
+pkg "asyncmysql", true
 pkg "bigints"
-pkg "binaryheap", "nim c -r binaryheap.nim"
+pkg "binaryheap", false, "nim c -r binaryheap.nim"
 # pkg "blscurve", "", true # pending https://github.com/status-im/nim-blscurve/issues/39
-pkg "bncurve", "", true
-pkg "c2nim", "nim c testsuite/tester.nim"
+pkg "bncurve", true
+pkg "c2nim", false, "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
-pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
-pkg "chronos", "", true
-pkg "cligen", "nim c -o:cligenn -r cligen.nim"
-pkg "coco", "", true
+pkg "chronicles", true, "nim c -o:chr -r chronicles.nim"
+pkg "chronos", true
+pkg "cligen", false, "nim c -o:cligenn -r cligen.nim"
+pkg "coco", true
 pkg "combparser"
 pkg "compactdict"
-pkg "comprehension", "", false, "https://github.com/alehander42/comprehension"
+pkg "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
 pkg "criterion"
-pkg "dashing", "nim c tests/functional.nim"
+pkg "dashing", false, "nim c tests/functional.nim"
 pkg "docopt"
-pkg "easygl", "nim c -o:egl -r src/easygl.nim", true, "https://github.com/jackmott/easygl"
+pkg "easygl", true, "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg "elvis"
-pkg "fragments", "nim c -r fragments/dsl.nim"
+pkg "fragments", false, "nim c -r fragments/dsl.nim"
 pkg "gara"
-pkg "ggplotnim", "nimble testCI", true
+pkg "ggplotnim", true, "nimble testCI"
 pkg "glob"
 pkg "gnuplot"
-# pkg "godot", "nim c -r godot/godot.nim" # not yet compatible with Nim 0.19
-pkg "hts", "nim c -o:htss src/hts.nim"
-pkg "illwill", "nimble examples"
+pkg "hts", false, "nim c -o:htss src/hts.nim"
+pkg "illwill", false, "nimble examples"
 pkg "inim"
-pkg "itertools", "nim doc src/itertools.nim"
+pkg "itertools", false, "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
-pkg "karax", "nim c -r tests/tester.nim"
+pkg "karax", false, "nim c -r tests/tester.nim"
 pkg "loopfusion"
 pkg "msgpack4nim"
-pkg "nake", "nim c nakefile.nim"
-pkg "neo", "nim c -d:blas=openblas tests/all.nim", true
+pkg "nake", false, "nim c nakefile.nim"
+pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 # pkg "nico", "", true
-pkg "nicy", "nim c src/nicy.nim"
-pkg "nigui", "nim c -o:niguii -r src/nigui.nim"
-pkg "nimcrypto", "nim c -r tests/testall.nim"
-pkg "NimData", "nim c -o:nimdataa src/nimdata.nim", true
-pkg "nimes", "nim c src/nimes.nim", true
-pkg "nimfp", "nim c -o:nfp -r src/fp.nim", true
-pkg "nimgame2", "nim c nimgame2/nimgame.nim", true
-pkg "nimgen", "nim c -o:nimgenn -r src/nimgen/runcfg.nim", true
+pkg "nicy", false, "nim c src/nicy.nim"
+pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
+pkg "nimcrypto", false, "nim c -r tests/testall.nim"
+pkg "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
+pkg "nimes", true, "nim c src/nimes.nim"
+pkg "nimfp", true, "nim c -o:nfp -r src/fp.nim"
+pkg "nimgame2", true, "nim c nimgame2/nimgame.nim"
+pkg "nimgen", true, "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 # pkg "nimlsp", "", true
-pkg "nimly", "", true
+pkg "nimly", true
 # pkg "nimongo", "nimble test_ci", true
-pkg "nimpy", "nim c -r tests/nimfrompy.nim"
+pkg "nimpy", false, "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
-pkg "nimsl", "", true
+pkg "nimsl", true
 pkg "nimsvg"
 # pkg "nimterop", "", true
-pkg "nimx", "nim c --threads:on test/main.nim", true
-pkg "norm", "nim c -r tests/tsqlite.nim", true
+pkg "nimx", true, "nim c --threads:on test/main.nim"
+pkg "norm", true, "nim c -r tests/tsqlite.nim"
 pkg "npeg"
-pkg "ormin", "nim c -o:orminn ormin.nim", true
+pkg "ormin", true, "nim c -o:orminn ormin.nim"
 pkg "parsetoml"
 pkg "patty"
-pkg "plotly", "nim c --oldgensym:on examples/all.nim", true
+pkg "plotly", true, "nim c --oldgensym:on examples/all.nim"
 pkg "pnm"
 pkg "polypbren"
-pkg "protobuf", "nim c -o:protobuff -r src/protobuf.nim", true
+pkg "protobuf", true, "nim c -o:protobuff -r src/protobuf.nim"
 pkg "rbtree"
-pkg "react", "nimble example"
-pkg "regex", "nim c src/regex", true
-pkg "result", "nim c -r result.nim"
-pkg "rosencrantz", "nim c -o:rsncntz -r rosencrantz.nim"
-pkg "sdl1", "nim c -r src/sdl.nim"
-pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
-pkg "snip", "", false, "https://github.com/genotrance/snip"
-pkg "stint", "nim c -o:stintt -r stint.nim"
-pkg "strunicode", "nim c -r src/strunicode.nim", true
-pkg "telebot", "nim c -o:tbot --oldgensym:on -r telebot.nim", true
+pkg "react", false, "nimble example"
+pkg "regex", true, "nim c src/regex"
+pkg "result", false, "nim c -r result.nim"
+pkg "rosencrantz", false, "nim c -o:rsncntz -r rosencrantz.nim"
+pkg "sdl1", false, "nim c -r src/sdl.nim"
+pkg "sdl2_nim", false, "nim c -r sdl2/sdl.nim"
+pkg "snip", false, "nimble test", "https://github.com/genotrance/snip"
+pkg "stint", false, "nim c -o:stintt -r stint.nim"
+pkg "strunicode", true, "nim c -r src/strunicode.nim"
+pkg "telebot", true, "nim c -o:tbot --oldgensym:on -r telebot.nim"
 pkg "tempdir"
-pkg "tensordsl", "nim c -r tests/tests.nim", false, "https://krux02@bitbucket.org/krux02/tensordslnim.git"
+pkg "tensordsl", false, "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg "tiny_sqlite"
 pkg "unicodedb"
-pkg "unicodeplus", "", true
+pkg "unicodeplus", true
 pkg "unpack"
 # pkg "winim", "", true
 pkg "with"
 pkg "ws"
 pkg "yaml"
-pkg "zero_functional", "nim c -r test.nim"
+pkg "zero_functional", false, "nim c -r test.nim"
