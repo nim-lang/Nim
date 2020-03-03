@@ -26,10 +26,7 @@ tasks:
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
     cd Nim
-    if ! ./koch runCI; then
-      nim c -r tools/ci_testresults.nim
-      exit 1
-    fi
+    ./koch runCI
 triggers:
 - action: email
   condition: failure

@@ -28,7 +28,10 @@ proc findNim*(): string =
   # assume there is a symlink to the exe or something:
   return nim
 
-proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+type 
+  KochExecError* = object of CatchableError
+
+proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "", quitOnFail = true) =
   let prevPath = getEnv("PATH")
   if additionalPath.len > 0:
     var absolute = additionalPath
@@ -37,8 +40,11 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
     echo("Adding to $PATH: ", absolute)
     putEnv("PATH", (if prevPath.len > 0: prevPath & PathSep else: "") & absolute)
   echo(cmd)
-  if execShellCmd(cmd) != 0: quit("FAILURE", errorcode)
+  let ok = execShellCmd(cmd) == 0
   putEnv("PATH", prevPath)
+  if not ok:
+    if quitOnFail: quit("FAILURE", errorcode)
+    raise newException(KochExecError, "exec failed: cmd: $1" % cmd)
 
 template inFold*(desc, body) =
   if existsEnv("TRAVIS"):
@@ -49,11 +55,12 @@ template inFold*(desc, body) =
   if existsEnv("TRAVIS"):
     echo "travis_fold:end:" & desc.replace(" ", "_")
 
-proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
+proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "", quitOnFail = true) =
   ## Execute shell command. Add log folding on Travis CI.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
+  let desc = if desc.len == 0: cmd else: desc
   inFold(desc):
-    exec(cmd, errorcode, additionalPath)
+    exec(cmd, errorcode, additionalPath, quitOnFail = quitOnFail)
 
 proc execCleanPath*(cmd: string,
                    additionalPath = ""; errorcode: int = QuitFailure) =

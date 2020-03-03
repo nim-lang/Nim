@@ -55,7 +55,10 @@ provided that System.AccessToken is made available via the environment variable 
 type
   Category = distinct string
   TResults = object
+    testCat: string
     total, passed, skipped: int
+    failed: int # inferred from other fields
+    duration: float
     data: string
 
   TTest = object
@@ -65,6 +68,12 @@ type
     args: seq[string]
     spec: TSpec
     startTime: float
+
+proc toStr(a: TResults): string =
+  for k,v in a.fieldPairs:
+    if k!="data":
+      result.add k & ": " & $v & " "
+  result.add "pid: " & $getCurrentProcessId()
 
 # ----------------------------------------------------------------------------
 
@@ -257,6 +266,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   name.add " " & $target & test.options
 
   let duration = epochTime() - test.startTime
+  r.duration += duration
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
                 else: successOrig
 
@@ -752,11 +762,13 @@ proc main() =
     else: echo r, r.data
   azure.finalize()
   backend.close()
-  var failed = r.total - r.passed - r.skipped
-  if failed != 0:
-    echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",
-      r.skipped, " failed: ", failed
+  doAssert r.failed == 0
+  r.failed = r.total - r.passed - r.skipped
+  if r.failed != 0:
+    echo "FAILURE! ", r.toStr
     quit(QuitFailure)
+  else: echo "SUCCESS! ", r.toStr
+
   if isMainProcess:
     echo "Used ", compilerPrefix, " to run the tests. Use --nim to override."
 

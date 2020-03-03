@@ -27,6 +27,7 @@ import
   os, strutils, parseopt, osproc
 
 import tools / kochdocs
+import tools / ci_testresults
 
 const VersionAsString = system.NimVersion
 
@@ -81,11 +82,9 @@ Web options:
 let kochExe* = when isMainModule: os.getAppFilename() # always correct when koch is main program, even if `koch` exe renamed eg: `nim c -o:koch_debug koch.nim`
                else: getAppDir() / "koch".exe # works for winrelease
 
-proc kochExec*(cmd: string) =
-  exec kochExe.quoteShell & " " & cmd
-
-proc kochExecFold*(desc, cmd: string) =
-  execFold(desc, kochExe.quoteShell & " " & cmd)
+proc toKochCmd(cmd: string): string = kochExe.quoteShell & " " & cmd
+proc kochExec*(cmd: string) = exec toKochCmd(cmd)
+proc kochExecFold*(desc, cmd: string) = execFold(desc, toKochCmd(cmd))
 
 template withDir(dir, body) =
   let old = getCurrentDir()
@@ -476,9 +475,9 @@ proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
 
-proc runCI(cmd: string) =
+proc runCIRaw(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
-  echo "runCI:", cmd
+  echo "runCIRaw:", cmd
   echo hostInfo()
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
@@ -524,6 +523,14 @@ proc runCI(cmd: string) =
       when false:
         kochExec "csource"
         kochExec "zip"
+
+proc runCI(cmd: string) =
+  try:
+    execFold("", toKochCmd("runCIRaw" & " " & cmd), quitOnFail = false)
+  except Exception as e:
+    echo e.msg
+    echo showTestResults()
+    doAssert false
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -633,6 +640,7 @@ when isMainModule:
       of "distrohelper": geninstall()
       of "install": install(op.cmdLineRest)
       of "testinstall": testUnixInstall(op.cmdLineRest)
+      of "runciraw": runCIRaw(op.cmdLineRest)
       of "runci": runCI(op.cmdLineRest)
       of "test", "tests": tests(op.cmdLineRest)
       of "temp": temp(op.cmdLineRest)

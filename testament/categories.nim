@@ -667,6 +667,8 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
+  doAssert r.testCat.len == 0
+  r.testCat = cat.string
   case cat.string.normalize
   of "rodfiles":
     when false:
