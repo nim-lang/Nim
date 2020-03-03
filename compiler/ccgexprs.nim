@@ -2040,14 +2040,14 @@ proc genDestroy(p: BProc; n: PNode) =
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
-        " $1.p = NIM_NIL; }$n",
+        " $1.p = NIM_NIL; $1.len = 0; }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
-        " $1.p = NIM_NIL; }$n",
+        " $1.p = NIM_NIL; $1.len = 0; }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
