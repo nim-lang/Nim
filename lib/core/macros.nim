@@ -1085,7 +1085,7 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[node.len-1]
 
 const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
-                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
