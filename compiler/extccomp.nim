@@ -71,7 +71,7 @@ compiler gcc:
     optSize: " -Os -fno-ident",
     compilerExe: "gcc",
     cppCompiler: "g++",
-    compileTmpl: "-c -std=gnu++11 $options $include -o $objfile $file",
+    compileTmpl: "-c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "ar rcs $libfile $objfiles",
