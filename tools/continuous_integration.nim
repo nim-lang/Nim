@@ -28,7 +28,6 @@ proc gitLogPretty(): string =
   let cmd = "git log --no-merges -1 --pretty=oneline"
   let (outp, errC) = execCmdEx(cmd)
   doAssert errC == 0, $outp
-  echo ("gitLogPretty", cmd, outp)
   outp
 
 proc isNimDocOnly*(): bool =
@@ -70,7 +69,8 @@ proc hostInfo*(): string =
   let urlCommit = fmt"{urlBase}/commit/{commit}"
 
   let branch = getAzureEnv("Build.SourceBranchName")
-  let msg = getAzureEnv("Build.SourceVersionMessage").quoteShell
+  # let msg = getAzureEnv("Build.SourceVersionMessage") # not useful for merge commits
+  let msg = gitLogPretty()
   let buildNum = getAzureEnv("Build.BuildNumber")
   let nl = "\n"
   # Avoids `,` after urls since it'd prevent the link from being clickable in azure UI
