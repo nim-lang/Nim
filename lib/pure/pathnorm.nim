@@ -76,6 +76,11 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
       if (state shr 1) >= 1:
         var d = result.len
         # f/..
+        ## We could handle stripping trailing sep here as well: foo// => foo
+        ## but right now we instead handle it inside os.joinPath
+        # while (d-1) > (state and 1) and result[d-1] in {DirSep, AltSep}: dec d
+
+        ## strip path component: foo/bar => foo
         while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
           dec d
         if d > 0:

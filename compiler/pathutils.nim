@@ -102,6 +102,8 @@ when true:
 
 when isMainModule:
   doAssert AbsoluteDir"/Users/me///" / RelativeFile"z.nim" == AbsoluteFile"/Users/me/z.nim"
+  doAssert AbsoluteDir"/Users/me" / RelativeFile"../z.nim" == AbsoluteFile"/Users/z.nim"
+  doAssert AbsoluteDir"/Users/me/" / RelativeFile"../z.nim" == AbsoluteFile"/Users/z.nim"
   doAssert relativePath("/foo/bar.nim", "/foo/", '/') == "bar.nim"
   doAssert $RelativeDir"foo/bar" == "foo/bar"
   doAssert RelativeDir"foo/bar" == RelativeDir"foo/bar"
