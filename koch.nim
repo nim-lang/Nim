@@ -514,7 +514,18 @@ proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
   echo hostInfo()
-  if isAzureCI():  installNode()
+  if isAzureCI(): installNode()
+
+  template runDocs() =
+    when defined(posix):
+      kochExecFold("Docs", "docs --git.commit:devel")
+
+  if isNimDocOnly():
+    echo "isNimDocOnly: true"
+    runDocs()
+    echo "isNimDocOnly: done"
+    return
+
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
@@ -546,6 +557,16 @@ proc runCI(cmd: string) =
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
+
+    when false: # disabled from runCI in #13803
+      ## remaining actions
+      runDocs()
+      when defined(posix):
+        kochExecFold("C sources", "csource")
+      elif defined(windows):
+        when false:
+          kochExec "csource"
+          kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):

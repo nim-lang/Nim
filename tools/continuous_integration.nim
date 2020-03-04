@@ -2,7 +2,7 @@
 ##
 ## See also: testament/azure.nim
 
-import os, osproc, strformat
+import os, osproc, strformat, strutils
 import "."/azure_common
 
 export isAzureCI
@@ -22,6 +22,22 @@ proc tryRunCmd(cmd: string): bool =
   echo "tryRunCmd: " & cmd
   execShellCmd(cmd) == 0
 
+proc gitLogPretty(): string =
+  ## returns last 2 entries
+  runCmd "pwd && git rev-parse --show-toplevel"
+  runCmd "git log --no-merges -1 --pretty=oneline"
+  runCmd "git log --no-merges -2 --pretty=oneline"
+  let cmd = "git log --no-merges -1 --pretty=oneline"
+  echo cmd
+  let (outp, errC) = execCmdEx(cmd)
+  doAssert errC == 0, $outp
+  echo ("gitLogPretty", outp, errC)
+  outp
+
+proc isNimDocOnly*(): bool =
+  # TODO: support windows
+  "[nimDocOnly]" in gitLogPretty()
+
 proc installNode*() =
   echo "installNode"
   when defined(osx):
@@ -30,8 +46,10 @@ proc installNode*() =
       runCmd "brew link --overwrite node"
   elif defined(linux):
     # https://linuxize.com/post/how-to-install-node-js-on-ubuntu-18.04/
-    runCmd "curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -"
-    runCmd "sudo apt install -yqq nodejs"
+    template suppress(a): untyped =
+      a & " > /dev/null 2>&1"
+    runCmd "curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -".suppress
+    runCmd "sudo apt install -yqq nodejs".suppress
     runCmd "nodejs --version"
   elif defined(windows):
     # should've be installed via azure-pipelines.yml, but could do it here too
