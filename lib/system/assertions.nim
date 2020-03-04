@@ -15,8 +15,10 @@ proc `$`(info: InstantiationInfo): string =
 
 # ---------------------------------------------------------------------------
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
 
-proc raiseAssert*(msg: string) {.noinline, noreturn.} =
+proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   sysFatal(AssertionError, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =

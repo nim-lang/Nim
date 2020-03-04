@@ -191,31 +191,41 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
 
-macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1).} =
-  ## Turns an `in-place`:idx: algorithm into one that works on
-  ## a copy and returns this copy. The second parameter is the
-  ## index of the calling expression that is replaced by a copy
-  ## of this expression.
-  ## **Since**: Version 1.2.
-  runnableExamples:
-    import algorithm
+when (NimMajor, NimMinor) >= (1, 1):
+  import std / private / underscored_calls
 
-    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert a.outplace(sort()) == sorted(a)
-    #Chaining:
-    var aCopy = a
-    aCopy.insert(10)
+  macro dup*[T](arg: T, calls: varargs[untyped]): T =
+    ## Turns an `in-place`:idx: algorithm into one that works on
+    ## a copy and returns this copy.
+    ## **Since**: Version 1.2.
+    runnableExamples:
+      import algorithm
 
-    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+      var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      doAssert a.dup(sort) == sorted(a)
+      # Chaining:
+      var aCopy = a
+      aCopy.insert(10)
 
-  expectKind call, nnkCallKinds
-  let tmp = genSym(nskVar, "outplaceResult")
-  var callsons = call[0..^1]
-  callsons.insert(tmp, inplaceArgPosition)
-  result = newTree(nnkStmtListExpr,
-    newVarStmt(tmp, arg),
-    copyNimNode(call).add callsons,
-    tmp)
+      doAssert a.dup(insert(10), sort) == sorted(aCopy)
+
+      var s1 = "abc"
+      var s2 = "xyz"
+      doAssert s1 & s2 == s1.dup(&= s2)
+
+    result = newNimNode(nnkStmtListExpr, arg)
+    let tmp = genSym(nskVar, "dupResult")
+    result.add newVarStmt(tmp, arg)
+    expectKind calls, nnkArgList
+    let body =
+      if calls.len == 1 and calls[0].kind in {nnkStmtList, nnkStmtListExpr}:
+        calls[0]
+      else:
+        calls
+    for call in body:
+      result.add underscoredCall(call, tmp)
+    result.add tmp
+
 
 proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
@@ -312,17 +322,17 @@ when isMainModule:
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert outplace(a, sort()) == sorted(a)
-    doAssert a.outplace(sort()) == sorted(a)
+    doAssert dup(a, sort(_)) == sorted(a)
+    doAssert a.dup(sort) == sorted(a)
     #Chaining:
     var aCopy = a
     aCopy.insert(10)
-    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+    doAssert a.dup(insert(10)).dup(sort()) == sorted(aCopy)
 
     import random
 
     const b = @[0, 1, 2]
-    let c = b.outplace shuffle()
+    let c = b.dup shuffle()
     doAssert c[0] == 1
     doAssert c[1] == 0
 

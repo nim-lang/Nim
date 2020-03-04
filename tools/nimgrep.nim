@@ -649,7 +649,8 @@ else:
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
-      pattern = r"\b(:?" & pattern & r")\b"
+      # see https://github.com/nim-lang/Nim/issues/13528#issuecomment-592786443
+      pattern = r"(^|\W)(:?" & pattern & r")($|\W)"
     if {optIgnoreCase, optIgnoreStyle} * options != {}:
       reflags.incl reIgnoreCase
     let rep = if optRex in options: rex(pattern, reflags)

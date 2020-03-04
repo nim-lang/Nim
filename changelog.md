@@ -29,7 +29,8 @@
   are converted to `None`.
 - `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
   and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
-  behavioe
+  behavior
+- `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
 
 ### Breaking changes in the compiler
 
@@ -51,7 +52,7 @@
   `CountTable.pop`, `Table.pop`
 - To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
 - Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
-- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
+- Added `sugar.dup` for turning in-place algorithms like `sort` and `shuffle` into
   operations that work on a copy of the data and return the mutated copy. As the existing
   `sorted` does.
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
@@ -68,6 +69,31 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
+
+
+- Added a `with` macro for easy function chaining that's available
+  everywhere, there is no need to concern your APIs with returning the first argument
+  to enable "chaining", instead use the dedicated macro `with` that
+  was designed for it. For example:
+
+```nim
+
+type
+  Foo = object
+    col, pos: string
+
+proc setColor(f: var Foo; r, g, b: int) = f.col = $(r, g, b)
+proc setPosition(f: var Foo; x, y: float) = f.pos = $(x, y)
+
+var f: Foo
+with(f, setColor(2, 3, 4), setPosition(0.0, 1.0))
+echo f
+
+```
+
+- Added `times.isLeapDay`
+- Added a new module, `std / compilesettings` for querying the compiler about
+  diverse configuration settings.
 
 
 ## Library changes
@@ -101,7 +127,6 @@
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
 
-
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
@@ -112,6 +137,7 @@
 
 ### Tool changes
 
+- Fix Nimpretty must not accept negative indentation argument because breaks file.
 
 
 ### Compiler changes
@@ -123,6 +149,9 @@
 - The Nim compiler now supports a new pragma called ``.localPassc`` to
   pass specific compiler options to the C(++) backend for the C(++) file
   that was produced from the current Nim module.
+- The compiler now inferes "sink parameters". To disable this for a specific routine,
+  annotate it with `.nosinks`. To disable it for a section of code, use
+  `{.push sinkInference: off.}`...`{.pop.}`.
 
 
 ## Bugfixes
@@ -131,3 +160,5 @@
   `ioselector_select` now properly handle the `Event.User` select event type.
 - `joinPath` path normalization when `/` is the first argument works correctly:
   `assert "/" / "/a" == "/a"`. Fixed the edgecase: `assert "" / "" == ""`.
+- `xmltree` now adds indentation consistently to child nodes for any number
+  of children nodes.

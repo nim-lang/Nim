@@ -199,17 +199,21 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     let x = findStr(lineinfos.WarningsToStr, id)
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(conf, info, "unknown warning: " & id)
-  case substr(arg, i).normalize
-  of "on":
-    incl(conf.notes, n)
-    incl(conf.mainPackageNotes, n)
-    incl(conf.enableNotes, n)
-  of "off":
-    excl(conf.notes, n)
-    excl(conf.mainPackageNotes, n)
-    incl(conf.disableNotes, n)
-    excl(conf.foreignPackageNotes, n)
-  else: localError(conf, info, errOnOrOffExpectedButXFound % arg)
+
+  let val = substr(arg, i).normalize
+  if val notin ["on", "off"]:
+    localError(conf, info, errOnOrOffExpectedButXFound % arg)
+  elif n notin conf.cmdlineNotes or pass == passCmd1:
+    if pass == passCmd1: incl(conf.cmdlineNotes, n)
+    incl(conf.modifiedyNotes, n)
+    case val
+    of "on":
+      incl(conf.notes, n)
+      incl(conf.mainPackageNotes, n)
+    of "off":
+      excl(conf.notes, n)
+      excl(conf.mainPackageNotes, n)
+      excl(conf.foreignPackageNotes, n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -592,7 +596,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "deadcodeelim": discard # deprecated, dead code elim always on
   of "threads":
     processOnOffSwitchG(conf, {optThreads}, arg, pass, info)
-    #if optThreads in conf.globalOptions: incl(conf.notes, warnGcUnsafe)
+    #if optThreads in conf.globalOptions: conf.setNote(warnGcUnsafe)
   of "tlsemulation": processOnOffSwitchG(conf, {optTlsEmulation}, arg, pass, info)
   of "taintmode": processOnOffSwitchG(conf, {optTaintMode}, arg, pass, info)
   of "implicitstatic":
@@ -704,9 +708,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if verbosity notin {0..3}:
       localError(conf, info, "invalid verbosity level: '$1'" % arg)
     conf.verbosity = verbosity
-    conf.notes = NotesVerbosity[conf.verbosity]
-    incl(conf.notes, conf.enableNotes)
-    excl(conf.notes, conf.disableNotes)
+    var verb = NotesVerbosity[conf.verbosity]
+    ## We override the default `verb` by explicitly modified (set/unset) notes.
+    conf.notes = (conf.modifiedyNotes * conf.notes + verb) -
+      (conf.modifiedyNotes * verb - conf.notes)
     conf.mainPackageNotes = conf.notes
   of "parallelbuild":
     expectArg(conf, switch, arg, pass, info)
@@ -872,6 +877,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
+  of "sinkinference":
+    processOnOffSwitch(conf, {optSinkInference}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:

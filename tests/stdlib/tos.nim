@@ -357,14 +357,37 @@ block ospaths:
     doAssert relativePath(r"\\foo\bar\baz.nim", r"\foo") == r"\\foo\bar\baz.nim"
     doAssert relativePath(r"c:\foo.nim", r"\foo") == r"c:\foo.nim"
 
-  doAssert joinPath("usr", "") == unixToNativePath"usr/"
+  doAssert joinPath("usr", "") == unixToNativePath"usr"
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
-  doAssert joinPath("", "") == unixToNativePath""
-  doAssert joinPath("/" / "") == unixToNativePath"/"
+  doAssert joinPath("", "") == unixToNativePath"" # issue #13455
+  doAssert joinPath("", "/") == unixToNativePath"/"
+  doAssert joinPath("/", "/") == unixToNativePath"/"
+  doAssert joinPath("/", "") == unixToNativePath"/"
+  doAssert joinPath("/" / "") == unixToNativePath"/" # weird test case...
   doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
   doAssert joinPath("foo/","") == unixToNativePath"foo/"
+  doAssert joinPath("foo/","abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("foo//./","abc/.//") == unixToNativePath"foo/abc/"
+  doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("","abc") == unixToNativePath"abc"
+
+  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+
+  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # on linux, `./foo` and `foo` are treated a bit differently for executables
+  # but not `./foo/bar` and `foo/bar`
+  doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
+  doAssert joinPath(".","abc") == unixToNativePath"./abc"
+  
+  # cases related to issue #13455
+  doAssert joinPath("foo", "", "") == "foo"
+  doAssert joinPath("foo", "") == "foo"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
+  doAssert joinPath("foo/", ".") == "foo"
+  doAssert joinPath("foo", "./") == unixToNativePath"foo/"
+  doAssert joinPath("foo", "", "bar/") == unixToNativePath"foo/bar/"
 
 block getTempDir:
   block TMPDIR:

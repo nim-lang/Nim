@@ -14,7 +14,7 @@ import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
 
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
-    mEqUntracedRef, mEqStr, mEqSet, mEqCString}
+    mEqStr, mEqSet, mEqCString}
 
   # set excluded here as the semantics are vastly different:
   someLe = {mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
@@ -22,10 +22,9 @@ const
   someLt = {mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
-  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
-             mXLenStr, mXLenSeq}
+  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
 
-  someIn = {mInRange, mInSet}
+  someIn = {mInSet}
 
   someHigh = {mHigh}
   # we don't list unsigned here because wrap around semantics suck for
@@ -258,7 +257,7 @@ proc canon*(n: PNode; o: Operators): PNode =
       result[i] = canon(n[i], o)
   elif n.kind == nkSym and n.sym.kind == skLet and
       n.sym.astdef.getMagic in (someEq + someAdd + someMul + someMin +
-      someMax + someHigh + {mUnaryLt} + someSub + someLen + someDiv):
+      someMax + someHigh + someSub + someLen + someDiv):
     result = n.sym.astdef.copyTree
   else:
     result = n
@@ -271,8 +270,6 @@ proc canon*(n: PNode; o: Operators): PNode =
   of someHigh:
     # high == len+(-1)
     result = o.opAdd.buildCall(o.opLen.buildCall(result[1]), minusOne())
-  of mUnaryLt:
-    result = buildCall(o.opAdd, result[1], minusOne())
   of someSub:
     # x - 4  -->  x + (-4)
     result = negate(result[1], result[2], result, o)

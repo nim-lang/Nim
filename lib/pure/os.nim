@@ -122,14 +122,21 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
 since((1, 1)):
   export normalizePathEnd
 
+template endsWith(a: string, b: set[char]): bool =
+  a.len > 0 and a[^1] in b
+
+proc joinPathImpl(result: var string, state: var int, tail: string) =
+  let trailingSep = tail.endsWith({DirSep, AltSep}) or tail.len == 0 and result.endsWith({DirSep, AltSep})
+  addNormalizePath(tail, result, state, DirSep)
+  normalizePathEnd(result, trailingSep=trailingSep)
+
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
-  ## If `head` is the empty string, `tail` is returned. If `tail` is the empty
-  ## string, `head` is returned with a trailing path separator. If `tail` starts
-  ## with a path separator it will be removed when concatenated to `head`.
-  ## Path separators will be normalized.
+  ## returns normalized path concatenation of `head` and `tail`, preserving
+  ## whether or not `tail` has a trailing slash (or, if tail if empty, whether
+  ## head has one).
   ##
   ## See also:
   ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
@@ -140,7 +147,9 @@ proc joinPath*(head, tail: string): string {.
   runnableExamples:
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
-      assert joinPath("usr", "") == "usr/"
+      assert joinPath("usr", "lib/") == "usr/lib/"
+      assert joinPath("usr", "") == "usr"
+      assert joinPath("usr/", "") == "usr/"
       assert joinPath("", "") == ""
       assert joinPath("", "lib") == "lib"
       assert joinPath("", "/lib") == "/lib"
@@ -149,11 +158,8 @@ proc joinPath*(head, tail: string): string {.
 
   result = newStringOfCap(head.len + tail.len)
   var state = 0
-  addNormalizePath(head, result, state, DirSep)
-  if result.len != 0 and result[^1] notin {DirSep, AltSep} and tail.len == 0:
-    result.add DirSep
-  else:
-    addNormalizePath(tail, result, state, DirSep)
+  joinPathImpl(result, state, head)
+  joinPathImpl(result, state, tail)
   when false:
     if len(head) == 0:
       result = tail
@@ -192,7 +198,7 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   result = newStringOfCap(estimatedLen)
   var state = 0
   for i in 0..high(parts):
-    addNormalizePath(parts[i], result, state, DirSep)
+    joinPathImpl(result, state, parts[i])
 
 proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_.
@@ -206,10 +212,10 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
-      assert "usr" / "" == "usr/"
+      assert "usr" / "" == "usr"
       assert "" / "lib" == "lib"
       assert "" / "/lib" == "/lib"
-      assert "usr/" / "/lib" == "usr/lib"
+      assert "usr/" / "/lib/" == "usr/lib/"
       assert "usr" / "lib" / "../bin" == "usr/bin"
 
   return joinPath(head, tail)

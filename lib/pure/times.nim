@@ -637,6 +637,19 @@ proc isLeapYear*(year: int): bool =
     doAssert not isLeapYear(1900)
   year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
 
+proc isLeapDay*(t: DateTime): bool {.since: (1,1).} =
+  ## returns whether `t` is a leap day, ie, Feb 29 in a leap year. This matters
+  ## as it affects time offset calculations.
+  runnableExamples:
+    let t = initDateTime(29, mFeb, 2020, 00, 00, 00, utc())
+    doAssert t.isLeapDay
+    doAssert t+1.years-1.years != t
+    let t2 = initDateTime(28, mFeb, 2020, 00, 00, 00, utc())
+    doAssert not t2.isLeapDay
+    doAssert t2+1.years-1.years == t2
+    doAssertRaises(Exception): discard initDateTime(29, mFeb, 2021, 00, 00, 00, utc())
+  t.year.isLeapYear and t.month == mFeb and t.monthday == 29
+
 proc getDaysInMonth*(month: Month, year: int): int =
   ## Get the number of days in ``month`` of ``year``.
   # http://www.dispersiondesign.com/articles/time/number_of_days_in_a_month

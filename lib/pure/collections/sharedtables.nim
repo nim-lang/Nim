@@ -206,6 +206,11 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
   withLock t:
     delImpl()
 
+proc len*[A, B](t: var SharedTable[A, B]): int =
+  ## number of elements in `t`
+  withLock t:
+    result = t.counter
+
 proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
   ## creates a new hash table that is empty.
   ##
