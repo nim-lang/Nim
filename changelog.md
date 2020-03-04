@@ -78,10 +78,22 @@
 
 ```nim
 
+type
+  Foo = object
+    col, pos: string
 
+proc setColor(f: var Foo; r, g, b: int) = f.col = $(r, g, b)
+proc setPosition(f: var Foo; x, y: float) = f.pos = $(x, y)
+
+var f: Foo
+with(f, setColor(2, 3, 4), setPosition(0.0, 1.0))
+echo f
 
 ```
+
 - Added `times.isLeapDay`
+- Added a new module, `std / compilesettings` for querying the compiler about
+  diverse configuration settings.
 
 
 ## Library changes

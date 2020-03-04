@@ -7,16 +7,48 @@
 #    distribution, for details about the copyright.
 #
 
-proc compileSetting*(option: string): string {.
-  compiletime, noSideEffect.} = discard
-## Can be used to get a string compile-time option. Example:
-##
-## .. code-block:: Nim
-##   const nimcache = compileSetting("nimcachedir")
+## This module allows querying the compiler about
+## diverse configuration settings.
 
-proc compileSettingSeq*(option: string): seq[string] {.
-  compiletime, noSideEffect.} = discard
-## Can be used to get a multi-string compile-time option. Example:
-##
-## .. code-block:: Nim
-##   const nimblePaths = compileSettingSeq("nimblePaths")
+# Note: Only add new enum values at the end to ensure binary compatibility with
+# other Nim compiler versions!
+
+type
+  SingleValueSetting* {.pure.} = enum ## \
+                      ## settings resulting in a single string value
+    arguments,        ## experimental: the arguments passed after '-r'
+    outFile,          ## experimental: the output file
+    outDir,           ## the output directory
+    nimcacheDir,      ## the location of the 'nimcache' directory
+    projectName,      ## the project's name that is being compiled
+    projectPath,      ## experimental: some path to the project that is being compiled
+    projectFull,      ## the full path to the project that is being compiled
+    command,          ## experimental: the command (e.g. 'c', 'cpp', 'doc') passed to
+                      ## the Nim compiler
+    commandLine,      ## experimental: the command line passed to Nim
+    linkOptions,      ## additional options passed to the linker
+    compileOptions,   ## additional options passed to the C/C++ compiler
+    ccompilerPath     ## the path to the C/C++ compiler
+
+  MultipleValueSetting* {.pure.} = enum ## \
+                      ## settings resulting in a seq of string values
+    nimblePaths,      ## the nimble path(s)
+    searchPaths,      ## the search path for modules
+    lazyPaths,        ## experimental: even more paths
+    commandArgs,      ## the arguments passed to the Nim compiler
+    cincludes,        ## the #include paths passed to the C/C++ compiler
+    clibs             ## libraries passed to the C/C++ compiler
+
+proc querySetting*(setting: SingleValueSetting): string {.
+  compileTime, noSideEffect.} = discard
+  ## Can be used to get a string compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   const nimcache = querySetting(SingleValueSetting.nimcacheDir)
+
+proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
+  compileTime, noSideEffect.} = discard
+  ## Can be used to get a multi-string compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   const nimblePaths = compileSettingSeq(MultipleValueSetting.nimblePaths)

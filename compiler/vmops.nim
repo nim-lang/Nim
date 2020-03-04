@@ -102,34 +102,34 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
-proc compileSettingImpl(a: VmArgs, conf: ConfigRef, switch: string): string =
-  case switch.normalize
-  of "arguments": result = conf.arguments
-  of "outfile": result = conf.outFile.string
-  of "outdir": result = conf.outDir.string
-  of "nimcachedir": result = conf.nimcacheDir.string
-  of "projectname": result = conf.projectName
-  of "projectpath": result = conf.projectPath.string
-  of "projectfull": result = conf.projectFull.string
-  of "command": result = conf.command
-  of "commandline": result = conf.commandLine
-  of "linkoptions": result = conf.linkOptions
-  of "compileoptions": result = conf.compileOptions
-  of "ccompilerpath": result = conf.cCompilerPath
-  else: globalError(conf, a.currentLineInfo, "Unsupported switch: " & switch)
+from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
-proc compileSettingSeqImpl(a: VmArgs, conf: ConfigRef, switch: string): seq[string] =
+proc querySettingImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): string =
+  case SingleValueSetting(switch)
+  of arguments: result = conf.arguments
+  of outFile: result = conf.outFile.string
+  of outDir: result = conf.outDir.string
+  of nimcacheDir: result = conf.nimcacheDir.string
+  of projectName: result = conf.projectName
+  of projectPath: result = conf.projectPath.string
+  of projectFull: result = conf.projectFull.string
+  of command: result = conf.command
+  of commandLine: result = conf.commandLine
+  of linkOptions: result = conf.linkOptions
+  of compileOptions: result = conf.compileOptions
+  of ccompilerPath: result = conf.cCompilerPath
+
+proc querySettingSeqImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): seq[string] =
   template copySeq(field: untyped): untyped =
     for i in field: result.add i.string
 
-  case switch.normalize
-  of "nimblepaths": copySeq(conf.nimblePaths)
-  of "searchpaths": copySeq(conf.searchPaths)
-  of "lazypaths": copySeq(conf.lazyPaths)
-  of "commandargs": result = conf.commandArgs
-  of "cincludes": copySeq(conf.cIncludes)
-  of "clibs": copySeq(conf.cLibs)
-  else: globalError(conf, a.currentLineInfo, "Unsupported switch: " & switch)
+  case MultipleValueSetting(switch)
+  of nimblePaths: copySeq(conf.nimblePaths)
+  of searchPaths: copySeq(conf.searchPaths)
+  of lazyPaths: copySeq(conf.lazyPaths)
+  of commandArgs: result = conf.commandArgs
+  of cincludes: copySeq(conf.cIncludes)
+  of clibs: copySeq(conf.cLibs)
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
@@ -181,10 +181,10 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    registerCallback c, "stdlib.compilesettings.compileSetting", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, compileSettingImpl(a, c.config, getString(a, 0)))
-    registerCallback c, "stdlib.compilesettings.compileSettingSeq", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, compileSettingSeqImpl(a, c.config, getString(a, 0)))
+    registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, querySettingImpl(a, c.config, getInt(a, 0)))
+    registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, querySettingSeqImpl(a, c.config, getInt(a, 0)))
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"

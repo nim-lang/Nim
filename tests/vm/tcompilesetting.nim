@@ -8,8 +8,8 @@ import strutils
 import std / compilesettings
 
 const
-  nc = compileSetting("nimcachedir")
-  np = compileSettingSeq("nimblePaths")
+  nc = querySetting(nimcacheDir)
+  np = querySettingSeq(nimblePaths)
 
 static:
   echo nc
