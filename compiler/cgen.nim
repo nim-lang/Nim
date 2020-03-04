@@ -52,6 +52,13 @@ proc addForwardedProc(m: BModule, prc: PSym) =
 proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
+  # This position might need a patch for incremental recompilations.
+  # tables_string_int.nim.c
+  # tables_string_string.nim.c
+  # "Database based C code generation"
+  # proc foobar(x: T) (Nim) -->  void foobar(T x) {}
+  #
+  # module a, b, c
 
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k

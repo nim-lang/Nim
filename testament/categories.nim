@@ -665,7 +665,7 @@ proc processCategory(r: var TResults, cat: Category,
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
   of "ic":
-    when false:
+    when true:
       icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
