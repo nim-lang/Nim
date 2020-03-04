@@ -27,6 +27,10 @@ from lineinfos import
   warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
+template isGnerateNimFrame(options, sym): bool =
+  optStackTrace in options and
+    (optStackTraceInline in options or sym.typ.callConv != ccInline)
+
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
     ## given a library name pattern `s` write possible library names to `dest`.
@@ -265,9 +269,11 @@ proc genLineDir(p: BProc, t: PNode) =
     p.s(cpsStmts).add(~"//" & sourceLine(p.config, t.info) & "\L")
   genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
-    if freshLineInfo(p, t.info):
-      linefmt(p, cpsStmts, "nimln_($1, $2);$n",
+      # why `sfPure notin p.prc.flags` condition?
+      (p.prc == nil or (sfPure notin p.prc.flags and isGnerateNimFrame(p.options, p.prc))) and
+      t.info.fileIndex != InvalidFileIdx and
+      freshLineInfo(p, t.info):
+        linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               [line, quotedFilename(p.config, t.info)])
 
 proc postStmtActions(p: BProc) {.inline.} =
@@ -618,17 +624,19 @@ include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
-  $1  define nimfr_(proc, file) \
-      TFrame FR_; \
-      FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
+$1 define nimfr_(proc, file) \
+  TFrame FR_; \
+  FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
 
-  $1  define nimfrs_(proc, file, slots, length) \
-      struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
-      FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
-
-  $1  define nimln_(n, file) \
-      FR_.line = n; FR_.filename = file;
-  """
+$1 define nimln_(n, file) \
+  FR_.line = n; FR_.filename = file;
+"""
+  #[
+  Dead code kept that was used for --debugger:endb, kept comment in case we revive it.
+$1 define nimfrs_(proc, file, slots, length) \
+  struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
+  FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
+  ]#
   if p.module.s[cfsFrameDefines].len == 0:
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
@@ -1046,12 +1054,11 @@ proc genProcAux(m: BModule, prc: PSym) =
       # call each other using directly the "_actual" versions (an optimization) - see issue #11608
       m.s[cfsProcHeaders].addf("$1;\n", [header])
     generatedProc.add ropecg(p.module, "$1 {$n", [header])
-    if optStackTrace in prc.options:
-      generatedProc.add(p.s(cpsLocals))
+    generatedProc.add(p.s(cpsLocals))
+    let isNimFrame = isGnerateNimFrame(prc.options, prc)
+    if isNimFrame:
       var procname = makeCString(prc.name.s)
       generatedProc.add(initFrame(p, procname, quotedFilename(p.config, prc.info)))
-    else:
-      generatedProc.add(p.s(cpsLocals))
     if optProfiler in prc.options:
       # invoke at proc entry for recursion:
       appcg(p, cpsInit, "\t#nimProfile();$n", [])
@@ -1061,7 +1068,7 @@ proc genProcAux(m: BModule, prc: PSym) =
     generatedProc.add(p.s(cpsInit))
     generatedProc.add(p.s(cpsStmts))
     if beforeRetNeeded in p.flags: generatedProc.add(~"\t}BeforeRet_: ;$n")
-    if optStackTrace in prc.options: generatedProc.add(deinitFrame(p))
+    if isNimFrame: generatedProc.add(deinitFrame(p))
     generatedProc.add(returnStmt)
     generatedProc.add(~"}$N")
   m.s[cfsProcs].add(generatedProc)

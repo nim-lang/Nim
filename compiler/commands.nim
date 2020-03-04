@@ -119,6 +119,7 @@ const
   errOnOrOffExpectedButXFound = "'on' or 'off' expected, but '$1' found"
   errOnOffOrListExpectedButXFound = "'on', 'off' or 'list' expected, but '$1' found"
   errOffHintsError = "'off', 'hint' or 'error' expected, but '$1' found"
+  errExpectedButFound = "$1 expected, but '$2' found"
 
 proc invalidCmdLineOption(conf: ConfigRef; pass: TCmdLinePass, switch: string, info: TLineInfo) =
   if switch == " ": localError(conf, info, errInvalidCmdLineOption % "-")
@@ -280,6 +281,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "hints": result = contains(conf.options, optHints)
   of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
   of "stacktrace": result = contains(conf.options, optStackTrace)
+  of "stacktraceInline": result = contains(conf.options, optStackTraceInline)
   of "linetrace": result = contains(conf.options, optLineTrace)
   of "debugger": result = contains(conf.globalOptions, optCDebug)
   of "profiler": result = contains(conf.options, optProfiler)
@@ -528,7 +530,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
-  of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
+  of "stacktrace":
+    case arg.normalize
+    of "","on": conf.options.incl optStackTrace
+    of "off": conf.options.excl optStackTrace
+    of "inline": conf.options.incl {optStackTrace, optStackTraceInline}
+    else: localError(conf, info, errExpectedButFound % ["'', 'on', 'off', 'inline'", arg])
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
