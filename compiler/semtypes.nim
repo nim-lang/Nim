@@ -1898,10 +1898,6 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
-  of mEmptySet:
-    setMagicIntegral(c.config, m, tySet, 1)
-    rawAddSon(m.typ, newTypeS(tyEmpty, c))
-  of mIntSetBaseType: setMagicIntegral(c.config, m, tyRange, c.config.target.intSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
   of mExpr:
     if m.name.s == "auto":
@@ -1937,8 +1933,6 @@ proc processMagicType(c: PContext, m: PSym) =
       incl m.typ.flags, tfHasAsgn
     assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
-  of mOpt:
-    setMagicType(c.config, m, tyOpt, szUncomputedSize)
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))

@@ -81,6 +81,7 @@
 
 
 ```
+- Added `times.isLeapDay`
 
 
 ## Library changes
@@ -125,6 +126,7 @@
 
 ### Tool changes
 
+- Fix Nimpretty must not accept negative indentation argument because breaks file.
 
 
 ### Compiler changes
