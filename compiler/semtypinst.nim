@@ -30,6 +30,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
     if t.kind == tyObject and t[0] != nil:
       if t[0].kind != tyObject or tfFinal in t[0].flags:
         localError(info, errInheritanceOnlyWithNonFinalObjects)
+  # look, if 'typ' was serialized already, it's bug.
 
 proc searchInstTypes*(key: PType): PType =
   let genericTyp = key[0]
