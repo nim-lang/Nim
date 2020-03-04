@@ -11,7 +11,7 @@ proc isPullRequest*(): bool =
   ## returns true if CI build is triggered via a PR
   ## else, it corresponds to a direct push to the repository by owners
   assert isAzureCI()
-  getEnv("Build.Reason") == "PullRequest"
+  getAzureEnv("Build.Reason") == "PullRequest"
 
 proc runCmd(cmd: string) =
   echo "runCmd: " & cmd
@@ -44,18 +44,18 @@ proc hostInfo*(): string =
   if not isAzureCI(): return
   let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
 
-  var url = getEnv("Build.Repository.Uri")
+  var url = getAzureEnv("Build.Repository.Uri")
 
   let isPR = isPullRequest()
-  let commit = getEnv("Build.SourceVersion")
+  let commit = getAzureEnv("Build.SourceVersion")
   if isPR:
-    let id = getEnv("System.PullRequest.PullRequestNumber")
+    let id = getAzureEnv("System.PullRequest.PullRequestNumber")
     url = fmt"{url}/pull/{id}"
   else:
     url = fmt"{url}/commit/{commit}"
 
-  let branch = getEnv("Build.SourceBranchName")
-  let msg = getEnv("Build.SourceVersionMessage").quoteShell
+  let branch = getAzureEnv("Build.SourceBranchName")
+  let msg = getAzureEnv("Build.SourceVersionMessage").quoteShell
   let buildNum = getAzureEnv("Build.BuildNumber")
   let nl = "\n"
   result.add fmt"""{nl}isPR:{isPR}, url: {url}, branch: {branch}, commit: {commit}, mode: {mode}, buildNum: {buildNum}{nl}msg: {msg}{nl}"""
