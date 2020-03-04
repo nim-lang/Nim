@@ -168,10 +168,3 @@ jobs:
         # see https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
         # most useful entries among the numerous defined variables
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-        NIM_CI_System_PullRequest_PullRequestNumber: $(System.PullRequest.PullRequestNumber)
-        NIM_CI_Build_SourceBranchName: $(Build.SourceBranchName)
-        NIM_CI_Build_Reason: $(Build.Reason)
-        NIM_CI_Build_Repository_Uri: $(Build.Repository.Uri)
-        NIM_CI_Build_SourceVersion: $(Build.SourceVersion)
-        NIM_CI_Build_SourceVersionMessage: $(Build.SourceVersionMessage)
-        NIM_CI_Build_BuildNumber: $(Build.BuildNumber)

@@ -6,18 +6,14 @@
 #    Look at license.txt for more info.
 #    All rights reserved.
 
-import base64, json, httpclient, os, strutils, uri
+import base64, json, httpclient, os, uri
 import specs
+import ".."/tools/azure_common
 
 const
   RunIdEnv = "TESTAMENT_AZURE_RUN_ID"
   CacheSize = 8 # How many results should be cached before uploading to
                 # Azure Pipelines. This prevents throttling that might arise.
-
-proc getAzureEnv(env: string): string =
-  # Conversion rule at:
-  # https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables#set-variables-in-pipeline
-  env.toUpperAscii().replace('.', '_').getEnv
 
 template getRun(): string =
   ## Get the test run attached to this instance
