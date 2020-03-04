@@ -517,13 +517,12 @@ proc runCI(cmd: string) =
   if isAzureCI(): installNode()
 
   template runDocs() =
-    when defined(posix):
-      kochExecFold("Docs", "docs --git.commit:devel")
+    echo "runDocs"
+    when defined(posix): kochExecFold("Docs", "docs --git.commit:devel")
 
   if isNimDocOnly():
-    echo "isNimDocOnly: true"
+    kochExecFold("Boot in release mode", "boot -d:release")
     runDocs()
-    echo "isNimDocOnly: done"
     return
 
   # boot without -d:nimHasLibFFI to make sure this still works

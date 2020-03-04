@@ -23,15 +23,12 @@ proc tryRunCmd(cmd: string): bool =
   execShellCmd(cmd) == 0
 
 proc gitLogPretty(): string =
-  ## returns last 2 entries
-  runCmd "pwd && git rev-parse --show-toplevel"
-  runCmd "git log --no-merges -1 --pretty=oneline"
-  runCmd "git log --no-merges -2 --pretty=oneline"
+  ## last commit msg excluding merge commit, so that it works both for PR's
+  ## and direct pushes to repo
   let cmd = "git log --no-merges -1 --pretty=oneline"
-  echo cmd
   let (outp, errC) = execCmdEx(cmd)
   doAssert errC == 0, $outp
-  echo ("gitLogPretty", outp, errC)
+  echo ("gitLogPretty", cmd, outp)
   outp
 
 proc isNimDocOnly*(): bool =
