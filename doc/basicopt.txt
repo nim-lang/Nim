@@ -17,8 +17,8 @@ Options:
                             see: "compile time define pragmas")
   -u, --undef:SYMBOL        undefine a conditional symbol
   -f, --forceBuild:on|off   force rebuilding of all modules
-  --stackTrace:on|off|inline turn stack tracing on|off; {.inline.} procs
-                            won't be traceable unless `inline` is used
+  --stackTrace:on|off|noinline turn stack tracing on|off; {.inline.} procs
+                            won't be traceable with `noinline` option
   --lineTrace:on|off        turn line tracing on|off
   --threads:on|off          turn support for multi-threading on|off
   -x, --checks:on|off       turn all runtime checks on|off

@@ -281,7 +281,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "hints": result = contains(conf.options, optHints)
   of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
   of "stacktrace": result = contains(conf.options, optStackTrace)
-  of "stacktraceInline": result = contains(conf.options, optStackTraceInline)
+  of "stacktraceNoInline": result = contains(conf.options, optStackTraceNoInline)
   of "linetrace": result = contains(conf.options, optLineTrace)
   of "debugger": result = contains(conf.globalOptions, optCDebug)
   of "profiler": result = contains(conf.options, optProfiler)
@@ -534,8 +534,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     case arg.normalize
     of "","on": conf.options.incl optStackTrace
     of "off": conf.options.excl optStackTrace
-    of "inline": conf.options.incl {optStackTrace, optStackTraceInline}
-    else: localError(conf, info, errExpectedButFound % ["'', 'on', 'off', 'inline'", arg])
+    of "noinline": conf.options.incl {optStackTrace, optStackTraceNoInline}
+    else: localError(conf, info, errExpectedButFound % ["'', 'on', 'off', 'noinline'", arg])
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":

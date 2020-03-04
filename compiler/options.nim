@@ -28,7 +28,7 @@ type                          # please make sure we have under 32 options
     optOverflowCheck, optNilCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
-    optOptimizeSpeed, optOptimizeSize, optStackTrace, optStackTraceInline, # stack tracing support
+    optOptimizeSpeed, optOptimizeSize, optStackTrace, optStackTraceNoInline, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)

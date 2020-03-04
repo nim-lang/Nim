@@ -29,7 +29,7 @@ import dynlib
 
 template isGnerateNimFrame(options, sym): bool =
   optStackTrace in options and
-    (optStackTraceInline in options or sym.typ.callConv != ccInline)
+    (optStackTraceNoInline notin options or sym.typ.callConv != ccInline)
 
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
