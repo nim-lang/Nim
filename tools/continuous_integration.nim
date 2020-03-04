@@ -1,24 +1,17 @@
 ## Utilities for continous integration
 ##
 ## See also: testament/azure.nim
-## We avoid dependency on testament since this is imported by koch
-## Alternatively, testament/azure.nim could import this instead.
 
 import os, osproc, strformat
+import "."/azure_common
 
-proc isAzureCI*(): bool =
-  # existsEnv("BUILD_SOURCEBRANCHNAME")
-    # this would have benefit that we're
-    # explicitly setting this variable in azure-pipelines.yml
-  existsEnv("TF_BUILD") # factor with specs.isAzure
+export isAzureCI
 
 proc isPullRequest*(): bool =
   ## returns true if CI build is triggered via a PR
   ## else, it corresponds to a direct push to the repository by owners
   assert isAzureCI()
-  # see https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
-  # for what gets exported, eg $(System.PullRequest.PullRequestNumber) => SYSTEM_PULLREQUEST_PULLREQUESTNUMBER
-  getEnv("BUILD_REASON") == "PullRequest"
+  getEnv("Build.Reason") == "PullRequest"
 
 proc runCmd(cmd: string) =
   echo "runCmd: " & cmd
@@ -51,19 +44,18 @@ proc hostInfo*(): string =
   if not isAzureCI(): return
   let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
 
-  # var url = getEnv("Build_Repository_Uri")
-  var url = getEnv("BUILD_REPOSITORY_URI")
+  var url = getEnv("Build.Repository.Uri")
 
   let isPR = isPullRequest()
-  let commit = getEnv("BUILD_SOURCEVERSION")
+  let commit = getEnv("Build.SourceVersion")
   if isPR:
-    let id = getEnv("SYSTEM_PULLREQUEST_PULLREQUESTNUMBER")
+    let id = getEnv("System.PullRequest.PullRequestNumber")
     url = fmt"{url}/pull/{id}"
   else:
     url = fmt"{url}/commit/{commit}"
 
-  let branch = getEnv("BUILD_SOURCEBRANCHNAME")
-  let msg = getEnv("BUILD_SOURCEVERSIONMESSAGE").quoteShell
-  let buildNum = getEnv("BUILD_BUILDNUMBER")
+  let branch = getEnv("Build.SourceBranchName")
+  let msg = getEnv("Build.SourceVersionMessage").quoteShell
+  let buildNum = getAzureEnv("Build.BuildNumber")
   let nl = "\n"
   result.add fmt"""{nl}isPR:{isPR}, url: {url}, branch: {branch}, commit: {commit}, mode: {mode}, buildNum: {buildNum}{nl}msg: {msg}{nl}"""

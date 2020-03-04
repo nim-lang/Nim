@@ -165,6 +165,5 @@ jobs:
         ./koch runCI || echo '##vso[task.complete result=Failed]'
       displayName: 'Run CI'
       env:
-        # see https://docs.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml
-        # most useful entries among the numerous defined variables
+        # other entries are automatically exported, see `getAzureEnv`
         SYSTEM_ACCESSTOKEN: $(System.AccessToken)

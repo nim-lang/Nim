@@ -8,12 +8,13 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg
+from ".."/tools/azure_common import isAzureCI
 
 var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
-let isAzure* = existsEnv("TF_BUILD")
+let isAzure* = isAzureCI()
 
 var skips*: seq[string]
 
