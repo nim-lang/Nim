@@ -31,7 +31,7 @@ proc installNode*() =
   elif defined(linux):
     # https://linuxize.com/post/how-to-install-node-js-on-ubuntu-18.04/
     runCmd "curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -"
-    runCmd "sudo apt install -yq nodejs"
+    runCmd "sudo apt install -yqq nodejs"
     runCmd "nodejs --version"
   elif defined(windows):
     # should've be installed via azure-pipelines.yml, but could do it here too
@@ -44,18 +44,19 @@ proc hostInfo*(): string =
   if not isAzureCI(): return
   let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
 
-  var url = getAzureEnv("Build.Repository.Uri")
+  var urlBase = getAzureEnv("Build.Repository.Uri")
+  var urlPR = ""
 
   let isPR = isPullRequest()
   let commit = getAzureEnv("Build.SourceVersion")
   if isPR:
     let id = getAzureEnv("System.PullRequest.PullRequestNumber")
-    url = fmt"{url}/pull/{id}"
-  else:
-    url = fmt"{url}/commit/{commit}"
+    urlPR = fmt"{urlBase}/pull/{id}"
+  let urlCommit = fmt"{urlBase}/commit/{commit}"
 
   let branch = getAzureEnv("Build.SourceBranchName")
   let msg = getAzureEnv("Build.SourceVersionMessage").quoteShell
   let buildNum = getAzureEnv("Build.BuildNumber")
   let nl = "\n"
-  result.add fmt"""{nl}isPR:{isPR}, url: {url}, branch: {branch}, commit: {commit}, mode: {mode}, buildNum: {buildNum}{nl}msg: {msg}{nl}"""
+  # Avoids `,` after urls since it'd prevent the link from being clickable in azure UI
+  result.add fmt"""{nl}urlPR: {urlPR}{nl}urlCommit: {urlCommit}{nl}branch: {branch}, mode: {mode}, buildNum: {buildNum}{nl}msg: {msg}{nl}"""
