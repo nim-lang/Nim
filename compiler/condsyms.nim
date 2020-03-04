@@ -111,3 +111,5 @@ proc initDefines*(symbols: StringTableRef) =
     # will report the right thing regardless of whether user adds
     # `-d:nimHasLibFFI` in his user config.
     defineSymbol("nimHasLibFFIEnabled")
+
+  defineSymbol("nimHasSinkInference")

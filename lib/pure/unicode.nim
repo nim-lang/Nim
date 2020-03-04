@@ -701,7 +701,7 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
     doAssert capitalize("βeta") == "Βeta"
 
   if len(s) == 0:
-    return s
+    return ""
   var
     rune: Rune
     i = 0
