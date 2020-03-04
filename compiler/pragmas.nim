@@ -357,6 +357,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wByRef: {optByRef}
   of wImplicitStatic: {optImplicitStatic}
   of wPatterns, wTrMacros: {optTrMacros}
+  of wSinkInference: {optSinkInference}
   else: {}
 
 proc processExperimental(c: PContext; n: PNode) =

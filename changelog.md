@@ -115,7 +115,6 @@
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
 
-
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
@@ -138,6 +137,9 @@
 - The Nim compiler now supports a new pragma called ``.localPassc`` to
   pass specific compiler options to the C(++) backend for the C(++) file
   that was produced from the current Nim module.
+- The compiler now inferes "sink parameters". To disable this for a specific routine,
+  annotate it with `.nosinks`. To disable it for a section of code, use
+  `{.push sinkInference: off.}`...`{.pop.}`.
 
 
 ## Bugfixes

@@ -52,7 +52,7 @@ type
     wBoundChecks, wOverflowChecks, wNilChecks,
     wFloatChecks, wNanChecks, wInfChecks, wStyleChecks,
     wNonReloadable, wExecuteOnReload,
-    wAssertions, wPatterns, wTrMacros, wWarnings,
+    wAssertions, wPatterns, wTrMacros, wSinkInference, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
     wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
@@ -140,7 +140,7 @@ const
     "floatchecks", "nanchecks", "infchecks", "stylechecks",
     "nonreloadable", "executeonreload",
 
-    "assertions", "patterns", "trmacros", "warnings", "hints",
+    "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim",  # deprecated, dead code elim always happens
     "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",

@@ -49,7 +49,7 @@ Advanced options:
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
-                            see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory 
+                            see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory
   -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
   --noLinking:on|off        compile Nim and generated files but do not link
   --noMain:on|off           do not generate a main procedure
@@ -145,3 +145,4 @@ Advanced options:
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
   --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
+  --sinkInference:on|off    en-/disable sink parameter inference (default: on)

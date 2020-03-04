@@ -19,6 +19,7 @@ proc checkForSink*(config: ConfigRef; owner: PSym; arg: PNode) =
     var local = p # sink parameter?
     passToSink(local)
   ]#
+  if optSinkInference notin config.options: return
   case arg.kind
   of nkSym:
     if arg.sym.kind == skParam and

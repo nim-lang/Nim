@@ -877,6 +877,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
+  of "sinkinference":
+    processOnOffSwitch(conf, {optSinkInference}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:
