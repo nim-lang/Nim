@@ -108,6 +108,8 @@ __AVR__
 #  define N_INLINE(rettype, name) rettype __inline name
 #endif
 
+#define N_INLINE_PTR(rettype, name) rettype (*name)
+
 #if defined(__POCC__)
 #  define NIM_CONST /* PCC is really picky with const modifiers */
 #  undef _MSC_VER /* Yeah, right PCC defines _MSC_VER even if it is

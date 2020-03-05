@@ -764,6 +764,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     genProcParams(m, t, rettype, desc, check, true, true)
     if not isImportedType(t):
       if t.callConv != ccClosure: # procedure vars may need a closure!
+        # this is where seemingly dead-code `N_INLINE_PTR` is used
         m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
              [rope(CallingConvToStr[t.callConv]), rettype, result, desc])
       else:
