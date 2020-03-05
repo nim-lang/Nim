@@ -591,6 +591,8 @@ proc genUse(c: var Con; orig: PNode) =
     of PathKinds1:
       n = n[1]
     else: break
+    if n.kind in nkCallKinds:
+      gen(c, n)
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use)
 

@@ -78,10 +78,22 @@
 
 ```nim
 
+type
+  Foo = object
+    col, pos: string
 
+proc setColor(f: var Foo; r, g, b: int) = f.col = $(r, g, b)
+proc setPosition(f: var Foo; x, y: float) = f.pos = $(x, y)
+
+var f: Foo
+with(f, setColor(2, 3, 4), setPosition(0.0, 1.0))
+echo f
 
 ```
+
 - Added `times.isLeapDay`
+- Added a new module, `std / compilesettings` for querying the compiler about
+  diverse configuration settings.
 
 
 ## Library changes
@@ -115,7 +127,6 @@
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
 
-
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
@@ -126,6 +137,7 @@
 
 ### Tool changes
 
+- Fix Nimpretty must not accept negative indentation argument because breaks file.
 
 
 ### Compiler changes
@@ -137,6 +149,9 @@
 - The Nim compiler now supports a new pragma called ``.localPassc`` to
   pass specific compiler options to the C(++) backend for the C(++) file
   that was produced from the current Nim module.
+- The compiler now inferes "sink parameters". To disable this for a specific routine,
+  annotate it with `.nosinks`. To disable it for a section of code, use
+  `{.push sinkInference: off.}`...`{.pop.}`.
 
 
 ## Bugfixes

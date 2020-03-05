@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets
+import os, strutils, osproc, sets, pathnorm
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
@@ -195,11 +195,11 @@ lib/system/widestrs.nim
        a.isRelativeTo("lib/pure/includes") or
        a.isRelativeTo("lib/genode") or
        a.isRelativeTo("lib/deprecated") or
-       (a.isRelativeTo("lib/system") and a notin goodSystem) or
-       a in docIgnore:
+       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
+       a.replace('\\', '/') in docIgnore:
          continue
     result.add a
-  result.add "nimsuggest/sexp.nim"
+  result.add normalizePath("nimsuggest/sexp.nim")
 
 let doc = getDocList()
 

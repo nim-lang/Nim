@@ -1458,7 +1458,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   else: n == bindSym"true" # hacky solution for now
 
 when defined(nimMacrosGetNodeId):
-  proc nodeID*(n: NimNode): int {.magic: NodeId.}
+  proc nodeID*(n: NimNode): int {.magic: "NodeId".}
     ## Returns the id of ``n``, when the compiler has been compiled
     ## with the flag ``-d:useNodeids``, otherwise returns ``-1``. This
     ## proc is for the purpose to debug the compiler only.

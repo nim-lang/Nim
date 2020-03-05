@@ -191,10 +191,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
       if filename.len == 0:
-        inc(d.id)
         let nameOnly = splitFile(d.filename).name
         outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
                RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
@@ -1135,8 +1135,8 @@ proc generateIndex*(d: PDoc) =
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outFile.isEmpty and not d.conf.outDir.isEmpty:
-      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.projectPath
+    if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)

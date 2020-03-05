@@ -44,8 +44,8 @@ proc writeVersion() =
 
 type
   PrettyOptions = object
-    indWidth: int
-    maxLineLen: int
+    indWidth: Natural
+    maxLineLen: Positive
 
 proc prettyPrint(infile, outfile: string, opt: PrettyOptions) =
   var conf = newConfigRef()
