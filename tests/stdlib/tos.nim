@@ -389,7 +389,7 @@ block ospaths:
   doAssert joinPath("foo", "./") == unixToNativePath"foo/"
   doAssert joinPath("foo", "", "bar/") == unixToNativePath"foo/bar/"
 
-  ## issue #13579
+  # issue #13579
   doAssert joinPath("/foo", "../a") == unixToNativePath"/a"
   doAssert joinPath("/foo/", "../a") == unixToNativePath"/a"
   doAssert joinPath("/foo/.", "../a") == unixToNativePath"/a"
