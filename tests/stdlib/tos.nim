@@ -389,6 +389,19 @@ block ospaths:
   doAssert joinPath("foo", "./") == unixToNativePath"foo/"
   doAssert joinPath("foo", "", "bar/") == unixToNativePath"foo/bar/"
 
+  # issue #13579
+  doAssert joinPath("/foo", "../a") == unixToNativePath"/a"
+  doAssert joinPath("/foo/", "../a") == unixToNativePath"/a"
+  doAssert joinPath("/foo/.", "../a") == unixToNativePath"/a"
+  doAssert joinPath("/foo/.b", "../a") == unixToNativePath"/foo/a"
+  doAssert joinPath("/foo///", "..//a/") == unixToNativePath"/a/"
+  doAssert joinPath("foo/", "../a") == unixToNativePath"a"
+
+  when doslikeFileSystem:
+    doAssert joinPath("C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\Common7\\Tools\\", "..\\..\\VC\\vcvarsall.bat") == r"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
+    doAssert joinPath("C:\\foo", "..\\a") == r"C:\a"
+    doAssert joinPath("C:\\foo\\", "..\\a") == r"C:\a"
+
 block getTempDir:
   block TMPDIR:
     # TMPDIR env var is not used if either of these are defined.

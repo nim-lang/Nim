@@ -127,6 +127,7 @@ template endsWith(a: string, b: set[char]): bool =
 
 proc joinPathImpl(result: var string, state: var int, tail: string) =
   let trailingSep = tail.endsWith({DirSep, AltSep}) or tail.len == 0 and result.endsWith({DirSep, AltSep})
+  normalizePathEnd(result, trailingSep=false)
   addNormalizePath(tail, result, state, DirSep)
   normalizePathEnd(result, trailingSep=trailingSep)
 
