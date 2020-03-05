@@ -180,8 +180,8 @@ proc dfs(currentNode: BasicBlock, nodes: var seq[UnionFindNode],
   last[number[currentNode]] = current
 
 proc findLoops(self: var HavlakLoopFinder): int =
-  var startNode = self.cfg.startNode
-  if startNode == nil: return 0
+  #var startNode =
+  if self.cfg.startNode == nil: return 0
   var size = self.cfg.basicBlockMap.len
 
   var nonBackPreds = newSeq[HashSet[int]]()
@@ -203,7 +203,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
   #   - unreached BB's are marked as dead.
   #
   for v in self.cfg.basicBlockMap.values: number[v] = UNVISITED
-  dfs(startNode, nodes, number, last, 0)
+  dfs(self.cfg.startNode, nodes, number, last, 0)
 
   # Step b:
   #   - iterate over all nodes.
@@ -375,7 +375,7 @@ proc buildBaseLoop(self: var LoopTesterApp, from1: int): int =
   self.buildConnect(footer, from1)
   result = self.buildStraight(footer, 1)
 
-proc run(self: var LoopTesterApp) =
+proc run(self: var LoopTesterApp): BasicBlock =
   echo "Welcome to LoopTesterApp, Nim edition"
   echo "Constructing Simple CFG..."
 
@@ -394,7 +394,7 @@ proc run(self: var LoopTesterApp) =
   echo "Constructing CFG..."
   var n = 2
 
-  when not defined(gcOrc):
+  when true:
     # currently cycle detection is so slow that we disable this part
     for parlooptrees in 1..10:
       discard self.cfg.createNode(n + 1)
@@ -426,15 +426,28 @@ proc run(self: var LoopTesterApp) =
       #echo getOccupiedMem()
   echo "\nFound ", loops, " loops (including artificial root node) (", sum, ")"
 
+  result = self.cfg.startNode
+
   when false:
     echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
     echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
 proc main =
   var l = newLoopTesterApp()
-  l.run
+  when defined(trackCycles):
+    spanningTree l.run
+  else:
+    discard l.run
+
+import times, strutils
 
 let mem = getOccupiedMem()
+let t0 = epochTime()
 main()
+
 when defined(gcOrc):
-  doAssert getOccupiedMem() == mem
+  when defined(trackCycles):
+    echo "STILL LEFT ", formatSize(getOccupiedMem() - mem), " ", formatSize(getMaxMem())
+    #doAssert getOccupiedMem() == mem
+
+echo("Completed in " & $(epochTime() - t0) & "s. Success!")

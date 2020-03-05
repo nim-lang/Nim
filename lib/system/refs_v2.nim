@@ -128,7 +128,10 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   nimRawDispose(p)
 
 when defined(gcOrc):
-  include cyclicrefs_v2
+  when true:
+    include cyclebreaker
+  else:
+    include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
