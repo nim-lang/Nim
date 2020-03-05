@@ -437,6 +437,9 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
     if b[1].len != 1: return nil
     let nodePragma = b[1][0]
     # see: `singlePragma`
+    if nodePragma.kind notin {nkIdent, nkAccQuoted}:
+      # we could in future support pragmas w args eg: `var foo {.bar:"goo".} = expr`
+      return nil
     let ident = considerQuotedIdent(c, nodePragma)
     var userPragma = strTableGet(c.userPragmas, ident)
     if userPragma != nil: return nil
@@ -454,7 +457,6 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
 
     result = newTree(nkCall)
-    # we could in future support pragmas w args eg: `var foo {.bar:"goo".} = expr`
     doAssert nodePragma.kind == nkIdent, $nodePragma.kind
     result.add nodePragma
     result.add lhs
