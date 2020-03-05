@@ -28,11 +28,11 @@ expression: foo 1
 
 
 # line 30
-
+type Foo = object
 block: # issue #13182
   proc myproc(a: int): string = $("myproc", a)
   proc foo(args: varargs[string, myproc]): string = $args
-  type Foo = object
+
   proc foo(i: Foo): string = "in foo(i)"
   static: doAssert foo(Foo()) == "in foo(i)"
   static: doAssert foo(1) == """["(\"myproc\", 1)"]"""
