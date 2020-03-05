@@ -80,7 +80,7 @@ proc addNormalizePath*(x: string; result: var string; state: var int;
         # while (d-1) > (state and 1) and result[d-1] in {DirSep, AltSep}: dec d
         # but right now we instead handle it inside os.joinPath
 
-        ## strip path component: foo/bar => foo
+        # strip path component: foo/bar => foo
         while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
           dec d
         if d > 0:
