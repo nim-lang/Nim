@@ -10,12 +10,12 @@ block:
   doAssert a.addr == b.addr
 
   doAssert not compiles(block:
-     # redeclaration not allowed
+    # redeclaration not allowed
     var foo = 0
     var foo {.byaddr.} = s[0])
 
   doAssert not compiles(block:
-     # ditto
+    # ditto
     var foo {.byaddr.} = s[0]
     var foo {.byaddr.} = s[0])
 
