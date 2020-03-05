@@ -1298,6 +1298,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
+          # fix bug #5170: ensure locally scoped object types get a unique name:
+          if s.typ.kind == tyObject and not isTopLevel(c): incl(s.flags, sfGenSym)
   #instAllTypeBoundOp(c, n.info)
 
 
