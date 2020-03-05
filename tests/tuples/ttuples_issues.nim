@@ -75,18 +75,3 @@ block t1986:
     (var1: test(), var2: 100'u32),
     (var1: test(), var2: 192'u32)
   ]
-
-block t12704:
-  const a = $("a", "b")
-  proc fun() =
-    const str = $int
-    let b = $(str, "asdf")
-  fun()
-
-import std/typetraits
-block t12704_bis:
-  const a = $("a", "b")
-  proc fun() =
-    const str = name(int)
-    let b = $(str, "asdf")
-  fun()
