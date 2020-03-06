@@ -1,5 +1,5 @@
 discard """
-  output: '''Welcome to LoopTesterApp, Nim edition
+  outputsub: '''Welcome to LoopTesterApp, Nim edition
 Constructing Simple CFG...
 15000 dummy loops
 Constructing CFG...
@@ -434,7 +434,7 @@ proc run(self: var LoopTesterApp): BasicBlock =
 
 proc main =
   var l = newLoopTesterApp()
-  when defined(trackCycles):
+  when declared(thinout):
     thinout l.run
   else:
     discard l.run
@@ -445,8 +445,7 @@ let mem = getOccupiedMem()
 let t0 = epochTime()
 main()
 
-when defined(gcOrc):
-  echo "STILL LEFT ", formatSize(getOccupiedMem() - mem), " ", formatSize(getMaxMem())
-  #doAssert getOccupiedMem() == mem
+echo "Mem ", formatSize(getOccupiedMem() - mem)
+#doAssert getOccupiedMem() == mem
 
 echo("Completed in " & $(epochTime() - t0) & "s. Success!")
