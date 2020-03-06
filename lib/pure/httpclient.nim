@@ -53,6 +53,7 @@
 ##   echo client.postContent("http://validator.w3.org/check", multipart=data)
 ##
 ## To stream files from disk when performing the request, use ``addFiles``.
+##
 ## **Note:** This will allocate a new ``Mimetypes`` database every time you call
 ## it, you can pass your own via the ``mimeDb`` parameter to avoid this.
 ##
@@ -332,10 +333,13 @@ proc `$`*(data: MultipartData): string {.since: (1, 1).} =
     result.add("\n\n" & entry.content & "\n")
 
 proc add*(p: MultipartData, name, content: string, filename: string = "",
-          contentType: string = "", stream = true) =
-  ## Add a value to the multipart data. Raises a ``ValueError`` exception if
+          contentType: string = "", useStream = true) =
+  ## Add a value to the multipart data.
+  ##
+  ## When ``useStream`` is ``false``, the file will be read into memory.
+  ##
+  ## Raises a ``ValueError`` exception if
   ## ``name``, ``filename`` or ``contentType`` contain newline characters.
-  ## When ``stream`` is ``false``, the file will be read into memory.
   if {'\c', '\L'} in name:
     raise newException(ValueError, "name contains a newline character")
   if {'\c', '\L'} in filename:
@@ -350,7 +354,7 @@ proc add*(p: MultipartData, name, content: string, filename: string = "",
   )
 
   if entry.isFile:
-    entry.isStream = stream
+    entry.isStream = useStream
     entry.filename = filename
     entry.contentType = contentType
 
@@ -378,7 +382,7 @@ proc newMultipartData*(xs: MultipartEntries): MultipartData =
     result.add(entry.name, entry.content)
 
 proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
-               mimeDb = newMimetypes(), stream = true):
+               mimeDb = newMimetypes(), useStream = true):
                MultipartData {.discardable.} =
   ## Add files to a multipart data object. The files will be streamed from disk
   ## when the request is being made. When ``stream`` is ``false``, the files are
@@ -394,8 +398,8 @@ proc addFiles*(p: MultipartData, xs: openArray[tuple[name, file: string]],
     let (_, fName, ext) = splitFile(file)
     if ext.len > 0:
       contentType = mimeDb.getMimetype(ext[1..ext.high], "")
-    let content = if stream: file else: readFile(file).string
-    p.add(name, content, fName & ext, contentType, stream=stream)
+    let content = if useStream: file else: readFile(file).string
+    p.add(name, content, fName & ext, contentType, useStream = useStream)
   result = p
 
 proc `[]=`*(p: MultipartData, name, content: string) =
@@ -414,7 +418,7 @@ proc `[]=`*(p: MultipartData, name: string,
   ## .. code-block:: Nim
   ##   data["uploaded_file"] = ("test.html", "text/html",
   ##     "<html><head></head><body><p>test</p></body></html>")
-  p.add(name, file.content, file.name, file.contentType, stream = false)
+  p.add(name, file.content, file.name, file.contentType, useStream = false)
 
 proc getBoundary(p: MultipartData): string =
   if p == nil or p.content.len == 0: return
@@ -478,33 +482,28 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string, headers: HttpHeaders,
     result.add($modifiedUrl)
 
   # HTTP/1.1\c\l
-  result.add(" HTTP/1.1" & cl)
+  result.add(" HTTP/1.1" & httpNewLine)
 
   # Host header.
   if not headers.hasKey("Host"):
     if requestUrl.port == "":
-      add(result, "Host: " & requestUrl.hostname & cl)
+      add(result, "Host: " & requestUrl.hostname & httpNewLine)
     else:
-      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & cl)
+      add(result, "Host: " & requestUrl.hostname & ":" & requestUrl.port & httpNewLine)
 
   # Connection header.
   if not headers.hasKey("Connection"):
-    add(result, "Connection: Keep-Alive" & cl)
-
-  # Content length header.
-  const requiresBody = ["POST", "PUT", "PATCH"]
-  if upperMethod in requiresBody and not headers.hasKey("Content-Length"):
-    add(result, "Content-Length: 0" & cl)
+    add(result, "Connection: Keep-Alive" & httpNewLine)
 
   # Proxy auth header.
   if not proxy.isNil and proxy.auth != "":
     let auth = base64.encode(proxy.auth)
-    add(result, "Proxy-Authorization: basic " & auth & cl)
+    add(result, "Proxy-Authorization: basic " & auth & httpNewLine)
 
   for key, val in headers:
-    add(result, key & ": " & val & cl)
+    add(result, key & ": " & val & httpNewLine)
 
-  add(result, cl)
+  add(result, httpNewLine)
 
 type
   ProgressChangedProc*[ReturnType] =
@@ -774,7 +773,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
       # We've been disconnected.
       client.close()
       break
-    if line == cl:
+    if line == httpNewLine:
       fullyRead = true
       break
     if not parsedStatus:
@@ -901,22 +900,18 @@ proc readFileSizes(client: HttpClient | AsyncHttpClient,
       entry.fileSize = entry.content.len
       continue
 
-    when client is AsyncHttpClient:
-      var file = openAsync(entry.content)
-      let fileSize = getFileSize(file)
-      file.close()
-    else:
-      let fileSize = getFileSize(entry.content)
+    # TODO: look into making getFileSize work with async
+    let fileSize = getFileSize(entry.content)
     entry.fileSize = fileSize
 
 proc format(entry: MultipartEntry, boundary: string): string =
-  result = "--" & boundary & cl
+  result = "--" & boundary & httpNewLine
   result.add("Content-Disposition: form-data; name=\"" & entry.name & "\"")
   if entry.isFile:
-    result.add("; filename=\"" & entry.filename & "\"" & cl)
-    result.add("Content-Type: " & entry.contentType & cl)
+    result.add("; filename=\"" & entry.filename & "\"" & httpNewLine)
+    result.add("Content-Type: " & entry.contentType & httpNewLine)
   else:
-    result.add(cl & cl & entry.content)
+    result.add(httpNewLine & httpNewLine & entry.content)
 
 proc format(client: HttpClient | AsyncHttpClient,
             multipart: MultipartData): Future[seq[string]] {.multisync.} =
@@ -927,9 +922,9 @@ proc format(client: HttpClient | AsyncHttpClient,
 
   var length: int64
   for entry in multipart.content:
-    result.add(format(entry, bound) & cl)
+    result.add(format(entry, bound) & httpNewLine)
     if entry.isFile:
-      length += entry.fileSize + cl.len
+      length += entry.fileSize + httpNewLine.len
 
   result.add "--" & bound & "--"
 
@@ -947,16 +942,6 @@ proc override(fallback, override: HttpHeaders): HttpHeaders =
   for k, vs in override.table:
     result[k] = vs
 
-proc getHeaders(client: HttpClient | AsyncHttpClient, headers: HttpHeaders,
-                requestUrl: Uri, httpMethod: string): string =
-  let effectiveHeaders = client.headers.override(headers)
-
-  if not effectiveHeaders.hasKey("user-agent") and client.userAgent != "":
-    effectiveHeaders["User-Agent"] = client.userAgent
-
-  result = generateHeaders(requestUrl, httpMethod, effectiveHeaders,
-                           client.proxy)
-
 proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
                 body = "", headers: HttpHeaders = nil,
                 multipart: MultipartData = nil): Future[Response | AsyncResponse]
@@ -970,7 +955,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
   var data: seq[string]
   if multipart != nil and multipart.content.len > 0:
     data = await client.format(multipart)
-  elif body.len > 0:
+  else:
     client.headers["Content-Length"] = $body.len
 
   when client is AsyncHttpClient:
@@ -981,8 +966,13 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
 
   await newConnection(client, requestUrl)
 
-  let headersString = client.getHeaders(headers, requestUrl, httpMethod)
-  await client.socket.send(headersString)
+  let newHeaders = client.headers.override(headers)
+  if not newHeaders.hasKey("user-agent") and client.userAgent.len > 0:
+    newHeaders["User-Agent"] = client.userAgent
+
+  let headerString = generateHeaders(requestUrl, httpMethod, newHeaders,
+                                     client.proxy)
+  await client.socket.send(headerString)
 
   if data.len > 0:
     var buffer: string
@@ -996,7 +986,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
         await client.socket.sendFile(entry)
       else:
         await client.socket.send(entry.content)
-      buffer.add cl
+      buffer.add httpNewLine
     # send the rest and the last boundary
     await client.socket.send(buffer & data[^1])
   elif body.len > 0:
