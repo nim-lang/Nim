@@ -31,6 +31,8 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
+  RuneRange* = object
+    `from`, to: Rune
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
@@ -1256,7 +1258,11 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nuc$1Str",
     elif rune.isWhiteSpace():
       firstRune = true
 
+proc `..`(`from`: Rune, to: Rune): RuneRange =
+  RuneRange(`from`: `from`, to: to)
 
+proc contains(range: RuneRange, rune: Rune): bool =
+  range.from <=% rune and rune <=% range.to
 
 when isMainModule:
 
@@ -1471,3 +1477,6 @@ when isMainModule:
     doAssert swapCase("ⱥbCd") == "ȺBcD"
     doAssert swapCase("XyꟆaB") == "xYᶎAb"
     doAssert swapCase("aᵹcᲈd") == "AꝽCꙊD"
+
+  block rangeTests:
+    doAssert "\u{20000}".asRune in "\u{10000}".asRune .. "\u{10FFFF}".asRune
