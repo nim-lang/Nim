@@ -11,7 +11,7 @@
 
 import strutils, intsets, tables, ropes, db_sqlite, msgs, options,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees, condsyms, nversion, pathutils
+  btrees, trees, condsyms, nversion, pathutils, types
 
 ## Todo:
 ## - Add some backend logic dealing with generics.
@@ -371,7 +371,15 @@ proc storeSym(g: ModuleGraph; s: PSym) =
   db.exec(sql"insert into syms(nimid, module, name, data, exported) values (?, ?, ?, ?, ?)",
     s.id, mid, s.name.s, buf, ord(sfExported in s.flags))
 
+proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
+  const
+    query = sql"select nimid from types where nimid = ? limit 1"
+  result = db.getValue(query, nimid) == $nimid
+  echo "exiting from type already stored with result: ", result
+
 proc storeType(g: ModuleGraph; t: PType) =
+  if typeAlreadyStored(g, t.uniqueId):
+    raise newException(Defect, "rewrite of type id " & $t.uniqueId)
   var buf = newStringOfCap(160)
   encodeType(g, t, buf)
   let m = if t.owner != nil: getModule(t.owner) else: nil
@@ -919,7 +927,8 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
   replay(g, module, result)
 
 proc setupModuleCache*(g: ModuleGraph) =
-  if g.config.symbolFiles == disabledSf: return
+  if g.config.symbolFiles == disabledSf:
+    return
   g.recordStmt = recordStmt
   let dbfile = getNimcacheDir(g.config) / RelativeFile"rodfiles.db"
   if g.config.symbolFiles == writeOnlySf:

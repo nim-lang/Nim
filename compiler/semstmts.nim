@@ -1357,7 +1357,7 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
               assert s.typ != nil
               assignType(s.typ, t)
               s.typ.id = t.id     # same id
-        checkConstructedType(c.config, s.info, s.typ)
+        checkConstructedType(c.graph, c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
           # fix bug #5170: ensure locally scoped object types get a unique name:

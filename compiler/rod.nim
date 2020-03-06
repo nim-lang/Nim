@@ -24,6 +24,8 @@ when not nimIncremental:
 
   template registerModule*(g: ModuleGraph; module: PSym) = discard
 
+  template typeAlreadyStored*(g: ModuleGraph; nimid: int): bool = false
+
 else:
   include rodimpl
 
