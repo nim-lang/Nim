@@ -66,10 +66,15 @@ block: # we use Table as groundtruth, it's well tested elsewhere
       doAssert t.mgetOrPut(i, -2) == -2
       doAssert t.mget(i) == -2
 
+    var numOK = 0
     for i in 0..<n4:
       let ok = i in t0
+      if ok:
+        numOK.inc
       if not ok: t0[i] = -i
       doAssert t.hasKeyOrPut(i, -i) == ok
+    doAssert numOK > 0
+    doAssert numOK < n4
 
     checkEquals()
 
@@ -87,17 +92,3 @@ block: # we use Table as groundtruth, it's well tested elsewhere
   var t0: Table[int, int]
   testDel(t, t0)
   deinitSharedTable(t)
-
-block: # CHECKME:redundant w above?
-  let n = 100
-  let n2 = n * 2
-  for i in 0..<n:
-    table[i] = i
-    assert table.hasKeyOrPut(i, i)
-
-  for i in n..<n2:
-    assert not table.hasKeyOrPut(i, i)
-
-  for i in 0..<n2:
-    assert table.mgetOrPut(i, i) == i
-    assert table.mget(i) == i
