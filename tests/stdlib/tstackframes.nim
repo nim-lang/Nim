@@ -12,8 +12,8 @@ tstackframes.nim(35)     main2 ("main2", 4, 2)
 tstackframes.nim(35)     main2 ("main2", 3, 3)
 tstackframes.nim(34)     main2 ("main2", 2, 4)
 tstackframes.nim(33)     bar ("bar ",)
-assertions.nim(27)       failedAssertImpl
 """
+
 
 
 
@@ -30,7 +30,7 @@ proc main2(n: int) =
   setFrameMsg $("main2", n, count)
   proc bar() =
     setFrameMsg $("bar ",)
-    doAssert n >= 3
+    if n < 3: raise newException(CatchableError, "on purpose")
   bar()
   main2(n-1)
 
@@ -39,7 +39,7 @@ proc main() =
   setFrameMsg $("main", )
   try:
     main2(5)
-  except AssertionError:
+  except CatchableError:
     main1(10) # goes deep and then unwinds; sanity check to ensure `setFrameMsg` from inside
               # `main1` won't invalidate the stacktrace; if StackTraceEntry.frameMsg
               # were a reference instead of a copy, this would fail.
