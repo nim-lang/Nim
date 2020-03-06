@@ -1258,7 +1258,7 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nuc$1Str",
     elif rune.isWhiteSpace():
       firstRune = true
 
-proc `..`(`from`: Rune, to: Rune): RuneRange =
+proc `..`(`from`, to: Rune): RuneRange =
   RuneRange(`from`: `from`, to: to)
 
 proc contains(range: RuneRange, rune: Rune): bool =
