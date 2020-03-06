@@ -385,6 +385,12 @@ proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
     query = sql"select nimid from types where nimid = ? limit 1"
   result = db.getValue(query, nimid) == $nimid
 
+proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
+  const
+    query = sql"select nimid from types where nimid = ? limit 1"
+  result = db.getValue(query, nimid) == $nimid
+  echo "exiting from type already stored with result: ", result
+
 proc storeType(g: ModuleGraph; t: PType) =
   if typeAlreadyStored(g, t.uniqueId):
     raise newException(Defect, "rewrite of type id " & $t.uniqueId)
