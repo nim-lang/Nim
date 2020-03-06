@@ -127,26 +127,33 @@ proc pop(s: var CellSeq): (ptr pointer, PNimType) =
 # ----------------------------------------------------------------------------
 
 proc trace(p: pointer; desc: PNimType; j: var GcEnv) {.inline.} =
+  when false:
+    cprintf("[Trace] desc: %p %p\n", desc, p)
+    cprintf("[Trace] trace: %p\n", desc.traceImpl)
   if desc.traceImpl != nil:
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 proc nimTraceRef(p: ptr pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  when false:
+    cprintf("[Trace] raw: %p\n", p)
+    cprintf("[Trace] deref: %p\n", p[])
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, desc)
 
 proc nimTraceRefDyn(p: ptr pointer; env: pointer) {.compilerRtl.} =
+  when false:
+    cprintf("[TraceDyn] raw: %p\n", p)
+    cprintf("[TraceDyn] deref: %p\n", p[])
   if p[] != nil:
-    let desc = cast[ptr PNimType](p)[]
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(p, desc)
+    j.traceStack.add(p, cast[ptr PNimType](p[])[])
 
 proc breakCycles(s: Cell; desc: PNimType) =
   var j: GcEnv
   init j.traceStack
   s.setColor colRed
-  var p = s +! sizeof(RefHeader)
-  trace(p, desc, j)
+  trace(s +! sizeof(RefHeader), desc, j)
   while j.traceStack.len > 0:
     let (u, desc) = j.traceStack.pop()
     let p = u[]
@@ -157,6 +164,7 @@ proc breakCycles(s: Cell; desc: PNimType) =
     else:
       if (t.rc shr rcShift) > 0:
         dec t.rc, rcIncrement
+        # mark as a link that the produced destructor does not have to follow:
         u[] = nil
       else:
         cprintf("[Bug] %p\n", t)
