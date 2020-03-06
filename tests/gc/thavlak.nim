@@ -435,7 +435,7 @@ proc run(self: var LoopTesterApp): BasicBlock =
 proc main =
   var l = newLoopTesterApp()
   when defined(trackCycles):
-    spanningTree l.run
+    thinout l.run
   else:
     discard l.run
 
@@ -446,8 +446,7 @@ let t0 = epochTime()
 main()
 
 when defined(gcOrc):
-  when defined(trackCycles):
-    echo "STILL LEFT ", formatSize(getOccupiedMem() - mem), " ", formatSize(getMaxMem())
-    #doAssert getOccupiedMem() == mem
+  echo "STILL LEFT ", formatSize(getOccupiedMem() - mem), " ", formatSize(getMaxMem())
+  #doAssert getOccupiedMem() == mem
 
 echo("Completed in " & $(epochTime() - t0) & "s. Success!")

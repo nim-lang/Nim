@@ -44,6 +44,7 @@ proc serve(server: PAsyncHttpServer): PFutureBase =
     result = x()
     if result.callback != nil:
       result.callback()
+    thinout(result)
 
 let mem = getOccupiedMem()
 

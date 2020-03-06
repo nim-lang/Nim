@@ -156,24 +156,22 @@ proc breakCycles(s: Cell; desc: PNimType) =
       trace(p, desc, j)
     else:
       if (t.rc shr rcShift) > 0:
-        cprintf("[YES!] %p\n", t)
         dec t.rc, rcIncrement
+        u[] = nil
       else:
-        cprintf("[Come on!] %p\n", t)
-      u[] = nil
+        cprintf("[Bug] %p\n", t)
   deinit j.traceStack
 
-proc spanningTree*[T](x: ref T) {.inline.} =
+proc thinout*[T](x: ref T) {.inline.} =
   ## turn the subgraph starting with `x` into its spanning tree by
   ## `nil`'ing out any pointers that would harm the spanning tree
   ## structure. Any back pointers that introduced cycles
   ## and thus would keep the graph from being freed are `nil`'ed.
   ## This is a form of cycle collection that works well with Nim's ARC
   ## and its associated cost model.
-  proc getTypeInfo[T](x: T): PNimType {.magic: "GetTypeInfo", noSideEffect, locks: 0.}
+  proc getDynamicTypeInfo[T](x: T): PNimType {.magic: "GetTypeInfo", noSideEffect, locks: 0.}
 
-  breakCycles(head(cast[pointer](x)), getTypeInfo(x[]))
-  # XXX Use the dynamic type for this!
+  breakCycles(head(cast[pointer](x)), getDynamicTypeInfo(x[]))
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
