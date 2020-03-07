@@ -65,10 +65,7 @@ type
 
 template color(c): untyped = c.rc and colorMask
 template setColor(c, col) =
-  when col == colGreen:
-    c.rc = c.rc and not colorMask
-  else:
-    c.rc = c.rc and not colorMask or col
+  c.rc = c.rc and not colorMask or col
 
 proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   let h = head(p)
@@ -149,17 +146,24 @@ proc nimTraceRefDyn(p: ptr pointer; env: pointer) {.compilerRtl.} =
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, cast[ptr PNimType](p[])[])
 
+var markerGeneration: int
+
 proc breakCycles(s: Cell; desc: PNimType) =
+  let markerColor = if (markerGeneration and 1) == 0: colRed
+                    else: colYellow
+  atomicInc markerGeneration
+
   var j: GcEnv
   init j.traceStack
-  s.setColor colRed
+  s.setColor markerColor
   trace(s +! sizeof(RefHeader), desc, j)
+
   while j.traceStack.len > 0:
     let (u, desc) = j.traceStack.pop()
     let p = u[]
     let t = head(p)
-    if t.color != colRed:
-      t.setColor colRed
+    if t.color != markerColor:
+      t.setColor markerColor
       trace(p, desc, j)
     else:
       if (t.rc shr rcShift) > 0:
@@ -167,7 +171,7 @@ proc breakCycles(s: Cell; desc: PNimType) =
         # mark as a link that the produced destructor does not have to follow:
         u[] = nil
       else:
-        cprintf("[Bug] %p\n", t)
+        cprintf("[Bug] %p %s\n", t, desc.name)
   deinit j.traceStack
 
 proc thinout*[T](x: ref T) {.inline.} =
