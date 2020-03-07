@@ -441,6 +441,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
+{.push stackTrace: off.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
   let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
@@ -448,6 +449,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
+{.pop.}
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1

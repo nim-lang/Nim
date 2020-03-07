@@ -24,6 +24,12 @@ __AVR__
 #ifndef NIMBASE_H
 #define NIMBASE_H
 
+#ifndef NIM_CGEN_VERSION
+  // We increment `NIM_CGEN_VERSION` each time a change is needed, this is
+  // used to make bootstrapping work when changes are needed in this file.
+  #define NIM_CGEN_VERSION 0
+#endif
+
 /*------------ declaring a custom attribute to support using LLVM's Address Sanitizer ------------ */
 
 /*
@@ -481,15 +487,14 @@ typedef char* NCSTRING;
 #  endif
 #endif
 
-typedef struct TFrame_ TFrame;
-struct TFrame_ {
-  TFrame* prev;
-  NCSTRING procname;
-  NI line;
-  NCSTRING filename;
-  NI16 len;
-  NI16 calldepth;
-};
+#if NIM_CGEN_VERSION < 1
+  typedef struct {
+    NCSTRING procname;
+    NI line;
+    NCSTRING filename;
+    NI16 len;
+  } TFrame;
+#endif
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
 

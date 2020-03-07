@@ -935,7 +935,7 @@ proc genRestoreFrameAfterException(p: BProc) =
   if optStackTrace in p.module.config.options:
     if hasCurFramePointer notin p.flags:
       p.flags.incl hasCurFramePointer
-      p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;$n", []))
+      p.procSec(cpsLocals).add(ropecg(p.module, "\tNU _nimCurFrame;$n", []))
       p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();$n", []))
     linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);$n", [])
 

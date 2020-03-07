@@ -618,16 +618,16 @@ include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
-  $1  define nimfr_(proc, file) \
-      TFrame FR_; \
-      FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = 0; #nimFrame(&FR_);
+  $1  define nimfr_(procname, filename) \
+      #nimFrame(procname, filename);
 
   $1  define nimfrs_(proc, file, slots, length) \
       struct {TFrame* prev;NCSTRING procname;NI line;NCSTRING filename; NI len; VarSlot s[slots];} FR_; \
       FR_.procname = proc; FR_.filename = file; FR_.line = 0; FR_.len = length; #nimFrame((TFrame*)&FR_);
 
   $1  define nimln_(n, file) \
-      FR_.line = n; FR_.filename = file;
+      // FR_.line = n; FR_.filename = file;
+      // TODO
   """
   if p.module.s[cfsFrameDefines].len == 0:
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
@@ -1634,7 +1634,7 @@ proc genInitCode(m: BModule) =
     # Give this small function its own scope
     prc.addf("{$N", [])
     # Keep a bogus frame in case the code needs one
-    prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
+    # prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
 
     writeSection(preInitProc, cpsLocals)
     writeSection(preInitProc, cpsInit, m.hcrOn)
