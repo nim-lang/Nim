@@ -427,6 +427,8 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
+const NIM_CGEN_VERSION = 1
+
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
   addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
@@ -449,6 +451,8 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
     else: addOpt(result, getOptSize(conf, conf.cCompiler))
   let key = nimname & ".always"
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+
+  result.add " -DNIM_CGEN_VERSION=$1 " % $NIM_CGEN_VERSION
 
 proc getCompileOptions(conf: ConfigRef): string =
   result = cFileSpecificOptions(conf, "__dummy__", "__dummy__")

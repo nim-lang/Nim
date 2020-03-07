@@ -441,6 +441,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 
 {.push overflowChecks: on.}
+{.push stackTrace: off.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
   let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
@@ -448,6 +449,7 @@ proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
+{.pop.}
 {.pop.}
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =

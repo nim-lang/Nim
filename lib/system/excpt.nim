@@ -12,6 +12,8 @@
 
 import std/private/miscdollars
 
+proc c_printf(frmt: cstring): cint {.importc: "printf", header: "<stdio.h>", varargs, discardable.} # PRTEMP
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
@@ -59,8 +61,23 @@ type
 
 when NimStackTraceMsgs:
   var frameMsgBuf* {.threadvar.}: string
+type FrameIndex = uint
+  # uint so it's unchecked? or push/pop overflow for this?
+  # maybe use distinct?
+
+type FrameData = object
+  nimFrameGuard: bool
+  tframesCap: int
+  frameIndex: FrameIndex
+    # more efficient than just relying on tframes.len, eg for tframes.setLen(len-1) we don't want to do any checks not call dtor etc
+  tframes: ptr UncheckedArray[TFrame]
+  # tframes* array[1000, TFrame]
+  # tframes: seq[TFrame]
+
 var
-  framePtr {.threadvar.}: PFrame
+  # frameData {.threadvar.}: FrameData
+  frameData {.threadvar, exportc: "c_frameData".}: FrameData
+
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
@@ -68,22 +85,22 @@ var
   gcFramePtr {.threadvar.}: GcFrame
 
 type
-  FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
+  FrameState = tuple[gcFramePtr: GcFrame, frameIndex: FrameIndex,
                      excHandler: PSafePoint, currException: ref Exception]
 
 proc getFrameState*(): FrameState {.compilerRtl, inl.} =
-  return (gcFramePtr, framePtr, excHandler, currException)
+  return (gcFramePtr, frameData.frameIndex, excHandler, currException)
 
 proc setFrameState*(state: FrameState) {.compilerRtl, inl.} =
   gcFramePtr = state.gcFramePtr
-  framePtr = state.framePtr
+  frameData.frameIndex = state.frameIndex
   excHandler = state.excHandler
   currException = state.currException
 
-proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
+proc getFrame*(): FrameIndex {.compilerRtl, inl.} = frameData.frameIndex
 
 proc popFrame {.compilerRtl, inl.} =
-  framePtr = framePtr.prev
+  frameData.frameIndex.dec
 
 when false:
   proc popFrameOfAddr(s: PFrame) {.compilerRtl.} =
@@ -97,8 +114,8 @@ when false:
           break
         it = it.prev
 
-proc setFrame*(s: PFrame) {.compilerRtl, inl.} =
-  framePtr = s
+proc setFrame*(s: FrameIndex) {.compilerRtl, inl.} =
+  frameData.frameIndex = s
 
 proc getGcFrame*(): GcFrame {.compilerRtl, inl.} = gcFramePtr
 proc popGcFrame*() {.compilerRtl, inl.} = gcFramePtr = gcFramePtr.prev
@@ -202,7 +219,7 @@ when defined(nativeStacktrace) and nativeStackTraceSupported:
 
 when hasSomeStackTrace and not hasThreadSupport:
   var
-    tempFrames: array[0..127, PFrame] # should not be alloc'd on stack
+    tempFrames: array[0..127, FrameIndex] # should not be alloc'd on stack
 
 const
   reraisedFromBegin = -10
@@ -211,13 +228,13 @@ const
 template reraisedFrom(z): untyped =
   StackTraceEntry(procname: nil, line: z, filename: nil)
 
-proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
+proc auxWriteStackTrace(f: FrameIndex; s: var seq[StackTraceEntry]) =
   var
     it = f
     i = 0
-  while it != nil:
+  while it != 0:
     inc(i)
-    it = it.prev
+    it.dec
   var last = i-1
   when true: # not defined(gcDestructors):
     if s.len == 0:
@@ -226,21 +243,21 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
       last = s.len + i - 1
       s.setLen(last+1)
   it = f
-  while it != nil:
-    s[last] = StackTraceEntry(procname: it.procname,
-                              line: it.line,
-                              filename: it.filename)
+  while it != 0:
+    s[last] = StackTraceEntry(procname: frameData.tframes[it].procname,
+                              line: frameData.tframes[it].line,
+                              filename: frameData.tframes[it].filename)
     when NimStackTraceMsgs:
-      let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
-      if it.frameMsgLen > first:
-        s[last].frameMsg.setLen(it.frameMsgLen - first)
+      let first = frameData.tframes[it-1].frameMsgLen
+      if frameData.tframes[it].frameMsgLen > first:
+        s[last].frameMsg.setLen(frameData.tframes[it].frameMsgLen - first)
         # somehow string slicing not available here
-        for i in first .. it.frameMsgLen-1:
+        for i in first .. frameData.tframes[it].frameMsgLen-1:
           s[last].frameMsg[i-first] = frameMsgBuf[i]
-    it = it.prev
+    it.dec
     dec last
 
-template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
+template addFrameEntry(s: var string, f: StackTraceEntry|TFrame) = # TODO: PFrame?
   var oldLen = s.len
   s.toLocation(f.filename, f.line, 0)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
@@ -262,10 +279,10 @@ proc `$`(s: seq[StackTraceEntry]): string =
 
 when hasSomeStackTrace:
 
-  proc auxWriteStackTrace(f: PFrame, s: var string) =
+  proc auxWriteStackTrace(f: FrameIndex, s: var string) =
     when hasThreadSupport:
       var
-        tempFrames: array[0..127, PFrame] # but better than a threadvar
+        tempFrames: array[127, FrameIndex] # but better than a threadvar
     const
       firstCalls = 32
     var
@@ -273,37 +290,37 @@ when hasSomeStackTrace:
       i = 0
       total = 0
     # setup long head:
-    while it != nil and i <= high(tempFrames)-firstCalls:
+    while it != 0 and i <= high(tempFrames)-firstCalls:
       tempFrames[i] = it
       inc(i)
       inc(total)
-      it = it.prev
+      it.dec
     # go up the stack to count 'total':
     var b = it
-    while it != nil:
+    while it != 0:
       inc(total)
-      it = it.prev
+      it.dec
     var skipped = 0
     if total > len(tempFrames):
       # skip N
       skipped = total-i-firstCalls+1
       for j in 1..skipped:
-        if b != nil: b = b.prev
+        if b != 0: b.dec
       # create '...' entry:
-      tempFrames[i] = nil
+      tempFrames[i] = 0 # CHECKME
       inc(i)
     # setup short tail:
-    while b != nil and i <= high(tempFrames):
+    while b != 0 and i <= high(tempFrames):
       tempFrames[i] = b
       inc(i)
-      b = b.prev
+      b.dec
     for j in countdown(i-1, 0):
-      if tempFrames[j] == nil:
+      if tempFrames[j] == 0:
         add(s, "(")
         add(s, $skipped)
         add(s, " calls omitted) ...\n")
       else:
-        addFrameEntry(s, tempFrames[j])
+        addFrameEntry(s, frameData.tframes[tempFrames[j]])
 
   proc stackTraceAvailable*(): bool
 
@@ -312,11 +329,11 @@ when hasSomeStackTrace:
       add(s, "Traceback (most recent call last, using override)\n")
       auxWriteStackTraceWithOverride(s)
     elif NimStackTrace:
-      if framePtr == nil:
-        add(s, "No stack traceback available\n")
+      if frameData.frameIndex == 0:
+        add(s, "No stack traceback available v2\n")
       else:
         add(s, "Traceback (most recent call last)\n")
-        auxWriteStackTrace(framePtr, s)
+        auxWriteStackTrace(frameData.frameIndex, s)
     elif defined(nativeStackTrace) and nativeStackTraceSupported:
       add(s, "Traceback from system (most recent call last)\n")
       auxWriteStackTraceWithBacktrace(s)
@@ -325,7 +342,7 @@ when hasSomeStackTrace:
 
   proc rawWriteStackTrace(s: var seq[StackTraceEntry]) =
     when NimStackTrace:
-      auxWriteStackTrace(framePtr, s)
+      auxWriteStackTrace(frameData.frameIndex, s)
     else:
       s = @[]
 
@@ -333,7 +350,7 @@ when hasSomeStackTrace:
     when defined(nimStackTraceOverride):
       result = true
     elif NimStackTrace:
-      if framePtr == nil:
+      if frameData.frameIndex == 0:
         result = false
       else:
         result = true
@@ -472,9 +489,9 @@ proc raiseExceptionEx(e: sink(ref Exception), ename, procname, filename: cstring
     elif NimStackTrace:
       if e.trace.len == 0:
         rawWriteStackTrace(e.trace)
-      elif framePtr != nil:
+      elif frameData.frameIndex != 0:
         e.trace.add reraisedFrom(reraisedFromBegin)
-        auxWriteStackTrace(framePtr, e.trace)
+        auxWriteStackTrace(frameData.frameIndex, e.trace)
         e.trace.add reraisedFrom(reraisedFromEnd)
   else:
     if procname != nil and filename != nil:
@@ -510,6 +527,7 @@ proc writeStackTrace() =
     cast[proc (s: cstring) {.noSideEffect, tags: [], nimcall, raises: [].}](showErrorMessage)("No stack traceback available\n")
 
 proc getStackTrace(): string =
+  # c_printf("getStackTrace\n")
   when hasSomeStackTrace:
     result = ""
     rawWriteStackTrace(result)
@@ -546,16 +564,41 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
-proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
-  if framePtr == nil:
-    s.calldepth = 0
-    when NimStackTraceMsgs: s.frameMsgLen = 0
-  else:
-    s.calldepth = framePtr.calldepth+1
-    when NimStackTraceMsgs: s.frameMsgLen = framePtr.frameMsgLen
-  s.prev = framePtr
-  framePtr = s
-  if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
+proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+  #[
+  # TODO: compare apples to apples, eg wo nimLine only nimFrame
+  TODO: no need for filename when we have nimFrame, since filename won't change
+  SEE also:
+  codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
+  __attribute__ ((optimize(1)))
+  ]#
+    # c_printf "D20200308T182538\n"
+    frameData.tframes[frameData.frameIndex].filename = filename
+    frameData.tframes[frameData.frameIndex].line = line
+
+proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+  # TODO: how to ensure no GC used here? `noSideEffect and nogc` don't work for that
+  frameData.frameIndex.inc
+  # if frameData.nimFrameGuard:
+  #   c_printf("nimFrame:%*s %s:%s %lld\n", frameIndex, "", filename, procname, frameIndex)
+  #   return
+  # frameData.nimFrameGuard = true
+  if frameData.frameIndex == nimCallDepthLimit: callDepthLimitReached()
+  if frameData.frameIndex >= cast[FrameIndex](frameData.tframesCap):
+    const sz = sizeof(TFrame)
+    let old = frameData.tframesCap
+    if frameData.tframesCap == 0: frameData.tframesCap = 8
+    else: frameData.tframesCap+=frameData.tframesCap
+    proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
+    # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
+    frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
+  when NimStackTraceMsgs:
+    frameData.tframes[frameData.frameIndex].frameMsgLen = frameData.tframes[frameData.frameIndex-1].frameMsgLen
+  frameData.tframes[frameData.frameIndex].procname = procname
+  frameData.tframes[frameData.frameIndex].filename = filename
+  frameData.tframes[frameData.frameIndex].line = line
+  # tframes[frameIndex].len = 0 # CHECKME
+  # frameData.nimFrameGuard = false
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and

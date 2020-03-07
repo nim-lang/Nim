@@ -1913,15 +1913,15 @@ type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
   # keep in sync with nimbase.h `struct TFrame_`
-  TFrame* {.importc, nodecl, final.} = object ## The frame itself.
-    prev*: PFrame       ## Previous frame; used for chaining the call stack.
+  TFrame* {.final.} = object ## The frame itself.
+  # TFrame* {.final, importc, nodecl.} = object ## The frame itself.
     procname*: cstring  ## Name of the proc that is currently executing.
     line*: int          ## Line number of the proc that is currently executing.
     filename*: cstring  ## Filename of the proc that is currently executing.
-    len*: int16         ## Length of the inspectable slots.
-    calldepth*: int16   ## Used for max call depth checking.
+    # len*: int16         ## Length of the inspectable slots. PRTEMP
     when NimStackTraceMsgs:
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
+    # TODO: cache filename, procname
 
 when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
