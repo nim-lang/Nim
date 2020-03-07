@@ -48,6 +48,20 @@ import
 
 const weirdTarget = defined(nimscript) or defined(js)
 
+since (1, 1):
+  const
+    invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
+    ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
+    ## You can check if your filename contains these char and strip them for safety.
+    ## Mac bans ``':'``, Linux bans ``'/'``, Windows bans all others.
+    invalidFilenames* = [
+      "CON", "PRN", "AUX", "NUL",
+      "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+      "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"] ## \
+    ## Filenames that may be invalid across Linux, Windows, Mac, etc.
+    ## You can check if your filename match these and rename it for safety
+    ## (Currently all invalid filenames are from Windows only).
+
 when weirdTarget:
   discard
 elif defined(windows):
@@ -3194,6 +3208,32 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+  ## Returns true if ``filename`` is valid for crossplatform use.
+  ##
+  ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
+  ## You can pass full paths as argument too, but func only checks filenames.
+  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ##
+  ## .. code-block:: nim
+  ##   assert not isValidFilename(" foo")    ## Leading white space
+  ##   assert not isValidFilename("foo ")    ## Trailing white space
+  ##   assert not isValidFilename("foo.")    ## Ends with Dot
+  ##   assert not isValidFilename("con.txt") ## "CON" is invalid (Windows)
+  ##   assert not isValidFilename("OwO:UwU") ## ":" is invalid (Mac)
+  ##   assert not isValidFilename("aux.bat") ## "AUX" is invalid (Windows)
+  ##
+  # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
+  # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+  result = true
+  let f = filename.splitFile()
+  if unlikely(f.name.len + f.ext.len > maxLen or
+    f.name[0] == ' ' or f.name[^1] == ' ' or f.name[^1] == '.' or
+    find(f.name, invalidFilenameChars) != -1): return false
+  for invalid in invalidFilenames:
+    if cmpIgnoreCase(f.name, invalid) == 0: return false
+
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
@@ -3228,3 +3268,31 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
+
+
+  block isValidFilenameTest:
+    # Negative Tests.
+    doAssert not isValidFilename("abcd", maxLen = 2)
+    doAssert not isValidFilename("0123456789", maxLen = 8)
+    doAssert not isValidFilename("con")
+    doAssert not isValidFilename("aux")
+    doAssert not isValidFilename("prn")
+    doAssert not isValidFilename("OwO|UwU")
+    doAssert not isValidFilename(" foo")
+    doAssert not isValidFilename("foo ")
+    doAssert not isValidFilename("foo.")
+    doAssert not isValidFilename("con.txt")
+    doAssert not isValidFilename("aux.bat")
+    doAssert not isValidFilename("prn.exe")
+    doAssert not isValidFilename("nim>.nim")
+    doAssert not isValidFilename(" foo.log")
+    # Positive Tests.
+    doAssert isValidFilename("abcd", maxLen = 42.Positive)
+    doAssert isValidFilename("c0n")
+    doAssert isValidFilename("foo.aux")
+    doAssert isValidFilename("bar.prn")
+    doAssert isValidFilename("OwO_UwU")
+    doAssert isValidFilename("cron")
+    doAssert isValidFilename("ux.bat")
+    doAssert isValidFilename("nim.nim")
+    doAssert isValidFilename("foo.log")
