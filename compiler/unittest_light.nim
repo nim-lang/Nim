@@ -16,20 +16,19 @@ proc mismatch*[T](lhs: T, rhs: T): string =
   result.add "\n"
   result.add "lhs:{" & replaceInvisible(
       $lhs) & "}\nrhs:{" & replaceInvisible($rhs) & "}\n"
-  when compiles(lhs.len):
+  when T is (string | seq | array):
     if lhs.len != rhs.len:
       result.add "lhs.len: " & $lhs.len & " rhs.len: " & $rhs.len & "\n"
-    when compiles(lhs[0]):
-      var i = 0
-      while i < lhs.len and i < rhs.len:
-        if lhs[i] != rhs[i]: break
-        i.inc
-      result.add "first mismatch index: " & $i & "\n"
-      if i < lhs.len and i < rhs.len:
-        result.add "lhs[i]: {" & quoted($lhs[i]) & "}\nrhs[i]: {" & quoted(
-            $rhs[i]) & "}\n"
-      result.add "lhs[0..<i]:{" & replaceInvisible($lhs[
-          0..<i]) & "}"
+    var i = 0
+    while i < lhs.len and i < rhs.len:
+      if lhs[i] != rhs[i]: break
+      i.inc
+    result.add "first mismatch index: " & $i & "\n"
+    if i < lhs.len and i < rhs.len:
+      result.add "lhs[i]: {" & quoted($lhs[i]) & "}\nrhs[i]: {" & quoted(
+          $rhs[i]) & "}\n"
+    result.add "lhs[0..<i]:{" & replaceInvisible($lhs[
+        0..<i]) & "}"
 
 proc assertEquals*[T](lhs: T, rhs: T) =
   when false: # can be useful for debugging to see all that's fed to this.

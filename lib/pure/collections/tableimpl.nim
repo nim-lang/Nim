@@ -38,7 +38,7 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
   rawInsertImpl(t)
 
 template checkIfInitialized() =
-  when compiles(defaultInitialSize):
+  when defaultInitialSize > 0:
     if t.dataLen == 0:
       initImpl(t, defaultInitialSize)
 
@@ -101,29 +101,16 @@ template delImpl() {.dirty.} =
 
 template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
-    when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
+    when t.data is KeyValuePairSeq: # CountTable records don't contain a hcode
       t.data[i].hcode = 0
     t.data[i].key = default(type(t.data[i].key))
     t.data[i].val = default(type(t.data[i].val))
   t.counter = 0
 
-template ctAnd(a, b): bool =
-  # pending https://github.com/nim-lang/Nim/issues/13502
-  when a:
-    when b: true
-    else: false
-  else: false
-
 template initImpl(result: typed, size: int) =
-  when ctAnd(declared(SharedTable), type(result) is SharedTable):
-    init(result, size)
-  else:
-    assert isPowerOfTwo(size)
-    result.counter = 0
-    newSeq(result.data, size)
-    when compiles(result.first):
-      result.first = -1
-      result.last = -1
+  assert isPowerOfTwo(size)
+  result.counter = 0
+  newSeq(result.data, size)
 
 template insertImpl() = # for CountTable
   checkIfInitialized()

@@ -259,10 +259,7 @@ template get(t, key): untyped =
   var index = rawGet(t, key, hc)
   if index >= 0: result = t.data[index].val
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raise newException(KeyError, "key not found: " & $key)
 
 proc enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
@@ -1313,6 +1310,8 @@ proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, 
       a = initOrderedTable[int, string]()
       b = initOrderedTable[char, seq[int]]()
   initImpl(result, initialSize)
+  result.first = -1
+  result.last = -1
 
 proc `[]=`*[A, B](t: var OrderedTable[A, B], key: A, val: B) =
   ## Inserts a ``(key, value)`` pair into ``t``.

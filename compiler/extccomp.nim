@@ -996,12 +996,9 @@ template hashNimExe(): string = $secureHashFile(os.getAppFilename())
 proc writeJsonBuildInstructions*(conf: ConfigRef) =
   template lit(x: untyped) = f.write x
   template str(x: untyped) =
-    when compiles(escapeJson(x, buf)):
-      buf.setLen 0
-      escapeJson(x, buf)
-      f.write buf
-    else:
-      f.write escapeJson(x)
+    buf.setLen 0
+    escapeJson(x, buf)
+    f.write buf
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
     var i = 0
@@ -1038,7 +1035,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       pastStart = true
     lit "\L"
 
-  proc depfiles(conf: ConfigRef; f: File) =
+  proc depfiles(conf: ConfigRef; f: File; buf: var string) =
     var i = 0
     for it in conf.m.fileInfos:
       let path = it.fullPath.string
@@ -1075,7 +1072,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       lit ",\L\"cmdline\": "
       str conf.commandLine
       lit ",\L\"depfiles\":[\L"
-      depfiles(conf, f)
+      depfiles(conf, f, buf)
       lit "],\L\"nimexe\": \L"
       str hashNimExe()
       lit "\L"

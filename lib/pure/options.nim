@@ -422,11 +422,6 @@ when isMainModule:
       check some("a") != stringNone
       check intNone == intNone
 
-      when compiles(some("a") == some(5)):
-        check false
-      when compiles(none(string) == none(int)):
-        check false
-
     test "get with a default value":
       check(some("Correct").get("Wrong") == "Correct")
       check(stringNone.get("Correct") == "Correct")
@@ -486,7 +481,7 @@ when isMainModule:
 
       let tmp = option(intref)
       check(sizeof(tmp) == sizeof(ptr int))
-      
+
       var prc = proc (x: int): int = x + 1
       check(option(prc).isSome)
       prc = nil
@@ -513,4 +508,3 @@ when isMainModule:
     test "Ref type with overloaded `==`":
       let p = some(RefPerson.new())
       check p.isSome
-

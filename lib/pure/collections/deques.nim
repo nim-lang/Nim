@@ -69,9 +69,9 @@ template initImpl(result: typed, initialSize: int) =
   assert isPowerOfTwo(initialSize)
   result.mask = initialSize-1
   newSeq(result.data, initialSize)
-  
+
 template checkIfInitialized(deq: typed) =
-  when compiles(defaultInitialSize):
+  when defaultInitialSize > 0:
     if deq.mask == 0:
       initImpl(deq, defaultInitialSize)
 

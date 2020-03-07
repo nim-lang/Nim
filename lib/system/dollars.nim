@@ -65,6 +65,8 @@ else:
           return true
       return false
 
+type
+  SomePointer = ptr | ref | pointer
 
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
@@ -86,12 +88,8 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(": ")
     else:
       count.inc
-    when compiles($value):
-      when value isnot string and value isnot seq and compiles(value.isNil):
-        if value.isNil: result.add "nil"
-        else: result.addQuoted(value)
-      else:
-        result.addQuoted(value)
+    when x isnot SomePointer:
+      result.addQuoted(value)
       firstElement = false
     else:
       result.add("...")
@@ -111,7 +109,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     else:
       result.add(separator)
 
-    when value isnot string and value isnot seq and compiles(value.isNil):
+    when T is SomePointer:
       # this branch should not be necessary
       if value.isNil:
         result.add "nil"

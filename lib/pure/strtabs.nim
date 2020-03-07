@@ -139,10 +139,7 @@ template get(t: StringTableRef, key: string) =
   var index = rawGet(t, key)
   if index >= 0: result = t.data[index].val
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raise newException(KeyError, "key not found: " & key)
 
 proc len*(t: StringTableRef): int {.rtlFunc, extern: "nst$1".} =
   ## Returns the number of keys in `t`.

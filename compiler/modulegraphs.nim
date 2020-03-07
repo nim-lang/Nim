@@ -135,24 +135,14 @@ proc hash*(x: FileIndex): Hash {.borrow.}
 
 when defined(nimfind):
   template onUse*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onUsage != nil: c.c.graph.onUsage(c.c.graph, s, info)
-    else:
-      if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
+    if c.graph.onUsage != nil: c.graph.onUsage(c.graph, s, info)
 
   template onDef*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onDefinition != nil: c.c.graph.onDefinition(c.c.graph, s, info)
-    else:
-      if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
+    if c.graph.onDefinition != nil: c.graph.onDefinition(c.graph, s, info)
 
   template onDefResolveForward*(info: TLineInfo; s: PSym) =
-    when compiles(c.c.graph):
-      if c.c.graph.onDefinitionResolveForward != nil:
-        c.c.graph.onDefinitionResolveForward(c.c.graph, s, info)
-    else:
-      if c.graph.onDefinitionResolveForward != nil:
-        c.graph.onDefinitionResolveForward(c.graph, s, info)
+    if c.graph.onDefinitionResolveForward != nil:
+      c.graph.onDefinitionResolveForward(c.graph, s, info)
 
 else:
   template onUse*(info: TLineInfo; s: PSym) = discard

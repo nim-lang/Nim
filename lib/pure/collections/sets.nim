@@ -148,10 +148,7 @@ proc `[]`*[A](s: var HashSet[A], key: A): var A =
   var index = rawGet(s, key, hc)
   if index >= 0: result = s.data[index].key
   else:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raise newException(KeyError, "key not found: " & $key)
 
 proc contains*[A](s: HashSet[A], key: A): bool =
   ## Returns true if `key` is in `s`.

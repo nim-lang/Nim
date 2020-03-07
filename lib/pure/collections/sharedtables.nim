@@ -124,10 +124,7 @@ proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
     let hasKey = index >= 0
     if hasKey: result = t.data[index].val
   if not hasKey:
-    when compiles($key):
-      raise newException(KeyError, "key not found: " & $key)
-    else:
-      raise newException(KeyError, "key not found")
+    raise newException(KeyError, "key not found: " & $key)
 
 proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
