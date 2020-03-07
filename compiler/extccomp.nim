@@ -829,7 +829,7 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
 
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
-    execExternalProgram(conf, linkCmd, hintLinking)
+    execExternalProgram(conf, if optListCmd in conf.globalOptions or conf.verbosity > 1: linkCmd else: "", hintLinking)
 
 proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
   when defined(osx):
