@@ -1258,10 +1258,10 @@ proc isTitle*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nuc$1Str",
     elif rune.isWhiteSpace():
       firstRune = true
 
-proc `..`(`from`, to: Rune): RuneRange =
+proc `..`*(`from`, to: Rune): RuneRange {.noSideEffect, inline.} =
   RuneRange(`from`: `from`, to: to)
 
-proc contains(range: RuneRange, rune: Rune): bool =
+proc contains*(range: RuneRange, rune: Rune): bool =
   range.from <=% rune and rune <=% range.to
 
 when isMainModule:
@@ -1480,3 +1480,5 @@ when isMainModule:
 
   block rangeTests:
     doAssert "\u{20000}".asRune in "\u{10000}".asRune .. "\u{10FFFF}".asRune
+    doAssert "ň".asRune in "Ł".asRune .. "ž".asRune
+    doAssert "Ł".asRune notin "ł".asRune .. "ž".asRune
