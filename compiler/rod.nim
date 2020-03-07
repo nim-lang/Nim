@@ -13,7 +13,8 @@ import ast, idgen, lineinfos, incremental, modulegraphs, pathutils
 
 when not nimIncremental:
   template setupModuleCache*(g: ModuleGraph) = discard
-  template storeNode*(g: ModuleGraph; module: PSym; n: PNode) = discard
+  template storeNode*(g: ModuleGraph; module: PSym; n: PNode): int64 = 0
+  template storeSym*(g: ModuleGraph; module: PSym): int64 = 0
   template loadNode*(g: ModuleGraph; module: PSym): PNode = newNode(nkStmtList)
 
   proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile): (PSym, int) {.inline.} = (nil, getID())
