@@ -3210,6 +3210,7 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
 
 func isValidFilename*(path: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
   ## Returns true if ``path`` filename is valid for crossplatform use.
+  ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
   ## Uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` for checking.
   ##
