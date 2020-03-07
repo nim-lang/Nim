@@ -164,25 +164,30 @@ type
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile
-    snippets*: Table[int64, Snippet]
+    # index to where in each file section we've consumed ropes -> snippets
+    positions*: array[TCFileSection, int]
+    snippets*: Table[SqlId, Snippet]
 
-  Snippet* = object
-    id*: int64
+  SqlId = int64
+
+  Snippet* = ref object
+    id*: SqlId
     name*: string
     filename*: AbsoluteFile
     weak*: seq[Snippet]
     strong*: seq[Snippet]
     case kind*: TNodeKind
     of nkSym:
-      symbol*: int64
+      symbol*: SqlId
     of nkStmtList:
-      toplevel*: int64
+      toplevel*: SqlId
     else:
       discard
     nimid*: int
     code*: Rope
 
-proc newSnippet*(module: BModule; id: int64, node: PNode): Snippet =
+proc newSnippet*(module: BModule; id: SqlId, node: PNode;
+                 rope: Rope): Snippet =
   ## create a new snippet for the given module and symbol with the given
   ## id -- a sqlite primary key, which varies with the node kind.
   let
@@ -193,14 +198,19 @@ proc newSnippet*(module: BModule; id: int64, node: PNode): Snippet =
         node.kind
   case ekind
   of nkStmtList:
+    # we use the toplevel == symbol == id because statement lists
+    # get stored as symbols in the sqlite database (currently)
     result = Snippet(toplevel: id, kind: nkStmtList,
-                     nimid: module.module.id)
+                     name: $module.filename, nimid: module.module.id)
   of nkSym:
-    result = Snippet(symbol: id, kind: nkSym, nimid: node.sym.id)
+    result = Snippet(symbol: id, kind: nkSym,
+                     name: node.sym.name.s, nimid: node.sym.id)
   else:
     raise newException(Defect, "unexpected node kind: " & $ekind)
   result.filename = module.filename
-  result.code = rope("")
+  # use the id from the sqlite primary key?  or nim module id?
+  #result.module = module.module.id
+  result.code = rope
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
@@ -238,9 +248,7 @@ iterator cgenModules*(g: BModuleList): BModule =
     yield m
 
 when false:
-  proc `[]`*(files: TCFileSections; section: TCFileSection): var Rope =
-    raise newException(Defect, "do not touch my rope")
-
+  # XXX i don't think we'll use this
   proc addSnippet*(g: ModuleGraph; module: var TCGen;
                    section: TCFileSection; rope: Rope) =
     # i want a pnode here

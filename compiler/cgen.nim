@@ -568,6 +568,10 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
           decl = runtimeFormat(s.cgDeclFrmt & " = $#;$n", [td, s.loc.r, value])
         else:
           decl = runtimeFormat(s.cgDeclFrmt & ";$n", [td, s.loc.r])
+      # module == cfile
+      # s is an array of file sections
+      # cfsVars is an index into that fixed-size array; ie a file section
+      # file sections are ropes...  add appends to the rope.
       p.module.s[cfsVars].add(decl)
   if p.withinLoop > 0 and value == nil:
     # fixes tests/run/tzeroarray:
@@ -1905,16 +1909,59 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
+
+    when true:
+      # XXX: temporary
+      if not shouldSnippet(transformedN):
+        return
+
+    #
+    # we have a module that has this toplevel statement encoded in some
+    # arbitrary number of 1+ ropes.
+
     if m.config.symbolFiles in {writeOnlySf, v2Sf}:
-      # XXX:  initProc?  into toplevel stmt
+      # XXX: should not need this
+      #doAssert n.kind == nkStmtList, "node kind is actually " & $n.kind
+
+      when false:
+        echo m.filename
+        for section in TCFileSection.low .. TCFileSection.high:
+          if m.s[section].len > 0:
+            echo "section ", section, " with id ",
+              m.module.id, " with len ", m.s[section].len
+
+          # failed attempt to leverage leaves
+          when false:
+            for leaf in m.s[section].leaves:
+              echo "leaf len ", leaf.len, ": ", leaf
+
       let
+        # this should ultimately be a store/get operation
         id = storeSym(m.g.graph, m.module)
-      var
-        snippet = newSnippet(m, id, transformedN)
-      if id in m.snippets:
-        raise newException(Defect, "dupe store of snippet")
-      else:
-        m.snippets[id] = snippet
+
+      when true:
+        proc tail(r: Rope; x: int): Rope =
+          var
+            i = 0
+          for leaf in r.leaves:
+            if i >= x:
+              result &= rope(leaf)
+            else:
+              i.inc leaf.len
+        for section in TCFileSection.low .. TCFileSection.high:
+          if m.s[section].len > m.positions[section]:
+            let
+              code = m.s[section].tail(m.positions[section])
+            # advance the record of where we are in the snippets
+            m.positions[section] = m.s[section].len - 1
+            var
+              snippet = newSnippet(m, id, transformedN, code)
+            let
+              sid = storeSnippet(m.g.graph, snippet)
+            if sid notin m.snippets:
+              m.snippets[sid] = snippet
+
+    # XXX handle a read of a snippet from the db
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:

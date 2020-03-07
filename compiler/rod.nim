@@ -27,6 +27,8 @@ when not nimIncremental:
 
   template typeAlreadyStored*(g: ModuleGraph; nimid: int): bool = false
 
+  template shouldSnippet*(n: PNode): bool = false
+
 else:
   include rodimpl
 

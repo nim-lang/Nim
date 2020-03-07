@@ -213,7 +213,6 @@ when nimIncremental:
         name text not null,
         filename text not null,
         nimid integer not null,
-        module integer not null,
         code text not null,
         strong text not null,
         weak text not null,

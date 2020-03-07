@@ -9,9 +9,9 @@
 
 ## This module implements the new compilation cache.
 
-import strutils, intsets, tables, ropes, db_sqlite, msgs, options,
+import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees, condsyms, nversion, pathutils, types
+  btrees, trees, condsyms, nversion, pathutils, types, cgendata, sequtils
 
 ## Todo:
 ## - Add some backend logic dealing with generics.
@@ -379,6 +379,53 @@ proc storeSym*(g: ModuleGraph; s: PSym): int64 =
   let mid = if m == nil: 0 else: abs(m.id)
   result = db.insertID(insertion, s.id, mid, s.name.s, buf,
                        ord(sfExported in s.flags))
+
+proc decodeDeps(g: ModuleGraph; input: string): seq[Snippet]
+
+proc loadSnippet(g: ModuleGraph; id: int64): Snippet =
+  const
+    selection = sql"select id,kind,nimid,code,strong,weak,symbol,toplevel from snippets where id = ?"
+  let
+    row = db.getRow(selection, id)
+  if row[0] == "":
+    raise newException(Defect, "very bad news; no snippet id " & $id)
+  result = Snippet(id: id, kind: parseInt(row[1]).TNodeKind,
+                   nimid: parseInt(row[2]),
+                   code: rope(row[3]),
+                   strong: decodeDeps(g, row[4]),
+                   weak: decodeDeps(g, row[5]))
+  case result.kind:
+  of nkStmtList:
+    result.toplevel = parseInt(row[7])
+  of nkSym:
+    result.symbol = parseInt(row[6])
+  else:
+    raise newException(Defect, "how to read " & $result.kind)
+
+proc decodeDeps(g: ModuleGraph; input: string): seq[Snippet] =
+  for id in input.split(","):
+    result.add loadSnippet(g, parseInt(id))
+
+proc encodeDeps(deps: seq[Snippet]): string =
+  let
+    ids = deps.mapIt $it.id
+  result = ids.join(",")
+
+proc storeSnippet*(g: ModuleGraph; s: Snippet): int64 =
+  const
+    insertion = sql"insert into snippets(symbol, toplevel, kind, filename, nimid, name, code, strong, weak) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+  let
+    id = case s.kind
+    of nkSym:
+      s.symbol
+    of nkStmtList:
+      s.toplevel
+    else:
+      0
+
+  result = db.insertID(insertion, id, id, s.kind, s.filename,
+                       s.nimid, s.name, s.code,
+                       encodeDeps(s.strong), encodeDeps(s.weak))
 
 proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
   const
@@ -971,3 +1018,12 @@ proc setupModuleCache*(g: ModuleGraph) =
   let lastId = db.getValue(sql"select max(idgen) from controlblock")
   if lastId.len > 0:
     idgen.setId(parseInt lastId)
+
+proc shouldSnippet*(node: PNode): bool =
+  case node.kind
+  of nkSym:
+    result = true
+  of nkStmtList:
+    result = true
+  else:
+    discard
