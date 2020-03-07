@@ -125,8 +125,8 @@ Advanced options:
                             dynlib: "liblua.so.3"
   --dynlibOverrideAll
                             disables the effects of the dynlib pragma
-  --listCmd                 list the compilation commands; can be combined with:
-                            --hint:exec:on and --hint:link:on
+  --listCmd                 list the compilation commands; can be combined with
+                            `--hint:exec:on` and `--hint:link:on`
   --asm                     produce assembler code
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)

@@ -489,7 +489,7 @@ proc addExternalFileToLink*(conf: ConfigRef; filename: AbsoluteFile) =
   conf.externalToLink.insert(filename.string, 0)
 
 proc execWithEcho(conf: ConfigRef; cmd: string, msg = hintExecuting): int =
-  rawMessage(conf, msg, cmd)
+  rawMessage(conf, msg, if msg == hintLinking and not(optListCmd in conf.globalOptions or conf.verbosity > 1): "" else: cmd)
   result = execCmd(cmd)
 
 proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =
