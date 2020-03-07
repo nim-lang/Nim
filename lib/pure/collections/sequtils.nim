@@ -684,84 +684,83 @@ template anyIt*(s, pred: untyped): bool =
       break
   result
 
-template toSeq1(s: not iterator): untyped =
-  # overload for typed but not iterator
-  type OutType = type(items(s))
-  when compiles(s.len):
-    block:
-      evalOnceAs(s2, s, compiles((let _ = s)))
-      var i = 0
-      var result = newSeq[OutType](s2.len)
-      for it in s2:
-        result[i] = it
-        i += 1
-      result
-  else:
-    var result: seq[OutType] = @[]
-    for it in s:
-      result.add(it)
-    result
+template toSeqBuiltin[IX, T](arg: array[IX, T]): seq[T] = @arg
 
-template toSeq2(iter: iterator): untyped =
-  # overload for iterator
-  evalOnceAs(iter2, iter(), false)
-  when compiles(iter2.len):
-    var i = 0
-    var result = newSeq[type(iter2)](iter2.len)
-    for x in iter2:
-      result[i] = x
-      inc i
-    result
-  else:
-    type OutType = type(iter2())
-    var result: seq[OutType] = @[]
-    when compiles(iter2()):
-      evalOnceAs(iter4, iter, false)
-      let iter3 = iter4()
-      for x in iter3():
-        result.add(x)
-    else:
-      for x in iter2():
-        result.add(x)
-    result
+template toSeqBuiltin(arg: string): seq[char] = @arg
 
-template toSeq*(iter: untyped): untyped =
+template toSeqBuiltin[T](arg: seq[T]): seq[T] = arg
+
+proc toSeqBuiltin[T](arg: set[T]): seq[T] {.inline.} =
+  for it in arg:
+    result.add it
+
+proc toSeqBuiltin(a: cstring): seq[char] {.inline.} =
+  let len = a.len
+  result.setLen len
+  var i = 0
+  while i < len:
+    result[i] = a[i]
+    inc i
+
+proc toSeqBuiltin[E: enum](t: typedesc[E]): seq[E] =
+  for it in t:
+    result.add it
+
+macro toSeqBuiltin(arg: iterator): untyped =
+  let typ = arg.getTypeInst
+  typ.expectKind nnkProcTy # only for closure iterators
+  let formalParams = typ[0]
+  formalParams.expectKind nnkFormalParams
+  formalParams.expectMinLen 1
+  let resultTyp = nnkBracketExpr.newTree(bindSym"seq", formalParams[0])
+  let tmpSym = genSym(nskVar)
+  result = nnkStmtListExpr.newTree
+  result.add nnkVarSection.newTree(nnkIdentDefs.newTree(tmpSym, resultTyp, newNimNode(nnkEmpty)))
+  result.add quote do:
+    for it in `arg`:
+      `tmpSym`.add it
+  result.add tmpSym
+
+import strutils
+
+macro toSeqImpl(arg: typed): untyped =
+  let iteratorCall = arg[1]
+  let iteratorSym = iteratorCall[0]
+  if iteratorCall.len == 2 and iteratorSym.eqIdent("items") and iteratorSym.owner.owner.eqIdent("stdlib"):
+    let iteratorArg = iteratorCall[1]
+    result = newCall(bindSym"toSeqBuiltin", iteratorArg)
+  else:
+    let typ = iteratorCall.getTypeInst()
+    result = quote do:
+      var tmp: seq[`typ`]
+      for it in `iteratorCall`:
+        tmp.add it
+      tmp
+
+  if "identity" in result.repr:
+    echo result.repr
+    echo result.treeRepr
+
+
+macro toSeq(arg: untyped): untyped =
   ## Transforms any iterable (anything that can be iterated over, e.g. with
   ## a for-loop) into a sequence.
   ##
-  runnableExamples:
-    let
-      myRange = 1..5
-      mySet: set[int8] = {5'i8, 3, 1}
-    assert type(myRange) is HSlice[system.int, system.int]
-    assert type(mySet) is set[int8]
 
-    let
-      mySeq1 = toSeq(myRange)
-      mySeq2 = toSeq(mySet)
-    assert mySeq1 == @[1, 2, 3, 4, 5]
-    assert mySeq2 == @[1'i8, 3, 5]
+  result = newStmtList()
+  var arg = arg
+  if arg.kind == nnkSym and arg.symKind == nskIterator:
+    # This branch is questionalble.
+    arg = newCall(arg)
 
-  when compiles(toSeq1(iter)):
-    toSeq1(iter)
-  elif compiles(toSeq2(iter)):
-    toSeq2(iter)
-  else:
-    # overload for untyped, e.g.: `toSeq(myInlineIterator(3))`
-    when compiles(iter.len):
-      block:
-        evalOnceAs(iter2, iter, true)
-        var result = newSeq[type(iter)](iter2.len)
-        var i = 0
-        for x in iter2:
-          result[i] = x
-          inc i
-        result
-    else:
-      var result: seq[type(iter)] = @[]
-      for x in iter:
-        result.add(x)
-      result
+  result.add newCall(
+    bindSym"toSeqImpl",
+    nnkForStmt.newTree(
+      ident"x",
+      arg,
+      newStmtList()
+    )
+  )
 
 template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
@@ -1324,7 +1323,7 @@ when isMainModule:
         yield 2
 
       doAssert myIter.toSeq == @[1, 2]
-      doAssert toSeq(myIter) == @[1, 2]
+      doAssert toSeq(myIter()) == @[1, 2]
 
     block:
       iterator myIter(): int {.closure.} =
@@ -1332,7 +1331,7 @@ when isMainModule:
         yield 2
 
       doAssert myIter.toSeq == @[1, 2]
-      doAssert toSeq(myIter) == @[1, 2]
+      doAssert toSeq(myIter()) == @[1, 2]
 
     block:
       proc myIter(): auto =
@@ -1366,10 +1365,21 @@ when isMainModule:
 
   block:
     # tests https://github.com/nim-lang/Nim/issues/7187
+    # counter = 0
+    # let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
+    # doAssert ret == @[1, 2]
+    # doAssert counter == 1
+
     counter = 0
-    let ret = toSeq(@[1, 2, 3].identity().filter(proc (x: int): bool = x < 3))
-    doAssert ret == @[1, 2]
+    var tmp: seq[int]
+    for it in filter(identity(@[1, 2, 3]), proc (x: int): bool = result = x < 3):
+      tmp.add it
+    #tmp
+    echo counter
     doAssert counter == 1
+
+
+
   block: # foldl tests
     let
       numbers = @[5, 9, 11]
