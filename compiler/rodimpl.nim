@@ -384,7 +384,6 @@ proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
   const
     query = sql"select nimid from types where nimid = ? limit 1"
   result = db.getValue(query, nimid) == $nimid
-  echo "exiting from type already stored with result: ", result
 
 proc storeType(g: ModuleGraph; t: PType) =
   if typeAlreadyStored(g, t.uniqueId):
@@ -403,14 +402,13 @@ proc transitiveClosure(g: ModuleGraph) =
       doAssert false, "loop never ends!"
     if w.sstack.len > 0:
       let s = w.sstack.pop()
-      when true:
+      when false:
         echo "popped ", s.name.s, " ", s.id
       discard storeSym(g, s)
     elif w.tstack.len > 0:
       let t = w.tstack.pop()
       storeType(g, t)
-      when true:
-        # crashing
+      when false:
         echo "popped type ", typeToString(t), " ", t.uniqueId
     else:
       break
@@ -690,20 +688,11 @@ proc loadType(g; id: int; info: TLineInfo): PType =
       else: internalError(g.config, info, "decodeType ^(" & b.s[b.pos])
       rawAddSon(result, nil)
     else:
-      # decoding chittlens that we have type ids for
       let d = decodeVInt(b.s, b.pos)
-<<<<<<< HEAD
       when not defined(release):
         if not typeAlreadyStored(g, d):
           raise newException(Defect, "the type is not in the db")
       result.sons.add loadType(g, d, info)
-=======
-      # the problem is, i think we're affecting the generic with its
-      # chittlens.  so, here we're loading one of the child types of
-      # the generic; it's a tyGenericInst thingy.
-      # but we don't add those to the parent for some reason.
-      rawAddSon(result, loadType(g, d, info))
->>>>>>> notes and stuff
 
 proc decodeLib(g; b; info: TLineInfo): PLib =
   result = nil
