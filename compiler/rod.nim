@@ -9,7 +9,8 @@
 
 ## This module implements the canonalization for the various caching mechanisms.
 
-import ast, idgen, lineinfos, incremental, modulegraphs, pathutils
+import ast, idgen, lineinfos, incremental, modulegraphs, pathutils,
+  cgendata
 
 when not nimIncremental:
   template setupModuleCache*(g: ModuleGraph) = discard
@@ -28,6 +29,8 @@ when not nimIncremental:
   template typeAlreadyStored*(g: ModuleGraph; nimid: int): bool = false
 
   template shouldSnippet*(n: PNode): bool = false
+
+  template storeSnippet*(g: ModuleGraph; s: Snippet): int64 = 0
 
 else:
   include rodimpl
