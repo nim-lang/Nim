@@ -661,7 +661,7 @@ proc processCategory(r: var TResults, cat: Category,
                      runJoinableTests: bool) =
   case cat.string.normalize
   of "rodfiles":
-    when true:
+    when false:
       compileRodFiles(r, cat, options)
       runRodFiles(r, cat, options)
   of "ic":
