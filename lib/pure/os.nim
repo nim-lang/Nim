@@ -3212,7 +3212,7 @@ func isValidFilename*(path: string, maxLen = 259.Positive): bool {.since: (1, 1)
   ## Returns true if ``path`` filename is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
-  ## Uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` for checking.
+  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``path``.
   ##
   ## .. code-block:: nim
   ##   assert not isValidFilename(" foo")    ## Leading white space
