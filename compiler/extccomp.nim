@@ -705,14 +705,14 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc displayProgressCC(conf: ConfigRef, path: string, compileCmd: string = ""): string =
+proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
       MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
     elif conf.verbosity == 1:
       MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
     else:
-      "" #TODO
+      ""
   else: ""
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
@@ -908,8 +908,8 @@ proc callCCompiler*(conf: ConfigRef) =
            # generated
   #var c = cCompiler
   var script: Rope = nil
-  var cmds: TStringSeq = @[]
-  var prettyCmds: TStringSeq = @[]
+  var cmds: TStringSeq
+  var prettyCmds: TStringSeq
   let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
 
   for idx, it in conf.toCompile:
@@ -1117,14 +1117,14 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     let data = json.parseFile(jsonFile.string)
     let toCompile = data["compile"]
     doAssert toCompile.kind == JArray
-    var cmds: TStringSeq = @[]
-    var prettyCmds: TStringSeq = @[]
+    var cmds: TStringSeq
+    var prettyCmds: TStringSeq
     for c in toCompile:
       doAssert c.kind == JArray
       doAssert c.len >= 2
 
       cmds.add(c[1].getStr)
-      prettyCmds.add displayProgressCC(conf, c[0].getStr)
+      prettyCmds.add displayProgressCC(conf, c[0].getStr, c[1].getStr)
 
     let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
     execCmdsInParallel(conf, cmds, prettyCb)
