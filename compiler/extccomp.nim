@@ -149,7 +149,7 @@ compiler vcc:
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$options $builddll$vccplatform /Fe$exefile $objfiles $buildgui",
+    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui $options",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -489,7 +489,7 @@ proc addExternalFileToLink*(conf: ConfigRef; filename: AbsoluteFile) =
   conf.externalToLink.insert(filename.string, 0)
 
 proc execWithEcho(conf: ConfigRef; cmd: string, msg = hintExecuting): int =
-  rawMessage(conf, msg, cmd)
+  rawMessage(conf, msg, if msg == hintLinking and not(optListCmd in conf.globalOptions or conf.verbosity > 1): "" else: cmd)
   result = execCmd(cmd)
 
 proc execExternalProgram*(conf: ConfigRef; cmd: string, msg = hintExecuting) =

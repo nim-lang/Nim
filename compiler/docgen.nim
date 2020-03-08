@@ -191,10 +191,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
       if filename.len == 0:
-        inc(d.id)
         let nameOnly = splitFile(d.filename).name
         outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
                RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
@@ -794,6 +794,35 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
     result["description"] = %comm
   if r.buf.len > 0:
     result["code"] = %r.buf
+  if k in routineKinds:
+    result["signature"] = newJObject()
+    if n[paramsPos][0].kind != nkEmpty:
+      result["signature"]["return"] = %($n[paramsPos][0])
+    if n[paramsPos].len > 1:
+      result["signature"]["arguments"] = newJArray()
+    for paramIdx in 1 ..< n[paramsPos].len:
+      for identIdx in 0 ..< n[paramsPos][paramIdx].len - 2:
+        let
+          paramName = $n[paramsPos][paramIdx][identIdx]
+          paramType = $n[paramsPos][paramIdx][^2]
+        if n[paramsPos][paramIdx][^1].kind != nkEmpty:
+          let paramDefault = $n[paramsPos][paramIdx][^1]
+          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType, "default": %paramDefault}
+        else:
+          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType}
+    if n[pragmasPos].kind != nkEmpty:
+      result["signature"]["pragmas"] = newJArray()
+      for pragma in n[pragmasPos]:
+        result["signature"]["pragmas"].add %($pragma)
+    if n[genericParamsPos].kind != nkEmpty:
+      result["signature"]["genericParams"] = newJArray()
+      for genericParam in n[genericParamsPos]:
+        var param = %{"name": %($genericParam)}
+        if genericParam.sym.typ.sons.len > 0:
+          param["types"] = newJArray()
+        for kind in genericParam.sym.typ.sons:
+          param["types"].add %($kind)
+        result["signature"]["genericParams"].add param
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
@@ -1106,8 +1135,8 @@ proc generateIndex*(d: PDoc) =
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outFile.isEmpty and not d.conf.outDir.isEmpty:
-      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.projectPath
+    if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)

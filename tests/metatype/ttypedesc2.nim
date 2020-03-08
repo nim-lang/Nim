@@ -35,8 +35,22 @@ type Point[T] = tuple[x, y: T]
 proc origin(T: typedesc): Point[T] = discard
 discard origin(int)
 
+block: # issue #12704
+  const a = $("a", "b")
+  proc fun() =
+    const str = $int
+    let b = $(str, "asdf")
+  fun()
+
 # https://github.com/nim-lang/Nim/issues/7516
 import typetraits
+
+block: #issue #12704
+  const a = $("a", "b")
+  proc fun() =
+    const str = name(int)
+    let b = $(str, "asdf")
+  fun()
 
 proc hasDefault1(T: type = int): auto = return T.name
 doAssert hasDefault1(int) == "int"

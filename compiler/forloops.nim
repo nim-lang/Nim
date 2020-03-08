@@ -13,7 +13,7 @@ import ast, astalgo
 
 const
   someCmp = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
-    mEqUntracedRef, mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
+    mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
     mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
     mLtCh, mLtB, mLtPtr}
 
