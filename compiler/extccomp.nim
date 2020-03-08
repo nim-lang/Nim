@@ -705,25 +705,15 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc displayProgressCC(conf: ConfigRef, path: string): string =
+proc displayProgressCC(conf: ConfigRef, path: string, compileCmd: string = ""): string =
   if conf.hasHint(hintCC):
-    let (_, name, _) = splitFile(path)
-    result = MsgKindToStr[hintCC] % demanglePackageName(name)
-
-proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var TStringSeq,
-                  prettyCmds: var TStringSeq) =
-  var currIdx = 0
-  for it in list:
-    # call the C compiler for the .c file:
-    if it.flags.contains(CfileFlag.Cached): continue
-    var compileCmd = getCompileCFileCmd(conf, it, currIdx == list.len - 1, produceOutput=true)
-    inc currIdx
-    if optCompileOnly notin conf.globalOptions:
-      cmds.add(compileCmd)
-      prettyCmds.add displayProgressCC(conf, $it.cname)
-    if optGenScript in conf.globalOptions:
-      script.add(compileCmd)
-      script.add("\n")
+    if optListCmd in conf.globalOptions or conf.verbosity > 1:
+      MsgKindToStr[hintCC] % compileCmd
+    elif conf.verbosity == 1:
+      MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
+    else:
+      "" #TODO
+  else: ""
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
@@ -862,15 +852,8 @@ proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx:
           cmds[i])
   else:
     tryExceptOSErrorMessage(conf, "invocation of external compiler program failed."):
-      if optListCmd in conf.globalOptions or conf.verbosity > 1:
-        res = execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams},
-                            conf.numberOfProcessors, afterRunEvent=runCb)
-      elif conf.verbosity == 1:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
+      res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
                             conf.numberOfProcessors, prettyCb, afterRunEvent=runCb)
-      else:
-        res = execProcesses(cmds, {poStdErrToStdOut, poUsePath, poParentStreams},
-                            conf.numberOfProcessors, afterRunEvent=runCb)
   if res != 0:
     if conf.numberOfProcessors <= 1:
       rawMessage(conf, errGenerated, "execution of an external program failed: '$1'" %
@@ -928,7 +911,18 @@ proc callCCompiler*(conf: ConfigRef) =
   var cmds: TStringSeq = @[]
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
-  compileCFiles(conf, conf.toCompile, script, cmds, prettyCmds)
+
+  for currIdx, it in conf.toCompile:
+    # call the C compiler for the .c file:
+    if CfileFlag.Cached in it.flags: continue
+    let compileCmd = getCompileCFileCmd(conf, it, currIdx == conf.toCompile.len - 1, produceOutput=true)
+    if optCompileOnly notin conf.globalOptions:
+      cmds.add(compileCmd)
+      prettyCmds.add displayProgressCC(conf, $it.cname, compileCmd)
+    if optGenScript in conf.globalOptions:
+      script.add(compileCmd)
+      script.add("\n")
+
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
   if optNoLinking notin conf.globalOptions:
