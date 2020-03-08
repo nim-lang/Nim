@@ -570,6 +570,8 @@ proc findWrongOwners(c: PTransf, n: PNode) =
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
 
+import strutils
+
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   # put mapping from formal parameters to actual parameters
@@ -594,7 +596,14 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     discard c.breakSyms.pop
     return result
 
-  #echo "transforming: ", renderTree(n)
+  let str: string = renderTree(n)
+  let debug: bool = 0 <= find(str, "identity")
+  if debug:
+    echo "transforming: "
+    echo str
+    echo "debug:"
+    debug n
+
   var stmtList = newTransNode(nkStmtList, n.info, 0)
   result[1] = stmtList
 
@@ -664,7 +673,9 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   dec(c.inlining)
   popInfoContext(c.graph.config)
   popTransCon(c)
-  # echo "transformed: ", stmtList.renderTree
+  if debug:
+    echo "transformed:\n", stmtList.renderTree
+    debug stmtList
 
 proc transformCase(c: PTransf, n: PNode): PNode =
   # removes `elif` branches of a case stmt

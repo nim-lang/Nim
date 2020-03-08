@@ -80,29 +80,6 @@ import macros
 when not defined(nimhygiene):
   {.pragma: dirty.}
 
-
-macro evalOnceAs(expAlias, exp: untyped,
-                 letAssigneable: static[bool]): untyped =
-  ## Injects ``expAlias`` in caller scope, to avoid bugs involving multiple
-  ##  substitution in macro arguments such as
-  ## https://github.com/nim-lang/Nim/issues/7187
-  ## ``evalOnceAs(myAlias, myExp)`` will behave as ``let myAlias = myExp``
-  ## except when ``letAssigneable`` is false (e.g. to handle openArray) where
-  ## it just forwards ``exp`` unchanged
-  expectKind(expAlias, nnkIdent)
-  var val = exp
-
-  result = newStmtList()
-  # If `exp` is not a symbol we evaluate it once here and then use the temporary
-  # symbol as alias
-  if exp.kind != nnkSym and letAssigneable:
-    val = genSym()
-    result.add(newLetStmt(val, exp))
-
-  result.add(
-    newProc(name = genSym(nskTemplate, $expAlias), params = [getType(untyped)],
-      body = val, procType = nnkTemplateDef))
-
 proc concat*[T](seqs: varargs[seq[T]]): seq[T] =
   ## Takes several sequences' items and returns them inside a new sequence.
   ## All sequences must be of the same type.
@@ -905,21 +882,15 @@ template mapIt*(s: typed, op: untyped): untyped =
       block:
         var it{.inject.}: type(items(s));
         op))
-  when compiles(s.len):
-    block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
-
-      # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
-      # (`error: use of undeclared identifier`) instead of Nim compile errors
-      evalOnceAs(s2, s, compiles((let _ = s)))
-
-      var i = 0
-      var result = newSeq[OutType](s2.len)
-      for it {.inject.} in s2:
-        result[i] = op
-        i += 1
-      result
+  when s is (array | seq | openarray):
+    var i = 0
+    var result = newSeq[OutType](s.len)
+    for it {.inject.} in s:
+      result[i] = op
+      i += 1
+    result
   else:
-    var result: seq[OutType] = @[]
+    var result: seq[OutType]
     for it {.inject.} in s:
       result.add(op)
     result
@@ -1408,8 +1379,8 @@ when isMainModule:
       strings = nums.identity.mapIt($(4 * it))
     doAssert counter == 1
     nums.applyIt(it * 3)
-    assert nums[0] + nums[3] == 15
-    assert strings[2] == "12"
+    doAssert nums[0] + nums[3] == 15
+    doAssert strings[2] == "12"
 
   block: # newSeqWith tests
     var seq2D = newSeqWith(4, newSeq[bool](2))

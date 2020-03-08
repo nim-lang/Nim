@@ -80,11 +80,11 @@ type
   TPassClose* = proc (graph: ModuleGraph; p: PPassContext, n: PNode): PNode {.nimcall.}
   TPassProcess* = proc (p: PPassContext, topLevelStmt: PNode): PNode {.nimcall.}
 
-  TPass* = tuple[open: TPassOpen,
-                 process: TPassProcess,
-                 close: TPassClose,
-                 isFrontend: bool]
-
+  TPass* = object
+    open*: TPassOpen
+    process*: TPassProcess
+    close*: TPassClose
+    isFrontend*: bool
 
 const
   cb64 = [
