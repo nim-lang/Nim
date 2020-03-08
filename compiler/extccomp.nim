@@ -623,7 +623,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
 
   var objfile =
     if cfile.obj.isEmpty:
-      if not cfile.flags.contains(CfileFlag.External) or noAbsolutePaths(conf):
+      if CfileFlag.External notin cfile.flags or noAbsolutePaths(conf):
         toObjFile(conf, cf).string
       else:
         completeCfilePath(conf, toObjFile(conf, cf)).string
@@ -708,7 +708,7 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc displayProgressCC(conf: ConfigRef, path: string, compileCmd: string = ""): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      MsgKindToStr[hintCC] % compileCmd
+      MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
     elif conf.verbosity == 1:
       MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
     else:
@@ -912,10 +912,10 @@ proc callCCompiler*(conf: ConfigRef) =
   var prettyCmds: TStringSeq = @[]
   let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
 
-  for currIdx, it in conf.toCompile:
+  for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
     if CfileFlag.Cached in it.flags: continue
-    let compileCmd = getCompileCFileCmd(conf, it, currIdx == conf.toCompile.len - 1, produceOutput=true)
+    let compileCmd = getCompileCFileCmd(conf, it, idx == conf.toCompile.len - 1, produceOutput=true)
     if optCompileOnly notin conf.globalOptions:
       cmds.add(compileCmd)
       prettyCmds.add displayProgressCC(conf, $it.cname, compileCmd)
@@ -941,7 +941,7 @@ proc callCCompiler*(conf: ConfigRef) =
         # don't relink each of the many binaries (one for each source file) if the nim code is
         # cached because that would take too much time for small changes - the only downside to
         # this is that if an external-to-link file changes the final target wouldn't be relinked
-        if x.flags.contains(CfileFlag.Cached): continue
+        if CfileFlag.Cached in x.flags: continue
         # we pass each object file as if it is the project file - a .dll will be created for each such
         # object file in the nimcache directory, and only in the case of the main project file will
         # there be probably an executable (if the project is such) which will be copied out of the nimcache
@@ -959,7 +959,7 @@ proc callCCompiler*(conf: ConfigRef) =
       prettyCmds = map(prettyCmds, proc (curr: string): string = return curr.replace("CC", "Link"))
       execCmdsInParallel(conf, cmds, prettyCb)
       # only if not cached - copy the resulting main file from the nimcache folder to its originally intended destination
-      if not conf.toCompile[mainFileIdx].flags.contains(CfileFlag.Cached):
+      if CfileFlag.Cached notin conf.toCompile[mainFileIdx].flags:
         let mainObjFile = getObjFilePath(conf, conf.toCompile[mainFileIdx])
         var src = conf.hcrLinkTargetName(mainObjFile, true)
         var dst = conf.prepareToWriteOutput
@@ -1005,8 +1005,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       f.write escapeJson(x)
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
-    var i = 0
-    for it in clist:
+    for i, it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(conf, it)
       if i > 0: lit ",\L"
@@ -1015,7 +1014,6 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       lit ", "
       str compileCmd
       lit "]"
-      inc i
 
   proc linkfiles(conf: ConfigRef; f: File; buf, objfiles: var string; clist: CfileList;
                  llist: seq[string]) =
