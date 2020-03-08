@@ -1,6 +1,6 @@
 discard """
   output: "bar"
-  disabled: "true"
+  disabled: "false"
 """
 
 import tables
