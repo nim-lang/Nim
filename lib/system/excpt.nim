@@ -554,26 +554,39 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
-proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
+proc nimLine2(line: int) {.compilerRtl, inl, raises: [].} =
+  when false:
+    tframes[frameIndex].line = line
+
+proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+  # TODO: how to really force inlining?
+  # if not nimFrameGuard:
+    # tframes[frameIndex].filename = filename
+    tframes[frameIndex].line = line
+    # discard
+
+# proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
+proc nimFrame() {.compilerRtl, inl, raises: [].} =
   frameIndex.inc
-  if nimFrameGuard:
-    # c_printf("nimFrame:%*s %s:%s %lld\n", frameIndex, "", filename, procname, frameIndex)
-    return
-  nimFrameGuard = true
-  # s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  # if nimFrameGuard:
+  #   c_printf("nimFrame:%*s %s:%s %lld\n", frameIndex, "", filename, procname, frameIndex)
+  #   return
+  # nimFrameGuard = true
   if frameIndex == nimCallDepthLimit: callDepthLimitReached()
-  if frameIndex >= cast[FrameIndex](tframesCap):
-    const sz = sizeof(TFrame)
-    let old = tframesCap
-    if tframesCap == 0: tframesCap = 8
-    else:
-      tframesCap*=2
-    tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
-  tframes[frameIndex].procname = procname
-  tframes[frameIndex].filename = filename
-  tframes[frameIndex].line = 0 # CHECKME
-  # tframes[frameIndex].len = 0 # CHECKME
-  nimFrameGuard = false
+  when true:
+    if frameIndex >= cast[FrameIndex](tframesCap):
+      const sz = sizeof(TFrame)
+      let old = tframesCap
+      if tframesCap == 0: tframesCap = 8
+      else: tframesCap+=tframesCap
+      proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
+      # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
+      tframes = cast[type(tframes)](c_realloc(tframes, cast[csize_t](sz*tframesCap)))
+    # tframes[frameIndex].procname = procname
+    # tframes[frameIndex].filename = filename
+    tframes[frameIndex].line = 0 # CHECKME
+    # tframes[frameIndex].len = 0 # CHECKME
+    # nimFrameGuard = false
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
