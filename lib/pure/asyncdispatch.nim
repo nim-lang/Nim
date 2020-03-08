@@ -209,6 +209,7 @@ proc processPendingCallbacks(p: PDispatcherBase; didSomeWork: var bool) =
     var cb = p.callbacks.popFirst()
     cb()
     didSomeWork = true
+    #when declared(thinout): thinout(cb)
 
 proc adjustTimeout(
   p: PDispatcherBase, pollTimeout: int, nextTimer: Option[int]

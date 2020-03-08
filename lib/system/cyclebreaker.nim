@@ -131,7 +131,7 @@ proc trace(p: pointer; desc: PNimType; j: var GcEnv) {.inline.} =
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
 proc nimTraceRef(p: ptr pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
-  when false:
+  when traceCollector:
     cprintf("[Trace] raw: %p\n", p)
     cprintf("[Trace] deref: %p\n", p[])
   if p[] != nil:
@@ -139,7 +139,7 @@ proc nimTraceRef(p: ptr pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
     j.traceStack.add(p, desc)
 
 proc nimTraceRefDyn(p: ptr pointer; env: pointer) {.compilerRtl.} =
-  when false:
+  when traceCollector:
     cprintf("[TraceDyn] raw: %p\n", p)
     cprintf("[TraceDyn] deref: %p\n", p[])
   if p[] != nil:
@@ -152,6 +152,8 @@ proc breakCycles(s: Cell; desc: PNimType) =
   let markerColor = if (markerGeneration and 1) == 0: colRed
                     else: colYellow
   atomicInc markerGeneration
+  when traceCollector:
+    cprintf("[BreakCycles] starting: %p %s trace proc %p\n", s, desc.name, desc.traceImpl)
 
   var j: GcEnv
   init j.traceStack
@@ -165,11 +167,15 @@ proc breakCycles(s: Cell; desc: PNimType) =
     if t.color != markerColor:
       t.setColor markerColor
       trace(p, desc, j)
+      when traceCollector:
+        cprintf("[BreakCycles] followed: %p\n", t)
     else:
       if (t.rc shr rcShift) > 0:
         dec t.rc, rcIncrement
         # mark as a link that the produced destructor does not have to follow:
         u[] = nil
+        when traceCollector:
+          cprintf("[BreakCycles] niled out: %p\n", t)
       else:
         cprintf("[Bug] %p %s\n", t, desc.name)
   deinit j.traceStack
@@ -184,6 +190,15 @@ proc thinout*[T](x: ref T) {.inline.} =
   proc getDynamicTypeInfo[T](x: T): PNimType {.magic: "GetTypeInfo", noSideEffect, locks: 0.}
 
   breakCycles(head(cast[pointer](x)), getDynamicTypeInfo(x[]))
+
+proc thinout*[T: proc](x: T) {.inline.} =
+  proc rawEnv[T: proc](x: T): pointer {.noSideEffect, inline.} =
+    {.emit: """
+    `result` = `x`.ClE_0;
+    """.}
+
+  let p = rawEnv(x)
+  breakCycles(head(p), cast[ptr PNimType](p)[])
 
 proc nimDecRefIsLastCyclicDyn(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:

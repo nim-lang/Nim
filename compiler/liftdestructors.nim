@@ -778,7 +778,6 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   # register this operation already:
   typ.attachedOps[kind] = result
 
-
   if kind == attachedSink and typ.attachedOps[attachedDestructor] != nil and
        sfOverriden in typ.attachedOps[attachedDestructor].flags:
     ## compiler can use a combination of `=destroy` and memCopy for sink op
