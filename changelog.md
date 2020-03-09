@@ -94,10 +94,8 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
-- Added in-place `strutils.toLowerAscii`,  `strutils.toUpperAscii`, `strutils.capitalizeAscii`,
-  with compile-time `{.linearScanEnd.}` optimizations for `string` and `char`,
-  faster than the copy versions, at least from ~1.5x to ~5x performance approx,
-  depending on how you optimize it with the `linearScanEnd` static argument.
+- Added in-place `strutils.toLowerAsciiInPlace`,  `strutils.toUpperAsciiInPlace`, `strutils.capitalizeAsciiInPlace`,
+  faster than the copy versions, at least from ~1.5x to ~5x performance approx.
 
 
 ## Library changes

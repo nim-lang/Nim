@@ -2862,337 +2862,163 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
 
 
 since (1, 1):
-  template toLowerAscii*(c: var char, linearScanEnd: static[char]) =
+  template toLowerAsciiInPlace*(c: var char) =
     ## Returns the lower case version of character ``c``.
     ##
     ## This works only for the letters ``A-Z``. See `unicode.toLower
     ## <unicode.html#toLower,Rune>`_ for a version that works for any Unicode
     ## character.
     ##
-    ## ``linearScanEnd`` is a static ``char``, must be known at compile-time,
-    ## if the char is on the range ``'a'..'z'`` then it will add a
-    ## `{. linearScanEnd .} pragma <manual.html#pragmas-linearscanend-pragma>`_
-    ## at compile-time at that char position, reducing the case switch linear scan.
-    ##
-    ## Example: Imagine that you are working with Hexadecimal strings,
-    ## you do not have letters beyond ``'F'``, you can use ``linearScanEnd = 'f'``.
-    ## This is an optional compile-time optimization, is disabled by default.
-    ##
-    ## .. code-block:: nim
-    ##   var character = 'F'  ## Hexadecimal
-    ##   toLowerAscii(character, linearScanEnd = 'f')
-    ##   doAssert character == 'f'
-    ##
     ## See also:
     ## * `isLowerAscii proc<#isLowerAscii,char>`_
     ## * `toLowerAscii proc<#toLowerAscii,string>`_ for converting a string
-    ## * `linearScanEnd <manual.html#pragmas-linearscanend-pragma>`_ pragma
     runnableExamples:
       var character = 'F'
-      toLowerAscii(character, linearScanEnd = 'f')
+      toLowerAsciiInPlace(character)
       doAssert character == 'f'
       var chara = 'A'
-      toLowerAscii(chara, linearScanEnd = ' ')
+      toLowerAsciiInPlace(chara)
       doAssert chara == 'a'
     c = case c
-      of 'A':
-        when linearScanEnd == 'a': {.linearScanEnd.}
-        'a'
-      of 'B':
-        when linearScanEnd == 'b': {.linearScanEnd.}
-        'b'
-      of 'C':
-        when linearScanEnd == 'c': {.linearScanEnd.}
-        'c'
-      of 'D':
-        when linearScanEnd == 'd': {.linearScanEnd.}
-        'd'
-      of 'E':
-        when linearScanEnd == 'e': {.linearScanEnd.}
-        'e'
-      of 'F':
-        when linearScanEnd == 'f': {.linearScanEnd.}
-        'f'
-      of 'G':
-        when linearScanEnd == 'g': {.linearScanEnd.}
-        'g'
-      of 'H':
-        when linearScanEnd == 'h': {.linearScanEnd.}
-        'h'
-      of 'I':
-        when linearScanEnd == 'i': {.linearScanEnd.}
-        'i'
-      of 'J':
-        when linearScanEnd == 'j': {.linearScanEnd.}
-        'j'
-      of 'K':
-        when linearScanEnd == 'k': {.linearScanEnd.}
-        'k'
-      of 'L':
-        when linearScanEnd == 'l': {.linearScanEnd.}
-        'l'
-      of 'M':
-        when linearScanEnd == 'm': {.linearScanEnd.}
-        'm'
-      of 'N':
-        when linearScanEnd == 'n': {.linearScanEnd.}
-        'n'
-      of 'O':
-        when linearScanEnd == 'o': {.linearScanEnd.}
-        'o'
-      of 'P':
-        when linearScanEnd == 'p': {.linearScanEnd.}
-        'p'
-      of 'Q':
-        when linearScanEnd == 'q': {.linearScanEnd.}
-        'q'
-      of 'R':
-        when linearScanEnd == 'r': {.linearScanEnd.}
-        'r'
-      of 'S':
-        when linearScanEnd == 's': {.linearScanEnd.}
-        's'
-      of 'T':
-        when linearScanEnd == 't': {.linearScanEnd.}
-        't'
-      of 'U':
-        when linearScanEnd == 'u': {.linearScanEnd.}
-        'u'
-      of 'V':
-        when linearScanEnd == 'v': {.linearScanEnd.}
-        'v'
-      of 'W':
-        when linearScanEnd == 'w': {.linearScanEnd.}
-        'w'
-      of 'X':
-        when linearScanEnd == 'x': {.linearScanEnd.}
-        'x'
-      of 'Y':
-        when linearScanEnd == 'y': {.linearScanEnd.}
-        'y'
-      of 'Z':
-        when linearScanEnd == 'z': {.linearScanEnd.}
-        'z'
+      of 'A': 'a'
+      of 'B': 'b'
+      of 'C': 'c'
+      of 'D': 'd'
+      of 'E': 'e'
+      of 'F': 'f'
+      of 'G': 'g'
+      of 'H': 'h'
+      of 'I': 'i'
+      of 'J': 'j'
+      of 'K': 'k'
+      of 'L': 'l'
+      of 'M': 'm'
+      of 'N': 'n'
+      of 'O': 'o'
+      of 'P': 'p'
+      of 'Q': 'q'
+      of 'R': 'r'
+      of 'S': 's'
+      of 'T': 't'
+      of 'U': 'u'
+      of 'V': 'v'
+      of 'W': 'w'
+      of 'X': 'x'
+      of 'Y': 'y'
+      of 'Z': 'z'
       else: c
 
 
-  template toUpperAscii*(c: var char, linearScanEnd: static[char]) =
+  template toUpperAsciiInPlace*(c: var char) =
     ## Converts character `c` into upper case.
     ##
     ## This works only for the letters ``A-Z``.  See `unicode.toUpper
     ## <unicode.html#toUpper,Rune>`_ for a version that works for any Unicode
     ## character.
     ##
-    ## ``linearScanEnd`` is a static ``char``, must be known at compile-time,
-    ## if the char is on the range ``'a'..'z'`` then it will add a
-    ## `{. linearScanEnd .} pragma <manual.html#pragmas-linearscanend-pragma>`_
-    ## at compile-time at that char position, reducing the case switch linear scan.
-    ##
-    ## Example: Imagine that you are working with Hexadecimal strings,
-    ## you do not have letters beyond ``'F'``, you can use ``linearScanEnd = 'f'``.
-    ## This is an optional compile-time optimization, is disabled by default.
-    ##
-    ## .. code-block:: nim
-    ##   var character = 'F'  ## Hexadecimal
-    ##   toLowerAscii(character, linearScanEnd = 'f')
-    ##   doAssert character == 'f'
-    ##
     ## See also:
     ## * `isLowerAscii proc<#isLowerAscii,char>`_
     ## * `toUpperAscii proc<#toUpperAscii,string>`_ for converting a string
     ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
-    ## * `linearScanEnd <manual.html#pragmas-linearscanend-pragma>`_ pragma
     runnableExamples:
       var character = 'f'
-      toUpperAscii(character, linearScanEnd = 'f')
+      toUpperAsciiInPlace(character)
       doAssert character == 'F'
       var chara = 'z'
-      toUpperAscii(chara, linearScanEnd = ' ')
+      toUpperAsciiInPlace(chara)
       doAssert chara == 'Z'
     c = case c
-      of 'a':
-        when linearScanEnd == 'a': {.linearScanEnd.}
-        'A'
-      of 'b':
-        when linearScanEnd == 'b': {.linearScanEnd.}
-        'B'
-      of 'c':
-        when linearScanEnd == 'c': {.linearScanEnd.}
-        'C'
-      of 'd':
-        when linearScanEnd == 'd': {.linearScanEnd.}
-        'D'
-      of 'e':
-        when linearScanEnd == 'e': {.linearScanEnd.}
-        'E'
-      of 'f':
-        when linearScanEnd == 'f': {.linearScanEnd.}
-        'F'
-      of 'g':
-        when linearScanEnd == 'g': {.linearScanEnd.}
-        'G'
-      of 'h':
-        when linearScanEnd == 'h': {.linearScanEnd.}
-        'H'
-      of 'i':
-        when linearScanEnd == 'i': {.linearScanEnd.}
-        'I'
-      of 'j':
-        when linearScanEnd == 'j': {.linearScanEnd.}
-        'J'
-      of 'k':
-        when linearScanEnd == 'k': {.linearScanEnd.}
-        'K'
-      of 'l':
-        when linearScanEnd == 'l': {.linearScanEnd.}
-        'L'
-      of 'm':
-        when linearScanEnd == 'm': {.linearScanEnd.}
-        'M'
-      of 'n':
-        when linearScanEnd == 'n': {.linearScanEnd.}
-        'N'
-      of 'o':
-        when linearScanEnd == 'o': {.linearScanEnd.}
-        'O'
-      of 'p':
-        when linearScanEnd == 'p': {.linearScanEnd.}
-        'P'
-      of 'q':
-        when linearScanEnd == 'q': {.linearScanEnd.}
-        'Q'
-      of 'r':
-        when linearScanEnd == 'r': {.linearScanEnd.}
-        'R'
-      of 's':
-        when linearScanEnd == 's': {.linearScanEnd.}
-        'S'
-      of 't':
-        when linearScanEnd == 't': {.linearScanEnd.}
-        'T'
-      of 'u':
-        when linearScanEnd == 'u': {.linearScanEnd.}
-        'U'
-      of 'v':
-        when linearScanEnd == 'v': {.linearScanEnd.}
-        'V'
-      of 'w':
-        when linearScanEnd == 'w': {.linearScanEnd.}
-        'W'
-      of 'x':
-        when linearScanEnd == 'x': {.linearScanEnd.}
-        'X'
-      of 'y':
-        when linearScanEnd == 'y': {.linearScanEnd.}
-        'Y'
-      of 'z':
-        when linearScanEnd == 'z': {.linearScanEnd.}
-        'Z'
+      of 'a': 'A'
+      of 'b': 'B'
+      of 'c': 'C'
+      of 'd': 'D'
+      of 'e': 'E'
+      of 'f': 'F'
+      of 'g': 'G'
+      of 'h': 'H'
+      of 'i': 'I'
+      of 'j': 'J'
+      of 'k': 'K'
+      of 'l': 'L'
+      of 'm': 'M'
+      of 'n': 'N'
+      of 'o': 'O'
+      of 'p': 'P'
+      of 'q': 'Q'
+      of 'r': 'R'
+      of 's': 'S'
+      of 't': 'T'
+      of 'u': 'U'
+      of 'v': 'V'
+      of 'w': 'W'
+      of 'x': 'X'
+      of 'y': 'Y'
+      of 'z': 'Z'
       else: c
 
 
-  func toLowerAscii*(s: var string, linearScanEnd: static[char]) {.inline.} =
+  func toLowerAsciiInPlace*(s: var string) {.inline.} =
     ## Converts string `s` into lower case.
     ##
     ## This works only for the letters ``A-Z``. See `unicode.toLower
     ## <unicode.html#toLower,string>`_ for a version that works for any Unicode
     ## character.
     ##
-    ## ``linearScanEnd`` is a static ``char`` argument,
-    ## if it is on range ``'a'..'z'`` then it will add ``{.linearScanEnd.}`` pragma
-    ## at compile-time at that char position, reducing the case switch linear scan.
-    ##
-    ## Example: Imagine that you are working with Hexadecimal strings,
-    ## you do not have letters beyond ``'F'``, you can use ``linearScanEnd = 'f'``,
-    ## this is an optional compile-time optimization, is disabled by default.
-    ##
-    ## .. code-block:: nim
-    ##   echo toLowerAscii("#FFFFFF", linearScanEnd = 'f') ## Hexadecimal
-    ##
     ## See also:
     ## * `normalize proc<#normalize,string>`_
-    ## * `linearScanEnd <manual.html#pragmas-linearscanend-pragma>`_ pragma
     runnableExamples:
       var stringy = "ABCDEF"
-      toLowerAscii(stringy, linearScanEnd = 'f')
+      toLowerAsciiInPlace(stringy)
       doAssert stringy == "abcdef"
       var strng = "NIM"
-      toLowerAscii(strng, linearScanEnd = 'n')
+      toLowerAsciiInPlace(strng)
       doAssert strng == "nim"
     var i = 0
     for c in mitems(s):
-      toLowerAscii(c, linearScanEnd)
+      toLowerAsciiInPlace(c)
       s[i] = c
       inc i
 
 
-  func toUpperAscii*(s: var string, linearScanEnd: static[char]) {.inline.} =
+  func toUpperAsciiInPlace*(s: var string) {.inline.} =
     ## Converts string `s` into upper case.
     ##
     ## This works only for the letters ``A-Z``.  See `unicode.toUpper
     ## <unicode.html#toUpper,string>`_ for a version that works for any Unicode
     ## character.
     ##
-    ## ``linearScanEnd`` is a static ``char``, must be known at compile-time,
-    ## if the char is on the range ``'a'..'z'`` then it will add a
-    ## `{. linearScanEnd .} pragma <manual.html#pragmas-linearscanend-pragma>`_
-    ## at compile-time at that char position, reducing the case switch linear scan.
-    ##
-    ## Example: Imagine that you are working with Hexadecimal strings,
-    ## you do not have letters beyond ``'F'``, you can use ``linearScanEnd = 'f'``.
-    ## This is an optional compile-time optimization, is disabled by default.
-    ##
-    ## .. code-block:: nim
-    ##   echo toUpperAscii("#ffffff", linearScanEnd = 'f') ## Hexadecimal
-    ##   echo toUpperAscii("acgt", linearScanEnd = 't')    ## DNA data
-    ##
     ## See also:
     ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
-    ## * `linearScanEnd <manual.html#pragmas-linearscanend-pragma>`_ pragma
     runnableExamples:
       var stringo = "abcdef"
-      toUpperAscii(stringo, linearScanEnd = 'f')
+      toUpperAsciiInPlace(stringo)
       doAssert stringo == "ABCDEF"
       var strng = "nim"
-      toUpperAscii(strng, linearScanEnd = 'n')
+      toUpperAsciiInPlace(strng)
       doAssert strng == "NIM"
     var i = 0
     for c in mitems(s):
-      toUpperAscii(c, linearScanEnd)
+      toUpperAsciiInPlace(c)
       s[i] = c
       inc i
 
 
-  func capitalizeAscii*(s: var string, linearScanEnd: static[char]) {.inline.} =
+  func capitalizeAsciiInPlace*(s: var string) {.inline.} =
     ## Converts the first character of string `s` into upper case.
     ##
     ## This works only for the letters ``A-Z``.
     ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
     ##
-    ## ``linearScanEnd`` is a static ``char``, must be known at compile-time,
-    ## if the char is on the range ``'a'..'z'`` then it will add a
-    ## `{. linearScanEnd .} pragma <manual.html#pragmas-linearscanend-pragma>`_
-    ## at compile-time at that char position, reducing the case switch linear scan.
-    ##
-    ## Example: Imagine that you are working with Hexadecimal strings,
-    ## you do not have letters beyond ``'F'``, you can use ``linearScanEnd = 'f'``.
-    ## This is an optional compile-time optimization, is disabled by default.
-    ##
-    ## .. code-block:: nim
-    ##   echo capitalizeAscii("#ffffff", linearScanEnd = 'f') ## Hexadecimal
-    ##   echo capitalizeAscii("acgt", linearScanEnd = 't')    ## DNA data
-    ##
     ## See also:
     ## * `toUpperAscii proc<#toUpperAscii,char>`_
-    ## * `linearScanEnd <manual.html#pragmas-linearscanend-pragma>`_ pragma
     runnableExamples:
       var stringu = "foo"
-      capitalizeAscii(stringu, linearScanEnd = 'f')
+      capitalizeAsciiInPlace(stringu)
       doAssert stringu == "Foo"
       var stringx = "-bar"
-      capitalizeAscii(stringx, linearScanEnd = 'r')
+      capitalizeAsciiInPlace(stringx)
       doAssert stringx == "-bar"
-    toUpperAscii(s[0], linearScanEnd)
+    toUpperAsciiInPlace(s[0])
 
 
 when isMainModule:
