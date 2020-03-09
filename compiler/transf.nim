@@ -128,6 +128,19 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     b = s.getBody
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
+  elif c.inlining > 0:
+    # see bug #13596: we use ref-based equality in the DFA for destruction
+    # injections so we need to ensure unique nodes after iterator inlining
+    # which can lead to duplicated for loop bodies! Consider:
+    #[
+      while remaining > 0:
+        if ending == nil:
+          yield ms
+          break
+        ...
+        yield ms
+    ]#
+    b = newSymNode(n.sym, n.info)
   else:
     b = n
   while tc != nil:
