@@ -2862,7 +2862,7 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
 
 
 since (1, 1):
-  template toLowerAscii*(c: var char, linearScanEnd: static[char] = ' ') =
+  template toLowerAscii*(c: var char, linearScanEnd: static[char]) =
     ## Returns the lower case version of character ``c``.
     ##
     ## This works only for the letters ``A-Z``. See `unicode.toLower
@@ -2892,7 +2892,7 @@ since (1, 1):
       toLowerAscii(character, linearScanEnd = 'f')
       doAssert character == 'f'
       var chara = 'A'
-      toLowerAscii(chara)
+      toLowerAscii(chara, linearScanEnd = ' ')
       doAssert chara == 'a'
     c = case c
       of 'A':
@@ -2976,7 +2976,7 @@ since (1, 1):
       else: c
 
 
-  template toUpperAscii*(c: var char, linearScanEnd: static[char] = ' ') =
+  template toUpperAscii*(c: var char, linearScanEnd: static[char]) =
     ## Converts character `c` into upper case.
     ##
     ## This works only for the letters ``A-Z``.  See `unicode.toUpper
@@ -3007,7 +3007,7 @@ since (1, 1):
       toUpperAscii(character, linearScanEnd = 'f')
       doAssert character == 'F'
       var chara = 'z'
-      toUpperAscii(chara)
+      toUpperAscii(chara, linearScanEnd = ' ')
       doAssert chara == 'Z'
     c = case c
       of 'a':
@@ -3091,7 +3091,7 @@ since (1, 1):
       else: c
 
 
-  func toLowerAscii*(s: var string, linearScanEnd: static[char] = ' ') {.inline.} =
+  func toLowerAscii*(s: var string, linearScanEnd: static[char]) {.inline.} =
     ## Converts string `s` into lower case.
     ##
     ## This works only for the letters ``A-Z``. See `unicode.toLower
@@ -3117,7 +3117,7 @@ since (1, 1):
       toLowerAscii(stringy, linearScanEnd = 'f')
       doAssert stringy == "abcdef"
       var strng = "NIM"
-      toLowerAscii(strng)
+      toLowerAscii(strng, linearScanEnd = 'n')
       doAssert strng == "nim"
     var i = 0
     for c in mitems(s):
@@ -3126,7 +3126,7 @@ since (1, 1):
       inc i
 
 
-  func toUpperAscii*(s: var string, linearScanEnd: static[char] = ' ') {.inline.} =
+  func toUpperAscii*(s: var string, linearScanEnd: static[char]) {.inline.} =
     ## Converts string `s` into upper case.
     ##
     ## This works only for the letters ``A-Z``.  See `unicode.toUpper
@@ -3154,7 +3154,7 @@ since (1, 1):
       toUpperAscii(stringo, linearScanEnd = 'f')
       doAssert stringo == "ABCDEF"
       var strng = "nim"
-      toUpperAscii(strng)
+      toUpperAscii(strng, linearScanEnd = 'n')
       doAssert strng == "NIM"
     var i = 0
     for c in mitems(s):
@@ -3163,7 +3163,7 @@ since (1, 1):
       inc i
 
 
-  func capitalizeAscii*(s: var string, linearScanEnd: static[char] = ' ') {.inline.} =
+  func capitalizeAscii*(s: var string, linearScanEnd: static[char]) {.inline.} =
     ## Converts the first character of string `s` into upper case.
     ##
     ## This works only for the letters ``A-Z``.
@@ -3190,7 +3190,7 @@ since (1, 1):
       capitalizeAscii(stringu, linearScanEnd = 'f')
       doAssert stringu == "Foo"
       var stringx = "-bar"
-      capitalizeAscii(stringx, linearScanEnd = 'f')
+      capitalizeAscii(stringx, linearScanEnd = 'r')
       doAssert stringx == "-bar"
     toUpperAscii(s[0], linearScanEnd)
 
