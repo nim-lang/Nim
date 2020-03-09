@@ -619,7 +619,8 @@ include ccgcalls, "ccgstmts.nim"
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
 $1 define nimfr_(procname, filename) \
-  #nimFrame();
+  #nimFrame(procname, filename);
+  //#nimFrame();
 
 $1 define nimln_(n, file) \
   #nimLine2(n)
