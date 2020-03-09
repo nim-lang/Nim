@@ -645,6 +645,7 @@ $1 define nimln_(line2, file) \
     genLineDir(p, p.prc.ast.info)
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
+  # TODO: see where this comes from, needs to be updated
   discard cgsym(p.module, "nimFrame")
   p.blocks[0].sections[cpsLocals].addf("TFrame $1;$n", [frame])
   result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; " &

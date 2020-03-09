@@ -570,26 +570,27 @@ proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
     frameData.tframes[frameData.frameIndex].line = line
 
 proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+  # TODO: how to ensure no GC used here? `noSideEffect and nogc` don't work for that
   frameData.frameIndex.inc
   # if frameData.nimFrameGuard:
   #   c_printf("nimFrame:%*s %s:%s %lld\n", frameIndex, "", filename, procname, frameIndex)
   #   return
   # frameData.nimFrameGuard = true
   if frameData.frameIndex == nimCallDepthLimit: callDepthLimitReached()
-  when true:
-    if frameData.frameIndex >= cast[FrameIndex](frameData.tframesCap):
-      const sz = sizeof(TFrame)
-      let old = frameData.tframesCap
-      if frameData.tframesCap == 0: frameData.tframesCap = 8
-      else: frameData.tframesCap+=frameData.tframesCap
-      proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
-      # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
-      frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
-    frameData.tframes[frameData.frameIndex].procname = procname
-    frameData.tframes[frameData.frameIndex].filename = filename
-    frameData.tframes[frameData.frameIndex].line = line
-    # tframes[frameIndex].len = 0 # CHECKME
-    # frameData.nimFrameGuard = false
+
+  if frameData.frameIndex >= cast[FrameIndex](frameData.tframesCap):
+    const sz = sizeof(TFrame)
+    let old = frameData.tframesCap
+    if frameData.tframesCap == 0: frameData.tframesCap = 8
+    else: frameData.tframesCap+=frameData.tframesCap
+    proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
+    # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
+    frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
+  frameData.tframes[frameData.frameIndex].procname = procname
+  frameData.tframes[frameData.frameIndex].filename = filename
+  frameData.tframes[frameData.frameIndex].line = line
+  # tframes[frameIndex].len = 0 # CHECKME
+  # frameData.nimFrameGuard = false
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
