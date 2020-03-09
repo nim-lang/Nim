@@ -95,6 +95,9 @@ proc loadModuleSym*(g: ModuleGraph; fileIdx: FileIndex; fullpath: AbsoluteFile):
 proc pushType(w: var Writer, t: PType) =
   if not containsOrIncl(w.tmarks, t.uniqueId):
     w.tstack.add(t)
+    if t.kind == tyGenericInst:
+      if t.sons.len == 0:
+        raise newException(Defect, "write of generic instance w/o sons")
 
 proc pushSym(w: var Writer, s: PSym) =
   if not containsOrIncl(w.smarks, s.id):
@@ -247,6 +250,7 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
   if t.typeInst != nil:
     result.add('\21')
     encodeVInt(t.typeInst.uniqueId, result)
+    # XXX: keep an eye on this
     pushType(w, t.typeInst)
   # we have sons when we write the type,
   # but we don't have them after reading it.
@@ -361,24 +365,25 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     # make that unfeasible nowadays:
     encodeNode(g, s.info, s.ast, result)
 
-proc storeSym(g: ModuleGraph; s: PSym) =
+proc storeSym*(g: ModuleGraph; s: PSym): int64 =
   if sfForward in s.flags and s.kind != skModule:
     w.forwardedSyms.add s
     return
   var buf = newStringOfCap(160)
   encodeSym(g, s, buf)
+  const
+    insertion = sql"insert into syms(nimid, module, name, data, exported) values (?, ?, ?, ?, ?)"
   # XXX only store the name for exported symbols in order to speed up lookup
   # times once we enable the skStub logic.
   let m = getModule(s)
   let mid = if m == nil: 0 else: abs(m.id)
-  db.exec(sql"insert into syms(nimid, module, name, data, exported) values (?, ?, ?, ?, ?)",
-    s.id, mid, s.name.s, buf, ord(sfExported in s.flags))
+  result = db.insertID(insertion, s.id, mid, s.name.s, buf,
+                       ord(sfExported in s.flags))
 
 proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
   const
     query = sql"select nimid from types where nimid = ? limit 1"
   result = db.getValue(query, nimid) == $nimid
-  echo "exiting from type already stored with result: ", result
 
 proc storeType(g: ModuleGraph; t: PType) =
   if typeAlreadyStored(g, t.uniqueId):
@@ -397,30 +402,32 @@ proc transitiveClosure(g: ModuleGraph) =
       doAssert false, "loop never ends!"
     if w.sstack.len > 0:
       let s = w.sstack.pop()
-      when true:
+      when false:
         echo "popped ", s.name.s, " ", s.id
-      storeSym(g, s)
+      discard storeSym(g, s)
     elif w.tstack.len > 0:
       let t = w.tstack.pop()
       storeType(g, t)
-      when true:
-        # crashing
+      when false:
         echo "popped type ", typeToString(t), " ", t.uniqueId
     else:
       break
     inc i
 
-proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
+proc storeNode*(g: ModuleGraph; module: PSym; n: PNode): int64 =
   if g.config.symbolFiles == disabledSf: return
   var buf = newStringOfCap(160)
   encodeNode(g, module.info, n, buf)
-  db.exec(sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)",
-    abs(module.id), module.offset, buf)
+  const
+    insertion = sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)"
+  result = db.insertID(insertion, abs(module.id), module.offset, buf)
   inc module.offset
+  # XXX: store the snippet against the toplevelstmt id
+  #      we currently don't store snippets here...  maybe we should?
   transitiveClosure(g)
 
 proc recordStmt*(g: ModuleGraph; module: PSym; n: PNode) =
-  storeNode(g, module, n)
+  discard storeNode(g, module, n)
 
 proc storeFilename(g: ModuleGraph; fullpath: AbsoluteFile; fileIdx: FileIndex) =
   let id = db.getValue(sql"select id from filenames where fullpath = ?", fullpath.string)
@@ -434,7 +441,7 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
   var stillForwarded: seq[PSym] = @[]
   for s in w.forwardedSyms:
     if sfForward notin s.flags:
-      storeSym(g, s)
+      discard storeSym(g, s)
     else:
       stillForwarded.add s
   swap w.forwardedSyms, stillForwarded
@@ -682,6 +689,9 @@ proc loadType(g; id: int; info: TLineInfo): PType =
       rawAddSon(result, nil)
     else:
       let d = decodeVInt(b.s, b.pos)
+      when not defined(release):
+        if not typeAlreadyStored(g, d):
+          raise newException(Defect, "the type is not in the db")
       result.sons.add loadType(g, d, info)
 
 proc decodeLib(g; b; info: TLineInfo): PLib =

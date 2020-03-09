@@ -608,6 +608,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
     try:
       result = semStmtAndGenerateGenerics(c, n)
     except ERecoverableError, ESuggestDone:
+      # XXX: verify that this path to store is okay
       recoverContext(c)
       c.inGenericInst = oldInGenericInst
       msgs.setInfoContextLen(c.config, oldContextLen)
@@ -617,7 +618,8 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  rod.storeNode(c.graph, c.module, result)
+  # store node always runs here
+  discard rod.storeNode(c.graph, c.module, result)
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):

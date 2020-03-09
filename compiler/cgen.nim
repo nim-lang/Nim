@@ -15,7 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, ccgmerge, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
-  injectdestructors
+  injectdestructors, rod
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -515,12 +515,14 @@ include ccgthreadvars
 proc varInDynamicLib(m: BModule, sym: PSym)
 
 proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
+  # XXX: ?
   return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and
       ({lfNoDecl, lfHeader} * s.loc.flags == {})
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
+  # XXX: ?
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
@@ -711,6 +713,7 @@ proc mangleDynLibProc(sym: PSym): Rope =
     result = rope(strutils.`%`("Dl_$1_", $sym.id))
 
 proc symInDynamicLib(m: BModule, sym: PSym) =
+  # XXX: ?
   var lib = sym.annex
   let isCall = isGetProcAddr(lib)
   var extname = sym.loc.r
@@ -964,6 +967,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       allPathsInBranch(n[i])
 
 proc getProcTypeCast(m: BModule, prc: PSym): Rope =
+  # XXX: ?
   result = getTypeDesc(m, prc.loc.t)
   if prc.typ.callConv == ccClosure:
     var rettype, params: Rope
@@ -979,6 +983,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc genProcAux(m: BModule, prc: PSym) =
+  # XXX: another maybe
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
   var returnStmt: Rope = nil
@@ -1080,6 +1085,7 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
            m.config.cmd == cmdCompileToCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
+  # XXX: reorder this too
   useHeader(m, sym)
   if lfNoDecl in sym.loc.flags: return
   if lfDynamicLib in sym.loc.flags:
@@ -1107,6 +1113,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
 
 # TODO: figure out how to rename this - it DOES generate a forward declaration
 proc genProcNoForward(m: BModule, prc: PSym) =
+  # XXX: fix this while we're in here
   if lfImportCompilerProc in prc.loc.flags:
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
@@ -1192,6 +1199,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
 proc genProc(m: BModule, prc: PSym) =
+  # XXX: fixup here
   if sfBorrow in prc.flags or not isActivated(prc): return
   if sfForward in prc.flags:
     addForwardedProc(m, prc)
@@ -1897,6 +1905,16 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
     genProcBody(m.initProc, transformedN)
+    if m.config.symbolFiles in {writeOnlySf, v2Sf}:
+      # XXX:  initProc?  into toplevel stmt
+      let
+        id = storeSym(m.g.graph, m.module)
+      var
+        snippet = newSnippet(m, id, transformedN)
+      if id in m.snippets:
+        raise newException(Defect, "dupe store of snippet")
+      else:
+        m.snippets[id] = snippet
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:

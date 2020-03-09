@@ -164,6 +164,43 @@ type
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile
+    snippets*: Table[int64, Snippet]
+
+  Snippet* = object
+    id*: int64
+    name*: string
+    filename*: AbsoluteFile
+    weak*: seq[Snippet]
+    strong*: seq[Snippet]
+    case kind*: TNodeKind
+    of nkSym:
+      symbol*: int64
+    of nkStmtList:
+      toplevel*: int64
+    else:
+      discard
+    nimid*: int
+    code*: Rope
+
+proc newSnippet*(module: BModule; id: int64, node: PNode): Snippet =
+  ## create a new snippet for the given module and symbol with the given
+  ## id -- a sqlite primary key, which varies with the node kind.
+  let
+    ekind =
+      if node == nil:
+        nkStmtList
+      else:
+        node.kind
+  case ekind
+  of nkStmtList:
+    result = Snippet(toplevel: id, kind: nkStmtList,
+                     nimid: module.module.id)
+  of nkSym:
+    result = Snippet(symbol: id, kind: nkSym, nimid: node.sym.id)
+  else:
+    raise newException(Defect, "unexpected node kind: " & $ekind)
+  result.filename = module.filename
+  result.code = rope("")
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
@@ -199,3 +236,19 @@ iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m
+
+when false:
+  proc `[]`*(files: TCFileSections; section: TCFileSection): var Rope =
+    raise newException(Defect, "do not touch my rope")
+
+  proc addSnippet*(g: ModuleGraph; module: var TCGen;
+                   section: TCFileSection; rope: Rope) =
+    # i want a pnode here
+    module.s[section].add rope
+    var snippet =
+      if not snippetAlreadyStored(g, module, rope):
+        #raise newException(Defect, "BTDT")
+        storeSnippet(module, rope)
+      else:
+        loadSnippet(module, rope)
+    module.snippets.add snippet
