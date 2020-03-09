@@ -581,6 +581,7 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != nil)
   scopeMangledParam(p, s)
 
+# XXX: wtf is this?
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
@@ -1089,10 +1090,10 @@ proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
            m.config.cmd == cmdCompileToCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
-  # XXX: reorder this too
   useHeader(m, sym)
   if lfNoDecl in sym.loc.flags: return
   if lfDynamicLib in sym.loc.flags:
+    # XXX load the sym.id snippet?  didn't we already do this?
     if getModule(sym).id != m.module.id and
         not containsOrIncl(m.declaredThings, sym.id):
       m.s[cfsVars].add(ropecg(m, "$1 $2 $3;$n",
@@ -1102,6 +1103,7 @@ proc genProcPrototype(m: BModule, sym: PSym) =
         m.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
              [mangleDynLibProc(sym), getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
   elif not containsOrIncl(m.declaredProtos, sym.id):
+    # XXX load the sym.id snippet?  didn't we already do this?
     let asPtr = isReloadable(m, sym)
     var header = genProcHeader(m, sym, asPtr)
     if not asPtr:
@@ -1115,10 +1117,9 @@ proc genProcPrototype(m: BModule, sym: PSym) =
         header.add(" __attribute__((noreturn))")
     m.s[cfsProcHeaders].add(ropecg(m, "$1;$N", [header]))
 
-# TODO: figure out how to rename this - it DOES generate a forward declaration
-proc genProcNoForward(m: BModule, prc: PSym) =
-  # XXX: fix this while we're in here
+proc genProcMayForward(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
+    # this is our forwarded proc scenario...
     fillProcLoc(m, prc.ast[namePos])
     useHeader(m, prc)
     # dependency to a compilerproc:
@@ -1205,17 +1206,28 @@ proc isActivated(prc: PSym): bool = prc.typ != nil
 proc genProc(m: BModule, prc: PSym) =
   # XXX: fixup here
   if sfBorrow in prc.flags or not isActivated(prc): return
+
   if sfForward in prc.flags:
-    addForwardedProc(m, prc)
+    # telling the BModule that we will need a forward declaration section
     fillProcLoc(m, prc.ast[namePos])
+    # telling the BModule that we want a forward declaration
+    addForwardedProc(m, prc)
+
+  if symbolAlreadyStored(m.g.graph, prc):
+    for snippet in loadSnippets(m.g.graph, prc):
+      m.s[snippet.section].add snippet.code
   else:
-    genProcNoForward(m, prc)
-    if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-        m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-      genProcPrototype(m.g.generatedHeader, prc)
-      if prc.typ.callConv == ccInline:
-        if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
-          genProcAux(m.g.generatedHeader, prc)
+    # freeze the module's rope positions
+    if sfForward notin prc.flags:
+      genProcMayForward(m, prc)
+      if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
+          m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+        genProcPrototype(m.g.generatedHeader, prc)
+        if prc.typ.callConv == ccInline:
+          if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
+            genProcAux(m.g.generatedHeader, prc)
+    # thaw the module's rope positions
+    # -> stores the snippets to db?
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1909,122 +1921,20 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
+    # grab the current lengths
+    var
+      mark = m.setMark(transformedN)
+
     genProcBody(m.initProc, transformedN)
 
-    # the module represents a c file; really, ANY backend file that we're
-    # generating.
-    #
-    # THIS proc is called for every toplevel statement.
-    #
+    if m.config.symbolFiles == disabledSf:
+      return
 
-    # a side-effect of this is that the ropes that are stored in this
-    # module object grow, each of which represent a portion of the file
-    # that we're generating.
-
-    # so our strategy is to grab those growths, those addendums that are
-    # made to the ropes.
-    #
-    # we make a snippet out of every such addition to each section of the
-    # file after the toplevel statements have been turned into code.
-    #
-    # the snippets all get written to the database.  eventually, they will
-    # also get reordered according to tarjan's algo.
-
-    let
-      # this should ultimately be a store/get operation
-      #
-      # (we're just storing the module as a symbol)
-      # (so this will be redundant as fuck)
-      mid: SqlId = storeSym(m.g.graph, m.module)
-
-    # XXX: this needs to work for a simple --incremental:on
-    #      (and writeOnly probably means that it doesn't)
+    # this will all move into genProc/genType/etc.
     if m.config.symbolFiles in {writeOnlySf, v2Sf}:
-
-      when false:
-        echo m.filename
-        for section in TCFileSection.low .. TCFileSection.high:
-          if m.s[section].len > 0:
-            echo "section ", section, " with id ",
-              m.module.id, " with len ", m.s[section].len
-
-          # failed attempt to leverage leaves
-          when false:
-            for leaf in m.s[section].leaves:
-              echo "leaf len ", leaf.len, ": ", leaf
-
-      # two scenarios:
-      # - toplevel statement of any form (any TNodeKind)
-      # - symbol for anything
-
-      when true:
-        # this proc just takes an offset and returns whatever portion
-        # of the rope exceeds that offset; ie. the tail of the rope.
-        proc tail(r: Rope; x: int): Rope =
-          var
-            i = 0
-          # leaves are individual strings that were added to the rope
-          for leaf in r.leaves:
-            if i == x:
-              # just add from here on out
-              result &= rope(leaf)
-            else:
-              # we're still scanning for the index at which we should
-              # start adding leaves to the result
-              i.inc leaf.len
-              if i > x:
-                # the assumption is that adds to ropes are atomic with
-                # leaves; that every leaf represents an add
-                raise newException(Defect, "bad assumption wrt leaves")
-
-        # snippets for this series of file sections
-        var
-          weaklings: Snippets
-
-        let
-          nodeid = case transformedN.kind
-          of nkSym:
-            storeSym(m.g.graph, transformedN.sym)
-          else:
-            storeNode(m.g.graph, m.module, transformedN)
-
-        # iterate over all the sections of the file
-        for section in TCFileSection.low .. TCFileSection.high:
-          # if the section appears to have grown as a result of
-          # our codegen,
-          if m.s[section].len > m.lengths[section]:
-            # get the new code that was added,
-            let
-              code = m.s[section].tail(m.lengths[section])
-            # advance the record of where we are in the snippets,
-            m.lengths[section] = m.s[section].len
-            # create a new snippet from the code addition,
-
-            var
-              snippet = newSnippet(m, mid, nodeid, transformedN, code)
-            # XXX: maybe force this in instantiation?
-            snippet.section = section
-
-            # any changed section gets added to the list of weaklings
-            weaklings[snippet.id] = snippet
-
-            # store the snippet, and finally
-            storeSnippet(m.g.graph, snippet)
-            # add it to the table where we cache the snippet in memory
-            if snippet.id notin m.snippets:
-              m.snippets[snippet.id] = snippet
-
-        # give all the weaklings links to one-another
-        for weak in weaklings.mvalues:
-          weak.weak = weaklings
-          # and write them to the database!
-          storeSnippet(m.g.graph, weak)
-
-    when false:
-      # XXX handle a read of a snippet from the db
-      if m.config.symbolFiles in {readOnlySf, v2Sf}:
-        loadModule(m.g.graph, mid, m.snippets)
-        echo "loaded $# snippets" % [ m.snippets.len ]
+      for snippet in mark.snippetsSince:
+        # add it to the in-memory cache
+        m.snippets.add snippet
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -2177,7 +2087,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
   # a second pass here
-  # Note: ``genProcNoForward`` may add to ``forwardedProcs``
+  # Note: ``genProcMayForward`` may add to ``forwardedProcs``
   while g.forwardedProcs.len > 0:
     let
       prc = g.forwardedProcs.pop()
@@ -2186,7 +2096,7 @@ proc genForwardedProcs(g: BModuleList) =
     if sfForward in prc.flags:
       internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
 
-    genProcNoForward(m, prc)
+    genProcMayForward(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   let g = BModuleList(backend)

@@ -402,17 +402,3 @@ proc idOrSig*(s: PSym, currentModule: string,
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)
-
-when false:
-  proc nodeBodyDigest*(graph: ModuleGraph, node: PNode): SigHash =
-    ## compute unique digest of some random shitty node;
-    ## please ffs don't do this on a symbol
-    assert(node.kind notin {nkType, nkSym}, $node.kind)
-
-    let consider = {CoProc, CoType, CoOwnerSig, CoIgnoreRange,
-                    CoConsiderOwned, CoDistinct, CoHashTypeInsideNode}
-
-    var c: MD5Context
-    md5Init(c)
-    c.hashTree(node, consider)
-    c.md5Final(result.MD5Digest)

@@ -164,11 +164,9 @@ type
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
     ndi*: NdiFile
-    # index to where in each file section we've consumed ropes -> snippets
-    lengths*: array[TCFileSection, int]
     snippets*: Snippets
 
-  Snippets* = Table[SqlId, Snippet]
+  Snippets* = seq[Snippet]
   SqlId* = int64
 
   #
@@ -198,8 +196,8 @@ type
     name*: string
     filename*: AbsoluteFile
     module*: SqlId
-    weak*: Snippets
-    strong*: Snippets
+    weak* {.deprecated.}: Snippets
+    strong* {.deprecated.}: Snippets
 
     section*: TCFileSection
 
@@ -213,6 +211,11 @@ type
     nimid*: int
     code*: Rope
     node*: PNode
+
+  SnippetMark*[T: PNode | PType | PSym] = object
+    lengths: array[TCFileSection, int]
+    module: BModule
+    node: T
 
 proc newSnippet*(module: BModule; mid: SqlId; id: SqlId, node: PNode;
                  rope: Rope): Snippet =

@@ -186,28 +186,6 @@ when nimIncremental:
     db.exec sql"create index StaticsByModuleIdx on toplevelstmts(module);"
     db.exec sql"insert into controlblock(idgen) values (0)"
 
-    # weak is a list of ids for weak dependencies
-    # strong is a list of ids for strong dependencies
-    #
-    # weak deps; series of ids of other snippets:
-    #   - pointers to different types (from different snippets)
-    #   - forward prototype
-    #   - based upon .kind
-    #   - ???
-    # strong deps; series of ids of other snippets:
-    #   - inlined proc
-    #   - ???
-    #
-    # kind -> symbol or toplevel statement; defines which of symbol
-    #         or toplevel is relevant
-    # filename -> BModule.filename
-    # code -> rope from codegen
-    # module -> symbol id of the frontend module (ripe for removal)
-    # name -> (future) symbol name
-    # symbol -> primary key from sqlite syms table
-    # toplevel -> primary key from sqlite toplevelstmts table
-    # nimid -> symbol id (from nim) if it's nkSym
-    #       -> module id (from nim) if it's nkStmtList
     db.exec(sql"""
       create table if not exists snippets(
         id integer primary key,
@@ -217,8 +195,6 @@ when nimIncremental:
         nimid integer not null,
         module integer not null,
         code text not null,
-        strong text not null,
-        weak text not null,
         kind integer not null,
         symbol integer not null,
         toplevel integer not null,

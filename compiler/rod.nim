@@ -25,12 +25,18 @@ when not nimIncremental:
 
   template registerModule*(g: ModuleGraph; module: PSym) = discard
 
-  #template typeAlreadyStored*(g: ModuleGraph; nimid: int): bool = false
+  template symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool = false
+  template typeAlreadyStored*(g: ModuleGraph; p: PType): bool = false
+
+  template loadSnippets*(g: ModuleGraph; p: PSym): Snippet = discard
 
   template storeSnippet*(g: ModuleGraph; s: var Snippet) = discard
 
   template loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
     discard
+
+  template setMark*[T](m: BModule; node: T): SnippetMark[T] =
+  template snippetsSince*[T](mark: var SnippetMark[T]): Snippet =
 
 else:
   include rodimpl

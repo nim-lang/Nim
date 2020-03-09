@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs
+import sighashes, modulegraphs, rod
 from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
@@ -121,6 +121,11 @@ proc typeName(typ: PType): Rope =
     else:
       rope($typ.kind)
 
+#
+# i have the module i'm outputting too -- BModule
+# type that i need to fetch/store from cache -- PType
+# signatureHash of the type -- SigHash
+# and i return the very same code that i've cached -- Rope
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
   while true:
@@ -337,10 +342,12 @@ proc pushType(m: BModule, typ: PType) =
   m.typeStack.add(typ)
 
 proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
-  if typ == nil: result = rope("void")
+  if typ == nil:
+    result = rope("void")
   else:
     result = getSimpleTypeDesc(m, typ)
-    if result == nil: result = cacheGetType(m.typeCache, sig)
+    if result == nil:
+      result = cacheGetType(m.typeCache, sig)
 
 proc structOrUnion(t: PType): Rope =
   let cachedUnion {.global.} = rope("union")
