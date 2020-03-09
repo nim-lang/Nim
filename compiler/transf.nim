@@ -542,13 +542,13 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
     case arg.kind
-    of nkStmtListExpr:
-      return paComplexOpenarray
     of nkBracket:
       return paFastAsgnTakeTypeFromArg
+    of nkSym:
+      return paDirectMapping
     else:
-      return paDirectMapping    # XXX really correct?
-                                # what if ``arg`` has side-effects?
+      return paComplexOpenarray
+
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
