@@ -26,11 +26,12 @@ when not nimIncremental:
 
   template registerModule*(g: ModuleGraph; module: PSym) = discard
 
-  template typeAlreadyStored*(g: ModuleGraph; nimid: int): bool = false
+  #template typeAlreadyStored*(g: ModuleGraph; nimid: int): bool = false
 
-  template shouldSnippet*(n: PNode): bool = false
+  template storeSnippet*(g: ModuleGraph; s: var Snippet) = discard
 
-  template storeSnippet*(g: ModuleGraph; s: Snippet): int64 = 0
+  template loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
+    discard
 
 else:
   include rodimpl

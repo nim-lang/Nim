@@ -11,16 +11,15 @@
 
 import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees, condsyms, nversion, pathutils, types, cgendata, sequtils
+  btrees, trees, condsyms, nversion, pathutils, types, cgendata, sequtils,
+  sighashes
 
-## Todo:
+## TODO:
 ## - Add some backend logic dealing with generics.
-## - Verify that the serialization is only done after the type was
-##   computed completely.
 ## - Dependency computation should use *signature* hashes in order to
 ##   avoid recompiling dependent modules.
 ## - Patch the rest of the compiler to do lazy loading of proc bodies.
-## - serialize the AST in a smarter way (avoid storing some ASTs twice!)
+## - Serialize the AST in a smarter way (avoid storing some ASTs twice!)
 
 template db(): DbConn = g.incr.db
 
@@ -365,7 +364,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     # make that unfeasible nowadays:
     encodeNode(g, s.info, s.ast, result)
 
-proc storeSym*(g: ModuleGraph; s: PSym): int64 =
+proc storeSym*(g: ModuleGraph; s: PSym): SqlId =
   if sfForward in s.flags and s.kind != skModule:
     w.forwardedSyms.add s
     return
@@ -380,9 +379,9 @@ proc storeSym*(g: ModuleGraph; s: PSym): int64 =
   result = db.insertID(insertion, s.id, mid, s.name.s, buf,
                        ord(sfExported in s.flags))
 
-proc decodeDeps(g: ModuleGraph; input: string): seq[Snippet]
+proc decodeDeps(g: ModuleGraph; input: string): Snippets
 
-proc loadSnippet(g: ModuleGraph; id: int64): Snippet =
+proc loadSnippet(g: ModuleGraph; id: SqlId): Snippet =
   const
     selection = sql"select id,kind,nimid,code,strong,weak,symbol,toplevel from snippets where id = ?"
   let
@@ -394,53 +393,77 @@ proc loadSnippet(g: ModuleGraph; id: int64): Snippet =
                    code: rope(row[3]),
                    strong: decodeDeps(g, row[4]),
                    weak: decodeDeps(g, row[5]))
-  case result.kind:
-  of nkStmtList:
-    result.toplevel = parseInt(row[7])
-  of nkSym:
-    result.symbol = parseInt(row[6])
+  when false:
+    case result.kind
+    of nkSym:
+      result.symbol = parseInt(row[6])
+    else:
+      result.toplevel = parseInt(row[7])
   else:
-    raise newException(Defect, "how to read " & $result.kind)
+    result.symbol = parseInt(row[6])
 
-proc decodeDeps(g: ModuleGraph; input: string): seq[Snippet] =
+proc decodeDeps(g: ModuleGraph; input: string): Snippets =
   for id in input.split(","):
-    result.add loadSnippet(g, parseInt(id))
+    let
+      id = parseInt(id)
+    result[id] = loadSnippet(g, id)
 
-proc encodeDeps(deps: seq[Snippet]): string =
-  let
-    ids = deps.mapIt $it.id
-  result = ids.join(",")
+proc encodeDeps(deps: Snippets): string =
+  for snippet in deps.values:
+    if result.len == 0:
+      result = $snippet.id
+    else:
+      result &= "," & $snippet.id
 
-proc storeSnippet*(g: ModuleGraph; s: Snippet): int64 =
+proc storeSnippet*(g: ModuleGraph; s: var Snippet) =
   const
-    insertion = sql"insert into snippets(symbol, toplevel, kind, filename, nimid, name, code, strong, weak) values (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    insertion = sql"insert into snippets(section, module, symbol, toplevel, kind, filename, nimid, name, code, strong, weak) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    updation = sql"update snippets set strong = ?, weak = ? where id = ?"
   let
     id = case s.kind
     of nkSym:
       s.symbol
-    of nkStmtList:
-      s.toplevel
     else:
-      0
+      # XXX: force everything into symbol
+      #s.toplevel
+      s.symbol
 
-  result = db.insertID(insertion, id, id, s.kind, s.filename,
-                       s.nimid, s.name, s.code,
+  if s.id == 0:
+    s.id = db.insertID(insertion, ord(s.section), s.module, id, id,
+                       s.kind, s.filename, s.nimid, s.name, s.code,
                        encodeDeps(s.strong), encodeDeps(s.weak))
+  else:
+    db.exec(updation, encodeDeps(s.strong), encodeDeps(s.weak), s.id)
 
-proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
+proc loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
+  const
+    selection = sql"select id,code,kind,strong,weak from snippets where module = ?"
+  for row in db.fastRows(selection, mid):
+    let
+      id = parseInt(row[0])
+    snips[id] = Snippet(id: id, code: rope(row[1]), module: mid,
+                        kind: parseInt(row[2]).TNodeKind,
+                        strong: decodeDeps(g, row[3]),
+                        weak: decodeDeps(g, row[4]))
+
+proc typeAlreadyStored(g: ModuleGraph; nimid: int): bool =
   const
     query = sql"select nimid from types where nimid = ? limit 1"
   result = db.getValue(query, nimid) == $nimid
 
 proc storeType(g: ModuleGraph; t: PType) =
-  if typeAlreadyStored(g, t.uniqueId):
-    raise newException(Defect, "rewrite of type id " & $t.uniqueId)
   var buf = newStringOfCap(160)
   encodeType(g, t, buf)
   let m = if t.owner != nil: getModule(t.owner) else: nil
   let mid = if m == nil: 0 else: abs(m.id)
-  db.exec(sql"insert into types(nimid, module, data) values (?, ?, ?)",
-    t.uniqueId, mid, buf)
+  if typeAlreadyStored(g, t.uniqueId):
+    echo "rewrite of type id " & $t.uniqueId
+    #raise newException(Defect, "rewrite of type id " & $t.uniqueId)
+    db.exec(sql"update types set module = ?, data = ? where nimid = ?",
+      mid, buf, t.uniqueId)
+  else:
+    db.exec(sql"insert into types(nimid, module, data) values (?, ?, ?)",
+      t.uniqueId, mid, buf)
 
 proc transitiveClosure(g: ModuleGraph) =
   var i = 0
@@ -461,16 +484,17 @@ proc transitiveClosure(g: ModuleGraph) =
       break
     inc i
 
-proc storeNode*(g: ModuleGraph; module: PSym; n: PNode): int64 =
+proc storeNode*(g: ModuleGraph; module: PSym; n: PNode): SqlId =
   if g.config.symbolFiles == disabledSf: return
   var buf = newStringOfCap(160)
   encodeNode(g, module.info, n, buf)
   const
     insertion = sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)"
+  # XXX
+  # module should match the primary key of an id in the modules table,
+  # right?
   result = db.insertID(insertion, abs(module.id), module.offset, buf)
   inc module.offset
-  # XXX: store the snippet against the toplevelstmt id
-  #      we currently don't store snippets here...  maybe we should?
   transitiveClosure(g)
 
 proc recordStmt*(g: ModuleGraph; module: PSym; n: PNode) =
@@ -1018,12 +1042,3 @@ proc setupModuleCache*(g: ModuleGraph) =
   let lastId = db.getValue(sql"select max(idgen) from controlblock")
   if lastId.len > 0:
     idgen.setId(parseInt lastId)
-
-proc shouldSnippet*(node: PNode): bool =
-  case node.kind
-  of nkSym:
-    result = true
-  of nkStmtList:
-    result = true
-  else:
-    discard

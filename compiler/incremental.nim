@@ -162,6 +162,7 @@ when nimIncremental:
     db.exec sql"create index SymByNimIdIdx on syms(nimid);"
 
 
+    #        md5 char(20) not null,
     db.exec(sql"""
       create table if not exists toplevelstmts(
         id integer primary key,
@@ -212,13 +213,16 @@ when nimIncremental:
         id integer primary key,
         name text not null,
         filename text not null,
+        section int not null,
         nimid integer not null,
+        module integer not null,
         code text not null,
         strong text not null,
         weak text not null,
         kind integer not null,
         symbol integer not null,
         toplevel integer not null,
+        foreign key (module) references module(id),
         foreign key (symbol) references syms(id),
         foreign key (toplevel) references toplevelstmts(id)
       );

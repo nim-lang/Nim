@@ -31,7 +31,7 @@ proc checkConstructedType*(g: ModuleGraph; conf: ConfigRef;
     if t.kind == tyObject and t[0] != nil:
       if t[0].kind != tyObject or tfFinal in t[0].flags:
         localError(info, errInheritanceOnlyWithNonFinalObjects)
-  when not defined(release):
+  when false:
     # if we haven't disabled symbol files (eg. building our compiler!)
     if conf.symbolFiles notin {readOnlySf, disabledSf}:
       # if 'typ' was serialized already, it's a bug.

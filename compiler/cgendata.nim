@@ -165,28 +165,56 @@ type
     g*: BModuleList
     ndi*: NdiFile
     # index to where in each file section we've consumed ropes -> snippets
-    positions*: array[TCFileSection, int]
-    snippets*: Table[SqlId, Snippet]
+    lengths*: array[TCFileSection, int]
+    snippets*: Snippets
 
-  SqlId = int64
+  Snippets* = Table[SqlId, Snippet]
+  SqlId* = int64
 
+  #
+  # https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
+  #
+  #
+  # tarjan's algo for idiots:
+  #
+  # start with a snippet.
+  # give it a new, unique, incrementing index.
+  # throw it on the stack.
+  #
+  # visit its kids
+  # do the same shit.
+  #
+  # on the way out, we remove ourselves from the stack if we
+  # aren't pointing at any earlier member of the stack.
+  #
+  #
   Snippet* = ref object
+    # tarjan's shit
+    index*: int
+    lowlink*: int
+
+    # my shit
     id*: SqlId
     name*: string
     filename*: AbsoluteFile
-    weak*: seq[Snippet]
-    strong*: seq[Snippet]
-    case kind*: TNodeKind
-    of nkSym:
-      symbol*: SqlId
-    of nkStmtList:
-      toplevel*: SqlId
-    else:
-      discard
+    module*: SqlId
+    weak*: Snippets
+    strong*: Snippets
+
+    section*: TCFileSection
+
+    symbol*: SqlId
+    kind*: TNodeKind
+#    case kind*: TNodeKind
+#    of nkSym:
+#      symbol*: SqlId
+#    else:
+#      toplevel*: SqlId
     nimid*: int
     code*: Rope
+    node*: PNode
 
-proc newSnippet*(module: BModule; id: SqlId, node: PNode;
+proc newSnippet*(module: BModule; mid: SqlId; id: SqlId, node: PNode;
                  rope: Rope): Snippet =
   ## create a new snippet for the given module and symbol with the given
   ## id -- a sqlite primary key, which varies with the node kind.
@@ -196,21 +224,21 @@ proc newSnippet*(module: BModule; id: SqlId, node: PNode;
         nkStmtList
       else:
         node.kind
+
   case ekind
-  of nkStmtList:
-    # we use the toplevel == symbol == id because statement lists
-    # get stored as symbols in the sqlite database (currently)
-    result = Snippet(toplevel: id, kind: nkStmtList,
-                     name: $module.filename, nimid: module.module.id)
   of nkSym:
     result = Snippet(symbol: id, kind: nkSym,
                      name: node.sym.name.s, nimid: node.sym.id)
   else:
-    raise newException(Defect, "unexpected node kind: " & $ekind)
+    # we use the toplevel == symbol == id because statement lists
+    # get stored as symbols in the sqlite database (currently)
+    #result = Snippet(toplevel: id, kind: node.kind,
+    result = Snippet(symbol: mid, kind: node.kind,
+                     name: $module.filename, nimid: module.module.id)
   result.filename = module.filename
-  # use the id from the sqlite primary key?  or nim module id?
-  #result.module = module.module.id
+  result.module = mid # use the id from the sqlite primary key!
   result.code = rope
+  result.node = node
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config

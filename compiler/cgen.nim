@@ -1897,6 +1897,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if passes.skipCodegen(m.config, n) or
       not moduleHasChanged(m.g.graph, m.module):
+    # XXX: defective for generics?
     return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
@@ -1910,18 +1911,35 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   else:
     genProcBody(m.initProc, transformedN)
 
-    when true:
-      # XXX: temporary
-      if not shouldSnippet(transformedN):
-        return
-
+    # the module represents a c file; really, ANY backend file that we're
+    # generating.
     #
-    # we have a module that has this toplevel statement encoded in some
-    # arbitrary number of 1+ ropes.
+    # THIS proc is called for every toplevel statement.
+    #
 
+    # a side-effect of this is that the ropes that are stored in this
+    # module object grow, each of which represent a portion of the file
+    # that we're generating.
+
+    # so our strategy is to grab those growths, those addendums that are
+    # made to the ropes.
+    #
+    # we make a snippet out of every such addition to each section of the
+    # file after the toplevel statements have been turned into code.
+    #
+    # the snippets all get written to the database.  eventually, they will
+    # also get reordered according to tarjan's algo.
+
+    let
+      # this should ultimately be a store/get operation
+      #
+      # (we're just storing the module as a symbol)
+      # (so this will be redundant as fuck)
+      mid: SqlId = storeSym(m.g.graph, m.module)
+
+    # XXX: this needs to work for a simple --incremental:on
+    #      (and writeOnly probably means that it doesn't)
     if m.config.symbolFiles in {writeOnlySf, v2Sf}:
-      # XXX: should not need this
-      #doAssert n.kind == nkStmtList, "node kind is actually " & $n.kind
 
       when false:
         echo m.filename
@@ -1935,33 +1953,78 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
             for leaf in m.s[section].leaves:
               echo "leaf len ", leaf.len, ": ", leaf
 
-      let
-        # this should ultimately be a store/get operation
-        id = storeSym(m.g.graph, m.module)
+      # two scenarios:
+      # - toplevel statement of any form (any TNodeKind)
+      # - symbol for anything
 
       when true:
+        # this proc just takes an offset and returns whatever portion
+        # of the rope exceeds that offset; ie. the tail of the rope.
         proc tail(r: Rope; x: int): Rope =
           var
             i = 0
+          # leaves are individual strings that were added to the rope
           for leaf in r.leaves:
-            if i >= x:
+            if i == x:
+              # just add from here on out
               result &= rope(leaf)
             else:
+              # we're still scanning for the index at which we should
+              # start adding leaves to the result
               i.inc leaf.len
-        for section in TCFileSection.low .. TCFileSection.high:
-          if m.s[section].len > m.positions[section]:
-            let
-              code = m.s[section].tail(m.positions[section])
-            # advance the record of where we are in the snippets
-            m.positions[section] = m.s[section].len - 1
-            var
-              snippet = newSnippet(m, id, transformedN, code)
-            let
-              sid = storeSnippet(m.g.graph, snippet)
-            if sid notin m.snippets:
-              m.snippets[sid] = snippet
+              if i > x:
+                # the assumption is that adds to ropes are atomic with
+                # leaves; that every leaf represents an add
+                raise newException(Defect, "bad assumption wrt leaves")
 
-    # XXX handle a read of a snippet from the db
+        # snippets for this series of file sections
+        var
+          weaklings: Snippets
+
+        let
+          nodeid = case transformedN.kind
+          of nkSym:
+            storeSym(m.g.graph, transformedN.sym)
+          else:
+            storeNode(m.g.graph, m.module, transformedN)
+
+        # iterate over all the sections of the file
+        for section in TCFileSection.low .. TCFileSection.high:
+          # if the section appears to have grown as a result of
+          # our codegen,
+          if m.s[section].len > m.lengths[section]:
+            # get the new code that was added,
+            let
+              code = m.s[section].tail(m.lengths[section])
+            # advance the record of where we are in the snippets,
+            m.lengths[section] = m.s[section].len
+            # create a new snippet from the code addition,
+
+            var
+              snippet = newSnippet(m, mid, nodeid, transformedN, code)
+            # XXX: maybe force this in instantiation?
+            snippet.section = section
+
+            # any changed section gets added to the list of weaklings
+            weaklings[snippet.id] = snippet
+
+            # store the snippet, and finally
+            storeSnippet(m.g.graph, snippet)
+            # add it to the table where we cache the snippet in memory
+            if snippet.id notin m.snippets:
+              m.snippets[snippet.id] = snippet
+
+        # give all the weaklings links to one-another
+        for weak in weaklings.mvalues:
+          weak.weak = weaklings
+          # and write them to the database!
+          storeSnippet(m.g.graph, weak)
+
+    when false:
+      # XXX handle a read of a snippet from the db
+      if m.config.symbolFiles in {readOnlySf, v2Sf}:
+        loadModule(m.g.graph, mid, m.snippets)
+        echo "loaded $# snippets" % [ m.snippets.len ]
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
