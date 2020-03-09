@@ -258,17 +258,20 @@ proc freshLineInfo(p: BProc; info: TLineInfo): bool =
     p.lastLineInfo.fileIndex = info.fileIndex
     result = true
 
-proc genLineDir(p: BProc, t: PNode) =
-  let line = t.info.safeLineNm
+proc genLineDir(p: BProc, info: TLineInfo) =
+  let line = info.safeLineNm
 
   if optEmbedOrigSrc in p.config.globalOptions:
-    p.s(cpsStmts).add(~"//" & sourceLine(p.config, t.info) & "\L")
-  genCLineDir(p.s(cpsStmts), toFullPath(p.config, t.info), line, p.config)
+    p.s(cpsStmts).add(~"//" & sourceLine(p.config, info) & "\L")
+  genCLineDir(p.s(cpsStmts), toFullPath(p.config, info), line, p.config)
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
-      (p.prc == nil or sfPure notin p.prc.flags) and t.info.fileIndex != InvalidFileIdx:
-    if freshLineInfo(p, t.info):
+      (p.prc == nil or sfPure notin p.prc.flags) and info.fileIndex != InvalidFileIdx:
+    if freshLineInfo(p, info):
       linefmt(p, cpsStmts, "nimln_($1, $2);$n",
-              [line, quotedFilename(p.config, t.info)])
+              [line, quotedFilename(p.config, info)])
+
+template genLineDir(p: BProc, t: PNode) =
+  genLineDir(p, t.info)
 
 proc postStmtActions(p: BProc) {.inline.} =
   p.s(cpsStmts).add(p.module.injectStmt)
@@ -618,8 +621,8 @@ include ccgcalls, "ccgstmts.nim"
 
 proc initFrame(p: BProc, procname, filename: Rope): Rope =
   const frameDefines = """
-$1 define nimfr_(procname, filename) \
-  #nimFrame(procname, filename);
+$1 define nimfr_(procname, filename, line2) \
+  #nimFrame(procname, filename, line2); \
 
 $1 define nimln_(line2, file) \
   #nimLine(file, line2)
@@ -634,7 +637,12 @@ $1 define nimln_(line2, file) \
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   discard cgsym(p.module, "nimFrame")
-  result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
+  var line = 1
+  if p.prc != nil and p.prc.ast != nil:
+    line = p.prc.ast.info.line.int
+  result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, line])
+  if p.prc != nil and p.prc.ast != nil:
+    genLineDir(p, p.prc.ast.info)
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   discard cgsym(p.module, "nimFrame")
@@ -1724,7 +1732,7 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
   if m.s[cfsFrameDefines].len > 0:
     result.add(m.s[cfsFrameDefines])
   else:
-    result.add("#define nimfr_(x, y)\n#define nimln_(x, y)\n")
+    result.add("#define nimfr_(x, y, line)\n#define nimln_(x, y)\n")
   result.add(genSectionEnd(cfsFrameDefines, m.config))
 
   for i in cfsForwardTypes..cfsProcs:

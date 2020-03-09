@@ -569,8 +569,7 @@ proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
     frameData.tframes[frameData.frameIndex].filename = filename
     frameData.tframes[frameData.frameIndex].line = line
 
-proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
-# proc nimFrame() {.compilerRtl, inl, raises: [].} =
+proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   frameData.frameIndex.inc
   # if frameData.nimFrameGuard:
   #   c_printf("nimFrame:%*s %s:%s %lld\n", frameIndex, "", filename, procname, frameIndex)
@@ -579,8 +578,7 @@ proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
   if frameData.frameIndex == nimCallDepthLimit: callDepthLimitReached()
   when true:
     if frameData.frameIndex >= cast[FrameIndex](frameData.tframesCap):
-      # const sz = sizeof(TFrame)
-      const sz = sizeof(TFrameFake)
+      const sz = sizeof(TFrame)
       let old = frameData.tframesCap
       if frameData.tframesCap == 0: frameData.tframesCap = 8
       else: frameData.tframesCap+=frameData.tframesCap
@@ -589,6 +587,7 @@ proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
       frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
     frameData.tframes[frameData.frameIndex].procname = procname
     frameData.tframes[frameData.frameIndex].filename = filename
+    frameData.tframes[frameData.frameIndex].line = line
     # tframes[frameIndex].len = 0 # CHECKME
     # frameData.nimFrameGuard = false
 
