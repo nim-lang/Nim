@@ -596,14 +596,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     discard c.breakSyms.pop
     return result
 
-  let str: string = renderTree(n)
-  let debug: bool = 0 <= find(str, "identity")
-  if debug:
-    echo "transforming: "
-    echo str
-    echo "debug:"
-    debug n
-
+  #echo "transforming: ", renderTree(n)
   var stmtList = newTransNode(nkStmtList, n.info, 0)
   result[1] = stmtList
 
@@ -673,9 +666,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   dec(c.inlining)
   popInfoContext(c.graph.config)
   popTransCon(c)
-  if debug:
-    echo "transformed:\n", stmtList.renderTree
-    debug stmtList
+  # echo "transformed: ", stmtList.renderTree
 
 proc transformCase(c: PTransf, n: PNode): PNode =
   # removes `elif` branches of a case stmt

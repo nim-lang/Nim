@@ -882,18 +882,10 @@ template mapIt*(s: typed, op: untyped): untyped =
       block:
         var it{.inject.}: type(items(s));
         op))
-  when s is (array | seq | openarray):
-    var i = 0
-    var result = newSeq[OutType](s.len)
-    for it {.inject.} in s:
-      result[i] = op
-      i += 1
-    result
-  else:
-    var result: seq[OutType]
-    for it {.inject.} in s:
-      result.add(op)
-    result
+  var result: seq[OutType]
+  for it {.inject.} in s:
+    result.add(op)
+  result
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
