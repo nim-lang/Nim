@@ -66,7 +66,9 @@ type FrameData = object
   frameIndex: FrameIndex
 
 var
-  frameData {.threadvar.}: FrameData
+  # frameData {.threadvar.}: FrameData
+  frameData {.threadvar, exportc: "c_frameData".}: FrameData
+
   # nimFrameGuard {.threadvar.}: bool
   # tframes* {.threadvar.}: seq[TFrame]
   # tframesCap {.threadvar.}: int
@@ -561,10 +563,26 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
-proc nimLine2(line: int) {.compilerRtl, inl, raises: [].} =
-  # when false:
-  when true:
-    frameData.tframes[frameData.frameIndex].line = line
+# {.emit:"""/*TYPESECTION*/
+# {.emit:"""/*INCLUDESECTION*/
+{.emit:"""/*VARSECTION*/
+inline void nimLine4(NI line) {
+  // PRTEMP
+  c_frameData.tframes[c_frameData.frameIndex].line = line;
+  printf("nimLine4\n");
+}
+""".}
+
+
+proc nimLine3(line: int) {.compilerRtl, inline, raises: [].} =
+  c_printf "D20200308T182538\n"
+  quit(1)
+
+# proc nimLine2(line: int) {.compilerRtl, inl, raises: [].} =
+proc nimLine2(line: int) {.compilerRtl, inline, raises: [].} =
+  # c_printf "D20200308T182538\n"
+  frameData.tframes[frameData.frameIndex].line = line
+  # discard
 
 proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   #[
@@ -586,7 +604,8 @@ proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
   if frameData.frameIndex == nimCallDepthLimit: callDepthLimitReached()
   when true:
     if frameData.frameIndex >= cast[FrameIndex](frameData.tframesCap):
-      const sz = sizeof(TFrame)
+      # const sz = sizeof(TFrame)
+      const sz = sizeof(TFrameFake)
       let old = frameData.tframesCap
       if frameData.tframesCap == 0: frameData.tframesCap = 8
       else: frameData.tframesCap+=frameData.tframesCap

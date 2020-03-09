@@ -622,8 +622,10 @@ $1 define nimfr_(procname, filename) \
   #nimFrame(procname, filename);
   //#nimFrame();
 
-$1 define nimln_(n, file) \
-  #nimLine2(n)
+$1 define nimln_(line2, file) \
+  #nimLine2(line2)
+  //nimLine4(line2)
+  //c_frameData.tframes[c_frameData.frameIndex].line = line2
   //#nimLine(file, n)
 """
   #[

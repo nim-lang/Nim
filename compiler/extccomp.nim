@@ -526,7 +526,7 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # `optGenMapping` is included here for niminst.
   result = conf.globalOptions * {optGenScript, optGenMapping} != {}
 
-const NIM_CGEN_VERSION = 2 # PRTEMP
+const NIM_CGEN_VERSION = 1
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions

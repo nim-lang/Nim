@@ -93,13 +93,16 @@ __AVR__
 #  define __DECLSPEC_SUPPORTED 1
 #endif
 
+
 /* calling convention mess ----------------------------------------------- */
 #if defined(__GNUC__) || defined(__LCC__) || defined(__POCC__) \
                       || defined(__TINYC__)
   /* these should support C99's inline */
   /* the test for __POCC__ has to come before the test for _MSC_VER,
      because PellesC defines _MSC_VER too. This is brain-dead. */
-#  define N_INLINE(rettype, name) inline rettype name
+//#  define N_INLINE(rettype, name) inline rettype name
+// #  define N_INLINE(rettype, name) inline rettype name
+#  define N_INLINE(rettype, name) __attribute__((always_inline)) rettype name
 #elif defined(__BORLANDC__) || defined(_MSC_VER)
 /* Borland's compiler is really STRANGE here; note that the __fastcall
    keyword cannot be before the return type, but __inline cannot be after
@@ -493,6 +496,15 @@ typedef char* NCSTRING;
     NI line;
     NCSTRING filename;
     NI16 len;
+  } TFrame;
+#endif
+
+#if NIM_CGEN_VERSION == 1
+  // PRTEMP
+  typedef struct {
+    NCSTRING procname;
+    NI line;
+    NCSTRING filename;
   } TFrame;
 #endif
 

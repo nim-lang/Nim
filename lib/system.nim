@@ -1891,12 +1891,17 @@ var
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
-  TFrame* {.final.} = object ## The frame itself.
+  # TFrame* {.final.} = object ## The frame itself.
+  TFrame* {.final, importc, nodecl.} = object ## The frame itself.
     procname*: cstring  ## Name of the proc that is currently executing.
     line*: int          ## Line number of the proc that is currently executing.
     filename*: cstring  ## Filename of the proc that is currently executing.
     # len*: int16         ## Length of the inspectable slots. PRTEMP
     # TODO: cache filename, procname
+  TFrameFake* {.final, .} = object # for VM sizeof
+    procname*: cstring
+    line*: int
+    filename*: cstring
 
 when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
