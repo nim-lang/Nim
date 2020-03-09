@@ -2879,34 +2879,7 @@ since (1, 1):
       var chara = 'A'
       toLowerAsciiInPlace(chara)
       doAssert chara == 'a'
-    c = case c
-      of 'A': 'a'
-      of 'B': 'b'
-      of 'C': 'c'
-      of 'D': 'd'
-      of 'E': 'e'
-      of 'F': 'f'
-      of 'G': 'g'
-      of 'H': 'h'
-      of 'I': 'i'
-      of 'J': 'j'
-      of 'K': 'k'
-      of 'L': 'l'
-      of 'M': 'm'
-      of 'N': 'n'
-      of 'O': 'o'
-      of 'P': 'p'
-      of 'Q': 'q'
-      of 'R': 'r'
-      of 'S': 's'
-      of 'T': 't'
-      of 'U': 'u'
-      of 'V': 'v'
-      of 'W': 'w'
-      of 'X': 'x'
-      of 'Y': 'y'
-      of 'Z': 'z'
-      else: c
+    if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
 
 
   template toUpperAsciiInPlace*(c: var char) =
@@ -2927,34 +2900,7 @@ since (1, 1):
       var chara = 'z'
       toUpperAsciiInPlace(chara)
       doAssert chara == 'Z'
-    c = case c
-      of 'a': 'A'
-      of 'b': 'B'
-      of 'c': 'C'
-      of 'd': 'D'
-      of 'e': 'E'
-      of 'f': 'F'
-      of 'g': 'G'
-      of 'h': 'H'
-      of 'i': 'I'
-      of 'j': 'J'
-      of 'k': 'K'
-      of 'l': 'L'
-      of 'm': 'M'
-      of 'n': 'N'
-      of 'o': 'O'
-      of 'p': 'P'
-      of 'q': 'Q'
-      of 'r': 'R'
-      of 's': 'S'
-      of 't': 'T'
-      of 'u': 'U'
-      of 'v': 'V'
-      of 'w': 'W'
-      of 'x': 'X'
-      of 'y': 'Y'
-      of 'z': 'Z'
-      else: c
+    if c in {'a'..'z'}: c = chr(ord(c) - (ord('a') - ord('A')))
 
 
   func toLowerAsciiInPlace*(s: var string) {.inline.} =
