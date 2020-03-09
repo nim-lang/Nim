@@ -115,6 +115,9 @@ echo f
   serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
+- `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
+  empty. This was required for intuitive behaviour of the strscans module
+  (see bug #13605).
 
 
 ## Language additions
