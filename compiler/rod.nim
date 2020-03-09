@@ -9,8 +9,7 @@
 
 ## This module implements the canonalization for the various caching mechanisms.
 
-import ast, idgen, lineinfos, incremental, modulegraphs, pathutils,
-  cgendata
+import ast, idgen, lineinfos, incremental, modulegraphs, pathutils, cgendata
 
 when not nimIncremental:
   template setupModuleCache*(g: ModuleGraph) = discard

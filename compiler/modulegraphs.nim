@@ -60,7 +60,6 @@ type
     emptyNode*: PNode
     incr*: IncrementalCtx
     canonTypes*: Table[SigHash, PType]
-    nodeBodyHashes*: Table[int, SigHash] # node.id to digest mapping
     symBodyHashes*: Table[int, SigHash] # symId to digest mapping
     importModuleCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PSym {.nimcall.}
     includeFileCallback*: proc (graph: ModuleGraph; m: PSym, fileIdx: FileIndex): PNode {.nimcall.}

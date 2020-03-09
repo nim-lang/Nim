@@ -257,7 +257,6 @@ proc encodeType(g: ModuleGraph, t: PType, result: var string) =
     if t[i] == nil:
       result.add("^()")
     else:
-      # if i'm reading this right, there are three kids
       result.add('^')
       encodeVInt(t[i].uniqueId, result)
       pushType(w, t[i])

@@ -1518,7 +1518,6 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
 
   if owner.kind notin {tyProc, tyGenericInst, tyGenericBody,
                        tyGenericInvocation, tyPtr}:
-    # this is where we're skipping types and crashing
     let elemB = elem.skipTypes({tyGenericInst, tyAlias, tySink})
     if elemB.isGCedMem or tfHasGCedMem in elemB.flags:
       # for simplicity, we propagate this flag even to generics. We then

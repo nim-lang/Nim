@@ -636,12 +636,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           if i < t.len - 1: result.add(", ")
         result.add ']'
       else:
-        if t.len == 0:
-          result.add "life for $# : $#\n" % [ $t.sym, $t.flags ]
-          result.add "tloc for $# : $#" % [ $t.loc.k, $t.loc.flags ]
-          result.add "\n" & typeToString(t.typeInst)
-        else:
-          result.add typeToString(t[0])
+        result = typeToString(t[0])
     of tyRange:
       result = "range "
       if t.n != nil and t.n.kind == nkRange:
