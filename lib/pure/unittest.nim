@@ -190,7 +190,7 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
 
 proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
-    
+
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
@@ -621,8 +621,7 @@ macro check*(conditions: untyped): untyped =
                   # preserve the semantics of var params
 
   template print(name: untyped, value: typed) =
-    when compiles(string($value)):
-      checkpoint(name & " was " & $value)
+    checkpoint(name & " was " & $value)
 
   proc inspectArgs(exp: NimNode): tuple[assigns, check, printOuts: NimNode] =
     result.check = copyNimTree(exp)
