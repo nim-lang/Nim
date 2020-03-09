@@ -213,9 +213,9 @@ type
     node*: PNode
 
   SnippetMark*[T: PNode | PType | PSym] = object
-    lengths: array[TCFileSection, int]
-    module: BModule
-    node: T
+    lengths*: array[TCFileSection, int]
+    module*: BModule
+    node*: T
 
 proc newSnippet*(module: BModule; mid: SqlId; id: SqlId, node: PNode;
                  rope: Rope): Snippet =

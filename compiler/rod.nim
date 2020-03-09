@@ -35,8 +35,8 @@ when not nimIncremental:
   template loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
     discard
 
-  template setMark*[T](m: BModule; node: T): SnippetMark[T] =
-  template snippetsSince*[T](mark: var SnippetMark[T]): Snippet =
+  template setMark*[T](m: BModule; node: T): SnippetMark[T] = discard
+  template snippetsSince*[T](mark: var SnippetMark[T]): Snippet = discard
 
 else:
   include rodimpl
