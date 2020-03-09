@@ -64,10 +64,16 @@ type FrameData = object
   nimFrameGuard: bool
   tframesCap: int
   frameIndex: FrameIndex
-    # more efficient than just relying on tframes.len, eg for tframes.setLen(len-1) we don't want to do any checks not call dtor etc
   tframes: ptr UncheckedArray[TFrame]
-  # tframes* array[1000, TFrame]
-  # tframes: seq[TFrame]
+    # we avoid `seq` as it'd create complications when resize is needed: we
+    # want to avoid GC while in nimFrame
+
+when not nimHasFrameFilename:
+  template line(a: TFrame): int = cast[int](a.srcLocation)
+  template `line=`(a: var TFrame, line: int) = a.srcLocation = cast[type(a.srcLocation)](line)
+  template procname(a: TFrame): cstring = "FAKE_procname"
+  template filename(a: TFrame): cstring = "FAKE_filename"
+
 
 var
   # frameData {.threadvar.}: FrameData
@@ -564,9 +570,12 @@ proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   SEE also:
   codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
   __attribute__ ((optimize(1)))
+
+  TODO: could optimize here by not having to update `filename`, assuming constant in a proc; but handle special case where #line directive changes that
   ]#
     # c_printf "D20200308T182538\n"
-    frameData.tframes[frameData.frameIndex].filename = filename
+    when nimHasFrameFilename:
+      frameData.tframes[frameData.frameIndex].filename = filename
     frameData.tframes[frameData.frameIndex].line = line
 
 proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
@@ -586,10 +595,12 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
     proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
     # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
     frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
-  frameData.tframes[frameData.frameIndex].procname = procname
-  frameData.tframes[frameData.frameIndex].filename = filename
+
+  when nimHasFrameFilename:
+    frameData.tframes[frameData.frameIndex].procname = procname
+    frameData.tframes[frameData.frameIndex].filename = filename
   frameData.tframes[frameData.frameIndex].line = line
-  # tframes[frameIndex].len = 0 # CHECKME
+  # frameData.tframes[frameData.frameIndex].len = 0 # CHECKME
   # frameData.nimFrameGuard = false
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
