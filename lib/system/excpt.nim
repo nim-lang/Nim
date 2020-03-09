@@ -58,27 +58,21 @@ type
 
 type FrameIndex = uint
   # uint so it's unchecked? or push/pop overflow for this?
+  # maybe use distinct?
 
 type FrameData = object
   nimFrameGuard: bool
   tframesCap: int
-  tframes: ptr UncheckedArray[TFrame]
   frameIndex: FrameIndex
+    # more efficient than just relying on tframes.len, eg for tframes.setLen(len-1) we don't want to do any checks not call dtor etc
+  tframes: ptr UncheckedArray[TFrame]
+  # tframes* array[1000, TFrame]
+  # tframes: seq[TFrame]
 
 var
   # frameData {.threadvar.}: FrameData
   frameData {.threadvar, exportc: "c_frameData".}: FrameData
 
-  # nimFrameGuard {.threadvar.}: bool
-  # tframes* {.threadvar.}: seq[TFrame]
-  # tframesCap {.threadvar.}: int
-  # tframes* {.threadvar.}: UnCheckedArray[TFrame]
-  # tframes* {.threadvar.}: UncheckedArray[TFrame]
-  # tframes* {.threadvar.}: ptr UncheckedArray[TFrame]
-  # tframes* {.threadvar.}: array[1000, TFrame]
-  # frameIndex {.threadvar.}: FrameIndex
-    # more efficient than just relying on tframes.len, eg for tframes.setLen(len-1) we don't want to do any checks not call dtor etc
-    # maybe use distinct?
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
@@ -563,36 +557,17 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
-# {.emit:"""/*TYPESECTION*/
-# {.emit:"""/*INCLUDESECTION*/
-{.emit:"""/*VARSECTION*/
-inline void nimLine4(NI line) {
-  // PRTEMP
-  c_frameData.tframes[c_frameData.frameIndex].line = line;
-  printf("nimLine4\n");
-}
-""".}
-
-
-proc nimLine3(line: int) {.compilerRtl, inline, raises: [].} =
-  c_printf "D20200308T182538\n"
-  quit(1)
-
-# proc nimLine2(line: int) {.compilerRtl, inl, raises: [].} =
-proc nimLine2(line: int) {.compilerRtl, inline, raises: [].} =
-  # c_printf "D20200308T182538\n"
-  frameData.tframes[frameData.frameIndex].line = line
-  # discard
-
 proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
   #[
+  # TODO: compare apples to apples, eg wo nimLine only nimFrame
   TODO: no need for filename when we have nimFrame, since filename won't change
+  SEE also:
+  codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
+  __attribute__ ((optimize(1)))
   ]#
-  # TODO: how to really force inlining?
-  # if not frameData.nimFrameGuard:
-    # tframes[frameIndex].filename = filename
+    # c_printf "D20200308T182538\n"
+    frameData.tframes[frameData.frameIndex].filename = filename
     frameData.tframes[frameData.frameIndex].line = line
-    # discard
 
 proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
 # proc nimFrame() {.compilerRtl, inl, raises: [].} =
@@ -614,7 +589,6 @@ proc nimFrame(procname, filename: cstring) {.compilerRtl, inl, raises: [].} =
       frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
     frameData.tframes[frameData.frameIndex].procname = procname
     frameData.tframes[frameData.frameIndex].filename = filename
-    frameData.tframes[frameData.frameIndex].line = 0 # CHECKME
     # tframes[frameIndex].len = 0 # CHECKME
     # frameData.nimFrameGuard = false
 
