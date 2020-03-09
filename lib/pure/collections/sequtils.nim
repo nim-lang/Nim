@@ -704,7 +704,13 @@ macro toSeqBuiltin(arg: iterator): untyped =
       `tmpSym`.add it
   result.add tmpSym
 
-import strutils
+template toSeqBuiltin[T: not proc](arg: T): untyped =
+  # fallback for ``IntSet`` and ``HashSet``. Explicit overload would
+  # be better, but this would require an additional import here.
+  var tmp: seq[typeof(items(arg), typeOfIter)]
+  for it in arg:
+    tmp.add it
+  tmp
 
 macro toSeqImpl(arg: typed): untyped =
   let iteratorCall = arg[1]
@@ -872,16 +878,10 @@ template mapIt*(s: typed, op: untyped): untyped =
       strings = nums.mapIt($(4 * it))
     assert strings == @["4", "8", "12", "16"]
 
-  when defined(nimHasTypeof):
-    type OutType = typeof((
-      block:
-        var it{.inject.}: typeof(items(s), typeOfIter);
-        op), typeOfProc)
-  else:
-    type OutType = type((
-      block:
-        var it{.inject.}: type(items(s));
-        op))
+  type OutType = typeof((
+    block:
+      var it{.inject.}: typeof(items(s), typeOfIter);
+      op), typeOfProc)
   var result: seq[OutType]
   for it {.inject.} in s:
     result.add(op)
