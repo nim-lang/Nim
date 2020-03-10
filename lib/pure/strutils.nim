@@ -2878,11 +2878,8 @@ since (1, 1):
       var strng = "NIM"
       toLowerAsciiInPlace(strng)
       doAssert strng == "nim"
-    var i = 0
     for c in mitems(s):
       if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
-      s[i] = c
-      inc i
 
 
   func toUpperAsciiInPlace*(s: var string) {.inline.} =
@@ -2901,11 +2898,8 @@ since (1, 1):
       var strng = "nim"
       toUpperAsciiInPlace(strng)
       doAssert strng == "NIM"
-    var i = 0
     for c in mitems(s):
       if c in {'a'..'z'}: c = chr(ord(c) - (ord('a') - ord('A')))
-      s[i] = c
-      inc i
 
 
 when isMainModule:
