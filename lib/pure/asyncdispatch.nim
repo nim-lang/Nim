@@ -1122,7 +1122,7 @@ else:
     new result
     result.selector = newSelector[AsyncData]()
     result.timers.newHeapQueue()
-    result.callbacks = initDeque[proc ()](InitDelayedCallbackListSize)
+    result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 
