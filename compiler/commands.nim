@@ -174,6 +174,15 @@ proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info:
   if arg != "":
     localError(conf, info, "invalid argument for command line option: '$1'" % addPrefix(switch))
 
+proc handleSpecialNotes(conf: ConfigRef, pass: TCmdLinePass, note: TNoteKind) =
+  ## some notes require special handling so that cmdline flags overrides work
+  ## as expected.
+  case note
+  of warnBackendWarning:
+    if pass in {passCmd2, passPP}:
+       extccomp.addCompileOptionCmd(conf, warningsOff, isRemove = conf.hasWarn(note))
+  else: discard
+
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
   var id = ""  # arg = key:val or [key]:val;  with val=on|off
@@ -221,6 +230,7 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
         excl(conf.notes, n)
         excl(conf.mainPackageNotes, n)
         excl(conf.foreignPackageNotes, n)
+  handleSpecialNotes(conf, pass, n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)

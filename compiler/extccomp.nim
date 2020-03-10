@@ -62,6 +62,7 @@ template compiler(name, settings: untyped): untyped =
 
 const
   gnuAsmListing = "-Wa,-acdl=$asmfile -g -fverbose-asm -masm=intel"
+  warningsOff* = "-w" # if needed, can be compiler specific
 
 # GNU C and C++ Compiler
 compiler gcc:
@@ -471,8 +472,12 @@ proc addCompileOption*(conf: ConfigRef; option: string) =
 proc addLinkOptionCmd*(conf: ConfigRef; option: string) =
   addOpt(conf.linkOptionsCmd, option)
 
-proc addCompileOptionCmd*(conf: ConfigRef; option: string) =
-  conf.compileOptionsCmd.add(option)
+proc addCompileOptionCmd*(conf: ConfigRef; option: string, isRemove = false) =
+  if isRemove:
+    if (var index = conf.compileOptionsCmd.find(option); index >= 0):
+      conf.compileOptionsCmd.delete(index)
+  else:
+    conf.compileOptionsCmd.add(option)
 
 proc initVars*(conf: ConfigRef) =
   # we need to define the symbol here, because ``CC`` may have never been set!
