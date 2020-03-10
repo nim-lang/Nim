@@ -1340,7 +1340,14 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   #echo rendertree e, " ", e.isDeepConstExpr
   # inheritance in C++ does not allow struct initialization so
   # we skip this step here:
-  if not p.module.compileToCpp:
+  if not p.module.compileToCpp and optSeqDestructors notin p.config.globalOptions:
+    # disabled optimization: it is wrong for C++ and now also
+    # causes trouble for --gc:arc, see bug #13240
+    #[
+      var box: seq[Thing]
+      for i in 0..3:
+        box.add Thing(s1: "121") # pass by sink can mutate Thing.
+    ]#
     if handleConstExpr(p, e, d): return
   var t = e.typ.skipTypes(abstractInstOwned)
   let isRef = t.kind == tyRef
