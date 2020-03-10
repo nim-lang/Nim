@@ -40,6 +40,10 @@
 - The `{.dynlib.}` pragma is now required for exporting symbols when making
   shared objects on POSIX and macOS, which make it consistent with the behavior
   on Windows.
+- The compiler is now more strict about type conversions concerning proc
+  types: Type conversions cannot be used to hide `.raise` effects or side
+  effects, instead a `cast` must be used. With the flag `--useVersion:1.0` the
+  old behaviour is emulated.
 
 
 ## Library additions
