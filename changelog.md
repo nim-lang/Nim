@@ -69,7 +69,7 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-
+- Added `os.isValidFilename` that returns `true` if `filename` argument is valid for crossplatform use.
 
 - Added a `with` macro for easy function chaining that's available
   everywhere, there is no need to concern your APIs with returning the first argument
@@ -98,8 +98,6 @@ echo f
 
 ## Library changes
 
-- `asynchttpserver` added an iterator that allows the request body to be read in
-   chunks of data when new server "stream" option is set to true.
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
   and only returns once all pending async operations are guaranteed to have completed.
 - `asyncdispatch.drain` now consistently uses the passed timeout value for all
@@ -117,6 +115,9 @@ echo f
   serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
+- `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
+  empty. This was required for intuitive behaviour of the strscans module
+  (see bug #13605).
 
 
 ## Language additions

@@ -111,7 +111,8 @@ macro genericParamsImpl(T: typedesc): untyped =
           var ret: NimNode
           case ai.typeKind
           of ntyStatic:
-            ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+            since (1, 1):
+              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           of ntyTypeDesc:
             ret = ai
           else:
