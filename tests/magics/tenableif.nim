@@ -91,6 +91,21 @@ proc test8() =
   doAssert fun((x:int)=>x*2) == 8*2
   doAssert fun((x:string)=>x & "ba") == "bba"
 
+
+template isEmpty*[T: object|seq|string|set](a: T): bool {.enableif: a.len is int .} =
+  ## see https://github.com/nim-lang/Nim/pull/13526#issuecomment-596857722
+  a.len == 0
+
+proc testIsEmpty() =
+  type Foo = object
+    x: int
+  type Foo2 = object
+    x: int
+  proc len(a: Foo2): int = a.x
+  doAssert isEmpty(Foo2())
+  doAssert not isEmpty(Foo2(x: 1))
+  doAssert not compiles(isEmpty(Foo()))
+
 proc testAll()=
   test1()
   test2()
