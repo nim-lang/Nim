@@ -249,6 +249,10 @@ const
 template maxHash(t): untyped = high(t.data)
 template dataLen(t): untyped = len(t.data)
 
+template checkIfInitialized() =
+  if t.dataLen == 0:
+    initImpl(t, defaultInitialSize)
+
 include tableimpl
 
 template get(t, key): untyped =

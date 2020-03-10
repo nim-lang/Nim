@@ -37,11 +37,6 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
   rawInsertImpl(t)
 
-template checkIfInitialized() =
-  when defaultInitialSize > 0:
-    if t.dataLen == 0:
-      initImpl(t, defaultInitialSize)
-
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()
   if mustRehash(t): enlarge(t)

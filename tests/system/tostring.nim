@@ -116,5 +116,68 @@ block:
   s.addQuoted a2
   doAssert s == "\"fo\\\"o2\""
 
+type
+  SomePointer = ptr | ref | pointer
+  MyType = object
+    a: int
+    b: string
+
+  MyRef = ref MyType
+  MyDistinct = distinct MyType
+
+  MyRefDistinct = ref MyDistinct
+  MyDistinctRef = distinct MyRef
+
+  MyCompoundObject = object
+    field0: MyType
+    field1: MyRef
+    field2: MyDistinct
+    field3: MyRefDistinct
+    field4: MyDistinctRef
+
+let tmp0 = MyType(a: 1, b: "abc")
+let tmp1 = MyRef(a: 1, b: "abc")
+let tmp2 = MyDistinct MyType(a: 1, b: "abc")
+let tmp3 = MyRefDistinct MyRef(a: 1, b: "abc")
+let tmp4 = MyDistinctRef MyRef(a: 1, b: "abc")
+
+let compound = MyCompoundObject(
+  field0: tmp0,
+  field1: tmp1,
+  field2: tmp2,
+  field3: tmp3,
+  field4: tmp4,
+)
+
+echo tmp0
+echo tmp1
+echo tmp2
+echo tmp3
+echo tmp4
+
+echo "-------"
+
+echo $compound
+
+echo "-------"
+
+echo tmp0 is ref
+echo tmp1 is ref
+echo tmp2 is ref
+echo tmp3 is ref
+echo tmp4 is ref
+echo "----------------------------------------"
+echo tmp0 is distinct
+echo tmp1 is distinct
+echo tmp2 is distinct
+echo tmp3 is distinct
+echo tmp4 is distinct
+echo "----------------------------------------"
+echo tmp0 is object
+echo tmp1 is object
+echo tmp2 is object
+echo tmp3 is object
+echo tmp4 is object
+
 
 echo "DONE: tostring.nim"
