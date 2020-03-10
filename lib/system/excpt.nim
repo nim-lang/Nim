@@ -70,10 +70,8 @@ type FrameData = object
 
 when not nimHasFrameFilename:
   template line(a: TFrame): int = cast[int](a.srcLocation)
-  template `line=`(a: var TFrame, line: int) = a.srcLocation = cast[type(a.srcLocation)](line)
   template procname(a: TFrame): cstring = "FAKE_procname"
   template filename(a: TFrame): cstring = "FAKE_filename"
-
 
 var
   # frameData {.threadvar.}: FrameData
@@ -563,22 +561,7 @@ proc callDepthLimitReached() {.noinline.} =
       "recursions instead.\n")
   quit(1)
 
-proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
-  #[
-  # TODO: compare apples to apples, eg wo nimLine only nimFrame
-  TODO: no need for filename when we have nimFrame, since filename won't change
-  SEE also:
-  codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
-  __attribute__ ((optimize(1)))
-
-  TODO: could optimize here by not having to update `filename`, assuming constant in a proc; but handle special case where #line directive changes that
-  ]#
-    # c_printf "D20200308T182538\n"
-    when nimHasFrameFilename:
-      frameData.tframes[frameData.frameIndex].filename = filename
-    frameData.tframes[frameData.frameIndex].line = line
-
-proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+template nimFrameInc() =
   # TODO: how to ensure no GC used here? `noSideEffect and nogc` don't work for that
   frameData.frameIndex.inc
   # if frameData.nimFrameGuard:
@@ -595,13 +578,36 @@ proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises
     proc c_realloc(p: pointer, newsize: csize_t): pointer {.importc: "realloc", header: "<stdlib.h>".}
     # tframes = cast[type(tframes)](realloc0(tframes, sz*old, sz*tframesCap))
     frameData.tframes = cast[type(frameData.tframes)](c_realloc(frameData.tframes, cast[csize_t](sz*frameData.tframesCap)))
-
-  when nimHasFrameFilename:
-    frameData.tframes[frameData.frameIndex].procname = procname
-    frameData.tframes[frameData.frameIndex].filename = filename
-  frameData.tframes[frameData.frameIndex].line = line
-  # frameData.tframes[frameData.frameIndex].len = 0 # CHECKME
   # frameData.nimFrameGuard = false
+
+template currentFrame(): untyped = frameData.tframes[frameData.frameIndex]
+
+when nimHasFrameFilename:
+  proc nimFrame(procname, filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+    nimFrameInc()
+    currentFrame.procname = procname
+    currentFrame.filename = filename
+    currentFrame.line = line
+  proc nimLine(filename: cstring, line: int) {.compilerRtl, inl, raises: [].} =
+    currentFrame.filename = filename
+else:
+  # proc nimFrameMapping(fileIndex: SrcLocation, ) {.compilerRtl, inl, raises: [].} =
+
+  proc nimFrame(srcLocation: SrcLocation) {.compilerRtl, inl, raises: [].} =
+    nimFrameInc()
+    currentFrame.srcLocation = srcLocation
+  proc nimLine(srcLocation: SrcLocation) {.compilerRtl, inl, raises: [].} =
+    #[
+    # TODO: compare apples to apples, eg wo nimLine only nimFrame
+    TODO: no need for filename when we have nimFrame, since filename won't change
+    SEE also:
+    codegenDecl: "static __attribute__((__always_inline__)) $# $# $#"
+    __attribute__ ((optimize(1)))
+
+    TODO: could optimize here by not having to update `filename`, assuming constant in a proc; but handle special case where #line directive changes that
+    ]#
+    # c_printf "D20200308T182538\n"
+    currentFrame.srcLocation = srcLocation
 
 when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and

@@ -27,6 +27,30 @@ from lineinfos import
   warnGcMem, errXMustBeCompileTime, hintDependency, errGenerated, errCannotOpenFile
 import dynlib
 
+const nimHasFrameFilename2 = false # see nimHasFrameFilename
+
+type SrcLocation = uint32 # synchronize with system.SrcLocation
+
+proc getSrcLocation(conf: ConfigRef, info: TLineInfo): SrcLocation =
+  # TODO: hashing?
+  # IMPROVE?
+  type Compact = object
+    index: uint16
+    line: uint16
+  # TODO: col
+  let c = Compact(index: info.fileIndex.int32.uint16, line: info.line)
+  result = cast[SrcLocation](c)
+  # let index = info.fileIndex.int32.uint16
+  # let index = [info.fileIndex.int32.uint16, 
+  # result = index
+  #     line*: uint16
+  #   col*: int16
+  #   fileIndex*: FileIndex
+  # conf.toFileLineCol(info)
+  # conf.toFileLineCol(info)
+  # BModuleList
+  # result = info.line # PRTEMP
+
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
     ## given a library name pattern `s` write possible library names to `dest`.
@@ -267,8 +291,12 @@ proc genLineDir(p: BProc, info: TLineInfo) =
   if ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       (p.prc == nil or sfPure notin p.prc.flags) and info.fileIndex != InvalidFileIdx:
     if freshLineInfo(p, info):
-      linefmt(p, cpsStmts, "nimln_($1, $2);$n",
+      when nimHasFrameFilename2:
+        linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               [line, quotedFilename(p.config, info)])
+      else:
+        let srcLocation = getSrcLocation(p.config, info)
+        linefmt(p, cpsStmts, "#nimLine($1);$n", [$srcLocation])
 
 template genLineDir(p: BProc, t: PNode) =
   genLineDir(p, t.info)
@@ -637,12 +665,20 @@ $1 define nimln_(line2, file) \
     appcg(p.module, p.module.s[cfsFrameDefines], frameDefines, ["#"])
 
   discard cgsym(p.module, "nimFrame")
-  var line = 1
-  if p.prc != nil and p.prc.ast != nil:
-    line = p.prc.ast.info.line.int
-  result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, line])
-  if p.prc != nil and p.prc.ast != nil:
-    genLineDir(p, p.prc.ast.info)
+
+  var info: TLineInfo
+  if p.prc != nil:
+    doAssert p.prc.ast != nil
+    info = p.prc.ast.info
+  else:
+    info = p.module.module.info
+
+  when nimHasFrameFilename2:
+    result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, info.line.int])
+  else:
+    let srcLocation = getSrcLocation(p.config, info)
+    result = ropecg(p.module, "\t#nimFrame($1);$n", [$srcLocation])
+    # genLineDir(p, info)
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   # TODO: see where this comes from, needs to be updated
@@ -1666,6 +1702,7 @@ proc genInitCode(m: BModule) =
         var procname = makeCString(m.module.name.s)
         prc.add(initFrame(m.initProc, procname, quotedFilename(m.config, m.module.info)))
       else:
+        # PRTEMP
         prc.add(~"\tTFrame FR_; FR_.len = 0;$N")
 
     writeSection(initProc, cpsInit, m.hcrOn)

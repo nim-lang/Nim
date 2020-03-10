@@ -1891,6 +1891,8 @@ var
 const nimHasFrameFilename = defined(nimHasFrameFilename)
 
 type
+  SrcLocation = uint32 # more efficient and compact than `int`
+
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
   TFrame* {.final.} = object ## The frame itself.
@@ -1901,7 +1903,7 @@ type
       procname*: cstring  ## Name of the proc that is currently executing.
       filename*: cstring  ## Filename of the proc that is currently executing.
     else:
-      srcLocation*: uint32  ## Line number of the proc that is currently executing.
+      srcLocation*: SrcLocation  ## Line number of the proc that is currently executing.
     # len*: int16         ## Length of the inspectable slots. PRTEMP
 
 when defined(js):
