@@ -24,14 +24,13 @@ proc fun() =
     doAssert c_exp(x2) == c_exp(x)
 
   block: # c_printf
-    c_printf("foo\n")
-    c_printf("foo:%d\n", 100)
-    c_printf("foo:%d\n", 101.cint)
-    c_printf("foo:%d:%d\n", 102.cint, 103.cint)
+    c_printf("foo0\n")
+    c_printf("foo1:%d\n", 101.cint)
+    c_printf("foo2:%d:%d\n", 102.cint, 103.cint)
     let temp = 104.cint
-    c_printf("foo:%d:%d:%d\n", 102.cint, 103.cint, temp)
+    c_printf("foo3:%d:%d:%d\n", 102.cint, 103.cint, temp)
     var temp2 = 105.cint
-    c_printf("foo:%g:%s:%d:%d\n", 0.03, "asdf", 103.cint, temp2)
+    c_printf("foo4:%g:%s:%d:%d\n", 0.03, "asdf", 103.cint, temp2)
 
   block: # c_snprintf, c_malloc, c_free
     let n: uint = 50
@@ -39,19 +38,18 @@ proc fun() =
     var s: cstring = "foobar"
     var age: cint = 25
     discard c_snprintf(buffer2, n, "s1:%s s2:%s age:%d pi:%g", s, s, age, 3.14)
-    c_printf("ret={%s}\n", buffer2)
+    c_printf("foo5:{%s}\n", buffer2)
     c_free(buffer2) # not sure it has an effect
 
-  block: # c_printf bug
-    var a = 123
+  block: # c_printf bug with `var` {.varargs.} params
+    var a = 123.cint
     var a2 = a.addr
-    #[
-    bug: different behavior between CT RT in this case:
-    at CT, shows foo2:a=123
-    at RT, shows foo2:a=<address as int>
-    ]#
-    if false:
-      c_printf("foo2:a=%d\n", a2)
+    when false:
+      # BUG: CT FFI currently does not handle this edge case correctly,
+      # passing `a2` as `cint` instead of as `ptr cint` for a {.varargs.} param:
+      # at CT, shows foo6:a2=0x7b
+      # at RT, shows foo2:a2=<address>
+      c_printf("foo6:a2=%p\n", a2)
 
 
 static:
