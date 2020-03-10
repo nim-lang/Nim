@@ -1213,11 +1213,18 @@ proc genProc(m: BModule, prc: PSym) =
     # telling the BModule that we want a forward declaration
     addForwardedProc(m, prc)
 
-  if symbolAlreadyStored(m.g.graph, prc):
+  if m.config.symbolFiles notin {disabledSf, writeOnlySf} and
+    snippetAlreadyStored(m.g.graph, prc):
+    # the symbol is stored, but maybe we don't have snippets?
+    echo "SYMBOL STORED ", prc.id, " ", prc.name.s
+    # this will crash if there are no snippets
     for snippet in loadSnippets(m.g.graph, prc):
+      echo "read from cache ", $snippet.code
       m.s[snippet.section].add snippet.code
   else:
-    # freeze the module's rope positions
+    # snapshot the module before we may add some proc code to it
+    var
+      mark = m.setMark(prc)
     if sfForward notin prc.flags:
       genProcMayForward(m, prc)
       if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
@@ -1226,8 +1233,12 @@ proc genProc(m: BModule, prc: PSym) =
         if prc.typ.callConv == ccInline:
           if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
             genProcAux(m.g.generatedHeader, prc)
-    # thaw the module's rope positions
-    # -> stores the snippets to db?
+    # we don't actually need to do anything with these snippets
+    # XXX: create a storeNovelSnippets or whatever...
+    for snippet in mark.snippetsSince:
+      if snippet.id == 0:
+        if m.config.symbolFiles notin {disabledSf, readOnlySf}:
+          raise newException(Defect, "snippet did not write")
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1909,7 +1920,6 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   var m = BModule(b)
   if passes.skipCodegen(m.config, n) or
       not moduleHasChanged(m.g.graph, m.module):
-    # XXX: defective for generics?
     return
   m.initProc.options = initProcOptions(m)
   #softRnl = if optLineDir in m.config.options: noRnl else: rnl
@@ -1921,20 +1931,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    # grab the current lengths
-    var
-      mark = m.setMark(transformedN)
-
     genProcBody(m.initProc, transformedN)
-
-    if m.config.symbolFiles == disabledSf:
-      return
-
-    # this will all move into genProc/genType/etc.
-    if m.config.symbolFiles in {writeOnlySf, v2Sf}:
-      for snippet in mark.snippetsSince:
-        # add it to the in-memory cache
-        m.snippets.add snippet
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:

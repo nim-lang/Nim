@@ -9,7 +9,7 @@
 
 ## Computes hash values for routine (proc, method etc) signatures.
 
-import ast, tables, ropes, md5, modulegraphs, lineinfos
+import ast, tables, ropes, md5, modulegraphs
 from hashes import Hash
 import types
 
@@ -171,7 +171,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       hashType c, t[0], flags
   of tyRef, tyPtr, tyGenericBody, tyVar:
     c &= char(t.kind)
-    c.hashType t.lastSon, flags
+    if t.len > 0:
+      c.hashType t.lastSon, flags
+    else:
+      echo "pointer w/o lastSon"
+      c &= ".emptyptr"
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
     c &= char(t.kind)

@@ -203,45 +203,25 @@ type
 
     symbol*: SqlId
     kind*: TNodeKind
-#    case kind*: TNodeKind
-#    of nkSym:
-#      symbol*: SqlId
-#    else:
-#      toplevel*: SqlId
     nimid*: int
     code*: Rope
-    node*: PNode
+    node*: PSym
 
   SnippetMark*[T: PNode | PType | PSym] = object
     lengths*: array[TCFileSection, int]
     module*: BModule
     node*: T
 
-proc newSnippet*(module: BModule; mid: SqlId; id: SqlId, node: PNode;
-                 rope: Rope): Snippet =
+proc newSnippet*(module: BModule; mid: SqlId; id: SqlId;
+                 sym: PSym; rope: Rope): Snippet =
   ## create a new snippet for the given module and symbol with the given
   ## id -- a sqlite primary key, which varies with the node kind.
-  let
-    ekind =
-      if node == nil:
-        nkStmtList
-      else:
-        node.kind
-
-  case ekind
-  of nkSym:
-    result = Snippet(symbol: id, kind: nkSym,
-                     name: node.sym.name.s, nimid: node.sym.id)
-  else:
-    # we use the toplevel == symbol == id because statement lists
-    # get stored as symbols in the sqlite database (currently)
-    #result = Snippet(toplevel: id, kind: node.kind,
-    result = Snippet(symbol: mid, kind: node.kind,
-                     name: $module.filename, nimid: module.module.id)
+  result = Snippet(symbol: id, kind: nkSym,
+                   name: sym.name.s, nimid: sym.id)
   result.filename = module.filename
   result.module = mid # use the id from the sqlite primary key!
   result.code = rope
-  result.node = node
+  result.node = sym
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config

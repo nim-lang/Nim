@@ -364,6 +364,7 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     encodeNode(g, s.info, s.ast, result)
 
 proc storeSym*(g: ModuleGraph; s: PSym): SqlId =
+  if g.config.symbolFiles == disabledSf: return
   if sfForward in s.flags and s.kind != skModule:
     w.forwardedSyms.add s
     return
@@ -374,9 +375,26 @@ proc storeSym*(g: ModuleGraph; s: PSym): SqlId =
   # XXX only store the name for exported symbols in order to speed up lookup
   # times once we enable the skStub logic.
   # XXX - but we need generics...
-  let m = getModule(s)
-  let mid = if m == nil: 0 else: abs(m.id)
-  result = db.insertID(insertion, s.id, mid, s.name.s, buf,
+  let
+    m = getModule(s)
+    mid = if m == nil: 0 else: abs(m.id)
+  when true:
+    let
+      name = case s.kind
+      of skProcKinds:
+        #$symBodyDigest(g, s)
+        $s.sigHash
+      else:
+        $s.sigHash
+#      of skModule, skPackage:
+#        $s.name.s
+#      else:
+#        $symBodyDigest(g, s)
+  else:
+    let
+      name = s.sigHash
+
+  result = db.insertID(insertion, s.id, mid, name, buf,
                        ord(sfExported in s.flags))
 
 proc decodeDeps(g: ModuleGraph; input: string): Snippets
@@ -384,7 +402,7 @@ proc decodeDeps(g: ModuleGraph; input: string): Snippets
 iterator loadSnippets*(g: ModuleGraph; p: PSym): Snippet =
   const
     selection = sql"""
-      select id,kind,nimid,code,section from snippets where symbol = ?
+      select id,kind,nimid,code,section from snippets where name = ?
     """
   var
     count = 0
@@ -442,18 +460,11 @@ proc storeSnippet*(g: ModuleGraph; s: var Snippet) =
     """
     updation = sql"update snippets set strong = ?, weak = ? where id = ?"
   let
-    id = case s.kind
-    of nkSym:
-      s.symbol
-    else:
-      # XXX: force everything into symbol
-      #s.toplevel
-      s.symbol
+    id = s.symbol
 
   if s.id == 0:
     s.id = db.insertID(insertion, ord(s.section), s.module, id, id,
                        s.kind, s.filename, s.nimid, s.name, s.code)
-#                       encodeDeps(s.strong), encodeDeps(s.weak))
   else:
     raise newException(Defect, "updates not supported")
 
@@ -468,11 +479,34 @@ proc loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
                         strong: decodeDeps(g, row[3]),
                         weak: decodeDeps(g, row[4]))
 
+proc snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool =
+  if g.config.symbolFiles == disabledSf: return
+  let
+    digest = p.sigHash
+  const
+    query = sql"""
+      select symbol from syms left join snippets
+      where syms.id = snippets.symbol and syms.name = ? limit 1
+    """
+  result = db.getValue(query, $digest) != ""
+
 proc symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool =
   if g.config.symbolFiles == disabledSf: return
-  const
-    query = sql"select nimid from syms where nimid = ? limit 1"
-  result = db.getValue(query, p.id) == $p.id
+  let
+    digest = p.sigHash
+  when defined(release):
+    const
+      query = sql"select name from syms where name = ? limit 1"
+    result = db.getValue(query, $digest) == $digest
+  else:
+    const
+      query = sql"select name,nimid from syms where name = ? limit 1"
+    let
+      row = db.getRow(query, $digest)
+    result = row[0] != ""
+    if result:
+      if p.id != row[1].parseInt:
+        raise newException(Defect, "neat")
 
 proc typeAlreadyStored*(g: ModuleGraph; p: PType): bool =
   if g.config.symbolFiles == disabledSf: return
@@ -502,7 +536,8 @@ proc storeType(g: ModuleGraph; t: PType): SqlId =
   let m = if t.owner != nil: getModule(t.owner) else: nil
   let mid = if m == nil: 0 else: abs(m.id)
   if typeAlreadyStored(g, t.uniqueId):
-    echo "rewrite of type id " & $t.uniqueId
+    when not defined(release):
+      echo "rewrite of type id " & $t.uniqueId
     #raise newException(Defect, "rewrite of type id " & $t.uniqueId)
     # XXX mid?  really?  not the primary key id?
     db.exec(updation, mid, buf, t.uniqueId)
@@ -1089,6 +1124,9 @@ proc storeNode(g: ModuleGraph; m: PSym; p: PType): auto =
 iterator snippetsSince*[T](mark: var SnippetMark[T]): Snippet =
   ## playback rope changes since the mark
   # iterate over all the sections of the file
+  when T isnot PSym:
+    {.error: "unsupported snippets type".}
+
   template graph(): ModuleGraph = mark.module.g.graph
   let
     moduleId = storeSym(graph, mark.module.module)
@@ -1107,7 +1145,8 @@ iterator snippetsSince*[T](mark: var SnippetMark[T]): Snippet =
       # XXX: maybe force this in instantiation?
       snippet.section = section
       # store all snippets
-      storeSnippet(graph, snippet)
+      if mark.module.config.symbolFiles notin {disabledSf, readOnlySf}:
+        storeSnippet(graph, snippet)
       yield snippet
 
 proc setupModuleCache*(g: ModuleGraph) =
