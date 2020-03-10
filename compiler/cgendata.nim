@@ -10,7 +10,7 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
+  ast, ropes, options, intsets, sighashes, astalgo,
   tables, ndi, lineinfos, pathutils, modulegraphs
 
 type
@@ -163,8 +163,9 @@ type
     injectStmt*: Rope
     sigConflicts*: CountTable[SigHash]
     g*: BModuleList
-    ndi*: NdiFile
-    snippets*: Snippets
+    ndi*: NdiFile             #
+    mark*: SnippetMark        # where we are in writing the file/snippets
+    snippets* {.deprecated.}: Snippets
 
   Snippets* = seq[Snippet]
   SqlId* = int64
@@ -207,19 +208,21 @@ type
     code*: Rope
     node*: PSym
 
-  SnippetMark*[T: PNode | PType | PSym] = object
+  SnippetMark* = object
     lengths*: array[TCFileSection, int]
-    module*: BModule
-    node*: T
+    node*: PSym
 
-proc newSnippet*(module: BModule; mid: SqlId; id: SqlId;
+proc newSnippet*(module: BModule; id: SqlId;
                  sym: PSym; rope: Rope): Snippet =
   ## create a new snippet for the given module and symbol with the given
   ## id -- a sqlite primary key, which varies with the node kind.
   result = Snippet(symbol: id, kind: nkSym,
-                   name: sym.name.s, nimid: sym.id)
+                   name: $sym.sigHash, nimid: sym.id)
   result.filename = module.filename
-  result.module = mid # use the id from the sqlite primary key!
+  let
+    m = getModule(sym)
+    mid = if m == nil: 0 else: abs(m.id)
+  result.module = mid
   result.code = rope
   result.node = sym
 

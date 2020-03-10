@@ -363,80 +363,91 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     # make that unfeasible nowadays:
     encodeNode(g, s.info, s.ast, result)
 
+proc symbolId*(g: ModuleGraph; p: PSym): SqlId =
+  if g.config.symbolFiles == disabledSf: return
+  const
+    query = sql"""
+      select id from syms
+      where module = ? and name = ? and nimid = ?
+      limit 1
+    """
+  let
+    name = $p.sigHash
+    m = getModule(p)
+    mid = if m == nil: 0 else: abs(m.id)
+    id = db.getValue(query, mid, name, p.id)
+  if id != "":
+    result = id.parseInt
+
 proc storeSym*(g: ModuleGraph; s: PSym): SqlId =
   if g.config.symbolFiles == disabledSf: return
   if sfForward in s.flags and s.kind != skModule:
     w.forwardedSyms.add s
     return
-  var buf = newStringOfCap(160)
-  encodeSym(g, s, buf)
-  const
-    insertion = sql"insert into syms(nimid, module, name, data, exported) values (?, ?, ?, ?, ?)"
-  # XXX only store the name for exported symbols in order to speed up lookup
-  # times once we enable the skStub logic.
-  # XXX - but we need generics...
-  let
-    m = getModule(s)
-    mid = if m == nil: 0 else: abs(m.id)
-  when true:
+  result = g.symbolId(s)
+  if result == 0:
+    var buf = newStringOfCap(160)
+    encodeSym(g, s, buf)
+    const
+      insertion = sql"""
+        insert into syms (nimid, module, name, data, exported)
+        values (?, ?, ?, ?, ?)
+      """
+    # XXX only store the name for exported symbols in order to speed up lookup
+    # times once we enable the skStub logic.
+    # XXX - but we need generics...
     let
-      name = case s.kind
-      of skProcKinds:
-        #$symBodyDigest(g, s)
-        $s.sigHash
-      else:
-        $s.sigHash
-#      of skModule, skPackage:
-#        $s.name.s
-#      else:
-#        $symBodyDigest(g, s)
-  else:
-    let
-      name = s.sigHash
+      m = getModule(s)
+      mid = if m == nil: 0 else: abs(m.id)
+      name = $s.sigHash
 
-  result = db.insertID(insertion, s.id, mid, name, buf,
-                       ord(sfExported in s.flags))
+    result = db.insertID(insertion, s.id, mid, name, buf,
+                         ord(sfExported in s.flags))
 
 proc decodeDeps(g: ModuleGraph; input: string): Snippets
 
-iterator loadSnippets*(g: ModuleGraph; p: PSym): Snippet =
+iterator loadSnippets*(g: ModuleGraph; m: BModule; p: PSym): Snippet =
+  ## sighash as input, along with the module
+  ##
+  ## section and code as output
   const
     selection = sql"""
-      select id,kind,nimid,code,section from snippets where name = ?
+      select snippets.id,snippets.kind,syms.nimid,code,section,snippets.module
+      from syms left join snippets
+      where syms.module = ? and syms.id = snippets.symbol and syms.name = ?
     """
   var
     count = 0
-  for row in db.fastRows(selection, p.id):
+  let
+    name = p.sigHash
+    mid = abs(m.module.id)
+  for row in db.fastRows(selection, mid, name):
     count.inc
     yield Snippet(id: parseInt(row[0]),
                   kind: parseInt(row[1]).TNodeKind,
                   nimid: parseInt(row[2]),
                   code: rope(row[3]),
                   section: parseInt(row[4]).TCFileSection,
+                  module: parseInt(row[5]),
                   symbol: p.id)
-  if count == 0:
-    raise newException(Defect, "no snippet for symbol " & $p.id)
+  if count == 0 and {sfImportc, sfCompilerProc, sfThread} * p.flags == {}:
+    echo "flags for ", p.name.s, p.flags
+    echo "no snippets gen'd for " & p.name.s
 
 proc loadSnippet(g: ModuleGraph; id: SqlId): Snippet =
   const
-    selection = sql"select id,kind,nimid,code,strong,weak,symbol,toplevel from snippets where id = ?"
+    selection = sql"""
+    select id,kind,nimid,code,symbol
+    from snippets where id = ?
+    """
   let
     row = db.getRow(selection, id)
   if row[0] == "":
     raise newException(Defect, "very bad news; no snippet id " & $id)
   result = Snippet(id: id, kind: parseInt(row[1]).TNodeKind,
                    nimid: parseInt(row[2]),
-                   code: rope(row[3]),
-                   strong: decodeDeps(g, row[4]),
-                   weak: decodeDeps(g, row[5]))
-  when false:
-    case result.kind
-    of nkSym:
-      result.symbol = parseInt(row[6])
-    else:
-      result.toplevel = parseInt(row[7])
-  else:
-    result.symbol = parseInt(row[6])
+                   code: rope(row[3]))
+  result.symbol = parseInt(row[4])
 
 proc decodeDeps(g: ModuleGraph; input: string): Snippets {.deprecated.} =
   for id in input.split(","):
@@ -458,13 +469,12 @@ proc storeSnippet*(g: ModuleGraph; s: var Snippet) =
         kind, filename, nimid, name, code)
       values (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
-    updation = sql"update snippets set strong = ?, weak = ? where id = ?"
   let
     id = s.symbol
 
   if s.id == 0:
     s.id = db.insertID(insertion, ord(s.section), s.module, id, id,
-                       s.kind, s.filename, s.nimid, s.name, s.code)
+                       s.kind.ord, s.filename, s.nimid, s.name, s.code)
   else:
     raise newException(Defect, "updates not supported")
 
@@ -481,32 +491,21 @@ proc loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
 
 proc snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool =
   if g.config.symbolFiles == disabledSf: return
-  let
-    digest = p.sigHash
   const
     query = sql"""
-      select symbol from syms left join snippets
-      where syms.id = snippets.symbol and syms.name = ? limit 1
+      select syms.id
+      from syms left join snippets
+      where syms.module = ? and syms.id = snippets.symbol and syms.name = ?
+      limit 1
     """
-  result = db.getValue(query, $digest) != ""
-
-proc symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool =
-  if g.config.symbolFiles == disabledSf: return
   let
-    digest = p.sigHash
-  when defined(release):
-    const
-      query = sql"select name from syms where name = ? limit 1"
-    result = db.getValue(query, $digest) == $digest
-  else:
-    const
-      query = sql"select name,nimid from syms where name = ? limit 1"
-    let
-      row = db.getRow(query, $digest)
-    result = row[0] != ""
-    if result:
-      if p.id != row[1].parseInt:
-        raise newException(Defect, "neat")
+    name = $p.sigHash
+    m = getModule(p)
+    mid = if m == nil: 0 else: abs(m.id)
+  result = db.getValue(query, mid, name) != ""
+
+template symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool =
+  g.symbolId(p) != 0
 
 proc typeAlreadyStored*(g: ModuleGraph; p: PType): bool =
   if g.config.symbolFiles == disabledSf: return
@@ -1109,11 +1108,15 @@ proc tail(r: Rope; x: int): Rope =
         # leaves; that every leaf represents an add
         raise newException(Defect, "bad assumption wrt leaves")
 
-proc setMark*[T](m: BModule; node: T): SnippetMark[T] =
-  ## set a mark on the module that we can use to playback all rope changes
-  result = SnippetMark[T](module: m, node: node)
+proc setMark*(m: BModule) =
   for section in TCFileSection.low .. TCFileSection.high:
-    result.lengths[section] = m.s[section].len
+    m.mark.lengths[section] = m.s[section].len
+
+proc setMark*(m: BModule; sym: PSym) =
+  ## set a mark on the module that we can use to playback all rope changes
+  #m.mark = SnippetMark(node: sym)
+  m.mark.node = sym
+  m.setMark
 
 proc storeNode(g: ModuleGraph; m: PSym; p: PSym): auto =
   result = storeSym(g, p)
@@ -1121,33 +1124,35 @@ proc storeNode(g: ModuleGraph; m: PSym; p: PSym): auto =
 proc storeNode(g: ModuleGraph; m: PSym; p: PType): auto =
   result = storeType(g, p)
 
-iterator snippetsSince*[T](mark: var SnippetMark[T]): Snippet =
+iterator snippetsSince*(m: BModule): Snippet =
   ## playback rope changes since the mark
   # iterate over all the sections of the file
-  when T isnot PSym:
-    {.error: "unsupported snippets type".}
-
-  template graph(): ModuleGraph = mark.module.g.graph
+  template sym(): PSym = m.mark.node
   let
-    moduleId = storeSym(graph, mark.module.module)
-    nodeId = storeNode(graph, mark.module.module, mark.node)
+    moduleId = storeSym(m.g.graph, m.module)
+    symbol = storeSym(m.g.graph, sym)
+  var
+    count = 0
   for section in TCFileSection.low .. TCFileSection.high:
     # if the section appears to have grown as a result of
     # our codegen,
-    if mark.module.s[section].len > mark.lengths[section]:
+    if m.s[section].len > m.mark.lengths[section]:
       # get the new code that was added,
       let
-        code = mark.module.s[section].tail(mark.lengths[section])
+        code = m.s[section].tail(m.mark.lengths[section])
       # create a new snippet from the code addition,
       var
-        snippet = newSnippet(mark.module, moduleId, nodeId,
-                             mark.node, code)
+        snippet = newSnippet(m, symbol, sym, code)
       # XXX: maybe force this in instantiation?
       snippet.section = section
       # store all snippets
-      if mark.module.config.symbolFiles notin {disabledSf, readOnlySf}:
-        storeSnippet(graph, snippet)
+      #if m.config.symbolFiles notin {disabledSf, readOnlySf}:
+      storeSnippet(m.g.graph, snippet)
+      count.inc
       yield snippet
+  if count == 0 and {sfImportc, sfCompilerProc, sfThread} * sym.flags == {}:
+    echo "flags for ", sym.name.s, sym.flags
+    echo "no snippets gen'd for " & sym.name.s
 
 proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == disabledSf:

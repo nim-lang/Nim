@@ -94,6 +94,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     c &= "\254"
     return
 
+  #echo t.kind, flags
   case t.kind
   of tyGenericInvocation:
     for i in 0..<t.len:
@@ -104,7 +105,13 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
       if t.sym == nil or tfFromGeneric in t.flags:
         c.hashType t.lastSon, flags
     elif CoType in flags or t.sym == nil:
-      c.hashType t.lastSon, flags
+      # crash; sym is nil and CoProc in flags
+      if t.sons.len == 0:
+        # araq says these are typeclasses or some other generic goodness
+        echo "distinct w/o lastSon or t.sym"
+        c &= ".emptydistinct"
+      else:
+        c.hashType t.lastSon, flags
     else:
       c.hashSym(t.sym)
   of tyGenericInst:
@@ -174,6 +181,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.len > 0:
       c.hashType t.lastSon, flags
     else:
+      # araq says these are typeclasses or some other generic goodness
       echo "pointer w/o lastSon"
       c &= ".emptyptr"
     if tfVarIsPtr in t.flags: c &= ".varisptr"
@@ -267,6 +275,8 @@ proc hashProc*(s: PSym): SigHash =
   c &= p.name.s
   c &= "."
   c &= m.name.s
+  c &= "."
+  c &= s.name.s
   if sfDispatcher in s.flags:
     c &= ".dispatcher"
   # so that createThread[void]() (aka generic specialization) gets a unique

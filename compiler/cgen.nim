@@ -776,10 +776,18 @@ proc cgsym(m: BModule, name: string): Rope =
   let sym = magicsys.getCompilerProc(m.g.graph, name)
   if sym != nil:
     case sym.kind
-    of skProc, skFunc, skMethod, skConverter, skIterator: genProc(m, sym)
-    of skVar, skResult, skLet: genVarPrototype(m, newSymNode sym)
-    of skType: discard getTypeDesc(m, sym.typ)
-    else: internalError(m.config, "cgsym: " & name & ": " & $sym.kind)
+    of skProc, skFunc, skMethod, skConverter, skIterator:
+      # probably the only place where we can universally catch rope changes
+      # echo "--> ", name
+      genProc(m, sym)
+    of skVar, skResult, skLet:
+      # another place we probably want to cache our symbols
+      genVarPrototype(m, newSymNode sym)
+    of skType:
+      # XXX: side-effects?
+      discard getTypeDesc(m, sym.typ)
+    else:
+      internalError(m.config, "cgsym: " & name & ": " & $sym.kind)
   else:
     # we used to exclude the system module from this check, but for DLL
     # generation support this sloppyness leads to hard to detect bugs, so
@@ -1078,7 +1086,8 @@ proc genProcAux(m: BModule, prc: PSym) =
   m.s[cfsProcs].add(generatedProc)
   if isReloadable(m, prc):
     m.s[cfsDynLibInit].addf("\t$1 = ($3) hcrRegisterProc($4, \"$1\", (void*)$2);$n",
-         [prc.loc.r, prc.loc.r & "_actual", getProcTypeCast(m, prc), getModuleDllPath(m, prc)])
+         [prc.loc.r, prc.loc.r & "_actual",
+          getProcTypeCast(m, prc), getModuleDllPath(m, prc)])
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
@@ -1093,7 +1102,6 @@ proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
   if lfNoDecl in sym.loc.flags: return
   if lfDynamicLib in sym.loc.flags:
-    # XXX load the sym.id snippet?  didn't we already do this?
     if getModule(sym).id != m.module.id and
         not containsOrIncl(m.declaredThings, sym.id):
       m.s[cfsVars].add(ropecg(m, "$1 $2 $3;$n",
@@ -1103,7 +1111,6 @@ proc genProcPrototype(m: BModule, sym: PSym) =
         m.s[cfsDynLibInit].addf("\t$1 = ($2) hcrGetProc($3, \"$1\");$n",
              [mangleDynLibProc(sym), getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
   elif not containsOrIncl(m.declaredProtos, sym.id):
-    # XXX load the sym.id snippet?  didn't we already do this?
     let asPtr = isReloadable(m, sym)
     var header = genProcHeader(m, sym, asPtr)
     if not asPtr:
@@ -1204,41 +1211,100 @@ proc requestConstImpl(p: BProc, sym: PSym) =
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
 proc genProc(m: BModule, prc: PSym) =
-  # XXX: fixup here
-  if sfBorrow in prc.flags or not isActivated(prc): return
+  if sfBorrow in prc.flags or not isActivated(prc):
+    return
 
+  # if the proc is not completed defined
   if sfForward in prc.flags:
     # telling the BModule that we will need a forward declaration section
     fillProcLoc(m, prc.ast[namePos])
-    # telling the BModule that we want a forward declaration
+    # adding a forward declaration
     addForwardedProc(m, prc)
 
-  if m.config.symbolFiles notin {disabledSf, writeOnlySf} and
-    snippetAlreadyStored(m.g.graph, prc):
-    # the symbol is stored, but maybe we don't have snippets?
-    echo "SYMBOL STORED ", prc.id, " ", prc.name.s
-    # this will crash if there are no snippets
-    for snippet in loadSnippets(m.g.graph, prc):
-      echo "read from cache ", $snippet.code
-      m.s[snippet.section].add snippet.code
-  else:
-    # snapshot the module before we may add some proc code to it
+  # we only generate code when the proc is completely defined
+  if sfForward in prc.flags:
+    return
+
+  # don't cache procs that aren't children of the module
+  var
+    cachable = prc.owner != nil and prc.owner.kind == skModule
+
+  # don't cache compiler procs
+  if lfImportCompilerProc in prc.loc.flags:
+    cachable = false
+
+  var
+    readcache = cachable and m.config.symbolFiles notin {disabledSf,
+                                                         writeOnlySf}
+    writecache = cachable and m.config.symbolFiles notin {disabledSf,
+                                                          readOnlySf}
+
+  # we won't read it if we don't have it
+  readcache = readcache and snippetAlreadyStored(m.g.graph, prc)
+
+  # we won't write it unless we aren't reading it
+  writecache = writecache and not readcache
+
+
+  # if we're reading, load the snippets from the db
+  if readcache:
+    if not containsOrIncl(m.declaredThings, prc.id):
+      echo "read  ", m.filename, ">> ", prc.name.s
+      echo "\t", $prc.sigHash, "\t", m.module.id
+      # this will crash if there are no snippets
+      for snippet in loadSnippets(m.g.graph, m, prc):
+        #echo "----"
+        #echo "\t", snippet.section, "\t", snippet.module
+        # if the snippet writes to proc headers, mark the proc as declared
+        if snippet.section == cfsProcHeaders:
+          m.declaredProtos.incl prc.id
+        m.s[snippet.section].add snippet.code
+    #else:
+    #  echo "stale ", m.filename, ">> ", prc.name.s
+
+  # if we're not reading, we need to generate the code
+  if not readcache:
+
+    # TODO: ideally, we perform a write and then simply call this proc
+    # again to read the data right out of cache. this is complicated by
+    # the fact that the ropes are basically append-only...
+    #
+    # ropes need a pop()!
+
     var
-      mark = m.setMark(prc)
-    if sfForward notin prc.flags:
-      genProcMayForward(m, prc)
-      if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-          m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-        genProcPrototype(m.g.generatedHeader, prc)
-        if prc.typ.callConv == ccInline:
-          if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
-            genProcAux(m.g.generatedHeader, prc)
-    # we don't actually need to do anything with these snippets
-    # XXX: create a storeNovelSnippets or whatever...
-    for snippet in mark.snippetsSince:
-      if snippet.id == 0:
-        if m.config.symbolFiles notin {disabledSf, readOnlySf}:
-          raise newException(Defect, "snippet did not write")
+      mark: SnippetMark
+    # set the marks to monitor for new snippets
+    if writecache:
+      echo "write ", m.filename, ">> ", prc.name.s
+      #echo "\t", $prc.sigHash, "\t", m.module.id
+      m.setMark(prc)
+      mark = m.mark
+
+    # the real proc generator, and it may define forwards
+    genProcMayForward(m, prc)
+
+    # if it's an export and not a compiler proc,
+    # and we already have a generated header for it,
+    # and it isn't flagged no-declaration,
+    if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
+        m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+      # then generate a prototype for it in the header
+      genProcPrototype(m.g.generatedHeader, prc)
+
+      # now, if it's inline,
+      if prc.typ.callConv == ccInline:
+        # and if the proc hasn't already been declared, declare it, and
+        if not containsOrIncl(m.g.generatedHeader.declaredThings,
+                              prc.id):
+          # generate the header for the proc
+          genProcAux(m.g.generatedHeader, prc)
+
+    # issuing the iterator on snippetsSince will write them
+    if writecache:
+      m.mark = mark
+      echo "wrote ", m.filename, ">> ", prc.name.s
+      for snippet in m.snippetsSince:
+        discard
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1870,7 +1936,8 @@ proc writeHeader(m: BModule) =
     result.add(genSectionStart(i, m.config))
     result.add(m.s[i])
     result.add(genSectionEnd(i, m.config))
-    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders: result.add openNamespaceNim(m.config.cppCustomNamespace)
+    if m.config.cppCustomNamespace.len > 0 and i == cfsHeaders:
+      result.add openNamespaceNim(m.config.cppCustomNamespace)
   result.add(m.s[cfsInitProc])
 
   if optGenDynLib in m.config.globalOptions:
@@ -2082,17 +2149,21 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   m.g.modulesClosed.add m
 
 proc genForwardedProcs(g: BModuleList) =
-  # Forward declared proc:s lack bodies when first encountered, so they're given
-  # a second pass here
-  # Note: ``genProcMayForward`` may add to ``forwardedProcs``
-  while g.forwardedProcs.len > 0:
-    let
-      prc = g.forwardedProcs.pop()
-      ms = getModule(prc)
-      m = g.modules[ms.position]
-    if sfForward in prc.flags:
-      internalError(m.config, prc.info, "still forwarded: " & prc.name.s)
+  # Forward declared proc:s lack bodies when first encountered, so they're
+  # given a second pass here Note: ``genProcMayForward`` may add to
+  # ``forwardedProcs``
 
+  while g.forwardedProcs.len > 0:        # while the stack is un-empty,
+    let
+      prc = g.forwardedProcs.pop()       # pop a proc,
+      ms = getModule(prc)                # get its module,
+      m = g.modules[ms.position]         # get the module's position,
+
+    if sfForward in prc.flags:           # if the proc isn't complete,
+      internalError(m.config, prc.info,  # throw an error
+                    "still forwarded: " & prc.name.s)
+
+    # otherwise, generate the proc
     genProcMayForward(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
