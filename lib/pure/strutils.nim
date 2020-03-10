@@ -2875,9 +2875,8 @@ since (1, 1):
       var x = "abcdefghijklmnopqrstuvwxyz01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
       toLowerAsciiInPlace(x)
       doAssert x == "abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz*+,-./:;<=>?@[]_{|}~"
-    const t = "abcdefghijklmnopqrstuvwxyz".indent(65).cstring
     for c in mitems(s):
-      if c in {'A'..'Z'}: c = t[c.ord]
+      if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
 
 
   func toUpperAsciiInPlace*(s: var string) {.inline.} =
@@ -2893,9 +2892,8 @@ since (1, 1):
       var z = "abcdefghijklmnopqrstuvwxyz01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
       toUpperAsciiInPlace(z)
       doAssert z == "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
-    const t = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".indent(97).cstring
     for c in mitems(s):
-      if c in {'a'..'z'}: c = t[c.ord]
+      if c in {'a'..'z'}: c = chr(ord(c) - ord('A') + ord('a'))
 
 
 when isMainModule:
