@@ -6,8 +6,8 @@ true
 ptr Foo
 (member: "hello world")
 (member: 123.456)
-(member: "hello world", x: ...)
-(member: 123.456, x: ...)
+(member: "hello world", x: nil)
+(member: 123.456, x: nil)
 0
 false
 '''

@@ -108,7 +108,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     else:
       result.add(separator)
 
-    when T is SomePointer:
+    when value is SomePointer:
       # this branch should not be necessary
       if value.isNil:
         result.add "nil"
@@ -157,3 +157,10 @@ proc `$`*[T](x: openArray[T]): string =
   ## .. code-block:: Nim
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToString(x, "[", ", ", "]")
+
+proc `$`*[T: ref](arg: T): string = $arg[]
+
+proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
+
+proc `$`*[T: distinct](arg: T): string =
+  $distinctBase(T)(arg)

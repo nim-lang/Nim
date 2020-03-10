@@ -66,4 +66,4 @@ proc initTypeA1(a: int; b: string; c: pointer = nil): TypeA1 =
   result.c_impl = c
 
 let x = initTypeA1(1, "a")
-doAssert($x == "(a_impl: 1, b_impl: \"a\", c_impl: ...)")
+doAssert($x == "(a_impl: 1, b_impl: \"a\", c_impl: nil)")
