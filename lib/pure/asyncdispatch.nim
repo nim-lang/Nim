@@ -278,7 +278,7 @@ when defined(windows) or defined(nimdoc):
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
     result.handles = initSet[AsyncFD]()
     result.timers.newHeapQueue()
-    result.callbacks = initDeque[proc ()](64)
+    result.callbacks = initDeque[proc () {.closure, gcsafe.}](64)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
 

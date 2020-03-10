@@ -32,6 +32,7 @@ import
   pathutils, strtabs
 
 from incremental import nimIncremental
+from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
 # but some have deps to imported modules. Yay.
 bootSwitch(usedTinyC, hasTinyCBackend, "-d:tinyc")
@@ -869,10 +870,11 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     of "1.0":
       defineSymbol(conf.symbols, "NimMajor", "1")
       defineSymbol(conf.symbols, "NimMinor", "0")
-      # always be compatible with 1.0.2 for now:
-      defineSymbol(conf.symbols, "NimPatch", "2")
+      # always be compatible with 1.0.100:
+      defineSymbol(conf.symbols, "NimPatch", "100")
       # old behaviors go here:
       defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
+      ast.eqTypeFlags.excl {tfGcSafe, tfNoSideEffect}
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
