@@ -94,7 +94,7 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
-- Added in-place `strutils.toLowerAsciiInPlace`,  `strutils.toUpperAsciiInPlace`, `strutils.capitalizeAsciiInPlace`,
+- Added in-place `strutils.toLowerAsciiInPlace`,  `strutils.toUpperAsciiInPlace`,
   faster than the copy versions, at least from ~1.5x to ~5x performance approx.
 
 
