@@ -2873,7 +2873,7 @@ since (1, 1):
     ## * `normalize proc<#normalize,string>`_
     runnableExamples:
       var x = "abcdefghijklmnopqrstuvwxyz01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
-      toLowerAscii(x)
+      toLowerAsciiInPlace(x)
       doAssert x == "abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz*+,-./:;<=>?@[]_{|}~"
     const t = "abcdefghijklmnopqrstuvwxyz".indent(65).cstring
     for c in mitems(s):
@@ -2891,7 +2891,7 @@ since (1, 1):
     ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
     runnableExamples:
       var z = "abcdefghijklmnopqrstuvwxyz01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
-      toUpperAscii(z)
+      toUpperAsciiInPlace(z)
       doAssert z == "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
     const t = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".indent(97).cstring
     for c in mitems(s):
