@@ -2110,10 +2110,9 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.typ = getSysType(c.graph, n.info, tyBool)
 
 proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  if sonsLen(n) != 2:
-    localError(c.config, n.info, "semOverloadResolve: got" & $sonsLen(n))
+  if n.len != 2:
+    localError(c.config, n.info, "semOverloadResolve: got" & $n.len)
     return
-  doAssert sonsLen(n) == 2, $sonsLen(n)
   let n1 = n[1]
   n1.flags.incl nfOverloadResolve
   case n1.kind
@@ -2132,7 +2131,7 @@ proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let typ = newTypeS(tyTuple, c)
     let result0 = result
     result = newNodeIT(nkTupleConstr, n.info, typ)
-    addSon(result, result0)
+    result.add result0
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n.len == 3:
