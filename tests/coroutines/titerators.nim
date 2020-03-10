@@ -6,7 +6,7 @@ disabled: true
 # Timers are always flakey on the testing servers.
 
 import coro
-include system/timers
+import std/timers
 
 var
   stackCheckValue = 1100220033

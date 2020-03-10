@@ -7,24 +7,35 @@
 #    distribution, for details about the copyright.
 #
 
-## Timer support for the realtime GC. Based on
+## High performance and low overhead Timer, suitable for benchmarking.
+## This is also used for the realtime GC. Based on
 ## `<https://github.com/jckarter/clay/blob/master/compiler/hirestimer.cpp>`_
 
 type
-  Ticks = distinct int64
-  Nanos = int64
+  Ticks* = distinct int64 ## clock ticks, implementation defined
+  Nanos* = int64 ## number of nanoseconds
 
-when defined(windows):
+when defined(nimdoc):
+  proc getTicks*(): Ticks =
+    ## returns implementation defined number of clock ticks
+    runnableExamples:
+      var x = 1
+      let t = getTicks()
+      x*=2 ## run some code
+      doAssert getTicks() - t > 0
+  proc `-`*(a, b: Ticks): Nanos =
+    ## convert an interval of clock ticks into nanoseconds
 
+elif defined(windows):
   proc QueryPerformanceCounter(res: var Ticks) {.
     importc: "QueryPerformanceCounter", stdcall, dynlib: "kernel32".}
   proc QueryPerformanceFrequency(res: var int64) {.
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
-  proc getTicks(): Ticks {.inline.} =
+  proc getTicks*(): Ticks {.inline.} =
     QueryPerformanceCounter(result)
 
-  proc `-`(a, b: Ticks): Nanos =
+  proc `-`*(a, b: Ticks): Nanos =
     var frequency: int64
     QueryPerformanceFrequency(frequency)
     var performanceCounterRate = 1e+9'f64 / float64(frequency)
@@ -42,13 +53,13 @@ elif defined(macosx) and not defined(emscripten):
   proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
     header: "<mach/mach_time.h>".}
 
-  proc getTicks(): Ticks {.inline.} =
+  proc getTicks*(): Ticks {.inline.} =
     result = Ticks(mach_absolute_time())
 
   var timeBaseInfo: MachTimebaseInfoData
   mach_timebase_info(timeBaseInfo)
 
-  proc `-`(a, b: Ticks): Nanos =
+  proc `-`*(a, b: Ticks): Nanos =
     result = (a.int64 - b.int64) * timeBaseInfo.numer div timeBaseInfo.denom
 
 elif defined(posixRealtime):
@@ -66,12 +77,12 @@ elif defined(posixRealtime):
   proc clock_gettime(clkId: Clockid, tp: var Timespec) {.
     importc: "clock_gettime", header: "<time.h>".}
 
-  proc getTicks(): Ticks =
+  proc getTicks*(): Ticks =
     var t: Timespec
     clock_gettime(CLOCK_REALTIME, t)
     result = Ticks(int64(t.tv_sec) * 1000000000'i64 + int64(t.tv_nsec))
 
-  proc `-`(a, b: Ticks): Nanos {.borrow.}
+  proc `-`*(a, b: Ticks): Nanos {.borrow.}
 
 else:
   # fallback Posix implementation:
@@ -90,10 +101,10 @@ else:
   proc posix_gettimeofday(tp: var Timeval, unused: pointer = nil) {.
     importc: "gettimeofday", header: "<sys/time.h>".}
 
-  proc getTicks(): Ticks =
+  proc getTicks*(): Ticks =
     var t: Timeval
     posix_gettimeofday(t)
     result = Ticks(int64(t.tv_sec) * 1000_000_000'i64 +
                     int64(t.tv_usec) * 1000'i64)
 
-  proc `-`(a, b: Ticks): Nanos {.borrow.}
+  proc `-`*(a, b: Ticks): Nanos {.borrow.}

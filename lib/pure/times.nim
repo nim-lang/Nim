@@ -2537,7 +2537,8 @@ when not defined(js):
 
   proc cpuTime*(): float {.tags: [TimeEffect].} =
     ## gets time spent that the CPU spent to run the current process in
-    ## seconds. This may be more useful for benchmarking than ``epochTime``.
+    ## seconds. For benchmarking, use `timers.getTicks` instead, which has
+    ## highest resolution and least overhead.
     ## However, it may measure the real time instead (depending on the OS).
     ## The value of the result has no meaning.
     ## To generate useful timing values, take the difference between

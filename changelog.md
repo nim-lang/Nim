@@ -103,6 +103,8 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
+- Added a new module, `std / timers` for high performance timers, more suitable
+  for benchmarking than `times.cpuTime`.
 
 ## Library changes
 

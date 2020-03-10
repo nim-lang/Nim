@@ -24,7 +24,7 @@ const
   withRealTime = defined(useRealtimeGC)
 
 when withRealTime and not declared(getTicks):
-  include "system/timers"
+  import std/timers
 when defined(memProfiler):
   proc nimProfile(requestedSize: int) {.benign.}
 

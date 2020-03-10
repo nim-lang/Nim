@@ -23,7 +23,7 @@ when defined(nimHasUsed):
 import hashes, algorithm, strutils, tables, sets
 
 when not defined(memProfiler):
-  include "system/timers"
+  import std/timers
 
 const
   withThreads = compileOption("threads")

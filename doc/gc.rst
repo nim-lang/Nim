@@ -85,8 +85,7 @@ disabled).
 Time measurement
 ----------------
 
-The GC's way of measuring time uses (see ``lib/system/timers.nim`` for the
-implementation):
+The GC's way of measuring time uses (see ``std/timers`` for the implementation):
 
 1) ``QueryPerformanceCounter`` and ``QueryPerformanceFrequency`` on Windows.
 2) ``mach_absolute_time`` on Mac OS X.
