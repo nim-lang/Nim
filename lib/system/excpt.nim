@@ -69,14 +69,30 @@ type FrameData = object
     # want to avoid GC while in nimFrame
 
 when not nimHasFrameFilename:
+  # var nimDemangleInfo2 
+  # var nimDemangleInfo {.importc.}: string # TODO; or cstring?
+  # var frameMsgs: ptr UncheckedArray[cstring]
+  var frameMsgs: cstringArray
+  proc frameMsg(a: TFrame): cstring =
+    frameMsgs[a.srcLocation]
   template line(a: TFrame): int = cast[int](a.srcLocation)
   template procname(a: TFrame): cstring = "FAKE_procname"
   template filename(a: TFrame): cstring = "FAKE_filename"
+  when false:
+    proc demangleFrame(result: var FrameDemangled, srcLocation: SrcLocation) =
+      ## inverse of `cgen.mangleFrame`
+      ## Could also compress via gzip etc instead of coming up w custom encoding
+      nimDemangleInfo
+    type FrameDemangled = object
+      frameMsg: cstring
+      filename: cstring # or string?
+      line: int
+      procname: cstring
+
+
 
 var
-  # frameData {.threadvar.}: FrameData
   frameData {.threadvar, exportc: "c_frameData".}: FrameData
-
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks

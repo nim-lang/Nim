@@ -31,25 +31,33 @@ const nimHasFrameFilename2 = false # see nimHasFrameFilename
 
 type SrcLocation = uint32 # synchronize with system.SrcLocation
 
-proc getSrcLocation(conf: ConfigRef, info: TLineInfo): SrcLocation =
-  # TODO: hashing?
-  # IMPROVE?
-  type Compact = object
-    index: uint16
-    line: uint16
-  # TODO: col
-  let c = Compact(index: info.fileIndex.int32.uint16, line: info.line)
-  result = cast[SrcLocation](c)
-  # let index = info.fileIndex.int32.uint16
-  # let index = [info.fileIndex.int32.uint16, 
-  # result = index
-  #     line*: uint16
-  #   col*: int16
-  #   fileIndex*: FileIndex
-  # conf.toFileLineCol(info)
-  # conf.toFileLineCol(info)
-  # BModuleList
-  # result = info.line # PRTEMP
+proc mangleFrame(conf: ConfigRef, info: TLineInfo): SrcLocation =
+  let frameMsg = conf$info & ".v1"
+  # var index = getOrDefault(conf.frameDebugInfo, -1)
+  var index = conf.frameDebugInfo.len
+  index = conf.frameDebugInfo.mgetOrPut(frameMsg, index)
+  result = SrcLocation(index)
+  echo (frameMsg, result)
+  when false:
+    # if frameMsg in conf.frameDebugInfo:
+    # TODO: hashing?
+    # IMPROVE?
+    type Compact = object
+      index: uint16
+      line: uint16
+    # TODO: col
+    let c = Compact(index: info.fileIndex.int32.uint16, line: info.line)
+    result = cast[SrcLocation](c)
+    # let index = info.fileIndex.int32.uint16
+    # let index = [info.fileIndex.int32.uint16, 
+    # result = index
+    #     line*: uint16
+    #   col*: int16
+    #   fileIndex*: FileIndex
+    # conf.toFileLineCol(info)
+    # conf.toFileLineCol(info)
+    # BModuleList
+    # result = info.line # PRTEMP
 
 when not declared(dynlib.libCandidates):
   proc libCandidates(s: string, dest: var seq[string]) =
@@ -295,7 +303,7 @@ proc genLineDir(p: BProc, info: TLineInfo) =
         linefmt(p, cpsStmts, "nimln_($1, $2);$n",
               [line, quotedFilename(p.config, info)])
       else:
-        let srcLocation = getSrcLocation(p.config, info)
+        let srcLocation = mangleFrame(p.config, info)
         linefmt(p, cpsStmts, "#nimLine($1);$n", [$srcLocation])
 
 template genLineDir(p: BProc, t: PNode) =
@@ -676,7 +684,7 @@ $1 define nimln_(line2, file) \
   when nimHasFrameFilename2:
     result = ropecg(p.module, "\tnimfr_($1, $2, $3);$n", [procname, filename, info.line.int])
   else:
-    let srcLocation = getSrcLocation(p.config, info)
+    let srcLocation = mangleFrame(p.config, info)
     result = ropecg(p.module, "\t#nimFrame($1);$n", [$srcLocation])
     # genLineDir(p, info)
 
@@ -1366,7 +1374,8 @@ proc genMainProc(m: BModule) =
     PosixCmdLine =
       "N_LIB_PRIVATE int cmdCount;$N" &
       "N_LIB_PRIVATE char** cmdLine;$N" &
-      "N_LIB_PRIVATE char** gEnv;$N"
+      "N_LIB_PRIVATE char** gEnv;$N" &
+      "N_LIB_PRIVATE char** frameMsgs;$N
 
     # The use of a volatile function pointer to call Pre/NimMainInner
     # prevents inlining of the NimMainInner function and dependent

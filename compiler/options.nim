@@ -14,6 +14,8 @@ import
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
 
+import tables
+
 const
   hasTinyCBackend* = defined(tinyc)
   useEffectSystem* = true
@@ -287,6 +289,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    frameDebugInfo*: Table[string, int]
 
 proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
   if note notin conf.cmdlineNotes:
