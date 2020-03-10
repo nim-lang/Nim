@@ -2872,14 +2872,12 @@ since (1, 1):
     ## See also:
     ## * `normalize proc<#normalize,string>`_
     runnableExamples:
-      var stringy = "ABCDEF"
-      toLowerAsciiInPlace(stringy)
-      doAssert stringy == "abcdef"
-      var strng = "NIM"
-      toLowerAsciiInPlace(strng)
-      doAssert strng == "nim"
+      var x = "abcdefghijklmnopqrstuvwxyz01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
+      toLowerAscii(x)
+      doAssert x == "abcdefghijklmnopqrstuvwxyz01234567890abcdefghijklmnopqrstuvwxyz*+,-./:;<=>?@[]_{|}~"
+    const t = "abcdefghijklmnopqrstuvwxyz".indent(65).cstring
     for c in mitems(s):
-      if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
+      if c in {'A'..'Z'}: c = t[c.ord]
 
 
   func toUpperAsciiInPlace*(s: var string) {.inline.} =
@@ -2892,14 +2890,12 @@ since (1, 1):
     ## See also:
     ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
     runnableExamples:
-      var stringo = "abcdef"
-      toUpperAsciiInPlace(stringo)
-      doAssert stringo == "ABCDEF"
-      var strng = "nim"
-      toUpperAsciiInPlace(strng)
-      doAssert strng == "NIM"
+      var z = "abcdefghijklmnopqrstuvwxyz01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
+      toUpperAscii(z)
+      doAssert z == "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
+    const t = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".indent(97).cstring
     for c in mitems(s):
-      if c in {'a'..'z'}: c = chr(ord(c) - (ord('a') - ord('A')))
+      if c in {'a'..'z'}: c = t[c.ord]
 
 
 when isMainModule:
