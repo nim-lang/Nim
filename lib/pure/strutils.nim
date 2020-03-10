@@ -2862,13 +2862,6 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
 
 
 since (1, 1):
-  template toLowerAsciiInPlace(c: var char) =
-    if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
-
-  template toUpperAsciiInPlace(c: var char) =
-    if c in {'a'..'z'}: c = chr(ord(c) - (ord('a') - ord('A')))
-
-
   func toLowerAsciiInPlace*(s: var string) {.inline.} =
     ## Converts string `s` into lower case.
     ##
@@ -2887,7 +2880,7 @@ since (1, 1):
       doAssert strng == "nim"
     var i = 0
     for c in mitems(s):
-      toLowerAsciiInPlace(c)
+      if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
       s[i] = c
       inc i
 
@@ -2910,27 +2903,9 @@ since (1, 1):
       doAssert strng == "NIM"
     var i = 0
     for c in mitems(s):
-      toUpperAsciiInPlace(c)
+      if c in {'a'..'z'}: c = chr(ord(c) - (ord('a') - ord('A')))
       s[i] = c
       inc i
-
-
-  func capitalizeAsciiInPlace*(s: var string) {.inline.} =
-    ## Converts the first character of string `s` into upper case.
-    ##
-    ## This works only for the letters ``A-Z``.
-    ## Use `Unicode module<unicode.html>`_ for UTF-8 support.
-    ##
-    ## See also:
-    ## * `toUpperAscii proc<#toUpperAscii,char>`_
-    runnableExamples:
-      var stringu = "foo"
-      capitalizeAsciiInPlace(stringu)
-      doAssert stringu == "Foo"
-      var stringx = "-bar"
-      capitalizeAsciiInPlace(stringx)
-      doAssert stringx == "-bar"
-    toUpperAsciiInPlace(s[0])
 
 
 when isMainModule:
