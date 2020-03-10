@@ -2862,44 +2862,10 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
 
 
 since (1, 1):
-  template toLowerAsciiInPlace*(c: var char) =
-    ## Returns the lower case version of character ``c``.
-    ##
-    ## This works only for the letters ``A-Z``. See `unicode.toLower
-    ## <unicode.html#toLower,Rune>`_ for a version that works for any Unicode
-    ## character.
-    ##
-    ## See also:
-    ## * `isLowerAscii proc<#isLowerAscii,char>`_
-    ## * `toLowerAscii proc<#toLowerAscii,string>`_ for converting a string
-    runnableExamples:
-      var character = 'F'
-      toLowerAsciiInPlace(character)
-      doAssert character == 'f'
-      var chara = 'A'
-      toLowerAsciiInPlace(chara)
-      doAssert chara == 'a'
+  template toLowerAsciiInPlace(c: var char) =
     if c in {'A'..'Z'}: c = chr(ord(c) + (ord('a') - ord('A')))
 
-
-  template toUpperAsciiInPlace*(c: var char) =
-    ## Converts character `c` into upper case.
-    ##
-    ## This works only for the letters ``A-Z``.  See `unicode.toUpper
-    ## <unicode.html#toUpper,Rune>`_ for a version that works for any Unicode
-    ## character.
-    ##
-    ## See also:
-    ## * `isLowerAscii proc<#isLowerAscii,char>`_
-    ## * `toUpperAscii proc<#toUpperAscii,string>`_ for converting a string
-    ## * `capitalizeAscii proc<#capitalizeAscii,string>`_
-    runnableExamples:
-      var character = 'f'
-      toUpperAsciiInPlace(character)
-      doAssert character == 'F'
-      var chara = 'z'
-      toUpperAsciiInPlace(chara)
-      doAssert chara == 'Z'
+  template toUpperAsciiInPlace(c: var char) =
     if c in {'a'..'z'}: c = chr(ord(c) - (ord('a') - ord('A')))
 
 
