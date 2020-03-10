@@ -2893,7 +2893,7 @@ since (1, 1):
       toUpperAsciiInPlace(z)
       doAssert z == "ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ*+,-./:;<=>?@[]_{|}~"
     for c in mitems(s):
-      if c in {'a'..'z'}: c = chr(ord(c) - ord('A') + ord('a'))
+      if c in {'a'..'z'}: c = chr(ord(c) - ord('A') - ord('a'))
 
 
 when isMainModule:
