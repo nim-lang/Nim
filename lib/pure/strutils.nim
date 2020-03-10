@@ -215,7 +215,7 @@ template toImpl(call) =
   for i in 0..len(s) - 1:
     result[i] = call(s[i])
 
-proc toLowerAscii*(s: string): string {.inline, noSideEffect, procvar,
+proc toLowerAscii*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiStr".} =
   ## Converts string `s` into lower case.
   ##
@@ -249,7 +249,7 @@ proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
   else:
     result = c
 
-proc toUpperAscii*(s: string): string {.inline, noSideEffect, procvar,
+proc toUpperAscii*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuToUpperAsciiStr".} =
   ## Converts string `s` into upper case.
   ##
