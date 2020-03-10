@@ -10,15 +10,14 @@
 ## An implementation of a `deque`:idx: (double-ended queue).
 ## The underlying implementation uses a `seq`.
 ##
-## Note that none of the procs that get an individual value from the deque should be used
-## on an empty deque.
-## If compiled with the `boundChecks` option, those procs will raise an `IndexDefect`
-## on such access. This should not be relied upon, as `-d:danger` or `--checks:off` will
-## disable those checks and then the procs may return garbage or crash the program.
+## Deques are implicitly initialised as empty, similar to tables and seqs. But
+## trying get an individual value from the deque will result in an `IndexError`
+## if compiled with `boundChecks` turned on. Compiling without this option (or
+## with `-d:danger` which disables it) may return garbage or crash the program.
 ##
 ## As such, a check to see if the deque is empty is needed before any
 ## access, unless your program logic guarantees it indirectly.
-
+##
 runnableExamples:
   var a = [10, 20, 30, 40].toDeque
 
@@ -50,41 +49,49 @@ runnableExamples:
 
 import std/private/since
 
-import math
+import math, hashes
 
 type
   Deque*[T] = object
     ## A double-ended queue backed with a ringed `seq` buffer.
     ##
-    ## To initialize an empty deque,
-    ## use the `initDeque proc <#initDeque,int>`_.
+    ## To initialize an empty deque with a given capacity use
+    ## `initDeque proc <#initDeque,int>`_.
     data: seq[T]
     head, tail, count, mask: int
 
 const
-  defaultInitialSize* = 4
+  dequeDefaultInitialCapacity* {.intdefine.} = 4
 
-template initImpl(result: typed, initialSize: int) =
-  let correctSize = nextPowerOfTwo(initialSize)
-  result.mask = correctSize - 1
-  newSeq(result.data, correctSize)
+template initImpl(result: typed, initialCapacity: int) =
+  assert isPowerOfTwo(initialCapacity)
+  result.mask = initialCapacity-1
+  newSeq(result.data, initialCapacity)
 
 template checkIfInitialized(deq: typed) =
-  when compiles(defaultInitialSize):
+  when declared(dequeDefaultInitialCapacity):
     if deq.mask == 0:
-      initImpl(deq, defaultInitialSize)
+      initImpl(deq, dequeDefaultInitialCapacity)
 
-proc initDeque*[T](initialSize: int = defaultInitialSize): Deque[T] =
-  ## Creates a new empty deque.
+  result.initImpl(initialSize)
+
+proc initDeque*[T](initialCapacity: int = dequeDefaultInitialCapacity): Deque[T] =
+  ## Create a new empty deque with a given capacity. An implicitly defined
+  ## deque will have a capacity of 0 and be grown to fit elements on the first
+  ## data insertion.
   ##
-  ## Optionally, the initial capacity can be reserved via `initialSize`
-  ## as a performance optimization
-  ## (default: `defaultInitialSize <#defaultInitialSize>`_).
-  ## The length of a newly created deque will still be 0.
+  ## Optionally, the initial capacity can be reserved via `initialCapacity`
+  ## as a performance optimization. The length of a newly created deque will
+  ## still be 0.
+  ##
+  ## ``initialCapacity`` must be a power of two (default: 4).
+  ## If you need to accept runtime values for this you could use the
+  ## `nextPowerOfTwo proc<math.html#nextPowerOfTwo,int>`_ from the
+  ## `math module<math.html>`_.
   ##
   ## **See also:**
   ## * `toDeque proc <#toDeque,openArray[T]>`_
-  result.initImpl(initialSize)
+  result.initImpl(initialCapacity)
 
 proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
   ## Creates a new deque that contains the elements of `x` (in the same order).
@@ -101,8 +108,28 @@ proc toDeque*[T](x: openArray[T]): Deque[T] {.since: (1, 3).} =
     result.addLast(item)
 
 proc len*[T](deq: Deque[T]): int {.inline.} =
-  ## Returns the number of elements of `deq`.
+  ## Return the number of elements in the `deq`.
   result = deq.count
+
+template high*[T](deq: Deque[T]): int =
+  deq.len - 1
+
+proc toDeque*[T](x: seq[T]): Deque[T] =
+  ## Converts a sequence into a Deque
+  runnableExamples:
+    var x = @[10, 20, 30].toDeque
+    assert x.len == 3
+    assert x[0] == 10
+    x.addFirst 0
+    x.addLast 40
+    assert $x == "[0, 10, 20, 30, 40]"
+  result.head = 0
+  result.count = x.len
+  result.tail = x.len
+  result.data = x
+  if not x.len.isPowerOfTwo:
+    result.data.setLen x.len.nextPowerOfTwo
+  result.mask = result.data.len - 1
 
 template emptyCheck(deq) =
   # Bounds check for the regular deque access.
@@ -178,7 +205,7 @@ proc `[]`*[T](deq: var Deque[T], i: BackwardsIndex): var T {.inline.} =
     assert a[^1] == 51
 
   xBoundsCheck(deq, deq.len - int(i))
-  return deq[deq.len - int(i)]
+  return deq.data[(deq.head + (deq.len - int(i))) and deq.mask]
 
 proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
   ## Sets the backwards indexed `i`-th element of `deq` to `x`.
@@ -192,7 +219,7 @@ proc `[]=`*[T](deq: var Deque[T], i: BackwardsIndex, x: T) {.inline.} =
 
   checkIfInitialized(deq)
   xBoundsCheck(deq, deq.len - int(i))
-  deq[deq.len - int(i)] = x
+  deq.data[(deq.head + (deq.len - int(i))) and deq.mask] = x
 
 iterator items*[T](deq: Deque[T]): T =
   ## Yields every element of `deq`.
@@ -276,7 +303,7 @@ proc addFirst*[T](deq: var Deque[T], item: T) =
   ## **See also:**
   ## * `addLast proc <#addLast,Deque[T],T>`_
   runnableExamples:
-    var a = initDeque[int]()
+    var a: Deque[int]
     for i in 1 .. 5:
       a.addFirst(10 * i)
     assert $a == "[50, 40, 30, 20, 10]"
@@ -292,7 +319,7 @@ proc addLast*[T](deq: var Deque[T], item: T) =
   ## **See also:**
   ## * `addFirst proc <#addFirst,Deque[T],T>`_
   runnableExamples:
-    var a = initDeque[int]()
+    var a: Deque[int]
     for i in 1 .. 5:
       a.addLast(10 * i)
     assert $a == "[10, 20, 30, 40, 50]"
@@ -421,7 +448,7 @@ proc shrink*[T](deq: var Deque[T], fromFirst = 0, fromLast = 0) =
   ## `fromLast` elements from the back.
   ##
   ## If the supplied number of elements exceeds the total number of elements
-  ## in the deque, the deque will remain empty.
+  ## in the deque, the deque will be emptied entirely.
   ##
   ## **See also:**
   ## * `clear proc <#clear,Deque[T]>`_
@@ -458,3 +485,20 @@ proc `$`*[T](deq: Deque[T]): string =
     if result.len > 1: result.add(", ")
     result.addQuoted(x)
   result.add("]")
+
+proc hash*[A](d: Deque[A]): Hash =
+  ## Hashing of Deque.
+  runnableExamples:
+    var
+      x: Deque[int]
+      y: Deque[int]
+
+    for i in 1..5:
+      x.addLast(i*10)
+    for i in -5..10:
+      y.addLast(i*10)
+    y.shrink(fromFirst = 6, fromLast = 5)
+    assert hash(x) == hash(y)
+  for h in 0 ..< d.len:
+    result = result xor hash(d[h])
+  result = !$result

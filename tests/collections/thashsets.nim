@@ -3,9 +3,9 @@ import sets, hashes, algorithm
 
 block setEquality:
   var
-    a = initHashSet[int]()
-    b = initHashSet[int]()
-    c = initHashSet[string]()
+    a: HashSet[int]
+    b: HashSet[int]
+    c: HashSet[string]
 
   for i in 0..5: a.incl(i)
   for i in 1..6: b.incl(i)
@@ -16,27 +16,27 @@ block setEquality:
 
 
 block setsContainingTuples:
-  var set = initHashSet[tuple[i: int, i64: int64, f: float]]()
+  var set: HashSet[tuple[i: int, i64: int64, f: float]]
   set.incl( (i: 123, i64: 123'i64, f: 3.14) )
   doAssert set.contains( (i: 123, i64: 123'i64, f: 3.14) )
   doAssert( not set.contains( (i: 456, i64: 789'i64, f: 2.78) ) )
 
 
 block setWithTuplesWithSeqs:
-  var s = initHashSet[tuple[s: seq[int]]]()
+  var s: HashSet[tuple[s: seq[int]]]
   s.incl( (s: @[1, 2, 3]) )
   doAssert s.contains( (s: @[1, 2, 3]) )
   doAssert( not s.contains((s: @[4, 5, 6])) )
 
 
 block setWithSequences:
-  var s = initHashSet[seq[int]]()
+  var s: HashSet[seq[int]]
   s.incl( @[1, 2, 3] )
   doAssert s.contains(@[1, 2, 3])
   doAssert( not s.contains(@[4, 5, 6]) )
 
 block setClearWorked:
-  var s = initHashSet[char]()
+  var s: HashSet[char]
 
   for c in "this is a test":
     s.incl(c)

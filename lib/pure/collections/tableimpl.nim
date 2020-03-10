@@ -31,9 +31,9 @@ proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
   rawInsertImpl()
 
 template checkIfInitialized() =
-  when compiles(defaultInitialSize):
+  when declared(tableDefaultInitialCapacity):
     if t.dataLen == 0:
-      initImpl(t, defaultInitialSize)
+      initImpl(t, tableDefaultInitialCapacity)
 
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()

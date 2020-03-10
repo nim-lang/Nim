@@ -216,7 +216,7 @@ type
     ## <#newTable>`_.
 
 const
-  defaultInitialSize* = 32
+  tableDefaultInitialCapacity* {.intdefine.} = 64
 
 # ------------------------------ helpers ---------------------------------
 
@@ -262,7 +262,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
 # ------------------------------ Table ------------------------------
 # -------------------------------------------------------------------
 
-proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
+proc initTable*[A, B](initialSize = tableDefaultInitialCapacity): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
@@ -795,7 +795,7 @@ iterator allValues*[A, B](t: Table[A, B]; key: A): B {.deprecated:
 # -------------------------------------------------------------------
 
 
-proc newTable*[A, B](initialSize = defaultInitialSize): <//>TableRef[A, B] =
+proc newTable*[A, B](initialSize = tableDefaultInitialCapacity): <//>TableRef[A, B] =
   ## Creates a new ref hash table that is empty.
   ##
   ## See also:
@@ -1286,7 +1286,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
 
 # ----------------------------------------------------------------------
 
-proc initOrderedTable*[A, B](initialSize = defaultInitialSize): OrderedTable[A, B] =
+proc initOrderedTable*[A, B](initialSize = tableDefaultInitialCapacity): OrderedTable[A, B] =
   ## Creates a new ordered hash table that is empty.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
@@ -1790,7 +1790,7 @@ iterator mvalues*[A, B](t: var OrderedTable[A, B]): var B =
 # --------------------------- OrderedTableRef -------------------------------
 # ---------------------------------------------------------------------------
 
-proc newOrderedTable*[A, B](initialSize = defaultInitialSize): <//>OrderedTableRef[A, B] =
+proc newOrderedTable*[A, B](initialSize = tableDefaultInitialCapacity): <//>OrderedTableRef[A, B] =
   ## Creates a new ordered ref hash table that is empty.
   ##
   ## See also:
@@ -2252,7 +2252,7 @@ proc inc*[A](t: var CountTable[A], key: A, val = 1)
 
 # ----------------------------------------------------------------------
 
-proc initCountTable*[A](initialSize = defaultInitialSize): CountTable[A] =
+proc initCountTable*[A](initialSize = tableDefaultInitialCapacity): CountTable[A] =
   ## Creates a new count table that is empty.
   ##
   ## Starting from Nim v0.20, tables are initialized by default and it is
@@ -2610,7 +2610,7 @@ iterator mvalues*[A](t: var CountTable[A]): var int =
 
 proc inc*[A](t: CountTableRef[A], key: A, val = 1)
 
-proc newCountTable*[A](initialSize = defaultInitialSize): <//>CountTableRef[A] =
+proc newCountTable*[A](initialSize = tableDefaultInitialCapacity): <//>CountTableRef[A] =
   ## Creates a new ref count table that is empty.
   ##
   ## See also:

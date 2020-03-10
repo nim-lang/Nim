@@ -81,7 +81,7 @@ type
     ## Type union representing `HashSet` or `OrderedSet`.
 
 const
-  defaultInitialSize* = 64
+  setDefaultInitialCapacity* {.intdefine.} = 64
 
 include setimpl
 
@@ -90,7 +90,7 @@ include setimpl
 # ---------------------------------------------------------------------
 
 
-proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
+proc init*[A](s: var HashSet[A], initialSize = setDefaultInitialCapacity) =
   ## Initializes a hash set.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -109,8 +109,8 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
 
   initImpl(s, initialSize)
 
-proc initHashSet*[A](initialSize = defaultInitialSize): HashSet[A] =
-  ## Wrapper around `init proc <#init,HashSet[A]>`_ for initialization of
+proc initHashSet*[A](initialSize = setDefaultInitialCapacity): HashSet[A] =
+  ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
   ## hash sets.
   ##
   ## Returns an empty hash set you can assign directly in `var` blocks in a
@@ -591,8 +591,7 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   # --> {no, esc'aping, is " provided}
   dollarImpl()
 
-
-proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
+proc initSet*[A](initialSize = setDefaultInitialCapacity): HashSet[A] {.deprecated:
      "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
@@ -629,7 +628,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
       h = nxt
 
 
-proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
+proc init*[A](s: var OrderedSet[A], initialSize = setDefaultInitialCapacity) =
   ## Initializes an ordered hash set.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -648,8 +647,8 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
 
   initImpl(s, initialSize)
 
-proc initOrderedSet*[A](initialSize = defaultInitialSize): OrderedSet[A] =
-  ## Wrapper around `init proc <#init,OrderedSet[A]>`_ for initialization of
+proc initOrderedSet*[A](initialSize = setDefaultInitialCapacity): OrderedSet[A] =
+  ## Wrapper around `init proc <#init,OrderedSet[A],int>`_ for initialization of
   ## ordered hash sets.
   ##
   ## Returns an empty ordered hash set you can assign directly in `var` blocks

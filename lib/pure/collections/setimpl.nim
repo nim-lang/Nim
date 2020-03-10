@@ -25,7 +25,7 @@ template initImpl(s: typed, size: int) =
 
 template rawInsertImpl() {.dirty.} =
   if data.len == 0:
-    initImpl(s, defaultInitialSize)
+    initImpl(s, setDefaultInitialCapacity)
   data[h].key = key
   data[h].hcode = hc
 
@@ -44,7 +44,7 @@ proc enlarge[A](s: var HashSet[A]) =
 
 template inclImpl() {.dirty.} =
   if s.data.len == 0:
-    initImpl(s, defaultInitialSize)
+    initImpl(s, setDefaultInitialCapacity)
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
@@ -56,7 +56,7 @@ template inclImpl() {.dirty.} =
 
 template containsOrInclImpl() {.dirty.} =
   if s.data.len == 0:
-    initImpl(s, defaultInitialSize)
+    initImpl(s, setDefaultInitialCapacity)
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index >= 0:

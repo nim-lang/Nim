@@ -13,6 +13,19 @@ block tapply:
   x.applyIt(it+5000)
   doAssert x == @[5111, 5112, 5113]
 
+block tdeques:
+  proc index(self: Deque[int], idx: Natural): int =
+    self[idx]
+
+  proc main =
+    var testDeque: Deque[int]
+    testDeque.addFirst(1)
+    assert testDeque.index(0) == 1
+    assert testDeque[^1] == 1
+
+  main()
+
+
 block tmapit:
   var x = @[1, 2, 3]
   # This mapIt call will run with preallocation because ``len`` is available.
