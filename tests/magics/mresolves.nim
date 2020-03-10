@@ -42,4 +42,5 @@ macro inspect*(a: typed, resolveLet: static bool = false): untyped =
   s.add a.lineInfoObj.toStr & ": "
   s.add a.repr & " = "
   inspectImpl(s, a, resolveLet)
-  echo s
+  when defined(nimTestsResolvesDebug):
+    echo s

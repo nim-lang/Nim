@@ -1,5 +1,13 @@
 #[
-D20190825T173945
+use -d:nimTestsResolvesDebug to make the `inspect` macro print debug info showing
+resolved symbol locations, for example:
+
+`inspect resolveSymbol(`$`)` would print:
+
+Nim/tests/magics/tresolve_overloads.nim:133:28: $ = closedSymChoice:
+  Nim/lib/system/dollars.nim:124:1 proc `$`[T](x: set[T]): string
+  Nim/lib/system/dollars.nim:140:1 proc `$`[T; U](x: HSlice[T, U]): string
+  Nim/lib/system/dollars.nim:14:1 proc `$`(x: bool): string {.magic: "BoolToStr", noSideEffect.}
 ]#
 
 import ./mresolves
