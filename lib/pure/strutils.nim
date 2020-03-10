@@ -191,7 +191,7 @@ proc isUpperAscii*(c: char): bool {.noSideEffect, procvar,
   return c in {'A'..'Z'}
 
 
-proc toLowerAscii*(c: char): char {.inline, noSideEffect, procvar,
+proc toLowerAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToLowerAsciiChar".} =
   ## Returns the lower case version of character ``c``.
   ##
@@ -229,7 +229,7 @@ proc toLowerAscii*(s: string): string {.inline, noSideEffect, procvar,
     doAssert toLowerAscii("FooBar!") == "foobar!"
   toImpl toLowerAscii
 
-proc toUpperAscii*(c: char): char {.inline, noSideEffect, procvar,
+proc toUpperAscii*(c: char): char {.noSideEffect, procvar,
   rtl, extern: "nsuToUpperAsciiChar".} =
   ## Converts character `c` into upper case.
   ##
