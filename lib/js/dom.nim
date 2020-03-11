@@ -40,7 +40,7 @@ type
     onsubmit*: proc (event: Event) {.nimcall.}
     onunload*: proc (event: Event) {.nimcall.}
 
-  # https://developer.mozilla.org/en-US/docs/Web/Events
+  ## https://developer.mozilla.org/en-US/docs/Web/Events
   DomEvent* {.pure.} = enum
     Abort = "abort",
     BeforeInput = "beforeinput",
@@ -219,7 +219,7 @@ type
     offsetLeft*: int
     offsetTop*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/ValidityState
+  ## https://developer.mozilla.org/en-US/docs/Web/API/ValidityState
   ValidityState* = ref ValidityStateObj
   ValidityStateObj {.importc.} = object
     badInput*: bool
@@ -234,26 +234,26 @@ type
     valid*: bool
     valueMissing*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Blob
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Blob
   Blob* = ref BlobObj
   BlobObj {.importc.} = object of RootObj
     size*: int
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/File
+  ## https://developer.mozilla.org/en-US/docs/Web/API/File
   File* = ref FileObj
   FileObj {.importc.} = object of Blob
     lastModified*: int
     name*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement
+  ## https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement
   TextAreaElement* = ref object of ElementObj
     value*: cstring
     selectionStart*, selectionEnd*: int
     selectionDirection*: cstring
     rows*, cols*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement
+  ## https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement
   InputElement* = ref InputElementObj
   InputElementObj {.importc.} = object of Element
     # Properties related to the parent form
@@ -336,7 +336,7 @@ type
     text*: cstring
     value*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement
+  ## https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement
   FormElement* = ref FormObj
   FormObj {.importc.} = object of ElementObj
     acceptCharset*: cstring
@@ -470,7 +470,7 @@ type
     AtTarget,
     BubblingPhase
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Event
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Event
   Event* = ref EventObj
   EventObj {.importc.} = object of RootObj
     bubbles*: bool
@@ -484,13 +484,13 @@ type
     `type`*: cstring
     isTrusted*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/UIEvent
+  ## https://developer.mozilla.org/en-US/docs/Web/API/UIEvent
   UIEvent* = ref UIEventObj
   UIEventObj {.importc.} = object of Event
     detail*: int64
     view*: Window
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
+  ## https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
   KeyboardEvent* = ref KeyboardEventObj
   KeyboardEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
@@ -500,7 +500,7 @@ type
     keyCode*: int
     location*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
+  ## https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
   KeyboardEventKey* {.pure.} = enum
     # Modifier keys
     Alt,
@@ -855,7 +855,7 @@ type
     FourthButton = 8,
     FifthButton = 16
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
+  ## https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
   MouseEvent* = ref MouseEventObj
   MouseEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
@@ -874,13 +874,13 @@ type
     File = "file",
     String = "string"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem
+  ## https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem
   DataTransferItem* = ref DataTransferItemObj
   DataTransferItemObj {.importc.} = object of RootObj
     kind*: cstring
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer
+  ## https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer
   DataTransfer* = ref DataTransferObj
   DataTransferObj {.importc.} = object of RootObj
     dropEffect*: cstring
@@ -916,7 +916,7 @@ type
     DragStart = "dragstart",
     Drop = "drop"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DragEvent
+  ## https://developer.mozilla.org/en-US/docs/Web/API/DragEvent
   DragEvent* {.importc.} = object of MouseEvent
     dataTransfer*: DataTransfer
 
