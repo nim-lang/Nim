@@ -371,69 +371,67 @@ type
 const # magic checked op; magic unchecked op;
   jsMagics: TMagicOps = [
     mAddI: ["addInt", ""],
-    ["subInt", ""], # SubI
-    ["mulInt", ""], # MulI
-    ["divInt", ""], # DivI
-    ["modInt", ""], # ModI
-    ["addInt", ""], # Succ
-    ["subInt", ""], # Pred
-    ["", ""], # AddF64
-    ["", ""], # SubF64
-    ["", ""], # MulF64
-    ["", ""], # DivF64
-    ["", ""], # ShrI
-    ["", ""], # ShlI
-    ["", ""], # AshrI
-    ["", ""], # BitandI
-    ["", ""], # BitorI
-    ["", ""], # BitxorI
-    ["nimMin", "nimMin"], # MinI
-    ["nimMax", "nimMax"], # MaxI
-    ["", ""], # addU
-    ["", ""], # subU
-    ["", ""], # mulU
-    ["", ""], # divU
-    ["", ""], # modU
-    ["", ""], # EqI
-    ["", ""], # LeI
-    ["", ""], # LtI
-    ["", ""], # EqF64
-    ["", ""], # LeF64
-    ["", ""], # LtF64
-    ["", ""], # leU
-    ["", ""], # ltU
-    ["", ""], # leU64
-    ["", ""], # ltU64
-    ["", ""], # EqEnum
-    ["", ""], # LeEnum
-    ["", ""], # LtEnum
-    ["", ""], # EqCh
-    ["", ""], # LeCh
-    ["", ""], # LtCh
-    ["", ""], # EqB
-    ["", ""], # LeB
-    ["", ""], # LtB
-    ["", ""], # EqRef
-    ["", ""], # LePtr
-    ["", ""], # LtPtr
-    ["", ""], # Xor
-    ["", ""], # EqCString
-    ["", ""], # EqProc
-    ["negInt", ""], # UnaryMinusI
-    ["negInt64", ""], # UnaryMinusI64
-    ["absInt", ""], # AbsI
-    ["", ""], # Not
-    ["", ""], # UnaryPlusI
-    ["", ""], # BitnotI
-    ["", ""], # UnaryPlusF64
-    ["", ""], # UnaryMinusF64
-    ["nimCharToStr", "nimCharToStr"],
-    ["nimBoolToStr", "nimBoolToStr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["", ""]]
+    mSubI: ["subInt", ""],
+    mMulI: ["mulInt", ""],
+    mDivI: ["divInt", ""],
+    mModI: ["modInt", ""],
+    mSucc: ["addInt", ""],
+    mPred: ["subInt", ""],
+    mAddF64: ["", ""],
+    mSubF64: ["", ""],
+    mMulF64: ["", ""],
+    mDivF64: ["", ""],
+    mShrI: ["", ""],
+    mShlI: ["", ""],
+    mAshrI: ["", ""],
+    mBitandI: ["", ""],
+    mBitorI: ["", ""],
+    mBitxorI: ["", ""],
+    mMinI: ["nimMin", "nimMin"],
+    mMaxI: ["nimMax", "nimMax"],
+    mAddU: ["", ""],
+    mSubU: ["", ""],
+    mMulU: ["", ""],
+    mDivU: ["", ""],
+    mModU: ["", ""],
+    mEqI: ["", ""],
+    mLeI: ["", ""],
+    mLtI: ["", ""],
+    mEqF64: ["", ""],
+    mLeF64: ["", ""],
+    mLtF64: ["", ""],
+    mLeU: ["", ""],
+    mLtU: ["", ""],
+    mEqEnum: ["", ""],
+    mLeEnum: ["", ""],
+    mLtEnum: ["", ""],
+    mEqCh: ["", ""],
+    mLeCh: ["", ""],
+    mLtCh: ["", ""],
+    mEqB: ["", ""],
+    mLeB: ["", ""],
+    mLtB: ["", ""],
+    mEqRef: ["", ""],
+    mLePtr: ["", ""],
+    mLtPtr: ["", ""],
+    mXor: ["", ""],
+    mEqCString: ["", ""],
+    mEqProc: ["", ""],
+    mUnaryMinusI: ["negInt", ""],
+    mUnaryMinusI64: ["negInt64", ""],
+    mAbsI: ["absInt", ""],
+    mNot: ["", ""],
+    mUnaryPlusI: ["", ""],
+    mBitnotI: ["", ""],
+    mUnaryPlusF64: ["", ""],
+    mUnaryMinusF64: ["", ""],
+    mCharToStr: ["nimCharToStr", "nimCharToStr"],
+    mBoolToStr: ["nimBoolToStr", "nimBoolToStr"],
+    mIntToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mInt64ToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mFloatToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mCStrToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mStrToStr: ["", ""]]
 
 proc needsTemp(p: PProc; n: PNode): bool =
   # check if n contains a call to determine
@@ -575,8 +573,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
   of mLeU: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtU: applyFormat("($1 < $2)", "($1 < $2)")
-  of mLeU64: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mLtU64: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")

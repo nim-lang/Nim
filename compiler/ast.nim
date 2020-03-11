@@ -592,8 +592,11 @@ const
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
-  # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr}
+var
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+    ## type flags that are essential for type equality.
+    ## This is now a variable because for emulation of version:1.0 we
+    ## might exclude {tfGcSafe, tfNoSideEffect}.
 
 type
   TMagic* = enum # symbols that require compiler magic:
@@ -617,7 +620,6 @@ type
     mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
     mLeU, mLtU,
-    mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
@@ -687,7 +689,6 @@ const
     mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
     mLeU, mLtU,
-    mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
