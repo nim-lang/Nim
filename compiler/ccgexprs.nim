@@ -605,8 +605,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mLtF64: applyFormat("($1 < $2)")
   of mLeU: applyFormat("((NU$3)($1) <= (NU$3)($2))")
   of mLtU: applyFormat("((NU$3)($1) < (NU$3)($2))")
-  of mLeU64: applyFormat("((NU64)($1) <= (NU64)($2))")
-  of mLtU64: applyFormat("((NU64)($1) < (NU64)($2))")
   of mEqEnum: applyFormat("($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)")
