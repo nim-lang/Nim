@@ -39,7 +39,8 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optLaxStrings,
     optNilSeqs,
-    optOldAst
+    optOldAst,
+    optSinkInference          # 'sink T' inference
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -200,7 +201,7 @@ type
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
     target*: Target       # (+)
-    linesCompiled*: int  # all lines that have been compiled
+    linesCompiled*: int   # all lines that have been compiled
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
@@ -226,10 +227,10 @@ type
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
-    enableNotes*: TNoteKinds
-    disableNotes*: TNoteKinds
+    modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
+    cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
-    notes*: TNoteKinds
+    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
@@ -287,6 +288,16 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
+proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  if note notin conf.cmdlineNotes:
+    if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
+
+proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  optHints in conf.options and note in conf.notes
+
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+  optWarns in conf.options and note in conf.notes
+
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
@@ -305,7 +316,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace,
-    optTrMacros, optNilCheck, optStyleCheck}
+    optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 

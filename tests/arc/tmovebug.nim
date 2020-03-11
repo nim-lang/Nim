@@ -86,3 +86,14 @@ proc tbug13314 =
   execute()
 
 tbug13314()
+
+#-------------------------------------------------------------------------
+# bug #13368
+
+import strutils
+proc procStat() =
+  for line in @["a b", "c d", "e f"]:
+    let cols = line.splitWhitespace(maxSplit=1)
+    let x = cols[0]
+    let (nm, rest) = (cols[0], cols[1])
+procStat()

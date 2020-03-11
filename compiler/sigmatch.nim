@@ -832,9 +832,6 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
   #
   if lhs.kind in nkCallKinds and lhs[0].kind == nkSym:
     case lhs[0].sym.magic
-    of mUnaryLt:
-      return inferStaticParam(c, lhs[1], rhs + 1)
-
     of mAddI, mAddU, mInc, mSucc:
       if lhs[1].kind == nkIntLit:
         return inferStaticParam(c, lhs[2], rhs - lhs[1].intVal)
@@ -1942,6 +1939,8 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
 
   if result != nil:
     if result.typ == nil: return nil
+    # bug #13378, ensure we produce a real generic instantiation:
+    result = c.semExpr(c, call)
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil

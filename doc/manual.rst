@@ -559,7 +559,7 @@ following characters::
 defined here.)
 
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot of``.
+``and or not xor shl shr div mod in notin is isnot of as``.
 
 `.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
@@ -632,21 +632,21 @@ has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 
-================  ===============================================  ==================  ===============
-Precedence level    Operators                                      First character     Terminal symbol
-================  ===============================================  ==================  ===============
- 10 (highest)                                                      ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``            ``*  %  \  /``      OP9
-  8               ``+    -``                                       ``+  -  ~  |``      OP8
-  7               ``&``                                            ``&``               OP7
-  6               ``..``                                           ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of``   ``=  <  >  !``      OP5
-  4               ``and``                                                              OP4
-  3               ``or xor``                                                           OP3
-  2                                                                ``@  :  ?``         OP2
-  1               *assignment operator* (like ``+=``, ``*=``)                          OP1
-  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
-================  ===============================================  ==================  ===============
+================  ==================================================  ==================  ===============
+Precedence level    Operators                                         First character     Terminal symbol
+================  ==================================================  ==================  ===============
+ 10 (highest)                                                         ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``               ``*  %  \  /``      OP9
+  8               ``+    -``                                          ``+  -  ~  |``      OP8
+  7               ``&``                                               ``&``               OP7
+  6               ``..``                                              ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of as``   ``=  <  >  !``      OP5
+  4               ``and``                                                                 OP4
+  3               ``or xor``                                                              OP3
+  2                                                                   ``@  :  ?``         OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                             OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                             OP0
+================  ==================================================  ==================  ===============
 
 
 Whether an operator is used a prefix operator is also affected by preceding
@@ -4106,6 +4106,8 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
+  from strutils import parseInt
+  
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -4220,7 +4222,7 @@ Raise statement
 Example:
 
 .. code-block:: nim
-  raise newEOS("operating system failed")
+  raise newException(IOError, "IO failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
 the ``raise`` statement is the only way to raise an exception.
@@ -5643,6 +5645,8 @@ It is not checked that the ``except`` list is really exported from the module.
 This feature allows to compile against an older version of the module that
 does not export these identifiers.
 
+The ``import`` statement is only allowed at the top level.
+
 
 Include statement
 ~~~~~~~~~~~~~~~~~
@@ -5653,6 +5657,18 @@ statement is useful to split up a large module into several files:
 .. code-block:: nim
   include fileA, fileB, fileC
 
+The ``include`` statement can be used outside of the top level, as such:
+
+.. code-block:: nim
+  # Module A
+  echo "Hello World!"
+
+.. code-block:: nim
+  # Module B
+  proc main() =
+    include A
+  
+  main() # => Hello World!
 
 
 Module names in imports
@@ -7224,6 +7240,9 @@ The string literal passed to ``exportc`` can be a format string:
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
+If the symbol should also be exported to a dynamic library, the ``dynlib``
+pragma should be used in addition to the ``exportc`` pragma. See
+`Dynlib pragma for export <#foreign-function-interface-dynlib-pragma-for-export>`_.
 
 
 Extern pragma
@@ -7363,10 +7382,7 @@ conjunction with the ``exportc`` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command line option. This pragma only has an effect for the code
-generation on the Windows target, so when this pragma is forgotten and the dynamic
-library is only tested on Mac and/or Linux, there won't be an error. On Windows
-this pragma adds ``__declspec(dllexport)`` to the function declaration.
+``--app:lib`` command line option.
 
 
 

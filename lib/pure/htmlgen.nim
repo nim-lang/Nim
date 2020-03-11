@@ -89,7 +89,7 @@ proc xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
   for i in 0 ..< argsList.len:
     if argsList[i].kind == nnkExprEqExpr:
       var name = getIdent(argsList[i][0])
-      if delete(req, name) or delete(opt, name):
+      if name.startsWith("data-") or delete(req, name) or delete(opt, name):
         result.add(newStrLitNode(" "))
         result.add(newStrLitNode(name))
         result.add(newStrLitNode("=\""))

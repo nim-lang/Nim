@@ -99,7 +99,7 @@ const
     hintSuccess: "operation successful: $#",
     # keep in sync with `pegSuccess` see testament.nim
     hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
-    hintCC: "CC: \'$1\'", # unused
+    hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",

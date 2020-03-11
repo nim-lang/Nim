@@ -55,8 +55,8 @@ Possible Commands:
   nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
-  -d:useLinenoise          use the linenoise library for interactive mode
-                           (not needed on Windows)
+  -d:nimUseLinenoise       use the linenoise library for interactive mode
+                           `nim secret` (not needed on Windows)
   -d:leanCompiler          produce a compiler without JS codegen or
                            documentation generator in order to use less RAM
                            for bootstrapping
@@ -265,15 +265,12 @@ when false:
 
 proc findStartNim: string =
   # we try several things before giving up:
+  # * nimExe
   # * bin/nim
   # * $PATH/nim
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
-  for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
-
+  let (nim, ok) = findNimImpl()
+  if ok: return nim
   when defined(Posix):
     const buildScript = "build.sh"
     if existsFile(buildScript):
@@ -472,9 +469,14 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
+proc hostInfo(): string =
+  "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
+    [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
+
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI:", cmd
+  echo hostInfo()
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
   when defined(posix): # appveyor (on windows) didn't run this

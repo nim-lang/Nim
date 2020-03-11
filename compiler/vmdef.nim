@@ -95,7 +95,7 @@ type
     opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
-    opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
+    opcMulSet, opcPlusSet, opcMinusSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,

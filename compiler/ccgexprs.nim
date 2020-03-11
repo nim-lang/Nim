@@ -605,8 +605,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mLtF64: applyFormat("($1 < $2)")
   of mLeU: applyFormat("((NU$3)($1) <= (NU$3)($2))")
   of mLtU: applyFormat("((NU$3)($1) < (NU$3)($2))")
-  of mLeU64: applyFormat("((NU64)($1) <= (NU64)($2))")
-  of mLtU64: applyFormat("((NU64)($1) < (NU64)($2))")
   of mEqEnum: applyFormat("($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)")
@@ -617,7 +615,6 @@ proc binaryArith(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mLeB: applyFormat("($1 <= $2)")
   of mLtB: applyFormat("($1 < $2)")
   of mEqRef: applyFormat("($1 == $2)")
-  of mEqUntracedRef: applyFormat("($1 == $2)")
   of mLePtr: applyFormat("($1 <= $2)")
   of mLtPtr: applyFormat("($1 < $2)")
   of mXor: applyFormat("($1 != $2)")
@@ -1797,7 +1794,7 @@ proc genInOp(p: BProc, e: PNode, d: var TLoc) =
 
 proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   const
-    lookupOpr: array[mLeSet..mSymDiffSet, string] = [
+    lookupOpr: array[mLeSet..mMinusSet, string] = [
       "for ($1 = 0; $1 < $2; $1++) { $n" &
       "  $3 = (($4[$1] & ~ $5[$1]) == 0);$n" &
       "  if (!$3) break;}$n",
@@ -1807,8 +1804,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       "if ($3) $3 = (#nimCmpMem($4, $5, $2) != 0);$n",
       "&",
       "|",
-      "& ~",
-      "^"]
+      "& ~"]
   var a, b, i: TLoc
   var setType = skipTypes(e[1].typ, abstractVar)
   var size = int(getSize(p.config, setType))
@@ -1838,7 +1834,6 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
     of mMulSet: binaryExpr(p, e, d, "($1 & $2)")
     of mPlusSet: binaryExpr(p, e, d, "($1 | $2)")
     of mMinusSet: binaryExpr(p, e, d, "($1 & ~ $2)")
-    of mSymDiffSet: binaryExpr(p, e, d, "($1 ^ $2)")
     of mInSet:
       genInOp(p, e, d)
     else: internalError(p.config, e.info, "genSetOp()")
@@ -1868,7 +1863,7 @@ proc genSetOp(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
       initLocExpr(p, e[1], a)
       initLocExpr(p, e[2], b)
       putIntoDest(p, d, e, ropecg(p.module, "(#nimCmpMem($1, $2, $3)==0)", [a.rdCharLoc, b.rdCharLoc, size]))
-    of mMulSet, mPlusSet, mMinusSet, mSymDiffSet:
+    of mMulSet, mPlusSet, mMinusSet:
       # we inline the simple for loop for better code generation:
       getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i) # our counter
       initLocExpr(p, e[1], a)
@@ -2043,14 +2038,14 @@ proc genDestroy(p: BProc; n: PNode) =
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
-        " $1.p = NIM_NIL; }$n",
+        " $1.p = NIM_NIL; $1.len = 0; }$n",
         [rdLoc(a)])
     of tySequence:
       var a: TLoc
       initLocExpr(p, arg, a)
       linefmt(p, cpsStmts, "if ($1.p && !($1.p->cap & NIM_STRLIT_FLAG)) {$n" &
         " #deallocShared($1.p);$n" &
-        " $1.p = NIM_NIL; }$n",
+        " $1.p = NIM_NIL; $1.len = 0; }$n",
         [rdLoc(a), getTypeDesc(p.module, t.lastSon)])
     else: discard "nothing to do"
   else:
@@ -2118,9 +2113,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mRepr: genRepr(p, e, d)
   of mGetTypeInfo: genGetTypeInfo(p, e, d)
   of mSwap: genSwap(p, e, d)
-  of mUnaryLt:
-    if optOverflowCheck notin p.options: unaryExpr(p, e, d, "($1 - 1)")
-    else: unaryExpr(p, e, d, "#subInt($1, 1)")
   of mInc, mDec:
     const opr: array[mInc..mDec, string] = ["+=", "-="]
     const fun64: array[mInc..mDec, string] = ["addInt64",
@@ -2218,21 +2210,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mOrd: genOrd(p, e, d)
   of mLengthArray, mHigh, mLengthStr, mLengthSeq, mLengthOpenArray:
     genArrayLen(p, e, d, op)
-  of mXLenStr:
-    if not p.module.compileToCpp:
-      unaryExpr(p, e, d, "($1->Sup.len)")
-    else:
-      unaryExpr(p, e, d, "$1->len")
-  of mXLenSeq:
-    # see 'taddhigh.nim' for why we need to use a temporary here:
-    var a, tmp: TLoc
-    initLocExpr(p, e[1], a)
-    getIntTemp(p, tmp)
-    if not p.module.compileToCpp:
-      lineCg(p, cpsStmts, "$1 = $2->Sup.len;$n", [tmp.r, rdLoc(a)])
-    else:
-      lineCg(p, cpsStmts, "$1 = $2->len;$n", [tmp.r, rdLoc(a)])
-    putIntoDest(p, d, e, tmp.r)
   of mGCref: unaryStmt(p, e, d, "if ($1) { #nimGCref($1); }$n")
   of mGCunref: unaryStmt(p, e, d, "if ($1) { #nimGCunref($1); }$n")
   of mSetLengthStr: genSetLengthStr(p, e, d)
@@ -2240,8 +2217,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mIncl, mExcl, mCard, mLtSet, mLeSet, mEqSet, mMulSet, mPlusSet, mMinusSet,
      mInSet:
     genSetOp(p, e, d, op)
-  of mCopyStr, mCopyStrLast:
-    genCall(p, e, d)
   of mNewString, mNewStringOfCap, mExit, mParseBiggestFloat:
     var opr = e[0].sym
     # Why would anyone want to set nodecl to one of these hardcoded magics?
@@ -2296,11 +2271,6 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mMove: genMove(p, e, d)
   of mDestroy: genDestroy(p, e)
   of mAccessEnv: unaryExpr(p, e, d, "$1.ClE_0")
-  of mAccessTypeInfo:
-    var a: TLoc
-    var dummy: Rope
-    initLocExpr(p, e[1], a)
-    putIntoDest(p, d, e, rdMType(p, a, dummy))
   of mSlice:
     localError(p.config, e.info, "invalid context for 'toOpenArray'; " &
       "'toOpenArray' is only valid within a call expression")

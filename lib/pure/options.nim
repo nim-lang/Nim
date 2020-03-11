@@ -58,8 +58,12 @@
 
 import typetraits
 
-type
-  SomePointer = ref | ptr | pointer
+when (NimMajor, NimMinor) >= (1, 1):
+  type
+    SomePointer = ref | ptr | pointer | proc
+else:
+  type
+    SomePointer = ref | ptr | pointer
 
 type
   Option*[T] = object
@@ -74,7 +78,7 @@ type
 
 
 proc option*[T](val: T): Option[T] =
-  ## Can be used to convert a pointer type (`ptr` or `ref`) to an option type.
+  ## Can be used to convert a pointer type (`ptr` or `ref` or `proc`) to an option type.
   ## It converts `nil` to `None`.
   ##
   ## See also:
@@ -482,6 +486,11 @@ when isMainModule:
 
       let tmp = option(intref)
       check(sizeof(tmp) == sizeof(ptr int))
+      
+      var prc = proc (x: int): int = x + 1
+      check(option(prc).isSome)
+      prc = nil
+      check(option(prc).isNone)
 
     test "none[T]":
       check(none[int]().isNone)

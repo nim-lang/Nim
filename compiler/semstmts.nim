@@ -120,7 +120,7 @@ const
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind == nkRaiseStmt or
+  result = n.kind in nkLastBlockStmts or
            (isCallExpr(n) and n[0].kind == nkSym and
            sfDiscardable in n[0].sym.flags)
 
@@ -1298,6 +1298,8 @@ proc typeSectionFinalPass(c: PContext, n: PNode) =
         checkConstructedType(c.config, s.info, s.typ)
         if s.typ.kind in {tyObject, tyTuple} and not s.typ.n.isNil:
           checkForMetaFields(c, s.typ.n)
+          # fix bug #5170: ensure locally scoped object types get a unique name:
+          if s.typ.kind == tyObject and not isTopLevel(c): incl(s.flags, sfGenSym)
   #instAllTypeBoundOp(c, n.info)
 
 
@@ -1884,6 +1886,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if sfForward notin proto.flags and proto.magic == mNone:
       wrongRedefinition(c, n.info, proto.name.s, proto.info)
     excl(proto.flags, sfForward)
+    incl(proto.flags, sfWasForwarded)
     closeScope(c)         # close scope with wrong parameter symbols
     openScope(c)          # open scope for old (correct) parameter symbols
     if proto.ast[genericParamsPos].kind != nkEmpty:
@@ -1962,6 +1965,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if proto != nil: localError(c.config, n.info, errImplOfXexpected % proto.name.s)
     if {sfImportc, sfBorrow, sfError} * s.flags == {} and s.magic == mNone:
       incl(s.flags, sfForward)
+      incl(s.flags, sfWasForwarded)
     elif sfBorrow in s.flags: semBorrow(c, n, s)
   sideEffectsCheck(c, s)
   closeScope(c)           # close scope for parameters
@@ -2162,9 +2166,6 @@ proc inferConceptStaticParam(c: PContext, inferred, n: PNode) =
   typ.n = res
 
 proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  # these must be last statements in a block:
-  const
-    LastBlockStmts = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
   result = n
   result.transitionSonsKind(nkStmtList)
   var voidContext = false
@@ -2209,7 +2210,7 @@ proc semStmtList(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       n.typ = n[i].typ
       if not isEmptyType(n.typ): n.transitionSonsKind(nkStmtListExpr)
-    if n[i].kind in LastBlockStmts or
+    if n[i].kind in nkLastBlockStmts or
         n[i].kind in nkCallKinds and n[i][0].kind == nkSym and
         sfNoReturn in n[i][0].sym.flags:
       for j in i + 1..<n.len:

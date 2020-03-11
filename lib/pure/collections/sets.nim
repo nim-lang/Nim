@@ -68,6 +68,7 @@ type
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
+    countDeleted: int
 
 type
   OrderedKeyValuePair[A] = tuple[
@@ -80,14 +81,12 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
+    countDeleted: int
 
 const
   defaultInitialSize* = 64
 
 include setimpl
-
-proc rightSize*(count: Natural): int {.inline.}
-
 
 # ---------------------------------------------------------------------
 # ------------------------------ HashSet ------------------------------
@@ -250,7 +249,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
   for h in 0 .. high(s.data):
-    if isFilled(s.data[h].hcode): yield s.data[h].key
+    if isFilledAndValid(s.data[h].hcode): yield s.data[h].key
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -342,7 +341,7 @@ proc pop*[A](s: var HashSet[A]): A =
     doAssertRaises(KeyError, echo s.pop)
 
   for h in 0 .. high(s.data):
-    if isFilled(s.data[h].hcode):
+    if isFilledAndValid(s.data[h].hcode):
       result = s.data[h].key
       excl(s, result)
       return result
@@ -593,16 +592,6 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   # --> {no, esc'aping, is " provided}
   dollarImpl()
 
-proc rightSize*(count: Natural): int {.inline.} =
-  ## Return the value of `initialSize` to support `count` items.
-  ##
-  ## If more items are expected to be added, simply add that
-  ## expected extra amount to the parameter before calling this.
-  ##
-  ## Internally, we want `mustRehash(rightSize(x), x) == false`.
-  result = nextPowerOfTwo(count * 3 div 2 + 4)
-
-
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
      "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
 
@@ -634,7 +623,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
     var idx = 0
     while h >= 0:
       var nxt = s.data[h].next
-      if isFilled(s.data[h].hcode):
+      if isFilledAndValid(s.data[h].hcode):
         yieldStmt
         inc(idx)
       h = nxt
@@ -868,7 +857,7 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
   while h >= 0 and g >= 0:
     var nxh = s.data[h].next
     var nxg = t.data[g].next
-    if isFilled(s.data[h].hcode) and isFilled(t.data[g].hcode):
+    if isFilledAndValid(s.data[h].hcode) and isFilledAndValid(t.data[g].hcode):
       if s.data[h].key == t.data[g].key:
         inc compared
       else:
@@ -1146,10 +1135,19 @@ when isMainModule and not defined(release):
       b.incl(2)
       assert b.len == 1
 
-    for i in 0 .. 32:
-      var s = rightSize(i)
-      if s <= i or mustRehash(s, i):
-        echo "performance issue: rightSize() will not elide enlarge() at ", i
+    block:
+      type FakeTable = object
+        dataLen: int
+        counter: int
+        countDeleted: int
+
+      var t: FakeTable
+      for i in 0 .. 32:
+        var s = rightSize(i)
+        t.dataLen = s
+        t.counter = i
+        doAssert s > i and not mustRehash(t),
+          "performance issue: rightSize() will not elide enlarge() at: " & $i
 
     block missingOrExcl:
       var s = toOrderedSet([2, 3, 6, 7])

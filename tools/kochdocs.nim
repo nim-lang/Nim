@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets
+import os, strutils, osproc, sets, pathnorm
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
@@ -18,15 +18,19 @@ proc exe*(f: string): string =
   when defined(windows):
     result = result.replace('/','\\')
 
-proc findNim*(): string =
-  if nimExe.len > 0: return nimExe
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
+proc findNimImpl*(): tuple[path: string, ok: bool] =
+  if nimExe.len > 0: return (nimExe, true)
+  let nim = "nim".exe
+  result.path = "bin" / nim
+  result.ok = true
+  if existsFile(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
+    result.path = dir / nim
+    if existsFile(result.path): return
   # assume there is a symlink to the exe or something:
-  return nim
+  return (nim, false)
+
+proc findNim*(): string = findNimImpl().path
 
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
@@ -166,36 +170,19 @@ lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
 """.splitWhitespace()
-  # some of these (eg lib/posix/posix_macos_amd64.nim) are include files
-  # but contain potentially valuable docs on OS-specific symbols (eg OSX) that
-  # don't end up in the main docs; we ignore these for now.
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
   proc isRelativeTo(path, base: string): bool =
-    # pending #13212 use os.isRelativeTo
     let path = path.normalizedPath
     let base = base.normalizedPath
     let ret = relativePath(path, base)
     result = path.len > 0 and not ret.startsWith ".."
 
 proc getDocList(): seq[string] =
-  var t: HashSet[string]
-  for a in doc0:
-    doAssert a notin t
-    t.incl a
-  for a in withoutIndex:
-    doAssert a notin t, a
-    t.incl a
-
-  for a in ignoredModules:
-    doAssert a notin t, a
-    t.incl a
-
-  var t2: HashSet[string]
-  template myadd(a)=
-    result.add a
-    doAssert a notin t2, a
-    t2.incl a
+  var docIgnore: HashSet[string]
+  for a in doc0: docIgnore.incl a
+  for a in withoutIndex: docIgnore.incl a
+  for a in ignoredModules: docIgnore.incl a
 
   # don't ignore these even though in lib/system
   const goodSystem = """
@@ -208,75 +195,15 @@ lib/system/widestrs.nim
 """.splitWhitespace()
 
   for a in walkDirRec("lib"):
-    if a.splitFile.ext != ".nim": continue
-    if a.isRelativeTo("lib/pure/includes"): continue
-    if a.isRelativeTo("lib/genode"): continue
-    if a.isRelativeTo("lib/deprecated"):
-      if a notin @["lib/deprecated/pure/ospaths.nim"]: # REMOVE
-        continue
-    if a.isRelativeTo("lib/system"):
-      if a notin goodSystem:
-        continue
-    if a notin t:
-      result.add a
-      doAssert a notin t2, a
-      t2.incl a
-
-  myadd "nimsuggest/sexp.nim"
-  # these are include files, even though some of them don't specify `included from ...`
-  const ignore = """
-compiler/ccgcalls.nim
-compiler/ccgexprs.nim
-compiler/ccgliterals.nim
-compiler/ccgstmts.nim
-compiler/ccgthreadvars.nim
-compiler/ccgtrav.nim
-compiler/ccgtypes.nim
-compiler/jstypes.nim
-compiler/semcall.nim
-compiler/semexprs.nim
-compiler/semfields.nim
-compiler/semgnrc.nim
-compiler/seminst.nim
-compiler/semmagic.nim
-compiler/semobjconstr.nim
-compiler/semstmts.nim
-compiler/semtempl.nim
-compiler/semtypes.nim
-compiler/sizealignoffsetimpl.nim
-compiler/suggest.nim
-compiler/packagehandling.nim
-compiler/hlo.nim
-compiler/rodimpl.nim
-compiler/vmops.nim
-compiler/vmhooks.nim
-""".splitWhitespace()
-
-  # not include files but doesn't work; not included/imported anywhere; dead code?
-  const bad = """
-compiler/debuginfo.nim
-compiler/canonicalizer.nim
-compiler/forloops.nim
-""".splitWhitespace()
-
-  # these cause errors even though they're imported (some of which are mysterious)
-  const bad2 = """
-compiler/closureiters.nim
-compiler/tccgen.nim
-compiler/lambdalifting.nim
-compiler/layouter.nim
-compiler/evalffi.nim
-compiler/nimfix/nimfix.nim
-compiler/plugins/active.nim
-compiler/plugins/itersgen.nim
-""".splitWhitespace()
-
-  for a in walkDirRec("compiler"):
-    if a.splitFile.ext != ".nim": continue
-    if a in ignore: continue
-    if a in bad: continue
-    if a in bad2: continue
+    if a.splitFile.ext != ".nim" or
+       a.isRelativeTo("lib/pure/includes") or
+       a.isRelativeTo("lib/genode") or
+       a.isRelativeTo("lib/deprecated") or
+       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
+       a.replace('\\', '/') in docIgnore:
+         continue
     result.add a
+  result.add normalizePath("nimsuggest/sexp.nim")
 
 let doc = getDocList()
 

@@ -140,7 +140,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
     return traitCall  ## too early to evaluate
-    
+
   let s = trait.sym.name.s
   case s
   of "or", "|":
@@ -187,6 +187,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+  of "lenTuple":
+    var operand = operand.skipTypes({tyGenericInst})
+    assert operand.kind == tyTuple, $operand.kind
+    result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
     if arg.kind == tyDistinct:
@@ -475,8 +479,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-  of mRoof:
-    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:
