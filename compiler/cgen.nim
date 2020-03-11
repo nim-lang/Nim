@@ -50,8 +50,10 @@ proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
 proc findPendingModule(m: BModule, s: PSym): BModule =
+  ## returns the source module of a symbol
   var ms = getModule(s)
   result = m.g.modules[ms.position]
+  # XXX: cannot do the IC mod here because sometimes the modules are closed
   # This position might need a patch for incremental recompilations.
   # tables_string_int.nim.c
   # tables_string_string.nim.c
@@ -581,7 +583,6 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != nil)
   scopeMangledParam(p, s)
 
-# XXX: wtf is this?
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
@@ -1229,9 +1230,11 @@ proc genProc(m: BModule, prc: PSym) =
   var
     cachable = prc.owner != nil and prc.owner.kind == skModule
 
-  # don't cache compiler procs
-  if lfImportCompilerProc in prc.loc.flags:
-    cachable = false
+  echo "cachable: ", cachable, "\t", prc.id, "\t", prc.name.s, "\t", m.module.id
+  when false:
+    # don't cache compiler procs
+    if lfImportCompilerProc in prc.loc.flags:
+      cachable = false
 
   var
     readcache = cachable and m.config.symbolFiles notin {disabledSf,
@@ -1240,27 +1243,41 @@ proc genProc(m: BModule, prc: PSym) =
                                                           readOnlySf}
 
   # we won't read it if we don't have it
-  readcache = readcache and snippetAlreadyStored(m.g.graph, prc)
+  readcache = readcache and snippetAlreadyStored(m.g.graph, m.cfilename, prc)
 
   # we won't write it unless we aren't reading it
   writecache = writecache and not readcache
 
-
   # if we're reading, load the snippets from the db
   if readcache:
     if not containsOrIncl(m.declaredThings, prc.id):
-      echo "read  ", m.filename, ">> ", prc.name.s
+      echo "< ", m.cfilename, "-> ", prc.name.s
       echo "\t", $prc.sigHash, "\t", m.module.id
+      #if lfNoDecl in prc.loc.flags:
+      #  fillProcLoc(m, prc.ast[namePos])
+      when false:
+        if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc}:
+          # these are taken care of in proc prototype...
+          #   m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+          # then generate a prototype for it in the header
+          genProcPrototype(m.g.generatedHeader, prc)
+      else:
+        #genProcPrototype(m.g.generatedHeader, prc)
+        genProcPrototype(m, prc)
       # this will crash if there are no snippets
       for snippet in loadSnippets(m.g.graph, m, prc):
         #echo "----"
-        #echo "\t", snippet.section, "\t", snippet.module
+        echo "\t", snippet.section, "\t", snippet.module
         # if the snippet writes to proc headers, mark the proc as declared
-        if snippet.section == cfsProcHeaders:
-          m.declaredProtos.incl prc.id
+        when false:
+          if snippet.section == cfsProcHeaders:
+            m.declaredProtos.incl prc.id
         m.s[snippet.section].add snippet.code
-    #else:
-    #  echo "stale ", m.filename, ">> ", prc.name.s
+        #echo "\t", snippet.code
+    else:
+      echo "  ", m.cfilename, "-> ", prc.name.s
+
+    # we're missing a side-effect on reads that produces a proc-init!
 
   # if we're not reading, we need to generate the code
   if not readcache:
@@ -1275,10 +1292,13 @@ proc genProc(m: BModule, prc: PSym) =
       mark: SnippetMark
     # set the marks to monitor for new snippets
     if writecache:
-      echo "write ", m.filename, ">> ", prc.name.s
-      #echo "\t", $prc.sigHash, "\t", m.module.id
+      echo "> ", m.cfilename, "-> ", prc.name.s
+      echo "\t", $prc.sigHash, "\t", m.module.id
       m.setMark(prc)
       mark = m.mark
+
+    if not cachable:
+      echo "--", m.cfilename, "-> ", prc.name.s
 
     # the real proc generator, and it may define forwards
     genProcMayForward(m, prc)
@@ -1302,9 +1322,13 @@ proc genProc(m: BModule, prc: PSym) =
     # issuing the iterator on snippetsSince will write them
     if writecache:
       m.mark = mark
-      echo "wrote ", m.filename, ">> ", prc.name.s
+      echo " >", m.cfilename, "-> ", prc.name.s
       for snippet in m.snippetsSince:
-        discard
+        if snippet.section notin {cfsProcHeaders}:
+          var
+            snippet = snippet
+          storeSnippet(m.g.graph, snippet)
+          echo "\t", snippet.section, "\t", snippet.module
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)

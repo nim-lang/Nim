@@ -25,7 +25,9 @@ when not nimIncremental:
 
   template registerModule*(g: ModuleGraph; module: PSym) = discard
 
-  template snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool = false
+  template snippetAlreadyStored*(g: ModuleGraph;
+                                 fn: AbsoluteFile; p: PSym): bool =
+    false
   template symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool = false
   template typeAlreadyStored*(g: ModuleGraph; p: PType): bool = false
 

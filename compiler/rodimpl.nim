@@ -414,14 +414,14 @@ iterator loadSnippets*(g: ModuleGraph; m: BModule; p: PSym): Snippet =
     selection = sql"""
       select snippets.id,snippets.kind,syms.nimid,code,section,snippets.module
       from syms left join snippets
-      where syms.module = ? and syms.id = snippets.symbol and syms.name = ?
+      where snippets.filename = ? and syms.id = snippets.symbol and syms.name = ?
     """
   var
     count = 0
   let
-    name = p.sigHash
+    name = $p.sigHash
     mid = abs(m.module.id)
-  for row in db.fastRows(selection, mid, name):
+  for row in db.fastRows(selection, m.cfilename, name):
     count.inc
     yield Snippet(id: parseInt(row[0]),
                   kind: parseInt(row[1]).TNodeKind,
@@ -474,35 +474,25 @@ proc storeSnippet*(g: ModuleGraph; s: var Snippet) =
 
   if s.id == 0:
     s.id = db.insertID(insertion, ord(s.section), s.module, id, id,
-                       s.kind.ord, s.filename, s.nimid, s.name, s.code)
+                       s.kind.ord, $s.filename, s.nimid, s.name, s.code)
   else:
     raise newException(Defect, "updates not supported")
 
-proc loadModule*(g: ModuleGraph; mid: SqlId; snips: var Snippets) =
-  const
-    selection = sql"select id,code,kind,strong,weak from snippets where module = ?"
-  for row in db.fastRows(selection, mid):
-    let
-      id = parseInt(row[0])
-    snips[id] = Snippet(id: id, code: rope(row[1]), module: mid,
-                        kind: parseInt(row[2]).TNodeKind,
-                        strong: decodeDeps(g, row[3]),
-                        weak: decodeDeps(g, row[4]))
-
-proc snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool =
+proc snippetAlreadyStored*(g: ModuleGraph; fn: AbsoluteFile; p: PSym): bool =
   if g.config.symbolFiles == disabledSf: return
   const
     query = sql"""
       select syms.id
       from syms left join snippets
-      where syms.module = ? and syms.id = snippets.symbol and syms.name = ?
+      where snippets.filename = ? and syms.module = ? and syms.id = snippets.symbol and syms.name = ?
       limit 1
     """
+    #  where syms.module = ? and syms.id = snippets.symbol and syms.name = ?
   let
     name = $p.sigHash
     m = getModule(p)
     mid = if m == nil: 0 else: abs(m.id)
-  result = db.getValue(query, mid, name) != ""
+  result = db.getValue(query, $fn, mid, name) != ""
 
 template symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool =
   g.symbolId(p) != 0
@@ -534,14 +524,19 @@ proc storeType(g: ModuleGraph; t: PType): SqlId =
   encodeType(g, t, buf)
   let m = if t.owner != nil: getModule(t.owner) else: nil
   let mid = if m == nil: 0 else: abs(m.id)
-  if typeAlreadyStored(g, t.uniqueId):
-    when not defined(release):
-      echo "rewrite of type id " & $t.uniqueId
-    #raise newException(Defect, "rewrite of type id " & $t.uniqueId)
-    # XXX mid?  really?  not the primary key id?
-    db.exec(updation, mid, buf, t.uniqueId)
-    # XXX inefficient
-    result = db.getValue(selection, mid, t.uniqueId).parseInt
+  when false:
+    # took this out because it's possibly incorrect in the event that
+    # a type is used in two files but unchanged between either.
+    if typeAlreadyStored(g, t.uniqueId):
+      when not defined(release):
+        echo "rewrite of type id " & $t.uniqueId
+      #raise newException(Defect, "rewrite of type id " & $t.uniqueId)
+      # XXX mid?  really?  not the primary key id?
+      db.exec(updation, mid, buf, t.uniqueId)
+      # XXX inefficient
+      result = db.getValue(selection, mid, t.uniqueId).parseInt
+    else:
+      result = db.insertID(insertion, t.uniqueId, mid, buf)
   else:
     result = db.insertID(insertion, t.uniqueId, mid, buf)
 
@@ -1147,7 +1142,8 @@ iterator snippetsSince*(m: BModule): Snippet =
       snippet.section = section
       # store all snippets
       #if m.config.symbolFiles notin {disabledSf, readOnlySf}:
-      storeSnippet(m.g.graph, snippet)
+      when false:
+        storeSnippet(m.g.graph, snippet)
       count.inc
       yield snippet
   if count == 0 and {sfImportc, sfCompilerProc, sfThread} * sym.flags == {}:

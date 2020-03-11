@@ -168,37 +168,13 @@ type
     snippets* {.deprecated.}: Snippets
 
   Snippets* = seq[Snippet]
-  SqlId* = int64
+  SqlId* {.deprecated.} = int64
 
-  #
-  # https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm
-  #
-  #
-  # tarjan's algo for idiots:
-  #
-  # start with a snippet.
-  # give it a new, unique, incrementing index.
-  # throw it on the stack.
-  #
-  # visit its kids
-  # do the same shit.
-  #
-  # on the way out, we remove ourselves from the stack if we
-  # aren't pointing at any earlier member of the stack.
-  #
-  #
   Snippet* = ref object
-    # tarjan's shit
-    index*: int
-    lowlink*: int
-
-    # my shit
     id*: SqlId
     name*: string
     filename*: AbsoluteFile
-    module*: SqlId
-    weak* {.deprecated.}: Snippets
-    strong* {.deprecated.}: Snippets
+    module*: int
 
     section*: TCFileSection
 
@@ -218,13 +194,14 @@ proc newSnippet*(module: BModule; id: SqlId;
   ## id -- a sqlite primary key, which varies with the node kind.
   result = Snippet(symbol: id, kind: nkSym,
                    name: $sym.sigHash, nimid: sym.id)
-  result.filename = module.filename
-  let
-    m = getModule(sym)
-    mid = if m == nil: 0 else: abs(m.id)
-  result.module = mid
+#  let
+#    m = getModule(sym)
+#    mid = if m == nil: 0 else: abs(m.id)
+#  result.module = mid
+  result.module = abs(module.module.id)
   result.code = rope
   result.node = sym
+  result.filename = module.cfilename
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
