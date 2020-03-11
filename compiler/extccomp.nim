@@ -705,13 +705,6 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
-proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
-  if conf.hasHint(hintCC):
-    if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
-    else:
-      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
-
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
   if optGenStaticLib in conf.globalOptions:
@@ -891,6 +884,13 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
   let targetName = if isMain: basename & ".exe"
                    else: platform.OS[conf.target.targetOS].dllFrmt % basename
   result = conf.getNimcacheDir / RelativeFile(targetName)
+
+proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
+  if conf.hasHint(hintCC):
+    if optListCmd in conf.globalOptions or conf.verbosity > 1:
+      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
+    else:
+      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
 
 proc callCCompiler*(conf: ConfigRef) =
   var
