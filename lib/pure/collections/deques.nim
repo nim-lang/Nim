@@ -274,8 +274,8 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
     var i = 0
-    for x in mitems(deq): # don't use copyMem because of the GC and because it's slower.
-      n[i] = move(x)
+    for x in items(deq):
+      n[i] = x
       inc i
     deq.data = move(n)
     deq.mask = cap * 2 - 1
@@ -569,3 +569,15 @@ when isMainModule:
   foo(2, 1)
   foo(1, 5)
   foo(3, 2)
+
+  import sets
+  block t13310:
+    proc main() =
+      var q = initDeque[HashSet[int16]](2)
+      q.addFirst([1'i16].toHashSet)
+      q.addFirst([2'i16].toHashSet)
+      q.addFirst([3'i16].toHashSet)
+      assert $q == "[{3}, {2}, {1}]"
+
+    static:
+      main()
