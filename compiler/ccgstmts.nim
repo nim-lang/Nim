@@ -706,6 +706,22 @@ proc finallyActions(p: BProc) =
     if finallyBlock != nil:
       genSimpleBlock(p, finallyBlock[0])
 
+proc raiseInstr(p: BProc): Rope =
+  if p.config.exc == excGoto:
+    let L = p.nestedTryStmts.len
+    if L == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      result = ropecg(p.module, "goto BeforeRet_;$n", [])
+    else:
+      # raise inside an 'except' must go to the finally block,
+      # raise outside an 'except' block must go to the 'except' list.
+      result = ropecg(p.module, "goto LA$1_;$n",
+        [p.nestedTryStmts[L-1].label])
+      # + ord(p.nestedTryStmts[L-1].inExcept)])
+  else:
+    result = nil
+
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.config.exc == excCpp:
     discard cgsym(p.module, "popCurrentExceptionEx")
@@ -733,18 +749,9 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       line(p, cpsStmts, ~"throw;$n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
-  if p.config.exc == excGoto:
-    let L = p.nestedTryStmts.len
-    if L == 0:
-      p.flags.incl beforeRetNeeded
-      # easy case, simply goto 'ret':
-      lineCg(p, cpsStmts, "goto BeforeRet_;$n", [])
-    else:
-      # raise inside an 'except' must go to the finally block,
-      # raise outside an 'except' block must go to the 'except' list.
-      lineCg(p, cpsStmts, "goto LA$1_;$n",
-        [p.nestedTryStmts[L-1].label])
-      # + ord(p.nestedTryStmts[L-1].inExcept)])
+  let gotoInstr = raiseInstr(p)
+  if gotoInstr != nil:
+    line(p, cpsStmts, gotoInstr)
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =

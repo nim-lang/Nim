@@ -28,6 +28,10 @@ proc raiseIndexError() {.compilerproc, noinline.} =
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
   sysFatal(FieldError, f)
 
+proc raiseRangeErrorV2() {.compilerproc, noinline.} =
+  # todo: better error reporting
+  sysFatal(RangeError, "value out of range")
+
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
     return i
