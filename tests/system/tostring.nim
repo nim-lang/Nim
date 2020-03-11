@@ -134,45 +134,64 @@ type
     field3: MyRefDistinct
     field4: MyDistinctRef
 
+block:
+  let tmp0 = MyType(a: 1, b: "abc")
+  let tmp1 = MyRef(a: 1, b: "abc")
+  let tmp2 = MyDistinct MyType(a: 1, b: "abc")
+  let tmp3 = MyRefDistinct MyRef(a: 1, b: "abc")
+  let tmp4 = MyDistinctRef MyRef(a: 1, b: "abc")
+
+  let compound = MyCompoundObject(
+    field0: tmp0,
+    field1: tmp1,
+    field2: tmp2,
+    field3: tmp3,
+    field4: tmp4,
+  )
+
+  doAssert $tmp0 == "(a: 1, b: \"abc\")"
+  doAssert $tmp1 == "(a: 1, b: \"abc\")"
+  doAssert $tmp2 == "(a: 1, b: \"abc\")"
+  doAssert $tmp3 == "(a: 1, b: \"abc\")"
+  doAssert $tmp4 == "(a: 1, b: \"abc\")"
+
+  doAssert $compound == "(field0: (a: 1, b: \"abc\"), field1: ..., field2: ..., field3: ..., field4: ...)"
+
+type
   CyclicDistinctRef = distinct CyclicDistinctRefInner
   CyclicDistinctRefInner = ref object
     name: string
     field0: CyclicDistinctRef
 
-let tmp0 = MyType(a: 1, b: "abc")
-let tmp1 = MyRef(a: 1, b: "abc")
-let tmp2 = MyDistinct MyType(a: 1, b: "abc")
-let tmp3 = MyRefDistinct MyRef(a: 1, b: "abc")
-let tmp4 = MyDistinctRef MyRef(a: 1, b: "abc")
+  # Multiple distinct stacked on top of each other. Stupid but possible.
+  StupidMultiDistinctRefInner = ref object
+    name: string
+    field0: StupidMultiDistinctRef
+  StupidMultiDistinctRefMiddle = distinct StupidMultiDistinctRefInner
+  StupidMultiDistinctRef = distinct StupidMultiDistinctRefMiddle
 
-let compound = MyCompoundObject(
-  field0: tmp0,
-  field1: tmp1,
-  field2: tmp2,
-  field3: tmp3,
-  field4: tmp4,
-)
+block:
+  let cyclicA: CyclicDistinctRef = CyclicDistinctRef(CyclicDistinctRefInner())
+  let cyclicB: CyclicDistinctRef = CyclicDistinctRef(CyclicDistinctRefInner())
+  cyclicA.CyclicDistinctRefInner.name = "A"
+  cyclicA.CyclicDistinctRefInner.field0 = cyclicB
+  cyclicB.CyclicDistinctRefInner.name = "B"
+  cyclicB.CyclicDistinctRefInner.field0 = cyclicA
 
-let cyclicA: CyclicDistinctRef = CyclicDistinctRef(CyclicDistinctRefInner())
-let cyclicB: CyclicDistinctRef = CyclicDistinctRef(CyclicDistinctRefInner())
-cyclicA.CyclicDistinctRefInner.name = "A"
-cyclicA.CyclicDistinctRefInner.field0 = cyclicB
-cyclicB.CyclicDistinctRefInner.name = "B"
-cyclicB.CyclicDistinctRefInner.field0 = cyclicA
+  # ensure this does not crash in an infinite loop
+  doAssert $cyclicA == "(name: \"A\", field0: ...)"
+  doAssert $cyclicB == "(name: \"B\", field0: ...)"
 
-# ensure this does not crash in an infinite loop
-doAssert $cyclicA == "(name: \"A\", field0: ...)"
-doAssert $cyclicB == "(name: \"B\", field0: ...)"
+block:
+  let cyclicA: StupidMultiDistinctRef = StupidMultiDistinctRef(StupidMultiDistinctRefInner())
+  let cyclicB: StupidMultiDistinctRef = StupidMultiDistinctRef(StupidMultiDistinctRefInner())
+  cyclicA.StupidMultiDistinctRefInner.name = "A"
+  cyclicA.StupidMultiDistinctRefInner.field0 = cyclicB
+  cyclicB.StupidMultiDistinctRefInner.name = "B"
+  cyclicB.StupidMultiDistinctRefInner.field0 = cyclicA
 
-doAssert $tmp0 == "(a: 1, b: \"abc\")"
-doAssert $tmp1 == "(a: 1, b: \"abc\")"
-doAssert $tmp2 == "(a: 1, b: \"abc\")"
-doAssert $tmp3 == "(a: 1, b: \"abc\")"
-doAssert $tmp4 == "(a: 1, b: \"abc\")"
-
-doAssert $compound == "(field0: (a: 1, b: \"abc\"), field1: ..., field2: ..., field3: ..., field4: ...)"
-
-for it in  split($compound, ':'):
-  echo it
+  # ensure this does not crash in an infinite loop
+  doAssert $cyclicA == "(name: \"A\", field0: ...)"
+  doAssert $cyclicB == "(name: \"B\", field0: ...)"
 
 echo "DONE: tostring.nim"
