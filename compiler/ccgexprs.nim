@@ -2017,9 +2017,9 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
                               [opr[m], rdLoc(a), rdLoc(b),
                               getSimpleTypeDesc(p.module, e[1].typ)]))
     if optNaNCheck in p.options:
-      linefmt(p, cpsStmts, "#nanCheck($1);$n", [rdLoc(d)])
+      linefmt(p, cpsStmts, "if ($1 != $1){ #raiseFloatInvalidOp(); $2}$n", [rdLoc(d), raiseInstr(p)])
     if optInfCheck in p.options:
-      linefmt(p, cpsStmts, "#infCheck($1);$n", [rdLoc(d)])
+      linefmt(p, cpsStmts, "if ($1 != 0.0 && $1*0.5 == $1) { #infCheck($1); $2}$n", [rdLoc(d), raiseInstr(p)])
   else:
     binaryArith(p, e, d, m)
 
