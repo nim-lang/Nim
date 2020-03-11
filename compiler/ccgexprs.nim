@@ -1947,9 +1947,23 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
       checkUnsignedConversions notin p.config.legacyFeatures):
     discard "no need to generate a check because it was disabled"
   else:
+    let raiser =
+      case skipTypes(n.typ, abstractVarRange).kind
+      of tyUInt..tyUInt64, tyChar: "raiseRangeErrorU"
+      of tyFloat..tyFloat128: "raiseRangeErrorF"
+      else: "raiseRangeErrorI"
+    discard cgsym(p.module, raiser)
+    # This seems to be bug-compatible with Nim version 1 but what we
+    # should really do here is to check if uint64Value < high(int)
+    let boundaryCast =
+      if n[0].typ.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt64}:
+        "(NI64)"
+      else:
+        ""
     # emit range check:
-    linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseRangeErrorV2(); $4}$n",
-      [rdCharLoc(a), genLiteral(p, n[1], dest), genLiteral(p, n[2], dest), raiseInstr(p)])
+    linefmt(p, cpsStmts, "if ($6($1) < $2 || $6($1) > $3){ $4($1, $2, $3); $5}$n",
+      [rdCharLoc(a), genLiteral(p, n[1], dest), genLiteral(p, n[2], dest),
+      raiser, raiseInstr(p), boundaryCast])
   putIntoDest(p, d, n, "(($1) ($2))" %
       [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 

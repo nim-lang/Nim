@@ -28,7 +28,13 @@ proc raiseIndexError() {.compilerproc, noinline.} =
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
   sysFatal(FieldError, f)
 
-proc raiseRangeErrorV2() {.compilerproc, noinline.} =
+proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
+  sysFatal(RangeError, "value out of range; " & $i & " notin " & $a & " .. " & $b)
+
+proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
+  sysFatal(RangeError, "value out of range; " & $i & " notin " & $a & " .. " & $b)
+
+proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
   # todo: better error reporting
   sysFatal(RangeError, "value out of range")
 
