@@ -12,9 +12,9 @@
 
 import
   ast, modules, idents, passes, condsyms,
-  options, sem, llstream, vm, vmdef, commands, msgs,
+  options, sem, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  lineinfos, pathutils
+  pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains

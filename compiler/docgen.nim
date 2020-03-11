@@ -1082,6 +1082,7 @@ proc genSection(d: PDoc, kind: TSymKind) =
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
 const nimdocOutCss = "nimdoc.out.css"
+  # `out` to make it easier to use with gitignore in user's repos
 
 proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
   rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
@@ -1149,15 +1150,15 @@ proc writeOutput*(d: PDoc, useWarning = false) =
   else:
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
-    createDir(outfile.splitFile.dir)
+    let dir = outfile.splitFile.dir
+    createDir(dir)
     updateOutfile(d, outfile)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
     elif not d.wroteCss:
       let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-      let cssDest = $d.conf.outDir / nimdocOutCss
-        # renamed to make it easier to use with gitignore in user's repos
+      let cssDest = $dir / nimdocOutCss
       copyFile(cssSource, cssDest)
       d.wroteCss = true
 
