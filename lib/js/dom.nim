@@ -171,7 +171,7 @@ type
     previousSibling*: Node
     innerHTML*: cstring
     innerText*: cstring
-    textContent *: cstring
+    textContent*: cstring
     style*: Style
 
   Document* = ref DocumentObj
