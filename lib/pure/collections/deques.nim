@@ -274,8 +274,9 @@ proc expandIfNeeded[T](deq: var Deque[T]) =
   if unlikely(deq.count >= cap):
     var n = newSeq[T](cap * 2)
     var i = 0
-    for x in items(deq):
-      n[i] = x
+    for x in mitems(deq):
+      when nimVM: n[i] = x # workaround for VM bug
+      else: n[i] = move(x)
       inc i
     deq.data = move(n)
     deq.mask = cap * 2 - 1
