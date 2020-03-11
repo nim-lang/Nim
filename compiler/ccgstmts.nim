@@ -1387,8 +1387,8 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
     genCaseObjDiscMapping(p, e[0], t, field, oldVal)
     genCaseObjDiscMapping(p, e[1], t, field, newVal)
     lineCg(p, cpsStmts,
-          "#nimFieldDiscriminantCheckV2($1, $2);$n",
-          [rdLoc(oldVal), rdLoc(newVal)])
+          "if ($1 != $2) { #raiseObjectCaseTransition(); $3}$n",
+          [rdLoc(oldVal), rdLoc(newVal), raiseInstr(p)])
   else:
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
   genAssignment(p, a, tmp, {})

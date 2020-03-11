@@ -2445,11 +2445,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
                    else:
                      genTypeInfo(p.module, dest, n.info)
     if nilCheck != nil:
-      linefmt(p, cpsStmts, "if ($1) #chckObj($2, $3);$n",
-              [nilCheck, r, checkFor])
+      linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); $4}$n",
+              [nilCheck, r, checkFor, raiseInstr(p)])
     else:
-      linefmt(p, cpsStmts, "#chckObj($1, $2);$n",
-              [r, checkFor])
+      linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); $3}$n",
+              [r, checkFor, raiseInstr(p)])
   if n[0].typ.kind != tyObject:
     putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)

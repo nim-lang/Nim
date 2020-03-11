@@ -38,6 +38,9 @@ proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
   # todo: better error reporting
   sysFatal(RangeError, "value out of range")
 
+proc raiseObjectConversionError() {.compilerproc, noinline.} =
+  sysFatal(ObjectConversionError, "invalid object conversion")
+
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
     return i
@@ -126,6 +129,5 @@ when not defined(nimV2):
     return true
 
 when defined(nimV2):
-  proc nimFieldDiscriminantCheckV2(oldDiscVal, newDiscVal: uint8) {.compilerproc.} =
-    if oldDiscVal != newDiscVal:
-      sysFatal(FieldError, "assignment to discriminant changes object branch")
+  proc raiseObjectCaseTransition() {.compilerproc.} =
+    sysFatal(FieldError, "assignment to discriminant changes object branch")
