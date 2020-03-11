@@ -709,11 +709,8 @@ proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
       MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
-    elif conf.verbosity == 1:
-      MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
     else:
-      ""
-  else: ""
+      MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
