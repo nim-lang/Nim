@@ -1071,8 +1071,8 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mEqF64: genBinaryABC(c, n, dest, opcEqFloat)
   of mLeF64: genBinaryABC(c, n, dest, opcLeFloat)
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
-  of mLePtr, mLeU, mLeU64: genBinaryABC(c, n, dest, opcLeu)
-  of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
+  of mLePtr, mLeU: genBinaryABC(c, n, dest, opcLeu)
+  of mLtPtr, mLtU: genBinaryABC(c, n, dest, opcLtu)
   of mEqProc, mEqRef:
     genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABC(c, n, dest, opcXor)

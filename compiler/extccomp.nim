@@ -411,7 +411,8 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
     else:
       suffix
 
-  if optCompileOnly notin conf.globalOptions:
+  if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
+      optCompileOnly notin conf.globalOptions:
     let fullCCname = platform.CPU[conf.target.targetCPU].name & '.' &
                      platform.OS[conf.target.targetOS].name & '.' &
                      CC[c].name & fullSuffix
@@ -704,6 +705,11 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
     flags: {CfileFlag.External})
   addExternalFileToCompile(conf, c)
 
+proc displayProgressCC(conf: ConfigRef, path: string): string =
+  if conf.hasHint(hintCC):
+    let (_, name, _) = splitFile(path)
+    result = MsgKindToStr[hintCC] % demanglePackageName(name)
+
 proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var TStringSeq,
                   prettyCmds: var TStringSeq) =
   var currIdx = 0
@@ -714,8 +720,7 @@ proc compileCFiles(conf: ConfigRef; list: CfileList, script: var Rope, cmds: var
     inc currIdx
     if optCompileOnly notin conf.globalOptions:
       cmds.add(compileCmd)
-      let (_, name, _) = splitFile(it.cname)
-      prettyCmds.add(if conf.hasHint(hintCC): "CC: " & demanglePackageName(name) else: "")
+      prettyCmds.add displayProgressCC(conf, $it.cname)
     if optGenScript in conf.globalOptions:
       script.add(compileCmd)
       script.add("\n")
@@ -907,6 +912,11 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
                    else: platform.OS[conf.target.targetOS].dllFrmt % basename
   result = conf.getNimcacheDir / RelativeFile(targetName)
 
+template callbackPrettyCmd(cmd) =
+  when declared(echo):
+    let cmd2 = cmd
+    if cmd2.len > 0: echo cmd2
+
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
@@ -917,10 +927,7 @@ proc callCCompiler*(conf: ConfigRef) =
   var script: Rope = nil
   var cmds: TStringSeq = @[]
   var prettyCmds: TStringSeq = @[]
-  let prettyCb = proc (idx: int) =
-    when declared(echo):
-      let cmd = prettyCmds[idx]
-      if cmd != "": echo cmd
+  let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
   compileCFiles(conf, conf.toCompile, script, cmds, prettyCmds)
   if optCompileOnly notin conf.globalOptions:
     execCmdsInParallel(conf, cmds, prettyCb)
@@ -1125,12 +1132,9 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
       doAssert c.len >= 2
 
       cmds.add(c[1].getStr)
-      let (_, name, _) = splitFile(c[0].getStr)
-      prettyCmds.add("CC: " & demanglePackageName(name))
+      prettyCmds.add displayProgressCC(conf, c[0].getStr)
 
-    let prettyCb = proc (idx: int) =
-      when declared(echo):
-        echo prettyCmds[idx]
+    let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
     execCmdsInParallel(conf, cmds, prettyCb)
 
     let linkCmd = data["linkcmd"]
@@ -1145,9 +1149,11 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
         execExternalProgram(conf, cmd2, hintExecuting)
 
   except:
-    when declared(echo):
-      echo getCurrentException().getStackTrace()
-    quit "error evaluating JSON file: " & jsonFile.string
+    let e = getCurrentException()
+    var msg = "\ncaught exception:n" & e.msg & "\nstacktrace:\n" &
+      getCurrentException().getStackTrace() &
+      "error evaluating JSON file: " & jsonFile.string
+    quit msg
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:

@@ -342,45 +342,6 @@ proc `xor`*(x, y: int16): int16 {.magic: "BitxorI", noSideEffect.}
 proc `xor`*(x, y: int32): int32 {.magic: "BitxorI", noSideEffect.}
 proc `xor`*(x, y: int64): int64 {.magic: "BitxorI", noSideEffect.}
 
-type
-  IntMax32 = int|int8|int16|int32
-
-proc `+%`*(x, y: IntMax32): IntMax32 {.magic: "AddU", noSideEffect.}
-proc `+%`*(x, y: int64): int64 {.magic: "AddU", noSideEffect.}
-  ## Treats `x` and `y` as unsigned and adds them.
-  ##
-  ## The result is truncated to fit into the result.
-  ## This implements modulo arithmetic. No overflow errors are possible.
-
-proc `-%`*(x, y: IntMax32): IntMax32 {.magic: "SubU", noSideEffect.}
-proc `-%`*(x, y: int64): int64 {.magic: "SubU", noSideEffect.}
-  ## Treats `x` and `y` as unsigned and subtracts them.
-  ##
-  ## The result is truncated to fit into the result.
-  ## This implements modulo arithmetic. No overflow errors are possible.
-
-proc `*%`*(x, y: IntMax32): IntMax32 {.magic: "MulU", noSideEffect.}
-proc `*%`*(x, y: int64): int64 {.magic: "MulU", noSideEffect.}
-  ## Treats `x` and `y` as unsigned and multiplies them.
-  ##
-  ## The result is truncated to fit into the result.
-  ## This implements modulo arithmetic. No overflow errors are possible.
-
-proc `/%`*(x, y: IntMax32): IntMax32 {.magic: "DivU", noSideEffect.}
-proc `/%`*(x, y: int64): int64 {.magic: "DivU", noSideEffect.}
-  ## Treats `x` and `y` as unsigned and divides them.
-  ##
-  ## The result is truncated to fit into the result.
-  ## This implements modulo arithmetic. No overflow errors are possible.
-
-proc `%%`*(x, y: IntMax32): IntMax32 {.magic: "ModU", noSideEffect.}
-proc `%%`*(x, y: int64): int64 {.magic: "ModU", noSideEffect.}
-  ## Treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
-  ##
-  ## The result is truncated to fit into the result.
-  ## This implements modulo arithmetic. No overflow errors are possible.
-
-
 # unsigned integer operations:
 proc `not`*(x: uint): uint {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
@@ -461,8 +422,60 @@ proc `mod`*(x, y: uint16): uint16 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint32): uint32 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint64): uint64 {.magic: "ModU", noSideEffect.}
 
+proc `+%`*(x, y: int): int {.inline.} =
+  ## Treats `x` and `y` as unsigned and adds them.
+  ##
+  ## The result is truncated to fit into the result.
+  ## This implements modulo arithmetic. No overflow errors are possible.
+  cast[int](cast[uint](x) + cast[uint](y))
+proc `+%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) + cast[uint8](y))
+proc `+%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) + cast[uint16](y))
+proc `+%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) + cast[uint32](y))
+proc `+%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) + cast[uint64](y))
 
+proc `-%`*(x, y: int): int {.inline.} =
+  ## Treats `x` and `y` as unsigned and subtracts them.
+  ##
+  ## The result is truncated to fit into the result.
+  ## This implements modulo arithmetic. No overflow errors are possible.
+  cast[int](cast[uint](x) - cast[uint](y))
+proc `-%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) - cast[uint8](y))
+proc `-%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) - cast[uint16](y))
+proc `-%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) - cast[uint32](y))
+proc `-%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) - cast[uint64](y))
 
+proc `*%`*(x, y: int): int {.inline.} =
+  ## Treats `x` and `y` as unsigned and multiplies them.
+  ##
+  ## The result is truncated to fit into the result.
+  ## This implements modulo arithmetic. No overflow errors are possible.
+  cast[int](cast[uint](x) * cast[uint](y))
+proc `*%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) * cast[uint8](y))
+proc `*%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) * cast[uint16](y))
+proc `*%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) * cast[uint32](y))
+proc `*%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) * cast[uint64](y))
+
+proc `/%`*(x, y: int): int {.inline.} =
+  ## Treats `x` and `y` as unsigned and divides them.
+  ##
+  ## The result is truncated to fit into the result.
+  ## This implements modulo arithmetic. No overflow errors are possible.
+  cast[int](cast[uint](x) div cast[uint](y))
+proc `/%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) div cast[uint8](y))
+proc `/%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) div cast[uint16](y))
+proc `/%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) div cast[uint32](y))
+proc `/%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) div cast[uint64](y))
+
+proc `%%`*(x, y: int): int {.inline.} =
+  ## Treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
+  ##
+  ## The result is truncated to fit into the result.
+  ## This implements modulo arithmetic. No overflow errors are possible.
+  cast[int](cast[uint](x) mod cast[uint](y))
+proc `%%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) mod cast[uint8](y))
+proc `%%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) mod cast[uint16](y))
+proc `%%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) mod cast[uint32](y))
+proc `%%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) mod cast[uint64](y))
 
 proc `+=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}

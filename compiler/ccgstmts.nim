@@ -1115,10 +1115,10 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       # 3. finally is run for exception handling code without any 'except'
       #    handler present or only handlers that did not match.
       linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n", [lab])
-    raiseExit(p)
     endBlock(p)
   # restore the real error value:
   linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_;$n", [lab])
+  if p.prc != nil: raiseExit(p)
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:
