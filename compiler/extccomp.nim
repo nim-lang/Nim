@@ -48,8 +48,8 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
-    produceAsm: string,   # Format how to produce assembler listings
-    cpp11support: string, # what to do to enable C++11 support, in 2020
+    produceAsm: string,  # Format how to produce assembler listings
+    cppXsupport: string, # what to do to enable C++X support
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -86,7 +86,7 @@ compiler gcc:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
-    cpp11support: "-std=gnu++11",
+    cppXsupport: "-std=gnu++14",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -99,7 +99,7 @@ compiler nintendoSwitchGCC:
     optSize: " -Os ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
-    compileTmpl: "-std=gnu++11 -w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    compileTmpl: "-std=gnu++14 -w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
@@ -113,7 +113,7 @@ compiler nintendoSwitchGCC:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
-    cpp11support: "-std=gnu++11",
+    cppXsupport: "-std=gnu++14",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -161,7 +161,7 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     produceAsm: "/Fa$asmfile",
-    cpp11support: "",
+    cppXsupport: "",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 compiler clangcl:
@@ -208,7 +208,7 @@ compiler lcc:
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
-    cpp11support: "",
+    cppXsupport: "",
     props: {})
 
 # Borland C Compiler
@@ -234,7 +234,7 @@ compiler bcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
-    cpp11support: "",
+    cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
@@ -261,7 +261,7 @@ compiler dmc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     produceAsm: "",
-    cpp11support: "",
+    cppXsupport: "",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -287,7 +287,7 @@ compiler wcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
-    cpp11support: "",
+    cppXsupport: "",
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -313,7 +313,7 @@ compiler tcc:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $2",
     produceAsm: gnuAsmListing,
-    cpp11support: "",
+    cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
 # Pelles C Compiler
@@ -340,7 +340,7 @@ compiler pcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
-    cpp11support: "",
+    cppXsupport: "",
     props: {})
 
 # Your C Compiler
@@ -366,7 +366,7 @@ compiler ucc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
-    cpp11support: "",
+    cppXsupport: "",
     props: {})
 
 const
@@ -621,7 +621,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     options.add(' ' & CC[c].pic)
 
   if useCpp(conf, cfile.cname):
-    options.add(' ' & CC[c].cpp11support)
+    options.add(' ' & CC[c].cppXsupport)
 
   var compilePattern: string
   # compute include paths:
