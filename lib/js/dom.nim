@@ -41,7 +41,7 @@ type
     onunload*: proc (event: Event) {.nimcall.}
 
   DomEvent* {.pure.} = enum
-    ## `https://developer.mozilla.org/en-US/docs/Web/Events`_
+    ## `<https://developer.mozilla.org/en-US/docs/Web/Events>`_
     Abort = "abort",
     BeforeInput = "beforeinput",
     Blur = "blur",
@@ -217,7 +217,7 @@ type
     offsetLeft*: int
     offsetTop*: int
 
-  ValidityState* = ref ValidityStateObj ## `https://developer.mozilla.org/en-US/docs/Web/API/ValidityState`_
+  ValidityState* = ref ValidityStateObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/ValidityState>`_
   ValidityStateObj {.importc.} = object
     badInput*: bool
     customError*: bool
@@ -231,23 +231,24 @@ type
     valid*: bool
     valueMissing*: bool
 
-  Blob* = ref BlobObj ## `https://developer.mozilla.org/en-US/docs/Web/API/Blob`_
+  Blob* = ref BlobObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/Blob>`_
   BlobObj {.importc.} = object of RootObj
     size*: int
     `type`*: cstring
 
-  File* = ref FileObj ## `https://developer.mozilla.org/en-US/docs/Web/API/File`_
+  File* = ref FileObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/File>`_
   FileObj {.importc.} = object of Blob
     lastModified*: int
     name*: cstring
 
-  TextAreaElement* = ref object of ElementObj ## `https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement`_
+  TextAreaElement* = ref TextAreaElementObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement>`_
+  TextAreaElementObj {.importc.} = object of Element
     value*: cstring
     selectionStart*, selectionEnd*: int
     selectionDirection*: cstring
     rows*, cols*: int
 
-  InputElement* = ref InputElementObj ## `https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement`_
+  InputElement* = ref InputElementObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement>`_
   InputElementObj {.importc.} = object of Element
     # Properties related to the parent form
     formAction*: cstring
@@ -329,7 +330,7 @@ type
     text*: cstring
     value*: cstring
 
-  FormElement* = ref FormObj ## `https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement`_
+  FormElement* = ref FormObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement>`_
   FormObj {.importc.} = object of ElementObj
     acceptCharset*: cstring
     action*: cstring
@@ -462,7 +463,7 @@ type
     AtTarget,
     BubblingPhase
 
-  Event* = ref EventObj ## `https://developer.mozilla.org/en-US/docs/Web/API/Event`_
+  Event* = ref EventObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/Event>`_
   EventObj {.importc.} = object of RootObj
     bubbles*: bool
     cancelBubble*: bool
@@ -475,12 +476,12 @@ type
     `type`*: cstring
     isTrusted*: bool
 
-  UIEvent* = ref UIEventObj ## `https://developer.mozilla.org/en-US/docs/Web/API/UIEvent`_
+  UIEvent* = ref UIEventObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
   UIEventObj {.importc.} = object of Event
     detail*: int64
     view*: Window
 
-  KeyboardEvent* = ref KeyboardEventObj ## `https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent`_
+  KeyboardEvent* = ref KeyboardEventObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent>`_
   KeyboardEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     code*: cstring
@@ -489,7 +490,7 @@ type
     keyCode*: int
     location*: int
 
-  KeyboardEventKey* {.pure.} = enum ## `https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values`_
+  KeyboardEventKey* {.pure.} = enum ## `<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values>`_
     # Modifier keys
     Alt,
     AltGraph,
@@ -843,7 +844,7 @@ type
     FourthButton = 8,
     FifthButton = 16
 
-  MouseEvent* = ref MouseEventObj ## `https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent`_
+  MouseEvent* = ref MouseEventObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent>`_
   MouseEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     button*: int
@@ -861,12 +862,12 @@ type
     File = "file",
     String = "string"
 
-  DataTransferItem* = ref DataTransferItemObj ## `https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem`_
+  DataTransferItem* = ref DataTransferItemObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem>`_
   DataTransferItemObj {.importc.} = object of RootObj
     kind*: cstring
     `type`*: cstring
 
-  DataTransfer* = ref DataTransferObj ## `https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer`_
+  DataTransfer* = ref DataTransferObj ## `<https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer>`_
   DataTransferObj {.importc.} = object of RootObj
     dropEffect*: cstring
     effectAllowed*: cstring
@@ -902,7 +903,7 @@ type
     Drop = "drop"
 
   DragEvent* {.importc.} = object of MouseEvent
-    ## `https://developer.mozilla.org/en-US/docs/Web/API/DragEvent`_
+    ## `<https://developer.mozilla.org/en-US/docs/Web/API/DragEvent>`_
     dataTransfer*: DataTransfer
 
   TouchList* {.importc.} = ref object of RootObj
