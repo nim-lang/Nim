@@ -1137,10 +1137,8 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
   except:
     let e = getCurrentException()
-    var msg = "\ncaught exception:n" & e.msg & "\nstacktrace:\n" &
-      getCurrentException().getStackTrace() &
-      "error evaluating JSON file: " & jsonFile.string
-    quit msg
+    quit "\ncaught exception:n" & e.msg & "\nstacktrace:\n" & e.getStackTrace() &
+         "error evaluating JSON file: " & jsonFile.string
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
   for it in list:
