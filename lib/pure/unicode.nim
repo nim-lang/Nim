@@ -933,7 +933,7 @@ proc stringHasSep(s: string, index: int, sep: Rune): bool =
   fastRuneAt(s, index, rune, false)
   return sep == rune
 
-template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
+template splitCommon(s, sep, maxsplit: untyped) =
   ## Common code for split procedures.
   let
     sLen = len(s)
@@ -945,15 +945,11 @@ template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
       var first = last
       while last < sLen and not stringHasSep(s, last, sep):
         inc(last, runeLenAt(s, last))
-      last = min(sLen, last)
       if splits == 0: last = sLen
       yield s[first .. (last - 1)]
       if splits == 0: break
       dec(splits)
-      when sep is Rune:
-        inc(last, sepLen)
-      else:
-        inc(last, if last < sLen: runeLenAt(s, last) else: 1)
+      inc(last, if last < sLen: runeLenAt(s, last) else: 1)
 
 iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   maxsplit: int = -1): string =
@@ -1037,7 +1033,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit, sep.size)
+  splitCommon(s, sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):
     seq[string] {.noSideEffect, rtl, extern: "nucSplitRunes".} =
