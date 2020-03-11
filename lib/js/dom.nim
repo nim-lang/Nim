@@ -103,8 +103,6 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
-  Selection* {.importc.} = ref object
-
   LocalStorage* {.importc.} = ref object
 
   Window* = ref WindowObj
@@ -1159,7 +1157,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): Selection
+proc getSelection*(d: Document): cstring
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
 proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1248,9 +1246,6 @@ proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: c
 
 # Performance "methods"
 proc now*(p: Performance): float
-
-# Selection "methods"
-proc removeAllRanges*(s: Selection)
 
 # LocalStorage "methods"
 proc getItem*(ls: LocalStorage, key: cstring): cstring
