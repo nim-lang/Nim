@@ -69,6 +69,7 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
+- Added `expectIdent` to the `macros` module.
 - Added `os.isValidFilename` that returns `true` if `filename` argument is valid for crossplatform use.
 
 - Added a `with` macro for easy function chaining that's available
@@ -94,7 +95,6 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
-
 
 ## Library changes
 
