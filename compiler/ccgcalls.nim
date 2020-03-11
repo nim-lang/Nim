@@ -568,7 +568,6 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
   else:
     # we have to be *very* conservative:
     result = canRaiseConservative(n)
-  #echo "BBBBBBBBBB came here ", n, " res ", result
 
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
   if e[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
