@@ -881,6 +881,9 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optBenchmarkVM}, arg, pass, info)
   of "sinkinference":
     processOnOffSwitch(conf, {optSinkInference}, arg, pass, info)
+  of "panics":
+    processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
+    defineSymbol(conf.symbols, "nimPanics")
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:

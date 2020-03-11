@@ -124,6 +124,12 @@ compiler may instead choose to allow the program to die with a fatal error.
   except IndexError:
     echo "invalid index"
 
+The current implementation allows to switch between these different behaviors
+via ``--panics:on|off``. When panics are turned on, the program dies on a
+runtime error, if they are turned off the runtime errors are turned into
+exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
+code and the compiler has more freedom to optimize the code.
+
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
 be arbitrary. Unchecked runtime errors cannot occur if only `safe`:idx:
@@ -4107,7 +4113,7 @@ branch always has to be ``void``:
 
 .. code-block:: nim
   from strutils import parseInt
-  
+
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -5667,7 +5673,7 @@ The ``include`` statement can be used outside of the top level, as such:
   # Module B
   proc main() =
     include A
-  
+
   main() # => Hello World!
 
 

@@ -1016,14 +1016,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
     genSimpleBlock(p, t[^1][0])
 
-proc bodyCanRaise(n: PNode): bool =
+proc bodyCanRaise(p: BProc; n: PNode): bool =
   case n.kind
   of nkCallKinds:
-    result = canRaise(n[0])
+    result = canRaiseDisp(p, n[0])
     if not result:
       # also check the arguments:
       for i in 1 ..< n.len:
-        if bodyCanRaise(n[i]): return true
+        if bodyCanRaise(p, n[i]): return true
   of nkRaiseStmt:
     result = true
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
@@ -1031,11 +1031,11 @@ proc bodyCanRaise(n: PNode): bool =
     result = false
   else:
     for i in 0 ..< safeLen(n):
-      if bodyCanRaise(n[i]): return true
+      if bodyCanRaise(p, n[i]): return true
     result = false
 
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
-  if not bodyCanRaise(t):
+  if not bodyCanRaise(p, t):
     # optimize away the 'try' block:
     expr(p, t[0], d)
     if t.len > 1 and t[^1].kind == nkFinally:
@@ -1106,7 +1106,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   #linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
-    if not bodyCanRaise(t[i][0]):
+    if not bodyCanRaise(p, t[i][0]):
       # this is an important optimization; most destroy blocks are detected not to raise an
       # exception and so we help the C optimizer by not mutating nimErr_ pointlessly:
       genStmts(p, t[i][0])

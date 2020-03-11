@@ -90,6 +90,7 @@ type                          # please make sure we have under 32 options
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
+    optPanics                 # turn panics (sysFatal) into a process termination
 
   TGlobalOptions* = set[TGlobalOption]
 
