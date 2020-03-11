@@ -87,10 +87,14 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(": ")
 
     when value is SomePointer:
-      if value == nil:
+      # cannot follow pointers as there is no cycle detection
+      if value == typeof(value)(nil):
         result.add "nil"
       else:
-        result.add("...") # cannot follow pointers as there is no cycle detection
+        result.add("...")
+    elif value is distinct:
+      # value may be pointer, don't follow it.
+      result.add "..."
     else:
       result.addQuoted(value)
 

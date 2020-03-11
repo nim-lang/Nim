@@ -36,8 +36,7 @@ type
 
 var foo1: Foo
 
-# nil string should be an some point in time equal to the empty string
-doAssert(($foo1)[0..9] == "(a: 0, b: ")
+doAssert $foo1 == "(a: 0, b: \"\")"
 
 const
   data = @['a','b', '\0', 'c','d']
@@ -83,9 +82,9 @@ proc stringCompare() =
   doAssert b == "bee"
   b.add g
   doAssert b == "bee"
-  c.add 123.456
+  c.addFloat 123.456
   doAssert c == "123.456"
-  d.add 123456
+  d.addInt 123456
   doAssert d == "123456"
 
   doAssert e == ""
@@ -135,6 +134,11 @@ type
     field3: MyRefDistinct
     field4: MyDistinctRef
 
+  CyclicDistinctRef = distinct CyclicDistinctRefInner
+  CyclicDistinctRefInner = ref object
+    name: string
+    field0: CyclicDistinctRef
+
 let tmp0 = MyType(a: 1, b: "abc")
 let tmp1 = MyRef(a: 1, b: "abc")
 let tmp2 = MyDistinct MyType(a: 1, b: "abc")
@@ -149,35 +153,26 @@ let compound = MyCompoundObject(
   field4: tmp4,
 )
 
-echo tmp0
-echo tmp1
-echo tmp2
-echo tmp3
-echo tmp4
+let cyclicA: CyclicDistinctRef = CyclicDistinctRef(CyclicDistinctRefInner())
+let cyclicB: CyclicDistinctRef = CyclicDistinctRef(CyclicDistinctRefInner())
+cyclicA.CyclicDistinctRefInner.name = "A"
+cyclicA.CyclicDistinctRefInner.field0 = cyclicB
+cyclicB.CyclicDistinctRefInner.name = "B"
+cyclicB.CyclicDistinctRefInner.field0 = cyclicA
 
-echo "-------"
+# ensure this does not crash in an infinite loop
+doAssert $cyclicA == "(name: \"A\", field0: ...)"
+doAssert $cyclicB == "(name: \"B\", field0: ...)"
 
-echo $compound
+doAssert $tmp0 == "(a: 1, b: \"abc\")"
+doAssert $tmp1 == "(a: 1, b: \"abc\")"
+doAssert $tmp2 == "(a: 1, b: \"abc\")"
+doAssert $tmp3 == "(a: 1, b: \"abc\")"
+doAssert $tmp4 == "(a: 1, b: \"abc\")"
 
-echo "-------"
+doAssert $compound == "(field0: (a: 1, b: \"abc\"), field1: ..., field2: ..., field3: ..., field4: ...)"
 
-echo tmp0 is ref
-echo tmp1 is ref
-echo tmp2 is ref
-echo tmp3 is ref
-echo tmp4 is ref
-echo "----------------------------------------"
-echo tmp0 is distinct
-echo tmp1 is distinct
-echo tmp2 is distinct
-echo tmp3 is distinct
-echo tmp4 is distinct
-echo "----------------------------------------"
-echo tmp0 is object
-echo tmp1 is object
-echo tmp2 is object
-echo tmp3 is object
-echo tmp4 is object
-
+for it in  split($compound, ':'):
+  echo it
 
 echo "DONE: tostring.nim"
