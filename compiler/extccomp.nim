@@ -892,11 +892,6 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
                    else: platform.OS[conf.target.targetOS].dllFrmt % basename
   result = conf.getNimcacheDir / RelativeFile(targetName)
 
-template callbackPrettyCmd(cmd) =
-  when declared(echo):
-    let cmd2 = cmd
-    if cmd2.len > 0: echo cmd2
-
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
@@ -907,7 +902,7 @@ proc callCCompiler*(conf: ConfigRef) =
   var script: Rope = nil
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
-  let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
+  let prettyCb = proc (idx: int) = if prettyCmds[idx].len > 0: echo prettyCmds[idx]
 
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
@@ -1116,6 +1111,8 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq
     var prettyCmds: TStringSeq
+    let prettyCb = proc (idx: int) = if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+
     for c in toCompile:
       doAssert c.kind == JArray
       doAssert c.len >= 2
@@ -1123,7 +1120,6 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
       cmds.add(c[1].getStr)
       prettyCmds.add displayProgressCC(conf, c[0].getStr, c[1].getStr)
 
-    let prettyCb = proc (idx: int) = callbackPrettyCmd(prettyCmds[idx])
     execCmdsInParallel(conf, cmds, prettyCb)
 
     let linkCmd = data["linkcmd"]
