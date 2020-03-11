@@ -708,9 +708,9 @@ proc addExternalFileToCompile*(conf: ConfigRef; filename: AbsoluteFile) =
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
     if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
+      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
     else:
-      MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
+      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
 
 proc getLinkCmd(conf: ConfigRef; output: AbsoluteFile,
                 objfiles: string, isDllBuild: bool): string =
@@ -902,7 +902,8 @@ proc callCCompiler*(conf: ConfigRef) =
   var script: Rope = nil
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
-  let prettyCb = proc (idx: int) = if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+  let prettyCb = proc (idx: int) =
+    if prettyCmds[idx].len > 0: echo prettyCmds[idx]
 
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
@@ -1111,7 +1112,8 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq
     var prettyCmds: TStringSeq
-    let prettyCb = proc (idx: int) = if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+    let prettyCb = proc (idx: int) =
+      if prettyCmds[idx].len > 0: echo prettyCmds[idx]
 
     for c in toCompile:
       doAssert c.kind == JArray
