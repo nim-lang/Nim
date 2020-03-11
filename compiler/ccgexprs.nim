@@ -506,9 +506,10 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
                 else: getTypeDesc(p.module, t)
   var result = getTempName(p.module)
   linefmt(p, cpsLocals, "$1 $2;$n", [storage, result])
-  lineCg(p, cpsStmts, "$1 = #$2($3, $4);$n", [result, cpname, rdCharLoc(a), rdCharLoc(b)])
+  lineCg(p, cpsStmts, "if (#$2($3, $4, &$1)) { #raiseOverflow(); $5};$n",
+      [result, cpname, rdCharLoc(a), rdCharLoc(b), raiseInstr(p)])
   if size < p.config.target.intSize or t.kind in {tyRange, tyEnum}:
-    linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseOverflow();$4}$n",
+    linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseOverflow(); $4}$n",
             [result, intLiteral(firstOrd(p.config, t)), intLiteral(lastOrd(p.config, t)),
             raiseInstr(p)])
   result
@@ -516,14 +517,14 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
 proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
     prc: array[mAddI..mPred, string] = [
-      "addInt", "subInt",
-      "mulInt", "divInt", "modInt",
-      "addInt", "subInt"
+      "nimAddInt", "nimSubInt",
+      "nimMulInt", "nimDivInt", "nimModInt",
+      "nimAddInt", "nimSubInt"
     ]
     prc64: array[mAddI..mPred, string] = [
-      "addInt64", "subInt64",
-      "mulInt64", "divInt64", "modInt64",
-      "addInt64", "subInt64"
+      "nimAddInt64", "nimSubInt64",
+      "nimMulInt64", "nimDivInt64", "nimModInt64",
+      "nimAddInt64", "nimSubInt64"
     ]
     opr: array[mAddI..mPred, string] = ["+", "-", "*", "/", "%", "+", "-"]
   var a, b: TLoc
@@ -538,6 +539,12 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     let res = "($1)($2 $3 $4)" % [getTypeDesc(p.module, e.typ), rdLoc(a), rope(opr[m]), rdLoc(b)]
     putIntoDest(p, d, e, res)
   else:
+    # we handle div by zero here so that we know that the compilerproc's
+    # result is only for overflows.
+    if m in {mDivI, mModI}:
+      linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
+              [rdLoc(b), raiseInstr(p)])
+
     let res = binaryArithOverflowRaw(p, t, a, b,
       if t.kind == tyInt64: prc64[m] else: prc[m])
     putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
@@ -1939,7 +1946,7 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     # C code; plus it's the right thing to do for closures:
     genSomeCast(p, e, d)
 
-proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
+proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   var dest = skipTypes(n.typ, abstractVar)
   initLocExpr(p, n[0], a)
@@ -2019,7 +2026,7 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     if optNaNCheck in p.options:
       linefmt(p, cpsStmts, "if ($1 != $1){ #raiseFloatInvalidOp(); $2}$n", [rdLoc(d), raiseInstr(p)])
     if optInfCheck in p.options:
-      linefmt(p, cpsStmts, "if ($1 != 0.0 && $1*0.5 == $1) { #infCheck($1); $2}$n", [rdLoc(d), raiseInstr(p)])
+      linefmt(p, cpsStmts, "if ($1 != 0.0 && $1*0.5 == $1) { #raiseFloatOverflow($1); $2}$n", [rdLoc(d), raiseInstr(p)])
   else:
     binaryArith(p, e, d, m)
 
@@ -2135,10 +2142,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSwap: genSwap(p, e, d)
   of mInc, mDec:
     const opr: array[mInc..mDec, string] = ["+=", "-="]
-    const fun64: array[mInc..mDec, string] = ["addInt64",
-                                               "subInt64"]
-    const fun: array[mInc..mDec, string] = ["addInt",
-                                             "subInt"]
+    const fun64: array[mInc..mDec, string] = ["nimAddInt64", "nimSubInt64"]
+    const fun: array[mInc..mDec, string] = ["nimAddInt","nimSubInt"]
     let underlying = skipTypes(e[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent, tyRange})
     if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
       binaryStmt(p, e, d, opr[op])
@@ -2642,9 +2647,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     expr(p, n[1][0], d)
   of nkObjDownConv: downConv(p, n, d)
   of nkObjUpConv: upConv(p, n, d)
-  of nkChckRangeF: genRangeChck(p, n, d, "chckRangeF")
-  of nkChckRange64: genRangeChck(p, n, d, "chckRange64")
-  of nkChckRange: genRangeChck(p, n, d, "chckRange")
+  of nkChckRangeF: genRangeChck(p, n, d)
+  of nkChckRange64: genRangeChck(p, n, d)
+  of nkChckRange: genRangeChck(p, n, d)
   of nkStringToCString: convStrToCStr(p, n, d)
   of nkCStringToString: convCStrToStr(p, n, d)
   of nkLambdaKinds:
