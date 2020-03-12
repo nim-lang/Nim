@@ -316,10 +316,10 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
-      [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
-      [nimi, args, smartNimcache]
+    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+      [nimi, bootOptions, extraOption, smartNimcache, args]
+    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+      [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
