@@ -146,3 +146,4 @@ Advanced options:
                             see also https://nim-lang.github.io/Nim/estp.html
   --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
   --sinkInference:on|off    en-/disable sink parameter inference (default: on)
+  --panics:on|off           turn panics into process terminations (default: off)

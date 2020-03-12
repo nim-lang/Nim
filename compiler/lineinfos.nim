@@ -34,6 +34,7 @@ type
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
     warnUnusedImportX,
+    warnInheritFromException,
     warnEachIdentIsTuple,
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
@@ -81,6 +82,7 @@ const
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
     warnUnusedImportX: "imported and not used: '$1'",
+    warnInheritFromException: "inherit from a more precise exception type like ValueError, IOError or OSError",
     warnEachIdentIsTuple: "each identifier is a tuple",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
@@ -138,7 +140,8 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "UnusedImport", "EachIdentIsTuple",
+    "UnsafeCode", "UnusedImport", "InheritFromException",
+    "EachIdentIsTuple",
     "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "CaseTransition", "CycleCreated", "User"]
@@ -227,7 +230,7 @@ type
   TErrorOutputs* = set[TErrorOutput]
 
   ERecoverableError* = object of ValueError
-  ESuggestDone* = object of Exception
+  ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 

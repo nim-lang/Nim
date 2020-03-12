@@ -506,23 +506,25 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
                 else: getTypeDesc(p.module, t)
   var result = getTempName(p.module)
   linefmt(p, cpsLocals, "$1 $2;$n", [storage, result])
-  lineCg(p, cpsStmts, "$1 = #$2($3, $4);$n", [result, cpname, rdCharLoc(a), rdCharLoc(b)])
+  lineCg(p, cpsStmts, "if (#$2($3, $4, &$1)) { #raiseOverflow(); $5};$n",
+      [result, cpname, rdCharLoc(a), rdCharLoc(b), raiseInstr(p)])
   if size < p.config.target.intSize or t.kind in {tyRange, tyEnum}:
-    linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseOverflow();$n",
-            [result, intLiteral(firstOrd(p.config, t)), intLiteral(lastOrd(p.config, t))])
+    linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseOverflow(); $4}$n",
+            [result, intLiteral(firstOrd(p.config, t)), intLiteral(lastOrd(p.config, t)),
+            raiseInstr(p)])
   result
 
 proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   const
     prc: array[mAddI..mPred, string] = [
-      "addInt", "subInt",
-      "mulInt", "divInt", "modInt",
-      "addInt", "subInt"
+      "nimAddInt", "nimSubInt",
+      "nimMulInt", "nimDivInt", "nimModInt",
+      "nimAddInt", "nimSubInt"
     ]
     prc64: array[mAddI..mPred, string] = [
-      "addInt64", "subInt64",
-      "mulInt64", "divInt64", "modInt64",
-      "addInt64", "subInt64"
+      "nimAddInt64", "nimSubInt64",
+      "nimMulInt64", "nimDivInt64", "nimModInt64",
+      "nimAddInt64", "nimSubInt64"
     ]
     opr: array[mAddI..mPred, string] = ["+", "-", "*", "/", "%", "+", "-"]
   var a, b: TLoc
@@ -537,6 +539,12 @@ proc binaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
     let res = "($1)($2 $3 $4)" % [getTypeDesc(p.module, e.typ), rdLoc(a), rope(opr[m]), rdLoc(b)]
     putIntoDest(p, d, e, res)
   else:
+    # we handle div by zero here so that we know that the compilerproc's
+    # result is only for overflows.
+    if m in {mDivI, mModI}:
+      linefmt(p, cpsStmts, "if ($1 == 0){ #raiseDivByZero(); $2}$n",
+              [rdLoc(b), raiseInstr(p)])
+
     let res = binaryArithOverflowRaw(p, t, a, b,
       if t.kind == tyInt64: prc64[m] else: prc[m])
     putIntoDest(p, d, e, "($#)($#)" % [getTypeDesc(p.module, e.typ), res])
@@ -549,8 +557,8 @@ proc unaryArithOverflow(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
   initLocExpr(p, e[1], a)
   t = skipTypes(e.typ, abstractRange)
   if optOverflowCheck in p.options:
-    linefmt(p, cpsStmts, "if ($1 == $2) #raiseOverflow();$n",
-            [rdLoc(a), intLiteral(firstOrd(p.config, t))])
+    linefmt(p, cpsStmts, "if ($1 == $2){ #raiseOverflow(); $3}$n",
+            [rdLoc(a), intLiteral(firstOrd(p.config, t)), raiseInstr(p)])
   case m
   of mUnaryMinusI:
     putIntoDest(p, d, e, "((NI$2)-($1))" % [rdLoc(a), rope(getSize(p.config, t) * 8)])
@@ -817,12 +825,12 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
     if op.magic == mNot:
       linefmt(p, cpsStmts,
-              "if ($1) #raiseFieldError($2);$n",
-              [rdLoc(test), strLit])
+              "if ($1){ #raiseFieldError($2); $3}$n",
+              [rdLoc(test), strLit, raiseInstr(p)])
     else:
       linefmt(p, cpsStmts,
-              "if (!($1)) #raiseFieldError($2);$n",
-              [rdLoc(test), strLit])
+              "if (!($1)){ #raiseFieldError($2); $3}$n",
+              [rdLoc(test), strLit, raiseInstr(p)])
 
 proc genCheckedRecordField(p: BProc, e: PNode, d: var TLoc) =
   if optFieldCheck in p.options:
@@ -861,11 +869,11 @@ proc genArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
       # semantic pass has already checked for const index expressions
       if firstOrd(p.config, ty) == 0:
         if (firstOrd(p.config, b.t) < firstOrd(p.config, ty)) or (lastOrd(p.config, b.t) > lastOrd(p.config, ty)):
-          linefmt(p, cpsStmts, "if ((NU)($1) > (NU)($2)) #raiseIndexError2($1, $2);$n",
-                  [rdCharLoc(b), intLiteral(lastOrd(p.config, ty))])
+          linefmt(p, cpsStmts, "if ((NU)($1) > (NU)($2)){ #raiseIndexError2($1, $2); $3}$n",
+                  [rdCharLoc(b), intLiteral(lastOrd(p.config, ty)), raiseInstr(p)])
       else:
-        linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3) #raiseIndexError3($1, $2, $3);$n",
-                [rdCharLoc(b), first, intLiteral(lastOrd(p.config, ty))])
+        linefmt(p, cpsStmts, "if ($1 < $2 || $1 > $3){ #raiseIndexError3($1, $2, $3); $4}$n",
+                [rdCharLoc(b), first, intLiteral(lastOrd(p.config, ty)), raiseInstr(p)])
     else:
       let idx = getOrdValue(y)
       if idx < firstOrd(p.config, ty) or idx > lastOrd(p.config, ty):
@@ -888,19 +896,19 @@ proc genBoundsCheck(p: BProc; arr, a, b: TLoc) =
   of tyOpenArray, tyVarargs:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))) #raiseIndexError();$n",
-      [rdLoc(a), rdLoc(b), rdLoc(arr)])
+      "((NU)($1) >= (NU)($3Len_0) || (NU)($2) >= (NU)($3Len_0))){ #raiseIndexError(); $4}$n",
+      [rdLoc(a), rdLoc(b), rdLoc(arr), raiseInstr(p)])
   of tyArray:
     let first = intLiteral(firstOrd(p.config, ty))
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "($2-$1 < -1 || $1 < $3 || $1 > $4 || $2 < $3 || $2 > $4)) #raiseIndexError();$n",
-      [rdCharLoc(a), rdCharLoc(b), first, intLiteral(lastOrd(p.config, ty))])
+      "($2-$1 < -1 || $1 < $3 || $1 > $4 || $2 < $3 || $2 > $4)){ #raiseIndexError(); $5}$n",
+      [rdCharLoc(a), rdCharLoc(b), first, intLiteral(lastOrd(p.config, ty)), raiseInstr(p)])
   of tySequence, tyString:
     linefmt(p, cpsStmts,
       "if ($2-$1 != -1 && " &
-      "((NU)($1) >= (NU)$3 || (NU)($2) >= (NU)$3)) #raiseIndexError();$n",
-      [rdLoc(a), rdLoc(b), lenExpr(p, arr)])
+      "((NU)($1) >= (NU)$3 || (NU)($2) >= (NU)$3)){ #raiseIndexError(); $4}$n",
+      [rdLoc(a), rdLoc(b), lenExpr(p, arr), raiseInstr(p)])
   else: discard
 
 proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
@@ -908,8 +916,8 @@ proc genOpenArrayElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   initLocExpr(p, x, a)
   initLocExpr(p, y, b) # emit range check:
   if optBoundsCheck in p.options:
-    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)) #raiseIndexError2($1,$2Len_0-1);$n",
-            [rdLoc(b), rdLoc(a)]) # BUGFIX: ``>=`` and not ``>``!
+    linefmt(p, cpsStmts, "if ((NU)($1) >= (NU)($2Len_0)){ #raiseIndexError2($1,$2Len_0-1); $3}$n",
+            [rdLoc(b), rdLoc(a), raiseInstr(p)]) # BUGFIX: ``>=`` and not ``>``!
   inheritLocation(d, a)
   putIntoDest(p, d, n,
               ropecg(p.module, "$1[$2]", [rdLoc(a), rdCharLoc(b)]), a.storage)
@@ -924,12 +932,12 @@ proc genSeqElem(p: BProc, n, x, y: PNode, d: var TLoc) =
   if optBoundsCheck in p.options:
     if ty.kind == tyString and (not defined(nimNoZeroTerminator) or optLaxStrings in p.options):
       linefmt(p, cpsStmts,
-              "if ((NU)($1) > (NU)$2) #raiseIndexError2($1,$2);$n",
-              [rdLoc(b), lenExpr(p, a)])
+              "if ((NU)($1) > (NU)$2){ #raiseIndexError2($1,$2); $3}$n",
+              [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
     else:
       linefmt(p, cpsStmts,
-              "if ((NU)($1) >= (NU)$2) #raiseIndexError2($1,$2-1);$n",
-              [rdLoc(b), lenExpr(p, a)])
+              "if ((NU)($1) >= (NU)$2){ #raiseIndexError2($1,$2-1); $3}$n",
+              [rdLoc(b), lenExpr(p, a), raiseInstr(p)])
   if d.k == locNone: d.storage = OnHeap
   if skipTypes(a.t, abstractVar).kind in {tyRef, tyPtr}:
     a.r = ropecg(p.module, "(*$1)", [a.r])
@@ -1938,21 +1946,33 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     # C code; plus it's the right thing to do for closures:
     genSomeCast(p, e, d)
 
-proc genRangeChck(p: BProc, n: PNode, d: var TLoc, magic: string) =
+proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   var dest = skipTypes(n.typ, abstractVar)
+  initLocExpr(p, n[0], a)
   if optRangeCheck notin p.options or (dest.kind in {tyUInt..tyUInt64} and
       checkUnsignedConversions notin p.config.legacyFeatures):
-    initLocExpr(p, n[0], a)
-    putIntoDest(p, d, n, "(($1) ($2))" %
-        [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
+    discard "no need to generate a check because it was disabled"
   else:
-    let mm = if dest.kind in {tyUInt32, tyUInt64, tyUInt}: "chckRangeU" else: magic
-    initLocExpr(p, n[0], a)
-    putIntoDest(p, d, lodeTyp dest, ropecg(p.module, "(($1)#$5($2, $3, $4))", [
-        getTypeDesc(p.module, dest), rdCharLoc(a),
-        genLiteral(p, n[1], dest), genLiteral(p, n[2], dest),
-        mm]), a.storage)
+    let raiser =
+      case skipTypes(n.typ, abstractVarRange).kind
+      of tyUInt..tyUInt64, tyChar: "raiseRangeErrorU"
+      of tyFloat..tyFloat128: "raiseRangeErrorF"
+      else: "raiseRangeErrorI"
+    discard cgsym(p.module, raiser)
+    # This seems to be bug-compatible with Nim version 1 but what we
+    # should really do here is to check if uint64Value < high(int)
+    let boundaryCast =
+      if n[0].typ.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
+        "(NI64)"
+      else:
+        ""
+    # emit range check:
+    linefmt(p, cpsStmts, "if ($6($1) < $2 || $6($1) > $3){ $4($1, $2, $3); $5}$n",
+      [rdCharLoc(a), genLiteral(p, n[1], dest), genLiteral(p, n[2], dest),
+      raiser, raiseInstr(p), boundaryCast])
+  putIntoDest(p, d, n, "(($1) ($2))" %
+      [getTypeDesc(p.module, dest), rdCharLoc(a)], a.storage)
 
 proc genConv(p: BProc, e: PNode, d: var TLoc) =
   let destType = e.typ.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink})
@@ -2004,9 +2024,9 @@ proc binaryFloatArith(p: BProc, e: PNode, d: var TLoc, m: TMagic) =
                               [opr[m], rdLoc(a), rdLoc(b),
                               getSimpleTypeDesc(p.module, e[1].typ)]))
     if optNaNCheck in p.options:
-      linefmt(p, cpsStmts, "#nanCheck($1);$n", [rdLoc(d)])
+      linefmt(p, cpsStmts, "if ($1 != $1){ #raiseFloatInvalidOp(); $2}$n", [rdLoc(d), raiseInstr(p)])
     if optInfCheck in p.options:
-      linefmt(p, cpsStmts, "#infCheck($1);$n", [rdLoc(d)])
+      linefmt(p, cpsStmts, "if ($1 != 0.0 && $1*0.5 == $1) { #raiseFloatOverflow($1); $2}$n", [rdLoc(d), raiseInstr(p)])
   else:
     binaryArith(p, e, d, m)
 
@@ -2122,10 +2142,8 @@ proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   of mSwap: genSwap(p, e, d)
   of mInc, mDec:
     const opr: array[mInc..mDec, string] = ["+=", "-="]
-    const fun64: array[mInc..mDec, string] = ["addInt64",
-                                               "subInt64"]
-    const fun: array[mInc..mDec, string] = ["addInt",
-                                             "subInt"]
+    const fun64: array[mInc..mDec, string] = ["nimAddInt64", "nimSubInt64"]
+    const fun: array[mInc..mDec, string] = ["nimAddInt","nimSubInt"]
     let underlying = skipTypes(e[1].typ, {tyGenericInst, tyAlias, tySink, tyVar, tyLent, tyRange})
     if optOverflowCheck notin p.options or underlying.kind in {tyUInt..tyUInt64}:
       binaryStmt(p, e, d, opr[op])
@@ -2432,11 +2450,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
                    else:
                      genTypeInfo(p.module, dest, n.info)
     if nilCheck != nil:
-      linefmt(p, cpsStmts, "if ($1) #chckObj($2, $3);$n",
-              [nilCheck, r, checkFor])
+      linefmt(p, cpsStmts, "if ($1 && !#isObj($2, $3)){ #raiseObjectConversionError(); $4}$n",
+              [nilCheck, r, checkFor, raiseInstr(p)])
     else:
-      linefmt(p, cpsStmts, "#chckObj($1, $2);$n",
-              [r, checkFor])
+      linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); $3}$n",
+              [r, checkFor, raiseInstr(p)])
   if n[0].typ.kind != tyObject:
     putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
@@ -2629,9 +2647,9 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     expr(p, n[1][0], d)
   of nkObjDownConv: downConv(p, n, d)
   of nkObjUpConv: upConv(p, n, d)
-  of nkChckRangeF: genRangeChck(p, n, d, "chckRangeF")
-  of nkChckRange64: genRangeChck(p, n, d, "chckRange64")
-  of nkChckRange: genRangeChck(p, n, d, "chckRange")
+  of nkChckRangeF: genRangeChck(p, n, d)
+  of nkChckRange64: genRangeChck(p, n, d)
+  of nkChckRange: genRangeChck(p, n, d)
   of nkStringToCString: convStrToCStr(p, n, d)
   of nkCStringToString: convCStrToStr(p, n, d)
   of nkLambdaKinds:

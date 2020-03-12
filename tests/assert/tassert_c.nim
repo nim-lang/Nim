@@ -8,7 +8,7 @@ tassert_c.nim(35)        tassert_c
 tassert_c.nim(34)        foo
 assertions.nim(29)       failedAssertImpl
 assertions.nim(22)       raiseAssert
-fatal.nim(55)            sysFatal"""
+fatal.nim(49)            sysFatal"""
 
 proc tmatch(x, p: string): bool =
   var i = 0

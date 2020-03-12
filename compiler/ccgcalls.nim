@@ -557,6 +557,18 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(~"];$n")
     line(p, cpsStmts, pl)
 
+proc canRaiseDisp(p: BProc; n: PNode): bool =
+  # we assume things like sysFatal cannot raise themselves
+  if n.kind == nkSym and sfAlwaysReturn in n.sym.flags:
+    result = false
+  elif optPanics in p.config.globalOptions or
+      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
+    # we know we can be strict:
+    result = canRaise(n)
+  else:
+    # we have to be *very* conservative:
+    result = canRaiseConservative(n)
+
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
   if e[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
@@ -567,7 +579,7 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, nil, e, d)
   postStmtActions(p)
-  if p.config.exc == excGoto and canRaise(e[0]):
+  if p.config.exc == excGoto and canRaiseDisp(p, e[0]):
     raiseExit(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
@@ -580,5 +592,5 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
-  if p.config.exc == excGoto and canRaise(ri[0]):
+  if p.config.exc == excGoto and canRaiseDisp(p, ri[0]):
     raiseExit(p)

@@ -706,6 +706,22 @@ proc finallyActions(p: BProc) =
     if finallyBlock != nil:
       genSimpleBlock(p, finallyBlock[0])
 
+proc raiseInstr(p: BProc): Rope =
+  if p.config.exc == excGoto:
+    let L = p.nestedTryStmts.len
+    if L == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      result = ropecg(p.module, "goto BeforeRet_;$n", [])
+    else:
+      # raise inside an 'except' must go to the finally block,
+      # raise outside an 'except' block must go to the 'except' list.
+      result = ropecg(p.module, "goto LA$1_;$n",
+        [p.nestedTryStmts[L-1].label])
+      # + ord(p.nestedTryStmts[L-1].inExcept)])
+  else:
+    result = nil
+
 proc genRaiseStmt(p: BProc, t: PNode) =
   if p.config.exc == excCpp:
     discard cgsym(p.module, "popCurrentExceptionEx")
@@ -733,18 +749,9 @@ proc genRaiseStmt(p: BProc, t: PNode) =
       line(p, cpsStmts, ~"throw;$n")
     else:
       linefmt(p, cpsStmts, "#reraiseException();$n", [])
-  if p.config.exc == excGoto:
-    let L = p.nestedTryStmts.len
-    if L == 0:
-      p.flags.incl beforeRetNeeded
-      # easy case, simply goto 'ret':
-      lineCg(p, cpsStmts, "goto BeforeRet_;$n", [])
-    else:
-      # raise inside an 'except' must go to the finally block,
-      # raise outside an 'except' block must go to the 'except' list.
-      lineCg(p, cpsStmts, "goto LA$1_;$n",
-        [p.nestedTryStmts[L-1].label])
-      # + ord(p.nestedTryStmts[L-1].inExcept)])
+  let gotoInstr = raiseInstr(p)
+  if gotoInstr != nil:
+    line(p, cpsStmts, gotoInstr)
 
 template genCaseGenericBranch(p: BProc, b: PNode, e: TLoc,
                           rangeFormat, eqFormat: FormatStr, labl: TLabel) =
@@ -1009,14 +1016,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
 
     genSimpleBlock(p, t[^1][0])
 
-proc bodyCanRaise(n: PNode): bool =
+proc bodyCanRaise(p: BProc; n: PNode): bool =
   case n.kind
   of nkCallKinds:
-    result = canRaise(n[0])
+    result = canRaiseDisp(p, n[0])
     if not result:
       # also check the arguments:
       for i in 1 ..< n.len:
-        if bodyCanRaise(n[i]): return true
+        if bodyCanRaise(p, n[i]): return true
   of nkRaiseStmt:
     result = true
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
@@ -1024,21 +1031,23 @@ proc bodyCanRaise(n: PNode): bool =
     result = false
   else:
     for i in 0 ..< safeLen(n):
-      if bodyCanRaise(n[i]): return true
+      if bodyCanRaise(p, n[i]): return true
     result = false
 
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
-  if not bodyCanRaise(t):
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  inc p.labels
+  let lab = p.labels
+  p.nestedTryStmts.add((fin, false, Natural lab))
+
+  if not bodyCanRaise(p, t):
     # optimize away the 'try' block:
     expr(p, t[0], d)
-    if t.len > 1 and t[^1].kind == nkFinally:
-      genStmts(p, t[^1][0])
+    linefmt(p, cpsStmts, "LA$1_: ;$n", [lab])
+    if fin != nil:
+      genStmts(p, fin[0])
+    discard pop(p.nestedTryStmts)
     return
-
-  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  inc p.labels, 2
-  let lab = p.labels-1
-  p.nestedTryStmts.add((fin, false, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
   p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErr$1_;$n", [lab]))
@@ -1099,7 +1108,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   #linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
-    if not bodyCanRaise(t[i][0]):
+    if not bodyCanRaise(p, t[i][0]):
       # this is an important optimization; most destroy blocks are detected not to raise an
       # exception and so we help the C optimizer by not mutating nimErr_ pointlessly:
       genStmts(p, t[i][0])
@@ -1380,8 +1389,8 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
     genCaseObjDiscMapping(p, e[0], t, field, oldVal)
     genCaseObjDiscMapping(p, e[1], t, field, newVal)
     lineCg(p, cpsStmts,
-          "#nimFieldDiscriminantCheckV2($1, $2);$n",
-          [rdLoc(oldVal), rdLoc(newVal)])
+          "if ($1 != $2) { #raiseObjectCaseTransition(); $3}$n",
+          [rdLoc(oldVal), rdLoc(newVal), raiseInstr(p)])
   else:
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
   genAssignment(p, a, tmp, {})

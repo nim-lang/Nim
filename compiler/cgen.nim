@@ -276,6 +276,7 @@ proc postStmtActions(p: BProc) {.inline.} =
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
+proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
   m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
