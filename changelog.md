@@ -161,6 +161,10 @@ echo f
   errors like `IndexError` or `OverflowError` into fatal errors that **cannot**
   be caught via Nim's `try` statement. `--panics:on` can improve the
   runtime efficiency and code size of your program significantly.
+- The compiler now warns about inheriting directly from `system.Exception` as
+  this is **very bad** style. You should inherit from `ValueError`, `IOError`,
+  `OSError` or from a different specific exception type that cannot be confused
+  with a `Defect`.
 
 
 ## Bugfixes

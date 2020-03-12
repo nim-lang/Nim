@@ -847,6 +847,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
         # specialized object, there will be second check after instantiation
         # located in semGeneric.
         if concreteBase.kind == tyObject:
+          if concreteBase.sym != nil and concreteBase.sym.magic == mException and
+              sfSystemModule notin c.module.flags:
+            message(c.config, n.info, warnInheritFromException, "")
           addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
