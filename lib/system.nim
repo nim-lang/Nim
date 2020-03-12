@@ -2221,7 +2221,10 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include "system/arithm"
+  when defined(nimNewIntegerOps):
+    include "system/integerops"
+  else:
+    include "system/arithm"
   {.pop.}
 
 

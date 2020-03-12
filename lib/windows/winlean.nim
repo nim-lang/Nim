@@ -128,12 +128,10 @@ const
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
-when useWinUnicode:
-  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
-else:
-  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "GetVersionExA", sideEffect.}
+proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
+proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetVersionExA", sideEffect.}
 
 proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion", sideEffect.}
 

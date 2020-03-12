@@ -591,7 +591,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
               # move the variable declaration to the top of the frame:
               c.addTopVar v
               # make sure it's destroyed at the end of the proc:
-              if not isUnpackedTuple(v):
+              if not isUnpackedTuple(v) and sfThread notin v.sym.flags:
+                # do not destroy thread vars for now at all for consistency.
                 c.destroys.add genDestroy(c, v)
               elif c.inLoop > 0:
                 # unpacked tuple needs reset at every loop iteration

@@ -252,10 +252,10 @@ proc toSocket(stdoutSocket: Socket) {.gcsafe.} =
     let res = results.recv()
     case res.section
     of ideNone: break
-    of ideMsg: stdoutSocket.send(res.doc)
-    of ideKnown: stdoutSocket.send($(res.quality == 1))
-    of ideProject: stdoutSocket.send(res.filePath)
-    else: stdoutSocket.send($res)
+    of ideMsg: stdoutSocket.send(res.doc & "\c\L")
+    of ideKnown: stdoutSocket.send($(res.quality == 1) & "\c\L")
+    of ideProject: stdoutSocket.send(res.filePath & "\c\L")
+    else: stdoutSocket.send($res & "\c\L")
 
 proc toEpc(client: Socket; uid: BiggestInt) {.gcsafe.} =
   var list = newSList()

@@ -90,6 +90,7 @@ type                          # please make sure we have under 32 options
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
+    optPanics                 # turn panics (sysFatal) into a process termination
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -509,15 +510,17 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
   result = conf.outDir / conf.outFile
-  if dirExists(result.string):
-    result.string.add ".out"
+  when defined(posix):
+    if dirExists(result.string):
+      result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
   createDir conf.outDir
   result = conf.outDir / conf.outFile
-  if dirExists(result.string):
-    result.string.add ".out"
+  when defined(posix):
+    if dirExists(result.string):
+      result.string.add ".out"
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.

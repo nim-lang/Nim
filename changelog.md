@@ -31,6 +31,10 @@
   and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
   behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
+- `times.parse` now only uses input to compute its result, and not `now`:
+  `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
+  `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
+  used on 29th, 30th, 31st of each month.
 
 ### Breaking changes in the compiler
 
@@ -40,6 +44,10 @@
 - The `{.dynlib.}` pragma is now required for exporting symbols when making
   shared objects on POSIX and macOS, which make it consistent with the behavior
   on Windows.
+- The compiler is now more strict about type conversions concerning proc
+  types: Type conversions cannot be used to hide `.raise` effects or side
+  effects, instead a `cast` must be used. With the flag `--useVersion:1.0` the
+  old behaviour is emulated.
 
 
 ## Library additions
@@ -69,7 +77,8 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-
+- Added `expectIdent` to the `macros` module.
+- Added `os.isValidFilename` that returns `true` if `filename` argument is valid for crossplatform use.
 
 - Added a `with` macro for easy function chaining that's available
   everywhere, there is no need to concern your APIs with returning the first argument
@@ -95,11 +104,8 @@ echo f
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
 
-
 ## Library changes
 
-- `asynchttpserver` added an iterator that allows the request body to be read in
-   chunks of data when new server "stream" option is set to true.
 - `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
   and only returns once all pending async operations are guaranteed to have completed.
 - `asyncdispatch.drain` now consistently uses the passed timeout value for all
@@ -117,6 +123,9 @@ echo f
   serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
+- `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
+  empty. This was required for intuitive behaviour of the strscans module
+  (see bug #13605).
 
 
 ## Language additions
@@ -152,6 +161,14 @@ echo f
 - The compiler now inferes "sink parameters". To disable this for a specific routine,
   annotate it with `.nosinks`. To disable it for a section of code, use
   `{.push sinkInference: off.}`...`{.pop.}`.
+- The compiler now supports a new switch `--panics:on` that turns runtime
+  errors like `IndexError` or `OverflowError` into fatal errors that **cannot**
+  be caught via Nim's `try` statement. `--panics:on` can improve the
+  runtime efficiency and code size of your program significantly.
+- The compiler now warns about inheriting directly from `system.Exception` as
+  this is **very bad** style. You should inherit from `ValueError`, `IOError`,
+  `OSError` or from a different specific exception type that inherits from
+  `CatchableError` and cannot be confused with a `Defect`.
 
 
 ## Bugfixes

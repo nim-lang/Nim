@@ -40,6 +40,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric
+  incl result.flags, sfAlwaysReturn
 
 proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
   case obj.kind
@@ -101,3 +102,4 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric
+  incl result.flags, sfAlwaysReturn
