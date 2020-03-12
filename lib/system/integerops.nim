@@ -17,7 +17,7 @@ proc raiseOverflow {.compilerproc, noinline.} =
 proc raiseDivByZero {.compilerproc, noinline.} =
   sysFatal(DivByZeroError, "division by zero")
 
-{.pragma nimbaseH: importc, nodecl, noSideEffect, compilerproc.}
+{.pragma: nimbaseH, importc, nodecl, noSideEffect, compilerproc.}
 
 when defined(gcc) or defined(clang):
   # take the #define from nimbase.h

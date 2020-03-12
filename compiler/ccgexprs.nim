@@ -1963,7 +1963,7 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     # This seems to be bug-compatible with Nim version 1 but what we
     # should really do here is to check if uint64Value < high(int)
     let boundaryCast =
-      if n[0].typ.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt64}:
+      if n[0].typ.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
         "(NI64)"
       else:
         ""
