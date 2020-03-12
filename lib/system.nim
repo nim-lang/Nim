@@ -2682,10 +2682,10 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
-macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  varargsLenImpl(x)
 
 when false:
   template eval*(blk: typed): typed =
