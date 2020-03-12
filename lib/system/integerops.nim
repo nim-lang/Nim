@@ -17,31 +17,26 @@ proc raiseOverflow {.compilerproc, noinline.} =
 proc raiseDivByZero {.compilerproc, noinline.} =
   sysFatal(DivByZeroError, "division by zero")
 
+{.pragma nimbaseH: importc, nodecl, noSideEffect, compilerproc.}
+
 when defined(gcc) or defined(clang):
   # take the #define from nimbase.h
-  proc nimAddInt(a, b: int, res: ptr int): bool {.
-    importc, nodecl, noSideEffect, compilerproc.}
-  proc nimSubInt(a, b: int, res: ptr int): bool {.
-    importc, nodecl, noSideEffect, compilerproc.}
-  proc nimMulInt(a, b: int, res: ptr int): bool {.
-    importc, nodecl, noSideEffect, compilerproc.}
 
-  proc nimAddInt64(a, b: int64; res: ptr int64): bool {.
-    importc, nodecl, noSideEffect, compilerproc.}
-  proc nimSubInt64(a, b: int64; res: ptr int64): bool {.
-    importc, nodecl, noSideEffect, compilerproc.}
-  proc nimMulInt64(a, b: int64; res: ptr int64): bool {.
-    importc, nodecl, noSideEffect, compilerproc.}
+  proc nimAddInt(a, b: int, res: ptr int): bool {.nimbaseH.}
+  proc nimSubInt(a, b: int, res: ptr int): bool {.nimbaseH.}
+  proc nimMulInt(a, b: int, res: ptr int): bool {.nimbaseH.}
+
+  proc nimAddInt64(a, b: int64; res: ptr int64): bool {.nimbaseH.}
+  proc nimSubInt64(a, b: int64; res: ptr int64): bool {.nimbaseH.}
+  proc nimMulInt64(a, b: int64; res: ptr int64): bool {.nimbaseH.}
 
 # unary minus and 'abs' not required here anymore and are directly handled
 # in the code generator.
 # 'nimModInt' does exist in nimbase.h without check as we moved the
 # check for 0 to the codgen.
-proc nimModInt(a, b: int64; res: ptr int64): bool {.
-  importc, nodecl, noSideEffect, compilerproc.}
+proc nimModInt(a, b: int; res: ptr int): bool {.nimbaseH.}
 
-proc nimModInt64(a, b: int64; res: ptr int64): bool {.
-  importc, nodecl, noSideEffect, compilerproc.}
+proc nimModInt64(a, b: int64; res: ptr int64): bool {.nimbaseH.}
 
 # Platform independent versions.
 
