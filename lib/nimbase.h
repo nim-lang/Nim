@@ -562,9 +562,9 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
   #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
 #else
   /* map it to the 'long long' variant */
-  #define nimAddInt(a, b, res) __builtin_saddll_overflow(a, b, res)
-  #define nimSubInt(a, b, res) __builtin_ssubll_overflow(a, b, res)
-  #define nimMulInt(a, b, res) __builtin_smulll_overflow(a, b, res)
+  #define nimAddInt(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
+  #define nimSubInt(a, b, res) __builtin_ssubll_overflow(a, b, (long long int*)res)
+  #define nimMulInt(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
 #endif
 
 #endif /* NIMBASE_H */
