@@ -153,7 +153,8 @@ proc breakCycles(s: Cell; desc: PNimType) =
                     else: colYellow
   atomicInc markerGeneration
   when traceCollector:
-    cprintf("[BreakCycles] starting: %p %s trace proc %p\n", s, desc.name, desc.traceImpl)
+    cprintf("[BreakCycles] starting: %p %s RC %ld trace proc %p\n",
+      s, desc.name, s.rc shr rcShift, desc.traceImpl)
 
   var j: GcEnv
   init j.traceStack
@@ -168,16 +169,18 @@ proc breakCycles(s: Cell; desc: PNimType) =
       t.setColor markerColor
       trace(p, desc, j)
       when traceCollector:
-        cprintf("[BreakCycles] followed: %p\n", t)
+        cprintf("[BreakCycles] followed: %p RC %ld\n", t, t.rc shr rcShift)
     else:
       if (t.rc shr rcShift) > 0:
         dec t.rc, rcIncrement
         # mark as a link that the produced destructor does not have to follow:
         u[] = nil
         when traceCollector:
-          cprintf("[BreakCycles] niled out: %p\n", t)
+          cprintf("[BreakCycles] niled out: %p RC %ld\n", t, t.rc shr rcShift)
       else:
-        cprintf("[Bug] %p %s\n", t, desc.name)
+        # anyhow as a link that the produced destructor does not have to follow:
+        u[] = nil
+        cprintf("[Bug] %p %s RC %ld\n", t, desc.name, t.rc shr rcShift)
   deinit j.traceStack
 
 proc thinout*[T](x: ref T) {.inline.} =
