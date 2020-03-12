@@ -998,10 +998,11 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
       f.write escapeJson(x)
 
   proc cfiles(conf: ConfigRef; f: File; buf: var string; clist: CfileList, isExternal: bool) =
+    var comma = false
     for i, it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(conf, it)
-      if i > 0: lit ",\L"
+      if comma: lit ",\L"; comma = false
       lit "["
       str it.cname.string
       lit ", "
