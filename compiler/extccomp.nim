@@ -1002,7 +1002,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     for i, it in clist:
       if CfileFlag.Cached in it.flags: continue
       let compileCmd = getCompileCFileCmd(conf, it)
-      if comma: lit ",\L"; comma = false
+      if comma: lit ",\L" else: comma = true
       lit "["
       str it.cname.string
       lit ", "
