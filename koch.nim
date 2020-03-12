@@ -475,7 +475,7 @@ proc hostInfo(): string =
 
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
-  echo "runCI:", cmd
+  echo "runCI: ", cmd
   echo hostInfo()
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
@@ -494,13 +494,14 @@ proc runCI(cmd: string) =
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
-    when defined(windows):
-      # note: will be over-written below
-      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
+    when false:
+      when defined(windows):
+        # note: will be over-written below
+        execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
-    # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
-    block: # CT FFI
+      # main bottleneck here
+      execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    when false: # CT FFI
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "./bin/nim.ctffi"
