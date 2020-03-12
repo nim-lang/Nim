@@ -500,7 +500,7 @@ proc runCI(cmd: string) =
 
     # main bottleneck here
     execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
-    when false: # CT FFI
+    block: # CT FFI
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "./bin/nim.ctffi"
