@@ -552,9 +552,9 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 /* these exist because we cannot have .compilerProcs that are importc'ed
    by a different name */
 
-#define nimAddInt64(a, b, res) __builtin_saddll_overflow(a, b, res)
-#define nimSubInt64(a, b, res) __builtin_ssubll_overflow(a, b, res)
-#define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, res)
+#define nimAddInt64(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
+#define nimSubInt64(a, b, res) __builtin_ssubll_overflow(a, b, (long long int*)res)
+#define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
 
 #if NIM_INTBITS == 32
   #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
