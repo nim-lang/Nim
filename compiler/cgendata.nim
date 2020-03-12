@@ -118,7 +118,7 @@ type
     modules*: seq[BModule]     # list of all compiled modules
     modulesClosed*: seq[BModule] # list of the same compiled modules, but in the order they were closed
     forwardedProcs*: seq[PSym] # proc:s that did not yet have a body
-    generatedHeader*: BModule
+    generatedHeader*: BModule  # dark arts
     typeInfoMarker*: TypeCacheWithOwner
     config*: ConfigRef
     graph*: ModuleGraph
@@ -137,9 +137,9 @@ type
 
   TCGen = object of PPassContext # represents a C source file
     s*: TCFileSections        # sections of the C file
-    flags*: set[CodegenFlag]
-    module*: PSym
-    filename*: AbsoluteFile
+    flags*: set[CodegenFlag]  # i think this is for the semaphore impl
+    module*: PSym             # the module from whence we came
+    filename*: AbsoluteFile   # no idea what this could be
     cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
     tmpBase*: Rope            # base for temp identifier generation
@@ -154,18 +154,17 @@ type
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
     inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
-    dataCache*: TNodeTable
+    dataCache*: TNodeTable    # no one is really sure wtf this is
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
-    injectStmt*: Rope
+    injectStmt*: Rope         # i think this has something to do with iv drugs
     sigConflicts*: CountTable[SigHash]
-    g*: BModuleList
-    ndi*: NdiFile             #
+    g*: BModuleList           # the complete module graph
+    ndi*: NdiFile             # well, duh, who doesn't know what ndi is?
     mark*: SnippetMark        # where we are in writing the file/snippets
-    snippets* {.deprecated.}: Snippets
 
   Snippets* = seq[Snippet]
   SqlId* {.deprecated.} = int64
@@ -237,17 +236,3 @@ iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m
-
-when false:
-  # XXX i don't think we'll use this
-  proc addSnippet*(g: ModuleGraph; module: var TCGen;
-                   section: TCFileSection; rope: Rope) =
-    # i want a pnode here
-    module.s[section].add rope
-    var snippet =
-      if not snippetAlreadyStored(g, module, rope):
-        #raise newException(Defect, "BTDT")
-        storeSnippet(module, rope)
-      else:
-        loadSnippet(module, rope)
-    module.snippets.add snippet

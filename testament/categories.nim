@@ -79,17 +79,18 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         editedTest incrementalOn
         if r.passed != oldPassed+1: break
 
-  for file in tooltests:
-    let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-    removeDir(nimcache)
+  when false:
+    for file in tooltests:
+      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+      removeDir(nimcache)
 
-    let oldPassed = r.passed
-    test writeOnly
+      let oldPassed = r.passed
+      test writeOnly
 
-    if r.passed == oldPassed+1:
-      test readOnly
-      if r.passed == oldPassed+2:
-        test readOnly & "-d:nimBackendAssumesChange "
+      if r.passed == oldPassed+1:
+        test readOnly
+        if r.passed == oldPassed+2:
+          test readOnly & "-d:nimBackendAssumesChange "
 
 # --------------------- flags tests -------------------------------------------
 

@@ -15,7 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, ccgmerge, aliases,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
-  injectdestructors, rod
+  injectdestructors, rod, strformat
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -54,6 +54,7 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   var ms = getModule(s)
   result = m.g.modules[ms.position]
   # XXX: cannot do the IC mod here because sometimes the modules are closed
+
   # This position might need a patch for incremental recompilations.
   # tables_string_int.nim.c
   # tables_string_string.nim.c
@@ -779,7 +780,9 @@ proc cgsym(m: BModule, name: string): Rope =
     case sym.kind
     of skProc, skFunc, skMethod, skConverter, skIterator:
       # probably the only place where we can universally catch rope changes
-      # echo "--> ", name
+      #if containsOrIncl(m.declaredProtos, sym.id):
+      when not defined(release):
+        echo "------> magic compiler proc: ", name
       genProc(m, sym)
     of skVar, skResult, skLet:
       # another place we probably want to cache our symbols
@@ -1230,8 +1233,16 @@ proc genProc(m: BModule, prc: PSym) =
   var
     cachable = prc.owner != nil and prc.owner.kind == skModule
 
-  echo "cachable: ", cachable, "\t", prc.id, "\t", prc.name.s, "\t", m.module.id
-  when false:
+  proc yewpad(m: BModule; s: PSym): string =
+    result = $s.id & " " & $s.name.s.mangle
+    result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
+
+  when true:
+    # omit compiler procs with an owner?
+    if sfCompilerProc in prc.flags and prc.owner != nil:
+      cachable = false
+
+  when true:
     # don't cache compiler procs
     if lfImportCompilerProc in prc.loc.flags:
       cachable = false
@@ -1248,34 +1259,88 @@ proc genProc(m: BModule, prc: PSym) =
   # we won't write it unless we aren't reading it
   writecache = writecache and not readcache
 
+  when not defined(release):
+    echo "==> ", yewpad(m, prc)
+
   # if we're reading, load the snippets from the db
   if readcache:
     if not containsOrIncl(m.declaredThings, prc.id):
-      echo "< ", m.cfilename, "-> ", prc.name.s
-      echo "\t", $prc.sigHash, "\t", m.module.id
+      let
+        # find the source module that defined the proc
+        #q = findPendingModule(m, prc)
+        q = m
+      var
+        m = findPendingModule(m, prc)
+      if m == nil:
+        m = q
+      #if m != nil and m != q:
+        if not containsOrIncl(q.declaredProtos, prc.id):
+          useHeader(m, prc)
+          fillProcLoc(m, prc.ast[namePos])
+          genProcPrototype(m, prc)
+      m = q
+      when not defined(release):
+        echo "< ", m.cfilename, "\t", prc.name.s
+        echo "\t", $prc.sigHash, "\t", m.module.id
       #if lfNoDecl in prc.loc.flags:
       #  fillProcLoc(m, prc.ast[namePos])
+
       when false:
-        if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc}:
+        # XXX: this stuff is wrong
+        useHeader(m, prc)
+        when true:
+          if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc}:
+            # then generate a prototype for it in the header
+            genProcPrototype(m, prc)
+        else:
           # these are taken care of in proc prototype...
           #   m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-          # then generate a prototype for it in the header
-          genProcPrototype(m.g.generatedHeader, prc)
-      else:
-        #genProcPrototype(m.g.generatedHeader, prc)
-        genProcPrototype(m, prc)
-      # this will crash if there are no snippets
+          if m.g.generatedHeader != nil:
+            genProcPrototype(m.g.generatedHeader, prc)
+
       for snippet in loadSnippets(m.g.graph, m, prc):
         #echo "----"
-        echo "\t", snippet.section, "\t", snippet.module
+        when not defined(release):
+          echo "\t", snippet.section, "\t", snippet.module
         # if the snippet writes to proc headers, mark the proc as declared
-        when false:
+        when true:
           if snippet.section == cfsProcHeaders:
             m.declaredProtos.incl prc.id
+        when not defined(release):
+          m.s[snippet.section].add fmt"""
+
+/*
+cachable: cache {cachable} id {prc.id} module id {m.module.id}
+owner nil: {prc.owner == nil}
+owner kind: {prc.owner.kind}
+compiler proc  loc: {lfImportCompilerProc in prc.loc.flags}
+compiler proc flag: {sfCompilerProc in prc.flags}
+*/
+
+          """.rope
+        when not defined(release):
+          m.s[snippet.section].add fmt"""
+
+/*
+{prc.name.s}
+{yewpad(m, prc)}
+=====================
+cached data from {snippet.section}
+module: {m.cfilename}
+flags: {prc.flags}
+  loc: {prc.loc.flags}
+*/
+
+          """.rope
         m.s[snippet.section].add snippet.code
-        #echo "\t", snippet.code
+        when not defined(release):
+          m.s[snippet.section].add "/* end */\n".rope
+        #when not defined(release):
+        #  echo "\t", snippet.code
     else:
-      echo "  ", m.cfilename, "-> ", prc.name.s
+      # stale scenario; we have it, we know we have it
+      when not defined(release):
+        echo "  ", m.cfilename, "\t", prc.name.s
 
     # we're missing a side-effect on reads that produces a proc-init!
 
@@ -1292,16 +1357,22 @@ proc genProc(m: BModule, prc: PSym) =
       mark: SnippetMark
     # set the marks to monitor for new snippets
     if writecache:
-      echo "> ", m.cfilename, "-> ", prc.name.s
-      echo "\t", $prc.sigHash, "\t", m.module.id
+      when not defined(release):
+        echo "> ", m.cfilename, "\t", prc.name.s
+        echo "\t", $prc.sigHash, "\t", m.module.id
       m.setMark(prc)
       mark = m.mark
 
-    if not cachable:
-      echo "--", m.cfilename, "-> ", prc.name.s
+    when not defined(release):
+      if not cachable:
+        echo "--", m.cfilename, "\t", prc.name.s
 
     # the real proc generator, and it may define forwards
     genProcMayForward(m, prc)
+
+    ###
+    ### we are all about the header from here down
+    ###
 
     # if it's an export and not a compiler proc,
     # and we already have a generated header for it,
@@ -1317,18 +1388,26 @@ proc genProc(m: BModule, prc: PSym) =
         if not containsOrIncl(m.g.generatedHeader.declaredThings,
                               prc.id):
           # generate the header for the proc
+          # this also generated the nimFrame and popFrame, etc.
           genProcAux(m.g.generatedHeader, prc)
 
     # issuing the iterator on snippetsSince will write them
     if writecache:
       m.mark = mark
-      echo " >", m.cfilename, "-> ", prc.name.s
+      when not defined(release):
+        echo " >", m.cfilename, "\t", prc.name.s
       for snippet in m.snippetsSince:
         if snippet.section notin {cfsProcHeaders}:
           var
             snippet = snippet
           storeSnippet(m.g.graph, snippet)
-          echo "\t", snippet.section, "\t", snippet.module
+          when not defined(release):
+            echo "\t", snippet.section, "\t", snippet.module
+  when not defined(release):
+    echo "--- declaredProtos"
+    echo m.declaredProtos
+    echo "--- declaredThings"
+    echo m.declaredThings
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1938,8 +2017,10 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   injectG()
   result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
-    let f = if graph.config.headerFile.len > 0: AbsoluteFile graph.config.headerFile
-            else: graph.config.projectFull
+    let f = if graph.config.headerFile.len > 0:
+        AbsoluteFile graph.config.headerFile
+      else:
+        graph.config.projectFull
     g.generatedHeader = rawNewModule(g, module,
       changeFileExt(completeCfilePath(graph.config, f), hExt))
     incl g.generatedHeader.flags, isHeaderFile
