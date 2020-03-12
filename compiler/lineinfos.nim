@@ -230,7 +230,7 @@ type
   TErrorOutputs* = set[TErrorOutput]
 
   ERecoverableError* = object of ValueError
-  ESuggestDone* = object of Exception
+  ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 
