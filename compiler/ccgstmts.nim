@@ -1035,17 +1035,19 @@ proc bodyCanRaise(p: BProc; n: PNode): bool =
     result = false
 
 proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
+  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
+  inc p.labels
+  let lab = p.labels
+  p.nestedTryStmts.add((fin, false, Natural lab))
+
   if not bodyCanRaise(p, t):
     # optimize away the 'try' block:
     expr(p, t[0], d)
-    if t.len > 1 and t[^1].kind == nkFinally:
-      genStmts(p, t[^1][0])
+    linefmt(p, cpsStmts, "LA$1_: ;$n", [lab])
+    if fin != nil:
+      genStmts(p, fin[0])
+    discard pop(p.nestedTryStmts)
     return
-
-  let fin = if t[^1].kind == nkFinally: t[^1] else: nil
-  inc p.labels, 2
-  let lab = p.labels-1
-  p.nestedTryStmts.add((fin, false, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
   p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErr$1_;$n", [lab]))
