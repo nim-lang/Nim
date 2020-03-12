@@ -494,13 +494,12 @@ proc runCI(cmd: string) =
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
-    when false:
-      when defined(windows):
-        # note: will be over-written below
-        execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
+    when defined(windows):
+      # note: will be over-written below
+      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
-      # main bottleneck here
-      execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    # main bottleneck here
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
     when false: # CT FFI
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
