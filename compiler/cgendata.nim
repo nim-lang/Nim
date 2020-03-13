@@ -166,41 +166,32 @@ type
     ndi*: NdiFile             # well, duh, who doesn't know what ndi is?
     mark*: SnippetMark        # where we are in writing the file/snippets
 
+  SnippetTable* = Table[SigHash, Snippet]
   Snippets* = seq[Snippet]
   SqlId* {.deprecated.} = int64
 
+  CacheUnit*[T] = ref object
+    node*: T                  # the node itself
+    snippets*: SnippetTable   # snippets for this node
+    graph*: ModuleGraph       # the module graph, for convenience
+
   Snippet* = ref object
-    id*: SqlId
-    name*: string
-    filename*: AbsoluteFile
-    module*: int
+    signature*: SigHash       # we use the signature to associate the node
+    module*: BModule          # the module to which the snippet applies
+    section*: TCFileSection   # the section of the module in which to write
+    code*: Rope               # the raw backend code itself, eg. C/JS/etc.
 
-    section*: TCFileSection
-
-    symbol*: SqlId
-    kind*: TNodeKind
-    nimid*: int
-    code*: Rope
-    node*: PSym
-
-  SnippetMark* = object
+  SnippetMark* {.deprecated.} = object
     lengths*: array[TCFileSection, int]
     node*: PSym
 
-proc newSnippet*(module: BModule; id: SqlId;
-                 sym: PSym; rope: Rope): Snippet =
-  ## create a new snippet for the given module and symbol with the given
-  ## id -- a sqlite primary key, which varies with the node kind.
-  result = Snippet(symbol: id, kind: nkSym,
-                   name: $sym.sigHash, nimid: sym.id)
-#  let
-#    m = getModule(sym)
-#    mid = if m == nil: 0 else: abs(m.id)
-#  result.module = mid
-  result.module = abs(module.module.id)
-  result.code = rope
-  result.node = sym
-  result.filename = module.cfilename
+proc newCacheUnit*[T](graph: ModuleGraph; node: T): CacheUnit =
+  result = CacheUnit(node: node, graph: graph)
+  result.snippets = initTable[SigHash, Snippet](TCFileSection.high.rightSize)
+
+# the snippet's module is not necessarily the same as the symbol!
+proc newSnippet*[T](node: T; module: BModule; sect: TCFileSection): Snippet =
+  result = Snippet(signature: node.sigHash, module: module, section: sect)
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config

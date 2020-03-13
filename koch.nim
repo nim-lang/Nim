@@ -168,7 +168,7 @@ proc buildNimble(latest: bool, args: string) =
 
 proc bundleNimsuggest(args: string) =
   nimCompileFold("Compile nimsuggest", "nimsuggest/nimsuggest.nim",
-                 options = "-d:release -d:danger " & args)
+                 options = "-d:release " & args)
 
 proc buildVccTool(args: string) =
   nimCompileFold("Compile Vcc", "tools/vccexe/vccexe.nim ", options = args)

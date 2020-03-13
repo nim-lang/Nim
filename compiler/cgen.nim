@@ -1247,6 +1247,15 @@ proc genProc(m: BModule, prc: PSym) =
     if lfImportCompilerProc in prc.loc.flags:
       cachable = false
 
+  #
+  # new architecture:
+  # - look in the cache
+  # - if we find something, we use it
+  # - perform the code gen
+  # - store the generated snippets to cache
+  # - goto 1
+  #
+
   var
     readcache = cachable and m.config.symbolFiles notin {disabledSf,
                                                          writeOnlySf}
