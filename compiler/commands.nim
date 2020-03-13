@@ -629,8 +629,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       defineSymbol(conf.symbols, "executable")
       defineSymbol(conf.symbols, "consoleapp")
     of "lib":
-      # should that apply also for other `arg` options?
-      conf.setNoteDefaults(warnUnusedImportX, false) # similar to issue #13218
       incl(conf.globalOptions, optGenDynLib)
       excl(conf.globalOptions, optGenGuiApp)
       defineSymbol(conf.symbols, "library")
