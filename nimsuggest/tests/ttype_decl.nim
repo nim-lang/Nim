@@ -10,6 +10,8 @@ import strutils
 type
   Other = object ## My other object.
   Foo = #[!]#
+  OldOne {.deprecated.} = object
+    x: int
 
 proc main(f: Foo) =
 
