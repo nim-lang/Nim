@@ -2087,7 +2087,9 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
-      if d != nil:
+      if d == nil:
+        raiseOSError(osLastError(), dir)
+      else:
         defer: discard closedir(d)
         while true:
           var x = readdir(d)

@@ -121,9 +121,10 @@ proc addPathRec(conf: ConfigRef; dir: string, info: TLineInfo) =
   var packages = newStringTable(modeStyleInsensitive)
   var pos = dir.len-1
   if dir[pos] in {DirSep, AltSep}: inc(pos)
-  for k,p in os.walkDir(dir):
-    if k == pcDir and p[pos] != '.':
-      addPackage(conf, packages, p, info)
+  if dir.existsDir:
+    for k,p in os.walkDir(dir):
+      if k == pcDir and p[pos] != '.':
+        addPackage(conf, packages, p, info)
   for p in packages.chosen:
     addNimblePath(conf, p, info)
 
