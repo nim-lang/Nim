@@ -572,8 +572,8 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
 
 proc hash*[A](s: HashSet[A]): Hash =
   ## Hashing of HashSet.
-  for h in s:
-    result = result !& hash(h)
+  for h in 0 .. high(s.data):
+    result = result xor s.data[h].hcode
   result = !$result
 
 proc `$`*[A](s: HashSet[A]): string =
