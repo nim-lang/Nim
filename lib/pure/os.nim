@@ -2193,13 +2193,13 @@ proc rawRemoveDir(dir: string) {.noNimScript.} =
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError(), dir)
 
-proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
+proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign, noNimScript.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
-  ## existed in the first place.
+  ## existed in the first place, unless `checkDir` = true
   ##
   ## See also:
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
@@ -2209,10 +2209,13 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   ## * `copyDir proc <#copyDir,string,string>`_
   ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
   ## * `moveDir proc <#moveDir,string,string>`_
-  for kind, path in walkDir(dir):
+  for kind, path in walkDir(dir, checkDir = checkDir):
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
-    of pcDir: removeDir(path)
+    of pcDir: removeDir(path, true)
+      # for subdirectories there is no benefit in `checkDir = false`
+      # (unless perhaps for edge case of concurrent processes also deleting
+      # the same files)
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string): bool {.noNimScript.} =
