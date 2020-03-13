@@ -2028,7 +2028,7 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
+iterator walkDir*(dir: string; relative=false, checkDir = true): tuple[kind: PathComponent, path: string] {.
   tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
@@ -2069,7 +2069,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     elif defined(windows):
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
-      if h != -1:
+      if h == -1:
+        if checkDir:
+          raiseOSError(osLastError(), dir)
+      else:
         defer: findClose(h)
         while true:
           var k = pcFile
@@ -2088,7 +2091,8 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     else:
       var d = opendir(dir)
       if d == nil:
-        raiseOSError(osLastError(), dir)
+        if checkDir:
+          raiseOSError(osLastError(), dir)
       else:
         defer: discard closedir(d)
         while true:
@@ -2161,14 +2165,20 @@ iterator walkDirRec*(dir: string,
   ## * `walkDir iterator <#walkDir.i,string>`_
 
   var stack = @[""]
+  var checkDir = true
   while stack.len > 0:
     let d = stack.pop()
-    for k, p in walkDir(dir / d, relative = true):
+    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
       let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel
       if k in yieldFilter:
         yield if relative: rel else: dir / rel
+    checkDir = false
+      # we only check top-level dir, otherwise if a subdir is invalid (eg. wrong
+      # permissions), it'll abort iteration and there would be no way to
+      # continue iteration.
+      # Future work can provide a way to customize this and do error reporting.
 
 proc rawRemoveDir(dir: string) {.noNimScript.} =
   when defined(windows):
