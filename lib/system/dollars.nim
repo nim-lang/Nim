@@ -68,6 +68,13 @@ else:
 type
   SomePointer = ptr | ref | pointer
 
+template typeLoopsBack[T,U](obj: T; field: U): bool #[{.magic: "typeLoopsback".}]# =
+  ## Is substituted with `true`, if `U` or any of its recursive
+  ## members are of type `T`.  This magic is inteded to be used to
+  ## test if the `field` of `obj` can safely be printed without
+  ## running into a cycle and therefore infinite recursion.
+  false
+
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
@@ -86,15 +93,16 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(name)
       result.add(": ")
 
-    when value is SomePointer:
-      # cannot follow pointers as there is no cycle detection
-      if value == typeof(value)(nil):
-        result.add "nil"
+    when typeLoopsBack(x, value):
+      when value is SomePointer:
+        if value == typeof(value)(nil):
+          # nil can always be printed safely
+          result.add "nil"
+        else:
+          result.add("...")
       else:
-        result.add("...")
-    elif value is distinct:
-      # value may be pointer, don't follow it.
-      result.add "..."
+        # value may have a cycle, don't print it.
+        result.add "..."
     else:
       result.addQuoted(value)
 

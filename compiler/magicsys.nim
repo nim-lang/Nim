@@ -8,7 +8,7 @@
 #
 
 # Built-in types and compilerprocs are registered here.
-
+a
 import
   ast, astalgo, msgs, platform, idents,
   modulegraphs, lineinfos
