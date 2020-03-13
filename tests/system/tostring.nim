@@ -194,4 +194,44 @@ block:
   doAssert $cyclicA == "(name: \"A\", field0: ...)"
   doAssert $cyclicB == "(name: \"B\", field0: ...)"
 
+type
+  CyclicStuff = ref object
+    name: string
+    children: seq[CyclicStuff]
+
+  # this type is pointless, is ref seq even allowed?
+  CyclicSeq = distinct seq[ref Cyclicseq]
+
+
+  # this type is even more pointless
+  MutualCyclicSeqA = distinct ref seq[MutualCyclicSeqB]
+  MutualCyclicSeqB = distinct ref seq[MutualCyclicSeqC]
+  MutualCyclicSeqC = distinct ref seq[MutualCyclicSeqA]
+
+import macros
+
+macro undistinct[T: distinct](arg: T): untyped =
+  result = newCall(arg.getTypeImpl[0], arg)
+
+block:
+  let cycle1 = CyclicStuff(name: "name1")
+  cycle1.children.add cycle1 # very simple cycle
+
+  # TODO: use CyclicSeq, MutualcyclicSeqA
+  var cycle2 = new(CyclicSeq)
+  undistinct(cycle2[]).add(cycle2)
+  undistinct(cycle2[]).add(cycle2)
+
+  var cycle3A: MutualCyclicSeqA
+  var cycle3B: MutualCyclicSeqB
+  var cycle3C: MutualCyclicSeqC
+
+  cycle3A.new
+  cycle3B.new
+  cycle3C.new
+
+  cycle3A.add cycle3B
+  cycle3B.add cycle3C
+  cycle3C.add cycle3A
+
 echo "DONE: tostring.nim"
