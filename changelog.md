@@ -44,6 +44,8 @@
 - `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
   usage. The `$` operator can be used to obtain the string form of `HttpCode`
   for comparison if desired.
+- `os.walkDir` now throws if input dir is invalid instead of a noop. Likewise for nimscript
+  with listFiles, walkDir.
 
 ### Breaking changes in the compiler
 

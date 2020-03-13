@@ -170,6 +170,8 @@ when not defined(windows):
     for k, p in walkDir("walkdir_test", true):
       doAssert k == pcLinkToDir
     removeDir("walkdir_test")
+    doAssertRaises(OSError):
+      for a in walkDir("nonexistant"): discard
 
 block normalizedPath:
   doAssert normalizedPath("") == ""
