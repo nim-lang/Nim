@@ -744,8 +744,6 @@ when isMainModule:
   check &"{high(int64)}", "9223372036854775807"
   check &"{low(int64)}", "-9223372036854775808"
 
-  import json
-
   doAssert fmt"{'a'} {'b'}" == "a b"
 
   echo("All tests ok")
