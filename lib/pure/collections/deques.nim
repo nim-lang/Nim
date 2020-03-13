@@ -61,7 +61,7 @@ type
     head, tail, count, mask: int
 
 const
-  dequeDefaultInitialCapacity* {.intdefine.} = 4
+  nimDequeDefaultInitialCapacity* {.intdefine.} = 4
 
 template initImpl(result: typed, initialCapacity: int) =
   assert isPowerOfTwo(initialCapacity)
@@ -69,13 +69,11 @@ template initImpl(result: typed, initialCapacity: int) =
   newSeq(result.data, initialCapacity)
 
 template checkIfInitialized(deq: typed) =
-  when declared(dequeDefaultInitialCapacity):
+  when declared(nimDequeDefaultInitialCapacity):
     if deq.mask == 0:
-      initImpl(deq, dequeDefaultInitialCapacity)
+      initImpl(deq, nimDequeDefaultInitialCapacity)
 
-  result.initImpl(initialSize)
-
-proc initDeque*[T](initialCapacity: int = dequeDefaultInitialCapacity): Deque[T] =
+proc initDeque*[T](initialCapacity: int = nimDequeDefaultInitialCapacity): Deque[T] =
   ## Create a new empty deque with a given capacity. An implicitly defined
   ## deque will have a capacity of 0 and be grown to fit elements on the first
   ## data insertion.
@@ -499,6 +497,6 @@ proc hash*[A](d: Deque[A]): Hash =
       y.addLast(i*10)
     y.shrink(fromFirst = 6, fromLast = 5)
     assert hash(x) == hash(y)
-  for h in 0 ..< d.len:
-    result = result xor hash(d[h])
+  for h in d:
+    result = result !& hash(h)
   result = !$result

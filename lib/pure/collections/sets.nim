@@ -81,7 +81,7 @@ type
     ## Type union representing `HashSet` or `OrderedSet`.
 
 const
-  setDefaultInitialCapacity* {.intdefine.} = 64
+  nimSetDefaultInitialCapacity* {.intdefine.} = 64
 
 include setimpl
 
@@ -90,7 +90,7 @@ include setimpl
 # ---------------------------------------------------------------------
 
 
-proc init*[A](s: var HashSet[A], initialSize = setDefaultInitialCapacity) =
+proc init*[A](s: var HashSet[A], initialSize = nimSetDefaultInitialCapacity) =
   ## Initializes a hash set.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -109,7 +109,7 @@ proc init*[A](s: var HashSet[A], initialSize = setDefaultInitialCapacity) =
 
   initImpl(s, initialSize)
 
-proc initHashSet*[A](initialSize = setDefaultInitialCapacity): HashSet[A] =
+proc initHashSet*[A](initialSize = nimSetDefaultInitialCapacity): HashSet[A] =
   ## Wrapper around `init proc <#init,HashSet[A],int>`_ for initialization of
   ## hash sets.
   ##
@@ -572,8 +572,8 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
 
 proc hash*[A](s: HashSet[A]): Hash =
   ## Hashing of HashSet.
-  for h in 0 .. high(s.data):
-    result = result xor s.data[h].hcode
+  for h in s:
+    result = result !& hash(h)
   result = !$result
 
 proc `$`*[A](s: HashSet[A]): string =
@@ -591,7 +591,7 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   # --> {no, esc'aping, is " provided}
   dollarImpl()
 
-proc initSet*[A](initialSize = setDefaultInitialCapacity): HashSet[A] {.deprecated:
+proc initSet*[A](initialSize = nimSetDefaultInitialCapacity): HashSet[A] {.deprecated:
      "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
 
 proc toSet*[A](keys: openArray[A]): HashSet[A] {.deprecated:
@@ -628,7 +628,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
       h = nxt
 
 
-proc init*[A](s: var OrderedSet[A], initialSize = setDefaultInitialCapacity) =
+proc init*[A](s: var OrderedSet[A], initialSize = nimSetDefaultInitialCapacity) =
   ## Initializes an ordered hash set.
   ##
   ## Starting from Nim v0.20, sets are initialized by default and it is
@@ -647,7 +647,7 @@ proc init*[A](s: var OrderedSet[A], initialSize = setDefaultInitialCapacity) =
 
   initImpl(s, initialSize)
 
-proc initOrderedSet*[A](initialSize = setDefaultInitialCapacity): OrderedSet[A] =
+proc initOrderedSet*[A](initialSize = nimSetDefaultInitialCapacity): OrderedSet[A] =
   ## Wrapper around `init proc <#init,OrderedSet[A],int>`_ for initialization of
   ## ordered hash sets.
   ##
