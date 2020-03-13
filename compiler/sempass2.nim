@@ -772,10 +772,10 @@ proc track(tracked: PEffects, n: PNode) =
           discard
         else:
           message(tracked.config, arg.info, warnProveInit, $arg)
-    elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and 
+    elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
         optStaticBoundsCheck in tracked.config.options:
       checkBounds(tracked, n[1], n[2])
-    
+
       # check required for 'nim check':
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
@@ -901,7 +901,6 @@ proc track(tracked: PEffects, n: PNode) =
             createTypeBoundOps(tracked, x.typ, x.info)
         else:
           createTypeBoundOps(tracked, it.typ, it.info)
-    let iterCall = n[^2]
     let loopBody = n[^1]
     if tracked.owner.kind != skMacro and iterCall.safeLen > 1:
       # XXX this is a bit hacky:
