@@ -26,7 +26,20 @@ proc raiseIndexError() {.compilerproc, noinline.} =
   sysFatal(IndexError, "index out of bounds")
 
 proc raiseFieldError(f: string) {.compilerproc, noinline.} =
-  sysFatal(FieldError, f, " is not accessible")
+  sysFatal(FieldError, f)
+
+proc raiseRangeErrorI(i, a, b: BiggestInt) {.compilerproc, noinline.} =
+  sysFatal(RangeError, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+
+proc raiseRangeErrorF(i, a, b: float) {.compilerproc, noinline.} =
+  sysFatal(RangeError, "value out of range: " & $i & " notin " & $a & " .. " & $b)
+
+proc raiseRangeErrorU(i, a, b: uint64) {.compilerproc, noinline.} =
+  # todo: better error reporting
+  sysFatal(RangeError, "value out of range")
+
+proc raiseObjectConversionError() {.compilerproc, noinline.} =
+  sysFatal(ObjectConversionError, "invalid object conversion")
 
 proc chckIndx(i, a, b: int): int =
   if i >= a and i <= b:
@@ -45,6 +58,12 @@ proc chckRange64(i, a, b: int64): int64 {.compilerproc.} =
     return i
   else:
     raiseRangeError(i)
+
+proc chckRangeU(i, a, b: uint64): uint64 {.compilerproc.} =
+  if i >= a and i <= b:
+    return i
+  else:
+    sysFatal(RangeError, "value out of range")
 
 proc chckRangeF(x, a, b: float): float =
   if x >= a and x <= b:
@@ -93,7 +112,7 @@ when not defined(nimV2):
     return true
 
   proc isObjWithCache(obj, subclass: PNimType;
-                      cache: var ObjCheckCache): bool {.compilerProc, inline.} =
+                      cache: var ObjCheckCache): bool {.compilerproc, inline.} =
     if obj == subclass: return true
     if obj.base == subclass: return true
     if cache[0] == obj: return false
@@ -108,3 +127,7 @@ when not defined(nimV2):
       if x == nil: return false
       x = x.base
     return true
+
+when defined(nimV2):
+  proc raiseObjectCaseTransition() {.compilerproc.} =
+    sysFatal(FieldError, "assignment to discriminant changes object branch")

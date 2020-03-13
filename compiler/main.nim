@@ -13,21 +13,16 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, astalgo, lexer, syntaxes, renderer, options, msgs,
-  os, condsyms, times,
-  wordrecg, sem, semdata, idents, passes, extccomp,
+  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  condsyms, times,
+  sem, idents, passes, extccomp,
   cgen, json, nversion,
-  platform, nimconf, importer, passaux, depends, vm, vmdef, types, idgen,
-  parser, modules, ccgutils, sigmatch, ropes,
+  platform, nimconf, passaux, depends, vm, idgen,
+  modules,
   modulegraphs, tables, rod, lineinfos, pathutils
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
-
-from magicsys import resetSysTypes
-
-proc codegenPass(g: ModuleGraph) =
-  registerPass g, cgenPass
 
 proc semanticPasses(g: ModuleGraph) =
   registerPass g, verbosePass
@@ -87,6 +82,13 @@ proc commandCompileToC(graph: ModuleGraph) =
   semanticPasses(graph)
   registerPass(graph, cgenPass)
 
+  if {optRun, optForceFullMake} * conf.globalOptions == {optRun} or isDefined(conf, "nimBetterRun"):
+    let proj = changeFileExt(conf.projectFull, "")
+    if not changeDetectedViaJsonBuildInstructions(conf, proj):
+      # nothing changed
+      graph.config.notes = graph.config.mainPackageNotes
+      return
+
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
@@ -106,6 +108,7 @@ proc commandJsonScript(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
     let conf = graph.config
+    conf.exc = excCpp
 
     if conf.outDir.isEmpty:
       conf.outDir = conf.projectPath
@@ -148,14 +151,6 @@ const evalPasses = [verbosePass, semPass, evalPass]
 proc evalNim(graph: ModuleGraph; nodes: PNode, module: PSym) =
   carryPasses(graph, nodes, module, evalPasses)
 
-proc commandEval(graph: ModuleGraph; exp: string) =
-  if graph.systemModule == nil:
-    interactivePasses(graph)
-    compileSystemModule(graph)
-  let echoExp = "echo \"eval\\t\", " & "repr(" & exp & ")"
-  evalNim(graph, echoExp.parseString(graph.cache, graph.config),
-    makeStdinModule(graph))
-
 proc commandScan(cache: IdentCache, config: ConfigRef) =
   var f = addFileExt(AbsoluteFile mainCommandArg(config), NimExt)
   var stream = llStreamOpen(f, fmRead)
@@ -190,10 +185,12 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
+    if conf.exc == excNone: conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":
@@ -296,7 +293,9 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
+      var lazyPaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
+      for dir in conf.lazyPaths: lazyPaths.elems.add(%dir.string)
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
@@ -309,9 +308,12 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "prefixdir", val: %conf.getPrefixDir().string),
+        (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "lazyPaths", val: %lazyPaths),
         (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),
@@ -343,8 +345,11 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdInteractive
     commandInteractive(graph)
   of "e":
-    incl conf.globalOptions, optWasNimscript
-    commandEval(graph, mainCommandArg(conf))
+    if not fileExists(conf.projectFull):
+      rawMessage(conf, errGenerated, "NimScript file does not exist: " & conf.projectFull.string)
+    elif not conf.projectFull.string.endsWith(".nims"):
+      rawMessage(conf, errGenerated, "not a NimScript file: " & conf.projectFull.string)
+    # main NimScript logic handled in cmdlinehelper.nim.
   of "nop", "help":
     # prevent the "success" message:
     conf.cmd = cmdDump
@@ -356,15 +361,25 @@ proc mainCommand*(graph: ModuleGraph) =
 
   if conf.errorCounter == 0 and
      conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
-    when declared(system.getMaxMem):
-      let usedMem = formatSize(getMaxMem()) & " peakmem"
-    else:
-      let usedMem = formatSize(getTotalMem())
-    rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
-               formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
-               usedMem,
-               if isDefined(conf, "release"): "Release Build"
-               else: "Debug Build"])
+    let mem =
+      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+      else: formatSize(getTotalMem()) & " totmem"
+    let loc = $conf.linesCompiled
+    let build = if isDefined(conf, "danger"): "Dangerous Release"
+                elif isDefined(conf, "release"): "Release"
+                else: "Debug"
+    let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
+    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    var output = $conf.absOutFile
+    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    rawMessage(conf, hintSuccessX, [
+      "loc", loc,
+      "sec", sec,
+      "mem", mem,
+      "build", build,
+      "project", project,
+      "output", output,
+      ])
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

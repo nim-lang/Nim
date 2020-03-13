@@ -1,9 +1,11 @@
 discard """
-  output: "Got: 'nnkCall' hi"
+  output: '''Got: 'nnkCall' hi
+{a}
+{b}
+{a, b}'''
 """
 
-import
-  macros, strutils
+import macros
 
 macro outterMacro*(n, blck: untyped): untyped =
   let n = callsite()
@@ -27,3 +29,34 @@ var str: string
 outterMacro(str):
   "hellow"
 echo str
+
+type E = enum a b
+macro enumerators1(): set[E] = newLit({a})
+
+macro enumerators2(): set[E] =
+  return newLit({b})
+
+macro enumerators3(): set[E] =
+  result = newLit({E.low .. E.high})
+
+var myEnums: set[E]
+
+
+myEnums = enumerators1()
+echo myEnums
+myEnums = enumerators2()
+echo myEnums
+myEnums = enumerators3()
+echo myEnums
+
+#10751
+
+type Tuple = tuple
+  a: string
+  b: int
+
+macro foo(t: static Tuple): untyped =
+  doAssert t.a == "foo"
+  doAssert t.b == 12345
+
+foo((a: "foo", b: 12345))

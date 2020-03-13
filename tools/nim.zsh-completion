@@ -63,7 +63,7 @@ _nim() {
     '*--opt=none[do not optimize]' \
     '*--opt=speed[optimize for speed|size - use -d:release for a release build]' \
     '*--opt=size[optimize for size]' \
-    '*--debugger:native|endb[use native debugger (gdb) | ENDB (experimental)]' \
+    '*--debugger:native[use native debugger (gdb)]' \
     '*--app=console[generate a console app]' \
     '*--app=gui[generate a GUI app]' \
     '*--app=lib[generate a dynamic library]' \

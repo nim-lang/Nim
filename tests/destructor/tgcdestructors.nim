@@ -1,12 +1,18 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''hi
 ho
 ha
-7 7'''
+@["arg", "asdfklasdfkl", "asdkfj", "dfasj", "klfjl"]
+@[1, 2, 3]
+@["red", "yellow", "orange", "rtrt1", "pink"]
+a: @[4, 2, 3]
+0
+30
+true
+(allocCount: 41, deallocCount: 41)'''
 """
 
-import allocators
 include system / ansi_c
 
 proc main =
@@ -75,6 +81,49 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
       break
     i = j
 
+proc parseCmdLine(c: string): seq[string] =
+  result = @[]
+  var i = 0
+  var a = ""
+  while true:
+    setLen(a, 0)
+    while i < c.len and c[i] in {' ', '\t', '\l', '\r'}: inc(i)
+    if i >= c.len: break
+    var inQuote = false
+    while i < c.len:
+      case c[i]
+      of '\\':
+        var j = i
+        while j < c.len and c[j] == '\\': inc(j)
+        if j < c.len and c[j] == '"':
+          for k in 1..(j-i) div 2: a.add('\\')
+          if (j-i) mod 2 == 0:
+            i = j
+          else:
+            a.add('"')
+            i = j+1
+        else:
+          a.add(c[i])
+          inc(i)
+      of '"':
+        inc(i)
+        if not inQuote: inQuote = true
+        elif i < c.len and c[i] == '"':
+          a.add(c[i])
+          inc(i)
+        else:
+          inQuote = false
+          break
+      of ' ', '\t':
+        if not inQuote: break
+        a.add(c[i])
+        inc(i)
+      else:
+        a.add(c[i])
+        inc(i)
+    add(result, a)
+
+
 proc other =
   let input = "$test{}  $this is ${an{  example}}  "
   let expected = @[(ikVar, "test"), (ikStr, "{}  "), (ikVar, "this"),
@@ -84,8 +133,71 @@ proc other =
     doAssert s == expected[i]
     inc i
 
+  echo parseCmdLine("arg asdfklasdfkl asdkfj dfasj klfjl")
+
 other()
 
-#echo s
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)
+# bug #11050
+
+type
+  Obj* = object
+    f*: seq[int]
+
+method main(o: Obj) {.base.} =
+  for newb in o.f:
+    discard
+
+# test that o.f was not moved!
+proc testforNoMove =
+  var o = Obj(f: @[1, 2, 3])
+  main(o)
+  echo o.f
+
+testforNoMove()
+
+# bug #11065
+type
+  Warm = seq[string]
+
+proc testWarm =
+  var w: Warm
+  w = @["red", "yellow", "orange"]
+
+  var x = "rt"
+  var y = "rt1"
+  w.add(x & y)
+
+  w.add("pink")
+  echo w
+
+testWarm()
+
+proc mutConstSeq() =
+  # bug #11524
+  var a = @[1,2,3]
+  a[0] = 4
+  echo "a: ", a
+
+mutConstSeq()
+
+proc mainSeqOfCap =
+  # bug #11098
+  var s = newSeqOfCap[int](10)
+  echo s.len
+
+  var s2 = newSeqUninitialized[int](30)
+  echo s2.len
+
+mainSeqOfCap()
+
+# bug #11614
+
+let ga = "foo"
+
+proc takeAinArray =
+  let b = [ga]
+
+takeAinArray()
+echo ga == "foo"
+
+echo getAllocStats()

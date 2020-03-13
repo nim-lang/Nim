@@ -6,18 +6,6 @@
 #    distribution, for details about the copyright.
 #
 
-
-from pcre import nil
-import nre/private/util
-import tables
-from strutils import `%`
-from math import ceil
-import options
-from unicode import runeLenAt
-
-export options
-
-
 ## What is NRE?
 ## ============
 ##
@@ -67,8 +55,16 @@ runnableExamples:
     let matchBounds = firstVowel.get().captureBounds[-1]
     doAssert matchBounds.a == 1
 
+from pcre import nil
+import nre/private/util
+import tables
+from strutils import `%`
+from math import ceil
+import options
+from unicode import runeLenAt
 
-# Type definitions {{{
+export options
+
 type
   Regex* = ref object
     ## Represents the pattern that things are matched against, constructed with
@@ -140,7 +136,7 @@ type
     ## into PCRE flags. These include ``NEVER_UTF``, ``ANCHORED``,
     ## ``DOLLAR_ENDONLY``, ``FIRSTLINE``, ``NO_AUTO_CAPTURE``,
     ## ``JAVASCRIPT_COMPAT``, ``U``, ``NO_STUDY``. In other PCRE wrappers, you
-    ## will need to pass these as seperate flags to PCRE.
+    ## will need to pass these as separate flags to PCRE.
     pattern*: string  ## not nil
     pcreObj: ptr pcre.Pcre  ## not nil
     pcreExtra: ptr pcre.ExtraData  ## nil
@@ -218,7 +214,7 @@ type
     pattern*: string  ## the pattern that caused the problem
 
   StudyError* = ref object of RegexError
-    ## Thrown when studying the regular expression failes
+    ## Thrown when studying the regular expression fails
     ## for whatever reason. The message contains the error
     ## code.
 
@@ -232,7 +228,12 @@ runnableExamples:
     doAssert 0 in "abc".match(re"(\w)").get.captureBounds == true
     doAssert "abc".match(re"").get.captureBounds[-1] == 0 .. -1
     doAssert "abc".match(re"abc").get.captureBounds[-1] == 0 .. 2
-# }}}
+
+
+proc destroyRegex(pattern: Regex) =
+  pcre.free_substring(cast[cstring](pattern.pcreObj))
+  if pattern.pcreExtra != nil:
+    pcre.free_study(pattern.pcreExtra)
 
 proc getinfo[T](pattern: Regex, opt: cint): T =
   let retcode = pcre.fullinfo(pattern.pcreObj, pattern.pcreExtra, opt, addr result)
@@ -241,7 +242,53 @@ proc getinfo[T](pattern: Regex, opt: cint): T =
     # XXX Error message that doesn't expose implementation details
     raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
-# Regex accessors {{{
+proc getNameToNumberTable(pattern: Regex): Table[string, int] =
+  let entryCount = getinfo[cint](pattern, pcre.INFO_NAMECOUNT)
+  let entrySize = getinfo[cint](pattern, pcre.INFO_NAMEENTRYSIZE)
+  let table = cast[ptr UncheckedArray[uint8]](
+                getinfo[int](pattern, pcre.INFO_NAMETABLE))
+
+  result = initTable[string, int]()
+
+  for i in 0 ..< entryCount:
+    let pos = i * entrySize
+    let num = (int(table[pos]) shl 8) or int(table[pos + 1]) - 1
+    var name = ""
+
+    var idx = 2
+    while table[pos + idx] != 0:
+      name.add(char(table[pos + idx]))
+      idx += 1
+
+    result[name] = num
+
+proc initRegex(pattern: string, flags: int, study = true): Regex =
+  new(result, destroyRegex)
+  result.pattern = pattern
+
+  var errorMsg: cstring
+  var errOffset: cint
+
+  result.pcreObj = pcre.compile(cstring(pattern),
+                                # better hope int is at least 4 bytes..
+                                cint(flags), addr errorMsg,
+                                addr errOffset, nil)
+  if result.pcreObj == nil:
+    # failed to compile
+    raise SyntaxError(msg: $errorMsg, pos: errOffset, pattern: pattern)
+
+  if study:
+    var options: cint = 0
+    var hasJit: cint
+    if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
+      if hasJit == 1'i32:
+        options = pcre.STUDY_JIT_COMPILE
+    result.pcreExtra = pcre.study(result.pcreObj, options, addr errorMsg)
+    if errorMsg != nil:
+      raise StudyError(msg: $errorMsg)
+
+  result.captureNameToId = result.getNameToNumberTable()
+
 proc captureCount*(pattern: Regex): int =
   return getinfo[cint](pattern, pcre.INFO_CAPTURECOUNT)
 
@@ -268,9 +315,8 @@ proc matchesCrLf(pattern: Regex): bool =
   of -2: return true
   of -1: return true
   else: return false
-# }}}
 
-# Capture accessors {{{
+
 func captureBounds*(pattern: RegexMatch): CaptureBounds = return CaptureBounds(pattern)
 
 func captures*(pattern: RegexMatch): Captures = return Captures(pattern)
@@ -360,11 +406,13 @@ iterator items*(pattern: Captures,
 
 proc toSeq*(pattern: CaptureBounds,
             default = none(HSlice[int, int])): seq[Option[HSlice[int, int]]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc toSeq*(pattern: Captures,
             default: Option[string] = none(string)): seq[Option[string]] =
-  accumulateResult(pattern.items(default))
+  result = @[]
+  for it in pattern.items(default): result.add it
 
 proc `$`*(pattern: RegexMatch): string =
   return pattern.captures[-1]
@@ -380,10 +428,7 @@ proc `==`*(a, b: Regex): bool =
 proc `==`*(a, b: RegexMatch): bool =
   return a.pattern == b.pattern and
          a.str == b.str
-# }}}
 
-# Creation & Destruction {{{
-# PCRE Options {{{
 const PcreOptions = {
   "NEVER_UTF": pcre.NEVER_UTF,
   "ANCHORED": pcre.ANCHORED,
@@ -439,67 +484,10 @@ proc extractOptions(pattern: string): tuple[pattern: string, flags: int, study: 
 
   result.pattern.add pattern[optionStart .. pattern.high]
 
-# }}}
-
-proc destroyRegex(pattern: Regex) =
-  pcre.free_substring(cast[cstring](pattern.pcreObj))
-  pattern.pcreObj = nil
-  if pattern.pcreExtra != nil:
-    pcre.free_study(pattern.pcreExtra)
-
-proc getNameToNumberTable(pattern: Regex): Table[string, int] =
-  let entryCount = getinfo[cint](pattern, pcre.INFO_NAMECOUNT)
-  let entrySize = getinfo[cint](pattern, pcre.INFO_NAMEENTRYSIZE)
-  let table = cast[ptr UncheckedArray[uint8]](
-                getinfo[int](pattern, pcre.INFO_NAMETABLE))
-
-  result = initTable[string, int]()
-
-  for i in 0 ..< entryCount:
-    let pos = i * entrySize
-    let num = (int(table[pos]) shl 8) or int(table[pos + 1]) - 1
-    var name = ""
-
-    var idx = 2
-    while table[pos + idx] != 0:
-      name.add(char(table[pos + idx]))
-      idx += 1
-
-    result[name] = num
-
-proc initRegex(pattern: string, flags: int, study = true): Regex =
-  new(result, destroyRegex)
-  result.pattern = pattern
-
-  var errorMsg: cstring
-  var errOffset: cint
-
-  result.pcreObj = pcre.compile(cstring(pattern),
-                                # better hope int is at least 4 bytes..
-                                cint(flags), addr errorMsg,
-                                addr errOffset, nil)
-  if result.pcreObj == nil:
-    # failed to compile
-    raise SyntaxError(msg: $errorMsg, pos: errOffset, pattern: pattern)
-
-  if study:
-    var options: cint = 0
-    var hasJit: cint
-    if pcre.config(pcre.CONFIG_JIT, addr hasJit) == 0:
-      if hasJit == 1'i32:
-        options = pcre.STUDY_JIT_COMPILE
-    result.pcreExtra = pcre.study(result.pcreObj, options, addr errorMsg)
-    if errorMsg != nil:
-      raise StudyError(msg: $errorMsg)
-
-  result.captureNameToId = result.getNameToNumberTable()
-
 proc re*(pattern: string): Regex =
   let (pattern, flags, study) = extractOptions(pattern)
   initRegex(pattern, flags, study)
-# }}}
 
-# Operations {{{
 proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Option[RegexMatch] =
   var myResult = RegexMatch(pattern : pattern, str : str)
   # See PCRE man pages.
@@ -742,8 +730,6 @@ proc replace*(str: string, pattern: Regex, sub: string): string =
   # - 1 because the string numbers are 0-indexed
   replaceImpl(str, pattern,
     formatStr(sub, match.captures[name], match.captures[id - 1]))
-
-# }}}
 
 let SpecialCharMatcher = re"([\\+*?[^\]$(){}=!<>|:-])"
 proc escapeRe*(str: string): string =

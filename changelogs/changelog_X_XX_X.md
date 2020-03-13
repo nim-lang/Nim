@@ -1,27 +1,34 @@
-## v0.XX.0 - XX/XX/2018
+# vx.xx.x - yyyy-mm-dd
 
-### Changes affecting backwards compatibility
-
-- Example item: ``Foo`` changed to ``Bar``.
-
-#### Breaking changes in the standard library
+This is an example file.
+The changes should go to changelog.md!
 
 
-#### Breaking changes in the compiler
+## Changes affecting backwards compatibility
 
-### Library additions
-
-### Library changes
+- Example item: `Foo` changed to `Bar`.
 
 
-### Language additions
+### Breaking changes in the standard library
 
 
-### Language changes
+### Breaking changes in the compiler
+
+
+## Library additions
+
+## Library changes
+
+## Language additions
+
+
+## Language changes
 
 
 ### Tool changes
 
+
 ### Compiler changes
 
-### Bugfixes
+
+## Bugfixes

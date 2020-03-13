@@ -107,12 +107,13 @@ Nim code calling the backend
 
 Nim code can interface with the backend through the `Foreign function
 interface <manual.html#foreign-function-interface>`_ mainly through the
-`importc pragma <manual.html#importc-pragma>`_. The ``importc`` pragma is the
-*generic* way of making backend symbols available in Nim and is available
-in all the target backends (JavaScript too).  The C++ or Objective-C backends
-have their respective `ImportCpp <manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
-`ImportObjC <manual.html#implementation-specific-pragmas-importobjc-pragma>`_ pragmas to call methods from
-classes.
+`importc pragma <manual.html#foreign-function-interface-importc-pragma>`_.
+The ``importc`` pragma is the *generic* way of making backend symbols available
+in Nim and is available in all the target backends (JavaScript too).  The C++
+or Objective-C backends have their respective `ImportCpp
+<manual.html#implementation-specific-pragmas-importcpp-pragma>`_ and
+`ImportObjC <manual.html#implementation-specific-pragmas-importobjc-pragma>`_
+pragmas to call methods from classes.
 
 Whenever you use any of these pragmas you need to integrate native code into
 your final binary. In the case of JavaScript this is no problem at all, the
@@ -124,18 +125,18 @@ statically or dynamically. The preferred way of integrating native code is to
 use dynamic linking because it allows you to compile Nim programs without
 the need for having the related development libraries installed. This is done
 through the `dynlib pragma for import
-<manual.html#dynlib-pragma-for-import>`_, though more specific control can be
-gained using the `dynlib module <dynlib.html>`_.
+<manual.html#foreign-function-interface-dynlib-pragma-for-import>`_, though
+more specific control can be gained using the `dynlib module <dynlib.html>`_.
 
 The `dynlibOverride <nimc.html#dynliboverride>`_ command line switch allows
 to avoid dynamic linking if you need to statically link something instead.
 Nim wrappers designed to statically link source files can use the `compile
-pragma <nimc.html#compile-pragma>`_ if there are few sources or providing
-them along the Nim code is easier than using a system library. Libraries
-installed on the host system can be linked in with the `PassL pragma
-<nimc.html#passl-pragma>`_.
+pragma <manual.html#implementation-specific-pragmas-compile-pragma>`_ if
+there are few sources or providing them along the Nim code is easier than using
+a system library. Libraries installed on the host system can be linked in with
+the `PassL pragma <manual.html#implementation-specific-pragmas-passl-pragma>`_.
 
-To wrap native code, take a look at the `c2nim tool <https://nim-lang.org/docs/c2nim.html>`_ which helps
+To wrap native code, take a look at the `c2nim tool <https://github.com/nim-lang/c2nim/blob/master/doc/c2nim.rst>`_ which helps
 with the process of scanning and transforming header files into a Nim
 interface.
 
@@ -215,12 +216,12 @@ Backend code calling Nim
 ------------------------
 
 Backend code can interface with Nim code exposed through the `exportc
-pragma <manual.html#exportc-pragma>`_. The ``exportc`` pragma is the *generic*
-way of making Nim symbols available to the backends. By default the Nim
-compiler will mangle all the Nim symbols to avoid any name collision, so
-the most significant thing the ``exportc`` pragma does is maintain the Nim
-symbol name, or if specified, use an alternative symbol for the backend in
-case the symbol rules don't match.
+pragma <manual.html#foreign-function-interface-exportc-pragma>`_. The
+``exportc`` pragma is the *generic* way of making Nim symbols available to
+the backends. By default the Nim compiler will mangle all the Nim symbols to
+avoid any name collision, so the most significant thing the ``exportc`` pragma
+does is maintain the Nim symbol name, or if specified, use an alternative
+symbol for the backend in case the symbol rules don't match.
 
 The JavaScript target doesn't have any further interfacing considerations
 since it also has garbage collection, but the C targets require you to
@@ -329,57 +330,8 @@ Nimcache naming logic
 The `nimcache`:idx: directory is generated during compilation and will hold
 either temporary or final files depending on your backend target. The default
 name for the directory depends on the used backend and on your OS but you can
-use the ``--nimcache`` `compiler switch <nimc.html#command-line-switches>`_ to
-change it.
-
-Nimcache and C like targets
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The C like backends will place their temporary ``.c``, ``.cpp`` or ``.m`` files
-in the ``nimcache`` directory. The naming of these files follows the pattern
-``nimblePackageName_`` + ``nimSource``:
-
-* Filenames for modules imported from `nimble packages
-  <https://github.com/nim-lang/nimble>`_ will end up with
-  ``nimblePackageName_module.c``. For example, if you import the
-  ``argument_parser`` module from the same name nimble package you
-  will end up with a ``argument_parser_argument_parser.c`` file
-  under ``nimcache``.  The name of the nimble package comes from the
-  ``proj.nimble`` file, the actual contents are not read by the
-  compiler.
-
-* Filenames for non nimble packages (like your project) will be
-  renamed from ``.nim`` to have the extension of your target backend
-  (from now on ``.c`` for these examples), but otherwise nothing
-  else will change. This will quickly break if your project consists
-  of a main ``proj.nim`` file which includes a ``utils/proj.nim``
-  file: both ``proj.nim`` files will generate the same name ``proj.c``
-  output in the ``nimcache`` directory overwriting themselves!
-
-* Filenames for modules found in the standard library will be named
-  ``stdlib_module.c``. Unless you are doing something special, you
-  will end up with at least ``stdlib_system.c``, since the `system
-  module <system.html>`_ is always imported automatically. Same for
-  the `hashes module <hashes.html>`_ which will be named
-  ``stdlib_hashes.c``. The ``stdlib_`` prefix comes from the *fake*
-  ``lib/stdlib.nimble`` file.
-
-To find the name of a nimble package the compiler searches for a ``*.nimble``
-file in the parent directory hierarchy of whatever module you are compiling.
-Even if you are in a subdirectory of your project, a parent ``*.nimble`` file
-will influence the naming of the nimcache name. This means that on Unix systems
-creating the file ``~/foo.nimble`` will automatically prefix all nimcache files
-not part of another package with the string ``foo_``.
-
-
-Nimcache and the Javascript target
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Unless you explicitly use the ``-o:filename.js`` switch as mentioned in the
-previous examples, the compiler will create a ``filename.js`` file in the
-``nimcache`` directory using the name of your input nim file. There are no
-other temporary files generated, the output is always a single self contained
-``.js`` file.
+use the ``--nimcache`` `compiler switch
+<nimc.html#compiler-usage-command-line-switches>`_ to change it.
 
 
 Memory management
@@ -398,14 +350,14 @@ Strings and C strings
 ---------------------
 
 The manual mentions that `Nim strings are implicitly convertible to
-cstrings <manual.html#cstring-type>`_ which makes interaction usually
+cstrings <manual.html#types-cstring-type>`_ which makes interaction usually
 painless. Most C functions accepting a Nim string converted to a
 ``cstring`` will likely not need to keep this string around and by the time
 they return the string won't be needed any more. However, for the rare cases
 where a Nim string has to be preserved and made available to the C backend
 as a ``cstring``, you will need to manually prevent the string data from being
-freed with `GC_ref <system.html#GC_ref>`_ and `GC_unref
-<system.html#GC_unref>`_.
+freed with `GC_ref <system.html#GC_ref,string>`_ and `GC_unref
+<system.html#GC_unref,string>`_.
 
 A similar thing happens with C code invoking Nim code which returns a
 ``cstring``. Consider the following proc:
@@ -431,10 +383,10 @@ Custom data types
 Just like strings, custom data types that are to be shared between Nim and
 the backend will need careful consideration of who controls who. If you want
 to hand a Nim reference to C code, you will need to use `GC_ref
-<system.html#GC_ref>`_ to mark the reference as used, so it does not get
+<system.html#GC_ref,ref.T>`_ to mark the reference as used, so it does not get
 freed. And for the C backend you will need to expose the `GC_unref
-<system.html#GC_unref>`_ proc to clean up this memory when it is not required
-any more.
+<system.html#GC_unref,ref.T>`_ proc to clean up this memory when it is not
+required any more.
 
 Again, if you are wrapping a library which *mallocs* and *frees* data
 structures, you need to expose the appropriate *free* function to Nim so

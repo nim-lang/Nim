@@ -1,235 +1,181 @@
-## v0.20.0 - XX/XX/2019
+# 1.2 - xxxx-xx-xx
 
 
-### Changes affecting backwards compatibility
-
-- The ``isLower``, ``isUpper`` family of procs in strutils/unicode
-  operating on **strings** have been
-  deprecated since it was unclear what these do. Note that the much more
-  useful procs that operator on ``char`` or ``Rune`` are not affected.
-
-- `strutils.editDistance` has been deprecated,
-  use `editdistance.editDistance` or `editdistance.editDistanceAscii`
-  instead.
-
-- The OpenMP parallel iterator \``||`\` now supports any `#pragma omp directives`
-  and not just `#pragma omp parallel for`. See
-  [OpenMP documentation](https://www.openmp.org/wp-content/uploads/OpenMP-4.5-1115-CPP-web.pdf).
-
-  The default annotation is `parallel for`, if you used OpenMP without annotation
-  the change is transparent, if you used annotations you will have to prefix
-  your previous annotations with `parallel for`.
-
-  Furthermore, an overload with positive stepping is available.
-
-- The `unchecked` pragma was removed, instead use `system.UncheckedArray`.
-
-- The undocumented ``#? strongSpaces`` parsing mode has been removed.
-
-- The `not` operator is now always a unary operator, this means that code like
-  ``assert not isFalse(3)`` compiles.
-
-- `getImpl` on a `var` or `let` symbol will now return the full `IdentDefs`
-  tree from the symbol declaration instead of just the initializer portion.
-- it is now possible to use statement list expressions after keywords with
-  indentation: raise, return, discard, yield. This helps parsing code produced 
-  by Nim template expansion where stmtListExpr can appear in place of any expression.
-  Example:
-```nim
-  raise 
-    var e = new(Exception)
-    e.msg = "My Exception msg"
-    e
-```
-
-- To use multi-methods, explicit `--multimethods:on` is now needed.
+## Changes affecting backwards compatibility
 
 
-#### Breaking changes in the standard library
 
-- `osproc.execProcess` now also takes a `workingDir` parameter.
+### Breaking changes in the standard library
 
-- `options.UnpackError` is no longer a ref type and inherits from `system.Defect`
-  instead of `system.ValueError`.
+- `base64.encode` no longer supports `lineLen` and `newLine`.
+  Use `base64.encodeMIME` instead.
+- `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/"
+   as the dir component of "/root_sub_dir" instead of the empty string.
+- `sequtils.zip` now returns a sequence of anonymous tuples i.e. those tuples
+  now do not have fields named "a" and "b".
+- `strutils.formatFloat` with `precision = 0` has the same behavior in all
+  backends, and it is compatible with Python's behavior,
+  e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
+- Global variable `lc` has been removed from sugar.nim.
+- `distinctBase` has been moved from sugar.nim to typetraits and now implemented as
+  compiler type trait instead of macro. `distinctBase` in sugar module is now deprecated.
+- `CountTable.mget` has been removed from `tables.nim`. It didn't work, and it
+  was an oversight to be included in v1.0.
+- `tables.merge(CountTable, CountTable): CountTable` has been removed.
+  It didn't work well together with the existing inplace version of the same proc
+  (`tables.merge(var CountTable, CountTable)`).
+  It was an oversight to be included in v1.0.
+- `options` now treats `proc` like other pointer types, meaning `nil` proc variables
+  are converted to `None`.
+- `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
+  behavior
+- `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
+- `times.parse` now only uses input to compute its result, and not `now`:
+  `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
+  `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
+  used on 29th, 30th, 31st of each month.
 
-- `system.ValueError` now inherits from `system.CatchableError` instead of `system.Defect`.
+### Breaking changes in the compiler
 
-- The procs `parseutils.parseBiggsetInt`, `parseutils.parseInt`,
-  `parseutils.parseBiggestUInt` and `parseutils.parseUInt` now raise a
-  `ValueError` when the parsed integer is outside of the valid range.
-  Previously they sometimes raised a `OverflowError` and sometimes returned `0`.
+- Implicit conversions for `const` behave correctly now, meaning that code like
+  `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
+  Simply write `const SOMECONST = 0` instead.
+- The `{.dynlib.}` pragma is now required for exporting symbols when making
+  shared objects on POSIX and macOS, which make it consistent with the behavior
+  on Windows.
+- The compiler is now more strict about type conversions concerning proc
+  types: Type conversions cannot be used to hide `.raise` effects or side
+  effects, instead a `cast` must be used. With the flag `--useVersion:1.0` the
+  old behaviour is emulated.
 
-- `streams.StreamObject` now restricts its fields to only raise `system.Defect`,
-  `system.IOError` and `system.OSError`.
-  This change only affects custom stream implementations.
 
-- nre's `RegexMatch.{captureBounds,captures}[]`  no longer return `Option` or
-  `nil`/`""`, respectivly. Use the newly added `n in p.captures` method to
-  check if a group is captured, otherwise you'll recieve an exception.
+## Library additions
 
-- nre's `RegexMatch.{captureBounds,captures}.toTable` no longer accept a
-  default parameter. Instead uncaptured entries are left empty. Use
-  `Table.getOrDefault()` if you need defaults.
+- `macros.newLit` now works for ref object types.
+- `system.writeFile` has been overloaded to also support `openarray[byte]`.
+- Added overloaded `strformat.fmt` macro that use specified characters as
+  delimiter instead of '{' and '}'.
+- introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
+  `CountTable.pop`, `Table.pop`
+- To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
+- Added `browsers.osOpen` const alias for the operating system specific *"open"* command.
+- Added `sugar.dup` for turning in-place algorithms like `sort` and `shuffle` into
+  operations that work on a copy of the data and return the mutated copy. As the existing
+  `sorted` does.
+- Added `sugar.collect` that does comprehension for seq/set/table collections.
+- Added `sugar.capture` for capturing some local loop variables when creating a closure.
+  This is an enhanced version of `closureScope`.
+- Added `typetraits.tupleLen` to get number of elements of a tuple/type tuple,
+  and `typetraits.get` to get the ith element of a type tuple.
+- Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
+- Added `os.normalizePathEnd` for additional path sanitization.
+- Added `times.fromUnixFloat,toUnixFloat`, subsecond resolution versions of `fromUnix`,`toUnixFloat`.
+- Added `wrapnils` module for chains of field-access and indexing where the LHS can be nil.
+  This simplifies code by reducing need for if-else branches around intermediate maybe nil values.
+  E.g. `echo ?.n.typ.kind`
+- Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
+- Added `os.isRelativeTo` to tell whether a path is relative to another
+- Added `resetOutputFormatters` to `unittest`
+- Added `expectIdent` to the `macros` module.
+- Added `os.isValidFilename` that returns `true` if `filename` argument is valid for crossplatform use.
 
-- nre's `RegexMatch.captures.{items,toSeq}` now returns an `Option[string]`
-  instead of a `string`. With the removal of `nil` strings, this is the only
-  way to indicate a missing match. Inside your loops, instead of `capture ==
-  ""` or `capture == nil`, use `capture.isSome` to check if a capture is
-  present, and `capture.get` to get its value.
-
-- nre's `replace()` no longer throws `ValueError` when the replacement string
-  has missing captures. It instead throws `KeyError` for named captures, and
-  `IndexError` for un-named captures. This is consistant with
-  `RegexMatch.{captureBounds,captures}[]`.
-
-- splitFile now correctly handles edge cases, see #10047
-
-- `isNil` is no longer false for undefined in the JavaScript backend:
-  now it's true for both nil and undefined.
-  Use `isNull` or `isUndefined` if you need exact equallity:
-  `isNil` is consistent with `===`, `isNull` and `isUndefined` with `==`.
-
-- several deprecated modules were removed: `ssl`, `matchers`, `httpserver`,
-  `unsigned`, `actors`, `parseurl`
-
-- two poorly documented and not used modules (`subexes`, `scgi`) were moved to
-  graveyard (they are available as Nimble packages)
-
-- Custom types that should be supported by `strformat` (&) now need an
-  explicit overload of `formatValue`.
-
-#### Breaking changes in the compiler
-
-- The compiler now implements the "generic symbol prepass" for `when` statements
-  in generics, see bug #8603. This means that code like this does not compile
-  anymore:
+- Added a `with` macro for easy function chaining that's available
+  everywhere, there is no need to concern your APIs with returning the first argument
+  to enable "chaining", instead use the dedicated macro `with` that
+  was designed for it. For example:
 
 ```nim
-proc enumToString*(enums: openArray[enum]): string =
-  # typo: 'e' instead 'enums'
-  when e.low.ord >= 0 and e.high.ord < 256:
-    result = newString(enums.len)
-  else:
-    result = newString(enums.len * 2)
+
+type
+  Foo = object
+    col, pos: string
+
+proc setColor(f: var Foo; r, g, b: int) = f.col = $(r, g, b)
+proc setPosition(f: var Foo; x, y: float) = f.pos = $(x, y)
+
+var f: Foo
+with(f, setColor(2, 3, 4), setPosition(0.0, 1.0))
+echo f
+
 ```
 
-- ``discard x`` is now illegal when `x` is a function symbol.
-- Implicit imports via ``--import: module`` in a config file are now restricted
-  to the main package.
+- Added `times.isLeapDay`
+- Added a new module, `std / compilesettings` for querying the compiler about
+  diverse configuration settings.
+
+## Library changes
+
+- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
+  and only returns once all pending async operations are guaranteed to have completed.
+- `asyncdispatch.drain` now consistently uses the passed timeout value for all
+  iterations of the event loop, and not just the first iteration.
+  This is more consistent with the other asyncdispatch apis, and allows
+  `asyncdispatch.drain` to be more efficient.
+- `base64.encode` and `base64.decode` was made faster by about 50%.
+- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
+  (ISO 40314).
+- `macros.eqIdent` is now invariant to export markers and backtick quotes.
+- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
+- `macros.basename` and `basename=` got support for `PragmaExpr`,
+  so that an expression like `MyEnum {.pure.}` is handled correctly.
+- `httpclient.maxredirects` changed from `int` to `Natural`, because negative values
+  serve no purpose whatsoever.
+- `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
+  argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
+- `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
+  empty. This was required for intuitive behaviour of the strscans module
+  (see bug #13605).
 
 
-### Library additions
+## Language additions
 
-- There is a new stdlib module `std/editdistance` as a replacement for the
-  deprecated `strutils.editDistance`.
+- An `align` pragma can now be used for variables and object fields, similar
+  to the `alignas` declaration modifier in C/C++.
 
-- There is a new stdlib module `std/wordwrap` as a replacement for the
-  deprecated `strutils.wordwrap`.
+- `=sink` type bound operator is now optional. Compiler can now use combination
+  of `=destroy` and `copyMem` to move objects efficiently.
 
-- Added `split`, `splitWhitespace`, `size`, `alignLeft`, `align`,
-  `strip`, `repeat` procs and iterators to `unicode.nim`.
+## Language changes
 
-- Added `or` for `NimNode` in `macros`.
-
-- Added `system.typeof` for more control over how `type` expressions
-  can be deduced.
-
-- Added `macros.isInstantiationOf` for checking if the proc symbol
-  is instantiation of generic proc symbol.
-
-- Added the parameter ``isSorted`` for the ``sequtils.deduplicate`` proc.
-
-- There is a new stdlib module `std/diff` to compute the famous "diff"
-  of two texts by line.
-
-- Added `os.relativePath`.
-
-- Added `parseopt.remainingArgs`.
-
-- Added `os.getCurrentCompilerExe` (implmented as `getAppFilename` at CT),
-  can be used to retrieve the currently executing compiler.
-
-- Added `xmltree.toXmlAttributes`.
-
-- Added ``std/sums`` module for fast summation functions.
-
-- Added `Rusage`, `getrusage`, `wait4` to posix interface.
-
-- Added the `posix_utils` module.
-
-- Added `system.default`.
-
-
-### Library changes
-
-- The string output of `macros.lispRepr` proc has been tweaked
-  slightly. The `dumpLisp` macro in this module now outputs an
-  indented proper Lisp, devoid of commas.
-
-- Added `macros.signatureHash` that returns a stable identifier
-  derived from the signature of a symbol.
-
-- In `strutils` empty strings now no longer matched as substrings
-  anymore.
-
-- Complex type is now generic and not a tuple anymore.
-
-- The `ospaths` module is now deprecated, use `os` instead. Note that
-  `os` is available in a NimScript environment but unsupported
-  operations produce a compile-time error.
-
-- The `parseopt` module now supports a new flag `allowWhitespaceAfterColon`
-  (default value: true) that can be set to `false` for better Posix
-  interoperability. (Bug #9619.)
-
-- `os.joinPath` and `os.normalizePath` handle edge cases like ``"a/b/../../.."``
-  differently.
-
-- `securehash` is moved to `lib/deprecated`
-
-
-### Language additions
-
-- Vm support for float32<->int32 and float64<->int64 casts was added.
-- There is a new pragma block `noSideEffect` that works like
-  the `gcsafe` pragma block.
-- added os.getCurrentProcessId()
-- User defined pragmas are now allowed in the pragma blocks
-- Pragma blocks are no longer eliminated from the typed AST tree to preserve
-  pragmas for further analysis by macros
-- Custom pragmas are now supported for `var` and `let` symbols.
-- Tuple unpacking is now supported for constants and for loop variables.
-
-
-### Language changes
-
-- The standard extension for SCF (source code filters) files was changed from
-  ``.tmpl`` to ``.nimf``,
-  it's more recognizable and allows tools like github to recognize it as Nim,
-  see [#9647](https://github.com/nim-lang/Nim/issues/9647).
-  The previous extension will continue to work.
-- Pragma syntax is now consistent. Previous syntax where type pragmas did not
-  follow the type name is now deprecated. Also pragma before generic parameter
-  list is deprecated to be consistent with how pragmas are used with a proc. See
-  [#8514](https://github.com/nim-lang/Nim/issues/8514) and
-  [#1872](https://github.com/nim-lang/Nim/issues/1872) for further details.
+- Unsigned integer operators have been fixed to allow promotion of the first operand.
+- Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
+  versions. The documentation was improved to acknowledge this special case.
+  See https://github.com/nim-lang/RFCs/issues/175 for more details.
 
 
 ### Tool changes
-- `jsondoc` now include a `moduleDescription` field with the module
-  description. `jsondoc0` shows comments as it's own objects as shown in the
-  documentation.
-- `nimpretty`: --backup now defaults to `off` instead of `on` and the flag was
-  un-documented; use `git` instead of relying on backup files.
+
+- Fix Nimpretty must not accept negative indentation argument because breaks file.
 
 
 ### Compiler changes
-- The deprecated `fmod` proc is now unavailable on the VM'.
-- A new `--outdir` option was added.
-- The compiled JavaScript file for the project produced by executing `nim js`
-  will no longer be placed in the nimcache directory.
-- The `--hotCodeReloading` has been implemented for the native targets.
-  The compiler also provides a new more flexible API for handling the
-  hot code reloading events in the code.
 
-### Bugfixes
+- JS target indent is all spaces, instead of mixed spaces and tabs, for
+  generated JavaScript.
+- The Nim compiler now supports the ``--asm`` command option for easier
+  inspection of the produced assembler code.
+- The Nim compiler now supports a new pragma called ``.localPassc`` to
+  pass specific compiler options to the C(++) backend for the C(++) file
+  that was produced from the current Nim module.
+- The compiler now inferes "sink parameters". To disable this for a specific routine,
+  annotate it with `.nosinks`. To disable it for a section of code, use
+  `{.push sinkInference: off.}`...`{.pop.}`.
+- The compiler now supports a new switch `--panics:on` that turns runtime
+  errors like `IndexError` or `OverflowError` into fatal errors that **cannot**
+  be caught via Nim's `try` statement. `--panics:on` can improve the
+  runtime efficiency and code size of your program significantly.
+- The compiler now warns about inheriting directly from `system.Exception` as
+  this is **very bad** style. You should inherit from `ValueError`, `IOError`,
+  `OSError` or from a different specific exception type that inherits from
+  `CatchableError` and cannot be confused with a `Defect`.
+
+
+## Bugfixes
+
+- The `FD` variant of `selector.unregister` for `ioselector_epoll` and
+  `ioselector_select` now properly handle the `Event.User` select event type.
+- `joinPath` path normalization when `/` is the first argument works correctly:
+  `assert "/" / "/a" == "/a"`. Fixed the edgecase: `assert "" / "" == ""`.
+- `xmltree` now adds indentation consistently to child nodes for any number
+  of children nodes.

@@ -1,5 +1,6 @@
 discard """
-  output: '''12'''
+  output: '''12
+4'''
 """
 
 {.emit: """
@@ -26,3 +27,21 @@ p(@[1])
 q(@[1])
 
 main()
+
+# bug #9403
+
+type
+  MyObj = ref object
+    len: int
+    val: UncheckedArray[uint64]
+
+proc spot(x: MyObj): int64 =
+  result = cast[UncheckedArray[int64]](x.val)[0]
+
+proc newMyObj(len: int): MyObj =
+  unsafeNew(result, sizeof(result[]) + len * sizeof(uint64))
+  result.len = len
+  result.val[0] = 4u64
+  result.val[1] = 8u64
+
+echo spot(newMyObj(2))

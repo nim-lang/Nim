@@ -9,6 +9,7 @@ Infix
       Ident "b"
       Ident "cint"
   NilLit
+macrocache ok
 '''
 
   output: '''
@@ -19,11 +20,13 @@ proc foo[T; N: static[int]]()
 a[0]: 42
 a[1]: 45
 x: some string
+([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
+([("key", "val"), ("keyB", "2")], [("val", "key"), ("2", "keyB")])
 '''
 """
 
 
-import macros, sugar
+import macros, sugar, macrocache
 
 
 block tdump:
@@ -47,7 +50,7 @@ block tgenericparams:
     let expr0 = "proc foo[T, N: static[int]]()"
     let expr1 = "proc foo[T; N: static[int]]()"
 
-    $toStrLit(parseExpr(expr0)) & "\n" & $toStrLit(parseExpr(expr1))
+    newLit($toStrLit(parseExpr(expr0)) & "\n" & $toStrLit(parseExpr(expr1)))
 
   echo test()
 
@@ -114,3 +117,80 @@ block tdebugstmt:
   a[1] = 45
 
   debug(a[0], a[1], x)
+
+const
+  pairs = {"key": "val", "keyB": "2"}
+
+macro bilookups(arg: static[openArray[(string, string)]]): untyped =
+  var a = newTree(nnkBracket)
+  var b = newTree(nnkBracket)
+  for (k, v) in items(arg):
+    a.add(newTree(nnkTupleConstr, newLit k, newLit v))
+    b.add(newTree(nnkTupleConstr, newLit v, newLit k))
+  result = newTree(nnkTupleConstr, a, b)
+
+macro bilookups2(arg: untyped): untyped =
+  var a = newTree(nnkBracket)
+  var b = newTree(nnkBracket)
+  arg.expectKind(nnkTableConstr)
+  for x in items(arg):
+    x.expectKind(nnkExprColonExpr)
+    a.add(newTree(nnkTupleConstr, x[0], x[1]))
+    b.add(newTree(nnkTupleConstr, x[1], x[0]))
+  result = newTree(nnkTupleConstr, a, b)
+
+const cnst1 = bilookups(pairs)
+echo cnst1
+const cnst2 = bilookups2({"key": "val", "keyB": "2"})
+echo cnst2
+
+
+
+# macrocache #11404
+const
+  mcTable = CacheTable"nimTest"
+  mcSeq = CacheSeq"nimTest"
+  mcCounter = CacheCounter"nimTest"
+
+static:
+  doAssert(mcCounter.value == 0) # CacheCounter.value
+  mcCounter.inc                  # CacheCounter.inc
+  doAssert(mcCounter.value == 1) # CacheCounter.value
+
+  let a = newLit(1)
+  let b = newLit(2)
+  let c = newLit(3)
+  let d = newLit(4)
+
+  mcSeq.add a # CacheSeq.add
+  mcSeq.add b # CacheSeq.add
+  mcSeq.add c # CacheSeq.add
+
+  doAssert(mcSeq.len == 3)  # CacheSeq.len
+  #doAssert(c in mcSeq)      # CacheSeq.contains
+  #doAssert(d notin mcSeq)   # CacheSeq.contains
+
+  mcSeq.incl d              # CacheSeq.incl
+  doAssert(mcSeq.len == 4)  # CacheSeq.len
+
+  mcSeq.incl c              # CacheSeq.incl
+  doAssert(mcSeq.len == 4)  # CacheSeq.len
+
+  doAssert(mcSeq[3] == d)   # CacheSeq.[]
+
+  #doAssert(mcSeq.pop() == d)# CacheSeq.pop
+  #doAssert(mcSeq.len == 3)  # CacheSeq.len
+
+  doAssert(mcTable.len == 0)  # CacheTable.len
+  mcTable["a"] = a            # CacheTable.[]=
+  doAssert(mcTable.len == 1)  # CacheTable.len
+
+  doAssert(mcTable["a"] == a) # CacheTable.[]
+  #doAssert("a" in mcTable)    # CacheTable.contains
+  #doAssert(mcTable.hasKey("a"))# CacheTable.hasKey
+
+  for k, v in mcTable:  # CacheTable.items
+    doAssert(k == "a")
+    doAssert(v == a)
+
+  echo "macrocache ok"

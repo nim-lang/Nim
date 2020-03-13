@@ -1,6 +1,18 @@
 discard """
 action: "run"
+output: '''Received (name: "Foo", species: "Bar")'''
 """
+
+# issue #7632
+
+import genericstrformat
+
+doAssert works(5) == "formatted  5"
+doAssert fails0(6) == "formatted  6"
+doAssert fails(7) == "formatted  7"
+doAssert fails2[0](8) == "formatted  8"
+
+# other tests
 
 import strformat
 
@@ -64,16 +76,22 @@ doAssert fmt"{0.0: g}" == " 0"
 let data1 = [1'i64, 10000'i64, 10000000'i64]
 let data2 = [10000000'i64, 100'i64, 1'i64]
 
-doAssert fmt"data1: {data1:8} ∨" == "data1: [       1,    10000, 10000000] ∨"
-doAssert fmt"data2: {data2:8} ∧" == "data2: [10000000,      100,        1] ∧"
+proc formatValue(result: var string; value: (array|seq|openArray); specifier: string) =
+  result.add "["
+  for i, it in value:
+    if i != 0:
+      result.add ", "
+    result.formatValue(it, specifier)
+  result.add "]"
+
+doAssert fmt"data1: {data1:8} #" == "data1: [       1,    10000, 10000000] #"
+doAssert fmt"data2: {data2:8} =" == "data2: [10000000,      100,        1] ="
 
 # custom format Value
 
 type
   Vec2[T] = object
     x,y: T
-  Vec2f = Vec2[float32]
-  Vec2i = Vec2[int32]
 
 proc formatValue[T](result: var string; value: Vec2[T]; specifier: string) =
   result.add '['
@@ -82,15 +100,76 @@ proc formatValue[T](result: var string; value: Vec2[T]; specifier: string) =
   result.formatValue value.y, specifier
   result.add "]"
 
-let v1 = Vec2f(x:1.0, y: 2.0)
-let v2 = Vec2i(x:1, y: 1337)
+let v1 = Vec2[float32](x:1.0, y: 2.0)
+let v2 = Vec2[int32](x:1, y: 1337)
 doAssert fmt"v1: {v1:+08}  v2: {v2:>4}" == "v1: [+0000001, +0000002]  v2: [   1, 1337]"
 
-# issue #7632
+# bug #11012
 
-import genericstrformat
+type
+  Animal = object
+    name, species: string
+  AnimalRef = ref Animal
 
-doAssert works(5) == "formatted  5"
-doAssert fails0(6) == "formatted  6"
-doAssert fails(7) == "formatted  7"
-doAssert fails2[0](8) == "formatted  8"
+proc print_object(animalAddr: AnimalRef) =
+  echo fmt"Received {animalAddr[]}"
+
+print_object(AnimalRef(name: "Foo", species: "Bar"))
+
+# bug #11723
+
+let pos: Positive = 64
+doAssert fmt"{pos:3}" == " 64"
+doAssert fmt"{pos:3b}" == "1000000"
+doAssert fmt"{pos:3d}" == " 64"
+doAssert fmt"{pos:3o}" == "100"
+doAssert fmt"{pos:3x}" == " 40"
+doAssert fmt"{pos:3X}" == " 40"
+
+let nat: Natural = 64
+doAssert fmt"{nat:3}" == " 64"
+doAssert fmt"{nat:3b}" == "1000000"
+doAssert fmt"{nat:3d}" == " 64"
+doAssert fmt"{nat:3o}" == "100"
+doAssert fmt"{nat:3x}" == " 40"
+doAssert fmt"{nat:3X}" == " 40"
+
+# bug #12612
+proc my_proc =
+  const value = "value"
+  const a = &"{value}"
+  assert a == value
+
+my_proc()
+
+block:
+  template fmt(pattern: string; openCloseChar: char): untyped =
+    fmt(pattern, openCloseChar, openCloseChar)
+
+  let
+    testInt = 123
+    testStr = "foobar"
+    testFlt = 3.141592
+  doAssert ">><<".fmt('<', '>') == "><"
+  doAssert " >> << ".fmt('<', '>') == " > < "
+  doAssert "<<>>".fmt('<', '>') == "<>"
+  doAssert " << >> ".fmt('<', '>') == " < > "
+  doAssert "''".fmt('\'') == "'"
+  doAssert "''''".fmt('\'') == "''"
+  doAssert "'' ''".fmt('\'') == "' '"
+  doAssert "<testInt>".fmt('<', '>') == "123"
+  doAssert "<testInt>".fmt('<', '>') == "123"
+  doAssert "'testFlt:1.2f'".fmt('\'') == "3.14"
+  doAssert "<testInt><testStr>".fmt('<', '>') == "123foobar"
+  doAssert """ ""{"123+123"}"" """.fmt('"') == " \"{246}\" "
+  doAssert "(((testFlt:1.2f)))((111))".fmt('(', ')') == "(3.14)(111)"
+  doAssert """(()"foo" & "bar"())""".fmt(')', '(') == "(foobar)"
+  doAssert "{}abc`testStr' `testFlt:1.2f' `1+1' ``".fmt('`', '\'') == "{}abcfoobar 3.14 2 `"
+  doAssert """x = '"foo" & "bar"'
+              y = '123 + 111'
+              z = '3 in {2..7}'
+           """.fmt('\'') ==
+           """x = foobar
+              y = 234
+              z = true
+           """

@@ -10,7 +10,7 @@ when defined(upcoming):
 
   proc delayedSet(ev: AsyncEvent, timeout: int): Future[void] {.async.} =
     await sleepAsync(timeout)
-    ev.setEvent()
+    ev.trigger()
 
   proc waitEvent(ev: AsyncEvent, closeEvent = false): Future[void] =
     var retFuture = newFuture[void]("waitEvent")
@@ -39,7 +39,7 @@ when defined(upcoming):
     let e = newAsyncEvent()
     addEvent(e) do (fd: AsyncFD) -> bool:
       assert(not unregistered)
-    e.setEvent()
+    e.trigger()
     e.unregister()
     unregistered = true
     poll()
@@ -52,7 +52,7 @@ when defined(upcoming):
     addEvent(e) do (fd: AsyncFD) -> bool:
       eventReceived = true
       return true
-    e.setEvent()
+    e.trigger()
     while not eventReceived:
       poll()
     try:
@@ -69,7 +69,7 @@ when defined(upcoming):
     addEvent(e) do (fd: AsyncFD) -> bool:
       e.unregister()
       e.close()
-    e.setEvent()
+    e.trigger()
     poll()
 
   when ioselSupportedPlatform or defined(windows):

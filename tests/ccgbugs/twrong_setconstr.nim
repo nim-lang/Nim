@@ -109,7 +109,7 @@ type
     warnFieldXNotSupported, warnCommentXIgnored,
     warnNilStatement, warnTypelessParam,
     warnDifferentHeaps, warnWriteToForeignHeap, warnUnsafeCode,
-    warnEachIdentIsTuple, warnShadowIdent,
+    warnEachIdentIsTuple
     warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnUser,

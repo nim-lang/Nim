@@ -16,6 +16,42 @@ proc main() =
   const U64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'u64
   const I64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'i64
 
+  doAssert( (U8 and U8) == bitand(U8,U8) )
+  doAssert( (I8 and I8) == bitand(I8,I8) )
+  doAssert( (U16 and U16) == bitand(U16,U16) )
+  doAssert( (I16 and I16) == bitand(I16,I16) )
+  doAssert( (U32 and U32) == bitand(U32,U32) )
+  doAssert( (I32 and I32) == bitand(I32,I32) )
+  doAssert( (U64A and U64B) == bitand(U64A,U64B) )
+  doAssert( (I64A and I64B) == bitand(I64A,I64B) )
+
+  doAssert( (U8 or U8) == bitor(U8,U8) )
+  doAssert( (I8 or I8) == bitor(I8,I8) )
+  doAssert( (U16 or U16) == bitor(U16,U16) )
+  doAssert( (I16 or I16) == bitor(I16,I16) )
+  doAssert( (U32 or U32) == bitor(U32,U32) )
+  doAssert( (I32 or I32) == bitor(I32,I32) )
+  doAssert( (U64A or U64B) == bitor(U64A,U64B) )
+  doAssert( (I64A or I64B) == bitor(I64A,I64B) )
+
+  doAssert( (U8 xor U8) == bitxor(U8,U8) )
+  doAssert( (I8 xor I8) == bitxor(I8,I8) )
+  doAssert( (U16 xor U16) == bitxor(U16,U16) )
+  doAssert( (I16 xor I16) == bitxor(I16,I16) )
+  doAssert( (U32 xor U32) == bitxor(U32,U32) )
+  doAssert( (I32 xor I32) == bitxor(I32,I32) )
+  doAssert( (U64A xor U64B) == bitxor(U64A,U64B) )
+  doAssert( (I64A xor I64B) == bitxor(I64A,I64B) )
+
+  doAssert( not(U8) == bitnot(U8) )
+  doAssert( not(I8) == bitnot(I8) )
+  doAssert( not(U16) == bitnot(U16) )
+  doAssert( not(I16) == bitnot(I16) )
+  doAssert( not(U32) == bitnot(U32) )
+  doAssert( not(I32) == bitnot(I32) )
+  doAssert( not(U64A) == bitnot(U64A) )
+  doAssert( not(I64A) == bitnot(I64A) )
+
   doAssert( U64A.fastLog2 == 62)
   doAssert( I64A.fastLog2 == 62)
   doAssert( U64A.countLeadingZeroBits == 1)
@@ -172,18 +208,18 @@ proc main() =
   block:
     proc testReverseBitsInvo(x: SomeUnsignedInt) =
       doAssert(reverseBits(reverseBits(x)) == x)
-      
+
     proc testReverseBitsPerType(x, reversed: uint64) =
       doAssert reverseBits(x) == reversed
-      doAssert reverseBits(uint32(x)) == uint32(reversed shr 32)
-      doAssert reverseBits(uint32(x shr 16)) == uint32(reversed shr 16)
-      doAssert reverseBits(uint16(x)) == uint16(reversed shr 48)
-      doAssert reverseBits(uint8(x)) == uint8(reversed shr 56)
+      doAssert reverseBits(cast[uint32](x)) == cast[uint32](reversed shr 32)
+      doAssert reverseBits(cast[uint32](x shr 16)) == cast[uint32](reversed shr 16)
+      doAssert reverseBits(cast[uint16](x)) == cast[uint16](reversed shr 48)
+      doAssert reverseBits(cast[uint8](x)) == cast[uint8](reversed shr 56)
 
       testReverseBitsInvo(x)
-      testReverseBitsInvo(uint32(x))
-      testReverseBitsInvo(uint16(x))
-      testReverseBitsInvo(uint8(x))
+      testReverseBitsInvo(cast[uint32](x))
+      testReverseBitsInvo(cast[uint16](x))
+      testReverseBitsInvo(cast[uint8](x))
 
     proc testReverseBitsRefl(x, reversed: uint64) =
       testReverseBitsPerType(x, reversed)

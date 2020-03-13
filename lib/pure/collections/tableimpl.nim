@@ -9,84 +9,49 @@
 
 # An ``include`` file for the different table implementations.
 
-# hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
-# two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: Hash): bool {.inline.} =
-  result = hcode == 0
-
-proc isFilled(hcode: Hash): bool {.inline.} =
-  result = hcode != 0
-
-const
-  growthFactor = 2
-
-proc mustRehash(length, counter: int): bool {.inline.} =
-  assert(length > counter)
-  result = (length * 2 < counter * 3) or (length - counter < 4)
-
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
-  result = (h + 1) and maxHash
-
-template rawGetKnownHCImpl() {.dirty.} =
-  var h: Hash = hc and maxHash(t)   # start with real hash value
-  while isFilled(t.data[h].hcode):
-    # Compare hc THEN key with boolean short circuit. This makes the common case
-    # zero ==key's for missing (e.g.inserts) and exactly one ==key for present.
-    # It does slow down succeeding lookups by one extra Hash cmp&and..usually
-    # just a few clock cycles, generally worth it for any non-integer-like A.
-    if t.data[h].hcode == hc and t.data[h].key == key:
-      return h
-    h = nextTry(h, maxHash(t))
-  result = -1 - h                   # < 0 => MISSING; insert idx = -1 - result
-
-template genHashImpl(key, hc: typed) =
-  hc = hash(key)
-  if hc == 0:       # This almost never taken branch should be very predictable.
-    hc = 314159265  # Value doesn't matter; Any non-zero favorite is fine.
-
-template genHash(key: typed): Hash =
-  var res: Hash
-  genHashImpl(key, res)
-  res
-
-template rawGetImpl() {.dirty.} =
-  genHashImpl(key, hc)
-  rawGetKnownHCImpl()
+include hashcommon
 
 template rawGetDeepImpl() {.dirty.} =   # Search algo for unconditional add
   genHashImpl(key, hc)
   var h: Hash = hc and maxHash(t)
-  while isFilled(t.data[h].hcode):
-    h = nextTry(h, maxHash(t))
+  var perturb = t.getPerturb(hc)
+  while true:
+    let hcode = t.data[h].hcode
+    if hcode == deletedMarker or hcode == freeMarker:
+      break
+    else:
+      h = nextTry(h, maxHash(t), perturb)
   result = h
 
-template rawInsertImpl() {.dirty.} =
+template rawInsertImpl(t) {.dirty.} =
   data[h].key = key
   data[h].val = val
+  if data[h].hcode == deletedMarker:
+    t.countDeleted.dec
   data[h].hcode = hc
-
-proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
-  rawGetKnownHCImpl()
 
 proc rawGetDeep[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
   rawGetDeepImpl()
 
-proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
-  rawGetImpl()
-
 proc rawInsert[X, A, B](t: var X, data: var KeyValuePairSeq[A, B],
                      key: A, val: B, hc: Hash, h: Hash) =
-  rawInsertImpl()
+  rawInsertImpl(t)
+
+template checkIfInitialized() =
+  when compiles(defaultInitialSize):
+    if t.dataLen == 0:
+      initImpl(t, defaultInitialSize)
 
 template addImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter): enlarge(t)
+  checkIfInitialized()
+  if mustRehash(t): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
   inc(t.counter)
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter):
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index                  # important to transform for mgetOrPutImpl
@@ -94,12 +59,14 @@ template maybeRehashPutImpl(enlarge) {.dirty.} =
   inc(t.counter)
 
 template putImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index >= 0: t.data[index].val = val
   else: maybeRehashPutImpl(enlarge)
 
 template mgetOrPutImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -109,6 +76,7 @@ template mgetOrPutImpl(enlarge) {.dirty.} =
   result = t.data[index].val
 
 template hasKeyOrPutImpl(enlarge) {.dirty.} =
+  checkIfInitialized()
   var hc: Hash
   var index = rawGet(t, key, hc)
   if index < 0:
@@ -116,33 +84,15 @@ template hasKeyOrPutImpl(enlarge) {.dirty.} =
     maybeRehashPutImpl(enlarge)
   else: result = true
 
-when not defined(nimHasDefault):
-  template default[T](t: typedesc[T]): T =
-    var v: T
-    v
-
 template delImplIdx(t, i) =
   let msk = maxHash(t)
   if i >= 0:
     dec(t.counter)
-    block outer:
-      while true:         # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-        var j = i         # The correctness of this depends on (h+1) in nextTry,
-        var r = j         # though may be adaptable to other simple sequences.
-        t.data[i].hcode = 0              # mark current EMPTY
-        t.data[i].key = default(type(t.data[i].key))
-        t.data[i].val = default(type(t.data[i].val))
-        while true:
-          i = (i + 1) and msk            # increment mod table size
-          if isEmpty(t.data[i].hcode):   # end of collision cluster; So all done
-            break outer
-          r = t.data[i].hcode and msk    # "home" location of key@i
-          if not ((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-            break
-        when defined(js):
-          t.data[j] = t.data[i]
-        else:
-          shallowCopy(t.data[j], t.data[i]) # data[j] will be marked EMPTY next loop
+    inc(t.countDeleted)
+    t.data[i].hcode = deletedMarker
+    t.data[i].key = default(type(t.data[i].key))
+    t.data[i].val = default(type(t.data[i].val))
+    # mustRehash + enlarge not needed because counter+countDeleted doesn't change
 
 template delImpl() {.dirty.} =
   var hc: Hash
@@ -150,9 +100,66 @@ template delImpl() {.dirty.} =
   delImplIdx(t, i)
 
 template clearImpl() {.dirty.} =
-  for i in 0 ..< t.data.len:
+  for i in 0 ..< t.dataLen:
     when compiles(t.data[i].hcode): # CountTable records don't contain a hcode
       t.data[i].hcode = 0
     t.data[i].key = default(type(t.data[i].key))
     t.data[i].val = default(type(t.data[i].val))
   t.counter = 0
+
+template ctAnd(a, b): bool =
+  # pending https://github.com/nim-lang/Nim/issues/13502
+  when a:
+    when b: true
+    else: false
+  else: false
+
+template initImpl(result: typed, size: int) =
+  when ctAnd(declared(SharedTable), type(result) is SharedTable):
+    init(result, size)
+  else:
+    assert isPowerOfTwo(size)
+    result.counter = 0
+    newSeq(result.data, size)
+    when compiles(result.first):
+      result.first = -1
+      result.last = -1
+
+template insertImpl() = # for CountTable
+  checkIfInitialized()
+  if mustRehash(t): enlarge(t)
+  ctRawInsert(t, t.data, key, val)
+  inc(t.counter)
+
+template getOrDefaultImpl(t, key): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  if index >= 0: result = t.data[index].val
+
+template getOrDefaultImpl(t, key, default: untyped): untyped =
+  mixin rawGet
+  var hc: Hash
+  var index = rawGet(t, key, hc)
+  result = if index >= 0: t.data[index].val else: default
+
+template dollarImpl(): untyped {.dirty.} =
+  if t.len == 0:
+    result = "{:}"
+  else:
+    result = "{"
+    for key, val in pairs(t):
+      if result.len > 1: result.add(", ")
+      result.addQuoted(key)
+      result.add(": ")
+      result.addQuoted(val)
+    result.add("}")
+
+template equalsImpl(s, t: typed) =
+  if s.counter == t.counter:
+    # different insertion orders mean different 'data' seqs, so we have
+    # to use the slow route here:
+    for key, val in s:
+      if not t.hasKey(key): return false
+      if t.getOrDefault(key) != val: return false
+    return true

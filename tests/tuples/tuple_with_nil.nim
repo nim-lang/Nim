@@ -49,7 +49,7 @@ type
     precision: int    ## floating point precision
     width: int        ## minimal width
     fill: string      ## the fill character, UTF8
-    align: FmtAlign  ## aligment
+    align: FmtAlign  ## alignment
     sign: FmtSign    ## sign notation
     baseprefix: bool  ## whether binary, octal, hex should be prefixed by 0b, 0x, 0o
     upcase: bool      ## upper case letters in hex or exponential formats
@@ -87,7 +87,7 @@ proc has(c: Captures; i: range[0..pegs.MaxSubpatterns-1]): bool {.nosideeffect, 
   result = b.first <= b.last
 
 proc get(str: string; c: Captures; i: range[0..MaxSubpatterns-1]; def: char): char {.nosideeffect, inline.} =
-  ## If capture `i` is non-empty return that portion of `str` casted
+  ## If capture `i` is non-empty return that portion of `str` cast
   ## to `char`, otherwise return `def`.
   result = if c.has(i): str[c.bounds(i).first] else: def
 
@@ -207,7 +207,7 @@ proc writefill(o: var Writer; fmt: Format; n: int; signum: int = 0) =
   ## `add`
   ##   output function
   ## `fmt`
-  ##   format to be used (important for padding aligment)
+  ##   format to be used (important for padding alignment)
   ## `n`
   ##   the number of filling characters to be written
   ## `signum`
@@ -344,7 +344,7 @@ proc writeformat(o: var Writer; p: pointer; fmt: Format) =
   ## Write pointer `i` according to format `fmt` using output object
   ## `o` and output function `add`.
   ##
-  ## Pointers are casted to unsigned int and formatted as hexadecimal
+  ## Pointers are cast to unsigned int and formatted as hexadecimal
   ## with prefix unless specified otherwise.
   var f = fmt
   if f.typ == 0.char:

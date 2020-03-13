@@ -46,7 +46,7 @@ block ttemplate:
   for name, value in (n: "v").fieldPairs:
     echo name
 
-  template wrapper: typed =
+  template wrapper(): void =
     for name, value in (n: "v").fieldPairs:
       echo name
   wrapper()

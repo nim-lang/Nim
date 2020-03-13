@@ -6,10 +6,10 @@ foo55
 foo8.0
 fooaha
 bar7
-immediate
 10
 4true
 132
+20
 '''
 """
 
@@ -77,7 +77,7 @@ block generic_templates:
 block tgetast_typeliar:
   proc error(s: string) = quit s
 
-  macro assertOrReturn(condition: bool; message: string): typed =
+  macro assertOrReturn2(condition: bool; message: string) =
     var line = condition.lineInfo()
     result = quote do:
       block:
@@ -86,8 +86,10 @@ block tgetast_typeliar:
           return
 
   macro assertOrReturn(condition: bool): typed =
-    var message = condition.toStrLit()
-    result = getAst assertOrReturn(condition, message)
+    var message : NimNode = newLit(condition.repr)
+    # echo message
+    result = getAst assertOrReturn2(condition, message)
+    echo result.repr
 
   proc point(size: int16): tuple[x, y: int16] =
     # returns random point in square area with given `size`
@@ -118,21 +120,6 @@ block pattern_with_converter:
     result = x * 2.0
 
   doAssert floatDouble(5) == 10.0
-
-
-
-block prefer_immediate:
-  # Test that immediate templates are preferred over non-immediate templates
-
-  template foo(a, b: untyped) = echo "foo expr"
-  template foo(a, b: int) = echo "foo int"
-  template foo(a, b: float) = echo "foo float"
-  template foo(a, b: string) = echo "foo string"
-  template foo(a, b: untyped) {.immediate.} = echo "immediate"
-  template foo(a, b: bool) = echo "foo bool"
-  template foo(a, b: char) = echo "foo char"
-
-  foo(undeclaredIdentifier, undeclaredIdentifier2)
 
 
 
@@ -206,7 +193,7 @@ block ttempl:
 
 
 block ttempl4:
-  template `:=`(name, val: untyped): typed =
+  template `:=`(name, val: untyped) =
     var name = val
 
   ha := 1 * 4
@@ -225,7 +212,7 @@ block ttempl5:
       discard
 
   # Call parse_to_close
-  template get_next_ident: typed =
+  template get_next_ident =
       discard "{something}".parse_to_close(0, open = '{', close = '}')
 
   get_next_ident()
@@ -246,6 +233,15 @@ block templreturntype:
   template `=~` (a: int, b: int): bool = false
   var foo = 2 =~ 3
 
+# bug #7117
+template parse9(body: untyped): untyped =
 
+  template val9(arg: string): int {.inject.} =
+    var b: bool
+    if b: 10
+    else: 20
 
+  body
 
+parse9:
+  echo val9("1")

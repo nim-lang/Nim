@@ -4,7 +4,7 @@ IntLit 5
 proc (x: int): string => typeDesc[proc[string, int]]
 proc (x: int): void => typeDesc[proc[void, int]]
 proc (x: int) => typeDesc[proc[void, int]]
-x => UncheckedArray[int]
+x => seq[int]
 a
 s
 d
@@ -26,6 +26,7 @@ range[0 .. 100]
 array[0 .. 100, int]
 10
 test
+0o377'i8
 '''
 """
 
@@ -111,7 +112,7 @@ block t2211:
   showType(proc(x:int): void)
   showType(proc(x:int))
 
-  var x: UncheckedArray[int]
+  var x: seq[int]
   showType(x)
 
 
@@ -236,3 +237,10 @@ block tbugs:
   sampleMacroInt(42)
   sampleMacroBool(false)
   sampleMacroBool(system.true)
+
+
+# bug #11131
+macro toRendererBug(n): untyped =
+  result = newLit repr(n)
+
+echo toRendererBug(0o377'i8)

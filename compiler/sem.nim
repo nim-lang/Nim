@@ -10,13 +10,13 @@
 # This module implements the semantic checking pass.
 
 import
-  ast, strutils, hashes, options, lexer, astalgo, trees, treetab,
-  wordrecg, ropes, msgs, os, condsyms, idents, renderer, types, platform, math,
-  magicsys, parser, nversion, nimsets, semfold, modulepaths, importer,
+  ast, strutils, options, astalgo, trees,
+  wordrecg, ropes, msgs, idents, renderer, types, platform, math,
+  magicsys, nversion, nimsets, semfold, modulepaths, importer,
   procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
   intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
   evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, pluginsupport, plugins/active, rod, lineinfos
+  lowerings, plugins/active, rod, lineinfos, strtabs, int128
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
@@ -24,13 +24,12 @@ when defined(nimfix):
   import nimfix/prettybase
 
 when not defined(leanCompiler):
-  import semparallel
+  import spawn
 
 # implementation
 
-proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.procvar.}
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.
-  procvar.}
+proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semExprNoType(c: PContext, n: PNode): PNode
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc semProcBody(c: PContext, n: PNode): PNode
@@ -77,14 +76,12 @@ template semIdeForTemplateOrGeneric(c: PContext; n: PNode;
       discard safeSemExpr(c, n)
 
 proc fitNodePostMatch(c: PContext, formal: PType, arg: PNode): PNode =
-  result = arg
-  let x = result.skipConv
-  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyExpr:
+  let x = arg.skipConv
+  if x.kind in {nkPar, nkTupleConstr, nkCurly} and formal.kind != tyUntyped:
     changeType(c, x, formal, check=true)
-  else:
-    result = skipHiddenSubConv(result)
-    #result.typ = takeType(formal, arg.typ)
-    #echo arg.info, " picked ", result.typ.typeToString
+  result = arg
+  result = skipHiddenSubConv(result)
+
 
 proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
   if arg.typ.isNil:
@@ -106,7 +103,7 @@ proc fitNode(c: PContext, formal: PType, arg: PNode; info: TLineInfo): PNode =
 proc inferWithMetatype(c: PContext, formal: PType,
                        arg: PNode, coerceDistincts = false): PNode
 
-template commonTypeBegin*(): PType = PType(kind: tyExpr)
+template commonTypeBegin*(): PType = PType(kind: tyUntyped)
 
 proc commonType*(x, y: PType): PType =
   # new type relation that is used for array constructors,
@@ -116,10 +113,10 @@ proc commonType*(x, y: PType): PType =
   var a = skipTypes(x, {tyGenericInst, tyAlias, tySink})
   var b = skipTypes(y, {tyGenericInst, tyAlias, tySink})
   result = x
-  if a.kind in {tyExpr, tyNil}: result = y
-  elif b.kind in {tyExpr, tyNil}: result = x
-  elif a.kind == tyStmt: result = a
-  elif b.kind == tyStmt: result = b
+  if a.kind in {tyUntyped, tyNil}: result = y
+  elif b.kind in {tyUntyped, tyNil}: result = x
+  elif a.kind == tyTyped: result = a
+  elif b.kind == tyTyped: result = b
   elif a.kind == tyTypeDesc:
     # turn any concrete typedesc into the abstract typedesc type
     if a.len == 0: result = a
@@ -130,17 +127,17 @@ proc commonType*(x, y: PType): PType =
       a.kind == b.kind:
     # check for seq[empty] vs. seq[int]
     let idx = ord(b.kind == tyArray)
-    if a.sons[idx].kind == tyEmpty: return y
+    if a[idx].kind == tyEmpty: return y
   elif a.kind == tyTuple and b.kind == tyTuple and a.len == b.len:
     var nt: PType
     for i in 0..<a.len:
-      let aEmpty = isEmptyContainer(a.sons[i])
-      let bEmpty = isEmptyContainer(b.sons[i])
+      let aEmpty = isEmptyContainer(a[i])
+      let bEmpty = isEmptyContainer(b[i])
       if aEmpty != bEmpty:
         if nt.isNil: nt = copyType(a, a.owner, false)
-        nt.sons[i] = if aEmpty: b.sons[i] else: a.sons[i]
+        nt[i] = if aEmpty: b[i] else: a[i]
     if not nt.isNil: result = nt
-    #elif b.sons[idx].kind == tyEmpty: return x
+    #elif b[idx].kind == tyEmpty: return x
   elif a.kind == tyRange and b.kind == tyRange:
     # consider:  (range[0..3], range[0..4]) here. We should make that
     # range[0..4]. But then why is (range[0..4], 6) not range[0..6]?
@@ -184,7 +181,7 @@ proc endsInNoReturn(n: PNode): bool =
   var it = n
   while it.kind in {nkStmtList, nkStmtListExpr} and it.len > 0:
     it = it.lastSon
-  result = it.kind == nkRaiseStmt or
+  result = it.kind in nkLastBlockStmts or
     it.kind in nkCallKinds and it[0].kind == nkSym and sfNoReturn in it[0].sym.flags
 
 proc commonType*(x: PType, y: PNode): PType =
@@ -280,7 +277,7 @@ when false:
 
 proc hasCycle(n: PNode): bool =
   incl n.flags, nfNone
-  for i in 0..<safeLen(n):
+  for i in 0..<n.safeLen:
     if nfNone in n[i].flags or hasCycle(n[i]):
       result = true
       break
@@ -290,7 +287,7 @@ proc fixupTypeAfterEval(c: PContext, evaluated, eOrig: PNode): PNode =
   # recompute the types as 'eval' isn't guaranteed to construct types nor
   # that the types are sound:
   when true:
-    if eOrig.typ.kind in {tyExpr, tyStmt, tyTypeDesc}:
+    if eOrig.typ.kind in {tyUntyped, tyTyped, tyTypeDesc}:
       result = semExprWithType(c, evaluated)
     else:
       result = evaluated
@@ -384,7 +381,7 @@ when false:
   # hopefully not required:
   proc resetSemFlag(n: PNode) =
     excl n.flags, nfSem
-    for i in 0 ..< n.safeLen:
+    for i in 0..<n.safeLen:
       resetSemFlag(n[i])
 
 proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
@@ -398,23 +395,28 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
   if c.config.evalTemplateCounter > evalTemplateLimit:
     globalError(c.config, s.info, "template instantiation too nested")
   c.friendModules.add(s.owner.getModule)
-
+  idSynchronizationPoint(5000)
   result = macroResult
   excl(result.flags, nfSem)
   #resetSemFlag n
-  if s.typ.sons[0] == nil:
+  if s.typ[0] == nil:
     result = semStmt(c, result, flags)
   else:
-    case s.typ.sons[0].kind
-    of tyExpr:
-      # BUGFIX: we cannot expect a type here, because module aliases would not
-      # work then (see the ``tmodulealias`` test)
-      # semExprWithType(c, result)
+    var retType = s.typ[0]
+    if retType.kind == tyTypeDesc and tfUnresolved in retType.flags and
+        retType.len == 1:
+      # bug #11941: template fails(T: type X, v: auto): T
+      # does not mean we expect a tyTypeDesc.
+      retType = retType[0]
+    case retType.kind
+    of tyUntyped:
+      # Not expecting a type here allows templates like in ``tmodulealias.in``.
       result = semExpr(c, result, flags)
-    of tyStmt:
-      result = semStmt(c, result, flags)
+    of tyTyped:
+      # More restrictive version.
+      result = semExprWithType(c, result, flags)
     of tyTypeDesc:
-      if result.kind == nkStmtList: result.kind = nkStmtListType
+      if result.kind == nkStmtList: result.transitionSonsKind(nkStmtListType)
       var typ = semTypeNode(c, result, nil)
       if typ == nil:
         localError(c.config, result.info, "expression has no type: " &
@@ -424,7 +426,6 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
         result.typ = makeTypeDesc(c, typ)
       #result = symNodeFromType(c, typ, n.info)
     else:
-      var retType = s.typ.sons[0]
       if s.ast[genericParamsPos] != nil and retType.isMetaType:
         # The return type may depend on the Macro arguments
         # e.g. template foo(T: typedesc): seq[T]
@@ -439,25 +440,25 @@ proc semAfterMacroCall(c: PContext, call, macroResult: PNode,
 
       result = semExpr(c, result, flags)
       result = fitNode(c, retType, result, result.info)
-      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ.sons[0]))
+      #globalError(s.info, errInvalidParamKindX, typeToString(s.typ[0]))
   dec(c.config.evalTemplateCounter)
   discard c.friendModules.pop()
 
 const
   errMissingGenericParamsForTemplate = "'$1' has unspecified generic parameters"
+  errFloatToString = "cannot convert '$1' to '$2'"
 
 proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
                   flags: TExprFlags = {}): PNode =
   pushInfoContext(c.config, nOrig.info, sym.detailedInfo)
 
   let info = getCallLineInfo(n)
-  markUsed(c.config, info, sym, c.graph.usageSym)
+  markUsed(c, info, sym)
   onUse(info, sym)
   if sym == c.p.owner:
     globalError(c.config, info, "recursive dependency: '$1'" % sym.name.s)
 
-  let genericParams = if sfImmediate in sym.flags: 0
-                      else: sym.ast[genericParamsPos].len
+  let genericParams = sym.ast[genericParamsPos].len
   let suppliedParams = max(n.safeLen - 1, 0)
 
   if suppliedParams < genericParams:
@@ -468,6 +469,8 @@ proc semMacroExpr(c: PContext, n, nOrig: PNode, sym: PSym,
   result = evalMacroCall(c.module, c.graph, n, nOrig, sym)
   if efNoSemCheck notin flags:
     result = semAfterMacroCall(c, n, result, sym, flags)
+  if c.config.macrosToExpand.hasKey(sym.name.s):
+    message(c.config, nOrig.info, hintExpandMacro, renderTree(result))
   result = wrapInComesFrom(nOrig.info, sym, result)
   popInfoContext(c.config)
 
@@ -492,13 +495,13 @@ proc semConceptBody(c: PContext, n: PNode): PNode
 include semtypes, semtempl, semgnrc, semstmts, semexprs
 
 proc addCodeForGenerics(c: PContext, n: PNode) =
-  for i in countup(c.lastGenericIdx, c.generics.len - 1):
+  for i in c.lastGenericIdx..<c.generics.len:
     var prc = c.generics[i].inst.sym
     if prc.kind in {skProc, skFunc, skMethod, skConverter} and prc.magic == mNone:
-      if prc.ast == nil or prc.ast.sons[bodyPos] == nil:
+      if prc.ast == nil or prc.ast[bodyPos] == nil:
         internalError(c.config, prc.info, "no code for " & prc.name.s)
       else:
-        addSon(n, prc.ast)
+        n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
@@ -523,12 +526,6 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   if sfSystemModule in module.flags:
     graph.systemModule = module
   c.topLevelScope = openScope(c)
-  # don't be verbose unless the module belongs to the main package:
-  if module.owner.id == graph.config.mainPackageId:
-    graph.config.notes = graph.config.mainPackageNotes
-  else:
-    if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes
-    graph.config.notes = graph.config.foreignPackageNotes
   result = c
 
 proc isImportSystemStmt(g: ModuleGraph; n: PNode): bool =
@@ -577,9 +574,9 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     if c.lastGenericIdx < c.generics.len:
       var a = newNodeI(nkStmtList, n.info)
       addCodeForGenerics(c, a)
-      if sonsLen(a) > 0:
+      if a.len > 0:
         # a generic has been added to `a`:
-        if result.kind != nkEmpty: addSon(a, result)
+        if result.kind != nkEmpty: a.add result
         result = a
   result = hloStmt(c, result)
   if c.config.cmd == cmdInteractive and not isEmptyType(result.typ):
@@ -618,12 +615,18 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   rod.storeNode(c.graph, c.module, result)
 
+proc reportUnusedModules(c: PContext) =
+  for i in 0..high(c.unusedImports):
+    if sfUsed notin c.unusedImports[i][0].flags:
+      message(c.config, c.unusedImports[i][1], warnUnusedImportX, c.unusedImports[i][0].name.s)
+
 proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
   var c = PContext(context)
   if c.config.cmd == cmdIdeTools and not c.suggestionsMade:
     suggestSentinel(c)
   closeScope(c)         # close module's scope
   rawCloseScope(c)      # imported symbols; don't check for unused ones!
+  reportUnusedModules(c)
   result = newNode(nkStmtList)
   if n != nil:
     internalError(c.config, n.info, "n is not nil") #result := n;

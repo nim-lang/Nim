@@ -19,9 +19,9 @@ when defined(i386) and defined(windows) and defined(vcc):
   {.link: "../icons/nim-i386-windows-vcc.res".}
 
 import
-  commands, lexer, condsyms, options, msgs, nversion, nimconf, ropes,
-  extccomp, strutils, os, osproc, platform, main, parseopt,
-  scriptconfig, idents, modulegraphs, lineinfos, cmdlinehelper,
+  commands, options, msgs,
+  extccomp, strutils, os, main, parseopt,
+  idents, lineinfos, cmdlinehelper,
   pathutils
 
 include nodejs
@@ -40,20 +40,40 @@ proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   else:
     result = f
 
+proc addCmdPrefix*(result: var string, kind: CmdLineKind) =
+  # consider moving this to std/parseopt
+  case kind
+  of cmdLongOption: result.add "--"
+  of cmdShortOption: result.add "-"
+  of cmdArgument, cmdEnd: discard
+
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
+
+  config.commandLine.setLen 0
+    # bugfix: otherwise, config.commandLine ends up duplicated
+
   while true:
     parseopt.next(p)
     case p.kind
     of cmdEnd: break
-    of cmdLongoption, cmdShortOption:
+    of cmdLongOption, cmdShortOption:
+      config.commandLine.add " "
+      config.commandLine.addCmdPrefix p.kind
+      config.commandLine.add p.key.quoteShell # quoteShell to be future proof
+      if p.val.len > 0:
+        config.commandLine.add ':'
+        config.commandLine.add p.val.quoteShell
+
       if p.key == " ":
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
         processSwitch(pass, p, config)
     of cmdArgument:
+      config.commandLine.add " "
+      config.commandLine.add p.key.quoteShell
       if processArgument(pass, p, argsCount, config): break
   if pass == passCmd2:
     if {optRun, optWasNimscript} * config.globalOptions == {} and
@@ -73,7 +93,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
 
   self.processCmdLineAndProjectPath(conf)
   if not self.loadConfigsAndRunMainCommand(cache, conf): return
-  if optHints in conf.options and hintGCStats in conf.notes: echo(GC_getStatistics())
+  if conf.hasHint(hintGCStats): echo(GC_getStatistics())
   #echo(GC_getStatistics())
   if conf.errorCounter != 0: return
   when hasTinyCBackend:

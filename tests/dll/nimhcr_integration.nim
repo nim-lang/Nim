@@ -1,5 +1,6 @@
 discard """
-output: '''
+  disabled: "macosx"
+  output: '''
 main: HELLO!
 main: hasAnyModuleChanged? true
 main: before
@@ -29,6 +30,7 @@ main: hasAnyModuleChanged? true
    0: before - improved!
 main: before
    2: random string
+max mutual recursion reached!
 1
 bar
    0: after - closure iterator: 0

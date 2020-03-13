@@ -164,7 +164,7 @@ vcat.x = "cat value"
 reject:
   vcat = vdog
 
-# XXX: The next two cases seem incosistent, perhaps we should change the rules
+# XXX: The next two cases seem inconsistent, perhaps we should change the rules
 accept:
   # truncating copies are allowed
   var vanimal: Animal = vdog

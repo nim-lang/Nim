@@ -1,8 +1,16 @@
+{.push stack_trace: off.}
+
 const useLibC = not defined(nimNoLibc)
 
-proc nimCopyMem(dest, source: pointer, size: Natural) {.compilerproc, inline.} =
+when not defined(nimHasHotCodeReloading):
+  {.pragma: nonReloadable.}
+
+when useLibC:
+  import ansi_c
+
+proc nimCopyMem*(dest, source: pointer, size: Natural) {.nonReloadable, compilerproc, inline.} =
   when useLibC:
-    c_memcpy(dest, source, size)
+    c_memcpy(dest, source, cast[csize_t](size))
   else:
     let d = cast[ptr UncheckedArray[byte]](dest)
     let s = cast[ptr UncheckedArray[byte]](source)
@@ -11,9 +19,9 @@ proc nimCopyMem(dest, source: pointer, size: Natural) {.compilerproc, inline.} =
       d[i] = s[i]
       inc i
 
-proc nimSetMem(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
+proc nimSetMem*(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
   when useLibC:
-    c_memset(a, v, size)
+    c_memset(a, v, cast[csize_t](size))
   else:
     let a = cast[ptr UncheckedArray[byte]](a)
     var i = 0
@@ -22,12 +30,12 @@ proc nimSetMem(a: pointer, v: cint, size: Natural) {.nonReloadable, inline.} =
       a[i] = v
       inc i
 
-proc nimZeroMem(p: pointer, size: Natural) {.compilerproc, nonReloadable, inline.} =
+proc nimZeroMem*(p: pointer, size: Natural) {.compilerproc, nonReloadable, inline.} =
   nimSetMem(p, 0, size)
 
-proc nimCmpMem(a, b: pointer, size: Natural): cint {.compilerproc, inline.} =
+proc nimCmpMem*(a, b: pointer, size: Natural): cint {.compilerproc, nonReloadable, inline.} =
   when useLibC:
-    c_memcmp(a, b, size)
+    c_memcmp(a, b, cast[csize_t](size))
   else:
     let a = cast[ptr UncheckedArray[byte]](a)
     let b = cast[ptr UncheckedArray[byte]](b)
@@ -37,7 +45,7 @@ proc nimCmpMem(a, b: pointer, size: Natural): cint {.compilerproc, inline.} =
       if d != 0: return d
       inc i
 
-proc nimCStrLen(a: cstring): csize {.compilerproc, nonReloadable, inline.} =
+proc nimCStrLen*(a: cstring): csize_t {.compilerproc, nonReloadable, inline.} =
   when useLibC:
     c_strlen(a)
   else:
@@ -45,3 +53,5 @@ proc nimCStrLen(a: cstring): csize {.compilerproc, nonReloadable, inline.} =
     while a[] != 0:
       a = cast[ptr byte](cast[uint](a) + 1)
       inc result
+
+{.pop.}

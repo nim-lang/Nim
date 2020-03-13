@@ -118,11 +118,11 @@ elif defined(windows) or defined(dos):
   proc nimGetProcAddr(lib: LibHandle, name: cstring): ProcAddr =
     result = getProcAddress(cast[THINSTANCE](lib), name)
     if result != nil: return
-    const decorated_length = 250
-    var decorated: array[decorated_length, char]
+    const decoratedLength = 250
+    var decorated: array[decoratedLength, char]
     decorated[0] = '_'
     var m = 1
-    while m < (decorated_length - 5):
+    while m < (decoratedLength - 5):
       if name[m - 1] == '\x00': break
       decorated[m] = name[m - 1]
       inc(m)

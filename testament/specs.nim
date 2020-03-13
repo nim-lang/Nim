@@ -7,12 +7,15 @@
 #    distribution, for details about the copyright.
 #
 
-import parseutils, strutils, os, osproc, streams, parsecfg
+import sequtils, parseutils, strutils, os, streams, parsecfg
 
 var compilerPrefix* = findExe("nim")
 
 let isTravis* = existsEnv("TRAVIS")
 let isAppVeyor* = existsEnv("APPVEYOR")
+let isAzure* = existsEnv("TF_BUILD")
+
+var skips*: seq[string]
 
 type
   TTestAction* = enum
@@ -32,6 +35,7 @@ type
     reLinesDiffer,      # expected and given line numbers differ
     reOutputsDiffer,
     reExitcodesDiffer,
+    reTimeout,
     reInvalidPeg,
     reCodegenFailure,
     reCodeNotFound,
@@ -65,9 +69,13 @@ type
     maxCodeSize*: int
     err*: TResultEnum
     targets*: set[TTarget]
+    matrix*: seq[string]
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
+    useValgrind*: bool
+    timeout*: float # in seconds, fractions possible,
+                    # but don't rely on much precision
 
 proc getCmd*(s: TSpec): string =
   if s.cmd.len == 0:
@@ -76,7 +84,7 @@ proc getCmd*(s: TSpec): string =
     result = s.cmd
 
 const
-  targetToExt*: array[TTarget, string] = ["c", "cpp", "m", "js"]
+  targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
 when not declared(parseCfgBool):
@@ -120,6 +128,9 @@ proc addLine*(self: var string; a,b: string) =
   self.add b
   self.add "\n"
 
+proc initSpec*(filename: string): TSpec =
+  result.file = filename
+
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
   let specStr = extractSpec(filename)
@@ -160,7 +171,8 @@ proc parseSpec*(filename: string): TSpec =
       of "tcolumn":
         discard parseInt(e.value, result.tcolumn)
       of "output":
-        result.outputCheck = ocEqual
+        if result.outputCheck != ocSubstr:
+          result.outputCheck = ocEqual
         result.output = strip(e.value)
       of "input":
         result.input = e.value
@@ -186,6 +198,16 @@ proc parseSpec*(filename: string): TSpec =
         result.nimout = e.value
       of "joinable":
         result.unjoinable = not parseCfgBool(e.value)
+      of "valgrind":
+        when defined(linux) and sizeof(int) == 8:
+          result.useValgrind = parseCfgBool(e.value)
+          result.unjoinable = true
+          if result.useValgrind:
+            result.outputCheck = ocSubstr
+        else:
+          # Windows lacks valgrind. Silly OS.
+          # Valgrind only supports OSX <= 17.x
+          result.useValgrind = false
       of "disabled":
         case e.value.normalize
         of "y", "yes", "true", "1", "on": result.err = reDisabled
@@ -206,9 +228,15 @@ proc parseSpec*(filename: string): TSpec =
           if isTravis: result.err = reDisabled
         of "appveyor":
           if isAppVeyor: result.err = reDisabled
+        of "azure":
+          if isAzure: result.err = reDisabled
         of "32bit":
           if sizeof(int) == 4:
             result.err = reDisabled
+        of "freebsd":
+          when defined(freebsd): result.err = reDisabled
+        of "arm64":
+          when defined(arm64): result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
@@ -220,6 +248,11 @@ proc parseSpec*(filename: string): TSpec =
         result.ccodeCheck = e.value
       of "maxcodesize":
         discard parseInt(e.value, result.maxCodeSize)
+      of "timeout":
+        try:
+          result.timeout = parseFloat(e.value)
+        except ValueError:
+          result.parseErrors.addLine "cannot interpret as a float: ", e.value
       of "target", "targets":
         for v in e.value.normalize.splitWhitespace:
           case v
@@ -233,6 +266,9 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetJS)
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "matrix":
+        for v in e.value.split(';'):
+          result.matrix.add(v.strip)
       else:
         result.parseErrors.addLine "invalid key for test spec: ", e.key
 
@@ -245,3 +281,6 @@ proc parseSpec*(filename: string): TSpec =
     of cfgEof:
       break
   close(p)
+
+  if skips.anyIt(it in result.file):
+    result.err = reDisabled

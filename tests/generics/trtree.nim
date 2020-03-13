@@ -4,7 +4,10 @@ discard """
   target: "c"
   joinable: false
 disabled: 32bit
+  cmd: "nim c --gc:arc $file"
 """
+
+# bug #13110: This test failed with --gc:arc.
 
 # this test wasn't written for 32 bit
 # don't join because the code is too messy.
@@ -527,7 +530,7 @@ proc findLeaf[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: L[D, RT, LT]): Le
 proc condenseTree[M, D: Dim; RT, LT](t: RTree[M, D, RT, LT]; leaf: Leaf[M, D, RT, LT]) =
   var n: H[M, D, RT, LT] = leaf
   var q = newSeq[H[M, D, RT, LT]]()
-  var b: type(leaf.a[0].b)
+  var b: typeof(leaf.a[0].b)
   while n != t.root:
     let p = Node[M, D, RT, LT](n.parent)
     var i = 0

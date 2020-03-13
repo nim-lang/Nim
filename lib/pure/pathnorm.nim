@@ -8,8 +8,9 @@
 #
 
 ## OS-Path normalization. Used by ``os.nim`` but also
-## generally useful for dealing with paths. Note that this module
-## does not provide a stable API.
+## generally useful for dealing with paths.
+##
+## Unstable API.
 
 # Yes, this uses import here, not include so that
 # we don't end up exporting these symbols from pathnorm and os:
@@ -28,13 +29,16 @@ proc next*(it: var PathIter; x: string): (int, int) =
   if not it.notFirst and x[it.i] in {DirSep, AltSep}:
     # absolute path:
     inc it.i
+    when doslikeFileSystem: # UNC paths have leading `\\`
+      if hasNext(it, x) and x[it.i] == DirSep and
+          it.i+1 < x.len and x[it.i+1] != DirSep:
+        inc it.i
   else:
     while it.i < x.len and x[it.i] notin {DirSep, AltSep}: inc it.i
   if it.i > it.prev:
     result = (it.prev, it.i-1)
   elif hasNext(it, x):
     result = next(it, x)
-
   # skip all separators:
   while it.i < x.len and x[it.i] in {DirSep, AltSep}: inc it.i
   it.notFirst = true
@@ -52,7 +56,8 @@ proc isDotDot(x: string; bounds: (int, int)): bool =
 proc isSlash(x: string; bounds: (int, int)): bool =
   bounds[1] == bounds[0] and x[bounds[0]] in {DirSep, AltSep}
 
-proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = DirSep) =
+proc addNormalizePath*(x: string; result: var string; state: var int;
+    dirSep = DirSep) =
   ## Low level proc. Undocumented.
 
   # state: 0th bit set if isAbsolute path. Other bits count
@@ -64,12 +69,18 @@ proc addNormalizePath*(x: string; result: var string; state: var int; dirSep = D
   while hasNext(it, x):
     let b = next(it, x)
     if (state shr 1 == 0) and isSlash(x, b):
-      result.add dirSep
+      if result.len == 0 or result[^1] notin {DirSep, AltSep}:
+        result.add dirSep
       state = state or 1
     elif isDotDot(x, b):
       if (state shr 1) >= 1:
         var d = result.len
         # f/..
+        # We could handle stripping trailing sep here: foo// => foo like this:
+        # while (d-1) > (state and 1) and result[d-1] in {DirSep, AltSep}: dec d
+        # but right now we instead handle it inside os.joinPath
+
+        # strip path component: foo/bar => foo
         while (d-1) > (state and 1) and result[d-1] notin {DirSep, AltSep}:
           dec d
         if d > 0:

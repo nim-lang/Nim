@@ -5,6 +5,7 @@ outputsub: ""
 # tests for rstgen module.
 
 import ../../lib/packages/docutils/rstgen
+import ../../lib/packages/docutils/rst
 import unittest
 
 suite "YAML syntax highlighting":
@@ -141,3 +142,14 @@ suite "YAML syntax highlighting":
   <span class="DecNumber">-4</span>
 <span class="StringLit">example.com/not/a#comment</span><span class="Punctuation">:</span>
   <span class="StringLit">?not a map key</span></pre>"""
+
+
+  test "Markdown links":
+    let
+      a = rstToHtml("(( [Nim](https://nim-lang.org/) ))", {roSupportMarkdown}, defaultConfig())
+      b = rstToHtml("(([Nim](https://nim-lang.org/)))", {roSupportMarkdown}, defaultConfig())
+      c = rstToHtml("[[Nim](https://nim-lang.org/)]", {roSupportMarkdown}, defaultConfig())
+
+    assert a == """(( <a class="reference external" href="https://nim-lang.org/">Nim</a> ))"""
+    assert b == """((<a class="reference external" href="https://nim-lang.org/">Nim</a>))"""
+    assert c == """[<a class="reference external" href="https://nim-lang.org/">Nim</a>]"""

@@ -77,7 +77,7 @@
 #   - named `performCodeReload`, requires the hotcodereloading module
 #   - explicitly called by the user - the current active callstack shouldn't contain
 #     any functions which are defined in modules that will be reloaded (or crash!).
-#     The reason is that old dynalic libraries get unloaded.
+#     The reason is that old dynamic libraries get unloaded.
 #     Example:
 #       if A is the main module and it imports B, then only B is reloadable and only
 #       if when calling hcrPerformCodeReload there is no function defined in B in the
@@ -111,6 +111,7 @@
 # - ARM support for the trampolines
 # - investigate:
 #   - soon the system module might be importing other modules - the init order...?
+#     (revert https://github.com/nim-lang/Nim/pull/11971 when working on this)
 #   - rethink the closure iterators
 #     - ability to keep old versions of dynamic libraries alive
 #       - because of async server code
@@ -120,10 +121,10 @@
 #       - state in static libs gets duplicated
 #       - linking is slow and therefore iteration time suffers
 #         - have just a single .dll for all .nim files and bulk reload?
-#   - think about the compile/link/passC/passL/emit/injectStmt pragmas
-#     - if a passC pragma is introduced (either written or dragged in by a new
+#   - think about the compile/link/passc/passl/emit/injectStmt pragmas
+#     - if a passc pragma is introduced (either written or dragged in by a new
 #       import) the whole command line for compilation changes - for example:
-#         winlean.nim: {.passC: "-DWIN32_LEAN_AND_MEAN".}
+#         winlean.nim: {.passc: "-DWIN32_LEAN_AND_MEAN".}
 #   - play with plugins/dlls/lfIndirect/lfDynamicLib/lfExportLib - shouldn't add an extra '*'
 #   - everything thread-local related
 # - tests
@@ -195,7 +196,7 @@
 #     block. Perhaps something can be done about this - some way of re-allocating
 #     the state and transferring the old...
 
-when not defined(JS) and (defined(hotcodereloading) or
+when not defined(js) and (defined(hotcodereloading) or
                           defined(createNimHcr) or
                           defined(testNimHcr)):
   const
@@ -347,7 +348,7 @@ when defined(createNimHcr):
 
   proc hcrGetProc*(module: cstring, name: cstring): pointer {.nimhcr.} =
     trace "  get proc: ", module.sanitize, " ", name
-    return modules[$module].procs[$name].jump
+    return modules[$module].procs.getOrDefault($name, ProcSym()).jump
 
   proc hcrRegisterGlobal*(module: cstring,
                           name: cstring,
@@ -421,7 +422,7 @@ when defined(createNimHcr):
       modules.add(name, newModuleDesc())
 
     let copiedName = name & ".copy." & dllExt
-    copyFile(name, copiedName)
+    copyFileWithPermissions(name, copiedName)
 
     let lib = loadLib(copiedName)
     assert lib != nil
@@ -548,7 +549,7 @@ when defined(createNimHcr):
     # problems when the GC is executed while the reload is underway.
     # Future versions of NIMHCR won't use the GC, because all globals and the
     # metadata needed to access them will be placed in shared memory, so they
-    # can be manipulted from external programs without reloading.
+    # can be manipulated from external programs without reloading.
     GC_disable()
     defer: GC_enable()
 
@@ -611,7 +612,7 @@ when defined(createNimHcr):
             global.markerProc()
 
 elif defined(hotcodereloading) or defined(testNimHcr):
-  when not defined(JS):
+  when not defined(js):
     const
       nimhcrLibname = when defined(windows): "nimhcr." & dllExt
                       elif defined(macosx): "libnimhcr." & dllExt

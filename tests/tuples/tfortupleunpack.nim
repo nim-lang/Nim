@@ -9,6 +9,7 @@ output: '''
 @[(88, 99, 11), (88, 99, 11)]
 @[(7, 6, -28), (7, 6, -28)]
 12
+110100
 '''
 """
 
@@ -41,3 +42,11 @@ proc test[n]() =
   for (a,b) in @[(1,2)]:
     echo a,b
 test[string]()
+
+iterator tuples: (int, (int, int)) = yield (1,(10, 100))
+
+template t11164 =
+  for i, (a, b) in tuples():
+    echo i, a , b
+
+t11164()

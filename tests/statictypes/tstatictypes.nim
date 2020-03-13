@@ -8,6 +8,7 @@ output: '''
 16
 b is 2 times a
 17
+['\x00', '\x00', '\x00', '\x00']
 '''
 """
 
@@ -154,3 +155,14 @@ block:
 
   const uk = MicroKernel(a: 5.5, b: 1)
   tFunc[uk]()
+
+
+# bug #7258
+type
+  StringValue*[LEN: static[Natural]] = array[LEN+Natural(2),char]
+  StringValue16* = StringValue[2]
+
+var
+  s: StringValue16
+
+echo s

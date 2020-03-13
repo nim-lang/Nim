@@ -20,7 +20,7 @@
 ## `db_mysql <db_mysql.html>`_.
 ##
 ## Parameter substitution
-## ----------------------
+## ======================
 ##
 ## All ``db_*`` modules support the same form of parameter substitution.
 ## That is, using the ``?`` (question mark) to signify the place where a
@@ -31,10 +31,10 @@
 ##
 ##
 ## Examples
-## --------
+## ========
 ##
 ## Opening a connection to a database
-## ==================================
+## ----------------------------------
 ##
 ## .. code-block:: Nim
 ##     import db_odbc
@@ -42,7 +42,7 @@
 ##     db.close()
 ##
 ## Creating a table
-## ================
+## ----------------
 ##
 ## .. code-block:: Nim
 ##      db.exec(sql"DROP TABLE IF EXISTS myTable")
@@ -51,14 +51,14 @@
 ##                       name varchar(50) not null)"""))
 ##
 ## Inserting data
-## ==============
+## --------------
 ##
 ## .. code-block:: Nim
 ##     db.exec(sql"INSERT INTO myTable (id, name) VALUES (0, ?)",
 ##             "Andreas")
 ##
 ## Large example
-## =============
+## -------------
 ##
 ## .. code-block:: Nim
 ##
@@ -272,7 +272,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
   ## if you require **ALL** the rows.
   ##
   ## Breaking the fastRows() iterator during a loop may cause a driver error
-  ## for subsequenct queries
+  ## for subsequent queries
   ##
   ## Rows are retrieved from the server at each iteration.
   var
@@ -303,7 +303,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                 {.tags: [ReadDbEffect, WriteDbEffect].} =
   ## Same as fastRows but returns a handle that can be used to get column text
-  ## on demand using []. Returned handle is valid only within the interator body.
+  ## on demand using []. Returned handle is valid only within the iterator body.
   var
     rowRes: Row = @[]
     sz: TSqlInteger = 0
@@ -330,7 +330,11 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
 
 proc `[]`*(row: InstantRow, col: int): string {.inline.} =
   ## Returns text for given column of the row
-  row.row[col]
+  $row.row[col]
+
+proc unsafeColumnAt*(row: InstantRow, index: int): cstring {.inline.} =
+  ## Return cstring of given column of the row
+  row.row[index]
 
 proc len*(row: InstantRow): int {.inline.} =
   ## Returns number of columns in the row
