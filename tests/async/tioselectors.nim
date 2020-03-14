@@ -144,7 +144,7 @@ elif not defined(windows):
     result = true
 
   when ioselSupportedPlatform:
-    proc timer_notification_test(): bool =
+    proc timer_notification_testImpl(): bool =
       var selector = newSelector[int]()
       var timer = selector.registerTimer(100, false, 0)
       var rc1 = selector.select(140)
@@ -159,6 +159,10 @@ elif not defined(windows):
       assert(selector.isEmpty())
       selector.close()
       result = true
+    proc timer_notification_test(): bool =
+      for i in 0..<n:
+        echo (i,n, "timer_notification_testImpl")
+        timer_notification_testImpl()
 
     proc process_notification_test(): bool =
       var selector = newSelector[int]()
