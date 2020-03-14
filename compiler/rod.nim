@@ -31,8 +31,8 @@ when not nimIncremental:
   template symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool = false
   template typeAlreadyStored*(g: ModuleGraph; p: PType): bool = false
 
-  iterator loadSnippets*(g: ModuleGraph; m: BModule; p: PSym): Snippet =
-    discard
+  iterator loadSnippets*(g: ModuleGraph; modules: BModuleList;
+                         p: PSym): Snippet = discard
 
   template storeSnippet*(g: ModuleGraph; s: var Snippet) = discard
 

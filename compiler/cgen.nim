@@ -13,9 +13,9 @@ import
   ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
   nversion, nimsets, msgs, bitsets, idents, types,
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
-  rodutils, renderer, cgendata, ccgmerge, aliases,
+  rodutils, renderer, cgendata, aliases, ccgmerge,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
-  injectdestructors, rod, strformat
+  injectdestructors, rod, strformat, goats
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -1214,16 +1214,66 @@ proc requestConstImpl(p: BProc, sym: PSym) =
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
+proc newPreInitProc(m: BModule): BProc =
+  result = newProc(nil, m)
+  # little hack so that unique temporaries are generated:
+  result.labels = 100_000
+
+proc initProcOptions(m: BModule): TOptions =
+  let opts = m.config.options
+  if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
+
+proc rawNewModule(g: BModuleList; module: PSym;
+                  filename: AbsoluteFile): BModule =
+  new(result)
+  result.g = g
+  result.tmpBase = rope("TM" & $hashOwner(module) & "_")
+  result.headerFiles = @[]
+  result.declaredThings = initIntSet()
+  result.declaredProtos = initIntSet()
+  result.cfilename = filename
+  result.filename = filename
+  result.typeCache = initTable[SigHash, Rope]()
+  result.forwTypeCache = initTable[SigHash, Rope]()
+  result.module = module
+  result.typeInfoMarker = initTable[SigHash, Rope]()
+  result.sigConflicts = initCountTable[SigHash]()
+  result.initProc = newProc(nil, result)
+  result.initProc.options = initProcOptions(result)
+  result.preInitProc = newPreInitProc(result)
+  initNodeTable(result.dataCache)
+  result.typeStack = @[]
+  result.typeNodesName = getTempName(result)
+  result.nimTypesName = getTempName(result)
+  # no line tracing for the init sections of the system module so that we
+  # don't generate a TFrame which can confuse the stack bottom initialization:
+  if sfSystemModule in module.flags:
+    incl result.flags, preventStackTrace
+    excl(result.preInitProc.options, optStackTrace)
+  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCfilePath(g.config, filename), "ndi")
+                else: AbsoluteFile""
+  open(result.ndi, ndiName, g.config)
+
+proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
+  result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
+
 proc genProc(m: BModule, prc: PSym) =
+  ## generate code for a proc
   if sfBorrow in prc.flags or not isActivated(prc):
     return
+
+  # cloned module object that we'll use to cache compilation
+  var
+    cache = newCacheUnit(m.g, prc)
+    part = rawNewModule(m.g, m.module, m.filename)
+  cache.modules.modules.add part
 
   # if the proc is not completed defined
   if sfForward in prc.flags:
     # telling the BModule that we will need a forward declaration section
-    fillProcLoc(m, prc.ast[namePos])
+    fillProcLoc(part, prc.ast[namePos])
     # adding a forward declaration
-    addForwardedProc(m, prc)
+    addForwardedProc(part, prc)
 
   # we only generate code when the proc is completely defined
   if sfForward in prc.flags:
@@ -1233,6 +1283,13 @@ proc genProc(m: BModule, prc: PSym) =
   var
     cachable = prc.owner != nil and prc.owner.kind == skModule
 
+  # XXX: keep an eye on this.
+  #
+  # idOrSig is a good example of a change that can occur during
+  # load from cache, which produces a new signature value for
+  # a proc.
+  #
+  # we need to account for this.
   proc yewpad(m: BModule; s: PSym): string =
     result = $s.id & " " & $s.name.s.mangle
     result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
@@ -1249,12 +1306,17 @@ proc genProc(m: BModule, prc: PSym) =
 
   #
   # new architecture:
-  # - look in the cache
-  # - if we find something, we use it
-  # - perform the code gen
-  # - store the generated snippets to cache
-  # - goto 1
+  # 1. look in the cache
+  # 2. if we find something, we use it
+  # 3. else, perform the code gen
+  # 4. store the generated snippets to cache
+  # 5. goto 1
   #
+  #
+  # difference:
+  #   any symbol can impart codegen across the entire project.
+  #   this is necessary to support arbitrary addition and removal
+  #   of generics.
 
   var
     readcache = cachable and m.config.symbolFiles notin {disabledSf,
@@ -1307,12 +1369,12 @@ proc genProc(m: BModule, prc: PSym) =
           if m.g.generatedHeader != nil:
             genProcPrototype(m.g.generatedHeader, prc)
 
-      for snippet in loadSnippets(m.g.graph, m, prc):
+      for snippet in loadSnippets(m.g.graph, m.g, prc):
         #echo "----"
         when not defined(release):
-          echo "\t", snippet.section, "\t", snippet.module
+          echo "\t", snippet.section, "\t", snippet.module.module.id
         # if the snippet writes to proc headers, mark the proc as declared
-        when true:
+        when false:
           if snippet.section == cfsProcHeaders:
             m.declaredProtos.incl prc.id
         when not defined(release):
@@ -1362,15 +1424,17 @@ flags: {prc.flags}
     #
     # ropes need a pop()!
 
-    var
-      mark: SnippetMark
+    when false:
+      var
+        mark: SnippetMark
     # set the marks to monitor for new snippets
     if writecache:
       when not defined(release):
         echo "> ", m.cfilename, "\t", prc.name.s
         echo "\t", $prc.sigHash, "\t", m.module.id
       m.setMark(prc)
-      mark = m.mark
+      when false:
+        mark = m.mark
 
     when not defined(release):
       if not cachable:
@@ -1402,7 +1466,8 @@ flags: {prc.flags}
 
     # issuing the iterator on snippetsSince will write them
     if writecache:
-      m.mark = mark
+      when false:
+        m.mark = mark
       when not defined(release):
         echo " >", m.cfilename, "\t", prc.name.s
       for snippet in m.snippetsSince:
@@ -1411,12 +1476,22 @@ flags: {prc.flags}
             snippet = snippet
           storeSnippet(m.g.graph, snippet)
           when not defined(release):
-            echo "\t", snippet.section, "\t", snippet.module
+            echo "\t", snippet.section, "\t", snippet.module.module.id
   when not defined(release):
     echo "--- declaredProtos"
     echo m.declaredProtos
     echo "--- declaredThings"
     echo m.declaredThings
+
+
+  #
+  # take the accumulated mutations to the module graph that were
+  # performed in the pursuit of generating this one fucking proc,
+  # and add them into the original module that we wanted to mutate,
+  # and any other modules in the module graph that are similarly
+  # mutated.
+  #
+  cache.mergeInto(m)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1966,48 +2041,6 @@ proc genModule(m: BModule, cfile: Cfile): Rope =
 
   if moduleIsEmpty:
     result = nil
-
-proc newPreInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 100_000
-
-proc initProcOptions(m: BModule): TOptions =
-  let opts = m.config.options
-  if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
-
-proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
-  new(result)
-  result.g = g
-  result.tmpBase = rope("TM" & $hashOwner(module) & "_")
-  result.headerFiles = @[]
-  result.declaredThings = initIntSet()
-  result.declaredProtos = initIntSet()
-  result.cfilename = filename
-  result.filename = filename
-  result.typeCache = initTable[SigHash, Rope]()
-  result.forwTypeCache = initTable[SigHash, Rope]()
-  result.module = module
-  result.typeInfoMarker = initTable[SigHash, Rope]()
-  result.sigConflicts = initCountTable[SigHash]()
-  result.initProc = newProc(nil, result)
-  result.initProc.options = initProcOptions(result)
-  result.preInitProc = newPreInitProc(result)
-  initNodeTable(result.dataCache)
-  result.typeStack = @[]
-  result.typeNodesName = getTempName(result)
-  result.nimTypesName = getTempName(result)
-  # no line tracing for the init sections of the system module so that we
-  # don't generate a TFrame which can confuse the stack bottom initialization:
-  if sfSystemModule in module.flags:
-    incl result.flags, preventStackTrace
-    excl(result.preInitProc.options, optStackTrace)
-  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCfilePath(g.config, filename), "ndi")
-                else: AbsoluteFile""
-  open(result.ndi, ndiName, g.config)
-
-proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
-  result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
 
 proc newModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
   # we should create only one cgen module for each module sym

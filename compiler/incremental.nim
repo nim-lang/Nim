@@ -187,20 +187,13 @@ when nimIncremental:
     db.exec sql"insert into controlblock(idgen) values (0)"
 
     db.exec(sql"""
-      create table if not exists snippets(
+      create table if not exists snippets (
         id integer primary key,
-        name text not null,
-        filename text not null,
+        signature text not null,
         section int not null,
-        nimid integer not null,
-        module integer not null,
         code text not null,
-        kind integer not null,
-        symbol integer not null,
-        toplevel integer not null,
-        foreign key (module) references module(id),
-        foreign key (symbol) references syms(id),
-        foreign key (toplevel) references toplevelstmts(id)
+        module integer not null,
+        foreign key (module) references module(id)
       );
     """)
 
