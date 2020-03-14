@@ -160,6 +160,7 @@ elif not defined(windows):
       selector.close()
       result = true
     proc timer_notification_test(): bool =
+      let n = 1000
       for i in 0..<n:
         echo (i,n, "timer_notification_testImpl")
         timer_notification_testImpl()
