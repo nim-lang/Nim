@@ -563,7 +563,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       return paDirectMapping    # XXX really correct?
                                 # what if ``arg`` has side-effects?
   case arg.kind
-  of nkEmpty..nkNilLit:
+  of nkEmpty..nkNilLit, nkDotExpr:
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkCurly, nkBracket:
     result = paFastAsgn
