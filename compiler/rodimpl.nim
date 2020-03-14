@@ -12,7 +12,7 @@
 import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
   btrees, trees, condsyms, nversion, pathutils, types, cgendata, sequtils,
-  sighashes, goats, modulegraphs
+  sighashes, modulegraphs
 
 ## TODO:
 ## - Add some backend logic dealing with generics.
@@ -20,9 +20,6 @@ import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
 ##   avoid recompiling dependent modules.
 ## - Patch the rest of the compiler to do lazy loading of proc bodies.
 ## - Serialize the AST in a smarter way (avoid storing some ASTs twice!)
-
-type
-  SqlId = int64
 
 template db(): DbConn = g.incr.db
 
@@ -483,21 +480,18 @@ proc storeSnippet*(g: ModuleGraph; s: var Snippet) =
     """
   db.exec(insertion, $s.signature, s.module.module.id, s.section.ord, $s.code)
 
-proc snippetAlreadyStored*(g: ModuleGraph; fn: AbsoluteFile; p: PSym): bool =
+proc snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool =
   if g.config.symbolFiles == disabledSf: return
   const
     query = sql"""
       select syms.id
       from syms left join snippets
-      where snippets.filename = ? and syms.module = ? and syms.id = snippets.symbol and syms.name = ?
+      where snippets.signature = syms.name and syms.name = ?
       limit 1
     """
-    #  where syms.module = ? and syms.id = snippets.symbol and syms.name = ?
   let
-    name = $p.sigHash
-    m = getModule(p)
-    mid = if m == nil: 0 else: abs(m.id)
-  result = db.getValue(query, $fn, mid, name) != ""
+    signature = $p.sigHash
+  result = db.getValue(query, signature) != ""
 
 template symbolAlreadyStored*(g: ModuleGraph; p: PSym): bool =
   g.symbolId(p) != 0

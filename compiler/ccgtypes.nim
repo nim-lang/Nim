@@ -88,7 +88,7 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
   if result == nil:
     var key = s.name.s.mangle
     shallow(key)
-    let counter = p.sigConflicts.getOrDefault(key)
+    let counter = p.sigConflicts.getOrDefault(key, 0)
     result = key.rope
     if s.kind == skTemp:
       # speed up conflict search for temps (these are quite common):

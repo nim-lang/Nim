@@ -390,7 +390,7 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
     graph.symBodyHashes[sym.id] = result
 
 proc idOrSig*(s: PSym, currentModule: string,
-              sigCollisions: var CountTable[SigHash]): Rope =
+              sigCollisions: var CountTableRef[SigHash]): Rope =
   if s.kind in routineKinds and s.typ != nil:
     # signatures for exported routines are reliable enough to
     # produce a unique name and this means produced C++ is more stable wrt
@@ -398,7 +398,7 @@ proc idOrSig*(s: PSym, currentModule: string,
     let sig = hashProc(s)
     result = rope($sig)
     #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
-    let counter = sigCollisions.getOrDefault(sig)
+    let counter = sigCollisions.getOrDefault(sig, 0)
     #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
     #  echo "counter ", counter, " ", s.id
     if counter != 0:
@@ -412,7 +412,7 @@ proc idOrSig*(s: PSym, currentModule: string,
   else:
     let sig = hashNonProc(s)
     result = rope($sig)
-    let counter = sigCollisions.getOrDefault(sig)
+    let counter = sigCollisions.getOrDefault(sig, 0)
     if counter != 0:
       result.add "_" & rope(counter+1)
     sigCollisions.inc(sig)

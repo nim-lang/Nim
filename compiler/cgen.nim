@@ -15,7 +15,7 @@ import
   ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
   rodutils, renderer, cgendata, aliases, ccgmerge,
   lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
-  injectdestructors, rod, strformat, goats
+  injectdestructors, rod, strformat
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -290,10 +290,6 @@ proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
   m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
-
-proc getTempName(m: BModule): Rope =
-  result = m.tmpBase & rope(m.labels)
-  inc m.labels
 
 proc rdLoc(a: TLoc): Rope =
   # 'read' location (deref if indirect)
@@ -1214,66 +1210,24 @@ proc requestConstImpl(p: BProc, sym: PSym) =
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
-proc newPreInitProc(m: BModule): BProc =
-  result = newProc(nil, m)
-  # little hack so that unique temporaries are generated:
-  result.labels = 100_000
-
-proc initProcOptions(m: BModule): TOptions =
-  let opts = m.config.options
-  if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
-
-proc rawNewModule(g: BModuleList; module: PSym;
-                  filename: AbsoluteFile): BModule =
-  new(result)
-  result.g = g
-  result.tmpBase = rope("TM" & $hashOwner(module) & "_")
-  result.headerFiles = @[]
-  result.declaredThings = initIntSet()
-  result.declaredProtos = initIntSet()
-  result.cfilename = filename
-  result.filename = filename
-  result.typeCache = initTable[SigHash, Rope]()
-  result.forwTypeCache = initTable[SigHash, Rope]()
-  result.module = module
-  result.typeInfoMarker = initTable[SigHash, Rope]()
-  result.sigConflicts = initCountTable[SigHash]()
-  result.initProc = newProc(nil, result)
-  result.initProc.options = initProcOptions(result)
-  result.preInitProc = newPreInitProc(result)
-  initNodeTable(result.dataCache)
-  result.typeStack = @[]
-  result.typeNodesName = getTempName(result)
-  result.nimTypesName = getTempName(result)
-  # no line tracing for the init sections of the system module so that we
-  # don't generate a TFrame which can confuse the stack bottom initialization:
-  if sfSystemModule in module.flags:
-    incl result.flags, preventStackTrace
-    excl(result.preInitProc.options, optStackTrace)
-  let ndiName = if optCDebug in g.config.globalOptions: changeFileExt(completeCfilePath(g.config, filename), "ndi")
-                else: AbsoluteFile""
-  open(result.ndi, ndiName, g.config)
-
-proc rawNewModule(g: BModuleList; module: PSym; conf: ConfigRef): BModule =
-  result = rawNewModule(g, module, AbsoluteFile toFullPath(conf, module.position.FileIndex))
-
 proc genProc(m: BModule, prc: PSym) =
   ## generate code for a proc
   if sfBorrow in prc.flags or not isActivated(prc):
     return
 
-  # cloned module object that we'll use to cache compilation
-  var
-    cache = newCacheUnit(m.g, prc)
-    part = rawNewModule(m.g, m.module, m.filename)
-  cache.modules.modules.add part
+  when not defined(release):
+    # cloned module object that we'll use to cache compilation
+    var
+      orig = m
+      cache = newCacheUnit(orig.g, prc)
+      m = cache.moduleFor(prc)
 
   # if the proc is not completed defined
   if sfForward in prc.flags:
     # telling the BModule that we will need a forward declaration section
-    fillProcLoc(part, prc.ast[namePos])
+    fillProcLoc(m, prc.ast[namePos])
     # adding a forward declaration
-    addForwardedProc(part, prc)
+    addForwardedProc(m, prc)
 
   # we only generate code when the proc is completely defined
   if sfForward in prc.flags:
@@ -1325,7 +1279,10 @@ proc genProc(m: BModule, prc: PSym) =
                                                           readOnlySf}
 
   # we won't read it if we don't have it
-  readcache = readcache and snippetAlreadyStored(m.g.graph, m.cfilename, prc)
+  readcache = readcache and cache.isHot
+
+  # XXX: we cannot handle the truth
+  readcache = false
 
   # we won't write it unless we aren't reading it
   writecache = writecache and not readcache
@@ -1477,11 +1434,12 @@ flags: {prc.flags}
           storeSnippet(m.g.graph, snippet)
           when not defined(release):
             echo "\t", snippet.section, "\t", snippet.module.module.id
-  when not defined(release):
-    echo "--- declaredProtos"
-    echo m.declaredProtos
-    echo "--- declaredThings"
-    echo m.declaredThings
+  when false:
+    when not defined(release):
+      echo "--- declaredProtos"
+      echo m.declaredProtos
+      echo "--- declaredThings"
+      echo m.declaredThings
 
 
   #
@@ -1491,7 +1449,8 @@ flags: {prc.flags}
   # and any other modules in the module graph that are similarly
   # mutated.
   #
-  cache.mergeInto(m)
+  if not defined(release):
+    cache.mergeInto(orig)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)

@@ -96,7 +96,7 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
-    sigConflicts*: CountTable[string]
+    sigConflicts*: CountTableRef[string]
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
@@ -161,7 +161,7 @@ type
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
     injectStmt*: Rope         # i think this has something to do with iv drugs
-    sigConflicts*: CountTable[SigHash]
+    sigConflicts*: CountTableRef[SigHash]
     g*: BModuleList           # the complete module graph
     ndi*: NdiFile             # well, duh, who doesn't know what ndi is?
 
@@ -189,7 +189,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
-  result.sigConflicts = initCountTable[string]()
+  result.sigConflicts = newCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),
