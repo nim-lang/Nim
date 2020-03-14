@@ -19,8 +19,7 @@ proc checkPartialConstructedType(conf: ConfigRef; info: TLineInfo, t: PType) =
   if t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
 
-proc checkConstructedType*(g: ModuleGraph; conf: ConfigRef;
-                           info: TLineInfo, typ: PType) =
+proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   var t = typ.skipTypes({tyDistinct})
   if t.kind in tyTypeClasses: discard
   elif t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
@@ -31,13 +30,6 @@ proc checkConstructedType*(g: ModuleGraph; conf: ConfigRef;
     if t.kind == tyObject and t[0] != nil:
       if t[0].kind != tyObject or tfFinal in t[0].flags:
         localError(info, errInheritanceOnlyWithNonFinalObjects)
-  when false:
-    # if we haven't disabled symbol files (eg. building our compiler!)
-    if conf.symbolFiles notin {readOnlySf, disabledSf}:
-      # if 'typ' was serialized already, it's a bug.
-      if typeAlreadyStored(g, typ.uniqueId):
-        writeStackTrace()
-        localError(conf, info, "bad store of '" & typeToString(t) & "'")
 
 proc searchInstTypes*(key: PType): PType =
   let genericTyp = key[0]
