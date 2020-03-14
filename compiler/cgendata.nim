@@ -163,7 +163,7 @@ type
     injectStmt*: Rope         # i think this has something to do with iv drugs
     sigConflicts*: CountTableRef[SigHash]
     g*: BModuleList           # the complete module graph
-    ndi*: NdiFile             # well, duh, who doesn't know what ndi is?
+    ndi*: NdiFile             # "nim debug info" files
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config

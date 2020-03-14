@@ -793,6 +793,8 @@ proc cgsym(m: BModule, name: string): Rope =
     # generation support this sloppyness leads to hard to detect bugs, so
     # we're picky here for the system module too:
     rawMessage(m.config, errGenerated, "system module needs: " & name)
+  # a rope holding, like, the symbol name fully mangled,
+  # which is a function of the module...
   result = sym.loc.r
   if m.hcrOn and sym != nil and sym.kind in {skProc..skIterator}:
     result.addActualSuffixForHCR(m.module, sym)
@@ -1210,17 +1212,58 @@ proc requestConstImpl(p: BProc, sym: PSym) =
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
+# XXX: keep an eye on this.
+#
+# idOrSig is a good example of a change that can occur during
+# load from cache, which produces a new signature value for
+# a proc.
+#
+# we need to account for this.
+proc yewpad(m: BModule; s: PSym): string =
+  result = $m.module.id & " " & $s.id & " : "
+  result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
+  result &= " : " & $s.name.s.mangle
+
+proc performRealGenProc(m: BModule, prc: PSym) =
+  ## the real proc generator, and it may define forwards
+  genProcMayForward(m, prc)
+
+  # we are all about the header from here down
+
+  # if it's an export and not a compiler proc,
+  # and we already have a generated header for it,
+  # and it isn't flagged no-declaration,
+  if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
+      m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+    # then generate a prototype for it in the header
+    genProcPrototype(m.g.generatedHeader, prc)
+
+    # now, if it's inline,
+    if prc.typ.callConv == ccInline:
+      # and if the proc hasn't already been declared, declare it, and
+      if not containsOrIncl(m.g.generatedHeader.declaredThings,
+                            prc.id):
+        # generate the header for the proc
+        # this also generates the nimFrame and popFrame, etc.
+        genProcAux(m.g.generatedHeader, prc)
+
 proc genProc(m: BModule, prc: PSym) =
   ## generate code for a proc
   if sfBorrow in prc.flags or not isActivated(prc):
     return
 
-  when not defined(release):
-    # cloned module object that we'll use to cache compilation
-    var
-      orig = m
-      cache = newCacheUnit(orig.g, prc)
-      m = cache.moduleFor(prc)
+  # don't cache procs that aren't children of the module
+  var
+    cachable = prc.owner != nil and prc.owner.kind == skModule
+
+  when defined(release):
+    cachable = false
+
+  # cloned module object that we'll use to cache compilation
+  var
+    orig = m
+    cache = newCacheUnit(orig.g, prc)
+    m = m
 
   # if the proc is not completed defined
   if sfForward in prc.flags:
@@ -1231,34 +1274,19 @@ proc genProc(m: BModule, prc: PSym) =
 
   # we only generate code when the proc is completely defined
   if sfForward in prc.flags:
+    if cachable:
+      # merge the cache before we exit
+      cache.mergeInto(orig)
     return
 
-  # don't cache procs that aren't children of the module
-  var
-    cachable = prc.owner != nil and prc.owner.kind == skModule
+  # omit compiler procs with an owner?
+  if sfCompilerProc in prc.flags and prc.owner != nil:
+    cachable = false
 
-  # XXX: keep an eye on this.
-  #
-  # idOrSig is a good example of a change that can occur during
-  # load from cache, which produces a new signature value for
-  # a proc.
-  #
-  # we need to account for this.
-  proc yewpad(m: BModule; s: PSym): string =
-    result = $s.id & " " & $s.name.s.mangle
-    result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
+  # don't cache compiler procs
+  if lfImportCompilerProc in prc.loc.flags:
+    cachable = false
 
-  when true:
-    # omit compiler procs with an owner?
-    if sfCompilerProc in prc.flags and prc.owner != nil:
-      cachable = false
-
-  when true:
-    # don't cache compiler procs
-    if lfImportCompilerProc in prc.loc.flags:
-      cachable = false
-
-  #
   # new architecture:
   # 1. look in the cache
   # 2. if we find something, we use it
@@ -1281,9 +1309,6 @@ proc genProc(m: BModule, prc: PSym) =
   # we won't read it if we don't have it
   readcache = readcache and cache.isHot
 
-  # XXX: we cannot handle the truth
-  readcache = false
-
   # we won't write it unless we aren't reading it
   writecache = writecache and not readcache
 
@@ -1292,40 +1317,7 @@ proc genProc(m: BModule, prc: PSym) =
 
   # if we're reading, load the snippets from the db
   if readcache:
-    if not containsOrIncl(m.declaredThings, prc.id):
-      let
-        # find the source module that defined the proc
-        #q = findPendingModule(m, prc)
-        q = m
-      var
-        m = findPendingModule(m, prc)
-      if m == nil:
-        m = q
-      #if m != nil and m != q:
-        if not containsOrIncl(q.declaredProtos, prc.id):
-          useHeader(m, prc)
-          fillProcLoc(m, prc.ast[namePos])
-          genProcPrototype(m, prc)
-      m = q
-      when not defined(release):
-        echo "< ", m.cfilename, "\t", prc.name.s
-        echo "\t", $prc.sigHash, "\t", m.module.id
-      #if lfNoDecl in prc.loc.flags:
-      #  fillProcLoc(m, prc.ast[namePos])
-
-      when false:
-        # XXX: this stuff is wrong
-        useHeader(m, prc)
-        when true:
-          if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc}:
-            # then generate a prototype for it in the header
-            genProcPrototype(m, prc)
-        else:
-          # these are taken care of in proc prototype...
-          #   m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-          if m.g.generatedHeader != nil:
-            genProcPrototype(m.g.generatedHeader, prc)
-
+    if false:
       for snippet in loadSnippets(m.g.graph, m.g, prc):
         #echo "----"
         when not defined(release):
@@ -1346,7 +1338,6 @@ compiler proc flag: {sfCompilerProc in prc.flags}
 */
 
           """.rope
-        when not defined(release):
           m.s[snippet.section].add fmt"""
 
 /*
@@ -1372,85 +1363,57 @@ flags: {prc.flags}
 
     # we're missing a side-effect on reads that produces a proc-init!
 
+    # take the accumulated mutations to the module graph that were
+    # performed in the pursuit of generating this one fucking proc,
+    # and add them into the original module that we wanted to mutate,
+    # and any other modules in the module graph that are similarly
+    # mutated.
+    #
+    if cachable:
+      cache.mergeInto(orig)
+
   # if we're not reading, we need to generate the code
   if not readcache:
-
     # TODO: ideally, we perform a write and then simply call this proc
     # again to read the data right out of cache. this is complicated by
     # the fact that the ropes are basically append-only...
     #
     # ropes need a pop()!
 
-    when false:
-      var
-        mark: SnippetMark
     # set the marks to monitor for new snippets
     if writecache:
+      m = cache.moduleFor(prc)
       when not defined(release):
         echo "> ", m.cfilename, "\t", prc.name.s
         echo "\t", $prc.sigHash, "\t", m.module.id
-      m.setMark(prc)
-      when false:
-        mark = m.mark
 
-    when not defined(release):
-      if not cachable:
-        echo "--", m.cfilename, "\t", prc.name.s
+    if not cachable:
+      echo "--", m.cfilename, "\t", prc.name.s
 
-    # the real proc generator, and it may define forwards
-    genProcMayForward(m, prc)
-
-    ###
-    ### we are all about the header from here down
-    ###
-
-    # if it's an export and not a compiler proc,
-    # and we already have a generated header for it,
-    # and it isn't flagged no-declaration,
-    if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-        m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-      # then generate a prototype for it in the header
-      genProcPrototype(m.g.generatedHeader, prc)
-
-      # now, if it's inline,
-      if prc.typ.callConv == ccInline:
-        # and if the proc hasn't already been declared, declare it, and
-        if not containsOrIncl(m.g.generatedHeader.declaredThings,
-                              prc.id):
-          # generate the header for the proc
-          # this also generated the nimFrame and popFrame, etc.
-          genProcAux(m.g.generatedHeader, prc)
+    # bewm
+    #
+    # WE MUST
+    # WE MUST
+    # WE MUST IMPROVE OR BUST
+    #
+    # prc is mutating and that is a big problem
+    performRealGenProc(m, prc)
 
     # issuing the iterator on snippetsSince will write them
     if writecache:
-      when false:
-        m.mark = mark
       when not defined(release):
         echo " >", m.cfilename, "\t", prc.name.s
-      for snippet in m.snippetsSince:
-        if snippet.section notin {cfsProcHeaders}:
-          var
-            snippet = snippet
-          storeSnippet(m.g.graph, snippet)
-          when not defined(release):
-            echo "\t", snippet.section, "\t", snippet.module.module.id
-  when false:
-    when not defined(release):
-      echo "--- declaredProtos"
-      echo m.declaredProtos
-      echo "--- declaredThings"
-      echo m.declaredThings
+      when false:
+        for snippet in m.snippetsSince:
+          if snippet.section notin {cfsProcHeaders}:
+            var
+              snippet = snippet
+            storeSnippet(m.g.graph, snippet)
+            when not defined(release):
+              echo "\t", snippet.section, "\t", snippet.module.module.id
 
-
-  #
-  # take the accumulated mutations to the module graph that were
-  # performed in the pursuit of generating this one fucking proc,
-  # and add them into the original module that we wanted to mutate,
-  # and any other modules in the module graph that are similarly
-  # mutated.
-  #
-  if not defined(release):
-    cache.mergeInto(orig)
+      # this SUCKS because prc is also being mutated
+      genProc(orig, prc)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)

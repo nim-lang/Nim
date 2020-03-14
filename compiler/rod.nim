@@ -75,24 +75,29 @@ proc rawNewModule*(g: BModuleList; module: PSym; filename: AbsoluteFile): BModul
   result.declaredProtos = initIntSet()
   result.cfilename = filename
   result.filename = filename
+  result.module = module
+  result.typeNodesName = getTempName(result)
+  result.nimTypesName = getTempName(result)
+
+  # XXX: keep an eye on these:
   result.typeCache = initTable[SigHash, Rope]()
   result.forwTypeCache = initTable[SigHash, Rope]()
-  result.module = module
   result.typeInfoMarker = initTable[SigHash, Rope]()
   result.sigConflicts = newCountTable[SigHash]()
+  initNodeTable(result.dataCache)
+  result.typeStack = @[]
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newPreInitProc(result)
-  initNodeTable(result.dataCache)
-  result.typeStack = @[]
-  result.typeNodesName = getTempName(result)
-  result.nimTypesName = getTempName(result)
+  # XXX: end
 
   # no line tracing for the init sections of the system module so that we
   # don't generate a TFrame which can confuse the stack bottom initialization:
   if sfSystemModule in module.flags:
     incl result.flags, preventStackTrace
     excl(result.preInitProc.options, optStackTrace)
+
+  # XXX: we might need to move these to a non-raw init
   let ndiName = if optCDebug in g.config.globalOptions:
     changeFileExt(completeCfilePath(g.config, filename), "ndi")
   else:
@@ -114,7 +119,6 @@ proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
   assert modules.graph != nil
   # add fake versions of every module we're working on
   result.modules = newModuleList(modules.graph)
-  #result.modules.modules.setLen(0)
   assert result.modules.modules.len == 0
   for m in modules.modules.items:
     var
@@ -154,15 +158,32 @@ proc moduleFor*(cache: CacheUnit; p: PSym): BModule =
     raise newException(Defect, "wow, this is a disaster!")
 
 proc merge(parent: var BModule; child: BModule) =
+  # copy the generated procs, etc.
   for section, rope in child.s.pairs:
     if parent.s[section] == nil:
       parent.s[section] = rope
     else:
       parent.s[section].add rope
-  parent.declaredThings = parent.declaredThings.union child.declaredThings
-  parent.declaredProtos = parent.declaredProtos.union child.declaredProtos
 
-proc mergeInto*(cache: CacheUnit; module: BModule) =
+  # copy the types over
+  for signature, rope in child.typeCache.pairs:
+    if signature in parent.typeCache:
+      echo "WHOOOOOOOOAH"
+    else:
+      parent.typeCache[signature] = rope
+
+  if parent.declaredThings.len != parent.declaredThings.len:
+    echo "Tas ", parent.declaredThings
+    echo "add ", child.declaredThings
+    parent.declaredThings = parent.declaredThings.union child.declaredThings
+    raise newException(Defect, "bye")
+  if parent.declaredProtos.len != parent.declaredProtos.len:
+    echo "Pas ", parent.declaredProtos
+    echo "add ", child.declaredProtos
+    parent.declaredProtos = parent.declaredProtos.union child.declaredProtos
+    raise newException(Defect, "bye")
+
+proc mergeInto*(cache: var CacheUnit; module: BModule) =
   for m in cache.modules.modules.items:
     if m != nil:
       var
