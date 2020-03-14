@@ -479,48 +479,49 @@ proc runCI(cmd: string) =
   echo hostInfo()
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
-  when defined(posix): # appveyor (on windows) didn't run this
-    kochExecFold("Boot", "boot")
+  # when defined(posix): # appveyor (on windows) didn't run this
+  #   kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
   ## build nimble early on to enable remainder to depend on it if needed
-  kochExecFold("Build Nimble", "nimble")
+  # kochExecFold("Build Nimble", "nimble")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
   else:
-    buildTools() # altenatively, kochExec "tools --toolsNoNimble"
+    # buildTools() # altenatively, kochExec "tools --toolsNoNimble"
 
     ## run tests
-    execFold("Test nimscript", "nim e tests/test_nimscript.nims")
-    when defined(windows):
-      # note: will be over-written below
-      execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
+    # execFold("Test nimscript", "nim e tests/test_nimscript.nims")
+    # when defined(windows):
+    #   # note: will be over-written below
+    #   execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
-    block: # CT FFI
-      when defined(posix): # windows can be handled in future PR's
-        execFold("nimble install -y libffi", "nimble install -y libffi")
-        const nimFFI = "./bin/nim.ctffi"
-        # no need to bootstrap with koch boot (would be slower)
-        execFold("build with -d:nimHasLibFFI", "nim c -d:release -d:nimHasLibFFI -o:$1 compiler/nim.nim" % [nimFFI])
-        execFold("test with -d:nimHasLibFFI", "$1 c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
+    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic  r tests/async/tioselectors.nim")
+    # execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    # block: # CT FFI
+    #   when defined(posix): # windows can be handled in future PR's
+    #     execFold("nimble install -y libffi", "nimble install -y libffi")
+    #     const nimFFI = "./bin/nim.ctffi"
+    #     # no need to bootstrap with koch boot (would be slower)
+    #     execFold("build with -d:nimHasLibFFI", "nim c -d:release -d:nimHasLibFFI -o:$1 compiler/nim.nim" % [nimFFI])
+    #     execFold("test with -d:nimHasLibFFI", "$1 c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
 
-    execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
-    execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
-    when defined(posix):
-      execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
+    # execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
+    # execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
+    # when defined(posix):
+    #   execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
 
-    ## remaining actions
-    when defined(posix):
-      kochExecFold("Docs", "docs --git.commit:devel")
-      kochExecFold("C sources", "csource")
-    elif defined(windows):
-      when false:
-        kochExec "csource"
-        kochExec "zip"
+    # ## remaining actions
+    # when defined(posix):
+    #   kochExecFold("Docs", "docs --git.commit:devel")
+    #   kochExecFold("C sources", "csource")
+    # elif defined(windows):
+    #   when false:
+    #     kochExec "csource"
+    #     kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
