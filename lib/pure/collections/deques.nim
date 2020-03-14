@@ -124,9 +124,13 @@ proc toDeque*[T](x: seq[T]): Deque[T] =
   result.head = 0
   result.count = x.len
   result.tail = x.len
-  result.data = x
+  if x.len.isPowerOfTwo:
+    result.data = x
   if not x.len.isPowerOfTwo:
-    result.data.setLen x.len.nextPowerOfTwo
+    let n = x.len.nextPowerOfTwo
+    result.data = newSeqOfCap[T](n)
+    result.data.add x
+    result.data.setLen n
   result.mask = result.data.len - 1
 
 template emptyCheck(deq) =
