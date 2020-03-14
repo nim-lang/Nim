@@ -254,3 +254,35 @@ block: # test correctness after a number of inserts/deletes
 
   testDel(): (var t: HashSet[int])
   testDel(): (var t: OrderedSet[int])
+
+block: # hash(HashSet)
+  block: # robustness to tombstones
+    var a: HashSet[int]
+    a.incl 10
+    a.excl 10
+    a.incl 11
+
+    var a2: HashSet[int]
+    a2.incl 11
+    doAssert a == a2
+    doAssert hash(a) == hash(a2)
+
+  block: # robustness to deletions, which can affect ordering
+    var a: HashSet[float]
+    var vals: seq[float]
+    for i in 0..<10:
+      let ai = i.float * 0.7
+      vals.add ai
+      a.incl ai
+    var a2: HashSet[float]
+    for ai in a: a2.incl ai
+    let n = 1000
+    for i in 0..<n:
+      let ai = i.float * 0.31
+      a2.incl ai
+    for i in 0..<n:
+      let ai = i.float * 0.31
+      if ai notin vals:
+        a2.excl ai
+    doAssert a == a2
+    doAssert hash(a) == hash(a2)
