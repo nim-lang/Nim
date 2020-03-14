@@ -67,7 +67,9 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
 
   const tempExt = "_temp.nim"
   for it in walkDirRec(testsDir / "ic"):
-    if isTestFile(it) and not it.endsWith(tempExt):
+    if it.endsWith(tempExt):
+      removeFile(it)
+    elif isTestFile(it):
       let nimcache = nimcacheDir(it, options, getTestSpecTarget())
       removeDir(nimcache)
 
