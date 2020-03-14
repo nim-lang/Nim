@@ -163,7 +163,7 @@ elif not defined(windows):
       let n = 1000
       for i in 0..<n:
         echo (i,n, "timer_notification_testImpl")
-        timer_notification_testImpl()
+        result = timer_notification_testImpl()
 
     proc process_notification_test(): bool =
       var selector = newSelector[int]()
