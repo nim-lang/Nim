@@ -563,13 +563,22 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
       return paDirectMapping    # XXX really correct?
                                 # what if ``arg`` has side-effects?
   case arg.kind
-  of nkEmpty..nkNilLit, nkDotExpr:
+  of nkEmpty..nkNilLit:
     result = paDirectMapping
-  of nkPar, nkTupleConstr, nkCurly, nkBracket:
-    result = paFastAsgn
+  of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
+    result = putArgInto(arg[0], formal)
+  of nkCurly, nkBracket:
+    result = paDirectMapping
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: return
+      if putArgInto(arg[i], formal) != paDirectMapping: 
+        return paFastAsgn
+  of nkPar, nkTupleConstr, nkObjConstr:
     result = paDirectMapping
+    for i in 0..<arg.len:
+      let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
+              else: arg[0]
+      if putArgInto(a, formal) != paDirectMapping: 
+        return paFastAsgn
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn

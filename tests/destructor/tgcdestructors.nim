@@ -10,7 +10,7 @@ a: @[4, 2, 3]
 0
 30
 true
-(allocCount: 41, deallocCount: 41)'''
+(allocCount: 40, deallocCount: 40)'''
 """
 
 include system / ansi_c
