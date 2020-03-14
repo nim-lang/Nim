@@ -126,7 +126,7 @@ proc toDeque*[T](x: seq[T]): Deque[T] =
   result.tail = x.len
   if x.len.isPowerOfTwo:
     result.data = x
-  if not x.len.isPowerOfTwo:
+  else:
     let n = x.len.nextPowerOfTwo
     result.data = newSeqOfCap[T](n)
     result.data.add x
