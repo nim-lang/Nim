@@ -1,18 +1,15 @@
-asdf
 jobs:
 - job: packages
-- job2: packages
-asdf
+
   timeoutInMinutes: 90 # default `60` led to lots of cancelled jobs; use 0 for unlimited (may be undesirable)
 
-  strategy_bad:
   strategy:
     matrix:
       Linux_amd64:
         vmImage: 'ubuntu-16.04'
-         CPU: amd64
+        CPU: amd64
       Linux_i386:
-       vmImage: 'ubuntu-16.04'
+        vmImage: 'ubuntu-16.04'
         CPU: i386
       OSX_amd64:
         vmImage: 'macOS-10.15'
@@ -35,7 +32,7 @@ asdf
   workspace:
     clean: all
 
-  stqeps:
+  steps:
     - bash: git config --global core.autocrlf false
       displayName: 'Disable auto conversion to CRLF by git (Windows-only)'
       condition: eq(variables['Agent.OS'], 'Windows_NT')
