@@ -1,6 +1,5 @@
 name: Continous Integration
-# on: [push, pull_request] <-- uncomment this to activate pipeline
-on: []
+on: [push, pull_request]
 
 jobs:
   build:
