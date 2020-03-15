@@ -5,15 +5,12 @@ set -e
 
 which nim > /dev/null || (echo "nim not in PATH"; exit 1)
 which gdb > /dev/null || (echo "gdb not in PATH"; exit 1)
-which readlink > /dev/null || \
-    which greadline > /dev/null || \
-    ([[ "$(uname -s)" == "Darwin" ]] && \
-        (echo "readlink not in PATH. Please install coreutils from homebrew."; exit 1)) || \
-    (echo "readlink not in PATH."; exit 1)
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
+  which greadlink > /dev/null || (echo "readlink not in PATH. Please install coreutils from homebrew."; exit 1)
   READLINK=greadlink
 else
+  which readlink > /dev/null || (echo "readlink not in PATH."; exit 1)
   READLINK=readlink
 fi
 
