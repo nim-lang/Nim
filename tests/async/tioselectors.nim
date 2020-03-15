@@ -1,6 +1,3 @@
-discard """
-  output: "All tests passed!"
-"""
 import selectors
 
 const hasThreadSupport = compileOption("threads")
