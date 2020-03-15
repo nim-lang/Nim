@@ -578,7 +578,7 @@ proc hash*[A](s: HashSet[A]): Hash =
   # This handles tombstones (iterating over all `s.data` would be wrong).
   # Iterating over items(s) requires a commutative hash combiner like `xor`
   # to avoid depending on order (which could differ for 2 HashSet's with different
-  # data.len but same elements, after insertions and deletions). But `xor`
+  # `data.len` but same elements, after insertions and deletions). But `xor`
   # has bad mixing properties (eg, would give 0 if HashSet contains
   # a, b such that hash(a) == hash(b) and a != b). `sort` should have low
   # overhead compared to the surrounding code.
