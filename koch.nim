@@ -499,8 +499,8 @@ proc runCI(cmd: string) =
     #   execFold("Compile tester", "nim c -d:nimCoroutines --os:genode -d:posix --compileOnly testament/testament")
 
     # main bottleneck here
-    execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic  r tests/async/tioselectors.nim")
-    # execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    execFold("Run tester v1", "nim c -r -d:nimCoroutines testament/testament --pedantic  r tests/async/tioselectors.nim")
+    execFold("Run tester v2", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
     # block: # CT FFI
     #   when defined(posix): # windows can be handled in future PR's
     #     execFold("nimble install -y libffi", "nimble install -y libffi")
