@@ -321,8 +321,8 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
 proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
   assert s.kind == nkSym and s.sym.kind == skParam
   if not isLastRead(s, c):
-     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
-         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
+    localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
+        "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
 type
   ProcessMode = enum
@@ -498,10 +498,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
     elif n.kind in {nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkNilLit} +
          nkCallKinds + nkLiterals:
       result = p(n, c, consumed)
-    elif n.kind == nkSym and isSinkParam(n.sym):
+    elif n.kind == nkSym and isSinkParam(n.sym) and isLastRead(n, c):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
-      sinkParamIsLastReadCheck(c, n)
+      #sinkParamIsLastReadCheck(c, n)
       result = destructiveMoveVar(n, c)
     elif isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
       # it is the last read, can be sinkArg. We need to reset the memory
@@ -591,7 +591,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
               # move the variable declaration to the top of the frame:
               c.addTopVar v
               # make sure it's destroyed at the end of the proc:
-              if not isUnpackedTuple(v):
+              if not isUnpackedTuple(v) and sfThread notin v.sym.flags:
+                # do not destroy thread vars for now at all for consistency.
                 c.destroys.add genDestroy(c, v)
               elif c.inLoop > 0:
                 # unpacked tuple needs reset at every loop iteration
@@ -687,9 +688,9 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
     result = genSink(c, dest, p(ri, c, consumed))
   of nkSym:
-    if isSinkParam(ri.sym):
+    if isSinkParam(ri.sym) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      sinkParamIsLastReadCheck(c, ri)
+      #sinkParamIsLastReadCheck(c, ri)
       let snk = genSink(c, dest, ri)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and

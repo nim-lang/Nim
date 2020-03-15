@@ -98,13 +98,13 @@ expression: fun1(default(Mystring), "asdf")
 
 
 ## line 100
-block:
+when true:
   # bug #11061 Type mismatch error "first type mismatch at" points to wrong argument/position
   # Note: the error msg now gives correct position for mismatched argument
   type
     A = object of RootObj
     B = object of A
-
+block:
   proc f(b: B) = discard
   proc f(a: A) = discard
 
@@ -163,7 +163,7 @@ block:
   var foo = ""
   f(foo, a0 = 12)
 
-block:
+when true:
   type Mystring = string
   type MyInt = int
   proc fun1(a1: MyInt, a2: Mystring) = discard

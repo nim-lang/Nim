@@ -42,7 +42,7 @@ type
     wImportCompilerProc,
     wImportc, wImportJs, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
     wAlign, wNodecl, wPure, wSideEffect, wHeader,
-    wNoSideEffect, wGcSafe, wNoreturn, wMerge, wLib, wDynlib,
+    wNoSideEffect, wGcSafe, wNoreturn, wNosinks, wMerge, wLib, wDynlib,
     wCompilerProc, wCore, wProcVar, wBase, wUsed,
     wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
     wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
@@ -52,7 +52,7 @@ type
     wBoundChecks, wOverflowChecks, wNilChecks,
     wFloatChecks, wNanChecks, wInfChecks, wStyleChecks,
     wNonReloadable, wExecuteOnReload,
-    wAssertions, wPatterns, wTrMacros, wWarnings,
+    wAssertions, wPatterns, wTrMacros, wSinkInference, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
     wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
@@ -128,7 +128,7 @@ const
     "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
     "incompletestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
-    "header", "nosideeffect", "gcsafe", "noreturn", "merge", "lib", "dynlib",
+    "header", "nosideeffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
     "compilerproc", "core", "procvar", "base", "used",
     "fatal", "error", "warning", "hint", "line",
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
@@ -140,7 +140,7 @@ const
     "floatchecks", "nanchecks", "infchecks", "stylechecks",
     "nonreloadable", "executeonreload",
 
-    "assertions", "patterns", "trmacros", "warnings", "hints",
+    "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
     "deadcodeelim",  # deprecated, dead code elim always happens
     "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",

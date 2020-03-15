@@ -19,10 +19,12 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
 proc newObjNoInit(typ: PNimType, size: int): pointer =
   result = alloc(size)
 
+{.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-  result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+  result = newObj(typ, len * typ.base.size + GenericSeqSize)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
+{.pop.}
 
 proc growObj(old: pointer, newsize: int): pointer =
   result = realloc(old, newsize)

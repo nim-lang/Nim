@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets
+import os, strutils, osproc, sets, pathnorm
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
@@ -18,15 +18,19 @@ proc exe*(f: string): string =
   when defined(windows):
     result = result.replace('/','\\')
 
-proc findNim*(): string =
-  if nimExe.len > 0: return nimExe
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
+proc findNimImpl*(): tuple[path: string, ok: bool] =
+  if nimExe.len > 0: return (nimExe, true)
+  let nim = "nim".exe
+  result.path = "bin" / nim
+  result.ok = true
+  if existsFile(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
+    result.path = dir / nim
+    if existsFile(result.path): return
   # assume there is a symlink to the exe or something:
-  return nim
+  return (nim, false)
+
+proc findNim*(): string = findNimImpl().path
 
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
@@ -145,8 +149,10 @@ lib/posix/linux.nim
 lib/posix/termios.nim
 lib/js/jscore.nim
 """.splitWhitespace()
-
+  
+  # some of these are include files so shouldn't be docgen'd
   ignoredModules = """
+lib/prelude.nim
 lib/pure/future.nim
 lib/impure/osinfo_posix.nim
 lib/impure/osinfo_win.nim
@@ -195,11 +201,11 @@ lib/system/widestrs.nim
        a.isRelativeTo("lib/pure/includes") or
        a.isRelativeTo("lib/genode") or
        a.isRelativeTo("lib/deprecated") or
-       (a.isRelativeTo("lib/system") and a notin goodSystem) or
-       a in docIgnore:
+       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
+       a.replace('\\', '/') in docIgnore:
          continue
     result.add a
-  result.add "nimsuggest/sexp.nim"
+  result.add normalizePath("nimsuggest/sexp.nim")
 
 let doc = getDocList()
 

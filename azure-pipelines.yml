@@ -12,10 +12,10 @@ jobs:
         vmImage: 'ubuntu-16.04'
         CPU: i386
       OSX_amd64:
-        vmImage: 'macOS-10.14'
+        vmImage: 'macOS-10.15'
         CPU: amd64
       OSX_amd64_cpp:
-        vmImage: 'macOS-10.14'
+        vmImage: 'macOS-10.15'
         CPU: amd64
         NIM_COMPILE_TO_CPP: true
       Windows_amd64:
