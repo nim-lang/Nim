@@ -116,7 +116,6 @@ block:
   doAssert s == "\"fo\\\"o2\""
 
 type
-  SomePointer = ptr | ref | pointer
   MyType = object
     a: int
     b: string
@@ -155,7 +154,8 @@ block:
   doAssert $tmp3 == "(a: 1, b: \"abc\")"
   doAssert $tmp4 == "(a: 1, b: \"abc\")"
 
-  doAssert $compound == "(field0: (a: 1, b: \"abc\"), field1: ..., field2: ..., field3: ..., field4: ...)"
+  echo $compound
+  doAssert $compound == "(field0: (a: 1, b: \"abc\"), field1: (a: 1, b: \"abc\"), field2: (a: 1, b: \"abc\"), field3: (a: 1, b: \"abc\"), field4: (a: 1, b: \"abc\"))"
 
 type
   CyclicDistinctRef = distinct CyclicDistinctRefInner
@@ -199,39 +199,9 @@ type
     name: string
     children: seq[CyclicStuff]
 
-  # this type is pointless, is ref seq even allowed?
-  CyclicSeq = distinct seq[ref Cyclicseq]
-
-
-  # this type is even more pointless
-  MutualCyclicSeqA = distinct ref seq[MutualCyclicSeqB]
-  MutualCyclicSeqB = distinct ref seq[MutualCyclicSeqC]
-  MutualCyclicSeqC = distinct ref seq[MutualCyclicSeqA]
-
-import macros
-
-macro undistinct[T: distinct](arg: T): untyped =
-  result = newCall(arg.getTypeImpl[0], arg)
-
 block:
   let cycle1 = CyclicStuff(name: "name1")
   cycle1.children.add cycle1 # very simple cycle
-
-  # TODO: use CyclicSeq, MutualcyclicSeqA
-  var cycle2 = new(CyclicSeq)
-  undistinct(cycle2[]).add(cycle2)
-  undistinct(cycle2[]).add(cycle2)
-
-  var cycle3A: MutualCyclicSeqA
-  var cycle3B: MutualCyclicSeqB
-  var cycle3C: MutualCyclicSeqC
-
-  cycle3A.new
-  cycle3B.new
-  cycle3C.new
-
-  cycle3A.add cycle3B
-  cycle3B.add cycle3C
-  cycle3C.add cycle3A
+  echo cycle1
 
 echo "DONE: tostring.nim"

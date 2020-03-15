@@ -68,12 +68,13 @@ else:
 type
   SomePointer = ptr | ref | pointer
 
-template typeLoopsBack[T,U](obj: T; field: U): bool #[{.magic: "typeLoopsback".}]# =
-  ## Is substituted with `true`, if `U` or any of its recursive
-  ## members are of type `T`.  This magic is inteded to be used to
-  ## test if the `field` of `obj` can safely be printed without
-  ## running into a cycle and therefore infinite recursion.
-  false
+when defined(nimHasTypeIsRecursive):
+  proc typeIsRecursive[T](obj: T): bool {.magic: "TypeIsRecursive".} =
+    ## Is substituted with `true`, if any of the recursive member of
+    ## `T` point back to `T`.
+    false
+else:
+  template typeIsRecursive(obj: untyped): bool = false
 
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
@@ -93,7 +94,7 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(name)
       result.add(": ")
 
-    when typeLoopsBack(x, value):
+    when typeIsRecursive(x):
       when value is SomePointer:
         if value == typeof(value)(nil):
           # nil can always be printed safely
@@ -170,7 +171,11 @@ proc `$`*[T](x: openArray[T]): string =
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToString(x, "[", ", ", "]")
 
-proc `$`*[T: ref](arg: T): string = $arg[]
+proc `$`*[T: ref](arg: T): string =
+  if arg == nil:
+    "nil"
+  else:
+    $arg[]
 
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
 

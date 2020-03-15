@@ -2801,8 +2801,6 @@ proc addQuoted*[T](s: var string, x: T) =
     s.addInt(x)
   elif T is SomeFloat:
     s.addFloat(x)
-  elif compiles(s.add(x)):
-    s.add(x)
   else:
     s.add($x)
 

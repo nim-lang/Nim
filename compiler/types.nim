@@ -589,7 +589,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyUncheckedArray:
       result = "UncheckedArray[" & typeToString(t[0]) & ']'
     of tySequence:
-      result = "seq[" & typeToString(t[0]) & ']'
+      if t.sym != nil and prefer != preferResolved:
+        result = t.sym.name.s
+      else:
+        result = "seq[" & typeToString(t[0]) & ']'
     of tyOpt:
       result = "opt[" & typeToString(t[0]) & ']'
     of tyOrdinal:
@@ -1626,6 +1629,62 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
 proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
   isTupleRecursive(t, cycleDetector)
+
+proc isObjectRecursive(typ: PType, cycleDetector: var IntSet): bool
+
+proc isObjectRecursiveFoldFunction(n: PNode, cycleDetector: var IntSet): bool =
+  assert n != nil
+  case n.kind
+  of nkRecCase:
+    if isObjectRecursiveFoldFunction(n[0], cycleDetector):
+      return true
+    for i in 1..<n.len:
+      if isObjectRecursiveFoldFunction(n[i].lastSon, cycleDetector):
+        return true
+    return false
+  of nkRecList:
+    for i, child in n.sons:
+      if isObjectRecursiveFoldFunction(child, cycleDetector):
+        return true
+    return false
+  of nkSym:
+    var cycleDetectorCopy: IntSet
+    assign(cycleDetectorCopy, cycleDetector)
+    return isObjectRecursive(n.typ, cycleDetector)
+  else:
+    debug n
+    quit("should not get here")
+
+proc isObjectRecursive(typ: PType, cycleDetector: var IntSet): bool =
+  if typ == nil:
+    return false
+  if cycleDetector.containsOrIncl(typ.id):
+    return true
+  case typ.kind:
+    of tyTuple:
+      var cycleDetectorCopy: IntSet
+      for i in  0 ..< typ.len:
+        assign(cycleDetectorCopy, cycleDetector)
+        if isTupleRecursive(typ[i], cycleDetectorCopy):
+          return true
+    of tyObject:
+      if typ[0] != nil:
+        # compute header size
+        var st = typ[0]
+        while st.kind in skipPtrs:
+          st = st[^1]
+        if isObjectRecursive(st, cycleDetector):
+          return true
+      return isObjectRecursiveFoldFunction(typ.n, cycleDetector)
+    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
+      return isTupleRecursive(typ.lastSon, cycleDetector)
+    else:
+      return false
+
+proc isRecursive*(t: PType): bool =
+  var cycleDetector = initIntSet()
+  isObjectRecursive(t, cycleDetector)
+
 
 proc isException*(t: PType): bool =
   # check if `y` is object type and it inherits from Exception

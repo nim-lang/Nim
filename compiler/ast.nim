@@ -290,6 +290,7 @@ type
     sfCursor          # variable/field is a cursor, see RFC 177 for details
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
 
+
   TSymFlags* = set[TSymFlag]
 
 const
@@ -669,7 +670,7 @@ type
     mInstantiationInfo, mGetTypeInfo,
     mNimvm, mIntDefine, mStrDefine, mBoolDefine, mRunnableExamples,
     mException, mBuiltinType, mSymOwner, mUncheckedArray, mGetImplTransf,
-    mSymIsInstantiationOf, mNodeId, mTypeLoopsBack
+    mSymIsInstantiationOf, mNodeId, mTypeIsRecursive
 
 
 # things that we can evaluate safely at compile time, even if not asked for it:
