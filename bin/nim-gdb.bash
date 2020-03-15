@@ -7,18 +7,18 @@ which nim > /dev/null || (echo "nim not in PATH"; exit 1)
 which gdb > /dev/null || (echo "gdb not in PATH"; exit 1)
 which readlink > /dev/null || \
     which greadline > /dev/null || \
-    ([[ "$OSTYPE" != "darwin"* ]] && \
+    ([[ "$(uname -s)" == "Darwin" ]] && \
         (echo "readlink not in PATH. Please install coreutils from homebrew."; exit 1)) || \
     (echo "readlink not in PATH."; exit 1)
 
-nreadlink () {
-    (which greadlink > /dev/null && greadlink "$@") || \
-    (which readlink > /dev/null && readlink "$@") || \
-    echo "Readlink could not be found"
-}
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  READLINK=greadlink
+else
+  READLINK=readlink
+fi
 
 # Find out where the pretty printer Python module is
-NIM_SYSROOT=$(dirname $(dirname $(nreadlink -e $(which nim))))
+NIM_SYSROOT=$(dirname $(dirname $($READLINK -e $(which nim))))
 GDB_PYTHON_MODULE_PATH="$NIM_SYSROOT/tools/nim-gdb.py"
 
 # Run GDB with the additional arguments that load the pretty printers
