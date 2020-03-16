@@ -1611,7 +1611,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     return false
   if cycleDetector.containsOrIncl(t.id):
     return true
-  case t.kind:
+  case t.kind
   of tyTuple:
     var cycleDetectorCopy: IntSet
     for i in 0..<t.len:
