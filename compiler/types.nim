@@ -87,7 +87,11 @@ proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
 proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
-  case n.kind
+  var k = n.kind
+  if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
+    k = nkUIntLit
+
+  case k
   of nkCharLit, nkUIntLit..nkUInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or isUnsigned(n.typ), $n.typ
