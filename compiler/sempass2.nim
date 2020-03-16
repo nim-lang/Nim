@@ -772,15 +772,16 @@ proc track(tracked: PEffects, n: PNode) =
           discard
         else:
           message(tracked.config, arg.info, warnProveInit, $arg)
-    elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
-        optStaticBoundsCheck in tracked.config.options:
-      checkBounds(tracked, n[1], n[2])
 
       # check required for 'nim check':
       if n[1].typ.len > 0:
         createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
         createTypeBoundOps(tracked, n[1].typ, n.info)
         # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
+
+    elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
+        optStaticBoundsCheck in tracked.config.options:
+      checkBounds(tracked, n[1], n[2])
 
     if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
           tracked.owner.kind != skMacro:
@@ -991,7 +992,7 @@ proc track(tracked: PEffects, n: PNode) =
     if optStaticBoundsCheck in tracked.config.options and n.len == 2:
       if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
         checkBounds(tracked, n[0], n[1])
-    for i in 0 ..< safeLen(n): track(tracked, n.sons[i])
+    for i in 0 ..< n.len: track(tracked, n[i])
   else:
     for i in 0..<n.safeLen: track(tracked, n[i])
 
