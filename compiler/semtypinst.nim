@@ -618,6 +618,9 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
         eraseVoidParams(result)
         skipIntLiteralParams(result)
 
+      of tyRange:
+        result[0] = result[0].skipTypes({tyStatic, tyDistinct})
+
       else: discard
     else:
       # If this type doesn't refer to a generic type we may still want to run it
