@@ -571,24 +571,8 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
   result = initHashSet[B]()
   for item in items(data): result.incl(op(item))
 
-from std/algorithm import sort
-
 proc hash*[A](s: HashSet[A]): Hash =
-  ## Hashing of HashSet.
-  # This handles tombstones (iterating over all `s.data` would be wrong).
-  # Iterating over items(s) requires a commutative hash combiner like `xor`
-  # to avoid depending on order (which could differ for 2 HashSet's with different
-  # `data.len` but same elements, after insertions and deletions), eg:
-  #   for h in s:
-  #     result = result xor hash(h)
-  # But `xor` has bad mixing properties (eg, would give 0 if HashSet contains
-  # a, b such that hash(a) == hash(b) and a != b). `sort` should have low
-  # overhead compared to the surrounding code.
-  var s2: seq[Hash]
-  for h in s: s2.add hash(h)
-  s2.sort
-  for h in s2: result = result !& hash(h)
-  result = !$result
+  hashUnordered(s)
 
 proc `$`*[A](s: HashSet[A]): string =
   ## Converts the set `s` to a string, mostly for logging and printing purposes.

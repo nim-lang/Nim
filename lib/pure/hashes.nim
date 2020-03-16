@@ -49,8 +49,58 @@ type
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
+type UHash = uint
+
+proc hashUInt64*(x: uint64): Hash {.inline.} =
+  ## for internal use; user code should prefer `hash` overloads
+  when nimvm: # in vmops
+    doAssert false
+  else:
+    # would be orders of magnitude worse, see thashes_perf toHighOrderBits
+    # hashData(cast[pointer](unsafeAddr x), type(x).sizeof)
+
+    # would a bit worse, see thashes_perf toInt64
+    # type ByteArr = array[int64.sizeof, uint8]
+    # result = murmurHash(cast[ptr ByteArr](unsafeAddr x)[])
+
+    # inspired from https://gist.github.com/badboy/6267743#64-bit-mix-functions
+    var x = x
+    x = (not x) + (x shl 21) # x = (x shl 21) - x - 1;
+    x = x xor (x shr 24)
+    x = (x + (x shl 3)) + (x shl 8) # x * 265
+    x = x xor (x shr 14)
+    x = (x + (x shl 2)) + (x shl 4) # x * 21
+    x = x xor (x shr 28)
+    x = x + (x shl 31)
+    result = cast[Hash](x)
+
+proc hashUInt32*(x: uint32): Hash {.inline.} =
+  ## for internal use; user code should prefer `hash` overloads
+  # calling `hashUInt64(x)` would perform 1.7X slower, see thashes_perf toInt32
+  when nimvm: # in vmops
+    doAssert false
+  else:
+    # inspired from https://gist.github.com/badboy/6267743
+    var x = x xor ((x shr 20) xor (x shr 12))
+    result = cast[Hash](x xor (x shr 7) xor (x shr 4))
+
+when defined(js):
+  proc hash*(x: string): Hash {.noSideEffect.}
+
+proc nonlinearHash*(x: Hash): Hash =
+  when defined(js):
+    when nimvm:
+      # this could also be `hashUInt64(cast[uint64](x))` on a 32 bit machine,
+      # but we can't query for int.sizeof since that's hardcoded for nim js
+      hashUInt64(cast[uint64](x))
+    else: hash($x.float) # workaround
+  else:
+    when sizeof(Hash) == sizeof(uint64): hashUInt64(cast[uint64](x))
+    else: hashUInt32(cast[uint32](x))
+
 proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
+  ## Uses Jenkins hash: https://en.wikipedia.org/wiki/Jenkins_hash_function
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
   let h = cast[uint](h)
@@ -72,6 +122,8 @@ proc `!$`*(h: Hash): Hash {.inline.} =
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
+  # should probably reuse `proc hash*[A](aBuf: openArray[A], sPos, ePos: int): Hash`
+  # which uses better murmurhash algorithm.
   var h: Hash = 0
   when defined(js):
     var p: cstring
@@ -407,6 +459,52 @@ proc hash*[A](x: set[A]): Hash =
     result = result !& hash(it)
   result = !$result
 
+template hashUnordered*(iter: untyped): Hash =
+  ## Hashing of unordered elements.
+  runnableExamples:
+    doAssert hashUnordered(@[10, 20]) == hashUnordered(@[20, 10])
+    doAssert hashUnordered(@[10, 20]) != hashUnordered(@[11, 19])
+    doAssert hashUnordered(@[10, 10]) != hashUnordered(@[11, 11])
+    static: doAssert hashUnordered(@[10, 10]) != hashUnordered(@[11, 11])
+    var x: seq[int]
+    discard hashUnordered(x) # 0 elements works
+    discard hashUnordered(items(x)) # iterator works
+  # Example use case: for HashSet's, the result must be order-independant because 2
+  # HashSet's with different `data.len` but same elements (say after insertions
+  # and deletions) must hash to the same result.
+  # To combine individual hashes `hi = hash(si)`, we must either sort the `hi`
+  # (best hash properties to avoid collisions but requires allocations + sorting)
+  # or combine them with a commutative and associative operator;
+  # we also want to avoid trivial cases of bad collisions, ruling out obvious
+  # combiners, eg:
+  # `xor`: `xor(hi, hj)` is 0 if hi == hj
+  # `+`: trivial collisions eg @[10,20] vs @[10+1, 20-1]
+  # `*`: trivial collisions eg @[10,20] vs @[10 div 2, 20*2], and 0 if any input
+  # is 0.
+  # So we combine with `+` but via `nonlinearHash(hash(ai))` to mitigate such
+  # collisions. As a final refinement, we also add non-linear mixing with
+  # `len(iter)`.
+  #
+  # Note: see also https://crypto.stackexchange.com/questions/54544/how-to-to-calculate-the-hash-of-an-unordered-set
+  # A more robust but more complex / expensive approach for this problem is
+  # studied here: http://people.csail.mit.edu/devadas/pubs/mhashes.pdf
+  when false:
+    # sort based approach; requires `from std/algorithm import sort`
+    var s2: seq[Hash]
+    for h in s: s2.add hash(h)
+    s2.sort
+    for h in s2: result = result !& hash(h)
+    result = !$result
+
+  mixin hash
+  var ret: UHash # prevent checked arithmetics
+  var count = 0
+  for ai in iter:
+    ret += cast[UHash](nonlinearHash(hash(ai)))
+    count.inc
+  var result = cast[Hash](ret) !& count # extra non-linear mixing with num elements
+  result = !$ result
+  result
 
 when isMainModule:
   block empty:

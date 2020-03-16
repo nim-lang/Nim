@@ -18,7 +18,7 @@ from md5 import getMD5
 from sighashes import symBodyDigest
 from times import cpuTime
 
-from hashes import hash
+from hashes import hash, hashUInt64, hashUInt32
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -235,6 +235,11 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
+
+  registerCallback c, "stdlib.hashes.hashUInt64", proc (a: VmArgs) {.nimcall.} =
+    a.setResult hashUInt64(cast[uint64](getInt(a, 0)))
+  registerCallback c, "stdlib.hashes.hashUInt32", proc (a: VmArgs) {.nimcall.} =
+    a.setResult hashUInt32(cast[uint32](getInt(a, 0)))
 
   if optBenchmarkVM in c.config.globalOptions:
     wrap0(cpuTime, timesop)
