@@ -568,17 +568,17 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
     result = putArgInto(arg[0], formal)
   of nkCurly, nkBracket:
-    result = paDirectMapping
     for i in 0..<arg.len:
       if putArgInto(arg[i], formal) != paDirectMapping: 
         return paFastAsgn
-  of nkPar, nkTupleConstr, nkObjConstr:
     result = paDirectMapping
+  of nkPar, nkTupleConstr, nkObjConstr:
     for i in 0..<arg.len:
       let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
               else: arg[0]
       if putArgInto(a, formal) != paDirectMapping: 
         return paFastAsgn
+    result = paDirectMapping
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
