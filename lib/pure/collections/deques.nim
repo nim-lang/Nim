@@ -112,7 +112,7 @@ proc len*[T](deq: Deque[T]): int {.inline.} =
 template high*[T](deq: Deque[T]): int =
   deq.len - 1
 
-proc toDeque*[T](x: openarray[T]): Deque[T] =
+proc toDeque*[T](x: openArray[T]): Deque[T] =
   ## Converts a sequence into a Deque
   runnableExamples:
     var x = @[10, 20, 30].toDeque
