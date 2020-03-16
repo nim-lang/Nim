@@ -103,6 +103,9 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
+- Added `netpbm` module with NetPBM raster bitmap image implementation for image rendering.
+- Added `xpm` module with XPM X-Pixmap raster image implementation for image rendering.
+
 
 ## Library changes
 
