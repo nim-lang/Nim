@@ -45,7 +45,6 @@ const
 # ensure same result when on VM or when at program execution
 doAssert dataStr == $data
 
-import strutils
 # array test
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
@@ -154,7 +153,6 @@ block:
   doAssert $tmp3 == "(a: 1, b: \"abc\")"
   doAssert $tmp4 == "(a: 1, b: \"abc\")"
 
-  echo $compound
   doAssert $compound == "(field0: (a: 1, b: \"abc\"), field1: (a: 1, b: \"abc\"), field2: (a: 1, b: \"abc\"), field3: (a: 1, b: \"abc\"), field4: (a: 1, b: \"abc\"))"
 
 type
@@ -202,6 +200,6 @@ type
 block:
   let cycle1 = CyclicStuff(name: "name1")
   cycle1.children.add cycle1 # very simple cycle
-  echo cycle1
+  doAssert $cycle1 == "(name: \"name1\", children: ...)"
 
 echo "DONE: tostring.nim"

@@ -1621,7 +1621,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
         assign(cycleDetectorCopy, cycleDetector)
         if isTupleRecursive(t[i], cycleDetectorCopy):
           return true
-    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
+    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence, tyDistinct:
       return isTupleRecursive(t.lastSon, cycleDetector)
     else:
       return false
@@ -1630,9 +1630,9 @@ proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
   isTupleRecursive(t, cycleDetector)
 
-proc isObjectRecursive(typ: PType, cycleDetector: var IntSet): bool
+proc isObjectRecursive(typ: PType, cycleDetector: IntSet): bool
 
-proc isObjectRecursiveFoldFunction(n: PNode, cycleDetector: var IntSet): bool =
+proc isObjectRecursiveFoldFunction(n: PNode, cycleDetector: IntSet): bool =
   assert n != nil
   case n.kind
   of nkRecCase:
@@ -1648,16 +1648,15 @@ proc isObjectRecursiveFoldFunction(n: PNode, cycleDetector: var IntSet): bool =
         return true
     return false
   of nkSym:
-    var cycleDetectorCopy: IntSet
-    assign(cycleDetectorCopy, cycleDetector)
     return isObjectRecursive(n.typ, cycleDetector)
   else:
     debug n
     quit("should not get here")
 
-proc isObjectRecursive(typ: PType, cycleDetector: var IntSet): bool =
+proc isObjectRecursive(typ: PType, cycleDetector: IntSet): bool =
   if typ == nil:
     return false
+  var cycleDetector = cycleDetector
   if cycleDetector.containsOrIncl(typ.id):
     return true
   case typ.kind:
@@ -1668,16 +1667,11 @@ proc isObjectRecursive(typ: PType, cycleDetector: var IntSet): bool =
         if isTupleRecursive(typ[i], cycleDetectorCopy):
           return true
     of tyObject:
-      if typ[0] != nil:
-        # compute header size
-        var st = typ[0]
-        while st.kind in skipPtrs:
-          st = st[^1]
-        if isObjectRecursive(st, cycleDetector):
-          return true
+      if typ[0] != nil and isObjectRecursive(typ[0], cycleDetector):
+        return true
       return isObjectRecursiveFoldFunction(typ.n, cycleDetector)
-    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
-      return isTupleRecursive(typ.lastSon, cycleDetector)
+    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence, tyDistinct:
+      return isObjectRecursive(typ.lastSon, cycleDetector)
     else:
       return false
 

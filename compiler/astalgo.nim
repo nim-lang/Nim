@@ -416,6 +416,7 @@ type
     currentLine: int
     firstItem: bool
     useColor: bool
+    compressBuiltinTypes: bool
     res: string
 
 proc indentMore(this: var DebugPrinter) =
@@ -540,7 +541,38 @@ proc value(this: var DebugPrinter; value: PSym) =
 
   this.closeCurly
 
+proc builtinTypeSubstitution(this: var DebugPrinter; substitution: string) =
+  if this.useColor:
+    this.res.add backrefStyle
+  this.res.add substitution
+  if this.useColor:
+    this.res.add resetStyle
+
 proc value(this: var DebugPrinter; value: PType) =
+  # these shortcuts for builtin types are done before ``earlyExit`` because they are shorter that backreference links
+  if this.compressBuiltinTypes and value != nil:
+    case value.kind
+    of tyBool:     this.builtinTypeSubstitution "<bool>";    return
+    of tyChar:     this.builtinTypeSubstitution "<char>";    return
+    of tyPointer:  this.builtinTypeSubstitution "<pointer>"; return
+    of tyString:   this.builtinTypeSubstitution "<string>";  return
+    of tyCString:  this.builtinTypeSubstitution "<cstring>"; return
+    of tyInt:      this.builtinTypeSubstitution "<int>";     return
+    of tyInt8:     this.builtinTypeSubstitution "<int8>";    return
+    of tyInt16:    this.builtinTypeSubstitution "<int16>";   return
+    of tyInt32:    this.builtinTypeSubstitution "<int32>";   return
+    of tyInt64:    this.builtinTypeSubstitution "<int64>";   return
+    of tyFloat:    this.builtinTypeSubstitution "<float>";   return
+    of tyFloat32:  this.builtinTypeSubstitution "<float32>"; return
+    of tyFloat64,: this.builtinTypeSubstitution "<float64>"; return
+    of tyUInt:     this.builtinTypeSubstitution "<uint>";    return
+    of tyUInt8:    this.builtinTypeSubstitution "<uint8>";   return
+    of tyUInt16:   this.builtinTypeSubstitution "<uint16>";  return
+    of tyUInt32:   this.builtinTypeSubstitution "<uint32>";  return
+    of tyUInt64:   this.builtinTypeSubstitution "<uint64>";  return
+    else:
+      discard
+
   earlyExit(this, value)
 
   this.openCurly
@@ -633,6 +665,7 @@ when declared(echo):
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
     this.useColor = not defined(windows)
+    this.compressBuiltinTypes = true
     this.value(n)
     echo($this.res)
 
@@ -641,6 +674,7 @@ when declared(echo):
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
     this.useColor = not defined(windows)
+    this.compressBuiltinTypes = true
     this.value(n)
     echo($this.res)
 
@@ -649,6 +683,7 @@ when declared(echo):
     this.visited = initTable[pointer, int]()
     #this.renderSymType = true
     this.useColor = not defined(windows)
+    this.compressBuiltinTypes = true
     this.value(n)
     echo($this.res)
 

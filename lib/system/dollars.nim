@@ -94,16 +94,17 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(name)
       result.add(": ")
 
-    when typeIsRecursive(x):
+    when typeIsRecursive(value):
       when value is SomePointer:
         if value == typeof(value)(nil):
           # nil can always be printed safely
           result.add "nil"
         else:
+          # value may have a cycle, don't print it.
           result.add("...")
       else:
-        # value may have a cycle, don't print it.
-        result.add "..."
+        # probably some distinct pointer
+        result.add("...")
     else:
       result.addQuoted(value)
 
