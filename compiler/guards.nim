@@ -274,7 +274,7 @@ proc canon*(n: PNode; o: Operators): PNode =
     result = negate(result[1], result[2], result, o)
   of someLen:
     result[0] = o.opLen.newSymNode
-  of someLt:
+  of someLt - {mLtF64}:
     # x < y  same as x <= y-1:
     let y = n[2].canon(o)
     let p = pred(y)
