@@ -76,7 +76,8 @@ proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
     a.k = k
     a.lode = lode
     a.storage = s
-    if a.r == nil: a.r = r
+    if a.r == nil:
+      a.r = r
 
 proc t(a: TLoc): PType {.inline.} =
   if a.lode.kind == nkSym:
@@ -285,7 +286,7 @@ proc postStmtActions(p: BProc) {.inline.} =
 
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
-proc genProc(m: BModule, prc: PSym)
+proc genProc(orig: BModule, prc: PSym)
 proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
@@ -777,8 +778,6 @@ proc cgsym(m: BModule, name: string): Rope =
     of skProc, skFunc, skMethod, skConverter, skIterator:
       # probably the only place where we can universally catch rope changes
       #if containsOrIncl(m.declaredProtos, sym.id):
-      when not defined(release):
-        echo "------> magic compiler proc: ", name
       genProc(m, sym)
     of skVar, skResult, skLet:
       # another place we probably want to cache our symbols
@@ -1224,6 +1223,7 @@ proc yewpad(m: BModule; s: PSym): string =
   result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
   result &= " : " & $s.name.s.mangle
 
+# mutates the module and the symbol
 proc performRealGenProc(m: BModule, prc: PSym) =
   ## the real proc generator, and it may define forwards
   genProcMayForward(m, prc)
@@ -1241,13 +1241,12 @@ proc performRealGenProc(m: BModule, prc: PSym) =
     # now, if it's inline,
     if prc.typ.callConv == ccInline:
       # and if the proc hasn't already been declared, declare it, and
-      if not containsOrIncl(m.g.generatedHeader.declaredThings,
-                            prc.id):
+      if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
         # generate the header for the proc
         # this also generates the nimFrame and popFrame, etc.
         genProcAux(m.g.generatedHeader, prc)
 
-proc genProc(m: BModule, prc: PSym) =
+proc genProc(orig: BModule, prc: PSym) =
   ## generate code for a proc
   if sfBorrow in prc.flags or not isActivated(prc):
     return
@@ -1259,26 +1258,6 @@ proc genProc(m: BModule, prc: PSym) =
   when defined(release):
     cachable = false
 
-  # cloned module object that we'll use to cache compilation
-  var
-    orig = m
-    cache = newCacheUnit(orig.g, prc)
-    m = m
-
-  # if the proc is not completed defined
-  if sfForward in prc.flags:
-    # telling the BModule that we will need a forward declaration section
-    fillProcLoc(m, prc.ast[namePos])
-    # adding a forward declaration
-    addForwardedProc(m, prc)
-
-  # we only generate code when the proc is completely defined
-  if sfForward in prc.flags:
-    if cachable:
-      # merge the cache before we exit
-      cache.mergeInto(orig)
-    return
-
   # omit compiler procs with an owner?
   if sfCompilerProc in prc.flags and prc.owner != nil:
     cachable = false
@@ -1287,18 +1266,29 @@ proc genProc(m: BModule, prc: PSym) =
   if lfImportCompilerProc in prc.loc.flags:
     cachable = false
 
-  # new architecture:
-  # 1. look in the cache
-  # 2. if we find something, we use it
-  # 3. else, perform the code gen
-  # 4. store the generated snippets to cache
-  # 5. goto 1
-  #
-  #
-  # difference:
-  #   any symbol can impart codegen across the entire project.
-  #   this is necessary to support arbitrary addition and removal
-  #   of generics.
+  var
+    cache: CacheUnit[PSym]
+    m: BModule = orig
+
+  if cachable:
+    cache = newCacheUnit(orig.g, prc)
+    m = findModule(cache.modules, orig)
+
+  # XXX: should we handle these specially?
+  when true:
+    # if the proc is not completed defined
+    if sfForward in prc.flags:
+      # telling the BModule that we will need a forward declaration section
+      fillProcLoc(m, prc.ast[namePos])
+      # adding a forward declaration
+      addForwardedProc(m, prc)
+
+    # we only generate code when the proc is completely defined
+    if sfForward in prc.flags:
+      if cachable:
+        # merge the cache before we exit
+        cache.merge(orig.g)
+      return
 
   var
     readcache = cachable and m.config.symbolFiles notin {disabledSf,
@@ -1315,74 +1305,9 @@ proc genProc(m: BModule, prc: PSym) =
   when not defined(release):
     echo "==> ", yewpad(m, prc)
 
-  # if we're reading, load the snippets from the db
-  if readcache:
-    if false:
-      for snippet in loadSnippets(m.g.graph, m.g, prc):
-        #echo "----"
-        when not defined(release):
-          echo "\t", snippet.section, "\t", snippet.module.module.id
-        # if the snippet writes to proc headers, mark the proc as declared
-        when false:
-          if snippet.section == cfsProcHeaders:
-            m.declaredProtos.incl prc.id
-        when not defined(release):
-          m.s[snippet.section].add fmt"""
-
-/*
-cachable: cache {cachable} id {prc.id} module id {m.module.id}
-owner nil: {prc.owner == nil}
-owner kind: {prc.owner.kind}
-compiler proc  loc: {lfImportCompilerProc in prc.loc.flags}
-compiler proc flag: {sfCompilerProc in prc.flags}
-*/
-
-          """.rope
-          m.s[snippet.section].add fmt"""
-
-/*
-{prc.name.s}
-{yewpad(m, prc)}
-=====================
-cached data from {snippet.section}
-module: {m.cfilename}
-flags: {prc.flags}
-  loc: {prc.loc.flags}
-*/
-
-          """.rope
-        m.s[snippet.section].add snippet.code
-        when not defined(release):
-          m.s[snippet.section].add "/* end */\n".rope
-        #when not defined(release):
-        #  echo "\t", snippet.code
-    else:
-      # stale scenario; we have it, we know we have it
-      when not defined(release):
-        echo "  ", m.cfilename, "\t", prc.name.s
-
-    # we're missing a side-effect on reads that produces a proc-init!
-
-    # take the accumulated mutations to the module graph that were
-    # performed in the pursuit of generating this one fucking proc,
-    # and add them into the original module that we wanted to mutate,
-    # and any other modules in the module graph that are similarly
-    # mutated.
-    #
-    if cachable:
-      cache.mergeInto(orig)
-
   # if we're not reading, we need to generate the code
   if not readcache:
-    # TODO: ideally, we perform a write and then simply call this proc
-    # again to read the data right out of cache. this is complicated by
-    # the fact that the ropes are basically append-only...
-    #
-    # ropes need a pop()!
-
-    # set the marks to monitor for new snippets
     if writecache:
-      m = cache.moduleFor(prc)
       when not defined(release):
         echo "> ", m.cfilename, "\t", prc.name.s
         echo "\t", $prc.sigHash, "\t", m.module.id
@@ -1390,30 +1315,26 @@ flags: {prc.flags}
     if not cachable:
       echo "--", m.cfilename, "\t", prc.name.s
 
-    # bewm
-    #
-    # WE MUST
-    # WE MUST
-    # WE MUST IMPROVE OR BUST
-    #
-    # prc is mutating and that is a big problem
+    # the actual code generation
     performRealGenProc(m, prc)
 
-    # issuing the iterator on snippetsSince will write them
     if writecache:
-      when not defined(release):
-        echo " >", m.cfilename, "\t", prc.name.s
-      when false:
-        for snippet in m.snippetsSince:
-          if snippet.section notin {cfsProcHeaders}:
-            var
-              snippet = snippet
-            storeSnippet(m.g.graph, snippet)
-            when not defined(release):
-              echo "\t", snippet.section, "\t", snippet.module.module.id
+      # store the cache to db
+      cache.store
 
-      # this SUCKS because prc is also being mutated
-      genProc(orig, prc)
+      # rerun to catch the cache changes; prc may be a mutant
+      when false:
+        genProc(orig, prc)
+      else:
+        cache.merge(orig.g)
+
+  # if we're reading, load the snippets from the db
+  if readcache:
+    # load the cached symbol and its snippets from the db
+    cache.load(orig.g)
+
+    # merge the cache into our graph
+    cache.merge(orig.g)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)

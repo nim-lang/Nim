@@ -99,7 +99,7 @@ type
     sigConflicts*: CountTableRef[string]
 
   TTypeSeq* = seq[PType]
-  TypeCache* = Table[SigHash, Rope]
+  TypeCache* = TableRef[SigHash, Rope]
   TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
   CodegenFlag* = enum
@@ -199,3 +199,9 @@ iterator cgenModules*(g: BModuleList): BModule =
   for m in g.modulesClosed:
     # iterate modules in the order they were closed
     yield m
+
+proc pushType*(m: BModule, typ: PType) =
+  for i in 0..high(m.typeStack):
+    # pointer equality is good enough here:
+    if m.typeStack[i] == typ: return
+  m.typeStack.add(typ)

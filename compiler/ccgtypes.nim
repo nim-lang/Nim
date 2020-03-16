@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, rod
+import sighashes, modulegraphs
 from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
@@ -334,12 +334,6 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     if cacheGetType(m.typeCache, sig) == nil:
       m.typeCache[sig] = result
       addAbiCheck(m, typ, result)
-
-proc pushType(m: BModule, typ: PType) =
-  for i in 0..high(m.typeStack):
-    # pointer equality is good enough here:
-    if m.typeStack[i] == typ: return
-  m.typeStack.add(typ)
 
 proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
   if typ == nil:

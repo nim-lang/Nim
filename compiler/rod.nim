@@ -1,5 +1,30 @@
 #
 #
+#
+# order is controlled by the codegen process and it's something
+# we don't want to fuck with
+#
+# module graph mutation during codegen:
+#
+# x -> y -> n
+#   a'   d'                       <- operations that we must cache
+#   ^ move all the logic here
+#
+# current reality:
+#
+# x -> z -> y -> n
+#   b'   c'   d'                  <- operations that we must cache
+#
+# ideal reality:
+#
+# x -> z -> y -> n
+#   b'   a'   d'                  <- operations that we must cache
+#
+#
+#
+#
+#
+#
 #           The Nim Compiler
 #        (c) Copyright 2020 Andreas Rumpf
 #
@@ -11,8 +36,8 @@
 
 import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
-  btrees, trees, condsyms, nversion, pathutils, types, cgendata, sequtils,
-  sighashes, modulegraphs, idgen, lineinfos, incremental, ndi
+  treetab, condsyms, nversion, pathutils, cgendata, sequtils, trees, ndi,
+  sighashes, modulegraphs, idgen, lineinfos, incremental, types
 
 ## TODO:
 ## - Add some backend logic dealing with generics.
@@ -71,8 +96,6 @@ proc rawNewModule*(g: BModuleList; module: PSym; filename: AbsoluteFile): BModul
   result.g = g
   result.tmpBase = rope("TM" & $hashOwner(module) & "_")
   result.headerFiles = @[]
-  result.declaredThings = initIntSet()
-  result.declaredProtos = initIntSet()
   result.cfilename = filename
   result.filename = filename
   result.module = module
@@ -80,9 +103,11 @@ proc rawNewModule*(g: BModuleList; module: PSym; filename: AbsoluteFile): BModul
   result.nimTypesName = getTempName(result)
 
   # XXX: keep an eye on these:
-  result.typeCache = initTable[SigHash, Rope]()
-  result.forwTypeCache = initTable[SigHash, Rope]()
-  result.typeInfoMarker = initTable[SigHash, Rope]()
+  result.declaredThings = initIntSet()
+  result.declaredProtos = initIntSet()
+  result.typeCache = newTable[SigHash, Rope]()
+  result.forwTypeCache = newTable[SigHash, Rope]()
+  result.typeInfoMarker = newTable[SigHash, Rope]()
   result.sigConflicts = newCountTable[SigHash]()
   initNodeTable(result.dataCache)
   result.typeStack = @[]
@@ -128,13 +153,26 @@ proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
       fake.sigConflicts = m.sigConflicts
       fake.declaredThings = m.declaredThings
       fake.declaredProtos = m.declaredProtos
+      fake.typeCache = m.typeCache
+      fake.forwTypeCache = m.forwTypeCache
+      fake.typeInfoMarker = m.typeInfoMarker
+      fake.tmpBase = rope("tmp_ic_" & $sigHash(node) & "_")
+      # XXX: figure this one out...
+      #fake.labels = m.labels
+      fake.typeNodes = m.typeNodes
+      fake.nimTypes = m.nimTypes
+      fake.typeNodesName = getTempName(fake)
+      fake.nimTypesName = getTempName(fake)
+      # XXX: uh oh
+      fake.dataCache = m.dataCache
+      fake.flags = m.flags
     result.modules.modules.add fake
 
 # the snippet's module is not necessarily the same as the symbol!
 proc newSnippet*[T](node: T; module: BModule; sect: TCFileSection): Snippet =
   result = Snippet(signature: node.sigHash, module: module, section: sect)
 
-proc findModule(list: BModuleList; child: BModule): BModule =
+proc findModule*(list: BModuleList; child: BModule): BModule =
   assert child != nil
   block found:
     for m in list.modules.items:
@@ -157,37 +195,101 @@ proc moduleFor*(cache: CacheUnit; p: PSym): BModule =
           break found
     raise newException(Defect, "wow, this is a disaster!")
 
+template mergeRopes(parent: var BModule; child: BModule; name: untyped) =
+  if child.`name` != nil:
+    if parent.`name` == nil:
+      parent.`name` = child.`name`
+    else:
+      parent.`name`.add child.`name`
+
 proc merge(parent: var BModule; child: BModule) =
+  ## miscellaneous ropes
+  mergeRopes(parent, child, injectStmt)
+
+  # --- XXX --- need to do the init procs
+
+  # 0. save XXX: flags
+  parent.flags = child.flags
+
+  when defined(tooSlowForMe):
+    for pair in child.dataCache.data.items:
+      parent.dataCache.nodeTablePutHash(pair.h, pair.key, pair.val)
+
+  ## ✅1. ropes to store per section
+
   # copy the generated procs, etc.
   for section, rope in child.s.pairs:
-    if parent.s[section] == nil:
-      parent.s[section] = rope
-    else:
-      parent.s[section].add rope
+    if rope != nil:
+      if parent.s[section] == nil:
+        parent.s[section] = rope
+      else:
+        parent.s[section].add rope
+      echo "section ", section,  " length ", rope.len
+
+  ## ❌2. ptypes to store
 
   # copy the types over
-  for signature, rope in child.typeCache.pairs:
-    if signature in parent.typeCache:
-      echo "WHOOOOOOOOAH"
-    else:
-      parent.typeCache[signature] = rope
+  for ptype in child.typeStack:
+    parent.pushType ptype
+    when not defined(release):
+      once:
+        echo "typestack size: ", child.typeStack.len
 
-  if parent.declaredThings.len != parent.declaredThings.len:
+  # ❌we are sharing these (for now!)
+  when false:
+    ## [SHARE?] sigs -> ropes
+
+    # copy the types over
+    for signature, rope in child.typeCache.pairs:
+      if signature notin parent.typeCache:
+        parent.typeCache[signature] = rope
+      when not defined(release):
+        echo "typecache size: ", child.typeCache.len
+        # XXX
+
+    ## [SHARE?] sigs -> ropes
+
+    # copy the forwarded types over
+    for signature, rope in child.forwTypeCache.pairs:
+      if signature notin parent.forwTypeCache:
+        parent.forwTypeCache[signature] = rope
+      when not defined(release):
+        echo "forwTypeCache size: ", child.forwTypeCache.len
+        # XXX
+
+    ## [SHARE?] sigs -> ropes
+
+    # copy the type info markers over
+    for signature, rope in child.typeInfoMarker.pairs:
+      if signature notin parent.typeInfoMarker:
+        parent.typeInfoMarker[signature] = rope
+      when not defined(release):
+        echo "typeinfomarker size: ", child.typeInfoMarker.len
+        # XXX
+
+  ## ❌series of nimids
+
+  if parent.declaredThings.len != child.declaredThings.len:
     echo "Tas ", parent.declaredThings
     echo "add ", child.declaredThings
     parent.declaredThings = parent.declaredThings.union child.declaredThings
-    raise newException(Defect, "bye")
-  if parent.declaredProtos.len != parent.declaredProtos.len:
+
+  ## ❌series of nimids
+
+  if parent.declaredProtos.len != child.declaredProtos.len:
     echo "Pas ", parent.declaredProtos
     echo "add ", child.declaredProtos
     parent.declaredProtos = parent.declaredProtos.union child.declaredProtos
-    raise newException(Defect, "bye")
 
-proc mergeInto*(cache: var CacheUnit; module: BModule) =
+  for filename in child.headerFiles:
+    if filename notin parent.headerFiles:
+      parent.headerFiles.add filename
+
+proc merge*(cache: CacheUnit; list: BModuleList) =
   for m in cache.modules.modules.items:
     if m != nil:
       var
-        parent = module.g.findModule(m)
+        parent = findModule(list, m)
       # parent is the final backend module in codegen
       if parent != nil:
         merge(parent, m)
@@ -556,30 +658,46 @@ proc symbolId*(g: ModuleGraph; p: PSym): SqlId =
   if id != "":
     result = id.parseInt
 
-proc storeSym*(g: ModuleGraph; s: PSym): SqlId =
+proc unstoreSym*(g: ModuleGraph; s: PSym) =
+  if g.config.symbolFiles == disabledSf: return
+  const
+    deinsertion = sql"""
+      delete from syms where nimid = ? and module = ? and name = ?
+    """
+  let
+    m = getModule(s)
+    mid = if m == nil: 0 else: abs(m.id)
+    name = $s.sigHash
+    affected = db.execAffectedRows(deinsertion, s.id, mid, name)
+  if affected == 0:
+    echo "gratuitous unstore of symbol ", s.name.s
+
+proc storeSym*(g: ModuleGraph; s: PSym) =
   if g.config.symbolFiles == disabledSf: return
   if sfForward in s.flags and s.kind != skModule:
     w.forwardedSyms.add s
     return
-  result = g.symbolId(s)
-  if result == 0:
-    var buf = newStringOfCap(160)
-    encodeSym(g, s, buf)
-    const
-      insertion = sql"""
-        insert into syms (nimid, module, name, data, exported)
-        values (?, ?, ?, ?, ?)
-      """
-    # XXX only store the name for exported symbols in order to speed up lookup
-    # times once we enable the skStub logic.
-    # XXX - but we need generics...
-    let
-      m = getModule(s)
-      mid = if m == nil: 0 else: abs(m.id)
-      name = $s.sigHash
+  let
+    existing = g.symbolId(s)
+  if existing != 0:
+    echo "duplicate store of symbol ", s.name.s
+    unstoreSym(g, s)
 
-    result = db.insertID(insertion, s.id, mid, name, buf,
-                         ord(sfExported in s.flags))
+  var buf = newStringOfCap(160)
+  encodeSym(g, s, buf)
+  const
+    insertion = sql"""
+      insert into syms (nimid, module, name, data, exported)
+      values (?, ?, ?, ?, ?)
+    """
+  # XXX only store the name for exported symbols in order to speed up lookup
+  # times once we enable the skStub logic.
+  # XXX - but we need generics...
+  let
+    m = getModule(s)
+    mid = if m == nil: 0 else: abs(m.id)
+    name = $s.sigHash
+  db.exec(insertion, s.id, mid, name, buf, ord(sfExported in s.flags))
 
 when false:
   proc decodeDeps(g: ModuleGraph; input: string): Snippets
@@ -608,7 +726,8 @@ iterator loadSnippets*(g: ModuleGraph; modules: BModuleList; p: PSym): Snippet =
         # the module id is in the module's module field
         if module.module.id == row[1].parseInt:
           var
-            snippet = newSnippet[PSym](p, module, row[2].parseInt.TCFileSection)
+            snippet = newSnippet[PSym](p, module,
+                                       row[2].parseInt.TCFileSection)
           snippet.code = row[3].rope
           yield snippet
           break found
@@ -725,7 +844,7 @@ proc transitiveClosure(g: ModuleGraph) =
       let s = w.sstack.pop()
       when false:
         echo "popped ", s.name.s, " ", s.id
-      discard storeSym(g, s)
+      storeSym(g, s)
     elif w.tstack.len > 0:
       let t = w.tstack.pop()
       discard storeType(g, t)
@@ -763,7 +882,7 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
   var stillForwarded: seq[PSym] = @[]
   for s in w.forwardedSyms:
     if sfForward notin s.flags:
-      discard storeSym(g, s)
+      storeSym(g, s)
     else:
       stillForwarded.add s
   swap w.forwardedSyms, stillForwarded
@@ -1262,74 +1381,30 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
   db.exec(sql"insert into controlblock(idgen) values (?)", gFrontEndId)
   replay(g, module, result)
 
-proc tail(r: Rope; x: int): Rope =
-  var
-    i = 0
-  # leaves are individual strings that were added to the rope
-  for leaf in r.leaves:
-    if i == x:
-      # just add from here on out
-      result &= rope(leaf)
-    else:
-      # we're still scanning for the index at which we should
-      # start adding leaves to the result
-      i.inc leaf.len
-      if i > x:
-        # the assumption is that adds to ropes are atomic with
-        # leaves; that every leaf represents an add
-        raise newException(Defect, "bad assumption wrt leaves")
-
-when true:
-  proc setMark*(m: BModule) = discard
-  proc setMark*(m: BModule; sym: PSym) = discard
-  iterator snippetsSince*(m: BModule): Snippet = discard
-else:
-  proc setMark*(m: BModule) = discard
-    for section in TCFileSection.low .. TCFileSection.high:
-      m.mark.lengths[section] = m.s[section].len
-
-  proc setMark*(m: BModule; sym: PSym) =
-    ## set a mark on the module that we can use to playback all rope changes
-    #m.mark = SnippetMark(node: sym)
-    m.mark.node = sym
-    m.setMark
-
-  iterator snippetsSince*(m: BModule): Snippet =
-    ## playback rope changes since the mark
-    # iterate over all the sections of the file
-    template sym(): PSym = m.mark.node
-    let
-      moduleId = storeSym(m.g.graph, m.module)
-      symbol = storeSym(m.g.graph, sym)
+when false:
+  proc tail(r: Rope; x: int): Rope =
     var
-      count = 0
-    for section in TCFileSection.low .. TCFileSection.high:
-      # if the section appears to have grown as a result of
-      # our codegen,
-      if m.s[section].len > m.mark.lengths[section]:
-        # get the new code that was added,
-        let
-          code = m.s[section].tail(m.mark.lengths[section])
-        # create a new snippet from the code addition,
-        var
-          snippet = newSnippet(sym, m, section)
-        # XXX: maybe force this in instantiation?
-        snippet.section = section
-        # store all snippets
-        #if m.config.symbolFiles notin {disabledSf, readOnlySf}:
-        when false:
-          storeSnippet(m.g.graph, snippet)
-        count.inc
-        yield snippet
-    if count == 0 and {sfImportc, sfCompilerProc, sfThread} * sym.flags == {}:
-      echo "flags for ", sym.name.s, sym.flags
-      echo "no snippets gen'd for " & sym.name.s
+      i = 0
+    # leaves are individual strings that were added to the rope
+    for leaf in r.leaves:
+      if i == x:
+        # just add from here on out
+        result &= rope(leaf)
+      else:
+        # we're still scanning for the index at which we should
+        # start adding leaves to the result
+        i.inc leaf.len
+        if i > x:
+          # the assumption is that adds to ropes are atomic with
+          # leaves; that every leaf represents an add
+          raise newException(Defect, "bad assumption wrt leaves")
 
-proc storeNode(g: ModuleGraph; m: PSym; p: PSym): auto =
-  result = storeSym(g, p)
+when false:
+  proc storeNode(g: ModuleGraph; m: PSym; p: PSym): auto =
+    storeSym(g, p)
 
-proc storeNode(g: ModuleGraph; m: PSym; p: PType): auto =
-  result = storeType(g, p)
+  proc storeNode(g: ModuleGraph; m: PSym; p: PType): auto =
+    storeType(g, p)
 
 proc setupModuleCache*(g: ModuleGraph) =
   if g.config.symbolFiles == disabledSf:
@@ -1362,3 +1437,78 @@ proc setupModuleCache*(g: ModuleGraph) =
   let lastId = db.getValue(sql"select max(idgen) from controlblock")
   if lastId.len > 0:
     idgen.setId(parseInt lastId)
+
+proc store*(cache: CacheUnit) =
+  if cache.graph.config.symbolFiles in {disabledSf, readOnlySf}:
+    raise newException(Defect, "attempt to store cache")
+
+  # work around mutation of symbol
+  cache.graph.unstoreSym(cache.node)
+  cache.graph.storeSym(cache.node)
+
+  # write snippets
+  for module in cache.modules.modules.items:
+    if module != nil:
+      for section in TCFileSection.low .. TCFileSection.high:
+        if module.s[section] != nil:
+          var
+            snippet = newSnippet(cache.node, module, section)
+          snippet.code = module.s[section]
+          storeSnippet(cache.graph, snippet)
+
+proc load*(cache: var CacheUnit; list: BModuleList) =
+  if cache.graph.config.symbolFiles in {disabledSf, writeOnlySf}:
+    raise newException(Defect, "attempt to load cache")
+
+  # work around mutation of symbol
+  let
+    sym = cache.graph.loadSym(cache.node.id, cache.node.info)
+  cache.node = sym
+
+  # read snippets
+  for snippet in cache.graph.loadSnippets(list, cache.node):
+    let
+      m = findModule(list, snippet.module)
+    #cache.snippets[snippet.signature] = snippet
+    when not defined(release):
+      echo "\t", snippet.section, "\t", snippet.module.module.id
+    # if the snippet writes to proc headers, mark the proc as declared
+    when false:
+      if snippet.section == cfsProcHeaders:
+        m.declaredProtos.incl prc.id
+    if m.s[snippet.section] == nil:
+      m.s[snippet.section] = rope("")
+    when not defined(release):
+      m.s[snippet.section].add fmt"""
+
+/*
+cachable: id {cache.node.id} module id {m.module.id}
+owner nil: {cache.node.owner == nil}
+owner kind: {cache.node.owner.kind}
+compiler proc  loc: {lfImportCompilerProc in cache.node.loc.flags}
+compiler proc flag: {sfCompilerProc in cache.node.flags}
+*/
+
+          """.rope
+      m.s[snippet.section].add fmt"""
+
+/*
+{cache.node.name.s}
+=====================
+cached data from {snippet.section}
+module: {m.cfilename}
+flags: {cache.node.flags}
+  loc: {cache.node.loc.flags}
+*/
+
+          """.rope
+      m.s[snippet.section].add snippet.code
+      when not defined(release):
+        m.s[snippet.section].add "/* end */\n".rope
+      #when not defined(release):
+      #  echo "\t", snippet.code
+    when false:
+      if m.s[snippet.section] == nil:
+        m.s[snippet.section] = snippet.code
+      else:
+        m.s[snippet.section].add snippet.code
