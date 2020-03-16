@@ -1612,16 +1612,17 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
   if cycleDetector.containsOrIncl(t.id):
     return true
   case t.kind:
-    of tyTuple:
-      var cycleDetectorCopy: IntSet
-      for i in  0..<t.len:
-        assign(cycleDetectorCopy, cycleDetector)
-        if isTupleRecursive(t[i], cycleDetectorCopy):
-          return true
-    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
-      return isTupleRecursive(t.lastSon, cycleDetector)
-    else:
-      return false
+  of tyTuple:
+    var cycleDetectorCopy: IntSet
+    for i in 0..<t.len:
+      assign(cycleDetectorCopy, cycleDetector)
+      if isTupleRecursive(t[i], cycleDetectorCopy):
+        return true
+  of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink,
+      tyArray, tyUncheckedArray, tySequence:
+    return isTupleRecursive(t.lastSon, cycleDetector)
+  else:
+    return false
 
 proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
