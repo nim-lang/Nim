@@ -1,0 +1,2 @@
+# tests expects the text files associated with them have LF only as EOL
+tests/**/*.txt text eol=lf
