@@ -1,9 +1,5 @@
 # see https://man.sr.ht/builds.sr.ht/compatibility.md#freebsd
-# these are all broken, pending https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=244549
-# image: freebsd/latest 
-# image: freebsd/current
-# image: freebsd/12.x
-image: freebsd/11.x
+image: freebsd/latest
 packages:
 - databases/sqlite3
 - devel/boehm-gc-threaded
