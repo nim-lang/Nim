@@ -580,11 +580,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcCastIntToFloat32:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+      regs[ra].floatVal = cast[float32](regs[rb].intVal)
     of opcCastIntToFloat64:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
+      regs[ra].floatVal = cast[float64](regs[rb].intVal)
 
     of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
       decodeBImm(rkInt)
@@ -1089,11 +1089,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.diffSets(c.config, regs[rb].node, regs[rc].node).sons)
-    of opcSymdiffSet:
-      decodeBC(rkNode)
-      createSet(regs[ra])
-      move(regs[ra].node.sons,
-           nimsets.symdiffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcConcatStr:
       decodeBC(rkNode)
       createStr regs[ra]

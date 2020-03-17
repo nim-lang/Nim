@@ -1420,7 +1420,7 @@ type
 
   PegLexer {.inheritable.} = object ## the lexer object.
     bufpos: int                     ## the current position within the buffer
-    buf: cstring                    ## the buffer itself
+    buf: string                     ## the buffer itself
     lineNumber: int                 ## the current line number
     lineStart: int                  ## index of last line start in buffer
     colOffset: int                  ## column to add
@@ -1481,6 +1481,9 @@ proc handleHexChar(c: var PegLexer, xi: var int) =
 
 proc getEscapedChar(c: var PegLexer, tok: var Token) =
   inc(c.bufpos)
+  if c.bufpos >= len(c.buf):
+    tok.kind = tkInvalid
+    return
   case c.buf[c.bufpos]
   of 'r', 'R', 'c', 'C':
     add(tok.literal, '\c')
@@ -1508,6 +1511,9 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
     inc(c.bufpos)
   of 'x', 'X':
     inc(c.bufpos)
+    if c.bufpos >= len(c.buf):
+      tok.kind = tkInvalid
+      return
     var xi = 0
     handleHexChar(c, xi)
     handleHexChar(c, xi)
@@ -1517,7 +1523,7 @@ proc getEscapedChar(c: var PegLexer, tok: var Token) =
     var val = ord(c.buf[c.bufpos]) - ord('0')
     inc(c.bufpos)
     var i = 1
-    while (i <= 3) and (c.buf[c.bufpos] in {'0'..'9'}):
+    while (c.bufpos < len(c.buf)) and (i <= 3) and (c.buf[c.bufpos] in {'0'..'9'}):
       val = val * 10 + ord(c.buf[c.bufpos]) - ord('0')
       inc(c.bufpos)
       inc(i)
@@ -1571,7 +1577,7 @@ proc getString(c: var PegLexer, tok: var Token) =
 
 proc getDollar(c: var PegLexer, tok: var Token) =
   var pos = c.bufpos + 1
-  if c.buf[pos] in {'0'..'9'}:
+  if pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
     tok.kind = tkBackref
     tok.index = 0
     while pos < c.buf.len and c.buf[pos] in {'0'..'9'}:
@@ -1586,54 +1592,55 @@ proc getCharSet(c: var PegLexer, tok: var Token) =
   tok.charset = {}
   var pos = c.bufpos + 1
   var caret = false
-  if c.buf[pos] == '^':
-    inc(pos)
-    caret = true
-  while pos < c.buf.len:
-    var ch: char
-    case c.buf[pos]
-    of ']':
-      if pos < c.buf.len: inc(pos)
-      break
-    of '\\':
-      c.bufpos = pos
-      getEscapedChar(c, tok)
-      pos = c.bufpos
-      ch = tok.literal[tok.literal.len-1]
-    of '\C', '\L', '\0':
-      tok.kind = tkInvalid
-      break
-    else:
-      ch = c.buf[pos]
+  if pos < c.buf.len:
+    if c.buf[pos] == '^':
       inc(pos)
-    incl(tok.charset, ch)
-    if c.buf[pos] == '-':
-      if pos+1 < c.buf.len and c.buf[pos+1] == ']':
-        incl(tok.charset, '-')
-        inc(pos)
+      caret = true
+    while pos < c.buf.len:
+      var ch: char
+      case c.buf[pos]
+      of ']':
+        if pos < c.buf.len: inc(pos)
+        break
+      of '\\':
+        c.bufpos = pos
+        getEscapedChar(c, tok)
+        pos = c.bufpos
+        ch = tok.literal[tok.literal.len-1]
+      of '\C', '\L', '\0':
+        tok.kind = tkInvalid
+        break
       else:
-        if pos+1 < c.buf.len:
+        ch = c.buf[pos]
+        inc(pos)
+      incl(tok.charset, ch)
+      if c.buf[pos] == '-':
+        if pos+1 < c.buf.len and c.buf[pos+1] == ']':
+          incl(tok.charset, '-')
           inc(pos)
         else:
-          break
-        var ch2: char
-        case c.buf[pos]
-        of '\\':
-          c.bufpos = pos
-          getEscapedChar(c, tok)
-          pos = c.bufpos
-          ch2 = tok.literal[tok.literal.len-1]
-        of '\C', '\L', '\0':
-          tok.kind = tkInvalid
-          break
-        else:
           if pos+1 < c.buf.len:
-            ch2 = c.buf[pos]
             inc(pos)
           else:
             break
-        for i in ord(ch)+1 .. ord(ch2):
-          incl(tok.charset, chr(i))
+          var ch2: char
+          case c.buf[pos]
+          of '\\':
+            c.bufpos = pos
+            getEscapedChar(c, tok)
+            pos = c.bufpos
+            ch2 = tok.literal[tok.literal.len-1]
+          of '\C', '\L', '\0':
+            tok.kind = tkInvalid
+            break
+          else:
+            if pos+1 < c.buf.len:
+              ch2 = c.buf[pos]
+              inc(pos)
+            else:
+              break
+          for i in ord(ch)+1 .. ord(ch2):
+            incl(tok.charset, chr(i))
   c.bufpos = pos
   if caret: tok.charset = {'\1'..'\xFF'} - tok.charset
 
@@ -1660,6 +1667,13 @@ proc getTok(c: var PegLexer, tok: var Token) =
   tok.modifier = modNone
   setLen(tok.literal, 0)
   skip(c)
+
+  if c.bufpos >= c.buf.len:
+    tok.kind = tkEof
+    tok.literal = "[EOF]"
+    add(tok.literal, '\0')
+    inc(c.bufpos)
+    return
 
   case c.buf[c.bufpos]
   of '{':
@@ -1700,6 +1714,8 @@ proc getTok(c: var PegLexer, tok: var Token) =
   of '$': getDollar(c, tok)
   of 'a'..'z', 'A'..'Z', '\128'..'\255':
     getSymbol(c, tok)
+    if c.bufpos >= c.buf.len:
+      return
     if c.buf[c.bufpos] in {'\'', '"'} or
         c.buf[c.bufpos] == '$' and c.bufpos+1 < c.buf.len and
         c.buf[c.bufpos+1] in {'0'..'9'}:
@@ -1768,7 +1784,9 @@ proc arrowIsNextTok(c: PegLexer): bool =
   # the only look ahead we need
   var pos = c.bufpos
   while pos < c.buf.len and c.buf[pos] in {'\t', ' '}: inc(pos)
-  result = c.buf[pos] == '<' and (pos+1 < c.buf.len) and c.buf[pos+1] == '-'
+  if pos+1 >= c.buf.len:
+    return
+  result = c.buf[pos] == '<' and c.buf[pos+1] == '-'
 
 # ----------------------------- parser ----------------------------------------
 
@@ -2038,141 +2056,145 @@ proc escapePeg*(s: string): string =
   if inQuote: result.add('\'')
 
 when isMainModule:
-  assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
-  assert match("(a b c)", peg"'(' @ ')'")
-  assert match("W_HI_Le", peg"\y 'while'")
-  assert(not match("W_HI_L", peg"\y 'while'"))
-  assert(not match("W_HI_Le", peg"\y v'while'"))
-  assert match("W_HI_Le", peg"y'while'")
+  proc pegsTest() =
+    assert escapePeg("abc''def'") == r"'abc'\x27\x27'def'\x27"
+    assert match("(a b c)", peg"'(' @ ')'")
+    assert match("W_HI_Le", peg"\y 'while'")
+    assert(not match("W_HI_L", peg"\y 'while'"))
+    assert(not match("W_HI_Le", peg"\y v'while'"))
+    assert match("W_HI_Le", peg"y'while'")
 
-  assert($ +digits == $peg"\d+")
-  assert "0158787".match(peg"\d+")
-  assert "ABC 0232".match(peg"\w+\s+\d+")
-  assert "ABC".match(peg"\d+ / \w+")
+    assert($ +digits == $peg"\d+")
+    assert "0158787".match(peg"\d+")
+    assert "ABC 0232".match(peg"\w+\s+\d+")
+    assert "ABC".match(peg"\d+ / \w+")
 
-  var accum: seq[string] = @[]
-  for word in split("00232this02939is39an22example111", peg"\d+"):
-    accum.add(word)
-  assert(accum == @["this", "is", "an", "example"])
+    var accum: seq[string] = @[]
+    for word in split("00232this02939is39an22example111", peg"\d+"):
+      accum.add(word)
+    assert(accum == @["this", "is", "an", "example"])
 
-  assert matchLen("key", ident) == 3
+    assert matchLen("key", ident) == 3
 
-  var pattern = sequence(ident, *whitespace, term('='), *whitespace, ident)
-  assert matchLen("key1=  cal9", pattern) == 11
+    var pattern = sequence(ident, *whitespace, term('='), *whitespace, ident)
+    assert matchLen("key1=  cal9", pattern) == 11
 
-  var ws = newNonTerminal("ws", 1, 1)
-  ws.rule = *whitespace
+    var ws = newNonTerminal("ws", 1, 1)
+    ws.rule = *whitespace
 
-  var expr = newNonTerminal("expr", 1, 1)
-  expr.rule = sequence(capture(ident), *sequence(
-                nonterminal(ws), term('+'), nonterminal(ws), nonterminal(expr)))
+    var expr = newNonTerminal("expr", 1, 1)
+    expr.rule = sequence(capture(ident), *sequence(
+                  nonterminal(ws), term('+'), nonterminal(ws), nonterminal(expr)))
 
-  var c: Captures
-  var s = "a+b +  c +d+e+f"
-  assert rawMatch(s, expr.rule, 0, c) == len(s)
-  var a = ""
-  for i in 0..c.ml-1:
-    a.add(substr(s, c.matches[i][0], c.matches[i][1]))
-  assert a == "abcdef"
-  #echo expr.rule
+    var c: Captures
+    var s = "a+b +  c +d+e+f"
+    assert rawMatch(s, expr.rule, 0, c) == len(s)
+    var a = ""
+    for i in 0..c.ml-1:
+      a.add(substr(s, c.matches[i][0], c.matches[i][1]))
+    assert a == "abcdef"
+    #echo expr.rule
 
-  #const filename = "lib/devel/peg/grammar.txt"
-  #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
-  #echo "a <- [abc]*?".match(grammar)
-  assert find("_____abc_______", term("abc"), 2) == 5
-  assert match("_______ana", peg"A <- 'ana' / . A")
-  assert match("abcs%%%", peg"A <- ..A / .A / '%'")
+    #const filename = "lib/devel/peg/grammar.txt"
+    #var grammar = parsePeg(newFileStream(filename, fmRead), filename)
+    #echo "a <- [abc]*?".match(grammar)
+    assert find("_____abc_______", term("abc"), 2) == 5
+    assert match("_______ana", peg"A <- 'ana' / . A")
+    assert match("abcs%%%", peg"A <- ..A / .A / '%'")
 
-  var matches: array[0..MaxSubpatterns-1, string]
-  if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
-    assert matches[0] == "abc"
-  else:
-    assert false
+    var matches: array[0..MaxSubpatterns-1, string]
+    if "abc" =~ peg"{'a'}'bc' 'xyz' / {\ident}":
+      assert matches[0] == "abc"
+    else:
+      assert false
 
-  var g2 = peg"""S <- A B / C D
-                 A <- 'a'+
-                 B <- 'b'+
-                 C <- 'c'+
-                 D <- 'd'+
-              """
-  assert($g2 == "((A B) / (C D))")
-  assert match("cccccdddddd", g2)
-  assert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
-         "var1<-keykey; var2<-key2key2")
-  assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
-         "$1<-$2$2; $1<-$2$2")
-  assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
+    var g2 = peg"""S <- A B / C D
+                   A <- 'a'+
+                   B <- 'b'+
+                   C <- 'c'+
+                   D <- 'd'+
+                """
+    assert($g2 == "((A B) / (C D))")
+    assert match("cccccdddddd", g2)
+    assert("var1=key; var2=key2".replacef(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+           "var1<-keykey; var2<-key2key2")
+    assert("var1=key; var2=key2".replace(peg"{\ident}'='{\ident}", "$1<-$2$2") ==
+           "$1<-$2$2; $1<-$2$2")
+    assert "var1=key; var2=key2".endsWith(peg"{\ident}'='{\ident}")
 
-  if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
-    assert matches[0] == "a"
-  else:
-    assert false
+    if "aaaaaa" =~ peg"'aa' !. / ({'a'})+":
+      assert matches[0] == "a"
+    else:
+      assert false
 
-  if match("abcdefg", peg"c {d} ef {g}", matches, 2):
-    assert matches[0] == "d"
-    assert matches[1] == "g"
-  else:
-    assert false
+    if match("abcdefg", peg"c {d} ef {g}", matches, 2):
+      assert matches[0] == "d"
+      assert matches[1] == "g"
+    else:
+      assert false
 
-  accum = @[]
-  for x in findAll("abcdef", peg".", 3):
-    accum.add(x)
-  assert(accum == @["d", "e", "f"])
+    accum = @[]
+    for x in findAll("abcdef", peg".", 3):
+      accum.add(x)
+    assert(accum == @["d", "e", "f"])
 
-  for x in findAll("abcdef", peg"^{.}", 3):
-    assert x == "d"
+    for x in findAll("abcdef", peg"^{.}", 3):
+      assert x == "d"
 
-  if "f(a, b)" =~ peg"{[0-9]+} / ({\ident} '(' {@} ')')":
-    assert matches[0] == "f"
-    assert matches[1] == "a, b"
-  else:
-    assert false
+    if "f(a, b)" =~ peg"{[0-9]+} / ({\ident} '(' {@} ')')":
+      assert matches[0] == "f"
+      assert matches[1] == "a, b"
+    else:
+      assert false
 
-  assert match("eine übersicht und außerdem", peg"(\letter \white*)+")
-  # ß is not a lower cased letter?!
-  assert match("eine übersicht und auerdem", peg"(\lower \white*)+")
-  assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
-  assert(not match("456678", peg"(\letter)+"))
+    assert match("eine übersicht und außerdem", peg"(\letter \white*)+")
+    # ß is not a lower cased letter?!
+    assert match("eine übersicht und auerdem", peg"(\lower \white*)+")
+    assert match("EINE ÜBERSICHT UND AUSSERDEM", peg"(\upper \white*)+")
+    assert(not match("456678", peg"(\letter)+"))
 
-  assert("var1 = key; var2 = key2".replacef(
-    peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
-         "var1<-keykey;var2<-key2key2")
+    assert("var1 = key; var2 = key2".replacef(
+      peg"\skip(\s*) {\ident}'='{\ident}", "$1<-$2$2") ==
+           "var1<-keykey;var2<-key2key2")
 
-  assert match("prefix/start", peg"^start$", 7)
+    assert match("prefix/start", peg"^start$", 7)
 
-  if "foo" =~ peg"{'a'}?.*":
-    assert matches[0].len == 0
-  else: assert false
+    if "foo" =~ peg"{'a'}?.*":
+      assert matches[0].len == 0
+    else: assert false
 
-  if "foo" =~ peg"{''}.*":
-    assert matches[0] == ""
-  else: assert false
+    if "foo" =~ peg"{''}.*":
+      assert matches[0] == ""
+    else: assert false
 
-  if "foo" =~ peg"{'foo'}":
-    assert matches[0] == "foo"
-  else: assert false
+    if "foo" =~ peg"{'foo'}":
+      assert matches[0] == "foo"
+    else: assert false
 
-  let empty_test = peg"^\d*"
-  let str = "XYZ"
+    let empty_test = peg"^\d*"
+    let str = "XYZ"
 
-  assert(str.find(empty_test) == 0)
-  assert(str.match(empty_test))
+    assert(str.find(empty_test) == 0)
+    assert(str.match(empty_test))
 
-  proc handleMatches*(m: int, n: int, c: openArray[string]): string =
-    result = ""
+    proc handleMatches(m: int, n: int, c: openArray[string]): string =
+      result = ""
 
-    if m > 0:
-      result.add ", "
+      if m > 0:
+        result.add ", "
 
-    result.add case n:
-      of 2: toLowerAscii(c[0]) & ": '" & c[1] & "'"
-      of 1: toLowerAscii(c[0]) & ": ''"
-      else: ""
+      result.add case n:
+        of 2: toLowerAscii(c[0]) & ": '" & c[1] & "'"
+        of 1: toLowerAscii(c[0]) & ": ''"
+        else: ""
 
-  assert("Var1=key1;var2=Key2;   VAR3".
-    replace(peg"{\ident}('='{\ident})* ';'* \s*",
-    handleMatches) == "var1: 'key1', var2: 'Key2', var3: ''")
+    assert("Var1=key1;var2=Key2;   VAR3".
+      replace(peg"{\ident}('='{\ident})* ';'* \s*",
+      handleMatches) == "var1: 'key1', var2: 'Key2', var3: ''")
 
 
-  doAssert "test1".match(peg"""{@}$""")
-  doAssert "test2".match(peg"""{(!$ .)*} $""")
+    doAssert "test1".match(peg"""{@}$""")
+    doAssert "test2".match(peg"""{(!$ .)*} $""")
+  pegsTest()
+  static:
+    pegsTest()

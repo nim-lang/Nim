@@ -43,7 +43,7 @@ elif defined(genode):
     stdin.readLine(line)
 
 else:
-  import linenoise, termios
+  import linenoise
 
   proc readLineFromStdin*(prompt: string): TaintedString {.
                           tags: [ReadIOEffect, WriteIOEffect].} =

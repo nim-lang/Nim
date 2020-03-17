@@ -345,20 +345,24 @@ suite "ttimes":
   test "adding/subtracting TimeInterval":
     # add/subtract TimeIntervals and Time/TimeInfo
     let now = getTime().utc
+    let isSpecial = now.isLeapDay
     check now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
     check now + 1.weeks == now + 7.days
     check now - 1.seconds == now - 3.seconds + 2.seconds
     check now + 65.seconds == now + 1.minutes + 5.seconds
     check now + 60.minutes == now + 1.hours
     check now + 24.hours == now + 1.days
-    check now + 13.months == now + 1.years + 1.months
+    if not isSpecial:
+      check now + 13.months == now + 1.years + 1.months
     check toUnix(fromUnix(0) + 2.seconds) == 2
     check toUnix(fromUnix(0) - 2.seconds) == -2
     var ti1 = now + 1.years
     ti1 = ti1 - 1.years
-    check ti1 == now
+    if not isSpecial:
+      check ti1 == now
     ti1 = ti1 + 1.days
-    check ti1 == now + 1.days
+    if not isSpecial:
+      check ti1 == now + 1.days
 
     # Bug with adding a day to a Time
     let day = 24.hours

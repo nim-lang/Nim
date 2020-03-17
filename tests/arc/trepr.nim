@@ -1,7 +1,7 @@
 discard """
   cmd: "nim c --gc:arc $file"
   nimout: '''(a: true, n: doAssert)
-Table[system.string, trepr.MyType](data: @[], counter: 0)
+Table[system.string, trepr.MyType](data: @[], counter: 0, countDeleted: 0)
 nil
 '''
 """

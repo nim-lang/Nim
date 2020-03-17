@@ -409,13 +409,13 @@ when not declared(mulInt):
 # We avoid setting the FPU control word here for compatibility with libraries
 # written in other languages.
 
-proc raiseFloatInvalidOp {.noinline.} =
+proc raiseFloatInvalidOp {.compilerproc, noinline.} =
   sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
 
 proc nanCheck(x: float64) {.compilerproc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
-proc raiseFloatOverflow(x: float64) {.noinline.} =
+proc raiseFloatOverflow(x: float64) {.compilerproc, noinline.} =
   if x > 0.0:
     sysFatal(FloatOverflowError, "FPU operation caused an overflow")
   else:

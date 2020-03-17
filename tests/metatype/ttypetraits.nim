@@ -92,6 +92,41 @@ block distinctBase:
         doAssert($distinctBase(typeof(b2)) == "string")
         doAssert($distinctBase(typeof(c2)) == "int")
 
+block: # tupleLen
+  doAssert not compiles(tupleLen(int))
+
+  type
+    MyTupleType = (int,float,string)
+
+  static: doAssert MyTupleType.tupleLen == 3
+
+  type
+    MyGenericTuple[T] = (T,int,float)
+    MyGenericAlias = MyGenericTuple[string]
+  static: doAssert MyGenericAlias.tupleLen == 3
+
+  type
+    MyGenericTuple2[T,U] = (T,U,string)
+    MyGenericTuple2Alias[T] =  MyGenericTuple2[T,int]
+
+    MyGenericTuple2Alias2 =   MyGenericTuple2Alias[float]
+  static: doAssert MyGenericTuple2Alias2.tupleLen == 3
+
+  static: doAssert (int, float).tupleLen == 2
+  static: doAssert (1, ).tupleLen == 1
+  static: doAssert ().tupleLen == 0
+
+  let x = (1,2,)
+  doAssert x.tupleLen == 2
+  doAssert ().tupleLen == 0
+  doAssert (1,).tupleLen == 1
+  doAssert (int,).tupleLen == 1
+  doAssert type(x).tupleLen == 2
+  doAssert type(x).default.tupleLen == 2
+  type T1 = (int,float)
+  type T2 = T1
+  doAssert T2.tupleLen == 2
+
 block genericParams:
   type Foo[T1, T2]=object
   doAssert genericParams(Foo[float, string]) is (float, string)
@@ -103,10 +138,50 @@ block genericParams:
   doAssert genericParams(Foo2).get(1) is Foo1
   doAssert (int,).get(0) is int
   doAssert (int, float).get(1) is float
-  static: doAssert (int, float).lenTuple == 2
-  static: doAssert (1, ).lenTuple == 1
-  static: doAssert ().lenTuple == 0
 
+  type Bar[N: static int, T] = object
+  type Bar3 = Bar[3, float]
+  doAssert genericParams(Bar3) is (StaticParam[3], float)
+  doAssert genericParams(Bar3).get(0) is StaticParam
+  doAssert genericParams(Bar3).get(0).value == 3
+  doAssert genericParams(Bar[3, float]).get(0).value == 3
+
+  type
+    VectorElementType = SomeNumber | bool
+    Vec[N: static[int], T: VectorElementType] = object
+      arr: array[N, T]
+    Vec4[T: VectorElementType] = Vec[4,T]
+    Vec4f = Vec4[float32]
+
+    MyTupleType = (int,float,string)
+    MyGenericTuple[T] = (T,int,float)
+    MyGenericAlias = MyGenericTuple[string]
+    MyGenericTuple2[T,U] = (T,U,string)
+    MyGenericTuple2Alias[T] =  MyGenericTuple2[T,int]
+    MyGenericTuple2Alias2 =   MyGenericTuple2Alias[float]
+
+  doAssert genericParams(MyGenericAlias) is (string,)
+  doAssert genericHead(MyGenericAlias) is MyGenericTuple
+  doAssert genericParams(MyGenericTuple2Alias2) is (float,)
+  doAssert genericParams(MyGenericTuple2[float, int]) is (float, int)
+  doAssert genericParams(MyGenericAlias) is (string,)
+  doAssert genericParams(Vec4f) is (float32,)
+  doAssert genericParams(Vec[4, bool]) is (StaticParam[4], bool)
+
+  block:
+    type Foo[T1, T2]=object
+    doAssert genericParams(Foo[float, string]) is (float, string)
+    type Bar[N: static float, T] = object
+    doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
+    type Bar2 = Bar[2.0, string]
+    doAssert genericParams(Bar2) is (StaticParam[2.0], string)
+    type Bar3 = Bar[1.0 + 2.0, string]
+    doAssert genericParams(Bar3) is (StaticParam[3.0], string)
+
+    const F = 5.0
+    type Bar4 = Bar[F, string]
+    doAssert genericParams(Bar4) is (StaticParam[5.0], string)
+    doAssert genericParams(Bar[F, string]) is (StaticParam[5.0], string)
 
 ##############################################
 # bug 13095

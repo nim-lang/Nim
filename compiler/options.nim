@@ -39,7 +39,8 @@ type                          # please make sure we have under 32 options
     optMemTracker,
     optLaxStrings,
     optNilSeqs,
-    optOldAst
+    optOldAst,
+    optSinkInference          # 'sink T' inference
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -89,6 +90,7 @@ type                          # please make sure we have under 32 options
     optNimV019
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
+    optPanics                 # turn panics (sysFatal) into a process termination
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -200,7 +202,7 @@ type
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
     target*: Target       # (+)
-    linesCompiled*: int  # all lines that have been compiled
+    linesCompiled*: int   # all lines that have been compiled
     options*: TOptions    # (+)
     globalOptions*: TGlobalOptions # (+)
     macrosToExpand*: StringTableRef
@@ -226,10 +228,10 @@ type
     ideCmd*: IdeCmd
     oldNewlines*: bool
     cCompiler*: TSystemCC
-    enableNotes*: TNoteKinds
-    disableNotes*: TNoteKinds
+    modifiedyNotes*: TNoteKinds # notes that have been set/unset from either cmdline/configs
+    cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
-    notes*: TNoteKinds
+    notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
@@ -287,6 +289,24 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
+proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  template fun(op) =
+    conf.notes.op note
+    conf.mainPackageNotes.op note
+    conf.foreignPackageNotes.op note
+  if enabled: fun(incl) else: fun(excl)
+
+proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  # see also `prepareConfigNotes` which sets notes
+  if note notin conf.cmdlineNotes:
+    if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
+
+proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
+  optHints in conf.options and note in conf.notes
+
+proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
+  optWarns in conf.options and note in conf.notes
+
 proc hcrOn*(conf: ConfigRef): bool = return optHotCodeReloading in conf.globalOptions
 
 template depConfigFields*(fn) {.dirty.} =
@@ -305,7 +325,7 @@ const
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace,
-    optTrMacros, optNilCheck, optStyleCheck}
+    optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -498,15 +518,17 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
   result = conf.outDir / conf.outFile
-  if dirExists(result.string):
-    result.string.add ".out"
+  when defined(posix):
+    if dirExists(result.string):
+      result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
   createDir conf.outDir
   result = conf.outDir / conf.outFile
-  if dirExists(result.string):
-    result.string.add ".out"
+  when defined(posix):
+    if dirExists(result.string):
+      result.string.add ".out"
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
