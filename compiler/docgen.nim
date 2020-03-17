@@ -54,6 +54,9 @@ proc nativeToUnix(path: string): string =
     result = replace(path, '\\', '/')
   else: result = path
 
+proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
+  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
+
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
@@ -146,12 +149,11 @@ proc parseRst(text, filename: string,
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
   if optWholeProject in conf.globalOptions:
-    let d = if conf.outDir.isEmpty: conf.projectPath / dir else: conf.outDir
+    let d = conf.docOutDir(dir)
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif guessTarget:
-    let d = if not conf.outDir.isEmpty: conf.outDir
-            else: conf.projectPath
+    let d = conf.docOutDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif not conf.outFile.isEmpty:
@@ -1079,8 +1081,11 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
+const nimdocOutCss = "nimdoc.out.css"
+  # `out` to make it easier to use with gitignore in user's repos
+
 proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
-  rope($relativeTo(outDir / RelativeFile"nimdoc.out.css", destFile.splitFile().dir, '/'))
+  rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
 
 proc genOutFile(d: PDoc): Rope =
   var
@@ -1127,15 +1132,14 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
-              else: d.conf.projectPath / htmldocsDir
+    let dir = d.conf.docOutDir(htmldocsDir)
     createDir(dir)
     let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.projectPath
+    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
     if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
@@ -1146,15 +1150,15 @@ proc writeOutput*(d: PDoc, useWarning = false) =
   else:
     template outfile: untyped = d.destFile
     #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
-    createDir(outfile.splitFile.dir)
+    let dir = outfile.splitFile.dir
+    createDir(dir)
     updateOutfile(d, outfile)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
     elif not d.wroteCss:
       let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-      let cssDest = $d.conf.outDir / "nimdoc.out.css"
-        # renamed to make it easier to use with gitignore in user's repos
+      let cssDest = $dir / nimdocOutCss
       copyFile(cssSource, cssDest)
       d.wroteCss = true
 
