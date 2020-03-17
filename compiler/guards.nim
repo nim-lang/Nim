@@ -314,12 +314,12 @@ proc canon*(n: PNode; o: Operators): PNode =
         if plus != nil and not isLetLocation(x, true):
           result = buildCall(result[0].sym, plus, y[1])
       else: discard
-    elif x.isValue and y.getMagic in someAdd and y[2].isValue:
+    elif x.isValue and y.getMagic in someAdd and y[2].kind == x.kind:
       # 0 <= a.len + 3
       # -3 <= a.len
       result[1] = x |-| y[2]
       result[2] = y[1]
-    elif x.isValue and y.getMagic in someSub and y[2].isValue:
+    elif x.isValue and y.getMagic in someSub and y[2].kind == x.kind:
       # 0 <= a.len - 3
       # 3 <= a.len
       result[1] = x |+| y[2]
