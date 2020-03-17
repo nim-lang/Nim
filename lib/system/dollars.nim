@@ -172,11 +172,24 @@ proc `$`*[T](x: openArray[T]): string =
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToString(x, "[", ", ", "]")
 
-proc `$`*[T: ref](arg: T): string =
+proc `$`*[T: ref | ptr](arg: T): string =
   if arg == nil:
     "nil"
   else:
     $arg[]
+
+proc `$`*(arg: pointer): string =
+  if arg == nil:
+    return "nil"
+  else:
+    # maybe print something so people know it is a pointer.
+    result.add "0x"
+    const
+      HexChars = "0123456789ABCDEF"
+    let len = sizeof(pointer)
+    let arg = cast[uint](arg)
+    for i in countdown(sizeof(pointer)-1, 0):
+      result.add HexChars[(arg shr i) and 0xf]
 
 proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
 
