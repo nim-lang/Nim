@@ -197,6 +197,18 @@ when nimIncremental:
       );
     """)
 
+    db.exec(sql"""
+      create table if not exists transforms (
+        id integer primary key,
+        signature text not null,
+        kind char(20) not null,
+        data text not null,
+        module integer,
+        foreign key (module) references module(id)
+      );
+    """)
+
+  
 else:
   type
     IncrementalCtx* = object

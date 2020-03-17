@@ -98,7 +98,6 @@ type
     withinTryWithExcept*: int # required for goto based exception handling
     sigConflicts*: CountTableRef[string]
 
-  TTypeSeq* = seq[PType]
   TypeCache* = TableRef[SigHash, Rope]
   TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]
 
@@ -110,7 +109,6 @@ type
     isHeaderFile,       # C source file is the header file
     includesStringh,    # C source file already includes ``<string.h>``
     objHasKidsValid     # whether we can rely on tfObjHasKids
-
 
   BModuleList* = ref object of RootObj
     mainModProcs*, mainModInit*, otherModsInit*, mainDatInit*: Rope

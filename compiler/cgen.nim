@@ -1197,7 +1197,10 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   # declare implementation:
   var q = findPendingModule(m, sym)
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
-    assert q.initProc.module == q
+    when nimIncremental:
+      discard
+    else:
+      assert q.initProc.module == q
     q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(q, sym.typ), sym.loc.r, genBracedInit(q.initProc, sym.ast, isConst = true)])
   # declare header:
@@ -1322,19 +1325,18 @@ proc genProc(orig: BModule, prc: PSym) =
       # store the cache to db
       cache.store
 
-      # rerun to catch the cache changes; prc may be a mutant
       when false:
+        # this is using the cache
         genProc(orig, prc)
-      else:
-        cache.merge(orig.g)
+        return
 
   # if we're reading, load the snippets from the db
   if readcache:
     # load the cached symbol and its snippets from the db
     cache.load(orig.g)
 
-    # merge the cache into our graph
-    cache.merge(orig.g)
+  # merge the cache into our graph
+  cache.merge(orig.g)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
