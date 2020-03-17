@@ -103,6 +103,8 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
+- `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
+
 
 ## Library changes
 
