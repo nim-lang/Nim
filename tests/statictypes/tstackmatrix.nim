@@ -1,5 +1,5 @@
 discard """
-  output: "(M: 3, N: 3, fp: ...)"
+  output: "(M: 3, N: 3, fp: 1.0)"
 """
 
 # bug #6843

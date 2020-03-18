@@ -222,7 +222,4 @@ block:
   let cycle2 = CyclicStuff2(name: "name3")
   cycle2.child = cycle2
 
-  echo cycle2
-
-
 echo "DONE: tostring.nim"
