@@ -420,16 +420,16 @@ proc nimLeaveFinally() {.compilerRtl.} =
       quit(1)
 
 when gotoBasedExceptions:
-  var nimInErrorMode {.threadvar.}: int
+  var nimInErrorMode {.threadvar.}: bool
 
-  proc nimErrorFlag(): ptr int {.compilerRtl, inl.} =
+  proc nimErrorFlag(): ptr bool {.compilerRtl, inl.} =
     result = addr(nimInErrorMode)
 
   proc nimTestErrorFlag() {.compilerRtl.} =
     ## This proc must be called before ``currException`` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
-    if currException != nil:
+    if nimInErrorMode and currException != nil:
       reportUnhandledError(currException)
       currException = nil
       quit(1)

@@ -619,10 +619,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
             cycleCheck(n, c)
           assert n[1].kind notin {nkAsgn, nkFastAsgn}
-          result = moveOrCopy(n[0], n[1], c)
+          result = moveOrCopy(p(n[0], c, mode), n[1], c)
       else:
         result = copyNode(n)
-        result.add copyTree(n[0])
+        result.add p(n[0], c, mode)
         result.add p(n[1], c, consumed)
     of nkRaiseStmt:
       if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:

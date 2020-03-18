@@ -289,7 +289,15 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
+proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  template fun(op) =
+    conf.notes.op note
+    conf.mainPackageNotes.op note
+    conf.foreignPackageNotes.op note
+  if enabled: fun(incl) else: fun(excl)
+
 proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  # see also `prepareConfigNotes` which sets notes
   if note notin conf.cmdlineNotes:
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 

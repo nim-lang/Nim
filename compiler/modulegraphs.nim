@@ -165,7 +165,7 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
   result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo, {})
   result.magic = m
-  result.flags = {sfAlwaysReturn}
+  result.flags = {sfNeverRaises}
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()

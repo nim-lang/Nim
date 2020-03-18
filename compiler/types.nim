@@ -87,7 +87,11 @@ proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
 proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
-  case n.kind
+  var k = n.kind
+  if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
+    k = nkUIntLit
+
+  case k
   of nkCharLit, nkUIntLit..nkUInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or isUnsigned(n.typ), $n.typ
@@ -1611,17 +1615,18 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     return false
   if cycleDetector.containsOrIncl(t.id):
     return true
-  case t.kind:
-    of tyTuple:
-      var cycleDetectorCopy: IntSet
-      for i in  0..<t.len:
-        assign(cycleDetectorCopy, cycleDetector)
-        if isTupleRecursive(t[i], cycleDetectorCopy):
-          return true
-    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
-      return isTupleRecursive(t.lastSon, cycleDetector)
-    else:
-      return false
+  case t.kind
+  of tyTuple:
+    var cycleDetectorCopy: IntSet
+    for i in 0..<t.len:
+      assign(cycleDetectorCopy, cycleDetector)
+      if isTupleRecursive(t[i], cycleDetectorCopy):
+        return true
+  of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink,
+      tyArray, tyUncheckedArray, tySequence:
+    return isTupleRecursive(t.lastSon, cycleDetector)
+  else:
+    return false
 
 proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()

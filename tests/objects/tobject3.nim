@@ -82,3 +82,14 @@ proc newArrayAnimationSampler*[T](): ArrayAnimationSampler[T] =
 
 discard newArrayAnimationSampler[Foo6]()
 discard newArrayAnimationSampler[AnotherFoo]()
+
+type
+  DefaultIsNone* = pointer | ptr | ref | proc {.nimcall.} | cstring | cstringArray
+  OptionKind* {.pure.} = enum None, Some
+  OptionA* [T] = object of RootObj
+    when T is DefaultIsNone:
+      value: T
+    else:
+      value: T
+      kind: OptionKind
+  SomeA* [T] = object of OptionA[T]

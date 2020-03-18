@@ -975,7 +975,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
-    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NI* nimErr_;$n", []))
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc genProcAux(m: BModule, prc: PSym) =

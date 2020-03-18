@@ -559,7 +559,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
 
 proc canRaiseDisp(p: BProc; n: PNode): bool =
   # we assume things like sysFatal cannot raise themselves
-  if n.kind == nkSym and sfAlwaysReturn in n.sym.flags:
+  if n.kind == nkSym and sfNeverRaises in n.sym.flags:
     result = false
   elif optPanics in p.config.globalOptions or
       (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
