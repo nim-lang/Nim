@@ -8,7 +8,7 @@ var packages*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
 pkg "argparse"
 pkg "arraymancer", true, "nim c tests/tests_cpu.nim"
 pkg "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
-pkg "asyncmysql", true
+pkg "asyncmysql", true, cmd = "" # pending https://github.com/tulayang/asyncmysql/issues/5
 pkg "bigints"
 pkg "binaryheap", false, "nim c -r binaryheap.nim"
 # pkg "blscurve", true # pending https://github.com/status-im/nim-blscurve/issues/39
@@ -33,7 +33,7 @@ pkg "fragments", false, "nim c -r fragments/dsl.nim"
 pkg "gara"
 pkg "ggplotnim", true, "nimble testCI"
 pkg "glob"
-pkg "gnuplot"
+pkg "gnuplot", cmd = "nim c fresnel_test.nim"
 pkg "hts", false, "nim c -o:htss src/hts.nim"
 pkg "illwill", false, "nimble examples"
 pkg "inim"
@@ -92,5 +92,5 @@ pkg "unpack"
 # pkg "winim", true
 pkg "with"
 pkg "ws"
-pkg "yaml"
+pkg "yaml", cmd = "" # pending https://github.com/flyx/NimYAML/issues/80
 pkg "zero_functional", false, "nim c -r test.nim"
