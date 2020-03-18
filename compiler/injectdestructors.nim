@@ -31,6 +31,7 @@ type
     emptyNode: PNode
     otherRead: PNode
     inLoop: int
+    declaredVars: IntSet # variables we already moved to the top level
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
@@ -345,7 +346,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
-    if isLValue(n) and not isClosureEnv(n):
+    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "use 'move($1)' to prevent it") % $n)
@@ -589,7 +590,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
               # move the variable declaration to the top of the frame:
-              c.addTopVar v
+              if not containsOrIncl(c.declaredVars, v.sym.id):
+                c.addTopVar v
               # make sure it's destroyed at the end of the proc:
               if not isUnpackedTuple(v) and sfThread notin v.sym.flags:
                 # do not destroy thread vars for now at all for consistency.
