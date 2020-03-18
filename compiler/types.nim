@@ -1635,62 +1635,21 @@ proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
   isTupleRecursive(t, cycleDetector)
 
-proc isObjectRecursive(typ: PType, isPointer: bool, cycleDetector: IntSet): bool
-
-proc isObjectRecursiveFoldFunction(n: PNode, isPointer: bool; cycleDetector: IntSet): bool =
-  assert n != nil
-  case n.kind
-  of nkRecCase:
-    if isObjectRecursiveFoldFunction(n[0], isPointer, cycleDetector):
-      return true
-    for i in 1..<n.len:
-      if isObjectRecursiveFoldFunction(n[i].lastSon, isPointer, cycleDetector):
-        return true
-    return false
-  of nkRecList:
-    for i, child in n.sons:
-      if isObjectRecursiveFoldFunction(child, isPointer, cycleDetector):
-        return true
-    return false
-  of nkSym:
-    return isObjectRecursive(n.typ, isPointer, cycleDetector)
-  else:
-    debug n
-    quit("should not get here")
-
-proc isObjectRecursive(typ: PType, isPointer: bool; cycleDetector: IntSet): bool =
+proc isObjectRecursive(typ: PType, isPointer: bool): bool =
   if typ == nil:
     return false
-  var cycleDetector = cycleDetector
-  if cycleDetector.containsOrIncl(typ.id):
-    return true
   case typ.kind:
-    of tyTuple:
-      if isPointer:
-        var cycleDetectorCopy: IntSet
-        for i in  0 ..< typ.len:
-          assign(cycleDetectorCopy, cycleDetector)
-          if isTupleRecursive(typ[i], cycleDetectorCopy):
-            return true
-      else:
-        return false
-    of tyObject:
-      if isPointer:
-        if typ[0] != nil and isObjectRecursive(typ[0], isPointer, cycleDetector):
-          return true
-        return isObjectRecursiveFoldFunction(typ.n, isPointer, cycleDetector)
-      else:
-        return false
+    of tyObject, tyTuple:
+      return isPointer and canFormAcycle(typ)
     of tyRef, tyPtr:
-      return isObjectRecursive(typ.lastSon, true, cycleDetector)
+      return isObjectRecursive(typ.lastSon, isPointer = true)
     of tyAlias, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence, tyDistinct:
-      return isObjectRecursive(typ.lastSon, isPointer, cycleDetector)
+      return isObjectRecursive(typ.lastSon, isPointer)
     else:
       return false
 
 proc isRecursive*(t: PType): bool =
-  var cycleDetector = initIntSet()
-  isObjectRecursive(t, false, cycleDetector)
+  isObjectRecursive(t, false)
 
 
 proc isException*(t: PType): bool =
