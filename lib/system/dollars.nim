@@ -114,6 +114,7 @@ proc `$`*[T: tuple|object](x: T): string =
   result.add(")")
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
+  mixin addQuoted
   result = prefix
   var firstElement = true
   for value in items(x):
