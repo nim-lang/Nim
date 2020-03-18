@@ -478,7 +478,7 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults, cat: Category) =
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -491,6 +491,8 @@ proc testNimblePackages(r: var TResults, cat: Category) =
   var errors = 0
   try:
     for name, url, cmd, hasDep in listPackages():
+      if packageFilter notin name:
+        continue
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
@@ -706,7 +708,7 @@ proc processCategory(r: var TResults, cat: Category,
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
   of "nimble-packages":
-    testNimblePackages(r, cat)
+    testNimblePackages(r, cat, options)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":
