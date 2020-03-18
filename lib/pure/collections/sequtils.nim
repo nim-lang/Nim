@@ -392,7 +392,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (function that returns a `bool`).
   ##
@@ -407,12 +407,6 @@ iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
       evens.add(n)
     assert evens == @[4, 8, 4]
 
-  for i in 0 ..< s.len:
-    if pred(s[i]):
-      yield s[i]
-
-iterator filter*[IX, T](s: array[IX, T], pred: proc(x: T): bool {.closure.}): T =
-  # does not use `openarray`, because of #13417
   for i in 0 ..< s.len:
     if pred(s[i]):
       yield s[i]
