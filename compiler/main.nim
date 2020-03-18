@@ -89,7 +89,6 @@ proc commandCompileToC(graph: ModuleGraph) =
       graph.config.notes = graph.config.mainPackageNotes
       return
 
-  graph.config.projectRecompiled = true
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
@@ -380,18 +379,13 @@ proc mainCommand*(graph: ModuleGraph) =
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
     var output = $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
-
-    let fmtDefault = "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output"
-    # can be overriden to format differently/show additional fields
-    let msg = getConfigVar(conf, "msgs.hintSuccessX", fmtDefault)
-    rawMessage(conf, hintSuccessX, msg % [
+    rawMessage(conf, hintSuccessX, [
       "loc", loc,
       "sec", sec,
       "mem", mem,
       "build", build,
       "project", project,
       "output", output,
-      "projectRecompiled", $conf.projectRecompiled,
       ])
 
   when PrintRopeCacheStats:

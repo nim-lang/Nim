@@ -101,7 +101,8 @@ const
     warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    hintSuccessX: "$1", # keep in sync with `testament.isSuccess`
+    # keep in sync with `testament.isSuccess`
+    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
