@@ -23,7 +23,7 @@
 
 import
   ast, astalgo, idents, lowerings, magicsys, guards, sempass2, msgs,
-  renderer, types, modulegraphs, options, spawn
+  renderer, types, modulegraphs, options, spawn, lineinfos
 
 from trees import getMagic
 from strutils import `%`
@@ -129,10 +129,12 @@ template `?`(x): untyped = x.renderTree
 proc checkLe(c: AnalysisCtx; a, b: PNode) =
   case proveLe(c.guards, a, b)
   of impUnknown:
-    localError(c.graph.config, a.info, "cannot prove: " & ?a & " <= " & ?b & " (bounds check)")
+    message(c.graph.config, a.info, warnStaticIndexCheck,
+      "cannot prove: " & ?a & " <= " & ?b)
   of impYes: discard
   of impNo:
-    localError(c.graph.config, a.info, "can prove: " & ?a & " > " & ?b & " (bounds check)")
+    message(c.graph.config, a.info, warnStaticIndexCheck,
+      "can prove: " & ?a & " > " & ?b)
 
 proc checkBounds(c: AnalysisCtx; arr, idx: PNode) =
   checkLe(c, lowBound(c.graph.config, arr), idx)
@@ -162,17 +164,17 @@ proc overlap(m: TModel; conf: ConfigRef; x,y,c,d: PNode) =
     case proveLe(m, x, d)
     of impNo: discard
     of impUnknown, impYes:
-      localError(conf, x.info,
+      message(conf, x.info, warnStaticIndexCheck,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
             [?c, ?y, ?x, ?y, ?c, ?d])
   of impYes:
     case proveLe(m, x, d)
     of impUnknown:
-      localError(conf, x.info,
+      message(conf, x.info, warnStaticIndexCheck,
         "cannot prove: $# > $#; required for ($#)..($#) disjoint from ($#)..($#)" %
           [?x, ?d, ?x, ?y, ?c, ?d])
     of impYes:
-      localError(conf, x.info, "($#)..($#) not disjoint from ($#)..($#)" %
+      message(conf, x.info, warnStaticIndexCheck, "($#)..($#) not disjoint from ($#)..($#)" %
                 [?c, ?y, ?x, ?y, ?c, ?d])
     of impNo: discard
   of impNo: discard
@@ -260,8 +262,6 @@ proc min(a, b: PNode): PNode =
   if a.isNil: result = b
   elif a.intVal < b.intVal: result = a
   else: result = b
-
-proc fromSystem(op: PSym): bool = sfSystemModule in getModule(op).flags
 
 template pushSpawnId(c, body) {.dirty.} =
   inc c.spawns

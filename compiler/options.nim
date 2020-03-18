@@ -26,7 +26,7 @@ type                          # please make sure we have under 32 options
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck, optRefCheck,
-    optNaNCheck, optInfCheck, optStyleCheck,
+    optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
@@ -320,7 +320,7 @@ const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, par
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
-    optStyleCheck, optRefCheck}
+    optStyleCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,

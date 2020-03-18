@@ -42,7 +42,8 @@ const
     wTags, wLocks, wGcSafe}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
-    wBoundChecks, wOverflowChecks, wNilChecks, wStyleChecks, wAssertions,
+    wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks, 
+    wStyleChecks, wAssertions,
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
@@ -344,6 +345,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wFloatChecks: {optNaNCheck, optInfCheck}
   of wNanChecks: {optNaNCheck}
   of wInfChecks: {optInfCheck}
+  of wStaticBoundchecks: {optStaticBoundsCheck}
   of wStyleChecks: {optStyleCheck}
   of wAssertions: {optAssert}
   of wWarnings: {optWarns}
@@ -1027,7 +1029,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCodegenDecl: processCodegenDecl(c, it, sym)
       of wChecks, wObjChecks, wFieldChecks, wRangeChecks, wBoundChecks,
          wOverflowChecks, wNilChecks, wAssertions, wWarnings, wHints,
-         wLineDir, wOptimization, wStyleChecks, wCallconv, wDebugger, wProfiler,
+         wLineDir, wOptimization, wStaticBoundchecks, wStyleChecks, 
+         wCallconv, wDebugger, wProfiler,
          wFloatChecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
         processOption(c, it, c.config.options)
       of wStackTrace, wLineTrace:
