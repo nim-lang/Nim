@@ -506,6 +506,18 @@ template hashUnordered*(iter: untyped): Hash =
   result = !$ result
   result
 
+template hashOrdered*(iter: untyped): Hash =
+  ## Hashing of ordered elements. See also `hashUnordered`
+  mixin hash
+  var count = 0
+  var result: Hash
+  for ai in iter:
+    result = result !& hash(ai)
+    count.inc
+  result = result !& count # extra non-linear mixing with num elements
+  result = !$ result
+  result
+
 when isMainModule:
   block empty:
     var

@@ -424,15 +424,14 @@ proc `==`*(a, b: JsonNode): bool =
         if b.fields[key] != val: return false
       result = true
 
-proc hash*(n: OrderedTable[string, JsonNode]): Hash {.noSideEffect.}
-
 proc hash*(n: JsonNode): Hash =
   ## Compute the hash for a JSON node
   case n.kind
   of JArray:
     result = hash(n.elems)
   of JObject:
-    result = hash(n.fields)
+    # hash must order insensitive so that it's consistent with `==`
+    result = hashUnordered(pairs(n.fields))
   of JInt:
     result = hash(n.num)
   of JFloat:
@@ -444,11 +443,10 @@ proc hash*(n: JsonNode): Hash =
   of JNull:
     result = Hash(0)
 
-proc hash*(n: OrderedTable[string, JsonNode]): Hash =
-  for key, val in n:
-    result = result !& hash(key)
-    result = result !& hash(val)
-  result = !$result
+proc hash*(n: OrderedTable[string, JsonNode]): Hash {.deprecated: "use hashes.hashUnordered".} =
+  # not used anymore by `hash(JsonNode)` since json fields are order insensitive
+  # for fields, whereas OrderedTable should be order sensitive
+  hashOrdered(pairs(n))
 
 proc len*(n: JsonNode): int =
   ## If `n` is a `JArray`, it returns the number of elements.
@@ -1489,3 +1487,17 @@ when isMainModule:
   doAssert not isRefSkipDistinct(MyObject)
   doAssert isRefSkipDistinct(MyDistinct)
   doAssert isRefSkipDistinct(MyOtherDistinct)
+
+
+  block: # hash
+    let x1 = %*{
+      "a1": 1,
+      "a2": 2,
+    }
+    let x2 = %*{
+      "a2": 2,
+      "a1": 1,
+    }
+    doAssert hash(x1) == hash(x2)
+    doAssert x1 == x2
+    doAssert $x1 != $x2
