@@ -290,10 +290,9 @@ proc semGenericStmt(c: PContext, n: PNode,
     # is not exported and yet the generic 'threadProcWrapper' works correctly.
     let flags = if mixinContext: flags+{withinMixin} else: flags
     for i in first..<result.safeLen:
-      let flags = if mixinContext: flags+{withinMixin} else: flags
       # instead, would be better to only set `withinMixin` for arguments of
       # kind tyUntyped, eg `if s.typ[i].kind == tyUntyped:`, however, this
-      # currentl doesn't work
+      # currently doesn't work
       result[i] = semGenericStmt(c, result[i], flags, ctx)
   of nkCurlyExpr:
     result = newNodeI(nkCall, n.info)
