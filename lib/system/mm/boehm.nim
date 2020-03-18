@@ -101,10 +101,12 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
   else: result = alloc(size)
   if typ.finalizer != nil:
     boehmRegisterFinalizer(result, boehmgc_finalizer, typ.finalizer, nil, nil)
+{.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-  result = newObj(typ, addInt(mulInt(len, typ.base.size), GenericSeqSize))
+  result = newObj(typ, len * typ.base.size + GenericSeqSize)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
+{.pop.}
 
 proc growObj(old: pointer, newsize: int): pointer =
   result = realloc(old, newsize)

@@ -38,7 +38,7 @@ proc enlarge[A](s: var HashSet[A]) =
   newSeq(n, len(s.data) * growthFactor)
   swap(s.data, n) # n is now old seq
   for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
+    if isFilledAndValid(n[i].hcode):
       var j = -1 - rawGetKnownHC(s, n[i].key, n[i].hcode)
       rawInsert(s, s.data, n[i].key, n[i].hcode, j)
 
@@ -112,7 +112,7 @@ proc enlarge[A](s: var OrderedSet[A]) =
   swap(s.data, n)
   while h >= 0:
     var nxt = n[h].next
-    if isFilled(n[h].hcode):
+    if isFilled(n[h].hcode): # should be isFilledAndValid once tombstones are used
       var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
       rawInsert(s, s.data, n[h].key, n[h].hcode, j)
     h = nxt
@@ -130,7 +130,7 @@ proc exclImpl[A](s: var OrderedSet[A], key: A): bool {.inline.} =
   result = true
   while h >= 0:
     var nxt = n[h].next
-    if isFilled(n[h].hcode):
+    if isFilled(n[h].hcode): # should be isFilledAndValid once tombstones are used
       if n[h].hcode == hc and n[h].key == key:
         dec s.counter
         result = false

@@ -112,7 +112,7 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-proc hash*(x: int|int64|uint|uint64|char|Ordinal): Hash {.inline.} =
+proc hash*[T: Ordinal](x: T): Hash {.inline.} =
   ## Efficient hashing of integers.
   cast[Hash](ord(x))
 
@@ -162,7 +162,7 @@ proc murmurHash(x: openArray[byte]): Hash =
   # body
   while i < n * stepSize:
     var k1: uint32
-    when defined(js):
+    when defined(js) or defined(sparc) or defined(sparc64):
       var j = stepSize
       while j > 0:
         dec j

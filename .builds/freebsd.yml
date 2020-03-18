@@ -1,3 +1,4 @@
+# see https://man.sr.ht/builds.sr.ht/compatibility.md#freebsd
 image: freebsd/latest
 packages:
 - databases/sqlite3

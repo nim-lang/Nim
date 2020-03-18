@@ -329,14 +329,18 @@ block ospaths:
   doAssert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
   doAssert relativePath("", "/users/moo", '/') == ""
   doAssert relativePath("foo", "", '/') == "foo"
-  doAssert relativePath("/foo", "/Foo", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
-  doAssert relativePath("/Foo", "/foo", '/') == (when FileSystemCaseSensitive: "../Foo" else: "")
-  doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: "")
-  doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: "")
+  doAssert relativePath("/foo", "/Foo", '/') == (when FileSystemCaseSensitive: "../foo" else: ".")
+  doAssert relativePath("/Foo", "/foo", '/') == (when FileSystemCaseSensitive: "../Foo" else: ".")
+  doAssert relativePath("/foo", "/fOO", '/') == (when FileSystemCaseSensitive: "../foo" else: ".")
+  doAssert relativePath("/foO", "/foo", '/') == (when FileSystemCaseSensitive: "../foO" else: ".")
 
   doAssert relativePath("foo", ".", '/') == "foo"
   doAssert relativePath(".", ".", '/') == "."
   doAssert relativePath("..", ".", '/') == ".."
+
+  doAssert relativePath("foo", "foo") == "."
+  doAssert relativePath("", "foo") == ""
+  doAssert relativePath("././/foo", "foo//./") == "."
 
   when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
@@ -353,10 +357,50 @@ block ospaths:
     doAssert relativePath(r"\\foo\bar\baz.nim", r"\foo") == r"\\foo\bar\baz.nim"
     doAssert relativePath(r"c:\foo.nim", r"\foo") == r"c:\foo.nim"
 
-  doAssert joinPath("usr", "") == unixToNativePath"usr/"
+  doAssert joinPath("usr", "") == unixToNativePath"usr"
   doAssert joinPath("", "lib") == "lib"
   doAssert joinPath("", "/lib") == unixToNativePath"/lib"
   doAssert joinPath("usr/", "/lib") == unixToNativePath"usr/lib"
+  doAssert joinPath("", "") == unixToNativePath"" # issue #13455
+  doAssert joinPath("", "/") == unixToNativePath"/"
+  doAssert joinPath("/", "/") == unixToNativePath"/"
+  doAssert joinPath("/", "") == unixToNativePath"/"
+  doAssert joinPath("/" / "") == unixToNativePath"/" # weird test case...
+  doAssert joinPath("/", "/a/b/c") == unixToNativePath"/a/b/c"
+  doAssert joinPath("foo/","") == unixToNativePath"foo/"
+  doAssert joinPath("foo/","abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("foo//./","abc/.//") == unixToNativePath"foo/abc/"
+  doAssert joinPath("foo","abc") == unixToNativePath"foo/abc"
+  doAssert joinPath("","abc") == unixToNativePath"abc"
+
+  doAssert joinPath("gook/.","abc") == unixToNativePath"gook/abc"
+
+  # controversial: inconsistent with `joinPath("gook/.","abc")`
+  # on linux, `./foo` and `foo` are treated a bit differently for executables
+  # but not `./foo/bar` and `foo/bar`
+  doAssert joinPath(".", "/lib") == unixToNativePath"./lib"
+  doAssert joinPath(".","abc") == unixToNativePath"./abc"
+  
+  # cases related to issue #13455
+  doAssert joinPath("foo", "", "") == "foo"
+  doAssert joinPath("foo", "") == "foo"
+  doAssert joinPath("foo/", "") == unixToNativePath"foo/"
+  doAssert joinPath("foo/", ".") == "foo"
+  doAssert joinPath("foo", "./") == unixToNativePath"foo/"
+  doAssert joinPath("foo", "", "bar/") == unixToNativePath"foo/bar/"
+
+  # issue #13579
+  doAssert joinPath("/foo", "../a") == unixToNativePath"/a"
+  doAssert joinPath("/foo/", "../a") == unixToNativePath"/a"
+  doAssert joinPath("/foo/.", "../a") == unixToNativePath"/a"
+  doAssert joinPath("/foo/.b", "../a") == unixToNativePath"/foo/a"
+  doAssert joinPath("/foo///", "..//a/") == unixToNativePath"/a/"
+  doAssert joinPath("foo/", "../a") == unixToNativePath"a"
+
+  when doslikeFileSystem:
+    doAssert joinPath("C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\Common7\\Tools\\", "..\\..\\VC\\vcvarsall.bat") == r"C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat"
+    doAssert joinPath("C:\\foo", "..\\a") == r"C:\a"
+    doAssert joinPath("C:\\foo\\", "..\\a") == r"C:\a"
 
 block getTempDir:
   block TMPDIR:

@@ -105,13 +105,13 @@ identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
 this manual are static errors when not otherwise specified.
 
-A `checked runtime error`:idx: is an error that the implementation detects
+A `panic`:idx: is an error that the implementation detects
 and reports at runtime. The method for reporting such errors is via
 *raising exceptions* or *dying with a fatal error*. However, the implementation
 provides a means to disable these `runtime checks`:idx:. See the section
 pragmas_ for details.
 
-Whether a checked runtime error results in an exception or in a fatal error is
+Whether a panic results in an exception or in a fatal error is
 implementation specific. Thus the following program is invalid; even though the
 code purports to catch the `IndexError` from an out-of-bounds array access, the
 compiler may instead choose to allow the program to die with a fatal error.
@@ -123,6 +123,12 @@ compiler may instead choose to allow the program to die with a fatal error.
     a[i] = 'N'
   except IndexError:
     echo "invalid index"
+
+The current implementation allows to switch between these different behaviors
+via ``--panics:on|off``. When panics are turned on, the program dies on a
+panic, if they are turned off the runtime errors are turned into
+exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
+code and the compiler has more freedom to optimize the code.
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
@@ -559,7 +565,7 @@ following characters::
 defined here.)
 
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot of``.
+``and or not xor shl shr div mod in notin is isnot of as``.
 
 `.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
@@ -632,21 +638,21 @@ has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 
-================  ===============================================  ==================  ===============
-Precedence level    Operators                                      First character     Terminal symbol
-================  ===============================================  ==================  ===============
- 10 (highest)                                                      ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``            ``*  %  \  /``      OP9
-  8               ``+    -``                                       ``+  -  ~  |``      OP8
-  7               ``&``                                            ``&``               OP7
-  6               ``..``                                           ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of``   ``=  <  >  !``      OP5
-  4               ``and``                                                              OP4
-  3               ``or xor``                                                           OP3
-  2                                                                ``@  :  ?``         OP2
-  1               *assignment operator* (like ``+=``, ``*=``)                          OP1
-  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
-================  ===============================================  ==================  ===============
+================  ==================================================  ==================  ===============
+Precedence level    Operators                                         First character     Terminal symbol
+================  ==================================================  ==================  ===============
+ 10 (highest)                                                         ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``               ``*  %  \  /``      OP9
+  8               ``+    -``                                          ``+  -  ~  |``      OP8
+  7               ``&``                                               ``&``               OP7
+  6               ``..``                                              ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of as``   ``=  <  >  !``      OP5
+  4               ``and``                                                                 OP4
+  3               ``or xor``                                                              OP3
+  2                                                                   ``@  :  ?``         OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                             OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                             OP0
+================  ==================================================  ==================  ===============
 
 
 Whether an operator is used a prefix operator is also affected by preceding
@@ -869,9 +875,9 @@ Ordinal types have the following characteristics:
   the operation of functions as ``inc``, ``ord``, ``dec`` on ordinal types to
   be defined.
 - Ordinal values have a smallest possible value. Trying to count further
-  down than the smallest value gives a checked runtime or static error.
+  down than the smallest value produces a panic or a static error.
 - Ordinal values have a largest possible value. Trying to count further
-  than the largest value gives a checked runtime or static error.
+  than the largest value produces a panic or a static error.
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
@@ -982,7 +988,7 @@ lowest and highest value of the type. For example:
 to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
 NaN does not belong to any subrange of floating point types.
 Assigning any other value to a variable of type ``Subrange`` is a
-checked runtime error (or static error if it can be determined during
+panic (or a static error if it can be determined during
 semantic analysis). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
@@ -1763,9 +1769,9 @@ Nil
 
 If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
 the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
-is an unrecoverable fatal runtime error. A dereferencing operation ``p[]``
-implies that ``p`` is not nil. This can be exploited by the implementation to
-optimize code like:
+is an unrecoverable fatal runtime error (and not a panic).
+A dereferencing operation ``p[]`` implies that ``p`` is not nil. This can be
+exploited by the implementation to optimize code like:
 
 
 .. code-block:: nim
@@ -4107,7 +4113,7 @@ branch always has to be ``void``:
 
 .. code-block:: nim
   from strutils import parseInt
-  
+
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -4242,9 +4248,11 @@ The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
 and are stricly speaking not catchable as they can also be mapped to an operation
-that terminates the whole process. Exceptions that indicate any other runtime
-error that can be caught inherit from ``system.CatchableError``
-(which is a subtype of ``Exception``).
+that terminates the whole process. If panics are turned into exceptions, these
+exceptions inherit from `Defect`.
+
+Exceptions that indicate any other runtime error that can be caught inherit from
+``system.CatchableError`` (which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -5645,6 +5653,8 @@ It is not checked that the ``except`` list is really exported from the module.
 This feature allows to compile against an older version of the module that
 does not export these identifiers.
 
+The ``import`` statement is only allowed at the top level.
+
 
 Include statement
 ~~~~~~~~~~~~~~~~~
@@ -5655,6 +5665,18 @@ statement is useful to split up a large module into several files:
 .. code-block:: nim
   include fileA, fileB, fileC
 
+The ``include`` statement can be used outside of the top level, as such:
+
+.. code-block:: nim
+  # Module A
+  echo "Hello World!"
+
+.. code-block:: nim
+  # Module B
+  proc main() =
+    include A
+
+  main() # => Hello World!
 
 
 Module names in imports

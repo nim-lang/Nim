@@ -1,9 +1,9 @@
 discard """
   output: '''
-tlenvarargs.nim:35:9 (1, 2)
-tlenvarargs.nim:36:9 12
-tlenvarargs.nim:37:9 1
-tlenvarargs.nim:38:8 
+tvarargslen.nim:35:9 (1, 2)
+tvarargslen.nim:36:9 12
+tvarargslen.nim:37:9 1
+tvarargslen.nim:38:8 
 done
 '''
 """
@@ -14,19 +14,19 @@ template myecho*(a: varargs[untyped]) =
   ## on macros.nim) so can be used in more contexts
   const info = instantiationInfo(-1, false)
   const loc = info.filename & ":" & $info.line & ":" & $info.column & " "
-  when lenVarargs(a) > 0:
+  when varargsLen(a) > 0:
     echo(loc, a)
   else:
     echo(loc)
 
 template fun*(a: varargs[untyped]): untyped =
-  lenVarargs(a)
+  varargsLen(a)
 
 template fun2*(a: varargs[typed]): untyped =
-  a.lenVarargs
+  a.varargsLen
 
 template fun3*(a: varargs[int]): untyped =
-  a.lenVarargs
+  a.varargsLen
 
 template fun4*(a: varargs[untyped]): untyped =
   len(a)
@@ -49,11 +49,12 @@ proc main()=
   doAssert fun3(10) == 1
   doAssert fun3(10, 11) == 2
 
-  ## shows why `lenVarargs` can't be named `len`
+  ## shows why `varargsLen` can't be named `len`
   doAssert fun4("abcdef") == len("abcdef")
 
   ## workaround for BUG:D20191218T171447 whereby if testament expected output ends
   ## in space, testament strips it from expected output but not actual output,
   ## which leads to a mismatch when running test via megatest
   echo "done"
+
 main()

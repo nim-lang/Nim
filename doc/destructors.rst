@@ -256,6 +256,23 @@ An implementation is allowed, but not required to implement even more move
 optimizations (and the current implementation does not).
 
 
+Sink parameter inference
+========================
+
+The current implementation does a limited form of sink parameter
+inference. The `.nosinks`:idx: pragma can be used to disable this inference
+for a single routine:
+
+.. code-block:: nim
+
+  proc addX(x: T; child: T) {.nosinks.} =
+    x.s.add child
+
+To disable it for a section of code, one can
+use `{.push sinkInference: off.}`...`{.pop.}`.
+
+The details of the inference algorithm are currently undocumented.
+
 
 Rewrite rules
 =============

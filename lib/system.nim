@@ -87,6 +87,18 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHashOrdinalFixed):
+  type
+    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                   ## bool, character, and enumeration types
+                                   ## as well as their subtypes. See also
+                                   ## `SomeOrdinal`.
+else:
+  # bootstrap <= 0.20.0
+  type
+    OrdinalImpl[T] {.magic: Ordinal.}
+    Ordinal* = OrdinalImpl | uint | uint64
+
 when defined(nimHasRunnableExamples):
   proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
@@ -2202,7 +2214,10 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include "system/arithm"
+  when defined(nimNewIntegerOps):
+    include "system/integerops"
+  else:
+    include "system/arithm"
   {.pop.}
 
 
@@ -2518,6 +2533,9 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
+  ## The maximum file size limit that ``staticRead`` and ``slurp`` can read is
+  ## near or equal to the *free* memory of the device you are using to compile.
+  ##
   ## .. code-block:: Nim
   ##     const myResource = staticRead"mydatafile.bin"
   ##
@@ -2660,10 +2678,10 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
-macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  varargsLenImpl(x)
 
 when false:
   template eval*(blk: typed): typed =

@@ -232,13 +232,14 @@ proc semConv(c: PContext, n: PNode): PNode =
   result = newNodeI(nkConv, n.info)
 
   var targetType = semTypeNode(c, n[0], nil)
-  if targetType.kind == tyTypeDesc:
+  case targetType.kind
+  of tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
       return semTypeOf(c, n)
     else:
       targetType = targetType.base
-  elif targetType.kind == tyStatic:
+  of tyStatic:
     var evaluated = semStaticExpr(c, n[1])
     if evaluated.kind == nkType or evaluated.typ.kind == tyTypeDesc:
       result = n
@@ -248,6 +249,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       return evaluated
     else:
       targetType = targetType.base
+  else: discard
 
   maybeLiftType(targetType, c, n[0].info)
 
@@ -268,7 +270,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
   var op = semExprWithType(c, n[1])
-  if targetType.isMetaType:
+  if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
     result.typ = final.typ
@@ -278,6 +280,10 @@ proc semConv(c: PContext, n: PNode): PNode =
   # XXX op is overwritten later on, this is likely added too early
   # here or needs to be overwritten too then.
   result.add op
+
+  if targetType.kind == tyGenericParam:
+    result.typ = makeTypeFromExpr(c, copyTree(result))
+    return result
 
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op)
@@ -516,7 +522,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
           a.add m
           changeType(m, tup[i], check)
   of nkCharLit..nkUInt64Lit:
-    if check and n.kind != nkUInt64Lit:
+    if check and n.kind != nkUInt64Lit and not sameType(n.typ, newType):
       let value = n.intVal
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
@@ -990,7 +996,7 @@ proc buildEchoStmt(c: PContext, n: PNode): PNode =
   result = semExpr(c, result)
 
 proc semExprNoType(c: PContext, n: PNode): PNode =
-  let isPush = hintExtendedContext in c.config.notes
+  let isPush = c.config.hasHint(hintExtendedContext)
   if isPush: pushInfoContext(c.config, n.info)
   result = semExpr(c, n, {efWantStmt})
   discardCheck(c, result, {})
