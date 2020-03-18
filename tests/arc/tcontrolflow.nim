@@ -12,9 +12,12 @@ if
 end true
 '''
   cmd: "nim c --gc:arc -d:danger $file"
+  disabled: "true"
 """
 # we use the -d:danger switch to detect uninitialized stack
 # slots more reliably (there shouldn't be any, of course).
+
+# XXX Enable once scope based destruction works!
 
 type
   Foo = object

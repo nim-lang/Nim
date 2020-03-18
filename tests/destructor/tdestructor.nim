@@ -17,10 +17,10 @@ mydistinctObj constructed
 myobj destroyed
 mygeneric2 destroyed
 ------------------
-mygeneric1 destroyed
+----
 ----
 myobj destroyed
-----
+mygeneric1 destroyed
 ---
 myobj destroyed
 myobj destroyed

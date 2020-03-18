@@ -48,7 +48,6 @@ type
     declaredVars: IntSet # variables we already moved to the top level
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
-    hasRaise: bool
 
 const toDebug {.strdefine.} = ""
 
@@ -593,6 +592,45 @@ proc cycleCheck(n: PNode; c: var Con) =
       message(c.graph.config, n.info, warnCycleCreated, msg)
       break
 
+proc pVarTopLevel(v: PNode; c: var Con; ri, res: PNode) =
+  # move the variable declaration to the top of the frame:
+  if not containsOrIncl(c.declaredVars, v.sym.id):
+    c.addTopVar v
+  if isUnpackedTuple(v):
+    if c.inLoop > 0:
+      # unpacked tuple needs reset at every loop iteration
+      res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+  elif sfThread notin v.sym.flags:
+    # do not destroy thread vars for now at all for consistency.
+    c.destroys.add genDestroy(c, v)
+  if ri.kind == nkEmpty and c.inLoop > 0:
+    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c)
+  elif ri.kind != nkEmpty:
+    res.add moveOrCopy(v, ri, c)
+
+proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
+  if not containsOrIncl(c.declaredVars, v.sym.id):
+    c.addTopVar(v)
+  if isUnpackedTuple(v):
+    if c.inLoop > 0:
+      # unpacked tuple needs reset at every loop iteration
+      res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+  elif {sfGlobal, sfThread} * v.sym.flags == {sfGlobal}:
+    c.destroys.add genDestroy(c, v)
+  else:
+    # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
+    # the destruction at the loop end will free the resources. Other assignments
+    # will destroy the old value inside 'v'. If we have 'var v' without an initial
+    # default value we translate it into 'var v = default()'. We translate
+    # 'var x = someGlobal' into 'var v = default(); `=`(v, someGlobal). The
+    # lack of copy constructors is really beginning to hurt us. :-(
+    #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
+    c.scopeDestroys.add genDestroy(c, v)
+  if ri.kind == nkEmpty and c.inLoop > 0:
+    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c)
+  elif ri.kind != nkEmpty:
+    res.add moveOrCopy(v, ri, c)
+
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt}:
@@ -687,7 +725,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
           result = newTree(nkStmtList, destroyOld, result)
       else:
         result[0] = p(n[0], c, normal)
-      if canRaise(n[0]): inc c.hasUnstructuredCf
+      when scopeBasedDestruction:
+        if canRaise(n[0]): inc c.hasUnstructuredCf
       if mode == normal:
         result = ensureDestruction(result, c)
     of nkDiscardStmt: # Small optimization
@@ -710,47 +749,9 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
               when not scopeBasedDestruction:
-                # move the variable declaration to the top of the frame:
-                c.addTopVar v
-                # make sure it's destroyed at the end of the proc:
-                if not isUnpackedTuple(v):
-                  c.destroys.add genDestroy(c, v)
-                elif c.inLoop > 0:
-                  # unpacked tuple needs reset at every loop iteration
-                  result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+                pVarTopLevel(v, c, ri, result)
               else:
-                if isUnpackedTuple(v):
-                  if not containsOrIncl(c.declaredVars, v.sym.id):
-                    c.addTopVar(v)
-                  if c.inLoop > 0:
-                    # unpacked tuple needs reset at every loop iteration
-                    result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-                    if ri.kind == nkEmpty:
-                      ri = genDefaultCall(v.typ, c, v.info)
-                  if ri.kind != nkEmpty:
-                    result.add moveOrCopy(v, ri, c)
-                elif sfGlobal in v.sym.flags:
-                  if not containsOrIncl(c.declaredVars, v.sym.id):
-                    c.addTopVar v
-                  c.destroys.add genDestroy(c, v)
-                  if ri.kind == nkEmpty and c.inLoop > 0:
-                    ri = genDefaultCall(v.typ, c, v.info)
-                  if ri.kind != nkEmpty:
-                    result.add moveOrCopy(v, ri, c)
-                else:
-                  # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
-                  # the destruction at the loop end will free the resources. Other assignments
-                  # will destroy the old value inside 'v'. If we have 'var v' without an initial
-                  # default value we translate it into 'var v = default()'. We translate
-                  # 'var x = someGlobal' into 'var v = default(); `=`(v, someGlobal). The
-                  # lack of copy constructors is really beginning to hurt us. :-(
-                  #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
-                  c.addTopVar(v)
-                  if ri.kind == nkEmpty and c.inLoop > 0:
-                    ri = genDefaultCall(v.typ, c, v.info)
-                  if ri.kind != nkEmpty:
-                    result.add moveOrCopy(v, ri, c)
-                  c.scopeDestroys.add genDestroy(c, v)
+                pVarScoped(v, c, ri, result)
             else:
               if ri.kind == nkEmpty and c.inLoop > 0:
                 ri = genDefaultCall(v.typ, c, v.info)
@@ -803,7 +804,6 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           result.add copyNode(n[0])
       inc c.hasUnstructuredCf
-      c.hasRaise = true
     of nkWhileStmt:
       result = handleNested(n, nil, c, mode)
     of nkNone..nkNilLit, nkTypeSection, nkProcDef, nkConverterDef,
@@ -957,8 +957,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)
   if c.topLevelVars.len > 0:
     result.add c.topLevelVars
-  if c.destroys.len > 0 or c.scopeDestroys.len > 0 or
-      (c.hasRaise and owner.kind == skModule):
+  if c.destroys.len > 0 or c.scopeDestroys.len > 0:
     reverse c.destroys.sons
     var fin: PNode
     if owner.kind == skModule:

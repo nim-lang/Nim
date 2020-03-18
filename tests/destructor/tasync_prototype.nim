@@ -5,7 +5,6 @@ false
 MEMORY 0
 '''
   cmd: '''nim c --gc:arc $file'''
-  disabled: "true"
 """
 
 type
