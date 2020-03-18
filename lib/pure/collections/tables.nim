@@ -2226,9 +2226,10 @@ type
     counter: int
     countDeleted: int
       # using this and creating tombstones as in `Table` would make `remove`
-      # amortized O(1) instead of O(n); this requires updating remove,
-      # and changing `val != 0` to what's used in Table. Or simply make CountTable
-      # a thin wrapper around Table (which would also enable `dec`, etc)
+      # amortized O(1) instead of O(n); this requires updating `remove`,
+      # and changing `val != 0` to what's used in Table. Or we could simply make
+      # CountTable a thin wrapper around Table (which would also enable lifting
+      # restrictions on CountTable, eg lack of `dec`, allowing `0` counts, etc).
     isSorted: bool
   CountTableRef*[A] = ref CountTable[A] ## Ref version of
     ## `CountTable<#CountTable>`_.
@@ -2360,7 +2361,7 @@ proc inc*[A](t: var CountTable[A], key: A, val: Positive = 1) =
   var index = rawGet(t, key)
   if index >= 0:
     inc(t.data[index].val, val)
-    if t.data[index].val == 0: dec(t.counter) # how could this happen?
+    assert t.data[index].val != 0
   else:
     insertImpl()
 

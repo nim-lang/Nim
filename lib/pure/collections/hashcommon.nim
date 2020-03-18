@@ -78,24 +78,24 @@ template findCell(t: typed, hc, mustNextTry): int =
   var perturb = getPerturb(t, hc)
   var depth = 0
 
-  ## PARAM: this param can affect performance and could be exposed to users whoe
-  ## need to optimize for their specific key distribution. If clusters are to be
-  ## expected, it's better to set it low; for really random data, it's better to
-  ## set it high. We pick a sensible default that works across a range of key
-  ## distributions.
-  ##
-  ## depthThres=0 will just use pseudorandom probing
-  ## depthThres=int.high will just use linear probing
-  ## depthThres in between will switch
+  # PARAM: `depthThres` can affect performance and could be exposed to users who
+  # need to optimize for their specific key distribution. If clusters are to be
+  # expected, it's better to set it low; for really random data, it's better to
+  # set it high. We pick a sensible default that works across a range of key
+  # distributions.
+  #
+  # depthThres=0 will just use pseudorandom probing
+  # depthThres=int.high will just use linear probing
+  # depthThres in between will switch
   const depthThres = 20
 
   while mustNextTry(t.data[index], index):
     depth.inc
     if depth <= depthThres:
-      ## linear probing, cache friendly
+      # linear probing, cache friendly
       index = (index + 1) and m
     else:
-      ## pseudorandom probing, "bad" case was detected
+      # pseudorandom probing, "bad" case was detected
       index = nextTry(index, m, perturb)
   index
 
