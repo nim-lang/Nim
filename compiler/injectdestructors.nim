@@ -29,6 +29,9 @@ import
 from trees import exprStructuralEquivalent
 from algorithm import reverse
 
+const
+  scopeBasedDestruction = false
+
 type
   Con = object
     owner: PSym
@@ -297,7 +300,6 @@ proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
   sym.typ = typ
   result = newSymNode(sym)
-  #c.addTopVar(result)
 
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
@@ -351,6 +353,8 @@ proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
   let tmp = getTemp(c, n.typ, n.info)
+  when not scopeBasedDestruction:
+    c.addTopVar(tmp)
   if hasDestructor(n.typ):
     result.add genWasMoved(tmp, c)
     var m = genCopy(c, tmp, n)
@@ -415,6 +419,8 @@ proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
       # (x; y; tmp = E(); destroy(x); destroy(y); tmp )
       let t2 = body[^1].typ
       let tmp = getTemp(c, t2, body.info)
+      when not scopeBasedDestruction:
+        c.addTopVar(tmp)
       # the tmp does not have to be initialized
       var n = newNodeIT(nkStmtListExpr, body.info, t2)
       n.add newTree(nkFastAsgn, tmp, body[^1])
@@ -436,6 +442,8 @@ proc handleTmpDestroys(c: var Con; body: PNode; t: PType;
       # ((try: tmp = (x; y; E()); finally: destroy(x); destroy(y)); tmp )
       let t2 = body[^1].typ
       let tmp = getTemp(c, t2, body.info)
+      when not scopeBasedDestruction:
+        c.addTopVar(tmp)
       # the tmp does not have to be initialized
       var fin = newNodeI(nkStmtList, body.info)
       for i in countdown(c.scopeDestroys.high, oldTmpDestroysLen):
@@ -524,20 +532,23 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
     let tmp = getTemp(c, arg.typ, arg.info)
-    # if we're inside a dangerous 'or' or 'and' expression, we
-    # do need to initialize it. 'elif' is not among this problem
-    # as we have a separate scope for 'elif' to attach the destructors to.
-    if c.inDangerousBranch == 0 and c.hasUnstructuredCf == 0:
-      tmp.sym.flags.incl sfNoInit
-    c.addTopVar(tmp)
-    when false:
+    when not scopeBasedDestruction:
+      c.addTopVar(tmp)
+      result.add genSink(c, tmp, arg)
+      result.add tmp
+      c.destroys.add genDestroy(c, tmp)
+    else:
+      # if we're inside a dangerous 'or' or 'and' expression, we
+      # do need to initialize it. 'elif' is not among this problem
+      # as we have a separate scope for 'elif' to attach the destructors to.
+      if c.inDangerousBranch == 0 and c.hasUnstructuredCf == 0:
+        tmp.sym.flags.incl sfNoInit
+      c.addTopVar(tmp)
       # since we do not initialize these temporaries anymore, we
       # use raw assignments instead of =sink:
-      result.add genSink(c, tmp, arg)
-    else:
       result.add newTree(nkFastAsgn, tmp, arg)
-    result.add tmp
-    c.scopeDestroys.add genDestroy(c, tmp)
+      result.add tmp
+      c.scopeDestroys.add genDestroy(c, tmp)
   else:
     result = arg
 
@@ -698,39 +709,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
             let v = it[j]
             if v.kind == nkSym:
               if sfCompileTime in v.sym.flags: continue
-              if isUnpackedTuple(v):
-                if not containsOrIncl(c.declaredVars, v.sym.id):
-                  c.addTopVar(v)
-                if c.inLoop > 0:
-                  # unpacked tuple needs reset at every loop iteration
-                  result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
-                  if ri.kind == nkEmpty:
-                    ri = genDefaultCall(v.typ, c, v.info)
-                if ri.kind != nkEmpty:
-                  result.add moveOrCopy(v, ri, c)
-              elif sfGlobal in v.sym.flags:
-                if not containsOrIncl(c.declaredVars, v.sym.id):
-                  c.addTopVar v
-                c.destroys.add genDestroy(c, v)
-                if ri.kind == nkEmpty and c.inLoop > 0:
-                  ri = genDefaultCall(v.typ, c, v.info)
-                if ri.kind != nkEmpty:
-                  result.add moveOrCopy(v, ri, c)
-              else:
-                # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
-                # the destruction at the loop end will free the resources. Other assignments
-                # will destroy the old value inside 'v'. If we have 'var v' without an initial
-                # default value we translate it into 'var v = default()'. We translate
-                # 'var x = someGlobal' into 'var v = default(); `=`(v, someGlobal). The
-                # lack of copy constructors is really beginning to hurt us. :-(
-                #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
-                c.addTopVar(v)
-                if ri.kind == nkEmpty and c.inLoop > 0:
-                  ri = genDefaultCall(v.typ, c, v.info)
-                if ri.kind != nkEmpty:
-                  result.add moveOrCopy(v, ri, c)
-                c.scopeDestroys.add genDestroy(c, v)
-              when false:
+              when not scopeBasedDestruction:
                 # move the variable declaration to the top of the frame:
                 c.addTopVar v
                 # make sure it's destroyed at the end of the proc:
@@ -739,6 +718,39 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
                 elif c.inLoop > 0:
                   # unpacked tuple needs reset at every loop iteration
                   result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+              else:
+                if isUnpackedTuple(v):
+                  if not containsOrIncl(c.declaredVars, v.sym.id):
+                    c.addTopVar(v)
+                  if c.inLoop > 0:
+                    # unpacked tuple needs reset at every loop iteration
+                    result.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
+                    if ri.kind == nkEmpty:
+                      ri = genDefaultCall(v.typ, c, v.info)
+                  if ri.kind != nkEmpty:
+                    result.add moveOrCopy(v, ri, c)
+                elif sfGlobal in v.sym.flags:
+                  if not containsOrIncl(c.declaredVars, v.sym.id):
+                    c.addTopVar v
+                  c.destroys.add genDestroy(c, v)
+                  if ri.kind == nkEmpty and c.inLoop > 0:
+                    ri = genDefaultCall(v.typ, c, v.info)
+                  if ri.kind != nkEmpty:
+                    result.add moveOrCopy(v, ri, c)
+                else:
+                  # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
+                  # the destruction at the loop end will free the resources. Other assignments
+                  # will destroy the old value inside 'v'. If we have 'var v' without an initial
+                  # default value we translate it into 'var v = default()'. We translate
+                  # 'var x = someGlobal' into 'var v = default(); `=`(v, someGlobal). The
+                  # lack of copy constructors is really beginning to hurt us. :-(
+                  #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
+                  c.addTopVar(v)
+                  if ri.kind == nkEmpty and c.inLoop > 0:
+                    ri = genDefaultCall(v.typ, c, v.info)
+                  if ri.kind != nkEmpty:
+                    result.add moveOrCopy(v, ri, c)
+                  c.scopeDestroys.add genDestroy(c, v)
             else:
               if ri.kind == nkEmpty and c.inLoop > 0:
                 ri = genDefaultCall(v.typ, c, v.info)

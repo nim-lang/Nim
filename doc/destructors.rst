@@ -283,8 +283,8 @@ Rewrite rules
    around the complete routine body.
 2. The produced ``finally`` section is wrapped around the enclosing scope.
 
-The current implementation follows strategy (2). This means that resources are
-destroyed at the scope exit.
+The current implementation follows strategy (1). This means that resources are
+not destroyed at the scope exit, but at the proc exit.
 
 ::
 
