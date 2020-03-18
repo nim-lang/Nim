@@ -189,6 +189,8 @@ proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
     if m == nil:
       result.modules.modules.add nil
     else:
+      #echo " FILE: ", $m.filename
+      #echo "CFILE: ", $m.cfilename
       var
         fake = rawNewModule(result.modules, m.module, m.filename)
 
@@ -217,7 +219,8 @@ proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
       fake.preInitProc = m.preInitProc
 
       # make sure our fake module matches the original module
-      assert fake.hash == m.hash, node.name.s & " " & $m.filename
+      when not defined(release):
+        assert fake.hash == m.hash, node.name.s & " " & $m.filename
 
       # these mutate the fake module
       fake.typeNodesName = getTempName(fake)
@@ -1391,17 +1394,18 @@ proc setupModuleCache*(g: ModuleGraph) =
 proc encodeTransform(t: Transform): string =
   case t.kind:
   of HeaderFile:
-    result = t.filenames.join("\0")
+    # XXX: assert no newlines in filenames
+    result = t.filenames.join("\n")
   of ThingSet, ProtoSet, SwingSet, JetSet, ReSet:
-    result = mapIt(t.diff, $it).join("\0")
+    result = mapIt(t.diff, $it).join("\n")
   of FlagSet:
-    result = mapIt(t.flags, $it).join("\0")
+    result = mapIt(t.flags, $it).join("\n")
   of Injection:
     result = $t.rope
   of GraphRope:
     result = $t.grope
   of TypeStack:
-    result = mapIt(t.stack, $it.uniqueId).join("\0")
+    result = mapIt(t.stack, $it.uniqueId).join("\n")
   else:
     discard
 
@@ -1410,19 +1414,19 @@ proc decodeTransform(kind: string, module: BModule;
   result = Transform(kind: parseEnum[TransformKind](kind), module: module)
   case result.kind:
   of HeaderFile:
-    result.filenames = data.split('\0')
+    result.filenames = data.split('\n')
   of ThingSet, ProtoSet, SwingSet, JetSet, ReSet:
-    for value in mapIt(data.split('\0'), parseInt(it)):
+    for value in mapIt(data.split('\n'), parseInt(it)):
       result.diff.incl value
   of FlagSet:
-    for value in mapIt(data.split('\0'), parseEnum[CodegenFlag](it)):
+    for value in mapIt(data.split('\n'), parseEnum[CodegenFlag](it)):
       result.flags.incl value
   of Injection:
     result.rope = rope(data)
   of GraphRope:
     result.grope = rope(data)
   of TypeStack:
-    for value in mapIt(data.split('\0'), parseInt(it)):
+    for value in mapIt(data.split('\n'), parseInt(it)):
       # XXX: fake out; terrible
       result.stack.add loadType(module.g.graph, value,
                                 module.module.info)
@@ -1574,7 +1578,13 @@ proc mergeSections(cache: CacheUnit;
 
 proc merge(cache: CacheUnit; parent: var BModule; child: BModule) =
   ## miscellaneous ropes
+
+
+  assert parent.filename == child.filename
+  assert parent.cfilename == child.cfilename
+
   cache.mergeRopes(parent, child, injectStmt)
+
 
   # --- XXX --- we aren't saving these yet
   if parent.initProc.prc == nil and child.initProc.prc != nil:

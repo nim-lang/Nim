@@ -1335,8 +1335,9 @@ proc genProc(orig: BModule, prc: PSym) =
     # load the cached symbol and its snippets from the db
     cache.load(orig.g)
 
-  # merge the cache into our graph
-  cache.merge(orig.g)
+  if cachable:
+    # merge the cache into our graph
+    cache.merge(orig.g)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
