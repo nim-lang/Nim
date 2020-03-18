@@ -162,7 +162,7 @@ proc murmurHash(x: openArray[byte]): Hash =
   # body
   while i < n * stepSize:
     var k1: uint32
-    when defined(js):
+    when defined(js) or defined(sparc) or defined(sparc64):
       var j = stepSize
       while j > 0:
         dec j

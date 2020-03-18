@@ -265,15 +265,12 @@ when false:
 
 proc findStartNim: string =
   # we try several things before giving up:
+  # * nimExe
   # * bin/nim
   # * $PATH/nim
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
-  for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
-
+  let (nim, ok) = findNimImpl()
+  if ok: return nim
   when defined(Posix):
     const buildScript = "build.sh"
     if existsFile(buildScript):
@@ -319,10 +316,10 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
-      [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
-      [nimi, args, smartNimcache]
+    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+      [nimi, bootOptions, extraOption, smartNimcache, args]
+    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+      [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -478,7 +475,7 @@ proc hostInfo(): string =
 
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
-  echo "runCI:", cmd
+  echo "runCI: ", cmd
   echo hostInfo()
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.

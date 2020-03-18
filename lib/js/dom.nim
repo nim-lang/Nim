@@ -40,8 +40,8 @@ type
     onsubmit*: proc (event: Event) {.nimcall.}
     onunload*: proc (event: Event) {.nimcall.}
 
-  # https://developer.mozilla.org/en-US/docs/Web/Events
   DomEvent* {.pure.} = enum
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
     Abort = "abort",
     BeforeInput = "beforeinput",
     Blur = "blur",
@@ -103,6 +103,8 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
+  LocalStorage* {.importc.} = ref object
+
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
     document*: Document
@@ -129,6 +131,7 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
+    localStorage*: LocalStorage
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -165,10 +168,13 @@ type
     parentNode*: Node
     previousSibling*: Node
     innerHTML*: cstring
+    innerText*: cstring
+    textContent*: cstring
     style*: Style
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
+    activeElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -211,8 +217,7 @@ type
     offsetLeft*: int
     offsetTop*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/ValidityState
-  ValidityState* = ref ValidityStateObj
+  ValidityState* = ref ValidityStateObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ValidityState>`_
   ValidityStateObj {.importc.} = object
     badInput*: bool
     customError*: bool
@@ -226,20 +231,24 @@ type
     valid*: bool
     valueMissing*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Blob
-  Blob* = ref BlobObj
+  Blob* = ref BlobObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Blob>`_
   BlobObj {.importc.} = object of RootObj
     size*: int
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/File
-  File* = ref FileObj
+  File* = ref FileObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/File>`_
   FileObj {.importc.} = object of Blob
     lastModified*: int
     name*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement
-  InputElement* = ref InputElementObj
+  TextAreaElement* = ref TextAreaElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement>`_
+  TextAreaElementObj {.importc.} = object of Element
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
+
+  InputElement* = ref InputElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement>`_
   InputElementObj {.importc.} = object of Element
     # Properties related to the parent form
     formAction*: cstring
@@ -321,8 +330,7 @@ type
     text*: cstring
     value*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement
-  FormElement* = ref FormObj
+  FormElement* = ref FormObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement>`_
   FormObj {.importc.} = object of ElementObj
     acceptCharset*: cstring
     action*: cstring
@@ -354,6 +362,7 @@ type
     backgroundImage*: cstring
     backgroundPosition*: cstring
     backgroundRepeat*: cstring
+    backgroundSize*: cstring
     border*: cstring
     borderBottom*: cstring
     borderBottomColor*: cstring
@@ -364,6 +373,7 @@ type
     borderLeftColor*: cstring
     borderLeftStyle*: cstring
     borderLeftWidth*: cstring
+    borderRadius*: cstring
     borderRight*: cstring
     borderRightColor*: cstring
     borderRightStyle*: cstring
@@ -375,6 +385,8 @@ type
     borderTopWidth*: cstring
     borderWidth*: cstring
     bottom*: cstring
+    boxSizing*: cstring
+    boxShadow*: cstring
     captionSide*: cstring
     clear*: cstring
     clip*: cstring
@@ -409,7 +421,10 @@ type
     minHeight*: cstring
     minWidth*: cstring
     opacity*: cstring
+    outline*: cstring
     overflow*: cstring
+    overflowX*: cstring
+    overflowY*: cstring
     padding*: cstring
     paddingBottom*: cstring
     paddingLeft*: cstring
@@ -419,6 +434,7 @@ type
     pageBreakBefore*: cstring
     pointerEvents*: cstring
     position*: cstring
+    resize*: cstring
     right*: cstring
     scrollbar3dLightColor*: cstring
     scrollbarArrowColor*: cstring
@@ -447,8 +463,7 @@ type
     AtTarget,
     BubblingPhase
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Event
-  Event* = ref EventObj
+  Event* = ref EventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Event>`_
   EventObj {.importc.} = object of RootObj
     bubbles*: bool
     cancelBubble*: bool
@@ -461,14 +476,12 @@ type
     `type`*: cstring
     isTrusted*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/UIEvent
-  UIEvent* = ref UIEventObj
+  UIEvent* = ref UIEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
   UIEventObj {.importc.} = object of Event
     detail*: int64
     view*: Window
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
-  KeyboardEvent* = ref KeyboardEventObj
+  KeyboardEvent* = ref KeyboardEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent>`_
   KeyboardEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     code*: cstring
@@ -477,8 +490,7 @@ type
     keyCode*: int
     location*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
-  KeyboardEventKey* {.pure.} = enum
+  KeyboardEventKey* {.pure.} = enum ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values>`_
     # Modifier keys
     Alt,
     AltGraph,
@@ -832,8 +844,7 @@ type
     FourthButton = 8,
     FifthButton = 16
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
-  MouseEvent* = ref MouseEventObj
+  MouseEvent* = ref MouseEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent>`_
   MouseEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     button*: int
@@ -851,14 +862,12 @@ type
     File = "file",
     String = "string"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem
-  DataTransferItem* = ref DataTransferItemObj
+  DataTransferItem* = ref DataTransferItemObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem>`_
   DataTransferItemObj {.importc.} = object of RootObj
     kind*: cstring
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer
-  DataTransfer* = ref DataTransferObj
+  DataTransfer* = ref DataTransferObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer>`_
   DataTransferObj {.importc.} = object of RootObj
     dropEffect*: cstring
     effectAllowed*: cstring
@@ -893,8 +902,8 @@ type
     DragStart = "dragstart",
     Drop = "drop"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DragEvent
   DragEvent* {.importc.} = object of MouseEvent
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DragEvent>`_
     dataTransfer*: DataTransfer
 
   TouchList* {.importc.} = ref object of RootObj
@@ -1222,6 +1231,16 @@ proc checkValidity*(e: InputElement): bool
 
 # Blob "methods"
 proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: cstring = "")
+
+# Performance "methods"
+proc now*(p: Performance): float
+
+# LocalStorage "methods"
+proc getItem*(ls: LocalStorage, key: cstring): cstring
+proc setItem*(ls: LocalStorage, key, value: cstring)
+proc hasItem*(ls: LocalStorage, key: cstring): bool
+proc clear*(ls: LocalStorage)
+proc removeItem*(ls: LocalStorage, key: cstring)
 
 {.pop.}
 

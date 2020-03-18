@@ -33,7 +33,7 @@ type
     p: pointer
 
 proc `=destroy`(o: var TMyObj) =
-  if o.p != nil: 
+  if o.p != nil:
     dealloc o.p
     o.p = nil
     echo "myobj destroyed"

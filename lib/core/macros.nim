@@ -1081,7 +1081,7 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[node.len-1]
 
 const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
-                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
@@ -1428,6 +1428,13 @@ else:
       result = eqIdent($node[0], s)
     else:
       result = false
+
+proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
+  ## Check that ``eqIdent(n,name)`` holds true. If this is not the
+  ## case, compilation aborts with an error message. This is useful
+  ## for writing macros that check the AST that is passed to them.
+  if not eqIdent(n, name):
+    error("Expected identifier to be `" & name & "` here", n)
 
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
