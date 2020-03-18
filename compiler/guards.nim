@@ -402,16 +402,20 @@ type
   TModel* = object
     s*: seq[PNode] # the "knowledge base"
     o*: Operators
+    beSmart*: bool
 
 proc addFact*(m: var TModel, nn: PNode) =
   let n = usefulFact(nn, m.o)
   if n != nil:
-    let c = canon(n, m.o)
-    if c.getMagic == mAnd:
-      addFact(m, c[1])
-      addFact(m, c[2])
+    if not m.beSmart:
+      m.s.add n
     else:
-      m.s.add c
+      let c = canon(n, m.o)
+      if c.getMagic == mAnd:
+        addFact(m, c[1])
+        addFact(m, c[2])
+      else:
+        m.s.add c
 
 proc addFactNeg*(m: var TModel, n: PNode) =
   let n = n.neg(m.o)
@@ -809,7 +813,7 @@ proc ple(m: TModel; a, b: PNode): TImplication =
     if lastOrd(nil, a.typ) <= b.intVal: return impYes
   # 3 <= x   iff  low(x) <= 3
   if a.isValue and b.typ != nil and b.typ.isOrdinalType:
-    if firstOrd(nil, b.typ) <= a.intVal: return impYes
+    if a.intVal <= firstOrd(nil, b.typ): return impYes
 
   # x <= x
   if sameTree(a, b): return impYes
