@@ -197,9 +197,32 @@ type
     name: string
     children: seq[CyclicStuff]
 
+  TreeStuff = object
+    name: string
+    children: seq[TreeStuff]
+
+
+  CyclicStuff2 = ref object of RootObj
+    name: string
+    child: ref RootObj
+
 block:
   let cycle1 = CyclicStuff(name: "name1")
   cycle1.children.add cycle1 # very simple cycle
   doAssert $cycle1 == "(name: \"name1\", children: ...)"
+
+  var tree = TreeStuff(name: "name1")
+  var cpy = tree
+  tree.children.add cpy
+  cpy = tree
+  tree.children.add cpy
+
+  doAssert $tree == "(name: \"name1\", children: @[(name: \"name1\", children: @[]), (name: \"name1\", children: @[(name: \"name1\", children: @[])])])"
+
+  let cycle2 = CyclicStuff2(name: "name3")
+  cycle2.child = cycle2
+
+  echo cycle2
+
 
 echo "DONE: tostring.nim"
