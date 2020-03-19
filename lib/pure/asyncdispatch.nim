@@ -168,7 +168,7 @@
 
 include "system/inclrtl"
 
-import os, tables, strutils, times, heapqueue, lists, options, asyncstreams
+import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
 import asyncfutures except callSoon
 

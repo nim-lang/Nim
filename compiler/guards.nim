@@ -250,7 +250,6 @@ proc pred(n: PNode): PNode =
     result = n
 
 proc canon*(n: PNode; o: Operators): PNode =
-  # XXX for now only the new code in 'semparallel' uses this
   if n.safeLen >= 1:
     result = shallowCopy(n)
     for i in 0..<n.len:
@@ -275,7 +274,7 @@ proc canon*(n: PNode; o: Operators): PNode =
     result = negate(result[1], result[2], result, o)
   of someLen:
     result[0] = o.opLen.newSymNode
-  of someLt:
+  of someLt - {mLtF64}:
     # x < y  same as x <= y-1:
     let y = n[2].canon(o)
     let p = pred(y)
@@ -315,12 +314,12 @@ proc canon*(n: PNode; o: Operators): PNode =
         if plus != nil and not isLetLocation(x, true):
           result = buildCall(result[0].sym, plus, y[1])
       else: discard
-    elif x.isValue and y.getMagic in someAdd and y[2].isValue:
+    elif x.isValue and y.getMagic in someAdd and y[2].kind == x.kind:
       # 0 <= a.len + 3
       # -3 <= a.len
       result[1] = x |-| y[2]
       result[2] = y[1]
-    elif x.isValue and y.getMagic in someSub and y[2].isValue:
+    elif x.isValue and y.getMagic in someSub and y[2].kind == x.kind:
       # 0 <= a.len - 3
       # 3 <= a.len
       result[1] = x |+| y[2]
@@ -339,6 +338,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     else:
       if isLetLocation(n[1], true) or isLetLocation(n[2], true):
         # XXX algebraic simplifications!  'i-1 < a.len' --> 'i < a.len+1'
+        result = n
+      elif n[1].getMagic in someLen or n[2].getMagic in someLen:
         result = n
   of someLe+someLt:
     if isLetLocation(n[1], true) or isLetLocation(n[2], true):
@@ -401,10 +402,20 @@ type
   TModel* = object
     s*: seq[PNode] # the "knowledge base"
     o*: Operators
+    beSmart*: bool
 
 proc addFact*(m: var TModel, nn: PNode) =
   let n = usefulFact(nn, m.o)
-  if n != nil: m.s.add n
+  if n != nil:
+    if not m.beSmart:
+      m.s.add n
+    else:
+      let c = canon(n, m.o)
+      if c.getMagic == mAnd:
+        addFact(m, c[1])
+        addFact(m, c[2])
+      else:
+        m.s.add c
 
 proc addFactNeg*(m: var TModel, n: PNode) =
   let n = n.neg(m.o)
@@ -614,6 +625,9 @@ proc impliesGe(fact, x, c: PNode): TImplication =
 
 proc impliesLe(fact, x, c: PNode): TImplication =
   if not isLocation(x):
+    if c.isValue:
+      if leValue(x, x): return impYes
+      else: return impNo
     return impliesGe(fact, c, x)
   case fact[0].sym.magic
   of someEq:
@@ -799,7 +813,7 @@ proc ple(m: TModel; a, b: PNode): TImplication =
     if lastOrd(nil, a.typ) <= b.intVal: return impYes
   # 3 <= x   iff  low(x) <= 3
   if a.isValue and b.typ != nil and b.typ.isOrdinalType:
-    if firstOrd(nil, b.typ) <= a.intVal: return impYes
+    if a.intVal <= firstOrd(nil, b.typ): return impYes
 
   # x <= x
   if sameTree(a, b): return impYes
@@ -810,7 +824,11 @@ proc ple(m: TModel; a, b: PNode): TImplication =
 
   #   x <= y+c  if 0 <= c and x <= y
   #   x <= y+(-c)  if c <= 0  and y >= x
-  if b.getMagic in someAdd and zero() <=? b[2] and a <=? b[1]: return impYes
+  if b.getMagic in someAdd:
+    if zero() <=? b[2] and a <=? b[1]: return impYes
+    # x <= y-c  if x+c <= y
+    if b[2] <=? zero() and (canon(m.o.opSub.buildCall(a, b[2]), m.o) <=? b[1]):
+      return impYes
 
   #   x+c <= y  if c <= 0 and x <= y
   if a.getMagic in someAdd and a[2] <=? zero() and a[1] <=? b: return impYes
@@ -899,10 +917,13 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
       # --> true  if  (len-100) <= (len-1)
       let x = fact[1]
       let y = fact[2]
-      if sameTree(x, a) and y.getMagic in someAdd and b.getMagic in someAdd and
-         sameTree(y[1], b[1]):
-        if ple(m, b[2], y[2]) == impYes:
-          return impYes
+      # x <= y.
+      # Question: x <= b? True iff y <= b.
+      if sameTree(x, a):
+        if ple(m, y, b) == impYes: return impYes
+        if y.getMagic in someAdd and b.getMagic in someAdd and sameTree(y[1], b[1]):
+          if ple(m, b[2], y[2]) == impYes:
+            return impYes
 
       # x <= y implies a <= b  if  a <= x and y <= b
       if ple(m, a, x) == impYes:
@@ -960,6 +981,10 @@ proc proveLe*(m: TModel; a, b: PNode): TImplication =
 
 proc addFactLe*(m: var TModel; a, b: PNode) =
   m.s.add canon(m.o.opLe.buildCall(a, b), m.o)
+
+proc addFactLt*(m: var TModel; a, b: PNode) =
+  let bb = m.o.opAdd.buildCall(b, minusOne())
+  addFactLe(m, a, bb)
 
 proc settype(n: PNode): PType =
   result = newType(tySet, n.typ.owner)

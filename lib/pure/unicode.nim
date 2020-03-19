@@ -933,27 +933,23 @@ proc stringHasSep(s: string, index: int, sep: Rune): bool =
   fastRuneAt(s, index, rune, false)
   return sep == rune
 
-template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
+template splitCommon(s, sep, maxsplit: untyped) =
   ## Common code for split procedures.
+  let
+    sLen = len(s)
   var
     last = 0
     splits = maxsplit
-  if len(s) > 0:
-    while last <= len(s):
+  if sLen > 0:
+    while last <= sLen:
       var first = last
-      while last < len(s) and not stringHasSep(s, last, sep):
-        when sep is Rune:
-          inc(last, sepLen)
-        else:
-          inc(last, runeLenAt(s, last))
-      if splits == 0: last = len(s)
+      while last < sLen and not stringHasSep(s, last, sep):
+        inc(last, runeLenAt(s, last))
+      if splits == 0: last = sLen
       yield s[first .. (last - 1)]
       if splits == 0: break
       dec(splits)
-      when sep is Rune:
-        inc(last, sepLen)
-      else:
-        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+      inc(last, if last < sLen: runeLenAt(s, last) else: 1)
 
 iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   maxsplit: int = -1): string =
@@ -1037,7 +1033,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit, sep.size)
+  splitCommon(s, sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):
     seq[string] {.noSideEffect, rtl, extern: "nucSplitRunes".} =
@@ -1424,6 +1420,7 @@ when isMainModule:
         "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+    doAssert s3.split("×".runeAt(0)) == @[":this", "is", "an:example", "", ""]
 
   block stripTests:
     doAssert(strip("") == "")

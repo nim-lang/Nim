@@ -334,20 +334,21 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)
   when defined(memProfiler): nimProfile(size)
 
+{.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = roundup(addInt(mulInt(len, typ.base.size), GenericSeqSize),
-                     MemAlign)
+  let size = roundup(len * typ.base.size + GenericSeqSize, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   zeroMem(result, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 
 proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
-  let size = roundup(addInt(len, GenericSeqSize), MemAlign)
+  let size = roundup(len + GenericSeqSize, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   if init: zeroMem(result, size)
   cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = len
+{.pop.}
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)

@@ -30,7 +30,7 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
+import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
 export httpcore except parseHeader

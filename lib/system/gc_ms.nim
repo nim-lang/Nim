@@ -305,20 +305,22 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   when defined(memProfiler): nimProfile(size)
 
 when not defined(nimSeqsV2):
+  {.push overflowChecks: on.}
   proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
     # `newObj` already uses locks, so no need for them here.
-    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    let size = len * typ.base.size + GenericSeqSize
     result = newObj(typ, size)
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
     when defined(memProfiler): nimProfile(size)
 
   proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-    let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+    let size = len * typ.base.size + GenericSeqSize
     result = newObj(typ, size)
     cast[PGenericSeq](result).len = len
     cast[PGenericSeq](result).reserved = len
     when defined(memProfiler): nimProfile(size)
+  {.pop.}
 
   proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
     collectCT(gch, newsize + sizeof(Cell))

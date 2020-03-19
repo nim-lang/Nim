@@ -74,6 +74,7 @@ proc sameTree*(a, b: PNode): bool =
         result = true
 
 proc getMagic*(op: PNode): TMagic =
+  if op == nil: return mNone
   case op.kind
   of nkCallKinds:
     case op[0].kind

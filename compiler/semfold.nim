@@ -439,7 +439,6 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       result = newIntNodeT(toInt128(getFloat(a)), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
-
       if check: rangeCheck(n, val, g)
       result = newIntNodeT(val, n, g)
       if dstTyp.kind in {tyUInt..tyUInt64}:

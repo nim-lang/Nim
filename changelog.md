@@ -3,6 +3,12 @@
 
 ## Changes affecting backwards compatibility
 
+- The Nim compiler now implements a faster way to detect overflows based
+  on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
+  supports these). Some versions of GCC lack this feature and unfortunately
+  we cannot detect this case reliably. So if you get compilation errors like
+  "undefined reference to '__builtin_saddll_overflow'" compile your programs
+  with `-d:nimEmulateOverflowChecks`.
 
 
 ### Breaking changes in the standard library
@@ -31,6 +37,13 @@
   and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
   behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
+- `times.parse` now only uses input to compute its result, and not `now`:
+  `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
+  `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
+  used on 29th, 30th, 31st of each month.
+- `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
+  usage. The `$` operator can be used to obtain the string form of `HttpCode`
+  for comparison if desired.
 
 ### Breaking changes in the compiler
 
@@ -62,7 +75,7 @@
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
-- Added `typetraits.lenTuple` to get number of elements of a tuple/type tuple,
+- Added `typetraits.tupleLen` to get number of elements of a tuple/type tuple,
   and `typetraits.get` to get the ith element of a type tuple.
 - Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
 - Added `os.normalizePathEnd` for additional path sanitization.
@@ -122,6 +135,7 @@ echo f
 - `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
   empty. This was required for intuitive behaviour of the strscans module
   (see bug #13605).
+- `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
 
 
 ## Language additions
@@ -157,6 +171,14 @@ echo f
 - The compiler now inferes "sink parameters". To disable this for a specific routine,
   annotate it with `.nosinks`. To disable it for a section of code, use
   `{.push sinkInference: off.}`...`{.pop.}`.
+- The compiler now supports a new switch `--panics:on` that turns runtime
+  errors like `IndexError` or `OverflowError` into fatal errors that **cannot**
+  be caught via Nim's `try` statement. `--panics:on` can improve the
+  runtime efficiency and code size of your program significantly.
+- The compiler now warns about inheriting directly from `system.Exception` as
+  this is **very bad** style. You should inherit from `ValueError`, `IOError`,
+  `OSError` or from a different specific exception type that inherits from
+  `CatchableError` and cannot be confused with a `Defect`.
 
 
 ## Bugfixes

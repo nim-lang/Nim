@@ -35,14 +35,7 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
     doAssert a == 43
 
   result = newNimNode(nnkStmtList, arg)
-  expectKind calls, nnkArgList
-  let body =
-    if calls.len == 1 and calls[0].kind in {nnkStmtList, nnkStmtListExpr}:
-      calls[0]
-    else:
-      calls
-  for call in body:
-    result.add underscoredCall(call, arg)
+  underscoredCalls(result, calls, arg)
 
 when isMainModule:
   type
