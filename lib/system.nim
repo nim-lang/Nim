@@ -2103,6 +2103,8 @@ proc addQuoted*[T](s: var string, x: T) =
   ##   tmp.addQuoted('c')
   ##   assert(tmp == """1, "string", 'c'""")
   when T is string or T is cstring:
+    when T is cstring:
+      if x == nil: s.add "nil"; return
     s.add("\"")
     for c in x:
       # Only ASCII chars are escaped to avoid butchering

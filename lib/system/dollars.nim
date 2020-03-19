@@ -195,3 +195,5 @@ proc `$`*[T: proc](arg: T): string =
     return "nil"
   else:
     return "..."
+
+proc `$`*[T](arg: UncheckedArray[T]): string = "[...]"

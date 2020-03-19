@@ -226,10 +226,11 @@ type
   MyTypeWithProc = object
     name: string
     fun: proc(arg: int): int
+    cstr: cstring
 
 block:
   var tmp: MyTypeWithProc
   tmp.name = "Some Name"
-  doAssert $tmp == "(name: \"Some Name\", fun: nil)"
+  doAssert $tmp == "(name: \"Some Name\", fun: nil, cstr: nil)"
 
 echo "DONE: tostring.nim"
