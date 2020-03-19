@@ -126,6 +126,7 @@ echo f
 - `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
   empty. This was required for intuitive behaviour of the strscans module
   (see bug #13605).
+- `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
 
 
 ## Language additions
