@@ -61,10 +61,6 @@ var
   currException {.threadvar.}: ref Exception
   gcFramePtr {.threadvar.}: GcFrame
 
-when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
-  var
-    raiseCounter {.threadvar.}: uint
-
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
                      excHandler: PSafePoint, currException: ref Exception]
@@ -123,19 +119,7 @@ proc popCurrentException {.compilerRtl, inl.} =
   #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
-  # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
-  if currException.raiseId == id:
-    currException = currException.up
-  else:
-    var cur = currException.up
-    var prev = currException
-    while cur != nil and cur.raiseId != id:
-      prev = cur
-      cur = cur.up
-    if cur == nil:
-      showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
-      quit(1)
-    prev.up = cur.up
+  discard "only for bootstrapping compatbility"
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   currException = e
@@ -444,11 +428,7 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       {.emit: "throw;".}
     else:
       pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+      {.emit: "throw e;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
@@ -562,9 +542,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
 
     var msg = "Unknown error in unexpected exception handler"
     try:
-      {.emit"#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
+      {.emit: "#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
-      {.emit"#endif".}
+      {.emit: "#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
@@ -573,9 +553,9 @@ when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     except:
       msg = "Error: unhandled unknown cpp exception"
 
-    {.emit"#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
+    {.emit: "#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
     msg = "Error: unhandled unknown cpp exception"
-    {.emit"#endif".}
+    {.emit: "#endif".}
 
     when defined(genode):
       # stderr not available by default, use the LOG session

@@ -609,13 +609,14 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check)])
       if typ.isException and m.config.exc == excCpp:
-        appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
-        if typ.sym.magic == mException:
-          # Add cleanup destructor to Exception base class
-          appcg(m, result, "~$1();$n", [name])
-          # define it out of the class body and into the procs section so we don't have to
-          # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
-          appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
+        when false:
+          appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
+          if typ.sym.magic == mException:
+            # Add cleanup destructor to Exception base class
+            appcg(m, result, "~$1();$n", [name])
+            # define it out of the class body and into the procs section so we don't have to
+            # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
+            appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",

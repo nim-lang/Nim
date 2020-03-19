@@ -296,7 +296,11 @@ proc boot(args: string) =
 
   let nimStart = findStartNim().quoteShell()
   for i in 0..2:
-    let defaultCommand = if useCpp: "cpp" else: "c"
+    # Nim versions < (1, 1) expect Nim's exception type to have a 'raiseId' field for
+    # C++ interop. Later Nim versions do this differently and removed the 'raiseId' field.
+    # Thus we always bootstrap the first iteration with "c" and not with "cpp" as
+    # a workaround.
+    let defaultCommand = if useCpp and i > 0: "cpp" else: "c"
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
