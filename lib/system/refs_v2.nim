@@ -70,7 +70,7 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
   else:
     result = alloc0(s) +! sizeof(RefHeader)
   when traceCollector:
-    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
 proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   # Same as 'newNewObj' but do not initialize the memory to zero.
@@ -87,7 +87,7 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   orig.rc = 0
   result = orig +! sizeof(RefHeader)
   when traceCollector:
-    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   dec head(p).rc, rcIncrement
@@ -128,7 +128,10 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   nimRawDispose(p)
 
 when defined(gcOrc):
-  include cyclicrefs_v2
+  when defined(nimThinout):
+    include cyclebreaker
+  else:
+    include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:

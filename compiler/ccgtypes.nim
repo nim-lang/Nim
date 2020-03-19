@@ -1291,6 +1291,11 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     genProc(m, theProc)
     result = theProc.loc.r
   else:
+    if op == attachedTrace and m.config.selectedGC == gcOrc and
+        containsGarbageCollectedRef(t):
+      when false:
+        # re-enable this check
+        internalError(m.config, info, "no attached trace proc found")
     result = rope("NIM_NIL")
 
 proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =

@@ -1,5 +1,5 @@
 discard """
-  output: "5000"
+  outputsub: "result: 5000"
   cmd: "nim c --gc:arc $file"
 """
 
@@ -59,11 +59,16 @@ proc createServer(port: Port) {.async.} =
   while true:
     asyncCheck readMessages(await accept(server))
 
-asyncCheck createServer(Port(10335))
-asyncCheck launchSwarm(Port(10335))
-while true:
-  poll()
-  if clientCount == swarmSize: break
+proc main =
+  asyncCheck createServer(Port(10335))
+  asyncCheck launchSwarm(Port(10335))
+  while true:
+    poll()
+    if clientCount == swarmSize: break
+
+let mem = getOccupiedMem()
+main()
 
 assert msgCount == swarmSize * messagesToSend
-echo msgCount
+echo "result: ", msgCount
+echo "memory: ", formatSize(getOccupiedMem() - mem)
