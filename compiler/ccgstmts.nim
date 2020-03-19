@@ -961,6 +961,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
       } else if (...) {
 
       } else {
+        throw;
       }
     } catch(...) {
       // C++ exception occured, not under Nim's control.
@@ -998,12 +999,14 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
   var hasImportedCppExceptions = false
   var i = 1
   var hasIf = false
+  var hasElse = false
   while (i < t.len) and (t[i].kind == nkExceptBranch):
     # bug #4230: avoid false sharing between branches:
     if d.k == locTemp and isEmptyType(t.typ): d.k = locNone
     if t[i].len == 1:
       hasImportedCppExceptions = true
       # general except section:
+      hasElse = true
       if hasIf: lineF(p, cpsStmts, "else ", [])
       startBlock(p)
       # we handled the error:
@@ -1047,7 +1050,8 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
         linefmt(p, cpsStmts, "#popCurrentException();$n", [])
         endBlock(p)
     inc(i)
-
+  if hasIf and not hasElse:
+    linefmt(p, cpsStmts, "else throw;$n", [etmp])
   linefmt(p, cpsStmts, "}$n", [])
 
   # Second pass: handle C++ based exceptions:
