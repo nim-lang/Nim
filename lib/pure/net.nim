@@ -527,20 +527,21 @@ when defineSsl:
     ## are available with the addition of ``protSSLv23`` which allows for
     ## compatibility with all of them.
     ##
-    ## There are currently only two options for verify mode;
-    ## one is ``CVerifyNone`` and with it certificates will not be verified
-    ## the other is ``CVerifyPeer`` and certificates will be verified for
-    ## it, ``CVerifyPeer`` is the safest choice.
+    ## There are three options for verify mode:
+    ## ``CVerifyNone``: certificates are not verified;
+    ## ``CVerifyPeer``: certificates are verified;
+    ## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+    ## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+    ## locate certificates
     ##
-    ## If `verifyMode` is set to ``CVerifyPeerUseEnvVars``, setting
-    ## NIM_SSL_CERT_VALIDATION=insecure as an environment variable will disable
-    ## certificate verification globally (and produce a warning).
+    ## The `nimDisableCertificateValidation` define overrides verifyMode and
+    ## disables certificate verification globally!
     ##
     ## CA certificates will be loaded, in the following order, from:
     ##
     ##  - caFile, caDir, parameters, if set
     ##  - if `verifyMode` is set to ``CVerifyPeerUseEnvVars``,
-    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables
+    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
     ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
     ## The last two parameters specify the certificate file path and the key file
@@ -565,21 +566,11 @@ when defineSsl:
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
 
-    var verifyMode = verifyMode
-    if verifyMode == CVerifyPeerUseEnvVars:
-      if getEnv("NIM_SSL_CERT_VALIDATION") == "insecure":
-        echo "WARNING: SSL certificate validation is disabled."
-        verifyMode = CVerifyNone
-      else:
-        verifyMode = CVerifyPeer
-
     case verifyMode
-    of CVerifyPeer:
+    of CVerifyPeer, CVerifyPeerUseEnvVars:
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
     of CVerifyNone:
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
-    of CVerifyPeerUseEnvVars:
-      doAssert false
     if newCTX == nil:
       raiseSSLError()
 
@@ -587,11 +578,14 @@ when defineSsl:
     newCTX.loadCertificates(certFile, keyFile)
 
     if verifyMode != CVerifyNone:
+      # Use the caDir and caFile parameters if set
       if caDir != "" or caFile != "":
         if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
           raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
       else:
+        # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
+        # the SSL_CERT_FILE and SSL_CERT_DIR env vars
         var found = false
         for fn in scanSSLCertificates():
           if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
@@ -705,18 +699,17 @@ when defineSsl:
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
     assert socket.isSSL
-    if getEnv("NIM_SSL_CERT_VALIDATION") != "insecure":
-      let certificate = socket.sslHandle.SSL_get_peer_certificate()
-      if certificate.isNil:
-        raiseSSLError("No SSL certificate found.")
+    let certificate = socket.sslHandle.SSL_get_peer_certificate()
+    if certificate.isNil:
+      raiseSSLError("No SSL certificate found.")
 
-      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-      const size = 1024
-      var peername: cstring = newString(size)
-      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
-      if match != 1:
-        raiseSSLError("SSL Certificate check failed.")
+    const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+    const size = 1024
+    var peername: cstring = newString(size)
+    let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+      X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+    if match != 1:
+      raiseSSLError("SSL Certificate check failed.")
 
   proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
                             handshake: SslHandshakeType,
@@ -741,8 +734,9 @@ when defineSsl:
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      if hostname.len > 0 and not isIpAddress(hostname):
-        socket.checkCertName(hostname)
+      when not defined(nimDisableCertificateValidation):
+        if hostname.len > 0 and not isIpAddress(hostname):
+          socket.checkCertName(hostname)
     of handshakeAsServer:
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
@@ -1699,8 +1693,9 @@ proc connect*(socket: Socket, address: string,
 
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      if not isIpAddress(address):
-        socket.checkCertName(address)
+      when not defined(nimDisableCertificateValidation):
+        if not isIpAddress(address):
+          socket.checkCertName(address)
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =

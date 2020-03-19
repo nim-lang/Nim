@@ -714,4 +714,3 @@ when isMainModule:
   let cert = d2i_X509(certbytes)
   let encoded = cert.i2d_X509()
   assert encoded == certbytes
-  echo "OK"

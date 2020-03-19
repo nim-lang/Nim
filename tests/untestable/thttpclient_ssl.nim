@@ -24,7 +24,8 @@ import
 type
   # bad and dubious tests should not pass SSL validation
   # "_broken" mark the test as skipped while checking that it is
-  # really failing
+  # actually still failing
+  # TODO: chase and fix the broken tests
   Category = enum
     good, bad, dubious, good_broken, bad_broken, dubious_broken
   CertTest = tuple[url:string, category:Category, desc: string]
@@ -41,7 +42,7 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://no-common-name.badssl.com/", dubious_broken, "no-common-name"),
   ("https://no-subject.badssl.com/", dubious_broken, "no-subject"),
   ("https://incomplete-chain.badssl.com/", dubious, "incomplete-chain"),
-  ("https://sha1-intermediate.badssl.com/", bad_broken, "sha1-intermediate"),
+  ("https://sha1-intermediate.badssl.com/", bad, "sha1-intermediate"),
   ("https://sha256.badssl.com/", good, "sha256"),
   ("https://sha384.badssl.com/", good, "sha384"),
   ("https://sha512.badssl.com/", good, "sha512"),
@@ -63,14 +64,14 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://mozilla-modern.badssl.com/", good, "mozilla-modern"),
   ("https://dh480.badssl.com/", bad, "dh480"),
   ("https://dh512.badssl.com/", bad, "dh512"),
-  ("https://dh1024.badssl.com/", dubious_broken, "dh1024"),
+  ("https://dh1024.badssl.com/", dubious, "dh1024"),
   ("https://dh2048.badssl.com/", good, "dh2048"),
   ("https://dh-small-subgroup.badssl.com/", bad_broken, "dh-small-subgroup"),
-  ("https://dh-composite.badssl.com/", bad_broken, "dh-composite"),
+  ("https://dh-composite.badssl.com/", bad, "dh-composite"),
   ("https://static-rsa.badssl.com/", dubious_broken, "static-rsa"),
-  ("https://tls-v1-0.badssl.com:1010/", dubious_broken, "tls-v1-0"),
-  ("https://tls-v1-1.badssl.com:1011/", dubious_broken, "tls-v1-1"),
-  ("https://invalid-expected-sct.badssl.com/", bad_broken, "invalid-expected-sct"),
+  ("https://tls-v1-0.badssl.com:1010/", dubious, "tls-v1-0"),
+  ("https://tls-v1-1.badssl.com:1011/", dubious, "tls-v1-1"),
+  ("https://invalid-expected-sct.badssl.com/", bad, "invalid-expected-sct"),
   ("https://hsts.badssl.com/", good, "hsts"),
   ("https://upgrade.badssl.com/", good, "upgrade"),
   ("https://preloaded-hsts.badssl.com/", good, "preloaded-hsts"),
@@ -96,7 +97,8 @@ suite "SSL certificate check - httpclient":
   for i, ct in certificate_tests:
 
     test ct.desc:
-      var client = newHttpClient()
+      var ctx = newContext(verifyMode=CVerifyPeer)
+      var client = newHttpClient(sslContext=ctx)
       let exception_msg =
         try:
           let a = $client.getContent(ct.url)
@@ -139,7 +141,8 @@ proc run_t_test(ct: CertTest): TTOutcome {.thread.} =
   ## Run test in a {.thread.} - return by ref
   result = TTOutcome(desc:ct.desc, exception_msg:"", category: ct.category)
   try:
-    var client = newHttpClient()
+    var ctx = newContext(verifyMode=CVerifyPeer)
+    var client = newHttpClient(sslContext=ctx)
     let a = $client.getContent(ct.url)
   except:
     result.exception_msg = getCurrentExceptionMsg()
@@ -185,13 +188,13 @@ suite "SSL certificate check - httpclient - threaded":
 
 
 type NetSocketTest = tuple[hostname: string, port: Port, category:Category, desc: string]
-const net_tests:array[0..4, NetSocketTest] = [
+const net_tests:array[0..3, NetSocketTest] = [
   ("imap.gmail.com", 993.Port, good, "IMAP"),
   ("wrong.host.badssl.com", 443.Port, bad, "wrong.host"),
   ("captive-portal.badssl.com", 443.Port, bad, "captive-portal"),
   ("expired.badssl.com", 443.Port, bad, "expired"),
-  ("null.badssl.com", 443.Port, bad, "null"),
 ]
+# TODO: ("null.badssl.com", 443.Port, bad_broken, "null"),
 
 
 suite "SSL certificate check - sockets":
