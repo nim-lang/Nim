@@ -36,7 +36,8 @@ type
     warnUnusedImportX,
     warnInheritFromException,
     warnEachIdentIsTuple,
-    warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
+    warnProveInit, warnProveField, warnProveIndex, 
+    warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
     hintSuccess, hintSuccessX, hintCC,
@@ -87,6 +88,7 @@ const
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
+    warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
     warnUninit: "'$1' might not have been initialized",
@@ -142,7 +144,8 @@ const
     "TypelessParam", "UseBase", "WriteToForeignHeap",
     "UnsafeCode", "UnusedImport", "InheritFromException",
     "EachIdentIsTuple",
-    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
+    "ProveInit", "ProveField", "ProveIndex",
+    "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "CaseTransition", "CycleCreated", "User"]
 

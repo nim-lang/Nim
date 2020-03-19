@@ -55,3 +55,8 @@ const x0 = fun()
 echo typeof(x0)
 
 discard $x0
+
+# bug #13671
+
+const x1 = cast[uint](-1)
+discard $(x1,)

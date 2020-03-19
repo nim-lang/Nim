@@ -451,6 +451,7 @@ for expressions of type ``lent T`` or of type ``var T``.
     result = Tree(kids: kids)
     # converted into:
     `=sink`(result.kids, kids); wasMoved(kids)
+    `=destroy`(kids)
 
   proc `[]`*(x: Tree; i: int): lent Tree =
     result = x.kids[i]

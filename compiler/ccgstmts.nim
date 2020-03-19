@@ -1040,27 +1040,14 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let lab = p.labels
   p.nestedTryStmts.add((fin, false, Natural lab))
 
-  if not bodyCanRaise(p, t):
-    # optimize away the 'try' block:
-    expr(p, t[0], d)
-    linefmt(p, cpsStmts, "LA$1_: ;$n", [lab])
-    if fin != nil:
-      genStmts(p, fin[0])
-    discard pop(p.nestedTryStmts)
-    return
-
   p.flags.incl nimErrorFlagAccessed
-  p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErr$1_;$n", [lab]))
-  linefmt(p, cpsStmts, "oldNimErr$1_ = *nimErr_; *nimErr_ = 0;;$n", [lab])
-
   expr(p, t[0], d)
 
   if 1 < t.len and t[1].kind == nkExceptBranch:
     startBlock(p, "if (NIM_UNLIKELY(*nimErr_)) {$n")
   else:
     startBlock(p)
-  # pretend we did handle the error for the safe execution of the sections:
-  linefmt(p, cpsStmts, "LA$1_: oldNimErr$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
+  linefmt(p, cpsStmts, "LA$1_:;$n", [lab])
 
   p.nestedTryStmts[^1].inExcept = true
   var i = 1
@@ -1077,7 +1064,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       if i > 1: lineF(p, cpsStmts, "else", [])
       startBlock(p)
       # we handled the exception, remember this:
-      linefmt(p, cpsStmts, "--oldNimErr$1_;$n", [lab])
+      linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
       expr(p, t[i][0], d)
     else:
       var orExpr: Rope = nil
@@ -1094,7 +1081,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       if i > 1: line(p, cpsStmts, "else ")
       startBlock(p, "if ($1) {$n", [orExpr])
       # we handled the exception, remember this:
-      linefmt(p, cpsStmts, "--oldNimErr$1_;$n", [lab])
+      linefmt(p, cpsStmts, "*nimErr_ = NIM_FALSE;$n", [])
       expr(p, t[i][^1], d)
 
     linefmt(p, cpsStmts, "#popCurrentException();$n", [])
@@ -1105,7 +1092,6 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   discard pop(p.nestedTryStmts)
   endBlock(p)
 
-  #linefmt(p, cpsStmts, "LA$1_:;$n", [lab+1])
   if i < t.len and t[i].kind == nkFinally:
     startBlock(p)
     if not bodyCanRaise(p, t[i][0]):
@@ -1114,8 +1100,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-      p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErrFin$1_;$n", [lab]))
-      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
+      p.procSec(cpsLocals).add(ropecg(p.module, "NIM_BOOL oldNimErrFin$1_;$n", [lab]))
+      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = NIM_FALSE;$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
       # 1. finally is run during ordinary control flow
@@ -1123,10 +1109,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       #    error back to nil.
       # 3. finally is run for exception handling code without any 'except'
       #    handler present or only handlers that did not match.
-      linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_ + (*nimErr_ - oldNimErrFin$1_); oldNimErr$1_ = 0;$n", [lab])
+      linefmt(p, cpsStmts, "*nimErr_ = oldNimErrFin$1_;$n", [lab])
     endBlock(p)
-  # restore the real error value:
-  linefmt(p, cpsStmts, "*nimErr_ += oldNimErr$1_;$n", [lab])
   if p.prc != nil: raiseExit(p)
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =

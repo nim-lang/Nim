@@ -717,7 +717,6 @@ proc main() =
   of "c", "cat", "category":
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
-    p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
   of "pcat":
     skips = loadSkipFrom(skipFrom)

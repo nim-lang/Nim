@@ -2573,6 +2573,10 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       else:
         putLocIntoDest(p, d, sym.loc)
     of skTemp:
+      if sym.loc.r == nil:
+        # we now support undeclared 'skTemp' variables for easier
+        # transformations in other parts of the compiler:
+        assignLocalVar(p, n)
       if sym.loc.r == nil or sym.loc.t == nil:
         #echo "FAILED FOR PRCO ", p.prc.name.s
         #echo renderTree(p.prc.ast, {renderIds})
