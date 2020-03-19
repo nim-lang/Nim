@@ -189,3 +189,9 @@ proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
 
 proc `$`*[T: distinct](arg: T): string =
   $distinctBase(T)(arg)
+
+proc `$`*[T: proc](arg: T): string =
+  if arg == nil:
+    return "nil"
+  else:
+    return "..."

@@ -222,4 +222,14 @@ block:
   let cycle2 = CyclicStuff2(name: "name3")
   cycle2.child = cycle2
 
+type
+  MyTypeWithProc = object
+    name: string
+    fun: proc(arg: int): int
+
+block:
+  var tmp: MyTypeWithProc
+  tmp.name = "Some Name"
+  doAssert $tmp == "(name: \"Some Name\", fun: nil)"
+
 echo "DONE: tostring.nim"
