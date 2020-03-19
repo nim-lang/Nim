@@ -202,6 +202,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
       result = newType(tyError, context).toNode(traitCall.info)
+  of "isRecursivePointer":
+    let operand = operand.skipTypes({tyGenericInst})
+    let cond = isRecursivePointer(operand)
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)

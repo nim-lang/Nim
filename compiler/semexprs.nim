@@ -2259,11 +2259,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
-  of mTypeIsRecursive:
-    let arg = semExprWithType(c, n[1], {efDetermineType})
-    result = newIntNode(nkIntLit, cast[int](isRecursive(arg.typ)))
-    result.typ = getSysType(c.graph, n.info, tyBool)
-    result.info = n.info
   else:
     result = semDirectOp(c, n, flags)
 

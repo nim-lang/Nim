@@ -1635,21 +1635,21 @@ proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()
   isTupleRecursive(t, cycleDetector)
 
-proc isObjectRecursive(typ: PType, isPointer: bool): bool =
+proc isRecursivePointer(typ: PType, isPointer: bool): bool =
   if typ == nil:
     return false
   case typ.kind:
     of tyObject, tyTuple:
       return isPointer and canFormAcycle(typ)
     of tyRef, tyPtr:
-      return isObjectRecursive(typ.lastSon, isPointer = true)
+      return isRecursivePointer(typ.lastSon, isPointer = true)
     of tyAlias, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence, tyDistinct:
-      return isObjectRecursive(typ.lastSon, isPointer)
+      return isRecursivePointer(typ.lastSon, isPointer)
     else:
       return false
 
-proc isRecursive*(t: PType): bool =
-  isObjectRecursive(t, false)
+proc isRecursivePointer*(t: PType): bool =
+  isRecursivePointer(t, false)
 
 
 proc isException*(t: PType): bool =

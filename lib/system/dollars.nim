@@ -69,12 +69,9 @@ type
   SomePointer = ptr | ref | pointer
 
 when defined(nimHasTypeIsRecursive):
-  proc typeIsRecursive[T](obj: T): bool {.magic: "TypeIsRecursive".} =
-    ## Is substituted with `true`, if any of the recursive member of
-    ## `T` point back to `T`.
-    false
+  proc isRecursivePointer(t: typedesc): bool {.magic: "TypeTrait".}
 else:
-  template typeIsRecursive(obj: untyped): bool = false
+  template isRecursivePointer(t: typedesc): bool = false
 
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
@@ -94,16 +91,12 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(name)
       result.add(": ")
 
-    when typeIsRecursive(value):
-      when value is SomePointer:
-        if value == typeof(value)(nil):
-          # nil can always be printed safely
-          result.add "nil"
-        else:
-          # value may have a cycle, don't print it.
-          result.add("...")
+    when isRecursivePointer(typeof(value)):
+      if cast[pointer](value) == nil:
+        # nil can always be printed safely
+        result.add "nil"
       else:
-        # probably some distinct pointer
+        # value may cycle back to origin, don't print it.
         result.add("...")
     else:
       result.addQuoted(value)
