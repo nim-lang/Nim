@@ -102,8 +102,4 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric
-<<<<<<< HEAD
-  incl result.flags, sfAlwaysReturn
-=======
   incl result.flags, sfNeverRaises
->>>>>>> devel

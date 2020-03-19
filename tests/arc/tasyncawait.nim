@@ -57,9 +57,7 @@ proc createServer(port: Port) {.async.} =
 
   discard server.SocketHandle.listen()
   while true:
-    let msgs = readMessages(await accept(server))
-    asyncCheck msgs
-    when declared(thinout): thinout(msgs)
+    asyncCheck readMessages(await accept(server))
 
 proc main =
   asyncCheck createServer(Port(10335))

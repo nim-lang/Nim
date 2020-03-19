@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''Welcome to LoopTesterApp, Nim edition
+  output: '''Welcome to LoopTesterApp, Nim edition
 Constructing Simple CFG...
 15000 dummy loops
 Constructing CFG...
@@ -180,8 +180,8 @@ proc dfs(currentNode: BasicBlock, nodes: var seq[UnionFindNode],
   last[number[currentNode]] = current
 
 proc findLoops(self: var HavlakLoopFinder): int =
-  #var startNode =
-  if self.cfg.startNode == nil: return 0
+  var startNode = self.cfg.startNode
+  if startNode == nil: return 0
   var size = self.cfg.basicBlockMap.len
 
   var nonBackPreds = newSeq[HashSet[int]]()
@@ -203,7 +203,7 @@ proc findLoops(self: var HavlakLoopFinder): int =
   #   - unreached BB's are marked as dead.
   #
   for v in self.cfg.basicBlockMap.values: number[v] = UNVISITED
-  dfs(self.cfg.startNode, nodes, number, last, 0)
+  dfs(startNode, nodes, number, last, 0)
 
   # Step b:
   #   - iterate over all nodes.
@@ -375,7 +375,7 @@ proc buildBaseLoop(self: var LoopTesterApp, from1: int): int =
   self.buildConnect(footer, from1)
   result = self.buildStraight(footer, 1)
 
-proc run(self: var LoopTesterApp): BasicBlock =
+proc run(self: var LoopTesterApp) =
   echo "Welcome to LoopTesterApp, Nim edition"
   echo "Constructing Simple CFG..."
 
@@ -394,7 +394,7 @@ proc run(self: var LoopTesterApp): BasicBlock =
   echo "Constructing CFG..."
   var n = 2
 
-  when true:
+  when not defined(gcOrc):
     # currently cycle detection is so slow that we disable this part
     for parlooptrees in 1..10:
       discard self.cfg.createNode(n + 1)
@@ -426,26 +426,15 @@ proc run(self: var LoopTesterApp): BasicBlock =
       #echo getOccupiedMem()
   echo "\nFound ", loops, " loops (including artificial root node) (", sum, ")"
 
-  result = self.cfg.startNode
-
   when false:
     echo("Total memory available: " & formatSize(getTotalMem()) & " bytes")
     echo("Free memory: " & formatSize(getFreeMem()) & " bytes")
 
 proc main =
   var l = newLoopTesterApp()
-  when declared(thinout):
-    thinout l.run
-  else:
-    discard l.run
-
-import times, strutils
+  l.run
 
 let mem = getOccupiedMem()
-let t0 = epochTime()
 main()
-
-echo "Mem ", formatSize(getOccupiedMem() - mem)
-#doAssert getOccupiedMem() == mem
-
-echo("Completed in " & $(epochTime() - t0) & "s. Success!")
+when defined(gcOrc):
+  doAssert getOccupiedMem() == mem

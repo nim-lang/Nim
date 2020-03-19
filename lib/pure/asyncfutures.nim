@@ -213,7 +213,6 @@ proc complete*[T](future: Future[T], val: T) =
   future.value = val
   future.finished = true
   future.callbacks.call()
-  when declared(thinout): thinout(future)
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*(future: Future[void]) =
@@ -223,7 +222,6 @@ proc complete*(future: Future[void]) =
   assert(future.error == nil)
   future.finished = true
   future.callbacks.call()
-  when declared(thinout): thinout(future)
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc complete*[T](future: FutureVar[T]) =
@@ -233,7 +231,6 @@ proc complete*[T](future: FutureVar[T]) =
   assert(fut.error == nil)
   fut.finished = true
   fut.callbacks.call()
-  when declared(thinout): thinout(Future[T](future))
   when isFutureLoggingEnabled: logFutureFinish(Future[T](future))
 
 proc complete*[T](future: FutureVar[T], val: T) =
@@ -246,7 +243,6 @@ proc complete*[T](future: FutureVar[T], val: T) =
   fut.finished = true
   fut.value = val
   fut.callbacks.call()
-  when declared(thinout): thinout(Future[T](future))
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc fail*[T](future: Future[T], error: ref Exception) =
@@ -258,7 +254,6 @@ proc fail*[T](future: Future[T], error: ref Exception) =
   future.errorStackTrace =
     if getStackTrace(error) == "": getStackTrace() else: getStackTrace(error)
   future.callbacks.call()
-  when declared(thinout): thinout(future)
   when isFutureLoggingEnabled: logFutureFinish(future)
 
 proc clearCallbacks*(future: FutureBase) =
@@ -431,7 +426,7 @@ proc asyncCheck*[T](future: Future[T]) =
   # TODO: We can likely look at the stack trace here and inject the location
   # where the `asyncCheck` was called to give a better error stack message.
   proc asyncCheckCallback() =
-    if future != nil and future.failed:
+    if future.failed:
       injectStacktrace(future)
       raise future.error
   future.callback = asyncCheckCallback

@@ -128,7 +128,7 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   nimRawDispose(p)
 
 when defined(gcOrc):
-  when true:
+  when defined(nimThinout):
     include cyclebreaker
   else:
     include cyclicrefs_v2
