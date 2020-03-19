@@ -2947,17 +2947,17 @@ when isMainModule:
     p1, p2: Person
   p1.firstName = "Jon"
   p1.lastName = "Ross"
-  salaries[move(p1)] = 30_000
+  salaries[p1] = 30_000
   p2.firstName = "소진"
   p2.lastName = "박"
-  salaries[move(p2)] = 45_000
+  salaries[p2] = 45_000
   var
     s2 = initOrderedTable[Person, int]()
     s3 = initCountTable[Person]()
-  s2[move(p1)] = 30_000
-  s2[move(p2)] = 45_000
-  s3[move(p1)] = 30_000
-  s3[move(p2)] = 45_000
+  s2[p1] = 30_000
+  s2[p2] = 45_000
+  s3[p1] = 30_000
+  s3[p2] = 45_000
 
   block: # Ordered table should preserve order after deletion
     var
