@@ -3,6 +3,12 @@
 
 ## Changes affecting backwards compatibility
 
+- The Nim compiler now implements a faster way to detect overflows based
+  on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
+  supports these). Some versions of GCC lack this feature and unfortunately
+  we cannot detect this case reliably. So if you get compilation errors like
+  "undefined reference to '__builtin_saddll_overflow'" compile your programs
+  with `-d:nimEmulateOverflowChecks`.
 
 
 ### Breaking changes in the standard library
