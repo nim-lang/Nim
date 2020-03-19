@@ -32,55 +32,45 @@ proc makeConsoleCall(console: NimNode, procName: NimNode, args: NimNode): NimNod
   for c in args: result.add(c)
 
 macro log*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  runnableExamples: console.log("This prints a Log message the browser console")
   makeConsoleCall(console, bindSym "logImpl", args)
 
 macro debug*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  runnableExamples: console.debug("This prints a Debug message on the browser console")
   makeConsoleCall(console, bindSym "debugImpl", args)
 
 macro info*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  runnableExamples: console.info("This prints an Information message on the browser console")
   makeConsoleCall(console, bindSym "infoImpl", args)
 
 macro error*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  runnableExamples: console.error("This prints an Error on the browser console")
   makeConsoleCall(console, bindSym "errorImpl", args)
 
 macro exception*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/error#Syntax
-  runnableExamples: console.exception("console.exception() is an alias for console.error(), they are functionally identical")
   makeConsoleCall(console, bindSym "errorImpl", args)
 
 macro trace*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/trace
-  runnableExamples: console.trace("Prints", "Stack", "Trace", "on", "Browser")
   makeConsoleCall(console, bindSym "traceImpl", args)
 
 macro warn*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/warn
-  runnableExamples: console.warn("This prints a Warning on the browser console")
   makeConsoleCall(console, bindSym "warnImpl", args)
 
-proc clear*(console: Console) {.importcpp: "clear".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/clear
+proc clear*(console: Console) {.importcpp: "clear".}
 
-proc count*(console: Console, label = "".cstring) {.importcpp: "count".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/count
+proc count*(console: Console, label = "".cstring) {.importcpp: "count".}
 
-proc countReset*(console: Console, label = "".cstring) {.importcpp: "countReset".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/countReset
+proc countReset*(console: Console, label = "".cstring) {.importcpp: "countReset".}
 
-proc group*(console: Console, label = "".cstring) {.importcpp: "group".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/group
+proc group*(console: Console, label = "".cstring) {.importcpp: "group".}
 
-proc groupCollapsed*(console: Console, label = "".cstring) {.importcpp: "groupCollapsed".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/groupCollapsed
+proc groupCollapsed*(console: Console, label = "".cstring) {.importcpp: "groupCollapsed".}
 
-proc groupEnd*(console: Console) {.importcpp: "groupEnd".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/groupEnd
+proc groupEnd*(console: Console) {.importcpp: "groupEnd".}
 
-proc time*(console: Console, label = "".cstring) {.importcpp: "time".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/time
+proc time*(console: Console, label = "".cstring) {.importcpp: "time".}
 
-proc timeEnd*(console: Console, label = "".cstring) {.importcpp: "timeEnd".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeEnd
+proc timeEnd*(console: Console, label = "".cstring) {.importcpp: "timeEnd".}
 
-proc timeLog*(console: Console, label = "".cstring) {.importcpp: "timeLog".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeLog
+proc timeLog*(console: Console, label = "".cstring) {.importcpp: "timeLog".}
 
-proc table*(console: Console, data: seq[cstring|bool|SomeNumber]) {.importcpp: "table".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/table
+proc table*(console: Console, data: seq[cstring|bool|SomeNumber]) {.importcpp: "table".}
 
 
 var console* {.importc, nodecl.}: Console
