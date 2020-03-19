@@ -1,0 +1,8 @@
+# see https://adaptivepatchwork.com/2012/03/01/mind-the-end-of-your-line/
+# tests expects the text files associated with them have LF only as EOL
+
+# sensible alternative is: `eol=native` => `eol=lf`
+**/* text eol=native
+
+# Unset all files matching the filter (don't do CRLF => LF)
+icons/** -text
