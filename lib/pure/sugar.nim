@@ -165,7 +165,7 @@ template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase fr
   ## reverses ``type T = distinct A``; works recursively.
   typetraits.distinctBase(T)
 
-macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1).} =
+macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values. Example:
   ##
@@ -175,45 +175,50 @@ macro capture*(locals: openArray[typed], body: untyped): untyped {.since: (1, 1)
   ##   for i in 5..7:
   ##     for j in 7..9:
   ##       if i * j == 42:
-  ##         capture [i, j]:
+  ##         capture i, j:
   ##           myClosure = proc () = echo fmt"{i} * {j} = 42"
   ##   myClosure() # output: 6 * 7 == 42
   ##   let m = @[proc (s: string): string = "to " & s, proc (s: string): string = "not to " & s]
-  ##   var l = m.mapIt(capture([it], proc (s: string): string = it(s)))
+  ##   var l = m.mapIt(capture(it, proc (s: string): string = it(s)))
   ##   let r = l.mapIt(it("be"))
   ##   echo r[0] & ", or " & r[1] # output: to be, or not to be
   var params = @[newIdentNode("auto")]
+  let locals = if locals.len == 1 and locals[0].kind == nnkBracket: locals[0]
+               else: locals
   for arg in locals:
     params.add(newIdentDefs(ident(arg.strVal), freshIdentNodes getTypeInst arg))
   result = newNimNode(nnkCall)
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
 
-macro outplace*[T](arg: T, call: untyped; inplaceArgPosition: static[int] = 1): T {.since: (1, 1).} =
-  ## Turns an `in-place`:idx: algorithm into one that works on
-  ## a copy and returns this copy. The second parameter is the
-  ## index of the calling expression that is replaced by a copy
-  ## of this expression.
-  ## **Since**: Version 1.2.
-  runnableExamples:
-    import algorithm
+when (NimMajor, NimMinor) >= (1, 1):
+  import std / private / underscored_calls
 
-    var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert a.outplace(sort()) == sorted(a)
-    #Chaining:
-    var aCopy = a
-    aCopy.insert(10)
+  macro dup*[T](arg: T, calls: varargs[untyped]): T =
+    ## Turns an `in-place`:idx: algorithm into one that works on
+    ## a copy and returns this copy.
+    ## **Since**: Version 1.2.
+    runnableExamples:
+      import algorithm
 
-    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+      var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
+      doAssert a.dup(sort) == sorted(a)
+      # Chaining:
+      var aCopy = a
+      aCopy.insert(10)
 
-  expectKind call, nnkCallKinds
-  let tmp = genSym(nskVar, "outplaceResult")
-  var callsons = call[0..^1]
-  callsons.insert(tmp, inplaceArgPosition)
-  result = newTree(nnkStmtListExpr,
-    newVarStmt(tmp, arg),
-    copyNimNode(call).add callsons,
-    tmp)
+      doAssert a.dup(insert(10), sort) == sorted(aCopy)
+
+      var s1 = "abc"
+      var s2 = "xyz"
+      doAssert s1 & s2 == s1.dup(&= s2)
+
+    result = newNimNode(nnkStmtListExpr, arg)
+    let tmp = genSym(nskVar, "dupResult")
+    result.add newVarStmt(tmp, arg)
+    underscoredCalls(result, calls, tmp)
+    result.add tmp
+
 
 proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
@@ -310,17 +315,17 @@ when isMainModule:
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
-    doAssert outplace(a, sort()) == sorted(a)
-    doAssert a.outplace(sort()) == sorted(a)
+    doAssert dup(a, sort(_)) == sorted(a)
+    doAssert a.dup(sort) == sorted(a)
     #Chaining:
     var aCopy = a
     aCopy.insert(10)
-    doAssert a.outplace(insert(10)).outplace(sort()) == sorted(aCopy)
+    doAssert a.dup(insert(10)).dup(sort()) == sorted(aCopy)
 
     import random
 
     const b = @[0, 1, 2]
-    let c = b.outplace shuffle()
+    let c = b.dup shuffle()
     doAssert c[0] == 1
     doAssert c[1] == 0
 

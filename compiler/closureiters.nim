@@ -154,8 +154,8 @@ type
                     # is their finally. For finally it is parent finally. Otherwise -1
 
 const
-  nkSkip = { nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
-            nkCommentStmt } + procDefs
+  nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
+            nkCommentStmt} + procDefs
 
 proc newStateAccess(ctx: var Ctx): PNode =
   if ctx.stateVarSym.isNil:

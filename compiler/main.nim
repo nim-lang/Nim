@@ -225,6 +225,12 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf)
       commandDoc(cache, conf)
   of "doc2", "doc":
+    conf.setNoteDefaults(warnLockLevel, false) # issue #13218
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
+      # because currently generates lots of false positives due to conflation
+      # of labels links in doc comments, eg for random.rand:
+      #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
+      #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -233,6 +239,7 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       commandDoc2(graph, false)
   of "rst2html":
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -293,7 +300,9 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
+      var lazyPaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
+      for dir in conf.lazyPaths: lazyPaths.elems.add(%dir.string)
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
@@ -311,6 +320,7 @@ proc mainCommand*(graph: ModuleGraph) =
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "lazyPaths", val: %lazyPaths),
         (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),

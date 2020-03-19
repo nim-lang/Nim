@@ -38,14 +38,13 @@ proc resize(old: int): int {.inline.} =
 
 proc prepareAdd(s: var NimStringV2; addlen: int) {.compilerRtl.} =
   if isLiteral(s):
-    if addlen > 0:
-      let oldP = s.p
-      # can't mutate a literal, so we need a fresh copy here:
-      s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
-      s.p.cap = s.len + addlen
-      if s.len > 0:
-        # we are about to append, so there is no need to copy the \0 terminator:
-        copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
+    let oldP = s.p
+    # can't mutate a literal, so we need a fresh copy here:
+    s.p = cast[ptr NimStrPayload](allocShared0(contentSize(s.len + addlen)))
+    s.p.cap = s.len + addlen
+    if s.len > 0:
+      # we are about to append, so there is no need to copy the \0 terminator:
+      copyMem(unsafeAddr s.p.data[0], unsafeAddr oldP.data[0], s.len)
   else:
     let oldCap = s.p.cap and not strlitFlag
     if s.len + addlen > oldCap:
@@ -110,8 +109,10 @@ proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen == 0:
     frees(s)
     s.p = nil
-  elif newLen > s.len or isLiteral(s):
-    prepareAdd(s, newLen - s.len)
+  else:
+    if newLen > s.len or isLiteral(s):
+      prepareAdd(s, newLen - s.len)
+    s.p.data[newLen] = '\0'
   s.len = newLen
 
 proc nimAsgnStrV2(a: var NimStringV2, b: NimStringV2) {.compilerRtl.} =

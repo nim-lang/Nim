@@ -55,8 +55,8 @@ Possible Commands:
   nimble                   builds the Nimble tool
 Boot options:
   -d:release               produce a release version of the compiler
-  -d:useLinenoise          use the linenoise library for interactive mode
-                           (not needed on Windows)
+  -d:nimUseLinenoise       use the linenoise library for interactive mode
+                           `nim secret` (not needed on Windows)
   -d:leanCompiler          produce a compiler without JS codegen or
                            documentation generator in order to use less RAM
                            for bootstrapping
@@ -124,13 +124,13 @@ proc csource(args: string) =
 
 proc bundleC2nim(args: string) =
   if not dirExists("dist/c2nim/.git"):
-    exec("git clone https://github.com/nim-lang/c2nim.git dist/c2nim")
+    exec("git clone -q https://github.com/nim-lang/c2nim.git dist/c2nim")
   nimCompile("dist/c2nim/c2nim",
              options = "--noNimblePath --path:. " & args)
 
 proc bundleNimbleExe(latest: bool, args: string) =
   if not dirExists("dist/nimble/.git"):
-    exec("git clone https://github.com/nim-lang/nimble.git dist/nimble")
+    exec("git clone -q https://github.com/nim-lang/nimble.git dist/nimble")
   if not latest:
     withDir("dist/nimble"):
       exec("git fetch")
@@ -152,7 +152,7 @@ proc buildNimble(latest: bool, args: string) =
         while dirExists("dist/nimble" & $id):
           inc id
         installDir = "dist/nimble" & $id
-      exec("git clone https://github.com/nim-lang/nimble.git " & installDir)
+      exec("git clone -q https://github.com/nim-lang/nimble.git " & installDir)
     withDir(installDir):
       if latest:
         exec("git checkout -f master")
@@ -265,15 +265,12 @@ when false:
 
 proc findStartNim: string =
   # we try several things before giving up:
+  # * nimExe
   # * bin/nim
   # * $PATH/nim
   # If these fail, we try to build nim with the "build.(sh|bat)" script.
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
-  for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
-
+  let (nim, ok) = findNimImpl()
+  if ok: return nim
   when defined(Posix):
     const buildScript = "build.sh"
     if existsFile(buildScript):
@@ -319,10 +316,10 @@ proc boot(args: string) =
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
     # jsonbuild then uses the $project.json file to build the Nim binary.
-    exec "$# $# $# $# --nimcache:$# --compileOnly compiler" / "nim.nim" %
-      [nimi, bootOptions, extraOption, args, smartNimcache]
-    exec "$# jsonscript $# --nimcache:$# compiler" / "nim.nim" %
-      [nimi, args, smartNimcache]
+    exec "$# $# $# --nimcache:$# $# --compileOnly compiler" / "nim.nim" %
+      [nimi, bootOptions, extraOption, smartNimcache, args]
+    exec "$# jsonscript --nimcache:$# $# compiler" / "nim.nim" %
+      [nimi, smartNimcache, args]
 
     if sameFileContent(output, i.thVersion):
       copyExe(output, finalDest)
@@ -472,22 +469,23 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
+proc hostInfo(): string =
+  "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
+    [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
+
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
-  echo "runCI:", cmd
+  echo "runCI: ", cmd
+  echo hostInfo()
   # note(@araq): Do not replace these commands with direct calls (eg boot())
   # as that would weaken our testing efforts.
   when defined(posix): # appveyor (on windows) didn't run this
     kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
-  kochExecFold("Boot in release mode", "boot -d:release -d:danger")
+  kochExecFold("Boot in release mode", "boot -d:release")
 
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
-
-  when false:
-    execFold("nimble install -y libffi", "nimble install -y libffi")
-    kochExecFold("boot -d:release -d:nimHasLibFFI", "boot -d:release -d:nimHasLibFFI")
 
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
@@ -502,6 +500,13 @@ proc runCI(cmd: string) =
 
     # main bottleneck here
     execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
+    block: # CT FFI
+      when defined(posix): # windows can be handled in future PR's
+        execFold("nimble install -y libffi", "nimble install -y libffi")
+        const nimFFI = "./bin/nim.ctffi"
+        # no need to bootstrap with koch boot (would be slower)
+        execFold("build with -d:nimHasLibFFI", "nim c -d:release -d:nimHasLibFFI -o:$1 compiler/nim.nim" % [nimFFI])
+        execFold("test with -d:nimHasLibFFI", "$1 c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")

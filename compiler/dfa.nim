@@ -591,6 +591,8 @@ proc genUse(c: var Con; orig: PNode) =
     of PathKinds1:
       n = n[1]
     else: break
+    if n.kind in nkCallKinds:
+      gen(c, n)
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use)
 
@@ -609,15 +611,16 @@ proc aliases*(obj, field: PNode): bool =
 
 proc useInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == use
-  sameTrees(ins.n, loc) or
-  ins.n.aliases(loc) or loc.aliases(ins.n) # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  result = sameTrees(ins.n, loc) or
+    ins.n.aliases(loc) or loc.aliases(ins.n)
+  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
   # use x.f;  question: does it affect the full 'x'? No.
   # use x; question does it affect 'x.f'? Yes.
 
 proc defInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == def
-  sameTrees(ins.n, loc) or
-  ins.n.aliases(loc) # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  result = sameTrees(ins.n, loc) or ins.n.aliases(loc)
+  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
   # def x.f; question: does it affect the full 'x'? No.
   # def x; question: does it affect the 'x.f'? Yes.
 
@@ -678,6 +681,10 @@ proc genDef(c: var Con; n: PNode) =
     c.code.add Instr(n: n, kind: def)
   elif isAnalysableFieldAccess(n, c.owner):
     c.code.add Instr(n: n, kind: def)
+  else:
+    # bug #13314: An assignment to t5.w = -5 is a usage of 't5'
+    # we still need to gather the use information:
+    gen(c, n)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])

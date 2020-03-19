@@ -74,8 +74,9 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result.add(v)
 
   for i in 0..<n.len-2:
-    if n[i].kind == nkSym: v.addVar(n[i])
-    result.add newAsgnStmt(n[i], newTupleAccess(g, tempAsNode, i))
+    let val = newTupleAccess(g, tempAsNode, i)
+    if n[i].kind == nkSym: v.addVar(n[i], val)
+    else: result.add newAsgnStmt(n[i], val)
 
 proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used

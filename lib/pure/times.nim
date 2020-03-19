@@ -232,7 +232,7 @@ elif defined(posix):
 
   when defined(macosx):
     proc gettimeofday(tp: var Timeval, unused: pointer = nil)
-      {.importc: "gettimeofday", header: "<sys/time.h>".}
+      {.importc: "gettimeofday", header: "<sys/time.h>", sideEffect.}
 
 elif defined(windows):
   import winlean, std/time_t
@@ -254,7 +254,7 @@ elif defined(windows):
       tm_yday*: cint  ## Day of year [0,365].
       tm_isdst*: cint ## Daylight Savings flag.
 
-  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>".}
+  proc localtime(a1: var CTime): ptr Tm {.importc, header: "<time.h>", sideEffect.}
 
 type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``,
@@ -636,6 +636,19 @@ proc isLeapYear*(year: int): bool =
     doAssert isLeapYear(2000)
     doAssert not isLeapYear(1900)
   year mod 4 == 0 and (year mod 100 != 0 or year mod 400 == 0)
+
+proc isLeapDay*(t: DateTime): bool {.since: (1,1).} =
+  ## returns whether `t` is a leap day, ie, Feb 29 in a leap year. This matters
+  ## as it affects time offset calculations.
+  runnableExamples:
+    let t = initDateTime(29, mFeb, 2020, 00, 00, 00, utc())
+    doAssert t.isLeapDay
+    doAssert t+1.years-1.years != t
+    let t2 = initDateTime(28, mFeb, 2020, 00, 00, 00, utc())
+    doAssert not t2.isLeapDay
+    doAssert t2+1.years-1.years == t2
+    doAssertRaises(Exception): discard initDateTime(29, mFeb, 2021, 00, 00, 00, utc())
+  t.year.isLeapYear and t.month == mFeb and t.monthday == 29
 
 proc getDaysInMonth*(month: Month, year: int): int =
   ## Get the number of days in ``month`` of ``year``.
@@ -2235,19 +2248,9 @@ proc parsePattern(input: string, pattern: FormatPattern, i: var int,
 
 proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
                 input: string): DateTime =
-  var month = mJan
-  var year: int
-  var monthday: int
-  # `now()` is an expensive call, so we avoid it when possible
-  (year, month, monthday) =
-    if p.year.isNone or p.month.isNone or p.monthday.isNone:
-      let n = now()
-      (p.year.get(n.year),
-        p.month.get(n.month.int).Month,
-        p.monthday.get(n.monthday))
-    else:
-      (p.year.get(), p.month.get().Month, p.monthday.get())
-
+  var year = p.year.get(0)
+  var month = p.month.get(1).Month
+  var monthday = p.monthday.get(1)
   year =
     case p.era
     of eraUnknown:
@@ -2527,7 +2530,7 @@ when not defined(js):
     Clock {.importc: "clock_t".} = distinct int
 
   proc getClock(): Clock
-      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used.}
+      {.importc: "clock", header: "<time.h>", tags: [TimeEffect], used, sideEffect.}
 
   var
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int

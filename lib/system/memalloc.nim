@@ -339,7 +339,7 @@ when defined(js):
   proc reallocShared0(p: pointer, oldsize, newsize: Natural): pointer = discard
 
 
-when hasAlloc and hasThreadSupport:
+when hasAlloc and hasThreadSupport and not defined(useMalloc):
   proc getOccupiedSharedMem*(): int {.rtl.}
     ## Returns the number of bytes that are owned by the process
     ## on the shared heap and hold data. This is only available when

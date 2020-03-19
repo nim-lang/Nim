@@ -38,7 +38,7 @@ proc enlarge[A](s: var HashSet[A]) =
   newSeq(n, len(s.data) * growthFactor)
   swap(s.data, n) # n is now old seq
   for i in countup(0, high(n)):
-    if isFilled(n[i].hcode):
+    if isFilledAndValid(n[i].hcode):
       var j = -1 - rawGetKnownHC(s, n[i].key, n[i].hcode)
       rawInsert(s, s.data, n[i].key, n[i].hcode, j)
 
@@ -48,7 +48,7 @@ template inclImpl() {.dirty.} =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -62,16 +62,11 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
     inc(s.counter)
-
-template doWhile(a, b) =
-  while true:
-    b
-    if not a: break
 
 proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
   var hc: Hash
@@ -82,17 +77,9 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
   if i >= 0:
     result = false
     dec(s.counter)
-    while true: # KnuthV3 Algo6.4R adapted for i=i+1 instead of i=i-1
-      var j = i # The correctness of this depends on (h+1) in nextTry,
-      var r = j # though may be adaptable to other simple sequences.
-      s.data[i].hcode = 0 # mark current EMPTY
-      s.data[i].key = default(type(s.data[i].key))
-      doWhile((i >= r and r > j) or (r > j and j > i) or (j > i and i >= r)):
-        i = (i + 1) and msk # increment mod table size
-        if isEmpty(s.data[i].hcode): # end of collision cluster; So all done
-          return
-        r = s.data[i].hcode and msk # "home" location of key@i
-      s.data[j] = move(s.data[i]) # data[i] will be marked EMPTY next loop
+    inc(s.countDeleted)
+    s.data[i].hcode = deletedMarker
+    s.data[i].key = default(type(s.data[i].key))
 
 template dollarImpl() {.dirty.} =
   result = "{"
@@ -125,7 +112,7 @@ proc enlarge[A](s: var OrderedSet[A]) =
   swap(s.data, n)
   while h >= 0:
     var nxt = n[h].next
-    if isFilled(n[h].hcode):
+    if isFilled(n[h].hcode): # should be isFilledAndValid once tombstones are used
       var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
       rawInsert(s, s.data, n[h].key, n[h].hcode, j)
     h = nxt
@@ -143,7 +130,7 @@ proc exclImpl[A](s: var OrderedSet[A], key: A): bool {.inline.} =
   result = true
   while h >= 0:
     var nxt = n[h].next
-    if isFilled(n[h].hcode):
+    if isFilled(n[h].hcode): # should be isFilledAndValid once tombstones are used
       if n[h].hcode == hc and n[h].key == key:
         dec s.counter
         result = false
