@@ -318,9 +318,6 @@ proc createFakeGraph(modules: BModuleList; sig: SigHash): BModuleList =
       for t in m.typeStack:
         pushType(fake, t)
 
-      fake.initProc = m.initProc
-      fake.preInitProc = m.preInitProc
-
       # these mutate the fake module
       fake.typeNodesName = getTempName(fake)
       fake.nimTypesName = getTempName(fake)
@@ -329,6 +326,11 @@ proc createFakeGraph(modules: BModuleList; sig: SigHash): BModuleList =
       # make sure our fake module matches the original module
       when not defined(release):
         assert fake.hash == m.hash, "bad hash " & $m.filename
+
+      if m.initProc.prc == nil:
+        fake.initProc = newProc(nil, fake)
+      if m.preInitProc.prc == nil:
+        fake.preInitProc = newPreInitProc(fake)
 
       #echo "DING DING ", node.name.s & " " & $m.filename
       result.modules.add fake
@@ -344,12 +346,18 @@ template writable*(cache): bool = CacheStrategy.Writes in cache.strategy
 
 proc writable*(cache: var CacheUnit; value: bool): bool =
   if Immutable notin cache.strategy:
-    cache.strategy.incl Writes
+    if value:
+      cache.strategy.incl Writes
+    else:
+      cache.strategy.excl Writes
   result = cache.writable
 
 proc readable*(cache: var CacheUnit; value: bool): bool =
   if Immutable notin cache.strategy:
-    cache.strategy.incl Reads
+    if value:
+      cache.strategy.incl Reads
+    else:
+      cache.strategy.excl Reads
   result = cache.readable
 
 proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
@@ -1746,41 +1754,35 @@ proc merge(cache; parent: var BModule; child: BModule) =
     cache.mergeIdSets parent, child, TransformKind.ProtoSet, declaredProtos
   else:
     if parent.declaredProtos.len != child.declaredProtos.len:
-      assert len(parent.declaredProtos - child.declaredProtos) == 0
       var
-        transform: Transform
-      case ProtoSet
-      of ProtoSet:
-        transform = Transform(kind: ProtoSet, module: parent)
-      of ThingSet:
         transform = Transform(kind: ThingSet, module: parent)
-      else:
-        raise newException(Defect, "bad kind")
       transform.diff = child.declaredProtos - parent.declaredProtos
-      parent.declaredProtos = parent.declaredProtos + child.declaredProtos
+      assert transform.diff.len != 0
       storeTransform(cache.graph, cache.node, transform)
+      # make sure we merge the sets
+      parent.declaredProtos = child.declaredProtos
 
     if parent.declaredThings.len != child.declaredThings.len:
-      assert len(parent.declaredThings - child.declaredThings) == 0
       var
-        transform: Transform
-      case ThingSet
-      of ProtoSet:
-        transform = Transform(kind: ProtoSet, module: parent)
-      of ThingSet:
         transform = Transform(kind: ThingSet, module: parent)
-      else:
-        raise newException(Defect, "bad kind")
+      echo parent.declaredThings
+      echo child.declaredThings
       transform.diff = child.declaredThings - parent.declaredThings
-      parent.declaredThings = parent.declaredThings + child.declaredThings
+      assert transform.diff.len != 0
       storeTransform(cache.graph, cache.node, transform)
+      # make sure we merge the sets
+      parent.declaredThings = child.declaredThings
 
 proc merge*(cache; parent: var BModuleList) =
   template child(): BModuleList = cache.modules
 
   # don't merge rejected caches
   if cache.rejected:
+    when not defined(release):
+      echo "NO MERGE"
     return
+  when not defined(release):
+    echo "MERGE"
 
   cache.mergeRopes(parent, child, mainModProcs)
   cache.mergeRopes(parent, child, mainModInit)
@@ -1806,6 +1808,9 @@ proc merge*(cache; parent: var BModuleList) =
 proc store*(cache: var CacheUnit[PNode]; orig: BModule) =
   assert cache.writable, "attempt to write unwritable cache"
 
+  when not defined(release):
+    echo "store for ", cache.findTargetModule(orig).tmpBase
+
   # XXX: write out the typestacks here
   transitiveClosure(cache.graph)
 
@@ -1816,6 +1821,9 @@ proc store*(cache: var CacheUnit[PNode]; orig: BModule) =
 
 proc store*(cache: var CacheUnit[PSym]) =
   assert cache.writable, "attempt to write unwritable cache"
+
+  when not defined(release):
+    echo "store for ", cache.node.name.s
 
   # XXX: write out the typestacks here
   transitiveClosure(cache.graph)
@@ -1840,6 +1848,9 @@ proc store*(cache: var CacheUnit[PSym]) =
 proc load*(cache: var CacheUnit[PNode]; orig: BModule) =
   ## this needs to merely LOAD data so that later MERGE operations can work
   assert cache.readable, "attempt to read unreadable cache"
+
+  when not defined(release):
+    echo "load for ", cache.findTargetModule(orig).tmpBase
 
   # shadow the passed the modulelist because we probably want to rely upon
   # our faked cache modules instead
@@ -1885,6 +1896,9 @@ flags: {cache.node.flags}
 proc load*(cache: var CacheUnit[PSym]; list: BModuleList) =
   ## this needs to merely LOAD data so that later MERGE operations can work
   assert cache.readable, "attempt to read unreadable cache"
+
+  when not defined(release):
+    echo "load for ", cache.node.name.s
 
   # shadow the passed the modulelist because we probably want to rely upon
   # our faked cache modules instead
@@ -1965,10 +1979,5 @@ proc isHot(cache: CacheUnit[PNode]): bool =
 
 proc isHot(cache: CacheUnit[PSym]): bool =
   if {Reads, Immutable} * cache.strategy != {Immutable}:
-    result = snippetAlreadyStored(cache.graph, cache.node)
-    result = result and symbolAlreadyStored(cache.graph, cache.node)
-
-proc isHot[PSym](cache: CacheUnit[PSym]): bool =
-  if {Immutable, Reads} * cache.strategy != {Immutable}:
     result = snippetAlreadyStored(cache.graph, cache.node)
     result = result and symbolAlreadyStored(cache.graph, cache.node)
