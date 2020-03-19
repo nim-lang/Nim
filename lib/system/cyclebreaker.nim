@@ -130,7 +130,8 @@ proc trace(p: pointer; desc: PNimType; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
     cast[TraceProc](desc.traceImpl)(p, addr(j))
 
-proc nimTraceRef(p: ptr pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
   when traceCollector:
     cprintf("[Trace] raw: %p\n", p)
     cprintf("[Trace] deref: %p\n", p[])
@@ -138,7 +139,8 @@ proc nimTraceRef(p: ptr pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
     var j = cast[ptr GcEnv](env)
     j.traceStack.add(p, desc)
 
-proc nimTraceRefDyn(p: ptr pointer; env: pointer) {.compilerRtl.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
   when traceCollector:
     cprintf("[TraceDyn] raw: %p\n", p)
     cprintf("[TraceDyn] deref: %p\n", p[])

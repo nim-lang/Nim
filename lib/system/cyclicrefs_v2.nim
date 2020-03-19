@@ -154,13 +154,15 @@ proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
     when traceCollector:
       cprintf("[Cycle inc] %p %ld color %ld\n", t, t.rc shr rcShift, t.color)
 
-proc nimTraceRef(p: ptr pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
     var t = head(p[])
     j.traceStack.add(t, desc)
 
-proc nimTraceRefDyn(p: ptr pointer; env: pointer) {.compilerRtl.} =
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
   if p[] != nil:
     var j = cast[ptr GcEnv](env)
     var t = head(p[])
