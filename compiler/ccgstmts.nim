@@ -744,8 +744,6 @@ proc genRaiseStmt(p: BProc, t: PNode) =
         lineCg(p, cpsStmts, "$1 = NIM_NIL;$n", [e])
   else:
     finallyActions(p)
-    if p.config.exc == excCpp:
-      blockLeaveActions(p, howManyTrys = 0, howManyExcepts = p.inExceptBlockLen)
     genLineDir(p, t)
     # reraise the last exception:
     if p.config.exc == excCpp:
