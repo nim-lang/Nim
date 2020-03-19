@@ -602,7 +602,10 @@ proc pVarTopLevel(v: PNode; c: var Con; ri, res: PNode) =
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif sfThread notin v.sym.flags:
     # do not destroy thread vars for now at all for consistency.
-    c.destroys.add genDestroy(c, v)
+    if sfGlobal in v.sym.flags:
+      c.graph.globalDestructors.add genDestroy(c, v)
+    else:
+      c.destroys.add genDestroy(c, v)
   if ri.kind == nkEmpty and c.inLoop > 0:
     res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c)
   elif ri.kind != nkEmpty:
@@ -616,7 +619,7 @@ proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif {sfGlobal, sfThread} * v.sym.flags == {sfGlobal}:
-    c.destroys.add genDestroy(c, v)
+     c.graph.globalDestructors.add genDestroy(c, v)
   else:
     # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
     # the destruction at the loop end will free the resources. Other assignments
