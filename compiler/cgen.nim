@@ -1234,13 +1234,15 @@ proc genVarPrototype(m: BModule, n: PNode) =
         "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
         getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
 
-proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
+proc addNimDefines(result: var Rope; conf: ConfigRef) {.inline.} =
   result.addf("#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
   if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")
+  if conf.isDefined("nimEmulateOverflowChecks"):
+    result.add("#define NIM_EmulateOverflowChecks\L")
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   if optCompileOnly in conf.globalOptions:
@@ -1263,7 +1265,7 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   result = getCopyright(conf, cfile)
   if conf.hcrOn: result.add("#define NIM_HOT_CODE_RELOADING\L")
-  addIntTypes(result, conf)
+  addNimDefines(result, conf)
 
 proc getSomeNameForModule(m: PSym): Rope =
   assert m.kind == skModule
@@ -1825,7 +1827,7 @@ proc writeHeader(m: BModule) =
 
   var guard = "__$1__" % [m.filename.splitFile.name.rope]
   result.addf("#ifndef $1$n#define $1$n", [guard])
-  addIntTypes(result, m.config)
+  addNimDefines(result, m.config)
   generateHeaders(m)
 
   generateThreadLocalStorage(m)
