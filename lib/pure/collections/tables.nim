@@ -1274,7 +1274,7 @@ proc enlarge[A, B](t: var OrderedTable[A, B]) =
       var perturb = t.getPerturb(eh)
       while isFilled(t.data[j].hcode):
         j = nextTry(j, maxHash(t), perturb)
-      rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+      rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
 template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
@@ -1540,7 +1540,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         dec t.counter
       else:
         var j = -1 - rawGetKnownHC(t, n[h].key, n[h].hcode)
-        rawInsert(t, t.data, n[h].key, n[h].val, n[h].hcode, j)
+        rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
 proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
@@ -2253,7 +2253,7 @@ proc enlarge[A](t: var CountTable[A]) =
   var n: seq[tuple[key: A, val: int]]
   newSeq(n, len(t.data) * growthFactor)
   for i in countup(0, high(t.data)):
-    if t.data[i].val != 0: ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+    if t.data[i].val != 0: ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
   swap(t.data, n)
 
 proc remove[A](t: var CountTable[A], key: A) =
@@ -2263,7 +2263,7 @@ proc remove[A](t: var CountTable[A], key: A) =
   for i in countup(0, high(t.data)):
     if t.data[i].val != 0:
       if t.data[i].key != key:
-        ctRawInsert(t, n, t.data[i].key, t.data[i].val)
+        ctRawInsert(t, n, move t.data[i].key, move t.data[i].val)
       else:
         removed = true
   swap(t.data, n)
