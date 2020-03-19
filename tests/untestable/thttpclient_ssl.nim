@@ -23,8 +23,8 @@ import
 
 type
   # bad and dubious tests should not pass SSL validation
-  # "_broken" mark the test as skipped while checking that it is
-  # actually still failing
+  # "_broken" mark the test as skipped. Some tests have different
+  # behavior depending on OS and SSL version!
   # TODO: chase and fix the broken tests
   Category = enum
     good, bad, dubious, good_broken, bad_broken, dubious_broken
@@ -42,7 +42,7 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://no-common-name.badssl.com/", dubious_broken, "no-common-name"),
   ("https://no-subject.badssl.com/", dubious_broken, "no-subject"),
   ("https://incomplete-chain.badssl.com/", dubious, "incomplete-chain"),
-  ("https://sha1-intermediate.badssl.com/", bad, "sha1-intermediate"),
+  ("https://sha1-intermediate.badssl.com/", bad_broken, "sha1-intermediate"),
   ("https://sha256.badssl.com/", good, "sha256"),
   ("https://sha384.badssl.com/", good, "sha384"),
   ("https://sha512.badssl.com/", good, "sha512"),
@@ -64,14 +64,14 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://mozilla-modern.badssl.com/", good, "mozilla-modern"),
   ("https://dh480.badssl.com/", bad, "dh480"),
   ("https://dh512.badssl.com/", bad, "dh512"),
-  ("https://dh1024.badssl.com/", dubious, "dh1024"),
+  ("https://dh1024.badssl.com/", dubious_broken, "dh1024"),
   ("https://dh2048.badssl.com/", good, "dh2048"),
   ("https://dh-small-subgroup.badssl.com/", bad_broken, "dh-small-subgroup"),
-  ("https://dh-composite.badssl.com/", bad, "dh-composite"),
+  ("https://dh-composite.badssl.com/", bad_broken, "dh-composite"),
   ("https://static-rsa.badssl.com/", dubious_broken, "static-rsa"),
-  ("https://tls-v1-0.badssl.com:1010/", dubious, "tls-v1-0"),
-  ("https://tls-v1-1.badssl.com:1011/", dubious, "tls-v1-1"),
-  ("https://invalid-expected-sct.badssl.com/", bad, "invalid-expected-sct"),
+  ("https://tls-v1-0.badssl.com:1010/", dubious_broken, "tls-v1-0"),
+  ("https://tls-v1-1.badssl.com:1011/", dubious_broken, "tls-v1-1"),
+  ("https://invalid-expected-sct.badssl.com/", bad_broken, "invalid-expected-sct"),
   ("https://hsts.badssl.com/", good, "hsts"),
   ("https://upgrade.badssl.com/", good, "upgrade"),
   ("https://preloaded-hsts.badssl.com/", good, "preloaded-hsts"),
@@ -92,6 +92,31 @@ const certificate_tests: array[0..55, CertTest] = [
 ]
 
 
+template evaluate(exception_msg: string, category: Category, desc: string) =
+  # Evaluate test outcome. Testes flagged as _broken are evaluated and skipped
+  let raised = (exception_msg.len > 0)
+  let should_not_raise = category in {good, dubious_broken, bad_broken}
+  if should_not_raise xor raised:
+    # we are seeing a known behavior
+    if category in {good_broken, dubious_broken, bad_broken}:
+      skip()
+    if raised:
+      check exception_msg == "No SSL certificate found." or
+        exception_msg == "SSL Certificate check failed." or
+        exception_msg.contains("certificate verify failed") or
+        exception_msg.contains("key too small") or
+        exception_msg.contains "shutdown while in init"
+
+  else:
+    # this is unexpected
+    if raised:
+      echo "         $# ($#) raised: $#" % [desc, $category, exception_msg]
+    else:
+      echo "         $# ($#) did not raise" % [desc, $category]
+    if category in {good, dubious, bad}:
+      fail()
+
+
 suite "SSL certificate check - httpclient":
 
   for i, ct in certificate_tests:
@@ -106,26 +131,7 @@ suite "SSL certificate check - httpclient":
         except:
           getCurrentExceptionMsg()
 
-      let raised = (exception_msg.len > 0)
-      let should_not_raise = ct.category in {good, dubious_broken, bad_broken}
-      if should_not_raise xor raised:
-        # we are seeing a known behavior
-        if ct.category in {good_broken, dubious_broken, bad_broken}:
-          skip()
-        if raised:
-          check exception_msg == "No SSL certificate found." or
-            exception_msg == "SSL Certificate check failed." or
-            exception_msg.contains("certificate verify failed") or
-            exception_msg.contains("key too small") or
-            exception_msg.contains "shutdown while in init"
-
-      else:
-        # this is unexpected
-        if raised:
-          echo "         $# ($#) raised: $#" % [ct.desc, $ct.category, exception_msg]
-        else:
-          echo "         $# ($#) did not raise" % [ct.desc, $ct.category]
-        fail()
+      evaluate(exception_msg, ct.category, ct.desc)
 
 
 
@@ -162,26 +168,7 @@ suite "SSL certificate check - httpclient - threaded":
 
     test outcome.desc:
 
-      let raised = (outcome.exception_msg.len > 0)
-      let should_not_raise = outcome.category in {good, dubious_broken, bad_broken}
-      if should_not_raise xor raised:
-        # we are seeing a known behavior
-        if outcome.category in {good_broken, dubious_broken, bad_broken}:
-          skip()
-        if raised:
-          check outcome.exception_msg == "No SSL certificate found." or
-            outcome.exception_msg == "SSL Certificate check failed." or
-            outcome.exception_msg.contains("certificate verify failed") or
-            outcome.exception_msg.contains("key too small") or
-            outcome.exception_msg.contains "shutdown while in init"
-
-      else:
-        # this is unexpected
-        if raised:
-          echo "         $# ($#) raised: $#" % [outcome.desc, $outcome.category, outcome.exception_msg]
-        else:
-          echo "         $# ($#) did not raise" % [outcome.desc, $outcome.category]
-        fail()
+      evaluate(outcome.exception_msg, outcome.category, outcome.desc)
 
 
 # net tests
@@ -213,21 +200,4 @@ suite "SSL certificate check - sockets":
         except:
           getCurrentExceptionMsg()
 
-      let raised = (exception_msg.len > 0)
-      let should_not_raise = ct.category in {good, dubious_broken, bad_broken}
-      if should_not_raise xor raised:
-        # we are seeing a known behavior
-        if ct.category in {good_broken, dubious_broken, bad_broken}:
-          skip()
-        if raised:
-          check exception_msg == "No SSL certificate found." or
-            exception_msg == "SSL Certificate check failed." or
-            exception_msg.contains "certificate verify failed"
-
-      else:
-        # this is unexpected
-        if raised:
-          echo "         $# ($#) raised: $#" % [ct.desc, $ct.category, exception_msg]
-        else:
-          echo "         $# ($#) did not raise" % [ct.desc, $ct.category]
-        fail()
+      evaluate(exception_msg, ct.category, ct.desc)
