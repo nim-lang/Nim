@@ -35,6 +35,9 @@
   `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
   `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
   used on 29th, 30th, 31st of each month.
+- `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
+  usage. The `$` operator can be used to obtain the string form of `HttpCode`
+  for comparison if desired.
 
 ### Breaking changes in the compiler
 
