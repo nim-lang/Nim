@@ -292,7 +292,6 @@ type
     sfNeverRaises     # proc can never raise an exception, not even OverflowError
                       # or out-of-memory
 
-
   TSymFlags* = set[TSymFlag]
 
 const

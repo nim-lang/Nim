@@ -720,25 +720,26 @@ macro toSeqImpl(arg: typed): untyped =
         tmp.add it
       tmp
 
+proc genCallToSeqImpl(arg: NimNode): NimNode =
+  newCall(bindSym"toSeqImpl",
+    nnkForStmt.newTree(
+      ident"x", arg, newStmtList()))
+
+macro toSeqImplSingleSym(arg: typed): untyped =
+  if arg.kind != nnkSym:
+    error "identifier not unique", arg # arg is symChoice
+  elif arg.symKind == nskIterator:
+    result = genCallToSeqImpl(newCall(arg))
+  else:
+    result = genCallToSeqImpl(arg)
+
 macro toSeq*(arg: untyped): untyped =
   ## Transforms any iterable (anything that can be iterated over, e.g. with
   ## a for-loop) into a sequence.
-  ##
-
-  result = newStmtList()
-  var arg = arg
-  if arg.kind == nnkSym and arg.symKind == nskIterator:
-    # This branch is questionalble.
-    arg = newCall(arg)
-
-  result.add newCall(
-    bindSym"toSeqImpl",
-    nnkForStmt.newTree(
-      ident"x",
-      arg,
-      newStmtList()
-    )
-  )
+  if arg.kind in {nnkSym, nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice}:
+    result = newCall(bindSym"toSeqImplSingleSym", arg)
+  else:
+    result = genCallToSeqImpl(arg)
 
 template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
@@ -1281,7 +1282,7 @@ when isMainModule:
         yield 2
 
       doAssert myIter.toSeq == @[1, 2]
-      doAssert toSeq(myIter()) == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
       iterator myIter(): int {.closure.} =
@@ -1289,7 +1290,7 @@ when isMainModule:
         yield 2
 
       doAssert myIter.toSeq == @[1, 2]
-      doAssert toSeq(myIter()) == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
       proc myIter(): auto =

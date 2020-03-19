@@ -573,7 +573,6 @@ proc value(this: var DebugPrinter; value: PType) =
     of tyUInt64:   this.builtinTypeSubstitution "<uint64>";  return
     else:
       discard
-
   earlyExit(this, value)
 
   this.openCurly
