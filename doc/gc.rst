@@ -22,65 +22,45 @@ and how the memory management strategies that are not garbage collectors work.
 Multi-paradigm Memory Management Strategies
 ===========================================
 
-You can choose the memory management strategy to use when compiling source code,
-you can pass ``--gc:`` on the compile command with the selected memory management strategy.
+To choose the memory management strategy use the ``--gc:`` switch.
 
-- ``--gc:refc`` Deferred `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ based garbage collector
-  with `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
-  by a simple Mark&Sweep that has to scan the full heap,
-  is only triggered in a memory allocation operation and
-  it is not triggered by some timer and does not run in a background thread,
-  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
-  references on the stack are not counted for better performance (and easier C code generation), default.
-- ``--gc:markAndSweep`` `Mark-And-Sweep <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Copying_vs._mark-and-sweep_vs._mark-and-don't-sweep>`_ based garbage collector,
-  `thread local heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:boehm`` `Boehm <https://en.wikipedia.org/wiki/Boehm_garbage_collector>`_ based garbage collector,
-  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
-  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:go`` Go lang like garbage collector,
-  `stop-the-world <https://en.wikipedia.org/wiki/Tracing_garbage_collection#Stop-the-world_vs._incremental_vs._concurrent>`_,
-  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_.
-- ``--gc:regions`` `Stack <https://en.wikipedia.org/wiki/Memory_management#Stack_allocation>`_ based garbage collector.
-- ``--gc:arc`` Not a garbage collector. Plain `reference counting <https://en.wikipedia.org/wiki/Reference_counting>`_ with
-  `move semantic optimizations <destructors.html#move-semantics>`_,
-  `shared heap <https://en.wikipedia.org/wiki/Heap_(programming)>`_,
-  can be optimized with `sink <destructors.html#sink-parameters>`_ and `lent <destructors.html#lent-type>`_ annotations,
-  designed to work well with `WebAssembly <https://webassembly.org>`_, `Emscripten <https://emscripten.org>`_,
-  `hot code reloading <hcr.html>`_ and `address sanitizers <https://en.wikipedia.org/wiki/AddressSanitizer>`_,
-  basically it is like a shared heap with subgraphs with a single owner,
-  this is not the same as Swift and ObjectiveC lang ARC because those can not handle cycles,
-  can use `GOTO based Exception handling <https://nim-lang.org/araq/gotobased_exceptions.html>`_,
-  may become default in future releases.
-- ``--gc:orc`` Not a garbage collector. Similar to ``--gc:arc`` but with improved
-  `cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_.
-  `Cycle detection <https://en.wikipedia.org/wiki/Reference_counting#Dealing_with_reference_cycles>`_
-  will not be the default, because by definition it conflicts with
-  `deterministic memory management <https://en.wikipedia.org/wiki/Deterministic_memory>`_.
-- ``--gc:none`` No memory management strategy nor garbage collector.
-  You should use `Manual memory management <https://en.wikipedia.org/wiki/Manual_memory_management>`_ with it.
+- ``--gc:refc``. This is the default GC. It's a
+  deferred reference counting based garbage collector
+  with a simple Mark&Sweep backup GC in order to collect cycles. Heaps are thread local.
+- ``--gc:markAndSweep``. Simple Mark-And-Sweep based garbage collector. Heaps are thread local.
+- ``--gc:boehm``. Boehm based garbage collector, it offers a shared heap.
+- ``--gc:go``. Go's garbage collector, useful for interoperability with Go. Offers a shared heap.
+- ``--gc:arc``. Plain reference counting with
+  `move semantic optimizations <destructors.html#move-semantics>`_, offers a shared heap.
+  It offers deterministic performance for `hard realtime`:idx: systems. Reference cycles
+  cause memory leaks, beware.
 
-The same Nim code can be compiled to use any of the  memory management strategies;
-the Nim syntax generally will not change from one memory management strategy to another.
+- ``--gc:orc``. Same as ``-gc:arc`` but adds a cycle collector based on "trial deletion".
+  Unforunately that makes its performance profile hard to reason about so it is less
+  useful for hard realtime systems.
 
-No garbage collector nor memory management is used for `JavaScript and NodeJS
+- ``--gc:none``. No memory management strategy nor garbage collector. Allocated memory is
+  simply never freed. You should use ``--gc:arc`` instead.
+
+
+JavaScript's garbage collector is used for the `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.
-`NimScript <nims.html>`_ target uses Nim VM memory management strategy.
-
-All memory management strategies are supported equally on Nim when possible and aplicable,
-even if there is a default one, all others should also work as documented.
-
-If you are new to Nim and just starting, the default memory management strategy is balanced to fit most common use cases.
+The `NimScript <nims.html>`_ target uses the memory management strategy built into
+the Nim compiler.
 
 
-Cycle collector for garbage collectors
-======================================
+Tweaking the refc GC
+====================
+
+Cycle collector
+---------------
 
 The cycle collector can be en-/disabled independently from the other parts of
 the garbage collector with ``GC_enableMarkAndSweep`` and ``GC_disableMarkAndSweep``.
 
 
-Realtime support for garbage collectors
-=======================================
+Soft realtime support
+---------------------
 
 To enable realtime support, the symbol `useRealtimeGC`:idx: needs to be
 defined via ``--define:useRealtimeGC`` (you can put this into your config
@@ -119,8 +99,8 @@ These two procs are the two modus operandi of the realtime garbage collector:
     is greater than the potential worst case size.
 
 These procs provide a "best effort" realtime guarantee; in particular the
-cycle collector is not aware of deadlines yet. Deactivate it to get more
-predictable realtime behaviour. Tests show that a 2ms max pause
+cycle collector is not aware of deadlines. Deactivate it to get more
+predictable realtime behaviour. Tests show that a 1ms max pause
 time will be met in almost all cases on modern CPUs (with the cycle collector
 disabled).
 
@@ -153,8 +133,8 @@ that up to 100 objects are traversed and freed before it checks again. Thus
 highly specialized environments or for older hardware.
 
 
-Keeping track of memory with garbage collectors
------------------------------------------------
+Keeping track of memory
+=======================
 
 If you need to pass around memory allocated by Nim to C, you can use the
 procs ``GC_ref`` and ``GC_unref`` to mark objects as referenced to avoid them
