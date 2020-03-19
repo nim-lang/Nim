@@ -139,7 +139,8 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
     assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
-  encodeInternal(s, if safe: cb64safe else: cb64)
+  if safe: encodeInternal(s, cb64safe)
+  else: encodeInternal(s, cb64)
 
 proc encode*(s: string, safe = false): string =
   ## Encodes ``s`` into base64 representation.
@@ -157,7 +158,8 @@ proc encode*(s: string, safe = false): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
-  encodeInternal(s, if safe: cb64safe else: cb64)
+  if safe: encodeInternal(s, cb64safe)
+  else: encodeInternal(s, cb64)
 
 proc encodeMIME*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## Encodes ``s`` into base64 representation as lines.
