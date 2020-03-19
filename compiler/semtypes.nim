@@ -225,7 +225,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
       localError(c.config, n.info, "type mismatch")
-    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin tyFloat..tyFloat128 or
+    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
     elif enumHasHoles(rangeT[0]):
@@ -804,7 +804,7 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
         addInheritedFieldsAux(c, check, pos, lastSon(n[i]))
       else: internalError(c.config, n.info, "addInheritedFieldsAux(record case branch)")
   of nkRecList, nkRecWhen, nkElifBranch, nkElse:
-    for i in 0..<n.len:
+    for i in int(n.kind == nkElifBranch)..<n.len:
       addInheritedFieldsAux(c, check, pos, n[i])
   of nkSym:
     incl(check, n.sym.name.id)

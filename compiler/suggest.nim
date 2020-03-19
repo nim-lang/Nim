@@ -497,9 +497,11 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
-  elif s.kind in {skType, skVar, skLet} and s.ast[0].kind == nkPragmaExpr:
-    # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
-    result = s.ast[0][1]
+  elif s.kind in {skType, skVar, skLet}:
+    if s.ast != nil and s.ast.len > 0:
+      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
+        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
+        result = s.ast[0][1]
   doAssert result == nil or result.kind == nkPragma
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =

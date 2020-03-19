@@ -26,7 +26,7 @@ type                          # please make sure we have under 32 options
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
     optOverflowCheck, optNilCheck, optRefCheck,
-    optNaNCheck, optInfCheck, optStyleCheck,
+    optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
     optLineTrace,             # line tracing support (includes stack tracing)
@@ -289,7 +289,15 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
+proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  template fun(op) =
+    conf.notes.op note
+    conf.mainPackageNotes.op note
+    conf.foreignPackageNotes.op note
+  if enabled: fun(incl) else: fun(excl)
+
 proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
+  # see also `prepareConfigNotes` which sets notes
   if note notin conf.cmdlineNotes:
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
@@ -312,7 +320,7 @@ const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, par
 const
   ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
-    optStyleCheck, optRefCheck}
+    optStyleCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,

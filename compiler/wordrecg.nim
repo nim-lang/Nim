@@ -50,7 +50,7 @@ type
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
     wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks,
-    wFloatChecks, wNanChecks, wInfChecks, wStyleChecks,
+    wFloatChecks, wNanChecks, wInfChecks, wStyleChecks, wStaticBoundchecks,
     wNonReloadable, wExecuteOnReload,
     wAssertions, wPatterns, wTrMacros, wSinkInference, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
@@ -137,7 +137,7 @@ const
     "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
-    "floatchecks", "nanchecks", "infchecks", "stylechecks",
+    "floatchecks", "nanchecks", "infchecks", "stylechecks", "staticboundchecks",
     "nonreloadable", "executeonreload",
 
     "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",

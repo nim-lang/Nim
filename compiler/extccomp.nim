@@ -1064,6 +1064,9 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     lit ",\L\"extraCmds\": "
     lit $(%* conf.extraCmds)
 
+    lit ",\L\"stdinInput\": "
+    lit $(%* conf.projectIsStdin)
+
     if optRun in conf.globalOptions or isDefined(conf, "nimBetterRun"):
       lit ",\L\"cmdline\": "
       str conf.commandLine
@@ -1090,6 +1093,13 @@ proc changeDetectedViaJsonBuildInstructions*(conf: ConfigRef; projectfile: Absol
       return true
     if hashNimExe() != data["nimexe"].getStr:
       return true
+    if not data.hasKey("stdinInput"): return true
+    let stdinInput = data["stdinInput"].getBool
+    if conf.projectIsStdin or stdinInput:
+      # could optimize by returning false if stdin input was the same,
+      # but I'm not sure how to get full stding input
+      return true
+
     let depfilesPairs = data["depfiles"]
     doAssert depfilesPairs.kind == JArray
     for p in depfilesPairs:
@@ -1138,7 +1148,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
 
   except:
     let e = getCurrentException()
-    quit "\ncaught exception:n" & e.msg & "\nstacktrace:\n" & e.getStackTrace() &
+    quit "\ncaught exception:\n" & e.msg & "\nstacktrace:\n" & e.getStackTrace() &
          "error evaluating JSON file: " & jsonFile.string
 
 proc genMappingFiles(conf: ConfigRef; list: CfileList): Rope =
