@@ -7,7 +7,7 @@ set -u # error on undefined variables
 set -e # exit on first error
 
 echo_run(){
-  printf "\n$*\n"
+  echo "$*"
   "$@"
 }
 
@@ -21,22 +21,20 @@ build_nim_csources_via_script(){
 }
 
 build_nim_csources(){
-  ## avoid changing dir in case of failure
+  # avoid changing dir in case of failure
   (
-    if [[ $# -ne 0 ]]; then
+    if [ $# -ne 0 ]; then
       # some args were passed (eg: `--cpu i386`), need to call build.sh
       build_nim_csources_via_script "$@"
     else
-      # no args, use multhreaded (5X faster on 16 cores: 10s instead of 50s)
+      # no args, use multiple Make jobs (5X faster on 16 cores: 10s instead of 50s)
       makeX=make
       unamestr=$(uname)
       if [ "$unamestr" = 'FreeBSD' ]; then
         makeX=gmake
       fi
-      # see https://stackoverflow.com/a/53427092/1426932
-      logicalCpus=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null)
-      # +1: see https://unix.stackexchange.com/questions/519092/what-is-the-logic-of-using-nproc-1-in-make-command
-      which $makeX && echo_run $makeX -C csources -j $(($logicalCpus + 1)) || build_nim_csources_via_script
+      nCPU=$(nproc 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || 1)
+      which $makeX && echo_run $makeX -C csources -j $((nCPU + 2)) -l $nCPU || build_nim_csources_via_script
     fi
   )
   # keep $nim_csources in case needed to investigate bootstrap issues
@@ -49,5 +47,6 @@ build_nim_csources(){
 # Note: if fails, may need to `cd csources && git pull`
 echo_run bin/nim c --skipUserCfg --skipParentCfg koch
 
-echo_run ./koch boot -d:release
-echo_run ./koch tools # Compile Nimble and other tools.
+echo_run ./koch boot -d:release --skipUserCfg --skipParentCfg
+echo_run ./koch tools --skipUserCfg --skipParentCfg # Compile Nimble and other tools.
+

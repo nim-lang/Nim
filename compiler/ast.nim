@@ -11,6 +11,7 @@
 
 import
   lineinfos, hashes, options, ropes, idents, idgen, int128
+from strutils import toLowerAscii
 
 export int128
 
@@ -228,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 40 flags!
+  TSymFlag* = enum    # 42 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -237,6 +238,8 @@ type
     sfGlobal,         # symbol is at global scope
 
     sfForward,        # symbol is forward declared
+    sfWasForwarded,   # symbol had a forward declaration
+                      # (implies it's too dangerous to patch its type signature)
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
     sfMangleCpp,      # mangle as cpp (combines with `sfExportc`)
@@ -286,6 +289,8 @@ type
     sfTemplateParam   # symbol is a template parameter
     sfCursor          # variable/field is a cursor, see RFC 177 for details
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
+    sfNeverRaises     # proc can never raise an exception, not even OverflowError
+                      # or out-of-memory
 
   TSymFlags* = set[TSymFlag]
 
@@ -335,6 +340,8 @@ const
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
   effectListLen* = 5    # list of effects list
+  nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
+                        # these must be last statements in a block
 
 type
   TTypeKind* = enum  # order is important!
@@ -587,8 +594,11 @@ const
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
-  # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr}
+var
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+    ## type flags that are essential for type equality.
+    ## This is now a variable because for emulation of version:1.0 we
+    ## might exclude {tfGcSafe, tfNoSideEffect}.
 
 type
   TMagic* = enum # symbols that require compiler magic:
@@ -596,12 +606,11 @@ type
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
     mIs, mOf, mAddr, mType, mTypeOf,
-    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
+    mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
-    mUnaryLt, mInc, mDec, mOrd,
+    mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
-    mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
     mAddI, mSubI, mMulI, mDivI, mModI,
@@ -613,11 +622,10 @@ type
     mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
     mLeU, mLtU,
-    mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqUntracedRef, mLePtr, mLtPtr,
+    mEqRef, mLePtr, mLtPtr,
     mXor, mEqCString, mEqProc,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
@@ -626,18 +634,18 @@ type
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mSlice,
     mDotDot, # this one is only necessary to give nice compile time warnings
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr, mExit,
+    mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
-    mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
+    mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mAccessTypeInfo, mReset,
+    mDefault, mUnown, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -645,8 +653,8 @@ type
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
     mBool, mChar, mString, mCstring,
-    mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
-    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
+    mPointer, mNil, mExpr, mStmt, mTypeDesc,
+    mVoidType, mPNimrodNode, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mCompileOption, mCompileOptionArg,
@@ -659,7 +667,7 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash, mNSizeOf,
-    mNBindSym, mLocals, mNCallSite,
+    mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
@@ -670,9 +678,9 @@ type
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
-  ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
+  ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mLengthStr, mLengthArray, mLengthSeq,
     mArrGet, mArrPut, mAsgn, mDestroy,
     mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI,
@@ -683,21 +691,19 @@ const
     mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
     mLeU, mLtU,
-    mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
+    mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr,
-    mCopyStr, mCopyStrLast}
+    mInSet, mRepr}
 
 type
   PNode* = ref TNode
@@ -846,7 +852,7 @@ type
     position*: int            # used for many different things:
                               # for enum fields its position;
                               # for fields its offset
-                              # for parameters its position
+                              # for parameters its position (starting with 0)
                               # for a conditional:
                               # 1 iff the symbol is defined, else 0
                               # (or not in symbol table)
@@ -977,7 +983,7 @@ const
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
-    tyFloat..tyFloat128, tyUInt..tyUInt64}
+    tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
@@ -1025,6 +1031,26 @@ const
   defaultSize = -1
   defaultAlignment = -1
   defaultOffset = -1
+
+
+proc getnimblePkg*(a: PSym): PSym =
+  result = a
+  while result != nil:
+    case result.kind
+    of skModule:
+      result = result.owner
+      assert result.kind == skPackage
+    of skPackage:
+      if result.owner == nil:
+        break
+      else:
+        result = result.owner
+    else:
+      assert false, $result.kind
+
+proc getnimblePkgId*(a: PSym): int =
+  let b = a.getnimblePkg
+  result = if b == nil: -1 else: b.id
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 #var
@@ -1844,6 +1870,9 @@ proc isInlineIterator*(typ: PType): bool {.inline.} =
 proc isClosureIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
+proc isClosure*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and typ.callConv == ccClosure
+
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
 
@@ -1888,3 +1917,16 @@ proc canRaise*(fn: PNode): bool =
     result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
       (fn.typ.n[0][exceptionEffects] != nil and
       fn.typ.n[0][exceptionEffects].safeLen > 0))
+
+proc toHumanStrImpl[T](kind: T, num: static int): string =
+  result = $kind
+  result = result[num..^1]
+  result[0] = result[0].toLowerAscii
+
+proc toHumanStr*(kind: TSymKind): string =
+  ## strips leading `sk`
+  result = toHumanStrImpl(kind, 2)
+
+proc toHumanStr*(kind: TTypeKind): string =
+  ## strips leading `tk`
+  result = toHumanStrImpl(kind, 2)

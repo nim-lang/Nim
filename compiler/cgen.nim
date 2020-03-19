@@ -276,6 +276,7 @@ proc postStmtActions(p: BProc) {.inline.} =
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
+proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
   m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
@@ -974,7 +975,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
-    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NI* nimErr_;$n", []))
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc genProcAux(m: BModule, prc: PSym) =
@@ -1663,6 +1664,11 @@ proc genInitCode(m: BModule) =
 
     if beforeRetNeeded in m.initProc.flags:
       prc.add(~"\tBeforeRet_: ;$n")
+
+    if sfMainModule in m.module.flags and m.config.exc == excGoto:
+      if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
+        m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
+
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
 
@@ -1990,9 +1996,10 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if b == nil: return
   var m = BModule(b)
   if sfMainModule in m.module.flags:
-    let testForError = getCompilerProc(graph, "nimTestErrorFlag")
-    if testForError != nil and graph.config.exc == excGoto:
-      n.add newTree(nkCall, testForError.newSymNode)
+    # phase ordering problem here: We need to announce this
+    # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
+    if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
+      discard cgsym(m, "nimTestErrorFlag")
 
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]

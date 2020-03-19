@@ -48,6 +48,20 @@ import
 
 const weirdTarget = defined(nimscript) or defined(js)
 
+since (1, 1):
+  const
+    invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
+    ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
+    ## You can check if your filename contains these char and strip them for safety.
+    ## Mac bans ``':'``, Linux bans ``'/'``, Windows bans all others.
+    invalidFilenames* = [
+      "CON", "PRN", "AUX", "NUL",
+      "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+      "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"] ## \
+    ## Filenames that may be invalid across Linux, Windows, Mac, etc.
+    ## You can check if your filename match these and rename it for safety
+    ## (Currently all invalid filenames are from Windows only).
+
 when weirdTarget:
   discard
 elif defined(windows):
@@ -64,6 +78,8 @@ when weirdTarget and defined(nimErrorProcCanHaveBody):
   {.pragma: noNimScript, error: "this proc is not available on the NimScript target".}
 else:
   {.pragma: noNimScript.}
+
+proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read
@@ -120,14 +136,22 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
 since((1, 1)):
   export normalizePathEnd
 
+template endsWith(a: string, b: set[char]): bool =
+  a.len > 0 and a[^1] in b
+
+proc joinPathImpl(result: var string, state: var int, tail: string) =
+  let trailingSep = tail.endsWith({DirSep, AltSep}) or tail.len == 0 and result.endsWith({DirSep, AltSep})
+  normalizePathEnd(result, trailingSep=false)
+  addNormalizePath(tail, result, state, DirSep)
+  normalizePathEnd(result, trailingSep=trailingSep)
+
 proc joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
-  ## If `head` is the empty string, `tail` is returned. If `tail` is the empty
-  ## string, `head` is returned with a trailing path separator. If `tail` starts
-  ## with a path separator it will be removed when concatenated to `head`.
-  ## Path separators will be normalized.
+  ## returns normalized path concatenation of `head` and `tail`, preserving
+  ## whether or not `tail` has a trailing slash (or, if tail if empty, whether
+  ## head has one).
   ##
   ## See also:
   ## * `joinPath(varargs) proc <#joinPath,varargs[string]>`_
@@ -138,7 +162,10 @@ proc joinPath*(head, tail: string): string {.
   runnableExamples:
     when defined(posix):
       assert joinPath("usr", "lib") == "usr/lib"
-      assert joinPath("usr", "") == "usr/"
+      assert joinPath("usr", "lib/") == "usr/lib/"
+      assert joinPath("usr", "") == "usr"
+      assert joinPath("usr/", "") == "usr/"
+      assert joinPath("", "") == ""
       assert joinPath("", "lib") == "lib"
       assert joinPath("", "/lib") == "/lib"
       assert joinPath("usr/", "/lib") == "usr/lib"
@@ -146,11 +173,8 @@ proc joinPath*(head, tail: string): string {.
 
   result = newStringOfCap(head.len + tail.len)
   var state = 0
-  addNormalizePath(head, result, state, DirSep)
-  if tail.len == 0:
-    result.add DirSep
-  else:
-    addNormalizePath(tail, result, state, DirSep)
+  joinPathImpl(result, state, head)
+  joinPathImpl(result, state, tail)
   when false:
     if len(head) == 0:
       result = tail
@@ -189,7 +213,7 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   result = newStringOfCap(estimatedLen)
   var state = 0
   for i in 0..high(parts):
-    addNormalizePath(parts[i], result, state, DirSep)
+    joinPathImpl(result, state, parts[i])
 
 proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_.
@@ -203,10 +227,10 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
   ## * `uri./ proc <uri.html#/,Uri,string>`_
   runnableExamples:
     when defined(posix):
-      assert "usr" / "" == "usr/"
+      assert "usr" / "" == "usr"
       assert "" / "lib" == "lib"
       assert "" / "/lib" == "/lib"
-      assert "usr/" / "/lib" == "usr/lib"
+      assert "usr/" / "/lib/" == "usr/lib/"
       assert "usr" / "lib" / "../bin" == "usr/bin"
 
   return joinPath(head, tail)
@@ -359,9 +383,13 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
     assert relativePath("/Users/me/bar/z.nim", "/Users/me", '/') == "bar/z.nim"
     assert relativePath("", "/users/moo", '/') == ""
     assert relativePath("foo", ".", '/') == "foo"
+    assert relativePath("foo", "foo", '/') == "."
 
   if path.len == 0: return ""
-  let base = if base == ".": "" else: base
+  var base = if base == ".": "" else: base
+  var path = path
+  path.normalizePathAux
+  base.normalizePathAux
 
   when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):
@@ -410,6 +438,9 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
         result.add path[i + ff[0]]
     if not f.hasNext(path): break
     ff = f.next(path)
+
+  when not defined(nimOldRelativePathBehavior):
+    if result.len == 0: result.add "."
 
 proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   ## Returns true if `path` is relative to `base`.
@@ -1353,7 +1384,7 @@ when not weirdTarget:
         raise newException(ValueError, "The specified root is not absolute: " & root)
       joinPath(root, path)
 
-proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScript.} =
+proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.
   ##
   ## Consecutive directory separators are collapsed, including an initial double slash.
@@ -1402,7 +1433,9 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [], noNimScr
     else:
       path = "."
 
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
+proc normalizePathAux(path: var string) = normalizePath(path)
+
+proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns a normalized path for the current OS.
   ##
   ## See also:
@@ -3175,6 +3208,32 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+  ## Returns true if ``filename`` is valid for crossplatform use.
+  ##
+  ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
+  ## You can pass full paths as argument too, but func only checks filenames.
+  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ##
+  ## .. code-block:: nim
+  ##   assert not isValidFilename(" foo")    ## Leading white space
+  ##   assert not isValidFilename("foo ")    ## Trailing white space
+  ##   assert not isValidFilename("foo.")    ## Ends with Dot
+  ##   assert not isValidFilename("con.txt") ## "CON" is invalid (Windows)
+  ##   assert not isValidFilename("OwO:UwU") ## ":" is invalid (Mac)
+  ##   assert not isValidFilename("aux.bat") ## "AUX" is invalid (Windows)
+  ##
+  # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
+  # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+  result = true
+  let f = filename.splitFile()
+  if unlikely(f.name.len + f.ext.len > maxLen or
+    f.name[0] == ' ' or f.name[^1] == ' ' or f.name[^1] == '.' or
+    find(f.name, invalidFilenameChars) != -1): return false
+  for invalid in invalidFilenames:
+    if cmpIgnoreCase(f.name, invalid) == 0: return false
+
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
@@ -3209,3 +3268,31 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
+
+
+  block isValidFilenameTest:
+    # Negative Tests.
+    doAssert not isValidFilename("abcd", maxLen = 2)
+    doAssert not isValidFilename("0123456789", maxLen = 8)
+    doAssert not isValidFilename("con")
+    doAssert not isValidFilename("aux")
+    doAssert not isValidFilename("prn")
+    doAssert not isValidFilename("OwO|UwU")
+    doAssert not isValidFilename(" foo")
+    doAssert not isValidFilename("foo ")
+    doAssert not isValidFilename("foo.")
+    doAssert not isValidFilename("con.txt")
+    doAssert not isValidFilename("aux.bat")
+    doAssert not isValidFilename("prn.exe")
+    doAssert not isValidFilename("nim>.nim")
+    doAssert not isValidFilename(" foo.log")
+    # Positive Tests.
+    doAssert isValidFilename("abcd", maxLen = 42.Positive)
+    doAssert isValidFilename("c0n")
+    doAssert isValidFilename("foo.aux")
+    doAssert isValidFilename("bar.prn")
+    doAssert isValidFilename("OwO_UwU")
+    doAssert isValidFilename("cron")
+    doAssert isValidFilename("ux.bat")
+    doAssert isValidFilename("nim.nim")
+    doAssert isValidFilename("foo.log")

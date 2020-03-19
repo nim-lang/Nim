@@ -10,7 +10,7 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
-# included from tester.nim
+# included from testament.nim
 
 import important_packages
 
@@ -456,10 +456,8 @@ let
   packageIndex = nimbleDir / "packages_official.json"
 
 iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
-  let defaultCmd = "nimble test"
   let packageList = parseFile(packageIndex)
   for n, cmd, hasDeps, url in important_packages.packages.items:
-    let cmd = if cmd.len == 0: defaultCmd else: cmd
     if url.len != 0:
       yield (n, url, cmd, hasDeps)
     else:
@@ -480,7 +478,7 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults, cat: Category) =
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -493,6 +491,8 @@ proc testNimblePackages(r: var TResults, cat: Category) =
   var errors = 0
   try:
     for name, url, cmd, hasDep in listPackages():
+      if packageFilter notin name:
+        continue
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
@@ -708,7 +708,7 @@ proc processCategory(r: var TResults, cat: Category,
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
   of "nimble-packages":
-    testNimblePackages(r, cat)
+    testNimblePackages(r, cat, options)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":

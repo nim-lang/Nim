@@ -498,8 +498,21 @@ This covers modules like ``os``, ``osproc``, ``strscans``, ``strutils``,
 ``strformat``, etc.
 
 
-New stdlib modules do not start as stdlib modules
--------------------------------------------------
+Syntactic helpers can start as experimental stdlib modules
+----------------------------------------------------------
+
+Reason: Generally speaking as external dependencies they are not exposed
+to enough users so that we can see if the shortcuts provide enough benefit
+or not. Many programmers avoid external dependencies, even moreso for
+"tiny syntactic improvements". However, this is only true for really good
+syntactic improvements that have the potential to clean up other parts of
+the Nim library substantially. If in doubt, new stdlib modules should start
+as external, successful Nimble packages.
+
+
+
+Other new stdlib modules do not start as stdlib modules
+-------------------------------------------------------
 
 As we strive for higher quality everywhere, it's easier to adopt existing,
 battle-tested modules eventually rather than creating modules from scratch.

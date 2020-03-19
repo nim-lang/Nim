@@ -120,7 +120,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
     result = filterReplace(p.config, stdin, filename, n)
   if f != filtNone:
     assert p.config != nil
-    if hintCodeBegin in p.config.notes:
+    if p.config.hasHint(hintCodeBegin):
       rawMessage(p.config, hintCodeBegin, [])
       msgWriteln(p.config, result.s)
       rawMessage(p.config, hintCodeEnd, [])

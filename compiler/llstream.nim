@@ -12,9 +12,11 @@
 import
   pathutils
 
-# support '-d:useGnuReadline' for backwards compatibility:
-when not defined(windows) and (defined(useGnuReadline) or defined(useLinenoise)):
-  import rdstdin
+# support `useGnuReadline`, `useLinenoise` for backwards compatibility
+const hasRstdin = (defined(nimUseLinenoise) or defined(useLinenoise) or defined(useGnuReadline)) and
+  not defined(windows)
+
+when hasRstdin: import rdstdin
 
 type
   TLLRepl* = proc (s: PLLStream, buf: pointer, bufLen: int): int
@@ -67,7 +69,7 @@ proc llStreamClose*(s: PLLStream) =
   of llsFile:
     close(s.f)
 
-when not declared(readLineFromStdin):
+when not hasRstdin:
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
     stderr.write(prompt)
