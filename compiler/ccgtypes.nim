@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs
+import sighashes, modulegraphs, rod
 from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
@@ -48,7 +48,8 @@ proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
     result = s.name.s.mangle.rope
-    result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+    # XXX: wut
+    result.add(idOrSig(m, s))
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
 

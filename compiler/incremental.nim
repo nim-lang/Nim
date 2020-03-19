@@ -162,12 +162,12 @@ when nimIncremental:
     db.exec sql"create index SymByNimIdIdx on syms(nimid);"
 
 
-    #        md5 char(20) not null,
     db.exec(sql"""
       create table if not exists toplevelstmts(
         id integer primary key,
         position integer not null,
         module integer not null,
+        signature text,
         data blob not null,
         foreign key (module) references module(id)
       );
@@ -208,7 +208,13 @@ when nimIncremental:
       );
     """)
 
-  
+    db.exec(sql"""
+      create table if not exists conflicts (
+        id integer primary key,
+        nimid int not null,
+        signature char(40) not null
+      );
+    """)
 else:
   type
     IncrementalCtx* = object

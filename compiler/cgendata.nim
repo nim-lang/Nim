@@ -96,7 +96,7 @@ type
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
-    sigConflicts*: CountTableRef[string]
+    sigConflicts* {.deprecated.}: CountTableRef[string]
 
   TypeCache* = TableRef[SigHash, Rope]
   TypeCacheWithOwner* = Table[SigHash, tuple[str: Rope, owner: PSym]]

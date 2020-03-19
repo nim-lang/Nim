@@ -990,6 +990,7 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     result = "$1(*)$2" % [rettype, params]
 
 proc genProcBody(p: BProc; procBody: PNode) =
+  echo "genProcBody against p module: ", $p.module.tmpBase
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
@@ -1213,7 +1214,6 @@ proc requestConstImpl(p: BProc, sym: PSym) =
       p.module.g.generatedHeader.s[cfsData].add(headerDecl)
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
-
 # XXX: keep an eye on this.
 #
 # idOrSig is a good example of a change that can occur during
@@ -1222,8 +1222,8 @@ proc isActivated(prc: PSym): bool = prc.typ != nil
 #
 # we need to account for this.
 proc yewpad(m: BModule; s: PSym): string =
-  result = $m.module.id & " " & $s.id & " : "
-  result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
+  result = $m.module.id & " " & $s.id & " : " & $s.name.s & " : "
+  #result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
   result &= " : " & $s.name.s.mangle
 
 # mutates the module and the symbol
@@ -1256,26 +1256,8 @@ proc genProc(orig: BModule, prc: PSym) =
 
   # don't cache procs that aren't children of the module
   var
-    cachable = prc.owner != nil and prc.owner.kind == skModule
-
-  when defined(release):
-    cachable = false
-
-  # omit compiler procs with an owner?
-  if sfCompilerProc in prc.flags and prc.owner != nil:
-    cachable = false
-
-  # don't cache compiler procs
-  if lfImportCompilerProc in prc.loc.flags:
-    cachable = false
-
-  var
-    cache: CacheUnit[PSym]
-    m: BModule = orig
-
-  if cachable:
     cache = newCacheUnit(orig.g, prc)
-    m = findModule(cache.modules, orig)
+    m = cache.findTargetModule(orig)
 
   # XXX: should we handle these specially?
   when true:
@@ -1288,40 +1270,27 @@ proc genProc(orig: BModule, prc: PSym) =
 
     # we only generate code when the proc is completely defined
     if sfForward in prc.flags:
-      if cachable:
-        # merge the cache before we exit
-        cache.merge(orig.g)
+      # merge the cache before we exit
+      cache.merge(orig.g)
       return
-
-  var
-    readcache = cachable and m.config.symbolFiles notin {disabledSf,
-                                                         writeOnlySf}
-    writecache = cachable and m.config.symbolFiles notin {disabledSf,
-                                                          readOnlySf}
-
-  # we won't read it if we don't have it
-  readcache = readcache and cache.isHot
-
-  # we won't write it unless we aren't reading it
-  writecache = writecache and not readcache
 
   when not defined(release):
     echo "==> ", yewpad(m, prc)
 
   # if we're not reading, we need to generate the code
-  if not readcache:
-    if writecache:
+  if not cache.readable:
+    if cache.writable:
       when not defined(release):
         echo "> ", m.cfilename, "\t", prc.name.s
         echo "\t", $prc.sigHash, "\t", m.module.id
 
-    if not cachable:
-      echo "--", m.cfilename, "\t", prc.name.s
+    #if not cachable:
+    #  echo "--", m.cfilename, "\t", prc.name.s
 
     # the actual code generation
     performRealGenProc(m, prc)
 
-    if writecache:
+    if cache.writable:
       # store the cache to db
       cache.store
 
@@ -1331,13 +1300,12 @@ proc genProc(orig: BModule, prc: PSym) =
         return
 
   # if we're reading, load the snippets from the db
-  if readcache:
+  if cache.readable:
     # load the cached symbol and its snippets from the db
     cache.load(orig.g)
 
-  if cachable:
-    # merge the cache into our graph
-    cache.merge(orig.g)
+  # merge the cache into our graph if possible
+  cache.merge(orig.g)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1991,7 +1959,16 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    genProcBody(m.initProc, transformedN)
+    var
+      cache = newCacheUnit(m.g, transformedN)
+      target = cache.findTargetModule(m)
+    if cache.readable:
+      cache.load(m)
+    else:
+      genProcBody(target.initProc, transformedN)
+      if cache.writable:
+        cache.store(m)
+    cache.merge(m.g)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:

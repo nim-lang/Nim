@@ -619,7 +619,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
   # store node always runs here
-  discard rod.storeNode(c.graph, c.module, result)
+  rod.storeNode(c.graph, c.module, result)
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):

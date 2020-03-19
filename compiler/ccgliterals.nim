@@ -35,6 +35,7 @@ proc detectSeqVersion(m: BModule): int =
 proc genStringLiteralDataOnlyV1(m: BModule, s: string): Rope =
   discard cgsym(m, "TGenericSeq")
   result = getTempName(m)
+  echo "FAKE str lit ", $result
   m.s[cfsData].addf("STRING_LITERAL($1, $2, $3);$n",
        [result, makeCString(s), rope(s.len)])
 
