@@ -3,6 +3,12 @@
 
 ## Changes affecting backwards compatibility
 
+- The Nim compiler now implements a faster way to detect overflows based
+  on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
+  supports these). Some versions of GCC lack this feature and unfortunately
+  we cannot detect this case reliably. So if you get compilation errors like
+  "undefined reference to '__builtin_saddll_overflow'" compile your programs
+  with `-d:nimEmulateOverflowChecks`.
 
 
 ### Breaking changes in the standard library
@@ -35,6 +41,9 @@
   `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
   `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
   used on 29th, 30th, 31st of each month.
+- `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
+  usage. The `$` operator can be used to obtain the string form of `HttpCode`
+  for comparison if desired.
 
 ### Breaking changes in the compiler
 
@@ -126,6 +135,7 @@ echo f
 - `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
   empty. This was required for intuitive behaviour of the strscans module
   (see bug #13605).
+- `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
 
 
 ## Language additions

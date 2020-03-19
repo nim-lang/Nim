@@ -549,7 +549,7 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 #define nimModInt(a, b, res) (((*res) = (a) % (b)), 0)
 #define nimModInt64(a, b, res) (((*res) = (a) % (b)), 0)
 
-#if !defined(_MSC_VER)
+#if !defined(_MSC_VER) && !defined(NIM_EmulateOverflowChecks)
   /* these exist because we cannot have .compilerProcs that are importc'ed
     by a different name */
 
