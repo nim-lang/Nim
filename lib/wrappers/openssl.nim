@@ -651,7 +651,7 @@ when defined(nimHasStyleChecks):
 
 # Certificate validation
 # On old openSSL version some of these symbols are not available
-when not defined(nimDisableCertificateValidation):
+when not defined(nimDisableCertificateValidation) and not defined(windows):
 
   proc SSL_get_peer_certificate*(ssl: SslCtx): PX509{.cdecl, dynlib: DLLSSLName,
       importc.}

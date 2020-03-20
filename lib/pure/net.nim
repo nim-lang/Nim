@@ -566,7 +566,7 @@ when defineSsl:
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
 
-    when defined(nimDisableCertificateValidation):
+    when defined(nimDisableCertificateValidation) or defined(windows):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
     else:
       case verifyMode
@@ -581,7 +581,7 @@ when defineSsl:
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    when not defined(nimDisableCertificateValidation):
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
       if verifyMode != CVerifyNone:
         # Use the caDir and caFile parameters if set
         if caDir != "" or caFile != "":
@@ -703,7 +703,7 @@ when defineSsl:
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
-    when not defined(nimDisableCertificateValidation):
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
       assert socket.isSSL
       let certificate = socket.sslHandle.SSL_get_peer_certificate()
       if certificate.isNil:
@@ -740,7 +740,7 @@ when defineSsl:
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation):
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
         if hostname.len > 0 and not isIpAddress(hostname):
           socket.checkCertName(hostname)
     of handshakeAsServer:
@@ -1699,7 +1699,7 @@ proc connect*(socket: Socket, address: string,
 
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
-      when not defined(nimDisableCertificateValidation):
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
         if not isIpAddress(address):
           socket.checkCertName(address)
 
