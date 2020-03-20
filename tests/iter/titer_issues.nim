@@ -213,3 +213,24 @@ block t2023_objiter:
 
   var o = init()
   echo(o.iter())
+
+block:
+  # bug #13417
+
+  var effectCounterP1 = 0
+
+  proc p1(): seq[int] =
+     inc effectCounterP1
+     @[1,2]
+
+  iterator ip1(v: openArray[int]): auto =
+     for x in v:
+        yield x
+
+  var effectCounterLoop = 0
+
+  for x in ip1(p1()):
+    inc effectCounterLoop
+
+  doAssert effectCounterP1 == 1
+  doAssert effectCounterLoop == 2
