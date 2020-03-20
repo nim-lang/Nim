@@ -44,7 +44,7 @@
 - `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
   usage. The `$` operator can be used to obtain the string form of `HttpCode`
   for comparison if desired.
-- `os.walkDir` ad `os.walkDirRec` now have new flag, `checkDir` (default: false).
+- `os.walkDir` and `os.walkDirRec` now have new flag, `checkDir` (default: false).
   If it is set to true, it will throw if input dir is invalid instead of a noop
   (which is the default behaviour, as it was before this change),
   `os.walkDirRec` only throws if top-level dir is invalid, but ignores errors for
