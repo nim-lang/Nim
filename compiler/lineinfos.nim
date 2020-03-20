@@ -36,7 +36,7 @@ type
     warnUnusedImportX,
     warnInheritFromException,
     warnEachIdentIsTuple,
-    warnProveInit, warnProveField, warnProveIndex, 
+    warnProveInit, warnProveField, warnProveIndex,
     warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,

@@ -696,8 +696,16 @@ proc checkRange(c: PEffects; value: PNode; typ: PType) =
     checkLe(c, value, highBound)
 
 proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
+  if typ == nil: return
+  let realType = typ.skipTypes(abstractInst)
+  when false:
+    # XXX fix this in liftdestructors instead
+    if realType.kind == tyRef and
+        optSeqDestructors in tracked.config.globalOptions:
+      createTypeBoundOps(tracked.graph, tracked.c, realType.lastSon, info)
+
   createTypeBoundOps(tracked.graph, tracked.c, typ, info)
-  if (typ != nil and tfHasAsgn in typ.flags) or
+  if (tfHasAsgn in typ.flags) or
       optSeqDestructors in tracked.config.globalOptions:
     tracked.owner.flags.incl sfInjectDestructors
 
