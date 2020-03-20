@@ -30,7 +30,7 @@ proc listDirsImpl(dir: string): seq[string] {.
   tags: [ReadIOEffect], raises: [OSError].} = builtin
 proc listFilesImpl(dir: string): seq[string] {.
   tags: [ReadIOEffect], raises: [OSError].} = builtin
-proc removeDir(dir: string) {.
+proc removeDir(dir: string, checkDir = true) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -204,10 +204,10 @@ proc listFiles*(dir: string): seq[string] =
   result = listFilesImpl(dir)
   checkOsError()
 
-proc rmDir*(dir: string) {.raises: [OSError].} =
+proc rmDir*(dir: string, checkDir = false) {.raises: [OSError].} =
   ## Removes the directory `dir`.
   log "rmDir: " & dir:
-    removeDir dir
+    removeDir(dir, checkDir = checkDir)
     checkOsError()
 
 proc rmFile*(file: string) {.raises: [OSError].} =

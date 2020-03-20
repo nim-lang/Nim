@@ -65,7 +65,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
-      os.removeDir getString(a, 0)
+      os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
