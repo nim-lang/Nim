@@ -80,6 +80,12 @@ jobs:
         shell: bash
         run: ./koch boot
 
-      - name: 'Run SSL integration tests'
+      - name: 'Run SSL nimDisableCertificateValidation integration tests'
         shell: bash
-        run: ./bin/nim c -d:ssl -p:. --threads:on -r tests/untestable/thttpclient_ssl.nim
+        run: nim c -d:nimDisableCertificateValidation -d:ssl -r -p:. tests/untestable/thttpclient_ssl_disabled.nim
+
+      - name: 'Run SSL certificate check integration tests'
+        # Not supported on Windows due to old openssl version
+        if: runner.os != 'Windows'
+        shell: bash
+        run: nim c -d:ssl -p:. --threads:on -r tests/untestable/thttpclient_ssl.nim
