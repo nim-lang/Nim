@@ -3,13 +3,13 @@ discard """
   nimout: '''
 tsigmatch.nim(111, 4) Error: type mismatch: got <A, string>
 but expected one of:
+proc f(a: A)
+  first type mismatch at position: 2
+  extra argument given
 proc f(b: B)
   first type mismatch at position: 1
   required type for b: B
   but expression 'A()' is of type: A
-proc f(a: A)
-  first type mismatch at position: 2
-  extra argument given
 
 expression: f(A(), "extra")
 tsigmatch.nim(125, 6) Error: type mismatch: got <tuple of (string, proc (){.gcsafe, locks: 0.})>
@@ -61,14 +61,14 @@ proc f(a1: string; a2: varargs[string]; a3: float; a4: var string)
 expression: f("asdf", "1", "2", "3", "4", 2.3, "bad")
 tsigmatch.nim(164, 4) Error: type mismatch: got <string, a0: int literal(12)>
 but expected one of:
-proc f(x: string; a0: var int)
-  first type mismatch at position: 2
-  required type for a0: var int
-  but expression 'a0 = 12' is immutable, not 'var'
 proc f(x: string; a0: string)
   first type mismatch at position: 2
   required type for a0: string
   but expression 'a0 = 12' is of type: int literal(12)
+proc f(x: string; a0: var int)
+  first type mismatch at position: 2
+  required type for a0: var int
+  but expression 'a0 = 12' is immutable, not 'var'
 
 expression: f(foo, a0 = 12)
 tsigmatch.nim(171, 7) Error: type mismatch: got <Mystring, string>
