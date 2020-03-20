@@ -711,7 +711,7 @@ when defineSsl:
 
       const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
       const size = 1024
-      var peername: cstring = newString(size)
+      var peername: string = newString(size)
       let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
         X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
       if match != 1:
