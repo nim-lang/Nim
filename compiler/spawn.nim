@@ -68,7 +68,7 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
     if typ.attachedOps[attachedAsgn] != nil:
       var call = newNode(nkCall)
       call.add newSymNode(typ.attachedOps[attachedAsgn])
-      call.add genAddrOf(newSymNode(result))
+      call.add genAddrOf(newSymNode(result), tyVar)
       call.add v
       varInit.add call
     elif useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
