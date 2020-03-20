@@ -990,6 +990,8 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     result = "$1(*)$2" % [rettype, params]
 
 proc genProcBody(p: BProc; procBody: PNode) =
+  if startsWith($p.module.tmpBase, "TM"):
+    writeStackTrace()
   echo "genProcBody against p module: ", $p.module.tmpBase
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
@@ -1294,6 +1296,9 @@ proc genProc(orig: BModule, prc: PSym) =
       # store the cache to db
       cache.store
 
+      cache.merge(orig.g)
+      cache.reject
+
       when false:
         # this is using the cache
         genProc(orig, prc)
@@ -1586,72 +1591,88 @@ proc genMainProc(m: BModule) =
       m.s[cfsProcs].add openNamespaceNim(m.config.cppCustomNamespace)
 
 proc registerModuleToMain(g: BModuleList; m: BModule) =
-  let
-    init = m.getInitName
-    datInit = m.getDatInitName
+  var
+    g = g # for cache merge
+    orig = m
+    cache = newCacheUnit(g, orig.module)
+    m = cache.findTargetModule(orig)
+  if cache.readable:
+    cache.load(g)
+  else:
+    block codegen:
+      let
+        init = m.getInitName
+        datInit = m.getDatInitName
 
-  if m.hcrOn:
-    var hcrModuleMeta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
-    let systemModulePath = getModuleDllPath(m, g.modules[g.graph.config.m.systemFileIdx.int].module)
-    let mainModulePath = getModuleDllPath(m, m.module)
-    if sfMainModule in m.module.flags:
-      hcrModuleMeta.addf("\t$1,$n", [systemModulePath])
-    g.graph.importDeps.withValue(FileIndex(m.module.position), deps):
-      for curr in deps[]:
-        hcrModuleMeta.addf("\t$1,$n", [getModuleDllPath(m, g.modules[curr.int].module)])
-    hcrModuleMeta.addf("\t\"\"};$n", [])
-    hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
-    hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
-                          [($sigHash(m.module)).rope])
-    if sfMainModule in m.module.flags:
-      g.mainModProcs.add(hcrModuleMeta)
-      g.mainModProcs.addf("static void* hcr_handle;$N", [])
-      g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [init])
-      g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [datInit])
-      g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, $1)(void*, N_NIMCALL_PTR(void*, getProcAddr)(void*, char*));$N", [m.getHcrInitName])
-      g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, HcrCreateTypeInfos)(void);$N", [])
-      g.mainModInit.addf("\t$1();$N", [init])
-      g.otherModsInit.addf("\thcrInit((void**)hcr_module_list, $1, $2, $3, hcr_handle, nimGetProcAddr);$n",
-                            [mainModulePath, systemModulePath, datInit])
-      g.mainDatInit.addf("\t$1(hcr_handle, nimGetProcAddr);$N", [m.getHcrInitName])
-      g.mainDatInit.addf("\thcrAddModule($1);\n", [mainModulePath])
-      g.mainDatInit.addf("\tHcrCreateTypeInfos();$N", [])
-      # nasty nasty hack to get the command line functionality working with HCR
-      # register the 2 variables on behalf of the os module which might not even
-      # be loaded (in which case it will get collected but that is not a problem)
-      let osModulePath = ($systemModulePath).replace("stdlib_system", "stdlib_os").rope
-      g.mainDatInit.addf("\thcrAddModule($1);\n", [osModulePath])
-      g.mainDatInit.add("\tint* cmd_count;\n")
-      g.mainDatInit.add("\tchar*** cmd_line;\n")
-      g.mainDatInit.addf("\thcrRegisterGlobal($1, \"cmdCount\", sizeof(cmd_count), NULL, (void**)&cmd_count);$N", [osModulePath])
-      g.mainDatInit.addf("\thcrRegisterGlobal($1, \"cmdLine\", sizeof(cmd_line), NULL, (void**)&cmd_line);$N", [osModulePath])
-      g.mainDatInit.add("\t*cmd_count = cmdCount;\n")
-      g.mainDatInit.add("\t*cmd_line = cmdLine;\n")
-    else:
-      m.s[cfsInitProc].add(hcrModuleMeta)
-    return
+      if m.hcrOn:
+        var hcrModuleMeta = "$nN_LIB_PRIVATE const char* hcr_module_list[] = {$n" % []
+        let systemModulePath = getModuleDllPath(m, g.modules[g.graph.config.m.systemFileIdx.int].module)
+        let mainModulePath = getModuleDllPath(m, m.module)
+        if sfMainModule in m.module.flags:
+          hcrModuleMeta.addf("\t$1,$n", [systemModulePath])
+        m.g.graph.importDeps.withValue(FileIndex(m.module.position), deps):
+          for curr in deps[]:
+            hcrModuleMeta.addf("\t$1,$n", [getModuleDllPath(m, m.g.modules[curr.int].module)])
+        hcrModuleMeta.addf("\t\"\"};$n", [])
+        hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(void**, HcrGetImportedModules)() { return (void**)hcr_module_list; }$n", [])
+        hcrModuleMeta.addf("$nN_LIB_EXPORT N_NIMCALL(char*, HcrGetSigHash)() { return \"$1\"; }$n$n",
+                              [($sigHash(m.module)).rope])
+        if sfMainModule in m.module.flags:
+          m.g.mainModProcs.add(hcrModuleMeta)
+          m.g.mainModProcs.addf("static void* hcr_handle;$N", [])
+          m.g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [init])
+          m.g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, $1)(void);$N", [datInit])
+          m.g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, $1)(void*, N_NIMCALL_PTR(void*, getProcAddr)(void*, char*));$N", [m.getHcrInitName])
+          m.g.mainModProcs.addf("N_LIB_EXPORT N_NIMCALL(void, HcrCreateTypeInfos)(void);$N", [])
+          m.g.mainModInit.addf("\t$1();$N", [init])
+          m.g.otherModsInit.addf("\thcrInit((void**)hcr_module_list, $1, $2, $3, hcr_handle, nimGetProcAddr);$n",
+                                [mainModulePath, systemModulePath, datInit])
+          m.g.mainDatInit.addf("\t$1(hcr_handle, nimGetProcAddr);$N", [m.getHcrInitName])
+          m.g.mainDatInit.addf("\thcrAddModule($1);\n", [mainModulePath])
+          m.g.mainDatInit.addf("\tHcrCreateTypeInfos();$N", [])
+          # nasty nasty hack to get the command line functionality working with HCR
+          # register the 2 variables on behalf of the os module which might not even
+          # be loaded (in which case it will get collected but that is not a problem)
+          let osModulePath = ($systemModulePath).replace("stdlib_system", "stdlib_os").rope
+          m.g.mainDatInit.addf("\thcrAddModule($1);\n", [osModulePath])
+          m.g.mainDatInit.add("\tint* cmd_count;\n")
+          m.g.mainDatInit.add("\tchar*** cmd_line;\n")
+          m.g.mainDatInit.addf("\thcrRegisterGlobal($1, \"cmdCount\", sizeof(cmd_count), NULL, (void**)&cmd_count);$N", [osModulePath])
+          m.g.mainDatInit.addf("\thcrRegisterGlobal($1, \"cmdLine\", sizeof(cmd_line), NULL, (void**)&cmd_line);$N", [osModulePath])
+          m.g.mainDatInit.add("\t*cmd_count = cmdCount;\n")
+          m.g.mainDatInit.add("\t*cmd_line = cmdLine;\n")
+        else:
+          m.s[cfsInitProc].add(hcrModuleMeta)
+        break codegen
 
-  if m.s[cfsDatInitProc].len > 0:
-    g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
-    g.mainDatInit.addf("\t$1();$N", [datInit])
+      if m.s[cfsDatInitProc].len > 0:
+        m.g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [datInit])
+        m.g.mainDatInit.addf("\t$1();$N", [datInit])
 
-  # Initialization of TLS and GC should be done in between
-  # systemDatInit and systemInit calls if any
-  if sfSystemModule in m.module.flags:
-    if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-      g.mainDatInit.add(ropecg(m, "\t#initThreadVarsEmulation();$N", []))
-    if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
-      g.mainDatInit.add(ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", []))
+      # Initialization of TLS and GC should be done in between
+      # systemDatInit and systemInit calls if any
+      if sfSystemModule in m.module.flags:
+        if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+          m.g.mainDatInit.add(ropecg(m, "\t#initThreadVarsEmulation();$N", []))
+        if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+          m.g.mainDatInit.add(ropecg(m, "\t#initStackBottomWith((void *)&inner);$N", []))
 
-  if m.s[cfsInitProc].len > 0:
-    g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
-    let initCall = "\t$1();$N" % [init]
-    if sfMainModule in m.module.flags:
-      g.mainModInit.add(initCall)
-    elif sfSystemModule in m.module.flags:
-      g.mainDatInit.add(initCall) # systemInit must called right after systemDatInit if any
-    else:
-      g.otherModsInit.add(initCall)
+      if m.s[cfsInitProc].len > 0:
+        m.g.mainModProcs.addf("N_LIB_PRIVATE N_NIMCALL(void, $1)(void);$N", [init])
+        let initCall = "\t$1();$N" % [init]
+        if sfMainModule in m.module.flags:
+          m.g.mainModInit.add(initCall)
+        elif sfSystemModule in m.module.flags:
+          m.g.mainDatInit.add(initCall) # systemInit must called right after systemDatInit if any
+        else:
+          m.g.otherModsInit.add(initCall)
+
+    # we write after codegen... maybe.
+    if cache.writable:
+      cache.store
+
+  # we always merge
+  cache.merge(g)
 
 proc genDatInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
@@ -2079,44 +2100,58 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
-  if moduleHasChanged(graph, m.module):
-    # if the module is cached, we don't regenerate the main proc
-    # nor the dispatchers? But if the dispatchers changed?
-    # XXX emit the dispatchers into its own .c file?
-    if n != nil:
-      m.initProc.options = initProcOptions(m)
-      genProcBody(m.initProc, n)
 
-    if m.hcrOn:
-      # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
-      discard cgsym(m, "programResult")
-      if m.inHcrInitGuard:
-        endBlock(m.initProc)
+  var
+    orig = m
+    cache = newCacheUnit(orig.g, n)
+  # reuse m
+  m = cache.findTargetModule(orig)
+  if cache.readable:
+    cache.load(m)
+  else:
 
-    if sfMainModule in m.module.flags:
+    if moduleHasChanged(graph, m.module):
+      # if the module is cached, we don't regenerate the main proc
+      # nor the dispatchers? But if the dispatchers changed?
+      # XXX emit the dispatchers into its own .c file?
+      if n != nil:
+        m.initProc.options = initProcOptions(m)
+        genProcBody(m.initProc, n)
+
       if m.hcrOn:
-        # pull ("define" since they are inline when HCR is on) these functions in the main file
-        # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
-        # will in turn pass it to the other modules it initializes so they can initialize the
-        # register/get procs so they don't have to have the definitions of these functions as well
-        discard cgsym(m, "nimLoadLibrary")
-        discard cgsym(m, "nimLoadLibraryError")
-        discard cgsym(m, "nimGetProcAddr")
-        discard cgsym(m, "procAddrError")
-        discard cgsym(m, "rawWrite")
+        # make sure this is pulled in (meaning hcrGetGlobal() is called for it during init)
+        discard cgsym(m, "programResult")
+        if m.inHcrInitGuard:
+          endBlock(m.initProc)
 
-      # raise dependencies on behalf of genMainProc
-      if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
-        discard cgsym(m, "initStackBottomWith")
-      if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
-        discard cgsym(m, "initThreadVarsEmulation")
+      if sfMainModule in m.module.flags:
+        if m.hcrOn:
+          # pull ("define" since they are inline when HCR is on) these functions in the main file
+          # so it can load the HCR runtime and later pass the library handle to the HCR runtime which
+          # will in turn pass it to the other modules it initializes so they can initialize the
+          # register/get procs so they don't have to have the definitions of these functions as well
+          discard cgsym(m, "nimLoadLibrary")
+          discard cgsym(m, "nimLoadLibraryError")
+          discard cgsym(m, "nimGetProcAddr")
+          discard cgsym(m, "procAddrError")
+          discard cgsym(m, "rawWrite")
 
-      if m.g.forwardedProcs.len == 0:
-        incl m.flags, objHasKidsValid
-      let disp = generateMethodDispatchers(graph)
-      for x in disp: genProcAux(m, x.sym)
+        # raise dependencies on behalf of genMainProc
+        if m.config.target.targetOS != osStandalone and m.config.selectedGC != gcNone:
+          discard cgsym(m, "initStackBottomWith")
+        if emulatedThreadVars(m.config) and m.config.target.targetOS != osStandalone:
+          discard cgsym(m, "initThreadVarsEmulation")
 
-  m.g.modulesClosed.add m
+        if m.g.forwardedProcs.len == 0:
+          incl m.flags, objHasKidsValid
+        let disp = generateMethodDispatchers(graph)
+        for x in disp: genProcAux(m, x.sym)
+
+    if cache.writable:
+      cache.store(m)
+
+  cache.merge(orig.g)
+  orig.g.modulesClosed.add orig
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're
@@ -2137,7 +2172,7 @@ proc genForwardedProcs(g: BModuleList) =
     genProcMayForward(m, prc)
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
-  let g = BModuleList(backend)
+  var g = BModuleList(backend)
   g.config = config
 
   # we need to process the transitive closure because recursive module
@@ -2145,8 +2180,9 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   # order anyway)
   genForwardedProcs(g)
 
-  for m in cgenModules(g):
-    m.writeModule(pending=true)
+  for orig in cgenModules(g):
+    performCaching(g, orig, orig.module):
+      writeModule(m, pending = true)
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 

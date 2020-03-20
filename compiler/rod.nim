@@ -258,11 +258,15 @@ proc cachabilityUnchanged(cache: var CacheUnit[PSym];
     cache.strategy = {Immutable}
   # compiler proc that isn't at top level
   elif sfCompilerProc in node.flags and node.owner != nil:
+    when not defined(release):
+      echo "....sf......", node.name.s
     # XXX: test these
     #cache.strategy = {}
     cache.strategy = {Immutable}
   # compiler proc mutation
   elif lfImportCompilerProc in node.loc.flags:
+    when not defined(release):
+      echo "....lf......", node.name.s
     # XXX: test these
     #cache.strategy = {}
     cache.strategy = {Immutable}
@@ -277,12 +281,20 @@ proc assignCachability[T](cache: var CacheUnit[T]; config: ConfigRef; node: T) =
   when defined(release):
     cache.strategy = {Immutable}
   else:
-    if cache.cachabilityUnchanged(node):
-      cache.strategy = case config.symbolFiles
-        of disabledSf: {Immutable}
-        of readOnlySf: {Reads, Immutable}
-        of writeOnlySf: {Writes, Immutable}
-        of v2Sf: {Reads, Writes}
+    discard cache.cachabilityUnchanged(node)
+    case config.symbolFiles
+    of disabledSf:
+      cache.strategy.incl {Immutable}
+      cache.strategy.excl {Reads, Writes}
+    of readOnlySf:
+      cache.strategy.incl {Reads, Immutable}
+      cache.strategy.excl {Writes}
+    of writeOnlySf:
+      cache.strategy.incl {Writes, Immutable}
+      cache.strategy.excl {Reads}
+    of v2Sf:
+      cache.strategy.incl {Writes}
+    echo "node ", node.sigHash, " ", cache.strategy
 
 proc createFakeGraph(modules: BModuleList; sig: SigHash): BModuleList =
   result = newModuleList(modules.graph)
@@ -340,7 +352,7 @@ proc createFakeGraph(modules: BModuleList; sig: SigHash): BModuleList =
       result.modules.add fake
 
 proc reject*(cache: var CacheUnit) =
-  cache.strategy -= {Reads, Writes}
+  cache.strategy.excl {Reads, Writes}
 
 template rejected*(cache): bool =
   {CacheStrategy.Reads, CacheStrategy.Writes} * cache.strategy == {}
@@ -756,7 +768,6 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var string) =
     encodeNode(g, s.info, s.ast, result)
 
 proc symbolId*(g: ModuleGraph; p: PSym): SqlId =
-  if g.config.symbolFiles == disabledSf: return
   const
     query = sql"""
       select id from syms
@@ -796,8 +807,6 @@ proc storeSym*(g: ModuleGraph; s: PSym) =
   if existing != 0:
     echo "duplicate store of symbol ", s.name.s
     unstoreSym(g, s)
-#  else:
-#    echo "fresh symbol ", s.name.s
 
   var buf = newStringOfCap(160)
   encodeSym(g, s, buf)
@@ -808,7 +817,6 @@ proc storeSym*(g: ModuleGraph; s: PSym) =
     """
   # XXX only store the name for exported symbols in order to speed up lookup
   # times once we enable the skStub logic.
-  # XXX - but we need generics...
   let
     m = getModule(s)
     mid = if m == nil: 0 else: abs(m.id)
@@ -968,9 +976,6 @@ proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
   encodeNode(g, module.info, n, buf)
   const
     insertion = sql"insert into toplevelstmts(module, position, data) values (?, ?, ?)"
-  # XXX
-  # module should match the primary key of an id in the modules table,
-  # right?
   db.exec(insertion, abs(module.id), module.offset, buf)
   inc module.offset
   transitiveClosure(g)
@@ -1525,7 +1530,7 @@ proc setupModuleCache*(g: ModuleGraph) =
 proc encodeTransform(t: Transform): string =
   case t.kind:
   of HeaderFile:
-    # XXX: assert no newlines in filenames
+    {.warning: "assert no newlines in filenames?".}
     result = t.filenames.join("\n")
   of ThingSet, ProtoSet, SwingSet, JetSet, ReSet:
     result = mapIt(t.diff, $it).join("\n")
@@ -1561,9 +1566,8 @@ proc decodeTransform(kind: string; module: BModule;
     result.grope = rope(splat[1])
   of TypeStack:
     for value in mapIt(data.split('\n'), parseInt(it)):
-      # XXX: fake out; terrible
-      result.stack.add loadType(module.g.graph, value,
-                                module.module.info)
+      {.warning: "faked out line info; terrible".}
+      result.stack.add loadType(module.g.graph, value, module.module.info)
   else:
     discard
 
@@ -1765,7 +1769,7 @@ proc merge(cache; parent: var BModule; child: BModule) =
   cache.mergeRopes(parent, child, injectStmt)
 
 
-  # --- XXX --- we aren't saving these yet
+  {.warning: "we aren't saving these yet".}
   if parent.initProc.prc == nil and child.initProc.prc != nil:
     parent.initProc = child.initProc
   if parent.preInitProc.prc == nil and child.preInitProc.prc != nil:
@@ -1795,7 +1799,8 @@ proc merge(cache; parent: var BModule; child: BModule) =
     transform = Transform(kind: TypeStack, module: parent)
   for ptype in child.typeStack:
     parent.pushType ptype
-    # XXX: these need to be stored in reverse order
+    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    {.warning: "these need to be stored in reverse order".}
     #if not typeAlreadyStored(cache.graph, ptype):
     #  storeType(cache.graph, ptype)
     transform.stack.add ptype
@@ -1844,7 +1849,8 @@ proc merge*(cache; parent: var BModuleList) =
   cache.mergeRopes(parent, child.mainDatInit)
   cache.mergeRopes(parent, child.mapping)
 
-  # XXX: graph changes that need to be in transforms ^^^
+  # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  {.warning: "graph changes that need to be in transforms".}
 
   # merge child modules
   for m in child.modules.items:
@@ -1865,7 +1871,6 @@ proc store*(cache: var CacheUnit[PNode]; orig: BModule) =
   when not defined(release):
     echo "store for ", cache.findTargetModule(orig).tmpBase
 
-  # XXX: write out the typestacks here
   transitiveClosure(cache.graph)
 
   cache.graph.storeNode(orig.module, cache.node)
@@ -1879,7 +1884,6 @@ proc store*(cache: var CacheUnit[PSym]) =
   when not defined(release):
     echo "store for ", cache.node.name.s
 
-  # XXX: write out the typestacks here
   transitiveClosure(cache.graph)
 
   # work around mutation of symbol
@@ -2019,7 +2023,6 @@ proc load*(cache: var CacheUnit[PSym]; list: BModuleList) =
   cache.loadTransformsIntoCache
 
 proc nodeAlreadyStored*(g: ModuleGraph; p: PNode): bool =
-  if g.config.symbolFiles == disabledSf: return
   const
     query = sql"""
       select id
@@ -2039,3 +2042,19 @@ proc isHot(cache: CacheUnit[PSym]): bool =
   if {Reads, Immutable} * cache.strategy != {Immutable}:
     result = snippetAlreadyStored(cache.graph, cache.node)
     result = result and symbolAlreadyStored(cache.graph, cache.node)
+
+template performCaching*(g: BModuleList; orig: BModule; s: var CacheableObject;
+                         body: untyped): untyped =
+  var
+    cache = newCacheUnit(g, s)
+    target = cache.findTargetModule(orig)
+  if cache.readable:
+    cache.load(g)
+  else:
+    echo "writable: ", cache.writable, " ", $orig.cfilename
+    var
+      m {.inject.}: BModule = target
+    body
+    if cache.writable:
+      cache.store
+  cache.merge(g)
