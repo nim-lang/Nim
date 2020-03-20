@@ -65,7 +65,13 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   vpart[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
-    if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
+    if typ.attachedOps[attachedAsgn] != nil:
+      var call = newNode(nkCall)
+      call.add newSymNode(typ.attachedOps[attachedAsgn])
+      call.add genAddrOf(newSymNode(result))
+      call.add v
+      varInit.add call
+    elif useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
       varInit.add newFastAsgnStmt(newSymNode(result), v)
     else:
       let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
