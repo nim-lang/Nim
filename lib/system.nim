@@ -3011,3 +3011,21 @@ export io
 
 when not defined(createNimHcr):
   include nimhcr
+
+when defined(nimHasInternalProc):
+  ## {.internalproc.} is analog to {.compilerproc.} but is used for semantic
+  ## phase instead of codegen. It simplifies implementation by using nim code
+  ## instead of building the AST by hand, while also avoiding making these
+  ## public.
+  proc nimInternalNewException(name: string, msg: string, traceMsg: string) {.internalproc.} =
+    ## internal proc for raising from vmpops
+    template fun(T) =
+      if name == astToStr(T):
+        var msg2: string
+        if traceMsg.len > 0:
+          msg2 = "VM raised from \n" & traceMsg & "\n" & msg
+        else:
+          msg2 = msg
+        raise newException(T, msg2)
+    fun(OSError) # can add more hardcoded standard types here
+    doAssert false, name

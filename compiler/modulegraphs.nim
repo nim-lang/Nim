@@ -57,6 +57,7 @@ type
     exposed*: TStrTable
     intTypeCache*: array[-5..64, PType]
     opContains*, opNot*: PSym
+    nimInternalNewException*: PSym
     emptyNode*: PNode
     incr*: IncrementalCtx
     canonTypes*: Table[SigHash, PType]

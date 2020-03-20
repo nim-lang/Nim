@@ -534,6 +534,27 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         "ra", regDescr("ra", ra), "rb", regDescr("rb", instr.regB),
         "rc", regDescr("rc", instr.regC)]
 
+    proc onProcCall(prc: PSym, isClosure: bool, rb = 0, rc = 0, regs2: var seq[TFullReg]) =
+      let newPc = compile(c, prc)
+      # tricky: a recursion is also a jump back, so we use the same
+      # logic as for loops:
+      if newPc < pc: handleJmpBack()
+      #echo "new pc ", newPc, " calling: ", prc.name.s
+      var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
+      newSeq(newFrame.slots, prc.offset+ord(isClosure))
+      # echo0b (prc.name.s, prc.offset+ord(isClosure),isClosure, rb, rc)
+      if not isEmptyType(prc.typ[0]):
+        putIntoReg(newFrame.slots[0], getNullValue(prc.typ[0], prc.info, c.config))
+      for i in 1..rc-1:
+        newFrame.slots[i] = regs2[rb+i]
+        # echo0b (i, newFrame.slots[i].kind, rc)
+      if isClosure:
+        newFrame.slots[rc] = TFullReg(kind: rkNode, node: regs2[rb].node[1])
+      tos = newFrame
+      move(regs, newFrame.slots)
+      # -1 for the following 'inc pc'
+      pc = newPc-1
+
     case instr.opcode
     of opcEof: return regs[ra]
     of opcRet:
@@ -1193,10 +1214,42 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let prc = if not isClosure: bb.sym else: bb[0].sym
       if prc.offset < -1:
         # it's a callback:
-        c.callbacks[-prc.offset-2].value(
+        let cb = c.callbacks[-prc.offset-2].addr
+        template call() = cb[].value(
           VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
+        if cb[].mayRaise:
+          let info = c.debug[pc]
+          try:
+            call()
+          except Exception as e:
+            var traceMsg: string
+            var trace = e.getStackTraceEntries
+            if trace.len > 0:
+              #[
+              we truncate the stacktrace to only keep the useful portion from
+              the vmops call to the end, for example:
+              vm.nim(2214) evalConstExprAux
+              vm.nim(1231) rawExecute
+              vmops.nim(184) :anonymous
+              os.nim(2095) staticWalkDirImpl
+              oserr.nim(94) raiseOSError
+              ]#
+              var first = 0
+              for i in countdown(trace.len-1, 0):
+                if trace[i].procname == "rawExecute":
+                  first = i
+                  break
+              trace = trace[first..^1]
+              traceMsg = $trace
+            let vars = [$e.name, e.msg, traceMsg]
+            var regs2 = newSeq[TFullReg](vars.len)
+            for i, ai in [$e.name, e.msg, traceMsg]:
+              putIntoReg(regs2[i], newStrNode(ai, info))
+            onProcCall(c.graph.nimInternalNewException, isClosure = false, rb = -1, rc = 1 + regs2.len, regs2)
+        else:
+          call()
       elif importcCond(prc):
         if compiletimeFFI notin c.config.features:
           globalError(c.config, c.debug[pc], "VM not allowed to do FFI, see `compiletimeFFI`")
@@ -1221,23 +1274,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         else:
           globalError(c.config, c.debug[pc], "VM not built with FFI support")
       elif prc.kind != skTemplate:
-        let newPc = compile(c, prc)
-        # tricky: a recursion is also a jump back, so we use the same
-        # logic as for loops:
-        if newPc < pc: handleJmpBack()
-        #echo "new pc ", newPc, " calling: ", prc.name.s
-        var newFrame = PStackFrame(prc: prc, comesFrom: pc, next: tos)
-        newSeq(newFrame.slots, prc.offset+ord(isClosure))
-        if not isEmptyType(prc.typ[0]):
-          putIntoReg(newFrame.slots[0], getNullValue(prc.typ[0], prc.info, c.config))
-        for i in 1..rc-1:
-          newFrame.slots[i] = regs[rb+i]
-        if isClosure:
-          newFrame.slots[rc] = TFullReg(kind: rkNode, node: regs[rb].node[1])
-        tos = newFrame
-        move(regs, newFrame.slots)
-        # -1 for the following 'inc pc'
-        pc = newPc-1
+        onProcCall(prc, isClosure, rb = rb, rc = rc, regs)
       else:
         # for 'getAst' support we need to support template expansion here:
         let genSymOwner = if tos.next != nil and tos.next.prc != nil:
@@ -1513,6 +1550,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
+        # xxx: consider using same treatment as for other VmArgs callback
         args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])

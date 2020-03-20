@@ -24,7 +24,7 @@ const
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
     wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
-    wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime, wMerge,
+    wCompilerProc, wNonReloadable, wCore, wInternalProc, wProcVar, wVarargs, wCompileTime, wMerge,
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
@@ -897,6 +897,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfWasForwarded)
       of wDynlib:
         processDynLib(c, it, sym)
+      of wInternalProc:
+        noVal(c, it)
+        if sym.name == getIdent(c.cache, "nimInternalNewException"):
+          c.graph.nimInternalNewException = sym
+        else:
+          doAssert false, sym.name.s
       of wCompilerProc, wCore:
         noVal(c, it)           # compilerproc may not get a string!
         cppDefine(c.graph.config, sym.name.s)

@@ -1975,8 +1975,8 @@ proc matches(s: PSym; y: varargs[string]): bool =
 proc procIsCallback(c: PCtx; s: PSym): bool =
   if s.offset < -1: return true
   var i = -2
-  for key, value in items(c.callbacks):
-    if s.matches(key):
+  for ai in items(c.callbacks):
+    if s.matches(ai.key):
       doAssert s.offset == -1
       s.offset = i
       return true

@@ -2024,7 +2024,7 @@ when defined(posix) and not weirdTarget:
     else:
       result = pcLinkToFile
 
-proc staticWalkDir(dir: string; relative: bool): seq[
+proc staticWalkDir(dir: string; relative: bool, checkDir: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
@@ -2060,11 +2060,11 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
 
   when nimvm:
-    for k, v in items(staticWalkDir(dir, relative)):
+    for k, v in items(staticWalkDir(dir, relative, checkDir)):
       yield (k, v)
   else:
     when weirdTarget:
-      for k, v in items(staticWalkDir(dir, relative)):
+      for k, v in items(staticWalkDir(dir, relative, checkDir)):
         yield (k, v)
     elif defined(windows):
       var f: WIN32_FIND_DATA

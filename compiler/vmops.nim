@@ -96,9 +96,9 @@ proc getCurrentExceptionMsgWrapper(a: VmArgs) {.nimcall.} =
 proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
   setResult(a, a.currentException)
 
-proc staticWalkDirImpl(path: string, relative: bool): PNode =
+proc staticWalkDirImpl(path: string, relative: bool, checkDir: bool): PNode =
   result = newNode(nkBracket)
-  for k, f in walkDir(path, relative):
+  for k, f in walkDir(path, relative, checkDir):
     result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
@@ -179,8 +179,8 @@ proc registerAdditionalOps*(c: PCtx) =
     wrap2si(readLines, ioop)
     systemop getCurrentExceptionMsg
     systemop getCurrentException
-    registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
+    registerCallback c, "stdlib.*.staticWalkDir", mayRaise = true, callback = proc (a: VmArgs) {.nimcall.} =
+      setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1), getBool(a, 2)))
     registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) {.nimcall.} =
       setResult(a, querySettingImpl(a, c.config, getInt(a, 0)))
     registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
