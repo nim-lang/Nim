@@ -136,6 +136,8 @@ echo f
   empty. This was required for intuitive behaviour of the strscans module
   (see bug #13605).
 - `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
+- `net.newContext` now performs SSL Certificate checking on Linux and OSX.
+  Define `nimDisableCertificateValidation` to disable it globally.
 
 
 ## Language additions
