@@ -223,14 +223,14 @@ block:
   cycle2.child = cycle2
 
 type
-  MyTypeWithProc = object
+  MyTypeWithProc = ref object
     name: string
     fun: proc(arg: int): int
     cstr: cstring
+    data: UncheckedArray[byte]
 
 block:
-  var tmp: MyTypeWithProc
-  tmp.name = "Some Name"
-  doAssert $tmp == "(name: \"Some Name\", fun: nil, cstr: nil)"
+  let tmp = MyTypeWithProc(name: "Some Name")
+  doAssert $tmp == "(name: \"Some Name\", fun: nil, cstr: nil, data: [...])"
 
 echo "DONE: tostring.nim"
