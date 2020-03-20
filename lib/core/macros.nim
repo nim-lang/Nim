@@ -107,7 +107,6 @@ type
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
     ntyAnything, ntyStatic, ntyFromExpr, ntyOpt, ntyVoid
 
-  TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum
     nskUnknown, nskConditional, nskDynLib, nskParam,
     nskGenericParam, nskTemp, nskModule, nskType, nskVar, nskLet,
@@ -117,49 +116,15 @@ type
     nskEnumField, nskForVar, nskLabel,
     nskStub
 
-  TNimSymKinds* {.deprecated.} = set[NimSymKind]
-
-type
-  NimIdent* {.deprecated.} = object of RootObj
-    ## Represents a Nim identifier in the AST. **Note**: This is only
-    ## rarely useful, for identifier construction from a string
-    ## use ``ident"abc"``.
-
-  NimSymObj = object # hidden
-  NimSym* {.deprecated.} = ref NimSymObj
-    ## Represents a Nim *symbol* in the compiler; a *symbol* is a looked-up
-    ## *ident*.
-
-
 const
   nnkLiterals* = {nnkCharLit..nnkNilLit}
   nnkCallKinds* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
                    nnkCallStrLit}
   nnkPragmaCallKinds = {nnkExprColonExpr, nnkCall, nnkCallStrLit}
 
-{.push warnings: off.}
-
-proc `!`*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
-  ## Constructs an identifier from the string `s`.
-
-proc toNimIdent*(s: string): NimIdent {.magic: "StrToIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.0: Use 'ident' or 'newIdentNode' instead.".}
-  ## Constructs an identifier from the string `s`.
-
-proc `==`*(a, b: NimIdent): bool {.magic: "EqIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Use '==' on 'NimNode' instead.".}
-  ## Compares two Nim identifiers.
-
 proc `==`*(a, b: NimNode): bool {.magic: "EqNimrodNode", noSideEffect.}
   ## Compare two Nim nodes. Return true if nodes are structurally
   ## equivalent. This means two independently created nodes can be equal.
-
-proc `==`*(a, b: NimSym): bool {.magic: "EqNimrodNode", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Use '==(NimNode, NimNode)' instead.".}
-  ## Compares two Nim symbols.
-
-{.pop.}
 
 proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
   ## Compares two Nim nodes' types. Return true if the types are the same,
@@ -232,16 +197,6 @@ proc intVal*(n: NimNode): BiggestInt {.magic: "NIntVal", noSideEffect.}
 proc floatVal*(n: NimNode): BiggestFloat {.magic: "NFloatVal", noSideEffect.}
   ## Returns a float from any floating point literal.
 
-{.push warnings: off.}
-
-proc ident*(n: NimNode): NimIdent {.magic: "NIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
-
-proc symbol*(n: NimNode): NimSym {.magic: "NSymbol", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; All functionality is defined on 'NimNode'.".}
-
-proc getImpl*(s: NimSym): NimNode {.magic: "GetImpl", noSideEffect, deprecated: "use `getImpl: NimNode -> NimNode` instead".}
-
 when defined(nimSymKind):
   proc symKind*(symbol: NimNode): NimSymKind {.magic: "NSymKind", noSideEffect.}
   proc getImpl*(symbol: NimNode): NimNode {.magic: "GetImpl", noSideEffect.}
@@ -251,34 +206,6 @@ when defined(nimSymKind):
     ##
     ## See also:
     ## * `strVal= proc<#strVal=,NimNode,string>`_ for setting the string value.
-
-  proc `$`*(i: NimIdent): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim identifier to a string.
-
-  proc `$`*(s: NimSym): string {.magic: "NStrVal", noSideEffect, deprecated:
-    "Deprecated since version 0.18.1; Use 'strVal' instead.".}
-    ## Converts a Nim symbol to a string.
-
-else: # bootstrapping substitute
-  proc getImpl*(symbol: NimNode): NimNode =
-    symbol.symbol.getImpl
-
-  proc strValOld(n: NimNode): string {.magic: "NStrVal", noSideEffect.}
-
-  proc `$`*(s: NimSym): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc `$`*(i: NimIdent): string {.magic: "IdentToStr", noSideEffect.}
-
-  proc strVal*(n: NimNode): string =
-    if n.kind == nnkIdent:
-      $n.ident
-    elif n.kind == nnkSym:
-      $n.symbol
-    else:
-      n.strValOld
-
-{.pop.}
 
 when defined(nimSymImplTransform):
   proc getImplTransformed*(symbol: NimNode): NimNode {.magic: "GetImplTransf", noSideEffect.}
@@ -382,23 +309,6 @@ proc getTypeImpl*(n: typedesc): NimNode {.magic: "NGetType", noSideEffect.}
 proc `intVal=`*(n: NimNode, val: BiggestInt) {.magic: "NSetIntVal", noSideEffect.}
 proc `floatVal=`*(n: NimNode, val: BiggestFloat) {.magic: "NSetFloatVal", noSideEffect.}
 
-{.push warnings: off.}
-
-proc `symbol=`*(n: NimNode, val: NimSym) {.magic: "NSetSymbol", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'genSym' instead.".}
-
-proc `ident=`*(n: NimNode, val: NimIdent) {.magic: "NSetIdent", noSideEffect, deprecated:
-  "Deprecated since version 0.18.1; Generate a new 'NimNode' with 'ident(string)' instead.".}
-
-{.pop.}
-
-#proc `typ=`*(n: NimNode, typ: typedesc) {.magic: "NSetType".}
-# this is not sound! Unfortunately forbidding 'typ=' is not enough, as you
-# can easily do:
-#   let bracket = semCheck([1, 2])
-#   let fake = semCheck(2.0)
-#   bracket[0] = fake  # constructs a mixed array with ints and floats!
-
 proc `strVal=`*(n: NimNode, val: string) {.magic: "NSetStrVal", noSideEffect.}
   ## Sets the string value of a string literal or comment.
   ## Setting `strVal` is disallowed for `nnkIdent` and `nnkSym` nodes; a new node
@@ -452,19 +362,9 @@ proc newFloatLitNode*(f: BiggestFloat): NimNode {.compileTime.} =
   result = newNimNode(nnkFloatLit)
   result.floatVal = f
 
-{.push warnings: off.}
-
-proc newIdentNode*(i: NimIdent): NimNode {.compileTime, deprecated.} =
-  ## Creates an identifier node from `i`.
-  result = newNimNode(nnkIdent)
-  result.ident = i
-
-{.pop.}
-
 proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect, compilerproc.}
   ## Creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
-
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -641,18 +541,6 @@ proc newCall*(theProc: NimNode,
   result.add(theProc)
   result.add(args)
 
-{.push warnings: off.}
-
-proc newCall*(theProc: NimIdent, args: varargs[NimNode]): NimNode {.compileTime, deprecated:
-  "Deprecated since v0.18.1; use 'newCall(string, ...)' or 'newCall(NimNode, ...)' instead".} =
-  ## Produces a new call node. `theProc` is the proc that is called with
-  ## the arguments ``args[0..]``.
-  result = newNimNode(nnkCall)
-  result.add(newIdentNode(theProc))
-  result.add(args)
-
-{.pop.}
-
 proc newCall*(theProc: string,
               args: varargs[NimNode]): NimNode {.compileTime.} =
   ## Produces a new call node. `theProc` is the proc that is called with
@@ -815,14 +703,6 @@ proc nestList*(op: NimNode; pack: NimNode; init: NimNode): NimNode {.compileTime
   result = init
   for i in countdown(pack.len - 1, 0):
     result = newCall(op, pack[i], result)
-
-{.push warnings: off.}
-
-proc nestList*(theProc: NimIdent, x: NimNode): NimNode {.compileTime, deprecated:
-  "Deprecated since v0.18.1; use one of 'nestList(NimNode, ...)' instead.".} =
-  nestList(newIdentNode(theProc), x)
-
-{.pop.}
 
 proc treeTraverse(n: NimNode; res: var string; level = 0; isLisp = false, indented = false) {.benign.} =
   if level > 0:
@@ -988,12 +868,6 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##    )
   ##
   ## Also see ``dumpTree`` and ``dumpLisp``.
-
-macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated. Use `dumpTree` instead.
-
-macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated. Use `dumpLisp` instead.
 
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node.
@@ -1619,21 +1493,6 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       break
   if result.kind == nnkEmpty:
     error(n.repr & " doesn't have a pragma named " & cp.repr()) # returning an empty node results in most cases in a cryptic error,
-
-
-when not defined(booting):
-  template emit*(e: static[string]): untyped {.deprecated.} =
-    ## Accepts a single string argument and treats it as nim code
-    ## that should be inserted verbatim in the program
-    ## Example:
-    ##
-    ## .. code-block:: nim
-    ##   emit("echo " & '"' & "hello world".toUpper & '"')
-    ##
-    ## Deprecated since version 0.15 since it's so rarely useful.
-    macro payload: untyped {.gensym.} =
-      result = parseStmt(e)
-    payload()
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)

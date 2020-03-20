@@ -1,14 +1,11 @@
 discard """
   output: '''
-HELLO WORLD
 c_func
 12
 '''
 """
 
 import macros, strutils
-
-emit("echo " & '"' & "hello world".toUpperAscii & '"')
 
 # bug #1025
 

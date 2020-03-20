@@ -1333,7 +1333,7 @@ macro router*(name: untyped, body: untyped): typed =
   if name.kind != nnkIdent:
     error("Need an ident.", name)
 
-  routesEx($name.ident, body)
+  routesEx($name, body)
 
 macro settings*(body: untyped): typed =
   #echo(treeRepr(body))

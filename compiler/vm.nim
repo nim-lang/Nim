@@ -1594,20 +1594,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       case a.kind
       of nkFloatLit..nkFloat64Lit: regs[ra].floatVal = a.floatVal
       else: stackTrace(c, tos, pc, errFieldXNotFound & "floatVal")
-    of opcNSymbol:
-      decodeB(rkNode)
-      let a = regs[rb].node
-      if a.kind == nkSym:
-        regs[ra].node = copyNode(a)
-      else:
-        stackTrace(c, tos, pc, errFieldXNotFound & "symbol")
-    of opcNIdent:
-      decodeB(rkNode)
-      let a = regs[rb].node
-      if a.kind == nkIdent:
-        regs[ra].node = copyNode(a)
-      else:
-        stackTrace(c, tos, pc, errFieldXNotFound & "ident")
     of opcNodeId:
       decodeB(rkInt)
       when defined(useNodeIds):
@@ -1892,26 +1878,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         dest.floatVal = regs[rb].floatVal
       else:
         stackTrace(c, tos, pc, errFieldXNotFound & "floatVal")
-    of opcNSetSymbol:
-      decodeB(rkNode)
-      var dest = regs[ra].node
-      if dest.kind == nkSym and regs[rb].node.kind == nkSym:
-        dest.sym = regs[rb].node.sym
-      else:
-        stackTrace(c, tos, pc, errFieldXNotFound & "symbol")
-    of opcNSetIdent:
-      decodeB(rkNode)
-      var dest = regs[ra].node
-      if dest.kind == nkIdent and regs[rb].node.kind == nkIdent:
-        dest.ident = regs[rb].node.ident
-      else:
-        stackTrace(c, tos, pc, errFieldXNotFound & "ident")
-    of opcNSetType:
-      decodeB(rkNode)
-      let b = regs[rb].node
-      internalAssert c.config, b.kind == nkSym and b.sym.kind == skType
-      internalAssert c.config, regs[ra].node != nil
-      regs[ra].node.typ = b.sym.typ
     of opcNSetStrVal:
       decodeB(rkNode)
       var dest = regs[ra].node

@@ -16,8 +16,6 @@ import macros
 import typetraits
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
-  #echo treeRepr(p)
-  #echo treeRepr(b)
   result = newNimNode(nnkProcTy)
   var formalParams = newNimNode(nnkFormalParams)
 
@@ -46,8 +44,6 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
   result.add formalParams
   result.add newEmptyNode()
-  #echo(treeRepr(result))
-  #echo(result.toStrLit())
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
@@ -59,8 +55,6 @@ macro `=>`*(p, b: untyped): untyped =
   ##
   ##   passTwoAndTwo((x, y) => x + y) # 4
 
-  #echo treeRepr(p)
-  #echo(treeRepr(b))
   var params: seq[NimNode] = @[newIdentNode("auto")]
 
   case p.kind
@@ -77,17 +71,17 @@ macro `=>`*(p, b: untyped): untyped =
         identDefs.add(newIdentNode("auto"))
         identDefs.add(newEmptyNode())
       of nnkInfix:
-        if c[0].kind == nnkIdent and c[0].ident == !"->":
+        if c[0].eqIdent("->"):
           var procTy = createProcType(c[1], c[2])
           params[0] = procTy[0][0]
           for i in 1 ..< procTy[0].len:
             params.add(procTy[0][i])
         else:
-          error("Expected proc type (->) got (" & $c[0].ident & ").")
+          error("Expected proc type (->) got (" & $c[0] & ").", c[0])
         break
       else:
         echo treeRepr c
-        error("Incorrect procedure parameter list.")
+        error("Incorrect procedure parameter list.", c)
       params.add(identDefs)
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
@@ -96,18 +90,16 @@ macro `=>`*(p, b: untyped): untyped =
     identDefs.add(newEmptyNode())
     params.add(identDefs)
   of nnkInfix:
-    if p[0].kind == nnkIdent and p[0].ident == !"->":
+    if p[0].eqIdent("->"):
       var procTy = createProcType(p[1], p[2])
       params[0] = procTy[0][0]
       for i in 1 ..< procTy[0].len:
         params.add(procTy[0][i])
     else:
-      error("Expected proc type (->) got (" & $p[0].ident & ").")
+      error("Expected proc type (->) got (" & $p[0] & ").", p[0])
   else:
-    error("Incorrect procedure parameter list.")
+    error("Incorrect procedure parameter list.", p)
   result = newProc(params = params, body = b, procType = nnkLambda)
-  #echo(result.treeRepr)
-  #echo(result.toStrLit())
   #return result # TODO: Bug?
 
 macro `->`*(p, b: untyped): untyped =
