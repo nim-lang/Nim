@@ -2038,7 +2038,6 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
   ## Example: This directory structure::
   ##   dirA / dirB / fileB1.txt
   ##        / dirC
-  ##        / fileA1.txt
   ##        / fileA2.txt
   ##
   ## and this code:
@@ -2128,7 +2127,7 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false): string {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -2165,7 +2164,7 @@ iterator walkDirRec*(dir: string,
   ## * `walkDir iterator <#walkDir.i,string>`_
 
   var stack = @[""]
-  var checkDir = true
+  var checkDir = checkDir
   while stack.len > 0:
     let d = stack.pop()
     for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
@@ -2175,7 +2174,7 @@ iterator walkDirRec*(dir: string,
       if k in yieldFilter:
         yield if relative: rel else: dir / rel
     checkDir = false
-      # we only check top-level dir, otherwise if a subdir is invalid (eg. wrong
+      # We only check top-level dir, otherwise if a subdir is invalid (eg. wrong
       # permissions), it'll abort iteration and there would be no way to
       # continue iteration.
       # Future work can provide a way to customize this and do error reporting.
