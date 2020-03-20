@@ -7,7 +7,7 @@
   on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
   supports these). Some versions of GCC lack this feature and unfortunately
   we cannot detect this case reliably. So if you get compilation errors like
-  "undefined reference to '__builtin_saddll_overflow'" compile your programs
+  "undefined reference to `__builtin_saddll_overflow`" compile your programs
   with `-d:nimEmulateOverflowChecks`.
 
 
@@ -34,8 +34,8 @@
 - `options` now treats `proc` like other pointer types, meaning `nil` proc variables
   are converted to `None`.
 - `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
-  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
-  behavior
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to
+  restore the old behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
 - `times.parse` now only uses input to compute its result, and not `now`:
   `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
@@ -44,10 +44,12 @@
 - `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
   usage. The `$` operator can be used to obtain the string form of `HttpCode`
   for comparison if desired.
-- `os.walkDir,walkDirRec` now throw if input dir is invalid instead of a noop,
-  likewise for nimscript with `listFiles`, `walkDir`. Note `walkDirRec` only throws if
-  top-level dir is invalid, but ignores errors for subdirs otherwise it would be
-  impossible to resume iteration.
+- `os.walkDir` now has a new flag, `checkDir` (default: false).
+  If it is set to true, it will throw if input dir is invalid instead of a noop
+  (which is the default behaviour, as it was before this change),
+  `os.walkDirRec` only throws if top-level dir is invalid, but ignores errors for
+  subdirs, otherwise it would be impossible to resume iteration.
+
 
 ### Breaking changes in the compiler
 

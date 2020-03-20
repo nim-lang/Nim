@@ -2028,8 +2028,8 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative=false, checkDir = true): tuple[kind: PathComponent, path: string] {.
-  tags: [ReadDirEffect].} =
+iterator walkDir*(dir: string; relative = false, checkDir = false):
+  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##

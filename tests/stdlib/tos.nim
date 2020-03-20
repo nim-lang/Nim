@@ -165,8 +165,7 @@ block walkDirRec:
 
 block: # walkDir
   doAssertRaises(OSError):
-    for a in walkDir("nonexistant"): discard
-  # for a in walkDirs("nonexistant"): discard
+    for a in walkDir("nonexistant", checkDir = true): discard
   doAssertRaises(OSError):
     for p in walkDirRec("nonexistant"): discard
 
