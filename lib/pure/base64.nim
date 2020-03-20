@@ -61,12 +61,21 @@
 ## * `md5 module<md5.html>`_ implements the MD5 checksum algorithm
 ## * `sha1 module<sha1.html>`_ implements a sha1 encoder and decoder
 
+template cbBase(a, b): untyped = [
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+  'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', a, b]
+
+let
+  cb64 = cbBase('+', '/')
+  cb64safe = cbBase('-', '_')
+
 const
-  cb64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  cb64safe = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
   invalidChar = 255
 
-template encodeInternal(s: typed, alphabet: string): untyped =
+template encodeInternal(s: typed, alphabet: ptr array[64, char]): untyped =
   ## encodes `s` into base64 representation.
   proc encodeSize(size: int): int =
     return (size * 4 div 3) + 6
@@ -139,8 +148,8 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
     assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
-  if safe: encodeInternal(s, cb64safe)
-  else: encodeInternal(s, cb64)
+  let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
+  encodeInternal(s, lookupTable)
 
 proc encode*(s: string, safe = false): string =
   ## Encodes ``s`` into base64 representation.
@@ -158,8 +167,8 @@ proc encode*(s: string, safe = false): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
-  if safe: encodeInternal(s, cb64safe)
-  else: encodeInternal(s, cb64)
+  let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
+  encodeInternal(s, lookupTable)
 
 proc encodeMIME*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## Encodes ``s`` into base64 representation as lines.
