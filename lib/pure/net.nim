@@ -698,18 +698,19 @@ when defineSsl:
     ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
     ## Wildcards match only in the left-most label.
     ## When name starts with a dot it will be matched by a certificate valid for any subdomain
-    assert socket.isSSL
-    let certificate = socket.sslHandle.SSL_get_peer_certificate()
-    if certificate.isNil:
-      raiseSSLError("No SSL certificate found.")
+    when not defined(nimDisableCertificateValidation):
+      assert socket.isSSL
+      let certificate = socket.sslHandle.SSL_get_peer_certificate()
+      if certificate.isNil:
+        raiseSSLError("No SSL certificate found.")
 
-    const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
-    const size = 1024
-    var peername: cstring = newString(size)
-    let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
-      X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
-    if match != 1:
-      raiseSSLError("SSL Certificate check failed.")
+      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+      const size = 1024
+      var peername: cstring = newString(size)
+      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+      if match != 1:
+        raiseSSLError("SSL Certificate check failed.")
 
   proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
                             handshake: SslHandshakeType,

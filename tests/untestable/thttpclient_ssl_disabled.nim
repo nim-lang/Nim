@@ -9,8 +9,11 @@
 ## Compile and run with:
 ## ./bin/nim c -d:nimDisableCertificateValidation -d:ssl -r -p:. tests/untestable/thttpclient_ssl_disabled.nim
 
-import httpclient, unittest, ospaths
-from net import newSocket, newContext, wrapSocket, connect, close, Port, CVerifyPeerUseEnvVars
+import httpclient,
+  unittest,
+  ospaths
+from net import newSocket, connect, close, Port
+from net import newContext, wrapSocket, CVerifyPeerUseEnvVars
 from strutils import contains
 
 const expired = "https://expired.badssl.com/"
@@ -20,14 +23,13 @@ doAssert defined(nimDisableCertificateValidation)
 suite "SSL certificate check - disabled":
 
   test "httpclient in insecure mode":
-    var ctx = newContext(verifyMode=CVerifyPeerUseEnvVars)
-    var client = newHttpClient(sslContext=ctx)
+    var ctx = newContext(verifyMode = CVerifyPeerUseEnvVars)
+    var client = newHttpClient(sslContext = ctx)
     let a = $client.getContent(expired)
 
   test "net socket in insecure mode":
     var sock = newSocket()
-    var ctx = newContext(verifyMode=CVerifyPeerUseEnvVars)
+    var ctx = newContext(verifyMode = CVerifyPeerUseEnvVars)
     ctx.wrapSocket(sock)
     sock.connect("expired.badssl.com", 443.Port)
     sock.close
-
