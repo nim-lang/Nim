@@ -566,33 +566,38 @@ when defineSsl:
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
 
-    case verifyMode
-    of CVerifyPeer, CVerifyPeerUseEnvVars:
-      newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
-    of CVerifyNone:
+    when defined(nimDisableCertificateValidation):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+    else:
+      case verifyMode
+      of CVerifyPeer, CVerifyPeerUseEnvVars:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
+      of CVerifyNone:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+
     if newCTX == nil:
       raiseSSLError()
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    if verifyMode != CVerifyNone:
-      # Use the caDir and caFile parameters if set
-      if caDir != "" or caFile != "":
-        if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
-          raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
+    when not defined(nimDisableCertificateValidation):
+      if verifyMode != CVerifyNone:
+        # Use the caDir and caFile parameters if set
+        if caDir != "" or caFile != "":
+          if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
+            raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
 
-      else:
-        # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
-        # the SSL_CERT_FILE and SSL_CERT_DIR env vars
-        var found = false
-        for fn in scanSSLCertificates():
-          if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
-            found = true
-            break
-        if not found:
-          raise newException(IOError, "No SSL/TLS CA certificates found.")
+        else:
+          # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
+          # the SSL_CERT_FILE and SSL_CERT_DIR env vars
+          var found = false
+          for fn in scanSSLCertificates():
+            if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
+              found = true
+              break
+          if not found:
+            raise newException(IOError, "No SSL/TLS CA certificates found.")
 
     result = SSLContext(context: newCTX, referencedData: initSet[int](),
       extraInternal: new(SslContextExtraInternal))
