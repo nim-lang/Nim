@@ -61,23 +61,23 @@ proc hash(m: BModule): Hash =
   h = h !& hash($m.filename)
   h = h !& hash($m.cfilename)
 
-  #h = h !& hash(m.s)
-
   h = h !& hash(m.labels)
   h = h !& hash(m.typeNodes)
   h = h !& hash(m.nimTypes)
   h = h !& hash(m.injectStmt)
 
+  h = h !& hash(m.flags)
   h = h !& hash(m.typeStack)
   h = h !& hash(m.declaredThings)
   h = h !& hash(m.declaredProtos)
-  h = h !& hash(m.flags)
 
   h = h !& hash(m.initProc)
   h = h !& hash(m.initProc.options)
   h = h !& hash(m.preInitProc)
 
   h = h !& hash(m.dataCache)
+
+  #h = h !& hash(m.s)
 
   result = !$h
 
