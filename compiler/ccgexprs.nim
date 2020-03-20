@@ -1985,8 +1985,10 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     discard cgsym(p.module, raiser)
     # This seems to be bug-compatible with Nim version 1 but what we
     # should really do here is to check if uint64Value < high(int)
+    let n0t = n[0].typ
     let boundaryCast =
-      if n[0].typ.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
+      if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
+          (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
         "(NI64)"
       else:
         ""
