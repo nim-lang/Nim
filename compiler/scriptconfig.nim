@@ -43,6 +43,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
       proc (a: VmArgs) =
         body
 
+
   template cbexc(name, exc, body) {.dirty.} =
     result.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
@@ -51,6 +52,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
           body
         except exc:
           errorMsg = getCurrentExceptionMsg()
+
+  template cbexc2(name, exc, body) {.dirty.} =
+    result.registerCallback "stdlib.system." & astToStr(name), mayRaise = true, callback =
+      proc (a: VmArgs) = body
+  template cbos2(name, body) {.dirty.} =
+    cbexc2(name, OSError, body)
 
   template cbos(name, body) {.dirty.} =
     cbexc(name, OSError, body)
@@ -77,7 +84,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   result.registerCallback "stdlib.system.getError",
     proc (a: VmArgs) = setResult(a, errorMsg)
 
-  cbos setCurrentDir:
+  cbos2 setCurrentDir:
     os.setCurrentDir getString(a, 0)
   cbos getCurrentDir:
     setResult(a, os.getCurrentDir())
