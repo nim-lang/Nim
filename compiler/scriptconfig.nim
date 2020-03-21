@@ -21,8 +21,9 @@ from strutils import cmpIgnoreStyle, contains
 
 proc listDirs(a: VmArgs, filter: set[PathComponent]) =
   let dir = getString(a, 0)
+  let checkDir = getBool(a, 1)
   var result: seq[string] = @[]
-  for kind, path in walkDir(dir):
+  for kind, path in walkDir(dir, checkDir = checkDir):
     if kind in filter: result.add path
   setResult(a, result)
 
@@ -52,9 +53,9 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
-  cbos listFilesImpl:
+  cbos listFiles:
     listDirs(a, {pcFile, pcLinkToFile})
-  cbos listDirsImpl:
+  cbos listDirs:
     listDirs(a, {pcDir})
   cbos removeDir:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:

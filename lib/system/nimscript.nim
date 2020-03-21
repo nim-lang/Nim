@@ -26,10 +26,13 @@ template builtin = discard
 # We know the effects better than the compiler:
 {.push hint[XDeclaredButNotUsed]: off.}
 
-proc listDirsImpl(dir: string): seq[string] {.
-  tags: [ReadIOEffect], raises: [OSError].} = builtin
-proc listFilesImpl(dir: string): seq[string] {.
-  tags: [ReadIOEffect], raises: [OSError].} = builtin
+
+proc listDirs*(dir: string, checkDir = false): seq[string] {.tags: [ReadIOEffect], raises: [OSError].} =
+  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
+  builtin
+proc listFiles*(dir: string, checkDir = false): seq[string] {.tags: [ReadIOEffect], raises: [OSError].} =
+  ## Lists all the files (non-recursively) in the directory `dir`.
+  builtin
 proc removeDir(dir: string, checkDir = true) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
@@ -185,14 +188,6 @@ template log(msg: string, body: untyped) =
     echo "[NimScript] ", msg
   if mode != ScriptMode.WhatIf:
     body
-
-proc listDirs*(dir: string): seq[string] =
-  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
-  result = listDirsImpl(dir)
-
-proc listFiles*(dir: string): seq[string] =
-  ## Lists all the files (non-recursively) in the directory `dir`.
-  result = listFilesImpl(dir)
 
 proc rmDir*(dir: string, checkDir = false) {.raises: [OSError].} =
   ## Removes the directory `dir`.

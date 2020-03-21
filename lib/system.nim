@@ -3029,5 +3029,6 @@ when defined(nimHasInternalProc):
     # can add more hardcoded standard types here
     fun(OSError)
     fun(IOError)
+    fun(AssertionError)
     # if hits here, should be easy to handle
     doAssert false, "`nimInternalNewException` does not yet handle " & name
