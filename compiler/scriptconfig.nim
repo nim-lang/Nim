@@ -36,7 +36,6 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   let conf = graph.config
 
   # captured vars:
-  var errorMsg: string
   var vthisDir = scriptName.splitFile.dir
 
   template cbconf(name, body) {.dirty.} =
