@@ -736,6 +736,19 @@ macro toSeqImplSingleSym(arg: typed): untyped =
 macro toSeq*(arg: untyped): untyped =
   ## Transforms any iterable (anything that can be iterated over, e.g. with
   ## a for-loop) into a sequence.
+  runnableExamples:
+    let
+      myRange = 1..5
+      mySet: set[int8] = {5'i8, 3, 1}
+    assert type(myRange) is HSlice[system.int, system.int]
+    assert type(mySet) is set[int8]
+
+    let
+      mySeq1 = toSeq(myRange)
+      mySeq2 = toSeq(mySet)
+    assert mySeq1 == @[1, 2, 3, 4, 5]
+    assert mySeq2 == @[1'i8, 3, 5]
+
   if arg.kind in {nnkSym, nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice}:
     result = newCall(bindSym"toSeqImplSingleSym", arg)
   else:
