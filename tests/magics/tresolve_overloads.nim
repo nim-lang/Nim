@@ -77,6 +77,19 @@ proc main()=
     doAssert overloadExists(fun7(1))
     doAssert not overloadExists(fun7())
 
+    block: # dot accesors
+      type Foo = object
+        bar1: int
+      template bar2(a: Foo) = discard
+      template bar3[T](a: T) = discard
+      doAssert compiles(Foo().bar1)
+      doAssert overloadExists(Foo().bar1)
+      var foo: Foo
+      doAssert overloadExists(foo.bar1)
+      doAssert overloadExists(foo.bar2)
+      doAssert overloadExists(foo.bar3)
+      doAssert not overloadExists(foo.bar4)
+
     doAssert resolveSymbol(fun8(1))(3) == fun8(3)
     inspect resolveSymbol(fun8)
 
