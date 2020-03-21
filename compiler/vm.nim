@@ -1227,22 +1227,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
             var traceMsg: string
             var trace = e.getStackTraceEntries
             if trace.len > 0:
-              #[
-              we truncate the stacktrace to only keep the useful portion from
-              the vmops call to the end, for example:
-              vm.nim(2214) evalConstExprAux
-              vm.nim(1231) rawExecute
-              vmops.nim(184) :anonymous
-              os.nim(2095) staticWalkDirImpl
-              oserr.nim(94) raiseOSError
-              ]#
+              # we truncate the stacktrace to only keep the useful portion
               var first = 0
               for i in countdown(trace.len-1, 0):
                 if trace[i].procname == "rawExecute":
                   first = i
                   break
               trace = trace[first..^1]
-              traceMsg = $trace
+              traceMsg = toStrDefault(trace)
             let vars = [$e.name, e.msg, traceMsg]
             var regs2 = newSeq[TFullReg](vars.len)
             for i, ai in [$e.name, e.msg, traceMsg]:

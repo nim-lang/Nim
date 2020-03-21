@@ -253,12 +253,16 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
       for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
-proc `$`*(s: seq[StackTraceEntry]): string =
+proc `$`(s: seq[StackTraceEntry]): string =
   result = newStringOfCap(2000)
   for i in 0 .. s.len-1:
     if s[i].line == reraisedFromBegin: result.add "[[reraised from:\n"
     elif s[i].line == reraisedFromEnd: result.add "]]\n"
     else: addFrameEntry(result, s[i])
+
+template toStrDefault*(s: seq[StackTraceEntry]): string =
+  ## see also asyncfutures.`$`
+  $s
 
 when hasSomeStackTrace:
 
