@@ -2771,8 +2771,9 @@ when declared(paramCount) or defined(nimdoc):
     for i in 1..paramCount():
       result.add(paramStr(i))
 else:
-  proc commandLineParams*(): seq[TaintedString] =
-    {.error: "commandLineParams() unsupported by this target".}
+  proc commandLineParams*(): seq[TaintedString] {.error:
+  "commandLineParams() unsupported by this target".} =
+    discard
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
