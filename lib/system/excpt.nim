@@ -430,14 +430,14 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
       pushCurrentException(e)
       {.emit: "throw e;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
-    # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
       pushCurrentException(e)
     when gotoBasedExceptions:
       inc nimInErrorMode
   else:
     if excHandler != nil:
-      pushCurrentException(e)
+      if e != currException:
+        pushCurrentException(e)
       c_longjmp(excHandler.context, 1)
     else:
       reportUnhandledError(e)
