@@ -1638,15 +1638,15 @@ proc isTupleRecursive*(t: PType): bool =
 proc isRecursivePointer(typ: PType, isPointer: bool): bool =
   if typ == nil:
     return false
-  case typ.kind:
-    of tyObject, tyTuple:
-      return isPointer and canFormAcycle(typ)
-    of tyRef, tyPtr:
-      return isRecursivePointer(typ.lastSon, isPointer = true)
-    of tyAlias, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence, tyDistinct:
-      return isRecursivePointer(typ.lastSon, isPointer)
-    else:
-      return false
+  case typ.kind
+  of tyObject, tyTuple:
+    return isPointer and canFormAcycle(typ)
+  of tyRef, tyPtr:
+    return isRecursivePointer(typ.lastSon, isPointer = true)
+  of tyAlias, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence, tyDistinct:
+    return isRecursivePointer(typ.lastSon, isPointer)
+  else:
+    return false
 
 proc isRecursivePointer*(t: PType): bool =
   isRecursivePointer(t, false)
