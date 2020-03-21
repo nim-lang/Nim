@@ -282,6 +282,8 @@ proc refresh*(c: PCtx, module: PSym) =
   c.loopIterations = c.config.maxLoopIterationsVM
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback, mayRaise = false): int {.discardable.} =
+  # Alternatively, we could also pass (as a string) the exception(s) we expect
+  # to catch, eg `EOFError`
   result = c.callbacks.len
   c.callbacks.add(CallbackElement(key: name, value: callback, mayRaise: mayRaise))
 

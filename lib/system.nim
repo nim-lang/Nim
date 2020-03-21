@@ -2224,7 +2224,6 @@ when notJSnotNims:
     include "system/arithm"
   {.pop.}
 
-
 when not defined(js):
   # this is a hack: without this when statement, you would get:
   # Error: system module needs: nimGCvisit
@@ -3027,5 +3026,8 @@ when defined(nimHasInternalProc):
           # provide more accurate msg, but not sure if it's exposed.
           msg.add "\nVM callback stacktrace (compile nim with --stacktrace if needed)\n" & traceMsg & "\n"
         raise newException(T, msg)
-    fun(OSError) # can add more hardcoded standard types here
-    doAssert false, name
+    # can add more hardcoded standard types here
+    fun(OSError)
+    fun(IOError)
+    # if hits here, should be easy to handle
+    doAssert false, "`nimInternalNewException` does not yet handle " & name

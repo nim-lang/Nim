@@ -45,7 +45,6 @@ proc copyDir(src, dest: string) {.
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
 
-proc getError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir*(): string =
   ## Retrieves the current working directory.
@@ -181,13 +180,6 @@ var
   mode*: ScriptMode ## Set this to influence how mkDir, rmDir, rmFile etc.
                     ## behave
 
-template checkError(exc: untyped): untyped =
-  let err = getError()
-  if err.len > 0: raise newException(exc, err)
-
-template checkOsError =
-  checkError(OSError)
-
 template log(msg: string, body: untyped) =
   if mode in {ScriptMode.Verbose, ScriptMode.Whatif}:
     echo "[NimScript] ", msg
@@ -197,55 +189,46 @@ template log(msg: string, body: untyped) =
 proc listDirs*(dir: string): seq[string] =
   ## Lists all the subdirectories (non-recursively) in the directory `dir`.
   result = listDirsImpl(dir)
-  checkOsError()
 
 proc listFiles*(dir: string): seq[string] =
   ## Lists all the files (non-recursively) in the directory `dir`.
   result = listFilesImpl(dir)
-  checkOsError()
 
 proc rmDir*(dir: string, checkDir = false) {.raises: [OSError].} =
   ## Removes the directory `dir`.
   log "rmDir: " & dir:
     removeDir(dir, checkDir = checkDir)
-    checkOsError()
 
 proc rmFile*(file: string) {.raises: [OSError].} =
   ## Removes the `file`.
   log "rmFile: " & file:
     removeFile file
-    checkOsError()
 
 proc mkDir*(dir: string) {.raises: [OSError].} =
   ## Creates the directory `dir` including all necessary subdirectories. If
   ## the directory already exists, no error is raised.
   log "mkDir: " & dir:
     createDir dir
-    checkOsError()
 
 proc mvFile*(`from`, to: string) {.raises: [OSError].} =
   ## Moves the file `from` to `to`.
   log "mvFile: " & `from` & ", " & to:
     moveFile `from`, to
-    checkOsError()
 
 proc mvDir*(`from`, to: string) {.raises: [OSError].} =
   ## Moves the dir `from` to `to`.
   log "mvDir: " & `from` & ", " & to:
     moveDir `from`, to
-    checkOsError()
 
 proc cpFile*(`from`, to: string) {.raises: [OSError].} =
   ## Copies the file `from` to `to`.
   log "cpFile: " & `from` & ", " & to:
     copyFile `from`, to
-    checkOsError()
 
 proc cpDir*(`from`, to: string) {.raises: [OSError].} =
   ## Copies the dir `from` to `to`.
   log "cpDir: " & `from` & ", " & to:
     copyDir `from`, to
-    checkOsError()
 
 proc exec*(command: string) {.
   raises: [OSError], tags: [ExecIOEffect].} =
@@ -258,7 +241,6 @@ proc exec*(command: string) {.
   log "exec: " & command:
     if rawExec(command) != 0:
       raise newException(OSError, "FAILED: " & command)
-    checkOsError()
 
 proc exec*(command: string, input: string, cache = "") {.
   raises: [OSError], tags: [ExecIOEffect].} =
@@ -278,7 +260,6 @@ proc selfExec*(command: string) {.
   log "exec: " & c:
     if rawExec(c) != 0:
       raise newException(OSError, "FAILED: " & c)
-    checkOsError()
 
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
@@ -323,7 +304,6 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ## the `withDir() <#withDir.t,string,untyped>`_ template if you want to
   ## perform a temporary change only.
   setCurrentDir(dir)
-  checkOsError()
 
 proc findExe*(bin: string): string =
   ## Searches for bin in the current working directory and then in directories
@@ -372,13 +352,11 @@ proc readLineFromStdin*(): TaintedString {.raises: [IOError].} =
   ## Reads a line of data from stdin - blocks until \n or EOF which happens when stdin is closed
   log "readLineFromStdin":
     result = stdinReadLine()
-    checkError(EOFError)
 
 proc readAllFromStdin*(): TaintedString {.raises: [IOError].} =
   ## Reads all data from stdin - blocks until EOF which happens when stdin is closed
   log "readAllFromStdin":
     result = stdinReadAll()
-    checkError(EOFError)
 
 when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
