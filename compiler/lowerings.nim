@@ -312,10 +312,10 @@ proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
 
-proc genAddrOf*(n: PNode): PNode =
+proc genAddrOf*(n: PNode, typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(tyPtr, n.typ.owner)
+  result.typ = newType(typeKind, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
