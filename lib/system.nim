@@ -3021,11 +3021,9 @@ when defined(nimHasInternalProc):
     ## internal proc for raising from vmpops
     template fun(T) =
       if name == astToStr(T):
-        var msg2: string
+        var msg = msg
         if traceMsg.len > 0:
-          msg2 = "VM raised from \n" & traceMsg & "\n" & msg
-        else:
-          msg2 = msg
-        raise newException(T, msg2)
+          msg.add "\nVM callback stacktrace (compile nim with --stacktrace if needed)\n" & traceMsg & "\n"
+        raise newException(T, msg)
     fun(OSError) # can add more hardcoded standard types here
     doAssert false, name
