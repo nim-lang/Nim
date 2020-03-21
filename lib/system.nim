@@ -3023,6 +3023,8 @@ when defined(nimHasInternalProc):
       if name == astToStr(T):
         var msg = msg
         if traceMsg.len > 0:
+          # we could query for whether nim was build with --stacktrace to
+          # provide more accurate msg, but not sure if it's exposed.
           msg.add "\nVM callback stacktrace (compile nim with --stacktrace if needed)\n" & traceMsg & "\n"
         raise newException(T, msg)
     fun(OSError) # can add more hardcoded standard types here
