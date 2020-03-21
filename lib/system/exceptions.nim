@@ -33,7 +33,6 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
-    up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
     ## Abstract base class for all exceptions that Nim's runtime raises

@@ -110,12 +110,12 @@ proc popSafePoint {.compilerRtl, inl.} =
   excHandler = excHandler.prev
 
 proc pushCurrentException(e: sink(ref Exception)) {.compilerRtl, inl.} =
-  e.up = currException
+  e.parent = currException
   currException = e
   #showErrorMessage "A"
 
 proc popCurrentException {.compilerRtl, inl.} =
-  currException = currException.up
+  currException = currException.parent
   #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
