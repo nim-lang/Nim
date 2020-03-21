@@ -280,7 +280,6 @@ proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
   c.loopIterations = c.config.maxLoopIterationsVM
-  c.errorMsg.setLen 0
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback, mayRaise = false): int {.discardable.} =
   result = c.callbacks.len
