@@ -647,3 +647,74 @@ proc md5_Str*(str: string): string =
 
 when defined(nimHasStyleChecks):
   {.pop.}
+
+
+# Certificate validation
+# On old openSSL version some of these symbols are not available
+when not defined(nimDisableCertificateValidation) and not defined(windows):
+
+  proc SSL_get_peer_certificate*(ssl: SslCtx): PX509{.cdecl, dynlib: DLLSSLName,
+      importc.}
+
+  proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
+
+  proc X509_get_issuer_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLUtilName, importc.}
+
+  proc X509_NAME_oneline*(a: PX509_NAME, buf: cstring, size: cint): cstring {.
+    cdecl, dynlib:DLLSSLName, importc.}
+
+  proc X509_NAME_get_text_by_NID*(subject:cstring, NID: cint, buf: cstring, size: cint): cint{.
+    cdecl, dynlib:DLLSSLName, importc.}
+
+  proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
+  # Certificates store
+
+  type PX509_STORE* = SslPtr
+  type PX509_OBJECT* = SslPtr
+
+  {.push callconv:cdecl, dynlib:DLLUtilName, importc.}
+
+  proc X509_OBJECT_new*(): PX509_OBJECT
+  proc X509_OBJECT_free*(a: PX509_OBJECT)
+
+  proc X509_STORE_new*(): PX509_STORE
+  proc X509_STORE_free*(v: PX509_STORE)
+  proc X509_STORE_lock*(ctx: PX509_STORE): cint
+  proc X509_STORE_unlock*(ctx: PX509_STORE): cint
+  proc X509_STORE_up_ref*(v: PX509_STORE): cint
+  proc X509_STORE_set_flags*(ctx: PX509_STORE; flags: culong): cint
+  proc X509_STORE_set_purpose*(ctx: PX509_STORE; purpose: cint): cint
+  proc X509_STORE_set_trust*(ctx: PX509_STORE; trust: cint): cint
+  proc X509_STORE_add_cert*(ctx: PX509_STORE; x: PX509): cint
+
+  proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509
+
+  proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint
+
+  {.pop.}
+
+  proc d2i_X509*(b: string): PX509 =
+    ## decode DER/BER bytestring into X.509 certificate struct
+    var bb = b.cstring
+    let i = cast[ptr ptr cuchar](addr bb)
+    let ret = d2i_X509(addr result, i, b.len.cint)
+    if ret.isNil:
+      raise newException(Exception, "X.509 certificate decoding failed")
+
+  proc i2d_X509*(cert: PX509): string =
+    ## encode `cert` to DER string
+    let encoded_length = i2d_X509(cert, nil)
+    result = newString(encoded_length)
+    var q = result.cstring
+    let o = cast[ptr ptr cuchar](addr q)
+    let length = i2d_X509(cert, o)
+    if length.int <= 0:
+      raise newException(Exception, "X.509 certificate encoding failed")
+
+  when isMainModule:
+    # A simple certificate test
+    let certbytes = readFile("certificate.der")
+    let cert = d2i_X509(certbytes)
+    let encoded = cert.i2d_X509()
+    assert encoded == certbytes

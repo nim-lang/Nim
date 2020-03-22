@@ -36,7 +36,7 @@ type
     warnUnusedImportX,
     warnInheritFromException,
     warnEachIdentIsTuple,
-    warnProveInit, warnProveField, warnProveIndex, 
+    warnProveInit, warnProveField, warnProveIndex,
     warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
@@ -101,7 +101,7 @@ const
     warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    # keep in sync with `pegSuccess` see testament.nim
+    # keep in sync with `testament.isSuccess`
     hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",

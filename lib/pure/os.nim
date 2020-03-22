@@ -2028,8 +2028,8 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
-  tags: [ReadDirEffect].} =
+iterator walkDir*(dir: string; relative = false, checkDir = false):
+  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
@@ -2069,7 +2069,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     elif defined(windows):
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
-      if h != -1:
+      if h == -1:
+        if checkDir:
+          raiseOSError(osLastError(), dir)
+      else:
         defer: findClose(h)
         while true:
           var k = pcFile
@@ -2087,7 +2090,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
-      if d != nil:
+      if d == nil:
+        if checkDir:
+          raiseOSError(osLastError(), dir)
+      else:
         defer: discard closedir(d)
         while true:
           var x = readdir(d)
@@ -2122,7 +2128,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false): string {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -2159,14 +2165,20 @@ iterator walkDirRec*(dir: string,
   ## * `walkDir iterator <#walkDir.i,string>`_
 
   var stack = @[""]
+  var checkDir = checkDir
   while stack.len > 0:
     let d = stack.pop()
-    for k, p in walkDir(dir / d, relative = true):
+    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
       let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel
       if k in yieldFilter:
         yield if relative: rel else: dir / rel
+    checkDir = false
+      # We only check top-level dir, otherwise if a subdir is invalid (eg. wrong
+      # permissions), it'll abort iteration and there would be no way to
+      # continue iteration.
+      # Future work can provide a way to customize this and do error reporting.
 
 proc rawRemoveDir(dir: string) {.noNimScript.} =
   when defined(windows):
@@ -2181,13 +2193,13 @@ proc rawRemoveDir(dir: string) {.noNimScript.} =
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError(), dir)
 
-proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
+proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign, noNimScript.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
-  ## existed in the first place.
+  ## existed in the first place, unless `checkDir` = true
   ##
   ## See also:
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
@@ -2197,10 +2209,13 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   ## * `copyDir proc <#copyDir,string,string>`_
   ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
   ## * `moveDir proc <#moveDir,string,string>`_
-  for kind, path in walkDir(dir):
+  for kind, path in walkDir(dir, checkDir = checkDir):
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
-    of pcDir: removeDir(path)
+    of pcDir: removeDir(path, true)
+      # for subdirectories there is no benefit in `checkDir = false`
+      # (unless perhaps for edge case of concurrent processes also deleting
+      # the same files)
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string): bool {.noNimScript.} =

@@ -67,8 +67,7 @@ proc main =
     # `prettyPrint` could over-write it (note that the backup may happen even
     # if input is not actually over-written, when nimpretty is a noop).
     # --backup was un-documented (rely on git instead).
-  var opt: PrettyOptions
-  opt.maxLineLen = 80
+  var opt = PrettyOptions(indWidth: 0, maxLineLen: 80)
   for kind, key, val in getopt():
     case kind
     of cmdArgument:

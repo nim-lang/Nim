@@ -10,6 +10,8 @@
 ## This module implements semantic checking for calls.
 # included from sem.nim
 
+from algorithm import sort
+
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:
@@ -178,9 +180,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
   var maybeWrongSpace = false
 
+  var candidatesAll: seq[string]
   var candidates = ""
   var skipped = 0
   for err in errors:
+    candidates.setLen 0
     if filterOnlyFirst and err.firstMismatch.arg == 1:
       inc skipped
       continue
@@ -225,6 +229,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
+    candidatesAll.add candidates
+  candidatesAll.sort # fix #13538
+  candidates = join(candidatesAll)
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
         "suppressed; compile with --showAllMismatches:on to see them\n")
