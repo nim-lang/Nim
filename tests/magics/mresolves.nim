@@ -1,6 +1,6 @@
 import std/macros
 
-macro overloadExistsImpl(x: typed): bool = 
+macro overloadExistsImpl(x: typed): bool =
   newLit(x != nil)
 
 template overloadExists*(a: untyped): bool =

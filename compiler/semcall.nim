@@ -384,8 +384,7 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
       pickBest(callOp)
 
     if overloadsState == csEmpty and result.state == csEmpty:
-      if {efNoUndeclared, efOverloadResolve} * flags == {}:
-        # for tests/pragmas/tcustom_pragma.nim
+      if {efNoUndeclared, efOverloadResolve} * flags == {}: # for tests/pragmas/tcustom_pragma.nim
         localError(c.config, n.info, getMsgDiagnostic(c, flags, n, f))
       return
     elif result.state != csMatch:

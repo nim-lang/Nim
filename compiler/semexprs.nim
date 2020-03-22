@@ -10,8 +10,6 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-import std/wrapnils
-
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -62,11 +60,8 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  echo0b (flags, c.config$n.info)
   rejectEmptyNode(n)
-  echo0b ()
   result = semExpr(c, n, flags+{efWantValue})
-  echo0b ()
   if result == nil: return errorNode(c, n)
   if result.kind == nkEmpty:
     # do not produce another redundant error message:
@@ -913,20 +908,8 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       n[0] = n0
   else:
-    echo0b (flags, n[0].renderTree, n.renderTree, n.kind, n[0].kind)
-    var flags2 = {efInCall}
-    if efOverloadResolve in flags and efOperand notin flags: flags2.incl efOverloadResolve
-    n[0] = semExpr(c, n[0], flags2)
-    # n[0] = semExpr(c, n[0], {efInCall} + flags * {efOverloadResolve})
-    # n[0] = semExpr(c, n[0], {efInCall})
-    if efOverloadResolve in flags:
-      echo0b (flags, n[0] == nil, )
-      if n[0] != nil:
-        echo0b n[0].kind
-    if n[0] == nil and efOverloadResolve in flags:
-      echo0b "errorNode"
-      return errorNode(c, n)
-      # return nil
+    n[0] = semExpr(c, n[0], {efInCall} + flags * {efOverloadResolve})
+    if n[0] == nil and efOverloadResolve in flags: return errorNode(c, n)
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
@@ -1292,9 +1275,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var flags2 = {checkAmbiguity, checkUndeclared, checkModule}
-  if efOverloadResolve in flags:
-    flags2.incl checkOverloadResolve
-    # flags2.excl checkUndeclared # PRTEMP
+  if efOverloadResolve in flags: flags2.incl checkOverloadResolve
   var s = qualifiedLookUp(c, n, flags2)
   if efOverloadResolve in flags and n.kind == nkDotExpr:
     var m = qualifiedLookUp(c, n[0], (flags2*{checkUndeclared})+{checkModule})
@@ -2134,37 +2115,20 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags, isTopLevel: bool): PNode =
   var n = n
-  echo0b (c.config$n.info, n.kind, flags, isTopLevel)
   if isTopLevel:
     if n.len != 2:
       localError(c.config, n.info, "semOverloadResolve: got" & $n.len)
       return
     n = n[1]
-  let nKind = n.kind
   if n.kind notin {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
     localError(c.config, n.info, "expected routine, got " & $n.kind)
-    return
-
-  # PRTEMP: remove efOperand stuff
-  # let flags = flags + {efWantIterator, efOverloadResolve}
+    return errorNode(c, n)
   if n.kind == nkDotExpr:
-    # let flags = flags + {efWantIterator, efOverloadResolve} - {efOperand}
-    # result = semExpr(c, n[0], flags)
-    # result = semExpr(c, n[0], flags)
+    # so that this doesn't compile: `overloadExists(nonexistant().foo)`
     n[0] = semExpr(c, n[0], flags)
-  let flags = flags + {efWantIterator, efOverloadResolve} - {efOperand}
+  let flags = flags + {efWantIterator, efOverloadResolve}
   result = semExpr(c, n, flags)
-
-  echo0b (result == nil, ?.result.kind, nKind, flags)
-  # if result != nil and result.kind == nkEmpty and nKind == nkDotExpr:
-  when false:
-   if (result == nil or result.kind == nkEmpty) and nKind == nkDotExpr:
-    # localError()
-    # localError(c.config, n.info, "invalid expression for OverloadResolve: " & $n.renderTree)
-    localError(c.config, n.info, "invalid expression for OverloadResolve")
-    return result # PRTEMP
   if result == nil or result.kind == nkEmpty:
-    # doAssert isTopLevel # PRTEMP
     if isTopLevel:
       result = newNodeIT(nkNilLit, n.info, getSysType(c.graph, n.info, tyNil))
   elif result.kind == nkClosedSymChoice:
@@ -2642,12 +2606,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
-    # if efOverloadResolve in flags and efInCall notin flags:
-    if efOverloadResolve in flags and efInCall in flags:
-      # PRTEMP efOverloadResolve checkOverloadResolve
-      # checks.excl checkUndeclared
-      checks.incl checkOverloadResolve
-    echo0b (checks, flags)
+    if efOverloadResolve in flags: checks.incl checkOverloadResolve
     var s = qualifiedLookUp(c, n, checks)
     if efOverloadResolve in flags and s == nil: return nil
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)

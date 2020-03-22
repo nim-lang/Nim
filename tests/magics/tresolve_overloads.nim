@@ -122,12 +122,23 @@ proc main()=
     doAssert not compiles(nonexistant.bar1)
     doAssert not compiles overloadExists(nonexistant.bar1)
     doAssert not compiles overloadExists(nonexistant().mfoo1)
-    
     doAssert not compiles overloadExists(nonexistant1().nonexistant2)
     doAssert not compiles overloadExists(nonexistant().bar2)
     doAssert not compiles overloadExists(nonexistant().bar1)
 
-    # doAssert not overloadExists(nonexistant) # PRTEMP
+    doAssert declared(mresolve_overloads)
+    doAssert declared(fun7)
+    doAssert declared(foo)
+    doAssert declared(`bar5`)
+    doAssert declared(bar5)
+    doAssert declared(`system`)
+    doAssert not declared(nonexistant)
+    doAssert not overloadExists(nonexistant)
+    doAssert not overloadExists(`nonexistant`)
+    doAssert overloadExists(system)
+    doAssert overloadExists(`system`)
+    doAssert overloadExists(`bar5`)
+    doAssert overloadExists(bar5)
 
   block: # resolveSymbol
     doAssert resolveSymbol(fun8(1))(3) == fun8(3)
@@ -196,7 +207,7 @@ proc main2()=
     doAssert compiles resolveSymbol(system.compiles)
     inspect resolveSymbol(system.compiles)
     doAssert resolveSymbol(system.nonexistant) == nil
-    # doAssert resolveSymbol(nonexistant) == nil
+    doAssert resolveSymbol(nonexistant) == nil
 
   block:
     template bar1(): untyped = 12

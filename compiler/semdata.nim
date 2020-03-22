@@ -68,8 +68,7 @@ type
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
     efOverloadResolve,
-      # for `mOverloadResolve` evaluation
-      # return resolved `foo` in `foo(args)`
+      # for `mOverloadResolve` evaluation, resolves `foo` in `foo(args)`
 
   TExprFlags* = set[TExprFlag]
 
