@@ -160,7 +160,7 @@ type
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
     injectStmt*: Rope
-    sigConflicts*: CountTable[SigHash]
+    sigConflicts*: CountTable[string]
     g*: BModuleList
     ndi*: NdiFile
 

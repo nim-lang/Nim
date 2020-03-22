@@ -43,7 +43,7 @@ type
     module: PSym
     graph: ModuleGraph
     config: ConfigRef
-    sigConflicts: CountTable[SigHash]
+    sigConflicts: CountTable[string]
 
   BModule = ref TJSGen
   TJSTypeKind = enum       # necessary JS "types"
@@ -2468,7 +2468,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
 proc newModule(g: ModuleGraph; module: PSym): BModule =
   new(result)
   result.module = module
-  result.sigConflicts = initCountTable[SigHash]()
+  result.sigConflicts = initCountTable[string]()
   if g.backend == nil:
     g.backend = newGlobals()
   result.graph = g
