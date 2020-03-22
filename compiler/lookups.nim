@@ -300,7 +300,7 @@ proc lookUp*(c: PContext, n: PNode): PSym =
 
 type
   TLookupFlag* = enum
-    checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields
+    checkAmbiguity, checkUndeclared, checkModule, checkPureEnumFields, checkOverloadResolve
 
 proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
   const allExceptModule = {low(TSymKind)..high(TSymKind)}-{skModule,skPackage}
@@ -313,7 +313,8 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
       result = searchInScopes(c, ident, allExceptModule).skipAlias(n, c.config)
     if result == nil and checkPureEnumFields in flags:
       result = strTableGet(c.pureEnumFields, ident)
-    if result == nil and checkUndeclared in flags:
+    # if result == nil and checkUndeclared in flags:
+    if result == nil and checkUndeclared in flags and checkOverloadResolve notin flags:
       fixSpelling(n, ident, searchInScopes)
       errorUndeclaredIdentifier(c, n.info, ident.s)
       result = errorSym(c, n)
@@ -338,7 +339,7 @@ proc qualifiedLookUp*(c: PContext, n: PNode, flags: set[TLookupFlag]): PSym =
           result = strTableGet(c.topLevelScope.symbols, ident).skipAlias(n, c.config)
         else:
           result = strTableGet(m.tab, ident).skipAlias(n, c.config)
-        if result == nil and checkUndeclared in flags and nfOverloadResolve notin n.flags:
+        if result == nil and checkUndeclared in flags and checkOverloadResolve notin flags:
           fixSpelling(n[1], ident, searchInScopes)
           errorUndeclaredIdentifier(c, n[1].info, ident.s)
           result = errorSym(c, n[1])

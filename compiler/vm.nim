@@ -1112,7 +1112,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var a = regs[rb].node
       if a.kind == nkVarTy: a = a[0]
       if a.kind == nkSym:
-        regs[ra].node = if a.sym.ast.isNil: newNodeI(nkNilLit, a.sym.info) # preserve `info`, eg for module symbols
+        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
       else:

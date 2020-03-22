@@ -64,9 +64,12 @@ type
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
     efNoEvaluateGeneric, efInCall, efFromHlo,
-    efNoUndeclared
+    efNoUndeclared,
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
+    efOverloadResolve,
+      # for `mOverloadResolve` evaluation
+      # return resolved `foo` in `foo(args)`
 
   TExprFlags* = set[TExprFlag]
 

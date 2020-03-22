@@ -10,6 +10,8 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+import std/wrapnils
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -60,8 +62,11 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     result.typ = errorType(c)
 
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  echo0b (flags, c.config$n.info)
   rejectEmptyNode(n)
+  echo0b ()
   result = semExpr(c, n, flags+{efWantValue})
+  echo0b ()
   if result == nil: return errorNode(c, n)
   if result.kind == nkEmpty:
     # do not produce another redundant error message:
@@ -833,7 +838,7 @@ proc semOverloadedCallAnalyseEffects(c: PContext, n: PNode, nOrig: PNode,
       {skProc, skFunc, skMethod, skConverter, skMacro, skTemplate}, flags)
 
   if result != nil:
-    if nfOverloadResolve in n.flags: return
+    if efOverloadResolve in flags: return
     if result[0].kind != nkSym:
       internalError(c.config, "semOverloadedCallAnalyseEffects")
       return
@@ -908,11 +913,20 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       n[0] = n0
   else:
+    echo0b (flags, n[0].renderTree, n.renderTree, n.kind, n[0].kind)
     var flags2 = {efInCall}
-    if nfOverloadResolve in n.flags:
-      flags2.incl {efNoUndeclared}
+    if efOverloadResolve in flags and efOperand notin flags: flags2.incl efOverloadResolve
     n[0] = semExpr(c, n[0], flags2)
-    if n[0] == nil and nfOverloadResolve in n.flags: return nil
+    # n[0] = semExpr(c, n[0], {efInCall} + flags * {efOverloadResolve})
+    # n[0] = semExpr(c, n[0], {efInCall})
+    if efOverloadResolve in flags:
+      echo0b (flags, n[0] == nil, )
+      if n[0] != nil:
+        echo0b n[0].kind
+    if n[0] == nil and efOverloadResolve in flags:
+      echo0b "errorNode"
+      return errorNode(c, n)
+      # return nil
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
@@ -986,7 +1000,7 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  if nfOverloadResolve in n.flags: return
+  if efOverloadResolve in flags: return
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
   else: result = errorNode(c, n)
 
@@ -1278,8 +1292,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var flags2 = {checkAmbiguity, checkUndeclared, checkModule}
+  if efOverloadResolve in flags:
+    flags2.incl checkOverloadResolve
+    # flags2.excl checkUndeclared # PRTEMP
   var s = qualifiedLookUp(c, n, flags2)
-  if nfOverloadResolve in n.flags and n.kind == nkDotExpr:
+  if efOverloadResolve in flags and n.kind == nkDotExpr:
     var m = qualifiedLookUp(c, n[0], (flags2*{checkUndeclared})+{checkModule})
     if m != nil and m.kind == skModule: # got `mymodule.someident`
       if s == nil: return nil
@@ -2117,29 +2134,47 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
 proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags, isTopLevel: bool): PNode =
   var n = n
+  echo0b (c.config$n.info, n.kind, flags, isTopLevel)
   if isTopLevel:
     if n.len != 2:
       localError(c.config, n.info, "semOverloadResolve: got" & $n.len)
       return
     n = n[1]
-  n.flags.incl nfOverloadResolve
+  let nKind = n.kind
   if n.kind notin {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
     localError(c.config, n.info, "expected routine, got " & $n.kind)
-  else:
-    # so that it also works for iterators and allows nonexistant fields and procs
-    let flags = flags + {efWantIterator, efNoUndeclared}
-    result = semExpr(c, n, flags)
-    if result != nil:
-      doAssert result.kind in {nkSym, nkClosedSymChoice}, $result.kind
-  if result == nil:
+    return
+
+  # PRTEMP: remove efOperand stuff
+  # let flags = flags + {efWantIterator, efOverloadResolve}
+  if n.kind == nkDotExpr:
+    # let flags = flags + {efWantIterator, efOverloadResolve} - {efOperand}
+    # result = semExpr(c, n[0], flags)
+    # result = semExpr(c, n[0], flags)
+    n[0] = semExpr(c, n[0], flags)
+  let flags = flags + {efWantIterator, efOverloadResolve} - {efOperand}
+  result = semExpr(c, n, flags)
+
+  echo0b (result == nil, ?.result.kind, nKind, flags)
+  # if result != nil and result.kind == nkEmpty and nKind == nkDotExpr:
+  when false:
+   if (result == nil or result.kind == nkEmpty) and nKind == nkDotExpr:
+    # localError()
+    # localError(c.config, n.info, "invalid expression for OverloadResolve: " & $n.renderTree)
+    localError(c.config, n.info, "invalid expression for OverloadResolve")
+    return result # PRTEMP
+  if result == nil or result.kind == nkEmpty:
+    # doAssert isTopLevel # PRTEMP
     if isTopLevel:
       result = newNodeIT(nkNilLit, n.info, getSysType(c.graph, n.info, tyNil))
-  elif result.kind != nkSym:
+  elif result.kind == nkClosedSymChoice:
     # avoids degenerating symchoice to a sym
     let typ = newTypeS(tyTuple, c)
     let result0 = result
     result = newNodeIT(nkTupleConstr, n.info, typ)
     result.add result0
+  else:
+    doAssert result.kind == nkSym, $result.kind
 
 proc semShallowCopy(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if n.len == 3:
@@ -2607,11 +2642,16 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
-    if efNoUndeclared in flags: checks.excl checkUndeclared
+    # if efOverloadResolve in flags and efInCall notin flags:
+    if efOverloadResolve in flags and efInCall in flags:
+      # PRTEMP efOverloadResolve checkOverloadResolve
+      # checks.excl checkUndeclared
+      checks.incl checkOverloadResolve
+    echo0b (checks, flags)
     var s = qualifiedLookUp(c, n, checks)
-    if efNoUndeclared in flags and s == nil: return nil
+    if efOverloadResolve in flags and s == nil: return nil
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
-    if nfOverloadResolve in n.flags: result = symChoice(c, n, s, scClosed)
+    if efOverloadResolve in flags: result = symChoice(c, n, s, scClosed)
     elif s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
       #performProcvarCheck(c, n, s)
       result = symChoice(c, n, s, scClosed)
@@ -2665,15 +2705,14 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCharLit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyChar)
   of nkDotExpr:
-    let hasOverloadResolve = nfOverloadResolve in n.flags
     result = semFieldAccess(c, n, flags)
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)
-      if hasOverloadResolve:
+      if efOverloadResolve in flags:
         result = semOverloadResolve(c, result, flags, isTopLevel = false)
       else:
         result = semExpr(c, result, flags)
-    elif result.kind == nkDotExpr and hasOverloadResolve:
+    elif result.kind == nkDotExpr and efOverloadResolve in flags:
       result = result[1]
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")
@@ -2692,7 +2731,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkMinSonsLen(n, 1, c.config)
     #when defined(nimsuggest):
     #  if gIdeCmd == ideCon and c.config.m.trackPos == n.info: suggestExprNoCheck(c, n)
-    let mode = if {nfDotField, nfOverloadResolve} * n.flags != {}: {} else: {checkUndeclared}
+    let mode = if nfDotField in n.flags or efOverloadResolve in flags: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n[0], mode)
     if s != nil:
       #if c.config.cmd == cmdPretty and n[0].kind == nkDotExpr:

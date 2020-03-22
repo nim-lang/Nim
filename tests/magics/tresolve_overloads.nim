@@ -50,7 +50,9 @@ proc main()=
     doAssert overloadExists(fun4(1))
     doAssert overloadExists(fun4(1.2))
     doAssert not overloadExists(fun4())
-    # doAssert not overloadExists(nonexistant(1)) # should we error with `Error: undeclared identifier: 'nonexistant'` ? A: probly should just return false, eg: imagine for: ` 1 @ 2`
+    doAssert not overloadExists(1 @@@ 2)
+    doAssert overloadExists(1 + 2)
+    doAssert not overloadExists('a' + 2.0)
 
     doAssert overloadExists(funDecl1(1))
     doAssert not overloadExists(funDecl1(1.0))
@@ -92,12 +94,14 @@ proc main()=
     template bar5(a: Foo) = discard
 
     doAssert not declared(mresolve_overloads.nonexistant)
-    doAssert declared(mresolve_overloads.foo3)
+    doAssert declared(mresolve_overloads.mfoo3)
     doAssert not declared(foo.bar1)
     doAssert not overloadExists(mresolve_overloads.nonexistant)
-    doAssert overloadExists(mresolve_overloads.foo3)
+    doAssert overloadExists(mresolve_overloads.mfoo3)
 
     doAssert not overloadExists(nonexistant(foo))
+    doAssert not overloadExists(nonexistant())
+
     doAssert not overloadExists(foo.nonexistant)
     doAssert compiles(Foo().bar1)
     doAssert compiles(Foo().bar1)
@@ -116,8 +120,14 @@ proc main()=
     doAssert overloadExists(Foo().bar1)
 
     doAssert not compiles(nonexistant.bar1)
-    doAssert not compiles(overloadExists(nonexistant.bar1))
-    doAssert not compiles(overloadExists(nonexistant().bar1))
+    doAssert not compiles overloadExists(nonexistant.bar1)
+    doAssert not compiles overloadExists(nonexistant().mfoo1)
+    
+    doAssert not compiles overloadExists(nonexistant1().nonexistant2)
+    doAssert not compiles overloadExists(nonexistant().bar2)
+    doAssert not compiles overloadExists(nonexistant().bar1)
+
+    # doAssert not overloadExists(nonexistant) # PRTEMP
 
   block: # resolveSymbol
     doAssert resolveSymbol(fun8(1))(3) == fun8(3)
@@ -186,7 +196,7 @@ proc main2()=
     doAssert compiles resolveSymbol(system.compiles)
     inspect resolveSymbol(system.compiles)
     doAssert resolveSymbol(system.nonexistant) == nil
-    doAssert resolveSymbol(nonexistant) == nil
+    # doAssert resolveSymbol(nonexistant) == nil
 
   block:
     template bar1(): untyped = 12
@@ -199,10 +209,10 @@ proc main2()=
     inspect resolveSymbol(cint)
     inspect resolveSymbol(system.off)
     inspect resolveSymbol(newLit(true))
-    inspect resolveSymbol(foo1)
-    inspect resolveSymbol(foo2)
-    inspect resolveSymbol(foo3)
-    inspect resolveSymbol(mresolve_overloads.foo3)
+    inspect resolveSymbol(mfoo1)
+    inspect resolveSymbol(mfoo2)
+    inspect resolveSymbol(mfoo3)
+    inspect resolveSymbol(mresolve_overloads.mfoo3)
     inspect resolveSymbol(macros.nnkCallKinds)
 
     ## module
