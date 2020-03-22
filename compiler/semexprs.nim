@@ -1285,9 +1285,25 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
   echo0b (n.flags, n.kind, n.renderTree, flags)
+
   var flags2 = {checkAmbiguity, checkUndeclared, checkModule}
   # if  nfOverloadResolve in n.flags: flags2.excl checkUndeclared
   var s = qualifiedLookUp(c, n, flags2)
+
+  if nfOverloadResolve in n.flags and n.kind == nkDotExpr:
+    var m = qualifiedLookUp(c, n[0], (flags2*{checkUndeclared})+{checkModule})
+    if m != nil and m.kind == skModule:
+      # it's mymodule.someident
+      if s == nil:
+        return nil
+      else:
+        # PRTEMP
+        return symChoice(c, n, s, scClosed)
+        # return s
+
+  # if s == nil and nfOverloadResolve in n.flags: # could be nil for somobj.somefield
+
+
   echo0b (n.flags, s == nil)
   # if nfOverloadResolve in n.flags:
   if false and nfOverloadResolve in n.flags: # could be nil for somobj.somefield

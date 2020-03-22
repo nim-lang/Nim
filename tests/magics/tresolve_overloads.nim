@@ -156,15 +156,15 @@ proc main2()=
 
     doAssert compiles resolveSymbol(system.compiles)
     inspect resolveSymbol(system.compiles)
-    doAssert not compiles resolveSymbol(system.nonexistant)
-    # doAssert not compiles resolveSymbol(nonexistant) # PRTEMP
+    doAssert resolveSymbol(system.nonexistant) == nil
+    doAssert resolveSymbol(nonexistant) == nil
 
   block:
     template bar1(): untyped = 12
     inspect resolveSymbol(bar1)
     inspect resolveSymbol(currentSourcePath)
     inspect resolveSymbol(system.currentSourcePath)
-    # doAssert resolveSymbol(system.currentSourcePath)() == currentSourcePath() # PRTEMP
+    doAssert resolveSymbol(system.currentSourcePath)() == currentSourcePath()
     inspect resolveSymbol(system.uint16)
     inspect resolveSymbol(system.cint)
     inspect resolveSymbol(cint)
@@ -173,8 +173,8 @@ proc main2()=
     inspect resolveSymbol(foo1)
     inspect resolveSymbol(foo2)
     inspect resolveSymbol(foo3)
-    # inspect resolveSymbol(mresolve_overloads.foo3) # PRTEMP
-    # inspect resolveSymbol(macros.nnkCallKinds) # PRTEMP
+    inspect resolveSymbol(mresolve_overloads.foo3)
+    inspect resolveSymbol(macros.nnkCallKinds)
 
     ## module
     inspect resolveSymbol(macros)
