@@ -460,7 +460,7 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       wrongRedefinition(c, lhs.info, lhs.ident.s, clash.info)
 
     result = newTree(nkCall)
-    doAssert nodePragma.kind == nkIdent, $nodePragma.kind
+    doAssert nodePragma.kind in {nkIdent, nkAccQuoted}, $nodePragma.kind
     result.add nodePragma
     result.add lhs
     if a[1].kind != nkEmpty:

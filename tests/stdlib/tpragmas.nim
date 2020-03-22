@@ -47,3 +47,24 @@ block:
   let a {.byUnsafeAddr.} = s[0]
   doAssert a == "foo"
   doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+
+block: # nkAccQuoted
+  # shows using a keyword, which requires nkAccQuoted
+  template `cast`(lhs, typ, expr) =
+    when typ is type(nil):
+      let tmp = unsafeAddr(expr)
+    else:
+      let tmp: ptr typ = unsafeAddr(expr)
+    template lhs: untyped = tmp[]
+
+  block:
+    let s = @["foo", "bar"]
+    let a {.`byUnsafeAddr`.} = s[0]
+    doAssert a == "foo"
+    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+
+  block:
+    let s = @["foo", "bar"]
+    let a {.`cast`.} = s[0]
+    doAssert a == "foo"
+    doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
