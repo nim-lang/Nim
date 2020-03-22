@@ -189,6 +189,7 @@ echo f
   this is **very bad** style. You should inherit from `ValueError`, `IOError`,
   `OSError` or from a different specific exception type that inherits from
   `CatchableError` and cannot be confused with a `Defect`.
+- The error reporting for Nim's effect system has been improved.
 
 
 ## Bugfixes

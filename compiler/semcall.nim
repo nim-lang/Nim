@@ -136,6 +136,23 @@ proc effectProblem(f, a: PType; result: var string) =
     elif tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       result.add "\n  This expression can have side effects. Annotate the " &
           "proc with {.noSideEffect.} to get extended error information."
+    else:
+      case compatibleEffects(f, a)
+      of efCompat: discard
+      of efRaisesDiffer:
+        result.add "\n  The `.raises` requirements differ."
+      of efRaisesUnknown:
+        result.add "\n  The `.raises` requirements differ. Annotate the " &
+            "proc with {.raises: [].} to get extended error information."
+      of efTagsDiffer:
+        result.add "\n  The `.tags` requirements differ."
+      of efTagsUnknown:
+        result.add "\n  The `.tags` requirements differ. Annotate the " &
+            "proc with {.tags: [].} to get extended error information."
+      of efLockLevelsDiffer:
+        result.add "\n  The `.locks` requirements differ. Annotate the " &
+            "proc with {.locks: 0.} to get extended error information."
+
 
 proc renderNotLValue(n: PNode): string =
   result = $n
