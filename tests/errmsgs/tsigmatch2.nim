@@ -3,13 +3,13 @@ discard """
   nimout: '''
 tsigmatch2.nim(40, 14) Error: type mismatch: got <float64>
 but expected one of:
-proc foo(i: Foo): string
-  first type mismatch at position: 1
-  required type for i: Foo
-  but expression '1.2' is of type: float64
 proc foo(args: varargs[string, myproc]): string
   first type mismatch at position: 1
   required type for args: varargs[string]
+  but expression '1.2' is of type: float64
+proc foo(i: Foo): string
+  first type mismatch at position: 1
+  required type for i: Foo
   but expression '1.2' is of type: float64
 
 expression: foo(1.2)

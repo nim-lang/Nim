@@ -1,2 +1,0 @@
-# tests expects the text files associated with them have LF only as EOL
-**/test*/**/* text eol=lf

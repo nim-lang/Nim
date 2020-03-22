@@ -12,9 +12,9 @@
 
 import
   ast, modules, idents, passes, condsyms,
-  options, sem, llstream, vm, vmdef, commands, msgs,
+  options, sem, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  lineinfos, pathutils
+  pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -65,7 +65,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
-      os.removeDir getString(a, 0)
+      os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard

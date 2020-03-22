@@ -522,7 +522,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
           a.add m
           changeType(m, tup[i], check)
   of nkCharLit..nkUInt64Lit:
-    if check and n.kind != nkUInt64Lit:
+    if check and n.kind != nkUInt64Lit and not sameType(n.typ, newType):
       let value = n.intVal
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
@@ -1142,7 +1142,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # It is clear that ``[]`` means two totally different things. Thus, we
       # copy `x`'s AST into each context, so that the type fixup phase can
       # deal with two different ``[]``.
-      if s.ast.len == 0: result = inlineConst(c, n, s)
+      if s.ast.safeLen == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
     of tyStatic:
       if typ.n != nil:

@@ -1,5 +1,6 @@
 discard """
-  output: '''uint'''
+  output: '''uint
+1'''
 """
 
 # Tests unsigned literals and implicit conversion between uints and ints
@@ -55,3 +56,12 @@ const x0 = fun()
 echo typeof(x0)
 
 discard $x0
+
+# bug #13671
+
+const x1 = cast[uint](-1)
+discard $(x1,)
+
+# bug 13698
+let n: csize = 1
+echo n.int32

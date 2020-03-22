@@ -52,7 +52,7 @@ pkg "nimcrypto", false, "nim c -r tests/testall.nim"
 pkg "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", true, "nim c src/nimes.nim"
 pkg "nimfp", true, "nim c -o:nfp -r src/fp.nim"
-#pkg "nimgame2", true, "nim c nimgame2/nimgame.nim"
+pkg "nimgame2", true, "nim c nimgame2/nimgame.nim"
 pkg "nimgen", true, "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 # pkg "nimlsp", true
 pkg "nimly", true

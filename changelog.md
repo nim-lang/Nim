@@ -3,6 +3,12 @@
 
 ## Changes affecting backwards compatibility
 
+- The Nim compiler now implements a faster way to detect overflows based
+  on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
+  supports these). Some versions of GCC lack this feature and unfortunately
+  we cannot detect this case reliably. So if you get compilation errors like
+  "undefined reference to `__builtin_saddll_overflow`" compile your programs
+  with `-d:nimEmulateOverflowChecks`.
 
 
 ### Breaking changes in the standard library
@@ -28,13 +34,22 @@
 - `options` now treats `proc` like other pointer types, meaning `nil` proc variables
   are converted to `None`.
 - `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
-  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
-  behavior
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to
+  restore the old behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
 - `times.parse` now only uses input to compute its result, and not `now`:
   `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
   `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
   used on 29th, 30th, 31st of each month.
+- `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
+  usage. The `$` operator can be used to obtain the string form of `HttpCode`
+  for comparison if desired.
+- `os.walkDir` and `os.walkDirRec` now have new flag, `checkDir` (default: false).
+  If it is set to true, it will throw if input dir is invalid instead of a noop
+  (which is the default behaviour, as it was before this change),
+  `os.walkDirRec` only throws if top-level dir is invalid, but ignores errors for
+  subdirs, otherwise it would be impossible to resume iteration.
+
 
 ### Breaking changes in the compiler
 
@@ -103,6 +118,8 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
+- `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
+
 
 ## Library changes
 
@@ -126,6 +143,9 @@ echo f
 - `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
   empty. This was required for intuitive behaviour of the strscans module
   (see bug #13605).
+- `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
+- `net.newContext` now performs SSL Certificate checking on Linux and OSX.
+  Define `nimDisableCertificateValidation` to disable it globally.
 - `uri.encodeQuery` added `usePrefix` parameter which adds a prefix `?` at the start of the result string.
 
 
