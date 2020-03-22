@@ -554,14 +554,14 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
-    case arg.kind
-    of nkStmtListExpr:
-      return paComplexOpenarray
+    case arg.skipHidden.kind
     of nkBracket:
       return paFastAsgnTakeTypeFromArg
+    of nkSym:
+      return paDirectMapping
     else:
-      return paDirectMapping    # XXX really correct?
-                                # what if ``arg`` has side-effects?
+      return paComplexOpenarray
+
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
@@ -569,14 +569,14 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = putArgInto(arg[0], formal)
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: 
+      if putArgInto(arg[i], formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkObjConstr:
     for i in 0..<arg.len:
       let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
               else: arg[0]
-      if putArgInto(a, formal) != paDirectMapping: 
+      if putArgInto(a, formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   else:
@@ -644,7 +644,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in 1..<call.len:
-    var arg = transform(c, call[i])
+    let arg = transform(c, call[i])
     let ff = skipTypes(iter.typ, abstractInst)
     # can happen for 'nim check':
     if i >= ff.n.len: return result
@@ -671,9 +671,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
-      let typ = newType(tySequence, formal.owner)
-      addSonSkipIntLit(typ, formal.typ[0])
-      var temp = newTemp(c, typ, formal.info)
+      # arrays will deep copy here (pretty bad).
+      var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
