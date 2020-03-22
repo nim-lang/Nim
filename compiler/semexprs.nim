@@ -2120,26 +2120,22 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
-proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags, n1: PNode = nil): PNode =
-  let isTopLevel = n1 == nil
-  var n1 = n1
-  if n1 == nil:
+proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags, isTopLevel: bool): PNode =
+  var n = n
+  if isTopLevel:
     if n.len != 2:
       localError(c.config, n.info, "semOverloadResolve: got" & $n.len)
       return
-    n1 = n[1]
-  n1.flags.incl nfOverloadResolve
-  case n1.kind
-  of {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
-    # CHECKME
-    # let flags = flags + {efWantIterator}
+    n = n[1]
+  n.flags.incl nfOverloadResolve
+  if n.kind notin {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
+    localError(c.config, n.info, "expected routine, got " & $n.kind)
+  else:
     # so that it also works for iterators and allows nonexistant fields and procs
     let flags = flags + {efWantIterator, efNoUndeclared}
-    result = semExpr(c, n1, flags)
+    result = semExpr(c, n, flags)
     if result != nil:
       doAssert result.kind in {nkSym, nkClosedSymChoice}, $result.kind
-  else:
-    localError(c.config, n.info, "expected routine, got " & $n1.kind)
   if result == nil:
     if isTopLevel:
       result = newNodeIT(nkNilLit, n.info, getSysType(c.graph, n.info, tyNil))
@@ -2220,7 +2216,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = semCompiles(c, setMs(n, s), flags)
   of mOverloadResolve:
     markUsed(c, n.info, s)
-    result = semOverloadResolve(c, setMs(n, s), flags)
+    result = semOverloadResolve(c, setMs(n, s), flags, isTopLevel = true)
   of mIs:
     markUsed(c, n.info, s)
     result = semIs(c, setMs(n, s), flags)
@@ -2679,7 +2675,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)
       if hasOverloadResolve:
-        result = semOverloadResolve(c, result, flags, result)
+        result = semOverloadResolve(c, result, flags, isTopLevel = false)
       else:
         result = semExpr(c, result, flags)
     elif result.kind == nkDotExpr and hasOverloadResolve:
