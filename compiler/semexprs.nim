@@ -10,6 +10,8 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+import std/wrapnils
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -980,8 +982,12 @@ proc semDirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this seems to be a hotspot in the compiler!
   let nOrig = n.copyTree
   #semLazyOpAux(c, n)
+  echo0b (n.kind, n.flags)
   result = semOverloadedCallAnalyseEffects(c, n, nOrig, flags)
-  if nfOverloadResolve in n.flags: return
+  echo0b ?.result.kind
+  if nfOverloadResolve in n.flags:
+    echo0b result == nil
+    return
   if result != nil: result = afterCallActions(c, result, nOrig, flags)
   else: result = errorNode(c, n)
 
@@ -1273,7 +1279,8 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
   var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
-  if nfOverloadResolve in n.flags:
+  # if nfOverloadResolve in n.flags:
+  if nfOverloadResolve in n.flags and false:
     if s == nil:
       localError(c.config, n.info, "builtinFieldAccess: qualifiedLookUp failed")
     else: result = symChoice(c, n, s, scClosed)
@@ -1409,6 +1416,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
     tryReadingGenericParam(t)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
+  echo0b (isSymChoice(n[1]), n[1].kind)
   if isSymChoice(n[1]):
     result = newNodeI(nkDotCall, n.info)
     result.add n[1]
@@ -1424,6 +1432,9 @@ proc semFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # this is difficult, because the '.' is used in many different contexts
   # in Nim. We first allow types in the semantic checking.
   result = builtinFieldAccess(c, n, flags)
+  echo0b ("semFieldAccess", result != nil, c.config$n.info)
+  if result != nil:
+    echo0b result.kind
   if result == nil:
     result = dotTransformation(c, n)
 
@@ -2109,24 +2120,32 @@ proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
 
-proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags): PNode =
-  if n.len != 2:
-    localError(c.config, n.info, "semOverloadResolve: got" & $n.len)
-    return
-  let n1 = n[1]
+proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags, n1: PNode = nil): PNode =
+  let isTopLevel = n1 == nil
+  var n1 = n1
+  if n1 == nil:
+    if n.len != 2:
+      localError(c.config, n.info, "semOverloadResolve: got" & $n.len)
+      return
+    n1 = n[1]
+  echo0b (n1.kind, n1.flags)
   n1.flags.incl nfOverloadResolve
   case n1.kind
   of {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
     let flags = flags + {efWantIterator} # so that it also works for iterators
     result = semExpr(c, n1, flags)
+    echo0b result == nil
     # TODO: customize what happens for result == nil
     if result != nil:
+      echo0b result.kind
       doAssert result.kind in {nkSym, nkClosedSymChoice}, $result.kind
   else:
     localError(c.config, n.info, "expected routine, got " & $n1.kind)
   if result == nil:
-    result = newNodeIT(nkNilLit, n.info, getSysType(c.graph, n.info, tyNil))
+    if isTopLevel:
+      result = newNodeIT(nkNilLit, n.info, getSysType(c.graph, n.info, tyNil))
   elif result.kind != nkSym:
+    echo0b ()
     # avoids degenerating symchoice to a sym
     let typ = newTypeS(tyTuple, c)
     let result0 = result
@@ -2589,6 +2608,9 @@ proc shouldBeBracketExpr(n: PNode): bool =
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
+  echo0b (c.config$n.info, n.kind, flags)
+  # defer:
+  #   echo0b: (c.config$n.info, "end", n.kind, flags, result.kind)
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
@@ -2655,10 +2677,20 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   of nkCharLit:
     if result.typ == nil: result.typ = getSysType(c.graph, n.info, tyChar)
   of nkDotExpr:
+    let hasOverloadResolve = nfOverloadResolve in n.flags
+    echo0b (n.flags)
     result = semFieldAccess(c, n, flags)
+    echo0b (result.kind, result.flags)
     if result.kind == nkDotCall:
       result.transitionSonsKind(nkCall)
-      result = semExpr(c, result, flags)
+      echo0b (result.kind, result.flags, result[0].kind, result[0].flags, result.len)
+      if result[0].kind == nkIdent:
+        echo0b (result[0].ident.s, hasOverloadResolve)
+      if hasOverloadResolve:
+        result = semOverloadResolve(c, result, flags, result)
+      else:
+        result = semExpr(c, result, flags)
+      echo0b (?.result.kind)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n[0], flags)
@@ -2676,8 +2708,10 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     checkMinSonsLen(n, 1, c.config)
     #when defined(nimsuggest):
     #  if gIdeCmd == ideCon and c.config.m.trackPos == n.info: suggestExprNoCheck(c, n)
-    let mode = if nfDotField in n.flags: {} else: {checkUndeclared}
+    echo0b (n.flags)
+    let mode = if {nfDotField, nfOverloadResolve} * n.flags != {}: {} else: {checkUndeclared}
     var s = qualifiedLookUp(c, n[0], mode)
+    echo0b (?.s.name.s, c.config$(?.s.ast.info))
     if s != nil:
       #if c.config.cmd == cmdPretty and n[0].kind == nkDotExpr:
       #  pretty.checkUse(n[0][1].info, s)
@@ -2696,6 +2730,7 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         elif s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       of skProc, skFunc, skMethod, skConverter, skIterator:
+        echo0b (s.kind, s.magic)
         if s.magic == mNone: result = semDirectOp(c, n, flags)
         else: result = semMagic(c, n, s, flags)
       else:
@@ -2855,3 +2890,4 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     localError(c.config, n.info, "invalid expression: " &
                renderTree(n, {renderNoComments}))
   if result != nil: incl(result.flags, nfSem)
+  echo0b result == nil
