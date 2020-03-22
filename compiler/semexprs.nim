@@ -10,8 +10,6 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
-import std/wrapnils
-
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"

@@ -11,6 +11,7 @@ Nim/tests/magics/tresolve_overloads.nim:133:28: $ = closedSymChoice:
 ]#
 
 import ./mresolves
+import ./mresolve_overloads
 
 template bail() = static: doAssert false
 
@@ -43,7 +44,7 @@ macro fun8(c: static bool): untyped = discard
 proc fun8(d: var int) = d.inc
 
 proc main()=
-  static:
+  block: # overloadExists with nkCall
     doAssert overloadExists(fun4(1))
     doAssert not compiles(fun4(1))
     doAssert overloadExists(fun4(1))
@@ -77,19 +78,48 @@ proc main()=
     doAssert overloadExists(fun7(1))
     doAssert not overloadExists(fun7())
 
-    block: # dot accesors
-      type Foo = object
-        bar1: int
-      template bar2(a: Foo) = discard
-      template bar3[T](a: T) = discard
-      doAssert compiles(Foo().bar1)
-      doAssert overloadExists(Foo().bar1)
-      const foo = Foo()
-      doAssert overloadExists(foo.bar1)
-      doAssert overloadExists(foo.bar2)
-      doAssert overloadExists(foo.bar3)
-      doAssert not overloadExists(foo.bar4)
+  block: # overloadExists with nkCall dot accesors
+    type Foo = object
+      bar1: int
+    var foo: Foo
 
+    template bar2(a: Foo) = discard
+    template bar3[T](a: T): int = 0
+
+    proc bar4(a: int) = discard
+
+    template bar5(a: int) = discard
+    template bar5(a: Foo) = discard
+
+    doAssert not declared(mresolve_overloads.nonexistant)
+    doAssert declared(mresolve_overloads.foo3)
+    doAssert not declared(foo.bar1)
+    doAssert not overloadExists(mresolve_overloads.nonexistant)
+    doAssert overloadExists(mresolve_overloads.foo3)
+
+    doAssert not overloadExists(nonexistant(foo))
+    doAssert not overloadExists(foo.nonexistant)
+    doAssert compiles(Foo().bar1)
+    doAssert compiles(Foo().bar1)
+    doAssert overloadExists(foo.bar2)
+    doAssert overloadExists(foo.bar3)
+
+    doAssert not overloadExists(bar4(foo))
+    doAssert not overloadExists(foo.bar4)
+
+    proc bar4(a: Foo) = discard
+
+    doAssert overloadExists(foo.bar4)
+    doAssert overloadExists(foo.bar5)
+
+    doAssert overloadExists(foo.bar1)
+    doAssert overloadExists(Foo().bar1)
+
+    doAssert not compiles(nonexistant.bar1)
+    doAssert not compiles(overloadExists(nonexistant.bar1))
+    doAssert not compiles(overloadExists(nonexistant().bar1))
+
+  block: # resolveSymbol
     doAssert resolveSymbol(fun8(1))(3) == fun8(3)
     inspect resolveSymbol(fun8)
 
@@ -134,7 +164,6 @@ proc main()=
 import std/strutils
 import std/macros
 import std/macros as macrosAlias
-import ./mresolve_overloads
 
 proc main2()=
   block:
@@ -183,4 +212,5 @@ proc main2()=
 proc funDecl2(a: int) = discard
 
 main()
+static: main()
 main2()
