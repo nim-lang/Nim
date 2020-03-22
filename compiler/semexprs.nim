@@ -64,6 +64,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
+  if result == nil: return errorNode(c, n)
   if result.kind == nkEmpty:
     # do not produce another redundant error message:
     result = errorNode(c, n)
@@ -909,7 +910,12 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
     else:
       n[0] = n0
   else:
-    n[0] = semExpr(c, n[0], {efInCall})
+    echo0b (flags, n.flags, n.renderTree)
+    var flags2 = {efInCall}
+    if nfOverloadResolve in n.flags:
+      flags2.incl {efNoUndeclared}
+    n[0] = semExpr(c, n[0], flags2)
+    if n[0] == nil and nfOverloadResolve in n.flags: return nil
     let t = n[0].typ
     if t != nil and t.kind in {tyVar, tyLent}:
       n[0] = newDeref(n[0])
@@ -1278,11 +1284,16 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       suggestExpr(c, n)
       if exactEquals(c.config.m.trackPos, n[1].info): suggestExprNoCheck(c, n)
 
-  var s = qualifiedLookUp(c, n, {checkAmbiguity, checkUndeclared, checkModule})
+  echo0b (n.flags, n.kind, n.renderTree, flags)
+  var flags2 = {checkAmbiguity, checkUndeclared, checkModule}
+  # if  nfOverloadResolve in n.flags: flags2.excl checkUndeclared
+  var s = qualifiedLookUp(c, n, flags2)
+  echo0b (n.flags, s == nil)
   # if nfOverloadResolve in n.flags:
-  if nfOverloadResolve in n.flags and false:
+  if false and nfOverloadResolve in n.flags: # could be nil for somobj.somefield
     if s == nil:
-      localError(c.config, n.info, "builtinFieldAccess: qualifiedLookUp failed")
+      return nil
+      # localError(c.config, n.info, "builtinFieldAccess: qualifiedLookUp failed")
     else: result = symChoice(c, n, s, scClosed)
     return
   if s != nil:
@@ -2132,7 +2143,9 @@ proc semOverloadResolve(c: PContext, n: PNode, flags: TExprFlags, n1: PNode = ni
   n1.flags.incl nfOverloadResolve
   case n1.kind
   of {nkIdent,nkDotExpr,nkAccQuoted} + nkCallKinds - {nkHiddenCallConv}:
-    let flags = flags + {efWantIterator} # so that it also works for iterators
+    # let flags = flags + {efWantIterator}
+    # so that it also works for iterators and allows nonexistant fields and procs
+    let flags = flags + {efWantIterator, efNoUndeclared}
     result = semExpr(c, n1, flags)
     echo0b result == nil
     # TODO: customize what happens for result == nil
@@ -2608,20 +2621,22 @@ proc shouldBeBracketExpr(n: PNode): bool =
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = n
-  echo0b (c.config$n.info, n.kind, flags)
+  echo0b (c.config$n.info, n.kind, flags, n.flags)
   # defer:
   #   echo0b: (c.config$n.info, "end", n.kind, flags, result.kind)
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
   case n.kind
   of nkIdent, nkAccQuoted:
-    let checks = if efNoEvaluateGeneric in flags:
+    var checks = if efNoEvaluateGeneric in flags:
         {checkUndeclared, checkPureEnumFields}
       elif efInCall in flags:
         {checkUndeclared, checkModule, checkPureEnumFields}
       else:
         {checkUndeclared, checkModule, checkAmbiguity, checkPureEnumFields}
+    if efNoUndeclared in flags: checks.excl checkUndeclared
     var s = qualifiedLookUp(c, n, checks)
+    if efNoUndeclared in flags and s == nil: return nil
     if c.matchedConcept == nil: semCaptureSym(s, c.p.owner)
     if nfOverloadResolve in n.flags: result = symChoice(c, n, s, scClosed)
     elif s.kind in {skProc, skFunc, skMethod, skConverter, skIterator}:
@@ -2691,6 +2706,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
       else:
         result = semExpr(c, result, flags)
       echo0b (?.result.kind)
+    elif result.kind == nkDotExpr and hasOverloadResolve:
+      result = result[1]
+      echo0b (result.kind, result.renderTree)
   of nkBind:
     message(c.config, n.info, warnDeprecated, "bind is deprecated")
     result = semExpr(c, n[0], flags)
