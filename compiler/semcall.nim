@@ -537,7 +537,6 @@ proc tryDeref(n: PNode): PNode =
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
                        filter: TSymKinds, flags: TExprFlags): PNode =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
-  echo0b (flags, n.flags, nOrig.flags, n.kind)
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   template canError(): bool =
     efNoUndeclared notin flags and nfOverloadResolve notin n.flags
