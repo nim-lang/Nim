@@ -43,6 +43,10 @@ macro fun8(c: static bool): untyped = discard
 
 proc fun8(d: var int) = d.inc
 
+proc fun10[T: seq](a: T): auto = (a,)
+proc fun10[T: int|float](a: T): auto = (a,)
+template fun11(a: untyped): auto = (a,)
+
 proc main()=
   block: # overloadExists with nkCall
     doAssert overloadExists(fun4(1))
@@ -79,6 +83,26 @@ proc main()=
     doAssert not overloadExists(fun6(1 + 'a', 2))
     doAssert overloadExists(fun7(1))
     doAssert not overloadExists(fun7())
+
+    # generics
+    doAssert overloadExists(fun10(@[1]))
+    doAssert overloadExists(fun10(1.2))
+    doAssert not overloadExists(fun10("foo"))
+    doAssert not overloadExists(fun10('a'))
+    template fun10(a: char): auto = (a,)
+    doAssert overloadExists(fun10('a'))
+    doAssert not overloadExists(fun11())
+    doAssert overloadExists(fun11(1 + 'a'))
+
+    # $
+    doAssert overloadExists($12)
+    doAssert not overloadExists($main)
+    # echo
+    doAssert overloadExists(echo 12)
+    doAssert overloadExists(echo ())
+    doAssert overloadExists(echo())
+    doAssert not overloadExists(echo main)
+    doAssert not overloadExists(echo(main))
 
   block: # overloadExists with nkCall dot accesors
     type Foo = object
