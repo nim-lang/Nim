@@ -488,11 +488,7 @@ proc semResolvedCall(c: PContext, x: TCandidate,
   markUsed(c, info, finalCallee)
   onUse(info, finalCallee)
   assert finalCallee.ast != nil
-  if nfOverloadResolve in n.flags:
-    # CHECKME: see if handling of `hasFauxMatch` is correct
-    let info2 = info
-    return newSymNode(finalCallee, info2)
-
+  if nfOverloadResolve in n.flags: return newSymNode(finalCallee, info)
   if x.hasFauxMatch:
     result = x.call
     result[0] = newSymNode(finalCallee, getCallLineInfo(result[0]))

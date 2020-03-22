@@ -1279,16 +1279,11 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   var flags2 = {checkAmbiguity, checkUndeclared, checkModule}
   var s = qualifiedLookUp(c, n, flags2)
-
   if nfOverloadResolve in n.flags and n.kind == nkDotExpr:
     var m = qualifiedLookUp(c, n[0], (flags2*{checkUndeclared})+{checkModule})
-    if m != nil and m.kind == skModule:
-      # it's mymodule.someident
-      if s == nil:
-        return nil
-      else:
-        return symChoice(c, n, s, scClosed)
-
+    if m != nil and m.kind == skModule: # got `mymodule.someident`
+      if s == nil: return nil
+      else: return symChoice(c, n, s, scClosed)
   if s != nil:
     if s.kind in OverloadableSyms:
       result = symChoice(c, n, s, scClosed)
@@ -2115,7 +2110,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
 
 proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:
-  if n.len != 2: return semDirectOp(c, n, flags) # why needed?
+  if n.len != 2: return semDirectOp(c, n, flags)
   result = newIntNode(nkIntLit, ord(tryExpr(c, n[1], flags) != nil))
   result.info = n.info
   result.typ = getSysType(c.graph, n.info, tyBool)
