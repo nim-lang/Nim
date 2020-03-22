@@ -2772,7 +2772,7 @@ when declared(paramCount) or defined(nimdoc):
       result.add(paramStr(i))
 else:
   proc commandLineParams*(): seq[TaintedString] {.error:
-  "commandLineParams() unsupported by this target".} =
+  "commandLineParams() unsupported by dynamic libraries".} =
     discard
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
