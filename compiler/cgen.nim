@@ -992,7 +992,8 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
 proc genProcBody(p: BProc; procBody: PNode) =
   if startsWith($p.module.tmpBase, "TM"):
     writeStackTrace()
-  echo "genProcBody against p module: ", $p.module.tmpBase
+    echo "genProcBody against         : ", $p.module.cfilename
+    echo "genProcBody against p module: ", $p.module.tmpBase
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
@@ -1256,61 +1257,31 @@ proc genProc(orig: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc):
     return
 
-  # don't cache procs that aren't children of the module
-  var
-    cache = newCacheUnit(orig.g, prc)
-    m = cache.findTargetModule(orig)
+  # if the proc is not completed defined
+  if sfForward in prc.flags:
+    # telling the BModule that we will need a forward declaration section
+    fillProcLoc(orig, prc.ast[namePos])
+    # adding a forward declaration
+    addForwardedProc(orig, prc)
 
-  # XXX: should we handle these specially?
-  when true:
-    # if the proc is not completed defined
-    if sfForward in prc.flags:
-      # telling the BModule that we will need a forward declaration section
-      fillProcLoc(m, prc.ast[namePos])
-      # adding a forward declaration
-      addForwardedProc(m, prc)
+  # we only generate code when the proc is completely defined
+  if sfForward in prc.flags:
+    return
 
-    # we only generate code when the proc is completely defined
-    if sfForward in prc.flags:
-      # merge the cache before we exit
-      cache.merge(orig.g)
-      return
+  var prc = prc # satisfy performCaching()
+  performCaching(orig.g, orig, prc):
+    when not defined(release):
+      echo "==> ", yewpad(m, prc)
 
-  when not defined(release):
-    echo "==> ", yewpad(m, prc)
-
-  # if we're not reading, we need to generate the code
-  if not cache.readable:
-    if cache.writable:
-      when not defined(release):
-        echo "> ", m.cfilename, "\t", prc.name.s
-        echo "\t", $prc.sigHash, "\t", m.module.id
+    #when not defined(release):
+    #  echo "> ", m.cfilename, "\t", prc.name.s
+    #  echo "\t", $prc.sigHash, "\t", m.module.id
 
     #if not cachable:
     #  echo "--", m.cfilename, "\t", prc.name.s
 
     # the actual code generation
     performRealGenProc(m, prc)
-
-    if cache.writable:
-      # store the cache to db
-      cache.store
-
-      cache.merge(orig.g)
-      cache.reject
-
-      when false:
-        # this is using the cache
-        genProc(orig, prc)
-        return
-
-  # if we're reading, load the snippets from the db
-  if cache.readable:
-    # load the cached symbol and its snippets from the db
-    cache.load(orig.g)
-
-  # merge the cache into our graph if possible
-  cache.merge(orig.g)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1593,12 +1564,7 @@ proc genMainProc(m: BModule) =
 proc registerModuleToMain(g: BModuleList; m: BModule) =
   var
     g = g # for cache merge
-    orig = m
-    cache = newCacheUnit(g, orig.module)
-    m = cache.findTargetModule(orig)
-  if cache.readable:
-    cache.load(g)
-  else:
+  performCaching(g, m, m.module):
     block codegen:
       let
         init = m.getInitName
@@ -1666,13 +1632,6 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
           m.g.mainDatInit.add(initCall) # systemInit must called right after systemDatInit if any
         else:
           m.g.otherModsInit.add(initCall)
-
-    # we write after codegen... maybe.
-    if cache.writable:
-      cache.store
-
-  # we always merge
-  cache.merge(g)
 
 proc genDatInitCode(m: BModule) =
   ## this function is called in cgenWriteModules after all modules are closed,
@@ -1980,16 +1939,8 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    var
-      cache = newCacheUnit(m.g, transformedN)
-      target = cache.findTargetModule(m)
-    if cache.readable:
-      cache.load(m)
-    else:
-      genProcBody(target.initProc, transformedN)
-      if cache.writable:
-        cache.store(m)
-    cache.merge(m.g)
+    performCaching(m.g, m, transformedN):
+      genProcBody(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
   if optForceFullMake notin m.config.globalOptions:
@@ -2101,15 +2052,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
 
-  var
-    orig = m
-    cache = newCacheUnit(orig.g, n)
-  # reuse m
-  m = cache.findTargetModule(orig)
-  if cache.readable:
-    cache.load(m)
-  else:
-
+  var n = n  # satisfy performCaching()
+  performCaching(m.g, m, n):
     if moduleHasChanged(graph, m.module):
       # if the module is cached, we don't regenerate the main proc
       # nor the dispatchers? But if the dispatchers changed?
@@ -2147,11 +2091,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
         let disp = generateMethodDispatchers(graph)
         for x in disp: genProcAux(m, x.sym)
 
-    if cache.writable:
-      cache.store(m)
-
-  cache.merge(orig.g)
-  orig.g.modulesClosed.add orig
+  m.g.modulesClosed.add m
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're
@@ -2182,6 +2122,7 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
 
   for orig in cgenModules(g):
     performCaching(g, orig, orig.module):
+      # m is the "quarantined" module
       writeModule(m, pending = true)
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)

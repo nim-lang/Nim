@@ -68,9 +68,12 @@ type
 
   CacheableObject = PSym or PNode or PType
 
+  CacheUnitKind = enum Symbol, Node, Type
+
   # the in-memory representation of a cachable unit of backend codegen
   CacheUnit*[T: CacheableObject] = object
     strategy*: set[CacheStrategy]
+    kind*: CacheUnitKind
     node*: T                  # the node itself
     snippets*: SnippetTable   # snippets for this node
     graph*: ModuleGraph       # the original module graph, for convenience
@@ -376,10 +379,31 @@ proc readable*(cache: var CacheUnit; value: bool): bool =
       cache.strategy.excl Reads
   result = cache.readable
 
+proc `$`*(cache: CacheUnit[PNode]): string =
+  result = $cache.node.kind
+  result = "cacheN($#, $#)" % [ result, $cache.strategy ]
+
+proc `$`*(cache: CacheUnit[PSym]): string =
+  result = cache.node.name.s
+  result = "cacheS($#, $#)" % [ result, $cache.strategy ]
+
+proc `$`*(cache: CacheUnit[PType]): string =
+  result = $cache.node.kind & "-" & $cache.node.uniqueId
+  if cache.node.sym != nil:
+    result &= "/" & $cache.node.sym.name.s
+  result = "cacheT($#, $#)" % [ result, $cache.strategy ]
+
 proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
   result = CacheUnit[T](node: node, graph: modules.graph)
   # figure out if we're in a position to cache anything
   result.assignCachability(modules.config, node)
+
+  when T is PNode:
+    result.kind = CacheUnitKind.Node
+  when T is PSym:
+    result.kind = CacheUnitKind.Symbol
+  when T is PType:
+    result.kind = CacheUnitKind.Type
 
   if not result.rejected:
     # add a container for relevant snippets
@@ -1838,10 +1862,10 @@ proc merge*(cache; parent: var BModuleList) =
   # don't merge rejected caches
   if cache.rejected:
     when not defined(release):
-      echo "NO MERGE"
+      echo "NO MERGE; rejected ", cache
     return
   when not defined(release):
-    echo "MERGE"
+    echo "MERGE ", cache
 
   cache.mergeRopes(parent, child.mainModProcs)
   cache.mergeRopes(parent, child.mainModInit)
@@ -1865,43 +1889,45 @@ proc merge*(cache; parent: var BModuleList) =
         raise newException(Defect,
                            "could not find parent of " & $m.module.id)
 
+template storeImpl(cache: var CacheUnit;
+                   orig: BModule; body: untyped): untyped =
+  assert cache.writable, "attempt to write unwritable cache"
+
+  when not defined(release):
+    echo "store for ", cache
+
+  # XXX: should we operate on the original graph OR the mutated graph?
+  # this is running on the original graph, after it has been merged...
+  transitiveClosure(cache.graph)
+
+  body
+
+  # if we wrote the cache, we can read it
+  discard cache.readable(true)
+  discard cache.writable(false)
+
 proc store*(cache: var CacheUnit[PNode]; orig: BModule) =
-  assert cache.writable, "attempt to write unwritable cache"
+  storeImpl cache, orig:
+    when not defined(release):
+      echo "store for ", cache.findTargetModule(orig).tmpBase
 
-  when not defined(release):
-    echo "store for ", cache.findTargetModule(orig).tmpBase
+    cache.graph.storeNode(orig.module, cache.node)
 
-  transitiveClosure(cache.graph)
+proc store*(cache: var CacheUnit[PSym]; orig: BModule) =
+  storeImpl cache, orig:
+    # work around mutation of symbol
+    cache.graph.unstoreSym(cache.node)
+    cache.graph.storeSym(cache.node)
 
-  cache.graph.storeNode(orig.module, cache.node)
-
-  # if we wrote the cache, we can read it
-  discard cache.readable(true)
-
-proc store*(cache: var CacheUnit[PSym]) =
-  assert cache.writable, "attempt to write unwritable cache"
-
-  when not defined(release):
-    echo "store for ", cache.node.name.s
-
-  transitiveClosure(cache.graph)
-
-  # work around mutation of symbol
-  cache.graph.unstoreSym(cache.node)
-  cache.graph.storeSym(cache.node)
-
-  # write snippets
-  for module in cache.modules.modules.items:
-    if module != nil:
-      for section in TCFileSection.low .. TCFileSection.high:
-        if module.s[section] != nil:
-          var
-            snippet = newSnippet(cache.node, module, section)
-          snippet.code = module.s[section]
-          storeSnippet(cache.graph, snippet)
-
-  # if we wrote the cache, we can read it
-  discard cache.readable(true)
+    # write snippets
+    for module in cache.modules.modules.items:
+      if module != nil:
+        for section in TCFileSection.low .. TCFileSection.high:
+          if module.s[section] != nil:
+            var
+              snippet = newSnippet(cache.node, module, section)
+            snippet.code = module.s[section]
+            storeSnippet(cache.graph, snippet)
 
 proc loadTransformsIntoCache(cache: var CacheUnit) =
   ## read transforms from the database for the given cache node and merge
@@ -1947,7 +1973,6 @@ proc loadTransformsIntoCache(cache: var CacheUnit) =
     else:
       discard
 
-
 proc loadSnippetsIntoCache(cache: var CacheUnit) =
   ## read snippets from the database for the given cache node and merge
   ## them into the fake module graph
@@ -1977,50 +2002,45 @@ flags: {cache.node.flags}
       when not defined(release):
         m.s[snippet.section].add "/* end */\n".rope
 
+template loadImpl(cache: var CacheUnit; orig: BModule; body: untyped) =
+  ## this needs to merely LOAD data so that later MERGE operations can work
+  if not cache.readable:
+    raise newException(Defect, "attempt to read unreadable cache")
+
+  body
+
+  # read/apply snippets to the cache
+  cache.loadSnippetsIntoCache
+
+  # read/apply transforms to the cache
+  cache.loadTransformsIntoCache
+
 proc load*(cache: var CacheUnit[PNode]; orig: BModule) =
   ## this needs to merely LOAD data so that later MERGE operations can work
-  assert cache.readable, "attempt to read unreadable cache"
+  loadImpl cache, orig:
+    when not defined(release):
+      echo "load for ", cache
+      echo "load for ", cache.findTargetModule(orig).tmpBase
 
-  when not defined(release):
-    echo "load for ", cache.findTargetModule(orig).tmpBase
+    cache.node = cache.graph.loadNode(orig.module)
 
-  # shadow the passed the modulelist because we probably want to rely upon
-  # our faked cache modules instead
-  var
-    list = cache.modules
-
-  cache.node = cache.graph.loadNode(orig.module)
-
-  # read/apply snippets to the cache
-  cache.loadSnippetsIntoCache
-
-  # read/apply transforms to the cache
-  cache.loadTransformsIntoCache
-
-proc load*(cache: var CacheUnit[PSym]; list: BModuleList) =
+proc load*(cache: var CacheUnit[PSym]; orig: BModule) =
   ## this needs to merely LOAD data so that later MERGE operations can work
-  assert cache.readable, "attempt to read unreadable cache"
+  loadImpl cache, orig:
+    when not defined(release):
+      echo "load for ", cache
 
-  when not defined(release):
-    echo "load for ", cache.node.name.s
+    # shadow the passed the modulelist because we probably want to rely upon
+    # our faked cache modules instead
+    var
+      list = cache.modules
 
-  # shadow the passed the modulelist because we probably want to rely upon
-  # our faked cache modules instead
-  var
-    list = cache.modules
-
-  # work around mutation of symbol
-  if 0 == symbolId(cache.graph, cache.node):
-    raise newException(Defect, "missing symbol: " & cache.node.name.s)
-  let
-    sym = cache.graph.loadSym(cache.node.id, cache.node.info)
-  cache.node = sym
-
-  # read/apply snippets to the cache
-  cache.loadSnippetsIntoCache
-
-  # read/apply transforms to the cache
-  cache.loadTransformsIntoCache
+    # work around mutation of symbol
+    if 0 == symbolId(cache.graph, cache.node):
+      raise newException(Defect, "missing symbol: " & cache.node.name.s)
+    let
+      sym = cache.graph.loadSym(cache.node.id, cache.node.info)
+    cache.node = sym
 
 proc nodeAlreadyStored*(g: ModuleGraph; p: PNode): bool =
   const
@@ -2046,15 +2066,19 @@ proc isHot(cache: CacheUnit[PSym]): bool =
 template performCaching*(g: BModuleList; orig: BModule; s: var CacheableObject;
                          body: untyped): untyped =
   var
-    cache = newCacheUnit(g, s)
+    cache {.inject.} = newCacheUnit(g, s)
     target = cache.findTargetModule(orig)
-  if cache.readable:
-    cache.load(g)
-  else:
-    echo "writable: ", cache.writable, " ", $orig.cfilename
-    var
-      m {.inject.}: BModule = target
-    body
-    if cache.writable:
-      cache.store
-  cache.merge(g)
+  try:
+    if cache.readable:
+      echo "loading ", cache, " ", $orig.cfilename
+      cache.load(orig)
+    else:
+      echo "writing ", cache, " ", $orig.cfilename
+      var
+        m {.inject.}: BModule = target
+      body
+      if cache.writable:
+        cache.store(orig)
+  finally:
+    echo "merging ", cache, " ", $orig.cfilename
+    cache.merge(g)
