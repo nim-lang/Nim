@@ -64,7 +64,7 @@ proc sameTree*(a, b: PNode): bool =
       result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit: result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
