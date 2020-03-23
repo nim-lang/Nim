@@ -31,8 +31,6 @@ import
   strutils, ast, types, msgs, renderer, vmdef,
   intsets, magicsys, options, lowerings, lineinfos, transf
 
-from trees import isDeepConstExpr
-
 const
   debugEchoCode* = defined(nimVMDebug)
 
@@ -1463,13 +1461,7 @@ proc getOwner(c: PCtx): PSym =
 proc importcCondVar*(s: PSym): bool {.inline.} =
   # see also importcCond
   if sfImportc in s.flags:
-    result = s.kind in {skVar, skLet, skConst}
-
-proc letIsConst(s: PSym): bool {.inline.} =
-  if s.kind == skLet and s.ast != nil and s.ast.kind == nkIdentDefs:
-    # this special rule is useful and required by the new base64
-    # implementation, see bug #13722.
-    result = isDeepConstExpr(s.ast.lastSon)
+    return s.kind in {skVar, skLet, skConst}
 
 proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
@@ -1477,7 +1469,6 @@ proc checkCanEval(c: PCtx; n: PNode) =
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
   if s.importcCondVar: return
-  if letIsConst(s): return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     # little hack ahead for bug #12612: assume gensym'ed variables
@@ -1618,7 +1609,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   let s = n.sym
   if s.isGlobal:
     let isImportcVar = importcCondVar(s)
-    if sfCompileTime in s.flags or c.mode == emRepl or isImportcVar or letIsConst(s):
+    if sfCompileTime in s.flags or c.mode == emRepl or isImportcVar:
       discard
     elif s.position == 0:
       cannotEval(c, n)
