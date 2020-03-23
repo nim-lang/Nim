@@ -1268,10 +1268,12 @@ proc genProc(orig: BModule, prc: PSym) =
   if sfForward in prc.flags:
     return
 
-  var prc = prc # satisfy performCaching()
+  var
+    orig = orig # satisfy performCaching()
+    prc = prc # satisfy performCaching()
   performCaching(orig.g, orig, prc):
-    when not defined(release):
-      echo "==> ", yewpad(m, prc)
+    #when not defined(release):
+    #  echo "==> ", yewpad(m, prc)
 
     #when not defined(release):
     #  echo "> ", m.cfilename, "\t", prc.name.s
@@ -1564,7 +1566,8 @@ proc genMainProc(m: BModule) =
 proc registerModuleToMain(g: BModuleList; m: BModule) =
   var
     g = g # for cache merge
-  performCaching(g, m, m.module):
+    m = m
+  dontPerformCaching(g, m, m.module):
     block codegen:
       let
         init = m.getInitName
@@ -2111,6 +2114,9 @@ proc genForwardedProcs(g: BModuleList) =
     # otherwise, generate the proc
     genProcMayForward(m, prc)
 
+when not defined(release):
+  include icaudit
+
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   var g = BModuleList(backend)
   g.config = config
@@ -2121,9 +2127,15 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   genForwardedProcs(g)
 
   for orig in cgenModules(g):
+    var
+      orig = orig
+    when not defined(release):
+      echo "hash of original module: ", $orig.hash
     performCaching(g, orig, orig.module):
       # m is the "quarantined" module
       writeModule(m, pending = true)
+    when not defined(release):
+      echo "hash of original module: ", $orig.hash
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 

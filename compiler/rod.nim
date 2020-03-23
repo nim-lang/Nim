@@ -58,8 +58,8 @@ when not defined(release):
 ## This module implements the canonalization for the various caching mechanisms.
 
 type
-  SnippetTable* = Table[SigHash, Snippet]
-  Snippets* = seq[Snippet]
+  SnippetTable = OrderedTable[SigHash, Snippet]
+  Snippets = seq[Snippet]
 
   CacheStrategy* {.pure.} = enum
     Reads
@@ -74,10 +74,11 @@ type
   CacheUnit*[T: CacheableObject] = object
     strategy*: set[CacheStrategy]
     kind*: CacheUnitKind
-    node*: T                  # the node itself
-    snippets*: SnippetTable   # snippets for this node
-    graph*: ModuleGraph       # the original module graph, for convenience
-    modules*: BModuleList     # modules being built by the backend
+    node*: T                     # the node itself
+    snippets*: SnippetTable      # snippets for this node
+    transforms*: TransformTable  # transforms for this node
+    graph*: ModuleGraph          # the original module graph
+    modules*: BModuleList        # modules being built by the backend
 
   TransformKind = enum
     Unknown
@@ -90,6 +91,8 @@ type
     GraphRope
     InitProc
     PreInit
+
+  TransformTable = OrderedTable[SigHash, Transform]
 
   Transform = object
     case kind: TransformKind
@@ -113,11 +116,11 @@ type
     module: BModule
 
   # the in-memory representation of the database record
-  Snippet* = object
-    signature*: SigHash       # we use the signature to associate the node
-    module*: BModule          # the module to which the snippet applies
-    section*: TCFileSection   # the section of the module in which to write
-    code*: Rope               # the raw backend code itself, eg. C/JS/etc.
+  Snippet = object
+    signature: SigHash       # we use the signature to associate the node
+    module: BModule          # the module to which the snippet applies
+    section: TCFileSection   # the section of the module in which to write
+    code: Rope               # the raw backend code itself, eg. C/JS/etc.
 
   SqlId {.deprecated.} = int64
 
@@ -291,14 +294,16 @@ proc assignCachability[T](cache: var CacheUnit[T]; config: ConfigRef; node: T) =
       cache.strategy.incl {Immutable}
       cache.strategy.excl {Reads, Writes}
     of readOnlySf:
-      cache.strategy.incl {Reads, Immutable}
+      if Immutable notin cache.strategy:
+        cache.strategy.incl {Reads, Immutable}
       cache.strategy.excl {Writes}
     of writeOnlySf:
-      cache.strategy.incl {Writes, Immutable}
+      if Immutable notin cache.strategy:
+        cache.strategy.incl {Writes, Immutable}
       cache.strategy.excl {Reads}
     of v2Sf:
-      cache.strategy.incl {Writes}
-    echo "node ", node.sigHash, " ", cache.strategy
+      if Immutable notin cache.strategy:
+        cache.strategy.incl {Reads, Writes}
 
 proc createFakeGraph(modules: BModuleList; sig: SigHash): BModuleList =
   result = newModuleList(modules.graph)
@@ -355,8 +360,9 @@ proc createFakeGraph(modules: BModuleList; sig: SigHash): BModuleList =
 
       result.modules.add fake
 
-proc reject*(cache: var CacheUnit) =
-  cache.strategy.excl {Reads, Writes}
+proc reject*(cache: var CacheUnit; value = true) =
+  if value:
+    cache.strategy.excl {Reads, Writes}
 
 template rejected*(cache): bool =
   {CacheStrategy.Reads, CacheStrategy.Writes} * cache.strategy == {}
@@ -386,6 +392,12 @@ proc `$`*(cache: CacheUnit[PNode]): string =
 
 proc `$`*(cache: CacheUnit[PSym]): string =
   result = cache.node.name.s
+  var
+    owner = cache.node.owner
+  while owner != nil and owner.owner != nil:
+    owner = owner.owner
+  if owner != nil and owner.name != nil:
+    result &= ".." & $owner.name.s
   result = "cacheS($#, $#)" % [ result, $cache.strategy ]
 
 proc `$`*(cache: CacheUnit[PType]): string =
@@ -401,6 +413,7 @@ proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
 
   when T is PNode:
     result.kind = CacheUnitKind.Node
+    writeStackTrace()
   when T is PSym:
     result.kind = CacheUnitKind.Symbol
   when T is PType:
@@ -410,13 +423,17 @@ proc newCacheUnit*[T](modules: BModuleList; node: T): CacheUnit[T] =
     # add a container for relevant snippets
     let
       size = rightSize(TCFileSection.high.ord)
-    result.snippets = initTable[SigHash, Snippet](size)
+    result.snippets = initOrderedTable[SigHash,
+                                       Snippet](size)
+    # and transformations
+    result.transforms = initOrderedTable[SigHash,
+                                         Transform](size) # XXX: grow it
 
     # create a fake module graph
     result.modules = createFakeGraph(modules, node.sigHash)
 
-  if result.isHot:
-    result.strategy.incl Reads
+  if not result.isHot:
+    result.strategy.excl Reads
 
 # the snippet's module is not necessarily the same as the symbol!
 proc newSnippet*[T](node: T; module: BModule; sect: TCFileSection): Snippet =
@@ -911,13 +928,19 @@ when false:
       else:
         result &= "," & $snippet.id
 
-proc storeSnippet*(g: ModuleGraph; s: var Snippet) =
+proc storeSnippet*(cache; s: var Snippet) =
+  assert cache.writable, "attempt to store snippet in unwritable cache"
+  let
+    sig = sigHash(cache.node)
+  cache.snippets.add sig, s
+
+  template g(): ModuleGraph = cache.graph
   const
     insertion = sql"""
       insert into snippets (signature, module, section, code)
       values (?, ?, ?, ?)
     """
-  db.exec(insertion, $s.signature, s.module.module.id, s.section.ord, $s.code)
+  db.exec(insertion, $sig, s.module.module.id, s.section.ord, $s.code)
 
 proc snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool =
   ## compares symbol hash and symbol id
@@ -1601,7 +1624,13 @@ proc decodeTransform(kind: string; module: BModule;
     {.warning: "faked out line info; terrible".}
     result.prc = loadSym(module.g.graph, data.parseInt, module.module.info)
 
-proc storeTransform*[T](g: ModuleGraph; node: T; transform: Transform) =
+proc storeTransform*[T](cache: var CacheUnit; node: T; transform: Transform) =
+  assert cache.writable, "attempt to store transform in unwritable cache"
+  let
+    sig = sigHash(node)
+  cache.transforms.add sig, transform
+
+  template g(): ModuleGraph = cache.graph
   const
     insertion = sql"""
       insert into transforms (signature, module, kind, data)
@@ -1618,12 +1647,12 @@ template mergeRope(parent: var Rope; child: Rope): untyped =
   else:
     parent.add child
 
-macro mergeRopes(cache; parent: var BModuleList; child: untyped): untyped =
+macro storeRopes(cache; parent: var BModuleList; child: untyped): untyped =
   expectKind child, nnkDotExpr
   let
     field = newStrLitNode($child[1])
     parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
-    graph = newDotExpr(cache, ident"graph")
+    #graph = newDotExpr(cache, ident"graph")
     node = newDotExpr(cache, ident"node")
   result = quote do:
     if `child` != nil:
@@ -1634,9 +1663,9 @@ macro mergeRopes(cache; parent: var BModuleList; child: untyped): untyped =
       let
         transform = Transform(kind: TransformKind.GraphRope,
                               field: `field`, grope: `child`)
-      storeTransform(`graph`, `node`, transform)
+      storeTransform(cache, `node`, transform)
 
-template mergeRopes(cache; parent: var BModule;
+template storeRopes(cache; parent: var BModule;
                     child: BModule; name: untyped) =
   if child.`name` != nil:
     if parent.`name` == nil:
@@ -1646,33 +1675,29 @@ template mergeRopes(cache; parent: var BModule;
     let
       transform = Transform(kind: Injection, module: parent,
                             rope: child.`name`)
-    storeTransform(cache.graph, cache.node, transform)
+    storeTransform(cache, cache.node, transform)
 
-template mergeIdSets(cache;
+template storeIdSets(cache;
                      parent: var BModule; child: BModule;
-                     kind: TransformKind; name: untyped) =
-  if parent.`name`.len != child.`name`.len:
-    assert len(parent.`name` - child.`name`) == 0
+                     k: TransformKind; name: untyped) =
+  if parent.name.len != child.name.len:
+    assert len(parent.name - child.name) == 0
     var
       transform: Transform
-    case kind
+    case k
     of TransformKind.ProtoSet:
       transform = Transform(kind: TransformKind.ProtoSet, module: parent)
     of TransformKind.ThingSet:
       transform = Transform(kind: TransformKind.ThingSet, module: parent)
     else:
       raise newException(Defect, "bad kind")
-    transform.diff = child.`name` - parent.`name`
-    parent.`name` = parent.`name` + child.`name`
-    storeTransform(cache.graph, cache.node, transform)
+    transform.diff = child.name - parent.name
+    when not defined(release):
+      echo "fresh: ", k, " ", transform.diff
+    #parent.name = parent.name + child.name
+    storeTransform(cache, cache.node, transform)
 
-template mergeHeaders(parent: var BModule; transform: Transform) =
-  for filename in transform.filenames:
-    if filename notin parent.headerFiles:
-      parent.headerFiles.add filename
-
-template mergeHeaders(cache; parent: var BModule; child: BModule) =
-
+template storeHeaders(cache; parent: var BModule; child: BModule) =
   # nil-separated list?
   var
     transform = Transform(kind: HeaderFile, module: parent)
@@ -1680,8 +1705,7 @@ template mergeHeaders(cache; parent: var BModule; child: BModule) =
     if filename notin parent.headerFiles:
       transform.filenames.add filename
   if transform.filenames.len > 0:
-    storeTransform(cache.graph, cache.node, transform)
-    mergeHeaders(parent, transform)
+    storeTransform(cache, cache.node, transform)
 
 iterator loadTransforms*(g: ModuleGraph;
                          modules: BModuleList; p: PNode): Transform =
@@ -1778,48 +1802,56 @@ proc mergeSharedTables(cache;
       echo "typeinfomarker size: ", child.typeInfoMarker.len
       # XXX
 
-proc mergeSections(cache;
+proc storeSections(cache;
                    parent: var BModule; child: BModule) =
+  let
+    sig = sigHash(cache.node)
   # copy the generated procs, etc.
   for section, rope in child.s.pairs:
     if rope != nil:
-      if parent.s[section] == nil:
-        parent.s[section] = rope
-      else:
-        parent.s[section].add rope
       when not defined(release):
         echo "\tsection ", section,  " length ", rope.len
+      var
+        snippet = newSnippet(cache.node, child, section)
+      snippet.code = rope
+      storeSnippet(cache, snippet)
 
-proc merge(cache; parent: var BModule; child: BModule) =
+proc store(cache: var CacheUnit; parent: BModule; child: BModule) =
   ## miscellaneous ropes
+  assert cache.writable, "attempt to write unwritable module to cache"
 
   assert parent.filename == child.filename
   assert parent.cfilename == child.cfilename
 
-  cache.mergeRopes(parent, child, injectStmt)
+  cache.store(parent)
 
-  {.warning: "we aren't saving these yet".}
+  cache.storeRopes(parent, child, injectStmt)
+
+  {.error: "are we not writing these?".}
   if parent.initProc.prc == nil and child.initProc.prc != nil:
-    parent.initProc = child.initProc
+    #parent.initProc = child.initProc
+    cache.storeInitProc(InitProc, child.initProc)
   if parent.preInitProc.prc == nil and child.preInitProc.prc != nil:
-    parent.preInitProc = child.preInitProc
+    #parent.preInitProc = child.preInitProc
+    cache.storeInitProc(PreInit, child.preInitProc)
 
-  cache.mergeHeaders parent, child
+  cache.storeHeaders parent, child
 
   # 0. flags
   if parent.flags != child.flags:
     let
       transform = Transform(kind: FlagSet, module: parent,
                             flags: child.flags - parent.flags)
-    parent.flags = child.flags
-    storeTransform(cache.graph, cache.node, transform)
+    #parent.flags = child.flags
+    storeTransform(cache, cache.node, transform)
 
   when defined(tooSlowForMe):
+    {.error: "very broken".}
     for pair in child.dataCache.data.items:
       parent.dataCache.nodeTablePutHash(pair.h, pair.key, pair.val)
 
   ## ✅1. ropes to store per section
-  cache.mergeSections(parent, child)
+  cache.storeSections(parent, child)
 
   ## ✅2. ptypes to store
 
@@ -1827,50 +1859,23 @@ proc merge(cache; parent: var BModule; child: BModule) =
   var
     transform = Transform(kind: TypeStack, module: parent)
   for ptype in child.typeStack:
-    parent.pushType ptype
+    #parent.pushType ptype
     transform.stack.add ptype
-    storeTransform(cache.graph, cache.node, transform)
+  if transform.stack.len > 0:
+    storeTransform(cache, cache.node, transform)
 
-  when false:
-    # this silliness is due to a nim bug with templates and enums...
-    cache.mergeIdSets parent, child, TransformKind.ThingSet, declaredThings
-    cache.mergeIdSets parent, child, TransformKind.ProtoSet, declaredProtos
-  else:
-    if parent.declaredProtos.len != child.declaredProtos.len:
-      var
-        transform = Transform(kind: ThingSet, module: parent)
-      transform.diff = child.declaredProtos - parent.declaredProtos
-      assert transform.diff.len != 0
-      storeTransform(cache.graph, cache.node, transform)
-      # make sure we merge the sets
-      parent.declaredProtos = child.declaredProtos
+  cache.storeIdSets parent, child, ThingSet, declaredThings
+  cache.storeIdSets parent, child, ProtoSet, declaredProtos
 
-    if parent.declaredThings.len != child.declaredThings.len:
-      var
-        transform = Transform(kind: ThingSet, module: parent)
-      echo parent.declaredThings
-      echo child.declaredThings
-      transform.diff = child.declaredThings - parent.declaredThings
-      assert transform.diff.len != 0
-      storeTransform(cache.graph, cache.node, transform)
-      # make sure we merge the sets
-      parent.declaredThings = child.declaredThings
-
-proc merge*(cache; parent: var BModuleList) =
+proc store(cache: var CacheUnit; parent: var BModuleList) =
+  assert cache.writable, "attempt to write unwritable cache"
   template child(): BModuleList = cache.modules
 
-  # don't merge rejected caches
-  if cache.rejected:
-    when not defined(release):
-      writeStackTrace()
-      echo "rejected merge ", cache
-    return
-
-  cache.mergeRopes(parent, child.mainModProcs)
-  cache.mergeRopes(parent, child.mainModInit)
-  cache.mergeRopes(parent, child.otherModsInit)
-  cache.mergeRopes(parent, child.mainDatInit)
-  cache.mergeRopes(parent, child.mapping)
+  cache.storeRopes(parent, child.mainModProcs)
+  cache.storeRopes(parent, child.mainModInit)
+  cache.storeRopes(parent, child.otherModsInit)
+  cache.storeRopes(parent, child.mainDatInit)
+  cache.storeRopes(parent, child.mapping)
 
   # merge child modules
   for m in child.modules.items:
@@ -1879,18 +1884,18 @@ proc merge*(cache; parent: var BModuleList) =
         dad = findModule(parent, m)
 
       # dad is the final backend module in codegen
-      if dad != nil:
-        cache.merge(dad, m)
-      else:
+      if dad == nil:
         raise newException(Defect,
                            "could not find dad of " & $m.module.id)
+      else:
+        cache.store(m)
 
 template storeImpl(cache: var CacheUnit;
                    orig: BModule; body: untyped): untyped =
   assert cache.writable, "attempt to write unwritable cache"
 
-  when not defined(release):
-    echo "store for ", cache
+  #  when not defined(release):
+  #    echo "store for ", cache, " ", orig.cfilename
 
   # XXX: should we operate on the original graph OR the mutated graph?
   # this is running on the original graph, after it has been merged...
@@ -1900,109 +1905,110 @@ template storeImpl(cache: var CacheUnit;
 
   # if we wrote the cache, we can read it
   discard cache.readable(true)
-  discard cache.writable(false)
+  #discard cache.writable(false)
 
-proc store*(cache: var CacheUnit[PNode]; orig: BModule) =
+proc store(cache: var CacheUnit[PNode]; orig: BModule) =
   storeImpl cache, orig:
     when not defined(release):
       echo "store for ", cache.findTargetModule(orig).tmpBase
 
     cache.graph.storeNode(orig.module, cache.node)
 
-proc store*(cache: var CacheUnit[PSym]; orig: BModule) =
+proc store(cache: var CacheUnit[PSym]; orig: BModule) =
   storeImpl cache, orig:
     # work around mutation of symbol
     cache.graph.unstoreSym(cache.node)
     cache.graph.storeSym(cache.node)
 
-    # write snippets
-    for module in cache.modules.modules.items:
-      if module != nil:
-        for section in TCFileSection.low .. TCFileSection.high:
-          if module.s[section] != nil:
-            var
-              snippet = newSnippet(cache.node, module, section)
-            snippet.code = module.s[section]
-            storeSnippet(cache.graph, snippet)
+proc apply(parents: BModuleList; transform: Transform) =
+  var
+    parent = findModule(parents, transform.module)
+  # we're loading the snippets into fake modules...
+  case transform.kind
+  of Unknown:
+    raise newException(Defect, "attempt to apply unknown transform")
+  of HeaderFile:
+    for filename in transform.filenames:
+      if filename notin parent.headerFiles:
+        parent.headerFiles.add filename
+  of ThingSet:
+    parent.declaredThings = parent.declaredThings.union(transform.diff)
+  of ProtoSet:
+    parent.declaredProtos = parent.declaredProtos.union(transform.diff)
+  of FlagSet:
+    parent.flags = parent.flags + transform.flags
+  of Injection:
+    if parent.injectStmt == nil:
+      parent.injectStmt = transform.rope
+    else:
+      parent.injectStmt.add transform.rope
+  of GraphRope:
+    case transform.field:
+    of "mainModProcs":
+      parents.mainModProcs.mergeRope(transform.grope)
+    of "mainModInit":
+      parents.mainModInit.mergeRope(transform.grope)
+    of "otherModsInit":
+      parents.otherModsInit.mergeRope(transform.grope)
+    of "mainDatInit":
+      parents.mainDatInit.mergeRope(transform.grope)
+    of "mapping":
+      parents.mapping.mergeRope(transform.grope)
+    else:
+      raise newException(Defect,
+                         "unrecognized field: " & transform.field)
+  of TypeStack:
+    for ptype in transform.stack:
+      pushType(parent, ptype)
+  of InitProc:
+    if parent.initProc != nil and parent.initProc.prc != nil:
+      raise newException(Defect, "clashing initProc")
+    parent.initProc = newProc(transform.prc, transform.module)
+  of PreInit:
+    if parent.preInitProc != nil and parent.preInitProc.prc != nil:
+      raise newException(Defect, "clashing preInitProc")
+    parent.preInitProc = newProc(transform.prc, transform.module)
 
 proc loadTransformsIntoCache(cache: var CacheUnit) =
   ## read transforms from the database for the given cache node and merge
   ## them into the fake module graph
+  let
+    sig = sigHash(cache.node)
   for transform in cache.graph.loadTransforms(cache.modules, cache.node):
-    var
-      parent = cache.findTargetModule(transform.module)
-    # we're loading the snippets into fake modules...
     case transform.kind
     of Unknown:
       raise newException(Defect, "unknown transform in the db")
-    of HeaderFile:
-      mergeHeaders(parent, transform)
-    of ThingSet:
-      parent.declaredThings = parent.declaredThings.union(transform.diff)
-    of ProtoSet:
-      parent.declaredProtos = parent.declaredProtos.union(transform.diff)
-    of FlagSet:
-      parent.flags = parent.flags + transform.flags
-    of Injection:
-      if parent.injectStmt == nil:
-        parent.injectStmt = transform.rope
-      else:
-        parent.injectStmt.add transform.rope
-    of GraphRope:
-      case transform.field:
-      of "mainModProcs":
-        cache.modules.mainModProcs.mergeRope(transform.grope)
-      of "mainModInit":
-        cache.modules.mainModInit.mergeRope(transform.grope)
-      of "otherModsInit":
-        cache.modules.otherModsInit.mergeRope(transform.grope)
-      of "mainDatInit":
-        cache.modules.mainDatInit.mergeRope(transform.grope)
-      of "mapping":
-        cache.modules.mapping.mergeRope(transform.grope)
-      else:
-        raise newException(Defect,
-                           "unrecognized field: " & transform.field)
-    of TypeStack:
-      for ptype in transform.stack:
-        pushType(parent, ptype)
-    of InitProc:
-      if parent.initProc != nil and parent.initProc.prc != nil:
-        raise newException(Defect, "clashing initProc")
-      parent.initProc = newProc(transform.prc, transform.module)
-    of PreInit:
-      if parent.preInitProc != nil and parent.preInitProc.prc != nil:
-        raise newException(Defect, "clashing preInitProc")
-      parent.preInitProc = newProc(transform.prc, transform.module)
+    else:
+      cache.transforms.add sig, transform
+
+proc apply(parents: BModuleList; snippet: Snippet) =
+  let
+    m = findModule(parents, snippet.module)
+  #cache.snippets[snippet.signature] = snippet
+  when not defined(release):
+    echo "\t", snippet.section, "\t", snippet.module.module.id
+  if m.s[snippet.section] == nil:
+    m.s[snippet.section] = rope("")
+  when false: # not defined(release):
+    m.s[snippet.section].add fmt"""
+
+/*
+cached data from {snippet.section}
+module: {m.cfilename}
+*/
+
+        """.rope
+    m.s[snippet.section].add snippet.code
+    when not defined(release):
+      m.s[snippet.section].add "/* end */\n".rope
 
 proc loadSnippetsIntoCache(cache: var CacheUnit) =
   ## read snippets from the database for the given cache node and merge
   ## them into the fake module graph
+  let
+    sig = sigHash(cache.node)
   for snippet in cache.graph.loadSnippets(cache.modules, cache.node):
-    # we're loading the snippets into fake modules...
-    let
-      m = cache.findTargetModule(snippet.module)
-    #cache.snippets[snippet.signature] = snippet
-    when not defined(release):
-      echo "\t", snippet.section, "\t", snippet.module.module.id
-    if m.s[snippet.section] == nil:
-      m.s[snippet.section] = rope("")
-    when false: # not defined(release):
-      m.s[snippet.section].add fmt"""
-
-/*
-{cache.node.comment}
-=====================
-cached data from {snippet.section}
-info: {cache.node.info}
-module: {m.cfilename}
-flags: {cache.node.flags}
-*/
-
-          """.rope
-      m.s[snippet.section].add snippet.code
-      when not defined(release):
-        m.s[snippet.section].add "/* end */\n".rope
+    cache.snippets.add sig, snippet
 
 template loadImpl(cache: var CacheUnit; orig: BModule; body: untyped) =
   ## this needs to merely LOAD data so that later MERGE operations can work
@@ -2017,7 +2023,7 @@ template loadImpl(cache: var CacheUnit; orig: BModule; body: untyped) =
   # read/apply transforms to the cache
   cache.loadTransformsIntoCache
 
-proc load*(cache: var CacheUnit[PNode]; orig: BModule) =
+proc load(cache: var CacheUnit[PNode]; orig: BModule) =
   ## this needs to merely LOAD data so that later MERGE operations can work
   loadImpl cache, orig:
     when not defined(release):
@@ -2026,7 +2032,7 @@ proc load*(cache: var CacheUnit[PNode]; orig: BModule) =
 
     cache.node = cache.graph.loadNode(orig.module)
 
-proc load*(cache: var CacheUnit[PSym]; orig: BModule) =
+proc load(cache: var CacheUnit[PSym]; orig: BModule) =
   ## this needs to merely LOAD data so that later MERGE operations can work
   loadImpl cache, orig:
     when not defined(release):
@@ -2065,22 +2071,44 @@ proc isHot(cache: CacheUnit[PSym]): bool =
     result = snippetAlreadyStored(cache.graph, cache.node)
     result = result and symbolAlreadyStored(cache.graph, cache.node)
 
-template performCaching*(g: BModuleList; orig: BModule; s: var CacheableObject;
+proc merge(cache: var CacheUnit; parent: var BModuleList) =
+  for snippet in cache.snippets.values:
+    cache.modules.apply snippet
+
+  for transform in cache.transforms.values:
+    cache.modules.apply transform
+
+template performCaching*(g: var BModuleList; orig: var BModule; s: var CacheableObject;
                          body: untyped): untyped =
   var
     cache {.inject.} = newCacheUnit(g, s)
     target = cache.findTargetModule(orig)
   try:
     if cache.readable:
-      echo "loading ", cache, " ", $orig.cfilename
+      echo "loading ", cache, " ", $target.cfilename
       cache.load(orig)
     else:
-      echo "writing ", cache, " ", $orig.cfilename
       var
+        cache {.inject.} = cache
         m {.inject.}: BModule = target
+      #echo "codegen ", cache, " ", $target.cfilename
       body
       if cache.writable:
-        cache.store(orig)
+        cache.store(g)
   finally:
-    echo "merging ", cache, " ", $orig.cfilename
-    cache.merge(g)
+    if cache.rejected:
+      when false:
+        when not defined(release):
+          #writeStackTrace()
+          echo "rejected merge ", cache
+    else:
+      when not defined(release):
+        echo "merging ", cache, " ", $target.cfilename
+      cache.merge(g)
+
+template dontPerformCaching*(g: BModuleList; orig: BModule;
+                             s: var CacheableObject;
+                             body: untyped): untyped {.deprecated.} =
+  performCaching(g, orig, s):
+    body
+    cache.reject(true)
