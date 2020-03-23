@@ -1,7 +1,12 @@
 ﻿discard """
-  output: "OK"
+  output: '''YQ=='''
+  nimout: '''YQ=='''
 """
 import base64
+
+import base64
+static: echo encode("a")
+echo encode("a")
 
 proc main() =
   doAssert encode("Hello World") == "SGVsbG8gV29ybGQ="
@@ -53,7 +58,5 @@ proc main() =
     doAssert encode(['h','e','y'], safe = true) == "aGV5"
     doAssert encode("", safe = true) == ""
     doAssert encode("the quick brown dog jumps over the lazy fox", safe = true) == "dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA=="
-
-  echo "OK"
 
 main()
