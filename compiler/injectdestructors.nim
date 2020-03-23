@@ -616,7 +616,7 @@ proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif {sfGlobal, sfThread} * v.sym.flags == {sfGlobal}:
-     c.graph.globalDestructors.add genDestroy(c, v)
+    c.graph.globalDestructors.add genDestroy(c, v)
   else:
     # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
     # the destruction at the loop end will free the resources. Other assignments
