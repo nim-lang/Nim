@@ -1788,7 +1788,7 @@ proc mergeSections(cache;
       else:
         parent.s[section].add rope
       when not defined(release):
-        echo "section ", section,  " length ", rope.len
+        echo "\tsection ", section,  " length ", rope.len
 
 proc merge(cache; parent: var BModule; child: BModule) =
   ## miscellaneous ropes
@@ -1863,10 +1863,8 @@ proc merge*(cache; parent: var BModuleList) =
   if cache.rejected:
     when not defined(release):
       writeStackTrace()
-      echo "rejected ", cache
+      echo "rejected merge ", cache
     return
-  when not defined(release):
-    echo "merging ", cache
 
   cache.mergeRopes(parent, child.mainModProcs)
   cache.mergeRopes(parent, child.mainModInit)
@@ -1880,12 +1878,12 @@ proc merge*(cache; parent: var BModuleList) =
       var
         dad = findModule(parent, m)
 
-      # parent is the final backend module in codegen
+      # dad is the final backend module in codegen
       if dad != nil:
         cache.merge(dad, m)
       else:
         raise newException(Defect,
-                           "could not find parent of " & $m.module.id)
+                           "could not find dad of " & $m.module.id)
 
 template storeImpl(cache: var CacheUnit;
                    orig: BModule; body: untyped): untyped =
