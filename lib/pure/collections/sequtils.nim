@@ -663,6 +663,8 @@ template anyIt*(s, pred: untyped): bool =
 
 template toSeqBuiltin[IX, T](arg: array[IX, T]): seq[T] = @arg
 
+template toSeqBuiltin[T](arg: openArray[T]): seq[T] = @arg
+
 template toSeqBuiltin(arg: string): seq[char] = @arg
 
 template toSeqBuiltin[T](arg: seq[T]): seq[T] = arg
