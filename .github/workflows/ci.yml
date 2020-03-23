@@ -4,9 +4,10 @@ on: [push, pull_request]
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-18.04, macos-10.15, windows-2019]
-        cpu: [amd64, i386]
+        os: [ubuntu-18.04]
+        cpu: [amd64, arm]
         cpp: ['false', 'true']
         pkg: ['false', 'true']
         exclude:
@@ -14,22 +15,17 @@ jobs:
             cpp: 'true'
           - os: ubuntu-18.04
             pkg: 'true'
-          - os: macos-10.15
-            cpu: i386
-          - os: macos-10.15
-            pkg: 'true'
-          - os: windows-2019
-            cpu: i386
-          - os: windows-2019
-            cpp: 'true'
-    name: '${{ matrix.os }} (${{ matrix.cpu }}, cpp: ${{ matrix.cpp }}, pkg: ${{ matrix.pkg }})'
+
+    name: '${{ matrix.os }} ${{ matrix.cpu }} cpp: ${{ matrix.cpp }} pkg: ${{ matrix.pkg }}'
     runs-on: ${{ matrix.os }}
     env:
       NIM_COMPILE_TO_CPP: ${{ matrix.cpp }}
       NIM_TEST_PACKAGES: ${{ matrix.pkg }}
+
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2
+
       - name: 'Checkout csources'
         uses: actions/checkout@v2
         with:
@@ -40,6 +36,7 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '8.x'
+
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
         run: |
@@ -48,6 +45,7 @@ jobs:
             sudo apt-fast install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
               valgrind libc6-dbg
+
       - name: 'Install dependencies (Linux i386)'
         if: runner.os == 'Linux' && matrix.cpu == 'i386'
         run: |
@@ -73,9 +71,11 @@ jobs:
 
           chmod 755 bin/gcc
           chmod 755 bin/g++
+
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: brew install boehmgc make sfml
+
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash
@@ -91,7 +91,7 @@ jobs:
         shell: bash
         run: echo "::add-path::${{ github.workspace }}/bin"
 
-      - name: 'Build csources'
+      - name: 'Build 1-stage compiler from csources'
         shell: bash
         run: |
           ncpu=
@@ -109,10 +109,12 @@ jobs:
           [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
           make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
+
       - name: 'Build koch'
         shell: bash
         run: nim c koch
-      - name: 'Run CI'
+
+      - name: 'Build the real compiler and run tests'
         shell: bash
         run: ./koch runCI
 

@@ -1,3 +1,7 @@
+# Runs a set of SSL tests that requires doing many HTTP GETs
+# against 3rd-party services. As such, the workflow is run
+# only on PRs changing files related to SSL.
+#
 name: Nim SSL CI
 on:
   pull_request:
