@@ -281,8 +281,14 @@ proc addToIntersection(inter: var TIntersection, s: int) =
       return
   inter.add((id: s, count: 1))
 
-proc throws(tracked, n: PNode) =
-  if n.typ == nil or n.typ.kind != tyError: tracked.add n
+proc throws(tracked, n, orig: PNode) =
+  if n.typ == nil or n.typ.kind != tyError:
+    if orig != nil:
+      let x = copyNode(n)
+      x.info = orig.info
+      tracked.add x
+    else:
+      tracked.add n
 
 proc getEbase(g: ModuleGraph; info: TLineInfo): PType =
   result = g.sysTypeFromName(info, "Exception")
@@ -302,34 +308,34 @@ proc createTag(g: ModuleGraph; n: PNode): PNode =
   result.typ = g.sysTypeFromName(n.info, "RootEffect")
   if not n.isNil: result.info = n.info
 
-proc addEffect(a: PEffects, e: PNode, useLineInfo=true) =
+proc addEffect(a: PEffects, e, comesFrom: PNode) =
   assert e.kind != nkRaiseStmt
   var aa = a.exc
   for i in a.bottom..<aa.len:
-    if sameType(a.graph.excType(aa[i]), a.graph.excType(e)):
-      if not useLineInfo or a.config.cmd == cmdDoc: return
-      elif aa[i].info == e.info: return
-  throws(a.exc, e)
+    # we only track the first node that can have the effect E in order
+    # to safe space and time.
+    if sameType(a.graph.excType(aa[i]), a.graph.excType(e)): return
+  throws(a.exc, e, comesFrom)
 
-proc addTag(a: PEffects, e: PNode, useLineInfo=true) =
+proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
   for i in 0..<aa.len:
-    if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)):
-      if not useLineInfo or a.config.cmd == cmdDoc: return
-      elif aa[i].info == e.info: return
-  throws(a.tags, e)
+    # we only track the first node that can have the effect E in order
+    # to safe space and time.
+    if sameType(aa[i].typ.skipTypes(skipPtrs), e.typ.skipTypes(skipPtrs)): return
+  throws(a.tags, e, comesFrom)
 
 proc mergeEffects(a: PEffects, b, comesFrom: PNode) =
   if b.isNil:
-    addEffect(a, createRaise(a.graph, comesFrom))
+    addEffect(a, createRaise(a.graph, comesFrom), comesFrom)
   else:
-    for effect in items(b): addEffect(a, effect, useLineInfo=comesFrom != nil)
+    for effect in items(b): addEffect(a, effect, comesFrom)
 
 proc mergeTags(a: PEffects, b, comesFrom: PNode) =
   if b.isNil:
-    addTag(a, createTag(a.graph, comesFrom))
+    addTag(a, createTag(a.graph, comesFrom), comesFrom)
   else:
-    for effect in items(b): addTag(a, effect, useLineInfo=comesFrom != nil)
+    for effect in items(b): addTag(a, effect, comesFrom)
 
 proc listEffects(a: PEffects) =
   for e in items(a.exc):  message(a.config, e.info, hintUser, typeToString(e.typ))
@@ -505,8 +511,8 @@ proc notNilCheck(tracked: PEffects, n: PNode, paramType: PType) =
     of impYes: discard
 
 proc assumeTheWorst(tracked: PEffects; n: PNode; op: PType) =
-  addEffect(tracked, createRaise(tracked.graph, n))
-  addTag(tracked, createTag(tracked.graph, n))
+  addEffect(tracked, createRaise(tracked.graph, n), nil)
+  addTag(tracked, createTag(tracked.graph, n), nil)
   let lockLevel = if op.lockLevel == UnspecifiedLockLevel: UnknownLockLevel
                   else: op.lockLevel
   #if lockLevel == UnknownLockLevel:
@@ -730,7 +736,7 @@ proc track(tracked: PEffects, n: PNode) =
     if n[0].kind != nkEmpty:
       n[0].info = n.info
       #throws(tracked.exc, n[0])
-      addEffect(tracked, n[0], useLineInfo=false)
+      addEffect(tracked, n[0], nil)
       for i in 0..<n.safeLen:
         track(tracked, n[i])
       createTypeBoundOps(tracked, n[0].typ, n.info)
@@ -738,7 +744,7 @@ proc track(tracked: PEffects, n: PNode) =
       # A `raise` with no arguments means we're going to re-raise the exception
       # being handled or, if outside of an `except` block, a `ReraiseError`.
       # Here we add a `Exception` tag in order to cover both the cases.
-      addEffect(tracked, createRaise(tracked.graph, n))
+      addEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
     # p's effects are ours too:
     var a = n[0]

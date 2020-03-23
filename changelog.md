@@ -119,6 +119,9 @@ echo f
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
 - `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
+- Added `net.getPeerCertificates` and `asyncnet.getPeerCertificates` for
+  retrieving the verified certificate chain of the peer we are connected to
+  through an SSL-wrapped `Socket`/`AsyncSocket`.
 - Added `jsconsole.trace`, `jsconsole.table`, `jsconsole.exception` for JavaScript target.
 
 
@@ -147,7 +150,7 @@ echo f
 - `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
 - `net.newContext` now performs SSL Certificate checking on Linux and OSX.
   Define `nimDisableCertificateValidation` to disable it globally.
-
+- new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import pragmas`
 
 ## Language additions
 
@@ -156,6 +159,9 @@ echo f
 
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
+
+- `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for non builtin pragmas,
+  enabling things like lvalue references, see `pragmas.byaddr`
 
 ## Language changes
 
@@ -190,6 +196,7 @@ echo f
   this is **very bad** style. You should inherit from `ValueError`, `IOError`,
   `OSError` or from a different specific exception type that inherits from
   `CatchableError` and cannot be confused with a `Defect`.
+- The error reporting for Nim's effect system has been improved.
 
 
 ## Bugfixes

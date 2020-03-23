@@ -593,7 +593,10 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyUncheckedArray:
       result = "UncheckedArray[" & typeToString(t[0]) & ']'
     of tySequence:
-      result = "seq[" & typeToString(t[0]) & ']'
+      if t.sym != nil and prefer != preferResolved:
+        result = t.sym.name.s
+      else:
+        result = "seq[" & typeToString(t[0]) & ']'
     of tyOpt:
       result = "opt[" & typeToString(t[0]) & ']'
     of tyOrdinal:
@@ -1623,7 +1626,7 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
       if isTupleRecursive(t[i], cycleDetectorCopy):
         return true
   of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink,
-      tyArray, tyUncheckedArray, tySequence:
+      tyArray, tyUncheckedArray, tySequence, tyDistinct:
     return isTupleRecursive(t.lastSon, cycleDetector)
   else:
     return false
