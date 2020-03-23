@@ -84,19 +84,20 @@ type
     HeaderFile
     ProtoSet
     ThingSet
-    SwingSet
-    JetSet
-    ReSet
     FlagSet
     TypeStack
     Injection
     GraphRope
+    InitProc
+    PreInit
 
   Transform = object
     case kind: TransformKind
+    of Unknown:
+      discard
     of FlagSet:
       flags: set[CodegenFlag]
-    of ProtoSet, ThingSet, SwingSet:
+    of ProtoSet, ThingSet:
       diff: IntSet
     of HeaderFile:
       filenames: seq[string]
@@ -107,8 +108,8 @@ type
     of GraphRope:
       field: string
       grope: Rope
-    else:
-      discard
+    of InitProc, PreInit:
+      prc: PSym
     module: BModule
 
   # the in-memory representation of the database record
@@ -1556,7 +1557,7 @@ proc encodeTransform(t: Transform): string =
   of HeaderFile:
     {.warning: "assert no newlines in filenames?".}
     result = t.filenames.join("\n")
-  of ThingSet, ProtoSet, SwingSet, JetSet, ReSet:
+  of ThingSet, ProtoSet:
     result = mapIt(t.diff, $it).join("\n")
   of FlagSet:
     result = mapIt(t.flags, $it).join("\n")
@@ -1566,6 +1567,8 @@ proc encodeTransform(t: Transform): string =
     result = $t.grope
   of TypeStack:
     result = mapIt(t.stack, $it.uniqueId).join("\n")
+  of InitProc, PreInit:
+    result = $t.prc.id
   else:
     discard
 
@@ -1573,9 +1576,11 @@ proc decodeTransform(kind: string; module: BModule;
                      data: string): Transform =
   result = Transform(kind: parseEnum[TransformKind](kind), module: module)
   case result.kind:
+  of Unknown:
+    raise newException(Defect, "unknown transform in the db")
   of HeaderFile:
     result.filenames = data.split('\n')
-  of ThingSet, ProtoSet, SwingSet, JetSet, ReSet:
+  of ThingSet, ProtoSet:
     for value in mapIt(data.split('\n'), parseInt(it)):
       result.diff.incl value
   of FlagSet:
@@ -1592,8 +1597,9 @@ proc decodeTransform(kind: string; module: BModule;
     for value in mapIt(data.split('\n'), parseInt(it)):
       {.warning: "faked out line info; terrible".}
       result.stack.add loadType(module.g.graph, value, module.module.info)
-  else:
-    discard
+  of InitProc, PreInit:
+    {.warning: "faked out line info; terrible".}
+    result.prc = loadSym(module.g.graph, data.parseInt, module.module.info)
 
 proc storeTransform*[T](g: ModuleGraph; node: T; transform: Transform) =
   const
@@ -1792,7 +1798,6 @@ proc merge(cache; parent: var BModule; child: BModule) =
 
   cache.mergeRopes(parent, child, injectStmt)
 
-
   {.warning: "we aren't saving these yet".}
   if parent.initProc.prc == nil and child.initProc.prc != nil:
     parent.initProc = child.initProc
@@ -1816,23 +1821,18 @@ proc merge(cache; parent: var BModule; child: BModule) =
   ## ✅1. ropes to store per section
   cache.mergeSections(parent, child)
 
-  ## ❌2. ptypes to store
+  ## ✅2. ptypes to store
 
   # copy the types over
   var
     transform = Transform(kind: TypeStack, module: parent)
   for ptype in child.typeStack:
     parent.pushType ptype
-    # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    {.warning: "these need to be stored in reverse order".}
-    #if not typeAlreadyStored(cache.graph, ptype):
-    #  storeType(cache.graph, ptype)
     transform.stack.add ptype
     storeTransform(cache.graph, cache.node, transform)
-  ## this silliness is due to a bug with templates and enums...
 
   when false:
-    # nim bug!
+    # this silliness is due to a nim bug with templates and enums...
     cache.mergeIdSets parent, child, TransformKind.ThingSet, declaredThings
     cache.mergeIdSets parent, child, TransformKind.ProtoSet, declaredProtos
   else:
@@ -1862,19 +1862,17 @@ proc merge*(cache; parent: var BModuleList) =
   # don't merge rejected caches
   if cache.rejected:
     when not defined(release):
-      echo "NO MERGE; rejected ", cache
+      writeStackTrace()
+      echo "rejected ", cache
     return
   when not defined(release):
-    echo "MERGE ", cache
+    echo "merging ", cache
 
   cache.mergeRopes(parent, child.mainModProcs)
   cache.mergeRopes(parent, child.mainModInit)
   cache.mergeRopes(parent, child.otherModsInit)
   cache.mergeRopes(parent, child.mainDatInit)
   cache.mergeRopes(parent, child.mapping)
-
-  # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  {.warning: "graph changes that need to be in transforms".}
 
   # merge child modules
   for m in child.modules.items:
@@ -1937,14 +1935,14 @@ proc loadTransformsIntoCache(cache: var CacheUnit) =
       parent = cache.findTargetModule(transform.module)
     # we're loading the snippets into fake modules...
     case transform.kind
+    of Unknown:
+      raise newException(Defect, "unknown transform in the db")
     of HeaderFile:
       mergeHeaders(parent, transform)
     of ThingSet:
       parent.declaredThings = parent.declaredThings.union(transform.diff)
     of ProtoSet:
       parent.declaredProtos = parent.declaredProtos.union(transform.diff)
-    of  SwingSet, JetSet, ReSet:
-      discard
     of FlagSet:
       parent.flags = parent.flags + transform.flags
     of Injection:
@@ -1970,8 +1968,14 @@ proc loadTransformsIntoCache(cache: var CacheUnit) =
     of TypeStack:
       for ptype in transform.stack:
         pushType(parent, ptype)
-    else:
-      discard
+    of InitProc:
+      if parent.initProc != nil and parent.initProc.prc != nil:
+        raise newException(Defect, "clashing initProc")
+      parent.initProc = newProc(transform.prc, transform.module)
+    of PreInit:
+      if parent.preInitProc != nil and parent.preInitProc.prc != nil:
+        raise newException(Defect, "clashing preInitProc")
+      parent.preInitProc = newProc(transform.prc, transform.module)
 
 proc loadSnippetsIntoCache(cache: var CacheUnit) =
   ## read snippets from the database for the given cache node and merge
