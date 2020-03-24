@@ -32,45 +32,62 @@ proc makeConsoleCall(console: NimNode, procName: NimNode, args: NimNode): NimNod
   for c in args: result.add(c)
 
 macro log*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/log
   makeConsoleCall(console, bindSym "logImpl", args)
 
 macro debug*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/debug
   makeConsoleCall(console, bindSym "debugImpl", args)
 
 macro info*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/info
   makeConsoleCall(console, bindSym "infoImpl", args)
 
 macro error*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/error
   makeConsoleCall(console, bindSym "errorImpl", args)
 
 macro exception*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/error
   makeConsoleCall(console, bindSym "errorImpl", args)
 
 macro trace*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/trace
   makeConsoleCall(console, bindSym "traceImpl", args)
 
 macro warn*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
+  ## https://developer.mozilla.org/docs/Web/API/Console/warn
   makeConsoleCall(console, bindSym "warnImpl", args)
 
 proc clear*(console: Console) {.importcpp: "clear".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/clear
 
 proc count*(console: Console, label = "".cstring) {.importcpp: "count".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/count
 
 proc countReset*(console: Console, label = "".cstring) {.importcpp: "countReset".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/countReset
 
 proc group*(console: Console, label = "".cstring) {.importcpp: "group".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/group
 
 proc groupCollapsed*(console: Console, label = "".cstring) {.importcpp: "groupCollapsed".}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/groupCollapsed
 
 proc groupEnd*(console: Console) {.importcpp: "groupEnd".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/groupEnd
 
 proc time*(console: Console, label = "".cstring) {.importcpp: "time".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/time
 
 proc timeEnd*(console: Console, label = "".cstring) {.importcpp: "timeEnd".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/timeEnd
 
 proc timeLog*(console: Console, label = "".cstring) {.importcpp: "timeLog".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/timeLog
 
 proc table*(console: Console, data: seq[cstring|bool|SomeNumber]) {.importcpp: "table".}
+  ## https://developer.mozilla.org/docs/Web/API/Console/table
 
 
 var console* {.importc, nodecl.}: Console
