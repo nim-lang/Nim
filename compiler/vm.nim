@@ -51,6 +51,16 @@ type
                               # XXX 'break' should perform cleanup actions
                               # What does the C backend do for it?
 
+template seqToPtr(x: seq): pointer =
+  when defined(nimSeqsV2):
+    type
+      NimSeqV2 = object
+        len: int
+        p: pointer
+    cast[NimSeqV2](x).p
+  else:
+    cast[pointer](x)
+
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
     if recursionLimit == 0:
@@ -1200,7 +1210,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
-          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: seqToPtr(regs),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif importcCond(prc):
@@ -1519,7 +1529,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
-        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: seqToPtr(regs),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
       callback(args)
