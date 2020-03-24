@@ -35,7 +35,7 @@ proc newPlus(a, b: sink(ref TExpr)): ref TPlusExpr =
 
 const Limit = when compileOption("gc", "markAndSweep") or compileOption("gc", "boehm"): 5*1024*1024 else: 500_000
 
-for i in 0..100_000:
+for i in 0..50_000:
   var s: array[0..11, ref TExpr]
   for j in 0..high(s):
     s[j] = newPlus(newPlus(newLit(j), newLit(2)), newLit(4))
