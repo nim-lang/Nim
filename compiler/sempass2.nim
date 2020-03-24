@@ -676,17 +676,23 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
 proc checkLe(c: PEffects; a, b: PNode) =
-  case proveLe(c.guards, a, b)
-  of impUnknown:
-    #for g in c.guards.s:
-    #  if g != nil: echo "I Know ", g
-    message(c.config, a.info, warnStaticIndexCheck,
-      "cannot prove: " & $a & " <= " & $b)
-  of impYes:
-    discard
-  of impNo:
-    message(c.config, a.info, warnStaticIndexCheck,
-      "can prove: " & $a & " > " & $b)
+  if c.graph.proofEngine != nil:
+    let (success, msg) = c.graph.proofEngine(c.graph, c.guards.s, a, b)
+    if not success:
+      message(c.config, a.info, warnStaticIndexCheck,
+        "cannot prove: " & $a & " <= " & $b & "; additional information: " & msg)
+  else:
+    case proveLe(c.guards, a, b)
+    of impUnknown:
+      #for g in c.guards.s:
+      #  if g != nil: echo "I Know ", g
+      message(c.config, a.info, warnStaticIndexCheck,
+        "cannot prove: " & $a & " <= " & $b)
+    of impYes:
+      discard
+    of impNo:
+      message(c.config, a.info, warnStaticIndexCheck,
+        "can prove: " & $a & " > " & $b)
 
 proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, lowBound(c.config, arr), idx)
