@@ -677,10 +677,12 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
 
 proc checkLe(c: PEffects; a, b: PNode) =
   if c.graph.proofEngine != nil:
-    let (success, msg) = c.graph.proofEngine(c.graph, c.guards.s, a, b)
+    let (success, msg) = c.graph.proofEngine(c.graph, c.guards.s,
+      canon(buildLe(c.guards.o, a, b), c.guards.o))
     if not success:
       message(c.config, a.info, warnStaticIndexCheck,
-        "cannot prove: " & $a & " <= " & $b & "; additional information: " & msg)
+        "cannot prove: " & $a & " <= " & $b)
+      #& "; additional information: " & msg)
   else:
     case proveLe(c.guards, a, b)
     of impUnknown:
