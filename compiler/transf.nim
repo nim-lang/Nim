@@ -554,14 +554,16 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
-    case arg.kind
+    case arg.skipHidden.kind
     of nkStmtListExpr:
       return paComplexOpenarray
     of nkBracket:
       return paFastAsgnTakeTypeFromArg
+    of nkSym:
+      return paDirectMapping
     else:
-      return paDirectMapping    # XXX really correct?
-                                # what if ``arg`` has side-effects?
+      # XXX incorrect, causes #13417 when `arg` has side effects.
+      return paDirectMapping
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
@@ -671,9 +673,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
-      let typ = newType(tySequence, formal.owner)
-      addSonSkipIntLit(typ, formal.typ[0])
-      var temp = newTemp(c, typ, formal.info)
+      # arrays will deep copy here (pretty bad).
+      var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
