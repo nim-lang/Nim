@@ -25,13 +25,40 @@ import std / [
 ]
 
 import ".." / compiler / [
+  ast, astalgo,
   commands, options, msgs,
   extccomp,
   idents, lineinfos, cmdlinehelper, modulegraphs, condsyms,
   pathutils, passes, passaux, sem, modules
 ]
 
+import z3
+
+#proc nodeToZ3(n: PNode): Z3_ast =
+
+proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; a, b: PNode): (bool, string) =
+  # question to answer: Is 'a <= b'?
+  result = (false, "needs to be implemented")
+  if a.kind == nkIntLit and b.kind == nkIntLit:
+    z3:
+      let x = Int("x")
+      let y = Int("y")
+
+      let s = Solver()
+      #for assumption in assumptions:
+      #  s.assert nodeToZ3(assumption)
+
+      s.assert x == a.intVal
+      s.assert y == b.intVal
+      s.assert x <= y
+
+      result[0] = s.check() == Z3_L_TRUE
+      if not result[0]:
+        result[1] = $s.get_model()
+
 proc mainCommand(graph: ModuleGraph) =
+  graph.proofEngine = proofEngine
+
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
 
