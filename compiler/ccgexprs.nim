@@ -1606,10 +1606,33 @@ proc genRepr(p: BProc, e: PNode, d: var TLoc) =
                                a.storage)
   gcUsage(p.config, e)
 
+proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope): Rope =
+  result = rdLoc(a)
+  var t = skipTypes(a.t, abstractInst)
+  while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
+    if t.kind notin {tyVar, tyLent}: nilCheck = result
+    if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
+      result = "(*$1)" % [result]
+    t = skipTypes(t.lastSon, abstractInst)
+  discard getTypeDesc(p.module, t)
+  if not p.module.compileToCpp:
+    while t.kind == tyObject and t[0] != nil:
+      result.add(".Sup")
+      t = skipTypes(t[0], skipPtrs)
+  result.add ".m_type"
+
 proc genGetTypeInfo(p: BProc, e: PNode, d: var TLoc) =
   discard cgsym(p.module, "TNimType")
   let t = e[1].typ
-  putIntoDest(p, d, e, genTypeInfo(p.module, t, e.info))
+  if isFinal(t) or e[0].sym.name.s != "getDynamicTypeInfo":
+    # ordinary static type information
+    putIntoDest(p, d, e, genTypeInfo(p.module, t, e.info))
+  else:
+    var a: TLoc
+    initLocExpr(p, e[1], a)
+    var nilCheck = Rope(nil)
+    # use the dynamic type stored at offset 0:
+    putIntoDest(p, d, e, rdMType(p, a, nilCheck))
 
 template genDollar(p: BProc, n: PNode, d: var TLoc, frmt: string) =
   var a: TLoc
@@ -1962,8 +1985,10 @@ proc genRangeChck(p: BProc, n: PNode, d: var TLoc) =
     discard cgsym(p.module, raiser)
     # This seems to be bug-compatible with Nim version 1 but what we
     # should really do here is to check if uint64Value < high(int)
+    let n0t = n[0].typ
     let boundaryCast =
-      if n[0].typ.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64}:
+      if n0t.skipTypes(abstractVarRange).kind in {tyUInt, tyUInt32, tyUInt64} or
+          (n0t.sym != nil and sfSystemModule in n0t.sym.owner.flags and n0t.sym.name.s == "csize"):
         "(NI64)"
       else:
         ""
@@ -2112,21 +2137,6 @@ proc genEnumToStr(p: BProc, e: PNode, d: var TLoc) =
   var n = copyTree(e)
   n[0] = newSymNode(toStrProc)
   expr(p, n, d)
-
-proc rdMType(p: BProc; a: TLoc; nilCheck: var Rope): Rope =
-  result = rdLoc(a)
-  var t = skipTypes(a.t, abstractInst)
-  while t.kind in {tyVar, tyLent, tyPtr, tyRef}:
-    if t.kind notin {tyVar, tyLent}: nilCheck = result
-    if t.kind notin {tyVar, tyLent} or not p.module.compileToCpp:
-      result = "(*$1)" % [result]
-    t = skipTypes(t.lastSon, abstractInst)
-  discard getTypeDesc(p.module, t)
-  if not p.module.compileToCpp:
-    while t.kind == tyObject and t[0] != nil:
-      result.add(".Sup")
-      t = skipTypes(t[0], skipPtrs)
-  result.add ".m_type"
 
 proc genMagicExpr(p: BProc, e: PNode, d: var TLoc, op: TMagic) =
   case op

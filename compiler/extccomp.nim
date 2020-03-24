@@ -48,7 +48,8 @@ type
                          # used on some platforms
     asmStmtFrmt: string, # format of ASM statement
     structStmtFmt: string, # Format for struct statement
-    produceAsm: string,   # Format how to produce assembler listings
+    produceAsm: string,  # Format how to produce assembler listings
+    cppXsupport: string, # what to do to enable C++X support
     props: TInfoCCProps] # properties of the C compiler
 
 
@@ -85,6 +86,7 @@ compiler gcc:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
+    cppXsupport: "-std=gnu++14 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -111,6 +113,7 @@ compiler nintendoSwitchGCC:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $3 $2 ", # struct|union [packed] $name
     produceAsm: gnuAsmListing,
+    cppXsupport: "-std=gnu++14 -funsigned-char",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard, hasGnuAsm,
             hasAttribute})
 
@@ -158,6 +161,7 @@ compiler vcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     produceAsm: "/Fa$asmfile",
+    cppXsupport: "",
     props: {hasCpp, hasAssume, hasDeclspec})
 
 compiler clangcl:
@@ -204,6 +208,7 @@ compiler lcc:
     asmStmtFrmt: "_asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
+    cppXsupport: "",
     props: {})
 
 # Borland C Compiler
@@ -229,6 +234,7 @@ compiler bcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
+    cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
@@ -255,6 +261,7 @@ compiler dmc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$3$n$1 $2",
     produceAsm: "",
+    cppXsupport: "",
     props: {hasCpp})
 
 # Watcom C Compiler
@@ -280,6 +287,7 @@ compiler wcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
+    cppXsupport: "",
     props: {hasCpp})
 
 # Tiny C Compiler
@@ -305,6 +313,7 @@ compiler tcc:
     asmStmtFrmt: "asm($1);$n",
     structStmtFmt: "$1 $2",
     produceAsm: gnuAsmListing,
+    cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
 # Pelles C Compiler
@@ -331,6 +340,7 @@ compiler pcc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
+    cppXsupport: "",
     props: {})
 
 # Your C Compiler
@@ -356,6 +366,7 @@ compiler ucc:
     asmStmtFrmt: "__asm{$n$1$n}$n",
     structStmtFmt: "$1 $2",
     produceAsm: "",
+    cppXsupport: "",
     props: {})
 
 const
@@ -389,8 +400,10 @@ proc nameToCC*(name: string): TSystemCC =
       return i
   result = ccNone
 
-proc listCCnames(): seq[string] =
+proc listCCnames(): string =
+  result = ""
   for i in succ(ccNone)..high(TSystemCC):
+    if i > succ(ccNone): result.add ", "
     result.add CC[i].name
 
 proc isVSCompatible*(conf: ConfigRef): bool =
@@ -426,8 +439,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
 proc setCC*(conf: ConfigRef; ccname: string; info: TLineInfo) =
   conf.cCompiler = nameToCC(ccname)
   if conf.cCompiler == ccNone:
-    let ccList = listCCnames().join(", ")
-    localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, ccList])
+    localError(conf, info, "unknown C compiler: '$1'. Available options are: $2" % [ccname, listCCnames()])
   conf.compileOptions = getConfigVar(conf, conf.cCompiler, ".options.always")
   conf.linkOptions = ""
   conf.cCompilerPath = getConfigVar(conf, conf.cCompiler, ".path")
@@ -576,8 +588,11 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
   result = (optGenScript in conf.globalOptions and conf.target.targetOS == osWindows) or
            (conf.target.hostOS == osWindows)
 
+proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
+  conf.cmd == cmdCompileToCpp and not cfile.string.endsWith(".c")
+
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): string =
-  result = if conf.cmd == cmdCompileToCpp and not cfile.string.endsWith(".c"):
+  result = if useCpp(conf, cfile):
              CC[compiler].cppCompiler
            else:
              CC[compiler].compilerExe
@@ -604,6 +619,9 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
   if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
+
+  if useCpp(conf, cfile.cname):
+    options.add(' ' & CC[c].cppXsupport)
 
   var compilePattern: string
   # compute include paths:

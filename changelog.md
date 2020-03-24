@@ -7,7 +7,7 @@
   on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
   supports these). Some versions of GCC lack this feature and unfortunately
   we cannot detect this case reliably. So if you get compilation errors like
-  "undefined reference to '__builtin_saddll_overflow'" compile your programs
+  "undefined reference to `__builtin_saddll_overflow`" compile your programs
   with `-d:nimEmulateOverflowChecks`.
 
 
@@ -34,8 +34,8 @@
 - `options` now treats `proc` like other pointer types, meaning `nil` proc variables
   are converted to `None`.
 - `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
-  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
-  behavior
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to
+  restore the old behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
 - `times.parse` now only uses input to compute its result, and not `now`:
   `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
@@ -44,6 +44,12 @@
 - `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
   usage. The `$` operator can be used to obtain the string form of `HttpCode`
   for comparison if desired.
+- `os.walkDir` and `os.walkDirRec` now have new flag, `checkDir` (default: false).
+  If it is set to true, it will throw if input dir is invalid instead of a noop
+  (which is the default behaviour, as it was before this change),
+  `os.walkDirRec` only throws if top-level dir is invalid, but ignores errors for
+  subdirs, otherwise it would be impossible to resume iteration.
+
 
 ### Breaking changes in the compiler
 
@@ -112,6 +118,11 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
+- `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
+- Added `net.getPeerCertificates` and `asyncnet.getPeerCertificates` for
+  retrieving the verified certificate chain of the peer we are connected to
+  through an SSL-wrapped `Socket`/`AsyncSocket`.
+
 
 ## Library changes
 
@@ -136,7 +147,9 @@ echo f
   empty. This was required for intuitive behaviour of the strscans module
   (see bug #13605).
 - `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
-
+- `net.newContext` now performs SSL Certificate checking on Linux and OSX.
+  Define `nimDisableCertificateValidation` to disable it globally.
+- new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import pragmas`
 
 ## Language additions
 
@@ -145,6 +158,9 @@ echo f
 
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
+
+- `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for non builtin pragmas,
+  enabling things like lvalue references, see `pragmas.byaddr`
 
 ## Language changes
 
@@ -179,6 +195,7 @@ echo f
   this is **very bad** style. You should inherit from `ValueError`, `IOError`,
   `OSError` or from a different specific exception type that inherits from
   `CatchableError` and cannot be confused with a `Defect`.
+- The error reporting for Nim's effect system has been improved.
 
 
 ## Bugfixes

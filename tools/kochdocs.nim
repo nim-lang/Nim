@@ -149,13 +149,11 @@ lib/posix/linux.nim
 lib/posix/termios.nim
 lib/js/jscore.nim
 """.splitWhitespace()
-  
+
   # some of these are include files so shouldn't be docgen'd
   ignoredModules = """
 lib/prelude.nim
 lib/pure/future.nim
-lib/impure/osinfo_posix.nim
-lib/impure/osinfo_win.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
 lib/pure/collections/setimpl.nim

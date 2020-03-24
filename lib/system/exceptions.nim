@@ -33,12 +33,6 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
-    when defined(nimBoostrapCsources0_19_0):
-      # see #10315, bootstrap with `nim cpp` from csources gave error:
-      # error: no member named 'raise_id' in 'Exception'
-      raise_id: uint # set when exception is raised
-    else:
-      raiseId: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \
