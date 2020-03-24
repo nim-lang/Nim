@@ -452,7 +452,8 @@ proc semLowerLetVarCustomPragma(c: PContext, a: PNode, n: PNode): PNode =
       return nil
 
     let sym = searchInScopes(c, ident)
-    if sfCustomPragma in sym.flags: return nil # skip `template myAttr() {.pragma.}`
+    if sym == nil or sfCustomPragma in sym.flags: return nil
+      # skip if not in scope; skip `template myAttr() {.pragma.}`
     let lhs = b[0]
     let clash = strTableGet(c.currentScope.symbols, lhs.ident)
     if clash != nil:
