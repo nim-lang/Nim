@@ -89,7 +89,8 @@ since (1, 1):
   type StaticParam*[value] = object
     ## used to wrap a static value in `genericParams`
 
-import std/macros
+# NOTE: See https://github.com/nim-lang/Nim/issues/13758 - `import std/macros` does not work on OpenBSD
+import macros
 
 macro genericParamsImpl(T: typedesc): untyped =
   # auxiliary macro needed, can't do it directly in `genericParams`
