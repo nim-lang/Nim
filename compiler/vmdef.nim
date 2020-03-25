@@ -214,7 +214,7 @@ type
 
   TRegisterKind* = enum
     rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
-  TFullReg* = object   # with a custom mark proc, we could use the same
+  TFullReg* = object  # with a custom mark proc, we could use the same
                       # data representation as LuaJit (tagged NaNs).
     case kind*: TRegisterKind
     of rkNone: nil
@@ -232,7 +232,7 @@ type
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
-    slots*: ptr seq[TFullReg]
+    slots*: ptr UncheckedArray[TFullReg]
     currentException*: PNode
     currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}
