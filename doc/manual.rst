@@ -1838,32 +1838,6 @@ details like this when mixing garbage collected data with unmanaged memory.
 .. XXX finalizers for traced objects
 
 
-Not nil annotation
-------------------
-
-All types for which ``nil`` is a valid value can be annotated to
-exclude ``nil`` as a valid value with the ``not nil`` annotation:
-
-.. code-block:: nim
-  type
-    PObject = ref TObj not nil
-    TProc = (proc (x, y: int)) not nil
-
-  proc p(x: PObject) =
-    echo "not nil"
-
-  # compiler catches this:
-  p(nil)
-
-  # and also this:
-  var x: PObject
-  p(x)
-
-The compiler ensures that every code path initializes variables which contain
-non nilable pointers. The details of this analysis are still to be specified
-here.
-
-
 Procedural type
 ---------------
 A procedural type is internally a pointer to a procedure. ``nil`` is

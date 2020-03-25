@@ -340,6 +340,36 @@ This operator will be matched against assignments to missing fields.
   a.b = c # becomes `.=`(a, b, c)
 
 
+Not nil annotation
+==================
+
+**Note:** This is an experimental feature. It can be enabled with
+``{.experimental: "notnil"}``.
+
+All types for which ``nil`` is a valid value can be annotated with the ``not
+nil`` annotation to exclude ``nil`` as a valid value:
+
+.. code-block:: nim
+  {.experimental: "notnil"}
+  
+  type
+    PObject = ref TObj not nil
+    TProc = (proc (x, y: int)) not nil
+
+  proc p(x: PObject) =
+    echo "not nil"
+
+  # compiler catches this:
+  p(nil)
+
+  # and also this:
+  var x: PObject
+  p(x)
+
+The compiler ensures that every code path initializes variables which contain
+non-nilable pointers. The details of this analysis are still to be specified
+here.
+
 
 Concepts
 ========
