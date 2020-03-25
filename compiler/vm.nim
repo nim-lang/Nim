@@ -463,6 +463,11 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
+    of tyBool:
+      dest.ensureKind(rkInt)
+      dest.intVal = case skipTypes(srctyp, abstractRange).kind
+      of tyFloat..tyFloat64: int(src.floatVal != 0.0)
+      else: int(src.intVal != 0)
     of tyFloat..tyFloat64:
       dest.ensureKind(rkFloat)
       case skipTypes(srctyp, abstractRange).kind
