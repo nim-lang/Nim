@@ -150,6 +150,9 @@ echo f
 - `net.newContext` now performs SSL Certificate checking on Linux and OSX.
   Define `nimDisableCertificateValidation` to disable it globally.
 - new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import pragmas`
+- new module `std/stackframes`, in particular `setFrameMsg` which enables
+  custom runtime annotation of stackframes, see #13351 for examples. Turn on/off via
+  `--stackTraceMsgs:on/off`
 
 ## Language additions
 
