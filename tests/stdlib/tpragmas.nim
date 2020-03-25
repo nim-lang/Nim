@@ -1,6 +1,6 @@
 import std/pragmas
 
-block:
+block: # byaddr
   var s = @[10,11,12]
   var a {.byaddr.} = s[0]
   a+=100
@@ -68,3 +68,41 @@ block: # nkAccQuoted
     let a {.`cast`.} = s[0]
     doAssert a == "foo"
     doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+
+block: # evalonce
+  block:
+    let s = @[1,2]
+    let s2 {.evalonce.} = s
+    doAssert s2[0].unsafeAddr == s[0].unsafeAddr
+  block:
+    proc getS(): seq[int] = @[1,2]
+    let s = getS()
+    let s2 {.evalonce.} = getS()
+    doAssert s2 == s
+  block:
+    var s = @[1,2]
+    proc getS(): var seq[int] = s
+    let s2 {.evalonce.} = getS()
+    doAssert s2[0].unsafeAddr == s[0].unsafeAddr
+    doAssert s2 == s
+  block:
+    var s0 = @[1,2]
+    proc bar(s: openArray[int]) =
+      let s2 {.evalonce.} = s
+      doAssert s2[0].unsafeAddr == s[0].unsafeAddr
+      doAssert s2[0].unsafeAddr == s0[0].unsafeAddr
+      doAssert s2 == s0
+    bar(s0)
+  block: # current known limitation: openArray inside non-symbol expressions
+    var s0 = @[1,2]
+    proc bar(s: openArray[int]) =
+      var count = 0
+      template getS(): untyped =
+        count.inc
+        s
+      let s2 {.evalonce.} = getS()
+      doAssert s2[0].unsafeAddr == s[0].unsafeAddr
+      doAssert s2[0].unsafeAddr == s0[0].unsafeAddr
+      doAssert s2 == s0
+      # doAssert count == 1 # fails
+    bar(s0)

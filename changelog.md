@@ -150,6 +150,8 @@ echo f
 - `net.newContext` now performs SSL Certificate checking on Linux and OSX.
   Define `nimDisableCertificateValidation` to disable it globally.
 - new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import pragmas`
+- new syntax for safe evaluation: `let b {.evalonce.} = expr` enabled by `import pragmas`
+  which avoids copies for lvalues, also works with rvalues, and is side effect safe.
 
 ## Language additions
 
