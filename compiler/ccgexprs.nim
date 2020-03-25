@@ -1941,6 +1941,8 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
     elif optSeqDestructors in p.config.globalOptions and etyp.kind in {tySequence, tyString}:
       putIntoDest(p, d, e, "(*($1*) (&$2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
+    elif etyp.kind == tyBool and srcTyp.kind in IntegralTypes:
+      putIntoDest(p, d, e, "(($1) != 0)" % [rdCharLoc(a)], a.storage)
     else:
       putIntoDest(p, d, e, "(($1) ($2))" %
           [getTypeDesc(p.module, e.typ), rdCharLoc(a)], a.storage)
