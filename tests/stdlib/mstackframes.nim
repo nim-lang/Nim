@@ -1,19 +1,8 @@
 import std/stackframes
 
-const expected = """
-tstackframes.nim(50)     tstackframes
-tstackframes.nim(41)     main ("main",)
-tstackframes.nim(35)     main2 ("main2", 5, 1)
-tstackframes.nim(35)     main2 ("main2", 4, 2)
-tstackframes.nim(35)     main2 ("main2", 3, 3)
-tstackframes.nim(34)     main2 ("main2", 2, 4)
-tstackframes.nim(33)     bar ("bar ",)
-"""
 
 
-
-
-# line 20
+# line 5
 var count = 0
 
 proc main1(n: int) =
@@ -30,9 +19,12 @@ proc main2(n: int) =
   bar()
   main2(n-1)
 
-import strutils
 proc main() =
-  setFrameMsg $("main", )
+  var z = 0
+  setFrameMsg "\n z1: " & $z
+  # multiple calls inside a frame are possible
+  z.inc
+  setFrameMsg "\n z2: " & $z
   try:
     main2(5)
   except CatchableError:
@@ -41,6 +33,6 @@ proc main() =
               # were a reference instead of a copy, this would fail.
     let e = getCurrentException()
     let trace = e.getStackTrace
-    doAssert trace.startsWith(expected), "\n" & trace
+    echo trace
 
 main()

@@ -1,28 +1,34 @@
-discard """
-  cmd: "nim $target $options --excessiveStackTrace:off $file"
-"""
-
 import std/[strformat,os,osproc]
+import compiler/unittest_light
 
-proc main() =
+proc main(opt: string, expected: string) =
   const nim = getCurrentCompilerExe()
   const file = currentSourcePath().parentDir / "mstackframes.nim"
-  # strangely, --hint:cc:off was needed
-  let cmd = fmt"{nim} c -f --experimental:compiletimeFFI --hints:off --hint:cc:off {file}"
+  let cmd = fmt"{nim} c -r --excessiveStackTrace:off --stacktraceMsgs:{opt} --hints:off {file}"
   let (output, exitCode) = execCmdEx(cmd)
-  let expected = """
-hello world stderr
-hi stderr
-foo
-foo:100
-foo:101
-foo:102:103
-foo:102:103:104
-foo:0.03:asdf:103:105
-ret={s1:foobar s2:foobar age:25 pi:3.14}
-"""
-  doAssert output == expected, output
+  assertEquals output, expected
   doAssert exitCode == 0
 
-when defined(nimHasLibFFIEnabled):
-  main()
+main("on"): """
+mstackframes.nim(38)     mstackframes
+mstackframes.nim(29)     main 
+ z1: 0 
+ z2: 1
+mstackframes.nim(20)     main2 ("main2", 5, 1)
+mstackframes.nim(20)     main2 ("main2", 4, 2)
+mstackframes.nim(20)     main2 ("main2", 3, 3)
+mstackframes.nim(19)     main2 ("main2", 2, 4)
+mstackframes.nim(18)     bar ("bar ",)
+
+"""
+
+main("off"): """
+mstackframes.nim(38)     mstackframes
+mstackframes.nim(29)     main
+mstackframes.nim(20)     main2
+mstackframes.nim(20)     main2
+mstackframes.nim(20)     main2
+mstackframes.nim(19)     main2
+mstackframes.nim(18)     bar
+
+"""
