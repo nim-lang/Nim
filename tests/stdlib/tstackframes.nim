@@ -11,9 +11,9 @@ proc main(opt: string, expected: string) =
 
 main("on"): """
 mstackframes.nim(38)     mstackframes
-mstackframes.nim(29)     main 
- z1: 0 
- z2: 1
+mstackframes.nim(29)     main
+  z: 0
+  z: 1
 mstackframes.nim(20)     main2 ("main2", 5, 1)
 mstackframes.nim(20)     main2 ("main2", 4, 2)
 mstackframes.nim(20)     main2 ("main2", 3, 3)

@@ -326,7 +326,7 @@ const
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
-    optHints, optStackTrace, optStackTraceMsgs, optLineTrace,
+    optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}

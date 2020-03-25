@@ -21,10 +21,10 @@ proc main2(n: int) =
 
 proc main() =
   var z = 0
-  setFrameMsg "\n z1: " & $z
+  setFrameMsg "\n  z: " & $z, prefix = ""
   # multiple calls inside a frame are possible
   z.inc
-  setFrameMsg "\n z2: " & $z
+  setFrameMsg "\n  z: " & $z, prefix = ""
   try:
     main2(5)
   except CatchableError:

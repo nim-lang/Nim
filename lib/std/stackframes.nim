@@ -16,7 +16,7 @@ template getPFrame*(): PFrame =
       {.emit: "`framePtr` = &FR_;".}
       framePtr
 
-template setFrameMsg*(msg: string) =
+template setFrameMsg*(msg: string, prefix = " ") =
   ## attach a msg to current `PFrame`. This can be called multiple times
   ## in a given PFrame. Noop unless passing --stacktraceMsgs and --stacktrace
   when NimStackTrace and NimStackTraceMsgs:
@@ -24,7 +24,6 @@ template setFrameMsg*(msg: string) =
       var fr {.inject.}: PFrame
       {.emit: "`fr` = &FR_;".}
       # consider setting a custom upper limit on size (analog to stack overflow)
-      const prefix = " " # to format properly
       frameMsgBuf.setLen fr.frameMsgLen
       frameMsgBuf.add prefix
       frameMsgBuf.add msg
