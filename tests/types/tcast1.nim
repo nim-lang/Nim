@@ -54,3 +54,5 @@ proc test_conv_to_bool =
 static:
   test_conv_to_bool()
 test_conv_to_bool()
+const x1 = bool(-1)
+let x2 = bool(2)
