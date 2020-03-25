@@ -532,7 +532,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               unionBody.add("struct {")
             else:
               if hasAttribute in CC[m.config.cCompiler].props:
-                unionBody.add("struct __attribute__((__packed__)){" )
+                unionBody.add("struct __attribute__((__packed__)){")
               else:
                 unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
             unionBody.add(a)

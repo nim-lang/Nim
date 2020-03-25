@@ -73,12 +73,16 @@ let
   cb64safe = cbBase('-', '_')
 
 const
+  cb64VM = cbBase('+', '/')
+  cb64safeVM = cbBase('-', '_')
+
+const
   invalidChar = 255
 
-template encodeInternal(s: typed, alphabet: ptr array[64, char]): untyped =
+template encodeSize(size: int): int = (size * 4 div 3) + 6
+
+template encodeInternal(s, alphabet: typed): untyped =
   ## encodes `s` into base64 representation.
-  proc encodeSize(size: int): int =
-    return (size * 4 div 3) + 6
 
   result.setLen(encodeSize(s.len))
 
@@ -94,7 +98,7 @@ template encodeInternal(s: typed, alphabet: ptr array[64, char]): untyped =
     n = exp
     inc inputIndex
 
-  template outputChar(x: untyped) =
+  template outputChar(x: typed) =
     result[outputIndex] = alphabet[x and 63]
     inc outputIndex
 
@@ -129,6 +133,16 @@ template encodeInternal(s: typed, alphabet: ptr array[64, char]): untyped =
 
   result.setLen(outputIndex)
 
+template encodeImpl() {.dirty.} =
+  when nimVM:
+    block:
+      let lookupTableVM = if safe: cb64safeVM else: cb64VM
+      encodeInternal(s, lookupTableVM)
+  else:
+    block:
+      let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
+      encodeInternal(s, lookupTable)
+
 proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
   ## Encodes `s` into base64 representation.
   ##
@@ -148,8 +162,7 @@ proc encode*[T: SomeInteger|char](s: openArray[T], safe = false): string =
     assert encode(['n', 'i', 'm']) == "bmlt"
     assert encode(@['n', 'i', 'm']) == "bmlt"
     assert encode([1, 2, 3, 4, 5]) == "AQIDBAU="
-  let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
-  encodeInternal(s, lookupTable)
+  encodeImpl()
 
 proc encode*(s: string, safe = false): string =
   ## Encodes ``s`` into base64 representation.
@@ -167,8 +180,7 @@ proc encode*(s: string, safe = false): string =
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
-  let lookupTable = if safe: unsafeAddr(cb64safe) else: unsafeAddr(cb64)
-  encodeInternal(s, lookupTable)
+  encodeImpl()
 
 proc encodeMIME*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## Encodes ``s`` into base64 representation as lines.

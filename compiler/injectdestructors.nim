@@ -499,7 +499,6 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
     result[last] = processCall(n[last])
     # A statement list does not introduce a scope, the AST can
     # contain silly nested statement lists.
-    #result = handleScope(n, dest, n.typ, 0, c, mode)
   of nkBlockStmt, nkBlockExpr:
     result = handleScope(n, dest, n.typ, 1, c, mode)
   of nkIfStmt, nkIfExpr:
@@ -513,13 +512,11 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
       result.add handleScope(n[i], dest, n[i][^1].typ, n[i].len - 1, c, mode)
   of nkWhen: # This should be a "when nimvm" node.
     result = copyTree(n)
-    result[1][0] = handleScope(n[1][0], dest, n[1][0][^1].typ, 0, c, mode)
+    result[1][0] = processCall(n[1][0])
+    # handleScope(n[1][0], dest, n[1][0][^1].typ, 0, c, mode)
   of nkWhileStmt:
-    #result = copyNode(n)
     inc c.inLoop
     result = handleScope(n, dest, nil, 0, c, mode)
-    #result.add p(n[0], c, normal)
-    #result.add p(n[1], c, normal)
     dec c.inLoop
   else: assert(false)
 
@@ -619,7 +616,7 @@ proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
       # unpacked tuple needs reset at every loop iteration
       res.add newTree(nkFastAsgn, v, genDefaultCall(v.typ, c, v.info))
   elif {sfGlobal, sfThread} * v.sym.flags == {sfGlobal}:
-     c.graph.globalDestructors.add genDestroy(c, v)
+    c.graph.globalDestructors.add genDestroy(c, v)
   else:
     # We always translate 'var v = f()' into bitcopies. If 'v' is in a loop,
     # the destruction at the loop end will free the resources. Other assignments
@@ -634,10 +631,101 @@ proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
   elif ri.kind != nkEmpty:
     res.add moveOrCopy(v, ri, c)
 
+template handleNestedTempl(n: untyped, processCall: untyped) =
+  case n.kind
+  of nkStmtList, nkStmtListExpr:
+    if n.len == 0: return n
+    result = copyNode(n)
+    for i in 0..<n.len-1:
+      result.add p(n[i], c, normal)
+    template node: untyped = n[^1]
+    result.add processCall
+  of nkBlockStmt, nkBlockExpr:
+    result = copyNode(n)
+    result.add n[0]
+    template node: untyped = n[1]
+    result.add processCall
+  of nkIfStmt, nkIfExpr:
+    result = copyNode(n)
+    for son in n:
+      var branch = copyNode(son)
+      if son.kind in {nkElifBranch, nkElifExpr}:
+        template node: untyped = son[1]
+        branch.add p(son[0], c, normal) #The condition
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+                   else: processCall
+      else:
+        template node: untyped = son[0]
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+                   else: processCall
+      result.add branch
+  of nkCaseStmt:
+    result = copyNode(n)
+    result.add p(n[0], c, normal)
+    for i in 1..<n.len:
+      var branch: PNode
+      if n[i].kind == nkOfBranch:
+        branch = n[i] # of branch conditions are constants
+        template node: untyped = n[i][^1]
+        branch[^1] = if node.typ == nil: p(node, c, normal) #noreturn
+                     else: processCall
+      elif n[i].kind in {nkElifBranch, nkElifExpr}:
+        branch = copyNode(n[i])
+        branch.add p(n[i][0], c, normal) #The condition
+        template node: untyped = n[i][1]
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+                   else: processCall
+      else:
+        branch = copyNode(n[i])
+        template node: untyped = n[i][0]
+        branch.add if node.typ == nil: p(node, c, normal) #noreturn
+                   else: processCall
+      result.add branch
+  of nkWhen: # This should be a "when nimvm" node.
+    result = copyTree(n)
+    template node: untyped = n[1][0]
+    result[1][0] = processCall
+  of nkWhileStmt:
+    inc c.inLoop
+    result = copyNode(n)
+    result.add p(n[0], c, normal)
+    result.add p(n[1], c, normal)
+    dec c.inLoop
+  else: assert(false)
+
+when false:
+  proc eqTrees*(a, b: PNode): bool =
+    if a == b:
+      result = true
+    elif (a != nil) and (b != nil) and (a.kind == b.kind):
+      case a.kind
+      of nkSym:
+        #result = a.sym == b.sym or (a.sym.kind == skTemp and b.sym.kind == skTemp)
+        result = true
+      of nkIdent: result = a.ident.id == b.ident.id
+      of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
+      of nkFloatLit..nkFloat64Lit:
+        result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
+      of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
+      of nkCommentStmt: result = a.comment == b.comment
+      of nkEmpty, nkNilLit, nkType: result = true
+      else:
+        if a.len == b.len:
+          for i in 0..<a.len:
+            if not eqTrees(a[i], b[i]): return
+          result = true
+    if not result:
+      #if a.kind == nkFloat64Lit and b.kind == nkFloat64Lit:
+      echo "not the same ", a.kind, " ", b.kind
+      #echo a.floatVal, "##", b.floatVal, "##"
+
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt}:
-    result = handleNested(n, nil, c, mode)
+    when not scopeBasedDestruction:
+      handleNestedTempl(n): p(node, c, mode)
+    else:
+      result = handleNested(n, nil, c, mode)
   elif mode == sinkArg:
     if n.containsConstSeq:
       # const sequences are not mutable and so we need to pass a copy to the
@@ -884,7 +972,10 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
     else:
       result = genSink(c, dest, p(ri, c, sinkArg))
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
-    result = handleNested(ri, dest, c, normal)
+    when scopeBasedDestruction:
+      result = handleNested(ri, dest, c, normal)
+    else:
+      handleNestedTempl(ri): moveOrCopy(dest, node, c)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(c, dest.typ):

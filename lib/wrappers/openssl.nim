@@ -91,6 +91,7 @@ type
   PSslPtr* = ptr SslPtr
   SslCtx* = SslPtr
   PSSL_METHOD* = SslPtr
+  PSTACK* = SslPtr
   PX509* = SslPtr
   PX509_NAME* = SslPtr
   PEVP_MD* = SslPtr
@@ -359,6 +360,8 @@ proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_SSL_CTX*(ssl: SslPtr): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_set_SSL_CTX*(ssl: SslPtr, ctx: SslCtx): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_verified_chain*(ssl: SslPtr): PSTACK {.cdecl, dynlib: DLLSSLName,
+    importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
@@ -425,6 +428,35 @@ proc ERR_get_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
+
+proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
+
+proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc d2i_X509*(b: string): PX509 =
+  ## decode DER/BER bytestring into X.509 certificate struct
+  var bb = b.cstring
+  let i = cast[ptr ptr cuchar](addr bb)
+  let ret = d2i_X509(addr result, i, b.len.cint)
+  if ret.isNil:
+    raise newException(Exception, "X.509 certificate decoding failed")
+
+proc i2d_X509*(cert: PX509): string =
+  ## encode `cert` to DER string
+  let encoded_length = i2d_X509(cert, nil)
+  result = newString(encoded_length)
+  var q = result.cstring
+  let o = cast[ptr ptr cuchar](addr q)
+  let length = i2d_X509(cert, o)
+  if length.int <= 0:
+    raise newException(Exception, "X.509 certificate encoding failed")
 
 when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
@@ -688,29 +720,7 @@ when not defined(nimDisableCertificateValidation) and not defined(windows):
   proc X509_STORE_set_trust*(ctx: PX509_STORE; trust: cint): cint
   proc X509_STORE_add_cert*(ctx: PX509_STORE; x: PX509): cint
 
-  proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509
-
-  proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint
-
   {.pop.}
-
-  proc d2i_X509*(b: string): PX509 =
-    ## decode DER/BER bytestring into X.509 certificate struct
-    var bb = b.cstring
-    let i = cast[ptr ptr cuchar](addr bb)
-    let ret = d2i_X509(addr result, i, b.len.cint)
-    if ret.isNil:
-      raise newException(Exception, "X.509 certificate decoding failed")
-
-  proc i2d_X509*(cert: PX509): string =
-    ## encode `cert` to DER string
-    let encoded_length = i2d_X509(cert, nil)
-    result = newString(encoded_length)
-    var q = result.cstring
-    let o = cast[ptr ptr cuchar](addr q)
-    let length = i2d_X509(cert, o)
-    if length.int <= 0:
-      raise newException(Exception, "X.509 certificate encoding failed")
 
   when isMainModule:
     # A simple certificate test

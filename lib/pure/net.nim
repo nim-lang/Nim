@@ -64,6 +64,8 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 
+include "system/inclrtl"
+
 {.deadCodeElim: on.} # dce option deprecated
 import nativesockets, os, strutils, parseutils, times, sets, options,
   std/monotimes
@@ -82,6 +84,8 @@ when defineSsl:
 
 when defineSsl:
   type
+    Certificate* = string ## DER encoded certificate
+
     SslError* = object of Exception
 
     SslCVerifyMode* = enum
@@ -746,6 +750,36 @@ when defineSsl:
     of handshakeAsServer:
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
+
+  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the OpenSSL connection represented by ``sslHandle``.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    result = newSeq[Certificate]()
+    if SSL_get_verify_result(sslHandle) != X509_V_OK:
+      return
+    let stack = SSL_get0_verified_chain(sslHandle)
+    if stack == nil:
+      return
+    let length = OPENSSL_sk_num(stack)
+    if length == 0:
+      return
+    for i in 0 .. length - 1:
+      let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
+      result.add(i2d_X509(x509))
+
+  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
 
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses

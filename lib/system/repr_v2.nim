@@ -47,7 +47,7 @@ proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
 
 proc repr*(p: pointer): string =
   ## repr of pointer as its hexadecimal value
-  if p == nil: 
+  if p == nil:
     result = "nil"
   else:
     when nimvm:
@@ -66,7 +66,7 @@ template repr*(x: distinct): string =
 
 template repr*(t: typedesc): string = $t
 
-proc reprObject[T: tuple|object](res: var string, x: T) = 
+proc reprObject[T: tuple|object](res: var string, x: T) =
   res.add '('
   var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
@@ -98,10 +98,6 @@ proc repr*[T: tuple|object](x: T): string =
   when T is object:
     result = $typeof(x)
   reprObject(result, x)
- 
-proc repr*[T](x: ptr T): string =
-  result.add repr(pointer(x)) & " "
-  result.add repr(x[])
 
 proc repr*[T](x: ref T | ptr T): string =
   if isNil(x): return "nil"
