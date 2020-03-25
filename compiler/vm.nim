@@ -51,16 +51,6 @@ type
                               # XXX 'break' should perform cleanup actions
                               # What does the C backend do for it?
 
-template seqToPtr(x: seq): pointer =
-  when defined(nimSeqsV2):
-    type
-      NimSeqV2 = object
-        len: int
-        p: pointer
-    cast[NimSeqV2](x).p
-  else:
-    cast[pointer](x)
-
 proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
   if x != nil:
     if recursionLimit == 0:
@@ -527,6 +517,16 @@ const
   errFieldXNotFound = "node lacks field: "
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
+  template seqToPtr(x: seq): pointer =
+    when defined(nimSeqsV2):
+      type
+        NimSeqV2 = object
+          len: int
+          p: pointer
+      cast[NimSeqV2](x).p
+    else:
+      cast[pointer](x)
+
   var pc = start
   var tos = tos
   # Used to keep track of where the execution is resumed.
