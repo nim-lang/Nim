@@ -7,45 +7,60 @@
 #    distribution, for details about the copyright.
 #
 
-when false:
-  # ICON linking
-  when defined(gcc) and defined(windows):
-    when defined(x86):
-      {.link: "../icons/nim.res".}
-    else:
-      {.link: "../icons/nim_icon.o".}
-
-  when defined(amd64) and defined(windows) and defined(vcc):
-    {.link: "../icons/nim-amd64-windows-vcc.res".}
-  when defined(i386) and defined(windows) and defined(vcc):
-    {.link: "../icons/nim-i386-windows-vcc.res".}
-
 import std / [
   parseopt, strutils, os, tables
 ]
 
 import ".." / compiler / [
-  ast, astalgo, types,
+  ast, types, renderer,
   commands, options, msgs,
-  extccomp,
+  platform,
   idents, lineinfos, cmdlinehelper, modulegraphs, condsyms,
   pathutils, passes, passaux, sem, modules
 ]
 
 import z3 / z3_api
 
+const
+  HelpMessage = "DrNim Version $1 [$2: $3]\n" &
+      "Compiled at $4\n" &
+      "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
+
+const
+  Usage = """
+drnim [options] [projectfile]
+
+Options: Same options that the Nim compiler supports.
+"""
+
+proc getCommandLineDesc(conf: ConfigRef): string =
+  result = (HelpMessage % [system.NimVersion, platform.OS[conf.target.hostOS].name,
+                           CPU[conf.target.hostCPU].name, CompileDate]) &
+                           Usage
+
+proc helpOnError(conf: ConfigRef) =
+  msgWriteln(conf, getCommandLineDesc(conf), {msgStdout})
+  msgQuit(0)
+
 type
   CannotMapToZ3Error = object of ValueError
   Z3Exception = object of ValueError
 
-proc typeToZ3(c: Z3_context; t: PType): Z3_sort =
+proc notImplemented(msg: string) {.noinline.} =
+  raise newException(CannotMapToZ3Error, "cannot map to Z3: " & msg)
+
+proc typeToZ3(ctx: Z3_context; t: PType): Z3_sort =
   case t.skipTypes(abstractInst).kind
-  of tyInt:
-    result = Z3_mk_int_sort(c)
+  of tyEnum, tyInt..tyInt64:
+    result = Z3_mk_int_sort(ctx)
   of tyBool:
-    result = Z3_mk_bool_sort(c)
+    result = Z3_mk_bool_sort(ctx)
+  of tyFloat..tyFloat128:
+    result = Z3_mk_fpa_sort_double(ctx)
+  of tyChar,tyUInt..tyUInt64:
+    result = Z3_mk_bv_sort(ctx, cuint getSize(nil, t))
   else:
-    assert false, "not implemented " & typeToString(t)
+    notImplemented(typeToString(t))
 
 template binary(op, a, b): untyped =
   var arr = [a, b]
@@ -61,8 +76,15 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
       result = Z3_mk_const(ctx, name, typeToZ3(ctx, n.sym.typ))
       mapping[n.sym.id] = result
       collectedVars.add result
-  of nkIntLit:
-    result = Z3_mk_int64(ctx, clonglong(n.intval), Z3_mk_int_sort(ctx))
+  of nkCharLit..nkUInt64Lit:
+    if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyInt..tyInt64}:
+      # optimized for the common case
+      result = Z3_mk_int64(ctx, clonglong(n.intval), Z3_mk_int_sort(ctx))
+    elif n.typ != nil and n.typ.kind == tyBool:
+      result = if n.intval != 0: Z3_mk_true(ctx) else: Z3_mk_false(ctx)
+    else:
+      let zt = if n.typ == nil: Z3_mk_int_sort(ctx) else: typeToZ3(ctx, n.typ)
+      result = Z3_mk_numeral(ctx, $getOrdValue(n), zt)
   of nkCallKinds:
     template rec(n): untyped = nodeToZ3(ctx, n, mapping, collectedVars)
 
@@ -73,9 +95,9 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
     of mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
         mEqStr, mEqSet, mEqCString:
       result = Z3_mk_eq(ctx, rec n[1], rec n[2])
-    of mLeI, mLeF64, mLeU, mLeEnum, mLeCh, mLeB, mLePtr, mLeStr:
+    of mLeI, mLeEnum, mLeCh, mLeB, mLePtr, mLeStr:
       result = Z3_mk_le(ctx, rec n[1], rec n[2])
-    of mLtI, mLtF64, mLtU, mLtEnum, mLtCh, mLtB, mLtPtr, mLtStr:
+    of mLtI, mLtEnum, mLtCh, mLtB, mLtPtr, mLtStr:
       result = Z3_mk_lt(ctx, rec n[1], rec n[2])
     of mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq:
       # len(x) needs the same logic as 'x' itself
@@ -88,16 +110,14 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
           mapping[-sym.id] = result
           collectedVars.add result
       else:
-        assert false, "length of not-symbol?"
-    of mInSet:
-      assert false, "Not implemented 'in' operator for sets"
-    of mAddI, mAddF64, mSucc:
+        notImplemented(renderTree(n))
+    of mAddI, mSucc:
       result = binary(Z3_mk_add, rec n[1], rec n[2])
-    of mSubI, mSubF64, mPred:
+    of mSubI, mPred:
       result = binary(Z3_mk_sub, rec n[1], rec n[2])
-    of mMulI, mMulF64:
+    of mMulI:
       result = binary(Z3_mk_mul, rec n[1], rec n[2])
-    of mDivI, mDivF64:
+    of mDivI:
       result = Z3_mk_div(ctx, rec n[1], rec n[2])
     of mModI:
       result = Z3_mk_mod(ctx, rec n[1], rec n[2])
@@ -109,10 +129,47 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
       # min(a, b) <=> ite(a < b, a, b)
       result = Z3_mk_ite(ctx, Z3_mk_lt(ctx, rec n[1], rec n[2]),
         rec n[1], rec n[2])
+    of mLeU:
+      result = Z3_mk_bvsle(ctx, rec n[1], rec n[2])
+    of mLtU:
+      result = Z3_mk_bvslt(ctx, rec n[1], rec n[2])
+    of mAnd:
+      result = binary(Z3_mk_and, rec n[1], rec n[2])
+    of mOr:
+      result = binary(Z3_mk_or, rec n[1], rec n[2])
+    of mXor:
+      result = Z3_mk_xor(ctx, rec n[1], rec n[2])
+    of mNot:
+      result = Z3_mk_not(ctx, rec n[1])
+    of mLeF64:
+      result = Z3_mk_fpa_leq(ctx, rec n[1], rec n[2])
+    of mLtF64:
+      result = Z3_mk_fpa_lt(ctx, rec n[1], rec n[2])
+    of mAddF64:
+      result = Z3_mk_fpa_add(ctx, Z3_mk_fpa_round_nearest_ties_to_even(ctx), rec n[1], rec n[2])
+    of mSubF64:
+      result = Z3_mk_fpa_sub(ctx, Z3_mk_fpa_round_nearest_ties_to_even(ctx), rec n[1], rec n[2])
+    of mMulF64:
+      result = Z3_mk_fpa_mul(ctx, Z3_mk_fpa_round_nearest_ties_to_even(ctx), rec n[1], rec n[2])
+    of mDivF64:
+      result = Z3_mk_fpa_div(ctx, Z3_mk_fpa_round_nearest_ties_to_even(ctx), rec n[1], rec n[2])
+    of mShrI:
+      # XXX handle conversions from int to uint here somehow
+      result = Z3_mk_bvlshr(ctx, rec n[1], rec n[2])
+    of mAshrI:
+      result = Z3_mk_bvashr(ctx, rec n[1], rec n[2])
+    of mShlI:
+      result = Z3_mk_bvshl(ctx, rec n[1], rec n[2])
+    of mBitandI:
+      result = Z3_mk_bvand(ctx, rec n[1], rec n[2])
+    of mBitorI:
+      result = Z3_mk_bvor(ctx, rec n[1], rec n[2])
+    of mBitxorI:
+      result = Z3_mk_bvxor(ctx, rec n[1], rec n[2])
     else:
-      assert false, "not implemented"
+      notImplemented(renderTree(n))
   else:
-    assert false, "not implemented"
+    notImplemented(renderTree(n))
 
 proc on_err(ctx: Z3_context, e: Z3_error_code) {.nimcall.} =
   let msg = $Z3_get_error_msg(ctx, e)
@@ -138,59 +195,87 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
   let cfg = Z3_mk_config()
   Z3_set_param_value(cfg, "model", "true");
   let ctx = Z3_mk_context(cfg)
-  #let fpa_rm {.inject used.} = Z3_mk_fpa_round_nearest_ties_to_even(ctx)
   Z3_del_config(cfg)
   Z3_set_error_handler(ctx, on_err)
 
-  #[
-  For example, let's have these facts:
+  try:
 
-    i < 10
-    i > 0
+    #[
+    For example, let's have these facts:
 
-  Question:
+      i < 10
+      i > 0
 
-    i + 3 < 13
+    Question:
 
-  What we need to produce:
+      i + 3 < 13
 
-  forall(i, (i < 10) & (i > 0) -> (i + 3 < 13))
+    What we need to produce:
 
-  ]#
+    forall(i, (i < 10) & (i > 0) -> (i + 3 < 13))
 
-  var collectedVars: seq[Z3_ast]
+    ]#
 
-  let solver = Z3_mk_solver(ctx)
-  var lhs: seq[Z3_ast]
-  for assumption in assumptions:
-    let za = nodeToZ3(ctx, assumption, mapping, collectedVars)
-    #Z3_solver_assert ctx, solver, za
-    lhs.add za
+    var collectedVars: seq[Z3_ast]
 
-  let z3toProve = nodeToZ3(ctx, toProve, mapping, collectedVars)
+    let solver = Z3_mk_solver(ctx)
+    var lhs: seq[Z3_ast]
+    for assumption in assumptions:
+      let za = nodeToZ3(ctx, assumption, mapping, collectedVars)
+      #Z3_solver_assert ctx, solver, za
+      lhs.add za
 
-  let fa = forall(ctx, collectedVars, conj(ctx, lhs), z3toProve)
-  #echo "toProve: ", Z3_ast_to_string(ctx, fa)
-  Z3_solver_assert ctx, solver, fa
+    let z3toProve = nodeToZ3(ctx, toProve, mapping, collectedVars)
 
-  let z3res = Z3_solver_check(ctx, solver)
-  result[0] = z3res == Z3_L_TRUE
-  when false:
+    # to make Z3 produce nice counterexamples, we try to prove the
+    # negation of our conjecture and see if it's Z3_L_FALSE
+    let fa = Z3_mk_not(ctx, Z3_mk_implies(ctx, conj(ctx, lhs), z3toProve))
+
+    #Z3_mk_not(ctx, forall(ctx, collectedVars, conj(ctx, lhs), z3toProve))
+
+    #echo "toProve: ", Z3_ast_to_string(ctx, fa)
+    Z3_solver_assert ctx, solver, fa
+
+    let z3res = Z3_solver_check(ctx, solver)
+    result[0] = z3res == Z3_L_FALSE
     if not result[0]:
       result[1] = $Z3_model_to_string(ctx, Z3_solver_get_model(ctx, solver))
-  result[1] = ""
-  Z3_del_context(ctx)
+    else:
+      result[1] = ""
+  except ValueError:
+    result[0] = false
+    result[1] = getCurrentExceptionMsg()
+  finally:
+    Z3_del_context(ctx)
 
 proc mainCommand(graph: ModuleGraph) =
   graph.proofEngine = proofEngine
 
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
+  defineSymbol(graph.config.symbols, "nimDrNim")
 
   registerPass graph, verbosePass
   registerPass graph, semPass
   compileProject(graph)
 
+#[
+Thoughts on subtyping rules for 'proc' types:
+
+  proc q(y: int) {.requires: y > 0.}  # q is 'weaker' than T
+  # 'requires' must be weaker (or equal)
+  # 'ensures'  must be stronger (or equal)
+
+  # a 'is weaker than' b iff  b -> a
+  # a 'is stronger than' b iff a -> b
+  # --> We can use Z3 to compute whether 'var x: T = q' is valid
+
+  type
+    T = proc (y: int) {.requires: y > 5.}
+
+  var
+    x: T = q # valid?
+]#
 
 proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):
@@ -199,7 +284,7 @@ proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   else:
     result = f
 
-proc addCmdPrefix*(result: var string, kind: CmdLineKind) =
+proc addCmdPrefix(result: var string, kind: CmdLineKind) =
   # consider moving this to std/parseopt
   case kind
   of cmdLongOption: result.add "--"
@@ -246,9 +331,9 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     processCmdLine: processCmdLine,
     mainCommand: mainCommand
   )
-  self.initDefinesProg(conf, "nim_compiler")
+  self.initDefinesProg(conf, "drnim")
   if paramCount() == 0:
-    writeCommandLineUsage(conf)
+    helpOnError(conf)
     return
 
   self.processCmdLineAndProjectPath(conf)
@@ -256,7 +341,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if conf.hasHint(hintGCStats): echo(GC_getStatistics())
 
 when compileOption("gc", "v2") or compileOption("gc", "refc"):
-  # the new correct mark&sweet collector is too slow :-/
+  # the new correct mark&sweep collector is too slow :-/
   GC_disableMarkAndSweep()
 
 when not defined(selftest):
