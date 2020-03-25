@@ -119,6 +119,7 @@ echo f
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
 - `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
+- `base64` adds Data URI Base64, implements RFC-2397.
 - Added `net.getPeerCertificates` and `asyncnet.getPeerCertificates` for
   retrieving the verified certificate chain of the peer we are connected to
   through an SSL-wrapped `Socket`/`AsyncSocket`.

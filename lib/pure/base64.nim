@@ -54,6 +54,14 @@
 ##    doAssert encode("c\xf7>", safe = true) == "Y_c-"
 ##    doAssert encode("c\xf7>", safe = false) == "Y/c+"
 ##
+## Data URI Base64
+## ---------------
+##
+## .. code-block::nim
+##    import base64
+##    doAssert dataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+##    doAssert dataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+##
 ## See also
 ## ========
 ##
@@ -275,3 +283,14 @@ proc decode*(s: string): string =
     outputChar(a shl 2 or b shr 4)
     outputChar(b shl 4 or c shr 2)
   result.setLen(outputIndex)
+
+proc dataUri*(data, mime: string, encoding = "utf-8"): string =
+  ## Convenience proc for `encode` returns a standard Base64 Data URI (RFC-2397)
+  ##
+  ## **See also:**
+  ## * `mimetypes <mimetypes.html>`_ for `mime` argument
+  ## * https://tools.ietf.org/html/rfc2397
+  ## * https://en.wikipedia.org/wiki/Data_URI_scheme
+  runnableExamples: static: doAssert dataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
+  result = "data:" & mime & ";charset=" & encoding & ";base64," & encode(data)
