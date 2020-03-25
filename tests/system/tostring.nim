@@ -233,4 +233,18 @@ block:
   let tmp = MyTypeWithProc(name: "Some Name")
   doAssert $tmp == "(name: \"Some Name\", fun: nil, cstr: nil, data: [...])"
 
+import strutils
+
+block:
+
+  type Foo = object
+    age: int
+    s: string
+    internal: seq[ptr Foo]
+
+  var foo = Foo(age: 20, s: "bob")
+  foo.internal = @[foo.addr]
+  doAssert contains($foo, "(age: 20, s: \"bob\", internal: @[0x")
+
+
 echo "DONE: tostring.nim"
