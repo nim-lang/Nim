@@ -232,7 +232,7 @@ type
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
-    slots*: seq[TFullReg]
+    slots*: ptr seq[TFullReg]
     currentException*: PNode
     currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}

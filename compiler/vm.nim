@@ -1188,7 +1188,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
-          VmArgs(ra: ra, rb: rb, rc: rc, slots: regs,
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: addr regs,
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif importcCond(prc):
@@ -1507,7 +1507,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
-        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: regs,
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: addr regs,
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
       callback(args)
