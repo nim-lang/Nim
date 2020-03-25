@@ -19,7 +19,7 @@ const
   useEffectSystem* = true
   useWriteTracking* = false
   hasFFI* = defined(nimHasLibFFI)
-  copyrightYear* = "2019"
+  copyrightYear* = "2020"
 
 type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
