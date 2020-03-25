@@ -544,7 +544,7 @@ proc runCI(cmd: string) =
       kochExecFold("C sources", "csource")
     elif defined(windows):
       buildDrNim()
-      exec("testament/testament pat drnim/tests/*.nim")
+      exec("testament/testament".exe & " pat drnim/tests/*.nim")
       when false:
         kochExec "csource"
         kochExec "zip"
