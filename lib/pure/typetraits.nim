@@ -71,6 +71,13 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
 
+since (1, 1):
+  template distinctBase*[T](a: T): untyped =
+    ## overload for values
+    runnableExamples:
+      type MyInt = distinct int
+      doAssert 12.MyInt.distinctBase == 12
+    distinctBase(type(a))(a)
 
 proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait", since: (1, 1).}
   ## Return number of elements of `T`
