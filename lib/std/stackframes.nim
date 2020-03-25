@@ -1,4 +1,5 @@
 const NimStackTrace = compileOption("stacktrace")
+const NimStackTraceMsgs = compileOption("stacktraceMsgs")
 
 template procName*(): string =
   ## returns current C/C++ function name
@@ -16,9 +17,9 @@ template getPFrame*(): PFrame =
       framePtr
 
 template setFrameMsg*(msg: string) =
-  ## attach a msg to current PFrame. This can be called multiple times
-  ## in a given PFrame.
-  when NimStackTrace:
+  ## attach a msg to current `PFrame`. This can be called multiple times
+  ## in a given PFrame. Noop unless passing --stacktraceMsgs and --stacktrace
+  when NimStackTrace and NimStackTraceMsgs:
     block:
       var fr {.inject.}: PFrame
       {.emit: "`fr` = &FR_;".}

@@ -53,9 +53,10 @@ type
     len: int
     prev: ptr GcFrameHeader
 
+when NimStackTraceMsgs:
+  var frameMsgBuf* {.threadvar.}: string
 var
   framePtr {.threadvar.}: PFrame
-  frameMsgBuf* {.threadvar.}: string
   excHandler {.threadvar.}: PSafePoint
     # list of exception handlers
     # a global variable for the root of all try blocks
@@ -225,11 +226,13 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
                               filename: it.filename)
-    let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
-    if it.frameMsgLen > first:
-      s[last].frameMsg.setLen(it.frameMsgLen - first)
-      # somehow string slicing not available here
-      for i in first .. it.frameMsgLen-1: s[last].frameMsg[i-first] = frameMsgBuf[i]
+    when NimStackTraceMsgs:
+      let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
+      if it.frameMsgLen > first:
+        s[last].frameMsg.setLen(it.frameMsgLen - first)
+        # somehow string slicing not available here
+        for i in first .. it.frameMsgLen-1:
+          s[last].frameMsg[i-first] = frameMsgBuf[i]
     it = it.prev
     dec last
 
@@ -242,11 +245,12 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
-  when type(f) is StackTraceEntry:
-    add(s, f.frameMsg)
-  else:
-    var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
-    for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
+  when NimStackTraceMsgs:
+    when type(f) is StackTraceEntry:
+      add(s, f.frameMsg)
+    else:
+      var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
+      for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
 proc `$`(s: seq[StackTraceEntry]): string =
@@ -532,10 +536,10 @@ proc callDepthLimitReached() {.noinline.} =
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   if framePtr == nil:
     s.calldepth = 0
-    s.frameMsgLen = 0
+    when NimStackTraceMsgs: s.frameMsgLen = 0
   else:
     s.calldepth = framePtr.calldepth+1
-    s.frameMsgLen = framePtr.frameMsgLen
+    when NimStackTraceMsgs: s.frameMsgLen = framePtr.frameMsgLen
   s.prev = framePtr
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()

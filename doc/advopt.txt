@@ -92,6 +92,7 @@ Advanced options:
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility
