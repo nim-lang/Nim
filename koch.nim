@@ -473,6 +473,16 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
+proc buildDrNim() =
+  if not dirExists("dist/nimz3"):
+    exec("git clone https://github.com/zevv/nimz3.git dist/nimz3")
+  when defined(windows):
+    if not dirExists("dist/dlls"):
+      exec("git clone -q https://github.com/nim-lang/dlls.git dist/dlls")
+    copyExe("dist/dlls/libz3.dll", "drnim/libz3.dll")
+
+  execFold("build drnim", "nim c drnim/drnim")
+
 proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
@@ -522,6 +532,8 @@ proc runCI(cmd: string) =
       kochExecFold("Docs", "docs --git.commit:devel")
       kochExecFold("C sources", "csource")
     elif defined(windows):
+      buildDrNim()
+      exec("testament/testament pat drnim/tests/*.nim")
       when false:
         kochExec "csource"
         kochExec "zip"
@@ -649,6 +661,7 @@ when isMainModule:
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
+      of "drnim": buildDrNim()
       else: showHelp()
       break
     of cmdEnd: break

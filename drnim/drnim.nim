@@ -8,7 +8,7 @@
 #
 
 import std / [
-  parseopt, strutils, os, tables
+  parseopt, strutils, os, tables, times
 ]
 
 import ".." / compiler / [
@@ -239,7 +239,7 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
     let z3res = Z3_solver_check(ctx, solver)
     result[0] = z3res == Z3_L_FALSE
     if not result[0]:
-      result[1] = $Z3_model_to_string(ctx, Z3_solver_get_model(ctx, solver))
+      result[1] = strip $Z3_model_to_string(ctx, Z3_solver_get_model(ctx, solver))
     else:
       result[1] = ""
   except ValueError:
@@ -249,6 +249,9 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
     Z3_del_context(ctx)
 
 proc mainCommand(graph: ModuleGraph) =
+  let conf = graph.config
+  conf.lastCmdTime = epochTime()
+
   graph.proofEngine = proofEngine
 
   graph.config.errorMax = high(int)  # do not stop after first error
@@ -258,6 +261,26 @@ proc mainCommand(graph: ModuleGraph) =
   registerPass graph, verbosePass
   registerPass graph, semPass
   compileProject(graph)
+  if conf.errorCounter == 0:
+    let mem =
+      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+      else: formatSize(getTotalMem()) & " totmem"
+    let loc = $conf.linesCompiled
+    let build = if isDefined(conf, "danger"): "Dangerous Release"
+                elif isDefined(conf, "release"): "Release"
+                else: "Debug"
+    let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
+    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    var output = $conf.absOutFile
+    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    rawMessage(conf, hintSuccessX, [
+      "loc", loc,
+      "sec", sec,
+      "mem", mem,
+      "build", build,
+      "project", project,
+      "output", output,
+      ])
 
 #[
 Thoughts on subtyping rules for 'proc' types:
