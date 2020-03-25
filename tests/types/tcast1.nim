@@ -52,5 +52,12 @@ proc test_conv_to_bool =
 
 
 static:
+  doAssert(bool(0) == false)
+  doAssert(bool(-1) == true)
+  doAssert(bool(2) == true)
+  doAssert(bool(NaN) == true)
+  doAssert(bool(0.0) == false)
+  doAssert(bool(-0.0) == false)
   test_conv_to_bool()
 test_conv_to_bool()
+

@@ -433,6 +433,15 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   #   echo high(int64)
   #   writeStackTrace()
   case dstTyp.kind
+  of tyBool:
+    case srcTyp.kind
+    of tyFloat..tyFloat64:
+      result = newIntNodeT(int(getFloat(a) != 0.0), n, g)
+    of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
+      result = newIntNodeT(int(a.getOrdValue != 0), n, g)
+    else:
+      result = a
+      result.typ = n.typ
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:
