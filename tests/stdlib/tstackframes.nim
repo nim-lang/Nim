@@ -1,5 +1,6 @@
 import std/[strformat,os,osproc]
-import compiler/unittest_light
+# import "../../compiler/unittest_light"
+import pkg/compiler/unittest_light
 
 proc main(opt: string, expected: string) =
   const nim = getCurrentCompilerExe()
