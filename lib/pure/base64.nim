@@ -284,7 +284,7 @@ proc decode*(s: string): string =
     outputChar(b shl 4 or c shr 2)
   result.setLen(outputIndex)
 
-proc dataUri*(data, mime: string, encoding = "utf-8"): string =
+proc dataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 1).} =
   ## Convenience proc for `encode` returns a standard Base64 Data URI (RFC-2397)
   ##
   ## **See also:**
