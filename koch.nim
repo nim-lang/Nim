@@ -11,6 +11,7 @@
 
 const
   NimbleStableCommit = "4007b2a778429a978e12307bf13a038029b4c4d9" # master
+  Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
 
 when defined(gcc) and defined(windows):
   when defined(x86):
@@ -480,8 +481,18 @@ proc buildDrNim() =
     if not dirExists("dist/dlls"):
       exec("git clone -q https://github.com/nim-lang/dlls.git dist/dlls")
     copyExe("dist/dlls/libz3.dll", "drnim/libz3.dll")
-
-  execFold("build drnim", "nim c drnim/drnim")
+    execFold("build drnim", "nim c drnim/drnim")
+  else:
+    if not dirExists("dist/z3"):
+      exec("git clone -q https://github.com/Z3Prover/z3.git dist/z3")
+      withDir("dist/z3"):
+        exec("git fetch")
+        exec("git checkout " & Z3StableCommit)
+        createDir("build")
+        withDir("build"):
+          exec("""cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -G "Unix Makefiles" ../""")
+          exec("make -j4")
+    execFold("build drnim", "nim cpp --dynlibOverride=libz3 drnim/drnim")
 
 proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %

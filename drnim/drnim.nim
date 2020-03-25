@@ -24,7 +24,7 @@ import z3 / z3_api
 when not defined(windows):
   # on UNIX we use static linking because UNIX's lib*.so system is broken
   # beyond repair and the neckbeards don't understand software development.
-  {.passL: "../z3/build64/libz3.a".}
+  {.passL: "dist/z3/build/libz3.a".}
 
 const
   HelpMessage = "DrNim Version $1 [$2: $3]\n" &
