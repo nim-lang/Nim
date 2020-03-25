@@ -148,7 +148,7 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
     if targetTyp.kind == tyBool:
-      discard # convOk
+      discard "convOk"
     elif targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
           src.getInt notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
