@@ -677,4 +677,4 @@ JavaScript-compatible code you should remember the following:
 Part 3
 ======
 
-Next part will be entirely about metaprogramming via macros: `Part III <tut3.html>`_
+The next part is entirely about metaprogramming via macros: `Part III <tut3.html>`_
