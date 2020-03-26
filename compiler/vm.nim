@@ -28,18 +28,6 @@ when hasFFI:
   import evalffi
 
 type
-  TRegisterKind = enum
-    rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
-  TFullReg = object   # with a custom mark proc, we could use the same
-                      # data representation as LuaJit (tagged NaNs).
-    case kind: TRegisterKind
-    of rkNone: nil
-    of rkInt: intVal: BiggestInt
-    of rkFloat: floatVal: BiggestFloat
-    of rkNode: node: PNode
-    of rkRegisterAddr: regAddr: ptr TFullReg
-    of rkNodeAddr: nodeAddr: ptr PNode
-
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
     prc: PSym                 # current prc; proc that is evaluated
@@ -1206,7 +1194,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
-          VmArgs(ra: ra, rb: rb, rc: rc, slots: regs.addr,
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif importcCond(prc):
@@ -1525,7 +1513,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
-        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: regs.addr,
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
       callback(args)
