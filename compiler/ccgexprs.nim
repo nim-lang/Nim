@@ -2950,7 +2950,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
       else:
         internalError(p.config, n.info, "node has no type")
     else:
-      ty = skipTypes(n.typ, abstractInstOwned).kind
+      ty = skipTypes(n.typ, abstractInstOwned + {tyStatic}).kind
     case ty
     of tySet:
       var cs: TBitSet
