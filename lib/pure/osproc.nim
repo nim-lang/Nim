@@ -1009,7 +1009,8 @@ elif not defined(useNimRtl):
       discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
       exitnow(1)
 
-    when not defined(uClibc) and (not defined(linux) or defined(android)):
+    when not defined(uClibc) and (not defined(linux) or defined(android)) and
+         not defined(haiku):
       var environ {.importc.}: cstringArray
 
     proc startProcessAfterFork(data: ptr StartProcessData) =
@@ -1039,7 +1040,7 @@ elif not defined(useNimRtl):
       discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
       if (poUsePath in data.options):
-        when defined(uClibc) or defined(linux):
+        when defined(uClibc) or defined(linux) or defined(haiku):
           # uClibc environment (OpenWrt included) doesn't have the full execvpe
           let exe = findExe(data.sysCommand)
           discard execve(exe, data.sysArgs, data.sysEnv)
