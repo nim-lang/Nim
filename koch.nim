@@ -513,10 +513,6 @@ proc runCI(cmd: string) =
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
 
-    ## remaining actions
-    when defined(posix):
-      kochExecFold("Docs", "docs --git.commit:devel")
-
 proc pushCsources() =
   if not dirExists("../csources/.git"):
     quit "[Error] no csources git repository found"
