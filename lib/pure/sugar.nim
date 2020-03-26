@@ -49,20 +49,8 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo(treeRepr(result))
   #echo(result.toStrLit())
 
-macro `=>`*(p, b: untyped): untyped =
-  ## Syntax sugar for anonymous procedures.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
-  ##     f(2, 2)
-  ##
-  ##   passTwoAndTwo((x, y) => x + y) # 4
-
-  #echo treeRepr(p)
-  #echo(treeRepr(b))
+template arrowImpl(inlinedFunc: static[bool],  p, b: untyped): untyped =
   var params: seq[NimNode] = @[newIdentNode("auto")]
-
   case p.kind
   of nnkPar, nnkTupleConstr:
     for c in children(p):
@@ -105,10 +93,37 @@ macro `=>`*(p, b: untyped): untyped =
       error("Expected proc type (->) got (" & $p[0].ident & ").")
   else:
     error("Incorrect procedure parameter list.")
-  result = newProc(params = params, body = b, procType = nnkLambda)
-  #echo(result.treeRepr)
-  #echo(result.toStrLit())
-  #return result # TODO: Bug?
+  when inlinedFunc: # Generates  (proc (): auto {.inline, noSideEffect.} = )
+    newProc(params = params, body = b, procType = nnkLambda,
+      pragmas = nnkPragma.newTree(newIdentNode("inline"), newIdentNode("noSideEffect")))
+  else:             # Generates  (proc (): auto = )
+    newProc(params = params, body = b, procType = nnkLambda)
+
+macro `=>`*(p, b: untyped): untyped =
+  ## Syntax sugar for anonymous procedures.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
+  ##     f(2, 2)
+  ##
+  ##   passTwoAndTwo((x, y) => x + y) # 4
+  arrowImpl(inlinedFunc = false, p, b)
+
+macro `==>`*(p, b: untyped): untyped {.since: (1, 1).} =
+  ## Syntax sugar for anonymous functions with `{.inline, noSideEffect.}` pragmas.
+  ## Same as `=>`, offers good performance and no side-effects.
+  ##
+  ## **See also:**
+  ## * `noSideEffect <manual.html#pragmas-nosideeffect-pragma>`_ pragma
+  runnableExamples:
+    let works = () ==> 1 + 2
+    ## let fails = () ==> writeFile("io.md", "nope") ## Error: Anonymous can have side effects
+    static:
+      let works = (a: int) ==> a + 2
+      ## let fails = (a: int) ==> echo(a + 2) ## Error: Anonymous can have side effects
+      let good = (a: int) ==> debugEcho a
+  arrowImpl(inlinedFunc = true, p, b)
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.
