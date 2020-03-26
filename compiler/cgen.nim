@@ -425,7 +425,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
-  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),

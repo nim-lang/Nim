@@ -49,6 +49,18 @@ const certificate_paths = [
     "/etc/openssl/certs",
 ]
 
+when defined(haiku):
+  const
+    B_FIND_PATH_EXISTING_ONLY = 0x4
+    B_FIND_PATH_DATA_DIRECTORY = 6
+
+  proc find_paths_etc(architecture: cstring, baseDirectory: cint,
+                      subPath: cstring, flags: uint32,
+                      paths: var ptr UncheckedArray[cstring],
+                      pathCount: var csize): int32
+                     {.importc, header: "<FindDirectory.h>".}
+  proc free(p: pointer) {.importc, header: "<stdlib.h>".}
+
 iterator scanSSLCertificates*(useEnvVars = false): string =
   ## Scan for SSL/TLS CA certificates on disk.
   ##
@@ -64,13 +76,26 @@ iterator scanSSLCertificates*(useEnvVars = false): string =
       yield fn
 
   else:
-    for p in certificate_paths:
-      if p.endsWith(".pem") or p.endsWith(".crt"):
-        if existsFile(p):
-          yield p
-      elif existsDir(p):
-        for fn in joinPath(p, "*").walkFiles():
-          yield fn
+    when not defined(haiku):
+      for p in certificate_paths:
+        if p.endsWith(".pem") or p.endsWith(".crt"):
+          if existsFile(p):
+            yield p
+        elif existsDir(p):
+          for fn in joinPath(p, "*").walkFiles():
+            yield fn
+    else:
+      var
+        paths: ptr UncheckedArray[cstring]
+        size: csize
+      let err = find_paths_etc(
+        nil, B_FIND_PATH_DATA_DIRECTORY, "ssl/CARootCertificates.pem",
+        B_FIND_PATH_EXISTING_ONLY, paths, size
+      )
+      if err == 0:
+        defer: free(paths)
+        for i in 0 ..< size:
+          yield $paths[i]
 
 # Certificates management on windows
 # when defined(windows) or defined(nimdoc):

@@ -4,11 +4,40 @@ void; ntyVoid; void; void
 int; ntyInt; int; int
 proc (); ntyProc; proc[void]; proc ()
 voidProc; ntyProc; proc[void]; proc ()
+listing fields for ObjType
+a: string
+b: int
+listing fields for ObjRef
+skipping ref type
+a: string
+b: int
+listing fields for RefType
+skipping ref type
+a: int
+b: float
+listing fields for typeof(a)
+skipping ref type
+a: string
+b: int
+listing fields for typeof(b)
+skipping ref type
+a: string
+b: int
+listing fields for typeof(c)
+skipping ref type
+a: int
+b: float
+listing fields for typeof(x)
+a: string
+b: int
+listing fields for typeof(x)
+a: int
+b: float
 typeDesc[range[1 .. 5]]; ntyTypeDesc; typeDesc[range[1, 5]]; typeDesc[range[1 .. 5]]
 typeDesc[range]; ntyTypeDesc; typeDesc[range[T]]; typeDesc[range]'''
 """
 
-import macros
+import macros, typetraits
 
 macro checkType(ex: typed): untyped =
   echo ex.getTypeInst.repr, "; ", ex.typeKind, "; ", ex.getType.repr, "; ", ex.getTypeImpl.repr
@@ -17,7 +46,6 @@ macro checkProcType(fn: typed): untyped =
   let fn_sym = if fn.kind == nnkProcDef: fn[0] else: fn
   echo fn_sym, "; ", fn_sym.typeKind, "; ", fn_sym.getType.repr, "; ", fn_sym.getTypeImpl.repr
 
-
 proc voidProc = echo "hello"
 proc intProc(a: int, b: float): int {.checkProcType.} = 10
 
@@ -25,6 +53,58 @@ checkType(voidProc())
 checkType(intProc(10, 20.0))
 checkType(voidProc)
 checkProcType(voidProc)
+
+macro listFields(T: typed) =
+  echo "listing fields for ", repr(T)
+  let inputExprType = getType(T)
+
+  var objType = inputExprType[1]
+  if objType.kind == nnkBracketExpr and objType.len > 1:
+    if ((objType[0].kind == nnkRefTy) or
+        (objType[0].kind == nnkSym and eqIdent(objType[0], "ref"))):
+      echo "skipping ref type"
+      objType = objType[1]
+
+  let typeAst = objType.getImpl
+
+  var objectDef = typeAst[2]
+  if objectDef.kind == nnkRefTy:
+    objectDef = objectDef[0]
+
+  let recList = objectDef[2]
+  for rec in recList:
+    echo $rec[0], ": ", $rec[1]
+
+type
+  ObjType* = object of RootObj
+    a: string
+    b: int
+
+  ObjRef = ref ObjType
+
+  RefType* = ref object of RootObj
+    a: int
+    b: float
+
+listFields ObjType
+listFields ObjRef
+listFields RefType
+
+let
+  a = new ObjType
+  b = new ObjRef
+  c = new RefType
+
+listFields typeOf(a)
+listFields typeOf(b)
+listFields typeOf(c)
+
+proc genericProc(x: object) =
+  listFields typeOf(x)
+
+genericProc a[]
+genericProc b[]
+genericProc c[]
 
 # bug #10548
 block:

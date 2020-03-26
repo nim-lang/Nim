@@ -19,9 +19,9 @@ doAssert $(@["1", "2", "3"]) == """@["1", "2", "3"]"""
 doAssert $(@['1', '2', '3']) == """@['1', '2', '3']"""
 
 # Tests for sets
-doAssert $(toSet([1])) == "{1}"
-doAssert $(toSet(["1"])) == """{"1"}"""
-doAssert $(toSet(['1'])) == """{'1'}"""
+doAssert $(toHashSet([1])) == "{1}"
+doAssert $(toHashSet(["1"])) == """{"1"}"""
+doAssert $(toHashSet(['1'])) == """{'1'}"""
 doAssert $(toOrderedSet([1, 2, 3])) == "{1, 2, 3}"
 doAssert $(toOrderedSet(["1", "2", "3"])) == """{"1", "2", "3"}"""
 doAssert $(toOrderedSet(['1', '2', '3'])) == """{'1', '2', '3'}"""

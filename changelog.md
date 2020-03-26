@@ -122,6 +122,7 @@ echo f
 - Added `net.getPeerCertificates` and `asyncnet.getPeerCertificates` for
   retrieving the verified certificate chain of the peer we are connected to
   through an SSL-wrapped `Socket`/`AsyncSocket`.
+- Added `distinctBase` overload for values: `assert 12.MyInt.distinctBase == 12`
 - Added `jsconsole.trace`, `jsconsole.table`, `jsconsole.exception` for JavaScript target.
 
 
