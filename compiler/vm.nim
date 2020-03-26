@@ -1534,6 +1534,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
       else:
         regs[ra].node = src[idx]
+        regs[ra].node.flags.incl nfIsRef
     of opcNSetChild:
       decodeBC(rkNode)
       let idx = regs[rb].intVal.int
