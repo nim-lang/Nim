@@ -677,11 +677,21 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
 
 proc checkLe(c: PEffects; a, b: PNode) =
   if c.graph.proofEngine != nil:
+    var cmpOp = mLeI
+    if a.typ != nil:
+      case a.typ.skipTypes(abstractInst).kind
+      of tyFloat..tyFloat128: cmpOp = mLeF64
+      of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
+      else: discard
+
     let (success, msg) = c.graph.proofEngine(c.graph, c.guards.s,
-      canon(buildLe(c.guards.o, a, b), c.guards.o))
+      canon(newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b), c.guards.o))
     if not success:
-      message(c.config, a.info, warnStaticIndexCheck,
-        "cannot prove: " & $a & " <= " & $b & "; counter example: " & msg)
+      var m = "cannot prove: " & $a & " <= " & $b
+      if msg.len > 0:
+        m.add "; counter example: "
+        m.add msg
+      message(c.config, a.info, warnStaticIndexCheck, m)
   else:
     case proveLe(c.guards, a, b)
     of impUnknown:
@@ -700,10 +710,11 @@ proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, idx, highBound(c.config, arr, c.guards.o))
 
 proc checkRange(c: PEffects; value: PNode; typ: PType) =
-  if typ.skipTypes(abstractInst - {tyRange}).kind == tyRange:
-    let lowBound = nkIntLit.newIntNode(firstOrd(c.config, typ))
+  let t = typ.skipTypes(abstractInst - {tyRange})
+  if t.kind == tyRange:
+    let lowBound = copyTree(t.n[0])
     lowBound.info = value.info
-    let highBound = nkIntLit.newIntNode(lastOrd(c.config, typ))
+    let highBound = copyTree(t.n[1])
     highBound.info = value.info
     checkLe(c, lowBound, value)
     checkLe(c, value, highBound)

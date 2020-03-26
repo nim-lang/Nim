@@ -90,6 +90,8 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
     else:
       let zt = if n.typ == nil: Z3_mk_int_sort(ctx) else: typeToZ3(ctx, n.typ)
       result = Z3_mk_numeral(ctx, $getOrdValue(n), zt)
+  of nkFloatLit..nkFloat64Lit:
+    result = Z3_mk_fpa_numeral_double(ctx, n.floatVal, Z3_mk_fpa_sort_double(ctx))
   of nkCallKinds:
     template rec(n): untyped = nodeToZ3(ctx, n, mapping, collectedVars)
 
