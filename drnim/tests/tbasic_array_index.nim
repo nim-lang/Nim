@@ -1,11 +1,11 @@
 discard """
-  nimout: '''tbasic_array_index.nim(23, 17) Warning: cannot prove: 0 <= len(a) - 4; counter example: a.len -> 3 [IndexCheck]
-tbasic_array_index.nim(23, 17) Warning: cannot prove: len(a) - 4 <= 9223372036854775807; counter example: a.len -> 9223372036854775812 [IndexCheck]
+  nimout: '''tbasic_array_index.nim(23, 17) Warning: cannot prove: 0 <= len(a) - 4; counter example: a.len -> 0 [IndexCheck]
 tbasic_array_index.nim(29, 5) Warning: cannot prove: 4.0 <= 1.0 [IndexCheck]
 '''
   cmd: "drnim $file"
   action: "compile"
 """
+
 
 {.push staticBoundChecks: on.}
 

@@ -51,6 +51,11 @@ type
   CannotMapToZ3Error = object of ValueError
   Z3Exception = object of ValueError
 
+  DrCon = object
+    z3: Z3_context
+    graph: ModuleGraph
+    mapping: Table[int, Z3_ast]
+
 proc notImplemented(msg: string) {.noinline.} =
   raise newException(CannotMapToZ3Error, "cannot map to Z3: " & msg)
 
@@ -62,8 +67,8 @@ proc typeToZ3(ctx: Z3_context; t: PType): Z3_sort =
     result = Z3_mk_bool_sort(ctx)
   of tyFloat..tyFloat128:
     result = Z3_mk_fpa_sort_double(ctx)
-  of tyChar,tyUInt..tyUInt64:
-    result = Z3_mk_bv_sort(ctx, cuint getSize(nil, t))
+  of tyChar, tyUInt..tyUInt64:
+    result = Z3_mk_bv_sort(ctx, cuint(getSize(nil, t) * 8))
   else:
     notImplemented(typeToString(t))
 
@@ -71,16 +76,16 @@ template binary(op, a, b): untyped =
   var arr = [a, b]
   op(ctx, cuint(2), addr(arr[0]))
 
-proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
-              collectedVars: var seq[Z3_ast]): Z3_ast =
+proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
+  template ctx: untyped = c.z3
   case n.kind
   of nkSym:
-    result = mapping.getOrDefault(n.sym.id)
+    result = c.mapping.getOrDefault(n.sym.id)
     if pointer(result) == nil:
       let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
       result = Z3_mk_const(ctx, name, typeToZ3(ctx, n.sym.typ))
-      mapping[n.sym.id] = result
-      collectedVars.add result
+      c.mapping[n.sym.id] = result
+      vars.add n
   of nkCharLit..nkUInt64Lit:
     if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyInt..tyInt64}:
       # optimized for the common case
@@ -93,7 +98,7 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
   of nkFloatLit..nkFloat64Lit:
     result = Z3_mk_fpa_numeral_double(ctx, n.floatVal, Z3_mk_fpa_sort_double(ctx))
   of nkCallKinds:
-    template rec(n): untyped = nodeToZ3(ctx, n, mapping, collectedVars)
+    template rec(n): untyped = nodeToZ3(c, n, vars)
 
     assert n.len > 0
     assert n[0].kind == nkSym
@@ -110,12 +115,12 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
       # len(x) needs the same logic as 'x' itself
       if n[1].kind == nkSym:
         let sym = n[1].sym
-        result = mapping.getOrDefault(-sym.id)
+        result = c.mapping.getOrDefault(-sym.id)
         if pointer(result) == nil:
           let name = Z3_mk_string_symbol(ctx, sym.name.s & ".len")
           result = Z3_mk_const(ctx, name, Z3_mk_int_sort(ctx))
-          mapping[-sym.id] = result
-          collectedVars.add result
+          c.mapping[-sym.id] = result
+          vars.add n
       else:
         notImplemented(renderTree(n))
     of mAddI, mSucc:
@@ -178,6 +183,51 @@ proc nodeToZ3(ctx: Z3_context; n: PNode; mapping: var Table[int, Z3_ast];
   else:
     notImplemented(renderTree(n))
 
+proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
+  let cmpOp =
+    case n.typ.skipTypes(abstractInst).kind
+    of tyFloat..tyFloat128: mLeF64
+    of tyChar, tyUInt..tyUInt64: mLeU
+    else: mLeI
+
+  var lowBound, highBound: PNode
+  if n.kind == nkSym:
+    let v = n.sym
+    let t = v.typ.skipTypes(abstractInst - {tyRange})
+
+    case t.kind
+    of tyRange:
+      lowBound = t.n[0]
+      highBound = t.n[1]
+    of tyFloat..tyFloat128:
+      # no range information for non-range'd floats
+      return
+    of tyUInt..tyUInt64, tyChar:
+      lowBound = newIntNode(nkUInt64Lit, firstOrd(nil, v.typ))
+      highBound = newIntNode(nkUInt64Lit, lastOrd(nil, v.typ))
+    of tyInt..tyInt64, tyEnum:
+      lowBound = newIntNode(nkInt64Lit, firstOrd(nil, v.typ))
+      highBound = newIntNode(nkInt64Lit, lastOrd(nil, v.typ))
+    else:
+      # no range information available:
+      return
+  else:
+    # we know it's a 'len(x)' expression and we seek to teach
+    # Z3 that the result is >= 0 and <= high(int).
+    doAssert n.kind in nkCallKinds
+    doAssert n[0].kind == nkSym
+    doAssert n.len == 2
+
+    lowBound = newIntNode(nkInt64Lit, 0)
+    highBound = newIntNode(nkInt64Lit, lastOrd(nil, n.typ))
+
+  let x = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), lowBound, n)
+  let y = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), n, highBound)
+
+  var dummy: seq[PNode]
+  res.add nodeToZ3(c, x, dummy)
+  res.add nodeToZ3(c, y, dummy)
+
 proc on_err(ctx: Z3_context, e: Z3_error_code) {.nimcall.} =
   let msg = $Z3_get_error_msg(ctx, e)
   raise newException(Z3Exception, msg)
@@ -198,10 +248,13 @@ proc conj(ctx: Z3_context; conds: seq[Z3_ast]): Z3_ast =
     result = Z3_mk_true(ctx)
 
 proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
-  var mapping = initTable[int, Z3_ast]()
+  var c: DrCon
+  c.graph = graph
+  c.mapping = initTable[int, Z3_ast]()
   let cfg = Z3_mk_config()
   Z3_set_param_value(cfg, "model", "true");
   let ctx = Z3_mk_context(cfg)
+  c.z3 = ctx
   Z3_del_config(cfg)
   Z3_set_error_handler(ctx, on_err)
 
@@ -223,16 +276,18 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
 
     ]#
 
-    var collectedVars: seq[Z3_ast]
+    var collectedVars: seq[PNode]
 
     let solver = Z3_mk_solver(ctx)
     var lhs: seq[Z3_ast]
     for assumption in assumptions:
-      let za = nodeToZ3(ctx, assumption, mapping, collectedVars)
+      let za = nodeToZ3(c, assumption, collectedVars)
       #Z3_solver_assert ctx, solver, za
       lhs.add za
 
-    let z3toProve = nodeToZ3(ctx, toProve, mapping, collectedVars)
+    let z3toProve = nodeToZ3(c, toProve, collectedVars)
+    for v in collectedVars:
+      addRangeInfo(c, v, lhs)
 
     # to make Z3 produce nice counterexamples, we try to prove the
     # negation of our conjecture and see if it's Z3_L_FALSE
