@@ -59,7 +59,8 @@ type
 proc notImplemented(msg: string) {.noinline.} =
   raise newException(CannotMapToZ3Error, "cannot map to Z3: " & msg)
 
-proc typeToZ3(ctx: Z3_context; t: PType): Z3_sort =
+proc typeToZ3(c: DrCon; t: PType): Z3_sort =
+  template ctx: untyped = c.z3
   case t.skipTypes(abstractInst).kind
   of tyEnum, tyInt..tyInt64:
     result = Z3_mk_int_sort(ctx)
@@ -68,7 +69,8 @@ proc typeToZ3(ctx: Z3_context; t: PType): Z3_sort =
   of tyFloat..tyFloat128:
     result = Z3_mk_fpa_sort_double(ctx)
   of tyChar, tyUInt..tyUInt64:
-    result = Z3_mk_bv_sort(ctx, cuint(getSize(nil, t) * 8))
+    result = Z3_mk_bv_sort(ctx, 64)
+    #cuint(getSize(c.graph.config, t) * 8))
   else:
     notImplemented(typeToString(t))
 
@@ -83,7 +85,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     result = c.mapping.getOrDefault(n.sym.id)
     if pointer(result) == nil:
       let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
-      result = Z3_mk_const(ctx, name, typeToZ3(ctx, n.sym.typ))
+      result = Z3_mk_const(ctx, name, typeToZ3(c, n.sym.typ))
       c.mapping[n.sym.id] = result
       vars.add n
   of nkCharLit..nkUInt64Lit:
@@ -92,8 +94,10 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_int64(ctx, clonglong(n.intval), Z3_mk_int_sort(ctx))
     elif n.typ != nil and n.typ.kind == tyBool:
       result = if n.intval != 0: Z3_mk_true(ctx) else: Z3_mk_false(ctx)
+    elif n.typ != nil and isUnsigned(n.typ):
+      result = Z3_mk_unsigned_int64(ctx, cast[uint64](n.intVal), typeToZ3(c, n.typ))
     else:
-      let zt = if n.typ == nil: Z3_mk_int_sort(ctx) else: typeToZ3(ctx, n.typ)
+      let zt = if n.typ == nil: Z3_mk_int_sort(ctx) else: typeToZ3(c, n.typ)
       result = Z3_mk_numeral(ctx, $getOrdValue(n), zt)
   of nkFloatLit..nkFloat64Lit:
     result = Z3_mk_fpa_numeral_double(ctx, n.floatVal, Z3_mk_fpa_sort_double(ctx))
@@ -142,9 +146,9 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_ite(ctx, Z3_mk_lt(ctx, rec n[1], rec n[2]),
         rec n[1], rec n[2])
     of mLeU:
-      result = Z3_mk_bvsle(ctx, rec n[1], rec n[2])
+      result = Z3_mk_bvule(ctx, rec n[1], rec n[2])
     of mLtU:
-      result = Z3_mk_bvslt(ctx, rec n[1], rec n[2])
+      result = Z3_mk_bvult(ctx, rec n[1], rec n[2])
     of mAnd:
       result = binary(Z3_mk_and, rec n[1], rec n[2])
     of mOr:
@@ -204,7 +208,9 @@ proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
       return
     of tyUInt..tyUInt64, tyChar:
       lowBound = newIntNode(nkUInt64Lit, firstOrd(nil, v.typ))
+      lowBound.typ = v.typ
       highBound = newIntNode(nkUInt64Lit, lastOrd(nil, v.typ))
+      highBound.typ = v.typ
     of tyInt..tyInt64, tyEnum:
       lowBound = newIntNode(nkInt64Lit, firstOrd(nil, v.typ))
       highBound = newIntNode(nkInt64Lit, lastOrd(nil, v.typ))
@@ -229,6 +235,7 @@ proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
   res.add nodeToZ3(c, y, dummy)
 
 proc on_err(ctx: Z3_context, e: Z3_error_code) {.nimcall.} =
+  #writeStackTrace()
   let msg = $Z3_get_error_msg(ctx, e)
   raise newException(Z3Exception, msg)
 
