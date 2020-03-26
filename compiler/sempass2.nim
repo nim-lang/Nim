@@ -681,7 +681,7 @@ proc checkLe(c: PEffects; a, b: PNode) =
       canon(buildLe(c.guards.o, a, b), c.guards.o))
     if not success:
       message(c.config, a.info, warnStaticIndexCheck,
-        "cannot prove: " & $a & " <= " & $b & "; additional information: " & msg)
+        "cannot prove: " & $a & " <= " & $b & "; counter example: " & msg)
   else:
     case proveLe(c.guards, a, b)
     of impUnknown:

@@ -1,6 +1,6 @@
 discard """
-  nimout: '''tbasic_array_index.nim(21, 17) Warning: cannot prove: 0 <= len(a) - 4; additional information: a.len -> 3 [IndexCheck]
-tbasic_array_index.nim(21, 17) Warning: cannot prove: len(a) - 4 <= 9223372036854775807; additional information: a.len -> 9223372036854775812 [IndexCheck]'''
+  nimout: '''tbasic_array_index.nim(21, 17) Warning: cannot prove: 0 <= len(a) - 4; counter example: a.len -> 3 [IndexCheck]
+tbasic_array_index.nim(21, 17) Warning: cannot prove: len(a) - 4 <= 9223372036854775807; counter example: a.len -> 9223372036854775812 [IndexCheck]'''
   cmd: "drnim/drnim $file"
   action: "compile"
 """
