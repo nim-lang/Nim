@@ -17,6 +17,27 @@ engine in order to allow verify / validate software written in Nim.
 DrNim's command line options are the same as the Nim compiler's.
 
 
+DrNim currently only checks the sections of your code that are marked
+via ``staticBoundChecks: on``:
+
+.. codeblock:: nim
+
+  {.push staticBoundChecks: on.}
+  # <--- code section here ---->
+  {.pop.}
+
+DrNim currently only tries to prove array indexing or subrange checks,
+overflow errors are *not* prevented. Overflows will be checked for in
+the future.
+
+Later versions of the **Nim compiler** will **assume** that the checks inside
+the ``staticBoundChecks: on`` environment have been proven correct and so
+it will **omit** the runtime checks. If you do not want this behavior, use
+instead ``{.push staticBoundChecks: defined(nimDrNim).}``. This way the
+Nim compiler remains unaware of the performed proofs but DrNim will prove
+your code.
+
+
 Installation
 ============
 

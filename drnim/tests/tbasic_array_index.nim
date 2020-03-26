@@ -7,7 +7,7 @@ tbasic_array_index.nim(35, 36) Warning: cannot prove: a <= 10'u32; counter examp
   action: "compile"
 """
 
-{.push staticBoundChecks: on.}
+{.push staticBoundChecks: defined(nimDrNim).}
 
 proc takeNat(n: Natural) =
   discard
