@@ -542,37 +542,18 @@ proc value(this: var DebugPrinter; value: PSym) =
 
   this.closeCurly
 
-proc builtinTypeSubstitution(this: var DebugPrinter; substitution: string) =
-  if this.useColor:
-    this.res.add backrefStyle
-  this.res.add substitution
-  if this.useColor:
-    this.res.add resetStyle
-
 proc value(this: var DebugPrinter; value: PType) =
   # these shortcuts for builtin types are done before ``earlyExit`` because they are shorter that backreference links
-  if this.compressBuiltinTypes and value != nil:
-    case value.kind
-    of tyBool:     this.builtinTypeSubstitution "<bool>";    return
-    of tyChar:     this.builtinTypeSubstitution "<char>";    return
-    of tyPointer:  this.builtinTypeSubstitution "<pointer>"; return
-    of tyString:   this.builtinTypeSubstitution "<string>";  return
-    of tyCString:  this.builtinTypeSubstitution "<cstring>"; return
-    of tyInt:      this.builtinTypeSubstitution "<int>";     return
-    of tyInt8:     this.builtinTypeSubstitution "<int8>";    return
-    of tyInt16:    this.builtinTypeSubstitution "<int16>";   return
-    of tyInt32:    this.builtinTypeSubstitution "<int32>";   return
-    of tyInt64:    this.builtinTypeSubstitution "<int64>";   return
-    of tyFloat:    this.builtinTypeSubstitution "<float>";   return
-    of tyFloat32:  this.builtinTypeSubstitution "<float32>"; return
-    of tyFloat64,: this.builtinTypeSubstitution "<float64>"; return
-    of tyUInt:     this.builtinTypeSubstitution "<uint>";    return
-    of tyUInt8:    this.builtinTypeSubstitution "<uint8>";   return
-    of tyUInt16:   this.builtinTypeSubstitution "<uint16>";  return
-    of tyUInt32:   this.builtinTypeSubstitution "<uint32>";  return
-    of tyUInt64:   this.builtinTypeSubstitution "<uint64>";  return
-    else:
-      discard
+  if this.compressBuiltinTypes and value != nil and value.kind in {
+      tyBool, tyChar, tyPointer, tyString, tyCString, tyInt, tyInt8,
+      tyInt16, tyInt32, tyInt64, tyFloat, tyFloat32, tyFloat64, tyUInt,
+      tyUInt8, tyUInt16, tyUInt32, tyUInt64}:
+    if this.useColor:
+      this.res.add backrefStyle
+    this.res.add toLowerAscii("<" & ($value.kind)[2..^1] & ">")
+    if this.useColor:
+      this.res.add resetStyle
+    return
   earlyExit(this, value)
 
   this.openCurly
