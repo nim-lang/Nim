@@ -49,7 +49,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   #echo(treeRepr(result))
   #echo(result.toStrLit())
 
-template arrowImpl(inlinedFunc: static[bool],  p, b: untyped): untyped =
+template arrowImpl(inlinedFunc: static[bool], p, b: untyped): untyped =
   var params: seq[NimNode] = @[newIdentNode("auto")]
   case p.kind
   of nnkPar, nnkTupleConstr:
