@@ -11,7 +11,10 @@
 
 const
   NimbleStableCommit = "4007b2a778429a978e12307bf13a038029b4c4d9" # master
-  Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
+
+when not defined(windows):
+  const
+    Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
 
 when defined(gcc) and defined(windows):
   when defined(x86):
@@ -480,8 +483,8 @@ proc buildDrNim() =
   when defined(windows):
     if not dirExists("dist/dlls"):
       exec("git clone -q https://github.com/nim-lang/dlls.git dist/dlls")
-    copyExe("dist/dlls/libz3.dll", "drnim/libz3.dll")
-    execFold("build drnim", "nim c drnim/drnim")
+    copyExe("dist/dlls/libz3.dll", "bin/libz3.dll")
+    execFold("build drnim", "nim c -o:$1 drnim/drnim" % "bin/drnim".exe)
   else:
     if not dirExists("dist/z3"):
       exec("git clone -q https://github.com/Z3Prover/z3.git dist/z3")
@@ -492,7 +495,10 @@ proc buildDrNim() =
         withDir("build"):
           exec("""cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -G "Unix Makefiles" ../""")
           exec("make -j4")
-    execFold("build drnim", "nim cpp --dynlibOverride=libz3 drnim/drnim")
+    execFold("build drnim", "nim cpp --dynlibOverride=libz3 -o:$1 drnim/drnim" % "bin/drnim".exe)
+  # always run the tests for now:
+  exec("testament/testament".exe & " --nim:" & "drnim".exe & " pat drnim/tests/*.nim")
+
 
 proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
@@ -544,7 +550,6 @@ proc runCI(cmd: string) =
       kochExecFold("C sources", "csource")
     elif defined(windows):
       buildDrNim()
-      exec("testament/testament".exe & " pat drnim/tests/*.nim")
       when false:
         kochExec "csource"
         kochExec "zip"
