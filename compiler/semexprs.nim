@@ -2268,7 +2268,7 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     result = semDirectOp(c, n, flags)
     c.config.internalAssert result[1].typ.kind == tyTypeDesc
     let typ = result[1].typ.base
-    if typ.kind in {tyObject, tyTuple}:
+    if typ.kind == tyObject:
       checkDefaultConstruction(c, typ, n.info)
   else:
     result = semDirectOp(c, n, flags)
