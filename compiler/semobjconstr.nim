@@ -138,7 +138,7 @@ proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): strin
 
 proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string =
   for r in directFieldsInRecList(fieldsRecList):
-    if {tfNotNil, tfNeedsInit} * r.sym.typ.flags != {}:
+    if {tfNotNil, tfRequiresInit} * r.sym.typ.flags != {}:
       let assignment = locateFieldInInitExpr(c, r.sym, initExpr)
       if assignment == nil:
         if result.len == 0:
@@ -358,15 +358,10 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   # It's possible that the object was not fully initialized while
   # specifying a .requiresInit. pragma.
-  # XXX: Turn this into an error in the next release
-  if tfNeedsInit in t.flags and initResult != initFull:
-    # XXX: Disable this warning for now, because tfNeedsInit is propagated
-    # too aggressively from fields to object types (and this is not correct
-    # in case objects)
-    when false: message(n.info, warnUser,
+  if tfRequiresInit in t.flags and initResult != initFull:
+    localError(c.config, n.info,
       "object type uses the 'requiresInit' pragma, but not all fields " &
-      "have been initialized. future versions of Nim will treat this as " &
-      "an error")
+      "have been initialized.")
 
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.

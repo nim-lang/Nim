@@ -184,7 +184,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
-  if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
+  if {tfRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n, volatileCheck=true)
@@ -253,7 +253,7 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
-      if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
+      if {tfRequiresInit, tfNotNil} * s.typ.flags != {}:
         message(a.config, n.info, warnProveInit, s.name.s)
       else:
         message(a.config, n.info, warnUninit, s.name.s)
@@ -838,7 +838,7 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n[1]
       initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
@@ -1203,7 +1203,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
         createTypeBoundOps(t, typ, param.info)
 
   if not isEmptyType(s.typ[0]) and
-      ({tfNeedsInit, tfNotNil} * s.typ[0].flags != {} or
+      ({tfRequiresInit, tfNotNil} * s.typ[0].flags != {} or
       s.typ[0].skipTypes(abstractInst).kind == tyVar) and
       s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
