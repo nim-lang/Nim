@@ -29,6 +29,7 @@ type
   TFlowVarKind = enum
     fvInvalid # invalid type T for 'FlowVar[T]'
     fvGC      # FlowVar of a GC'ed type
+    fvDestroy # FlowVar with destructor type
     fvBlob    # FlowVar of a blob type
 
 proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
@@ -37,7 +38,9 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   else: srFlowVar
 
 proc flowVarKind(t: PType): TFlowVarKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
+  let t2 = t.skipTypes(abstractInst)
+  if t2.attachedOps[attachedAsgn] != nil: fvDestroy
+  elif t2.kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
 
@@ -147,12 +150,23 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = fv.typ[1].flowVarKind
-    if fk == fvInvalid:
+    let fk = flowVarKind(fv.typ[1])
+    case fk:
+    of fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ[1]))
-    body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
-      if fk == fvGC: "data" else: "blob", fv.info, g.cache), call)
+    of fvDestroy:
+      var asgnCall = newNode(nkCall)
+      asgnCall.add newSymNode(fv.typ[1].skipTypes(abstractInst).attachedOps[attachedAsgn])
+      asgnCall.add genAddrOf(indirectAccess(threadLocalProm.newSymNode, "blob", fv.info, g.cache), tyVar)
+      asgnCall.add call
+      body.add asgnCall
+    of fvBlob:
+      body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
+        "blob", fv.info, g.cache), call)
+    of fvGC:
+      body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
+          "data", fv.info, g.cache), call)
     if fk == fvGC:
       let incRefCall = newNodeI(nkCall, fv.info, 2)
       incRefCall[0] = newSymNode(getSysMagic(g, fv.info, "GCref", mGCref))
