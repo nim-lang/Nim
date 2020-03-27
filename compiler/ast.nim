@@ -1056,6 +1056,11 @@ proc mloc*(p: PSym): var TLoc =
 proc r*(a: TLoc): Rope =
   result = a.roap
 
+proc mr*(a: var TLoc): var Rope =
+  when defined(debugTLoc):
+    echo "get rope mut"
+  result = a.roap
+
 proc clearRope*(a: TLoc) =
   assert a.roap == nil
   when defined(debugTLoc):

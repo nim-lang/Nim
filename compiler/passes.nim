@@ -236,9 +236,6 @@ proc processUncachedModule*(graph: ModuleGraph; module: PSym;
   # id synchronization point for more consistent code generation:
   idSynchronizationPoint(1000)
 
-  when not defined(release):
-    raise newException(Defect, "cached mod")
-
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream) =
   # if we're starting with stopping, then we're done
   if graph.stopCompile():

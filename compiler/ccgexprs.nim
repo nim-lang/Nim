@@ -1389,14 +1389,9 @@ proc genObjConstr(p: BProc, e: PNode, d: var TLoc) =
   for i in 1..<e.len:
     let it = e[i]
     var tmp2: TLoc
-    when false:
-      let field = lookupFieldAgain(p, ty, it[0].sym, r)
-      {.warning: "moved to mutate r first".}
-      tmp2.setRope r
-    else:
-      tmp2.setRope r
-      let field = lookupFieldAgain(p, ty, it[0].sym, r)
-      tmp2.setRope tmp2.r
+    tmp2.setRope r
+    let field = lookupFieldAgain(p, ty, it[0].sym, tmp2.mr)
+    tmp2.setRope tmp2.r
     if field.loc.r == nil: fillObjectFields(p.module, ty)
     if field.loc.r == nil: internalError(p.config, e.info, "genObjConstr")
     if it.len == 3 and optFieldCheck in p.options:

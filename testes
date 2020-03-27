@@ -22,7 +22,7 @@ function clean
 end
 
 function build-compiler
-	if ./koch temp --define:nimIncremental --nimcache:nimcache -d:release --stackTrace:on
+	if ./koch temp -d:nimIncremental --nimcache:nimcache --stackTrace:on
 		notice compiler built
 	else
 		error failed compiler build
@@ -39,7 +39,7 @@ function build-sanity
 	end
 end
 function build-test
-	if bin/nim_temp c --define:debugTLoc --nimcache:goats --incremental:on $test
+	if bin/nim_temp c -d:debugTLoc --debuginfo:on --nimcache:goats --incremental:on $test
 		notice test built
 	else
 		error failed test build
