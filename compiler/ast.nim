@@ -517,8 +517,10 @@ type
     tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
 
-    tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
-                      # other type so that it requires initialization
+    tfHasRequiresInit,# type constains a "not nil" constraint somewhere or
+                      # a `requiresInit` field, so the default zero init
+                      # is not appropriate
+    tfRequiresInit,   # all fields of the type must be initialized
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
@@ -1484,11 +1486,11 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil
     elif owner.kind notin HaveTheirOwnEmpty:
-      owner.flags.incl tfNeedsInit
+      owner.flags.incl tfHasRequiresInit
 
-  if tfNeedsInit in elem.flags:
+  if tfRequiresInit in elem.flags:
     if owner.kind in HaveTheirOwnEmpty: discard
-    else: owner.flags.incl tfNeedsInit
+    else: owner.flags.incl tfHasRequiresInit
 
   if elem.isMetaType:
     owner.flags.incl tfHasMeta

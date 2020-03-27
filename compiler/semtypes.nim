@@ -139,7 +139,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
-  if tfNotNil in e.typ.flags and not hasNull: incl(result.flags, tfNeedsInit)
+  if tfNotNil in e.typ.flags and not hasNull: incl(result.flags, tfRequiresInit)
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
@@ -254,15 +254,15 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
       result = semRangeAux(c, n[1], prev)
       let n = result.n
       if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
           n[0].floatVal > 0.0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
           n[1].floatVal < 0.0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
     else:
       if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")

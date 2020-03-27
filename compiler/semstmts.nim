@@ -336,7 +336,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
 
 proc checkNilable(c: PContext; v: PSym) =
   if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and
-      {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
+      {tfNotNil, tfRequiresInit} * v.typ.flags != {}:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
     elif tfNotNil in v.typ.flags and not v.astdef.typ.isNil and tfNotNil notin v.astdef.typ.flags:

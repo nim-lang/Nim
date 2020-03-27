@@ -1088,7 +1088,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wRequiresInit:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfNeedsInit)
+        else: incl(sym.typ.flags, tfRequiresInit)
       of wByRef:
         noVal(c, it)
         if sym == nil or sym.typ == nil:
