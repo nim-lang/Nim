@@ -76,7 +76,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
           # with them to prevent undefined behaviour and because the codegen
           # is free to emit expressions multiple times!
           d.k = locCall
-          d.r = pl
+          d.setRope pl
           excl d.flags, lfSingleUse
         else:
           if d.k == locNone and p.splitDecls == 0:
@@ -85,7 +85,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
             if d.k == locNone: getTemp(p, typ[0], d)
             var list: TLoc
             initLoc(list, locCall, d.lode, OnUnknown)
-            list.r = pl
+            list.setRope pl
             genAssignment(p, d, list, {}) # no need for deep copying
             if canRaise: raiseExit(p)
 
@@ -94,7 +94,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
-        list.r = pl
+        list.setRope pl
         genAssignment(p, d, list, {}) # no need for deep copying
         if canRaise: raiseExit(p)
       else:
@@ -171,7 +171,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
         linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
       if ntyp.kind == tyVar and not compileToCpp(p.module):
         var t: TLoc
-        t.r = "(*$1)" % [a.rdLoc]
+        t.setRope "(*$1)" % [a.rdLoc]
         result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       else:
         result = "$1$3, $2" % [a.rdLoc, lenExpr(p, a), dataField(p)]
@@ -181,7 +181,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
       case lastSon(a.t).kind
       of tyString, tySequence:
         var t: TLoc
-        t.r = "(*$1)" % [a.rdLoc]
+        t.setRope "(*$1)" % [a.rdLoc]
         result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
       of tyArray:
         result = "$1, $2" % [rdLoc(a), rope(lengthOrd(p.config, lastSon(a.t)))]
@@ -314,9 +314,10 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
       if tfIterator in typ.flags:
-        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+        list.setRope PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
       else:
-        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+        list.setRope PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+
       genAssignment(p, d, list, {}) # no need for deep copying
       if canRaise: raiseExit(p)
     else:
@@ -522,14 +523,14 @@ proc genInfixCall(p: BProc, le, ri: PNode, d: var TLoc) =
         # with them to prevent undefined behaviour and because the codegen
         # is free to emit expressions multiple times!
         d.k = locCall
-        d.r = pl
+        d.setRope pl
         excl d.flags, lfSingleUse
       else:
         if d.k == locNone: getTemp(p, typ[0], d)
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
-        list.r = pl
+        list.setRope pl
         genAssignment(p, d, list, {}) # no need for deep copying
     else:
       pl.add(~";$n")
@@ -610,7 +611,7 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
       initLoc(list, locCall, ri, OnUnknown)
-      list.r = pl
+      list.setRope pl
       genAssignment(p, d, list, {}) # no need for deep copying
   else:
     pl.add(~"];$n")

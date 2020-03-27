@@ -94,7 +94,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     c &= "\254"
     return
 
-  #echo t.kind, flags
   case t.kind
   of tyGenericInvocation:
     for i in 0..<t.len:
@@ -181,8 +180,6 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if t.len > 0:
       c.hashType t.lastSon, flags
     else:
-      # araq says these are typeclasses or some other generic goodness
-      echo "pointer w/o lastSon"
       c &= ".emptyptr"
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:

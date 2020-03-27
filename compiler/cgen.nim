@@ -67,7 +67,7 @@ proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
   result.storage = s
   result.lode = lode
-  result.r = nil
+  result.clearRope
   result.flags = {}
 
 proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
@@ -77,7 +77,7 @@ proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
     a.lode = lode
     a.storage = s
     if a.r == nil:
-      a.r = r
+      a.setRope r
 
 proc t(a: TLoc): PType {.inline.} =
   if a.lode.kind == nkSym:
@@ -408,7 +408,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     if containsGcRef:
       var nilLoc: TLoc
       initLoc(nilLoc, locTemp, loc.lode, OnStack)
-      nilLoc.r = rope("NIM_NIL")
+      nilLoc.setRope rope("NIM_NIL")
       genRefAssign(p, loc, nilLoc)
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
@@ -454,11 +454,11 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # ``var v = X()`` gets transformed into ``X(&v)``.
     # Nowadays the logic in ccgcalls deals with this case however.
     if not immediateAsgn:
-      constructLoc(p, v.loc)
+      constructLoc(p, v.mloc)
 
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
-  result.r = "T" & rope(p.labels) & "_"
+  result.setRope "T" & rope(p.labels) & "_"
   linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   result.k = locTemp
   result.lode = lodeTyp t
@@ -468,7 +468,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
 
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
   inc(p.labels)
-  result.r = "T" & rope(p.labels) & "_"
+  result.setRope "T" & rope(p.labels) & "_"
   linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t), result.r, value])
   result.k = locTemp
   result.lode = lodeTyp t
@@ -477,7 +477,7 @@ proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
 
 proc getIntTemp(p: BProc, result: var TLoc) =
   inc(p.labels)
-  result.r = "T" & rope(p.labels) & "_"
+  result.setRope "T" & rope(p.labels) & "_"
   linefmt(p, cpsLocals, "NI $1;$n", [result.r])
   result.k = locTemp
   result.storage = OnStack
@@ -487,8 +487,8 @@ proc getIntTemp(p: BProc, result: var TLoc) =
 proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
-    if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
+    fillLoc(s.mloc, locLocalVar, n, mangleLocalName(p, s), OnStack)
+    if s.kind == skLet: incl(s.mloc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
   result.add getTypeDesc(p.module, s.typ)
@@ -525,15 +525,15 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   # XXX: ?
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
-    if treatGlobalDifferentlyForHCR(p.module, s): incl(s.loc.flags, lfIndirect)
+    fillLoc(s.mloc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
+    if treatGlobalDifferentlyForHCR(p.module, s): incl(s.mloc.flags, lfIndirect)
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
-      s.loc.r = mangleDynLibProc(s)
+      s.loc.setRope mangleDynLibProc(s)
     if value != nil:
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
@@ -575,7 +575,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
       p.module.s[cfsVars].add(decl)
   if p.withinLoop > 0 and value == nil:
     # fixes tests/run/tzeroarray:
-    resetLoc(p, s.loc)
+    resetLoc(p, s.mloc)
 
 proc assignParam(p: BProc, s: PSym, retType: PType) =
   assert(s.loc.r != nil)
@@ -584,7 +584,7 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locProc, n, mangleName(m, sym), OnStack)
+    fillLoc(sym.mloc, locProc, n, mangleName(m, sym), OnStack)
 
 proc getLabel(p: BProc): TLabel =
   inc(p.labels)
@@ -693,7 +693,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
       p.options = p.options - {optStackTrace}
       var dest: TLoc
       initLoc(dest, locTemp, lib.path, OnStack)
-      dest.r = getTempName(m)
+      dest.setRope getTempName(m)
       appcg(m, m.s[cfsDynLibInit],"$1 $2;$n",
            [getTypeDesc(m, lib.path.typ), rdLoc(dest)])
       expr(p, lib.path, dest)
@@ -723,7 +723,7 @@ proc symInDynamicLib(m: BModule, sym: PSym) =
   var extname = sym.loc.r
   if not isCall: loadDynamicLib(m, lib)
   var tmp = mangleDynLibProc(sym)
-  sym.loc.r = tmp             # from now on we only need the internal name
+  sym.loc.setRope tmp         # from now on we only need the internal name
   sym.typ.sym = nil           # generate a new name
   inc(m.labels, 2)
   if isCall:
@@ -757,9 +757,9 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
   var lib = sym.annex
   var extname = sym.loc.r
   loadDynamicLib(m, lib)
-  incl(sym.loc.flags, lfIndirect)
+  incl(sym.mloc.flags, lfIndirect)
   var tmp = mangleDynLibProc(sym)
-  sym.loc.r = tmp             # from now on we only need the internal name
+  sym.loc.setRope tmp             # from now on we only need the internal name
   inc(m.labels, 2)
   appcg(m, m.s[cfsDynLibInit],
       "$1 = ($2*) #nimGetProcAddr($3, $4);$n",
@@ -768,7 +768,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
-  sym.loc.r = mangleDynLibProc(sym)
+  sym.mloc.setRope mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 
 proc cgsym(m: BModule, name: string): Rope =
@@ -990,10 +990,11 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     result = "$1(*)$2" % [rettype, params]
 
 proc genProcBody(p: BProc; procBody: PNode) =
-  if startsWith($p.module.tmpBase, "TM"):
-    writeStackTrace()
-    echo "genProcBody against         : ", $p.module.cfilename
-    echo "genProcBody against p module: ", $p.module.tmpBase
+  when not defined(release):
+    if startsWith($p.module.tmpBase, "TM"):
+      writeStackTrace()
+      echo "genProcBody against         : ", $p.module.cfilename
+      echo "genProcBody against p module: ", $p.module.tmpBase
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
@@ -1041,10 +1042,10 @@ proc genProcAux(m: BModule, prc: PSym) =
       if sfNoInit in prc.flags: discard
       elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
-        resetLoc(p, res.loc)
+        resetLoc(p, res.mloc)
       if skipTypes(res.typ, abstractInst).kind == tyArray:
         #incl(res.loc.flags, lfIndirect)
-        res.loc.storage = OnUnknown
+        res.mloc.storage = OnUnknown
 
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
@@ -1196,7 +1197,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+    fillLoc(sym.mloc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
   if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
@@ -1217,40 +1218,6 @@ proc requestConstImpl(p: BProc, sym: PSym) =
       p.module.g.generatedHeader.s[cfsData].add(headerDecl)
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
-# XXX: keep an eye on this.
-#
-# idOrSig is a good example of a change that can occur during
-# load from cache, which produces a new signature value for
-# a proc.
-#
-# we need to account for this.
-proc yewpad(m: BModule; s: PSym): string =
-  result = $m.module.id & " " & $s.id & " : " & $s.name.s & " : "
-  #result &= $idOrSig(s, m.module.name.s.mangle, m.sigConflicts)
-  result &= " : " & $s.name.s.mangle
-
-# mutates the module and the symbol
-proc performRealGenProc(m: BModule, prc: PSym) =
-  ## the real proc generator, and it may define forwards
-  genProcMayForward(m, prc)
-
-  # we are all about the header from here down
-
-  # if it's an export and not a compiler proc,
-  # and we already have a generated header for it,
-  # and it isn't flagged no-declaration,
-  if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-      m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-    # then generate a prototype for it in the header
-    genProcPrototype(m.g.generatedHeader, prc)
-
-    # now, if it's inline,
-    if prc.typ.callConv == ccInline:
-      # and if the proc hasn't already been declared, declare it, and
-      if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
-        # generate the header for the proc
-        # this also generates the nimFrame and popFrame, etc.
-        genProcAux(m.g.generatedHeader, prc)
 
 proc genProc(orig: BModule, prc: PSym) =
   ## generate code for a proc
@@ -1271,26 +1238,35 @@ proc genProc(orig: BModule, prc: PSym) =
   var
     orig = orig # satisfy performCaching()
     prc = prc # satisfy performCaching()
+
   performCaching(orig.g, orig, prc):
-    #when not defined(release):
-    #  echo "==> ", yewpad(m, prc)
+    # mutates the proc and the symbol
+    genProcMayForward(m, prc)
 
-    #when not defined(release):
-    #  echo "> ", m.cfilename, "\t", prc.name.s
-    #  echo "\t", $prc.sigHash, "\t", m.module.id
+    # we are all about the header from here down
 
-    #if not cachable:
-    #  echo "--", m.cfilename, "\t", prc.name.s
+    # if it's an export and not a compiler proc,
+    # and we already have a generated header for it,
+    # and it isn't flagged no-declaration,
+    if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
+        m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+      # then generate a prototype for it in the header
+      genProcPrototype(m.g.generatedHeader, prc)
 
-    # the actual code generation
-    performRealGenProc(m, prc)
+      # now, if it's inline,
+      if prc.typ.callConv == ccInline:
+        # and if the proc hasn't already been declared, declare it, and
+        if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
+          # generate the header for the proc
+          # this also generates the nimFrame and popFrame, etc.
+          genProcAux(m.g.generatedHeader, prc)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
-  fillLoc(sym.loc, locGlobalVar, n, mangleName(m, sym), OnHeap)
-  if treatGlobalDifferentlyForHCR(m, sym): incl(sym.loc.flags, lfIndirect)
+  fillLoc(sym.mloc, locGlobalVar, n, mangleName(m, sym), OnHeap)
+  if treatGlobalDifferentlyForHCR(m, sym): incl(sym.mloc.flags, lfIndirect)
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
     return
@@ -1671,7 +1647,7 @@ proc hcrGetProcLoadCode(m: BModule, sym, prefix, handle, getProcFunc: string): R
 
   var extname = prefix & sym
   var tmp = mangleDynLibProc(prc)
-  prc.loc.r = tmp
+  prc.loc.setRope tmp
   prc.typ.sym = nil
 
   if not containsOrIncl(m.declaredThings, prc.id):
@@ -1942,7 +1918,9 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
+    echo "preproc on transformed node"
     performCaching(m.g, m, transformedN):
+      echo "process pass ", cache
       genProcBody(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
@@ -2044,6 +2022,8 @@ proc updateCachedModule(m: BModule) =
 proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   result = n
   if b == nil: return
+  if n == nil:
+    raise newException(Defect, "attempt to close nil?")
   var m = BModule(b)
   if sfMainModule in m.module.flags:
     # phase ordering problem here: We need to announce this
@@ -2055,8 +2035,13 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
 
-  var n = n  # satisfy performCaching()
-  performCaching(m.g, m, n):
+  #
+  # no caching here
+  #
+  #var n = n  # satisfy performCaching()
+  #performCaching(m.g, m, n):
+  when true:
+    echo "my close pass"
     if moduleHasChanged(graph, m.module):
       # if the module is cached, we don't regenerate the main proc
       # nor the dispatchers? But if the dispatchers changed?

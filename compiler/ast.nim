@@ -783,7 +783,7 @@ type
     storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
     lode*: PNode              # Node where the location came from; can be faked
-    r*: Rope                  # rope value of location (code generators)
+    roap*: Rope               # rope value of location (code generators)
 
   # ---------------- end of backend information ------------------------------
 
@@ -867,7 +867,7 @@ type
                               # to the module's fileIdx
                               # for variables a slot index for the evaluator
     offset*: int              # offset of record field
-    loc*: TLoc
+    location: TLoc
     annex*: PLib              # additional fields (seldom used, so we use a
                               # reference to another object to save space)
     when hasFFI:
@@ -1039,6 +1039,125 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+proc `loc=`*(p: PSym; loc: TLoc) =
+  when defined(debugTLoc):
+    echo "set location"
+  system.`=`(p.location, loc)
+
+proc loc*(p: PSym): TLoc =
+  result = p.location
+
+{.experimental: "dotOperators".}
+
+when false:
+  proc `.`*[T](loc: var TLoc; arg: T): var T {.deprecated.} =
+    #when defined(debugTLoc):
+    echo "writable ", typeof(arg)
+    when T is TLocKind:
+      result = arg.k
+    when T is TStorageLoc:
+      result = arg.storage
+    when T is TLocFlags:
+      result = arg.flags
+    when T is PNode:
+      result = arg.lode
+    when T is Rope:
+      result = arg.roap
+    raise newException(Defect, ".")
+
+  proc `.`*[T](loc: TLoc; arg: T): T {.deprecated.} =
+    #when defined(debugTLoc):
+    echo "readable ", typeof(arg)
+    when T is TLocKind:
+      result = arg.k
+    when T is TStorageLoc:
+      result = arg.storage
+    when T is TLocFlags:
+      result = arg.flags
+    when T is PNode:
+      result = arg.lode
+    when T is Rope:
+      result = arg.roap
+    raise newException(Defect, ".")
+
+  proc `.=`*[T](loc: var TLoc; arg: T, val: T) {.deprecated.} =
+    #when defined(debugTLoc):
+    echo "setter ", typeof(arg)
+    when T is TLocKind:
+      loc.k = val
+    when T is TStorageLoc:
+      loc.storage = val
+    when T is TLocFlags:
+      loc.flags = val
+    when T is PNode:
+      loc.lode = val
+    when T is Rope:
+      loc.roap = val
+    raise newException(Defect, ".=")
+
+  proc `.=`*[T](loc: TLoc; arg: T, val: T) {.deprecated.} =
+    #when defined(debugTLoc):
+    echo "imm setter ", typeof(arg)
+    when T is TLocKind:
+      loc.k = val
+    when T is TStorageLoc:
+      loc.storage = val
+    when T is TLocFlags:
+      loc.flags = val
+    when T is PNode:
+      loc.lode = val
+    when T is Rope:
+      loc.roap = val
+    raise newException(Defect, ".=")
+
+proc mloc*(p: PSym): var TLoc =
+  result = p.location
+  when defined(debugTLoc):
+    assert result.k == locNone
+    echo "mut loc"
+
+proc r*(a: TLoc): Rope =
+  result = a.roap
+
+proc clearRope*(a: TLoc) =
+  assert a.roap == nil
+  when defined(debugTLoc):
+    echo "clear imm"
+
+proc clearRope*(a: var TLoc) =
+  a.roap = nil
+  when defined(debugTLoc):
+    echo "clear mut"
+
+proc setRope*(a: TLoc; roap: Rope) =
+  assert roap == nil
+  assert a.roap == nil
+  when defined(debugTLoc):
+    echo "set rope imm"
+
+proc setRope*(a: var TLoc; roap: Rope) =
+  assert roap != nil
+  a.roap = roap
+  when defined(debugTLoc):
+    echo "set rope mut"
+
+proc mergeLoc(a: var TLoc; b: TLoc) =
+  when defined(debugTLoc):
+    echo "mut merge"
+  if a.k == locNone:
+    assert a.k == low(a.k)
+    a.k = b.k
+  if a.storage == OnUnknown:
+    assert a.storage == low(a.storage)
+    a.storage = b.storage
+  a.flags = a.flags + b.flags
+  if a.lode == nil:
+    a.lode = b.lode
+  if a.r == nil:
+    if b.r == nil:
+      a.clearRope
+    else:
+      a.setRope(b.r)
 
 proc getnimblePkg*(a: PSym): PSym =
   result = a
@@ -1364,13 +1483,6 @@ proc newType*(kind: TTypeKind, owner: PSym): PType =
       echo "KNID ", kind
       writeStackTrace()
 
-proc mergeLoc(a: var TLoc, b: TLoc) =
-  if a.k == low(a.k): a.k = b.k
-  if a.storage == low(a.storage): a.storage = b.storage
-  a.flags = a.flags + b.flags
-  if a.lode == nil: a.lode = b.lode
-  if a.r == nil: a.r = b.r
-
 proc newSons*(father: Indexable, length: int) =
   when defined(nimNoNilSeqs):
     setLen(father.sons, length)
@@ -1394,7 +1506,7 @@ proc assignType*(dest, src: PType) =
     if dest.sym != nil:
       dest.sym.flags = dest.sym.flags + (src.sym.flags-{sfExported})
       if dest.sym.annex == nil: dest.sym.annex = src.sym.annex
-      mergeLoc(dest.sym.loc, src.sym.loc)
+      mergeLoc(dest.sym.mloc, src.sym.loc)
     else:
       dest.sym = src.sym
   newSons(dest, src.len)
@@ -1591,7 +1703,8 @@ template transitionSymKindCommon*(k: TSymKind) =
   s[] = TSym(kind: k, id: obj.id, magic: obj.magic, typ: obj.typ, name: obj.name,
              info: obj.info, owner: obj.owner, flags: obj.flags, ast: obj.ast,
              options: obj.options, position: obj.position, offset: obj.offset,
-             loc: obj.loc, annex: obj.annex, constraint: obj.constraint)
+             location: obj.location, annex: obj.annex,
+             constraint: obj.constraint)
   when hasFFI:
     s.cname = obj.cname
   when defined(nimsuggest):

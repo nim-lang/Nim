@@ -145,19 +145,19 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
 proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   # special cases to improve performance:
   if extname == "$1":
-    s.loc.r = rope(s.name.s)
+    s.mloc.setRope rope(s.name.s)
   elif '$' notin extname:
-    s.loc.r = rope(extname)
+    s.mloc.setRope rope(extname)
   else:
     try:
-      s.loc.r = rope(extname % s.name.s)
+      s.mloc.setRope rope(extname % s.name.s)
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
     s.cname = $s.loc.r
   if c.config.cmd == cmdPretty and '$' notin extname:
     # note that '{.importc.}' is transformed into '{.importc: "$1".}'
-    s.loc.flags.incl(lfFullExternalName)
+    s.mloc.flags.incl(lfFullExternalName)
 
 proc makeExternImport(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -172,7 +172,7 @@ proc processImportCompilerProc(c: PContext; s: PSym, extname: string, info: TLin
   setExternName(c, s, extname, info)
   incl(s.flags, sfImportc)
   excl(s.flags, sfForward)
-  incl(s.loc.flags, lfImportCompilerProc)
+  incl(s.mloc.flags, lfImportCompilerProc)
 
 proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   setExternName(c, s, extname, info)
@@ -319,9 +319,9 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       var lib = getLib(c, libDynamic, expectDynlibNode(c, n))
       if not lib.isOverriden:
         addToLib(lib, sym)
-        incl(sym.loc.flags, lfDynamicLib)
+        incl(sym.mloc.flags, lfDynamicLib)
     else:
-      incl(sym.loc.flags, lfExportLib)
+      incl(sym.mloc.flags, lfExportLib)
     # since we'll be loading the dynlib symbols dynamically, we must use
     # a calling convention that doesn't introduce custom name mangling
     # cdecl is the default - the user can override this explicitly
@@ -849,7 +849,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           localError(c.config, it.info, "power of two expected")
       of wNodecl:
         noVal(c, it)
-        incl(sym.loc.flags, lfNoDecl)
+        incl(sym.mloc.flags, lfNoDecl)
       of wPure, wAsmNoStackFrame:
         noVal(c, it)
         if sym != nil:
@@ -889,10 +889,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         var lib = getLib(c, libHeader, getStrLitNode(c, it))
         addToLib(lib, sym)
         incl(sym.flags, sfImportc)
-        incl(sym.loc.flags, lfHeader)
-        incl(sym.loc.flags, lfNoDecl)
+        incl(sym.mloc.flags, {lfHeader, lfNoDecl})
         # implies nodecl, because otherwise header would not make sense
-        if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
+        if sym.loc.r == nil: sym.mloc.setRope rope(sym.name.s)
       of wNoSideEffect:
         noVal(c, it)
         if sym != nil:
@@ -1219,9 +1218,9 @@ proc implicitPragmas*(c: PContext, sym: PSym, n: PNode,
     var lib = c.optionStack[^1].dynlib
     if {lfDynamicLib, lfHeader} * sym.loc.flags == {} and
         sfImportc in sym.flags and lib != nil:
-      incl(sym.loc.flags, lfDynamicLib)
+      incl(sym.mloc.flags, lfDynamicLib)
       addToLib(lib, sym)
-      if sym.loc.r == nil: sym.loc.r = rope(sym.name.s)
+      if sym.loc.r == nil: sym.loc.setRope rope(sym.name.s)
 
 proc hasPragma*(n: PNode, pragma: TSpecialWord): bool =
   if n == nil: return false

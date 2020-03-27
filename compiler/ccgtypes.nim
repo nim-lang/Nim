@@ -50,7 +50,7 @@ proc mangleName(m: BModule; s: PSym): Rope =
     result = s.name.s.mangle.rope
     # XXX: wut
     result.add(idOrSig(m, s))
-    s.loc.r = result
+    s.mloc.setRope result
     writeMangledName(m.ndi, s, m.config)
 
 proc mangleParamName(m: BModule; s: PSym): Rope =
@@ -79,7 +79,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
     if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
       res.add "_0"
     result = res.rope
-    s.loc.r = result
+    s.mloc.setRope result
     writeMangledName(m.ndi, s, m.config)
 
 proc mangleLocalName(p: BProc; s: PSym): Rope =
@@ -97,7 +97,7 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
     elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    s.loc.r = result
+    s.mloc.setRope result
     if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
@@ -122,11 +122,6 @@ proc typeName(typ: PType): Rope =
     else:
       rope($typ.kind)
 
-#
-# i have the module i'm outputting too -- BModule
-# type that i need to fetch/store from cache -- PType
-# signatureHash of the type -- SigHash
-# and i return the very same code that i've cached -- Rope
 proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
   var t = typ
   while true:
@@ -139,7 +134,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
   if typ.loc.r == nil:
-    typ.loc.r = typ.typeName & $sig
+    typ.loc.setRope typ.typeName & $sig
   else:
     when defined(debugSigHashes):
       # check consistency:
@@ -284,12 +279,11 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
   else: result = false
 
 proc fillResult(conf: ConfigRef; param: PNode) =
-  fillLoc(param.sym.loc, locParam, param, ~"Result",
-          OnStack)
+  fillLoc(param.sym.mloc, locParam, param, ~"Result", OnStack)
   let t = param.sym.typ
   if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, t):
-    incl(param.sym.loc.flags, lfIndirect)
-    param.sym.loc.storage = OnUnknown
+    incl(param.sym.mloc.flags, lfIndirect)
+    param.sym.mloc.storage = OnUnknown
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
@@ -458,13 +452,13 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: params.add(~", ")
-    fillLoc(param.loc, locParam, t.n[i], mangleParamName(m, param),
+    fillLoc(param.mloc, locParam, t.n[i], mangleParamName(m, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check))
       params.add(~"*")
-      incl(param.loc.flags, lfIndirect)
-      param.loc.storage = OnUnknown
+      incl(param.mloc.flags, lfIndirect)
+      param.mloc.storage = OnUnknown
     elif weakDep:
       params.add(getTypeDescWeak(m, param.typ, check))
     else:
@@ -477,7 +471,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind in {tyVar, tyLent}: param.loc.storage = OnUnknown
+      if param.typ.kind in {tyVar, tyLent}: param.mloc.storage = OnUnknown
       # need to pass hidden parameter:
       params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
@@ -551,7 +545,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    fillLoc(field.loc, locField, n, unionPrefix & sname, OnUnknown)
+    fillLoc(field.mloc, locField, n, unionPrefix & sname, OnUnknown)
     if field.alignment > 0:
       result.addf "NIM_ALIGN($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't
@@ -961,7 +955,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
-  fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
+  fillLoc(prc.mloc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix

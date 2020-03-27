@@ -67,9 +67,6 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
 
   const tempExt = "_temp.nim"
   for it in walkDirRec(testsDir / "ic"):
-    #if it.endsWith(tempExt):
-    #  removeFile(it)
-    #elif isTestFile(it):
     if isTestFile(it) and not it.endsWith(tempExt):
       let nimcache = nimcacheDir(it, options, getTestSpecTarget())
       removeDir(nimcache)
@@ -82,18 +79,17 @@ proc icTests(r: var TResults; testsDir: string, cat: Category, options: string) 
         editedTest incrementalOn
         if r.passed != oldPassed+1: break
 
-  when false:
-    for file in tooltests:
-      let nimcache = nimcacheDir(file, options, getTestSpecTarget())
-      removeDir(nimcache)
+  for file in tooltests:
+    let nimcache = nimcacheDir(file, options, getTestSpecTarget())
+    removeDir(nimcache)
 
-      let oldPassed = r.passed
-      test writeOnly
+    let oldPassed = r.passed
+    test writeOnly
 
-      if r.passed == oldPassed+1:
-        test readOnly
-        if r.passed == oldPassed+2:
-          test readOnly & "-d:nimBackendAssumesChange "
+    if r.passed == oldPassed+1:
+      test readOnly
+      if r.passed == oldPassed+2:
+        test readOnly & "-d:nimBackendAssumesChange "
 
 # --------------------- flags tests -------------------------------------------
 
@@ -665,8 +661,7 @@ proc processCategory(r: var TResults, cat: Category,
                      runJoinableTests: bool) =
   case cat.string.normalize
   of "ic":
-    when true:
-      icTests(r, testsDir, cat, options)
+    icTests(r, testsDir, cat, options)
   of "js":
     # only run the JS tests on Windows or Linux because Travis is bad
     # and other OSes like Haiku might lack nodejs:

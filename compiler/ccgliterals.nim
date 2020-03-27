@@ -35,7 +35,6 @@ proc detectSeqVersion(m: BModule): int =
 proc genStringLiteralDataOnlyV1(m: BModule, s: string): Rope =
   discard cgsym(m, "TGenericSeq")
   result = getTempName(m)
-  echo "FAKE str lit ", $result
   m.s[cfsData].addf("STRING_LITERAL($1, $2, $3);$n",
        [result, makeCString(s), rope(s.len)])
 
@@ -43,6 +42,7 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
   if s.isNil:
     result = ropecg(m, "((#NimStringDesc*) NIM_NIL)", [])
   else:
+    # XXX: come back and fix this
     let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
     if id == m.labels:
       # string literal not found in the cache:
