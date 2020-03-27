@@ -11,6 +11,21 @@
 
 # included from sem.nim
 
+type
+  ObjConstrContext = object
+    typ: PType             # The constructed type
+    initExpr: PNode        # The init expression (nkObjConstr)
+    requiresFullInit: bool # A `requiresInit` derived type will
+                           # set this to true while visiting
+                           # parent types.
+
+  InitStatus = enum # This indicates the result of object construction
+    initUnknown
+    initFull     # All  of the fields have been initialized
+    initPartial  # Some of the fields have been initialized
+    initNone     # None of the fields have been initialized
+    initConflict # Fields from different branches have been initialized
+
 proc mergeInitStatus(existing: var InitStatus, newStatus: InitStatus) =
   case newStatus
   of initConflict:
@@ -335,6 +350,9 @@ proc semConstructType(c: PContext, initExpr: PNode,
     t = skipTypes(base, skipPtrs)
     constrCtx.requiresFullInit = constrCtx.requiresFullInit or
                                  tfRequiresInit in t.flags
+
+proc checkDefaultConstruction(c: PContext, typ: PType, info: TLineInfo) =
+  discard semConstructType(c, newNodeI(nkObjConstr, info), typ, {})
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n[0], nil)

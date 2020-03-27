@@ -46,6 +46,7 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
+proc checkDefaultConstruction(c: PContext, typ: PType, info: TLineInfo)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
@@ -57,24 +58,6 @@ proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
     n.typ.skipTypes(abstractInst).kind == tyArray
-
-type
-  ObjConstrContext = object
-    typ: PType             # The constructed type
-    initExpr: PNode        # The init expression (nkObjConstr)
-    requiresFullInit: bool # A `requiresInit` derived type will
-                           # set this to true while visiting
-                           # parent types.
-
-  InitStatus = enum # This indicates the result of object construction
-    initUnknown
-    initFull     # All  of the fields have been initialized
-    initPartial  # Some of the fields have been initialized
-    initNone     # None of the fields have been initialized
-    initConflict # Fields from different branches have been initialized
-
-proc semConstructType(c: PContext, initExpr: PNode,
-                      t: PType, flags: TExprFlags): InitStatus
 
 template semIdeForTemplateOrGenericCheck(conf, n, requiresCheck) =
   # we check quickly if the node is where the cursor is
