@@ -6,11 +6,11 @@ destroy
 123
 destroy Foo: 123
 destroy Foo: 5
-(x1: (val: 1))
+test
 destroy
 ---------------
 app begin
-(val: 1)
+test2
 destroy
 app end
 '''
@@ -96,7 +96,7 @@ proc newObj2(x:int, y: float): MyObject2 =
 
 proc test =
   let obj2 = newObj2(1, 1.0)
-  echo obj2
+  echo "test"
 
 test()
 
@@ -119,7 +119,7 @@ proc createTop(): ptr TopObject =
 
 proc test2() =
   let x = createTop()
-  echo $x.internal
+  echo "test2"
   deleteTop(x)
 
 echo "---------------"
