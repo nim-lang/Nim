@@ -2264,6 +2264,12 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
+  of mDefault:
+    result = semDirectOp(c, n, flags)
+    c.config.internalAssert result[1].typ.kind == tyTypeDesc
+    let typ = result[1].typ.base
+    if typ.kind in {tyObject, tyTuple}:
+      checkDefaultConstruction(c, typ, n.info)
   else:
     result = semDirectOp(c, n, flags)
 

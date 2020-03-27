@@ -125,12 +125,15 @@ accept PartialRequiresInit(a: 10, b: "x")
 accept PartialRequiresInit(a: 20)
 reject PartialRequiresInit(b: "x")
 reject PartialRequiresInit()
+reject default(PartialRequiresInit)
 reject:
   var obj: PartialRequiresInit
 
 accept FullRequiresInit(a: 10, b: 20)
 reject FullRequiresInit(a: 10)
 reject FullRequiresInit(b: 20)
+reject FullRequiresInit()
+reject default(FullRequiresInit)
 reject:
   var obj: FullRequiresInit
 
@@ -140,11 +143,13 @@ reject FullRequiresInitWithParent(a: notNilRef, b: nil, c: nil, e: 10, d: 20) # 
 reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, e: 10, d: 20)   # c should not be missing
 reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, c: nil, e: 10)  # d should not be missing
 reject FullRequiresInitWithParent()
+reject default(FullRequiresInitWithParent)
 reject:
   var obj: FullRequiresInitWithParent
 
 # this will be accepted, because the false outer branch will be taken and the inner A branch
 accept TNestedChoices()
+accept default(TNestedChoices)
 accept:
   var obj: TNestedChoices
 
