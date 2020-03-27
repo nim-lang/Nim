@@ -1,0 +1,67 @@
+#!/bin/fish
+
+set summary "compiler testing"
+set app testes
+
+set test helloworld.nim
+
+function notice
+	notify-send --urgency=low --expire-time=1000 --app-name=$app "$summary" "$argv"
+end
+
+function warning
+	notify-send --urgency=normal --expire-time=2000 --app-name=$app "$summary" "$argv"
+end
+
+function error
+	notify-send --urgency=critical --expire-time=5000 --app-name=$app "$summary" "$argv"
+end
+
+function clean
+	rm -rf goats pigs
+end
+
+function build-compiler
+	if ./koch temp --define:nimIncremental --nimcache:nimcache -d:release --stackTrace:on
+		notice compiler built
+	else
+		error failed compiler build
+		return 1
+	end
+end
+
+function build-sanity
+	if bin/nim_temp --nimcache:nimcache c -r $test
+		notice sanity built
+	else
+		error failed sanity build
+		return 1
+	end
+end
+function build-test
+	if bin/nim_temp c --define:debugTLoc --nimcache:goats --incremental:on $test
+		notice test built
+	else
+		error failed test build
+		return 1
+	end
+end
+
+function run-test
+	if ./t
+		notice test ran okay
+	else
+		warning test execution failed
+		return 1
+	end
+end
+
+
+clean
+build-compiler
+or exit
+and build-sanity
+or exit
+and build-test
+or exit
+and run-test
