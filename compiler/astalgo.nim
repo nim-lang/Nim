@@ -542,12 +542,17 @@ proc value(this: var DebugPrinter; value: PSym) =
 
   this.closeCurly
 
+const CompressedBuiltinTypes = {
+  tyBool, tyChar, tyPointer, tyString,tyCString, tyInt, tyInt8, tyInt16,
+  tyInt32, tyInt64, tyFloat, tyFloat32, tyFloat64, tyUInt, tyUInt8,
+  tyUInt16, tyUInt32, tyUInt64
+}
+
 proc value(this: var DebugPrinter; value: PType) =
-  # these shortcuts for builtin types are done before ``earlyExit`` because they are shorter that backreference links
-  if this.compressBuiltinTypes and value != nil and value.kind in {
-      tyBool, tyChar, tyPointer, tyString, tyCString, tyInt, tyInt8,
-      tyInt16, tyInt32, tyInt64, tyFloat, tyFloat32, tyFloat64, tyUInt,
-      tyUInt8, tyUInt16, tyUInt32, tyUInt64}:
+  # these shortcuts for builtin types are done before ``earlyExit``
+  # because they are shorter that backreference links.
+  if this.compressBuiltinTypes and value != nil and
+      value.kind in CompressedBuiltinTypes:
     if this.useColor:
       this.res.add backrefStyle
     this.res.add toLowerAscii("<" & ($value.kind)[2..^1] & ">")
