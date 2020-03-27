@@ -259,6 +259,7 @@ type
                       # needed for the code generator
     sfProcvar,        # proc can be passed to a proc var
     sfDiscriminant,   # field is a discriminant in a record/object
+    sfRequiresInit,   # field must be initialized during construction
     sfDeprecated,     # symbol is deprecated
     sfExplain,        # provide more diagnostics when this symbol is used
     sfError,          # usage of symbol should trigger a compile-time error
@@ -1488,7 +1489,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
     elif owner.kind notin HaveTheirOwnEmpty:
       owner.flags.incl tfHasRequiresInit
 
-  if tfRequiresInit in elem.flags:
+  if {tfRequiresInit, tfHasRequiresInit} * elem.flags != {}:
     if owner.kind in HaveTheirOwnEmpty: discard
     else: owner.flags.incl tfHasRequiresInit
 

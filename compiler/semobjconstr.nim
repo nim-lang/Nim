@@ -136,9 +136,11 @@ proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): strin
       if result.len != 0: result.add ", "
       result.add field.sym.name.s.quoteStr
 
-proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string =
+proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode,
+                            requiresFullInit = false): string =
   for r in directFieldsInRecList(fieldsRecList):
-    if {tfNotNil, tfRequiresInit} * r.sym.typ.flags != {}:
+    if requiresFullInit or sfRequiresInit in r.sym.flags or
+       {tfNotNil, tfRequiresInit, tfHasRequiresInit} * r.sym.typ.flags != {}:
       let assignment = locateFieldInInitExpr(c, r.sym, initExpr)
       if assignment == nil:
         if result.len == 0:
@@ -147,19 +149,22 @@ proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string
           result.add ", "
           result.add r.sym.name.s
 
-proc checkForMissingFields(c: PContext, recList, initExpr: PNode) =
-  let missing = missingMandatoryFields(c, recList, initExpr)
+proc checkForMissingFields(c: PContext, recList, initExpr: PNode,
+                           requiresFullInit = false) =
+  let missing = missingMandatoryFields(c, recList, initExpr, requiresFullInit)
   if missing.len > 0:
     localError(c.config, initExpr.info, "fields not initialized: $1.", [missing])
 
 proc semConstructFields(c: PContext, recNode: PNode,
-                        initExpr: PNode, flags: TExprFlags): InitStatus =
+                        initExpr: PNode, flags: TExprFlags,
+                        requiresFullInit = false): InitStatus =
   result = initUnknown
 
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      let status = semConstructFields(c, field, initExpr, flags)
+      let status = semConstructFields(c, field, initExpr,
+                                      flags, requiresFullInit)
       mergeInitStatus(result, status)
 
   of nkRecCase:
@@ -171,7 +176,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
     template checkMissingFields(branchNode: PNode) =
       if branchNode != nil:
         let fields = branchNode[^1]
-        checkForMissingFields(c, fields, initExpr)
+        checkForMissingFields(c, fields, initExpr, requiresFullInit)
 
     let discriminator = recNode[0]
     internalAssert c.config, discriminator.kind == nkSym
@@ -179,7 +184,8 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
     for i in 1..<recNode.len:
       let innerRecords = recNode[i][^1]
-      let status = semConstructFields(c, innerRecords, initExpr, flags)
+      let status = semConstructFields(c, innerRecords, initExpr,
+                                      flags, requiresFullInit)
       if status notin {initNone, initUnknown}:
         mergeInitStatus(result, status)
         if selectedBranch != -1:
@@ -319,16 +325,20 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
 proc semConstructType(c: PContext, initExpr: PNode,
                       t: PType, flags: TExprFlags): InitStatus =
-  var t = t
   result = initUnknown
+  var
+    t = t
+    requiresFullInit = tfRequiresInit in t.flags
   while true:
-    let status = semConstructFields(c, t.n, initExpr, flags)
+    let status = semConstructFields(c, t.n, initExpr,
+                                    flags, requiresFullInit)
     mergeInitStatus(result, status)
     if status in {initPartial, initNone, initUnknown}:
-      checkForMissingFields c, t.n, initExpr
+      checkForMissingFields c, t.n, initExpr, requiresFullInit
     let base = t[0]
     if base == nil: break
     t = skipTypes(base, skipPtrs)
+    requiresFullInit = requiresFullInit or tfRequiresInit in t.flags
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n[0], nil)
