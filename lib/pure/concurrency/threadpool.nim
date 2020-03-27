@@ -137,7 +137,7 @@ type
 
 const threadpoolWaitMs {.intdefine.}: int = 100
 
-proc blockUntil*(fv: FlowVarBase) =
+proc blockUntil*(fv: var FlowVarBaseObj) =
   ## Waits until the value for the ``fv`` arrives.
   ##
   ## Usually it is not necessary to call this explicitly.
@@ -185,7 +185,7 @@ proc attach(fv: FlowVarBase; i: int): bool =
     result = false
   release(fv.cv.L)
 
-proc finished(fv: FlowVarBase) =
+proc finished(fv: var FlowVarBaseObj) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'blockUntilAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVar" has not yet written
@@ -208,10 +208,11 @@ proc finished(fv: FlowVarBase) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
+proc `=destroy`[T](fv: var FlowVarObj[T]) =
+  finished(fv)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
-  new(result, fvFinalizer)
+  new(result)
 
 proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
   fv.cv.initSemaphore()
@@ -261,7 +262,7 @@ proc `^`*[T](fv: FlowVar[ref T]): ref T =
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## Blocks until the value is available and then returns this value.
-  blockUntil(fv)
+  blockUntil(fv[])
   when T is string or T is seq:
     let src = cast[T](fv.data)
     when defined(nimV2):
@@ -270,7 +271,7 @@ proc `^`*[T](fv: FlowVar[T]): T =
       deepCopy result, src
   else:
     result = fv.blob
-  finished(fv)
+  finished(fv[])
 
 proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
   ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
@@ -457,7 +458,7 @@ proc preferSpawn*(): bool =
   ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: typed): void {.magic: "Spawn".}
+proc spawn*(call: sink typed): void {.magic: "Spawn".}
   ## Always spawns a new task, so that the ``call`` is never executed on
   ## the calling thread.
   ##
