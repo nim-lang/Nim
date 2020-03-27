@@ -368,7 +368,7 @@ when hasAioH:
       aio_nbytes*: int          ## Length of transfer.
       aio_reqprio*: cint        ## Request priority offset.
       aio_sigevent*: SigEvent   ## Signal number and value.
-      aio_lio_opcode: cint      ## Operation to be performed.
+      # aio_lio_opcode*: cint      ## Operation to be performed.
 
 when hasSpawnH:
   type
