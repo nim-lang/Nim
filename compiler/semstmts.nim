@@ -614,7 +614,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if tup.kind == tyTuple: setVarType(c, v, tup[j])
         else: v.typ = tup
         b[j] = newSymNode(v)
-      checkNilable(c, v)
+      if def.kind == nkEmpty:
+        if v.typ.kind in {tyObject, tyTuple}:
+          discard semConstructType(c, newNodeI(nkObjConstr, v.info), v.typ, {})
+        else:
+          checkNilable(c, v)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
         x.add result[i]
