@@ -615,7 +615,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else: v.typ = tup
         b[j] = newSymNode(v)
       if def.kind == nkEmpty:
-        if v.typ.kind in {tyObject, tyTuple}:
+        if v.typ.kind == tyObject:
           checkDefaultConstruction(c, v.typ, v.info)
         else:
           checkNilable(c, v)
