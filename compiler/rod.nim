@@ -118,7 +118,7 @@ template config(): ConfigRef = cache.modules.config
 # we already have it in RAM or not!
 
 proc `$`(m: BModule): string =
-  result = $m.module.id & ".." & splitFile(m.cfilename.string).ext
+  result = $m.module.id & ".." & splitFile(m.cfilename.string).name
 
 proc snippetAlreadyStored*(g: ModuleGraph; p: PSym): bool
 
