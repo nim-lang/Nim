@@ -1,5 +1,5 @@
 discard """
-  errormsg: "fields not initialized: bar"
+  errormsg: "The Foo type requires the following fields to be initialized: bar"
   line: "13"
 """
 {.experimental: "notnil".}
