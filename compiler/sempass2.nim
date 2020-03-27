@@ -565,6 +565,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
   if paramType != nil and paramType.kind == tyVar:
+    invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
   if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:

@@ -20,7 +20,7 @@ DrNim's command line options are the same as the Nim compiler's.
 DrNim currently only checks the sections of your code that are marked
 via ``staticBoundChecks: on``:
 
-.. codeblock:: nim
+.. code-block:: nim
 
   {.push staticBoundChecks: on.}
   # <--- code section here ---->

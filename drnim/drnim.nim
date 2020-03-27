@@ -188,11 +188,13 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     notImplemented(renderTree(n))
 
 proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
-  let cmpOp =
-    case n.typ.skipTypes(abstractInst).kind
-    of tyFloat..tyFloat128: mLeF64
-    of tyChar, tyUInt..tyUInt64: mLeU
-    else: mLeI
+  var cmpOp = mLeI
+  if n.typ != nil:
+    cmpOp =
+      case n.typ.skipTypes(abstractInst).kind
+      of tyFloat..tyFloat128: mLeF64
+      of tyChar, tyUInt..tyUInt64: mLeU
+      else: mLeI
 
   var lowBound, highBound: PNode
   if n.kind == nkSym:
@@ -225,7 +227,10 @@ proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
     doAssert n.len == 2
 
     lowBound = newIntNode(nkInt64Lit, 0)
-    highBound = newIntNode(nkInt64Lit, lastOrd(nil, n.typ))
+    if n.typ != nil:
+      highBound = newIntNode(nkInt64Lit, lastOrd(nil, n.typ))
+    else:
+      highBound = newIntNode(nkInt64Lit, high(int64))
 
   let x = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), lowBound, n)
   let y = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), n, highBound)
@@ -288,9 +293,13 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
     let solver = Z3_mk_solver(ctx)
     var lhs: seq[Z3_ast]
     for assumption in assumptions:
-      let za = nodeToZ3(c, assumption, collectedVars)
-      #Z3_solver_assert ctx, solver, za
-      lhs.add za
+      if assumption != nil:
+        try:
+          let za = nodeToZ3(c, assumption, collectedVars)
+          #Z3_solver_assert ctx, solver, za
+          lhs.add za
+        except CannotMapToZ3Error:
+          discard "ignore a fact we cannot map to Z3"
 
     let z3toProve = nodeToZ3(c, toProve, collectedVars)
     for v in collectedVars:
