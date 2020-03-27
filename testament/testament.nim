@@ -260,7 +260,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
                 else: successOrig
 
-  let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
+  let durationStr = duration.formatFloat(ffDecimal, precision = 2).align(5)
   if backendLogging:
     backend.writeTestResult(name = name,
                             category = test.cat.string,
@@ -271,7 +271,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
     maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   elif success == reJoined:
