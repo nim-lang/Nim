@@ -42,7 +42,7 @@ const
     wTags, wLocks, wGcSafe}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
-    wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks, 
+    wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
     wStyleChecks, wAssertions,
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
@@ -1029,7 +1029,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCodegenDecl: processCodegenDecl(c, it, sym)
       of wChecks, wObjChecks, wFieldChecks, wRangeChecks, wBoundChecks,
          wOverflowChecks, wNilChecks, wAssertions, wWarnings, wHints,
-         wLineDir, wOptimization, wStaticBoundchecks, wStyleChecks, 
+         wLineDir, wOptimization, wStaticBoundchecks, wStyleChecks,
          wCallconv, wDebugger, wProfiler,
          wFloatChecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
         processOption(c, it, c.config.options)

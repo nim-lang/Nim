@@ -1580,6 +1580,12 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   if n[1].kind != nkEmpty and n[1].len > 0:
     pragma(c, s, n[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(c.graph, result, n[1])
+  elif c.optionStack.len > 0 and optNimV1Emulation notin c.config.globalOptions:
+    # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
+    s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
+        newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))
+    implicitPragmas(c, s, n, procTypePragmas)
+    when useEffectSystem: setEffectsForProcType(c.graph, result, s.ast[pragmasPos])
   closeScope(c)
 
 proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
