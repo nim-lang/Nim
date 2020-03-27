@@ -1569,7 +1569,45 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
 
 proc semProcTypeWithScope(c: PContext, n: PNode,
                         prev: PType, kind: TSymKind): PType =
+
+  proc procTypePragmaOrMacro(c: PContext; n, fullProcTy: PNode): PNode =
+    for i in 0..<n.len:
+      let it = n[i]
+      let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
+
+      if it.kind == nkEmpty or whichPragma(it) != wInvalid:
+        discard "builtin pragma"
+      elif strTableGet(c.userPragmas, considerQuotedIdent(c, key)) != nil:
+        discard "User-defined pragma"
+      else:
+        # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and
+        # let the semantic checker deal with it:
+        var x = newNodeI(nkCall, key.info)
+        x.add(key)
+        if it.kind in nkPragmaCallKinds and it.len > 1:
+          # pass pragma arguments to the macro too:
+          for i in 1..<it.len:
+            x.add(it[i])
+        x.add(fullProcTy)
+
+        # recursion assures that this works for multiple macro annotations too:
+        var r = semOverloadedCall(c, x, x, {skMacro, skTemplate}, {efNoUndeclared})
+        if r != nil:
+          doAssert r[0].kind == nkSym
+          n.sons.delete(i) # mark as being processed
+          let m = r[0].sym
+          case m.kind
+          of skMacro: result = semMacroExpr(c, r, r, m, {efNoSemCheck})
+          of skTemplate: result = semTemplateExpr(c, r, m, {efNoSemCheck})
+          else: doAssert(false, "cannot happen")
+          return result
+
   checkSonsLen(n, 2, c.config)
+  if n[1].kind != nkEmpty and n[1].len > 0:
+    let macroEval = procTypePragmaOrMacro(c, n[1], n)
+    if macroEval != nil:
+      return semTypeNode(c, macroEval, prev)
+
   openScope(c)
   result = semProcTypeNode(c, n[0], nil, prev, kind, isType=true)
   # start with 'ccClosure', but of course pragmas can overwrite this:
@@ -1845,11 +1883,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result.addSonSkipIntLit(child)
     else:
       result = semProcTypeWithScope(c, n, prev, skIterator)
-      result.flags.incl(tfIterator)
-      if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
-        result.callConv = ccInline
-      else:
-        result.callConv = ccClosure
+      if result.kind == tyProc:
+        result.flags.incl(tfIterator)
+        if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
+          result.callConv = ccInline
+        else:
+          result.callConv = ccClosure
   of nkProcTy:
     if n.len == 0:
       result = newConstraint(c, tyProc)
