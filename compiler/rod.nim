@@ -445,7 +445,7 @@ proc newCacheUnit*[T: CacheableObject](modules: BModuleList;
   # figure out if we're in a position to cache anything
   result.assignCachability(modules.config, node)
 
-  echo "ncu ", result
+  #echo "ncu ", result
   if not result.rejected:
     # add a container for relevant snippets
     let
@@ -2177,12 +2177,12 @@ template performCaching*(g: var BModuleList; orig: var BModule;
       var
         cache {.inject.} = cache
         m {.inject.}: BModule = target
-      echo "codegen ", cache, " ", $target
+      #echo "codegen ", cache, " ", $target
       body
       cache.store(g)
   finally:
     if cache.rejected:
-      when true:
+      when false:
         when not defined(release):
           #writeStackTrace()
           echo "rejected merge ", cache, " ", $target

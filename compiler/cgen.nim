@@ -990,7 +990,7 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     result = "$1(*)$2" % [rettype, params]
 
 proc genProcBody(p: BProc; procBody: PNode) =
-  when not defined(release):
+  when false:
     if startsWith($p.module.tmpBase, "TM"):
       writeStackTrace()
       echo "genProcBody against         : ", $p.module.cfilename
@@ -1918,9 +1918,7 @@ proc myProcess(b: PPassContext, n: PNode): PNode =
   if m.hcrOn:
     addHcrInitGuards(m.initProc, transformedN, m.inHcrInitGuard)
   else:
-    echo "preproc on transformed node"
     performCaching(m.g, m, transformedN):
-      echo "process pass ", cache
       genProcBody(m.initProc, transformedN)
 
 proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
@@ -2041,7 +2039,6 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   #var n = n  # satisfy performCaching()
   #performCaching(m.g, m, n):
   when true:
-    echo "my close pass"
     if moduleHasChanged(graph, m.module):
       # if the module is cached, we don't regenerate the main proc
       # nor the dispatchers? But if the dispatchers changed?
@@ -2114,13 +2111,21 @@ proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   for orig in cgenModules(g):
     var
       orig = orig
+      wrote = false
     when not defined(release):
       echo "hash of original module: ", $orig.hash
     performCaching(g, orig, orig.module):
       # m is the "quarantined" module
       writeModule(m, pending = true)
-    when not defined(release):
-      echo "hash of original module: ", $orig.hash
+      wrote = true
+      when not defined(release):
+        echo "wrote module w/o cache ", $orig.hash
+    if not wrote:
+      wrote = true
+      # we loaded guts via cache and now we write it
+      writeModule(orig, pending = true)
+      when not defined(release):
+        echo "wrote module with cache ", $orig.hash
   writeMapping(config, g.mapping)
   if g.generatedHeader != nil: writeHeader(g.generatedHeader)
 
