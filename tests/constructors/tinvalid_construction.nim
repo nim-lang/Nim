@@ -3,7 +3,9 @@ template accept(x) =
 
 template reject(x) =
   static: assert(not compiles(x))
+
 {.experimental: "notnil".}
+
 type
   TRefObj = ref object
     x: int
@@ -25,6 +27,18 @@ type
       indirectNotNils: ref THasNotNils
     else:
       discard
+
+  PartialRequiresInit = object
+    a {.requiresInit.}: int
+    b: string
+
+  FullRequiresInit {.requiresInit.} = object
+    a: int
+    b: int
+
+  FullRequiresInitWithParent {.requiresInit.} = object of THasNotNils
+    e: int
+    d: int
 
   TObj = object
     case choice: TChoice
@@ -105,6 +119,23 @@ accept TBaseHasNotNils(a: notNilRef, b: notNilRef, choice: A, moreNotNils: THasN
 accept TBaseHasNotNils(a: notNilRef, b: notNilRef, choice: B, indirectNotNils: makeHasNotNils())
 reject TBaseHasNotNils(a: notNilRef, b: notNilRef, choice: B, indirectNotNils: THasNotNilsRef())
 accept TBaseHasNotNils(a: notNilRef, b: notNilRef, choice: B, indirectNotNils: THasNotNilsRef(a: notNilRef, b: notNilRef))
+
+# Accept only instances where the `a` field is present
+accept PartialRequiresInit(a: 10, b: "x")
+accept PartialRequiresInit(a: 20)
+reject PartialRequiresInit(b: "x")
+reject PartialRequiresInit()
+
+accept FullRequiresInit(a: 10, b: 20)
+reject FullRequiresInit(a: 10)
+reject FullRequiresInit(b: 20)
+
+accept FullRequiresInitWithParent(a: notNilRef, b: notNilRef, c: notNilRef, e: 10, d: 20)
+accept FullRequiresInitWithParent(a: notNilRef, b: notNilRef, c: nil, e: 10, d: 20)
+reject FullRequiresInitWithParent(a: notNilRef, b: nil, c: nil, e: 10, d: 20) # b should not be nil
+reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, e: 10, d: 20)   # c should not be missing
+reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, c: nil, e: 10)  # d should not be missing
+reject FullRequiresInitWithParent()
 
 # this will be accepted, because the false outer branch will be taken and the inner A branch
 accept TNestedChoices()
