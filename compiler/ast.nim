@@ -1047,69 +1047,6 @@ proc `loc=`*(p: PSym; loc: TLoc) =
 proc loc*(p: PSym): TLoc =
   result = p.location
 
-{.experimental: "dotOperators".}
-
-when false:
-  proc `.`*[T](loc: var TLoc; arg: T): var T {.deprecated.} =
-    #when defined(debugTLoc):
-    echo "writable ", typeof(arg)
-    when T is TLocKind:
-      result = arg.k
-    when T is TStorageLoc:
-      result = arg.storage
-    when T is TLocFlags:
-      result = arg.flags
-    when T is PNode:
-      result = arg.lode
-    when T is Rope:
-      result = arg.roap
-    raise newException(Defect, ".")
-
-  proc `.`*[T](loc: TLoc; arg: T): T {.deprecated.} =
-    #when defined(debugTLoc):
-    echo "readable ", typeof(arg)
-    when T is TLocKind:
-      result = arg.k
-    when T is TStorageLoc:
-      result = arg.storage
-    when T is TLocFlags:
-      result = arg.flags
-    when T is PNode:
-      result = arg.lode
-    when T is Rope:
-      result = arg.roap
-    raise newException(Defect, ".")
-
-  proc `.=`*[T](loc: var TLoc; arg: T, val: T) {.deprecated.} =
-    #when defined(debugTLoc):
-    echo "setter ", typeof(arg)
-    when T is TLocKind:
-      loc.k = val
-    when T is TStorageLoc:
-      loc.storage = val
-    when T is TLocFlags:
-      loc.flags = val
-    when T is PNode:
-      loc.lode = val
-    when T is Rope:
-      loc.roap = val
-    raise newException(Defect, ".=")
-
-  proc `.=`*[T](loc: TLoc; arg: T, val: T) {.deprecated.} =
-    #when defined(debugTLoc):
-    echo "imm setter ", typeof(arg)
-    when T is TLocKind:
-      loc.k = val
-    when T is TStorageLoc:
-      loc.storage = val
-    when T is TLocFlags:
-      loc.flags = val
-    when T is PNode:
-      loc.lode = val
-    when T is Rope:
-      loc.roap = val
-    raise newException(Defect, ".=")
-
 proc mloc*(p: PSym): var TLoc =
   result = p.location
   when defined(debugTLoc):
