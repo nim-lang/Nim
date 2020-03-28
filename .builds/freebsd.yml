@@ -18,7 +18,8 @@ environment:
 tasks:
 - setup: |
     echo "D20200327T203132"
-    pkg update -f
+    # pkg update -f
+    sudo pkg update -f
     echo "D20200327T203132.2"
     pkg install devel/boehm-gc-threaded
     echo "D20200327T203132.3"
