@@ -19,7 +19,7 @@ tasks:
 - setup: |
     # sudo needed
     sudo pkg update -q -f
-    sudo pkg install -q databases/sqlite3 devel/boehm-gc-threaded devel/pcre devel/sdl20 devel/sfml www/node devel/gmake
+    sudo pkg install -y -q databases/sqlite3 devel/boehm-gc-threaded devel/pcre devel/sdl20 devel/sfml www/node devel/gmake
     cd Nim
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
     gmake -C csources -j $(sysctl -n hw.ncpu)
