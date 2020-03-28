@@ -877,7 +877,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
 proc endOperator(L: var Lexer, tok: var Token, pos: int,
                  hash: Hash) {.inline.} =
   var h = !$hash
-  tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]).toCstring, pos - L.bufpos, h)
+  tok.ident = L.cache.getIdent(L.buf[L.bufpos].addr.toCstring, pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
   else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos

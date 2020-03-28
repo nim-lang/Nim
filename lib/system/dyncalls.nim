@@ -161,7 +161,7 @@ elif defined(windows) or defined(dos):
         dec(m)
         k = k div 10
         if k == 0: break
-      result = getProcAddress(cast[THINSTANCE](lib), addr decorated)
+      result = getProcAddress(cast[THINSTANCE](lib), decorated.toCstring)
       if result != nil: return
     procAddrError(name)
 
