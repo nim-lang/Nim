@@ -266,14 +266,10 @@ proc cachabilityUnchanged(cache: var CacheUnit[PSym];
   elif sfCompilerProc in node.flags and node.owner != nil:
     cache.reject
     cache.strategy.incl Immutable
-    #when not defined(release):
-    #  echo "....sf......", cache
   # compiler proc mutation
   elif lfImportCompilerProc in node.loc.flags:
     cache.reject
     cache.strategy.incl Immutable
-    #when not defined(release):
-    #  echo "....lf......", cache
   else:
     result = true
 

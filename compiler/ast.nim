@@ -1083,6 +1083,19 @@ proc setRope*(a: var TLoc; roap: Rope) =
   when defined(debugTLoc):
     echo "set rope mut"
 
+proc setRope*(a: var TLoc; roap: var Rope) =
+  assert roap != nil
+  a.roap = roap
+  when defined(debugTLoc):
+    echo "set rope remains mut"
+
+when false:
+  proc addRope*(a: var TLoc; roap: Rope) =
+    assert roap != nil
+    a.roap.add roap
+    when defined(debugTLoc):
+      echo "add rope"
+
 proc mergeLoc(a: var TLoc; b: TLoc) =
   when defined(debugTLoc):
     echo "mut merge"

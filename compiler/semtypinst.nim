@@ -10,7 +10,7 @@
 # This module does the instantiation of generic types.
 
 import ast, astalgo, msgs, types, magicsys, semdata, renderer, options,
-  lineinfos, rod, modulegraphs
+  lineinfos
 
 const
   tfInstClearedFlags = {tfHasMeta, tfUnresolved}

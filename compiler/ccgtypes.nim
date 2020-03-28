@@ -79,7 +79,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
     if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
       res.add "_0"
     result = res.rope
-    s.mloc.setRope result
+    s.mloc.setRope result # need mutable location
     writeMangledName(m.ndi, s, m.config)
 
 proc mangleLocalName(p: BProc; s: PSym): Rope =
@@ -97,7 +97,7 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
     elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
       result.add "_" & rope(counter+1)
     p.sigConflicts.inc(key)
-    s.mloc.setRope result
+    s.mloc.setRope result # need mutable location
     if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =

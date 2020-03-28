@@ -145,12 +145,12 @@ proc pragmaAsm*(c: PContext, n: PNode): char =
 proc setExternName(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   # special cases to improve performance:
   if extname == "$1":
-    s.mloc.setRope rope(s.name.s)
+    s.mloc.setRope rope(s.name.s) # need mutable location
   elif '$' notin extname:
-    s.mloc.setRope rope(extname)
+    s.mloc.setRope rope(extname) # need mutable location
   else:
     try:
-      s.mloc.setRope rope(extname % s.name.s)
+      s.mloc.setRope rope(extname % s.name.s) # need mutable location
     except ValueError:
       localError(c.config, info, "invalid extern name: '" & extname & "'. (Forgot to escape '$'?)")
   when hasFFI:
@@ -891,7 +891,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         incl(sym.flags, sfImportc)
         incl(sym.mloc.flags, {lfHeader, lfNoDecl})
         # implies nodecl, because otherwise header would not make sense
-        if sym.loc.r == nil: sym.mloc.setRope rope(sym.name.s)
+        if sym.loc.r == nil: sym.mloc.setRope rope(sym.name.s) # mutable loc
       of wNoSideEffect:
         noVal(c, it)
         if sym != nil:

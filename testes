@@ -31,7 +31,7 @@ function build-compiler
 end
 
 function build-sanity
-	if bin/nim_temp --nimcache:nimcache c -r $test
+	if bin/nim_temp --nimcache:nimcache c -r --embedsrc --debuginfo --stackTrace:on $test
 		notice sanity built
 	else
 		error failed sanity build
@@ -39,7 +39,7 @@ function build-sanity
 	end
 end
 function build-test
-	if bin/nim_temp c -d:debugTLoc --debuginfo:on --nimcache:goats --incremental:on $test
+	if bin/nim_temp c -d:debugTLoc --nimcache:goats --incremental:on --debuginfo --embedsrc --stackTrace:on $test
 		notice test built
 	else
 		error failed test build

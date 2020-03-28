@@ -817,7 +817,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     initLoc(test, locNone, it, OnStack)
     initLocExpr(p, it[1], u)
     initLoc(v, locExpr, disc, OnUnknown)
-    v.setRope obj & "." & disc.sym.loc.r
+    v.setRope obj & "." & "." & disc.sym.loc.r
     genInExprAux(p, it, u, v, test)
     let msg = genFieldError(field, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
@@ -1147,8 +1147,6 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
         lens.add(lenExpr(p, a))
         lens.add(" + ")
       appends.add(rope"/* this one is broken in stacktraces */")
-#      if "TM__Q5wkpxktOdTGvlSRo9bzt9aw_6" in $rdLoc(a):
-#        raise newException(Defect, "very unhappy")
       appends.add(ropecg(p.module, "#appendString($1, $2);$n",
                         [strLoc(p, dest), rdLoc(a)]))
   if optSeqDestructors in p.config.globalOptions:
@@ -2536,6 +2534,13 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   p.currLineInfo = n.info
+
+  when not defined(release):
+    if "TM__Q5wkpxktOdTGvlSRo9bzt9aw" in $p.module.tmpBase:
+      if p.module.labels == 20006:
+        echo p.module.cfilename
+        echo dumpLine(n.info)
+        localError(p.config, n.info, "i really hate it: " & $n.kind)
 
   case n.kind
   of nkSym:

@@ -768,7 +768,7 @@ proc varInDynamicLib(m: BModule, sym: PSym) =
       [sym.loc.r, getTypeDesc(m, sym.loc.t)])
 
 proc symInDynamicLibPartial(m: BModule, sym: PSym) =
-  sym.mloc.setRope mangleDynLibProc(sym)
+  sym.loc.setRope mangleDynLibProc(sym)
   sym.typ.sym = nil           # generate a new name
 
 proc cgsym(m: BModule, name: string): Rope =
@@ -1202,10 +1202,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   # declare implementation:
   var q = findPendingModule(m, sym)
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
-    when nimIncremental:
-      discard
-    else:
-      assert q.initProc.module == q
+    assert q.initProc.module == q
     q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
         [getTypeDesc(q, sym.typ), sym.loc.r, genBracedInit(q.initProc, sym.ast, isConst = true)])
   # declare header:

@@ -93,3 +93,7 @@ proc hash(list: BModuleList): Hash =
     h = h !& h.hash
   result = !$h
 
+import strutils
+proc dumpLine*(info: TLineInfo): string =
+  result = "fileIndex[$#] line: $#, col: $#" % [ $info.fileIndex.int32,
+                                                 $info.line, $(info.col+1) ]
