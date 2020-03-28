@@ -210,6 +210,7 @@ proc finished(fv: var FlowVarBaseObj) =
 
 proc `=destroy`[T](fv: var FlowVarObj[T]) =
   finished(fv)
+  `=destroy`(fv.blob)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result)

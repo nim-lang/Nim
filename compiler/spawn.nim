@@ -38,9 +38,9 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   else: srFlowVar
 
 proc flowVarKind(t: PType): TFlowVarKind =
-  let t2 = t.skipTypes(abstractInst)
-  if t2.attachedOps[attachedAsgn] != nil: fvDestroy
-  elif t2.kind in {tyRef, tyString, tySequence}: fvGC
+  assert(t.kind notin abstractInst)
+  if t.attachedOps[attachedAsgn] != nil: fvDestroy
+  elif t.kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
 
@@ -72,7 +72,7 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
       if typ.attachedOps[attachedAsgn] != nil:
         var call = newNode(nkCall)
         call.add newSymNode(typ.attachedOps[attachedAsgn])
-        call.add genAddrOf(newSymNode(result), tyVar)
+        call.add genHiddenAddrOf(newSymNode(result), tyVar)
         call.add v
         varInit.add call
       else:
@@ -150,17 +150,23 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = flowVarKind(fv.typ[1])
+    let t = fv.typ[1].skipTypes(abstractInst)
+    let fk = flowVarKind(t)
     case fk:
     of fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ[1]))
     of fvDestroy:
-      var asgnCall = newNode(nkCall)
-      asgnCall.add newSymNode(fv.typ[1].skipTypes(abstractInst).attachedOps[attachedAsgn])
-      asgnCall.add genAddrOf(indirectAccess(threadLocalProm.newSymNode, "blob", fv.info, g.cache), tyVar)
-      asgnCall.add call
-      body.add asgnCall
+      let lhs = indirectAccess(threadLocalProm.newSymNode,
+                                "blob", fv.info, g.cache)
+      if t.attachedOps[attachedSink] != nil:
+        var asgnCall = newNode(nkCall)
+        asgnCall.add newSymNode(t.attachedOps[attachedSink])
+        asgnCall.add genHiddenAddrOf(lhs, tyVar)
+        asgnCall.add call
+        body.add asgnCall
+      else:
+        body.add newAsgnStmt(lhs, call)        
     of fvBlob:
       body.add newAsgnStmt(indirectAccess(threadLocalProm.newSymNode,
         "blob", fv.info, g.cache), call)

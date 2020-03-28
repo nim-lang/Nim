@@ -318,6 +318,12 @@ proc genAddrOf*(n: PNode, typeKind = tyPtr): PNode =
   result.typ = newType(typeKind, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
+proc genHiddenAddrOf*(n: PNode, typeKind = tyVar): PNode =
+  result = newNodeI(nkHiddenAddr, n.info, 1)
+  result[0] = n
+  result.typ = newType(typeKind, n.typ.owner)
+  result.typ.rawAddSon(n.typ)
+
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
   result = newNodeIT(k, n.info,
                      n.typ.skipTypes(abstractInst)[0])
