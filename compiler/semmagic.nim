@@ -428,6 +428,18 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result.typ = newProcType(result.info, result)
   result.typ.addParam newParam
 
+proc semQuantifier(c: PContext; n: PNode): PNode =
+  checkMinSonsLen(n, 2, c.config)
+  openScope(c)
+  for i in 0..n.len-2:
+    let v = newSymS(skForVar, n[i], c)
+    styleCheckDef(c.config, v)
+    onDef(n.info, v)
+    n[i] = newSymNode(v)
+    addDecl(c, v)
+  n[^1] = forceBool(c, semExprWithType(c, n[^1]))
+  closeScope(c)
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -505,4 +517,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result[0] = newSymNode(t.destructor)
   of mUnown:
     result = semUnown(c, n)
+  of mExists, mForall:
+    result = semQuantifier(c, n)
   else: result = n

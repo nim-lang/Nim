@@ -74,14 +74,12 @@ an index out of bounds error.
 Pre-, postconditions and invariants
 ===================================
 
-**Note**: Pre-, postconditions and invariants are currently **not**
-implemented.
-
-DrNim adds 3 additional annotations (pragmas) to Nim:
+DrNim adds 4 additional annotations (pragmas) to Nim:
 
 - `requires`:idx:
 - `ensures`:idx:
 - `invariant`:idx:
+- `assume`:idx:
 
 These pragmas are ignored by the Nim compiler so that they don't have to
 be disabled via ``when defined(nimDrNim)``.
@@ -109,11 +107,22 @@ A ``ensures`` annotation describes what will be true after the function
 call. A ``ensures`` annotation is also called a `postcondition`:idx:.
 
 
+Assume
+------
+
+An ``assume`` annotation describes what DrNim should **assume** to be true
+in this section of the program. It is an unsafe escape mechanism comparable
+to Nim's ``cast`` statement. Use it only when you really know better
+than DrNim. You should add a comment to a paper that proves the proposition
+you assume.
+
 
 Example: insertionSort
 ======================
 
 .. code-block:: nim
+
+  import std / logic
 
   proc insertionSort(a: var openArray[int]) {.
       ensures: forall(i in 1..<a.len, a[i-1] <= a[i]).} =
@@ -142,6 +151,8 @@ was performed. For example, the same postcondition is true for this proc
 which doesn't sort at all:
 
 .. code-block:: nim
+
+  import std / logic
 
   proc insertionSort(a: var openArray[int]) {.
       ensures: forall(i in 1..<a.len, a[i-1] <= a[i]).} =
@@ -185,4 +196,5 @@ and ``result`` (which represents the function's final result) are amenable
 for verification. The expressions must not have any side-effects and must
 terminate.
 
-
+The operators ``forall``, ``exists``, ``->``, ``<->`` have to imported
+from ``std / logic``.

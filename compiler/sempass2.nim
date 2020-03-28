@@ -676,6 +676,17 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
+proc prove(c: PEffects; prop: PNode) =
+  if c.graph.proofEngine != nil:
+    let (success, counterex) = c.graph.proofEngine(c.graph, c.guards.s,
+      canon(prop, c.guards.o))
+    if not success:
+      var m = "cannot prove: " & $prop
+      if counterex.len > 0:
+        m.add "; counter example: "
+        m.add counterex
+      message(c.config, prop.info, warnStaticIndexCheck, m)
+
 proc checkLe(c: PEffects; a, b: PNode) =
   if c.graph.proofEngine != nil:
     var cmpOp = mLeI
@@ -685,14 +696,7 @@ proc checkLe(c: PEffects; a, b: PNode) =
       of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
       else: discard
 
-    let (success, msg) = c.graph.proofEngine(c.graph, c.guards.s,
-      canon(newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b), c.guards.o))
-    if not success:
-      var m = "cannot prove: " & $a & " <= " & $b
-      if msg.len > 0:
-        m.add "; counter example: "
-        m.add msg
-      message(c.config, a.info, warnStaticIndexCheck, m)
+    prove(c, newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b))
   else:
     case proveLe(c.guards, a, b)
     of impUnknown:
@@ -995,6 +999,12 @@ proc track(tracked: PEffects, n: PNode) =
         enforcedGcSafety = true
       elif pragma == wNoSideEffect:
         enforceNoSideEffects = true
+      when defined(drnim):
+        if pragma == wAssume:
+          addFact(tracked.guards, pragmaList[i][1])
+        elif pragma == wInvariant:
+          prove(tracked, pragmaList[i][1])
+
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
     track(tracked, n.lastSon)
@@ -1107,14 +1117,22 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
     let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
       effects[tagEffects] = tagsSpec
+
+    let requiresSpec = effectSpec(n, wRequires)
+    if not isNil(requiresSpec):
+      effects[requiresEffects] = requiresSpec
+    let ensuresSpec = effectSpec(n, wEnsures)
+    if not isNil(ensuresSpec):
+      effects[ensuresEffects] = ensuresSpec
+
     effects[pragmasEffects] = n
 
 proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PContext) =
   newSeq(effects.sons, effectListLen)
   effects[exceptionEffects] = newNodeI(nkArgList, s.info)
   effects[tagEffects] = newNodeI(nkArgList, s.info)
-  effects[usesEffects] = g.emptyNode
-  effects[writeEffects] = g.emptyNode
+  effects[requiresEffects] = g.emptyNode
+  effects[ensuresEffects] = g.emptyNode
   effects[pragmasEffects] = g.emptyNode
 
   t.exc = effects[exceptionEffects]
@@ -1173,6 +1191,10 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
                     hints=off, subtypeRelation)
     # after the check, use the formal spec:
     effects[tagEffects] = tagsSpec
+
+  let ensuresSpec = effectSpec(p, wEnsures)
+  if not isNil(ensuresSpec):
+    prove(t, ensuresSpec)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:

@@ -114,3 +114,4 @@ proc initDefines*(symbols: StringTableRef) =
 
   defineSymbol("nimHasSinkInference")
   defineSymbol("nimNewIntegerOps")
+  defineSymbol("nimHasInvariant")

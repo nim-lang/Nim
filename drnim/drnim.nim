@@ -78,6 +78,27 @@ template binary(op, a, b): untyped =
   var arr = [a, b]
   op(ctx, cuint(2), addr(arr[0]))
 
+proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast
+
+template quantorToZ3(fn) {.dirty.} =
+  template ctx: untyped = c.z3
+
+  var bound = newSeq[Z3_app](n.len-1)
+  for i in 0..n.len-2:
+    doAssert n[i].kind == nkSym
+    let v = n[i].sym
+    let name = Z3_mk_string_symbol(ctx, v.name.s)
+    let vz3 = Z3_mk_const(ctx, name, typeToZ3(c, v.typ))
+    c.mapping[v.id] = vz3
+    bound[i] = Z3_to_app(ctx, vz3)
+
+  var dummy: seq[PNode]
+  let x = nodeToZ3(c, n[^1], dummy)
+  result = fn(ctx, 0, bound.len.cuint, addr(bound[0]), 0, nil, x)
+
+proc forallToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_forall_const)
+proc existsToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_exists_const)
+
 proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
   template ctx: untyped = c.z3
   case n.kind
@@ -157,6 +178,14 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_xor(ctx, rec n[1], rec n[2])
     of mNot:
       result = Z3_mk_not(ctx, rec n[1])
+    of mImplies:
+      result = Z3_mk_implies(ctx, rec n[1], rec n[2])
+    of mIff:
+      result = Z3_mk_iff(ctx, rec n[1], rec n[2])
+    of mForall:
+      result = forallToZ3(c, n)
+    of mExists:
+      result = existsToZ3(c, n)
     of mLeF64:
       result = Z3_mk_fpa_leq(ctx, rec n[1], rec n[2])
     of mLtF64:
