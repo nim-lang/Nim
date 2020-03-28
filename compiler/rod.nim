@@ -131,16 +131,18 @@ proc initProcOptions*(m: BModule): TOptions =
   let opts = m.config.options
   if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts
 
-proc getSetConflict*(m: BModule;
-                     s: PSym): tuple[name: string; counter: int] =
+proc getSetConflict*(m: BModule; s: PSym;
+                     create = true): tuple[name: string; counter: int] =
   template g(): ModuleGraph = m.g.graph
   var
     counter: int
   let
     signature = s.sigHash
+    name = $signature
   if g.config.symbolFiles in {disabledSf}:
-    m.sigConflicts.inc signature
-    counter = m.sigConflicts[signature]
+    if create:
+      m.sigConflicts.inc name
+    counter = m.sigConflicts[name]
   else:
     const
       query = sql"""
@@ -154,46 +156,60 @@ proc getSetConflict*(m: BModule;
         values (?, ?)
       """
     let
-      id = db.getValue(query, s.id, signature)
-    if id == "":
-      counter = db.insertID(insert, s.id, signature).int
-    else:
-      counter = id.parseInt
-    assert m.sigConflicts != nil
-    if signature notin m.sigConflicts:
-      m.sigConflicts.inc signature, counter
-    else:
-      if m.sigConflicts[signature] < counter:
-        m.sigConflicts.inc signature, counter - m.sigConflicts[signature]
-      elif m.sigConflicts[signature] != counter:
-        raise newException(Defect, "unexpected; " & $m.sigConflicts[signature] & " " & $counter)
-  block:
+      id = db.getValue(query, s.id, name)
+    block creation:
+      if id == "":
+        if not create:
+          raise newException(Defect, "life is a strange place")
+        counter = db.insertID(insert, s.id, name).int
+      else:
+        counter = id.parseInt
+        if not create:
+          break creation
+      assert m.sigConflicts != nil
+      if name notin m.sigConflicts:
+        m.sigConflicts.inc name, counter
+      else:
+        # FIXME: do we need this still?
+        if m.sigConflicts[name] < counter:
+          m.sigConflicts.inc name, counter - m.sigConflicts[name]
+        elif m.sigConflicts[name] != counter:
+          raise newException(Defect, "unexpected; " & $m.sigConflicts[name] & " " & $counter)
+
+  block inlines:
     # this minor hack is necessary to make tests/collections/thashes compile.
     # The inlined hash function's original module is ambiguous so we end up
     # generating duplicate names otherwise:
     if s.kind in routineKinds and s.typ != nil:
       if s.typ.callConv == ccInline:
-        result = (name: $signature & "_" & m.module.name.s, counter: counter)
-        break
-    result = (name: $signature, counter: counter)
+        result = (name: name & "_" & m.module.name.s, counter: counter)
+        break inlines
+    result = (name: name, counter: counter)
 
 proc idOrSig*(m: BModule; s: PSym): Rope =
   let
-    conflict = m.getSetConflict(s)
+    conflict = m.getSetConflict(s, create = true)
   result = rope(conflict.name)
   if conflict.counter != 1:
     result.add "_" & rope($conflict.counter)
 
-import strutils
-proc getTempName*(m: BModule): Rope =
+proc makeTempName*(m: BModule; label: int, create = false): Rope =
+  let
+    conflict = m.getSetConflict(m.module, create = create)
   result = rope($m.tmpBase)
-  result.add m.idOrSig(m.module)
-  result.add rope("_" & $m.labels)
-  when not defined(release):
-    if startsWith($result, "tmp_ic___09aXioZX47Rm2o4ai2xffHw___pF9ac9cU2tnA6T9aZkkGK9clsg"):
-      writeStackTrace()
-      #raise newException(Defect, "")
-  #echo "--> ", $result
+  result.add "_"
+  result.add conflict.name
+  let
+    counter = if create: conflict.counter else: label
+  case conflict.counter
+  of 0, 1:
+    discard
+  else:
+    result.add "_"
+    result.add $conflict.counter
+
+proc getTempName*(m: BModule): Rope =
+  result = m.makeTempName(m.labels, create = true)
   inc m.labels
 
 proc rawNewModule*(g: BModuleList; module: PSym; filename: AbsoluteFile): BModule =
@@ -219,7 +235,7 @@ proc rawNewModule*(g: BModuleList; module: PSym; filename: AbsoluteFile): BModul
   result.typeCache = newTable[SigHash, Rope]()
   result.forwTypeCache = newTable[SigHash, Rope]()
   result.typeInfoMarker = newTable[SigHash, Rope]()
-  result.sigConflicts = newCountTable[SigHash]()
+  result.sigConflicts = newCountTable[string]()
 
   #
   result.typeNodesName = getTempName(result)
@@ -1936,11 +1952,9 @@ proc store(cache: var CacheUnit; parent: BModule; child: BModule) =
     #parent.flags = child.flags
     storeTransform(cache, cache.node, transform)
 
-  when defined(tooSlowForMe):
-    #{.error: "very broken".}
-    for pair in child.dataCache.data.items:
-      if pair.h notin parent.dataCache.data:
-        parent.dataCache.nodeTablePutHash(pair.h, pair.key, pair.val)
+  # TODO: optimize
+  for pair in child.dataCache.data.items:
+    nodeTablePut(parent.dataCache, pair.key, pair.val)
 
   ## ✅1. ropes to store per section
   cache.storeSections(parent, child)

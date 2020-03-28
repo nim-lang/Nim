@@ -74,8 +74,12 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
     else:
       result = rope("NIM_NIL")
   of nkStrLit..nkTripleStrLit:
-    let k = if ty == nil: tyString
-            else: skipTypes(ty, abstractVarRange + {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
+    let k = block:
+      if ty == nil:
+        tyString
+      else:
+        skipTypes(ty, abstractVarRange +
+          {tyStatic, tyUserTypeClass, tyUserTypeClassInst}).kind
     case k
     of tyNil:
       result = genNilStringLiteral(p.module, n.info)
@@ -1146,7 +1150,6 @@ proc genStrAppend(p: BProc, e: PNode, d: var TLoc) =
       else:
         lens.add(lenExpr(p, a))
         lens.add(" + ")
-      appends.add(rope"/* this one is broken in stacktraces */")
       appends.add(ropecg(p.module, "#appendString($1, $2);$n",
                         [strLoc(p, dest), rdLoc(a)]))
   if optSeqDestructors in p.config.globalOptions:

@@ -152,14 +152,14 @@ type
     hcrCreateTypeInfosProc*: Rope # type info globals are in here when HCR=on
     inHcrInitGuard*: bool     # We are currently within a HCR reloading guard.
     typeStack*: TTypeSeq      # used for type generation
-    dataCache*: TNodeTable    # no one is really sure wtf this is
+    dataCache*: TNodeTable    # this is where we cache literals in the module
     typeNodes*, nimTypes*: int # used for type info generation
     typeNodesName*, nimTypesName*: Rope # used for type info generation
     labels*: Natural          # for generating unique module-scope names
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
     injectStmt*: Rope         # i think this has something to do with iv drugs
-    sigConflicts*: CountTableRef[SigHash]
+    sigConflicts*: CountTableRef[string]
     g*: BModuleList           # the complete module graph
     ndi*: NdiFile             # "nim debug info" files
 
@@ -178,6 +178,9 @@ proc procSec*(p: BProc, s: TCProcSection): var Rope {.inline.} =
   # top level proc sections
   result = p.blocks[0].sections[s]
 
+template sigConflicts*(bp: BProc): CountTableRef[string] =
+  bp.module.sigConflicts
+
 proc newProc*(prc: PSym, module: BModule): BProc =
   new(result)
   result.prc = prc
@@ -187,7 +190,6 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
-  result.sigConflicts = newCountTable[string]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),

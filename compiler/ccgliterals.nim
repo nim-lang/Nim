@@ -42,41 +42,43 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
   if s.isNil:
     result = ropecg(m, "((#NimStringDesc*) NIM_NIL)", [])
   else:
-    # XXX: come back and fix this
     let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
     if id == m.labels:
       # string literal not found in the cache:
       result = ropecg(m, "((#NimStringDesc*) &$1)",
                       [genStringLiteralDataOnlyV1(m, n.strVal)])
     else:
-      result = ropecg(m, "((#NimStringDesc*) &$1$2)",
-                      [m.tmpBase, id])
+      result = ropecg(m, "((#NimStringDesc*) &$1)", [m.makeTempName(id)])
 
 # ------ Version 2: destructor based strings and seqs -----------------------
 
 proc genStringLiteralDataOnlyV2(m: BModule, s: string; result: Rope; isConst: bool) =
+  let
+    constr = if isConst: rope"const" else: rope""
   m.s[cfsData].addf("static $4 struct {$n" &
        "  NI cap; NIM_CHAR data[$2+1];$n" &
        "} $1 = { $2 | NIM_STRLIT_FLAG, $3 };$n",
-       [result, rope(s.len), makeCString(s),
-       rope(if isConst: "const" else: "")])
+       [result, rope(s.len), makeCString(s), constr])
 
 proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool): Rope =
-  let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
+  const
+    codegenf = "static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n"
+  let
+    constr = if isConst: rope"const" else: rope""
+    id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   if id == m.labels:
+    # string literal not found in the cache:
     let pureLit = getTempName(m)
     genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
-    result = getTempName(m)
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
-    # string literal not found in the cache:
-    m.s[cfsData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
-          [result, rope(n.strVal.len), pureLit, rope(if isConst: "const" else: "")])
+    result = getTempName(m)
+    m.s[cfsData].addf(codegenf,
+                      [result, rope(n.strVal.len), pureLit, constr])
   else:
     result = getTempName(m)
-    m.s[cfsData].addf("static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n",
-          [result, rope(n.strVal.len), m.tmpBase & rope(id),
-          rope(if isConst: "const" else: "")])
+    m.s[cfsData].addf(codegenf,
+                      [result, rope(n.strVal.len), m.makeTempName(id), constr])
 
 proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool): Rope =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
@@ -88,7 +90,7 @@ proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool): Rope =
     # string literal not found in the cache:
     genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
   else:
-    pureLit = m.tmpBase & rope(id)
+    pureLit = m.makeTempName(id)
   result = "{$1, (NimStrPayload*)&$2}" % [rope(n.strVal.len), pureLit]
 
 # ------ Version selector ---------------------------------------------------
