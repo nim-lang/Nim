@@ -676,16 +676,28 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
-proc prove(c: PEffects; prop: PNode) =
+proc prove(c: PEffects; prop: PNode): bool =
   if c.graph.proofEngine != nil:
-    let (success, counterex) = c.graph.proofEngine(c.graph, c.guards.s,
+    let (success, m) = c.graph.proofEngine(c.graph, c.guards.s,
       canon(prop, c.guards.o))
     if not success:
-      var m = "cannot prove: " & $prop
-      if counterex.len > 0:
-        m.add "; counter example: "
-        m.add counterex
-      message(c.config, prop.info, warnStaticIndexCheck, m)
+      message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
+    result = success
+
+when defined(drnim):
+  proc requiresCheck(c: PEffects; call: PNode; op: PType) =
+    assert op.n[0].kind == nkEffectList
+    if requiresEffects < op.n[0].len:
+      let requires = op.n[0][requiresEffects]
+      if requires != nil and requires.kind != nkEmpty:
+        # we need to map the call arguments to the formal parameters used inside
+        # 'requires':
+        let (success, m) = c.graph.requirementsCheck(c.graph, c.guards.s, call, canon(requires, c.guards.o))
+        if not success:
+          message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
+
+else:
+  template requiresCheck(c, n, op) = discard
 
 proc checkLe(c: PEffects; a, b: PNode) =
   if c.graph.proofEngine != nil:
@@ -696,7 +708,9 @@ proc checkLe(c: PEffects; a, b: PNode) =
       of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
       else: discard
 
-    prove(c, newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b))
+    let cmp = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b)
+    cmp.info = a.info
+    discard prove(c, cmp)
   else:
     case proveLe(c.guards, a, b)
     of impUnknown:
@@ -806,6 +820,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
+      requiresCheck(tracked, n, op)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
       for i in 1..<n.len: trackOperand(tracked, n[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
@@ -1003,7 +1018,8 @@ proc track(tracked: PEffects, n: PNode) =
         if pragma == wAssume:
           addFact(tracked.guards, pragmaList[i][1])
         elif pragma == wInvariant:
-          prove(tracked, pragmaList[i][1])
+          if prove(tracked, pragmaList[i][1]):
+            addFact(tracked.guards, pragmaList[i][1])
 
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
@@ -1118,10 +1134,10 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
     if not isNil(tagsSpec):
       effects[tagEffects] = tagsSpec
 
-    let requiresSpec = effectSpec(n, wRequires)
+    let requiresSpec = propSpec(n, wRequires)
     if not isNil(requiresSpec):
       effects[requiresEffects] = requiresSpec
-    let ensuresSpec = effectSpec(n, wEnsures)
+    let ensuresSpec = propSpec(n, wEnsures)
     if not isNil(ensuresSpec):
       effects[ensuresEffects] = ensuresSpec
 
@@ -1192,9 +1208,15 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     # after the check, use the formal spec:
     effects[tagEffects] = tagsSpec
 
-  let ensuresSpec = effectSpec(p, wEnsures)
+  let requiresSpec = propSpec(p, wRequires)
+  if not isNil(requiresSpec):
+    effects[requiresEffects] = requiresSpec
+  let ensuresSpec = propSpec(p, wEnsures)
   if not isNil(ensuresSpec):
-    prove(t, ensuresSpec)
+    # XXX Remember that after the call to 'f' whatever 'f'
+    # ensures must be remembered somehow
+    effects[ensuresEffects] = ensuresSpec
+    discard prove(t, ensuresSpec)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:

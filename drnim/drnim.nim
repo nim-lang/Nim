@@ -57,7 +57,7 @@ type
     mapping: Table[int, Z3_ast]
 
 proc notImplemented(msg: string) {.noinline.} =
-  raise newException(CannotMapToZ3Error, "cannot map to Z3: " & msg)
+  raise newException(CannotMapToZ3Error, " cannot map to Z3: " & msg)
 
 proc typeToZ3(c: DrCon; t: PType): Z3_sort =
   template ctx: untyped = c.z3
@@ -213,6 +213,14 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_bvxor(ctx, rec n[1], rec n[2])
     else:
       notImplemented(renderTree(n))
+  of nkStmtListExpr, nkPar:
+    var isTrivial = true
+    for i in 0..n.len-2:
+      isTrivial = isTrivial and n[i].kind in {nkEmpty, nkCommentStmt}
+    if isTrivial:
+      result = nodeToZ3(c, n[^1], vars)
+    else:
+      notImplemented(renderTree(n))
   else:
     notImplemented(renderTree(n))
 
@@ -345,21 +353,39 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
 
     let z3res = Z3_solver_check(ctx, solver)
     result[0] = z3res == Z3_L_FALSE
+    result[1] = ""
     if not result[0]:
-      result[1] = strip $Z3_model_to_string(ctx, Z3_solver_get_model(ctx, solver))
-    else:
-      result[1] = ""
+      let counterex = strip($Z3_model_to_string(ctx, Z3_solver_get_model(ctx, solver)))
+      if counterex.len > 0:
+        result[1].add "; counter example: " & counterex
   except ValueError:
     result[0] = false
     result[1] = getCurrentExceptionMsg()
   finally:
     Z3_del_context(ctx)
 
+proc translateReq(r, call: PNode): PNode =
+  if r.kind == nkSym and r.sym.kind == skParam:
+    if r.sym.position+1 < call.len:
+      result = call[r.sym.position+1]
+    else:
+      notImplemented("no argument given for formal parameter: " & r.sym.name.s)
+  else:
+    result = shallowCopy(r)
+    for i in 0 ..< safeLen(r):
+      result[i] = translateReq(r[i], call)
+
+proc requirementsCheck(graph: ModuleGraph; assumptions: seq[PNode];
+                      call, requirement: PNode): (bool, string) {.nimcall.} =
+  let r = translateReq(requirement, call)
+  result = proofEngine(graph, assumptions, r)
+
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
   conf.lastCmdTime = epochTime()
 
   graph.proofEngine = proofEngine
+  graph.requirementsCheck = requirementsCheck
 
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
