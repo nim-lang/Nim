@@ -259,17 +259,10 @@ when defined(nimV2):
     finished(fv[])
 
 else:
-  proc `^`*[T](fv: FlowVar[ref T]): ref T =
-    ## Blocks until the value is available and then returns this value.
-    blockUntil(fv)
-    let src = cast[ref T](fv.data)
-    deepCopy result, src
-    finished(fv)
-
   proc `^`*[T](fv: FlowVar[T]): T =
     ## Blocks until the value is available and then returns this value.
     blockUntil(fv[])
-    when T is string or T is seq:
+    when T is string or T is seq or T is ref:
       let src = cast[T](fv.data)
       deepCopy result, src
     else:

@@ -39,7 +39,7 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
 
 proc flowVarKind(t: PType): TFlowVarKind =
   assert(t.kind notin abstractInst)
-  if t.attachedOps[attachedAsgn] != nil: fvDestroy
+  if hasDestructor(t): fvDestroy
   elif t.kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
