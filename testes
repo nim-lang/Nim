@@ -48,7 +48,7 @@ function build-test
 end
 
 function run-test
-	if ./t
+	if command $test
 		notice test ran okay
 	else
 		warning test execution failed

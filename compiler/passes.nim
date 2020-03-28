@@ -251,5 +251,4 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream) =
     processCachedModule(graph, module, stream)
   else:
     # otherwise, just process the module normally
-    echo "process uncached ", module.name.s
     processUncachedModule(graph, module, stream)

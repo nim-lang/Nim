@@ -990,11 +990,6 @@ proc getProcTypeCast(m: BModule, prc: PSym): Rope =
     result = "$1(*)$2" % [rettype, params]
 
 proc genProcBody(p: BProc; procBody: PNode) =
-  when false:
-    if startsWith($p.module.tmpBase, "TM"):
-      writeStackTrace()
-      echo "genProcBody against         : ", $p.module.cfilename
-      echo "genProcBody against p module: ", $p.module.tmpBase
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
