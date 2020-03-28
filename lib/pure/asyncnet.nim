@@ -224,7 +224,7 @@ when defineSsl:
     let len = bioCtrlPending(socket.bioOut)
     if len > 0:
       var data = newString(len)
-      let read = bioRead(socket.bioOut, addr data[0], len)
+      let read = bioRead(socket.bioOut, data.toCstring, len)
       assert read != 0
       if read < 0:
         raiseSSLError()
@@ -242,7 +242,7 @@ when defineSsl:
       var data = await recv(socket.fd.AsyncFD, BufferSize, flags)
       let length = len(data)
       if length > 0:
-        let ret = bioWrite(socket.bioIn, addr data[0], length.cint)
+        let ret = bioWrite(socket.bioIn, data.toCstring, length.cint)
         if ret < 0:
           raiseSSLError()
       elif length == 0:
@@ -453,7 +453,7 @@ proc send*(socket: AsyncSocket, data: string,
     when defineSsl:
       var copy = data
       sslLoop(socket, flags,
-        sslWrite(socket.sslHandle, addr copy[0], copy.len.cint))
+        sslWrite(socket.sslHandle, copy.toCstring, copy.len.cint))
       await sendPendingSslData(socket, flags)
   else:
     await send(socket.fd.AsyncFD, data, flags)

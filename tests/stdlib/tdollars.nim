@@ -7,7 +7,7 @@ template main() =
   when nimvm: discard
   else:
     doAssert cast[cstring](b) == "abc"
-  echo $b
+  doAssert not compiles $b
 
 static: main()
 main()

@@ -473,7 +473,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
     result = newString(addrLen)
     let addr6 = addr cast[ptr Sockaddr_in6](sockAddr).sin6_addr
     when not useWinVersion:
-      if posix.inet_ntop(posix.AF_INET6, addr6, addr result[0],
+      if posix.inet_ntop(posix.AF_INET6, addr6, result.toCstring,
                          result.len.int32) == nil:
         raiseOSError(osLastError())
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
@@ -575,7 +575,7 @@ proc getLocalAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
     result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-        addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+        addr name.sin6_addr, result[0].toCstring, (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
     setLen(result[0], result[0].cstring.len)
     result[1] = Port(nativesockets.ntohs(name.sin6_port))
@@ -612,7 +612,7 @@ proc getPeerAddr*(socket: SocketHandle, domain: Domain): (string, Port) =
     # Cannot use INET6_ADDRSTRLEN here, because it's a C define.
     result[0] = newString(64)
     if inet_ntop(name.sin6_family.cint,
-        addr name.sin6_addr, addr result[0][0], (result[0].len+1).int32).isNil:
+        addr name.sin6_addr, result[0].toCstring, (result[0].len+1).int32).isNil:
       raiseOSError(osLastError())
     setLen(result[0], result[0].cstring.len)
     result[1] = Port(nativesockets.ntohs(name.sin6_port))

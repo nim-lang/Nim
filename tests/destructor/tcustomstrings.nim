@@ -69,7 +69,7 @@ proc ensure(self: var mystring; newLen: int) =
 proc add*(self: var mystring; y: mystring) =
   let newLen = len + y.len
   ensure(self, newLen)
-  copyMem(addr data[len], y.data, y.data.len + 1)
+  copyMem(data[len].addr.toCstring, y.data, y.data.toCstring.len + 1)
   len = newLen
 
 proc create*(lit: string): mystring =
@@ -90,7 +90,7 @@ proc main(n: int) =
     a = create"foo bar"
     let c = b & create"more here"
     a.add c
-    echo cstring(a.data)
+    echo a.data.toCstring
 
   var x: array[4, mystring]
   for i in 0..high(x): x[i] = create"added to array"

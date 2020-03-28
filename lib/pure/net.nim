@@ -690,6 +690,7 @@ when defineSsl:
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: "" else: $hint
     let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
+    # PRTEMP: psk.toCstring ?
     if pskString.len.cuint > max_psk_len:
       return 0
     if identityString.len.cuint >= max_identity_len:
@@ -715,6 +716,7 @@ when defineSsl:
       max_psk_len: cint): cuint {.cdecl.} =
     let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)
+    # PRTEMP: psk.toCstring ?
     if pskString.len.cint > max_psk_len:
       return 0
     copyMem(psk, pskString.cstring, pskString.len)

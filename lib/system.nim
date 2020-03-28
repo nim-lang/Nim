@@ -308,10 +308,14 @@ type
   ## Array with no bounds checking.
 
 template toCstring*(a: ptr char): cstring = cast[cstring](a)
+  ## `toCstring` is more typesafe than `cast`
 template toCstring*[N](a: ptr array[N, char]): cstring = cast[cstring](a)
 template toCstring*[N](a: array[N, char]): cstring = cast[cstring](a.addr)
-template toCstring*[N](a: ptr UncheckedArray[char]): cstring = cast[cstring](a)
+template toCstring*(a: ptr UncheckedArray[char]): cstring = cast[cstring](a)
 template toCstring*(a: UncheckedArray[char]): cstring = cast[cstring](a.addr)
+template toCstring*(a: string): cstring = a.cstring
+  # we already have implicit conversion for string=>cstring but seems cleaner
+  # to require explicit conversion here too
 
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
@@ -2087,7 +2091,7 @@ template newException*(exceptn: typedesc, message: string;
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
-    else: result = cstring(addr s.data)
+    else: result = s.data.toCstring
 
 proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## Get type information for `x`.

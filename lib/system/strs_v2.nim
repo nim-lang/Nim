@@ -89,7 +89,7 @@ proc cstrToNimstr(str: cstring): NimStringV2 {.compilerRtl.} =
 
 proc nimToCStringConv(s: NimStringV2): cstring {.compilerproc, nonReloadable, inline.} =
   if s.len == 0: result = cstring""
-  else: result = cstring(unsafeAddr s.p.data)
+  else: result = s.p.data.toCstring
 
 proc appendString(dest: var NimStringV2; src: NimStringV2) {.compilerproc, inline.} =
   if src.len > 0:
