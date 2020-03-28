@@ -6,7 +6,7 @@ packages:
 - databases/sqlite3
 # - devel/boehm-gc-threaded
 - devel/pcre
-- devel/sdl20
+# - devel/sdl20
 - devel/sfml
 - www/node
 - devel/gmake
@@ -19,7 +19,7 @@ tasks:
 - setup: |
     # sudo needed
     sudo pkg update -q -f
-    sudo pkg install -q devel/boehm-gc-threaded
+    sudo pkg install -q devel/boehm-gc-threaded devel/sdl20
 
     echo "D20200327T203132.3"
     cd Nim
