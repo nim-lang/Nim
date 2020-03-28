@@ -68,8 +68,9 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   vpart[2] = if varInit.isNil: v else: vpart[1]
   varSection.add vpart
   if varInit != nil:
-    if g.config.selectedGC in {gcArc, gcOrc}:
-      if typ.attachedOps[attachedAsgn] != nil:
+    var t = typ.skipTypes(abstractInst)
+    if hasDestructor(t):
+      if t.attachedOps[attachedAsgn] != nil:
         var call = newNode(nkCall)
         call.add newSymNode(typ.attachedOps[attachedAsgn])
         call.add genHiddenAddrOf(newSymNode(result), tyVar)
@@ -77,15 +78,14 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
         varInit.add call
       else:
         varInit.add newFastAsgnStmt(newSymNode(result), v)
-    else:      
-      if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
-      else:
-        let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
-        deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
-        deepCopyCall[1] = newSymNode(result)
-        deepCopyCall[2] = v
-        varInit.add deepCopyCall
+    elif useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
+      varInit.add newFastAsgnStmt(newSymNode(result), v)
+    else:
+      let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
+      deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
+      deepCopyCall[1] = newSymNode(result)
+      deepCopyCall[2] = v
+      varInit.add deepCopyCall
 
 discard """
 We generate roughly this:

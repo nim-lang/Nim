@@ -212,6 +212,9 @@ proc `=destroy`[T](fv: var FlowVarObj[T]) =
   finished(fv)
   `=destroy`(fv.blob)
 
+proc `=`[T](x: var FlowVarObj[T], y: FlowVarObj[T]) {.error.}
+  ## flowvar objects are not copyable, only their references are 
+
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
   new(result)
 
