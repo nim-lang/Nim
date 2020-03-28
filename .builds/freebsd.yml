@@ -1,10 +1,10 @@
 # see https://man.sr.ht/builds.sr.ht/compatibility.md#freebsd
-# image: freebsd/latest
-image: freebsd/11.x # workaround https://github.com/timotheecour/Nim/issues/76
+image: freebsd/latest
+# image: freebsd/11.x # workaround https://github.com/timotheecour/Nim/issues/76
 
 packages:
 - databases/sqlite3
-- devel/boehm-gc-threaded
+# - devel/boehm-gc-threaded
 - devel/pcre
 - devel/sdl20
 - devel/sfml
