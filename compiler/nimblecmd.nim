@@ -88,15 +88,12 @@ proc getPathVersion*(p: string): tuple[name, version: string] =
 
 proc addPackage(conf: ConfigRef; packages: StringTableRef, p: string; info: TLineInfo) =
   let (name, ver) = getPathVersion(p)
-  echo (p,)
   if isValidVersion(ver):
     let version = newVersion(ver)
     if packages.getOrDefault(name).newVersion < version or
       (not packages.hasKey(name)):
       packages[name] = $version
   else:
-    echo (p.len,)
-    echo (p,name, ver)
     localError(conf, info, "invalid package name: " & p)
 
 iterator chosen(packages: StringTableRef): string =
