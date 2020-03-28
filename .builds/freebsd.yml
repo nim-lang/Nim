@@ -5,11 +5,11 @@ image: freebsd/latest
 packages:
 - databases/sqlite3
 # - devel/boehm-gc-threaded
-- devel/pcre
-- devel/sdl20
-- devel/sfml
-- www/node
-- devel/gmake
+# - devel/pcre
+# - devel/sdl20
+# - devel/sfml
+# - www/node
+# - devel/gmake
 - devel/git
 sources:
 - https://github.com/nim-lang/Nim
@@ -17,6 +17,11 @@ environment:
   CC: /usr/bin/clang
 tasks:
 - setup: |
+    echo "D20200327T203132"
+    pkg update -f
+    echo "D20200327T203132.2"
+    pkg install devel/boehm-gc-threaded
+    echo "D20200327T203132.3"
     cd Nim
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
     gmake -C csources -j $(sysctl -n hw.ncpu)
