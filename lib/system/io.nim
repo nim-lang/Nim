@@ -450,7 +450,7 @@ proc readLine*(f: File, line: var string): bool {.tags: [ReadIOEffect],
     while true:
       # fixes #9634; this pattern may need to be abstracted as a template if reused;
       # likely other io procs need this for correctness.
-      fgetsSuccess = c_fgets(addr line[pos], sp.cint, f) != nil
+      fgetsSuccess = c_fgets(line[pos].addr.toCstring, sp.cint, f) != nil
       if fgetsSuccess: break
       when not defined(nimscript):
         if errno == EINTR:

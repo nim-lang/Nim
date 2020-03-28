@@ -2314,11 +2314,13 @@ iterator walkDir*(dir: string; relative = false, checkDir = false):
         if checkDir:
           raiseOSError(osLastError(), dir)
       else:
+        var y: string
         defer: discard closedir(d)
         while true:
           var x = readdir(d)
           if x == nil: break
-          var y = $cstring(addr x.d_name)
+          y.setLen 0
+          y.strAppend x.d_name.toCstring
           if y != "." and y != "..":
             var s: Stat
             let path = dir / y

@@ -91,7 +91,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerproc.} =
 
 proc nimToCStringConv(s: NimString): cstring {.compilerproc, nonReloadable, inline.} =
   if s == nil or s.len == 0: result = cstring""
-  else: result = cstring(addr s.data)
+  else: result = cstring(s.data.toCstring)
 
 proc toNimStr(str: cstring, len: int): NimString {.compilerproc.} =
   result = rawNewStringNoInit(len)

@@ -2372,11 +2372,11 @@ func formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       frmtstr[3] = '*'
       frmtstr[4] = floatFormatToChar[format]
       frmtstr[5] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, precision, f)
+      L = c_sprintf(buf.toCstring, frmtstr.toCstring, precision, f)
     else:
       frmtstr[1] = floatFormatToChar[format]
       frmtstr[2] = '\0'
-      L = c_sprintf(addr buf, addr frmtstr, f)
+      L = c_sprintf(buf.toCstring, frmtstr.toCstring, f)
     result = newString(L)
     for i in 0 ..< L:
       # Depending on the locale either dot or comma is produced,

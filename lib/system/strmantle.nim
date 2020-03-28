@@ -158,7 +158,7 @@ proc addFloat*(result: var string; x: float) =
   else:
     var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBuffer(buffer, x)
-    result.addCstringN(cstring(buffer[0].addr), n)
+    result.addCstringN(buffer.toCstring, n)
 
 proc nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
@@ -329,7 +329,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   t[ti-2] = ('0'.ord + absExponent mod 10).char
   absExponent = absExponent div 10
   t[ti-3] = ('0'.ord + absExponent mod 10).char
-  number = c_strtod(addr t, nil)
+  number = c_strtod(t.toCstring, nil)
 
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks

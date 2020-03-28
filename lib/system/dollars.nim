@@ -1,3 +1,5 @@
+const notJSnotNims = not defined(js) and not defined(nimscript)
+
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. `$` is Nim's general way of
@@ -68,6 +70,22 @@ proc `$`*(x: char): string {.magic: "CharToStr", noSideEffect.}
   ##
   ## .. code-block:: Nim
   ##   assert $'c' == "c"
+
+proc strAppend*(result: var string, a: ptr char, n: int) {.inline.} =
+  ## appends `n` `char`'s from `a` to `result`, efficiently
+  ## note: should use a Slice[char]
+  # D20200328T022947
+  let old = result.len
+  result.setLen(old + n, isInit = false) # optimized here
+  when notJSnotNims:
+    copyMem(result[old].addr.toCstring, a, n)
+  else:
+    let a2 = cast[cstring](a)
+    for i in 0..<n: result[old+i] = a2[i]
+
+proc strAppend*(result: var string, a: cstring) {.inline.} =
+  # TODO: replace `CStrToStr` ?
+  strAppend(result, cast[ptr char](a.unsafeAddr), a.len)
 
 proc `$`*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
   ## The stringify operator for a CString argument. Returns `x`

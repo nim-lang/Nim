@@ -307,6 +307,12 @@ type
   UncheckedArray*[T]{.magic: "UncheckedArray".}
   ## Array with no bounds checking.
 
+template toCstring*(a: ptr char): cstring = cast[cstring](a)
+template toCstring*[N](a: ptr array[N, char]): cstring = cast[cstring](a)
+template toCstring*[N](a: array[N, char]): cstring = cast[cstring](a.addr)
+template toCstring*[N](a: ptr UncheckedArray[char]): cstring = cast[cstring](a)
+template toCstring*(a: UncheckedArray[char]): cstring = cast[cstring](a.addr)
+
 type sink*[T]{.magic: "BuiltinType".}
 type lent*[T]{.magic: "BuiltinType".}
 
@@ -1017,9 +1023,12 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ##   x.setLen(1)
   ##   assert x == @[10]
 
-proc setLen*(s: var string, newlen: Natural) {.
+proc setLen*(s: var string, newlen: Natural, isInit = true) {.
   magic: "SetLengthStr", noSideEffect.}
-  ## Sets the length of string `s` to `newlen`.
+  ## Sets the length of string `s` to `newlen`. If `isInit == true` and
+  ## If `newlen > s.len`, when `isInit == true`, new entries are '\0' including
+  ## the unreachable terminator n[s.len]. when `isInit == false`, only the
+  ## terminator is '\0' (for optimization). TODO: implement this.
   ##
   ## If the current length is greater than the new length,
   ## `s` will be truncated.
