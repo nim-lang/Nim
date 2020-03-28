@@ -8,8 +8,7 @@ proc c_sprintf(buf, fmt: cstring) {.importc:"sprintf", header: "<stdio.h>", vara
 
 proc floatToStr(f: float64): string =
   var buffer: array[128, char]
-  c_sprintf(addr buffer, "%.16e", f)
-  result = ""
+  c_sprintf(buffer.toCstring, "%.16e", f)
   for ch in buffer:
     if ch == '\0':
       return

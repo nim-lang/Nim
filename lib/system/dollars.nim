@@ -1,5 +1,3 @@
-const notJSnotNims = not defined(js) and not defined(nimscript)
-
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. `$` is Nim's general way of
@@ -77,7 +75,7 @@ proc strAppend*(result: var string, a: ptr char, n: int) {.inline.} =
   # D20200328T022947
   let old = result.len
   result.setLen(old + n, isInit = false) # optimized here
-  when notJSnotNims:
+  when not defined(js) and not defined(nimscript):
     copyMem(result[old].addr.toCstring, a, n)
   else:
     let a2 = cast[cstring](a)

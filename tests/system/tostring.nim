@@ -47,7 +47,7 @@ import strutils
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\\x00']"
-doAssert $cstring(unsafeAddr arr) == "Hello World!"
+doAssert $arr.unsafeAddr.toCstring == "Hello World!"
 
 proc takes(c: cstring) =
   doAssert c == cstring""
