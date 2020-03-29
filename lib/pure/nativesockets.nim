@@ -479,7 +479,7 @@ proc getAddrString*(sockAddr: ptr SockAddr): string =
       if posix.IN6_IS_ADDR_V4MAPPED(addr6) != 0:
         result = result.substr("::ffff:".len)
     else:
-      if winlean.inet_ntop(winlean.AF_INET6, addr6, addr result[0],
+      if winlean.inet_ntop(winlean.AF_INET6, addr6, result.toCstring,
                            result.len.int32) == nil:
         raiseOSError(osLastError())
     setLen(result, len(cstring(result)))
