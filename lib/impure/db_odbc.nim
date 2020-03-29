@@ -94,6 +94,10 @@ export db_common
 
 import std/private/since
 
+template bufToString[N, T](a: array[N,T]): string =
+  ## assumes `a` contains '\0' and honors it
+  $toCstring(a)
+
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
   DbConn* = OdbcConnTyp    ## encapsulates a database connection
@@ -133,7 +137,7 @@ proc getErrInfo(db: var DbConn): tuple[res: int, ss, ne, msg: string] {.
               511.TSqlSmallInt, retSz.addr)
   except:
     discard
-  return (res.int, $(addr sqlState), $(addr nativeErr), $(addr errMsg))
+  return (res.int, sqlState.bufToString, nativeErr.bufToString, errMsg.bufToString)
 
 proc dbError*(db: var DbConn) {.
           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError] .} =
@@ -183,7 +187,7 @@ proc sqlGetDBMS(db: var DbConn): string {.
     db.sqlCheck(SQLGetInfo(db.hDb, SQL_DBMS_NAME, cast[SqlPointer](buf.addr),
                         4095.TSqlSmallInt, sz.addr))
   except: discard
-  return $(addr buf)
+  return buf.bufToString
 
 proc dbQuote*(s: string): string {.noSideEffect.} =
   ## DB quotes the string.
@@ -294,7 +298,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = $(addr buf)
+        rowRes[colId-1] = buf.bufToString
       yield rowRes
       res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -322,7 +326,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = $(addr buf)
+        rowRes[colId-1] = buf.bufToString
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -361,7 +365,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                cast[cstring](buf.addr), 4095, sz.addr))
-      rowRes[colId-1] = $(addr buf)
+      rowRes[colId-1] = buf.bufToString
     res = SQLFetch(db.stmt)
     result = rowRes
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -389,7 +393,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = $(addr buf)
+        rowRes[colId-1] = buf.bufToString
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
     result = rows
