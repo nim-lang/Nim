@@ -1,3 +1,6 @@
+discard """
+"""
+
 # issue #13798
 {.emit:"""
 #include <stdbool.h>
