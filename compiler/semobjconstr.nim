@@ -13,11 +13,12 @@
 
 type
   ObjConstrContext = object
-    typ: PType             # The constructed type
-    initExpr: PNode        # The init expression (nkObjConstr)
-    requiresFullInit: bool # A `requiresInit` derived type will
-                           # set this to true while visiting
-                           # parent types.
+    typ: PType               # The constructed type
+    initExpr: PNode          # The init expression (nkObjConstr)
+    requiresFullInit: bool   # A `requiresInit` derived type will
+                             # set this to true while visiting
+                             # parent types.
+    missingFields: seq[PSym] # Fields that the user failed to specify
 
   InitStatus = enum # This indicates the result of object construction
     initUnknown
@@ -143,30 +144,18 @@ proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): strin
       if result.len != 0: result.add ", "
       result.add field.sym.name.s.quoteStr
 
-proc missingMandatoryFields(c: PContext, fieldsRecList: PNode,
-                            constrCtx: ObjConstrContext): string =
+proc collectMissingFields(c: PContext, fieldsRecList: PNode,
+                          constrCtx: var ObjConstrContext) =
   for r in directFieldsInRecList(fieldsRecList):
     if constrCtx.requiresFullInit or
        sfRequiresInit in r.sym.flags or
        r.sym.typ.requiresInit:
       let assignment = locateFieldInInitExpr(c, r.sym, constrCtx.initExpr)
       if assignment == nil:
-        if result.len == 0:
-          result = r.sym.name.s
-        else:
-          result.add ", "
-          result.add r.sym.name.s
-
-proc checkForMissingFields(c: PContext, recList: PNode,
-                           constrCtx: ObjConstrContext) =
-  let missing = missingMandatoryFields(c, recList, constrCtx)
-  if missing.len > 0:
-    localError(c.config, constrCtx.initExpr.info,
-      "The $1 type requires the following fields to be initialized: $2.",
-      [constrCtx.typ.sym.name.s, missing])
+        constrCtx.missingFields.add r.sym
 
 proc semConstructFields(c: PContext, recNode: PNode,
-                        constrCtx: ObjConstrContext,
+                        constrCtx: var ObjConstrContext,
                         flags: TExprFlags): InitStatus =
   result = initUnknown
 
@@ -182,10 +171,10 @@ proc semConstructFields(c: PContext, recNode: PNode,
       let fields = branch[^1]
       fieldsPresentInInitExpr(c, fields, constrCtx.initExpr)
 
-    template checkMissingFields(branchNode: PNode) =
+    template collectMissingFields(branchNode: PNode) =
       if branchNode != nil:
         let fields = branchNode[^1]
-        checkForMissingFields(c, fields, constrCtx)
+        collectMissingFields(c, fields, constrCtx)
 
     let discriminator = recNode[0]
     internalAssert c.config, discriminator.kind == nkSym
@@ -299,7 +288,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
       if result == initPartial:
-        checkMissingFields branchNode
+        collectMissingFields branchNode
 
     else:
       result = initNone
@@ -313,18 +302,18 @@ proc semConstructFields(c: PContext, recNode: PNode,
         # a result:
         let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
         let matchedBranch = recNode.pickCaseBranch defaultValue
-        checkMissingFields matchedBranch
+        collectMissingFields matchedBranch
       else:
         result = initPartial
         if discriminatorVal.kind == nkIntLit:
           # When the discriminator is a compile-time value, we also know
           # which branch will be selected:
           let matchedBranch = recNode.pickCaseBranch discriminatorVal
-          if matchedBranch != nil: checkMissingFields matchedBranch
+          if matchedBranch != nil: collectMissingFields matchedBranch
         else:
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
-          for i in 1..<recNode.len: checkMissingFields recNode[i]
+          for i in 1..<recNode.len: collectMissingFields recNode[i]
 
   of nkSym:
     let field = recNode.sym
@@ -337,6 +326,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
 proc semConstructType(c: PContext, initExpr: PNode,
                       t: PType, flags: TExprFlags): InitStatus =
   result = initUnknown
+
   var
     t = t
     constrCtx = ObjConstrContext(typ: t, initExpr: initExpr,
@@ -345,12 +335,19 @@ proc semConstructType(c: PContext, initExpr: PNode,
     let status = semConstructFields(c, t.n, constrCtx, flags)
     mergeInitStatus(result, status)
     if status in {initPartial, initNone, initUnknown}:
-      checkForMissingFields c, t.n, constrCtx
+      collectMissingFields c, t.n, constrCtx
     let base = t[0]
     if base == nil: break
     t = skipTypes(base, skipPtrs)
     constrCtx.requiresFullInit = constrCtx.requiresFullInit or
                                  tfRequiresInit in t.flags
+
+  # It's possible that the object was not fully initialized while
+  # specifying a .requiresInit. pragma:
+  if constrCtx.missingFields.len > 0:
+    localError(c.config, constrCtx.initExpr.info,
+      "The $1 type requires the following fields to be initialized: $2.",
+      [constrCtx.typ.sym.name.s, listSymbolNames(constrCtx.missingFields)])
 
 proc checkDefaultConstruction(c: PContext, typ: PType, info: TLineInfo) =
   discard semConstructType(c, newNodeI(nkObjConstr, info), typ, {})
@@ -380,13 +377,6 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
   let initResult = semConstructType(c, result, t, flags)
-
-  # It's possible that the object was not fully initialized while
-  # specifying a .requiresInit. pragma.
-  if tfRequiresInit in t.flags and initResult != initFull:
-    localError(c.config, n.info,
-      "object type uses the 'requiresInit' pragma, but not all fields " &
-      "have been initialized.")
 
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.
