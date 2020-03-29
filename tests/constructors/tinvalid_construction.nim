@@ -75,7 +75,7 @@ type
 
 var x = D
 var nilRef: TRefObj
-var notNilRef = TRefObj(x: 20)
+let notNilRef = TRefObjNotNil(x: 20)
 
 proc makeHasNotNils: ref THasNotNils =
   (ref THasNotNils)(a: TRefObj(x: 10),
@@ -102,8 +102,7 @@ reject TObj(a: 10, f: "")       # conflicting fields
 accept TObj(choice: E, e1: TRefObj(x: 10), e2: 10)
 
 accept THasNotNils(a: notNilRef, b: notNilRef, c: nilRef)
-# XXX: the "not nil" logic in the compiler is not strong enough to catch this one yet:
-# reject THasNotNils(a: notNilRef, b: nilRef, c: nilRef)
+reject THasNotNils(a: notNilRef, b: nilRef, c: nilRef)      # `b` shouldn't be nil
 reject THasNotNils(b: notNilRef, c: notNilRef)              # there is a missing not nil field
 reject THasNotNils()                                        # again, missing fields
 accept THasNotNils(a: notNilRef, b: notNilRef)              # it's OK to omit a non-mandatory field

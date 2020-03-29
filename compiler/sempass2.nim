@@ -996,6 +996,7 @@ proc track(tracked: PEffects, n: PNode) =
         createTypeBoundOps(tracked, x[1].typ, n.info)
 
       if x.kind == nkExprColonExpr:
+        notNilCheck(tracked, x[1], x[0].sym.typ)
         checkForSink(tracked.config, tracked.owner, x[1])
       else:
         checkForSink(tracked.config, tracked.owner, x)
@@ -1260,7 +1261,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       dataflowAnalysis(s, body)
       when false: trackWrites(s, body)
 
-proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
+proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
     return
@@ -1268,5 +1269,5 @@ proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
   var effects = newNode(nkEffectList, n.info)
   var t: TEffects
   initEffects(g, effects, module, t, c)
-  t.isTopLevel = true
+  t.isTopLevel = isTopLevel
   track(t, n)
