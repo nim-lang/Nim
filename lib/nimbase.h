@@ -292,7 +292,7 @@ namespace USE_NIM_NAMESPACE {
 #ifndef __cplusplus
 #include <stdbool.h>
 # // `typedef unsigned char NIM_BOOL;` is incorrect, and would cause conflicts
-# // for code that emits `#include <stdbool.h>`
+# // for code that emits `#include <stdbool.h>`, see #13798
 #endif
 
 #if defined(NIM_TRUE) || defined(NIM_FALSE) || defined(NIM_BOOL)
@@ -312,7 +312,7 @@ namespace USE_NIM_NAMESPACE {
 #    // error: assigning to 'Foo *' from incompatible type 'void *'
 #    // but codegen could be fixed if need. See also potential caveat regarding
 #    // NULL.
-#    // However, `0` causes other issues
+#    // However, `0` causes other issues, see #13798
 #    define NIM_NIL 0
 #  endif
 #else

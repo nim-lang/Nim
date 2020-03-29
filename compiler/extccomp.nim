@@ -613,6 +613,7 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
   if useCpp(conf, cfile.cname):
+    # needs to be prepended so that --passc:-std=c++17 can override
     # we could avoid allocatoin by making cFileSpecificOptions inplace
     options = CC[c].cppXsupport & ' ' & options
 
