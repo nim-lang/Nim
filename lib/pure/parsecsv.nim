@@ -338,8 +338,8 @@ proc rowEntry*(my: var CsvParser, entry: string): var string =
     strm.close()
 
   let index = my.headers.find(entry)
-  if index >= 0:
-    result = my.row[index]
+  assert index >= 0
+  result = my.row[index]
 
 when not defined(testing) and isMainModule:
   import os

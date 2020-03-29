@@ -502,8 +502,7 @@ proc contains*[T](s: Selector[T], fd: SocketHandle|int): bool {.inline.} =
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
   let fdi = int(fd)
   s.checkFd(fdi)
-  if fdi in s:
-    result = s.fds[fdi].data
+  result = s.fds[fdi].data
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   let fdi = int(fd)

@@ -410,11 +410,17 @@ else:
     body
 
 proc getData*[T](s: Selector[T], fd: SocketHandle|int): var T =
+  # The compiler needs this to prove that all code paths return a value
+  result = (cast[ptr T](0'u))[]
+
   s.withSelectLock():
     let fdi = int(fd)
     for i in 0..<FD_SETSIZE:
       if s.fds[i].ident == fdi:
-        return s.fds[i].data
+        result = s.fds[i].data
+        break
+
+  assert cast[uint](addr(result)) != 0
 
 proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: T): bool =
   s.withSelectLock():
