@@ -1,7 +1,7 @@
 discard """
-  nimout: '''tbasic_array_index.nim(23, 17) Warning: cannot prove: 0 <= len(a) - 4; counter example: a.len -> 0 [IndexCheck]
-tbasic_array_index.nim(29, 5) Warning: cannot prove: 4.0 <= 1.0 [IndexCheck]
-tbasic_array_index.nim(35, 36) Warning: cannot prove: a <= 10'u32; counter example: a -> #x000000000000000b
+  nimout: '''tbasic_array_index.nim(26, 17) Warning: cannot prove: 0 <= len(a) - 4; counter example: a.len -> 0 [IndexCheck]
+tbasic_array_index.nim(32, 5) Warning: cannot prove: 4.0 <= 1.0 [IndexCheck]
+tbasic_array_index.nim(38, 36) Warning: cannot prove: a <= 10'u32; counter example: a -> #x000000000000000b
 '''
   cmd: "drnim $file"
   action: "compile"
@@ -12,13 +12,16 @@ tbasic_array_index.nim(35, 36) Warning: cannot prove: a <= 10'u32; counter examp
 proc takeNat(n: Natural) =
   discard
 
-proc p(a: openArray[int]) =
+proc p(a, b: openArray[int]) =
   if a.len > 0:
     echo a[0]
 
   for i in 0..a.len-8:
     #{.invariant: i < a.len.}
     echo a[i]
+
+  for i in 0..min(a.len, b.len)-1:
+    echo a[i], " ", b[i]
 
   takeNat(a.len - 4)
 
@@ -37,4 +40,4 @@ proc xu(a: uint) =
 
 {.pop.}
 
-p([1, 2, 3])
+p([1, 2, 3], [4, 5])

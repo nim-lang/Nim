@@ -9,7 +9,6 @@
 
 #[
 
-- write min/max test for array indexing
 - proc types must check the implications
 - methods must check the implications
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
