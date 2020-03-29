@@ -5,5 +5,5 @@ catch some compilation errors.
 
 {.push warning[UnusedImport]: off.}
 import std/db_odbc
-const _ = setEncoding # pending https://github.com/timotheecour/Nim/issues/78
+import std/posix_utils
 {.pop.}

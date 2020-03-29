@@ -91,12 +91,8 @@
 import strutils, odbcsql
 import db_common
 export db_common
-
 import std/private/since
-
-template bufToString[N, T](a: array[N,T]): string =
-  ## assumes `a` contains '\0' and honors it
-  $toCstring(a)
+from system/dollars import toString0
 
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
@@ -137,7 +133,7 @@ proc getErrInfo(db: var DbConn): tuple[res: int, ss, ne, msg: string] {.
               511.TSqlSmallInt, retSz.addr)
   except:
     discard
-  return (res.int, sqlState.bufToString, nativeErr.bufToString, errMsg.bufToString)
+  return (res.int, sqlState.toString0, nativeErr.toString0, errMsg.toString0)
 
 proc dbError*(db: var DbConn) {.
           tags: [ReadDbEffect, WriteDbEffect], raises: [DbError] .} =
@@ -187,7 +183,7 @@ proc sqlGetDBMS(db: var DbConn): string {.
     db.sqlCheck(SQLGetInfo(db.hDb, SQL_DBMS_NAME, cast[SqlPointer](buf.addr),
                         4095.TSqlSmallInt, sz.addr))
   except: discard
-  return buf.bufToString
+  result = toString0(buf)
 
 proc dbQuote*(s: string): string {.noSideEffect.} =
   ## DB quotes the string.
@@ -298,7 +294,7 @@ iterator fastRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = buf.bufToString
+        rowRes[colId-1] = toString0(buf)
       yield rowRes
       res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -326,7 +322,7 @@ iterator instantRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = buf.bufToString
+        rowRes[colId-1] = toString0(buf)
       yield (row: rowRes, len: cCnt.int)
       res = SQLFetch(db.stmt)
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -365,7 +361,7 @@ proc getRow*(db: var DbConn, query: SqlQuery,
       buf[0] = '\0'
       db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                cast[cstring](buf.addr), 4095, sz.addr))
-      rowRes[colId-1] = buf.bufToString
+      rowRes[colId-1] = toString0(buf)
     res = SQLFetch(db.stmt)
     result = rowRes
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
@@ -393,7 +389,7 @@ proc getAllRows*(db: var DbConn, query: SqlQuery,
         buf[0] = '\0'
         db.sqlCheck(SQLGetData(db.stmt, colId.SqlUSmallInt, SQL_C_CHAR,
                                  cast[cstring](buf.addr), 4095, sz.addr))
-        rowRes[colId-1] = buf.bufToString
+        rowRes[colId-1] = toString0(buf)
       rows.add(rowRes)
       res = SQLFetch(db.stmt)
     result = rows

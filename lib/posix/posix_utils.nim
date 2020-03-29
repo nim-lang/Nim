@@ -13,12 +13,10 @@
 
 import posix, parsecfg, os
 import std/private/since
+from system/dollars import toString0
 
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
-
-template charArrayToString(input: typed): string =
-  $cstring(addr input)
 
 proc uname*(): Uname =
   ## Provides system information in a `Uname` struct with sysname, nodename,
@@ -33,11 +31,11 @@ proc uname*(): Uname =
   if uname(u) != 0:
     raise newException(OSError, $strerror(errno))
 
-  result.sysname = charArrayToString u.sysname
-  result.nodename = charArrayToString u.nodename
-  result.release = charArrayToString u.release
-  result.version = charArrayToString u.version
-  result.machine = charArrayToString u.machine
+  result.sysname = toString0 u.sysname
+  result.nodename = toString0 u.nodename
+  result.release = toString0 u.release
+  result.version = toString0 u.version
+  result.machine = toString0 u.machine
 
 proc fsync*(fd: int) =
  ## synchronize a file's buffer cache to the storage device
