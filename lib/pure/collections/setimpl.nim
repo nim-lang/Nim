@@ -35,8 +35,9 @@ proc rawInsert[A](s: var HashSet[A], data: var KeyValuePairSeq[A], key: A,
 
 proc enlarge[A](s: var HashSet[A]) =
   var n: KeyValuePairSeq[A]
-  newSeq(n, len(s.data) * growthFactor)
+  newSeq(n, s.counter.rightSize)
   swap(s.data, n) # n is now old seq
+  s.countDeleted = 0
   for i in countup(0, high(n)):
     if isFilledAndValid(n[i].hcode):
       var j = -1 - rawGetKnownHC(s, n[i].key, n[i].hcode)
