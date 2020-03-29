@@ -212,6 +212,18 @@ type
     slotTempComplex,  # some complex temporary (s.node field is used)
     slotTempPerm      # slot is temporary but permanent (hack)
 
+  TRegisterKind* = enum
+    rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
+  TFullReg* = object  # with a custom mark proc, we could use the same
+                      # data representation as LuaJit (tagged NaNs).
+    case kind*: TRegisterKind
+    of rkNone: nil
+    of rkInt: intVal*: BiggestInt
+    of rkFloat: floatVal*: BiggestFloat
+    of rkNode: node*: PNode
+    of rkRegisterAddr: regAddr*: ptr TFullReg
+    of rkNodeAddr: nodeAddr*: ptr PNode
+
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
     sym*: PSym
@@ -220,7 +232,7 @@ type
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
-    slots*: pointer
+    slots*: ptr UncheckedArray[TFullReg]
     currentException*: PNode
     currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}

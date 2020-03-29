@@ -1767,12 +1767,15 @@ further information.
 Nil
 ---
 
-If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
-the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
-is an unrecoverable fatal runtime error (and not a panic).
-A dereferencing operation ``p[]`` implies that ``p`` is not nil. This can be
-exploited by the implementation to optimize code like:
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is the
+default value for all ``ref`` and ``ptr`` types. The ``nil`` value can also be
+used like any other literal value. For example, it can be used in an assignment
+like ``myRef = nil``.
 
+Dereferencing ``nil`` is an unrecoverable fatal runtime error (and not a panic).
+
+A successful dereferencing operation ``p[]`` implies that ``p`` is not nil. This
+can be exploited by the implementation to optimize code like:
 
 .. code-block:: nim
 

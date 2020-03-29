@@ -276,7 +276,7 @@ when defined(windows) or defined(nimdoc):
     ## Creates a new Dispatcher instance.
     new result
     result.ioPort = createIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1)
-    result.handles = initSet[AsyncFD]()
+    result.handles = initHashSet[AsyncFD]()
     result.timers.newHeapQueue()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](64)
 
@@ -398,7 +398,7 @@ when defined(windows) or defined(nimdoc):
                       addr bytesRet, nil, nil) == 0
 
   proc initAll() =
-    let dummySock = newNativeSocket()
+    let dummySock = createNativeSocket()
     if dummySock == INVALID_SOCKET:
       raiseOSError(osLastError())
     var fun: pointer = nil
@@ -713,7 +713,7 @@ when defined(windows) or defined(nimdoc):
     verifyPresence(socket)
     var retFuture = newFuture[tuple[address: string, client: AsyncFD]]("acceptAddr")
 
-    var clientSock = newNativeSocket()
+    var clientSock = createNativeSocket()
     if clientSock == osInvalidSocket: raiseOSError(osLastError())
 
     const lpOutputLen = 1024
@@ -1121,7 +1121,7 @@ else:
   proc newDispatcher*(): owned(PDispatcher) =
     new result
     result.selector = newSelector[AsyncData]()
-    result.timers.newHeapQueue()
+    result.timers.clear()
     result.callbacks = initDeque[proc () {.closure, gcsafe.}](InitDelayedCallbackListSize)
 
   var gDisp{.threadvar.}: owned PDispatcher ## Global dispatcher
@@ -1407,7 +1407,9 @@ else:
                      MSG_NOSIGNAL)
       if res < 0:
         let lastError = osLastError()
-        if lastError.int32 notin {EINTR, EWOULDBLOCK, EAGAIN}:
+        if lastError.int32 != EINTR and
+           lastError.int32 != EWOULDBLOCK and
+           lastError.int32 != EAGAIN:
           if flags.isDisconnectionError(lastError):
             retFuture.complete()
           else:
@@ -1574,7 +1576,7 @@ proc poll*(timeout = 500) =
   discard runOnce(timeout)
 
 template createAsyncNativeSocketImpl(domain, sockType, protocol) =
-  let handle = newNativeSocket(domain, sockType, protocol)
+  let handle = createNativeSocket(domain, sockType, protocol)
   if handle == osInvalidSocket:
     return osInvalidSocket.AsyncFD
   handle.setBlocking(false)

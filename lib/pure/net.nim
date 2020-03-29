@@ -67,9 +67,7 @@
 include "system/inclrtl"
 
 {.deadCodeElim: on.} # dce option deprecated
-import nativesockets, os, strutils, parseutils, times, sets, options,
-  std/monotimes
-from ospaths import getEnv
+import nativesockets, os, strutils, times, sets, options, std/monotimes
 from ssl_certs import scanSSLCertificates
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
@@ -603,7 +601,7 @@ when defineSsl:
           if not found:
             raise newException(IOError, "No SSL/TLS CA certificates found.")
 
-    result = SSLContext(context: newCTX, referencedData: initSet[int](),
+    result = SSLContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
