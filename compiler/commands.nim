@@ -877,6 +877,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       # old behaviors go here:
       defineSymbol(conf.symbols, "nimOldRelativePathBehavior")
       ast.eqTypeFlags.excl {tfGcSafe, tfNoSideEffect}
+      conf.globalOptions.incl optNimV1Emulation
     else:
       localError(conf, info, "unknown Nim version; currently supported values are: {1.0}")
   of "benchmarkvm":
