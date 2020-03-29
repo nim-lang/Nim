@@ -2655,6 +2655,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
     result.typ = makeTypeDesc(c, typ)
+  of nkStmtListType:
+    let typ = semTypeNode(c, n, nil)
+    result.typ = makeTypeDesc(c, typ)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
     checkMinSonsLen(n, 1, c.config)
