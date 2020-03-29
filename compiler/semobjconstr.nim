@@ -146,8 +146,9 @@ proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): strin
 proc missingMandatoryFields(c: PContext, fieldsRecList: PNode,
                             constrCtx: ObjConstrContext): string =
   for r in directFieldsInRecList(fieldsRecList):
-    if constrCtx.requiresFullInit or sfRequiresInit in r.sym.flags or
-       {tfNotNil, tfRequiresInit, tfHasRequiresInit} * r.sym.typ.flags != {}:
+    if constrCtx.requiresFullInit or
+       sfRequiresInit in r.sym.flags or
+       r.sym.typ.requiresInit:
       let assignment = locateFieldInInitExpr(c, r.sym, constrCtx.initExpr)
       if assignment == nil:
         if result.len == 0:

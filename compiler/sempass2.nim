@@ -184,7 +184,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
-  if {tfRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
+  if {tfRequiresInit, tfHasRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n, volatileCheck=true)
@@ -253,8 +253,8 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
-      if {tfRequiresInit, tfNotNil} * s.typ.flags != {}:
-        message(a.config, n.info, warnProveInit, s.name.s)
+      if s.typ.requiresInit:
+        localError(a.config, n.info, errProveInit, s.name.s)
       else:
         message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
@@ -838,13 +838,13 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n[1]
       initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.len != 0 and {tfRequiresInit, tfHasRequiresInit} * arg.typ.lastSon.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
           discard
         else:
-          message(tracked.config, arg.info, warnProveInit, $arg)
+          localError(tracked.config, arg.info, errProveInit, $arg)
 
       # check required for 'nim check':
       if n[1].typ.len > 0:
@@ -1203,12 +1203,11 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
         createTypeBoundOps(t, typ, param.info)
 
   if not isEmptyType(s.typ[0]) and
-      ({tfRequiresInit, tfNotNil} * s.typ[0].flags != {} or
-      s.typ[0].skipTypes(abstractInst).kind == tyVar) and
-      s.kind in {skProc, skFunc, skConverter, skMethod}:
+     (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar) and
+     s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
     if res.id notin t.init:
-      message(g.config, body.info, warnProveInit, "result")
+      localError(g.config, body.info, errProveInit, "result")
   let p = s.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):
