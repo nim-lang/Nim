@@ -289,14 +289,19 @@ namespace USE_NIM_NAMESPACE {
 #endif
 
 /* bool types (C++ has it): */
+#ifndef __cplusplus
+#include <stdbool.h> //typedef unsigned char NIM_BOOL; // incorrect
+#endif
+
+#if defined(NIM_TRUE) || defined(NIM_FALSE) || defined(NIM_BOOL)
+#error "nim reserved preprocessor macros clash"
+#endif
+
+#define NIM_BOOL bool
+#define NIM_TRUE true
+#define NIM_FALSE false
+
 #ifdef __cplusplus
-#  ifndef NIM_TRUE
-#    define NIM_TRUE true
-#  endif
-#  ifndef NIM_FALSE
-#    define NIM_FALSE false
-#  endif
-#  define NIM_BOOL bool
 #  if __cplusplus >= 201103L
 #    /* nullptr is more type safe (less implicit conversions than 0) */
 #    define NIM_NIL nullptr
@@ -305,17 +310,7 @@ namespace USE_NIM_NAMESPACE {
 #    define NIM_NIL 0
 #  endif
 #else
-#  ifdef bool
-#    define NIM_BOOL bool
-#  else
-  typedef unsigned char NIM_BOOL;
-#  endif
-#  ifndef NIM_TRUE
-#    define NIM_TRUE ((NIM_BOOL) 1)
-#  endif
-#  ifndef NIM_FALSE
-#    define NIM_FALSE ((NIM_BOOL) 0)
-#  endif
+#  include <stdbool.h>
 #  define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
                               the generated code does not rely on it anymore */
 #endif
