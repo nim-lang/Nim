@@ -290,7 +290,9 @@ namespace USE_NIM_NAMESPACE {
 
 /* bool types (C++ has it): */
 #ifndef __cplusplus
-#include <stdbool.h> //typedef unsigned char NIM_BOOL; // incorrect
+#include <stdbool.h>
+# // `typedef unsigned char NIM_BOOL;` is incorrect, and would cause conflicts
+# // for code that emits `#include <stdbool.h>`
 #endif
 
 #if defined(NIM_TRUE) || defined(NIM_FALSE) || defined(NIM_BOOL)
@@ -306,7 +308,11 @@ namespace USE_NIM_NAMESPACE {
 #    /* nullptr is more type safe (less implicit conversions than 0) */
 #    define NIM_NIL nullptr
 #  else
-#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    // both `((void*)0)` and `NULL` would cause codegen to emit
+#    // error: assigning to 'Foo *' from incompatible type 'void *'
+#    // but codegen could be fixed if need. See also potential caveat regarding
+#    // NULL.
+#    // However, `0` causes other issues
 #    define NIM_NIL 0
 #  endif
 #else
