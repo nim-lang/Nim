@@ -256,3 +256,15 @@ reject TNestedChoices(outerChoice: false, innerChoice: C)
 accept TNestedChoices(outerChoice: false, innerChoice: C, notnil: notNilRef)
 reject TNestedChoices(outerChoice: false, innerChoice: C, notnil: nil)
 
+block:
+  # https://github.com/nim-lang/Nim/issues/11428
+  type
+    Enum = enum A, B, C
+    Thing = object
+      case kind: Enum
+      of A: discard
+      of B: s: string
+      of C: r: range[1..1] # DateTime
+
+  # Fine to not initialize 'r' because this is implicitly initialized and known to be branch 'A'.
+  let someThing = Thing()
