@@ -17,8 +17,7 @@ pkg "c2nim", false, "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", true, "nim c -o:chr -r chronicles.nim"
-# disable until my chronos fix was merged
-#pkg "chronos", true
+pkg "chronos", true
 pkg "cligen", false, "nim c -o:cligenn -r cligen.nim"
 pkg "coco", true
 pkg "combparser"
@@ -56,7 +55,7 @@ pkg "nimgame2", true, "nim c nimgame2/nimgame.nim"
 pkg "nimgen", true, "nim c -o:nimgenn -r src/nimgen/runcfg.nim"
 # pkg "nimlsp", true
 pkg "nimly", true
-# pkg "nimongo", true, "nimble test_ci"
+pkg "nimongo", true, "nimble test_ci"
 pkg "nimpy", false, "nim c -r tests/nimfrompy.nim"
 pkg "nimquery"
 pkg "nimsl", true
