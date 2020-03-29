@@ -313,8 +313,8 @@
   types: Type conversions cannot be used to hide `.raise` effects or side
   effects, instead a `cast` must be used. With the flag `--useVersion:1.0` the
   old behaviour is emulated.
-- Tuple expressions are now parsed consistently parsed as
-  `nnkTupleConstr` node. Will affect macros expect nodes to be of type `nnkPar`.
+- Tuple expressions are now parsed consistently as
+  `nnkTupleConstr` node. Will affect macros expecting nodes to be of `nnkPar`.
 
 
 ## Library additions
