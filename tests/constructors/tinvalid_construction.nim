@@ -32,9 +32,13 @@ type
     a {.requiresInit.}: int
     b: string
 
+  PartialRequiresInitRef = ref PartialRequiresInit
+
   FullRequiresInit {.requiresInit.} = object
     a: int
     b: int
+
+  FullRequiresInitRef = ref FullRequiresInit
 
   FullRequiresInitWithParent {.requiresInit.} = object of THasNotNils
     e: int
@@ -72,8 +76,13 @@ var nilRef: TRefObj
 var notNilRef = TRefObj(x: 20)
 
 proc makeHasNotNils: ref THasNotNils =
-  result.a = TRefObj(x: 10)
-  result.b = TRefObj(x: 20)
+  (ref THasNotNils)(a: TRefObj(x: 10),
+                    b: TRefObj(x: 20))
+
+proc userDefinedDefault(T: typedesc): T =
+  # We'll use that to make sure the user cannot cheat
+  # with constructing requiresInit types
+  discard
 
 accept TObj()
 accept TObj(choice: A)
@@ -125,7 +134,17 @@ accept PartialRequiresInit(a: 10, b: "x")
 accept PartialRequiresInit(a: 20)
 reject PartialRequiresInit(b: "x")
 reject PartialRequiresInit()
+accept PartialRequiresInitRef(a: 10, b: "x")
+accept PartialRequiresInitRef(a: 20)
+reject PartialRequiresInitRef(b: "x")
+reject PartialRequiresInitRef()
+accept((ref PartialRequiresInit)(a: 10, b: "x"))
+accept((ref PartialRequiresInit)(a: 20))
+reject((ref PartialRequiresInit)(b: "x"))
+reject((ref PartialRequiresInit)())
+
 reject default(PartialRequiresInit)
+reject userDefinedDefault(PartialRequiresInit)
 reject:
   var obj: PartialRequiresInit
 
@@ -133,7 +152,17 @@ accept FullRequiresInit(a: 10, b: 20)
 reject FullRequiresInit(a: 10)
 reject FullRequiresInit(b: 20)
 reject FullRequiresInit()
+accept FullRequiresInitRef(a: 10, b: 20)
+reject FullRequiresInitRef(a: 10)
+reject FullRequiresInitRef(b: 20)
+reject FullRequiresInitRef()
+accept((ref FullRequiresInit)(a: 10, b: 20))
+reject((ref FullRequiresInit)(a: 10))
+reject((ref FullRequiresInit)(b: 20))
+reject((ref FullRequiresInit)())
+
 reject default(FullRequiresInit)
+reject userDefinedDefault(FullRequiresInit)
 reject:
   var obj: FullRequiresInit
 
@@ -144,6 +173,7 @@ reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, e: 10, d: 20)   # 
 reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, c: nil, e: 10)  # d should not be missing
 reject FullRequiresInitWithParent()
 reject default(FullRequiresInitWithParent)
+reject userDefinedDefault(FullRequiresInitWithParent)
 reject:
   var obj: FullRequiresInitWithParent
 
@@ -152,6 +182,55 @@ accept TNestedChoices()
 accept default(TNestedChoices)
 accept:
   var obj: TNestedChoices
+
+reject:
+  # This proc is illegal, because it tries to produce
+  # a default object of a type that requires initialization:
+  proc defaultHasNotNils: THasNotNils =
+    discard
+
+reject:
+  # You cannot cheat by using the result variable to specify
+  # only some of the fields
+  proc invalidPartialTHasNotNils: THasNotNils =
+    result.c = nilRef
+
+reject:
+  # The same applies for requiresInit types
+  proc invalidPartialRequiersInit: PartialRequiresInit =
+    result.b = "x"
+
+# All code paths must return a value when the result requires initialization:
+reject:
+  proc ifWithoutAnElse: THasNotNils =
+    if stdin.readLine == "":
+      return THasNotNils(a: notNilRef, b: notNilRef, c: nilRef)
+
+accept:
+  # All code paths must return a value when the result requires initialization:
+  proc wellFormedIf: THasNotNils =
+    if stdin.readLine == "":
+      return THasNotNils(a: notNilRef, b: notNilRef, c: nilRef)
+    else:
+      return THasNotNIls(a: notNilRef, b: notNilRef)
+
+reject:
+  proc caseWithoutAllCasesCovered: FullRequiresInit =
+    # Please note that these is no else branch here:
+    case stdin.readLine
+    of "x":
+      return FullRequiresInit(a: 10, b: 20)
+    of "y":
+      return FullRequiresInit(a: 30, b: 40)
+
+accept:
+  proc wellFormedCase: FullRequiresInit =
+    case stdin.readLine
+    of "x":
+      result = FullRequiresInit(a: 10, b: 20)
+    else:
+      # Mixing result and return is fine:
+      return FullRequiresInit(a: 30, b: 40)
 
 # but if we supply a run-time value for the inner branch, the compiler won't be able to prove
 # that the notnil field was initialized

@@ -335,8 +335,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   suggestSym(c.config, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
-  if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and
-      {tfNotNil, tfRequiresInit} * v.typ.flags != {}:
+  if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and v.typ.requiresInit:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
     elif tfNotNil in v.typ.flags and not v.astdef.typ.isNil and tfNotNil notin v.astdef.typ.flags:
@@ -485,7 +484,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var a = n[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
-    if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
+    if a.kind notin {nkIdentDefs, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
 
     var typ: PType = nil

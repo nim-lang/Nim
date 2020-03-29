@@ -1396,6 +1396,9 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
+template requiresInit*(t: PType): bool =
+  t.flags * {tfRequiresInit, tfHasRequiresInit, tfNotNil} != {}
+
 proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems

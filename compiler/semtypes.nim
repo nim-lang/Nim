@@ -139,7 +139,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
-  if tfNotNil in e.typ.flags and not hasNull: incl(result.flags, tfRequiresInit)
+  if tfNotNil in e.typ.flags and not hasNull:
+    result.flags.incl tfRequiresInit
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
@@ -769,6 +770,8 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.typ = typ
       f.position = pos
       f.options = c.config.options
+      if sfRequiresInit in f.flags:
+        rectype.flags.incl tfHasRequiresInit
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
          not hasCaseFields and f.loc.r == nil:
