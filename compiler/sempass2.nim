@@ -685,6 +685,17 @@ proc prove(c: PEffects; prop: PNode): bool =
     result = success
 
 when defined(drnim):
+  proc patchResult(c: PEffects; n: PNode) =
+    if n.kind == nkSym and n.sym.kind == skResult:
+      let fn = c.owner
+      if fn != nil and fn.kind in routineKinds and fn.ast != nil and resultPos < fn.ast.len:
+        n.sym = fn.ast[resultPos].sym
+      else:
+        localError(c.config, n.info, "routine has no return type, but .requires contains 'result'")
+    else:
+      for i in 0..<safeLen(n):
+        patchResult(c, n[i])
+
   proc requiresCheck(c: PEffects; call: PNode; op: PType) =
     assert op.n[0].kind == nkEffectList
     if requiresEffects < op.n[0].len:
@@ -1213,8 +1224,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     effects[requiresEffects] = requiresSpec
   let ensuresSpec = propSpec(p, wEnsures)
   if not isNil(ensuresSpec):
-    # XXX Remember that after the call to 'f' whatever 'f'
-    # ensures must be remembered somehow
+    patchResult(t, ensuresSpec)
     effects[ensuresEffects] = ensuresSpec
     discard prove(t, ensuresSpec)
 

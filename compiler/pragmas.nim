@@ -114,6 +114,20 @@ proc pragmaProposition(c: PContext, n: PNode) =
   else:
     n[1] = c.semExpr(c, n[1])
 
+proc pragmaEnsures(c: PContext, n: PNode) =
+  if n.kind notin nkPragmaCallKinds or n.len != 2:
+    localError(c.config, n.info, "proposition expected")
+  else:
+    openScope(c)
+    let o = getCurrOwner(c)
+    if o.kind in routineKinds and o.typ != nil and o.typ.sons[0] != nil:
+      var s = newSym(skResult, getIdent(c.cache, "result"), o, n.info)
+      s.typ = o.typ.sons[0]
+      incl(s.flags, sfUsed)
+      addDecl(c, s)
+    n[1] = c.semExpr(c, n[1])
+    closeScope(c)
+
 proc pragmaAsm*(c: PContext, n: PNode): char =
   result = '\0'
   if n != nil:
@@ -1155,8 +1169,10 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym == nil: invalidPragma(c, it)
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
-      of wRequires, wEnsures, wInvariant, wAssume:
+      of wRequires, wInvariant, wAssume:
         pragmaProposition(c, it)
+      of wEnsures:
+        pragmaEnsures(c, it)
       else: invalidPragma(c, it)
     elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
       discard "ignore the .push pragma; it doesn't apply"

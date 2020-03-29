@@ -7,6 +7,18 @@
 #    distribution, for details about the copyright.
 #
 
+#[
+
+- write min/max test for array indexing
+- proc types must check the implications
+- methods must check the implications
+- We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
+- forall/exists need syntactic sugar as the manual
+- We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
+  'x in n..m; inc x' implies 'x in n+1..m+1'
+
+]#
+
 import std / [
   parseopt, strutils, os, tables, times
 ]
@@ -54,10 +66,46 @@ type
   DrCon = object
     z3: Z3_context
     graph: ModuleGraph
-    mapping: Table[int, Z3_ast]
+    mapping: Table[string, Z3_ast]
+
+proc stableName(result: var string; n: PNode) =
+  # we can map full Nim expressions like 'f(a, b, c)' to Z3 variables.
+  # We must be carefult to select a unique, stable name for these expressions
+  # based on structural equality. 'stableName' helps us with this problem.
+  case n.kind
+  of nkEmpty, nkNilLit, nkType: discard
+  of nkIdent:
+    result.add n.ident.s
+  of nkSym:
+    result.add n.sym.name.s
+    result.add '_'
+    result.addInt n.sym.id
+  of nkCharLit..nkUInt64Lit:
+    result.addInt n.intVal
+  of nkFloatLit..nkFloat64Lit:
+    result.addFloat n.floatVal
+  of nkStrLit..nkTripleStrLit:
+    result.add strutils.escape n.strVal
+  else:
+    result.add $n.kind
+    result.add '('
+    for i in 0..<n.len:
+      if i > 0: result.add ", "
+      stableName(result, n[i])
+    result.add ')'
+
+proc stableName(n: PNode): string = stableName(result, n)
 
 proc notImplemented(msg: string) {.noinline.} =
   raise newException(CannotMapToZ3Error, " cannot map to Z3: " & msg)
+
+proc translateEnsures(e, x: PNode): PNode =
+  if e.kind == nkSym and e.sym.kind == skResult:
+    result = x
+  else:
+    result = shallowCopy(e)
+    for i in 0 ..< safeLen(e):
+      result[i] = translateEnsures(e[i], x)
 
 proc typeToZ3(c: DrCon; t: PType): Z3_sort =
   template ctx: untyped = c.z3
@@ -89,7 +137,7 @@ template quantorToZ3(fn) {.dirty.} =
     let v = n[i].sym
     let name = Z3_mk_string_symbol(ctx, v.name.s)
     let vz3 = Z3_mk_const(ctx, name, typeToZ3(c, v.typ))
-    c.mapping[v.id] = vz3
+    c.mapping[stableName(n[i])] = vz3
     bound[i] = Z3_to_app(ctx, vz3)
 
   var dummy: seq[PNode]
@@ -103,11 +151,12 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
   template ctx: untyped = c.z3
   case n.kind
   of nkSym:
-    result = c.mapping.getOrDefault(n.sym.id)
+    let key = stableName(n)
+    result = c.mapping.getOrDefault(key)
     if pointer(result) == nil:
       let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
       result = Z3_mk_const(ctx, name, typeToZ3(c, n.sym.typ))
-      c.mapping[n.sym.id] = result
+      c.mapping[key] = result
       vars.add n
   of nkCharLit..nkUInt64Lit:
     if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyInt..tyInt64}:
@@ -139,12 +188,13 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     of mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq:
       # len(x) needs the same logic as 'x' itself
       if n[1].kind == nkSym:
+        let key = stableName(n)
         let sym = n[1].sym
-        result = c.mapping.getOrDefault(-sym.id)
+        result = c.mapping.getOrDefault(key)
         if pointer(result) == nil:
           let name = Z3_mk_string_symbol(ctx, sym.name.s & ".len")
           result = Z3_mk_const(ctx, name, Z3_mk_int_sort(ctx))
-          c.mapping[-sym.id] = result
+          c.mapping[key] = result
           vars.add n
       else:
         notImplemented(renderTree(n))
@@ -212,7 +262,25 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     of mBitxorI:
       result = Z3_mk_bvxor(ctx, rec n[1], rec n[2])
     else:
-      notImplemented(renderTree(n))
+      # sempass2 adds some 'fact' like 'x = f(a, b)' (see addAsgnFact)
+      # 'f(a, b)' can have an .ensures annotation and we need to make use
+      # of this information.
+      # we need to map 'f(a, b)' to a Z3 variable of this name
+      let op = n[0].typ
+      if op != nil and op.n != nil and op.n.len > 0 and op.n[0].kind == nkEffectList and
+          ensuresEffects < op.n[0].len:
+        let ensures = op.n[0][ensuresEffects]
+        if ensures != nil and ensures.kind != nkEmpty:
+          let key = stableName(n)
+          result = c.mapping.getOrDefault(key)
+          if pointer(result) == nil:
+            let name = Z3_mk_string_symbol(ctx, $n)
+            result = Z3_mk_const(ctx, name, typeToZ3(c, n.typ))
+            c.mapping[key] = result
+            vars.add n
+
+      if pointer(result) == nil:
+        notImplemented(renderTree(n))
   of nkStmtListExpr, nkPar:
     var isTrivial = true
     for i in 0..n.len-2:
@@ -256,7 +324,8 @@ proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
     else:
       # no range information available:
       return
-  else:
+  elif n.kind in nkCallKinds and n.len == 2 and n[0].kind == nkSym and
+      n[0].sym.magic in {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}:
     # we know it's a 'len(x)' expression and we seek to teach
     # Z3 that the result is >= 0 and <= high(int).
     doAssert n.kind in nkCallKinds
@@ -268,6 +337,15 @@ proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
       highBound = newIntNode(nkInt64Lit, lastOrd(nil, n.typ))
     else:
       highBound = newIntNode(nkInt64Lit, high(int64))
+  else:
+    let op = n[0].typ
+    if op != nil and op.n != nil and op.n.len > 0 and op.n[0].kind == nkEffectList and
+        ensuresEffects < op.n[0].len:
+      let ensures = op.n[0][ensuresEffects]
+      if ensures != nil and ensures.kind != nkEmpty:
+        var dummy: seq[PNode]
+        res.add nodeToZ3(c, translateEnsures(ensures, n), dummy)
+    return
 
   let x = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), lowBound, n)
   let y = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), n, highBound)
@@ -299,7 +377,7 @@ proc conj(ctx: Z3_context; conds: seq[Z3_ast]): Z3_ast =
 proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
   var c: DrCon
   c.graph = graph
-  c.mapping = initTable[int, Z3_ast]()
+  c.mapping = initTable[string, Z3_ast]()
   let cfg = Z3_mk_config()
   Z3_set_param_value(cfg, "model", "true");
   let ctx = Z3_mk_context(cfg)
@@ -377,8 +455,12 @@ proc translateReq(r, call: PNode): PNode =
 
 proc requirementsCheck(graph: ModuleGraph; assumptions: seq[PNode];
                       call, requirement: PNode): (bool, string) {.nimcall.} =
-  let r = translateReq(requirement, call)
-  result = proofEngine(graph, assumptions, r)
+  try:
+    let r = translateReq(requirement, call)
+    result = proofEngine(graph, assumptions, r)
+  except ValueError:
+    result[0] = false
+    result[1] = getCurrentExceptionMsg()
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config

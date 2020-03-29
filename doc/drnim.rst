@@ -120,6 +120,9 @@ you assume.
 Example: insertionSort
 ======================
 
+**Note**: This example does not yet work with DrNim. ``forall`` and ``exists``
+are not implemented.
+
 .. code-block:: nim
 
   import std / logic
