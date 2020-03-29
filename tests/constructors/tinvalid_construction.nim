@@ -267,4 +267,43 @@ block:
       of C: r: range[1..1] # DateTime
 
   # Fine to not initialize 'r' because this is implicitly initialized and known to be branch 'A'.
-  let someThing = Thing()
+  var x = Thing()
+  discard x
+
+block:
+  # https://github.com/nim-lang/Nim/issues/4907
+  type
+    Foo = ref object
+    Bar = object
+
+    Thing[A, B] = ref object
+      a: A not nil
+      b: ref B
+      c: ref B not nil
+
+  proc allocNotNil(T: typedesc): T not nil =
+    new result
+
+  proc mutateThing(t: var Thing[Foo, Bar]) =
+    let fooNotNil = allocNotNil(Foo)
+    var foo: Foo
+
+    let barNotNil = allocNotNil(ref Bar)
+    var bar: ref Bar
+
+    t.a = fooNotNil
+    t.b = bar
+    t.b = barNotNil
+    t.c = barNotNil
+
+    reject:
+      t.a = foo
+
+    reject:
+      t.c = bar
+
+  var thing = Thing[Foo, Bar](a: allocNotNil(Foo),
+                              b: allocNotNil(ref Bar),
+                              c: allocNotNil(ref Bar))
+  mutateThing thing
+
