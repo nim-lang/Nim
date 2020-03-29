@@ -2270,6 +2270,8 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
     let typ = result[1].typ.base
     if typ.kind == tyObject:
       checkDefaultConstruction(c, typ, n.info)
+    elif typ.kind in {tyRef, tyPtr} and tfNotNil in typ.flags:
+      localError(c.config, n.info, "not nil types don't have a default value")
   else:
     result = semDirectOp(c, n, flags)
 

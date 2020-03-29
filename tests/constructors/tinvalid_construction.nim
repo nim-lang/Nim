@@ -17,6 +17,8 @@ type
 
   THasNotNilsRef = ref THasNotNils
 
+  TRefObjNotNil = TRefObj not nil
+
   TChoice = enum A, B, C, D, E, F
 
   TBaseHasNotNils = object of THasNotNils
@@ -84,6 +86,9 @@ proc userDefinedDefault(T: typedesc): T =
   # with constructing requiresInit types
   discard
 
+proc genericDefault(T: typedesc): T =
+  result = default(T)
+
 accept TObj()
 accept TObj(choice: A)
 reject TObj(choice: A, bc: 10)  # bc is in the wrong branch
@@ -102,9 +107,18 @@ accept THasNotNils(a: notNilRef, b: notNilRef, c: nilRef)
 reject THasNotNils(b: notNilRef, c: notNilRef)              # there is a missing not nil field
 reject THasNotNils()                                        # again, missing fields
 accept THasNotNils(a: notNilRef, b: notNilRef)              # it's OK to omit a non-mandatory field
+reject default(THasNotNils)
+reject userDefinedDefault(THasNotNils)
+
+reject default(TRefObjNotNil)
+reject userDefinedDefault(TRefObjNotNil)
+reject genericDefault(TRefObjNotNil)
 
 # missing not nils in base
 reject TBaseHasNotNils()
+reject default(TBaseHasNotNils)
+reject userDefinedDefault(TBaseHasNotNils)
+reject genericDefault(TBaseHasNotNils)
 
 # once you take care of them, it's ok
 accept TBaseHasNotNils(a: notNilRef, b: notNilRef, choice: D)
