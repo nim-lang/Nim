@@ -996,7 +996,8 @@ proc track(tracked: PEffects, n: PNode) =
         createTypeBoundOps(tracked, x[1].typ, n.info)
 
       if x.kind == nkExprColonExpr:
-        notNilCheck(tracked, x[1], x[0].sym.typ)
+        if x[0].kind == nkSym:
+          notNilCheck(tracked, x[1], x[0].sym.typ)
         checkForSink(tracked.config, tracked.owner, x[1])
       else:
         checkForSink(tracked.config, tracked.owner, x)
