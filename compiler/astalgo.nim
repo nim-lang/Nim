@@ -1041,3 +1041,10 @@ proc isAddrNode*(n: PNode): bool =
       if n[0].kind == nkSym and n[0].sym.magic == mAddr: true
       else: false
     else: false
+
+proc listSymbolNames*(symbols: openArray[PSym]): string =
+  for sym in symbols:
+    if result.len > 0:
+      result.add ", "
+    result.add sym.name.s
+
