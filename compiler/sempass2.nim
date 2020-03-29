@@ -684,18 +684,18 @@ proc prove(c: PEffects; prop: PNode): bool =
       message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
     result = success
 
-when defined(drnim):
-  proc patchResult(c: PEffects; n: PNode) =
-    if n.kind == nkSym and n.sym.kind == skResult:
-      let fn = c.owner
-      if fn != nil and fn.kind in routineKinds and fn.ast != nil and resultPos < fn.ast.len:
-        n.sym = fn.ast[resultPos].sym
-      else:
-        localError(c.config, n.info, "routine has no return type, but .requires contains 'result'")
+proc patchResult(c: PEffects; n: PNode) =
+  if n.kind == nkSym and n.sym.kind == skResult:
+    let fn = c.owner
+    if fn != nil and fn.kind in routineKinds and fn.ast != nil and resultPos < fn.ast.len:
+      n.sym = fn.ast[resultPos].sym
     else:
-      for i in 0..<safeLen(n):
-        patchResult(c, n[i])
+      localError(c.config, n.info, "routine has no return type, but .requires contains 'result'")
+  else:
+    for i in 0..<safeLen(n):
+      patchResult(c, n[i])
 
+when defined(drnim):
   proc requiresCheck(c: PEffects; call: PNode; op: PType) =
     assert op.n[0].kind == nkEffectList
     if requiresEffects < op.n[0].len:
