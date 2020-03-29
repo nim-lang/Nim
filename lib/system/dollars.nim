@@ -72,7 +72,7 @@ proc `$`*(x: char): string {.magic: "CharToStr", noSideEffect.}
 const cLikeTarget = defined(c) or defined(cpp)
 
 when cLikeTarget:
-  proc c_strnlen(s: cstring, maxlen: csize_t): csize_t {.importc: "strnlen".}
+  proc c_strnlen(s: cstring, maxlen: csize_t): csize_t {.importc: "strnlen", header: "<string.h>".}
   # see also: `strnlen_s` that also checks for nil, but may incur overhead
 
 proc strAppend*(result: var string, a: ptr char, n: int) {.inline.} =
@@ -97,7 +97,7 @@ proc strAppend*[R](result: var string, a: array[R, char], stopAt0: bool) {.inlin
   ## If `stopAt0` is true we stop right before the first `\0`, if no `\0`,
   ## we append all elements.
   ## Compared to `$toCstring(addr(a))`, this prevents buffer overflow bugs at no
-  ## cost thanks to `len(a)` being known at compile time.
+  ## cost since `len(a)` is known.
   const N = len(a)
   static: doAssert N > 0
   var n {.noinit.}: int
@@ -107,9 +107,9 @@ proc strAppend*[R](result: var string, a: array[R, char], stopAt0: bool) {.inlin
     else: n = N
     strAppend(result, cast[ptr char](a.unsafeAddr), n)
   else:
+    const first = low(a)
     if stopAt0:
       n = 0
-      const first = low(a)
       while n < N:
         if a[first+n] == '\0':
           break
