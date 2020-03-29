@@ -371,9 +371,8 @@ proc map*[T, S](s: openArray[T], op: proc (x: T): S {.closure.}):
       b = map(a, proc(x: int): string = $x)
     assert b == @["1", "2", "3", "4"]
 
-  newSeq(result, s.len)
-  for i in 0 ..< s.len:
-    result[i] = op(s[i])
+  result = newSeqOfCap[S](s.len)
+  for elem in s: result.add op(elem)
 
 proc apply*[T](s: var openArray[T], op: proc (x: var T) {.closure.})
                                                               {.inline.} =
