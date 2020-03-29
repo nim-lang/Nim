@@ -75,6 +75,7 @@ type
     proofEngine*: proc (graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) {.nimcall.}
     requirementsCheck*: proc (graph: ModuleGraph; assumptions: seq[PNode];
                              call, requirement: PNode): (bool, string) {.nimcall.}
+    compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
 
   TPassContext* = object of RootObj # the pass's context
   PPassContext* = ref TPassContext

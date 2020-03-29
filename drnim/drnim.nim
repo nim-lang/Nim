@@ -9,8 +9,6 @@
 
 #[
 
-- proc types must check the implications
-- methods must check the implications
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - forall/exists need syntactic sugar as the manual
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -66,6 +64,7 @@ type
     z3: Z3_context
     graph: ModuleGraph
     mapping: Table[string, Z3_ast]
+    canonParameterNames: bool
 
 proc stableName(result: var string; n: PNode) =
   # we can map full Nim expressions like 'f(a, b, c)' to Z3 variables.
@@ -146,11 +145,17 @@ template quantorToZ3(fn) {.dirty.} =
 proc forallToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_forall_const)
 proc existsToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_exists_const)
 
+proc paramName(n: PNode): string =
+  case n.sym.kind
+  of skParam: result = "arg" & $n.sym.position
+  of skResult: result = "result"
+  else: result = stableName(n)
+
 proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
   template ctx: untyped = c.z3
   case n.kind
   of nkSym:
-    let key = stableName(n)
+    let key = if c.canonParameterNames: paramName(n) else: stableName(n)
     result = c.mapping.getOrDefault(key)
     if pointer(result) == nil:
       let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
@@ -373,9 +378,7 @@ proc conj(ctx: Z3_context; conds: seq[Z3_ast]): Z3_ast =
   else:
     result = Z3_mk_true(ctx)
 
-proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
-  var c: DrCon
-  c.graph = graph
+proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
   c.mapping = initTable[string, Z3_ast]()
   let cfg = Z3_mk_config()
   Z3_set_param_value(cfg, "model", "true");
@@ -441,6 +444,11 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
   finally:
     Z3_del_context(ctx)
 
+proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
+  var c: DrCon
+  c.graph = graph
+  result = proofEngineAux(c, assumptions, toProve)
+
 proc translateReq(r, call: PNode): PNode =
   if r.kind == nkSym and r.sym.kind == skParam:
     if r.sym.position+1 < call.len:
@@ -461,12 +469,57 @@ proc requirementsCheck(graph: ModuleGraph; assumptions: seq[PNode];
     result[0] = false
     result[1] = getCurrentExceptionMsg()
 
+proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.} =
+  #[
+  Thoughts on subtyping rules for 'proc' types:
+
+    proc a(y: int) {.requires: y > 0.}  # a is 'weaker' than F
+    # 'requires' must be weaker (or equal)
+    # 'ensures'  must be stronger (or equal)
+
+    # a 'is weaker than' b iff  b -> a
+    # a 'is stronger than' b iff a -> b
+    # --> We can use Z3 to compute whether 'var x: T = q' is valid
+
+    type
+      F = proc (y: int) {.requires: y > 5.}
+
+    var
+      x: F = a # valid?
+  ]#
+  result = true
+  if formal.n != nil and formal.n.len > 0 and formal.n[0].kind == nkEffectList and
+      ensuresEffects < formal.n[0].len:
+
+    if actual.n != nil and actual.n.len > 0 and actual.n[0].kind == nkEffectList and
+        ensuresEffects < actual.n[0].len:
+      let frequires = formal.n[0][requiresEffects]
+      let fensures = formal.n[0][ensuresEffects]
+      let arequires = actual.n[0][requiresEffects]
+      let aensures = actual.n[0][ensuresEffects]
+
+      var c: DrCon
+      c.graph = graph
+      c.canonParameterNames = true
+      if frequires != nil:
+        result = arequires != nil and proofEngineAux(c, @[frequires], arequires)[0]
+
+      if result:
+        if fensures != nil:
+          result = aensures != nil and proofEngineAux(c, @[aensures], fensures)[0]
+    else:
+      # formal has requirements but 'actual' has none, so make it
+      # incompatible. XXX What if the requirement only mentions that
+      # we already know from the type system?
+      result = false
+
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
   conf.lastCmdTime = epochTime()
 
   graph.proofEngine = proofEngine
   graph.requirementsCheck = requirementsCheck
+  graph.compatibleProps = compatibleProps
 
   graph.config.errorMax = high(int)  # do not stop after first error
   defineSymbol(graph.config.symbols, "nimcheck")
@@ -495,24 +548,6 @@ proc mainCommand(graph: ModuleGraph) =
       "project", project,
       "output", output,
       ])
-
-#[
-Thoughts on subtyping rules for 'proc' types:
-
-  proc q(y: int) {.requires: y > 0.}  # q is 'weaker' than T
-  # 'requires' must be weaker (or equal)
-  # 'ensures'  must be stronger (or equal)
-
-  # a 'is weaker than' b iff  b -> a
-  # a 'is stronger than' b iff a -> b
-  # --> We can use Z3 to compute whether 'var x: T = q' is valid
-
-  type
-    T = proc (y: int) {.requires: y > 5.}
-
-  var
-    x: T = q # valid?
-]#
 
 proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
   when defined(unix):

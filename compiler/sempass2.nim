@@ -1121,6 +1121,11 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(g.config, branch.info, "base method is GC-safe, but '$1' is not" %
                                 branch.name.s)
+  when defined(drnim):
+    if not g.compatibleProps(g, disp.typ, branch.typ):
+      localError(g.config, branch.info, "for method '" & branch.name.s &
+        "' the `.requires` or `.ensures` properties are incompatible.")
+
   if branch.typ.lockLevel > disp.typ.lockLevel:
     when true:
       message(g.config, branch.info, warnLockLevel,
