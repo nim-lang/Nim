@@ -1584,7 +1584,7 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
     # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
     s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
         newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))
-    implicitPragmas(c, s, n, procTypePragmas)
+    implicitPragmas(c, s, n, {wTags, wRaises})
     when useEffectSystem: setEffectsForProcType(c.graph, result, s.ast[pragmasPos])
   closeScope(c)
 

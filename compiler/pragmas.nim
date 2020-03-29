@@ -1147,7 +1147,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif comesFromPush and whichKeyword(ident) != wInvalid:
+    elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
       discard "ignore the .push pragma; it doesn't apply"
     else:
       if sym == nil or (sym.kind in {skVar, skLet, skParam,
