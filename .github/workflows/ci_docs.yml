@@ -1,10 +1,16 @@
 name: Nim Docs CI
 on:
+  push:
+    # Run only on changes on these files
+    paths:
+      - 'lib/**.nim'
+      - 'doc/**.rst'
+
   pull_request:
     # Run only on changes on these files
     paths:
-      - 'lib/*.nim'
-      - 'doc/*.rst'
+      - 'lib/**.nim'
+      - 'doc/**.rst'
 
 jobs:
   build:
@@ -30,7 +36,7 @@ jobs:
           ncpu=$(nproc)
           [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
-          make -C csources -j $ncpu CC=gcc ucpu='amd64'
+          make -C csources -j $ncpu CC=gcc
 
       - name: 'Build koch'
         shell: bash
@@ -43,3 +49,16 @@ jobs:
       - name: 'Build documentation'
         shell: bash
         run: ./koch doc
+
+      - name: 'Prepare documentation for deployment'
+        if: github.event_name == 'push' && github.ref == 'devel'
+        shell: bash
+        run: cp -f doc/html/{overview,index}.html
+
+      - name: 'Publish documentation to Github Pages'
+        if: github.event_name == 'push' && github.ref == 'devel'
+        uses: crazy-max/ghaction-github-pages@v1
+        with:
+          build-dir: doc/html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
