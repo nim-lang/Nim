@@ -500,31 +500,34 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
     var
       x: F = a # valid?
   ]#
+  proc isEmpty(n: PNode): bool {.inline.} = n == nil or n.safeLen == 0
+
   result = true
   if formal.n != nil and formal.n.len > 0 and formal.n[0].kind == nkEffectList and
       ensuresEffects < formal.n[0].len:
 
+    let frequires = formal.n[0][requiresEffects]
+    let fensures = formal.n[0][ensuresEffects]
+
     if actual.n != nil and actual.n.len > 0 and actual.n[0].kind == nkEffectList and
         ensuresEffects < actual.n[0].len:
-      let frequires = formal.n[0][requiresEffects]
-      let fensures = formal.n[0][ensuresEffects]
       let arequires = actual.n[0][requiresEffects]
       let aensures = actual.n[0][ensuresEffects]
 
       var c: DrCon
       c.graph = graph
       c.canonParameterNames = true
-      if frequires != nil:
-        result = arequires != nil and proofEngineAux(c, @[frequires], arequires)[0]
+      if not frequires.isEmpty:
+        result = not arequires.isEmpty and proofEngineAux(c, @[frequires], arequires)[0]
 
       if result:
-        if fensures != nil:
-          result = aensures != nil and proofEngineAux(c, @[aensures], fensures)[0]
+        if not fensures.isEmpty:
+          result = not aensures.isEmpty and proofEngineAux(c, @[aensures], fensures)[0]
     else:
       # formal has requirements but 'actual' has none, so make it
       # incompatible. XXX What if the requirement only mentions that
       # we already know from the type system?
-      result = false
+      result = frequires.isEmpty and fensures.isEmpty
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
