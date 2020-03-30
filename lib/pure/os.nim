@@ -2787,7 +2787,7 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
-    var pathLength: csize = 0
+    var pathLength = csize_t(0)
     var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
 
     # first call to get the required length
