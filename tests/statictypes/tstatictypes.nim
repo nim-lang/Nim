@@ -88,6 +88,10 @@ when true:
   reject:
     var x = static(v)
 
+block: # issue #13730
+  type Foo[T: static[float]] = object
+  doAssert Foo[0.0] is Foo[-0.0]
+
 when true:
   type
     ArrayWrapper1[S: static int] = object

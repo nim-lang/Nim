@@ -24,6 +24,8 @@
 ##     foreignDep "lbiblas-dev"
 ##     foreignDep "libvoodoo"
 ##
+##
+## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
 from strutils import contains, toLowerAscii
 

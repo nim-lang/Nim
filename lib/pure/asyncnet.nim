@@ -95,6 +95,8 @@
 ##   runForever()
 ##
 
+include "system/inclrtl"
+
 import asyncdispatch
 import nativesockets
 import net
@@ -742,6 +744,17 @@ when defineSsl:
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
+
+  proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
 
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =

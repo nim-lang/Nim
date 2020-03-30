@@ -49,8 +49,8 @@ when defined(nimlocks):
 else:
   {.pragma: benign, gcsafe.}
 
-template since(version, body: untyped) {.dirty.} =
+template since(version, body: untyped) {.dirty, used.} =
   ## limitation: can't be used to annotate a template (eg typetraits.get), would
   ## error: cannot attach a custom pragma.
-  when version <= (NimMajor, NimMinor):
+  when (NimMajor, NimMinor) >= version:
     body

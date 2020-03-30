@@ -61,10 +61,6 @@ var
   currException {.threadvar.}: ref Exception
   gcFramePtr {.threadvar.}: GcFrame
 
-when defined(cpp) and not defined(noCppExceptions):
-  var
-    raiseCounter {.threadvar.}: uint
-
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
                      excHandler: PSafePoint, currException: ref Exception]
@@ -123,19 +119,7 @@ proc popCurrentException {.compilerRtl, inl.} =
   #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
-  # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
-  if currException.raiseId == id:
-    currException = currException.up
-  else:
-    var cur = currException.up
-    var prev = currException
-    while cur != nil and cur.raiseId != id:
-      prev = cur
-      cur = cur.up
-    if cur == nil:
-      showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
-      quit(1)
-    prev.up = cur.up
+  discard "only for bootstrapping compatbility"
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   currException = e
@@ -410,7 +394,7 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
     discard()
 
 proc nimLeaveFinally() {.compilerRtl.} =
-  when defined(cpp) and not defined(noCppExceptions):
+  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     {.emit: "throw;".}
   else:
     if excHandler != nil:
@@ -420,16 +404,16 @@ proc nimLeaveFinally() {.compilerRtl.} =
       quit(1)
 
 when gotoBasedExceptions:
-  var nimInErrorMode {.threadvar.}: int
+  var nimInErrorMode {.threadvar.}: bool
 
-  proc nimErrorFlag(): ptr int {.compilerRtl, inl.} =
+  proc nimErrorFlag(): ptr bool {.compilerRtl, inl.} =
     result = addr(nimInErrorMode)
 
   proc nimTestErrorFlag() {.compilerRtl.} =
     ## This proc must be called before ``currException`` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
-    if currException != nil:
+    if nimInErrorMode and currException != nil:
       reportUnhandledError(currException)
       currException = nil
       quit(1)
@@ -439,16 +423,12 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
-  when defined(cpp) and not defined(noCppExceptions):
+  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     if e == currException:
       {.emit: "throw;".}
     else:
       pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+      {.emit: "throw e;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
@@ -544,7 +524,7 @@ proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
-when defined(cpp) and appType != "lib" and
+when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
 
@@ -562,9 +542,9 @@ when defined(cpp) and appType != "lib" and
 
     var msg = "Unknown error in unexpected exception handler"
     try:
-      {.emit"#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
+      {.emit: "#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
-      {.emit"#endif".}
+      {.emit: "#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
@@ -573,9 +553,9 @@ when defined(cpp) and appType != "lib" and
     except:
       msg = "Error: unhandled unknown cpp exception"
 
-    {.emit"#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
+    {.emit: "#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
     msg = "Error: unhandled unknown cpp exception"
-    {.emit"#endif".}
+    {.emit: "#endif".}
 
     when defined(genode):
       # stderr not available by default, use the LOG session

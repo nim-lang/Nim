@@ -157,7 +157,7 @@ proc popInfoContext*(conf: ConfigRef) =
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   let i = if index < 0: conf.m.msgContext.len + index else: index
-  if i >=% conf.m.msgContext.len: result = unknownLineInfo()
+  if i >=% conf.m.msgContext.len: result = unknownLineInfo
   else: result = conf.m.msgContext[i].info
 
 const
@@ -340,7 +340,7 @@ proc log*(s: string) =
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or hintStackTrace in conf.notes:
+  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
@@ -405,22 +405,20 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   case msg
   of errMin..errMax:
     sev = Severity.Error
-    writeContext(conf, unknownLineInfo())
+    writeContext(conf, unknownLineInfo)
     title = ErrorTitle
     color = ErrorColor
   of warnMin..warnMax:
     sev = Severity.Warning
-    if optWarns notin conf.options: return
-    if msg notin conf.notes: return
-    writeContext(conf, unknownLineInfo())
+    if not conf.hasWarn(msg): return
+    writeContext(conf, unknownLineInfo)
     title = WarningTitle
     color = WarningColor
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
-    if optHints notin conf.options: return
-    if msg notin conf.notes: return
+    if not conf.hasHint(msg): return
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -428,7 +426,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let s = msgKindToString(msg) % args
 
   if conf.structuredErrorHook != nil:
-    conf.structuredErrorHook(conf, unknownLineInfo(),
+    conf.structuredErrorHook(conf, unknownLineInfo,
       s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
@@ -500,7 +498,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     conf.m.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
-    ignoreMsg = optWarns notin conf.options or msg notin conf.notes
+    ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg: writeContext(conf, info)
     title = WarningTitle
     color = WarningColor
@@ -508,7 +506,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
-    ignoreMsg = optHints notin conf.options or msg notin conf.notes
+    ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -526,7 +524,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if hintSource in conf.notes:
+      if conf.hasHint(hintSource):
         conf.writeSurroundingSrc(info)
   handleError(conf, msg, eh, s)
 
@@ -561,7 +559,7 @@ proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
-  writeContext(conf, unknownLineInfo())
+  writeContext(conf, unknownLineInfo)
   rawMessage(conf, errInternal, errMsg)
 
 template assertNotNil*(conf: ConfigRef; e): untyped =

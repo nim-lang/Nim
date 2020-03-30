@@ -23,14 +23,14 @@ const
     wExportNims, wExtern, wDeprecated, wNodecl, wError, wUsed, wAlign}
     ## common pragmas for declarations, to a good approximation
   procPragmas* = declPragmas + {FirstCallConv..LastCallConv,
-    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
+    wMagic, wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wCompilerProc, wNonReloadable, wCore, wProcVar, wVarargs, wCompileTime, wMerge,
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
     wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy}
-  converterPragmas* = procPragmas - {wNoDestroy}
-  methodPragmas* = procPragmas+{wBase}-{wImportCpp, wNoDestroy}
+  converterPragmas* = procPragmas
+  methodPragmas* = procPragmas+{wBase}-{wImportCpp}
   templatePragmas* = {wDeprecated, wError, wGensym, wInject, wDirty,
     wDelegator, wExportNims, wUsed, wPragma}
   macroPragmas* = declPragmas + {FirstCallConv..LastCallConv,
@@ -42,7 +42,8 @@ const
     wTags, wLocks, wGcSafe}
   exprPragmas* = {wLine, wLocks, wNoRewrite, wGcSafe, wNoSideEffect}
   stmtPragmas* = {wChecks, wObjChecks, wFieldChecks, wRangeChecks,
-    wBoundChecks, wOverflowChecks, wNilChecks, wStyleChecks, wAssertions,
+    wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
+    wStyleChecks, wAssertions,
     wWarnings, wHints,
     wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
@@ -53,7 +54,7 @@ const
     wLinearScanEnd, wPatterns, wTrMacros, wEffects, wNoForward, wReorder, wComputedGoto,
     wInjectStmt, wExperimental, wThis, wUsed}
   lambdaPragmas* = declPragmas + {FirstCallConv..LastCallConv,
-    wNoSideEffect, wSideEffect, wNoreturn, wDynlib, wHeader,
+    wNoSideEffect, wSideEffect, wNoreturn, wNosinks, wDynlib, wHeader,
     wThread, wAsmNoStackFrame,
     wRaises, wLocks, wTags, wGcSafe, wCodegenDecl} - {wExportNims, wError, wUsed}  # why exclude these?
   typePragmas* = declPragmas + {wMagic, wAcyclic,
@@ -328,6 +329,7 @@ proc processNote(c: PContext, n: PNode) =
     n[1] = x
     if x.kind == nkIntLit and x.intVal != 0: incl(c.config.notes, nk)
     else: excl(c.config.notes, nk)
+    # checkme: honor cmdlineNotes with: c.setNote(nk, x.kind == nkIntLit and x.intVal != 0)
   else:
     invalidPragma(c, n)
 
@@ -343,6 +345,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wFloatChecks: {optNaNCheck, optInfCheck}
   of wNanChecks: {optNaNCheck}
   of wInfChecks: {optInfCheck}
+  of wStaticBoundchecks: {optStaticBoundsCheck}
   of wStyleChecks: {optStyleCheck}
   of wAssertions: {optAssert}
   of wWarnings: {optWarns}
@@ -356,6 +359,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wByRef: {optByRef}
   of wImplicitStatic: {optImplicitStatic}
   of wPatterns, wTrMacros: {optTrMacros}
+  of wSinkInference: {optSinkInference}
   else: {}
 
 proc processExperimental(c: PContext; n: PNode) =
@@ -736,7 +740,7 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
     result = result[0]
   elif n.kind == nkExprColonExpr and r.len == 2:
     # pragma(arg) -> pragma: arg
-    result.kind = n.kind
+    result.transitionSonsKind(n.kind)
 
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
@@ -888,6 +892,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNoDestroy:
         noVal(c, it)
         incl(sym.flags, sfGeneratedOp)
+      of wNosinks:
+        noVal(c, it)
+        incl(sym.flags, sfWasForwarded)
       of wDynlib:
         processDynLib(c, it, sym)
       of wCompilerProc, wCore:
@@ -1022,7 +1029,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wCodegenDecl: processCodegenDecl(c, it, sym)
       of wChecks, wObjChecks, wFieldChecks, wRangeChecks, wBoundChecks,
          wOverflowChecks, wNilChecks, wAssertions, wWarnings, wHints,
-         wLineDir, wOptimization, wStyleChecks, wCallconv, wDebugger, wProfiler,
+         wLineDir, wOptimization, wStaticBoundchecks, wStyleChecks,
+         wCallconv, wDebugger, wProfiler,
          wFloatChecks, wNanChecks, wInfChecks, wPatterns, wTrMacros:
         processOption(c, it, c.config.options)
       of wStackTrace, wLineTrace:
@@ -1139,7 +1147,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
       else: invalidPragma(c, it)
-    elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
+    elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
       if sym == nil or (sym.kind in {skVar, skLet, skParam,

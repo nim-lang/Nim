@@ -469,7 +469,8 @@ Generics
 ========
 
 Generics are Nim's means to parametrize procs, iterators or types
-with `type parameters`:idx:. They are most useful for efficient type safe
+with `type parameters`:idx:. Generic parameters are written within square
+brackets, for example ``Foo[T]``. They are most useful for efficient type safe
 containers:
 
 .. code-block:: nim
@@ -677,4 +678,4 @@ JavaScript-compatible code you should remember the following:
 Part 3
 ======
 
-Next part will be entirely about metaprogramming via macros: `Part III <tut3.html>`_
+The next part is entirely about metaprogramming via macros: `Part III <tut3.html>`_

@@ -14,7 +14,7 @@ cpp exception caught
 '''
 """
 
-type 
+type
   std_exception* {.importcpp: "std::exception", header: "<exception>".} = object
   std_runtime_error* {.importcpp: "std::runtime_error", header: "<stdexcept>".} = object
   std_string* {.importcpp: "std::string", header: "<string>".} = object
@@ -25,7 +25,7 @@ proc constructRuntimeError(s: stdstring): std_runtime_error {.importcpp: "std::r
 
 proc what(ex: std_runtime_error): cstring {.importcpp: "((char *)#.what())".}
 
-proc myexception = 
+proc myexception =
   raise constructRuntimeError(constructStdString("cpp_exception"))
 
 try:
@@ -41,17 +41,17 @@ except std_exception:
 
 doAssert(getCurrentException() == nil)
 
-proc earlyReturn = 
+proc earlyReturn =
   try:
     try:
-        myexception()
+      myexception()
     finally:
       echo "finally1"
   except:
     return
   finally:
     echo "finally2"
-  
+
 earlyReturn()
 doAssert(getCurrentException() == nil)
 
@@ -118,16 +118,15 @@ try:
     echo "finally 2"
 except:
   echo "expected"
-  
-  
+
 doAssert(getCurrentException() == nil)
 
 try:
-    try:
-      myexception()
-    except std_runtime_error as ex:
-      echo "cpp exception caught"
-      raise newException(ValueError, "rewritten " & $ex.what())
+  try:
+    myexception()
+  except std_runtime_error as ex:
+    echo "cpp exception caught"
+    raise newException(ValueError, "rewritten " & $ex.what())
 except:
   doAssert(getCurrentExceptionMsg() == "rewritten cpp_exception")
 

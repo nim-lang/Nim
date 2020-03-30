@@ -161,16 +161,37 @@ proc `<`*(x, y: int16): bool {.magic: "LtI", noSideEffect.}
 proc `<`*(x, y: int32): bool {.magic: "LtI", noSideEffect.}
 proc `<`*(x, y: int64): bool {.magic: "LtI", noSideEffect.}
 
+proc `<=`*(x, y: uint): bool {.magic: "LeU", noSideEffect.}
+  ## Returns true if ``x <= y``.
+proc `<=`*(x, y: uint8): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint16): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint32): bool {.magic: "LeU", noSideEffect.}
+proc `<=`*(x, y: uint64): bool {.magic: "LeU", noSideEffect.}
 
-proc `<=%`*(x, y: IntMax32): bool {.magic: "LeU", noSideEffect.}
-proc `<=%`*(x, y: int64): bool {.magic: "LeU64", noSideEffect.}
+proc `<`*(x, y: uint): bool {.magic: "LtU", noSideEffect.}
+  ## Returns true if ``x < y``.
+proc `<`*(x, y: uint8): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
+proc `<`*(x, y: uint64): bool {.magic: "LtU", noSideEffect.}
+
+proc `<=%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) <= unsigned(y)``.
+  cast[uint](x) <= cast[uint](y)
+proc `<=%`*(x, y: int8): bool {.inline.} = cast[uint8](x) <= cast[uint8](y)
+proc `<=%`*(x, y: int16): bool {.inline.} = cast[uint16](x) <= cast[uint16](y)
+proc `<=%`*(x, y: int32): bool {.inline.} = cast[uint32](x) <= cast[uint32](y)
+proc `<=%`*(x, y: int64): bool {.inline.} = cast[uint64](x) <= cast[uint64](y)
 
-proc `<%`*(x, y: IntMax32): bool {.magic: "LtU", noSideEffect.}
-proc `<%`*(x, y: int64): bool {.magic: "LtU64", noSideEffect.}
+proc `<%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) < unsigned(y)``.
+  cast[uint](x) < cast[uint](y)
+proc `<%`*(x, y: int8): bool {.inline.} = cast[uint8](x) < cast[uint8](y)
+proc `<%`*(x, y: int16): bool {.inline.} = cast[uint16](x) < cast[uint16](y)
+proc `<%`*(x, y: int32): bool {.inline.} = cast[uint32](x) < cast[uint32](y)
+proc `<%`*(x, y: int64): bool {.inline.} = cast[uint64](x) < cast[uint64](y)
 
 template `>=%`*(x, y: untyped): untyped = y <=% x
   ## Treats `x` and `y` as unsigned and compares them.
@@ -180,28 +201,12 @@ template `>%`*(x, y: untyped): untyped = y <% x
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) > unsigned(y)``.
 
-
 proc `==`*(x, y: uint): bool {.magic: "EqI", noSideEffect.}
   ## Compares two unsigned integers for equality.
 proc `==`*(x, y: uint8): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint16): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint32): bool {.magic: "EqI", noSideEffect.}
 proc `==`*(x, y: uint64): bool {.magic: "EqI", noSideEffect.}
-
-
-proc `<=`*(x, y: uint): bool {.magic: "LeU", noSideEffect.}
-  ## Returns true if ``x <= y``.
-proc `<=`*(x, y: uint8): bool {.magic: "LeU", noSideEffect.}
-proc `<=`*(x, y: uint16): bool {.magic: "LeU", noSideEffect.}
-proc `<=`*(x, y: uint32): bool {.magic: "LeU", noSideEffect.}
-proc `<=`*(x, y: uint64): bool {.magic: "LeU", noSideEffect.}
-
-proc `<`*(x, y: uint): bool {.magic: "LtU", noSideEffect.}
-  ## Returns true if ``unsigned(x) < unsigned(y)``.
-proc `<`*(x, y: uint8): bool {.magic: "LtU", noSideEffect.}
-proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
-proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
-proc `<`*(x, y: uint64): bool {.magic: "LtU", noSideEffect.}
 
 
 {.push stackTrace: off.}
@@ -283,7 +288,7 @@ proc `==`*[T](x, y: seq[T]): bool {.noSideEffect.} =
       if x.len == 0 and y.len == 0:
         return true
   else:
-    when not defined(JS):
+    when not defined(js):
       proc seqToPtr[T](x: seq[T]): pointer {.inline, noSideEffect.} =
         when defined(nimSeqsV2):
           result = cast[NimSeqV2[T]](x).p

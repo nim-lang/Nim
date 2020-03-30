@@ -93,8 +93,8 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
     # XXX This is only correct for 'attachedSink'!
     var localEnforceDefaultOp = enforceDefaultOp
     if c.kind == attachedSink:
-      ## the value needs to be destroyed before we assign the selector
-      ## or the value is lost
+      # the value needs to be destroyed before we assign the selector
+      # or the value is lost
       let prevKind = c.kind
       c.kind = attachedDestructor
       fillBodyObj(c, n, body, x, y, enforceDefaultOp = false)
@@ -484,10 +484,10 @@ proc atomicRefOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     if isFinal(elemType):
       let typInfo = genBuiltin(c.g, mGetTypeInfo, "getTypeInfo", newNodeIT(nkType, x.info, elemType))
       typInfo.typ = getSysType(c.g, c.info, tyPointer)
-      body.add callCodegenProc(c.g, "nimTraceRef", c.info, x, typInfo, y)
+      body.add callCodegenProc(c.g, "nimTraceRef", c.info, genAddrOf(x), typInfo, y)
     else:
       # If the ref is polymorphic we have to account for this
-      body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, x, y)
+      body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(x), y)
   of attachedDispose:
     # this is crucial! dispose is like =destroy but we don't follow refs
     # as that is dealt within the cycle collector.
@@ -530,7 +530,7 @@ proc atomicClosureOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     body.add genIf(c, cond, actions)
   of attachedDeepCopy: assert(false, "cannot happen")
   of attachedTrace:
-    body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, xenv, y)
+    body.add callCodegenProc(c.g, "nimTraceRefDyn", c.info, genAddrOf(xenv), y)
   of attachedDispose:
     # this is crucial! dispose is like =destroy but we don't follow refs
     # as that is dealt within the cycle collector.
@@ -704,7 +704,10 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
       defaultOp(c, t, body, x, y)
   of tyObject:
     if not considerUserDefinedOp(c, t, body, x, y):
-      fillBodyObjT(c, t, body, x, y)
+      if c.kind in {attachedAsgn, attachedSink} and t.sym != nil and sfImportc in t.sym.flags:
+        body.add newAsgnStmt(x, y)
+      else:
+        fillBodyObjT(c, t, body, x, y)
   of tyDistinct:
     if not considerUserDefinedOp(c, t, body, x, y):
       fillBody(c, t[0], body, x, y)
@@ -775,18 +778,25 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   # register this operation already:
   typ.attachedOps[kind] = result
 
-  var tk: TTypeKind
-  if g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
-    tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
+  if kind == attachedSink and typ.attachedOps[attachedDestructor] != nil and
+       sfOverriden in typ.attachedOps[attachedDestructor].flags:
+    ## compiler can use a combination of `=destroy` and memCopy for sink op
+    dest.flags.incl sfCursor
+    body.add newOpCall(typ.attachedOps[attachedDestructor], d[0])
+    body.add newAsgnStmt(d, newSymNode(src))
   else:
-    tk = tyNone # no special casing for strings and seqs
-  case tk
-  of tySequence:
-    fillSeqOp(a, typ, body, d, newSymNode(src))
-  of tyString:
-    fillStrOp(a, typ, body, d, newSymNode(src))
-  else:
-    fillBody(a, typ, body, d, newSymNode(src))
+    var tk: TTypeKind
+    if g.config.selectedGC in {gcArc, gcOrc, gcHooks}:
+      tk = skipTypes(typ, {tyOrdinal, tyRange, tyInferred, tyGenericInst, tyStatic, tyAlias, tySink}).kind
+    else:
+      tk = tyNone # no special casing for strings and seqs
+    case tk
+    of tySequence:
+      fillSeqOp(a, typ, body, d, newSymNode(src))
+    of tyString:
+      fillStrOp(a, typ, body, d, newSymNode(src))
+    else:
+      fillBody(a, typ, body, d, newSymNode(src))
 
   var n = newNodeI(nkProcDef, info, bodyPos+1)
   for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
@@ -837,7 +847,6 @@ proc isTrival(s: PSym): bool {.inline.} =
 proc isEmptyContainer(g: ModuleGraph, t: PType): bool =
   (t.kind == tyArray and lengthOrd(g.config, t[0]) == 0) or
     (t.kind == tySequence and t[0].kind == tyError)
-
 
 proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInfo) =
   ## In the semantic pass this is called in strategic places

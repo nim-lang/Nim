@@ -121,6 +121,11 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t[1]
     else: t
 
+proc getTypeDescNode(typ: PType, sym: PSym, info: TLineInfo): PNode =
+  var resType = newType(tyTypeDesc, sym)
+  rawAddSon(resType, typ)
+  result = toNode(resType, info)
+
 proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
   const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
@@ -132,6 +137,9 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 
   template typeWithSonsResult(kind, sons): PNode =
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
+
+  if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
+    return traitCall  ## too early to evaluate
 
   let s = trait.sym.name.s
   case s
@@ -158,13 +166,16 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.typ = newType(tyInt, context)
     result.info = traitCall.info
   of "genericHead":
-    var res = uninstantiate(operand)
-    if res == operand and res.kind notin tyMagicGenerics:
-      localError(c.config, traitCall.info,
-        "genericHead expects a generic type. The given type was " &
-        typeToString(operand))
-      return newType(tyError, context).toNode(traitCall.info)
-    result = res.base.toNode(traitCall.info)
+    var arg = operand
+    case arg.kind
+    of tyGenericInst:
+      result = getTypeDescNode(arg.base, operand.owner, traitCall.info)
+    # of tySequence: # this doesn't work
+    #   var resType = newType(tySequence, operand.owner)
+    #   result = toNode(resType, traitCall.info) # doesn't work yet
+    else:
+      localError(c.config, traitCall.info, "expected generic type, got: type $2 of kind $1" % [arg.kind.toHumanStr, typeToString(operand)])
+      result = newType(tyError, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
@@ -173,17 +184,20 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
   of "isNamedTuple":
+    var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+  of "tupleLen":
+    var operand = operand.skipTypes({tyGenericInst})
+    assert operand.kind == tyTuple, $operand.kind
+    result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
     if arg.kind == tyDistinct:
       while arg.kind == tyDistinct:
         arg = arg.base
         arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-      var resType = newType(tyTypeDesc, operand.owner)
-      rawAddSon(resType, arg)
-      result = toNode(resType, traitCall.info)
+      result = getTypeDescNode(arg, operand.owner, traitCall.info)
     else:
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
@@ -465,8 +479,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-  of mRoof:
-    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:

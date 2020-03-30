@@ -79,7 +79,7 @@ template decTypeSize(cell, t) =
     if t.kind in {tyString, tySequence}:
       let cap = cast[PGenericSeq](cellToUsr(cell)).space
       let size = if t.kind == tyString: cap+1+GenericSeqSize
-                 else: addInt(mulInt(cap, t.base.size), GenericSeqSize)
+                 else: cap * t.base.size + GenericSeqSize
       atomicDec t.sizes, size+sizeof(Cell)
     else:
       atomicDec t.sizes, t.base.size+sizeof(Cell)

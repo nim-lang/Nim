@@ -317,9 +317,9 @@ proc nimArgsPassingDone(p: pointer) {.compilerProc.} =
   signal(w.taskStarted)
 
 const
-  MaxThreadPoolSize* = 256 ## Maximum size of the thread pool. 256 threads
-                           ## should be good enough for anybody ;-)
-  MaxDistinguishedThread* = 32 ## Maximum number of "distinguished" threads.
+  MaxThreadPoolSize* {.intdefine.} = 256 ## Maximum size of the thread pool. 256 threads
+                                         ## should be good enough for anybody ;-)
+  MaxDistinguishedThread* {.intdefine.} = 32 ## Maximum number of "distinguished" threads.
 
 type
   ThreadId* = range[0..MaxDistinguishedThread-1]

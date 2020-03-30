@@ -128,6 +128,19 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     b = s.getBody
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
+  elif c.inlining > 0:
+    # see bug #13596: we use ref-based equality in the DFA for destruction
+    # injections so we need to ensure unique nodes after iterator inlining
+    # which can lead to duplicated for loop bodies! Consider:
+    #[
+      while remaining > 0:
+        if ending == nil:
+          yield ms
+          break
+        ...
+        yield ms
+    ]#
+    b = newSymNode(n.sym, n.info)
   else:
     b = n
   while tc != nil:
@@ -449,7 +462,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
   case dest.kind
-  of tyInt..tyInt64, tyEnum, tyChar, tyBool, tyUInt8..tyUInt32:
+  of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
@@ -552,10 +565,19 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
-  of nkPar, nkTupleConstr, nkCurly, nkBracket:
-    result = paFastAsgn
+  of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
+    result = putArgInto(arg[0], formal)
+  of nkCurly, nkBracket:
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: return
+      if putArgInto(arg[i], formal) != paDirectMapping: 
+        return paFastAsgn
+    result = paDirectMapping
+  of nkPar, nkTupleConstr, nkObjConstr:
+    for i in 0..<arg.len:
+      let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
+              else: arg[0]
+      if putArgInto(a, formal) != paDirectMapping: 
+        return paFastAsgn
     result = paDirectMapping
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn

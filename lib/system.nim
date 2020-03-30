@@ -87,6 +87,18 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHashOrdinalFixed):
+  type
+    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                   ## bool, character, and enumeration types
+                                   ## as well as their subtypes. See also
+                                   ## `SomeOrdinal`.
+else:
+  # bootstrap <= 0.20.0
+  type
+    OrdinalImpl[T] {.magic: Ordinal.}
+    Ordinal* = OrdinalImpl | uint | uint64
+
 when defined(nimHasRunnableExamples):
   proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
@@ -406,7 +418,7 @@ when defined(nimArrIdx):
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: S) {.noSideEffect, magic: "ArrPut".}
+    x: sink S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
   proc arrGet[I: Ordinal;T](a: T; i: I): T {.
@@ -427,7 +439,7 @@ type
     b*: U                  ## The upper bound (inclusive).
   Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
 
-proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
   ## Binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive.
   ##
@@ -439,7 +451,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## Unary `slice`:idx: operator that constructs an interval ``[default(int), b]``.
   ##
   ## .. code-block:: Nim
@@ -477,9 +489,9 @@ include "system/inclrtl"
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
-const notJSnotNims = not defined(JS) and not defined(nimscript)
+const notJSnotNims = not defined(js) and not defined(nimscript)
 
-when not defined(JS) and not defined(nimSeqsV2):
+when not defined(js) and not defined(nimSeqsV2):
   type
     TGenericSeq {.compilerproc, pure, inheritable.} = object
       len, reserved: int
@@ -520,7 +532,7 @@ type
 
 include "system/exceptions"
 
-when defined(JS) or defined(nimdoc):
+when defined(js) or defined(nimdoc):
   type
     JsRoot* = ref object of RootObj
       ## Root type of the JavaScript object hierarchy
@@ -625,7 +637,7 @@ proc newSeqOfCap*[T](cap: Natural): seq[T] {.
   ##   assert len(x) == 1
   discard
 
-when not defined(JS):
+when not defined(js):
   proc newSeqUninitialized*[T: SomeNumber](len: Natural): seq[T] =
     ## Creates a new sequence of type ``seq[T]`` with length ``len``.
     ##
@@ -1103,7 +1115,7 @@ const
     ## is the value that should be passed to `quit <#quit,int>`_ to indicate
     ## failure.
 
-when defined(JS) and defined(nodejs) and not defined(nimscript):
+when defined(js) and defined(nodejs) and not defined(nimscript):
   var programResult* {.importc: "process.exitCode".}: int
   programResult = 0
 elif hostOS != "standalone":
@@ -1145,7 +1157,7 @@ elif defined(genode):
   proc quit*(errorcode: int = QuitSuccess) =
     systemEnv.quit(errorcode)
 
-elif defined(JS) and defined(nodejs) and not defined(nimscript):
+elif defined(js) and defined(nodejs) and not defined(nimscript):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit",
     importc: "process.exit", noreturn.}
 
@@ -1237,12 +1249,12 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   when nimvm:
     defaultImpl()
   else:
-    when defined(JS):
+    when defined(js):
       {.emit: "`x`.splice(`i`, 1);".}
     else:
       defaultImpl()
 
-proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
+proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## Inserts `item` into `x` at position `i`.
   ##
   ## .. code-block:: Nim
@@ -1258,7 +1270,7 @@ proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
   when nimvm:
     defaultImpl()
   else:
-    when defined(JS):
+    when defined(js):
       var it : T
       {.emit: "`x` = `x` || []; `x`.splice(`i`, 0, `it`);".}
     else:
@@ -1288,7 +1300,7 @@ type
     ## compiler supports. Currently this is ``float64``, but it is
     ## platform-dependent in general.
 
-when defined(JS):
+when defined(js):
   type BiggestUInt* = uint32
     ## is an alias for the biggest unsigned integer type the Nim compiler
     ## supports. Currently this is ``uint32`` for JS and ``uint64`` for other
@@ -1424,7 +1436,7 @@ proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ##   assert a == 9
   ##   assert b == 5
 
-when not defined(JS) and not defined(booting) and defined(nimTrMacros):
+when not defined(js) and not defined(booting) and defined(nimTrMacros):
   template swapRefsInArray*{swap(arr[a], arr[b])}(arr: openArray[ref], a, b: int) =
     # Optimize swapping of array elements if they are refs. Default swap
     # implementation will cause unsureAsgnRef to be emitted which causes
@@ -1494,8 +1506,20 @@ else:
   {.pragma: nilError.}
 
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
+  ## Requires `--nilseqs:on` since 0.19.
+  ##
+  ## Seqs are no longer nil by default, but set and empty.
+  ## Check for zero length instead.
+  ##
+  ## See also:
+  ## * `isNil(string) <#isNil,string>`_
+
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
+  ## Requires `--nilseqs:on`.
+  ##
+  ## See also:
+  ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1513,48 +1537,96 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   newSeq(result, a.len)
   for i in 0..a.len-1: result[i] = a[i]
 
-proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
-  ## Concatenates two sequences.
-  ##
-  ## Requires copying of the sequences.
-  ##
-  ## See also:
-  ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
-  ##
-  ## .. code-block:: Nim
-  ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
-  newSeq(result, x.len + y.len)
-  for i in 0..x.len-1:
-    result[i] = x[i]
-  for i in 0..y.len-1:
-    result[i+x.len] = y[i]
 
-proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
-  ## Appends element y to the end of the sequence.
-  ##
-  ## Requires copying of the sequence.
-  ##
-  ## See also:
-  ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
-  ##
-  ## .. code-block:: Nim
-  ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
-  newSeq(result, x.len + 1)
-  for i in 0..x.len-1:
-    result[i] = x[i]
-  result[x.len] = y
+when defined(nimSeqsV2):
 
-proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
-  ## Prepends the element x to the beginning of the sequence.
-  ##
-  ## Requires copying of the sequence.
-  ##
-  ## .. code-block:: Nim
-  ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
-  newSeq(result, y.len + 1)
-  result[0] = x
-  for i in 0..y.len-1:
-    result[i+1] = y[i]
+  proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
+    ## Concatenates two sequences.
+    ##
+    ## Requires copying of the sequences.
+    ##
+    ## See also:
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
+    newSeq(result, x.len + y.len)
+    for i in 0..x.len-1:
+      result[i] = move(x[i])
+    for i in 0..y.len-1:
+      result[i+x.len] = move(y[i])
+
+  proc `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
+    ## Appends element y to the end of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## See also:
+    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
+    newSeq(result, x.len + 1)
+    for i in 0..x.len-1:
+      result[i] = move(x[i])
+    result[x.len] = move(y)
+
+  proc `&`*[T](x: sink T, y: sink seq[T]): seq[T] {.noSideEffect.} =
+    ## Prepends the element x to the beginning of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## .. code-block:: Nim
+    ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
+    newSeq(result, y.len + 1)
+    result[0] = move(x)
+    for i in 0..y.len-1:
+      result[i+1] = move(y[i])
+
+else:
+
+  proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+    ## Concatenates two sequences.
+    ##
+    ## Requires copying of the sequences.
+    ##
+    ## See also:
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
+    newSeq(result, x.len + y.len)
+    for i in 0..x.len-1:
+      result[i] = x[i]
+    for i in 0..y.len-1:
+      result[i+x.len] = y[i]
+
+  proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+    ## Appends element y to the end of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## See also:
+    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
+    newSeq(result, x.len + 1)
+    for i in 0..x.len-1:
+      result[i] = x[i]
+    result[x.len] = y
+
+  proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+    ## Prepends the element x to the beginning of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## .. code-block:: Nim
+    ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
+    newSeq(result, y.len + 1)
+    result[0] = x
+    for i in 0..y.len-1:
+      result[i+1] = y[i]
 
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
@@ -1613,12 +1685,12 @@ when notJSnotNims:
 
 {.push stackTrace: off.}
 
-when not defined(JS) and hasThreadSupport and hostOS != "standalone":
+when not defined(js) and hasThreadSupport and hostOS != "standalone":
   const insideRLocksModule = false
   include "system/syslocks"
   include "system/threadlocalstorage"
 
-when not defined(JS) and defined(nimV2):
+when not defined(js) and defined(nimV2):
   type
     TNimNode {.compilerproc.} = object # to keep the code generator simple
     DestructorProc = proc (p: pointer) {.nimcall, benign, raises: [].}
@@ -1827,7 +1899,7 @@ type
     len*: int16         ## Length of the inspectable slots.
     calldepth*: int16   ## Used for max call depth checking.
 
-when defined(JS):
+when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
       if (`x` === null) { `x` = []; }
@@ -1882,14 +1954,7 @@ template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
   ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
-  when declared(owned):
-    var e: owned(ref exceptn)
-  else:
-    var e: ref exceptn
-  new(e)
-  e.msg = message
-  e.parent = parentException
-  e
+  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -1920,7 +1985,7 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
 {.pop.}
 
 
-when not defined(JS):
+when not defined(js):
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
   proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
@@ -1943,7 +2008,7 @@ template likely*(val: bool): bool =
   when nimvm:
     val
   else:
-    when defined(JS):
+    when defined(js):
       val
     else:
       likelyProc(val)
@@ -1967,7 +2032,7 @@ template unlikely*(val: bool): bool =
   when nimvm:
     val
   else:
-    when defined(JS):
+    when defined(js):
       val
     else:
       unlikelyProc(val)
@@ -1975,10 +2040,6 @@ template unlikely*(val: bool): bool =
 
 import system/dollars
 export dollars
-
-when defined(nimV2):
-  import system/repr_v2
-  export repr_v2
 
 const
   NimMajor* {.intdefine.}: int = 1
@@ -2003,7 +2064,7 @@ type
     fspEnd            ## Seek relative to end
 
 
-when not defined(JS):
+when not defined(js):
   {.push stackTrace: off, profiler: off.}
 
   when hasAlloc:
@@ -2034,7 +2095,7 @@ when not defined(JS):
   {.pop.}
 
 
-when not defined(JS):
+when not defined(js):
   # ugly hack, see the accompanying .pop for
   # the mysterious error message
   {.push stackTrace: off, profiler: off.}
@@ -2055,7 +2116,7 @@ when notJSnotNims:
   proc equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
 
-when not defined(JS):
+when not defined(js):
   proc cmp(x, y: string): int =
     when defined(nimscript):
       if x < y: result = -1
@@ -2087,7 +2148,7 @@ when not defined(JS):
       result = cstringArrayToSeq(a, L)
 
 
-when not defined(JS) and declared(alloc0) and declared(dealloc):
+when not defined(js) and declared(alloc0) and declared(dealloc):
   proc allocCStringArray*(a: openArray[string]): cstringArray =
     ## Creates a NULL terminated cstringArray from `a`. The result has to
     ## be freed with `deallocCStringArray` after it's not needed anymore.
@@ -2115,7 +2176,7 @@ when notJSnotNims:
       context: C_JmpBuf
     SafePoint = TSafePoint
 
-when not defined(JS):
+when not defined(js):
   when declared(initAllocator):
     initAllocator()
   when hasThreadSupport:
@@ -2153,11 +2214,14 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include "system/arithm"
+  when defined(nimNewIntegerOps):
+    include "system/integerops"
+  else:
+    include "system/arithm"
   {.pop.}
 
 
-when not defined(JS):
+when not defined(js):
   # this is a hack: without this when statement, you would get:
   # Error: system module needs: nimGCvisit
   {.pop.} # stackTrace: off, profiler: off
@@ -2264,7 +2328,7 @@ when notJSnotNims:
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
     """.}
 
-when defined(JS):
+when defined(js):
   when not defined(nimscript):
     include "system/jssys"
     include "system/reprjs"
@@ -2274,7 +2338,7 @@ when defined(JS):
       if x < y: return -1
       return 1
 
-when defined(JS) or defined(nimscript):
+when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
     result.add $x
 
@@ -2283,7 +2347,7 @@ when defined(JS) or defined(nimscript):
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for ``echo(errormsg); quit(errorcode)``.
-  when defined(nimscript) or defined(JS) or (hostOS == "standalone"):
+  when defined(nimscript) or defined(js) or (hostOS == "standalone"):
     echo errormsg
   else:
     when nimvm:
@@ -2469,6 +2533,9 @@ proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
   ##
+  ## The maximum file size limit that ``staticRead`` and ``slurp`` can read is
+  ## near or equal to the *free* memory of the device you are using to compile.
+  ##
   ## .. code-block:: Nim
   ##     const myResource = staticRead"mydatafile.bin"
   ##
@@ -2584,7 +2651,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ##
   ## This is only useful for optimization purposes.
   if s.len == 0: return
-  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
+  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
@@ -2593,7 +2660,7 @@ proc shallow*(s: var string) {.noSideEffect, inline.} =
   ## perform deep copies of `s`.
   ##
   ## This is only useful for optimization purposes.
-  when not defined(JS) and not defined(nimscript) and not defined(nimSeqsV2):
+  when not defined(js) and not defined(nimscript) and not defined(nimSeqsV2):
     var s = cast[PGenericSeq](s)
     if s == nil:
       s = cast[PGenericSeq](newString(0))
@@ -2608,12 +2675,13 @@ type
     ## Represents a Nim AST node. Macros operate on this type.
 
 when defined(nimV2):
-  proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
+  import system/repr_v2
+  export repr_v2
 
-macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  varargsLenImpl(x)
 
 when false:
   template eval*(blk: typed): typed =
@@ -2880,7 +2948,7 @@ proc substr*(s: string, first = 0): string =
 when defined(nimconfig):
   include "system/nimscript"
 
-when not defined(JS):
+when not defined(js):
   proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
   when defined(nimToOpenArrayCString):

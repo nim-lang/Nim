@@ -225,7 +225,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
       localError(c.config, n.info, "type mismatch")
-    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin tyFloat..tyFloat128 or
+    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
     elif enumHasHoles(rangeT[0]):
@@ -381,7 +381,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         if result.typ.kind == tyGenericParam and result.typ.len == 0 and
            tfWildcard in result.typ.flags:
           # collapse the wild-card param to a type
-          result.kind = skType
+          result.transitionGenericParamToType()
           result.typ.flags.excl tfWildcard
           return
         else:
@@ -405,7 +405,7 @@ proc semTypeIdent(c: PContext, n: PNode): PSym =
         reset(n[])
         when defined(useNodeIds):
           n.id = oldId
-        n.kind = nkSym
+        n.transitionNoneToSym()
         n.sym = result
         n.info = oldInfo
         n.typ = result.typ
@@ -698,7 +698,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
   father.add a
 
 proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
-                      father: PNode, rectype: PType, hasCaseFields = false) =
+                      father: PNode, rectype: PType, hasCaseFields: bool) =
   if n == nil: return
   case n.kind
   of nkRecWhen:
@@ -727,12 +727,12 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         assign(newCheck, check)
         var newPos = pos
         var newf = newNodeI(nkRecList, n.info)
-        semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype)
+        semRecordNodeAux(c, it[idx], newCheck, newPos, newf, rectype, hasCaseFields)
         it[idx] = if newf.len == 1: newf[0] else: newf
     if c.inGenericContext > 0:
       father.add n
     elif branch != nil:
-      semRecordNodeAux(c, branch, check, pos, father, rectype)
+      semRecordNodeAux(c, branch, check, pos, father, rectype, hasCaseFields)
   of nkRecCase:
     semRecordCase(c, n, check, pos, father, rectype)
   of nkNilLit:
@@ -741,7 +741,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
     # attempt to keep the nesting at a sane level:
     var a = if father.kind == nkRecList: father else: copyNode(n)
     for i in 0..<n.len:
-      semRecordNodeAux(c, n[i], check, pos, a, rectype)
+      semRecordNodeAux(c, n[i], check, pos, a, rectype, hasCaseFields)
     if a != father: father.add a
   of nkIdentDefs:
     checkMinSonsLen(n, 3, c.config)
@@ -804,7 +804,7 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
         addInheritedFieldsAux(c, check, pos, lastSon(n[i]))
       else: internalError(c.config, n.info, "addInheritedFieldsAux(record case branch)")
   of nkRecList, nkRecWhen, nkElifBranch, nkElse:
-    for i in 0..<n.len:
+    for i in int(n.kind == nkElifBranch)..<n.len:
       addInheritedFieldsAux(c, check, pos, n[i])
   of nkSym:
     incl(check, n.sym.name.id)
@@ -847,11 +847,15 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
         # specialized object, there will be second check after instantiation
         # located in semGeneric.
         if concreteBase.kind == tyObject:
+          if concreteBase.sym != nil and concreteBase.sym.magic == mException and
+              sfSystemModule notin c.module.flags:
+            message(c.config, n.info, warnInheritFromException, "")
           addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
           localError(c.config, n[1].info, "inheritance only works with non-final objects; " &
-             "to enable inheritance write '" & typeToString(realBase) & " of RootObj'")
+             "for " & typeToString(realBase) & " to be inheritable it must be " &
+             "'object of RootObj' instead of 'object'")
         base = nil
         realBase = nil
   if n.kind != nkObjectTy: internalError(c.config, n.info, "semObjectNode")
@@ -892,7 +896,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
-    var isOwned = false
+    var wrapperKind = tyNone
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
@@ -900,8 +904,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
         isNilable = true
       else:
         let region = semTypeNode(c, ni, nil)
-        if region.kind == tyOwned:
-          isOwned = true
+        if region.kind in {tyOwned, tySink}:
+          wrapperKind = region.kind
         elif region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
               tyError, tyObject}:
           message c.config, n[i].info, errGenerated, "region needs to be an object type"
@@ -913,11 +917,18 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
     #if not isNilable: result.flags.incl tfNotNil
-    if isOwned and optOwnedRefs in c.config.globalOptions:
-      let t = newTypeS(tyOwned, c)
-      t.flags.incl tfHasOwned
+    case wrapperKind
+    of tyOwned:
+      if optOwnedRefs in c.config.globalOptions:
+        let t = newTypeS(tyOwned, c)
+        t.flags.incl tfHasOwned
+        t.rawAddSonNoPropagationOfTypeFlags result
+        result = t
+    of tySink:
+      let t = newTypeS(tySink, c)
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
+    else: discard
     #if result.kind == tyRef and c.config.selectedGC == gcDestructors:
     #  result.flags.incl tfHasAsgn
     # XXX Something like this is a good idea but it should be done
@@ -1127,7 +1138,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     onUse(paramType.sym.info, paramType.sym)
     if tfWildcard in paramType.flags:
       paramType.flags.excl tfWildcard
-      paramType.sym.kind = skType
+      paramType.sym.transitionGenericParamToType()
 
   else: discard
 
@@ -1326,7 +1337,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
         result.flags.incl tfUnresolved
 
       if tfWildcard in n.sym.typ.flags:
-        n.sym.kind = skType
+        n.sym.transitionGenericParamToType()
         n.sym.typ.flags.excl tfWildcard
 
 proc semStmtListType(c: PContext, n: PNode, prev: PType): PType =
@@ -1382,7 +1393,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
-  if t.kind == tyCompositeTypeClass and t.base.kind == tyGenericBody:
+  if t.kind in {tyCompositeTypeClass, tyAlias} and t.base.kind == tyGenericBody:
     t = t.base
 
   result = newOrPrevType(tyGenericInvocation, prev, c)
@@ -1453,7 +1464,7 @@ proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
     recomputeFieldPositions(tx, tx.n, position)
 
 proc maybeAliasType(c: PContext; typeExpr, prev: PType): PType =
-  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward} and prev != nil:
+  if typeExpr.kind in {tyObject, tyEnum, tyDistinct, tyForward, tyGenericBody} and prev != nil:
     result = newTypeS(tyAlias, c)
     result.rawAddSon typeExpr
     result.sym = prev.sym
@@ -1569,6 +1580,12 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   if n[1].kind != nkEmpty and n[1].len > 0:
     pragma(c, s, n[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(c.graph, result, n[1])
+  elif c.optionStack.len > 0 and optNimV1Emulation notin c.config.globalOptions:
+    # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
+    s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
+        newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))
+    implicitPragmas(c, s, n, {wTags, wRaises})
+    when useEffectSystem: setEffectsForProcType(c.graph, result, s.ast[pragmasPos])
   closeScope(c)
 
 proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
@@ -1696,7 +1713,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
           result = semTypeExpr(c, n, prev)
   of nkWhenStmt:
     var whenResult = semWhen(c, n, false)
-    if whenResult.kind == nkStmtList: whenResult.kind = nkStmtListType
+    if whenResult.kind == nkStmtList: whenResult.transitionSonsKind(nkStmtListType)
     result = semTypeNode(c, whenResult, prev)
   of nkBracketExpr:
     checkMinSonsLen(n, 2, c.config)
@@ -1897,10 +1914,6 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
-  of mEmptySet:
-    setMagicIntegral(c.config, m, tySet, 1)
-    rawAddSon(m.typ, newTypeS(tyEmpty, c))
-  of mIntSetBaseType: setMagicIntegral(c.config, m, tyRange, c.config.target.intSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
   of mExpr:
     if m.name.s == "auto":
@@ -1936,8 +1949,6 @@ proc processMagicType(c: PContext, m: PSym) =
       incl m.typ.flags, tfHasAsgn
     assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
-  of mOpt:
-    setMagicType(c.config, m, tyOpt, szUncomputedSize)
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))

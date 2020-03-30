@@ -206,13 +206,13 @@ proc sexpToAnswer(s: SexpNode): string =
       result.add '\t'
       result.add file
       result.add '\t'
-      result.add line
+      result.addInt line
       result.add '\t'
-      result.add col
+      result.addInt col
       result.add '\t'
       result.add doc
       result.add '\t'
-      result.add a[8].getNum
+      result.addInt a[8].getNum
       if a.len >= 10:
         result.add '\t'
         result.add a[9].getStr

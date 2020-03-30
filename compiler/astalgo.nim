@@ -182,6 +182,7 @@ proc getModule*(s: PSym): PSym =
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
 
+proc fromSystem*(op: PSym): bool {.inline.} = sfSystemModule in getModule(op).flags
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   for i in start..<list.len:
     if list[i].kind == nkSym:
@@ -218,12 +219,12 @@ proc sameIgnoreBacktickGensymInfo(a, b: string): bool =
 
 proc getNamedParamFromList*(list: PNode, ident: PIdent): PSym =
   ## Named parameters are special because a named parameter can be
-  ## gensym'ed and then they have '`<number>' suffix that we need to
+  ## gensym'ed and then they have '\`<number>' suffix that we need to
   ## ignore, see compiler / evaltempl.nim, snippet:
   ##
   ##..code-block:: nim
   ##
-  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "`gensym" & $x.id),
+  ##    result.add newIdentNode(getIdent(c.ic, x.name.s & "\`gensym" & $x.id),
   ##            if c.instLines: actual.info else: templ.info)
   for i in 1..<list.len:
     let it = list[i].sym

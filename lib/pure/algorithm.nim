@@ -31,7 +31,9 @@
 ##                  (year: 2010, name: "Jane")]
 ##
 ##    proc myCmp(x, y: People): int =
-##      if x.name < y.name: -1 else: 1
+##      if x.name < y.name: -1
+##      elif x.name == y.name: 0
+##      else: 1
 ##
 ##    # Sorting with custom proc
 ##    a.sort(myCmp)

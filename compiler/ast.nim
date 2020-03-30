@@ -11,6 +11,7 @@
 
 import
   lineinfos, hashes, options, ropes, idents, idgen, int128
+from strutils import toLowerAscii
 
 export int128
 
@@ -228,7 +229,7 @@ type
   TNodeKinds* = set[TNodeKind]
 
 type
-  TSymFlag* = enum    # 40 flags!
+  TSymFlag* = enum    # 42 flags!
     sfUsed,           # read access of sym (for warnings) or simply used
     sfExported,       # symbol is exported from module
     sfFromGeneric,    # symbol is instantiation of a generic; this is needed
@@ -237,6 +238,8 @@ type
     sfGlobal,         # symbol is at global scope
 
     sfForward,        # symbol is forward declared
+    sfWasForwarded,   # symbol had a forward declaration
+                      # (implies it's too dangerous to patch its type signature)
     sfImportc,        # symbol is external; imported
     sfExportc,        # symbol is exported (under a specified name)
     sfMangleCpp,      # mangle as cpp (combines with `sfExportc`)
@@ -286,6 +289,8 @@ type
     sfTemplateParam   # symbol is a template parameter
     sfCursor          # variable/field is a cursor, see RFC 177 for details
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
+    sfNeverRaises     # proc can never raise an exception, not even OverflowError
+                      # or out-of-memory
 
   TSymFlags* = set[TSymFlag]
 
@@ -335,6 +340,8 @@ const
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
   effectListLen* = 5    # list of effects list
+  nkLastBlockStmts* = {nkRaiseStmt, nkReturnStmt, nkBreakStmt, nkContinueStmt}
+                        # these must be last statements in a block
 
 type
   TTypeKind* = enum  # order is important!
@@ -587,8 +594,11 @@ const
   tfReturnsNew* = tfInheritable
   skError* = skUnknown
 
-  # type flags that are essential for type equality:
-  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr}
+var
+  eqTypeFlags* = {tfIterator, tfNotNil, tfVarIsPtr, tfGcSafe, tfNoSideEffect}
+    ## type flags that are essential for type equality.
+    ## This is now a variable because for emulation of version:1.0 we
+    ## might exclude {tfGcSafe, tfNoSideEffect}.
 
 type
   TMagic* = enum # symbols that require compiler magic:
@@ -596,12 +606,11 @@ type
     mDefined, mDefinedInScope, mCompiles, mArrGet, mArrPut, mAsgn,
     mLow, mHigh, mSizeOf, mAlignOf, mOffsetOf, mTypeTrait,
     mIs, mOf, mAddr, mType, mTypeOf,
-    mRoof, mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
+    mPlugin, mEcho, mShallowCopy, mSlurp, mStaticExec, mStatic,
     mParseExprToAst, mParseStmtToAst, mExpandToAst, mQuoteAst,
-    mUnaryLt, mInc, mDec, mOrd,
+    mInc, mDec, mOrd,
     mNew, mNewFinalize, mNewSeq, mNewSeqOfCap,
     mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
-    mXLenStr, mXLenSeq,
     mIncl, mExcl, mCard, mChr,
     mGCref, mGCunref,
     mAddI, mSubI, mMulI, mDivI, mModI,
@@ -613,11 +622,10 @@ type
     mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
     mLeU, mLtU,
-    mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqUntracedRef, mLePtr, mLtPtr,
+    mEqRef, mLePtr, mLtPtr,
     mXor, mEqCString, mEqProc,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot,
     mUnaryPlusI, mBitnotI,
@@ -626,18 +634,18 @@ type
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mSlice,
     mDotDot, # this one is only necessary to give nice compile time warnings
     mFields, mFieldPairs, mOmpParFor,
     mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr, mExit,
+    mInSet, mRepr, mExit,
     mSetLengthStr, mSetLengthSeq,
     mIsPartOf, mAstToStr, mParallel,
-    mSwap, mIsNil, mArrToSeq, mCopyStr, mCopyStrLast,
+    mSwap, mIsNil, mArrToSeq,
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
-    mDefault, mUnown, mAccessEnv, mAccessTypeInfo, mReset,
+    mDefault, mUnown, mAccessEnv, mReset,
     mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
@@ -645,8 +653,8 @@ type
     mUInt, mUInt8, mUInt16, mUInt32, mUInt64,
     mFloat, mFloat32, mFloat64, mFloat128,
     mBool, mChar, mString, mCstring,
-    mPointer, mEmptySet, mIntSetBaseType, mNil, mExpr, mStmt, mTypeDesc,
-    mVoidType, mPNimrodNode, mShared, mGuarded, mLock, mSpawn, mDeepCopy,
+    mPointer, mNil, mExpr, mStmt, mTypeDesc,
+    mVoidType, mPNimrodNode, mSpawn, mDeepCopy,
     mIsMainModule, mCompileDate, mCompileTime, mProcCall,
     mCpuEndian, mHostOS, mHostCPU, mBuildOS, mBuildCPU, mAppType,
     mCompileOption, mCompileOptionArg,
@@ -659,7 +667,7 @@ type
     mNIntVal, mNFloatVal, mNSymbol, mNIdent, mNGetType, mNStrVal, mNSetIntVal,
     mNSetFloatVal, mNSetSymbol, mNSetIdent, mNSetType, mNSetStrVal, mNLineInfo,
     mNNewNimNode, mNCopyNimNode, mNCopyNimTree, mStrToIdent, mNSigHash, mNSizeOf,
-    mNBindSym, mLocals, mNCallSite,
+    mNBindSym, mNCallSite,
     mEqIdent, mEqNimrodNode, mSameNodeType, mGetImpl, mNGenSym,
     mNHint, mNWarning, mNError,
     mInstantiationInfo, mGetTypeInfo,
@@ -670,9 +678,9 @@ type
 
 # things that we can evaluate safely at compile time, even if not asked for it:
 const
-  ctfeWhitelist* = {mNone, mUnaryLt, mSucc,
+  ctfeWhitelist* = {mNone, mSucc,
     mPred, mInc, mDec, mOrd, mLengthOpenArray,
-    mLengthStr, mLengthArray, mLengthSeq, mXLenStr, mXLenSeq,
+    mLengthStr, mLengthArray, mLengthSeq,
     mArrGet, mArrPut, mAsgn, mDestroy,
     mIncl, mExcl, mCard, mChr,
     mAddI, mSubI, mMulI, mDivI, mModI,
@@ -683,21 +691,19 @@ const
     mEqI, mLeI, mLtI,
     mEqF64, mLeF64, mLtF64,
     mLeU, mLtU,
-    mLeU64, mLtU64,
     mEqEnum, mLeEnum, mLtEnum,
     mEqCh, mLeCh, mLtCh,
     mEqB, mLeB, mLtB,
-    mEqRef, mEqProc, mEqUntracedRef, mLePtr, mLtPtr, mEqCString, mXor,
+    mEqRef, mEqProc, mLePtr, mLtPtr, mEqCString, mXor,
     mUnaryMinusI, mUnaryMinusI64, mAbsI, mNot, mUnaryPlusI, mBitnotI,
     mUnaryPlusF64, mUnaryMinusF64,
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
     mEqStr, mLeStr, mLtStr,
-    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet, mSymDiffSet,
+    mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mAppendStrCh, mAppendStrStr, mAppendSeqElem,
-    mInRange, mInSet, mRepr,
-    mCopyStr, mCopyStrLast}
+    mInSet, mRepr}
 
 type
   PNode* = ref TNode
@@ -846,7 +852,7 @@ type
     position*: int            # used for many different things:
                               # for enum fields its position;
                               # for fields its offset
-                              # for parameters its position
+                              # for parameters its position (starting with 0)
                               # for a conditional:
                               # 1 iff the symbol is defined, else 0
                               # (or not in symbol table)
@@ -977,7 +983,7 @@ const
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
   IntegralTypes* = {tyBool, tyChar, tyEnum, tyInt..tyInt64,
-    tyFloat..tyFloat128, tyUInt..tyUInt64}
+    tyFloat..tyFloat128, tyUInt..tyUInt64} # weird name because it contains tyFloat
   ConstantDataTypes*: TTypeKinds = {tyArray, tySet,
                                     tyTuple, tySequence}
   NilableTypes*: TTypeKinds = {tyPointer, tyCString, tyRef, tyPtr,
@@ -1001,6 +1007,8 @@ const
   resultPos* = 7
   dispatcherPos* = 8
 
+  nfAllFieldsSet* = nfBase2
+
   nkCallKinds* = {nkCall, nkInfix, nkPrefix, nkPostfix,
                   nkCommand, nkCallStrLit, nkHiddenCallConv}
   nkIdentKinds* = {nkIdent, nkSym, nkAccQuoted, nkOpenSymChoice,
@@ -1019,6 +1027,30 @@ const
   skLocalVars* = {skVar, skLet, skForVar, skParam, skResult}
   skProcKinds* = {skProc, skFunc, skTemplate, skMacro, skIterator,
                   skMethod, skConverter}
+
+  defaultSize = -1
+  defaultAlignment = -1
+  defaultOffset = -1
+
+
+proc getnimblePkg*(a: PSym): PSym =
+  result = a
+  while result != nil:
+    case result.kind
+    of skModule:
+      result = result.owner
+      assert result.kind == skPackage
+    of skPackage:
+      if result.owner == nil:
+        break
+      else:
+        result = result.owner
+    else:
+      assert false, $result.kind
+
+proc getnimblePkgId*(a: PSym): int =
+  let b = a.getnimblePkg
+  result = if b == nil: -1 else: b.id
 
 var ggDebug* {.deprecated.}: bool ## convenience switch for trying out things
 #var
@@ -1066,12 +1098,7 @@ when defined(useNodeIds):
   var gNodeId: int
 
 proc newNode*(kind: TNodeKind): PNode =
-  new(result)
-  result.kind = kind
-  #result.info = UnknownLineInfo() inlined:
-  result.info.fileIndex = InvalidFileIdx
-  result.info.col = int16(-1)
-  result.info.line = uint16(0)
+  result = PNode(kind: kind, info: unknownLineInfo)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1091,15 +1118,8 @@ template previouslyInferred*(t: PType): PType =
 proc newSym*(symKind: TSymKind, name: PIdent, owner: PSym,
              info: TLineInfo; options: TOptions = {}): PSym =
   # generates a symbol and initializes the hash field too
-  new(result)
-  result.name = name
-  result.kind = symKind
-  result.flags = {}
-  result.info = info
-  result.options = options
-  result.owner = owner
-  result.offset = -1
-  result.id = getID()
+  result = PSym(name: name, kind: symKind, flags: {}, info: info, id: getID(),
+                options: options, owner: owner, offset: defaultOffset)
   when debugIds:
     registerId(result)
 
@@ -1193,9 +1213,7 @@ proc newSymNode*(sym: PSym, info: TLineInfo): PNode =
   result.info = info
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
-  new(result)
-  result.kind = kind
-  result.info = info
+  result = PNode(kind: kind, info: info)
   when defined(useNodeIds):
     result.id = gNodeId
     if result.id == nodeIdToDebug:
@@ -1204,9 +1222,7 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo): PNode =
     inc gNodeId
 
 proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
-  new(result)
-  result.kind = kind
-  result.info = info
+  result = PNode(kind: kind, info: info)
   if children > 0:
     newSeq(result.sons, children)
   when defined(useNodeIds):
@@ -1217,12 +1233,9 @@ proc newNodeI*(kind: TNodeKind, info: TLineInfo, children: int): PNode =
     inc gNodeId
 
 proc newNode*(kind: TNodeKind, info: TLineInfo, sons: TNodeSeq = @[],
-             typ: PType = nil): PNode =
-  new(result)
-  result.kind = kind
-  result.info = info
-  result.typ = typ
+              typ: PType = nil): PNode =
   # XXX use shallowCopy here for ownership transfer:
+  result = PNode(kind: kind, info: info, typ: typ)
   result.sons = sons
   when defined(useNodeIds):
     result.id = gNodeId
@@ -1321,14 +1334,10 @@ proc `$`*(s: PSym): string =
     result = "<nil>"
 
 proc newType*(kind: TTypeKind, owner: PSym): PType =
-  new(result)
-  result.kind = kind
-  result.owner = owner
-  result.size = -1
-  result.align = -1            # default alignment
-  result.id = getID()
-  result.uniqueId = result.id
-  result.lockLevel = UnspecifiedLockLevel
+  let id = getID()
+  result = PType(kind: kind, owner: owner, size: defaultSize,
+                 align: defaultAlignment, id: id, uniqueId: id,
+                 lockLevel: UnspecifiedLockLevel)
   when debugIds:
     registerId(result)
   when false:
@@ -1542,6 +1551,51 @@ proc copyNode*(src: PNode): PNode =
   of nkIdent: result.ident = src.ident
   of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
   else: discard
+
+template transitionNodeKindCommon(k: TNodeKind) =
+  let obj {.inject.} = n[]
+  n[] = TNode(kind: k, typ: obj.typ, info: obj.info, flags: obj.flags,
+              comment: obj.comment)
+  when defined(useNodeIds):
+    n.id = obj.id
+
+proc transitionSonsKind*(n: PNode, kind: range[nkComesFrom..nkTupleConstr]) =
+  transitionNodeKindCommon(kind)
+  n.sons = obj.sons
+
+proc transitionIntKind*(n: PNode, kind: range[nkCharLit..nkUInt64Lit]) =
+  transitionNodeKindCommon(kind)
+  n.intVal = obj.intVal
+
+proc transitionNoneToSym*(n: PNode) =
+  transitionNodeKindCommon(nkSym)
+
+template transitionSymKindCommon*(k: TSymKind) =
+  let obj {.inject.} = s[]
+  s[] = TSym(kind: k, id: obj.id, magic: obj.magic, typ: obj.typ, name: obj.name,
+             info: obj.info, owner: obj.owner, flags: obj.flags, ast: obj.ast,
+             options: obj.options, position: obj.position, offset: obj.offset,
+             loc: obj.loc, annex: obj.annex, constraint: obj.constraint)
+  when hasFFI:
+    s.cname = obj.cname
+  when defined(nimsuggest):
+    s.allUsages = obj.allUsages
+
+proc transitionGenericParamToType*(s: PSym) =
+  transitionSymKindCommon(skType)
+  s.typeInstCache = obj.typeInstCache
+
+proc transitionRoutineSymKind*(s: PSym, kind: range[skProc..skTemplate]) =
+  transitionSymKindCommon(kind)
+  s.procInstCache = obj.procInstCache
+  s.gcUnsafetyReason = obj.gcUnsafetyReason
+  s.transformedBody = obj.transformedBody
+
+proc transitionToLet*(s: PSym) =
+  transitionSymKindCommon(skLet)
+  s.guard = obj.guard
+  s.bitsize = obj.bitsize
+  s.alignment = obj.alignment
 
 proc shallowCopy*(src: PNode): PNode =
   # does not copy its sons, but provides space for them:
@@ -1816,6 +1870,9 @@ proc isInlineIterator*(typ: PType): bool {.inline.} =
 proc isClosureIterator*(typ: PType): bool {.inline.} =
   typ.kind == tyProc and tfIterator in typ.flags and typ.callConv == ccClosure
 
+proc isClosure*(typ: PType): bool {.inline.} =
+  typ.kind == tyProc and typ.callConv == ccClosure
+
 proc isSinkParam*(s: PSym): bool {.inline.} =
   s.kind == skParam and (s.typ.kind == tySink or tfHasOwned in s.typ.flags)
 
@@ -1860,3 +1917,16 @@ proc canRaise*(fn: PNode): bool =
     result = fn.typ != nil and fn.typ.n != nil and ((fn.typ.n[0].len < effectListLen) or
       (fn.typ.n[0][exceptionEffects] != nil and
       fn.typ.n[0][exceptionEffects].safeLen > 0))
+
+proc toHumanStrImpl[T](kind: T, num: static int): string =
+  result = $kind
+  result = result[num..^1]
+  result[0] = result[0].toLowerAscii
+
+proc toHumanStr*(kind: TSymKind): string =
+  ## strips leading `sk`
+  result = toHumanStrImpl(kind, 2)
+
+proc toHumanStr*(kind: TTypeKind): string =
+  ## strips leading `tk`
+  result = toHumanStrImpl(kind, 2)

@@ -717,6 +717,9 @@ when isMainModule:
   var tm = fromUnix(0)
   discard &"{tm}"
 
+  var noww = now()
+  check &"{noww}", $noww
+
   # Unicode string tests
   check &"""{"αβγ"}""", "αβγ"
   check &"""{"αβγ":>5}""", "  αβγ"
@@ -740,8 +743,6 @@ when isMainModule:
   # bug #11092
   check &"{high(int64)}", "9223372036854775807"
   check &"{low(int64)}", "-9223372036854775808"
-
-  import json
 
   doAssert fmt"{'a'} {'b'}" == "a b"
 

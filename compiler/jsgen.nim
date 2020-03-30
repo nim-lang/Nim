@@ -370,71 +370,68 @@ type
 
 const # magic checked op; magic unchecked op;
   jsMagics: TMagicOps = [
-    ["addInt", ""], # AddI
-    ["subInt", ""], # SubI
-    ["mulInt", ""], # MulI
-    ["divInt", ""], # DivI
-    ["modInt", ""], # ModI
-    ["addInt", ""], # Succ
-    ["subInt", ""], # Pred
-    ["", ""], # AddF64
-    ["", ""], # SubF64
-    ["", ""], # MulF64
-    ["", ""], # DivF64
-    ["", ""], # ShrI
-    ["", ""], # ShlI
-    ["", ""], # AshrI
-    ["", ""], # BitandI
-    ["", ""], # BitorI
-    ["", ""], # BitxorI
-    ["nimMin", "nimMin"], # MinI
-    ["nimMax", "nimMax"], # MaxI
-    ["", ""], # addU
-    ["", ""], # subU
-    ["", ""], # mulU
-    ["", ""], # divU
-    ["", ""], # modU
-    ["", ""], # EqI
-    ["", ""], # LeI
-    ["", ""], # LtI
-    ["", ""], # EqF64
-    ["", ""], # LeF64
-    ["", ""], # LtF64
-    ["", ""], # leU
-    ["", ""], # ltU
-    ["", ""], # leU64
-    ["", ""], # ltU64
-    ["", ""], # EqEnum
-    ["", ""], # LeEnum
-    ["", ""], # LtEnum
-    ["", ""], # EqCh
-    ["", ""], # LeCh
-    ["", ""], # LtCh
-    ["", ""], # EqB
-    ["", ""], # LeB
-    ["", ""], # LtB
-    ["", ""], # EqRef
-    ["", ""], # EqUntracedRef
-    ["", ""], # LePtr
-    ["", ""], # LtPtr
-    ["", ""], # Xor
-    ["", ""], # EqCString
-    ["", ""], # EqProc
-    ["negInt", ""], # UnaryMinusI
-    ["negInt64", ""], # UnaryMinusI64
-    ["absInt", ""], # AbsI
-    ["", ""], # Not
-    ["", ""], # UnaryPlusI
-    ["", ""], # BitnotI
-    ["", ""], # UnaryPlusF64
-    ["", ""], # UnaryMinusF64
-    ["nimCharToStr", "nimCharToStr"],
-    ["nimBoolToStr", "nimBoolToStr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["", ""]]
+    mAddI: ["addInt", ""],
+    mSubI: ["subInt", ""],
+    mMulI: ["mulInt", ""],
+    mDivI: ["divInt", ""],
+    mModI: ["modInt", ""],
+    mSucc: ["addInt", ""],
+    mPred: ["subInt", ""],
+    mAddF64: ["", ""],
+    mSubF64: ["", ""],
+    mMulF64: ["", ""],
+    mDivF64: ["", ""],
+    mShrI: ["", ""],
+    mShlI: ["", ""],
+    mAshrI: ["", ""],
+    mBitandI: ["", ""],
+    mBitorI: ["", ""],
+    mBitxorI: ["", ""],
+    mMinI: ["nimMin", "nimMin"],
+    mMaxI: ["nimMax", "nimMax"],
+    mAddU: ["", ""],
+    mSubU: ["", ""],
+    mMulU: ["", ""],
+    mDivU: ["", ""],
+    mModU: ["", ""],
+    mEqI: ["", ""],
+    mLeI: ["", ""],
+    mLtI: ["", ""],
+    mEqF64: ["", ""],
+    mLeF64: ["", ""],
+    mLtF64: ["", ""],
+    mLeU: ["", ""],
+    mLtU: ["", ""],
+    mEqEnum: ["", ""],
+    mLeEnum: ["", ""],
+    mLtEnum: ["", ""],
+    mEqCh: ["", ""],
+    mLeCh: ["", ""],
+    mLtCh: ["", ""],
+    mEqB: ["", ""],
+    mLeB: ["", ""],
+    mLtB: ["", ""],
+    mEqRef: ["", ""],
+    mLePtr: ["", ""],
+    mLtPtr: ["", ""],
+    mXor: ["", ""],
+    mEqCString: ["", ""],
+    mEqProc: ["", ""],
+    mUnaryMinusI: ["negInt", ""],
+    mUnaryMinusI64: ["negInt64", ""],
+    mAbsI: ["absInt", ""],
+    mNot: ["", ""],
+    mUnaryPlusI: ["", ""],
+    mBitnotI: ["", ""],
+    mUnaryPlusF64: ["", ""],
+    mUnaryMinusF64: ["", ""],
+    mCharToStr: ["nimCharToStr", "nimCharToStr"],
+    mBoolToStr: ["nimBoolToStr", "nimBoolToStr"],
+    mIntToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mInt64ToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mFloatToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mCStrToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mStrToStr: ["", ""]]
 
 proc needsTemp(p: PProc; n: PNode): bool =
   # check if n contains a call to determine
@@ -576,8 +573,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
   of mLeU: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtU: applyFormat("($1 < $2)", "($1 < $2)")
-  of mLeU64: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mLtU64: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")
@@ -588,7 +583,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLeB: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtB: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqRef: applyFormat("($1 == $2)", "($1 == $2)")
-  of mEqUntracedRef: applyFormat("($1 == $2)", "($1 == $2)")
   of mLePtr: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtPtr: applyFormat("($1 < $2)", "($1 < $2)")
   of mXor: applyFormat("($1 != $2)", "($1 != $2)")
@@ -631,7 +625,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
-  of mEqRef, mEqUntracedRef:
+  of mEqRef:
     if mapType(n[1].typ) != etyBaseIndex:
       arithAux(p, n, r, op)
     else:
@@ -1795,26 +1789,6 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("$1 || [])" % [a.res])
 
-proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
-  # we map mArray to PHP's array constructor, a mild hack:
-  var a, b: TCompRes
-  r.kind = resExpr
-  r.res = rope("array(")
-  let x = skipConv(n[1])
-  if x.kind == nkBracket:
-    for i in 0..<x.len:
-      let it = x[i]
-      if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
-        if i > 0: r.res.add(", ")
-        gen(p, it[0], a)
-        gen(p, it[1], b)
-        r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
-      else:
-        localError(p.config, it.info, "'toArray' needs tuple constructors")
-  else:
-    localError(p.config, x.info, "'toArray' needs an array literal")
-  r.res.add(")")
-
 proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = nil) =
   useMagic(p, magic)
   r.res.add(magic & "(")
@@ -1910,10 +1884,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mAddI..mStrToStr: arith(p, n, r, op)
   of mRepr: genRepr(p, n, r)
   of mSwap: genSwap(p, n)
-  of mUnaryLt:
-    # XXX: range checking?
-    if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
-    else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
         "if ($1 != null) { addChar($3, $2); } else { $3 = [$2]; }")
@@ -1979,8 +1949,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $2.length : 0)")
-  of mXLenStr, mXLenSeq:
-    unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
     unaryExpr(p, n, r, "", "($1 != null ? ($2.length-1) : -1)")
   of mInc:
@@ -2027,8 +1995,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n[0].sym.name.s)
-  of mCopyStr:
-    binaryExpr(p, n, r, "", "($1.slice($2))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
     unaryExpr(p, n, r, "mnewString", "mnewString(0)")

@@ -427,7 +427,7 @@ proc exprColonEqExprListAux(p: var TParser, endTok: TTokType, result: PNode) =
     getTok(p)
     # (1,) produces a tuple expression
     if endTok == tkParRi and p.tok.tokType == tkParRi and result.kind == nkPar:
-      result.kind = nkTupleConstr
+      result.transitionSonsKind(nkTupleConstr)
     skipComment(p, a)
   optPar(p)
   eat(p, endTok)
@@ -472,12 +472,12 @@ proc setOrTableConstr(p: var TParser): PNode =
   optInd(p, result)
   if p.tok.tokType == tkColon:
     getTok(p) # skip ':'
-    result.kind = nkTableConstr
+    result.transitionSonsKind(nkTableConstr)
   else:
     # progress guaranteed
     while p.tok.tokType notin {tkCurlyRi, tkEof}:
       var a = exprColonEqExpr(p)
-      if a.kind == nkExprColonExpr: result.kind = nkTableConstr
+      if a.kind == nkExprColonExpr: result.transitionSonsKind(nkTableConstr)
       result.add(a)
       if p.tok.tokType != tkComma: break
       getTok(p)
@@ -534,7 +534,7 @@ proc semiStmtList(p: var TParser, result: PNode) =
     optInd(p, result)
     result.add(complexOrSimpleStmt(p))
   dec p.inSemiStmtList
-  result.kind = nkStmtListExpr
+  result.transitionSonsKind(nkStmtListExpr)
 
 proc parsePar(p: var TParser): PNode =
   #| parKeyw = 'discard' | 'include' | 'if' | 'while' | 'case' | 'try'
@@ -595,7 +595,7 @@ proc parsePar(p: var TParser): PNode =
         skipComment(p, a)
         # (1,) produces a tuple expression:
         if p.tok.tokType == tkParRi:
-          result.kind = nkTupleConstr
+          result.transitionSonsKind(nkTupleConstr)
         # progress guaranteed
         while p.tok.tokType != tkParRi and p.tok.tokType != tkEof:
           var a = exprColonEqExpr(p)
@@ -778,7 +778,7 @@ proc primarySuffix(p: var TParser, r: PNode,
         break
       result = namedParams(p, result, nkCall, tkParRi)
       if result.len > 1 and result[1].kind == nkExprColonExpr:
-        result.kind = nkObjConstr
+        result.transitionSonsKind(nkObjConstr)
     of tkDot:
       # progress guaranteed
       result = dotExpr(p, result)
@@ -1275,8 +1275,8 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   of tkFunc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
   of tkIterator:
     result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
-    if result.kind == nkLambda: result.kind = nkIteratorDef
-    else: result.kind = nkIteratorTy
+    if result.kind == nkLambda: result.transitionSonsKind(nkIteratorDef)
+    else: result.transitionSonsKind(nkIteratorTy)
   of tkEnum:
     if mode == pmTypeDef:
       prettySection:
@@ -1479,7 +1479,7 @@ proc parseImport(p: var TParser, kind: TNodeKind): PNode =
   result.add(a)
   if p.tok.tokType in {tkComma, tkExcept}:
     if p.tok.tokType == tkExcept:
-      result.kind = succ(kind)
+      result.transitionSonsKind(succ(kind))
     getTok(p)
     optInd(p, result)
     while true:
