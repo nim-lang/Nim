@@ -889,3 +889,4 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
     #or not isTrival(orig.assignment) or
     # not isTrival(orig.sink):
     orig.flags.incl tfHasAsgn
+    canon.flags.incl tfHasAsgn

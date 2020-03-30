@@ -3,6 +3,8 @@ discard """
   output: '''ok1
 ok2
 destroyed
+destroyed
+destroyed
 '''
 """
 import threadpool, os
@@ -35,3 +37,29 @@ var fv3 = spawn thread3()
 sync()
 echo ^fv1
 echo (^fv2)[]
+
+
+proc thread4(x: ref MyObj): ref MyObj =
+  os.sleep(1000)
+  result = x
+
+proc thread5(x: sink ref MyObj): ref MyObj =
+  os.sleep(1000)
+  result = x
+
+proc ref_forwarding_test = 
+  var x = new(MyObj)
+  x[].p = 2
+  var y = spawn thread4(x)
+ 
+
+proc ref_sink_forwarding_test = 
+  var x = new(MyObj)
+  x[].p = 2
+  var y = spawn thread5(x)
+
+ref_forwarding_test()
+ref_sink_forwarding_test()  
+sync()
+
+
