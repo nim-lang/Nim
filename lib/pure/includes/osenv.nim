@@ -81,6 +81,8 @@ else:
     # at runtime.
     proc NSGetEnviron(): ptr cstringArray {.
       importc: "_NSGetEnviron", header: "<crt_externs.h>".}
+  elif defined(haiku):
+    var gEnv {.importc: "environ", header: "<stdlib.h>".}: cstringArray
   else:
     var gEnv {.importc: "environ".}: cstringArray
 

@@ -1,0 +1,45 @@
+name: Nim Docs CI
+on:
+  pull_request:
+    # Run only on changes on these files
+    paths:
+      - 'lib/*.nim'
+      - 'doc/*.rst'
+
+jobs:
+  build:
+    name: 'Docs builder'
+    runs-on: ubuntu-18.04
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: 'Checkout csources'
+        uses: actions/checkout@v2
+        with:
+          repository: nim-lang/csources
+          path: csources
+
+      - name: 'Add build binaries to PATH'
+        shell: bash
+        run: echo "::add-path::${{ github.workspace }}/bin"
+
+      - name: 'Build 1-stage compiler from csources'
+        shell: bash
+        run: |
+          ncpu=$(nproc)
+          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+
+          make -C csources -j $ncpu CC=gcc ucpu='amd64'
+
+      - name: 'Build koch'
+        shell: bash
+        run: nim c koch
+
+      - name: 'Build the real compiler'
+        shell: bash
+        run: ./koch boot
+
+      - name: 'Build documentation'
+        shell: bash
+        run: ./koch doc

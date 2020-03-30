@@ -1503,6 +1503,13 @@ proc containsCompileTimeOnly*(t: PType): bool =
       return true
   return false
 
+proc safeSkipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## same as 'skipTypes' but with a simple cycle detector.
+  result = t
+  var seen = initIntSet()
+  while result.kind in kinds and not containsOrIncl(seen, result.id):
+    result = lastSon(result)
+
 type
   OrdinalType* = enum
     NoneLike, IntLike, FloatLike
