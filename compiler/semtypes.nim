@@ -770,8 +770,6 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       f.typ = typ
       f.position = pos
       f.options = c.config.options
-      if sfRequiresInit in f.flags:
-        rectype.flags.incl tfHasRequiresInit
       if fieldOwner != nil and
          {sfImportc, sfExportc} * fieldOwner.flags != {} and
          not hasCaseFields and f.loc.r == nil:
@@ -879,6 +877,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
     pragma(c, s, n[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
+  if c.inGenericContext == 0 and computeRequiresInit(c, result):
+    result.flags.incl tfRequiresInit
 
 proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:

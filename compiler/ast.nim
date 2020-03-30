@@ -517,11 +517,11 @@ type
     tfIterator,       # type is really an iterator, not a tyProc
     tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
-
-    tfHasRequiresInit,# type constains a "not nil" constraint somewhere or
+    tfRequiresInit,   # type constains a "not nil" constraint somewhere or
                       # a `requiresInit` field, so the default zero init
                       # is not appropriate
-    tfRequiresInit,   # all fields of the type must be initialized
+    tfNeedsFullInit,  # object type marked with {.requiresInit.}
+                      # all fields must be initialized
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
@@ -1397,7 +1397,7 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
 template requiresInit*(t: PType): bool =
-  t.flags * {tfRequiresInit, tfHasRequiresInit, tfNotNil} != {}
+  t.flags * {tfRequiresInit, tfNotNil} != {}
 
 proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
@@ -1489,12 +1489,6 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil
-    elif owner.kind notin HaveTheirOwnEmpty:
-      owner.flags.incl tfHasRequiresInit
-
-  if {tfRequiresInit, tfHasRequiresInit} * elem.flags != {}:
-    if owner.kind in HaveTheirOwnEmpty: discard
-    else: owner.flags.incl tfHasRequiresInit
 
   if elem.isMetaType:
     owner.flags.incl tfHasMeta

@@ -10,6 +10,9 @@ type
   TRefObj = ref object
     x: int
 
+  IllegalToConstruct = object
+    x: cstring not nil
+
   THasNotNils = object of RootObj
     a: TRefObj not nil
     b: TRefObj not nil
@@ -88,6 +91,10 @@ proc userDefinedDefault(T: typedesc): T =
 
 proc genericDefault(T: typedesc): T =
   result = default(T)
+
+reject IllegalToConstruct()
+reject:
+  var x: IllegalToConstruct
 
 accept TObj()
 accept TObj(choice: A)
@@ -256,6 +263,111 @@ reject TNestedChoices(outerChoice: false, innerChoice: C)
 accept TNestedChoices(outerChoice: false, innerChoice: C, notnil: notNilRef)
 reject TNestedChoices(outerChoice: false, innerChoice: C, notnil: nil)
 
+# Tests involving generics and sequences:
+#
+block:
+  # This test aims to show that it's possible to instantiate and
+  # use a sequence with a requiresInit type:
+
+  var legalSeq: seq[IllegalToConstruct]
+  legalSeq.add IllegalToConstruct(x: "one")
+  var two = IllegalToConstruct(x: "two")
+  legalSeq.add two
+  var one = legalSeq[0]
+  var twoAgain = legalSeq.pop
+
+  # It's not possible to tell the sequence to create elements
+  # for us though:
+  reject:
+    var illegalSeq = newSeq[IllegalToConstruct](10)
+
+  reject:
+    var illegalSeq: seq[IllegalToConstruct]
+    newSeq(illegalSeq, 10)
+
+  reject:
+    var illegalSeq: seq[IllegalToConstruct]
+    illegalSeq.setLen 10
+
+  # You can still use newSeqOfCap to write efficient code:
+  var anotherLegalSequence = newSeqOfCap[IllegalToConstruct](10)
+  for i in 0..9:
+    anotherLegalSequence.add IllegalToConstruct(x: "x")
+
+type DefaultConstructible[yesOrNo: static[bool]] = object
+  when yesOrNo:
+    x: string
+  else:
+    x: cstring not nil
+
+block:
+  # Constructability may also depend on the generic parameters of the type:
+  accept:
+    var a: DefaultConstructible[true]
+    var b = DefaultConstructible[true]()
+    var c = DefaultConstructible[true](x: "test")
+    var d = DefaultConstructible[false](x: "test")
+
+  reject:
+    var y: DefaultConstructible[false]
+
+  reject:
+    var y = DefaultConstructible[false]()
+
+block:
+  type
+    Hash = int
+
+    HashTableSlotType = enum
+      Free    = Hash(0)
+      Deleted = Hash(1)
+      HasKey  = Hash(2)
+
+    KeyValuePair[A, B] = object
+      key: A
+      case hash: HashTableSlotType
+      of Free, Deleted:
+        discard
+      else:
+        value: B
+
+  # The above KeyValuePair is an interesting type because it
+  # may become unconstructible depending on the generic parameters:
+  accept KeyValuePair[int, string](hash: Deleted)
+  accept KeyValuePair[int, IllegalToConstruct](hash: Deleted)
+
+  accept KeyValuePair[int, string](hash: HasKey)
+  reject KeyValuePair[int, IllegalToConstruct](hash: HasKey)
+
+  # Since all the above variations don't have a non-constructible
+  # field in the default branch of the case object, we can construct
+  # such values:
+  accept KeyValuePair[int, string]()
+  accept KeyValuePair[int, IllegalToConstruct]()
+  accept KeyValuePair[DefaultConstructible[true], string]()
+  accept KeyValuePair[DefaultConstructible[true], IllegalToConstruct]()
+
+  var a: KeyValuePair[int, string]
+  var b: KeyValuePair[int, IllegalToConstruct]
+  var c: KeyValuePair[DefaultConstructible[true], string]
+  var d: KeyValuePair[DefaultConstructible[true], IllegalToConstruct]
+  var s1 = newSeq[KeyValuePair[int, IllegalToConstruct]](10)
+  var s2 = newSeq[KeyValuePair[DefaultConstructible[true], IllegalToConstruct]](10)
+
+  # But let's put the non-constructible values as keys:
+  reject KeyValuePair[IllegalToConstruct, int](hash: Deleted)
+  reject KeyValuePair[IllegalToConstruct, int]()
+
+  type IllegalPair = KeyValuePair[DefaultConstructible[false], string]
+
+  reject:
+    var x: IllegalPair
+
+  reject:
+    var s = newSeq[IllegalPair](10)
+
+# Specific issues:
+#
 block:
   # https://github.com/nim-lang/Nim/issues/11428
   type
