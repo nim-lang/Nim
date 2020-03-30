@@ -1090,7 +1090,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.kind == skField:
           sym.flags.incl sfRequiresInit
         elif sym.typ != nil:
-          incl(sym.typ.flags, tfRequiresInit)
+          incl(sym.typ.flags, tfNeedsFullInit)
         else:
           invalidPragma(c, it)
       of wByRef:

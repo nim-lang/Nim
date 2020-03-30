@@ -46,7 +46,6 @@ proc addParams(c: PContext, n: PNode, kind: TSymKind)
 proc maybeAddResult(c: PContext, s: PSym, n: PNode)
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode
 proc activate(c: PContext, n: PNode)
-proc checkDefaultConstruction(c: PContext, typ: PType, info: TLineInfo)
 proc semQuoteAst(c: PContext, n: PNode): PNode
 proc finishMethod(c: PContext, s: PSym)
 proc evalAtCompileTime(c: PContext, n: PNode): PNode
@@ -54,6 +53,8 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 proc semStaticExpr(c: PContext, n: PNode): PNode
 proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
 proc semTypeOf(c: PContext; n: PNode): PNode
+proc computeRequiresInit(c: PContext, t: PType): bool
+proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
@@ -512,6 +513,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   c.semExpr = semExpr
   c.semTryExpr = tryExpr
   c.semTryConstExpr = tryConstExpr
+  c.computeRequiresInit = computeRequiresInit
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall

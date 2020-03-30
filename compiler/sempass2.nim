@@ -184,7 +184,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
-  if {tfRequiresInit, tfHasRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
+  if {tfRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n, volatileCheck=true)
@@ -590,7 +590,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
   let oldState = tracked.init.len
   let oldFacts = tracked.guards.s.len
-  let stringCase = skipTypes(n[0].typ,
+  let stringCase = n[0].typ != nil and skipTypes(n[0].typ,
         abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString}
   let interesting = not stringCase and interestingCaseExpr(n[0]) and
         tracked.config.hasWarn(warnProveField)
@@ -838,7 +838,7 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n[1]
       initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfRequiresInit, tfHasRequiresInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!

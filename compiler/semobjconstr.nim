@@ -15,7 +15,7 @@ type
   ObjConstrContext = object
     typ: PType               # The constructed type
     initExpr: PNode          # The init expression (nkObjConstr)
-    requiresFullInit: bool   # A `requiresInit` derived type will
+    needsFullInit: bool      # A `requiresInit` derived type will
                              # set this to true while visiting
                              # parent types.
     missingFields: seq[PSym] # Fields that the user failed to specify
@@ -147,7 +147,7 @@ proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): strin
 proc collectMissingFields(c: PContext, fieldsRecList: PNode,
                           constrCtx: var ObjConstrContext) =
   for r in directFieldsInRecList(fieldsRecList):
-    if constrCtx.requiresFullInit or
+    if constrCtx.needsFullInit or
        sfRequiresInit in r.sym.flags or
        r.sym.typ.requiresInit:
       let assignment = locateFieldInInitExpr(c, r.sym, constrCtx.initExpr)
@@ -323,14 +323,11 @@ proc semConstructFields(c: PContext, recNode: PNode,
   else:
     internalAssert c.config, false
 
-proc semConstructType(c: PContext, initExpr: PNode,
-                      t: PType, flags: TExprFlags): InitStatus =
+proc semConstructTypeAux(c: PContext,
+                         constrCtx: var ObjConstrContext,
+                         flags: TExprFlags): InitStatus =
   result = initUnknown
-
-  var
-    t = t
-    constrCtx = ObjConstrContext(typ: t, initExpr: initExpr,
-                                 requiresFullInit: tfRequiresInit in t.flags)
+  var t = constrCtx.typ
   while true:
     let status = semConstructFields(c, t.n, constrCtx, flags)
     mergeInitStatus(result, status)
@@ -339,18 +336,30 @@ proc semConstructType(c: PContext, initExpr: PNode,
     let base = t[0]
     if base == nil: break
     t = skipTypes(base, skipPtrs)
-    constrCtx.requiresFullInit = constrCtx.requiresFullInit or
-                                 tfRequiresInit in t.flags
+    constrCtx.needsFullInit = constrCtx.needsFullInit or
+                              tfNeedsFullInit in t.flags
 
-  # It's possible that the object was not fully initialized while
-  # specifying a .requiresInit. pragma:
-  if constrCtx.missingFields.len > 0:
-    localError(c.config, constrCtx.initExpr.info,
-      "The $1 type requires the following fields to be initialized: $2.",
-      [constrCtx.typ.sym.name.s, listSymbolNames(constrCtx.missingFields)])
+proc initConstrContext(t: PType, initExpr: PNode): ObjConstrContext =
+  ObjConstrContext(typ: t, initExpr: initExpr,
+                   needsFullInit: tfNeedsFullInit in t.flags)
 
-proc checkDefaultConstruction(c: PContext, typ: PType, info: TLineInfo) =
-  discard semConstructType(c, newNodeI(nkObjConstr, info), typ, {})
+proc computeRequiresInit(c: PContext, t: PType): bool =
+  assert t.kind == tyObject
+  var constrCtx = initConstrContext(t, newNode(nkObjConstr))
+  let initResult = semConstructTypeAux(c, constrCtx, {})
+  constrCtx.missingFields.len > 0
+
+proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
+  var objType = t
+  while objType.kind != tyObject:
+    objType = objType.lastSon
+    assert objType != nil
+  var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
+  let initResult = semConstructTypeAux(c, constrCtx, {})
+  assert constrCtx.missingFields.len > 0
+  localError(c.config, info,
+    "The $1 type doesn't have a default value. The following fields must be initialized: $2.",
+    [typeToString(t), listSymbolNames(constrCtx.missingFields)])
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n[0], nil)
@@ -376,7 +385,15 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
-  let initResult = semConstructType(c, result, t, flags)
+  var constrCtx = initConstrContext(t, result)
+  let initResult = semConstructTypeAux(c, constrCtx, flags)
+
+  # It's possible that the object was not fully initialized while
+  # specifying a .requiresInit. pragma:
+  if constrCtx.missingFields.len > 0:
+    localError(c.config, result.info,
+      "The $1 type requires the following fields to be initialized: $2.",
+      [t.sym.name.s, listSymbolNames(constrCtx.missingFields)])
 
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.

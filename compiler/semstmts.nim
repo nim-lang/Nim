@@ -614,8 +614,10 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         else: v.typ = tup
         b[j] = newSymNode(v)
       if def.kind == nkEmpty:
-        if v.typ.kind == tyObject:
-          checkDefaultConstruction(c, v.typ, v.info)
+        let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
+                                          tyUserTypeClassInst})
+        if actualType.kind == tyObject and actualType.requiresInit:
+          defaultConstructionError(c, v.typ, v.info)
         else:
           checkNilable(c, v)
       if sfCompileTime in v.flags:
