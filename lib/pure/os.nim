@@ -2796,8 +2796,8 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
     if res < 0:
       return ""
 
-    result = newString(pathLength)
-    res = sysctl(addr req[0], 4, cast[pointer](addr result[0]), addr pathLength, nil, 0)
+    result.setLen(pathLength)
+    res = sysctl(addr req[0], 4, addr result[0], addr pathLength, nil, 0)
 
     if res < 0:
       return ""
