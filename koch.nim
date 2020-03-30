@@ -497,7 +497,7 @@ proc buildDrNim() =
           exec("make -j4")
     execFold("build drnim", "nim cpp --dynlibOverride=libz3 -o:$1 drnim/drnim" % "bin/drnim".exe)
   # always run the tests for now:
-  exec("testament/testament".exe & " --nim:" & "drnim".exe & " pat drnim/tests/*.nim")
+  exec("testament/testament".exe & " --nim:" & "drnim".exe & " pat drnim/tests")
 
 
 proc hostInfo(): string =
