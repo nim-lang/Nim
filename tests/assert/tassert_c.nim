@@ -36,4 +36,4 @@ try:
 except AssertionError:
   let e = getCurrentException()
   let trace = e.getStackTrace
-  echo tmatch(trace, expected)
+  if tmatch(trace, expected): echo true else: echo "wrong trace:\n" & trace

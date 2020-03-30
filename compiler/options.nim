@@ -28,7 +28,9 @@ type                          # please make sure we have under 32 options
     optOverflowCheck, optNilCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
-    optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
+    optOptimizeSpeed, optOptimizeSize,
+    optStackTrace, # stack tracing support
+    optStackTraceMsgs, # enable custom runtime msgs via `setFrameMsg`
     optLineTrace,             # line tracing support (includes stack tracing)
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
@@ -325,7 +327,7 @@ const
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
-    optHints, optStackTrace, optLineTrace,
+    optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
