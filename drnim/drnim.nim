@@ -14,6 +14,19 @@
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
   'x in n..m; inc x' implies 'x in n+1..m+1'
 
+- We need an ``old`` annotation:
+
+proc f(x: var int; y: var int) {.ensures: x == old(x)+1 and y == old(y)+1 .} =
+  inc x
+  inc y
+
+var x = 3
+var y: range[N..M]
+f(x, y)
+{.assume: y in N+1 .. M+1.}
+# --> y in N+1..M+1
+
+
 ]#
 
 import std / [
