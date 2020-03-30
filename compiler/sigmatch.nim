@@ -1937,7 +1937,9 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semTryExpr(c, call)
+  # XXX: This would be much nicer if we don't use `semTryExpr` and
+  # instead we directly search for overloads with `resolveOverloads`:
+  result = c.semTryExpr(c, call, {efNoSem2Check})
 
   if result != nil:
     if result.typ == nil: return nil
