@@ -508,10 +508,6 @@ proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
   echo hostInfo()
-  # note(@araq): Do not replace these commands with direct calls (eg boot())
-  # as that would weaken our testing efforts.
-  when defined(posix): # appveyor (on windows) didn't run this
-    kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
@@ -521,7 +517,7 @@ proc runCI(cmd: string) =
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
   else:
-    buildTools() # altenatively, kochExec "tools --toolsNoNimble"
+    buildTools()
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
@@ -531,7 +527,7 @@ proc runCI(cmd: string) =
 
     # main bottleneck here
     execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
-    block: # CT FFI
+    block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "./bin/nim.ctffi"
@@ -543,16 +539,6 @@ proc runCI(cmd: string) =
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
-
-    ## remaining actions
-    when defined(posix):
-      kochExecFold("Docs", "docs --git.commit:devel")
-      kochExecFold("C sources", "csource")
-    elif defined(windows):
-      buildDrNim()
-      when false:
-        kochExec "csource"
-        kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):

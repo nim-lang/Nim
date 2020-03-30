@@ -1174,7 +1174,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wEnsures:
         pragmaEnsures(c, it)
       else: invalidPragma(c, it)
-    elif comesFromPush and whichKeyword(ident) in {wTags, wRaises}:
+    elif comesFromPush and whichKeyword(ident) != wInvalid:
       discard "ignore the .push pragma; it doesn't apply"
     else:
       if sym == nil or (sym.kind in {skVar, skLet, skParam,

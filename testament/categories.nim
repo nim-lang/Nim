@@ -169,16 +169,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template testWithNone(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:none", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:none", cat)
-
   template testWithoutMs(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options, cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat)
     when filename != "gctest":
@@ -193,6 +185,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " --gc:markAndSweep", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat)
+
   template test(filename: untyped) =
     testWithoutBoehm filename
     when not defined(windows) and not defined(android):
@@ -210,7 +203,6 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak"
   test "gcleak2"
   testWithoutBoehm "gctest"
-  testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
