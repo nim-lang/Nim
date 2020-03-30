@@ -718,12 +718,13 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
 proc typeNeedsCreateTypeBoundOpsEarly(conf: ConfigRef, typ: PType): bool = 
   # sink params and types that can be defined in place without type section
   # like ref/tuple need CreateTypeBoundOps early
-  result = isSinkTypeForParam(typ)
-  if not result:
-    let t = typ.skipTypes(abstractInst) 
-    result = 
-      if conf.selectedGC in {gcArc, gcOrc}: isClosure(t) or t.kind == tyRef
-      else: t.kind == tyTuple
+  if typ != nil:
+    result = isSinkTypeForParam(typ)
+    if not result:
+      let t = typ.skipTypes(abstractInst) 
+      result = 
+        if conf.selectedGC in {gcArc, gcOrc}: isClosure(t) or t.kind == tyRef
+        else: t.kind == tyTuple
 
 proc track(tracked: PEffects, n: PNode) =
   template gcsafeAndSideeffectCheck() =
