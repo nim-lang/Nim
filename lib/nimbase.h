@@ -262,6 +262,21 @@ __AVR__
 #include <limits.h>
 #include <stddef.h>
 
+// define NIM_STATIC_ASSERT
+// example use case: CT sizeof for importc types verification
+// where we have {.completeStruct.} (or lack of {.incompleteStruct.})
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+#define NIM_STATIC_ASSERT(x, msg) _Static_assert((x), msg)
+#elif defined(__cplusplus)
+#define NIM_STATIC_ASSERT(x, msg) static_assert((x), msg)
+#else
+#define NIM_STATIC_ASSERT(x, msg) typedef int NIM_STATIC_ASSERT_AUX[(x) ? 1 : -1];
+// On failure, your C compiler will say something like:
+//   "error: 'NIM_STATIC_ASSERT_AUX' declared as an array with a negative size"
+// we could use a better fallback to also show line number, using:
+// http://www.pixelbeat.org/programming/gcc/static_assert.html
+#endif
+
 /* C99 compiler? */
 #if (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))
 #  define HAVE_STDINT_H
@@ -288,18 +303,22 @@ __AVR__
 namespace USE_NIM_NAMESPACE {
 #endif
 
-/* bool types (C++ has it): */
-#ifndef __cplusplus
-#include <stdbool.h>
-# // `typedef unsigned char NIM_BOOL;` is incorrect, and would cause conflicts
-# // for code that emits `#include <stdbool.h>`, see #13798
-#endif
-
+// preexisting check, seems paranoid, maybe remove
 #if defined(NIM_TRUE) || defined(NIM_FALSE) || defined(NIM_BOOL)
 #error "nim reserved preprocessor macros clash"
 #endif
 
+/* bool types (C++ has it): */
+#ifdef __cplusplus
 #define NIM_BOOL bool
+#else
+#define NIM_BOOL _Bool // or, #include <stdbool.h>
+// `typedef unsigned char NIM_BOOL;` is incorrect, and would cause conflicts
+// for code that emits `#include <stdbool.h>`, see #13798
+#endif
+
+NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
+
 #define NIM_TRUE true
 #define NIM_FALSE false
 
@@ -517,10 +536,8 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #  define GC_GUARD
 #endif
 
-/* Test to see if Nim and the C compiler agree on the size of a pointer.
-   On disagreement, your C compiler will say something like:
-   "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
-typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+// Test to see if Nim and the C compiler agree on the size of a pointer.
+NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "");
 
 #ifdef USE_NIM_NAMESPACE
 }
