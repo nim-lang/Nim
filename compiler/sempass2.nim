@@ -716,7 +716,7 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
     tracked.owner.flags.incl sfInjectDestructors
 
 proc typeNeedsCreateTypeBoundOpsEarly(conf: ConfigRef, typ: PType): bool = 
-  # sink params and params that can be defined in place without type section
+  # sink params and types that can be defined in place without type section
   # like ref/tuple need CreateTypeBoundOps early
   result = isSinkTypeForParam(typ)
   if not result:
