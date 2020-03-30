@@ -715,6 +715,16 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
       optSeqDestructors in tracked.config.globalOptions:
     tracked.owner.flags.incl sfInjectDestructors
 
+proc typeNeedsCreateTypeBoundOpsEarly(conf: ConfigRef, typ: PType): bool = 
+  # sink params and params that can be defined in place without type section
+  # like ref/tuple need CreateTypeBoundOps early
+  result = isSinkTypeForParam(typ)
+  if not result:
+    let t = typ.skipTypes(abstractInst) 
+    result = 
+      if conf.selectedGC in {gcArc, gcOrc}: isClosure(t) or t.kind == tyRef
+      else: t.kind == tyTuple
+
 proc track(tracked: PEffects, n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
@@ -1126,7 +1136,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
 
   if s.kind != skMacro:
     for i in 0..<s.typ.len:
-      createTypeBoundOps(t, s.typ[i], s.typ.n[i].info)
+      if typeNeedsCreateTypeBoundOpsEarly(g.config, s.typ[i]):
+        createTypeBoundOps(t, s.typ[i], s.typ.n[i].info)
 
   if not isEmptyType(s.typ[0]) and
       ({tfNeedsInit, tfNotNil} * s.typ[0].flags != {} or
