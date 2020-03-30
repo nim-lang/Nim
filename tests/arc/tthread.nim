@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc --threads:on $file"
-  nimout: '''ok1
+  output: '''ok1
 ok2
 destroyed
 '''
@@ -35,5 +35,3 @@ var fv3 = spawn thread3()
 sync()
 echo ^fv1
 echo (^fv2)[]
-
-
