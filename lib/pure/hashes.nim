@@ -70,6 +70,38 @@ proc `!$`*(h: Hash): Hash {.inline.} =
   res = res + res shl 15
   result = cast[Hash](res)
 
+proc hiXorLo(A, B: uint64): uint64 {.inline.} =
+  # Xor of high & low 8B of full 16B product
+  when defined(gcc) or defined(llvm_gcc) or defined(clang):
+    {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r; """.}
+  elif defined(windows) and not defined(tcc):
+    {.emit: """A = _umul128(A, B, &B); return A ^ B;""".}
+  else: # Fall back for weaker platforms/compilers, e.g. Nim VM, etc.
+    let
+      ha = A shr 32
+      hb = B shr 32
+      la = A and 0xFFFFFFFF'u64
+      lb = B and 0xFFFFFFFF'u64
+      rh  = ha * hb
+      rm0 = ha * lb
+      rm1 = hb * la
+      rl  = la * lb
+      t   = rl + (rm0 shl 32)
+    var c = if t < rl: 1'u64 else: 0'u64
+    let lo = t + (rm1 shl 32)
+    c += (if lo < t: 1'u64 else: 0'u64)
+    let hi = rh + (rm0 shr 32) + (rm1 shr 32) + c
+    return hi xor lo
+
+proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
+  ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
+  ## details.  This passed all scrambling tests in Spring 2019 and is simple.
+  ## NOTE: It's ok to define ``proc(x: int16): Hash = hashWangYi1(Hash(x))``.
+  const P0 = 0xa0761d6478bd642f'u64
+  const P1 = 0xe7037ed1a0b428db'u64
+  const P5x8 = 0xeb44accab455d165'u64 xor 8'u64
+  Hash(hiXorLo(hiXorLo(P0, uint64(x) xor P1), P5x8))
+
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
   var h: Hash = 0
@@ -112,9 +144,14 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-proc hash*[T: Ordinal](x: T): Hash {.inline.} =
-  ## Efficient hashing of integers.
-  cast[Hash](ord(x))
+when defined(hashWangYi1):
+  proc hash*[T: Ordinal](x: T): Hash {.inline.} =
+    ## Efficient hashing of integers.
+    hashWangYi1(uint64(ord(x)))
+else:
+  proc hash*[T: Ordinal](x: T): Hash {.inline.} =
+    ## Efficient hashing of integers.
+    cast[Hash](ord(x))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
