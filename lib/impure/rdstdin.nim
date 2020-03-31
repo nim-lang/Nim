@@ -12,7 +12,14 @@
 ## (e.g. you can navigate with the arrow keys). On Windows ``system.readLine``
 ## is used. This suffices because Windows' console already provides the
 ## wanted functionality.
-
+##
+## **Examples:**
+##
+## .. code-block:: nim
+##   echo readLineFromStdin("Is Nim awesome? (Y/n):")
+##   var userResponse: string
+##   doAssert readLineFromStdin("How are you?:", line = userResponse)
+##   echo userResponse
 {.deadCodeElim: on.}  # dce option deprecated
 
 when defined(Windows):
@@ -66,4 +73,3 @@ else:
       historyAdd(buffer)
     linenoise.free(buffer)
     result = true
-
