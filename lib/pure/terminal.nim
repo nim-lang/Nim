@@ -908,6 +908,40 @@ proc newTerminal(): owned(PTerminal) =
   when defined(windows):
     initTerminal(result)
 
+
+runnableExamples:
+  static:
+    block:
+      doAssert ansiStyleCode(styleBright) == "\e[1m"
+      doAssert ansiStyleCode(styleDim) == "\e[2m"
+      doAssert ansiStyleCode(styleUnderscore) == "\e[4m"
+      doAssert ansiStyleCode(styleBlinkRapid) == "\e[6m"
+      doAssert ansiStyleCode(styleReverse) == "\e[7m"
+      doAssert ansiStyleCode(styleHidden) == "\e[8m"
+      doAssert ansiStyleCode(styleStrikethrough) == "\e[9m"
+    block:
+      doAssert ansiForegroundColorCode(fg = fgBlack, bright = false) == "\e[30m"
+      doAssert ansiForegroundColorCode(fg = fgBlack, bright = true) == "\e[90m"
+      doAssert ansiForegroundColorCode(fg = fgRed, bright = false) == "\e[31m"
+      doAssert ansiForegroundColorCode(fg = fgRed, bright = true) == "\e[91m"
+      doAssert ansiForegroundColorCode(fg = fgGreen, bright = false) == "\e[32m"
+      doAssert ansiForegroundColorCode(fg = fgGreen, bright = true) == "\e[92m"
+      doAssert ansiForegroundColorCode(fg = fgYellow, bright = false) == "\e[33m"
+      doAssert ansiForegroundColorCode(fg = fgYellow, bright = true) == "\e[93m"
+      doAssert ansiForegroundColorCode(fg = fgBlue, bright = false) == "\e[34m"
+      doAssert ansiForegroundColorCode(fg = fgBlue, bright = true) == "\e[94m"
+      doAssert ansiForegroundColorCode(fg = fgMagenta, bright = false) == "\e[35m"
+      doAssert ansiForegroundColorCode(fg = fgMagenta, bright = true) == "\e[95m"
+      doAssert ansiForegroundColorCode(fg = fgCyan, bright = false) == "\e[36m"
+      doAssert ansiForegroundColorCode(fg = fgCyan, bright = true) == "\e[96m"
+      doAssert ansiForegroundColorCode(fg = fgWhite, bright = false) == "\e[37m"
+      doAssert ansiForegroundColorCode(fg = fgWhite, bright = true) == "\e[97m"
+      doAssert ansiForegroundColorCode(fg = fg8Bit, bright = false) == "\e[38m"
+      doAssert ansiForegroundColorCode(fg = fg8Bit, bright = true) == "\e[98m"
+      doAssert ansiForegroundColorCode(fg = fgDefault, bright = false) == "\e[39m"
+      doAssert ansiForegroundColorCode(fg = fgDefault, bright = true) == "\e[99m"
+
+
 when not defined(testing) and isMainModule:
   assert ansiStyleCode(styleBright) == "\e[1m"
   assert ansiStyleCode(styleStrikethrough) == "\e[9m"
