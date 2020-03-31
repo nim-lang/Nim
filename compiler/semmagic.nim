@@ -440,6 +440,15 @@ proc semQuantifier(c: PContext; n: PNode): PNode =
   n[^1] = forceBool(c, semExprWithType(c, n[^1]))
   closeScope(c)
 
+proc semOld(c: PContext; n: PNode): PNode =
+  if n[1].kind == nkHiddenDeref:
+    n[1] = n[1][0]
+  if n[1].kind != nkSym or n[1].sym.kind != skParam:
+    localError(c.config, n[1].info, "'old' takes a parameter name")
+  elif n[1].sym.owner != getCurrOwner(c):
+    localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
+  result = n
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -519,4 +528,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semUnown(c, n)
   of mExists, mForall:
     result = semQuantifier(c, n)
+  of mOld:
+    result = semOld(c, n)
   else: result = n

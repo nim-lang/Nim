@@ -30,6 +30,21 @@ f(x, y)
 {.assume: y in N+1 .. M+1.}
 # --> y in N+1..M+1
 
+proc myinc(x: var int) {.ensures: x-1 == old(x).} =
+  inc x
+
+facts(x) # x < 3
+myinc x
+facts(x+1)
+
+We handle state transitions in this way:
+
+  for every f in facts:
+    replace 'x' by 'old(x)'
+  facts.add ensuresClause
+
+  # then we know: old(x) < 3; x-1 == old(x)
+  # we can conclude:  x-1 < 3 but leave this task to Z3
 
 ]#
 
@@ -124,7 +139,7 @@ proc translateEnsures(e, x: PNode): PNode =
 
 proc typeToZ3(c: DrCon; t: PType): Z3_sort =
   template ctx: untyped = c.z3
-  case t.skipTypes(abstractInst).kind
+  case t.skipTypes(abstractInst+{tyVar}).kind
   of tyEnum, tyInt..tyInt64:
     result = Z3_mk_int_sort(ctx)
   of tyBool:
@@ -170,6 +185,7 @@ proc paramName(n: PNode): string =
 
 proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
   template ctx: untyped = c.z3
+  template rec(n): untyped = nodeToZ3(c, n, vars)
   case n.kind
   of nkSym:
     let key = if c.canonParameterNames: paramName(n) else: stableName(n)
@@ -193,8 +209,6 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
   of nkFloatLit..nkFloat64Lit:
     result = Z3_mk_fpa_numeral_double(ctx, n.floatVal, Z3_mk_fpa_sort_double(ctx))
   of nkCallKinds:
-    template rec(n): untyped = nodeToZ3(c, n, vars)
-
     assert n.len > 0
     assert n[0].kind == nkSym
     let operator = n[0].sym.magic
@@ -284,6 +298,16 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_bvxor(ctx, rec n[1], rec n[2])
     of mOrd, mChr:
       result = rec n[1]
+    of mOld:
+      let key = (if c.canonParameterNames: paramName(n[1]) else: stableName(n[1])) & ".old"
+      result = c.mapping.getOrDefault(key)
+      if pointer(result) == nil:
+        let name = Z3_mk_string_symbol(ctx, $n)
+        result = Z3_mk_const(ctx, name, typeToZ3(c, n.typ))
+        c.mapping[key] = result
+        # XXX change the logic in `addRangeInfo` for this
+        #vars.add n
+
     else:
       # sempass2 adds some 'fact' like 'x = f(a, b)' (see addAsgnFact)
       # 'f(a, b)' can have an .ensures annotation and we need to make use
@@ -312,6 +336,8 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = nodeToZ3(c, n[^1], vars)
     else:
       notImplemented(renderTree(n))
+  of nkHiddenDeref:
+    result = rec n[0]
   else:
     notImplemented(renderTree(n))
 
