@@ -29,9 +29,6 @@ proc generateNumbers(m: var MersenneTwister) =
 
 proc getNum*(m: var MersenneTwister): uint32 =
   ## Returns the next pseudo random number ranging from 0 to high(uint32)
-  runnableExamples: static:
-    var rando: MersenneTwister = newMersenneTwister(42.uint32)  ## Must be "var".
-    doAssert rando.getNum() is uint32  ## Pseudo random number. Works at compile-time.
   if m.index == 0:
     generateNumbers(m)
   result = m.mt[m.index]
@@ -41,6 +38,14 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor ((result shl 7'u32) and 0x9d2c5680'u32)
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
+
+
+runnableExamples:
+  static:
+    block:
+      var rando: MersenneTwister = newMersenneTwister(42.uint32)  ## Must be "var".
+      doAssert rando.getNum() is uint32  ## Pseudo random number. Works at compile-time.
+
 
 # Test
 when not defined(testing) and isMainModule:
