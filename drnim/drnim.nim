@@ -9,6 +9,10 @@
 
 #[
 
+- Most important bug:
+
+  while i < x.len and use(s[i]): inc i # is safe
+
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - forall/exists need syntactic sugar as the manual
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -108,7 +112,7 @@ proc stableName(result: var string; n: PNode) =
 proc stableName(n: PNode): string = stableName(result, n)
 
 proc notImplemented(msg: string) {.noinline.} =
-  raise newException(CannotMapToZ3Error, " cannot map to Z3: " & msg)
+  raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & msg)
 
 proc translateEnsures(e, x: PNode): PNode =
   if e.kind == nkSym and e.sym.kind == skResult:
@@ -278,6 +282,8 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_bvor(ctx, rec n[1], rec n[2])
     of mBitxorI:
       result = Z3_mk_bvxor(ctx, rec n[1], rec n[2])
+    of mOrd, mChr:
+      result = rec n[1]
     else:
       # sempass2 adds some 'fact' like 'x = f(a, b)' (see addAsgnFact)
       # 'f(a, b)' can have an .ensures annotation and we need to make use
@@ -400,6 +406,9 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (boo
   Z3_del_config(cfg)
   Z3_set_error_handler(ctx, on_err)
 
+  when false:
+    Z3_set_param_value(cfg, "timeout", "1000")
+
   try:
 
     #[
@@ -441,7 +450,7 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (boo
 
     #Z3_mk_not(ctx, forall(ctx, collectedVars, conj(ctx, lhs), z3toProve))
 
-    #echo "toProve: ", Z3_ast_to_string(ctx, fa)
+    #echo "toProve: ", Z3_ast_to_string(ctx, fa), " ", c.graph.config $ toProve.info
     Z3_solver_assert ctx, solver, fa
 
     let z3res = Z3_solver_check(ctx, solver)

@@ -6,3 +6,5 @@ proc `<->`*(a, b: bool): bool {.magic: "Iff".}
 
 proc forall*(args: varargs[untyped]): bool {.magic: "Forall".}
 proc exists*(args: varargs[untyped]): bool {.magic: "Exists".}
+
+proc old*[T](x: T): T {.magic: "Old".}

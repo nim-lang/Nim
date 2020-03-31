@@ -633,7 +633,7 @@ type
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
-    mImplies, mIff, mExists, mForall,
+    mImplies, mIff, mExists, mForall, mOld,
     mEqStr, mLeStr, mLtStr,
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mSlice,

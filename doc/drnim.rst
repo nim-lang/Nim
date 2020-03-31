@@ -103,8 +103,8 @@ annotation is also called a `precondition`:idx:.
 Ensures
 -------
 
-A ``ensures`` annotation describes what will be true after the function
-call. A ``ensures`` annotation is also called a `postcondition`:idx:.
+An ``ensures`` annotation describes what will be true after the function
+call. An ``ensures`` annotation is also called a `postcondition`:idx:.
 
 
 Assume
