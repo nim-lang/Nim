@@ -19,18 +19,15 @@ proc fromLit*(a: PNode, T: typedesc): auto =
 proc toLit*[T](a: T): PNode =
   ## generic type => PNode
   ## see also reverse operation `fromLit`
-  when T is string: result = newStrNode(nkStrLit, a)
-  elif T is Ordinal: result = newIntNode(nkIntLit, a.ord)
+  when T is string: newStrNode(nkStrLit, a)
+  elif T is Ordinal: newIntNode(nkIntLit, a.ord)
+  elif T is (proc): newNode(nkNilLit)
+  elif T is ref:
+    if a == nil: newNode(nkNilLit)
+    else: toLit(a[])
   elif T is tuple:
     result = newTree(nkTupleConstr)
     for ai in fields(a): result.add toLit(ai)
-  elif T is (proc):
-    result = newNode(nkNilLit)
-  elif T is ref:
-    if a == nil:
-      result = newNode(nkNilLit)
-    else:
-      result = toLit(a[])
   elif T is object:
     result = newTree(nkObjConstr)
     result.add(newNode(nkEmpty))
