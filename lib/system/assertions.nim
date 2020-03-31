@@ -19,10 +19,6 @@ when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
-  ## Raises ``AssertionError`` explicitly with given message. Example:
-  ##
-  ## .. code-block:: nim
-  ##   static: raiseAssert "Can not solve P versus NP"
   sysFatal(AssertionError, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
