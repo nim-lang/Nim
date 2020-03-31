@@ -320,6 +320,22 @@ proc `+=`*(a: var RunningRegress, b: RunningRegress) =
 {.pop.}
 {.pop.}
 
+
+runnableExamples:
+  static:
+    block:
+      var statistics: RunningStat  ## Must be "var"
+      statistics.push(@[1.0, 2.0, 1.0, 4.0, 1.0, 4.0, 1.0, 2.0])
+      doAssert statistics.n == 8
+      doAssert statistics.mean() is SomeFloat
+      doAssert statistics.variance() is SomeFloat
+      doAssert statistics.varianceS() is SomeFloat
+      doAssert statistics.skewness() is SomeFloat
+      doAssert statistics.skewnessS() is SomeFloat
+      doAssert statistics.kurtosis() is SomeFloat
+      doAssert statistics.kurtosisS() is SomeFloat
+
+
 when isMainModule:
   proc clean(x: float): float =
     result = round(1.0e8*x).float * 1.0e-8

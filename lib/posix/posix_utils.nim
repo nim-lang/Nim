@@ -84,6 +84,9 @@ proc mkstemp*(prefix: string): (string, File) =
   ## Creates a unique temporary file from a prefix string. Adds a six chars suffix.
   ## The file is created with perms 0600.
   ## Returns the filename and a file opened in r/w mode.
+  runnableExamples:
+    let (filename, fileObj) = mkstemp(prefix = "Nim")
+    doAssert filename is string and fileObj is File
   var tmpl = cstring(prefix & "XXXXXX")
   let fd = mkstemp(tmpl)
   var f: File
@@ -94,8 +97,8 @@ proc mkstemp*(prefix: string): (string, File) =
 proc mkdtemp*(prefix: string): string =
   ## Creates a unique temporary directory from a prefix string. Adds a six chars suffix.
   ## The directory is created with permissions 0700. Returns the directory name.
+  runnableExamples: doAssert mkdtemp(prefix = "Nim") is string
   var tmpl = cstring(prefix & "XXXXXX")
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
-

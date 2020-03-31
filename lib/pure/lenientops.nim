@@ -25,32 +25,44 @@
 ## should make an explicit choice.
 
 proc `+`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 + 3.14 is SomeFloat
   F(i) + f
 proc `+`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 + 3.14 is SomeFloat
   f + F(i)
 
 proc `-`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 - 3.14 is SomeFloat
   F(i) - f
 proc `-`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 - 3.14 is SomeFloat
   f - F(i)
 
 proc `*`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 * 3.14 is SomeFloat
   F(i) * f
 proc `*`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 * 3.14 is SomeFloat
   f * F(i)
 
 proc `/`*[I: SomeInteger, F: SomeFloat](i: I, f: F): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 / 3.14 is SomeFloat
   F(i) / f
 proc `/`*[I: SomeInteger, F: SomeFloat](f: F, i: I): F {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 42 / 3.14 is SomeFloat
   f / F(i)
 
 proc `<`*[I: SomeInteger, F: SomeFloat](i: I, f: F): bool {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 1 < 3.14
   F(i) < f
 proc `<`*[I: SomeInteger, F: SomeFloat](f: F, i: I): bool {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 1 < 3.14
   f < F(i)
 proc `<=`*[I: SomeInteger, F: SomeFloat](i: I, f: F): bool {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 1 <= 3.14
   F(i) <= f
 proc `<=`*[I: SomeInteger, F: SomeFloat](f: F, i: I): bool {.noSideEffect, inline.} =
+  runnableExamples: static: doAssert 1 <= 3.14
   f <= F(i)
 
 # Note that we must not defined `>=` and `>`, because system.nim already has a
