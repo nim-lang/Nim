@@ -5,6 +5,7 @@ on:
     paths:
       - 'lib/**.nim'
       - 'doc/**.rst'
+      - 'doc/nimdoc.css'
 
   pull_request:
     # Run only on changes on these files
