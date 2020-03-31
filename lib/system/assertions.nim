@@ -48,11 +48,17 @@ template assert*(cond: untyped, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:danger`` or ``--assertions:off``
   ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
+  ##
+  ## .. code-block:: nim
+  ##   static: assert 1 == 9, "This works when not built with -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to ``assert`` but is always turned on regardless of ``--assertions``.
+  ##
+  ## .. code-block:: nim
+  ##   static: assert 1 == 9, "This works when built with/without -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 

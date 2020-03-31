@@ -33,6 +33,9 @@ proc openDefaultBrowser*(url: string) =
   ## used to determine the default browser to use.
   ##
   ## This proc doesn't raise an exception on error, beware.
+  ##
+  ## .. code-block:: nim
+  ##   block: openDefaultBrowser("https://nim-lang.org")
   when defined(windows):
     var o = newWideCString(osOpenCmd)
     var u = newWideCString(url)

@@ -1073,7 +1073,7 @@ proc zonedTimeFromAdjTime*(zone: Timezone, adjTime: Time): ZonedTime =
 
 proc `$`*(zone: Timezone): string =
   ## Returns the name of the timezone.
-  zone.name
+  if zone != nil: result = zone.name
 
 proc `==`*(zone1, zone2: Timezone): bool =
   ## Two ``Timezone``'s are considered equal if their name is equal.

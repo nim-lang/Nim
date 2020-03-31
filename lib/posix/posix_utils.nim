@@ -98,4 +98,3 @@ proc mkdtemp*(prefix: string): string =
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
-
