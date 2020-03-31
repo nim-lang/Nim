@@ -253,23 +253,8 @@ proc registerAdditionalOps*(c: PCtx) =
     ## of a semantic issue than a security issue.
     registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, os.getCurrentDir())
-
-    proc execCmdExImpl(a: VmArgs) =
+    registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
       let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
-
-    registerCallback c, "stdlib.osproc.execCmdEx", execCmdExImpl
-# local*(): Timezone
-    registerCallback c, "stdlib.times.local", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, times.local().toLit)
     registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
-      let t = times.getTime()
-      echo "before"
-      let t2 = t.toLit
-      echo "after"
-      echo t2
-      echo "after2"
-      # setResult(a, t.toLit)
-      setResult(a, t2)
-        # newNodeIT(nkObjConstr, n.info, n[1].typ), {})
-      # setResult(a, newTree(nkObjConstr, newIntNode(nkIntLit, t.seconds), newIntNode(nkIntLit, t.nanosecond)))
+      setResult(a, times.getTime().toLit)
