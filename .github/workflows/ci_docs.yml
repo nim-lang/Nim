@@ -49,7 +49,7 @@ jobs:
 
       - name: 'Build documentation'
         shell: bash
-        run: ./koch doc
+        run: ./koch doc --git.commit:devel
 
       - name: 'Prepare documentation for deployment'
         if: github.event_name == 'push' && github.ref == 'devel'
