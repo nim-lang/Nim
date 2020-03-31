@@ -15,8 +15,21 @@ on:
 
 jobs:
   build:
-    name: 'Docs builder'
-    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux, windows, osx]
+        include:
+          - target: linux
+            os: ubuntu-18.04
+          - target: windows
+            os: windows-2019
+          - target: osx
+            os: macos-10.15
+
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2
@@ -27,6 +40,21 @@ jobs:
           repository: nim-lang/csources
           path: csources
 
+      - name: 'Install build dependencies (macOS)'
+        if: runner.os == 'macOS'
+        run: brew install make
+
+      - name: 'Install build dependencies (Windows)'
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir dist
+          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+          7z x dist/mingw64.7z -odist
+          7z x dist/dlls.zip -obin
+          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
+
       - name: 'Add build binaries to PATH'
         shell: bash
         run: echo "::add-path::${{ github.workspace }}/bin"
@@ -34,7 +62,17 @@ jobs:
       - name: 'Build 1-stage compiler from csources'
         shell: bash
         run: |
-          ncpu=$(nproc)
+          case '${{ runner.os }}' in
+          'Linux')
+            ncpu=$(nproc)
+            ;;
+          'macOS')
+            ncpu=$(sysctl -n hw.ncpu)
+            ;;
+          'Windows')
+            ncpu=$NUMBER_OF_PROCESSORS
+            ;;
+          esac
           [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
           make -C csources -j $ncpu CC=gcc
@@ -52,12 +90,12 @@ jobs:
         run: ./koch doc --git.commit:devel
 
       - name: 'Prepare documentation for deployment'
-        if: github.event_name == 'push' && github.ref == 'devel'
+        if: github.event_name == 'push' && github.ref == 'devel' && matrix.target == 'linux'
         shell: bash
         run: cp -f doc/html/{overview,index}.html
 
       - name: 'Publish documentation to Github Pages'
-        if: github.event_name == 'push' && github.ref == 'devel'
+        if: github.event_name == 'push' && github.ref == 'devel' && matrix.target == 'linux'
         uses: crazy-max/ghaction-github-pages@v1
         with:
           build-dir: doc/html
