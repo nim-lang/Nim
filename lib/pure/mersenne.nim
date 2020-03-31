@@ -43,8 +43,8 @@ proc getNum*(m: var MersenneTwister): uint32 =
 runnableExamples:
   static:
     block:
-      var rando: MersenneTwister = newMersenneTwister(42.uint32)  ## Must be "var".
-      doAssert rando.getNum() is uint32  ## Pseudo random number. Works at compile-time.
+      var rando: MersenneTwister = newMersenneTwister(uint32.high)  ## Must be "var".
+      doAssert rando.getNum() != rando.getNum()  ## Pseudo random number. Works at compile-time.
 
 
 # Test
