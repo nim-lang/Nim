@@ -477,14 +477,14 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
-proc buildDrNim() =
+proc buildDrNim(args: string) =
   if not dirExists("dist/nimz3"):
     exec("git clone https://github.com/zevv/nimz3.git dist/nimz3")
   when defined(windows):
     if not dirExists("dist/dlls"):
       exec("git clone -q https://github.com/nim-lang/dlls.git dist/dlls")
     copyExe("dist/dlls/libz3.dll", "bin/libz3.dll")
-    execFold("build drnim", "nim c -o:$1 drnim/drnim" % "bin/drnim".exe)
+    execFold("build drnim", "nim c -o:$1 $2 drnim/drnim" % ["bin/drnim".exe, args])
   else:
     if not dirExists("dist/z3"):
       exec("git clone -q https://github.com/Z3Prover/z3.git dist/z3")
@@ -495,7 +495,7 @@ proc buildDrNim() =
         withDir("build"):
           exec("""cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -G "Unix Makefiles" ../""")
           exec("make -j4")
-    execFold("build drnim", "nim cpp --dynlibOverride=libz3 -o:$1 drnim/drnim" % "bin/drnim".exe)
+    execFold("build drnim", "nim cpp --dynlibOverride=libz3 -o:$1 $2 drnim/drnim" % ["bin/drnim".exe, args])
   # always run the tests for now:
   exec("testament/testament".exe & " --nim:" & "drnim".exe & " pat drnim/tests")
 
@@ -663,7 +663,7 @@ when isMainModule:
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
-      of "drnim": buildDrNim()
+      of "drnim": buildDrNim(op.cmdLineRest)
       else: showHelp()
       break
     of cmdEnd: break
