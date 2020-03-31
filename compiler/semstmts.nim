@@ -1051,6 +1051,68 @@ proc typeSectionTypeName(c: PContext; n: PNode): PNode =
     result = n
   if result.kind != nkSym: illFormedAst(n, c.config)
 
+proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
+  let typeDef= typeSection[i]
+  checkSonsLen(typeDef, 3, c.config)
+  var name = typeDef[0]
+  var s: PSym
+  if name.kind == nkDotExpr and typeDef[2].kind == nkObjectTy:
+    let pkgName = considerQuotedIdent(c, name[0])
+    let typName = considerQuotedIdent(c, name[1])
+    let pkg = c.graph.packageSyms.strTableGet(pkgName)
+    if pkg.isNil or pkg.kind != skPackage:
+      localError(c.config, name.info, "unknown package name: " & pkgName.s)
+    else:
+      let typsym = pkg.tab.strTableGet(typName)
+      if typsym.isNil:
+        s = semIdentDef(c, name[1], skType)
+        onDef(name[1].info, s)
+        s.typ = newTypeS(tyObject, c)
+        s.typ.sym = s
+        s.flags.incl sfForward
+        pkg.tab.strTableAdd s
+        addInterfaceDecl(c, s)
+      elif typsym.kind == skType and sfForward in typsym.flags:
+        s = typsym
+        addInterfaceDecl(c, s)
+      else:
+        localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
+        s = typsym
+  else:
+    s = semIdentDef(c, name, skType)
+    onDef(name.info, s)
+    s.typ = newTypeS(tyForward, c)
+    s.typ.sym = s             # process pragmas:
+    if name.kind == nkPragmaExpr:
+      let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
+      if rewritten != nil:
+        typeSection[i] = rewritten
+        typeDefLeftSidePass(c, typeSection, i)
+        return
+      pragma(c, s, name[1], typePragmas)
+    if sfForward in s.flags:
+      # check if the symbol already exists:
+      let pkg = c.module.owner
+      if not isTopLevel(c) or pkg.isNil:
+        localError(c.config, name.info, "only top level types in a package can be 'package'")
+      else:
+        let typsym = pkg.tab.strTableGet(s.name)
+        if typsym != nil:
+          if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
+            typeCompleted(typsym)
+            typsym.info = s.info
+          else:
+            localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
+                    "previous type completion was here: " & c.config$typsym.info)
+          s = typsym
+    # add it here, so that recursive types are possible:
+    if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+    elif s.owner == nil: s.owner = getCurrOwner(c)
+
+  if name.kind == nkPragmaExpr:
+    typeDef[0][0] = newSymNode(s)
+  else:
+    typeDef[0] = newSymNode(s)
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
@@ -1064,61 +1126,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         dec c.inTypeContext
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a, c.config)
-    checkSonsLen(a, 3, c.config)
-    let name = a[0]
-    var s: PSym
-    if name.kind == nkDotExpr and a[2].kind == nkObjectTy:
-      let pkgName = considerQuotedIdent(c, name[0])
-      let typName = considerQuotedIdent(c, name[1])
-      let pkg = c.graph.packageSyms.strTableGet(pkgName)
-      if pkg.isNil or pkg.kind != skPackage:
-        localError(c.config, name.info, "unknown package name: " & pkgName.s)
-      else:
-        let typsym = pkg.tab.strTableGet(typName)
-        if typsym.isNil:
-          s = semIdentDef(c, name[1], skType)
-          onDef(name[1].info, s)
-          s.typ = newTypeS(tyObject, c)
-          s.typ.sym = s
-          s.flags.incl sfForward
-          pkg.tab.strTableAdd s
-          addInterfaceDecl(c, s)
-        elif typsym.kind == skType and sfForward in typsym.flags:
-          s = typsym
-          addInterfaceDecl(c, s)
-        else:
-          localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
-          s = typsym
-    else:
-      s = semIdentDef(c, name, skType)
-      onDef(name.info, s)
-      s.typ = newTypeS(tyForward, c)
-      s.typ.sym = s             # process pragmas:
-      if name.kind == nkPragmaExpr:
-        pragma(c, s, name[1], typePragmas)
-      if sfForward in s.flags:
-        # check if the symbol already exists:
-        let pkg = c.module.owner
-        if not isTopLevel(c) or pkg.isNil:
-          localError(c.config, name.info, "only top level types in a package can be 'package'")
-        else:
-          let typsym = pkg.tab.strTableGet(s.name)
-          if typsym != nil:
-            if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
-              typeCompleted(typsym)
-              typsym.info = s.info
-            else:
-              localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
-                      "previous type completion was here: " & c.config$typsym.info)
-            s = typsym
-      # add it here, so that recursive types are possible:
-      if sfGenSym notin s.flags: addInterfaceDecl(c, s)
-      elif s.owner == nil: s.owner = getCurrOwner(c)
-
-    if name.kind == nkPragmaExpr:
-      a[0][0] = newSymNode(s)
-    else:
-      a[0] = newSymNode(s)
+    typeDefLeftSidePass(c, n, i)
 
 proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
   var body = genericType[^1]
