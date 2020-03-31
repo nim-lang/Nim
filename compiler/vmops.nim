@@ -21,30 +21,7 @@ from times import cpuTime
 from hashes import hash
 from osproc import nil
 
-template elementType(T: typedesc): typedesc =
-  typeof(block:
-    var a: T
-    for ai in a: ai)
-
-proc fromLit*(a: PNode, T: typedesc): auto =
-  ## generic PNode => type
-  when T is set:
-    result = default(T)
-    type Ti = elementType(T)
-    for ai in a:
-      result.incl Ti(ai.intVal)
-  else:
-    static: doAssert false, "not yet supported: " & $T # add as needed
-
-proc toLit[T](a: T): PNode =
-  ## generic type => PNode
-  when T is string: result = newStrNode(nkStrLit, a)
-  elif T is Ordinal: result = newIntNode(nkIntLit, a.ord)
-  elif T is tuple:
-    result = newTree(nkTupleConstr)
-    for ai in fields(a): result.add toLit(ai)
-  else:
-    static: doAssert false, "not yet supported: " & $T # add as needed
+import vmconv
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -271,8 +248,9 @@ proc registerAdditionalOps*(c: PCtx) =
 
   if vmopsDanger in c.config.features:
     ## useful procs but these should be opt-in because they may impact
-    ## reproducible builds. Note that `staticExec` can already do equal amount
-    ## of damage so it's more of a semantic issue than a security issue.
+    ## reproducible builds and users need to understand that this runs at CT.
+    ## Note that `staticExec` can already do equal amount of damage so it's more
+    ## of a semantic issue than a security issue.
     registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, os.getCurrentDir())
 
@@ -281,3 +259,17 @@ proc registerAdditionalOps*(c: PCtx) =
       a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
 
     registerCallback c, "stdlib.osproc.execCmdEx", execCmdExImpl
+# local*(): Timezone
+    registerCallback c, "stdlib.times.local", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, times.local().toLit)
+    registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
+      let t = times.getTime()
+      echo "before"
+      let t2 = t.toLit
+      echo "after"
+      echo t2
+      echo "after2"
+      # setResult(a, t.toLit)
+      setResult(a, t2)
+        # newNodeIT(nkObjConstr, n.info, n[1].typ), {})
+      # setResult(a, newTree(nkObjConstr, newIntNode(nkIntLit, t.seconds), newIntNode(nkIntLit, t.nanosecond)))
