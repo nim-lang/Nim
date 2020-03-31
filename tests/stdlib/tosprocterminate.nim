@@ -2,6 +2,7 @@ discard """
   cmd: "nim $target $options -r $file"
   targets: "c cpp"
   matrix: "--threads:on; "
+  disabled: "openbsd"
 """
 
 import os, osproc, times, std / monotimes
