@@ -646,6 +646,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
+    when defined(drnim):
+      if not c.c.graph.compatibleProps(c.c.graph, f, a): return isNone
 
   of tyNil:
     result = f.allowsNil
