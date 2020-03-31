@@ -1198,11 +1198,6 @@ proc utcTzInfo(time: Time): ZonedTime =
 
 var utcInstance {.threadvar.}: Timezone
 var localInstance {.threadvar.}: Timezone
-# var localInstanceRT {.threadvar.}: Timezone
-# var localInstanceVM {.compileTime.}: Timezone
-# template localInstance(): untyped =
-#   when nimvm: localInstanceVM
-#   else: localInstanceRT
 
 proc utc*(): Timezone =
   ## Get the ``Timezone`` implementation for the UTC timezone.
