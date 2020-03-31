@@ -2,7 +2,9 @@ discard """
   output: '''
 destroyed: false
 destroyed: false
-destroying variable'''
+closed
+destroying variable
+'''
   cmd: "nim c --gc:arc $file"
 """
 
@@ -27,3 +29,22 @@ proc test(count: int) =
   echo "destroyed: ", v.isNil
 
 test(3)
+
+
+#------------------------------------------------------------------------------
+# issue #13810
+
+import streams
+
+type
+  A = ref AObj
+  AObj = object of RootObj
+    io: Stream
+  B = ref object of A
+    x: int
+
+proc `=destroy`(x: var AObj) =
+  close(x.io)
+  echo "closed"
+  
+var x = B(io: newStringStream("thestream"))
