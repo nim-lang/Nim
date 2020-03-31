@@ -45,7 +45,7 @@ jobs:
 
       - name: 'Build the real compiler'
         shell: bash
-        run: ./koch boot
+        run: ./koch boot -d:release
 
       - name: 'Build documentation'
         shell: bash
