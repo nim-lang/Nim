@@ -30,8 +30,8 @@ proc nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
 proc mustRehash[T](t: T): bool {.inline.} =
-  assert(t.data.len > t.counter)
-  result = (t.data.len * 2 < t.counter * 3) or (t.data.len - t.counter < 4)
+  assert(t.dataLen > t.counter)
+  result = (t.dataLen * 2 < t.counter * 3) or (t.dataLen - t.counter < 4)
 
 proc rightSize*(count: Natural): int {.inline.} =
   ## Return the value of ``initialSize`` to support ``count`` items.
