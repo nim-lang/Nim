@@ -899,7 +899,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         processDynLib(c, it, sym)
       of wInternalProc:
         noVal(c, it)
-        if sym.name == getIdent(c.cache, "nimInternalNewException"):
+        if sym.name.id == getIdent(c.cache, "nimInternalNewException").id:
           c.graph.nimInternalNewException = sym
         else:
           doAssert false, sym.name.s
