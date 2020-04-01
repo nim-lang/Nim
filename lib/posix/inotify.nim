@@ -73,9 +73,10 @@ proc inotify_rm_watch*(fd: cint; wd: cint): cint{.cdecl,
 
 
 runnableExamples:
-  block:
-    let inoty: cint = inotify_init()                 ## Create 1 Inotify.
-    doAssert inoty >= 0                              ## Check for errors.
-    let watchdoge: cint = inotify_add_watch(inoty, ".", IN_ALL_EVENTS) ## Add directory to watchdog.
-    doAssert watchdoge >= 0                          ## Check for errors.
-    doAssert inotify_rm_watch(inoty, watchdoge) >= 0 ## Remove directory from the watchdog
+  when defined(linux):
+    block:
+      let inoty: cint = inotify_init()                 ## Create 1 Inotify.
+      doAssert inoty >= 0                              ## Check for errors.
+      let watchdoge: cint = inotify_add_watch(inoty, ".", IN_ALL_EVENTS) ## Add directory to watchdog.
+      doAssert watchdoge >= 0                          ## Check for errors.
+      doAssert inotify_rm_watch(inoty, watchdoge) >= 0 ## Remove directory from the watchdog
