@@ -487,6 +487,26 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
+proc count*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
+                                                                  {.inline.} =
+  ## Returns a count of all the items that fulfilled the predicate.
+  ##
+  ## Note that `s` must be declared as a ``var``.
+  ##
+  ## See also:
+  ## * `count proc<#count,openArray[T],T>`_
+  runnableExamples:
+    let
+      numbers = @[1, 2, 3]
+      f1 = count(numbers, proc(x: int): bool = x < 3)
+      f2 = count(numbers) do (x: int) -> bool : x >= 2
+    assert f1 == 2
+    assert f2 == 2
+    result = 0
+    for i in 0 ..< s.len:
+      if pred(s[i]):
+        result += 1
+
 proc delete*[T](s: var seq[T]; first, last: Natural) =
   ## Deletes in the items of a sequence `s` at positions ``first..last``
   ## (including both ends of a range).
