@@ -123,6 +123,8 @@ echo f
   retrieving the verified certificate chain of the peer we are connected to
   through an SSL-wrapped `Socket`/`AsyncSocket`.
 - Added `distinctBase` overload for values: `assert 12.MyInt.distinctBase == 12`
+- Added `browsers.openDefaultBrowser` without URL, implements IETF RFC-6694 Section-3.
+
 
 ## Library changes
 
