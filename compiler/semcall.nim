@@ -128,7 +128,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     else:
       break
 
-proc effectProblem(f, a: PType; result: var string) =
+proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
     if tfThread in f.flags and tfThread notin a.flags:
       result.add "\n  This expression is not GC-safe. Annotate the " &
@@ -152,7 +152,9 @@ proc effectProblem(f, a: PType; result: var string) =
       of efLockLevelsDiffer:
         result.add "\n  The `.locks` requirements differ. Annotate the " &
             "proc with {.locks: 0.} to get extended error information."
-
+      when defined(drnim):
+        if not c.graph.compatibleProps(c.graph, f, a):
+          result.add "\n  The `.requires` or `.ensures` properties are incompatible."
 
 proc renderNotLValue(n: PNode): string =
   result = $n
@@ -238,7 +240,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           var got = nArg.typ
           candidates.add typeToString(got)
           doAssert wanted != nil
-          if got != nil: effectProblem(wanted, got, candidates)
+          if got != nil: effectProblem(wanted, got, candidates, c)
       of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and

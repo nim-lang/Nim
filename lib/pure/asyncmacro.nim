@@ -212,6 +212,12 @@ proc verifyReturnType(typeName: string) {.compileTime.} =
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
   ## The ``async`` macro supports a stmtList holding multiple async procedures.
+  if prc.kind == nnkProcTy:
+    result = prc
+    if prc[0][0].kind == nnkEmpty:
+      result[0][0] = parseExpr("Future[void]")
+    return result
+
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
     error("Cannot transform this node kind into an async proc." &
           " proc/method definition or lambda node expected.")

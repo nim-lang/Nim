@@ -165,6 +165,8 @@ echo f
 - `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for non builtin pragmas,
   enabling things like lvalue references, see `pragmas.byaddr`
 
+- `macro pragmas` can now be used in type sections.
+
 ## Language changes
 
 - Unsigned integer operators have been fixed to allow promotion of the first operand.

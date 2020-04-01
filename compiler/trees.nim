@@ -148,6 +148,12 @@ proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
         result.add(it[1])
       return
 
+proc propSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  for i in 0..<n.len:
+    var it = n[i]
+    if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
+      return it[1]
+
 proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:
     for x in items(n): unnestStmts(x, result)

@@ -335,8 +335,8 @@ const
   nkEffectList* = nkArgList
   # hacks ahead: an nkEffectList is a node with 4 children:
   exceptionEffects* = 0 # exceptions at position 0
-  usesEffects* = 1      # read effects at position 1
-  writeEffects* = 2     # write effects at position 2
+  requiresEffects* = 1      # 'requires' annotation
+  ensuresEffects* = 2     # 'ensures' annotation
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
   effectListLen* = 5    # list of effects list
@@ -633,6 +633,7 @@ type
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
+    mImplies, mIff, mExists, mForall, mOld,
     mEqStr, mLeStr, mLtStr,
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mSlice,
@@ -1597,47 +1598,42 @@ proc transitionToLet*(s: PSym) =
   s.bitsize = obj.bitsize
   s.alignment = obj.alignment
 
-proc shallowCopy*(src: PNode): PNode =
-  # does not copy its sons, but provides space for them:
-  if src == nil: return nil
-  result = newNode(src.kind)
-  result.info = src.info
-  result.typ = src.typ
-  result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
+template copyNodeImpl(dst, src, processSonsStmt) =
+  if src == nil: return
+  dst = newNode(src.kind)
+  dst.info = src.info
+  dst.typ = src.typ
+  dst.flags = src.flags * PersistentNodeFlags
+  dst.comment = src.comment
   when defined(useNodeIds):
-    if result.id == nodeIdToDebug:
+    if dst.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
   case src.kind
-  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLiterals: result.floatVal = src.floatVal
-  of nkSym: result.sym = src.sym
-  of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, src.len)
+  of nkCharLit..nkUInt64Lit: dst.intVal = src.intVal
+  of nkFloatLiterals: dst.floatVal = src.floatVal
+  of nkSym: dst.sym = src.sym
+  of nkIdent: dst.ident = src.ident
+  of nkStrLit..nkTripleStrLit: dst.strVal = src.strVal
+  else: processSonsStmt
+
+proc shallowCopy*(src: PNode): PNode =
+  # does not copy its sons, but provides space for them:
+  copyNodeImpl(result, src):
+    newSeq(result.sons, src.len)
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
-  if src == nil:
-    return nil
-  result = newNode(src.kind)
-  result.info = src.info
-  result.typ = src.typ
-  result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
-  when defined(useNodeIds):
-    if result.id == nodeIdToDebug:
-      echo "COMES FROM ", src.id
-  case src.kind
-  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLiterals: result.floatVal = src.floatVal
-  of nkSym: result.sym = src.sym
-  of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else:
+  copyNodeImpl(result, src):
     newSeq(result.sons, src.len)
     for i in 0..<src.len:
       result[i] = copyTree(src[i])
+
+proc copyTreeWithoutNode*(src, skippedNode: PNode): PNode =
+  copyNodeImpl(result, src):
+    result.sons = newSeqOfCap[PNode](src.len)
+    for n in src.sons:
+      if n != skippedNode:
+        result.sons.add copyTreeWithoutNode(n, skippedNode)
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in 0..<n.len:
