@@ -93,13 +93,13 @@ proc hiXorLo(A, B: uint64): uint64 {.inline.} =
     result = hiXorLoFallback(A, B) # `result =` is necessary here.
   else:
     when int.sizeof < 8:
-      result = hiXorLoFallback(A, B: uint64)
+      result = hiXorLoFallback(A, B)
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
       {.emit: """A = _umul128(A, B, &B); return A ^ B;""".}
     else:
-      result = hiXorLoFallback(A, B: uint64)
+      result = hiXorLoFallback(A, B)
 
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
