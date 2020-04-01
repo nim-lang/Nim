@@ -521,6 +521,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
+  c.hasUnresolvedArgs = hasUnresolvedArgs
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
