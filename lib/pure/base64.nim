@@ -182,9 +182,9 @@ proc encode*(s: string, safe = false): string =
     assert encode("Hello World") == "SGVsbG8gV29ybGQ="
   encodeImpl()
 
-proc encodeMIME*(s: string, lineLen = 75, newLine = "\r\n"): string =
+proc encodeMime*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## Encodes ``s`` into base64 representation as lines.
-  ## Used in email MIME forma, use ``lineLen`` and ``newline``.
+  ## Used in email MIME format, use ``lineLen`` and ``newline``.
   ##
   ## This procedure encodes a string according to MIME spec.
   ##
@@ -192,7 +192,7 @@ proc encodeMIME*(s: string, lineLen = 75, newLine = "\r\n"): string =
   ## * `encode proc<#encode,string>`_ for encoding a string
   ## * `decode proc<#decode,string>`_ for decoding a string
   runnableExamples:
-    assert encodeMIME("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
+    assert encodeMime("Hello World", 4, "\n") == "SGVs\nbG8g\nV29y\nbGQ="
   for i, c in encode(s):
     if i != 0 and (i mod lineLen == 0):
       result.add(newLine)
