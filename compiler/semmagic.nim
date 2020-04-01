@@ -530,4 +530,19 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result = semQuantifier(c, n)
   of mOld:
     result = semOld(c, n)
-  else: result = n
+  of mSetLengthSeq:
+    result = n
+    let seqType = result[1].typ.skipTypes({tyPtr, tyRef, # in case we had auto-dereferencing
+                                           tyVar, tyGenericInst, tyOwned, tySink,
+                                           tyAlias, tyUserTypeClassInst})
+    if seqType.kind == tySequence and seqType.base.requiresInit:
+      message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))
+  of mDefault:
+    result = n
+    c.config.internalAssert result[1].typ.kind == tyTypeDesc
+    let constructed = result[1].typ.base
+    if constructed.requiresInit:
+      message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  else:
+    result = n
+

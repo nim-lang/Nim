@@ -2267,20 +2267,6 @@ proc semMagic(c: PContext, n: PNode, s: PSym, flags: TExprFlags): PNode =
   of mSizeOf:
     markUsed(c, n.info, s)
     result = semSizeof(c, setMs(n, s))
-  of mSetLengthSeq:
-    result = semDirectOp(c, n, flags)
-    let seqType = result[1].typ.skipTypes({tyPtr, tyRef, # in case we had auto-dereferencing
-                                           tyVar, tyGenericInst, tyOwned, tySink,
-                                           tyAlias, tyUserTypeClassInst})
-    if seqType.kind == tySequence and seqType.base.requiresInit:
-      localError(c.config, n.info, "setLen can potentially expand the sequence, " &
-                                   "but the element type $1 doesn't have a default value.",
-                                   [typeToString(seqType.base)])
-  of mDefault:
-    result = semDirectOp(c, n, flags)
-    c.config.internalAssert result[1].typ.kind == tyTypeDesc
-    if result[1].typ.base.requiresInit:
-      localError(c.config, n.info, "not nil types don't have a default value")
   else:
     result = semDirectOp(c, n, flags)
 
