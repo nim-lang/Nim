@@ -499,7 +499,7 @@ proc countWhere*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
     let
       numbers = @[1, 2, 3]
       f1 = countWhere(numbers, proc(x: int): bool = x < 3)
-      f2 = countWhere(numbers) proc(x: int): bool = x >= 3)
+      f2 = countWhere(numbers, proc(x: int): bool = x >= 3)
     assert f1 == 2
     assert f2 == 2
     result = 0
