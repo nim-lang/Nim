@@ -254,7 +254,7 @@ proc useVar(a: PEffects, n: PNode) =
       a.init.add s.id
     elif s.id notin a.init:
       if s.typ.requiresInit:
-        localError(a.config, n.info, errProveInit, s.name.s)
+        message(a.config, n.info, warnProveInit, s.name.s)
       else:
         message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
@@ -844,7 +844,7 @@ proc track(tracked: PEffects, n: PNode) =
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
           discard
         else:
-          localError(tracked.config, arg.info, errProveInit, $arg)
+          message(tracked.config, arg.info, warnProveInit, $arg)
 
       # check required for 'nim check':
       if n[1].typ.len > 0:
@@ -1209,7 +1209,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
      s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
     if res.id notin t.init:
-      localError(g.config, body.info, errProveInit, "result")
+      message(g.config, body.info, warnProveInit, "result")
   let p = s.ast[pragmasPos]
   let raisesSpec = effectSpec(p, wRaises)
   if not isNil(raisesSpec):

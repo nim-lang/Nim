@@ -336,6 +336,11 @@ proc semConstructTypeAux(c: PContext,
     let base = t[0]
     if base == nil: break
     t = skipTypes(base, skipPtrs)
+    if t.kind == tyGenericParam:
+      # XXX: This is not supposed to happen, but apparently
+      # there are some issues in semtypinst. Luckily, it
+      # seems to affect only `computeRequiresInit`.
+      return
     constrCtx.needsFullInit = constrCtx.needsFullInit or
                               tfNeedsFullInit in t.flags
 

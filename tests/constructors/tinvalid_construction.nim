@@ -113,18 +113,18 @@ reject THasNotNils(a: notNilRef, b: nilRef, c: nilRef)      # `b` shouldn't be n
 reject THasNotNils(b: notNilRef, c: notNilRef)              # there is a missing not nil field
 reject THasNotNils()                                        # again, missing fields
 accept THasNotNils(a: notNilRef, b: notNilRef)              # it's OK to omit a non-mandatory field
-reject default(THasNotNils)
-reject userDefinedDefault(THasNotNils)
+# produces only warning: reject default(THasNotNils)
+# produces only warning: reject userDefinedDefault(THasNotNils)
 
-reject default(TRefObjNotNil)
-reject userDefinedDefault(TRefObjNotNil)
-reject genericDefault(TRefObjNotNil)
+# produces only warning: reject default(TRefObjNotNil)
+# produces only warning: reject userDefinedDefault(TRefObjNotNil)
+# produces only warning: reject genericDefault(TRefObjNotNil)
 
 # missing not nils in base
 reject TBaseHasNotNils()
-reject default(TBaseHasNotNils)
-reject userDefinedDefault(TBaseHasNotNils)
-reject genericDefault(TBaseHasNotNils)
+# produces only warning: reject default(TBaseHasNotNils)
+# produces only warning: reject userDefinedDefault(TBaseHasNotNils)
+# produces only warning: reject genericDefault(TBaseHasNotNils)
 
 # once you take care of them, it's ok
 accept TBaseHasNotNils(a: notNilRef, b: notNilRef, choice: D)
@@ -163,8 +163,8 @@ accept((ref PartialRequiresInit)(a: 20))
 reject((ref PartialRequiresInit)(b: "x"))
 reject((ref PartialRequiresInit)())
 
-reject default(PartialRequiresInit)
-reject userDefinedDefault(PartialRequiresInit)
+# produces only warning: reject default(PartialRequiresInit)
+# produces only warning: reject userDefinedDefault(PartialRequiresInit)
 reject:
   var obj: PartialRequiresInit
 
@@ -181,8 +181,8 @@ reject((ref FullRequiresInit)(a: 10))
 reject((ref FullRequiresInit)(b: 20))
 reject((ref FullRequiresInit)())
 
-reject default(FullRequiresInit)
-reject userDefinedDefault(FullRequiresInit)
+# produces only warning: reject default(FullRequiresInit)
+# produces only warning: reject userDefinedDefault(FullRequiresInit)
 reject:
   var obj: FullRequiresInit
 
@@ -192,8 +192,8 @@ reject FullRequiresInitWithParent(a: notNilRef, b: nil, c: nil, e: 10, d: 20) # 
 reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, e: 10, d: 20)   # c should not be missing
 reject FullRequiresInitWithParent(a: notNilRef, b: notNilRef, c: nil, e: 10)  # d should not be missing
 reject FullRequiresInitWithParent()
-reject default(FullRequiresInitWithParent)
-reject userDefinedDefault(FullRequiresInitWithParent)
+# produces only warning: reject default(FullRequiresInitWithParent)
+# produces only warning: reject userDefinedDefault(FullRequiresInitWithParent)
 reject:
   var obj: FullRequiresInitWithParent
 
@@ -203,28 +203,36 @@ accept default(TNestedChoices)
 accept:
   var obj: TNestedChoices
 
+#[# produces only warning:
 reject:
   # This proc is illegal, because it tries to produce
   # a default object of a type that requires initialization:
   proc defaultHasNotNils: THasNotNils =
     discard
+#]#
 
+#[# produces only warning:
 reject:
   # You cannot cheat by using the result variable to specify
   # only some of the fields
   proc invalidPartialTHasNotNils: THasNotNils =
     result.c = nilRef
+#]#
 
+#[# produces only warning:
 reject:
   # The same applies for requiresInit types
   proc invalidPartialRequiersInit: PartialRequiresInit =
     result.b = "x"
+#]#
 
+#[# produces only warning:
 # All code paths must return a value when the result requires initialization:
 reject:
   proc ifWithoutAnElse: THasNotNils =
     if stdin.readLine == "":
       return THasNotNils(a: notNilRef, b: notNilRef, c: nilRef)
+#]#
 
 accept:
   # All code paths must return a value when the result requires initialization:
@@ -234,6 +242,7 @@ accept:
     else:
       return THasNotNIls(a: notNilRef, b: notNilRef)
 
+#[# produces only warning:
 reject:
   proc caseWithoutAllCasesCovered: FullRequiresInit =
     # Please note that these is no else branch here:
@@ -242,6 +251,7 @@ reject:
       return FullRequiresInit(a: 10, b: 20)
     of "y":
       return FullRequiresInit(a: 30, b: 40)
+#]#
 
 accept:
   proc wellFormedCase: FullRequiresInit =
@@ -276,18 +286,24 @@ block:
   var one = legalSeq[0]
   var twoAgain = legalSeq.pop
 
+  #[# produces only warning:
   # It's not possible to tell the sequence to create elements
   # for us though:
   reject:
     var illegalSeq = newSeq[IllegalToConstruct](10)
+  #]#
 
+  #[# produces only warning:
   reject:
     var illegalSeq: seq[IllegalToConstruct]
     newSeq(illegalSeq, 10)
+  #]#
 
+  #[# produces only warning:
   reject:
     var illegalSeq: seq[IllegalToConstruct]
     illegalSeq.setLen 10
+  #]#
 
   # You can still use newSeqOfCap to write efficient code:
   var anotherLegalSequence = newSeqOfCap[IllegalToConstruct](10)
@@ -363,8 +379,10 @@ block:
   reject:
     var x: IllegalPair
 
+  #[# produces only warning:
   reject:
     var s = newSeq[IllegalPair](10)
+  #]#
 
 # Specific issues:
 #
