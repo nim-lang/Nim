@@ -10,6 +10,9 @@
   "undefined reference to `__builtin_saddll_overflow`" compile your programs
   with `-d:nimEmulateOverflowChecks`.
 
+- The default hash for `Ordinal` has changed to something more bit-scrambling.
+  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
+  one in an instantiation context while `-d:nimV1hash` recovers it globally.
 
 ### Breaking changes in the standard library
 

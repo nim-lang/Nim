@@ -70,28 +70,34 @@ proc `!$`*(h: Hash): Hash {.inline.} =
   res = res + res shl 15
   result = cast[Hash](res)
 
+proc hiXorLoFallback(A, B: uint64): uint64 {.inline.} =
+  let # Fall back for weaker platforms/compilers, e.g. Nim VM, etc.
+    ha = A shr 32
+    hb = B shr 32
+    la = A and 0xFFFFFFFF'u64
+    lb = B and 0xFFFFFFFF'u64
+    rh = ha * hb
+    rm0 = ha * lb
+    rm1 = hb * la
+    rl = la * lb
+    t = rl + (rm0 shl 32)
+  var c = if t < rl: 1'u64 else: 0'u64
+  let lo = t + (rm1 shl 32)
+  c += (if lo < t: 1'u64 else: 0'u64)
+  let hi = rh + (rm0 shr 32) + (rm1 shr 32) + c
+  return hi xor lo
+
 proc hiXorLo(A, B: uint64): uint64 {.inline.} =
   # Xor of high & low 8B of full 16B product
-  when defined(gcc) or defined(llvm_gcc) or defined(clang):
-    {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r; """.}
-  elif defined(windows) and not defined(tcc):
-    {.emit: """A = _umul128(A, B, &B); return A ^ B;""".}
-  else: # Fall back for weaker platforms/compilers, e.g. Nim VM, etc.
-    let
-      ha = A shr 32
-      hb = B shr 32
-      la = A and 0xFFFFFFFF'u64
-      lb = B and 0xFFFFFFFF'u64
-      rh  = ha * hb
-      rm0 = ha * lb
-      rm1 = hb * la
-      rl  = la * lb
-      t   = rl + (rm0 shl 32)
-    var c = if t < rl: 1'u64 else: 0'u64
-    let lo = t + (rm1 shl 32)
-    c += (if lo < t: 1'u64 else: 0'u64)
-    let hi = rh + (rm0 shr 32) + (rm1 shr 32) + c
-    return hi xor lo
+  when nimvm:
+    result = hiXorLoFallback(A, B) # `result =` is necessary here.
+  else:
+    when defined(gcc) or defined(llvm_gcc) or defined(clang):
+      {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r;""".}
+    elif defined(windows) and not defined(tcc):
+      {.emit: """A = _umul128(A, B, &B); return A ^ B;""".}
+    else:
+      result = hiXorLoFallback(A, B: uint64)
 
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
@@ -144,14 +150,18 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-when defined(hashWangYi1):
+proc hashIdentity*[T: Ordinal](x: T): Hash {.inline.} =
+  ## The identity hash.  I.e. ``hashIdentity(x) = x``.
+  cast[Hash](ord(x))
+
+when defined(nimV1hash):
   proc hash*[T: Ordinal](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
-    hashWangYi1(uint64(ord(x)))
+    hashIdentity(x)
 else:
   proc hash*[T: Ordinal](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
-    cast[Hash](ord(x))
+    hashWangYi1(uint64(ord(x)))
 
 proc hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
