@@ -487,7 +487,7 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
-proc countWhere*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
+proc countIt*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int {.since: (1, 2).}
                                                                   {.inline.} =
   ## Returns a count of all the items that fulfilled the predicate.
   ##
@@ -498,9 +498,9 @@ proc countWhere*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
   runnableExamples:
     let
       numbers = @[1, 2, 3]
-      f1 = countWhere(numbers, proc(x: int): bool = x < 3)
-      f2 = countWhere(numbers, proc(x: int): bool = x == 2)
-      f3 = countWhere(numbers, proc(x: int): bool = x > 0)
+      f1 = countIt(numbers, proc(x: int): bool = x < 3)
+      f2 = countIt(numbers, proc(x: int): bool = x == 2)
+      f3 = countIt(numbers, proc(x: int): bool = x > 0)
     assert f1 == 2
     assert f2 == 1
     assert f3 == 3
