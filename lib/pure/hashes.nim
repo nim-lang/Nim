@@ -92,7 +92,9 @@ proc hiXorLo(A, B: uint64): uint64 {.inline.} =
   when nimvm:
     result = hiXorLoFallback(A, B) # `result =` is necessary here.
   else:
-    when defined(gcc) or defined(llvm_gcc) or defined(clang):
+    when int.sizeof < 8:
+      result = hiXorLoFallback(A, B: uint64)
+    elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
       {.emit: """A = _umul128(A, B, &B); return A ^ B;""".}
