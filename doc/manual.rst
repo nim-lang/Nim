@@ -7217,7 +7217,7 @@ This is translated to:
 This is translated to a call to the ``schema`` macro with a `nnkTypeDef`
 AST node capturing both the left-hand side and right-hand side of the
 definition. The macro can return a potentially modified `nnkTypeDef` tree
-will replace the original row in the type section.
+which will replace the original row in the type section.
 
 When multiple macro pragmas are applied to the same definition, the
 compiler will apply them consequently from left to right. Each macro

@@ -565,6 +565,7 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
   if paramType != nil and paramType.kind == tyVar:
+    invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
   if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
@@ -675,28 +676,75 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
 
+proc prove(c: PEffects; prop: PNode): bool =
+  if c.graph.proofEngine != nil:
+    let (success, m) = c.graph.proofEngine(c.graph, c.guards.s,
+      canon(prop, c.guards.o))
+    if not success:
+      message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
+    result = success
+
+proc patchResult(c: PEffects; n: PNode) =
+  if n.kind == nkSym and n.sym.kind == skResult:
+    let fn = c.owner
+    if fn != nil and fn.kind in routineKinds and fn.ast != nil and resultPos < fn.ast.len:
+      n.sym = fn.ast[resultPos].sym
+    else:
+      localError(c.config, n.info, "routine has no return type, but .requires contains 'result'")
+  else:
+    for i in 0..<safeLen(n):
+      patchResult(c, n[i])
+
+when defined(drnim):
+  proc requiresCheck(c: PEffects; call: PNode; op: PType) =
+    assert op.n[0].kind == nkEffectList
+    if requiresEffects < op.n[0].len:
+      let requires = op.n[0][requiresEffects]
+      if requires != nil and requires.kind != nkEmpty:
+        # we need to map the call arguments to the formal parameters used inside
+        # 'requires':
+        let (success, m) = c.graph.requirementsCheck(c.graph, c.guards.s, call, canon(requires, c.guards.o))
+        if not success:
+          message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
+
+else:
+  template requiresCheck(c, n, op) = discard
+
 proc checkLe(c: PEffects; a, b: PNode) =
-  case proveLe(c.guards, a, b)
-  of impUnknown:
-    #for g in c.guards.s:
-    #  if g != nil: echo "I Know ", g
-    message(c.config, a.info, warnStaticIndexCheck,
-      "cannot prove: " & $a & " <= " & $b)
-  of impYes:
-    discard
-  of impNo:
-    message(c.config, a.info, warnStaticIndexCheck,
-      "can prove: " & $a & " > " & $b)
+  if c.graph.proofEngine != nil:
+    var cmpOp = mLeI
+    if a.typ != nil:
+      case a.typ.skipTypes(abstractInst).kind
+      of tyFloat..tyFloat128: cmpOp = mLeF64
+      of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
+      else: discard
+
+    let cmp = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b)
+    cmp.info = a.info
+    discard prove(c, cmp)
+  else:
+    case proveLe(c.guards, a, b)
+    of impUnknown:
+      #for g in c.guards.s:
+      #  if g != nil: echo "I Know ", g
+      message(c.config, a.info, warnStaticIndexCheck,
+        "cannot prove: " & $a & " <= " & $b)
+    of impYes:
+      discard
+    of impNo:
+      message(c.config, a.info, warnStaticIndexCheck,
+        "can prove: " & $a & " > " & $b)
 
 proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, lowBound(c.config, arr), idx)
   checkLe(c, idx, highBound(c.config, arr, c.guards.o))
 
 proc checkRange(c: PEffects; value: PNode; typ: PType) =
-  if typ.skipTypes(abstractInst - {tyRange}).kind == tyRange:
-    let lowBound = nkIntLit.newIntNode(firstOrd(c.config, typ))
+  let t = typ.skipTypes(abstractInst - {tyRange})
+  if t.kind == tyRange:
+    let lowBound = copyTree(t.n[0])
     lowBound.info = value.info
-    let highBound = nkIntLit.newIntNode(lastOrd(c.config, typ))
+    let highBound = copyTree(t.n[1])
     highBound.info = value.info
     checkLe(c, lowBound, value)
     checkLe(c, value, highBound)
@@ -783,6 +831,7 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
+      requiresCheck(tracked, n, op)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
       for i in 1..<n.len: trackOperand(tracked, n[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
@@ -976,6 +1025,13 @@ proc track(tracked: PEffects, n: PNode) =
         enforcedGcSafety = true
       elif pragma == wNoSideEffect:
         enforceNoSideEffects = true
+      when defined(drnim):
+        if pragma == wAssume:
+          addFact(tracked.guards, pragmaList[i][1])
+        elif pragma == wInvariant:
+          if prove(tracked, pragmaList[i][1]):
+            addFact(tracked.guards, pragmaList[i][1])
+
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
     track(tracked, n.lastSon)
@@ -1065,6 +1121,11 @@ proc checkMethodEffects*(g: ModuleGraph; disp, branch: PSym) =
   if sfThread in disp.flags and notGcSafe(branch.typ):
     localError(g.config, branch.info, "base method is GC-safe, but '$1' is not" %
                                 branch.name.s)
+  when defined(drnim):
+    if not g.compatibleProps(g, disp.typ, branch.typ):
+      localError(g.config, branch.info, "for method '" & branch.name.s &
+        "' the `.requires` or `.ensures` properties are incompatible.")
+
   if branch.typ.lockLevel > disp.typ.lockLevel:
     when true:
       message(g.config, branch.info, warnLockLevel,
@@ -1088,14 +1149,22 @@ proc setEffectsForProcType*(g: ModuleGraph; t: PType, n: PNode) =
     let tagsSpec = effectSpec(n, wTags)
     if not isNil(tagsSpec):
       effects[tagEffects] = tagsSpec
+
+    let requiresSpec = propSpec(n, wRequires)
+    if not isNil(requiresSpec):
+      effects[requiresEffects] = requiresSpec
+    let ensuresSpec = propSpec(n, wEnsures)
+    if not isNil(ensuresSpec):
+      effects[ensuresEffects] = ensuresSpec
+
     effects[pragmasEffects] = n
 
 proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PContext) =
   newSeq(effects.sons, effectListLen)
   effects[exceptionEffects] = newNodeI(nkArgList, s.info)
   effects[tagEffects] = newNodeI(nkArgList, s.info)
-  effects[usesEffects] = g.emptyNode
-  effects[writeEffects] = g.emptyNode
+  effects[requiresEffects] = g.emptyNode
+  effects[ensuresEffects] = g.emptyNode
   effects[pragmasEffects] = g.emptyNode
 
   t.exc = effects[exceptionEffects]
@@ -1154,6 +1223,15 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
                     hints=off, subtypeRelation)
     # after the check, use the formal spec:
     effects[tagEffects] = tagsSpec
+
+  let requiresSpec = propSpec(p, wRequires)
+  if not isNil(requiresSpec):
+    effects[requiresEffects] = requiresSpec
+  let ensuresSpec = propSpec(p, wEnsures)
+  if not isNil(ensuresSpec):
+    patchResult(t, ensuresSpec)
+    effects[ensuresEffects] = ensuresSpec
+    discard prove(t, ensuresSpec)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:

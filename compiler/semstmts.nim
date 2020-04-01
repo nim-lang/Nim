@@ -1930,7 +1930,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, s, n[pragmasPos], validPragmas)
       # To ease macro generation that produce forwarded .async procs we now
-      # allow a bit redudancy in the pragma declarations. The rule is
+      # allow a bit redundancy in the pragma declarations. The rule is
       # a prototype's pragma list must be a superset of the current pragma
       # list.
       # XXX This needs more checks eventually, for example that external
