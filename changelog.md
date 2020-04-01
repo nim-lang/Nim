@@ -14,7 +14,7 @@
 ### Breaking changes in the standard library
 
 - `base64.encode` no longer supports `lineLen` and `newLine`.
-  Use `base64.encodeMIME` instead.
+  Use `base64.encodeMime` instead.
 - `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/"
    as the dir component of "/root_sub_dir" instead of the empty string.
 - `sequtils.zip` now returns a sequence of anonymous tuples i.e. those tuples
