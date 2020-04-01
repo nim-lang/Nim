@@ -502,10 +502,10 @@ proc countWhere*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int
       f2 = countWhere(numbers, proc(x: int): bool = x >= 3)
     assert f1 == 2
     assert f2 == 2
-    result = 0
-    for i in 0 ..< s.len:
-      if pred(s[i]):
-        result += 1
+
+  for i in 0 ..< s.len:
+    if pred(s[i]):
+      inc result
 
 proc delete*[T](s: var seq[T]; first, last: Natural) =
   ## Deletes in the items of a sequence `s` at positions ``first..last``
