@@ -293,6 +293,7 @@ proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
+  ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
 proc execProcesses*(cmds: openArray[string],
