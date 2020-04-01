@@ -28,4 +28,7 @@ suite "hashes":
       check hashIdentity(456) == 456
 
     test "hashWangYi1 value incorrect at 456":
-      check hashWangYi1(456) == -6421749900419628582
+      when Hash.sizeof < 8:
+        check hashWangYi1(456) == 1293320666
+      else:
+        check hashWangYi1(456) == -6421749900419628582
