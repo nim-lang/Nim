@@ -120,7 +120,6 @@ proc decodeZigzag*(x: uint64): int64 {.inline.} =
   let casted = cast[int64](x)
   result = (`shr`(casted, 1)) xor (-(casted and 1))
 
-
 when isMainModule:
   #import random
 

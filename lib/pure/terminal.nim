@@ -908,7 +908,6 @@ proc newTerminal(): owned(PTerminal) =
   when defined(windows):
     initTerminal(result)
 
-
 when not defined(testing) and isMainModule:
   assert ansiStyleCode(styleBright) == "\e[1m"
   assert ansiStyleCode(styleStrikethrough) == "\e[9m"
