@@ -72,15 +72,15 @@ proc `!$`*(h: Hash): Hash {.inline.} =
 
 proc hiXorLoFallback(A, B: uint64): uint64 {.inline.} =
   let # Fall back for weaker platforms/compilers, e.g. Nim VM, etc.
-    ha = A shr 32
-    hb = B shr 32
-    la = A and 0xFFFFFFFF'u64
-    lb = B and 0xFFFFFFFF'u64
-    rh = ha * hb
-    rm0 = ha * lb
-    rm1 = hb * la
-    rl = la * lb
-    t = rl + (rm0 shl 32)
+    ha: uint64 = A shr 32
+    hb: uint64 = B shr 32
+    la: uint64 = A and 0xFFFFFFFF'u64
+    lb: uint64 = B and 0xFFFFFFFF'u64
+    rh: uint64 = ha * hb
+    rm0: uint64 = ha * lb
+    rm1: uint64 = hb * la
+    rl: uint64 = la * lb
+    t: uint64 = rl + (rm0 shl 32)
   var c = if t < rl: 1'u64 else: 0'u64
   let lo = t + (rm1 shl 32)
   c += (if lo < t: 1'u64 else: 0'u64)
@@ -93,7 +93,7 @@ proc hiXorLo(A, B: uint64): uint64 {.inline.} =
     result = hiXorLoFallback(A, B) # `result =` is necessary here.
   else:
     when Hash.sizeof < 8:
-      result = uint64(Hash(hiXorLoFallback(A, B)))
+      result = hiXorLoFallback(A, B)
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
