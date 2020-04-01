@@ -488,7 +488,6 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
   setLen(s, pos)
 
 proc countIt*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int {.inline, since: (1, 2).} =
-                                                                 {.since: (1, 2).} {.inline.} =
   ## Returns a count of all the items that fulfilled the predicate.
   ##
   ## Note that `s` must be declared as a ``var``.
