@@ -1083,7 +1083,12 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0..<n.safeLen: track(tracked, n[i])
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
-  result = safeInheritanceDiff(g.excType(real), spec.typ) <= 0
+  if spec.typ.kind == tyOr:
+    for t in spec.typ.sons:
+      if safeInheritanceDiff(g.excType(real), t) <= 0:
+        return true
+  else:
+    return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
 proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.}) =

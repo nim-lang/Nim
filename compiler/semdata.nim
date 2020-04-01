@@ -104,6 +104,8 @@ type
     semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
     computeRequiresInit*: proc (c: PContext, t: PType): bool {.nimcall.}
+    hasUnresolvedArgs*: proc (c: PContext, n: PNode): bool
+
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
