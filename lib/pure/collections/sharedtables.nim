@@ -77,7 +77,8 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   try:
     var hc: Hash
     var index = rawGet(t, key, hc)
-    if index >= 0:
+    let hasKey = index >= 0
+    if hasKey:
       var value {.inject.} = addr(t.data[index].val)
       body
   finally:
@@ -103,7 +104,8 @@ template withValue*[A, B](t: var SharedTable[A, B], key: A,
   try:
     var hc: Hash
     var index = rawGet(t, key, hc)
-    if index >= 0:
+    let hasKey = index >= 0
+    if hasKey:
       var value {.inject.} = addr(t.data[index].val)
       body1
     else:
@@ -117,13 +119,13 @@ proc mget*[A, B](t: var SharedTable[A, B], key: A): var B =
   withLock t:
     var hc: Hash
     var index = rawGet(t, key, hc)
-    if index >= 0:
-      result = t.data[index].val
+    let hasKey = index >= 0
+    if hasKey: result = t.data[index].val
+  if not hasKey:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
     else:
-      when compiles($key):
-        raise newException(KeyError, "key not found: " & $key)
-      else:
-        raise newException(KeyError, "key not found")
+      raise newException(KeyError, "key not found")
 
 proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
   ## retrieves value at ``t[key]`` or puts ``val`` if not present, either way
