@@ -13,6 +13,7 @@
 ## Unstable API.
 
 import strutils
+include "system/inclrtl"
 
 when defined(windows):
   import winlean
@@ -24,20 +25,8 @@ const osOpenCmd* =
   ## Alias for the operating system specific *"open"* command,
   ## ``"open"`` on MacOS and Windows, ``"xdg-open"`` on Linux, BSD, etc.
 
-proc openDefaultBrowser*(url: string) =
-  ## Opens `url` with the user's default browser. This does not block.
-  ## The URL must not be empty string.
-  ##
-  ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
-  ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
-  ## used if it does. Otherwise the environment variable ``BROWSER`` is
-  ## used to determine the default browser to use.
-  ##
-  ## This proc doesn't raise an exception on error, beware.
-  ##
-  ## .. code-block:: nim
-  ##   block: openDefaultBrowser("https://nim-lang.org")
-  doAssert url.len > 0, "URL must not be empty string"
+
+template openDefaultBrowserImpl(url: string) =
   when defined(windows):
     var o = newWideCString(osOpenCmd)
     var u = newWideCString(url)
@@ -54,3 +43,38 @@ proc openDefaultBrowser*(url: string) =
         return
       except OSError:
         discard
+
+proc openDefaultBrowser*(url: string) =
+  ## Opens `url` with the user's default browser. This does not block.
+  ## The URL must not be empty string, to open on a blank page see `openDefaultBrowser()`.
+  ##
+  ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
+  ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
+  ## used if it does. Otherwise the environment variable ``BROWSER`` is
+  ## used to determine the default browser to use.
+  ##
+  ## This proc doesn't raise an exception on error, beware.
+  ##
+  ## .. code-block:: nim
+  ##   block: openDefaultBrowser("https://nim-lang.org")
+  doAssert url.len > 0, "URL must not be empty string"
+  openDefaultBrowserImpl(url)
+
+proc openDefaultBrowser*() {.since: (1, 1).} =
+  ## Opens the user's default browser without any `url` (blank page). This does not block.
+  ## Implements IETF RFC-6694 Section 3, "about:blank" must be reserved for a blank page.
+  ##
+  ## Under Windows, ``ShellExecute`` is used. Under Mac OS X the ``open``
+  ## command is used. Under Unix, it is checked if ``xdg-open`` exists and
+  ## used if it does. Otherwise the environment variable ``BROWSER`` is
+  ## used to determine the default browser to use.
+  ##
+  ## This proc doesn't raise an exception on error, beware.
+  ##
+  ## **See also:**
+  ##
+  ## * https://tools.ietf.org/html/rfc6694#section-3
+  ##
+  ## .. code-block:: nim
+  ##   block: openDefaultBrowser()
+  openDefaultBrowserImpl("http:about:blank")  # See IETF RFC-6694 Section 3.
