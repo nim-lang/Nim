@@ -419,7 +419,7 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       result = newIntNodeT(toInt128(getFloat(a) != 0.0), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       result = newIntNodeT(toInt128(a.getOrdValue != 0), n, g)
-    of tyBool: # PRTEMP: enum?
+    of tyBool, tyEnum: # xxx shouldn't we disallow `tyEnum`?
       result = a
       result.typ = n.typ
     else: doAssert false, $srcTyp.kind
