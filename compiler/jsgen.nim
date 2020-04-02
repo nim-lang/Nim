@@ -1650,15 +1650,15 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
     varCode: string
     varName = mangleName(p.module, v)
     useReloadingGuard = sfGlobal in v.flags and p.config.hcrOn
-
+  const jsVarDecl = when defined(jsLet): "let" else: "var"
   if v.constraint.isNil:
     if useReloadingGuard:
-      lineF(p, "var $1;$n", varName)
+      lineF(p, static(jsVarDecl & " $1;$n"), varName)
       lineF(p, "if ($1 === undefined) {$n", varName)
       varCode = $varName
       inc p.extraIndent
     else:
-      varCode = "var $2"
+      varCode = static(jsVarDecl & " $2")
   else:
     # Is this really a thought through feature?  this basically unused
     # feature makes it impossible for almost all format strings in
@@ -1668,8 +1668,8 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
   if n.kind == nkEmpty:
     if not isIndirect(v) and
       v.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and mapType(p, v.typ) == etyBaseIndex:
-      lineF(p, "var $1 = null;$n", [varName])
-      lineF(p, "var $1_Idx = 0;$n", [varName])
+      lineF(p, static(jsVarDecl & " $1 = null;$n"), [varName])
+      lineF(p, static(jsVarDecl & " $1_Idx = 0;$n"), [varName])
     else:
       line(p, runtimeFormat(varCode & " = $3;$n", [returnType, varName, createVar(p, v.typ, isIndirect(v))]))
   else:
@@ -1697,7 +1697,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
       else:
         if targetBaseIndex:
           let tmp = p.getTemp
-          lineF(p, "var $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n",
+          lineF(p, static(jsVarDecl & " $1 = $2, $3 = $1[0], $3_Idx = $1[1];$n"),
                    [tmp, a.res, v.loc.r])
         else:
           line(p, runtimeFormat(varCode & " = $3;$n", [returnType, v.loc.r, a.res]))
