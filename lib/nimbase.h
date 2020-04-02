@@ -315,7 +315,7 @@ namespace USE_NIM_NAMESPACE {
 // see #13798: to avoid conflicts for code emitting `#include <stdbool.h>`
 #define NIM_BOOL _Bool
 #else
-typedef unsigned char NIM_BOOL // best effort
+typedef unsigned char NIM_BOOL; // best effort
 #endif
 
 NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
