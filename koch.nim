@@ -511,6 +511,7 @@ proc installDeps(dep: string, commit = "") =
     if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
     cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
   else: doAssert false, "unsupported: " & dep
+  # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
 
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
