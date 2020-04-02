@@ -603,16 +603,14 @@ template keepItIf*(varSeq: seq, pred: untyped) =
 template countIt*(s, pred: untyped): bool =
   ## Returns a count of all the items that fulfilled the predicate.
   ##
-  ## Note that `s` must be declared as a ``var``.
-  ##
   ## The predicate needs to be an expression using
   ## the ``it`` variable for testing, like: ``countIt(@[1, 2, 3], it > 2)``.
   ##
   runnableExamples:
     let
       numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
-    assert numbers.countItWhen(it < 0) == 3
-    assert numbers.countItWhen(it > 0) == 6
+    assert numbers.countIt(it < 0) == 3
+    assert numbers.countIt(it > 0) == 6
 
   for it {.inject.} in items(s):
     if pred: result += 1
