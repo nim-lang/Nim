@@ -456,6 +456,9 @@ const
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
   tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
+  # RENAME tyAbstractVarRange?
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -1272,12 +1275,8 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   while result.kind in kinds: result = lastSon(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
-
-  # this is dirty. abstractVarRange isn't defined yet and therefore it
-  # is duplicated here.
-  const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
-  case skipTypes(typ, abstractVarRange).kind
+  let kind = skipTypes(typ, abstractVarRange).kind
+  case kind
   of tyInt:     result = newNode(nkIntLit)
   of tyInt8:    result = newNode(nkInt8Lit)
   of tyInt16:   result = newNode(nkInt16Lit)
@@ -1289,9 +1288,10 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  else: # tyBool, tyEnum
+  of tyBool,tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
+  else: doAssert false, $kind
   result.intVal = intVal
   result.typ = typ
 
