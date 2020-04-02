@@ -600,7 +600,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
       inc(pos)
   setLen(varSeq, pos)
 
-template countIt*(s, pred: untyped): untyped =
+template countIt*(s, pred: untyped): bool =
   ## Returns a count of all the items that fulfilled the predicate.
   ##
   ## Note that `s` must be declared as a ``var``.
@@ -614,10 +614,8 @@ template countIt*(s, pred: untyped): untyped =
     assert numbers.countItWhen(it < 0) == 3
     assert numbers.countItWhen(it > 0) == 6
 
-  var result = newSeq[type(s[0])]()
   for it {.inject.} in items(s):
     if pred: result += 1
-  result
 
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
