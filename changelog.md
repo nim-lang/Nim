@@ -124,8 +124,8 @@ echo f
   through an SSL-wrapped `Socket`/`AsyncSocket`.
 - Added `distinctBase` overload for values: `assert 12.MyInt.distinctBase == 12`
 - Added `browsers.openDefaultBrowser` without URL, implements IETF RFC-6694 Section-3.
+- Added `sequtils.countIt`, allowing for counting items using a predicate.
 - Added `jsconsole.trace`, `jsconsole.table`, `jsconsole.exception` for JavaScript target.
-
 
 ## Library changes
 
