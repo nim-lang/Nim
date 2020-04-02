@@ -99,7 +99,7 @@
   everywhere, there is no need to concern your APIs with returning the first argument
   to enable "chaining", instead use the dedicated macro `with` that
   was designed for it. For example:
-
+- Added `sequtils.containsIt`, which checks if an item fulfills the predicate.
 ```nim
 
 type

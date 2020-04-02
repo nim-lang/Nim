@@ -571,6 +571,26 @@ template filterIt*(s, pred: untyped): untyped =
     if pred: result.add(it)
   result
 
+since (1, 1):
+  template containsIt*(s, pred: untyped): Bool =
+    ## Checks if an item fulfills the predicate.
+    ##
+    ## The predicate needs to be an expression using
+    ## the ``it`` variable for testing, like: ``containsIt(@[1, 2, 3], it > 2)``.
+    ##
+    runnableExamples:
+      let numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+      iterator iota(n: int): int =
+        for i in 0..<n: yield i
+      assert numbers.containsIt(it < 0)
+      assert containsIt(iota(10), it < 2)
+      assert not numbers.containsIt(it > 6)
+
+    for it {.inject.} in s:
+      if not pred:
+        return false
+    return true
+
 template keepItIf*(varSeq: seq, pred: untyped) =
   ## Keeps the items in the passed sequence (must be declared as a ``var``)
   ## if they fulfilled the predicate.
