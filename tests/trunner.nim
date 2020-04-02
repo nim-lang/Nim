@@ -7,7 +7,7 @@ discard """
 
 import std/[strformat,os,osproc,strutils]
 
-proc runCmd(file, options: string): auto =
+proc runCmd(file, options = ""): auto =
   let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
   const nim = getCurrentCompilerExe()
   const testsDir = currentSourcePath().parentDir
@@ -15,17 +15,17 @@ proc runCmd(file, options: string): auto =
   doAssert fileabs.existsFile, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
   result = execCmdEx(cmd)
-  when true: # uncomment if you need to debug
+  when false: # uncomment if you need to debug
     echo result[0]
     echo result[1]
 
 proc testCodegenStaticAssert() =
-  let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "--hints:off")
+  let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim")
   doAssert "sizeof(bool) == 2" in output
   doAssert exitCode != 0
 
 proc testCTFFI() =
-  let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI --hints:off")
+  let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
   let expected = """
 hello world stderr
 hi stderr

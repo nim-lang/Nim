@@ -311,10 +311,11 @@ namespace USE_NIM_NAMESPACE {
 /* bool types (C++ has it): */
 #ifdef __cplusplus
 #define NIM_BOOL bool
+#elif (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901)
+// see #13798: to avoid conflicts for code emitting `#include <stdbool.h>`
+#define NIM_BOOL _Bool
 #else
-#define NIM_BOOL _Bool // or, #include <stdbool.h>
-// `typedef unsigned char NIM_BOOL;` is incorrect, and would cause conflicts
-// for code that emits `#include <stdbool.h>`, see #13798
+typedef unsigned char NIM_BOOL // best effort
 #endif
 
 NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
