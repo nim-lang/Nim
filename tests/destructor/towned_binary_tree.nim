@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c -d:nimAllocStats --newruntime $file'''
-  output: '''331665
-(allocCount: 333335, deallocCount: 333335)'''
+  output: '''31665
+(allocCount: 33335, deallocCount: 33335)'''
 """
 
 #  bug #11053
@@ -72,7 +72,7 @@ proc main() =
     cur = 5'i32
     res = 0
 
-  for i in 1 ..< 1000000:
+  for i in 1 ..< 100000:
     let a = i mod 3
     cur = (cur * 57 + 43) mod 10007
     case a:

@@ -54,6 +54,7 @@ type
     wNonReloadable, wExecuteOnReload,
     wAssertions, wPatterns, wTrMacros, wSinkInference, wWarnings,
     wHints, wOptimization, wRaises, wWrites, wReads, wSize, wEffects, wTags,
+    wRequires, wEnsures, wInvariant, wAssume,
     wDeadCodeElimUnused,  # deprecated, dead code elim always happens
     wSafecode, wPackage, wNoForward, wReorder, wNoRewrite, wNoDestroy,
     wPragma,
@@ -142,6 +143,7 @@ const
 
     "assertions", "patterns", "trmacros", "sinkinference", "warnings", "hints",
     "optimization", "raises", "writes", "reads", "size", "effects", "tags",
+    "requires", "ensures", "invariant", "assume",
     "deadcodeelim",  # deprecated, dead code elim always happens
     "safecode", "package", "noforward", "reorder", "norewrite", "nodestroy",
     "pragma",

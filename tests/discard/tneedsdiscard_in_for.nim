@@ -8,7 +8,7 @@ type
   Rgba8 = object
 
 proc premultiply*(c: var Rgba8): var Rgba8 =
-  discard
+  return c
 
 type
   App = ref object

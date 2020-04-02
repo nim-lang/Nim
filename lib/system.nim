@@ -54,6 +54,23 @@ type
 
 include "system/basic_types"
 
+
+proc compileOption*(option: string): bool {.
+  magic: "CompileOption", noSideEffect.}
+  ## Can be used to determine an `on|off` compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("floatchecks"):
+  ##     echo "compiled with floating point NaN and Inf checks"
+
+proc compileOption*(option, arg: string): bool {.
+  magic: "CompileOptionArg", noSideEffect.}
+  ## Can be used to determine an enum compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
+  ##     echo "compiled with optimization for size and uses Boehm's GC"
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
@@ -1040,22 +1057,6 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
-  ## Can be used to determine an `on|off` compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
-
-proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
-  ## Can be used to determine an enum compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
-
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
@@ -1891,6 +1892,7 @@ var
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
+  # keep in sync with nimbase.h `struct TFrame_`
   TFrame* {.importc, nodecl, final.} = object ## The frame itself.
     prev*: PFrame       ## Previous frame; used for chaining the call stack.
     procname*: cstring  ## Name of the proc that is currently executing.
@@ -1898,6 +1900,8 @@ type
     filename*: cstring  ## Filename of the proc that is currently executing.
     len*: int16         ## Length of the inspectable slots.
     calldepth*: int16   ## Used for max call depth checking.
+    when NimStackTraceMsgs:
+      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =

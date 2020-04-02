@@ -110,6 +110,7 @@ doc/tut2.rst
 doc/tut3.rst
 doc/nimc.rst
 doc/hcr.rst
+doc/drnim.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst

@@ -91,8 +91,7 @@ proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
-  when declared(echo):
-    echo buf
+  echo buf
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)

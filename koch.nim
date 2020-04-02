@@ -12,6 +12,10 @@
 const
   NimbleStableCommit = "4007b2a778429a978e12307bf13a038029b4c4d9" # master
 
+when not defined(windows):
+  const
+    Z3StableCommit = "65de3f748a6812eecd7db7c478d5fc54424d368b" # the version of Z3 that DrNim uses
+
 when defined(gcc) and defined(windows):
   when defined(x86):
     {.link: "icons/koch.res".}
@@ -473,6 +477,29 @@ proc xtemp(cmd: string) =
   finally:
     copyExe(d / "bin" / "nim_backup".exe, d / "bin" / "nim".exe)
 
+proc buildDrNim(args: string) =
+  if not dirExists("dist/nimz3"):
+    exec("git clone https://github.com/zevv/nimz3.git dist/nimz3")
+  when defined(windows):
+    if not dirExists("dist/dlls"):
+      exec("git clone -q https://github.com/nim-lang/dlls.git dist/dlls")
+    copyExe("dist/dlls/libz3.dll", "bin/libz3.dll")
+    execFold("build drnim", "nim c -o:$1 $2 drnim/drnim" % ["bin/drnim".exe, args])
+  else:
+    if not dirExists("dist/z3"):
+      exec("git clone -q https://github.com/Z3Prover/z3.git dist/z3")
+      withDir("dist/z3"):
+        exec("git fetch")
+        exec("git checkout " & Z3StableCommit)
+        createDir("build")
+        withDir("build"):
+          exec("""cmake -DZ3_BUILD_LIBZ3_SHARED=FALSE -G "Unix Makefiles" ../""")
+          exec("make -j4")
+    execFold("build drnim", "nim cpp --dynlibOverride=libz3 -o:$1 $2 drnim/drnim" % ["bin/drnim".exe, args])
+  # always run the tests for now:
+  exec("testament/testament".exe & " --nim:" & "drnim".exe & " pat drnim/tests")
+
+
 proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
@@ -481,10 +508,6 @@ proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
   echo hostInfo()
-  # note(@araq): Do not replace these commands with direct calls (eg boot())
-  # as that would weaken our testing efforts.
-  when defined(posix): # appveyor (on windows) didn't run this
-    kochExecFold("Boot", "boot")
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
@@ -494,7 +517,7 @@ proc runCI(cmd: string) =
   if getEnv("NIM_TEST_PACKAGES", "false") == "true":
     execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
   else:
-    buildTools() # altenatively, kochExec "tools --toolsNoNimble"
+    buildTools()
 
     ## run tests
     execFold("Test nimscript", "nim e tests/test_nimscript.nims")
@@ -504,7 +527,7 @@ proc runCI(cmd: string) =
 
     # main bottleneck here
     execFold("Run tester", "nim c -r -d:nimCoroutines testament/testament --pedantic all -d:nimCoroutines")
-    block: # CT FFI
+    block CT_FFI:
       when defined(posix): # windows can be handled in future PR's
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "./bin/nim.ctffi"
@@ -516,15 +539,6 @@ proc runCI(cmd: string) =
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")
     when defined(posix):
       execFold("Run nimsuggest tests", "nim c -r nimsuggest/tester")
-
-    ## remaining actions
-    when defined(posix):
-      kochExecFold("Docs", "docs --git.commit:devel")
-      kochExecFold("C sources", "csource")
-    elif defined(windows):
-      when false:
-        kochExec "csource"
-        kochExec "zip"
 
 proc pushCsources() =
   if not dirExists("../csources/.git"):
@@ -649,6 +663,7 @@ when isMainModule:
       of "pushcsource", "pushcsources": pushCsources()
       of "valgrind": valgrind(op.cmdLineRest)
       of "c2nim": bundleC2nim(op.cmdLineRest)
+      of "drnim": buildDrNim(op.cmdLineRest)
       else: showHelp()
       break
     of cmdEnd: break
