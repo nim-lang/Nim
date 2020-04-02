@@ -607,13 +607,16 @@ template countIt*(s, pred: untyped): int {.since(1, 1).} =
   ## the ``it`` variable for testing, like: ``countIt(@[1, 2, 3], it > 2)``.
   ##
   runnableExamples:
-    let
-      numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+    let numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+    iterator iota(n: int): int =
+      for i in 0..<n: yield i
     assert numbers.countIt(it < 0) == 3
-    assert numbers.countIt(it > 0) == 6
+    assert countIt(iota(10), it < 2) == 2
 
-  for it {.inject.} in items(s):
+  var result = 0
+  for it {.inject.} in s:
     if pred: result += 1
+  result
 
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
