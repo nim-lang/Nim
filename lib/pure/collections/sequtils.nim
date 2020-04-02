@@ -572,7 +572,7 @@ template filterIt*(s, pred: untyped): untyped =
   result
 
 since (1, 1):
-  template containsIt*(s, pred: untyped): Bool =
+  template containsIt*(s, pred: untyped): bool =
     ## Checks if an item fulfills the predicate.
     ##
     ## The predicate needs to be an expression using
