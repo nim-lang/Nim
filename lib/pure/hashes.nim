@@ -92,7 +92,16 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
   when nimvm:
     result = hiXorLoFallback64(a, b) # `result =` is necessary here.
   else:
-    when Hash.sizeof < 8:
+    when defined(js):
+      # When backend uses `BigInt` for `uint64` we can drop convert to `Number`
+      # and match other backends.  Low 32-bits seem pretty random-ish for now.
+      asm """
+        var prod = BigInt(`a`) * BigInt(`b`);
+        var mask = (BigInt(1) << BigInt(64)) - BigInt(1);
+        var res  = (prod >> BigInt(64)) ^ (prod & mask);
+        `result` = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
+      """
+    elif Hash.sizeof < 8:
       result = hiXorLoFallback64(a, b)
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       {.emit: """__uint128_t r = a; r *= b; return (r >> 64) ^ r;""".}
