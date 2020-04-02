@@ -70,36 +70,36 @@ proc `!$`*(h: Hash): Hash {.inline.} =
   res = res + res shl 15
   result = cast[Hash](res)
 
-proc hiXorLoFallback(A, B: uint64): uint64 {.inline.} =
-  let # Fall back for weaker platforms/compilers, e.g. Nim VM, etc.
-    ha: uint64 = A shr 32
-    hb: uint64 = B shr 32
-    la: uint64 = A and 0xFFFFFFFF'u64
-    lb: uint64 = B and 0xFFFFFFFF'u64
-    rh: uint64 = ha * hb
-    rm0: uint64 = ha * lb
-    rm1: uint64 = hb * la
-    rl: uint64 = la * lb
-    t: uint64 = rl + (rm0 shl 32)
-  var c = if t < rl: 1'u64 else: 0'u64
-  let lo = t + (rm1 shl 32)
+proc hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
+  let # Fall back in 64-bit arithmetic
+    aH = a shr 32
+    aL = a and 0xFFFFFFFF'u64
+    bH = b shr 32
+    bL = b and 0xFFFFFFFF'u64
+    rHH = aH * bH
+    rHL = aH * bL
+    rLH = aL * bH
+    rLL = aL * bL
+    t = rLL + (rHL shl 32)
+  var c = if t < rLL: 1'u64 else: 0'u64
+  let lo = t + (rLH shl 32)
   c += (if lo < t: 1'u64 else: 0'u64)
-  let hi = rh + (rm0 shr 32) + (rm1 shr 32) + c
+  let hi = rHH + (rHL shr 32) + (rLH shr 32) + c
   return hi xor lo
 
-proc hiXorLo(A, B: uint64): uint64 {.inline.} =
+proc hiXorLo(a, b: uint64): uint64 {.inline.} =
   # Xor of high & low 8B of full 16B product
   when nimvm:
-    result = hiXorLoFallback(A, B) # `result =` is necessary here.
+    result = hiXorLoFallback64(a, b) # `result =` is necessary here.
   else:
     when Hash.sizeof < 8:
-      result = hiXorLoFallback(A, B)
+      result = hiXorLoFallback64(a, b)
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
-      {.emit: """__uint128_t r = A; r *= B; return (r >> 64) ^ r;""".}
+      {.emit: """__uint128_t r = a; r *= b; return (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
-      {.emit: """A = _umul128(A, B, &B); return A ^ B;""".}
+      {.emit: """a = _umul128(a, b, &b); return a ^ b;""".}
     else:
-      result = hiXorLoFallback(A, B)
+      result = hiXorLoFallback64(a, b)
 
 proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
@@ -108,7 +108,7 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   const P0 = 0xa0761d6478bd642f'u64
   const P1 = 0xe7037ed1a0b428db'u64
   const P5x8 = 0xeb44accab455d165'u64 xor 8'u64
-  Hash(hiXorLo(hiXorLo(P0, uint64(x) xor P1), P5x8))
+  cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P5x8))
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
