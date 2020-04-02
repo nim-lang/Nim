@@ -601,7 +601,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
   setLen(varSeq, pos)
 
 since (1, 1):
-  template countIt*(s, pred: untyped): int {.since(1, 1).} =
+  template countIt*(s, pred: untyped): int =
     ## Returns a count of all the items that fulfilled the predicate.
     ##
     ## The predicate needs to be an expression using
