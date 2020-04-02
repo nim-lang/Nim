@@ -48,7 +48,7 @@ jobs:
 
     - checkout: self
 
-    - bash: git clone --depth 1 https://github.com/nim-lang/csources.git
+    - bash: NIMBUILD_ACTION=action_fetch_csources sh build_all.sh
       displayName: 'Checkout csources'
 
     - task: NodeTool@0

@@ -1,0 +1,4 @@
+nim_comment="key-value pairs for windows/posix builds, locking down csources version (refs #11457)"
+nim_csources2url=https://github.com/timotheecour/csources
+nim_csources2_tag=v0.20.0
+nim_csources2_clone_cmd="git clone -q --depth 1 --branch $nim_csources2_tag $nim_csources2url csources"
