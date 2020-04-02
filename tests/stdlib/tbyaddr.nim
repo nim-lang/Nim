@@ -1,4 +1,4 @@
-import std/pragmas
+import std/byaddr
 
 block:
   var s = @[10,11,12]
