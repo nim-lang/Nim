@@ -890,6 +890,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
       defineSymbol(conf.symbols, "nimPanics")
+  of "sourcemap":
+    conf.globalOptions.incl optSourcemap
+    conf.options.incl optLineDir
+    # processOnOffSwitchG(conf, {optSourcemap, opt}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:
