@@ -1008,7 +1008,7 @@ when isMainModule and not defined(release):
 
     block toSeqAndString:
       var a = toHashSet([2, 7, 5])
-      var b = initHashSet[int]()
+      var b = initHashSet[int](rightSize(3))
       for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a
