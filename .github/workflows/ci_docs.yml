@@ -1,18 +1,20 @@
 name: Nim Docs CI
+
+# `[push, pull_request]` doesn't work if we have `paths` node
 on:
   push:
-    # Run only on changes on these files
-    paths:
-      - 'lib/**.nim'
-      - 'doc/**.rst'
-      - 'doc/nimdoc.css'
-      - '.github/workflows/ci_docs.yml'
-
   pull_request:
-    # Run only on changes on these files
     paths:
+      # better be on the safer side and include a bit more than risk missing
+      # something and figuring out much later that docs are broken
       - 'lib/**.nim'
+      - '*.nim' # eg koch, affects everything
+      - '**.nims' # these can affect runnableExamples
+      - '**.cfg' # ditto
       - 'doc/**.rst'
+      - 'tools/**'
+          # eg tools/dochack, koch dependencies, sexp.nim, website.nimf etc
+      - 'doc/nimdoc.css'
       - '.github/workflows/ci_docs.yml'
 
 jobs:
