@@ -506,11 +506,11 @@ proc installDeps(dep: string, commit = "") =
   # the hashes/urls are version controlled here, so can be changed seamlessly
   # and tied to a nim release (mimicking git submodules)
   var commit = commit
-  case cmd
+  case dep
   of "tinyc":
     if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
-    cloneDependency(currentSourcePath.parentDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
-  else: doAssert false, "unsupported: " & cmd
+    cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
+  else: doAssert false, "unsupported: " & dep
 
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring

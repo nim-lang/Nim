@@ -7,13 +7,16 @@ proc exec(cmd: string) =
 
 const commitHead* = "HEAD"
 
-proc cloneDependency*(destDirBase: string, url: string, commit: string) =
+proc cloneDependency*(destDirBase: string, url: string, commit = commitHead, appendRepoName = true) =
   let destDirBase = destDirBase.absolutePath
-  let p = parseUri(uri).path
-  let name = p.path.splitFile.name
-  let destDir = destDirBase / name
+  let p = url.parseUri.path
+  let name = p.splitFile.name
+  var destDir = destDirBase
+  if appendRepoName: destDir = destDir / name
+  let destDir2 = destDir.quoteShell
   if not dirExists(destDir):
-    exec fmt"git clone -q {url} {destDir}"
-  withDir destDir:
-    exec "git fetch"
-    exec "git checkout " & commit
+    # note: old code used `destDir / .git` but that wouldn't prevent git clone
+    # from failing
+    exec fmt"git clone -q {url} {destDir2}"
+  exec fmt"git -C {destDir2} fetch -q"
+  exec fmt"git -C {destDir2} checkout -q {commit}"
