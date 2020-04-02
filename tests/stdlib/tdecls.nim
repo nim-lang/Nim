@@ -1,4 +1,4 @@
-import std/byaddr
+import std/decls
 
 block:
   var s = @[10,11,12]
