@@ -487,27 +487,6 @@ proc keepIf*[T](s: var seq[T], pred: proc(x: T): bool {.closure.})
       inc(pos)
   setLen(s, pos)
 
-proc countIt*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): int {.inline, since: (1, 2).} =
-  ## Returns a count of all the items that fulfilled the predicate.
-  ##
-  ## Note that `s` must be declared as a ``var``.
-  ##
-  ## See also:
-  ## * `count proc<#count,openArray[T],T>`_
-  runnableExamples:
-    let
-      numbers = @[1, 2, 3]
-      f1 = countIt(numbers, proc(x: int): bool = x < 3)
-      f2 = countIt(numbers, proc(x: int): bool = x == 2)
-      f3 = countIt(numbers, proc(x: int): bool = x > 0)
-    assert f1 == 2
-    assert f2 == 1
-    assert f3 == 3
-
-  for i in 0 ..< s.len:
-    if pred(s[i]):
-      inc result
-
 proc delete*[T](s: var seq[T]; first, last: Natural) =
   ## Deletes in the items of a sequence `s` at positions ``first..last``
   ## (including both ends of a range).
@@ -620,6 +599,25 @@ template keepItIf*(varSeq: seq, pred: untyped) =
           shallowCopy(varSeq[pos], varSeq[i])
       inc(pos)
   setLen(varSeq, pos)
+
+template countIt*(s, pred: untyped): untyped =
+  ## Returns a count of all the items that fulfilled the predicate.
+  ##
+  ## Note that `s` must be declared as a ``var``.
+  ##
+  ## The predicate needs to be an expression using
+  ## the ``it`` variable for testing, like: ``countIt(@[1, 2, 3], it > 2)``.
+  ##
+  runnableExamples:
+    let
+      numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+    assert numbers.countItWhen(it < 0) == 3
+    assert numbers.countItWhen(it > 0) == 6
+
+  var result = newSeq[type(s[0])]()
+  for it {.inject.} in items(s):
+    if pred: result += 1
+  result
 
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
