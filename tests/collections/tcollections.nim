@@ -76,8 +76,11 @@ doAssert $(toOrderedSet(["1", "2", "3"])) == """{"1", "2", "3"}"""
 doAssert $(toOrderedSet(['1', '2', '3'])) == """{'1', '2', '3'}"""
 
 # Tests for tables
-doAssert $({1: "1", 2: "2"}.toTable) == """{1: "1", 2: "2"}"""
-doAssert $({"1": 1, "2": 2}.toTable) == """{"1": 1, "2": 2}"""
+when defined(nimV1hash):
+  doAssert $({1: "1", 2: "2"}.toTable) == """{1: "1", 2: "2"}"""
+else:
+  doAssert $({1: "1", 2: "2"}.toTable) == """{2: "2", 1: "1"}"""
+doAssert $({"1": 1, "2": 2}.toTable) == """{"2": 2, "1": 1}"""
 
 # Tests for deques
 block:
