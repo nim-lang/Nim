@@ -152,7 +152,7 @@ echo f
 - `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
 - `net.newContext` now performs SSL Certificate checking on Linux and OSX.
   Define `nimDisableCertificateValidation` to disable it globally.
-- new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import pragmas`
+- new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import std/byaddr`
 - new module `std/stackframes`, in particular `setFrameMsg` which enables
   custom runtime annotation of stackframes, see #13351 for examples. Turn on/off via
   `--stackTraceMsgs:on/off`
@@ -166,7 +166,7 @@ echo f
   of `=destroy` and `copyMem` to move objects efficiently.
 
 - `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for non builtin pragmas,
-  enabling things like lvalue references, see `pragmas.byaddr`
+  enabling things like lvalue references, see `byaddr.byaddr`
 
 - `macro pragmas` can now be used in type sections.
 
