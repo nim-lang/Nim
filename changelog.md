@@ -169,6 +169,10 @@ echo f
   enabling things like lvalue references, see `byaddr.byaddr`
 
 - `macro pragmas` can now be used in type sections.
+- 5 new pragmas were added to Nim in order to make the upcoming tooling more
+  convenient to use. Nim compiler checks these pragmas for syntax but otherwise
+  ignores them. The pragmas are `requires`, `ensures`, `assume`, `assert`, `invariant`.
+
 
 ## Language changes
 

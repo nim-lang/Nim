@@ -1176,7 +1176,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym == nil: invalidPragma(c, it)
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
-      of wRequires, wInvariant, wAssume:
+      of wRequires, wInvariant, wAssume, wAssert:
         pragmaProposition(c, it)
       of wEnsures:
         pragmaEnsures(c, it)

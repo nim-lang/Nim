@@ -1030,7 +1030,7 @@ proc track(tracked: PEffects, n: PNode) =
       when defined(drnim):
         if pragma == wAssume:
           addFact(tracked.guards, pragmaList[i][1])
-        elif pragma == wInvariant:
+        elif pragma == wInvariant or pragma == wAssert:
           if prove(tracked, pragmaList[i][1]):
             addFact(tracked.guards, pragmaList[i][1])
 
