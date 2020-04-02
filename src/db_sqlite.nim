@@ -113,8 +113,6 @@
 ## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
 ## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 import sqlite3
 
 import db_common
