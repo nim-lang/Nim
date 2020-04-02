@@ -45,9 +45,6 @@
 ## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
 
-
-{.deadCodeElim: on.} # dce option deprecated
-
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
