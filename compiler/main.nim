@@ -200,7 +200,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:
-      extccomp.setCC("tcc")
+      extccomp.setCC(conf, "tcc", unknownLineInfo)
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")

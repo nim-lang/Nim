@@ -8,13 +8,20 @@
 #
 
 import
-  os, strutils, options, msgs, tinyc
+  os, strutils, options, msgs, tinyc, lineinfos, sequtils
 
-const tinyPrefix = "nim-tinyc-archive"
-{.compile: ".." / tinyPrefix / "tinyc/libtcc.c".}
+const tinyPrefix = "dist/nim-tinyc-archive".unixToNativePath
+const nimRoot = currentSourcePath.parentDir.parentDir
+const tinycRoot = nimRoot / tinyPrefix
+when not dirExists(tinycRoot):
+  static: doAssert false, $(tinycRoot, "requires: ./koch installdeps tinyc")
+{.compile: tinycRoot / "tinyc/libtcc.c".}
+
+var
+  gConf: ConfigRef # ugly but can be cleaned up if this is revived
 
 proc tinyCErrorHandler(closure: pointer, msg: cstring) {.cdecl.} =
-  rawMessage(errGenerated, $msg)
+  rawMessage(gConf, errGenerated, $msg)
 
 proc initTinyCState: PccState =
   result = openCCState()
@@ -26,7 +33,7 @@ var
 
 proc addFile(filename: string) =
   if addFile(gTinyC, filename) != 0'i32:
-    rawMessage(errCannotOpenFile, filename)
+    rawMessage(gConf, errCannotOpenFile, filename)
 
 proc setupEnvironment =
   when defined(amd64):
@@ -36,8 +43,10 @@ proc setupEnvironment =
   when defined(linux):
     defineSymbol(gTinyC, "__linux__", nil)
     defineSymbol(gTinyC, "__linux", nil)
-  var nimDir = getPrefixDir()
+
+  var nimDir = getPrefixDir(gConf).string
   var tinycRoot = nimDir / tinyPrefix
+  let libpath = nimDir / "lib"
 
   addIncludePath(gTinyC, libpath)
   when defined(windows):
@@ -64,15 +73,17 @@ proc setupEnvironment =
     when defined(amd64):
       addSysincludePath(gTinyC, "/usr/include/x86_64-linux-gnu")
 
-proc compileCCode*(ccode: string) =
+proc compileCCode*(ccode: string, conf: ConfigRef) =
+  gConf = conf
   if not libIncluded:
     libIncluded = true
     setupEnvironment()
   discard compileString(gTinyC, ccode)
 
-proc run*(args: string) =
-  var s = @[cstring(gProjectName)] & map(split(args), proc(x: string): cstring = cstring(x))
+proc run*(conf: ConfigRef, args: string) =
+  doAssert gConf == conf
+  var s = @[cstring(conf.projectName)] & map(split(args), proc(x: string): cstring = cstring(x))
   var err = tinyc.run(gTinyC, cint(s.len), cast[cstringArray](addr(s[0]))) != 0'i32
   closeCCState(gTinyC)
-  if err: rawMessage(errExecutionOfProgramFailed, "")
+  if err: rawMessage(conf, errUnknown, "")
 
