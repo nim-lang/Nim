@@ -108,8 +108,8 @@ jobs:
       #   run: nim c koch
 
       - name: 'Build koch'
-        bash: NIMBUILD_ACTION=action_build_koch sh build_all.sh
-        run: nim c koch
+        shell: bash
+        run: NIMBUILD_ACTION=action_build_koch sh build_all.sh
 
       - name: 'Build the real compiler'
         shell: bash
