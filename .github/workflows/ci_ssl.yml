@@ -1,6 +1,7 @@
 name: Nim SSL CI
 
 on:
+  push:
   pull_request:
     # Run only on changes on related files
     paths:
