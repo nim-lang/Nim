@@ -149,9 +149,9 @@ echo f
   versions. The documentation was improved to acknowledge this special case.
   See https://github.com/nim-lang/RFCs/issues/175 for more details.
 - New syntax for lvalue references: `var b {.byaddr.} = expr` enabled by
-  `import std/byaddr`.
+  `import std/decls`.
 - `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for
-  non-builtin pragmas, enabling things like lvalue references (see `pragmas.byaddr`).
+  non-builtin pragmas, enabling things like lvalue references (see `decls.byaddr`).
 
 
 ## Compiler changes
