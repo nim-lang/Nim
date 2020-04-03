@@ -259,6 +259,7 @@ type
                       # needed for the code generator
     sfProcvar,        # proc can be passed to a proc var
     sfDiscriminant,   # field is a discriminant in a record/object
+    sfRequiresInit,   # field must be initialized during construction
     sfDeprecated,     # symbol is deprecated
     sfExplain,        # provide more diagnostics when this symbol is used
     sfError,          # usage of symbol should trigger a compile-time error
@@ -455,6 +456,9 @@ const
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
   tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
+  # consider renaming as `tyAbstractVarRange`
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -516,9 +520,11 @@ type
     tfIterator,       # type is really an iterator, not a tyProc
     tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
-
-    tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
-                      # other type so that it requires initialization
+    tfRequiresInit,   # type constains a "not nil" constraint somewhere or
+                      # a `requiresInit` field, so the default zero init
+                      # is not appropriate
+    tfNeedsFullInit,  # object type marked with {.requiresInit.}
+                      # all fields must be initialized
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
@@ -1269,12 +1275,8 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   while result.kind in kinds: result = lastSon(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
-
-  # this is dirty. abstractVarRange isn't defined yet and therefore it
-  # is duplicated here.
-  const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
-  case skipTypes(typ, abstractVarRange).kind
+  let kind = skipTypes(typ, abstractVarRange).kind
+  case kind
   of tyInt:     result = newNode(nkIntLit)
   of tyInt8:    result = newNode(nkInt8Lit)
   of tyInt16:   result = newNode(nkInt16Lit)
@@ -1286,9 +1288,12 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  else: # tyBool, tyEnum
+  of tyBool,tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
+  of tyStatic: # that's a pre-existing bug, will fix in another PR
+    result = newNode(nkIntLit)
+  else: doAssert false, $kind
   result.intVal = intVal
   result.typ = typ
 
@@ -1393,6 +1398,9 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
+template requiresInit*(t: PType): bool =
+  t.flags * {tfRequiresInit, tfNotNil} != {}
+
 proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
@@ -1483,12 +1491,6 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil
-    elif owner.kind notin HaveTheirOwnEmpty:
-      owner.flags.incl tfNeedsInit
-
-  if tfNeedsInit in elem.flags:
-    if owner.kind in HaveTheirOwnEmpty: discard
-    else: owner.flags.incl tfNeedsInit
 
   if elem.isMetaType:
     owner.flags.incl tfHasMeta

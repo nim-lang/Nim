@@ -22,7 +22,6 @@
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 
-{.deadCodeElim: on.}  # dce option deprecated
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 

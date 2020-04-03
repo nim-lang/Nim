@@ -65,7 +65,7 @@ const
     wInheritable, wGensym, wInject, wRequiresInit, wUnchecked, wUnion, wPacked,
     wBorrow, wGcSafe, wPartial, wExplain, wPackage}
   fieldPragmas* = declPragmas + {
-    wGuard, wBitsize, wCursor} - {wExportNims, wNodecl} # why exclude these?
+    wGuard, wBitsize, wCursor, wRequiresInit} - {wExportNims, wNodecl} # why exclude these?
   varPragmas* = declPragmas + {wVolatile, wRegister, wThreadVar,
     wMagic, wHeader, wCompilerProc, wCore, wDynlib,
     wNoInit, wCompileTime, wGlobal,
@@ -637,10 +637,13 @@ proc processPragma(c: PContext, n: PNode, i: int) =
 
 proc pragmaRaisesOrTags(c: PContext, n: PNode) =
   proc processExc(c: PContext, x: PNode) =
-    var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
-    if t.kind != tyObject:
-      localError(c.config, x.info, errGenerated, "invalid type for raises/tags list")
-    x.typ = t
+    if c.hasUnresolvedArgs(c, x):
+      x.typ = makeTypeFromExpr(c, x)
+    else:
+      var t = skipTypes(c.semTypeNode(c, x, nil), skipPtrs)
+      if t.kind != tyObject and not t.isMetaType:
+        localError(c.config, x.info, errGenerated, "invalid type for raises/tags list")
+      x.typ = t
 
   if n.kind in nkPragmaCallKinds and n.len == 2:
     let it = n[1]
@@ -1087,8 +1090,12 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         else: incl(sym.typ.flags, tfUnion)
       of wRequiresInit:
         noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfNeedsInit)
+        if sym.kind == skField:
+          sym.flags.incl sfRequiresInit
+        elif sym.typ != nil:
+          incl(sym.typ.flags, tfNeedsFullInit)
+        else:
+          invalidPragma(c, it)
       of wByRef:
         noVal(c, it)
         if sym == nil or sym.typ == nil:
@@ -1169,7 +1176,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym == nil: invalidPragma(c, it)
         else: sym.flags.incl sfUsed
       of wLiftLocals: discard
-      of wRequires, wInvariant, wAssume:
+      of wRequires, wInvariant, wAssume, wAssert:
         pragmaProposition(c, it)
       of wEnsures:
         pragmaEnsures(c, it)

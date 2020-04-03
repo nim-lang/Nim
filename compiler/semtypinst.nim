@@ -613,6 +613,8 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
+        if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
+          result.flags.incl tfRequiresInit
 
       of tyProc:
         eraseVoidParams(result)

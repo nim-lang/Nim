@@ -184,7 +184,7 @@ proc initVar(a: PEffects, n: PNode; volatileCheck: bool) =
 proc initVarViaNew(a: PEffects, n: PNode) =
   if n.kind != nkSym: return
   let s = n.sym
-  if {tfNeedsInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
+  if {tfRequiresInit, tfNotNil} * s.typ.flags <= {tfNotNil}:
     # 'x' is not nil, but that doesn't mean its "not nil" children
     # are initialized:
     initVar(a, n, volatileCheck=true)
@@ -253,7 +253,7 @@ proc useVar(a: PEffects, n: PNode) =
       # If the variable is explicitly marked as .noinit. do not emit any error
       a.init.add s.id
     elif s.id notin a.init:
-      if {tfNeedsInit, tfNotNil} * s.typ.flags != {}:
+      if s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
       else:
         message(a.config, n.info, warnUninit, s.name.s)
@@ -590,7 +590,7 @@ proc trackCase(tracked: PEffects, n: PNode) =
   track(tracked, n[0])
   let oldState = tracked.init.len
   let oldFacts = tracked.guards.s.len
-  let stringCase = skipTypes(n[0].typ,
+  let stringCase = n[0].typ != nil and skipTypes(n[0].typ,
         abstractVarRange-{tyTypeDesc}).kind in {tyFloat..tyFloat128, tyString}
   let interesting = not stringCase and interestingCaseExpr(n[0]) and
         tracked.config.hasWarn(warnProveField)
@@ -838,7 +838,7 @@ proc track(tracked: PEffects, n: PNode) =
       # may not look like an assignment, but it is:
       let arg = n[1]
       initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfNeedsInit} * arg.typ.lastSon.flags != {}:
+      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
         if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
             n[2].intVal == 0:
           # var s: seq[notnil];  newSeq(s, 0)  is a special case!
@@ -996,6 +996,8 @@ proc track(tracked: PEffects, n: PNode) =
         createTypeBoundOps(tracked, x[1].typ, n.info)
 
       if x.kind == nkExprColonExpr:
+        if x[0].kind == nkSym:
+          notNilCheck(tracked, x[1], x[0].sym.typ)
         checkForSink(tracked.config, tracked.owner, x[1])
       else:
         checkForSink(tracked.config, tracked.owner, x)
@@ -1028,7 +1030,7 @@ proc track(tracked: PEffects, n: PNode) =
       when defined(drnim):
         if pragma == wAssume:
           addFact(tracked.guards, pragmaList[i][1])
-        elif pragma == wInvariant:
+        elif pragma == wInvariant or pragma == wAssert:
           if prove(tracked, pragmaList[i][1]):
             addFact(tracked.guards, pragmaList[i][1])
 
@@ -1081,7 +1083,12 @@ proc track(tracked: PEffects, n: PNode) =
     for i in 0..<n.safeLen: track(tracked, n[i])
 
 proc subtypeRelation(g: ModuleGraph; spec, real: PNode): bool =
-  result = safeInheritanceDiff(g.excType(real), spec.typ) <= 0
+  if spec.typ.kind == tyOr:
+    for t in spec.typ.sons:
+      if safeInheritanceDiff(g.excType(real), t) <= 0:
+        return true
+  else:
+    return safeInheritanceDiff(g.excType(real), spec.typ) <= 0
 
 proc checkRaisesSpec(g: ModuleGraph; spec, real: PNode, msg: string, hints: bool;
                      effectPredicate: proc (g: ModuleGraph; a, b: PNode): bool {.nimcall.}) =
@@ -1203,9 +1210,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
         createTypeBoundOps(t, typ, param.info)
 
   if not isEmptyType(s.typ[0]) and
-      ({tfNeedsInit, tfNotNil} * s.typ[0].flags != {} or
-      s.typ[0].skipTypes(abstractInst).kind == tyVar) and
-      s.kind in {skProc, skFunc, skConverter, skMethod}:
+     (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar) and
+     s.kind in {skProc, skFunc, skConverter, skMethod}:
     var res = s.ast[resultPos].sym # get result symbol
     if res.id notin t.init:
       message(g.config, body.info, warnProveInit, "result")
@@ -1261,7 +1267,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       dataflowAnalysis(s, body)
       when false: trackWrites(s, body)
 
-proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
+proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   if n.kind in {nkPragma, nkMacroDef, nkTemplateDef, nkProcDef, nkFuncDef,
                 nkTypeSection, nkConverterDef, nkMethodDef, nkIteratorDef}:
     return
@@ -1269,5 +1275,5 @@ proc trackTopLevelStmt*(c: PContext; module: PSym; n: PNode) =
   var effects = newNode(nkEffectList, n.info)
   var t: TEffects
   initEffects(g, effects, module, t, c)
-  t.isTopLevel = true
+  t.isTopLevel = isTopLevel
   track(t, n)

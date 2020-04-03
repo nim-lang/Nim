@@ -523,14 +523,16 @@ proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
 
 proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let pragmaNode = extractPragma(s)
-
+  template bail(prefix: string) =
+    localError(conf, info, "$1usage of '$2' is an {.error.} defined at $3" %
+      [prefix, s.name.s, toFileLineCol(conf, s.ast.info)])
   if pragmaNode != nil:
     for it in pragmaNode:
       if whichPragma(it) == wError and it.safeLen == 2 and
           it[1].kind in {nkStrLit..nkTripleStrLit}:
-        localError(conf, info, it[1].strVal & "; usage of '$1' is a user-defined error" % s.name.s)
+        bail(it[1].strVal & "; ")
         return
-  localError(conf, info, "usage of '$1' is a user-defined error" % s.name.s)
+  bail("")
 
 proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   var module = s

@@ -139,7 +139,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
-  if tfNotNil in e.typ.flags and not hasNull: incl(result.flags, tfNeedsInit)
+  if tfNotNil in e.typ.flags and not hasNull:
+    result.flags.incl tfRequiresInit
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
@@ -254,15 +255,15 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
       result = semRangeAux(c, n[1], prev)
       let n = result.n
       if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
           n[0].floatVal > 0.0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
           n[1].floatVal < 0.0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
     else:
       if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")
@@ -876,6 +877,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
     pragma(c, s, n[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
+  if c.inGenericContext == 0 and computeRequiresInit(c, result):
+    result.flags.incl tfRequiresInit
 
 proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
@@ -1717,12 +1720,43 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n[1], prev)
-          if result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).kind in NilableTypes+GenericTypes+{tyForward} and
-              n[2].kind == nkNilLit:
+          if result.kind == tyTypeDesc and tfUnresolved notin result.flags:
+            result = result.base
+          if n[2].kind != nkNilLit:
+            localError(c.config, n.info,
+              "Invalid syntax. When used with a type, 'not' can be followed only by 'nil'")
+          if notnil notin c.features:
+            localError(c.config, n.info,
+              "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
+          let resolvedType = result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
+          case resolvedType.kind
+          of tyGenericParam, tyTypeDesc, tyFromExpr:
+            # XXX: This is a really inappropraite hack, but it solves
+            # https://github.com/nim-lang/Nim/issues/4907 for now.
+            #
+            # A proper solution is to introduce a new type kind such
+            # as `tyNotNil[tyRef[SomeGenericParam]]`. This will allow
+            # semtypinst to replace the generic param correctly in
+            # situations like the following:
+            #
+            # type Foo[T] = object
+            #   bar: ref T not nil
+            #   baz: ref T
+            #
+            # The root of the problem is that `T` here must have a specific
+            # ID that is bound to a concrete type during instantiation.
+            # The use of `freshType` below breaks this. Another hack would
+            # be to reuse the same ID for the not nil type, but this will
+            # fail if the `T` parameter is referenced multiple times as in
+            # the example above.
+            #
+            # I suggest revisiting this once the language decides on whether
+            # `not nil` should be the default. We can then map nilable refs
+            # to other types such as `Option[T]`.
+            result = makeTypeFromExpr(c, newTree(nkStmtListType, n.copyTree))
+          of NilableTypes + {tyGenericInvocation, tyForward}:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
-            if notnil notin c.features:
-              localError(c.config, n.info, "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
           else:
             localError(c.config, n.info, errGenerated, "invalid type")
         of 2:

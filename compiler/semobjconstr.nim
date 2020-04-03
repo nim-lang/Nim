@@ -12,7 +12,15 @@
 # included from sem.nim
 
 type
-  InitStatus = enum
+  ObjConstrContext = object
+    typ: PType               # The constructed type
+    initExpr: PNode          # The init expression (nkObjConstr)
+    needsFullInit: bool      # A `requiresInit` derived type will
+                             # set this to true while visiting
+                             # parent types.
+    missingFields: seq[PSym] # Fields that the user failed to specify
+
+  InitStatus = enum # This indicates the result of object construction
     initUnknown
     initFull     # All  of the fields have been initialized
     initPartial  # Some of the fields have been initialized
@@ -136,42 +144,37 @@ proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): strin
       if result.len != 0: result.add ", "
       result.add field.sym.name.s.quoteStr
 
-proc missingMandatoryFields(c: PContext, fieldsRecList, initExpr: PNode): string =
+proc collectMissingFields(c: PContext, fieldsRecList: PNode,
+                          constrCtx: var ObjConstrContext) =
   for r in directFieldsInRecList(fieldsRecList):
-    if {tfNotNil, tfNeedsInit} * r.sym.typ.flags != {}:
-      let assignment = locateFieldInInitExpr(c, r.sym, initExpr)
+    if constrCtx.needsFullInit or
+       sfRequiresInit in r.sym.flags or
+       r.sym.typ.requiresInit:
+      let assignment = locateFieldInInitExpr(c, r.sym, constrCtx.initExpr)
       if assignment == nil:
-        if result.len == 0:
-          result = r.sym.name.s
-        else:
-          result.add ", "
-          result.add r.sym.name.s
-
-proc checkForMissingFields(c: PContext, recList, initExpr: PNode) =
-  let missing = missingMandatoryFields(c, recList, initExpr)
-  if missing.len > 0:
-    localError(c.config, initExpr.info, "fields not initialized: $1.", [missing])
+        constrCtx.missingFields.add r.sym
 
 proc semConstructFields(c: PContext, recNode: PNode,
-                        initExpr: PNode, flags: TExprFlags): InitStatus =
+                        constrCtx: var ObjConstrContext,
+                        flags: TExprFlags): InitStatus =
   result = initUnknown
 
   case recNode.kind
   of nkRecList:
     for field in recNode:
-      let status = semConstructFields(c, field, initExpr, flags)
+      let status = semConstructFields(c, field, constrCtx, flags)
       mergeInitStatus(result, status)
 
   of nkRecCase:
     template fieldsPresentInBranch(branchIdx: int): string =
       let branch = recNode[branchIdx]
       let fields = branch[^1]
-      fieldsPresentInInitExpr(c, fields, initExpr)
+      fieldsPresentInInitExpr(c, fields, constrCtx.initExpr)
 
-    template checkMissingFields(branchNode: PNode) =
+    template collectMissingFields(branchNode: PNode) =
       if branchNode != nil:
         let fields = branchNode[^1]
-        checkForMissingFields(c, fields, initExpr)
+        collectMissingFields(c, fields, constrCtx)
 
     let discriminator = recNode[0]
     internalAssert c.config, discriminator.kind == nkSym
@@ -179,13 +182,13 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
     for i in 1..<recNode.len:
       let innerRecords = recNode[i][^1]
-      let status = semConstructFields(c, innerRecords, initExpr, flags)
+      let status = semConstructFields(c, innerRecords, constrCtx, flags)
       if status notin {initNone, initUnknown}:
         mergeInitStatus(result, status)
         if selectedBranch != -1:
           let prevFields = fieldsPresentInBranch(selectedBranch)
           let currentFields = fieldsPresentInBranch(i)
-          localError(c.config, initExpr.info,
+          localError(c.config, constrCtx.initExpr.info,
             ("The fields '$1' and '$2' cannot be initialized together, " &
             "because they are from conflicting branches in the case object.") %
             [prevFields, currentFields])
@@ -196,7 +199,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
     if selectedBranch != -1:
       template badDiscriminatorError =
         let fields = fieldsPresentInBranch(selectedBranch)
-        localError(c.config, initExpr.info,
+        localError(c.config, constrCtx.initExpr.info,
           ("cannot prove that it's safe to initialize $1 with " &
           "the runtime value for the discriminator '$2' ") %
           [fields, discriminator.sym.name.s])
@@ -204,7 +207,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
 
       template wrongBranchError(i) =
         let fields = fieldsPresentInBranch(i)
-        localError(c.config, initExpr.info,
+        localError(c.config, constrCtx.initExpr.info,
           "a case selecting discriminator '$1' with value '$2' " &
           "appears in the object construction, but the field(s) $3 " &
           "are in conflict with this value.",
@@ -220,7 +223,8 @@ proc semConstructFields(c: PContext, recNode: PNode,
       let flags = flags*{efAllowDestructor} + {efPreferStatic,
                                                efPreferNilResult}
       var discriminatorVal = semConstrField(c, flags,
-                                            discriminator.sym, initExpr)
+                                            discriminator.sym,
+                                            constrCtx.initExpr)
       if discriminatorVal != nil:
         discriminatorVal = discriminatorVal.skipHidden
         if discriminatorVal.kind notin nkLiterals and (
@@ -284,51 +288,83 @@ proc semConstructFields(c: PContext, recNode: PNode,
       # When a branch is selected with a partial match, some of the fields
       # that were not initialized may be mandatory. We must check for this:
       if result == initPartial:
-        checkMissingFields branchNode
+        collectMissingFields branchNode
 
     else:
       result = initNone
       let discriminatorVal = semConstrField(c, flags + {efPreferStatic},
-                                            discriminator.sym, initExpr)
+                                            discriminator.sym,
+                                            constrCtx.initExpr)
       if discriminatorVal == nil:
         # None of the branches were explicitly selected by the user and no
         # value was given to the discrimator. We can assume that it will be
         # initialized to zero and this will select a particular branch as
         # a result:
-        let matchedBranch = recNode.pickCaseBranch newIntLit(c.graph, initExpr.info, 0)
-        checkMissingFields matchedBranch
+        let defaultValue = newIntLit(c.graph, constrCtx.initExpr.info, 0)
+        let matchedBranch = recNode.pickCaseBranch defaultValue
+        collectMissingFields matchedBranch
       else:
         result = initPartial
         if discriminatorVal.kind == nkIntLit:
           # When the discriminator is a compile-time value, we also know
           # which branch will be selected:
           let matchedBranch = recNode.pickCaseBranch discriminatorVal
-          if matchedBranch != nil: checkMissingFields matchedBranch
+          if matchedBranch != nil: collectMissingFields matchedBranch
         else:
           # All bets are off. If any of the branches has a mandatory
           # fields we must produce an error:
-          for i in 1..<recNode.len: checkMissingFields recNode[i]
+          for i in 1..<recNode.len: collectMissingFields recNode[i]
 
   of nkSym:
     let field = recNode.sym
-    let e = semConstrField(c, flags, field, initExpr)
+    let e = semConstrField(c, flags, field, constrCtx.initExpr)
     result = if e != nil: initFull else: initNone
 
   else:
     internalAssert c.config, false
 
-proc semConstructType(c: PContext, initExpr: PNode,
-                      t: PType, flags: TExprFlags): InitStatus =
-  var t = t
+proc semConstructTypeAux(c: PContext,
+                         constrCtx: var ObjConstrContext,
+                         flags: TExprFlags): InitStatus =
   result = initUnknown
+  var t = constrCtx.typ
   while true:
-    let status = semConstructFields(c, t.n, initExpr, flags)
+    let status = semConstructFields(c, t.n, constrCtx, flags)
     mergeInitStatus(result, status)
     if status in {initPartial, initNone, initUnknown}:
-      checkForMissingFields c, t.n, initExpr
+      collectMissingFields c, t.n, constrCtx
     let base = t[0]
     if base == nil: break
     t = skipTypes(base, skipPtrs)
+    if t.kind != tyObject:
+      # XXX: This is not supposed to happen, but apparently
+      # there are some issues in semtypinst. Luckily, it
+      # seems to affect only `computeRequiresInit`.
+      return
+    constrCtx.needsFullInit = constrCtx.needsFullInit or
+                              tfNeedsFullInit in t.flags
+
+proc initConstrContext(t: PType, initExpr: PNode): ObjConstrContext =
+  ObjConstrContext(typ: t, initExpr: initExpr,
+                   needsFullInit: tfNeedsFullInit in t.flags)
+
+proc computeRequiresInit(c: PContext, t: PType): bool =
+  assert t.kind == tyObject
+  var constrCtx = initConstrContext(t, newNode(nkObjConstr))
+  let initResult = semConstructTypeAux(c, constrCtx, {})
+  constrCtx.missingFields.len > 0
+
+proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo) =
+  var objType = t
+  while objType.kind != tyObject:
+    objType = objType.lastSon
+    assert objType != nil
+  var constrCtx = initConstrContext(objType, newNodeI(nkObjConstr, info))
+  let initResult = semConstructTypeAux(c, constrCtx, {})
+  assert constrCtx.missingFields.len > 0
+  localError(c.config, info,
+    "The $1 type doesn't have a default value. The following fields must be initialized: $2.",
+    [typeToString(t), listSymbolNames(constrCtx.missingFields)])
 
 proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var t = semTypeNode(c, n[0], nil)
@@ -354,19 +390,15 @@ proc semObjConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # Check if the object is fully initialized by recursively testing each
   # field (if this is a case object, initialized fields in two different
   # branches will be reported as an error):
-  let initResult = semConstructType(c, result, t, flags)
+  var constrCtx = initConstrContext(t, result)
+  let initResult = semConstructTypeAux(c, constrCtx, flags)
 
   # It's possible that the object was not fully initialized while
-  # specifying a .requiresInit. pragma.
-  # XXX: Turn this into an error in the next release
-  if tfNeedsInit in t.flags and initResult != initFull:
-    # XXX: Disable this warning for now, because tfNeedsInit is propagated
-    # too aggressively from fields to object types (and this is not correct
-    # in case objects)
-    when false: message(n.info, warnUser,
-      "object type uses the 'requiresInit' pragma, but not all fields " &
-      "have been initialized. future versions of Nim will treat this as " &
-      "an error")
+  # specifying a .requiresInit. pragma:
+  if constrCtx.missingFields.len > 0:
+    localError(c.config, result.info,
+      "The $1 type requires the following fields to be initialized: $2.",
+      [t.sym.name.s, listSymbolNames(constrCtx.missingFields)])
 
   # Since we were traversing the object fields, it's possible that
   # not all of the fields specified in the constructor was visited.

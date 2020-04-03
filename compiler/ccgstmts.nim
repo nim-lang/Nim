@@ -1203,6 +1203,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
   let fin = if t[^1].kind == nkFinally: t[^1] else: nil
   inc p.labels
   let lab = p.labels
+  let hasExcept = t[1].kind == nkExceptBranch
+  if hasExcept: inc p.withinTryWithExcept
   p.nestedTryStmts.add((fin, false, Natural lab))
 
   p.flags.incl nimErrorFlagAccessed
@@ -1277,6 +1279,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       linefmt(p, cpsStmts, "*nimErr_ = oldNimErrFin$1_;$n", [lab])
     endBlock(p)
   if p.prc != nil: raiseExit(p)
+  if hasExcept: inc p.withinTryWithExcept
 
 proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   # code to generate:

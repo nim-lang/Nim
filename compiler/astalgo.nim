@@ -24,55 +24,55 @@ proc typeToYaml*(conf: ConfigRef; n: PType, indent: int = 0, maxRecDepth: int = 
 proc symToYaml*(conf: ConfigRef; n: PSym, indent: int = 0, maxRecDepth: int = - 1): Rope
 proc lineInfoToStr*(conf: ConfigRef; info: TLineInfo): Rope
 
-when declared(echo):
-  # these are for debugging only: They are not really deprecated, but I want
-  # the warning so that release versions do not contain debugging statements:
-  proc debug*(n: PSym; conf: ConfigRef = nil) {.exportc: "debugSym", deprecated.}
-  proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
-  proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
-  proc typekinds*(t: PType) {.deprecated.} =
-    var t = t
-    var s = ""
-    while t != nil and t.len > 0:
-      s.add $t.kind
-      s.add " "
-      t = t.lastSon
-    echo s
+# these are for debugging only: They are not really deprecated, but I want
+# the warning so that release versions do not contain debugging statements:
+proc debug*(n: PSym; conf: ConfigRef = nil) {.exportc: "debugSym", deprecated.}
+proc debug*(n: PType; conf: ConfigRef = nil) {.exportc: "debugType", deprecated.}
+proc debug*(n: PNode; conf: ConfigRef = nil) {.exportc: "debugNode", deprecated.}
 
-  template debug*(x: PSym|PType|PNode) {.deprecated.} =
-    when compiles(c.config):
-      debug(c.config, x)
-    elif compiles(c.graph.config):
-      debug(c.graph.config, x)
+proc typekinds*(t: PType) {.deprecated.} =
+  var t = t
+  var s = ""
+  while t != nil and t.len > 0:
+    s.add $t.kind
+    s.add " "
+    t = t.lastSon
+  echo s
+
+template debug*(x: PSym|PType|PNode) {.deprecated.} =
+  when compiles(c.config):
+    debug(c.config, x)
+  elif compiles(c.graph.config):
+    debug(c.graph.config, x)
+  else:
+    error()
+
+template debug*(x: auto) {.deprecated.} =
+  echo x
+
+template mdbg*: bool {.deprecated.} =
+  when compiles(c.graph):
+    c.module.fileIdx == c.graph.config.projectMainIdx
+  elif compiles(c.module):
+    c.module.fileIdx == c.config.projectMainIdx
+  elif compiles(c.c.module):
+    c.c.module.fileIdx == c.c.config.projectMainIdx
+  elif compiles(m.c.module):
+    m.c.module.fileIdx == m.c.config.projectMainIdx
+  elif compiles(cl.c.module):
+    cl.c.module.fileIdx == cl.c.config.projectMainIdx
+  elif compiles(p):
+    when compiles(p.lex):
+      p.lex.fileIdx == p.lex.config.projectMainIdx
     else:
-      error()
-
-  template debug*(x: auto) {.deprecated.} =
-    echo x
-
-  template mdbg*: bool {.deprecated.} =
-    when compiles(c.graph):
-      c.module.fileIdx == c.graph.config.projectMainIdx
-    elif compiles(c.module):
-      c.module.fileIdx == c.config.projectMainIdx
-    elif compiles(c.c.module):
-      c.c.module.fileIdx == c.c.config.projectMainIdx
-    elif compiles(m.c.module):
-      m.c.module.fileIdx == m.c.config.projectMainIdx
-    elif compiles(cl.c.module):
-      cl.c.module.fileIdx == cl.c.config.projectMainIdx
-    elif compiles(p):
-      when compiles(p.lex):
-        p.lex.fileIdx == p.lex.config.projectMainIdx
-      else:
-        p.module.module.fileIdx == p.config.projectMainIdx
-    elif compiles(m.module.fileIdx):
-      m.module.fileIdx == m.config.projectMainIdx
-    elif compiles(L.fileIdx):
-      L.fileIdx == L.config.projectMainIdx
-    else:
-      error()
+      p.module.module.fileIdx == p.config.projectMainIdx
+  elif compiles(m.module.fileIdx):
+    m.module.fileIdx == m.config.projectMainIdx
+  elif compiles(L.fileIdx):
+    L.fileIdx == L.config.projectMainIdx
+  else:
+    error()
 
 # --------------------------- ident tables ----------------------------------
 proc idTableGet*(t: TIdTable, key: PIdObj): RootRef
@@ -628,30 +628,30 @@ proc value(this: var DebugPrinter; value: PNode) =
 
   this.closeCurly
 
-when declared(echo):
-  proc debug(n: PSym; conf: ConfigRef) =
-    var this: DebugPrinter
-    this.visited = initTable[pointer, int]()
-    this.renderSymType = true
-    this.useColor = not defined(windows)
-    this.value(n)
-    echo($this.res)
 
-  proc debug(n: PType; conf: ConfigRef) =
-    var this: DebugPrinter
-    this.visited = initTable[pointer, int]()
-    this.renderSymType = true
-    this.useColor = not defined(windows)
-    this.value(n)
-    echo($this.res)
+proc debug(n: PSym; conf: ConfigRef) =
+  var this: DebugPrinter
+  this.visited = initTable[pointer, int]()
+  this.renderSymType = true
+  this.useColor = not defined(windows)
+  this.value(n)
+  echo($this.res)
 
-  proc debug(n: PNode; conf: ConfigRef) =
-    var this: DebugPrinter
-    this.visited = initTable[pointer, int]()
-    #this.renderSymType = true
-    this.useColor = not defined(windows)
-    this.value(n)
-    echo($this.res)
+proc debug(n: PType; conf: ConfigRef) =
+  var this: DebugPrinter
+  this.visited = initTable[pointer, int]()
+  this.renderSymType = true
+  this.useColor = not defined(windows)
+  this.value(n)
+  echo($this.res)
+
+proc debug(n: PNode; conf: ConfigRef) =
+  var this: DebugPrinter
+  this.visited = initTable[pointer, int]()
+  #this.renderSymType = true
+  this.useColor = not defined(windows)
+  this.value(n)
+  echo($this.res)
 
 proc nextTry(h, maxHash: Hash): Hash =
   result = ((5 * h) + 1) and maxHash
@@ -1041,3 +1041,10 @@ proc isAddrNode*(n: PNode): bool =
       if n[0].kind == nkSym and n[0].sym.magic == mAddr: true
       else: false
     else: false
+
+proc listSymbolNames*(symbols: openArray[PSym]): string =
+  for sym in symbols:
+    if result.len > 0:
+      result.add ", "
+    result.add sym.name.s
+
