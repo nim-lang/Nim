@@ -55,56 +55,60 @@ jobs:
         shell: bash
         run: echo "::add-path::${{ github.workspace }}/bin"
 
-      - name: 'Get current csources version'
-        id: csources-version
-        shell: bash
-        run: |
-          sha=$(git ls-remote https://github.com/nim-lang/csources master | cut -f 1)
-          echo "::set-output name=sha::$sha"
+      # - name: 'Get current csources version'
+      #   id: csources-version
+      #   shell: bash
+      #   run: |
+      #     sha=$(git ls-remote https://github.com/nim-lang/csources master | cut -f 1)
+      #     echo "::set-output name=sha::$sha"
 
-      - name: 'Get prebuilt csources from cache'
-        id: csources-cache
-        uses: actions/cache@v1
-        with:
-          path: bin
-          key: '${{ matrix.os }}-${{ steps.csources-version.outputs.sha }}'
+      # - name: 'Get prebuilt csources from cache'
+      #   id: csources-cache
+      #   uses: actions/cache@v1
+      #   with:
+      #     path: bin
+      #     key: '${{ matrix.os }}-${{ steps.csources-version.outputs.sha }}'
 
-      - name: 'Checkout csources'
-        if: steps.csources-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources
-          path: csources
+      # - name: 'Checkout csources'
+      #   if: steps.csources-cache.outputs.cache-hit != 'true'
+      #   uses: actions/checkout@v2
+      #   with:
+      #     repository: nim-lang/csources
+      #     path: csources
 
-      - name: 'Build 1-stage compiler from csources'
-        shell: bash
-        run: |
-          ext=
-          [[ '${{ runner.os }}' == 'Windows' ]] && ext=.exe
-          if [[ ! -x bin/nim-csources$ext ]]; then
-            ncpu=
-            case '${{ runner.os }}' in
-            'Linux')
-              ncpu=$(nproc)
-              ;;
-            'macOS')
-              ncpu=$(sysctl -n hw.ncpu)
-              ;;
-            'Windows')
-              ncpu=$NUMBER_OF_PROCESSORS
-              ;;
-            esac
-            [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+      # - name: 'Build 1-stage compiler from csources'
+      #   shell: bash
+      #   run: |
+      #     ext=
+      #     [[ '${{ runner.os }}' == 'Windows' ]] && ext=.exe
+      #     if [[ ! -x bin/nim-csources$ext ]]; then
+      #       ncpu=
+      #       case '${{ runner.os }}' in
+      #       'Linux')
+      #         ncpu=$(nproc)
+      #         ;;
+      #       'macOS')
+      #         ncpu=$(sysctl -n hw.ncpu)
+      #         ;;
+      #       'Windows')
+      #         ncpu=$NUMBER_OF_PROCESSORS
+      #         ;;
+      #       esac
+      #       [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
 
-            make -C csources -j $ncpu CC=gcc
-            cp bin/nim{,-csources}$ext
-          else
-            echo 'Cache hit, using prebuilt csources'
-            cp bin/nim{-csources,}$ext
-          fi
+      #       make -C csources -j $ncpu CC=gcc
+      #       cp bin/nim{,-csources}$ext
+      #     else
+      #       echo 'Cache hit, using prebuilt csources'
+      #       cp bin/nim{-csources,}$ext
+      #     fi
+
+      # - name: 'Build koch'
+      #   shell: bash
+      #   run: nim c koch
 
       - name: 'Build koch'
-        shell: bash
+        bash: NIMBUILD_ACTION=action_build_koch sh build_all.sh
         run: nim c koch
 
       - name: 'Build the real compiler'
