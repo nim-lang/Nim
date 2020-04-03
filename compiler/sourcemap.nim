@@ -158,7 +158,7 @@ iterator tokenize*(line: string): (bool, string) =
   if token.len > 0:
     yield (isMangled, token)
 
-proc parse*(source: string, path: string, mangled: HashSet[string]): SourceNode =
+proc parse*(source: string, path: string): SourceNode =
   let lines = source.splitLines()
   var lastLocation: SourceNode = nil
   result = newSourceNode(0, 0, path, @[])
@@ -378,8 +378,8 @@ proc toSourceMap*(node: SourceNode, file: string): SourceMapGenerator =
   map
 
 
-proc genSourceMap*(source: string, mangled: HashSet[string], outFile: string): (Rope, SourceMap) =
-  let node = parse(source, outFile, mangled)
+proc genSourceMap*(source: string, outFile: string): (Rope, SourceMap) =
+  let node = parse(source, outFile)
   let map = node.toSourceMap(file = outFile)
   ((&"{source}\n//# sourceMappingURL={outFile}.map").rope, map.gen)
 
