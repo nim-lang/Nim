@@ -1,14 +1,14 @@
 name: Nim SSL CI
-on:
-  pull_request:
-    # Run only on changes on related files
-    paths:
-      - 'lib/pure/httpclient.nim'
-      - 'lib/pure/net.nim'
-      - 'lib/pure/ssl_certs.nim'
-      - 'lib/wrappers/openssl.nim'
-      - 'tests/stdlib/thttpclient_ssl*'
-      - 'tests/untestable/thttpclient_ssl*'
+# on:
+#   pull_request:
+#     # Run only on changes on related files
+#     paths:
+#       - 'lib/pure/httpclient.nim'
+#       - 'lib/pure/net.nim'
+#       - 'lib/pure/ssl_certs.nim'
+#       - 'lib/wrappers/openssl.nim'
+#       - 'tests/stdlib/thttpclient_ssl*'
+#       - 'tests/untestable/thttpclient_ssl*'
 
 jobs:
   build:
@@ -22,12 +22,6 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v2
-
-      - name: 'Checkout csources'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources
-          path: csources
 
       - name: 'Install dependencies (Linux amd64)'
         if: runner.os == 'Linux' && matrix.cpu == 'amd64'
@@ -53,28 +47,9 @@ jobs:
         shell: bash
         run: echo "::add-path::${{ github.workspace }}/bin"
 
-      - name: 'Build 1-stage compiler from csources'
-        shell: bash
-        run: |
-          ncpu=
-          case '${{ runner.os }}' in
-          'Linux')
-            ncpu=$(nproc)
-            ;;
-          'macOS')
-            ncpu=$(sysctl -n hw.ncpu)
-            ;;
-          'Windows')
-            ncpu=$NUMBER_OF_PROCESSORS
-            ;;
-          esac
-          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-
-          make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.cpu }}'
-
-      - name: 'Build koch'
-        shell: bash
-        run: nim c koch
+      - name: 'Build csources => koch'
+        bash: NIMBUILD_ACTION=action_build_koch sh build_all.sh
+        displayName: 'Checkout csources'
 
       - name: 'Build the real compiler'
         shell: bash
