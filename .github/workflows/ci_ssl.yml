@@ -4,14 +4,15 @@ on:
   pull_request:
     # Run only on changes on related files
     paths:
-      - 'lib/pure/httpclient.nim'
-      - 'lib/pure/net.nim'
-      - 'lib/pure/ssl_certs.nim'
-      - 'lib/wrappers/openssl.nim'
-      - 'tests/stdlib/thttpclient_ssl*'
-      - 'tests/untestable/thttpclient_ssl*'
-      - '**'
-      - '.github/**'
+      # - 'lib/pure/httpclient.nim'
+      # - 'lib/pure/net.nim'
+      # - 'lib/pure/ssl_certs.nim'
+      # - 'lib/wrappers/openssl.nim'
+      # - 'tests/stdlib/thttpclient_ssl*'
+      # - 'tests/untestable/thttpclient_ssl*'
+      # - '**'
+      # - '.github/**'
+      - '.github/workflows/ci_ssl.yml'
 
 jobs:
   build:
