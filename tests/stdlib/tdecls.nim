@@ -74,3 +74,13 @@ block: # nkAccQuoted
     let a {.`cast`.} = s[0]
     doAssert a == "foo"
     doAssert a[0].unsafeAddr == s[0][0].unsafeAddr
+
+block: # https://github.com/timotheecour/Nim/issues/89
+  template foo(lhs, typ, expr) =
+    let lhs = expr
+  proc fun1()=
+    let a {.foo.} = 1
+  template fun2()=
+    let a {.foo.} = 1
+  fun1() # ok
+  fun2() # BUG
