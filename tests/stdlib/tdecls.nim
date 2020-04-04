@@ -1,6 +1,6 @@
 import std/decls
 
-block:
+template fun() =
   var s = @[10,11,12]
   var a {.byaddr.} = s[0]
   a+=100
@@ -33,6 +33,12 @@ block:
 
   doAssert compiles(block:
     var b2 {.byaddr.}: int = s[2])
+
+proc fun2() = fun()
+fun()
+fun2()
+static: fun2()
+# static: fun() # pending https://github.com/nim-lang/Nim/pull/13865
 
 ## We can define custom pragmas in user code
 template byUnsafeAddr(lhs, typ, expr) =
