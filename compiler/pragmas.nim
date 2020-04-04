@@ -470,14 +470,12 @@ proc processPop(c: PContext, n: PNode) =
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     defineSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "define is deprecated")
   else:
     invalidPragma(c, n)
 
 proc processUndef(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     undefSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "undef is deprecated")
   else:
     invalidPragma(c, n)
 
