@@ -80,7 +80,8 @@ when defined(nimV1hash):
   doAssert $({1: "1", 2: "2"}.toTable) == """{1: "1", 2: "2"}"""
 else:
   doAssert $({1: "1", 2: "2"}.toTable) == """{2: "2", 1: "1"}"""
-doAssert $({"1": 1, "2": 2}.toTable) == """{"2": 2, "1": 1}"""
+let tabStr = $({"1": 1, "2": 2}.toTable)
+doAssert (tabStr == """{"2": 2, "1": 1}""" or tabStr == """{"1": 1, "2": 2}""")
 
 # Tests for deques
 block:
