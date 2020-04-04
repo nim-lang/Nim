@@ -237,6 +237,7 @@ type
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
+    warningAsErrors*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int

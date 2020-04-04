@@ -10,6 +10,7 @@
 
 ## Compiler changes
 
+- Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
 
 ## Tool changes
 
