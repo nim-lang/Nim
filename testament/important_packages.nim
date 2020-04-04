@@ -74,7 +74,7 @@ pkg "polypbren"
 pkg "protobuf", true, "nim c -o:protobuff -r src/protobuf.nim"
 pkg "rbtree"
 pkg "react", false, "nimble example"
-pkg "regex", true, "nim c src/regex"
+pkg "regex", true
 pkg "result", false, "nim c -r result.nim"
 pkg "rosencrantz", false, "nim c -o:rsncntz -r rosencrantz.nim"
 pkg "sdl1", false, "nim c -r src/sdl.nim"
