@@ -27,7 +27,7 @@ proc repr*(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## converted to a string.
   ##
   ## .. code-block:: Nim
-  ##   assert $'c' == "c"
+  ##   assert repr('c') == "c"
 
 proc repr*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
   ## repr for a CString argument. Returns `x`
