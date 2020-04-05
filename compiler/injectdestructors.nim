@@ -44,7 +44,7 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop, hasUnstructuredCf, inDangerousBranch: int
+    inLoop, inSpawn, hasUnstructuredCf, inDangerousBranch: int
     declaredVars: IntSet # variables we already moved to the top level
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
@@ -791,6 +791,12 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       if mode == normal and isRefConstr:
         result = ensureDestruction(result, c)
     of nkCallKinds:
+      let inSpawn = c.inSpawn
+      if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
+        c.inSpawn.inc
+      elif c.inSpawn > 0:
+        c.inSpawn.dec
+
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
 
@@ -801,8 +807,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
 
       result = shallowCopy(n)
       for i in 1..<n.len:
-        if i < L and isSinkTypeForParam(parameters[i]):
-          result[i] = p(n[i], c, sinkArg)
+        if i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
+          result[i] = p(n[i], c, sinkArg)          
         else:
           result[i] = p(n[i], c, normal)
 
@@ -1044,7 +1050,6 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       let t = params[i].sym.typ
       if isSinkTypeForParam(t) and hasDestructor(t.skipTypes({tySink})):
         c.destroys.add genDestroy(c, params[i])
-
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
   let body = p(n, c, normal)

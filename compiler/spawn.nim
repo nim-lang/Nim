@@ -9,8 +9,8 @@
 
 ## This module implements threadpool's ``spawn``.
 
-import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings
+import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
+  lowerings, lineinfos, liftdestructors
 from trees import getMagic
 
 proc callProc(a: PNode): PNode =
@@ -36,8 +36,9 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
   else: srFlowVar
 
-proc flowVarKind(t: PType): TFlowVarKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
+proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
+  if c.selectedGC in {gcArc, gcOrc}: fvBlob 
+  elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
 
@@ -66,14 +67,8 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   varSection.add vpart
   if varInit != nil:
     if g.config.selectedGC in {gcArc, gcOrc}:
-      if typ.attachedOps[attachedAsgn] != nil:
-        var call = newNode(nkCall)
-        call.add newSymNode(typ.attachedOps[attachedAsgn])
-        call.add genAddrOf(newSymNode(result), tyVar)
-        call.add v
-        varInit.add call
-      else:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
+      # inject destructors pass will do its own analysis
+      varInit.add newFastAsgnStmt(newSymNode(result), v)
     else:      
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
         varInit.add newFastAsgnStmt(newSymNode(result), v)
@@ -145,7 +140,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = fv.typ[1].flowVarKind
+    let fk = flowVarKind(g.config, fv.typ[1])
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ[1]))
@@ -189,12 +184,24 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
       exceptions = emptyNode)
   result.typ = t
 
+proc createCastExpr(dstType: PType, n: PNode): PNode =
+  result = newNodeI(nkCast, n.info)
+  result.add newNodeI(nkEmpty, n.info)
+  result.add n
+  result.typ = dstType
+
 proc createCastExpr(argsParam: PSym; objType: PType): PNode =
-  result = newNodeI(nkCast, argsParam.info)
-  result.add newNodeI(nkEmpty, argsParam.info)
-  result.add newSymNode(argsParam)
-  result.typ = newType(tyPtr, objType.owner)
-  result.typ.rawAddSon(objType)
+  var dstType = newType(tyPtr, objType.owner)
+  dstType.rawAddSon(objType)
+  createCastExpr(dstType, newSymNode(argsParam))
+
+proc threadArgFieldAccess(g: ModuleGraph, threadArg: PNode, field: PSym, info: TLineInfo): PNode = 
+  if g.config.selectedGC in {gcArc, gcOrc}: newDotExpr(threadArg.sym, field)
+  else: indirectAccess(threadArg, field, info)
+
+proc threadArgFieldAccess(g: ModuleGraph, objType: PType, threadArg: PNode, field: string, info: TLineInfo): PNode = 
+  if g.config.selectedGC in {gcArc, gcOrc}: newDotExpr(threadArg.sym, field, g.cache)
+  else: indirectAccess(threadArg, field, info, g.cache)
 
 proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; 
                              owner: PSym; scratchObj: PSym,
@@ -218,7 +225,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[i])
 
     let temp = addLocalVar(g, varSection, varInit, owner, argType,
-                           indirectAccess(castExpr, field, n.info))
+                           threadArgFieldAccess(g, castExpr, field, n.info))
     call.add(newSymNode(temp))
 
 proc getRoot*(n: PNode): PSym =
@@ -279,7 +286,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
         let threadLocal = addLocalVar(g, varSection,nil, owner, fieldA.typ,
-                                      indirectAccess(castExpr, fieldA, n.info),
+                                      threadArgFieldAccess(g, castExpr, fieldA, n.info),
                                       useShallowCopy=true)
         slice[2] = threadLocal.newSymNode
       else:
@@ -291,10 +298,10 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
 
         slice[2] = newIntLit(g, n.info, 0)
       # the array itself does not need to go through a thread local variable:
-      slice[1] = genDeref(indirectAccess(castExpr, field, n.info))
+      slice[1] = genDeref(threadArgFieldAccess(g, castExpr, field, n.info))
 
       let threadLocal = addLocalVar(g, varSection,nil, owner, fieldB.typ,
-                                    indirectAccess(castExpr, fieldB, n.info),
+                                    threadArgFieldAccess(g, castExpr, fieldB, n.info),
                                     useShallowCopy=true)
       slice[3] = threadLocal.newSymNode
       call.add slice
@@ -306,7 +313,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       objType.addField(field, g.cache)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
       let threadLocal = addLocalVar(g, varSection,nil, owner, field.typ,
-                                    indirectAccess(castExpr, field, n.info),
+                                    threadArgFieldAccess(g, castExpr, field, n.info),
                                     useShallowCopy=true)
       call.add(genDeref(threadLocal.newSymNode))
     else:
@@ -316,7 +323,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(g, varSection, varInit,
                                     owner, field.typ,
-                                    indirectAccess(castExpr, field, n.info),
+                                    threadArgFieldAccess(g, castExpr, field, n.info),
                                     useShallowCopy=true)
       call.add(threadLocal.newSymNode)
 
@@ -350,15 +357,24 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)
     threadParam = newSym(skParam, getIdent(g.cache, "thread"), wrapperProc, n.info, g.config.options)
     argsParam = newSym(skParam, getIdent(g.cache, "args"), wrapperProc, n.info, g.config.options)
-  block:
-    let ptrType = getSysType(g, n.info, tyPointer)
-    threadParam.typ = ptrType
-    argsParam.typ = ptrType
-    argsParam.position = 1
+    ptrType = getSysType(g, n.info, tyPointer)
+  threadParam.typ = ptrType
+  wrapperProc.flags.incl sfInjectDestructors
 
   var objType = createObj(g, owner, n.info)
   incl(objType.flags, tfFinal)
-  let castExpr = createCastExpr(argsParam, objType)
+  block:
+    if g.config.selectedGC in {gcArc, gcOrc}:
+      let sinkType = newType(tySink, owner)
+      addSonSkipIntLit(sinkType, objType)
+      argsParam.typ = sinkType
+    else:
+      argsParam.typ = ptrType
+    argsParam.position = 1
+
+  let castExpr = 
+    if g.config.selectedGC in {gcArc, gcOrc}: newSymNode(argsParam)
+    else: createCastExpr(argsParam, objType)
 
   var scratchObj = newSym(skVar, getIdent(g.cache, "scratch"), owner, n.info, g.config.options)
   block:
@@ -381,7 +397,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = argType
     objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[0])
-    fn = indirectAccess(castExpr, field, n.info)
+    fn = threadArgFieldAccess(g, castExpr, field, n.info)
   elif fn.kind == nkSym and fn.sym.kind == skIterator:
     localError(g.config, n.info, "iterator in spawn environment is not allowed")
   elif fn.typ.callConv == ccClosure:
@@ -405,7 +421,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = typ
     objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
-    barrierAsExpr = indirectAccess(castExpr, field, n.info)
+    barrierAsExpr = threadArgFieldAccess(g, castExpr, field, n.info)
 
   var fvField, fvAsExpr: PNode = nil
   if spawnKind == srFlowVar:
@@ -413,7 +429,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = retType
     objType.addField(field, g.cache)
     fvField = newDotExpr(scratchObj, field)
-    fvAsExpr = indirectAccess(castExpr, field, n.info)
+    fvAsExpr = threadArgFieldAccess(g, castExpr, field, n.info)
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
@@ -425,14 +441,25 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = newType(tyPtr, objType.owner)
     field.typ.rawAddSon(retType)
     objType.addField(field, g.cache)
-    fvAsExpr = indirectAccess(castExpr, field, n.info)
+    fvAsExpr = threadArgFieldAccess(g, castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
+
+  createTypeBoundOps(g, nil, objType, n.info)
 
   createWrapperProc(g, fn, threadParam, argsParam,
                       varSection, varInit, call,
                       barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)
-  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapperProc.info,
-    wrapperProc.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
+  
+  let nimSpawnSym = magicsys.getCompilerProc(g, "nimSpawn" & $spawnExpr.len)
+  let wrapperProcArg = 
+    if g.config.selectedGC in {gcArc, gcOrc}:
+      createCastExpr(nimSpawnSym.typ[1], wrapperProc.newSymNode)
+    else: wrapperProc.newSymNode
 
+  let spawnCall = newNodeI(nkCall, n.info)
+  spawnCall.add newSymNode(nimSpawnSym)
+  spawnCall.add wrapperProcArg
+  spawnCall.add genAddrOf(scratchObj.newSymNode)
+  result.add spawnCall
   if spawnKind == srFlowVar: result.add fvField
 
