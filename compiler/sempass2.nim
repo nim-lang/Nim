@@ -430,12 +430,27 @@ proc isIndirectCall(n: PNode, owner: PSym): bool =
 proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
+proc prove(c: PEffects; prop: PNode): bool =
+  if c.graph.proofEngine != nil:
+    let (success, m) = c.graph.proofEngine(c.graph, c.guards.s,
+      canon(prop, c.guards.o))
+    if not success:
+      message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
+    result = success
+
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
   for i in 0..<n.len:
     var it = n[i]
-    if whichPragma(it) == wEffects:
+    let pragma = whichPragma(it)
+    if pragma == wEffects:
       # list the computed effects up to here:
       listEffects(tracked)
+    when defined(drnim):
+      if pragma == wAssume:
+        addFact(tracked.guards, it[1])
+      elif pragma == wInvariant or pragma == wAssert:
+        if prove(tracked, it[1]):
+          addFact(tracked.guards, it[1])
 
 template notGcSafe(t): untyped = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
@@ -675,14 +690,6 @@ proc cstringCheck(tracked: PEffects; n: PNode) =
   if n[0].typ.kind == tyCString and (let a = skipConv(n[1]);
       a.typ.kind == tyString and a.kind notin {nkStrLit..nkTripleStrLit}):
     message(tracked.config, n.info, warnUnsafeCode, renderTree(n))
-
-proc prove(c: PEffects; prop: PNode): bool =
-  if c.graph.proofEngine != nil:
-    let (success, m) = c.graph.proofEngine(c.graph, c.guards.s,
-      canon(prop, c.guards.o))
-    if not success:
-      message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
-    result = success
 
 proc patchResult(c: PEffects; n: PNode) =
   if n.kind == nkSym and n.sym.kind == skResult:
@@ -1027,12 +1034,6 @@ proc track(tracked: PEffects, n: PNode) =
         enforcedGcSafety = true
       elif pragma == wNoSideEffect:
         enforceNoSideEffects = true
-      when defined(drnim):
-        if pragma == wAssume:
-          addFact(tracked.guards, pragmaList[i][1])
-        elif pragma == wInvariant or pragma == wAssert:
-          if prove(tracked, pragmaList[i][1]):
-            addFact(tracked.guards, pragmaList[i][1])
 
     if enforcedGcSafety: tracked.inEnforcedGcSafe = true
     if enforceNoSideEffects: tracked.inEnforcedNoSideEffects = true
