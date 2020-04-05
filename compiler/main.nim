@@ -315,7 +315,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
-        (key: "nimPath", val: %(getAppFilename())),
+        (key: "nimExe", val: %(getAppFilename())),
         (key: "prefixdir", val: %conf.getPrefixDir().string),
         (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),
