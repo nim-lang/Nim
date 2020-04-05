@@ -38,5 +38,5 @@ The standard distribution ships with the following tools:
     has logging, can generate HTML reports, skip tests from a file and more,
     so can be useful to run your tests, even the most complex ones.
 
-- | `DrNim <https://nim-lang.org/docs/drnim.html>`_
+- | `DrNim <drnim.html>`_
   | Z3 proof engine for Nim, including preconditions, postconditions, invariants, etc.
