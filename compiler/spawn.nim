@@ -9,8 +9,8 @@
 
 ## This module implements threadpool's ``spawn``.
 
-import ast, astalgo, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings, lineinfos, liftdestructors
+import ast, types, idents, magicsys, msgs, options, modulegraphs,
+  lowerings, liftdestructors
 from trees import getMagic
 
 proc callProc(a: PNode): PNode =
@@ -68,10 +68,10 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   if varInit != nil:
     if g.config.selectedGC in {gcArc, gcOrc}:
       # inject destructors pass will do its own analysis
-      varInit.add newFastAsgnStmt(newSymNode(result), v)
+      varInit.add newFastMoveStmt(g, newSymNode(result), v)
     else:      
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
+        varInit.add newFastMoveStmt(g, newSymNode(result), v)
       else:
         let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
         deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
@@ -184,16 +184,12 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
       exceptions = emptyNode)
   result.typ = t
 
-proc createCastExpr(dstType: PType, n: PNode): PNode =
-  result = newNodeI(nkCast, n.info)
-  result.add newNodeI(nkEmpty, n.info)
-  result.add n
-  result.typ = dstType
-
 proc createCastExpr(argsParam: PSym; objType: PType): PNode =
-  var dstType = newType(tyPtr, objType.owner)
-  dstType.rawAddSon(objType)
-  createCastExpr(dstType, newSymNode(argsParam))
+  result = newNodeI(nkCast, argsParam.info)
+  result.add newNodeI(nkEmpty, argsParam.info)
+  result.add newSymNode(argsParam)
+  result.typ = newType(tyPtr, objType.owner)
+  result.typ.rawAddSon(objType)
 
 proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; 
                              owner: PSym; scratchObj: PSym,
@@ -290,7 +286,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
 
         slice[2] = newIntLit(g, n.info, 0)
       # the array itself does not need to go through a thread local variable:
-      slice[1] = genDeref(threadArgFieldAccess(g, castExpr, field, n.info))
+      slice[1] = genDeref(indirectAccess(castExpr, field, n.info))
 
       let threadLocal = addLocalVar(g, varSection,nil, owner, fieldB.typ,
                                     indirectAccess(castExpr, fieldB, n.info),
@@ -349,24 +345,15 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)
     threadParam = newSym(skParam, getIdent(g.cache, "thread"), wrapperProc, n.info, g.config.options)
     argsParam = newSym(skParam, getIdent(g.cache, "args"), wrapperProc, n.info, g.config.options)
-    ptrType = getSysType(g, n.info, tyPointer)
-  threadParam.typ = ptrType
-  wrapperProc.flags.incl sfInjectDestructors
+  block:
+    let ptrType = getSysType(g, n.info, tyPointer)
+    threadParam.typ = ptrType
+    argsParam.typ = ptrType
+    argsParam.position = 1
 
   var objType = createObj(g, owner, n.info)
   incl(objType.flags, tfFinal)
-  block:
-    if g.config.selectedGC in {gcArc, gcOrc}:
-      let sinkType = newType(tySink, owner)
-      addSonSkipIntLit(sinkType, objType)
-      argsParam.typ = sinkType
-    else:
-      argsParam.typ = ptrType
-    argsParam.position = 1
-
-  let castExpr = 
-    if g.config.selectedGC in {gcArc, gcOrc}: newSymNode(argsParam)
-    else: createCastExpr(argsParam, objType)
+  let castExpr = createCastExpr(argsParam, objType)
 
   var scratchObj = newSym(skVar, getIdent(g.cache, "scratch"), owner, n.info, g.config.options)
   block:
@@ -389,7 +376,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = argType
     objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[0])
-    fn = threadArgFieldAccess(g, castExpr, field, n.info)
+    fn = indirectAccess(castExpr, field, n.info)
   elif fn.kind == nkSym and fn.sym.kind == skIterator:
     localError(g.config, n.info, "iterator in spawn environment is not allowed")
   elif fn.typ.callConv == ccClosure:
@@ -413,7 +400,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = typ
     objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), barrier)
-    barrierAsExpr = threadArgFieldAccess(g, castExpr, field, n.info)
+    barrierAsExpr = indirectAccess(castExpr, field, n.info)
 
   var fvField, fvAsExpr: PNode = nil
   if spawnKind == srFlowVar:
@@ -421,7 +408,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = retType
     objType.addField(field, g.cache)
     fvField = newDotExpr(scratchObj, field)
-    fvAsExpr = threadArgFieldAccess(g, castExpr, field, n.info)
+    fvAsExpr = indirectAccess(castExpr, field, n.info)
     # create flowVar:
     result.add newFastAsgnStmt(fvField, callProc(spawnExpr[^1]))
     if barrier == nil:
@@ -433,24 +420,15 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     field.typ = newType(tyPtr, objType.owner)
     field.typ.rawAddSon(retType)
     objType.addField(field, g.cache)
-    fvAsExpr = threadArgFieldAccess(g, castExpr, field, n.info)
+    fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
   createTypeBoundOps(g, nil, objType, n.info)
   createWrapperProc(g, fn, threadParam, argsParam,
                       varSection, varInit, call,
-                      barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)
-  
-  let nimSpawnSym = magicsys.getCompilerProc(g, "nimSpawn" & $spawnExpr.len)
-  let wrapperProcArg = 
-    if g.config.selectedGC in {gcArc, gcOrc}:
-      createCastExpr(nimSpawnSym.typ[1], wrapperProc.newSymNode)
-    else: wrapperProc.newSymNode
+                      barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)  
+  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapperProc.info,
+    wrapperProc.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
 
-  let spawnCall = newNodeI(nkCall, n.info)
-  spawnCall.add newSymNode(nimSpawnSym)
-  spawnCall.add wrapperProcArg
-  spawnCall.add genAddrOf(scratchObj.newSymNode)
-  result.add spawnCall
   if spawnKind == srFlowVar: result.add fvField
 
