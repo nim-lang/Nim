@@ -2537,13 +2537,6 @@ proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   p.currLineInfo = n.info
 
-  when not defined(release):
-    if "TM__Q5wkpxktOdTGvlSRo9bzt9aw" in $p.module.tmpBase:
-      if p.module.labels == 20006:
-        echo p.module.cfilename
-        echo dumpLine(n.info)
-        localError(p.config, n.info, "i really hate it: " & $n.kind)
-
   case n.kind
   of nkSym:
     var sym = n.sym
