@@ -426,7 +426,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   createTypeBoundOps(g, nil, objType, n.info)
   createWrapperProc(g, fn, threadParam, argsParam,
                       varSection, varInit, call,
-                      barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)  
+                      barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)
   result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapperProc.info,
     wrapperProc.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
 

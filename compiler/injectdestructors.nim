@@ -359,7 +359,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
-    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef:
+    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "use 'move($1)' to prevent it") % $n)
@@ -808,7 +808,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       result = shallowCopy(n)
       for i in 1..<n.len:
         if i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
-          result[i] = p(n[i], c, sinkArg)          
+          result[i] = p(n[i], c, sinkArg)
         else:
           result[i] = p(n[i], c, normal)
 
