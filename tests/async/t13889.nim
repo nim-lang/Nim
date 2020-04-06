@@ -20,8 +20,8 @@ asyncCheck believers("Bar")
 asyncCheck believers("Baz")
 
 proc savior() {.async.} =
-  await sleepAsync(1500)
+  await sleepAsync(50)
   complete(promise, true)
-  await sleepAsync(1500) # give enough time to see who was saved
+  await sleepAsync(50) # give enough time to see who was saved
 
 waitFor(savior())
