@@ -284,7 +284,7 @@ proc opBindSym(c: PContext, scope: PScope, n: PNode, isMixin: int, info: PNode):
 
 proc semGetCurrentScope(c: PContext, n: PNode): PNode =
   let val = cast[ByteAddress](c.currentScope)
-  result = newIntTypeNode(nkIntLit, val, n.typ)
+  result = newIntTypeNode(val, n.typ)
   result.info = n.info
 
 proc semDynamicBindSym(c: PContext, n: PNode): PNode =
