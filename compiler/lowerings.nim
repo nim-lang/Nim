@@ -239,22 +239,13 @@ proc addUniqueField*(obj: PType; s: PSym; cache: IdentCache): PSym {.discardable
     obj.n.add newSymNode(field)
     result = field
 
-proc newDotExpr(obj: PSym, bId: int): PNode =
-  let t = obj.typ.skipTypes({tyAlias, tyGenericInst, tySink})
-  let field = lookupInRecord(t.n, bId)
-  if field == nil: return nil
+proc newDotExpr*(obj, b: PSym): PNode =
   result = newNodeI(nkDotExpr, obj.info)
+  let field = lookupInRecord(obj.typ.n, b.id)
+  assert field != nil, b.name.s
   result.add newSymNode(obj)
   result.add newSymNode(field)
   result.typ = field.typ
-
-proc newDotExpr*(obj, b: PSym): PNode =
-  result = newDotExpr(obj, b.id)
-  assert result != nil, b.name.s
-
-proc newDotExpr*(obj: PSym, b: string, cache: IdentCache): PNode =
-  result = newDotExpr(obj, getIdent(cache, b).id)
-  assert result != nil, b
 
 proc indirectAccess*(a: PNode, b: int, info: TLineInfo): PNode =
   # returns a[].b as a node
