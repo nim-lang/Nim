@@ -9,10 +9,6 @@
 
 #[
 
-- Most important bug:
-
-  while i < x.len and use(s[i]): inc i # is safe
-
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - forall/exists need syntactic sugar as the manual
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -256,9 +252,12 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     of mLtU:
       result = Z3_mk_bvult(ctx, rec n[1], rec n[2])
     of mAnd:
-      result = binary(Z3_mk_and, rec n[1], rec n[2])
+      # 'a and b' <=> ite(a, b, false)
+      result = Z3_mk_ite(ctx, rec n[1], rec n[2], Z3_mk_false(ctx))
+      #result = binary(Z3_mk_and, rec n[1], rec n[2])
     of mOr:
-      result = binary(Z3_mk_or, rec n[1], rec n[2])
+      result = Z3_mk_ite(ctx, rec n[1], Z3_mk_true(ctx), rec n[2])
+      #result = binary(Z3_mk_or, rec n[1], rec n[2])
     of mXor:
       result = Z3_mk_xor(ctx, rec n[1], rec n[2])
     of mNot:

@@ -936,7 +936,6 @@ proc track(tracked: PEffects, n: PNode) =
   of nkWhen, nkIfStmt, nkIfExpr: trackIf(tracked, n)
   of nkBlockStmt, nkBlockExpr: trackBlock(tracked, n[1])
   of nkWhileStmt:
-    track(tracked, n[0])
     # 'while true' loop?
     if isTrue(n[0]):
       trackBlock(tracked, n[1])
@@ -945,6 +944,7 @@ proc track(tracked: PEffects, n: PNode) =
       let oldState = tracked.init.len
       let oldFacts = tracked.guards.s.len
       addFact(tracked.guards, n[0])
+      track(tracked, n[0])
       track(tracked, n[1])
       setLen(tracked.init, oldState)
       setLen(tracked.guards.s, oldFacts)
