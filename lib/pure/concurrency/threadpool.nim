@@ -236,7 +236,7 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## Note that due to Nim's parameter passing semantics this
   ## means that ``T`` doesn't need to be copied so ``awaitAndThen`` can
   ## sometimes be more efficient than `^ proc <#^,FlowVar[T]>`_.
-  blockUntil(fv)
+  blockUntil(fv[])
   when defined(nimV2):
     action(fv.blob)
   elif T is string or T is seq:
@@ -245,33 +245,33 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
     {.error: "'awaitAndThen' not available for FlowVar[ref]".}
   else:
     action(fv.blob)
-  finished(fv)
+  finished(fv[])
 
 proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
   ## Blocks until the value is available and then returns this value.
-  blockUntil(fv)
+  blockUntil(fv[])
   when defined(nimV2):
     result = cast[ptr T](fv.blob)
   else:
     result = cast[ptr T](fv.data)
-  finished(fv)
+  finished(fv[])
 
 when defined(nimV2):
   proc `^`*[T](fv: FlowVar[T]): T =
     ## Blocks until the value is available and then returns this value.
-    blockUntil(fv)
+    blockUntil(fv[])
     result = fv.blob
-    finished(fv)
+    finished(fv[])
 
 else:
   proc `^`*[T](fv: FlowVar[T]): T =
     ## Blocks until the value is available and then returns this value.
-    blockUntil(fv)
+    blockUntil(fv[])
     when T is string or T is seq or T is ref:
       deepCopy result, src
     else:
       result = fv.blob
-    finished(fv)
+    finished(fv[])
 
 proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
   ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
