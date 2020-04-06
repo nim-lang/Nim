@@ -345,6 +345,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)
     threadParam = newSym(skParam, getIdent(g.cache, "thread"), wrapperProc, n.info, g.config.options)
     argsParam = newSym(skParam, getIdent(g.cache, "args"), wrapperProc, n.info, g.config.options)
+
+  wrapperProc.flags.incl sfInjectDestructors
   block:
     let ptrType = getSysType(g, n.info, tyPointer)
     threadParam.typ = ptrType

@@ -40,7 +40,7 @@ echo ^fv1
 echo (^fv2)[]
 
 
-proc thread4(x: MyObjRef): MyObjRef =
+proc thread4(x: MyObjRef): MyObjRef {.nosinks.} =
   os.sleep(1000)
   result = x
 
@@ -53,7 +53,6 @@ proc ref_forwarding_test =
   x[].p = 2
   var y = spawn thread4(x)
  
-
 proc ref_sink_forwarding_test = 
   var x = new(MyObj)
   x[].p = 2
