@@ -143,7 +143,7 @@ proc getSetConflict*(m: BModule; s: PSym;
   let
     signature = s.sigHash
     name = $signature
-  if g.config.symbolFiles in {disabledSf}:
+  if g.config.symbolFiles == disabledSf:
     if create:
       m.sigConflicts.inc name
     counter = m.sigConflicts[name]
