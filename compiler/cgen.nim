@@ -1216,42 +1216,53 @@ proc genProc(orig: BModule, prc: PSym) =
   if sfBorrow in prc.flags or not isActivated(prc):
     return
 
-  # if the proc is not completed defined
-  if sfForward in prc.flags:
-    # telling the BModule that we will need a forward declaration section
-    fillProcLoc(orig, prc.ast[namePos])
-    # adding a forward declaration
-    addForwardedProc(orig, prc)
+  # FIXME: tree-shake
+  if sfUsed notin prc.flags:
+    return
 
   # we only generate code when the proc is completely defined
   if sfForward in prc.flags:
-    return
+    # come back to this later...
+    addForwardedProc(orig, prc)
+  else:
+    var
+      orig = orig # satisfy performCaching()
+      prc = prc # satisfy performCaching()
 
-  var
-    orig = orig # satisfy performCaching()
-    prc = prc # satisfy performCaching()
+    performCaching(orig.g, orig, prc):
+      if not cache.rejected:
+        assert prc.typ != nil
+        when false:
+          if prc.typ.sym == nil:
+            echo "PROC WITH NIL TYP SYM"
+            debug prc
+            #prc.typ.sym = prc
+            #raise
 
-  performCaching(orig.g, orig, prc):
-    # mutates the proc and the symbol
-    genProcMayForward(m, prc)
+      if sfWasForwarded in prc.flags:
+        # telling the BModule that we will need a forward declaration section
+        fillProcLoc(m, prc.ast[namePos])
 
-    # we are all about the header from here down
+      # mutates the proc and the symbol
+      genProcMayForward(m, prc)
 
-    # if it's an export and not a compiler proc,
-    # and we already have a generated header for it,
-    # and it isn't flagged no-declaration,
-    if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
-        m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
-      # then generate a prototype for it in the header
-      genProcPrototype(m.g.generatedHeader, prc)
+      # we are all about the header from here down
 
-      # now, if it's inline,
-      if prc.typ.callConv == ccInline:
-        # and if the proc hasn't already been declared, declare it, and
-        if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
-          # generate the header for the proc
-          # this also generates the nimFrame and popFrame, etc.
-          genProcAux(m.g.generatedHeader, prc)
+      # if it's an export and not a compiler proc,
+      # and we already have a generated header for it,
+      # and it isn't flagged no-declaration,
+      if {sfExportc, sfCompilerProc} * prc.flags == {sfExportc} and
+          m.g.generatedHeader != nil and lfNoDecl notin prc.loc.flags:
+        # then generate a prototype for it in the header
+        genProcPrototype(m.g.generatedHeader, prc)
+
+        # now, if it's inline,
+        if prc.typ.callConv == ccInline:
+          # and if the proc hasn't already been declared, declare it, and
+          if not containsOrIncl(m.g.generatedHeader.declaredThings, prc.id):
+            # generate the header for the proc
+            # this also generates the nimFrame and popFrame, etc.
+            genProcAux(m.g.generatedHeader, prc)
 
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
@@ -1535,7 +1546,8 @@ proc registerModuleToMain(g: BModuleList; m: BModule) =
   var
     g = g # for cache merge
     m = m
-  dontPerformCaching(g, m, m.module):
+  #performCaching(g, m, m.module):
+  block:
     block codegen:
       let
         init = m.getInitName

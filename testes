@@ -38,6 +38,7 @@ function build-sanity
 		return 1
 	end
 end
+
 function build-test
 	if bin/nim_temp c -d:debugTLoc --nimcache:goats --incremental:on --debuginfo --embedsrc --stackTrace:on $test
 		notice test built
@@ -48,7 +49,8 @@ function build-test
 end
 
 function run-test
-	if command $test
+	set --local binary (string replace ".nim" "" "$test")
+	if command $binary
 		notice test ran okay
 	else
 		warning test execution failed

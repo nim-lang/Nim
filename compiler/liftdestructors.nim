@@ -862,9 +862,8 @@ proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym,
   let placeHolder = newNodeIT(nkSym, info, getSysType(g, info, tyPointer))
   fillBody(a, typ, result.ast[bodyPos], d, placeHolder)
 
-
 template liftTypeBoundOps*(c: PContext; typ: PType; info: TLineInfo) =
-  discard "now a nop"
+  discard "now a no-op"
 
 proc patchBody(g: ModuleGraph; c: PContext; n: PNode; info: TLineInfo) =
   if n.kind in nkCallKinds:

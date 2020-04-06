@@ -536,7 +536,7 @@ proc accessViaEnvParam(g: ModuleGraph; n: PNode; owner: PSym): PNode =
 
 proc newEnvVar(cache: IdentCache; owner: PSym; typ: PType; info: TLineInfo): PNode =
   var v = newSym(skVar, getIdent(cache, envName), owner, info)
-  v.flags = {sfShadowed, sfGeneratedOp}
+  v.flags = {sfShadowed, sfGeneratedOp, sfUsed}
   v.typ = typ
   result = newSymNode(v)
   when false:
@@ -560,7 +560,7 @@ proc setupEnvVar(owner: PSym; d: DetectionPass;
     c.envVars[owner.id] = result
     if optOwnedRefs in d.graph.config.globalOptions:
       var v = newSym(skVar, getIdent(d.graph.cache, envName & "Alt"), owner, info)
-      v.flags = {sfShadowed, sfGeneratedOp}
+      v.flags = {sfShadowed, sfGeneratedOp, sfUsed}
       v.typ = envVarType
       c.unownedEnvVars[owner.id] = newSymNode(v)
 
