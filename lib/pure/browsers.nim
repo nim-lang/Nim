@@ -21,9 +21,9 @@ else:
   import os, osproc
 
 const osOpenCmd* =
-  when defined(macos) or defined(windows): "open" else: "xdg-open" ## \
+  when defined(macos) or defined(macosx) or defined(windows): "open" else: "xdg-open" ## \
   ## Alias for the operating system specific *"open"* command,
-  ## ``"open"`` on MacOS and Windows, ``"xdg-open"`` on Linux, BSD, etc.
+  ## ``"open"`` on OSX, MacOS and Windows, ``"xdg-open"`` on Linux, BSD, etc.
 
 
 template openDefaultBrowserImpl(url: string) =
