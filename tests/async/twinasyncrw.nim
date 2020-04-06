@@ -208,7 +208,7 @@ when defined(windows):
 
   proc launchSwarm(port: Port) {.async.} =
     for i in 0 ..< swarmSize:
-      var sock = newNativeSocket()
+      var sock = createNativeSocket()
       setBlocking(sock, false)
 
       await winConnect(AsyncFD(sock), "localhost", port)
@@ -229,7 +229,7 @@ when defined(windows):
           doAssert false
 
   proc createServer(port: Port) {.async.} =
-    var server = newNativeSocket()
+    var server = createNativeSocket()
     setBlocking(server, false)
     block:
       var name = Sockaddr_in()

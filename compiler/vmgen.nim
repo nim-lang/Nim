@@ -885,8 +885,21 @@ proc genCastIntFloat(c: PCtx; n: PNode; dest: var TDest) =
       c.gABC(n, opcCastFloatToInt64, dest, tmp)
       # narrowing for 64 bits not needed (no extended sign bits available).
     c.freeTemp(tmp)
+  elif src.kind in PtrLikeKinds + {tyRef} and dst.kind == tyInt:
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    var imm: BiggestInt = if src.kind in PtrLikeKinds: 1 else: 2
+    c.gABI(n, opcCastPtrToInt, dest, tmp, imm)
+    c.freeTemp(tmp)
+  elif src.kind in PtrLikeKinds + {tyInt} and dst.kind in PtrLikeKinds:
+    let tmp = c.genx(n[1])
+    if dest < 0: dest = c.getTemp(n[0].typ)
+    c.gABx(n, opcSetType, dest, c.genType(dst))
+    c.gABC(n, opcCastIntToPtr, dest, tmp)
+    c.freeTemp(tmp)
   else:
-    globalError(c.config, n.info, "VM is only allowed to 'cast' between integers and/or floats of same size")
+    # todo: support cast from tyInt to tyRef
+    globalError(c.config, n.info, "VM does not support 'cast' from " & $src.kind & " to " & $dst.kind)
 
 proc genVoidABC(c: PCtx, n: PNode, dest: TDest, opcode: TOpcode) =
   unused(c, n, dest)
@@ -960,11 +973,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
   of mOr:  c.genAndOr(n, opcTJmp, dest)
-  of mUnaryLt:
-    let tmp = c.genx(n[1])
-    if dest < 0: dest = c.getTemp(n.typ)
-    c.gABI(n, opcSubImmInt, dest, tmp, 1)
-    c.freeTemp(tmp)
   of mPred, mSubI:
     c.genAddSubInt(n, dest, opcSubInt)
   of mSucc, mAddI:
@@ -1007,9 +1015,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, opcNewStr, dest, tmp)
     c.freeTemp(tmp)
     # XXX buggy
-  of mLengthOpenArray, mLengthArray, mLengthSeq, mXLenSeq:
+  of mLengthOpenArray, mLengthArray, mLengthSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
-  of mLengthStr, mXLenStr:
+  of mLengthStr:
     genUnaryABI(c, n, dest, opcLenStr)
   of mIncl, mExcl:
     unused(c, n, dest)
@@ -1063,9 +1071,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mEqF64: genBinaryABC(c, n, dest, opcEqFloat)
   of mLeF64: genBinaryABC(c, n, dest, opcLeFloat)
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
-  of mLePtr, mLeU, mLeU64: genBinaryABC(c, n, dest, opcLeu)
-  of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
-  of mEqProc, mEqRef, mEqUntracedRef:
+  of mLePtr, mLeU: genBinaryABC(c, n, dest, opcLeu)
+  of mLtPtr, mLtU: genBinaryABC(c, n, dest, opcLtu)
+  of mEqProc, mEqRef:
     genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABC(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
@@ -1092,7 +1100,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mMulSet: genBinarySet(c, n, dest, opcMulSet)
   of mPlusSet: genBinarySet(c, n, dest, opcPlusSet)
   of mMinusSet: genBinarySet(c, n, dest, opcMinusSet)
-  of mSymDiffSet: genBinarySet(c, n, dest, opcSymdiffSet)
   of mConStrStr: genVarargsABC(c, n, dest, opcConcatStr)
   of mInSet: genBinarySet(c, n, dest, opcContainsSet)
   of mRepr: genUnaryABC(c, n, dest, opcRepr)
@@ -1113,29 +1120,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     unused(c, n, dest)
     c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
-  of mCopyStr:
-    if dest < 0: dest = c.getTemp(n.typ)
-    var
-      tmp1 = c.genx(n[1])
-      tmp2 = c.genx(n[2])
-      tmp3 = c.getTemp(n[2].typ)
-    c.gABC(n, opcLenStr, tmp3, tmp1)
-    c.gABC(n, opcSubStr, dest, tmp1, tmp2)
-    c.gABC(n, opcSubStr, tmp3)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
-  of mCopyStrLast:
-    if dest < 0: dest = c.getTemp(n.typ)
-    var
-      tmp1 = c.genx(n[1])
-      tmp2 = c.genx(n[2])
-      tmp3 = c.genx(n[3])
-    c.gABC(n, opcSubStr, dest, tmp1, tmp2)
-    c.gABC(n, opcSubStr, tmp3)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
   of mParseBiggestFloat:
     if dest < 0: dest = c.getTemp(n.typ)
     var d2: TRegister
@@ -1474,11 +1458,17 @@ proc getOwner(c: PCtx): PSym =
   result = c.prc.sym
   if result.isNil: result = c.module
 
+proc importcCondVar*(s: PSym): bool {.inline.} =
+  # see also importcCond
+  if sfImportc in s.flags:
+    return s.kind in {skVar, skLet, skConst}
+
 proc checkCanEval(c: PCtx; n: PNode) =
   # we need to ensure that we don't evaluate 'x' here:
   # proc foo() = var x ...
   let s = n.sym
   if {sfCompileTime, sfGlobal} <= s.flags: return
+  if s.importcCondVar: return
   if s.kind in {skVar, skTemp, skLet, skParam, skResult} and
       not s.isOwnedBy(c.prc.sym) and s.owner != c.module and c.mode != emRepl:
     # little hack ahead for bug #12612: assume gensym'ed variables
@@ -1618,17 +1608,24 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
   assert card(flags * {gfNodeAddr, gfNode}) < 2
   let s = n.sym
   if s.isGlobal:
-    if sfCompileTime in s.flags or c.mode == emRepl:
+    let isImportcVar = importcCondVar(s)
+    if sfCompileTime in s.flags or c.mode == emRepl or isImportcVar:
       discard
     elif s.position == 0:
       cannotEval(c, n)
     if s.position == 0:
-      if importcCond(s): c.importcSym(n.info, s)
+      if importcCond(s) or isImportcVar: c.importcSym(n.info, s)
       else: genGlobalInit(c, n, s)
     if dest < 0: dest = c.getTemp(n.typ)
     assert s.typ != nil
+
     if gfNodeAddr in flags:
-      c.gABx(n, opcLdGlobalAddr, dest, s.position)
+      if isImportcVar:
+        c.gABx(n, opcLdGlobalAddrDerefFFI, dest, s.position)
+      else:
+        c.gABx(n, opcLdGlobalAddr, dest, s.position)
+    elif isImportcVar:
+      c.gABx(n, opcLdGlobalDerefFFI, dest, s.position)
     elif fitsRegister(s.typ) and gfNode notin flags:
       var cc = c.getTemp(n.typ)
       c.gABx(n, opcLdGlobal, cc, s.position)
@@ -2068,12 +2065,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genWhile(c, n)
   of nkBlockExpr, nkBlockStmt: genBlock(c, n, dest)
   of nkReturnStmt:
-    unused(c, n, dest)
     genReturn(c, n)
   of nkRaiseStmt:
     genRaise(c, n)
   of nkBreakStmt:
-    unused(c, n, dest)
     genBreak(c, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(c, n, dest)
   of nkStmtList:

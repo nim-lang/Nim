@@ -72,6 +72,10 @@ type
     onDefinitionResolveForward*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     onUsage*: proc (graph: ModuleGraph; s: PSym; info: TLineInfo) {.nimcall.}
     globalDestructors*: seq[PNode]
+    proofEngine*: proc (graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) {.nimcall.}
+    requirementsCheck*: proc (graph: ModuleGraph; assumptions: seq[PNode];
+                             call, requirement: PNode): (bool, string) {.nimcall.}
+    compatibleProps*: proc (graph: ModuleGraph; formal, actual: PType): bool {.nimcall.}
 
   TPassContext* = object of RootObj # the pass's context
   PPassContext* = ref TPassContext
@@ -163,8 +167,9 @@ proc stopCompile*(g: ModuleGraph): bool {.inline.} =
   result = g.doStopCompile != nil and g.doStopCompile()
 
 proc createMagic*(g: ModuleGraph; name: string, m: TMagic): PSym =
-  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo(), {})
+  result = newSym(skProc, getIdent(g.cache, name), nil, unknownLineInfo, {})
   result.magic = m
+  result.flags = {sfNeverRaises}
 
 proc newModuleGraph*(cache: IdentCache; config: ConfigRef): ModuleGraph =
   result = ModuleGraph()

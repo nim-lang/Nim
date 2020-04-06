@@ -1,33 +1,20 @@
-# vx.xx.x - yyyy-mm-dd
+# v1.xx.x - yyyy-mm-dd
+
+This is an example file.
+The changes should go to changelog.md!
 
 
-## Changes affecting backwards compatibility
+## Standard library additions and changes
 
-- Example item: `Foo` changed to `Bar`.
-
-
-### Breaking changes in the standard library
-
-
-### Breaking changes in the compiler
-
-
-## Library additions
-- `set[T].len` is now an alias for `set[T].card` (cardinality)
-
-## Library changes
-
-
-## Language additions
+- Added `example.exampleProc`.
+- Changed `example.foo` to take additional `bar` parameter.
 
 
 ## Language changes
 
 
-### Tool changes
+## Compiler changes
 
 
-### Compiler changes
+## Tool changes
 
-
-## Bugfixes

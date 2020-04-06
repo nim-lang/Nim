@@ -97,9 +97,6 @@ const
          "type 'debug' to toggle debug mode on/off\n" &
          "type 'terse' to toggle terse mode on/off"
 
-type
-  EUnexpectedCommand = object of Exception
-
 proc parseQuoted(cmd: string; outp: var string; start: int): int =
   var i = start
   i += skipWhitespace(cmd, i)

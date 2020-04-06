@@ -28,18 +28,6 @@ when hasFFI:
   import evalffi
 
 type
-  TRegisterKind = enum
-    rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
-  TFullReg = object   # with a custom mark proc, we could use the same
-                      # data representation as LuaJit (tagged NaNs).
-    case kind: TRegisterKind
-    of rkNone: nil
-    of rkInt: intVal: BiggestInt
-    of rkFloat: floatVal: BiggestFloat
-    of rkNode: node: PNode
-    of rkRegisterAddr: regAddr: ptr TFullReg
-    of rkNodeAddr: nodeAddr: ptr PNode
-
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
     prc: PSym                 # current prc; proc that is evaluated
@@ -108,12 +96,12 @@ proc bailOut(c: PCtx; tos: PStackFrame) =
 when not defined(nimComputedGoto):
   {.pragma: computedGoto.}
 
-proc myreset(n: var TFullReg) = reset(n)
+proc ensureKind(n: var TFullReg, kind: TRegisterKind) =
+  if n.kind != kind:
+    n = TFullReg(kind: kind)
 
 template ensureKind(k: untyped) {.dirty.} =
-  if regs[ra].kind != k:
-    myreset(regs[ra])
-    regs[ra].kind = k
+  ensureKind(regs[ra], k)
 
 template decodeB(k: untyped) {.dirty.} =
   let rb = instr.regB
@@ -140,14 +128,44 @@ template decodeBx(k: untyped) {.dirty.} =
 template move(a, b: untyped) {.dirty.} = system.shallowCopy(a, b)
 # XXX fix minor 'shallowCopy' overloading bug in compiler
 
+proc derefPtrToReg(address: BiggestInt, typ: PType, r: var TFullReg, isAssign: bool): bool =
+  # nim bug: `isAssign: static bool` doesn't work, giving odd compiler error
+  template fun(field, T, rkind) =
+    if isAssign:
+      cast[ptr T](address)[] = T(r.field)
+    else:
+      r.ensureKind(rkind)
+      let val = cast[ptr T](address)[]
+      when T is SomeInteger:
+        r.field = BiggestInt(val)
+      else:
+        r.field = val
+    return true
+
+  ## see also typeinfo.getBiggestInt
+  case typ.kind
+  of tyInt: fun(intVal, int, rkInt)
+  of tyInt8: fun(intVal, int8, rkInt)
+  of tyInt16: fun(intVal, int16, rkInt)
+  of tyInt32: fun(intVal, int32, rkInt)
+  of tyInt64: fun(intVal, int64, rkInt)
+  of tyUInt: fun(intVal, uint, rkInt)
+  of tyUInt8: fun(intVal, uint8, rkInt)
+  of tyUInt16: fun(intVal, uint16, rkInt)
+  of tyUInt32: fun(intVal, uint32, rkInt)
+  of tyUInt64: fun(intVal, uint64, rkInt) # note: differs from typeinfo.getBiggestInt
+  of tyFloat: fun(floatVal, float, rkFloat)
+  of tyFloat32: fun(floatVal, float32, rkFloat)
+  of tyFloat64: fun(floatVal, float64, rkFloat)
+  else: return false
+
 proc createStrKeepNode(x: var TFullReg; keepNode=true) =
   if x.node.isNil or not keepNode:
     x.node = newNode(nkStrLit)
   elif x.node.kind == nkNilLit and keepNode:
     when defined(useNodeIds):
       let id = x.node.id
-    system.reset(x.node[])
-    x.node.kind = nkStrLit
+    x.node[] = TNode(kind: nkStrLit)
     when defined(useNodeIds):
       x.node.id = id
   elif x.node.kind notin {nkStrLit..nkTripleStrLit} or
@@ -167,9 +185,7 @@ template createSet(x) =
   x.node = newNode(nkCurly)
 
 proc moveConst(x: var TFullReg, y: TFullReg) =
-  if x.kind != y.kind:
-    myreset(x)
-    x.kind = y.kind
+  x.ensureKind(y.kind)
   case x.kind
   of rkNone: discard
   of rkInt: x.intVal = y.intVal
@@ -205,9 +221,7 @@ proc copyValue(src: PNode): PNode =
       result[i] = copyValue(src[i])
 
 proc asgnComplex(x: var TFullReg, y: TFullReg) =
-  if x.kind != y.kind:
-    myreset(x)
-    x.kind = y.kind
+  x.ensureKind(y.kind)
   case x.kind
   of rkNone: discard
   of rkInt: x.intVal = y.intVal
@@ -217,9 +231,7 @@ proc asgnComplex(x: var TFullReg, y: TFullReg) =
   of rkNodeAddr: x.nodeAddr = y.nodeAddr
 
 proc fastAsgnComplex(x: var TFullReg, y: TFullReg) =
-  if x.kind != y.kind:
-    myreset(x)
-    x.kind = y.kind
+  x.ensureKind(y.kind)
   case x.kind
   of rkNone: discard
   of rkInt: x.intVal = y.intVal
@@ -233,8 +245,7 @@ proc writeField(n: var PNode, x: TFullReg) =
   of rkNone: discard
   of rkInt:
     if n.kind == nkNilLit:
-      n[].reset
-      n.kind = nkIntLit # ideally, `nkPtrLit`
+      n[] = TNode(kind: nkIntLit) # ideally, `nkPtrLit`
     n.intVal = x.intVal
   of rkFloat: n.floatVal = x.floatVal
   of rkNode: n = copyValue(x.node)
@@ -244,18 +255,19 @@ proc writeField(n: var PNode, x: TFullReg) =
 proc putIntoReg(dest: var TFullReg; n: PNode) =
   case n.kind
   of nkStrLit..nkTripleStrLit:
-    dest.kind = rkNode
-    createStr(dest)
-    dest.node.strVal = n.strVal
-  of nkCharLit..nkUInt64Lit:
-    dest.kind = rkInt
-    dest.intVal = n.intVal
+    dest = TFullReg(kind: rkNode, node: newStrNode(nkStrLit, n.strVal))
+  of nkIntLit: # use `nkPtrLit` once this is added
+    if dest.kind == rkNode: dest.node = n
+    elif n.typ != nil and n.typ.kind in PtrLikeKinds:
+      dest = TFullReg(kind: rkNode, node: n)
+    else:
+      dest = TFullReg(kind: rkInt, intVal: n.intVal)
+  of {nkCharLit..nkUInt64Lit} - {nkIntLit}:
+    dest = TFullReg(kind: rkInt, intVal: n.intVal)
   of nkFloatLit..nkFloat128Lit:
-    dest.kind = rkFloat
-    dest.floatVal = n.floatVal
+    dest = TFullReg(kind: rkFloat, floatVal: n.floatVal)
   else:
-    dest.kind = rkNode
-    dest.node = n
+    dest = TFullReg(kind: rkNode, node: n)
 
 proc regToNode(x: TFullReg): PNode =
   case x.kind
@@ -373,9 +385,7 @@ proc cleanUpOnReturn(c: PCtx; f: PStackFrame): int =
 
 proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType): bool =
   if desttyp.kind == tyString:
-    if dest.kind != rkNode:
-      myreset(dest)
-      dest.kind = rkNode
+    dest.ensureKind(rkNode)
     dest.node = newNode(nkStrLit)
     let styp = srctyp.skipTypes(abstractRange)
     case styp.kind
@@ -420,8 +430,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
   else:
     case skipTypes(desttyp, abstractVarRange).kind
     of tyInt..tyInt64:
-      if dest.kind != rkInt:
-        myreset(dest); dest.kind = rkInt
+      dest.ensureKind(rkInt)
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
@@ -430,8 +439,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
       if toInt128(dest.intVal) < firstOrd(c.config, desttyp) or toInt128(dest.intVal) > lastOrd(c.config, desttyp):
         return true
     of tyUInt..tyUInt64:
-      if dest.kind != rkInt:
-        myreset(dest); dest.kind = rkInt
+      dest.ensureKind(rkInt)
       case skipTypes(srctyp, abstractRange).kind
       of tyFloat..tyFloat64:
         dest.intVal = int(src.floatVal)
@@ -443,9 +451,14 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
+    of tyBool:
+      dest.ensureKind(rkInt)
+      dest.intVal = 
+        case skipTypes(srctyp, abstractRange).kind
+          of tyFloat..tyFloat64: int(src.floatVal != 0.0)
+          else: int(src.intVal != 0)
     of tyFloat..tyFloat64:
-      if dest.kind != rkFloat:
-        myreset(dest); dest.kind = rkFloat
+      dest.ensureKind(rkFloat)
       case skipTypes(srctyp, abstractRange).kind
       of tyInt..tyInt64, tyUInt..tyUInt64, tyEnum, tyBool, tyChar:
         dest.floatVal = toBiggestFloat(src.intVal)
@@ -467,11 +480,11 @@ proc compile(c: PCtx, s: PSym): int =
 template handleJmpBack() {.dirty.} =
   if c.loopIterations <= 0:
     if allowInfiniteLoops in c.features:
-      c.loopIterations = MaxLoopIterations
+      c.loopIterations = c.config.maxLoopIterationsVM
     else:
       msgWriteln(c.config, "stack trace: (most recent call last)")
       stackTraceAux(c, tos, pc)
-      globalError(c.config, c.debug[pc], errTooManyIterations)
+      globalError(c.config, c.debug[pc], errTooManyIterations % $c.config.maxLoopIterationsVM)
   dec(c.loopIterations)
 
 proc recSetFlagIsRef(arg: PNode) =
@@ -494,9 +507,25 @@ const
   errConstantDivisionByZero = "division by zero"
   errIllegalConvFromXtoY = "illegal conversion from '$1' to '$2'"
   errTooManyIterations = "interpretation requires too many iterations; " &
-    "if you are sure this is not a bug in your code edit " &
-    "compiler/vmdef.MaxLoopIterations and rebuild the compiler"
+    "if you are sure this is not a bug in your code, compile with `--maxLoopIterationsVM:number` (current value: $1)"
   errFieldXNotFound = "node lacks field: "
+
+
+template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
+  let node = node2 # prevent double evaluation
+  if node.kind == nkNilLit:
+    stackTrace(c, tos, pc, errNilAccess)
+  let typ = node.typ
+  if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
+    assert node.kind == nkIntLit, $(node.kind)
+    assert typ != nil
+    let typ2 = if typ.kind == tyPtr: typ[0] else: typ
+    if not derefPtrToReg(node.intVal, typ2, reg, isAssign = isAssign2):
+      # tyObject not supported in this context
+      stackTrace(c, tos, pc, "deref unsupported ptr type: " & $(typeToString(typ), typ.kind))
+    true
+  else:
+    false
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -562,11 +591,38 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcCastIntToFloat32:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+      regs[ra].floatVal = cast[float32](regs[rb].intVal)
     of opcCastIntToFloat64:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
+      regs[ra].floatVal = cast[float64](regs[rb].intVal)
+
+    of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
+      decodeBImm(rkInt)
+      case imm
+      of 1: # PtrLikeKinds
+        case regs[rb].kind
+        of rkNode:
+          regs[ra].intVal = cast[int](regs[rb].node.intVal)
+        of rkNodeAddr:
+          regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+        else:
+          stackTrace(c, tos, pc, "opcCastPtrToInt: got " & $regs[rb].kind)
+      of 2: # tyRef
+        regs[ra].intVal = cast[int](regs[rb].node)
+      else: assert false, $imm
+    of opcCastIntToPtr:
+      let rb = instr.regB
+      let typ = regs[ra].node.typ
+      let node2 = newNodeIT(nkIntLit, c.debug[pc], typ)
+      case regs[rb].kind
+      of rkInt: node2.intVal = regs[rb].intVal
+      of rkNode:
+        if regs[rb].node.typ.kind notin PtrLikeKinds:
+          stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].node.typ: " & $regs[rb].node.typ.kind)
+        node2.intVal = regs[rb].node.intVal
+      else: stackTrace(c, tos, pc, "opcCastIntToPtr: regs[rb].kind: " & $regs[rb].kind)
+      regs[ra].node = node2
     of opcAsgnComplex:
       asgnComplex(regs[ra], regs[instr.regB])
     of opcFastAsgnComplex:
@@ -651,7 +707,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let src = regs[rb].node
       case src.kind
       of nkEmpty..nkNilLit:
-        stackTrace(c, tos, pc, errNilAccess)
+        # for nkPtrLit, this could be supported in the future, use something like:
+        # derefPtrToReg(src.intVal + offsetof(src.typ, rc), typ_field, regs[ra], isAssign = false)
+        # where we compute the offset in bytes for field rc
+        stackTrace(c, tos, pc, errNilAccess & " " & $("kind", src.kind, "typ", typeToString(src.typ), "rc", rc))
       of nkObjConstr:
         let n = src[rc + 1].skipColon
         regs[ra].node = n
@@ -713,15 +772,14 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         ensureKind(regs[rb].regAddr.kind)
         regs[ra] = regs[rb].regAddr[]
       of rkNode:
-        if regs[rb].node.kind == nkNilLit:
-          stackTrace(c, tos, pc, errNilAccess)
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
-        else:
+        elif not maybeHandlePtr(regs[rb].node, regs[ra], false):
+          ## eg: typ.kind = tyObject
           ensureKind(rkNode)
           regs[ra].node = regs[rb].node
       else:
-        stackTrace(c, tos, pc, errNilAccess)
+        stackTrace(c, tos, pc, errNilAccess & " kind: " & $regs[rb].kind)
     of opcWrDeref:
       # a[] = c; b unused
       let ra = instr.regA
@@ -740,10 +798,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].nodeAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
       of rkNode:
-        if regs[ra].node.kind == nkNilLit:
-          stackTrace(c, tos, pc, errNilAccess)
-        regs[ra].node[] = regs[rc].regToNode[]
-        regs[ra].node.flags.incl nfIsRef
+         # xxx: also check for nkRefTy as in opcLdDeref?
+        if not maybeHandlePtr(regs[ra].node, regs[rc], true):
+          regs[ra].node[] = regs[rc].regToNode[]
+          regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
     of opcAddInt:
       decodeBC(rkInt)
@@ -918,22 +976,40 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeBC(rkInt)
       regs[ra].intVal = ord(regs[rb].intVal <% regs[rc].intVal)
     of opcEqRef:
+      var ret = false
       decodeBC(rkInt)
+      template getTyp(n): untyped =
+        n.typ.skipTypes(abstractInst)
+      proc ptrEquality(n1: ptr PNode, n2: PNode): bool =
+        ## true if n2.intVal represents a ptr equal to n1
+        let p1 = cast[int](n1)
+        case n2.kind
+        of nkNilLit: return p1 == 0
+        of nkIntLit: # TODO: nkPtrLit
+          # for example, n1.kind == nkFloatLit (ptr float)
+          # the problem is that n1.typ == nil so we can't compare n1.typ and n2.typ
+          # this is the best we can do (pending making sure we assign a valid n1.typ to nodeAddr's)
+          let t2 = n2.getTyp
+          return t2.kind in PtrLikeKinds and n2.intVal == p1
+        else: return false
+
       if regs[rb].kind == rkNodeAddr:
         if regs[rc].kind == rkNodeAddr:
-          regs[ra].intVal = ord(regs[rb].nodeAddr == regs[rc].nodeAddr)
+          ret = regs[rb].nodeAddr == regs[rc].nodeAddr
         else:
-          assert regs[rc].kind == rkNode
-          # we know these cannot be equal
-          regs[ra].intVal = ord(false)
+          ret = ptrEquality(regs[rb].nodeAddr, regs[rc].node)
       elif regs[rc].kind == rkNodeAddr:
-        assert regs[rb].kind == rkNode
-        # we know these cannot be equal
-        regs[ra].intVal = ord(false)
+        ret = ptrEquality(regs[rc].nodeAddr, regs[rb].node)
       else:
-        regs[ra].intVal = ord((regs[rb].node.kind == nkNilLit and
-                              regs[rc].node.kind == nkNilLit) or
-                              regs[rb].node == regs[rc].node)
+        let nb = regs[rb].node
+        let nc = regs[rc].node
+        if nb.kind != nc.kind: discard
+        elif (nb == nc) or (nb.kind == nkNilLit): ret = true
+        elif nb.kind == nkIntLit and nb.intVal == nc.intVal: # TODO: nkPtrLit
+          let tb = nb.getTyp
+          let tc = nc.getTyp
+          ret = tb.kind in PtrLikeKinds and tc.kind == tb.kind
+      regs[ra].intVal = ord(ret)
     of opcEqNimNode:
       decodeBC(rkInt)
       regs[ra].intVal =
@@ -1000,11 +1076,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.diffSets(c.config, regs[rb].node, regs[rc].node).sons)
-    of opcSymdiffSet:
-      decodeBC(rkNode)
-      createSet(regs[ra])
-      move(regs[ra].node.sons,
-           nimsets.symdiffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcConcatStr:
       decodeBC(rkNode)
       createStr regs[ra]
@@ -1095,8 +1166,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var rcAddr = addr(regs[rc])
       if rcAddr.kind == rkRegisterAddr: rcAddr = rcAddr.regAddr
       elif regs[rc].kind != rkFloat:
-        myreset(regs[rc])
-        regs[rc].kind = rkFloat
+        regs[rc] = TFullReg(kind: rkFloat)
       regs[ra].intVal = parseBiggestFloat(regs[rb].node.strVal,
                                           rcAddr.floatVal, regs[rd].intVal.int)
     of opcRangeChck:
@@ -1117,7 +1187,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
-          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif importcCond(prc):
@@ -1156,8 +1226,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         for i in 1..rc-1:
           newFrame.slots[i] = regs[rb+i]
         if isClosure:
-          newFrame.slots[rc].kind = rkNode
-          newFrame.slots[rc].node = regs[rb].node[1]
+          newFrame.slots[rc] = TFullReg(kind: rkNode, node: regs[rb].node[1])
         tos = newFrame
         move(regs, newFrame.slots)
         # -1 for the following 'inc pc'
@@ -1321,7 +1390,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess
       let cnst = c.constants[rb]
       if fitsRegister(cnst.typ):
-        myreset(regs[ra])
+        reset(regs[ra])
         putIntoReg(regs[ra], cnst)
       else:
         ensureKind(rkNode)
@@ -1338,6 +1407,29 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNode)
       regs[ra].node = c.globals[rb]
+    of opcLdGlobalDerefFFI:
+      let rb = instr.regBx - wordExcess - 1
+      let node = c.globals[rb]
+      let typ = node.typ
+      doAssert node.kind == nkIntLit, $(node.kind)
+      if typ.kind == tyPtr:
+        ensureKind(rkNode)
+        # use nkPtrLit once this is added
+        let node2 = newNodeIT(nkIntLit, c.debug[pc], typ)
+        node2.intVal = cast[ptr int](node.intVal)[]
+        node2.flags.incl nfIsPtr
+        regs[ra].node = node2
+      elif not derefPtrToReg(node.intVal, typ, regs[ra], isAssign = false):
+        stackTrace(c, tos, pc, "opcLdDeref unsupported type: " & $(typeToString(typ), typ[0].kind))
+    of opcLdGlobalAddrDerefFFI:
+      let rb = instr.regBx - wordExcess - 1
+      let node = c.globals[rb]
+      let typ = node.typ
+      var node2 = newNodeIT(nkIntLit, node.info, typ)
+      node2.intVal = node.intVal
+      node2.flags.incl nfIsPtr
+      ensureKind(rkNode)
+      regs[ra].node = node2
     of opcLdGlobalAddr:
       let rb = instr.regBx - wordExcess - 1
       ensureKind(rkNodeAddr)
@@ -1414,7 +1506,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
-        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
       callback(args)
@@ -2077,7 +2169,6 @@ proc evalConstExprAux(module: PSym;
   setupGlobalCtx(module, g)
   var c = PCtx g.vm
   let oldMode = c.mode
-  defer: c.mode = oldMode
   c.mode = mode
   let start = genExpr(c, n, requiresValue = mode!=emStaticStmt)
   if c.code[start].opcode == opcEof: return newNodeI(nkEmpty, n.info)
@@ -2088,6 +2179,7 @@ proc evalConstExprAux(module: PSym;
   #for i in 0..<c.prc.maxSlots: tos.slots[i] = newNode(nkEmpty)
   result = rawExecute(c, start, tos).regToNode
   if result.info.col < 0: result.info = n.info
+  c.mode = oldMode
 
 proc evalConstExpr*(module: PSym; g: ModuleGraph; e: PNode): PNode =
   result = evalConstExprAux(module, g, nil, e, emConst)
@@ -2125,13 +2217,12 @@ proc setupMacroParam(x: PNode, typ: PType): TFullReg =
   of tyStatic:
     putIntoReg(result, prepareVMValue(x))
   else:
-    result.kind = rkNode
     var n = x
     if n.kind in {nkHiddenSubConv, nkHiddenStdConv}: n = n[1]
     n = n.canonValue
     n.flags.incl nfIsRef
     n.typ = x.typ
-    result.node = n
+    result = TFullReg(kind: rkNode, node: n)
 
 iterator genericParamsInMacroCall*(macroSym: PSym, call: PNode): (PSym, PNode) =
   let gp = macroSym.ast[genericParamsPos]
@@ -2183,8 +2274,7 @@ proc evalMacroCall*(module: PSym; g: ModuleGraph;
   #InternalAssert tos.slots.len >= L
 
   # return value:
-  tos.slots[0].kind = rkNode
-  tos.slots[0].node = newNodeI(nkEmpty, n.info)
+  tos.slots[0] = TFullReg(kind: rkNode, node: newNodeI(nkEmpty, n.info))
 
   # setup parameters:
   for i in 1..<sym.typ.len:

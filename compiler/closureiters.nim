@@ -154,8 +154,8 @@ type
                     # is their finally. For finally it is parent finally. Otherwise -1
 
 const
-  nkSkip = { nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
-            nkCommentStmt } + procDefs
+  nkSkip = {nkEmpty..nkNilLit, nkTemplateDef, nkTypeSection, nkStaticStmt,
+            nkCommentStmt} + procDefs
 
 proc newStateAccess(ctx: var Ctx): PNode =
   if ctx.stateVarSym.isNil:
@@ -778,7 +778,7 @@ proc lowerStmtListExprs(ctx: var Ctx, n: PNode, needsSplit: var bool): PNode =
       result = newNodeI(nkStmtListExpr, n.info)
       result.typ = n.typ
       let (st, ex) = exprToStmtList(n[1])
-      n.kind = nkBlockStmt
+      n.transitionSonsKind(nkBlockStmt)
       n.typ = nil
       n[1] = st
       result.add(n)
@@ -838,7 +838,8 @@ proc transformReturnsInTry(ctx: var Ctx, n: PNode): PNode =
     if n[0].kind != nkEmpty:
       let asgnTmpResult = newNodeI(nkAsgn, n.info)
       asgnTmpResult.add(ctx.newTmpResultAccess())
-      asgnTmpResult.add(n[0])
+      let x = if n[0].kind in {nkAsgn, nkFastAsgn}: n[0][1] else: n[0]
+      asgnTmpResult.add(x)
       result.add(asgnTmpResult)
 
     result.add(ctx.newNullifyCurExc(n.info))

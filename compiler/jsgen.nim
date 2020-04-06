@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors
+  transf, injectdestructors, sourcemap, json, sets
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -370,71 +370,68 @@ type
 
 const # magic checked op; magic unchecked op;
   jsMagics: TMagicOps = [
-    ["addInt", ""], # AddI
-    ["subInt", ""], # SubI
-    ["mulInt", ""], # MulI
-    ["divInt", ""], # DivI
-    ["modInt", ""], # ModI
-    ["addInt", ""], # Succ
-    ["subInt", ""], # Pred
-    ["", ""], # AddF64
-    ["", ""], # SubF64
-    ["", ""], # MulF64
-    ["", ""], # DivF64
-    ["", ""], # ShrI
-    ["", ""], # ShlI
-    ["", ""], # AshrI
-    ["", ""], # BitandI
-    ["", ""], # BitorI
-    ["", ""], # BitxorI
-    ["nimMin", "nimMin"], # MinI
-    ["nimMax", "nimMax"], # MaxI
-    ["", ""], # addU
-    ["", ""], # subU
-    ["", ""], # mulU
-    ["", ""], # divU
-    ["", ""], # modU
-    ["", ""], # EqI
-    ["", ""], # LeI
-    ["", ""], # LtI
-    ["", ""], # EqF64
-    ["", ""], # LeF64
-    ["", ""], # LtF64
-    ["", ""], # leU
-    ["", ""], # ltU
-    ["", ""], # leU64
-    ["", ""], # ltU64
-    ["", ""], # EqEnum
-    ["", ""], # LeEnum
-    ["", ""], # LtEnum
-    ["", ""], # EqCh
-    ["", ""], # LeCh
-    ["", ""], # LtCh
-    ["", ""], # EqB
-    ["", ""], # LeB
-    ["", ""], # LtB
-    ["", ""], # EqRef
-    ["", ""], # EqUntracedRef
-    ["", ""], # LePtr
-    ["", ""], # LtPtr
-    ["", ""], # Xor
-    ["", ""], # EqCString
-    ["", ""], # EqProc
-    ["negInt", ""], # UnaryMinusI
-    ["negInt64", ""], # UnaryMinusI64
-    ["absInt", ""], # AbsI
-    ["", ""], # Not
-    ["", ""], # UnaryPlusI
-    ["", ""], # BitnotI
-    ["", ""], # UnaryPlusF64
-    ["", ""], # UnaryMinusF64
-    ["nimCharToStr", "nimCharToStr"],
-    ["nimBoolToStr", "nimBoolToStr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["cstrToNimstr", "cstrToNimstr"],
-    ["", ""]]
+    mAddI: ["addInt", ""],
+    mSubI: ["subInt", ""],
+    mMulI: ["mulInt", ""],
+    mDivI: ["divInt", ""],
+    mModI: ["modInt", ""],
+    mSucc: ["addInt", ""],
+    mPred: ["subInt", ""],
+    mAddF64: ["", ""],
+    mSubF64: ["", ""],
+    mMulF64: ["", ""],
+    mDivF64: ["", ""],
+    mShrI: ["", ""],
+    mShlI: ["", ""],
+    mAshrI: ["", ""],
+    mBitandI: ["", ""],
+    mBitorI: ["", ""],
+    mBitxorI: ["", ""],
+    mMinI: ["nimMin", "nimMin"],
+    mMaxI: ["nimMax", "nimMax"],
+    mAddU: ["", ""],
+    mSubU: ["", ""],
+    mMulU: ["", ""],
+    mDivU: ["", ""],
+    mModU: ["", ""],
+    mEqI: ["", ""],
+    mLeI: ["", ""],
+    mLtI: ["", ""],
+    mEqF64: ["", ""],
+    mLeF64: ["", ""],
+    mLtF64: ["", ""],
+    mLeU: ["", ""],
+    mLtU: ["", ""],
+    mEqEnum: ["", ""],
+    mLeEnum: ["", ""],
+    mLtEnum: ["", ""],
+    mEqCh: ["", ""],
+    mLeCh: ["", ""],
+    mLtCh: ["", ""],
+    mEqB: ["", ""],
+    mLeB: ["", ""],
+    mLtB: ["", ""],
+    mEqRef: ["", ""],
+    mLePtr: ["", ""],
+    mLtPtr: ["", ""],
+    mXor: ["", ""],
+    mEqCString: ["", ""],
+    mEqProc: ["", ""],
+    mUnaryMinusI: ["negInt", ""],
+    mUnaryMinusI64: ["negInt64", ""],
+    mAbsI: ["absInt", ""],
+    mNot: ["", ""],
+    mUnaryPlusI: ["", ""],
+    mBitnotI: ["", ""],
+    mUnaryPlusF64: ["", ""],
+    mUnaryMinusF64: ["", ""],
+    mCharToStr: ["nimCharToStr", "nimCharToStr"],
+    mBoolToStr: ["nimBoolToStr", "nimBoolToStr"],
+    mIntToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mInt64ToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mFloatToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mCStrToStr: ["cstrToNimstr", "cstrToNimstr"],
+    mStrToStr: ["", ""]]
 
 proc needsTemp(p: PProc; n: PNode): bool =
   # check if n contains a call to determine
@@ -576,8 +573,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLtF64: applyFormat("($1 < $2)", "($1 < $2)")
   of mLeU: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtU: applyFormat("($1 < $2)", "($1 < $2)")
-  of mLeU64: applyFormat("($1 <= $2)", "($1 <= $2)")
-  of mLtU64: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqEnum: applyFormat("($1 == $2)", "($1 == $2)")
   of mLeEnum: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtEnum: applyFormat("($1 < $2)", "($1 < $2)")
@@ -588,7 +583,6 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mLeB: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtB: applyFormat("($1 < $2)", "($1 < $2)")
   of mEqRef: applyFormat("($1 == $2)", "($1 == $2)")
-  of mEqUntracedRef: applyFormat("($1 == $2)", "($1 == $2)")
   of mLePtr: applyFormat("($1 <= $2)", "($1 <= $2)")
   of mLtPtr: applyFormat("($1 < $2)", "($1 < $2)")
   of mXor: applyFormat("($1 != $2)", "($1 != $2)")
@@ -631,7 +625,7 @@ proc arith(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr,
       mCStrToStr, mStrToStr, mEnumToStr:
     arithAux(p, n, r, op)
-  of mEqRef, mEqUntracedRef:
+  of mEqRef:
     if mapType(n[1].typ) != etyBaseIndex:
       arithAux(p, n, r, op)
     else:
@@ -647,11 +641,16 @@ proc hasFrameInfo(p: PProc): bool =
   ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
+proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
+  ropes.`%`("// line $2 \"$1\"$n",
+         [rope(toFullPath(config, info)), rope(line)])
+
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
-  if optLineDir in p.options:
-    lineF(p, "// line $2 \"$1\"$n",
-         [rope(toFilename(p.config, n.info)), rope(line)])
+  if line < 0:
+    return
+  if optLineDir in p.options or optLineDir in p.config.options:
+    lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
 
@@ -1795,26 +1794,6 @@ proc genConStrStr(p: PProc, n: PNode, r: var TCompRes) =
   else:
     r.res.add("$1 || [])" % [a.res])
 
-proc genToArray(p: PProc; n: PNode; r: var TCompRes) =
-  # we map mArray to PHP's array constructor, a mild hack:
-  var a, b: TCompRes
-  r.kind = resExpr
-  r.res = rope("array(")
-  let x = skipConv(n[1])
-  if x.kind == nkBracket:
-    for i in 0..<x.len:
-      let it = x[i]
-      if it.kind in {nkPar, nkTupleConstr} and it.len == 2:
-        if i > 0: r.res.add(", ")
-        gen(p, it[0], a)
-        gen(p, it[1], b)
-        r.res.add("$# => $#" % [a.rdLoc, b.rdLoc])
-      else:
-        localError(p.config, it.info, "'toArray' needs tuple constructors")
-  else:
-    localError(p.config, x.info, "'toArray' needs an array literal")
-  r.res.add(")")
-
 proc genReprAux(p: PProc, n: PNode, r: var TCompRes, magic: string, typ: Rope = nil) =
   useMagic(p, magic)
   r.res.add(magic & "(")
@@ -1890,6 +1869,15 @@ proc genReset(p: PProc, n: PNode) =
     lineF(p, "$1 = genericReset($3, $2);$n", [a,
                   genTypeInfo(p, n[1].typ), tmp])
 
+proc genMove(p: PProc; n: PNode; r: var TCompRes) =
+  var a: TCompRes
+  r.kind = resVal
+  r.res = p.getTemp()
+  gen(p, n[1], a)
+  lineF(p, "$1 = $2;$n", [r.rdLoc, a.rdLoc])
+  genReset(p, n)
+  #lineF(p, "$1 = $2;$n", [dest.rdLoc, src.rdLoc])
+
 proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   var
     a: TCompRes
@@ -1901,10 +1889,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mAddI..mStrToStr: arith(p, n, r, op)
   of mRepr: genRepr(p, n, r)
   of mSwap: genSwap(p, n)
-  of mUnaryLt:
-    # XXX: range checking?
-    if not (optOverflowCheck in p.options): unaryExpr(p, n, r, "", "$1 - 1")
-    else: unaryExpr(p, n, r, "subInt", "subInt($1, 1)")
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
         "if ($1 != null) { addChar($3, $2); } else { $3 = [$2]; }")
@@ -1970,8 +1954,6 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
     unaryExpr(p, n, r, "", "($1 != null ? $2.length : 0)")
-  of mXLenStr, mXLenSeq:
-    unaryExpr(p, n, r, "", "$1.length")
   of mHigh:
     unaryExpr(p, n, r, "", "($1 != null ? ($2.length-1) : -1)")
   of mInc:
@@ -2014,12 +1996,10 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mNewSeqOfCap: unaryExpr(p, n, r, "", "[]")
   of mOf: genOf(p, n, r)
   of mDefault: genDefault(p, n, r)
-  of mReset: genReset(p, n)
+  of mReset, mWasMoved: genReset(p, n)
   of mEcho: genEcho(p, n, r)
   of mNLen..mNError, mSlurp, mStaticExec:
     localError(p.config, n.info, errXMustBeCompileTime % n[0].sym.name.s)
-  of mCopyStr:
-    binaryExpr(p, n, r, "", "($1.slice($2))")
   of mNewString: unaryExpr(p, n, r, "mnewString", "mnewString($1)")
   of mNewStringOfCap:
     unaryExpr(p, n, r, "mnewString", "mnewString(0)")
@@ -2037,6 +2017,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     gen(p, n[3], z)
     r.res = "($1.slice($2, $3+1))" % [x.rdLoc, y.rdLoc, z.rdLoc]
     r.kind = resExpr
+  of mMove:
+    genMove(p, n, r)
   else:
     genCall(p, n, r)
     #else internalError(p.config, e.info, 'genMagic: ' + magicToStr[op]);
@@ -2264,6 +2246,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
 
   p.nested: genStmt(p, transformedBody)
 
+
+  if optLineDir in p.config.options:
+    result = lineDir(p.config, prc.info, toLinenumber(prc.info))
+
   var def: Rope
   if not prc.constraint.isNil:
     def = runtimeFormat(prc.constraint.strVal & " {$n$#$#$#$#$#",
@@ -2276,7 +2262,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionalLine(genProcBody(p, prc)),
               optionalLine(p.indentLine(returnStmt))])
   else:
-    result = ~"\L"
+    # if optLineDir in p.config.options:
+      # result.add(~"\L")
 
     if p.config.hcrOn:
       # Here, we introduce thunks that create the equivalent of a jump table
@@ -2359,6 +2346,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   if r.kind != resCallee: r.kind = resNone
   #r.address = nil
   r.res = nil
+  
   case n.kind
   of nkSym:
     genSym(p, n, r)
@@ -2405,14 +2393,15 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     else: r.res = rope(f.toStrMaxPrecision)
     r.kind = resExpr
   of nkCallKinds:
-    if isEmptyType(n.typ): genLineDir(p, n)
+    if isEmptyType(n.typ):
+      genLineDir(p, n)
     if (n[0].kind == nkSym) and (n[0].sym.magic != mNone):
       genMagic(p, n, r)
     elif n[0].kind == nkSym and sfInfixCall in n[0].sym.flags and
         n.len >= 1:
       genInfixCall(p, n, r)
     else:
-      genCall(p, n, r)
+      genCall(p, n, r)    
   of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
@@ -2608,10 +2597,15 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       n.add destructorCall
   if passes.skipCodegen(m.config, n): return n
   if sfMainModule in m.module.flags:
-    let code = wholeCode(graph, m)
+    var code = genHeader() & wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
-    discard writeRopeIfNotEqual(genHeader() & code, outFile)
 
+    if optSourcemap in m.config.globalOptions:
+      var map: SourceMap
+      (code, map) = genSourceMap($(code), outFile.string)
+      writeFile(outFile.string & ".map", $(%map))
+    discard writeRopeIfNotEqual(code, outFile)
+    
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 

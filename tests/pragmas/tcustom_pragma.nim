@@ -1,6 +1,6 @@
 {.experimental: "notnil".}
 
-import macros
+import macros, asyncmacro, asyncfutures
 
 block:
   template myAttr() {.pragma.}
@@ -249,3 +249,89 @@ block:
   var e {.fooBar("foo", 123, 'u').}: int
   doAssert(hasCustomPragma(e, fooBar))
   doAssert(getCustomPragmaVal(e, fooBar).c == 123)
+
+block:
+  macro expectedAst(expectedRepr: static[string], input: untyped): untyped =
+    assert input.treeRepr & "\n" == expectedRepr
+    return input
+
+  const procTypeAst = """
+ProcTy
+  FormalParams
+    Empty
+    IdentDefs
+      Ident "x"
+      Ident "int"
+      Empty
+  Pragma
+    Ident "async"
+"""
+
+  type
+    Foo = proc (x: int) {.expectedAst(procTypeAst), async.}
+
+  static: assert Foo is proc(x: int): Future[void]
+
+  const asyncProcTypeAst = """
+ProcTy
+  FormalParams
+    BracketExpr
+      Ident "Future"
+      Ident "void"
+    IdentDefs
+      Ident "s"
+      Ident "string"
+      Empty
+  Pragma
+"""
+
+  type
+    Bar = proc (s: string) {.async, expectedAst(asyncProcTypeAst).}
+
+  static: assert Bar is proc(x: string): Future[void]
+
+  const typeAst = """
+TypeDef
+  PragmaExpr
+    Ident "Baz"
+    Pragma
+  Empty
+  ObjectTy
+    Empty
+    Empty
+    RecList
+      IdentDefs
+        Ident "x"
+        Ident "string"
+        Empty
+"""
+
+  type
+    Baz {.expectedAst(typeAst).} = object
+      x: string
+
+  static: assert Baz.x is string
+
+  const procAst = """
+ProcDef
+  Ident "bar"
+  Empty
+  Empty
+  FormalParams
+    Ident "string"
+    IdentDefs
+      Ident "s"
+      Ident "string"
+      Empty
+  Empty
+  Empty
+  StmtList
+    ReturnStmt
+      Ident "s"
+"""
+
+  proc bar(s: string): string {.expectedAst(procAst).} =
+    return s
+
+  static: assert bar("x") == "x"
+

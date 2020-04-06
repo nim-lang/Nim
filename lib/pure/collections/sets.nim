@@ -86,9 +86,6 @@ const
 
 include setimpl
 
-proc rightSize*(count: Natural): int {.inline.}
-
-
 # ---------------------------------------------------------------------
 # ------------------------------ HashSet ------------------------------
 # ---------------------------------------------------------------------
@@ -592,15 +589,6 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
   dollarImpl()
-
-proc rightSize*(count: Natural): int {.inline.} =
-  ## Return the value of `initialSize` to support `count` items.
-  ##
-  ## If more items are expected to be added, simply add that
-  ## expected extra amount to the parameter before calling this.
-  ##
-  ## Internally, we want `mustRehash(rightSize(x), x) == false`.
-  result = nextPowerOfTwo(count * 3 div 2 + 4)
 
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
@@ -1146,10 +1134,19 @@ when isMainModule and not defined(release):
       b.incl(2)
       assert b.len == 1
 
-    for i in 0 .. 32:
-      var s = rightSize(i)
-      if s <= i or mustRehash(s, i):
-        echo "performance issue: rightSize() will not elide enlarge() at ", i
+    block:
+      type FakeTable = object
+        dataLen: int
+        counter: int
+        countDeleted: int
+
+      var t: FakeTable
+      for i in 0 .. 32:
+        var s = rightSize(i)
+        t.dataLen = s
+        t.counter = i
+        doAssert s > i and not mustRehash(t),
+          "performance issue: rightSize() will not elide enlarge() at: " & $i
 
     block missingOrExcl:
       var s = toOrderedSet([2, 3, 6, 7])

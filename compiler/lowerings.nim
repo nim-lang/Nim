@@ -42,6 +42,13 @@ proc addVar*(father, v: PNode) =
   vpart[2] = vpart[1]
   father.add vpart
 
+proc addVar*(father, v, value: PNode) =
+  var vpart = newNodeI(nkIdentDefs, v.info, 3)
+  vpart[0] = v
+  vpart[1] = newNodeI(nkEmpty, v.info)
+  vpart[2] = value
+  father.add vpart
+
 proc newAsgnStmt*(le, ri: PNode): PNode =
   result = newNodeI(nkAsgn, le.info, 2)
   result[0] = le
@@ -60,17 +67,16 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   var temp = newSym(skTemp, getIdent(g.cache, genPrefix), owner, value.info, g.config.options)
   temp.typ = skipTypes(value.typ, abstractInst)
   incl(temp.flags, sfFromGeneric)
-  incl(temp.flags, sfCursor)
 
   var v = newNodeI(nkVarSection, value.info)
   let tempAsNode = newSymNode(temp)
-  v.addVar(tempAsNode)
+  v.addVar(tempAsNode, value)
   result.add(v)
 
-  result.add newAsgnStmt(tempAsNode, value)
   for i in 0..<n.len-2:
-    if n[i].kind == nkSym: v.addVar(n[i])
-    result.add newAsgnStmt(n[i], newTupleAccess(g, tempAsNode, i))
+    let val = newTupleAccess(g, tempAsNode, i)
+    if n[i].kind == nkSym: v.addVar(n[i], val)
+    else: result.add newAsgnStmt(n[i], val)
 
 proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
@@ -306,10 +312,10 @@ proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
 
-proc genAddrOf*(n: PNode): PNode =
+proc genAddrOf*(n: PNode, typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(tyPtr, n.typ.owner)
+  result.typ = newType(typeKind, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
@@ -318,7 +324,7 @@ proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =
   result.add n
 
 proc callCodegenProc*(g: ModuleGraph; name: string;
-                      info: TLineInfo = unknownLineInfo();
+                      info: TLineInfo = unknownLineInfo;
                       arg1, arg2, arg3, optionalArgs: PNode = nil): PNode =
   result = newNodeI(nkCall, info)
   let sym = magicsys.getCompilerProc(g, name)

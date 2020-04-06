@@ -159,7 +159,13 @@ __AVR__
 #  define NIM_CAST(type, ptr) ((type)(ptr))
 #endif
 
+
 /* ------------------------------------------------------------------- */
+#ifdef  __cplusplus
+#  define NIM_EXTERNC extern "C"
+#else
+#  define NIM_EXTERNC
+#endif
 
 #if defined(WIN32) || defined(_WIN32) /* only Windows has this mess... */
 #  define N_LIB_PRIVATE
@@ -176,10 +182,11 @@ __AVR__
 #  define N_SAFECALL_PTR(rettype, name) rettype (__stdcall *name)
 
 #  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C" __declspec(dllexport)
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
 #  else
-#    define N_LIB_EXPORT  extern __declspec(dllexport)
+#    define N_LIB_EXPORT  NIM_EXTERNC __declspec(dllexport)
 #  endif
+#  define N_LIB_EXPORT_VAR  __declspec(dllexport)
 #  define N_LIB_IMPORT  extern __declspec(dllimport)
 #else
 #  define N_LIB_PRIVATE __attribute__((visibility("hidden")))
@@ -208,11 +215,8 @@ __AVR__
 #    define N_FASTCALL_PTR(rettype, name) rettype (*name)
 #    define N_SAFECALL_PTR(rettype, name) rettype (*name)
 #  endif
-#  ifdef __cplusplus
-#    define N_LIB_EXPORT  extern "C"
-#  else
-#    define N_LIB_EXPORT  extern
-#  endif
+#  define N_LIB_EXPORT NIM_EXTERNC __attribute__((visibility("default")))
+#  define N_LIB_EXPORT_VAR  __attribute__((visibility("default")))
 #  define N_LIB_IMPORT  extern
 #endif
 
@@ -221,7 +225,7 @@ __AVR__
 #define N_NOCONV_PTR(rettype, name) rettype (*name)
 
 #if defined(__GNUC__) || defined(__ICC__)
-#  define N_NOINLINE(rettype, name) rettype __attribute__((noinline)) name
+#  define N_NOINLINE(rettype, name) rettype __attribute__((__noinline__)) name
 #elif defined(_MSC_VER)
 #  define N_NOINLINE(rettype, name) __declspec(noinline) rettype name
 #else
@@ -485,6 +489,7 @@ struct TFrame_ {
   NCSTRING filename;
   NI16 len;
   NI16 calldepth;
+  NI frameMsgLen;
 };
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
@@ -520,12 +525,6 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 }
 #endif
 
-#ifdef  __cplusplus
-#  define NIM_EXTERNC extern "C"
-#else
-#  define NIM_EXTERNC
-#endif
-
 #if defined(_MSC_VER)
 #  define NIM_ALIGN(x)  __declspec(align(x))
 #else
@@ -546,5 +545,29 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
 #define NIM_CHECK_SIZE(typ, sz) \
   _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
+
+/* these exist to make the codegen logic simpler */
+#define nimModInt(a, b, res) (((*res) = (a) % (b)), 0)
+#define nimModInt64(a, b, res) (((*res) = (a) % (b)), 0)
+
+#if !defined(_MSC_VER) && !defined(NIM_EmulateOverflowChecks)
+  /* these exist because we cannot have .compilerProcs that are importc'ed
+    by a different name */
+
+  #define nimAddInt64(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
+  #define nimSubInt64(a, b, res) __builtin_ssubll_overflow(a, b, (long long int*)res)
+  #define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
+
+  #if NIM_INTBITS == 32
+    #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
+    #define nimSubInt(a, b, res) __builtin_ssub_overflow(a, b, res)
+    #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
+  #else
+    /* map it to the 'long long' variant */
+    #define nimAddInt(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
+    #define nimSubInt(a, b, res) __builtin_ssubll_overflow(a, b, (long long int*)res)
+    #define nimMulInt(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
+  #endif
+#endif
 
 #endif /* NIMBASE_H */

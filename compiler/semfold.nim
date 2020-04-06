@@ -20,26 +20,6 @@ proc errorType*(g: ModuleGraph): PType =
   result = newType(tyError, g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
-proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode {.deprecated: "intVal should be Int128".} =
-  case skipTypes(n.typ, abstractVarRange).kind
-  of tyInt:
-    result = newIntNode(nkIntLit, intVal)
-    # See bug #6989. 'pred' et al only produce an int literal type if the
-    # original type was 'int', not a distinct int etc.
-    if n.typ.kind == tyInt:
-      result.typ = getIntLitType(g, result)
-    else:
-      result.typ = n.typ
-    # hrm, this is not correct: 1 + high(int) shouldn't produce tyInt64 ...
-    #setIntLitType(result)
-  of tyChar:
-    result = newIntNode(nkCharLit, intVal)
-    result.typ = n.typ
-  else:
-    result = newIntNode(nkIntLit, intVal)
-    result.typ = n.typ
-  result.info = n.info
-
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
   result = newIntTypeNode(intVal, n.typ)
   # See bug #6989. 'pred' et al only produce an int literal type if the
@@ -188,7 +168,7 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
     else:
       result = newIntNodeT(bitnot(getInt(a)), n, g)
   of mLengthArray: result = newIntNodeT(lengthOrd(g.config, a.typ), n, g)
-  of mLengthSeq, mLengthOpenArray, mXLenSeq, mLengthStr, mXLenStr:
+  of mLengthSeq, mLengthOpenArray, mLengthStr:
     if a.kind == nkNilLit:
       result = newIntNodeT(Zero, n, g)
     elif a.kind in {nkStrLit..nkTripleStrLit}:
@@ -198,7 +178,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mUnaryPlusI, mUnaryPlusF64: result = a # throw `+` away
   # XXX: Hides overflow/underflow
   of mAbsI: result = foldAbs(getInt(a), n, g)
-  of mUnaryLt: result = foldSub(getOrdValue(a), One, n, g)
   of mSucc: result = foldAdd(getOrdValue(a), getInt(b), n, g)
   of mPred: result = foldSub(getOrdValue(a), getInt(b), n, g)
   of mAddI: result = foldAdd(getInt(a), getInt(b), n, g)
@@ -289,9 +268,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mLtStr: result = newIntNodeT(toInt128(ord(getStr(a) < getStr(b))), n, g)
   of mLeStr: result = newIntNodeT(toInt128(ord(getStr(a) <= getStr(b))), n, g)
   of mEqStr: result = newIntNodeT(toInt128(ord(getStr(a) == getStr(b))), n, g)
-  of mLtU, mLtU64:
+  of mLtU:
     result = newIntNodeT(toInt128(ord(`<%`(toInt64(getOrdValue(a)), toInt64(getOrdValue(b))))), n, g)
-  of mLeU, mLeU64:
+  of mLeU:
     result = newIntNodeT(toInt128(ord(`<=%`(toInt64(getOrdValue(a)), toInt64(getOrdValue(b))))), n, g)
   of mBitandI, mAnd: result = newIntNodeT(bitand(a.getInt, b.getInt), n, g)
   of mBitorI, mOr: result = newIntNodeT(bitor(getInt(a), getInt(b)), n, g)
@@ -330,9 +309,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mMinusSet:
     result = nimsets.diffSets(g.config, a, b)
     result.info = n.info
-  of mSymDiffSet:
-    result = nimsets.symdiffSets(g.config, a, b)
-    result.info = n.info
   of mConStrStr: result = newStrNodeT(getStrOrChar(a) & getStrOrChar(b), n, g)
   of mInSet: result = newIntNodeT(toInt128(ord(inSet(a, b))), n, g)
   of mRepr:
@@ -342,10 +318,6 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mBoolToStr:
     if getOrdValue(a) == 0: result = newStrNodeT("false", n, g)
     else: result = newStrNodeT("true", n, g)
-  of mCopyStr: result = newStrNodeT(substr(getStr(a), int(toInt64(getOrdValue(b)))), n, g)
-  of mCopyStrLast:
-    result = newStrNodeT(substr(getStr(a), toInt(getOrdValue(b)),
-                                           toInt(getOrdValue(c))), n, g)
   of mFloatToStr: result = newStrNodeT($getFloat(a), n, g)
   of mCStrToStr, mCharToStr:
     if a.kind == nkBracket:
@@ -441,17 +413,26 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   #   echo high(int64)
   #   writeStackTrace()
   case dstTyp.kind
+  of tyBool:
+    case srcTyp.kind
+    of tyFloat..tyFloat64:
+      result = newIntNodeT(toInt128(getFloat(a) != 0.0), n, g)
+    of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
+      result = newIntNodeT(toInt128(a.getOrdValue != 0), n, g)
+    of tyBool, tyEnum: # xxx shouldn't we disallow `tyEnum`?
+      result = a
+      result.typ = n.typ
+    else: doAssert false, $srcTyp.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:
       result = newIntNodeT(toInt128(getFloat(a)), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
-
       if check: rangeCheck(n, val, g)
       result = newIntNodeT(val, n, g)
       if dstTyp.kind in {tyUInt..tyUInt64}:
-        result.kind = nkUIntLit
+        result.transitionIntKind(nkUIntLit)
     else:
       result = a
       result.typ = n.typ

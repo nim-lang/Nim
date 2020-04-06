@@ -159,10 +159,10 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyObject:
     if inst:
       result = newNodeX(nkObjectTy)
-      if t.sym.ast != nil:
-        result.add t.sym.ast[2][0].copyTree  # copy object pragmas
-      else:
-        result.add newNodeI(nkEmpty, info)
+      var objectDef = t.sym.ast[2]
+      if objectDef.kind == nkRefTy:
+        objectDef = objectDef[0]
+      result.add objectDef[0].copyTree  # copy object pragmas
       if t[0] == nil:
         result.add newNodeI(nkEmpty, info)
       else:  # handle parent object

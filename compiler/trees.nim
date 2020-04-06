@@ -26,6 +26,10 @@ proc cyclicTree*(n: PNode): bool =
   var visited: seq[PNode] = @[]
   cyclicTreeAux(n, visited)
 
+proc sameFloatIgnoreNan(a, b: BiggestFloat): bool {.inline.} =
+  ## ignores NaN semantics, but ensures 0.0 == -0.0, see #13730
+  cast[uint64](a) == cast[uint64](b) or a == b
+
 proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
   if a == b:
     result = true
@@ -39,7 +43,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
         result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit: result = sameFloatIgnoreNan(a.floatVal, b.floatVal)
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkCommentStmt: result = a.comment == b.comment
     of nkEmpty, nkNilLit, nkType: result = true
@@ -64,7 +68,7 @@ proc sameTree*(a, b: PNode): bool =
       result = a.sym.name.id == b.sym.name.id
     of nkIdent: result = a.ident.id == b.ident.id
     of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-    of nkFloatLit..nkFloat64Lit: result = a.floatVal == b.floatVal
+    of nkFloatLit..nkFloat64Lit: result = sameFloatIgnoreNan(a.floatVal, b.floatVal)
     of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
     of nkEmpty, nkNilLit, nkType: result = true
     else:
@@ -74,6 +78,7 @@ proc sameTree*(a, b: PNode): bool =
         result = true
 
 proc getMagic*(op: PNode): TMagic =
+  if op == nil: return mNone
   case op.kind
   of nkCallKinds:
     case op[0].kind
@@ -142,6 +147,12 @@ proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
         result = newNodeI(nkCurly, result.info)
         result.add(it[1])
       return
+
+proc propSpec*(n: PNode, effectType: TSpecialWord): PNode =
+  for i in 0..<n.len:
+    var it = n[i]
+    if it.kind == nkExprColonExpr and whichPragma(it) == effectType:
+      return it[1]
 
 proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:

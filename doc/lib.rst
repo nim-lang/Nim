@@ -472,6 +472,9 @@ Modules for JS backend
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
 
+* `jsconsole <jsconsole.html>`_
+  Wrapper for the ``console`` object.
+
 * `jscore <jscore.html>`_
   Wrapper of core JavaScript functions. For most purposes you should be using
   the ``math``, ``json``, and ``times`` stdlib modules instead of this module.

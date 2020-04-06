@@ -64,9 +64,10 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 
-{.deadCodeElim: on.} # dce option deprecated
-import nativesockets, os, strutils, parseutils, times, sets, options,
-  std/monotimes
+include "system/inclrtl"
+
+import nativesockets, os, strutils, times, sets, options, std/monotimes
+from ssl_certs import scanSSLCertificates
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
@@ -80,10 +81,12 @@ when defineSsl:
 
 when defineSsl:
   type
+    Certificate* = string ## DER encoded certificate
+
     SslError* = object of Exception
 
     SslCVerifyMode* = enum
-      CVerifyNone, CVerifyPeer
+      CVerifyNone, CVerifyPeer, CVerifyPeerUseEnvVars
 
     SslProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
@@ -517,17 +520,30 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-      certFile = "", keyFile = "", cipherList = "ALL"): SslContext =
+                   certFile = "", keyFile = "", cipherList = "ALL",
+                   caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
     ## are available with the addition of ``protSSLv23`` which allows for
     ## compatibility with all of them.
     ##
-    ## There are currently only two options for verify mode;
-    ## one is ``CVerifyNone`` and with it certificates will not be verified
-    ## the other is ``CVerifyPeer`` and certificates will be verified for
-    ## it, ``CVerifyPeer`` is the safest choice.
+    ## There are three options for verify mode:
+    ## ``CVerifyNone``: certificates are not verified;
+    ## ``CVerifyPeer``: certificates are verified;
+    ## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+    ## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+    ## locate certificates
+    ##
+    ## The `nimDisableCertificateValidation` define overrides verifyMode and
+    ## disables certificate verification globally!
+    ##
+    ## CA certificates will be loaded, in the following order, from:
+    ##
+    ##  - caFile, caDir, parameters, if set
+    ##  - if `verifyMode` is set to ``CVerifyPeerUseEnvVars``,
+    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
+    ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
     ## The last two parameters specify the certificate file path and the key file
     ## path, a server socket will most likely not work without these.
@@ -550,18 +566,41 @@ when defineSsl:
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
-    case verifyMode
-    of CVerifyPeer:
-      newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
-    of CVerifyNone:
+
+    when defined(nimDisableCertificateValidation) or defined(windows):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+    else:
+      case verifyMode
+      of CVerifyPeer, CVerifyPeerUseEnvVars:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
+      of CVerifyNone:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+
     if newCTX == nil:
       raiseSSLError()
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    result = SslContext(context: newCTX, referencedData: initSet[int](),
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
+      if verifyMode != CVerifyNone:
+        # Use the caDir and caFile parameters if set
+        if caDir != "" or caFile != "":
+          if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
+            raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
+
+        else:
+          # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
+          # the SSL_CERT_FILE and SSL_CERT_DIR env vars
+          var found = false
+          for fn in scanSSLCertificates():
+            if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
+              found = true
+              break
+          if not found:
+            raise newException(IOError, "No SSL/TLS CA certificates found.")
+
+    result = SSLContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
   proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
@@ -645,6 +684,7 @@ when defineSsl:
     ## This must be called on an unconnected socket; an SSL session will
     ## be started when the socket is connected.
     ##
+    ## FIXME:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
 
@@ -660,7 +700,25 @@ when defineSsl:
     if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
 
-  proc wrapConnectedSocket*(ctx: SslContext, socket: Socket,
+  proc checkCertName(socket: Socket, hostname: string) =
+    ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
+    ## Wildcards match only in the left-most label.
+    ## When name starts with a dot it will be matched by a certificate valid for any subdomain
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
+      assert socket.isSSL
+      let certificate = socket.sslHandle.SSL_get_peer_certificate()
+      if certificate.isNil:
+        raiseSSLError("No SSL certificate found.")
+
+      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+      const size = 1024
+      var peername: string = newString(size)
+      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+      if match != 1:
+        raiseSSLError("SSL Certificate check failed.")
+
+  proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
                             handshake: SslHandshakeType,
                             hostname: string = "") =
     ## Wraps a connected socket in an SSL context. This function effectively
@@ -671,6 +729,7 @@ when defineSsl:
     ## This should be called on a connected socket, and will perform
     ## an SSL handshake immediately.
     ##
+    ## FIXME:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
     wrapSocket(ctx, socket)
@@ -682,9 +741,42 @@ when defineSsl:
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
+        if hostname.len > 0 and not isIpAddress(hostname):
+          socket.checkCertName(hostname)
     of handshakeAsServer:
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
+
+  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the OpenSSL connection represented by ``sslHandle``.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    result = newSeq[Certificate]()
+    if SSL_get_verify_result(sslHandle) != X509_V_OK:
+      return
+    let stack = SSL_get0_verified_chain(sslHandle)
+    if stack == nil:
+      return
+    let length = OPENSSL_sk_num(stack)
+    if length == 0:
+      return
+    for i in 0 .. length - 1:
+      let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
+      result.add(i2d_X509(x509))
+
+  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
 
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
@@ -1638,6 +1730,9 @@ proc connect*(socket: Socket, address: string,
 
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
+        if not isIpAddress(address):
+          socket.checkCertName(address)
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =

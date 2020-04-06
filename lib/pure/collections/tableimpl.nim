@@ -37,7 +37,7 @@ template checkIfInitialized() =
 
 template addImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  if mustRehash(t.dataLen, t.counter): enlarge(t)
+  if mustRehash(t): enlarge(t)
   var hc: Hash
   var j = rawGetDeep(t, key, hc)
   rawInsert(t, t.data, key, val, hc, j)
@@ -45,7 +45,7 @@ template addImpl(enlarge) {.dirty.} =
 
 template maybeRehashPutImpl(enlarge) {.dirty.} =
   checkIfInitialized()
-  if mustRehash(t.dataLen, t.counter):
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index                  # important to transform for mgetOrPutImpl
@@ -114,17 +114,26 @@ template clearImpl() {.dirty.} =
     t.data[i].val = default(type(t.data[i].val))
   t.counter = 0
 
+template ctAnd(a, b): bool =
+  when a:
+    when b: true
+    else: false
+  else: false
+
 template initImpl(result: typed, size: int) =
-  assert isPowerOfTwo(size)
-  result.counter = 0
-  newSeq(result.data, size)
-  when compiles(result.first):
-    result.first = -1
-    result.last = -1
+  when ctAnd(declared(SharedTable), type(result) is SharedTable):
+    init(result, size)
+  else:
+    assert isPowerOfTwo(size)
+    result.counter = 0
+    newSeq(result.data, size)
+    when compiles(result.first):
+      result.first = -1
+      result.last = -1
 
 template insertImpl() = # for CountTable
   if t.dataLen == 0: initImpl(t, defaultInitialSize)
-  if mustRehash(len(t.data), t.counter): enlarge(t)
+  if mustRehash(t): enlarge(t)
   ctRawInsert(t, t.data, key, val)
   inc(t.counter)
 

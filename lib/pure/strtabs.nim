@@ -57,7 +57,8 @@ when defined(js):
 else:
   {.pragma: rtlFunc, rtl.}
   import os
-  include "system/inclrtl"
+
+include "system/inclrtl"
 
 type
   StringTableMode* = enum ## Describes the tables operation mode.
