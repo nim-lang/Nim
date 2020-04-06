@@ -205,12 +205,12 @@ proc makeTempName*(m: BModule; label: int, create = false): Rope =
   result.add conflict.name
   let
     counter = if create: conflict.counter else: label
-  case conflict.counter
-  of 0, 1:
+  case counter
+  of 0:
     discard
   else:
     result.add "_"
-    result.add $conflict.counter
+    result.add $counter
 
 proc getTempName*(m: BModule): Rope =
   result = m.makeTempName(m.labels, create = true)
