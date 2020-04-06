@@ -49,7 +49,7 @@ type
 
 const
   HelpMessage = "Nim Compiler Version $1 [$2: $3]\n" &
-      "Compiled at $4\n" &
+      "Compiled at $4 - $5\n" &
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
@@ -65,7 +65,7 @@ const
 
 proc getCommandLineDesc(conf: ConfigRef): string =
   result = (HelpMessage % [VersionAsString, platform.OS[conf.target.hostOS].name,
-                           CPU[conf.target.hostCPU].name, CompileDate]) &
+                           CPU[conf.target.hostCPU].name, CompileDate, CompileTime]) &
                            Usage
 
 proc helpOnError(conf: ConfigRef; pass: TCmdLinePass) =
@@ -77,7 +77,7 @@ proc writeAdvancedUsage(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, (HelpMessage % [VersionAsString,
                                  platform.OS[conf.target.hostOS].name,
-                                 CPU[conf.target.hostCPU].name, CompileDate]) &
+                                 CPU[conf.target.hostCPU].name, CompileDate, CompileTime]) &
                                  AdvancedUsage,
                {msgStdout})
     msgQuit(0)
@@ -86,7 +86,7 @@ proc writeFullhelp(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, `%`(HelpMessage, [VersionAsString,
                                  platform.OS[conf.target.hostOS].name,
-                                 CPU[conf.target.hostCPU].name, CompileDate]) &
+                                 CPU[conf.target.hostCPU].name, CompileDate, CompileTime]) &
                                  Usage & AdvancedUsage,
                {msgStdout})
     msgQuit(0)
@@ -95,7 +95,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
   if pass == passCmd1:
     msgWriteln(conf, `%`(HelpMessage, [VersionAsString,
                                  platform.OS[conf.target.hostOS].name,
-                                 CPU[conf.target.hostCPU].name, CompileDate]),
+                                 CPU[conf.target.hostCPU].name, CompileDate, CompileTime]),
                {msgStdout})
 
     const gitHash = gorge("git log -n 1 --format=%H").strip
