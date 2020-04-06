@@ -1,20 +1,21 @@
 discard """
-nimout: '''nnkStmtList.newTree(
+nimout: '''
+newStmtList(
   nnkVarSection.newTree(
     nnkIdentDefs.newTree(
-      newIdentNode("x"),
+      ident"x",
       newEmptyNode(),
-      nnkCall.newTree(
-        nnkDotExpr.newTree(
-          newIdentNode("baz"),
-          newIdentNode("create")
+      newCall(
+        newDotExpr(
+          ident"baz",
+          ident"create"
         ),
         newLit(56)
       )
     )
   ),
   nnkProcDef.newTree(
-    newIdentNode("foo"),
+    ident"foo",
     newEmptyNode(),
     newEmptyNode(),
     nnkFormalParams.newTree(
@@ -22,24 +23,80 @@ nimout: '''nnkStmtList.newTree(
     ),
     newEmptyNode(),
     newEmptyNode(),
-    nnkStmtList.newTree(
-      newCommentStmtNode("This is a docstring"),
+    newStmtList(
+      newCommentStmtNode(
+        "This is a docstring"
+      ),
       nnkCommand.newTree(
-        newIdentNode("echo"),
-        newLit("bar")
+        ident"echo",
+        newLit("Hello, World!")
+      ),
+      nnkCommand.newTree(
+        ident"echo",
+        newLit(
+          "something \"quoted\""
+        )
+      )
+    )
+  ),
+  newCall(
+    ident"callNilLit",
+    newNimNode(nnkNilLit)
+  ),
+  newAssignment(
+    newDotExpr(
+      ident"x",
+      ident"y"
+    ),
+    nnkObjConstr.newTree(
+      ident"MyType",
+      newColonExpr(
+        ident"u1",
+        newLit(123'u64)
+      ),
+      newColonExpr(
+        ident"u2",
+        newLit(321'u32)
       )
     )
   )
-)'''
-"""
+)
 
-# disabled; can't work as the output is done by the compiler
+var x = baz.create(56)
+proc foo() =
+  ## This is a docstring
+  echo "Hello, World!"
+  echo "something \"quoted\""
+
+callNilLit(nil)
+x.y = MyType(u1: 123'u64, u2: 321'u32)
+'''
+"""
 
 import macros
 
 dumpAstGen:
   var x = baz.create(56)
-
   proc foo() =
     ## This is a docstring
-    echo "bar"
+    echo "Hello, World!"
+    echo "something \"quoted\""
+
+  callNilLit(nil)
+  x.y = MyType(u1: 123'u64, u2: 321'u32)
+
+macro myQuoteAst(arg: untyped): untyped = newLit(arg)
+
+
+static:
+  let myAst = myQuoteAst:
+    var x = baz.create(56)
+    proc foo() =
+      ## This is a docstring
+      echo "Hello, World!"
+      echo "something \"quoted\""
+
+    callNilLit(nil)
+    x.y = MyType(u1: 123'u64, u2: 321'u32)
+
+  echo myAst.repr
