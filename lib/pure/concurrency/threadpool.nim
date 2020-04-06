@@ -137,7 +137,7 @@ type
 
 const threadpoolWaitMs {.intdefine.}: int = 100
 
-proc blockUntil*(fv: FlowVarBase) =
+proc blockUntil*(fv: var FlowVarBaseObj) =
   ## Waits until the value for the ``fv`` arrives.
   ##
   ## Usually it is not necessary to call this explicitly.
@@ -185,7 +185,7 @@ proc attach(fv: FlowVarBase; i: int): bool =
     result = false
   release(fv.cv.L)
 
-proc finished(fv: FlowVarBase) =
+proc finished(fv: var FlowVarBaseObj) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'blockUntilAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVar" has not yet written
@@ -208,10 +208,12 @@ proc finished(fv: FlowVarBase) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
+proc `=destroy`[T](fv: var FlowVarObj[T]) = 
+  finished(fv)
+  `=destroy`(fv.blob)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
-  new(result, fvFinalizer)
+  new(result)
 
 proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
   fv.cv.initSemaphore()
