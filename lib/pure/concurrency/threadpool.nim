@@ -268,7 +268,7 @@ else:
     ## Blocks until the value is available and then returns this value.
     blockUntil(fv[])
     when T is string or T is seq or T is ref:
-      deepCopy result, src
+      deepCopy result, cast[T](fv.data)
     else:
       result = fv.blob
     finished(fv[])
