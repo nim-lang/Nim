@@ -20,7 +20,6 @@
 ##   var userResponse: string
 ##   doAssert readLineFromStdin("How are you?:", line = userResponse)
 ##   echo userResponse
-{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(Windows):
   proc readLineFromStdin*(prompt: string): TaintedString {.

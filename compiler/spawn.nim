@@ -195,14 +195,6 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   dstType.rawAddSon(objType)
   createCastExpr(dstType, newSymNode(argsParam))
 
-proc threadArgFieldAccess(g: ModuleGraph, threadArg: PNode, field: PSym, info: TLineInfo): PNode = 
-  if g.config.selectedGC in {gcArc, gcOrc}: newDotExpr(threadArg.sym, field)
-  else: indirectAccess(threadArg, field, info)
-
-proc threadArgFieldAccess(g: ModuleGraph, objType: PType, threadArg: PNode, field: string, info: TLineInfo): PNode = 
-  if g.config.selectedGC in {gcArc, gcOrc}: newDotExpr(threadArg.sym, field, g.cache)
-  else: indirectAccess(threadArg, field, info, g.cache)
-
 proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; 
                              owner: PSym; scratchObj: PSym,
                              castExpr, call,
@@ -225,7 +217,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[i])
 
     let temp = addLocalVar(g, varSection, varInit, owner, argType,
-                           threadArgFieldAccess(g, castExpr, field, n.info))
+                           indirectAccess(castExpr, field, n.info))
     call.add(newSymNode(temp))
 
 proc getRoot*(n: PNode): PSym =
@@ -286,7 +278,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
         let threadLocal = addLocalVar(g, varSection,nil, owner, fieldA.typ,
-                                      threadArgFieldAccess(g, castExpr, fieldA, n.info),
+                                      indirectAccess(castExpr, fieldA, n.info),
                                       useShallowCopy=true)
         slice[2] = threadLocal.newSymNode
       else:
@@ -301,7 +293,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       slice[1] = genDeref(threadArgFieldAccess(g, castExpr, field, n.info))
 
       let threadLocal = addLocalVar(g, varSection,nil, owner, fieldB.typ,
-                                    threadArgFieldAccess(g, castExpr, fieldB, n.info),
+                                    indirectAccess(castExpr, fieldB, n.info),
                                     useShallowCopy=true)
       slice[3] = threadLocal.newSymNode
       call.add slice
@@ -313,7 +305,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       objType.addField(field, g.cache)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
       let threadLocal = addLocalVar(g, varSection,nil, owner, field.typ,
-                                    threadArgFieldAccess(g, castExpr, field, n.info),
+                                    indirectAccess(castExpr, field, n.info),
                                     useShallowCopy=true)
       call.add(genDeref(threadLocal.newSymNode))
     else:
@@ -323,7 +315,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(g, varSection, varInit,
                                     owner, field.typ,
-                                    threadArgFieldAccess(g, castExpr, field, n.info),
+                                    indirectAccess(castExpr, field, n.info),
                                     useShallowCopy=true)
       call.add(threadLocal.newSymNode)
 
@@ -445,7 +437,6 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
   createTypeBoundOps(g, nil, objType, n.info)
-
   createWrapperProc(g, fn, threadParam, argsParam,
                       varSection, varInit, call,
                       barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)

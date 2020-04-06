@@ -327,13 +327,14 @@ runnableExamples:
       var statistics: RunningStat  ## Must be "var"
       statistics.push(@[1.0, 2.0, 1.0, 4.0, 1.0, 4.0, 1.0, 2.0])
       doAssert statistics.n == 8
-      doAssert statistics.mean() is SomeFloat
-      doAssert statistics.variance() is SomeFloat
-      doAssert statistics.varianceS() is SomeFloat
-      doAssert statistics.skewness() is SomeFloat
-      doAssert statistics.skewnessS() is SomeFloat
-      doAssert statistics.kurtosis() is SomeFloat
-      doAssert statistics.kurtosisS() is SomeFloat
+      template `===`(a, b: float): bool = (abs(a - b) < 1e-9)
+      doAssert statistics.mean() === 2.0
+      doAssert statistics.variance() === 1.5
+      doAssert statistics.varianceS() === 1.714285714285715
+      doAssert statistics.skewness() === 0.8164965809277261
+      doAssert statistics.skewnessS() === 1.018350154434631
+      doAssert statistics.kurtosis() === -1.0
+      doAssert statistics.kurtosisS() === -0.7000000000000008
 
 
 when isMainModule:

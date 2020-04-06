@@ -53,6 +53,8 @@ proc indexTypesMatch(c: PContext, f, a: PType, arg: PNode): PNode
 proc semStaticExpr(c: PContext, n: PNode): PNode
 proc semStaticType(c: PContext, childNode: PNode, prev: PType): PType
 proc semTypeOf(c: PContext; n: PNode): PNode
+proc computeRequiresInit(c: PContext, t: PType): bool
+proc defaultConstructionError(c: PContext, t: PType, info: TLineInfo)
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool
 proc isArrayConstr(n: PNode): bool {.inline.} =
   result = n.kind == nkBracket and
@@ -511,6 +513,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   c.semExpr = semExpr
   c.semTryExpr = tryExpr
   c.semTryConstExpr = tryConstExpr
+  c.computeRequiresInit = computeRequiresInit
   c.semOperand = semOperand
   c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
@@ -518,6 +521,7 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   c.semGenerateInstance = generateInstance
   c.semTypeNode = semTypeNode
   c.instTypeBoundOp = sigmatch.instTypeBoundOp
+  c.hasUnresolvedArgs = hasUnresolvedArgs
 
   pushProcCon(c, module)
   pushOwner(c, c.module)
@@ -583,7 +587,7 @@ proc semStmtAndGenerateGenerics(c: PContext, n: PNode): PNode =
     result = buildEchoStmt(c, result)
   if c.config.cmd == cmdIdeTools:
     appendToModule(c.module, result)
-  trackTopLevelStmt(c, c.module, result)
+  trackStmt(c, c.module, result, isTopLevel = true)
 
 proc recoverContext(c: PContext) =
   # clean up in case of a semantic error: We clean up the stacks, etc. This is

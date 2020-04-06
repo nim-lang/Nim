@@ -95,6 +95,7 @@ type
     splitDecls*: int          # > 0 if we are in some context for C++ that
                               # requires 'T x = T()' to become 'T x; x = T()'
                               # (yes, C++ is weird like that)
+    withinTryWithExcept*: int # required for goto based exception handling
     sigConflicts*: CountTable[string]
 
   TTypeSeq* = seq[PType]

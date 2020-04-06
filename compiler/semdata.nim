@@ -21,6 +21,7 @@ type
     notes*: TNoteKinds
     features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
+    warningAsErrors*: TNoteKinds
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
@@ -63,7 +64,7 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
     efNoUndeclared
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
@@ -103,6 +104,9 @@ type
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
+    computeRequiresInit*: proc (c: PContext, t: PType): bool {.nimcall.}
+    hasUnresolvedArgs*: proc (c: PContext, n: PNode): bool
+
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
@@ -210,6 +214,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.defaultCC = ccDefault
   result.dynlib = nil
   result.notes = conf.notes
+  result.warningAsErrors = conf.warningAsErrors
 
 proc pushOptionEntry*(c: PContext): POptionEntry =
   new(result)
@@ -218,12 +223,14 @@ proc pushOptionEntry*(c: PContext): POptionEntry =
   result.defaultCC = prev.defaultCC
   result.dynlib = prev.dynlib
   result.notes = c.config.notes
+  result.warningAsErrors = c.config.warningAsErrors
   result.features = c.features
   c.optionStack.add(result)
 
 proc popOptionEntry*(c: PContext) =
   c.config.options = c.optionStack[^1].options
   c.config.notes = c.optionStack[^1].notes
+  c.config.warningAsErrors = c.optionStack[^1].warningAsErrors
   c.features = c.optionStack[^1].features
   c.optionStack.setLen(c.optionStack.len - 1)
 

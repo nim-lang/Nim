@@ -2082,7 +2082,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   var err: string
   try:
     result = semExpr(c, n, flags)
-    if c.config.errorCounter != oldErrorCount: result = nil
+    if result != nil and efNoSem2Check notin flags:
+      trackStmt(c, c.module, result, isTopLevel = false)
+    if c.config.errorCounter != oldErrorCount:
+      result = nil
   except ERecoverableError:
     discard
   # undo symbol table changes (as far as it's possible):
@@ -2643,6 +2646,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    result.typ = makeTypeDesc(c, typ)
+  of nkStmtListType:
+    let typ = semTypeNode(c, n, nil)
     result.typ = makeTypeDesc(c, typ)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:

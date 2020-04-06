@@ -80,7 +80,7 @@ block thashes:
   # Test with range
   block:
     type
-      R = range[1..10]
+      R = range[0..9]
     var t = initTable[R,int]() # causes warning, why?
     t[1] = 42 # causes warning, why?
     t[2] = t[1] + 1

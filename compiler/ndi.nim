@@ -17,6 +17,8 @@ type
     enabled: bool
     f: File
     buf: string
+    filename: AbsoluteFile
+    syms: seq[PSym]
 
 proc doWrite(f: var NdiFile; s: PSym; conf: ConfigRef) =
   f.buf.setLen 0
@@ -28,13 +30,20 @@ proc doWrite(f: var NdiFile; s: PSym; conf: ConfigRef) =
   f.f.writeLine("\t", toFullPath(conf, s.info), "\t", f.buf)
 
 template writeMangledName*(f: NdiFile; s: PSym; conf: ConfigRef) =
-  if f.enabled: doWrite(f, s, conf)
+  if f.enabled: f.syms.add s
 
 proc open*(f: var NdiFile; filename: AbsoluteFile; conf: ConfigRef) =
   f.enabled = not filename.isEmpty
   if f.enabled:
-    f.f = open(filename.string, fmWrite, 8000)
+    f.filename = filename
     f.buf = newStringOfCap(20)
 
-proc close*(f: var NdiFile) =
-  if f.enabled: close(f.f)
+proc close*(f: var NdiFile, conf: ConfigRef) =
+  if f.enabled:
+    f.f = open(f.filename.string, fmWrite, 8000)
+    doAssert f.f != nil, f.filename.string
+    for s in f.syms:
+      doWrite(f, s, conf)
+    close(f.f)
+    f.syms.reset
+    f.filename.reset

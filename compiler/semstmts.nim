@@ -335,8 +335,7 @@ proc semIdentDef(c: PContext, n: PNode, kind: TSymKind): PSym =
   suggestSym(c.config, info, result, c.graph.usageSym)
 
 proc checkNilable(c: PContext; v: PSym) =
-  if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and
-      {tfNotNil, tfNeedsInit} * v.typ.flags != {}:
+  if {sfGlobal, sfImportc} * v.flags == {sfGlobal} and v.typ.requiresInit:
     if v.astdef.isNil:
       message(c.config, v.info, warnProveInit, v.name.s)
     elif tfNotNil in v.typ.flags and not v.astdef.typ.isNil and tfNotNil notin v.astdef.typ.flags:
@@ -485,7 +484,7 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     var a = n[i]
     if c.config.cmd == cmdIdeTools: suggestStmt(c, a)
     if a.kind == nkCommentStmt: continue
-    if a.kind notin {nkIdentDefs, nkVarTuple, nkConstDef}: illFormedAst(a, c.config)
+    if a.kind notin {nkIdentDefs, nkVarTuple}: illFormedAst(a, c.config)
     checkMinSonsLen(a, 3, c.config)
 
     var typ: PType = nil
@@ -614,7 +613,13 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
         if tup.kind == tyTuple: setVarType(c, v, tup[j])
         else: v.typ = tup
         b[j] = newSymNode(v)
-      checkNilable(c, v)
+      if def.kind == nkEmpty:
+        let actualType = v.typ.skipTypes({tyGenericInst, tyAlias,
+                                          tyUserTypeClassInst})
+        if actualType.kind == tyObject and actualType.requiresInit:
+          defaultConstructionError(c, v.typ, v.info)
+        else:
+          checkNilable(c, v)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
         x.add result[i]
@@ -1051,6 +1056,68 @@ proc typeSectionTypeName(c: PContext; n: PNode): PNode =
     result = n
   if result.kind != nkSym: illFormedAst(n, c.config)
 
+proc typeDefLeftSidePass(c: PContext, typeSection: PNode, i: int) =
+  let typeDef= typeSection[i]
+  checkSonsLen(typeDef, 3, c.config)
+  var name = typeDef[0]
+  var s: PSym
+  if name.kind == nkDotExpr and typeDef[2].kind == nkObjectTy:
+    let pkgName = considerQuotedIdent(c, name[0])
+    let typName = considerQuotedIdent(c, name[1])
+    let pkg = c.graph.packageSyms.strTableGet(pkgName)
+    if pkg.isNil or pkg.kind != skPackage:
+      localError(c.config, name.info, "unknown package name: " & pkgName.s)
+    else:
+      let typsym = pkg.tab.strTableGet(typName)
+      if typsym.isNil:
+        s = semIdentDef(c, name[1], skType)
+        onDef(name[1].info, s)
+        s.typ = newTypeS(tyObject, c)
+        s.typ.sym = s
+        s.flags.incl sfForward
+        pkg.tab.strTableAdd s
+        addInterfaceDecl(c, s)
+      elif typsym.kind == skType and sfForward in typsym.flags:
+        s = typsym
+        addInterfaceDecl(c, s)
+      else:
+        localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
+        s = typsym
+  else:
+    s = semIdentDef(c, name, skType)
+    onDef(name.info, s)
+    s.typ = newTypeS(tyForward, c)
+    s.typ.sym = s             # process pragmas:
+    if name.kind == nkPragmaExpr:
+      let rewritten = applyTypeSectionPragmas(c, name[1], typeDef)
+      if rewritten != nil:
+        typeSection[i] = rewritten
+        typeDefLeftSidePass(c, typeSection, i)
+        return
+      pragma(c, s, name[1], typePragmas)
+    if sfForward in s.flags:
+      # check if the symbol already exists:
+      let pkg = c.module.owner
+      if not isTopLevel(c) or pkg.isNil:
+        localError(c.config, name.info, "only top level types in a package can be 'package'")
+      else:
+        let typsym = pkg.tab.strTableGet(s.name)
+        if typsym != nil:
+          if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
+            typeCompleted(typsym)
+            typsym.info = s.info
+          else:
+            localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
+                    "previous type completion was here: " & c.config$typsym.info)
+          s = typsym
+    # add it here, so that recursive types are possible:
+    if sfGenSym notin s.flags: addInterfaceDecl(c, s)
+    elif s.owner == nil: s.owner = getCurrOwner(c)
+
+  if name.kind == nkPragmaExpr:
+    typeDef[0][0] = newSymNode(s)
+  else:
+    typeDef[0] = newSymNode(s)
 
 proc typeSectionLeftSidePass(c: PContext, n: PNode) =
   # process the symbols on the left side for the whole type section, before
@@ -1064,61 +1131,7 @@ proc typeSectionLeftSidePass(c: PContext, n: PNode) =
         dec c.inTypeContext
     if a.kind == nkCommentStmt: continue
     if a.kind != nkTypeDef: illFormedAst(a, c.config)
-    checkSonsLen(a, 3, c.config)
-    let name = a[0]
-    var s: PSym
-    if name.kind == nkDotExpr and a[2].kind == nkObjectTy:
-      let pkgName = considerQuotedIdent(c, name[0])
-      let typName = considerQuotedIdent(c, name[1])
-      let pkg = c.graph.packageSyms.strTableGet(pkgName)
-      if pkg.isNil or pkg.kind != skPackage:
-        localError(c.config, name.info, "unknown package name: " & pkgName.s)
-      else:
-        let typsym = pkg.tab.strTableGet(typName)
-        if typsym.isNil:
-          s = semIdentDef(c, name[1], skType)
-          onDef(name[1].info, s)
-          s.typ = newTypeS(tyObject, c)
-          s.typ.sym = s
-          s.flags.incl sfForward
-          pkg.tab.strTableAdd s
-          addInterfaceDecl(c, s)
-        elif typsym.kind == skType and sfForward in typsym.flags:
-          s = typsym
-          addInterfaceDecl(c, s)
-        else:
-          localError(c.config, name.info, typsym.name.s & " is not a type that can be forwarded")
-          s = typsym
-    else:
-      s = semIdentDef(c, name, skType)
-      onDef(name.info, s)
-      s.typ = newTypeS(tyForward, c)
-      s.typ.sym = s             # process pragmas:
-      if name.kind == nkPragmaExpr:
-        pragma(c, s, name[1], typePragmas)
-      if sfForward in s.flags:
-        # check if the symbol already exists:
-        let pkg = c.module.owner
-        if not isTopLevel(c) or pkg.isNil:
-          localError(c.config, name.info, "only top level types in a package can be 'package'")
-        else:
-          let typsym = pkg.tab.strTableGet(s.name)
-          if typsym != nil:
-            if sfForward notin typsym.flags or sfNoForward notin typsym.flags:
-              typeCompleted(typsym)
-              typsym.info = s.info
-            else:
-              localError(c.config, name.info, "cannot complete type '" & s.name.s & "' twice; " &
-                      "previous type completion was here: " & c.config$typsym.info)
-            s = typsym
-      # add it here, so that recursive types are possible:
-      if sfGenSym notin s.flags: addInterfaceDecl(c, s)
-      elif s.owner == nil: s.owner = getCurrOwner(c)
-
-    if name.kind == nkPragmaExpr:
-      a[0][0] = newSymNode(s)
-    else:
-      a[0] = newSymNode(s)
+    typeDefLeftSidePass(c, n, i)
 
 proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
   var body = genericType[^1]
@@ -1453,8 +1466,8 @@ proc semProcAnnotation(c: PContext, prc: PNode;
   var n = prc[pragmasPos]
   if n == nil or n.kind == nkEmpty: return
   for i in 0..<n.len:
-    var it = n[i]
-    var key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
+    let it = n[i]
+    let key = if it.kind in nkPragmaCallKinds and it.len >= 1: it[0] else: it
 
     if whichPragma(it) != wInvalid:
       # Not a custom pragma
@@ -1922,7 +1935,7 @@ proc semProcAux(c: PContext, n: PNode, kind: TSymKind,
     if n[pragmasPos].kind != nkEmpty:
       pragma(c, s, n[pragmasPos], validPragmas)
       # To ease macro generation that produce forwarded .async procs we now
-      # allow a bit redudancy in the pragma declarations. The rule is
+      # allow a bit redundancy in the pragma declarations. The rule is
       # a prototype's pragma list must be a superset of the current pragma
       # list.
       # XXX This needs more checks eventually, for example that external
