@@ -1576,28 +1576,34 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
 
     if p.kind == nkEmpty or whichPragma(p) != wInvalid:
       discard "builtin pragma"
-    elif strTableGet(c.userPragmas, considerQuotedIdent(c, key)) != nil:
-      discard "User-defined pragma"
     else:
-      # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and
-      # let the semantic checker deal with it:
-      var x = newNodeI(nkCall, key.info)
-      x.add(key)
-      if p.kind in nkPragmaCallKinds and p.len > 1:
-        # pass pragma arguments to the macro too:
-        for i in 1 ..< p.len:
-          x.add(p[i])
-      # Also pass the node the pragma has been applied to
-      x.add(operand.copyTreeWithoutNode(p))
-      # recursion assures that this works for multiple macro annotations too:
-      var r = semOverloadedCall(c, x, x, {skMacro, skTemplate}, {efNoUndeclared})
-      if r != nil:
-        doAssert r[0].kind == nkSym
-        let m = r[0].sym
-        case m.kind
-        of skMacro: return semMacroExpr(c, r, r, m, {efNoSemCheck})
-        of skTemplate: return semTemplateExpr(c, r, m, {efNoSemCheck})
-        else: doAssert(false, "cannot happen")
+      let ident = considerQuotedIdent(c, key)
+      if strTableGet(c.userPragmas, ident) != nil:
+        discard "User-defined pragma"
+      else:
+        let sym = searchInScopes(c, ident)
+        if sym != nil and sfCustomPragma in sym.flags: 
+          discard "Custom user pragma"
+        else:
+          # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and
+          # let the semantic checker deal with it:
+          var x = newNodeI(nkCall, key.info)
+          x.add(key)
+          if p.kind in nkPragmaCallKinds and p.len > 1:
+            # pass pragma arguments to the macro too:
+            for i in 1 ..< p.len:
+              x.add(p[i])
+          # Also pass the node the pragma has been applied to
+          x.add(operand.copyTreeWithoutNode(p))
+          # recursion assures that this works for multiple macro annotations too:
+          var r = semOverloadedCall(c, x, x, {skMacro, skTemplate}, {efNoUndeclared})
+          if r != nil:
+            doAssert r[0].kind == nkSym
+            let m = r[0].sym
+            case m.kind
+            of skMacro: return semMacroExpr(c, r, r, m, {efNoSemCheck})
+            of skTemplate: return semTemplateExpr(c, r, m, {efNoSemCheck})
+            else: doAssert(false, "cannot happen")
 
 proc semProcTypeWithScope(c: PContext, n: PNode,
                           prev: PType, kind: TSymKind): PType =
