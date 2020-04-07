@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
@@ -315,6 +315,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "nimExe", val: %(getAppFilename())),
         (key: "prefixdir", val: %conf.getPrefixDir().string),
         (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),

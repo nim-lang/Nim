@@ -209,12 +209,18 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     incl(conf.modifiedyNotes, n)
     case val
     of "on":
-      incl(conf.notes, n)
-      incl(conf.mainPackageNotes, n)
+      if state == wWarningAsError:
+        incl(conf.warningAsErrors, n)
+      else:
+        incl(conf.notes, n)
+        incl(conf.mainPackageNotes, n)
     of "off":
-      excl(conf.notes, n)
-      excl(conf.mainPackageNotes, n)
-      excl(conf.foreignPackageNotes, n)
+      if state == wWarningAsError:
+        excl(conf.warningAsErrors, n)
+      else:
+        excl(conf.notes, n)
+        excl(conf.mainPackageNotes, n)
+        excl(conf.foreignPackageNotes, n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -528,6 +534,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
+  of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)

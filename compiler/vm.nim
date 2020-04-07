@@ -510,6 +510,23 @@ const
     "if you are sure this is not a bug in your code, compile with `--maxLoopIterationsVM:number` (current value: $1)"
   errFieldXNotFound = "node lacks field: "
 
+
+template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
+  let node = node2 # prevent double evaluation
+  if node.kind == nkNilLit:
+    stackTrace(c, tos, pc, errNilAccess)
+  let typ = node.typ
+  if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
+    assert node.kind == nkIntLit, $(node.kind)
+    assert typ != nil
+    let typ2 = if typ.kind == tyPtr: typ[0] else: typ
+    if not derefPtrToReg(node.intVal, typ2, reg, isAssign = isAssign2):
+      # tyObject not supported in this context
+      stackTrace(c, tos, pc, "deref unsupported ptr type: " & $(typeToString(typ), typ.kind))
+    true
+  else:
+    false
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -755,26 +772,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         ensureKind(regs[rb].regAddr.kind)
         regs[ra] = regs[rb].regAddr[]
       of rkNode:
-        if regs[rb].node.kind == nkNilLit:
-          stackTrace(c, tos, pc, errNilAccess)
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
-        else:
-          let node = regs[rb].node
-          let typ = node.typ
-          # see also `nfIsPtr`
-          if node.kind == nkIntLit:
-            var typ2 = typ
-            doAssert typ != nil
-            if typ.kind == tyPtr:
-              typ2 = typ2[0]
-            if not derefPtrToReg(node.intVal, typ2, regs[ra], isAssign = false):
-              # tyObject not supported in this context
-              stackTrace(c, tos, pc, "opcLdDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
-          else:
-            ## eg: typ.kind = tyObject
-            ensureKind(rkNode)
-            regs[ra].node = regs[rb].node
+        elif not maybeHandlePtr(regs[rb].node, regs[ra], false):
+          ## eg: typ.kind = tyObject
+          ensureKind(rkNode)
+          regs[ra].node = regs[rb].node
       else:
         stackTrace(c, tos, pc, errNilAccess & " kind: " & $regs[rb].kind)
     of opcWrDeref:
@@ -795,18 +798,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].nodeAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
       of rkNode:
-        if regs[ra].node.kind == nkNilLit:
-          stackTrace(c, tos, pc, errNilAccess)
-        let node = regs[ra].node
-        let typ = node.typ
-        if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
-          assert node.kind == nkIntLit, $(node.kind)
-          var typ2 = typ
-          if typ.kind == tyPtr:
-            typ2 = typ2[0]
-          if not derefPtrToReg(node.intVal, typ2, regs[rc], isAssign = true):
-            stackTrace(c, tos, pc, "opcWrDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
-        else:
+         # xxx: also check for nkRefTy as in opcLdDeref?
+        if not maybeHandlePtr(regs[ra].node, regs[rc], true):
           regs[ra].node[] = regs[rc].regToNode[]
           regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
