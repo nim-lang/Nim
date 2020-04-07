@@ -430,14 +430,6 @@ proc isIndirectCall(n: PNode, owner: PSym): bool =
 proc isForwardedProc(n: PNode): bool =
   result = n.kind == nkSym and sfForward in n.sym.flags
 
-proc prove(c: PEffects; prop: PNode): bool =
-  if c.graph.proofEngine != nil:
-    let (success, m) = c.graph.proofEngine(c.graph, c.guards.s,
-      canon(prop, c.guards.o))
-    if not success:
-      message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
-    result = success
-
 proc trackPragmaStmt(tracked: PEffects, n: PNode) =
   for i in 0..<n.len:
     var it = n[i]
@@ -445,12 +437,6 @@ proc trackPragmaStmt(tracked: PEffects, n: PNode) =
     if pragma == wEffects:
       # list the computed effects up to here:
       listEffects(tracked)
-    when defined(drnim):
-      if pragma == wAssume:
-        addFact(tracked.guards, it[1])
-      elif pragma == wInvariant or pragma == wAssert:
-        if prove(tracked, it[1]):
-          addFact(tracked.guards, it[1])
 
 template notGcSafe(t): untyped = {tfGcSafe, tfNoSideEffect} * t.flags == {}
 
@@ -702,45 +688,18 @@ proc patchResult(c: PEffects; n: PNode) =
     for i in 0..<safeLen(n):
       patchResult(c, n[i])
 
-when defined(drnim):
-  proc requiresCheck(c: PEffects; call: PNode; op: PType) =
-    assert op.n[0].kind == nkEffectList
-    if requiresEffects < op.n[0].len:
-      let requires = op.n[0][requiresEffects]
-      if requires != nil and requires.kind != nkEmpty:
-        # we need to map the call arguments to the formal parameters used inside
-        # 'requires':
-        let (success, m) = c.graph.requirementsCheck(c.graph, c.guards.s, call, canon(requires, c.guards.o))
-        if not success:
-          message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
-
-else:
-  template requiresCheck(c, n, op) = discard
-
 proc checkLe(c: PEffects; a, b: PNode) =
-  if c.graph.proofEngine != nil:
-    var cmpOp = mLeI
-    if a.typ != nil:
-      case a.typ.skipTypes(abstractInst).kind
-      of tyFloat..tyFloat128: cmpOp = mLeF64
-      of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
-      else: discard
-
-    let cmp = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b)
-    cmp.info = a.info
-    discard prove(c, cmp)
-  else:
-    case proveLe(c.guards, a, b)
-    of impUnknown:
-      #for g in c.guards.s:
-      #  if g != nil: echo "I Know ", g
-      message(c.config, a.info, warnStaticIndexCheck,
-        "cannot prove: " & $a & " <= " & $b)
-    of impYes:
-      discard
-    of impNo:
-      message(c.config, a.info, warnStaticIndexCheck,
-        "can prove: " & $a & " > " & $b)
+  case proveLe(c.guards, a, b)
+  of impUnknown:
+    #for g in c.guards.s:
+    #  if g != nil: echo "I Know ", g
+    message(c.config, a.info, warnStaticIndexCheck,
+      "cannot prove: " & $a & " <= " & $b)
+  of impYes:
+    discard
+  of impNo:
+    message(c.config, a.info, warnStaticIndexCheck,
+      "can prove: " & $a & " > " & $b)
 
 proc checkBounds(c: PEffects; arr, idx: PNode) =
   checkLe(c, lowBound(c.config, arr), idx)
@@ -838,7 +797,6 @@ proc track(tracked: PEffects, n: PNode) =
         mergeEffects(tracked, effectList[exceptionEffects], n)
         mergeTags(tracked, effectList[tagEffects], n)
         gcsafeAndSideeffectCheck()
-      requiresCheck(tracked, n, op)
     if a.kind != nkSym or a.sym.magic != mNBindSym:
       for i in 1..<n.len: trackOperand(tracked, n[i], paramType(op, i), a)
     if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
@@ -1182,7 +1140,10 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.init = @[]
   t.guards.s = @[]
   t.guards.o = initOperators(g)
-  t.currOptions = g.config.options + s.options
+  when defined(drnim):
+    t.currOptions = g.config.options + s.options - {optStaticBoundsCheck}
+  else:
+    t.currOptions = g.config.options + s.options
   t.guards.beSmart = optStaticBoundsCheck in t.currOptions
   t.locked = @[]
   t.graph = g
@@ -1238,7 +1199,6 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
   if not isNil(ensuresSpec):
     patchResult(t, ensuresSpec)
     effects[ensuresEffects] = ensuresSpec
-    discard prove(t, ensuresSpec)
 
   if sfThread in s.flags and t.gcUnsafe:
     if optThreads in g.config.globalOptions and optThreadAnalysis in g.config.globalOptions:
@@ -1263,6 +1223,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     message(g.config, s.info, warnLockLevel,
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
+  when defined(drnim):
+    c.graph.strongSemCheck(c.graph, s, body)
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
@@ -1278,3 +1240,5 @@ proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   initEffects(g, effects, module, t, c)
   t.isTopLevel = isTopLevel
   track(t, n)
+  when defined(drnim):
+    c.graph.strongSemCheck(c.graph, module, n)

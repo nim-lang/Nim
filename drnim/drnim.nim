@@ -51,7 +51,7 @@ import std / [
 import ".." / compiler / [
   ast, types, renderer,
   commands, options, msgs,
-  platform,
+  platform, trees, wordrecg, guards,
   idents, lineinfos, cmdlinehelper, modulegraphs, condsyms,
   pathutils, passes, passaux, sem, modules
 ]
@@ -563,12 +563,218 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       # we already know from the type system?
       result = frequires.isEmpty and fensures.isEmpty
 
+type
+  DrnimContext = ref object
+    graph: ModuleGraph
+    facts: seq[PNode]
+    o: Operators
+    hasUnstructedCf: int
+    currOptions: TOptions
+
+template config(c: typed): untyped = c.graph.config
+template addFact(c: typed; n: PNode) = c.facts.add n
+
+proc prove(c: DrnimContext; prop: PNode): bool =
+  let (success, m) = proofEngine(c.graph, c.facts, prop)
+  if not success:
+    message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
+  result = success
+
+proc traversePragmaStmt(c: DrnimContext, n: PNode) =
+  for it in n:
+    let pragma = whichPragma(it)
+    if pragma == wAssume:
+      addFact(c, it[1])
+    elif pragma == wInvariant or pragma == wAssert:
+      if prove(c, it[1]):
+        addFact(c, it[1])
+
+proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
+  assert op.n[0].kind == nkEffectList
+  if requiresEffects < op.n[0].len:
+    let requires = op.n[0][requiresEffects]
+    if requires != nil and requires.kind != nkEmpty:
+      # we need to map the call arguments to the formal parameters used inside
+      # 'requires':
+      let (success, m) = requirementsCheck(c.graph, c.facts, call, requires)
+      if not success:
+        message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
+
+proc checkLe(c: DrnimContext, a, b: PNode) =
+  var cmpOp = mLeI
+  if a.typ != nil:
+    case a.typ.skipTypes(abstractInst).kind
+    of tyFloat..tyFloat128: cmpOp = mLeF64
+    of tyChar, tyUInt..tyUInt64: cmpOp = mLeU
+    else: discard
+
+  let cmp = newTree(nkInfix, newSymNode createMagic(c.graph, "<=", cmpOp), a, b)
+  cmp.info = a.info
+  discard prove(c, cmp)
+
+proc checkBounds(c: DrnimContext; arr, idx: PNode) =
+  checkLe(c, lowBound(c.config, arr), idx)
+  checkLe(c, idx, highBound(c.config, arr, c.o))
+
+proc checkRange(c: DrnimContext; value: PNode; typ: PType) =
+  let t = typ.skipTypes(abstractInst - {tyRange})
+  if t.kind == tyRange:
+    let lowBound = copyTree(t.n[0])
+    lowBound.info = value.info
+    let highBound = copyTree(t.n[1])
+    highBound.info = value.info
+    checkLe(c, lowBound, value)
+    checkLe(c, value, highBound)
+
+proc addAsgnFact*(c: DrnimContext, key, value: PNode) =
+  var fact = newNodeI(nkCall, key.info, 3)
+  fact[0] = newSymNode(c.o.opEq)
+  fact[1] = key
+  fact[2] = value
+  c.facts.add fact
+
+
+proc traverse(c: DrnimContext; n: PNode) =
+  case n.kind
+  of nkSym:
+    discard "nothing to do"
+  of nkRaiseStmt, nkReturnStmt, nkBreakStmt:
+    inc c.hasUnstructedCf
+    for i in 0..<n.safeLen:
+      traverse(c, n[i])
+  of nkCallKinds:
+    # p's effects are ours too:
+    var a = n[0]
+    let op = a.typ
+    if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
+      requiresCheck(c, n, op)
+    if a.kind == nkSym:
+      case a.sym.magic
+      of mNew, mNewFinalize, mNewSeq:
+        # may not look like an assignment, but it is:
+        let arg = n[1]
+        invalidateFacts(c.facts, arg)
+        traverse(c, arg)
+        addAsgnFact(c, arg, newNodeIT(nkObjConstr, arg.info, arg.typ))
+      of mArrGet, mArrPut:
+        if optStaticBoundsCheck in c.currOptions: checkBounds(c, n[1], n[2])
+      else:
+        discard
+
+    for i in 0..<n.safeLen:
+      traverse(c, n[i])
+  of nkDotExpr:
+    #guardDotAccess(c, n)
+    for i in 0..<n.len: traverse(c, n[i])
+  of nkCheckedFieldExpr:
+    traverse(c, n[0])
+    #checkFieldAccess(c.facts, n, c.config)
+  of nkTryStmt: traverseTryStmt(c, n)
+  of nkPragma: traversePragmaStmt(c, n)
+  of nkAsgn, nkFastAsgn:
+    traverse(c, n[1])
+    invalidateFacts(c.facts, n[0])
+    traverse(c, n[0])
+    addAsgnFact(c.facts, n[0], n[1])
+  of nkVarSection, nkLetSection:
+    for child in n:
+      let last = lastSon(child)
+      if last.kind != nkEmpty: traverse(c, last)
+      if child.kind == nkIdentDefs and last.kind != nkEmpty:
+        for i in 0..<child.len-2:
+          addAsgnFact(c.facts, child[i], last)
+      elif child.kind == nkVarTuple and last.kind != nkEmpty:
+        for i in 0..<child.len-1:
+          if child[i].kind == nkEmpty or
+              child[i].kind == nkSym and child[i].sym.name.s == "_":
+            discard "anon variable"
+          elif last.kind in {nkPar, nkTupleConstr}:
+            addAsgnFact(c.facts, child[i], last[i])
+  of nkConstSection:
+    for child in n:
+      let last = lastSon(child)
+      traverse(c, last)
+  of nkCaseStmt: traverseCase(c, n)
+  of nkWhen, nkIfStmt, nkIfExpr: traverseIf(c, n)
+  of nkBlockStmt, nkBlockExpr: traverseBlock(c, n[1])
+  of nkWhileStmt:
+    # 'while true' loop?
+    if isTrue(n[0]):
+      traverseBlock(c, n[1])
+    else:
+      let oldFacts = c.facts.len
+      addFact(c.facts, n[0])
+      traverse(c, n[0])
+      traverse(c, n[1])
+      setLen(c.facts.s, oldFacts)
+  of nkForStmt, nkParForStmt:
+    # we are very conservative here and assume the loop is never executed:
+    let oldFacts = c.facts.s.len
+    let iterCall = n[n.len-2]
+    if optStaticBoundsCheck in c.currOptions and iterCall.kind in nkCallKinds:
+      let op = iterCall[0]
+      if op.kind == nkSym and fromSystem(op.sym):
+        let iterVar = n[0]
+        case op.sym.name.s
+        of "..", "countup", "countdown":
+          let lower = iterCall[1]
+          let upper = iterCall[2]
+          # for i in 0..n   means  0 <= i and i <= n. Countdown is
+          # the same since only the iteration direction changes.
+          addFactLe(c.facts, lower, iterVar)
+          addFactLe(c.facts, iterVar, upper)
+        of "..<":
+          let lower = iterCall[1]
+          let upper = iterCall[2]
+          addFactLe(c.facts, lower, iterVar)
+          addFactLt(c.facts, iterVar, upper)
+        else: discard
+
+    for i in 0..<n.len-2:
+      let it = n[i]
+      traverse(c, it)
+    let loopBody = n[^1]
+    traverse(c, iterCall)
+    traverse(c, loopBody)
+    setLen(c.facts.s, oldFacts)
+  of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
+      nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
+    discard
+  of nkCast:
+    if n.len == 2:
+      traverse(c, n[1])
+  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+    if n.len == 2:
+      traverse(c, n[1])
+      if optStaticBoundsCheck in c.currOptions:
+        checkRange(c, n[1], n.typ)
+  of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
+    if n.len == 1:
+      traverse(c, n[0])
+      if optStaticBoundsCheck in c.currOptions:
+        checkRange(c, n[0], n.typ)
+  of nkBracketExpr:
+    if optStaticBoundsCheck in c.currOptions and n.len == 2:
+      if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
+        checkBounds(c, n[0], n[1])
+    for i in 0 ..< n.len: traverse(c, n[i])
+  else:
+    for i in 0..<n.safeLen: traverse(c, n[i])
+
+
+proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
+  var c: DrnimContext
+  c.o = initOperators(graph)
+  c.graph = graph
+  c.currOptions = graph.config.options + owner.options
+  traverse(c, n)
+
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
   conf.lastCmdTime = epochTime()
 
   graph.proofEngine = proofEngine
-  graph.requirementsCheck = requirementsCheck
+  graph.strongSemCheck = strongSemCheck
   graph.compatibleProps = compatibleProps
 
   graph.config.errorMax = high(int)  # do not stop after first error
