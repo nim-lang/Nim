@@ -560,8 +560,8 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     of nkBracket:
       return paFastAsgnTakeTypeFromArg
     else:
-      return paDirectMapping    # XXX really correct?
-                                # what if ``arg`` has side-effects?
+      # XXX incorrect, causes #13417 when `arg` has side effects.
+      return paDirectMapping
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
@@ -671,9 +671,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
-      let typ = newType(tySequence, formal.owner)
-      addSonSkipIntLit(typ, formal.typ[0])
-      var temp = newTemp(c, typ, formal.info)
+      # arrays will deep copy here (pretty bad).
+      var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
