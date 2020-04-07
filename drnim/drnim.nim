@@ -883,20 +883,6 @@ proc mainCommand(graph: ModuleGraph) =
       "output", output,
       ])
 
-proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
-  when defined(unix):
-    if os.isAbsolute(f.string): result = f
-    else: result = AbsoluteFile("./" & f.string)
-  else:
-    result = f
-
-proc addCmdPrefix(result: var string, kind: CmdLineKind) =
-  # consider moving this to std/parseopt
-  case kind
-  of cmdLongOption: result.add "--"
-  of cmdShortOption: result.add "-"
-  of cmdArgument, cmdEnd: discard
-
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 1
