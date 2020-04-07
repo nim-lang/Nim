@@ -61,8 +61,6 @@ jobs:
         DEBIAN_FRONTEND='noninteractive' \
           sudo apt-fast install --no-install-recommends -yq \
             libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev valgrind libc6-dbg
-        # to test cross compilation from 64bit => 32 bit, see t13902.nim
-        sudo apt-fast install gcc-multilib g++-multilib
       displayName: 'Install dependencies (amd64 Linux)'
       condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'amd64'))
 
