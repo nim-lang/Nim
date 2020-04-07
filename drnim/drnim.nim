@@ -9,7 +9,6 @@
 
 #[
 
-- Prove '.ensures' annotations!
 - we need a 'location' abstraction
 
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
@@ -842,6 +841,12 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
     c.o = initOperators(graph)
     c.graph = graph
     traverse(c, n)
+
+    if owner.typ != nil and owner.typ.kind == tyProc and owner.typ.n != nil:
+      let n = owner.typ.n
+      if n.len > 0 and n[0].kind == nkEffectList and ensuresEffects < n[0].len:
+        let ensures = n[0][ensuresEffects]
+        discard prove(c, ensures)
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
