@@ -125,6 +125,9 @@ proc stableName(result: var string; n: PNode) =
 proc stableName(n: PNode): string = stableName(result, n)
 
 proc notImplemented(msg: string) {.noinline.} =
+  when defined(debug):
+    writeStackTrace()
+    echo msg
   raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & msg)
 
 proc translateEnsures(e, x: PNode): PNode =
@@ -574,7 +577,11 @@ type
     currOptions: TOptions
 
 template config(c: typed): untyped = c.graph.config
-template addFact(c: typed; n: PNode) = c.facts.add n
+
+proc addFact(c: DrnimContext; n: PNode) =
+  if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
+    c.facts.add n[1]
+  c.facts.add n
 
 proc addFactNeg(c: DrnimContext; n: PNode) =
   var neg = newNodeI(nkCall, n.info, 2)
@@ -846,7 +853,8 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
       let n = owner.typ.n
       if n.len > 0 and n[0].kind == nkEffectList and ensuresEffects < n[0].len:
         let ensures = n[0][ensuresEffects]
-        discard prove(c, ensures)
+        if ensures != nil and ensures.kind != nkEmpty:
+          discard prove(c, ensures)
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
