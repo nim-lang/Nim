@@ -14,12 +14,16 @@ when defined case_t13902:
 else:
   import std/[strformat,os,osproc]
   proc main() =
-    when defined(linux):
-      # osx doesn't support 32bit and windows doesn't have the required
-      # cross compilation libraries by default
+    when sizeof(int) == 4 or defined(linux):
       const nim = getCurrentCompilerExe()
       const file = currentSourcePath()
-      let cmd = fmt"{nim} c -r -d:case_t13902 --skipParentCfg --skipUserCfg --cpu:i386 --passC:-m32 --passL:-m32 --stacktrace:off --hints:off {file}"
+      var options = ""
+      when sizeof(int) == 8:
+        when defined(linux): # other OS would need custom cross compile libs
+          options = "--cpu:i386 --passC:-m32 --passL:-m32"
+        else:
+          if true: return
+      let cmd = fmt"{nim} c -r {options} -d:case_t13902 --skipParentCfg --skipUserCfg --stacktrace:off --hints:off {file}"
       let (output, exitCode) = execCmdEx(cmd)
-      doAssert exitCode == 0, $(cmd, output)
+      doAssert exitCode == 0, cmd & "\n" & output
   main()
