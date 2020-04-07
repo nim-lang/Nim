@@ -56,6 +56,7 @@ type
     tryStmtFixups: seq[TPosition]
     forks: seq[TPosition]
     owner: PSym
+    bePrecise*: bool
 
 proc debugInfo(info: TLineInfo): string =
   result = $info.line #info.toFilename & ":" & $info.line

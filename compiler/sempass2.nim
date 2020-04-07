@@ -665,10 +665,6 @@ proc trackBlock(tracked: PEffects, n: PNode) =
   else:
     track(tracked, n)
 
-proc isTrue*(n: PNode): bool =
-  n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
-    n.kind == nkIntLit and n.intVal != 0
-
 proc paramType(op: PType, i: int): PType =
   if op != nil and i < op.len: result = op[i]
 
@@ -1224,7 +1220,7 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       "declared lock level is $1, but real lock level is $2" %
         [$s.typ.lockLevel, $t.maxLockLevel])
   when defined(drnim):
-    c.graph.strongSemCheck(c.graph, s, body)
+    if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, s, body)
   when defined(useDfa):
     if s.name.s == "testp":
       dataflowAnalysis(s, body)
@@ -1241,4 +1237,4 @@ proc trackStmt*(c: PContext; module: PSym; n: PNode, isTopLevel: bool) =
   t.isTopLevel = isTopLevel
   track(t, n)
   when defined(drnim):
-    c.graph.strongSemCheck(c.graph, module, n)
+    if c.graph.strongSemCheck != nil: c.graph.strongSemCheck(c.graph, module, n)

@@ -9,6 +9,9 @@
 
 #[
 
+- Prove '.ensures' annotations!
+- we need a 'location' abstraction
+
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - forall/exists need syntactic sugar as the manual
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -45,11 +48,11 @@ We handle state transitions in this way:
 ]#
 
 import std / [
-  parseopt, strutils, os, tables, times
+  parseopt, strutils, os, tables, times, intsets
 ]
 
 import ".." / compiler / [
-  ast, types, renderer,
+  ast, astalgo, types, renderer,
   commands, options, msgs,
   platform, trees, wordrecg, guards,
   idents, lineinfos, cmdlinehelper, modulegraphs, condsyms,
@@ -574,6 +577,12 @@ type
 template config(c: typed): untyped = c.graph.config
 template addFact(c: typed; n: PNode) = c.facts.add n
 
+proc addFactNeg(c: DrnimContext; n: PNode) =
+  var neg = newNodeI(nkCall, n.info, 2)
+  neg[0] = newSymNode(c.o.opNot)
+  neg[1] = n
+  addFact(c, neg)
+
 proc prove(c: DrnimContext; prop: PNode): bool =
   let (success, m) = proofEngine(c.graph, c.facts, prop)
   if not success:
@@ -599,6 +608,20 @@ proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
       let (success, m) = requirementsCheck(c.graph, c.facts, call, requires)
       if not success:
         message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
+
+proc ensuresCheck(c: DrnimContext, call: PNode; op: PType) =
+  assert op.n[0].kind == nkEffectList
+  var markedParams = initIntSet()
+  if ensuresEffects < op.n[0].len:
+    let ensures = op.n[0][ensuresEffects]
+    if ensures != nil and ensures.kind != nkEmpty:
+      discard
+
+  # invalidate what we know for pass-by-ref parameters unless
+  # they previously where subject of an '.ensures' annotation:
+  for i in 1 ..< min(call.len, op.len):
+    if op[i].kind == tyVar and not markedParams.contains(i-1):
+      invalidateFacts(c.facts, call[i])
 
 proc checkLe(c: DrnimContext, a, b: PNode) =
   var cmpOp = mLeI
@@ -633,6 +656,55 @@ proc addAsgnFact*(c: DrnimContext, key, value: PNode) =
   fact[2] = value
   c.facts.add fact
 
+proc traverse(c: DrnimContext; n: PNode)
+
+proc traverseTryStmt(c: DrnimContext; n: PNode) =
+  traverse(c, n[0])
+  let oldFacts = c.facts.len
+  for i in 1 ..< n.len:
+    traverse(c, n[i].lastSon)
+  setLen(c.facts, oldFacts)
+
+proc traverseCase(c: DrnimContext; n: PNode) =
+  traverse(c, n[0])
+  let oldFacts = c.facts.len
+  for i in 1 ..< n.len:
+    traverse(c, n[i].lastSon)
+  # XXX make this as smart as 'if elif'
+  setLen(c.facts, oldFacts)
+
+proc traverseIf(c: DrnimContext; n: PNode) =
+  traverse(c, n[0][0])
+  let oldFacts = c.facts.len
+  addFact(c, n[0][0])
+
+  traverse(c, n[0][1])
+
+  for i in 1..<n.len:
+    let branch = n[i]
+    setLen(c.facts, oldFacts)
+    for j in 0..i-1:
+      addFactNeg(c, n[j][0])
+    if branch.len > 1:
+      addFact(c, branch[0])
+    for i in 0..<branch.len:
+      traverse(c, branch[i])
+  setLen(c.facts, oldFacts)
+
+proc traverseBlock(c: DrnimContext; n: PNode) =
+  traverse(c, n)
+
+proc buildCall(op: PSym; a, b: PNode): PNode =
+  result = newNodeI(nkInfix, a.info, 3)
+  result[0] = newSymNode(op)
+  result[1] = a
+  result[2] = b
+
+proc addFactLe(c: DrnimContext; a, b: PNode) =
+  c.facts.add c.o.opLe.buildCall(a, b)
+
+proc addFactLt(c: DrnimContext; a, b: PNode) =
+  c.facts.add c.o.opLt.buildCall(a, b)
 
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
@@ -648,6 +720,7 @@ proc traverse(c: DrnimContext; n: PNode) =
     let op = a.typ
     if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
       requiresCheck(c, n, op)
+      ensuresCheck(c, n, op)
     if a.kind == nkSym:
       case a.sym.magic
       of mNew, mNewFinalize, mNewSeq:
@@ -675,21 +748,21 @@ proc traverse(c: DrnimContext; n: PNode) =
     traverse(c, n[1])
     invalidateFacts(c.facts, n[0])
     traverse(c, n[0])
-    addAsgnFact(c.facts, n[0], n[1])
+    addAsgnFact(c, n[0], n[1])
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
       if last.kind != nkEmpty: traverse(c, last)
       if child.kind == nkIdentDefs and last.kind != nkEmpty:
         for i in 0..<child.len-2:
-          addAsgnFact(c.facts, child[i], last)
+          addAsgnFact(c, child[i], last)
       elif child.kind == nkVarTuple and last.kind != nkEmpty:
         for i in 0..<child.len-1:
           if child[i].kind == nkEmpty or
               child[i].kind == nkSym and child[i].sym.name.s == "_":
             discard "anon variable"
           elif last.kind in {nkPar, nkTupleConstr}:
-            addAsgnFact(c.facts, child[i], last[i])
+            addAsgnFact(c, child[i], last[i])
   of nkConstSection:
     for child in n:
       let last = lastSon(child)
@@ -703,13 +776,13 @@ proc traverse(c: DrnimContext; n: PNode) =
       traverseBlock(c, n[1])
     else:
       let oldFacts = c.facts.len
-      addFact(c.facts, n[0])
+      addFact(c, n[0])
       traverse(c, n[0])
       traverse(c, n[1])
-      setLen(c.facts.s, oldFacts)
+      setLen(c.facts, oldFacts)
   of nkForStmt, nkParForStmt:
     # we are very conservative here and assume the loop is never executed:
-    let oldFacts = c.facts.s.len
+    let oldFacts = c.facts.len
     let iterCall = n[n.len-2]
     if optStaticBoundsCheck in c.currOptions and iterCall.kind in nkCallKinds:
       let op = iterCall[0]
@@ -721,13 +794,13 @@ proc traverse(c: DrnimContext; n: PNode) =
           let upper = iterCall[2]
           # for i in 0..n   means  0 <= i and i <= n. Countdown is
           # the same since only the iteration direction changes.
-          addFactLe(c.facts, lower, iterVar)
-          addFactLe(c.facts, iterVar, upper)
+          addFactLe(c, lower, iterVar)
+          addFactLe(c, iterVar, upper)
         of "..<":
           let lower = iterCall[1]
           let upper = iterCall[2]
-          addFactLe(c.facts, lower, iterVar)
-          addFactLt(c.facts, iterVar, upper)
+          addFactLe(c, lower, iterVar)
+          addFactLt(c, iterVar, upper)
         else: discard
 
     for i in 0..<n.len-2:
@@ -736,7 +809,7 @@ proc traverse(c: DrnimContext; n: PNode) =
     let loopBody = n[^1]
     traverse(c, iterCall)
     traverse(c, loopBody)
-    setLen(c.facts.s, oldFacts)
+    setLen(c.facts, oldFacts)
   of nkTypeSection, nkProcDef, nkConverterDef, nkMethodDef, nkIteratorDef,
       nkMacroDef, nkTemplateDef, nkLambda, nkDo, nkFuncDef:
     discard
@@ -763,17 +836,17 @@ proc traverse(c: DrnimContext; n: PNode) =
 
 
 proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
-  var c: DrnimContext
-  c.o = initOperators(graph)
-  c.graph = graph
+  var c = DrnimContext()
   c.currOptions = graph.config.options + owner.options
-  traverse(c, n)
+  if optStaticBoundsCheck in c.currOptions:
+    c.o = initOperators(graph)
+    c.graph = graph
+    traverse(c, n)
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
   conf.lastCmdTime = epochTime()
 
-  graph.proofEngine = proofEngine
   graph.strongSemCheck = strongSemCheck
   graph.compatibleProps = compatibleProps
 
