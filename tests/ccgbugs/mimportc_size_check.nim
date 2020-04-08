@@ -63,11 +63,11 @@ block:
   discard Foo5.default
 
 block: # CT sizeof
-  type Foo6Groundtruth = object
+  type Foo6GT = object # grountruth
     a1: cint
     a2: bool
     a3: cfloat
-    a4: ptr Foo6Groundtruth
+    a4: ptr Foo6GT
 
   type Foo6{.importc, completeStruct.} = object
     a1: cint
@@ -75,15 +75,16 @@ block: # CT sizeof
     a3: cfloat
     a4: ptr Foo6
 
-  static: doAssert Foo6.sizeof == Foo6Groundtruth.sizeof
   static: doAssert compiles(static(Foo6.sizeof))
+  static: doAssert Foo6.sizeof == Foo6GT.sizeof
+  static: doAssert (Foo6, int, array[2, Foo6]).sizeof ==
+    (Foo6GT, int, array[2, Foo6GT]).sizeof
 
 block:
   type Foo6{.importc.} = object
     a1: cint
   doAssert compiles(Foo6.sizeof)
   static: doAssert not compiles(static(Foo6.sizeof))
-  echo static(Foo6.sizeof)
 
 when defined caseBad:
   # bad sizes => each should give an assert fail message
