@@ -694,13 +694,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp)
 
-  # var wasFound = sig in m.typeCache
-  var wasFound = sig in m.typeABICache
-  defer:
+  defer: # defer is the simplest in this case
     if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
-        echo0b ($result, t.typeToString, t.kind, isImportedType(t), isImportedCppType(t), isImportedType(origTyp), isImportedCppType(origTyp), sig, sig in m.typeCache)
-        # TODO: isImportedCppType ?  origTyp?
-        addAbiCheck(m, t, result)
+      addAbiCheck(m, t, result)
 
   result = getTypePre(m, t, sig)
   if result != nil:
