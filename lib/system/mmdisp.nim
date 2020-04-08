@@ -102,18 +102,20 @@ else:
     include "system/gc"
 
 when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):
+  {.push overflowChecks: on.}
   proc nimNewSeqOfCap(typ: PNimType, cap: int): pointer {.compilerproc.} =
     when defined(gcRegions):
-      let s = mulInt(cap, typ.base.size)  # newStr already adds GenericSeqSize
+      let s = cap * typ.base.size  # newStr already adds GenericSeqSize
       result = newStr(typ, s, ntfNoRefs notin typ.base.flags)
     else:
-      let s = addInt(mulInt(cap, typ.base.size), GenericSeqSize)
+      let s = cap * typ.base.size + GenericSeqSize
       when declared(newObjNoInit):
         result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
       else:
         result = newObj(typ, s)
       cast[PGenericSeq](result).len = 0
       cast[PGenericSeq](result).reserved = cap
+  {.pop.}
 
 {.pop.}
 

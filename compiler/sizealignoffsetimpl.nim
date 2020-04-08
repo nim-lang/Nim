@@ -23,7 +23,7 @@ const
   szUncomputedSize* = -1
   szTooBigSize* = -4
 
-type IllegalTypeRecursionError = object of Exception
+type IllegalTypeRecursionError = object of ValueError
 
 proc raiseIllegalTypeRecursion() =
   raise newException(IllegalTypeRecursionError, "illegal type recursion")

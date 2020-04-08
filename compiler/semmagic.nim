@@ -140,7 +140,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
 
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
     return traitCall  ## too early to evaluate
-    
+
   let s = trait.sym.name.s
   case s
   of "or", "|":
@@ -187,7 +187,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
-  of "lenTuple":
+  of "tupleLen":
     var operand = operand.skipTypes({tyGenericInst})
     assert operand.kind == tyTuple, $operand.kind
     result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
@@ -428,6 +428,27 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result.typ = newProcType(result.info, result)
   result.typ.addParam newParam
 
+proc semQuantifier(c: PContext; n: PNode): PNode =
+  checkMinSonsLen(n, 2, c.config)
+  openScope(c)
+  for i in 0..n.len-2:
+    let v = newSymS(skForVar, n[i], c)
+    styleCheckDef(c.config, v)
+    onDef(n.info, v)
+    n[i] = newSymNode(v)
+    addDecl(c, v)
+  n[^1] = forceBool(c, semExprWithType(c, n[^1]))
+  closeScope(c)
+
+proc semOld(c: PContext; n: PNode): PNode =
+  if n[1].kind == nkHiddenDeref:
+    n[1] = n[1][0]
+  if n[1].kind != nkSym or n[1].sym.kind != skParam:
+    localError(c.config, n[1].info, "'old' takes a parameter name")
+  elif n[1].sym.owner != getCurrOwner(c):
+    localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
+  result = n
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -479,8 +500,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-  of mRoof:
-    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:
@@ -507,4 +526,23 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result[0] = newSymNode(t.destructor)
   of mUnown:
     result = semUnown(c, n)
-  else: result = n
+  of mExists, mForall:
+    result = semQuantifier(c, n)
+  of mOld:
+    result = semOld(c, n)
+  of mSetLengthSeq:
+    result = n
+    let seqType = result[1].typ.skipTypes({tyPtr, tyRef, # in case we had auto-dereferencing
+                                           tyVar, tyGenericInst, tyOwned, tySink,
+                                           tyAlias, tyUserTypeClassInst})
+    if seqType.kind == tySequence and seqType.base.requiresInit:
+      message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))
+  of mDefault:
+    result = n
+    c.config.internalAssert result[1].typ.kind == tyTypeDesc
+    let constructed = result[1].typ.base
+    if constructed.requiresInit:
+      message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  else:
+    result = n
+

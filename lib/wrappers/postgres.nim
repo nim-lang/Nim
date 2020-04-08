@@ -15,7 +15,6 @@
 # connection-protocol.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 

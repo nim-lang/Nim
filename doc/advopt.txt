@@ -38,6 +38,8 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
+  --warningAsError[X]:on|off
+                            turn specific warning X into an error on|off
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
@@ -49,7 +51,7 @@ Advanced options:
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
-                            see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory 
+                            see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory
   -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
   --noLinking:on|off        compile Nim and generated files but do not link
   --noMain:on|off           do not generate a main procedure
@@ -92,6 +94,7 @@ Advanced options:
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility
@@ -125,8 +128,8 @@ Advanced options:
                             dynlib: "liblua.so.3"
   --dynlibOverrideAll
                             disables the effects of the dynlib pragma
-  --listCmd                 list the compilation commands; can be combined with:
-                            --hint:exec:on and --hint:link:on
+  --listCmd                 list the compilation commands; can be combined with
+                            `--hint:exec:on` and `--hint:link:on`
   --asm                     produce assembler code
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
@@ -145,3 +148,5 @@ Advanced options:
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
   --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
+  --sinkInference:on|off    en-/disable sink parameter inference (default: on)
+  --panics:on|off           turn panics into process terminations (default: off)

@@ -139,7 +139,8 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     if isPure and (let conflict = strTableInclReportConflict(symbols, e); conflict != nil):
       wrongRedefinition(c, e.info, e.name.s, conflict.info)
     inc(counter)
-  if tfNotNil in e.typ.flags and not hasNull: incl(result.flags, tfNeedsInit)
+  if tfNotNil in e.typ.flags and not hasNull:
+    result.flags.incl tfRequiresInit
 
 proc semSet(c: PContext, n: PNode, prev: PType): PType =
   result = newOrPrevType(tySet, prev, c)
@@ -225,7 +226,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
       localError(c.config, n.info, "type mismatch")
-    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin tyFloat..tyFloat128 or
+    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
     elif enumHasHoles(rangeT[0]):
@@ -254,15 +255,15 @@ proc semRange(c: PContext, n: PNode, prev: PType): PType =
       result = semRangeAux(c, n[1], prev)
       let n = result.n
       if n[0].kind in {nkCharLit..nkUInt64Lit} and n[0].intVal > 0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[1].kind in {nkCharLit..nkUInt64Lit} and n[1].intVal < 0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[0].kind in {nkFloatLit..nkFloat64Lit} and
           n[0].floatVal > 0.0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
       elif n[1].kind in {nkFloatLit..nkFloat64Lit} and
           n[1].floatVal < 0.0:
-        incl(result.flags, tfNeedsInit)
+        incl(result.flags, tfRequiresInit)
     else:
       if n[1].kind == nkInfix and considerQuotedIdent(c, n[1][0]).s == "..<":
         localError(c.config, n[0].info, "range types need to be constructed with '..', '..<' is not supported")
@@ -804,7 +805,7 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
         addInheritedFieldsAux(c, check, pos, lastSon(n[i]))
       else: internalError(c.config, n.info, "addInheritedFieldsAux(record case branch)")
   of nkRecList, nkRecWhen, nkElifBranch, nkElse:
-    for i in 0..<n.len:
+    for i in int(n.kind == nkElifBranch)..<n.len:
       addInheritedFieldsAux(c, check, pos, n[i])
   of nkSym:
     incl(check, n.sym.name.id)
@@ -847,6 +848,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
         # specialized object, there will be second check after instantiation
         # located in semGeneric.
         if concreteBase.kind == tyObject:
+          if concreteBase.sym != nil and concreteBase.sym.magic == mException and
+              sfSystemModule notin c.module.flags:
+            message(c.config, n.info, warnInheritFromException, "")
           addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
@@ -873,6 +877,8 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
     pragma(c, s, n[0], typePragmas)
   if base == nil and tfInheritable notin result.flags:
     incl(result.flags, tfFinal)
+  if c.inGenericContext == 0 and computeRequiresInit(c, result):
+    result.flags.incl tfRequiresInit
 
 proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
   if n.len < 1:
@@ -893,7 +899,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
-    var isOwned = false
+    var wrapperKind = tyNone
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
@@ -901,8 +907,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
         isNilable = true
       else:
         let region = semTypeNode(c, ni, nil)
-        if region.kind == tyOwned:
-          isOwned = true
+        if region.kind in {tyOwned, tySink}:
+          wrapperKind = region.kind
         elif region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
               tyError, tyObject}:
           message c.config, n[i].info, errGenerated, "region needs to be an object type"
@@ -914,11 +920,18 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
     #if not isNilable: result.flags.incl tfNotNil
-    if isOwned and optOwnedRefs in c.config.globalOptions:
-      let t = newTypeS(tyOwned, c)
-      t.flags.incl tfHasOwned
+    case wrapperKind
+    of tyOwned:
+      if optOwnedRefs in c.config.globalOptions:
+        let t = newTypeS(tyOwned, c)
+        t.flags.incl tfHasOwned
+        t.rawAddSonNoPropagationOfTypeFlags result
+        result = t
+    of tySink:
+      let t = newTypeS(tySink, c)
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
+    else: discard
     #if result.kind == tyRef and c.config.selectedGC == gcDestructors:
     #  result.flags.incl tfHasAsgn
     # XXX Something like this is a good idea but it should be done
@@ -1557,9 +1570,50 @@ proc semTypeClass(c: PContext, n: PNode, prev: PType): PType =
   result.n[3] = semConceptBody(c, n[3])
   closeScope(c)
 
+proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
+  for p in pragmas:
+    let key = if p.kind in nkPragmaCallKinds and p.len >= 1: p[0] else: p
+
+    if p.kind == nkEmpty or whichPragma(p) != wInvalid:
+      discard "builtin pragma"
+    else:
+      let ident = considerQuotedIdent(c, key)
+      if strTableGet(c.userPragmas, ident) != nil:
+        discard "User-defined pragma"
+      else:
+        let sym = searchInScopes(c, ident)
+        if sym != nil and sfCustomPragma in sym.flags: 
+          discard "Custom user pragma"
+        else:
+          # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and
+          # let the semantic checker deal with it:
+          var x = newNodeI(nkCall, key.info)
+          x.add(key)
+          if p.kind in nkPragmaCallKinds and p.len > 1:
+            # pass pragma arguments to the macro too:
+            for i in 1 ..< p.len:
+              x.add(p[i])
+          # Also pass the node the pragma has been applied to
+          x.add(operand.copyTreeWithoutNode(p))
+          # recursion assures that this works for multiple macro annotations too:
+          var r = semOverloadedCall(c, x, x, {skMacro, skTemplate}, {efNoUndeclared})
+          if r != nil:
+            doAssert r[0].kind == nkSym
+            let m = r[0].sym
+            case m.kind
+            of skMacro: return semMacroExpr(c, r, r, m, {efNoSemCheck})
+            of skTemplate: return semTemplateExpr(c, r, m, {efNoSemCheck})
+            else: doAssert(false, "cannot happen")
+
 proc semProcTypeWithScope(c: PContext, n: PNode,
-                        prev: PType, kind: TSymKind): PType =
+                          prev: PType, kind: TSymKind): PType =
   checkSonsLen(n, 2, c.config)
+
+  if n[1].kind != nkEmpty and n[1].len > 0:
+    let macroEval = applyTypeSectionPragmas(c, n[1], n)
+    if macroEval != nil:
+      return semTypeNode(c, macroEval, prev)
+
   openScope(c)
   result = semProcTypeNode(c, n[0], nil, prev, kind, isType=true)
   # start with 'ccClosure', but of course pragmas can overwrite this:
@@ -1570,6 +1624,12 @@ proc semProcTypeWithScope(c: PContext, n: PNode,
   if n[1].kind != nkEmpty and n[1].len > 0:
     pragma(c, s, n[1], procTypePragmas)
     when useEffectSystem: setEffectsForProcType(c.graph, result, n[1])
+  elif c.optionStack.len > 0 and optNimV1Emulation notin c.config.globalOptions:
+    # we construct a fake 'nkProcDef' for the 'mergePragmas' inside 'implicitPragmas'...
+    s.ast = newTree(nkProcDef, newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info),
+        newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info), newNodeI(nkEmpty, n.info))
+    implicitPragmas(c, s, n, {wTags, wRaises})
+    when useEffectSystem: setEffectsForProcType(c.graph, result, s.ast[pragmasPos])
   closeScope(c)
 
 proc symFromExpectedTypeNode(c: PContext, n: PNode): PSym =
@@ -1666,12 +1726,43 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
         case n.len
         of 3:
           result = semTypeNode(c, n[1], prev)
-          if result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).kind in NilableTypes+GenericTypes+{tyForward} and
-              n[2].kind == nkNilLit:
+          if result.kind == tyTypeDesc and tfUnresolved notin result.flags:
+            result = result.base
+          if n[2].kind != nkNilLit:
+            localError(c.config, n.info,
+              "Invalid syntax. When used with a type, 'not' can be followed only by 'nil'")
+          if notnil notin c.features:
+            localError(c.config, n.info,
+              "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
+          let resolvedType = result.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned})
+          case resolvedType.kind
+          of tyGenericParam, tyTypeDesc, tyFromExpr:
+            # XXX: This is a really inappropraite hack, but it solves
+            # https://github.com/nim-lang/Nim/issues/4907 for now.
+            #
+            # A proper solution is to introduce a new type kind such
+            # as `tyNotNil[tyRef[SomeGenericParam]]`. This will allow
+            # semtypinst to replace the generic param correctly in
+            # situations like the following:
+            #
+            # type Foo[T] = object
+            #   bar: ref T not nil
+            #   baz: ref T
+            #
+            # The root of the problem is that `T` here must have a specific
+            # ID that is bound to a concrete type during instantiation.
+            # The use of `freshType` below breaks this. Another hack would
+            # be to reuse the same ID for the not nil type, but this will
+            # fail if the `T` parameter is referenced multiple times as in
+            # the example above.
+            #
+            # I suggest revisiting this once the language decides on whether
+            # `not nil` should be the default. We can then map nilable refs
+            # to other types such as `Option[T]`.
+            result = makeTypeFromExpr(c, newTree(nkStmtListType, n.copyTree))
+          of NilableTypes + {tyGenericInvocation, tyForward}:
             result = freshType(result, prev)
             result.flags.incl(tfNotNil)
-            if notnil notin c.features:
-              localError(c.config, n.info, "enable the 'not nil' annotation with {.experimental: \"notnil\".}")
           else:
             localError(c.config, n.info, errGenerated, "invalid type")
         of 2:
@@ -1829,11 +1920,12 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result.addSonSkipIntLit(child)
     else:
       result = semProcTypeWithScope(c, n, prev, skIterator)
-      result.flags.incl(tfIterator)
-      if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
-        result.callConv = ccInline
-      else:
-        result.callConv = ccClosure
+      if result.kind == tyProc:
+        result.flags.incl(tfIterator)
+        if n.lastSon.kind == nkPragma and hasPragma(n.lastSon, wInline):
+          result.callConv = ccInline
+        else:
+          result.callConv = ccClosure
   of nkProcTy:
     if n.len == 0:
       result = newConstraint(c, tyProc)
@@ -1898,10 +1990,6 @@ proc processMagicType(c: PContext, m: PSym) =
     setMagicIntegral(c.config, m, tyCString, c.config.target.ptrSize)
     rawAddSon(m.typ, getSysType(c.graph, m.info, tyChar))
   of mPointer: setMagicIntegral(c.config, m, tyPointer, c.config.target.ptrSize)
-  of mEmptySet:
-    setMagicIntegral(c.config, m, tySet, 1)
-    rawAddSon(m.typ, newTypeS(tyEmpty, c))
-  of mIntSetBaseType: setMagicIntegral(c.config, m, tyRange, c.config.target.intSize)
   of mNil: setMagicType(c.config, m, tyNil, c.config.target.ptrSize)
   of mExpr:
     if m.name.s == "auto":
@@ -1937,8 +2025,6 @@ proc processMagicType(c: PContext, m: PSym) =
       incl m.typ.flags, tfHasAsgn
     assert c.graph.sysTypes[tySequence] == nil
     c.graph.sysTypes[tySequence] = m.typ
-  of mOpt:
-    setMagicType(c.config, m, tyOpt, szUncomputedSize)
   of mOrdinal:
     setMagicIntegral(c.config, m, tyOrdinal, szUncomputedSize)
     rawAddSon(m.typ, newTypeS(tyNone, c))

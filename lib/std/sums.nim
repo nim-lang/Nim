@@ -54,6 +54,14 @@ func sumPairs*[T](x: openArray[T]): T =
   if n == 0: T(0) else: sumPairwise(x, 0, n)
 
 
+runnableExamples:
+  static:
+    block:
+      const data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+      doAssert sumKbn(data) == 45
+      doAssert sumPairs(data) == 45
+
+
 when isMainModule:
   from math import pow
 

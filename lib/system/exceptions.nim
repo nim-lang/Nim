@@ -1,3 +1,7 @@
+const NimStackTraceMsgs =
+  when defined(nimHasStacktraceMsgs): compileOption("stacktraceMsgs")
+  else: false
+
 type
   RootEffect* {.compilerproc.} = object of RootObj ## \
     ## Base effect class.
@@ -16,6 +20,11 @@ type
     procname*: cstring      ## Name of the proc that is currently executing.
     line*: int              ## Line number of the proc that is currently executing.
     filename*: cstring      ## Filename of the proc that is currently executing.
+    when NimStackTraceMsgs:
+      frameMsg*: string     ## When a stacktrace is generated in a given frame and
+                            ## rendered at a later time, we should ensure the stacktrace
+                            ## data isn't invalidated; any pointer into PFrame is
+                            ## subject to being invalidated so shouldn't be stored.
 
   Exception* {.compilerproc, magic: "Exception".} = object of RootObj ## \
     ## Base exception class.
@@ -33,12 +42,6 @@ type
       trace: string
     else:
       trace: seq[StackTraceEntry]
-    when defined(nimBoostrapCsources0_19_0):
-      # see #10315, bootstrap with `nim cpp` from csources gave error:
-      # error: no member named 'raise_id' in 'Exception'
-      raise_id: uint # set when exception is raised
-    else:
-      raiseId: uint # set when exception is raised
     up: ref Exception # used for stacking exceptions. Not exported!
 
   Defect* = object of Exception ## \

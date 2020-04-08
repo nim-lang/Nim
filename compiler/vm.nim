@@ -28,18 +28,6 @@ when hasFFI:
   import evalffi
 
 type
-  TRegisterKind = enum
-    rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
-  TFullReg = object   # with a custom mark proc, we could use the same
-                      # data representation as LuaJit (tagged NaNs).
-    case kind: TRegisterKind
-    of rkNone: nil
-    of rkInt: intVal: BiggestInt
-    of rkFloat: floatVal: BiggestFloat
-    of rkNode: node: PNode
-    of rkRegisterAddr: regAddr: ptr TFullReg
-    of rkNodeAddr: nodeAddr: ptr PNode
-
   PStackFrame* = ref TStackFrame
   TStackFrame* = object
     prc: PSym                 # current prc; proc that is evaluated
@@ -463,6 +451,12 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         value = (value shl srcDist) shr srcDist
         value = (value shl destDist) shr destDist
         dest.intVal = cast[BiggestInt](value)
+    of tyBool:
+      dest.ensureKind(rkInt)
+      dest.intVal = 
+        case skipTypes(srctyp, abstractRange).kind
+          of tyFloat..tyFloat64: int(src.floatVal != 0.0)
+          else: int(src.intVal != 0)
     of tyFloat..tyFloat64:
       dest.ensureKind(rkFloat)
       case skipTypes(srctyp, abstractRange).kind
@@ -515,6 +509,23 @@ const
   errTooManyIterations = "interpretation requires too many iterations; " &
     "if you are sure this is not a bug in your code, compile with `--maxLoopIterationsVM:number` (current value: $1)"
   errFieldXNotFound = "node lacks field: "
+
+
+template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
+  let node = node2 # prevent double evaluation
+  if node.kind == nkNilLit:
+    stackTrace(c, tos, pc, errNilAccess)
+  let typ = node.typ
+  if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
+    assert node.kind == nkIntLit, $(node.kind)
+    assert typ != nil
+    let typ2 = if typ.kind == tyPtr: typ[0] else: typ
+    if not derefPtrToReg(node.intVal, typ2, reg, isAssign = isAssign2):
+      # tyObject not supported in this context
+      stackTrace(c, tos, pc, "deref unsupported ptr type: " & $(typeToString(typ), typ.kind))
+    true
+  else:
+    false
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -580,11 +591,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcCastIntToFloat32:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float32](int32(regs[rb].intVal))
+      regs[ra].floatVal = cast[float32](regs[rb].intVal)
     of opcCastIntToFloat64:
       let rb = instr.regB
       ensureKind(rkFloat)
-      regs[ra].floatVal = cast[float64](int64(regs[rb].intVal))
+      regs[ra].floatVal = cast[float64](regs[rb].intVal)
 
     of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
       decodeBImm(rkInt)
@@ -761,26 +772,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         ensureKind(regs[rb].regAddr.kind)
         regs[ra] = regs[rb].regAddr[]
       of rkNode:
-        if regs[rb].node.kind == nkNilLit:
-          stackTrace(c, tos, pc, errNilAccess)
         if regs[rb].node.kind == nkRefTy:
           regs[ra].node = regs[rb].node[0]
-        else:
-          let node = regs[rb].node
-          let typ = node.typ
-          # see also `nfIsPtr`
-          if node.kind == nkIntLit:
-            var typ2 = typ
-            doAssert typ != nil
-            if typ.kind == tyPtr:
-              typ2 = typ2[0]
-            if not derefPtrToReg(node.intVal, typ2, regs[ra], isAssign = false):
-              # tyObject not supported in this context
-              stackTrace(c, tos, pc, "opcLdDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
-          else:
-            ## eg: typ.kind = tyObject
-            ensureKind(rkNode)
-            regs[ra].node = regs[rb].node
+        elif not maybeHandlePtr(regs[rb].node, regs[ra], false):
+          ## eg: typ.kind = tyObject
+          ensureKind(rkNode)
+          regs[ra].node = regs[rb].node
       else:
         stackTrace(c, tos, pc, errNilAccess & " kind: " & $regs[rb].kind)
     of opcWrDeref:
@@ -801,18 +798,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
           regs[ra].nodeAddr[] = n
       of rkRegisterAddr: regs[ra].regAddr[] = regs[rc]
       of rkNode:
-        if regs[ra].node.kind == nkNilLit:
-          stackTrace(c, tos, pc, errNilAccess)
-        let node = regs[ra].node
-        let typ = node.typ
-        if nfIsPtr in node.flags or (typ != nil and typ.kind == tyPtr):
-          assert node.kind == nkIntLit, $(node.kind)
-          var typ2 = typ
-          if typ.kind == tyPtr:
-            typ2 = typ2[0]
-          if not derefPtrToReg(node.intVal, typ2, regs[rc], isAssign = true):
-            stackTrace(c, tos, pc, "opcWrDeref unsupported ptr type: " & $(typeToString(typ), typ.kind))
-        else:
+         # xxx: also check for nkRefTy as in opcLdDeref?
+        if not maybeHandlePtr(regs[ra].node, regs[rc], true):
           regs[ra].node[] = regs[rc].regToNode[]
           regs[ra].node.flags.incl nfIsRef
       else: stackTrace(c, tos, pc, errNilAccess)
@@ -1089,11 +1076,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       createSet(regs[ra])
       move(regs[ra].node.sons,
            nimsets.diffSets(c.config, regs[rb].node, regs[rc].node).sons)
-    of opcSymdiffSet:
-      decodeBC(rkNode)
-      createSet(regs[ra])
-      move(regs[ra].node.sons,
-           nimsets.symdiffSets(c.config, regs[rb].node, regs[rc].node).sons)
     of opcConcatStr:
       decodeBC(rkNode)
       createStr regs[ra]
@@ -1205,7 +1187,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if prc.offset < -1:
         # it's a callback:
         c.callbacks[-prc.offset-2].value(
-          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+          VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                  currentException: c.currentExceptionA,
                  currentLineInfo: c.debug[pc]))
       elif importcCond(prc):
@@ -1524,7 +1506,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
         rc = instr.regC
         idx = int(regs[rb+rc-1].intVal)
         callback = c.callbacks[idx].value
-        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[pointer](regs),
+        args = VmArgs(ra: ra, rb: rb, rc: rc, slots: cast[ptr UncheckedArray[TFullReg]](addr regs[0]),
                 currentException: c.currentExceptionA,
                 currentLineInfo: c.debug[pc])
       callback(args)

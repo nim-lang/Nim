@@ -104,9 +104,15 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasCursor")
   defineSymbol("nimHasExceptionsQuery")
   defineSymbol("nimHasIsNamedTuple")
+  defineSymbol("nimHashOrdinalFixed")
 
   when defined(nimHasLibFFI):
     # Renaming as we can't conflate input vs output define flags; e.g. this
     # will report the right thing regardless of whether user adds
     # `-d:nimHasLibFFI` in his user config.
     defineSymbol("nimHasLibFFIEnabled")
+
+  defineSymbol("nimHasSinkInference")
+  defineSymbol("nimNewIntegerOps")
+  defineSymbol("nimHasInvariant")
+  defineSymbol("nimHasStacktraceMsgs")

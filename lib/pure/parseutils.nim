@@ -45,9 +45,6 @@
 ## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
 
-
-{.deadCodeElim: on.} # dce option deprecated
-
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
@@ -354,12 +351,13 @@ proc parseUntil*(s: string, token: var string, until: string,
     doAssert myToken == "Hello "
     doAssert parseUntil("Hello World", myToken, "Wor", 2) == 4
     doAssert myToken == "llo "
-  if until.len == 0:
-    token.setLen(0)
-    return 0
+  when (NimMajor, NimMinor) <= (1, 0):
+    if until.len == 0:
+      token.setLen(0)
+      return 0
   var i = start
   while i < s.len:
-    if s[i] == until[0]:
+    if until.len > 0 and s[i] == until[0]:
       var u = 1
       while i+u < s.len and u < until.len and s[i+u] == until[u]:
         inc u

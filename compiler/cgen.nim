@@ -276,6 +276,7 @@ proc postStmtActions(p: BProc) {.inline.} =
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
+proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
   m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
@@ -342,11 +343,6 @@ type
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
                    mode: ObjConstrMode) =
-  if p.module.compileToCpp and t.isException and p.config.exc == excCpp:
-    # init vtable in Exception object for polymorphic exceptions
-    includeHeader(p.module, "<new>")
-    linefmt(p, section, "new ($1) $2;$n", [rdLoc(a), getTypeDesc(p.module, t)])
-
   #if optNimV2 in p.config.globalOptions: return
   case analyseObjectWithTypeField(t)
   of frNone:
@@ -429,7 +425,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
-  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
@@ -974,7 +970,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
-    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NI* nimErr_;$n", []))
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc genProcAux(m: BModule, prc: PSym) =
@@ -1233,13 +1229,15 @@ proc genVarPrototype(m: BModule, n: PNode) =
         "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
         getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
 
-proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
+proc addNimDefines(result: var Rope; conf: ConfigRef) {.inline.} =
   result.addf("#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
   if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")
+  if conf.isDefined("nimEmulateOverflowChecks"):
+    result.add("#define NIM_EmulateOverflowChecks\L")
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   if optCompileOnly in conf.globalOptions:
@@ -1262,7 +1260,7 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   result = getCopyright(conf, cfile)
   if conf.hcrOn: result.add("#define NIM_HOT_CODE_RELOADING\L")
-  addIntTypes(result, conf)
+  addNimDefines(result, conf)
 
 proc getSomeNameForModule(m: PSym): Rope =
   assert m.kind == skModule
@@ -1663,6 +1661,11 @@ proc genInitCode(m: BModule) =
 
     if beforeRetNeeded in m.initProc.flags:
       prc.add(~"\tBeforeRet_: ;$n")
+
+    if sfMainModule in m.module.flags and m.config.exc == excGoto:
+      if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
+        m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
+
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
 
@@ -1819,7 +1822,7 @@ proc writeHeader(m: BModule) =
 
   var guard = "__$1__" % [m.filename.splitFile.name.rope]
   result.addf("#ifndef $1$n#define $1$n", [guard])
-  addIntTypes(result, m.config)
+  addNimDefines(result, m.config)
   generateHeaders(m)
 
   generateThreadLocalStorage(m)
@@ -1921,8 +1924,8 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 # it would generate multiple 'main' procs, for instance.
 
 proc writeModule(m: BModule, pending: bool) =
+  template onExit() = close(m.ndi, m.config)
   let cfile = getCFile(m)
-
   if true or optForceFullMake in m.config.globalOptions:
     if moduleHasChanged(m.g.graph, m.module):
       genInitCode(m)
@@ -1938,8 +1941,9 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cf)
     if code != nil or m.config.symbolFiles != disabledSf:
       when hasTinyCBackend:
-        if conf.cmd == cmdRun:
-          tccgen.compileCCode($code)
+        if m.config.cmd == cmdRun:
+          tccgen.compileCCode($code, m.config)
+          onExit()
           return
 
       if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
@@ -1963,7 +1967,7 @@ proc writeModule(m: BModule, pending: bool) =
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
-  close(m.ndi)
+  onExit()
 
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
@@ -1990,9 +1994,10 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if b == nil: return
   var m = BModule(b)
   if sfMainModule in m.module.flags:
-    let testForError = getCompilerProc(graph, "nimTestErrorFlag")
-    if testForError != nil and graph.config.exc == excGoto:
-      n.add newTree(nkCall, testForError.newSymNode)
+    # phase ordering problem here: We need to announce this
+    # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
+    if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
+      discard cgsym(m, "nimTestErrorFlag")
 
     for i in countdown(high(graph.globalDestructors), 0):
       n.add graph.globalDestructors[i]

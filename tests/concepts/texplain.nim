@@ -37,20 +37,24 @@ texplain.nim(124, 5) ExplainedConcept: concept predicate failed
 
 texplain.nim(168, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
+proc e(i: int): int
+  first type mismatch at position: 1
+  required type for i: int
+  but expression 'n' is of type: NonMatchingType
 proc e(o: ExplainedConcept): int
   first type mismatch at position: 1
   required type for o: ExplainedConcept
   but expression 'n' is of type: NonMatchingType
 texplain.nim(168, 9) template/generic instantiation of `assert` from here
 texplain.nim(124, 5) ExplainedConcept: concept predicate failed
-proc e(i: int): int
-  first type mismatch at position: 1
-  required type for i: int
-  but expression 'n' is of type: NonMatchingType
 
 expression: e(n)
 texplain.nim(169, 20) Error: type mismatch: got <NonMatchingType>
 but expected one of:
+proc r(i: string): int
+  first type mismatch at position: 1
+  required type for i: string
+  but expression 'n' is of type: NonMatchingType
 proc r(o: RegularConcept): int
   first type mismatch at position: 1
   required type for o: RegularConcept
@@ -61,20 +65,16 @@ proc r[T](a: SomeNumber; b: T; c: auto)
   first type mismatch at position: 1
   required type for a: SomeNumber
   but expression 'n' is of type: NonMatchingType
-proc r(i: string): int
-  first type mismatch at position: 1
-  required type for i: string
-  but expression 'n' is of type: NonMatchingType
 
 expression: r(n)
 texplain.nim(170, 20) Hint: Non-matching candidates for r(y)
-proc r[T](a: SomeNumber; b: T; c: auto)
-  first type mismatch at position: 1
-  required type for a: SomeNumber
-  but expression 'y' is of type: MatchingType
 proc r(i: string): int
   first type mismatch at position: 1
   required type for i: string
+  but expression 'y' is of type: MatchingType
+proc r[T](a: SomeNumber; b: T; c: auto)
+  first type mismatch at position: 1
+  required type for a: SomeNumber
   but expression 'y' is of type: MatchingType
 
 texplain.nim(178, 2) Error: type mismatch: got <MatchingType>
@@ -97,10 +97,10 @@ expression: f(y)'''
   errormsg: "type mismatch: got <MatchingType>"
   line: 178
 
-  disabled: 32bit
 """
 
-# disabled on 32 bit, because the order of suggested alternatives ``r`` differs
+
+
 # proc r[T](a: SomeNumber; b: T; c: auto)
 # proc r(i: string): int
 # proc r(o: RegularConcept): int

@@ -33,7 +33,6 @@
 # Dead code elimination ensures that we don't accidentally generate #includes
 # for files that might not exist on a specific platform! The user will get an
 # error only if they actually try to use the missing declaration
-{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}

@@ -22,7 +22,6 @@
 ##   ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl.nim
 ##   ./bin/nim c -d:ssl -p:. --dynlibOverride:ssl --passl:-lcrypto --passl:-lssl -r tests/untestable/tssl.nim
 
-{.deadCodeElim: on.}  # dce option deprecated
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -91,6 +90,7 @@ type
   PSslPtr* = ptr SslPtr
   SslCtx* = SslPtr
   PSSL_METHOD* = SslPtr
+  PSTACK* = SslPtr
   PX509* = SslPtr
   PX509_NAME* = SslPtr
   PEVP_MD* = SslPtr
@@ -244,7 +244,7 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
-when compileOption("dynlibOverride", "ssl"):
+when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
   # Static linking
 
   when defined(openssl10):
@@ -285,40 +285,59 @@ else:
   proc thisModule(): LibHandle {.inline.} =
     var thisMod {.global.}: LibHandle
     if thisMod.isNil: thisMod = loadLib()
+
     result = thisMod
 
   proc sslModule(): LibHandle {.inline.} =
     var sslMod {.global.}: LibHandle
     if sslMod.isNil: sslMod = loadLibPattern(DLLSSLName)
+
     result = sslMod
 
-  proc sslSym(name: string): pointer =
-    var dl = thisModule()
-    if not dl.isNil:
-      result = symAddr(dl, name)
+  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+    # Load from DLL.
+    var sslDynlib = sslModule()
+    if not sslDynlib.isNil:
+      result = symAddr(sslDynlib, name)
+      if result.isNil and alternativeName.len > 0:
+        result = symAddr(sslDynlib, alternativeName)
+
+    # Attempt to load from current exe.
     if result.isNil:
-      dl = sslModule()
-      if not dl.isNil:
-        result = symAddr(dl, name)
+      let thisDynlib = thisModule()
+      if thisDynlib.isNil: return nil
+      result = symAddr(thisDynlib, name)
+      if result.isNil and alternativeName.len > 0:
+        result = symAddr(sslDynlib, alternativeName)
+
+  proc sslSymThrows(name: string, alternativeName = ""): pointer =
+    result = sslSymNullable(name, alternativeName)
+    if result.isNil: raiseInvalidLibrary(name)
 
   proc loadPSSLMethod(method1, method2: string): PSSL_METHOD =
     ## Load <method1> from OpenSSL if available, otherwise <method2>
-    let m1 = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym(method1))
-    if not m1.isNil:
-      return m1()
-    cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym(method2))()
+    ##
+    let methodSym = sslSymNullable(method1, method2)
+    if methodSym.isNil:
+      raise newException(LibraryError, "Could not load " & method1 & " nor " & method2)
+
+    let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](methodSym)
+    return method2Proc()
 
   proc SSL_library_init*(): cint {.discardable.} =
     ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
     ## SSL_library_init
-    let theProc = cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](sslSym("OPENSSL_init_ssl"))
-    if not theProc.isNil:
-      return theProc(0, 0)
-    let olderProc = cast[proc(): cint {.cdecl.}](sslSym("SSL_library_init"))
+    let newInitSym = sslSymNullable("OPENSSL_init_ssl")
+    if not newInitSym.isNil:
+      let newInitProc =
+        cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
+      return newInitProc(0, 0)
+    let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
     if not olderProc.isNil: result = olderProc()
 
   proc SSL_load_error_strings*() =
-    let theProc = cast[proc() {.cdecl.}](sslSym("SSL_load_error_strings"))
+    # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
+    let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
     if not theProc.isNil: theProc()
 
   proc SSLv23_client_method*(): PSSL_METHOD =
@@ -343,12 +362,13 @@ else:
     loadPSSLMethod("TLS_server_method", "SSLv23_server_method")
 
   proc OpenSSL_add_all_algorithms*() =
-    let theProc = cast[proc() {.cdecl.}](sslSym("OPENSSL_add_all_algorithms_conf"))
+    # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
+    let theProc = cast[proc() {.cdecl.}](sslSymNullable("OPENSSL_add_all_algorithms_conf"))
     if not theProc.isNil: theProc()
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl.}](sslSym("OpenSSL_version_num"))
+    let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num"))
     result =
       if theProc.isNil: 0.culong
       else: theProc()
@@ -359,6 +379,8 @@ proc SSL_new*(context: SslCtx): SslPtr{.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_free*(ssl: SslPtr){.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_get_SSL_CTX*(ssl: SslPtr): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
 proc SSL_set_SSL_CTX*(ssl: SslPtr, ctx: SslCtx): SslCtx {.cdecl, dynlib: DLLSSLName, importc.}
+proc SSL_get0_verified_chain*(ssl: SslPtr): PSTACK {.cdecl, dynlib: DLLSSLName,
+    importc.}
 proc SSL_CTX_new*(meth: PSSL_METHOD): SslCtx{.cdecl,
     dynlib: DLLSSLName, importc.}
 proc SSL_CTX_load_verify_locations*(ctx: SslCtx, CAfile: cstring,
@@ -425,6 +447,35 @@ proc ERR_get_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
 proc ERR_peek_last_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
+
+proc OPENSSL_sk_num*(stack: PSTACK): int {.cdecl, dynlib: DLLSSLName, importc.}
+
+proc OPENSSL_sk_value*(stack: PSTACK, index: int): pointer {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc d2i_X509*(px: ptr PX509, i: ptr ptr cuchar, len: cint): PX509 {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc i2d_X509*(cert: PX509; o: ptr ptr cuchar): cint {.cdecl,
+    dynlib: DLLSSLName, importc.}
+
+proc d2i_X509*(b: string): PX509 =
+  ## decode DER/BER bytestring into X.509 certificate struct
+  var bb = b.cstring
+  let i = cast[ptr ptr cuchar](addr bb)
+  let ret = d2i_X509(addr result, i, b.len.cint)
+  if ret.isNil:
+    raise newException(Exception, "X.509 certificate decoding failed")
+
+proc i2d_X509*(cert: PX509): string =
+  ## encode `cert` to DER string
+  let encoded_length = i2d_X509(cert, nil)
+  result = newString(encoded_length)
+  var q = result.cstring
+  let o = cast[ptr ptr cuchar](addr q)
+  let length = i2d_X509(cert, o)
+  if length.int <= 0:
+    raise newException(Exception, "X.509 certificate encoding failed")
 
 when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
   proc CRYPTO_set_mem_functions(a,b,c: pointer){.cdecl,
@@ -647,3 +698,52 @@ proc md5_Str*(str: string): string =
 
 when defined(nimHasStyleChecks):
   {.pop.}
+
+
+# Certificate validation
+# On old openSSL version some of these symbols are not available
+when not defined(nimDisableCertificateValidation) and not defined(windows):
+
+  proc SSL_get_peer_certificate*(ssl: SslCtx): PX509{.cdecl, dynlib: DLLSSLName,
+      importc.}
+
+  proc X509_get_subject_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLSSLName, importc.}
+
+  proc X509_get_issuer_name*(a: PX509): PX509_NAME{.cdecl, dynlib: DLLUtilName, importc.}
+
+  proc X509_NAME_oneline*(a: PX509_NAME, buf: cstring, size: cint): cstring {.
+    cdecl, dynlib:DLLSSLName, importc.}
+
+  proc X509_NAME_get_text_by_NID*(subject:cstring, NID: cint, buf: cstring, size: cint): cint{.
+    cdecl, dynlib:DLLSSLName, importc.}
+
+  proc X509_check_host*(cert: PX509, name: cstring, namelen: cint, flags:cuint, peername: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+
+  # Certificates store
+
+  type PX509_STORE* = SslPtr
+  type PX509_OBJECT* = SslPtr
+
+  {.push callconv:cdecl, dynlib:DLLUtilName, importc.}
+
+  proc X509_OBJECT_new*(): PX509_OBJECT
+  proc X509_OBJECT_free*(a: PX509_OBJECT)
+
+  proc X509_STORE_new*(): PX509_STORE
+  proc X509_STORE_free*(v: PX509_STORE)
+  proc X509_STORE_lock*(ctx: PX509_STORE): cint
+  proc X509_STORE_unlock*(ctx: PX509_STORE): cint
+  proc X509_STORE_up_ref*(v: PX509_STORE): cint
+  proc X509_STORE_set_flags*(ctx: PX509_STORE; flags: culong): cint
+  proc X509_STORE_set_purpose*(ctx: PX509_STORE; purpose: cint): cint
+  proc X509_STORE_set_trust*(ctx: PX509_STORE; trust: cint): cint
+  proc X509_STORE_add_cert*(ctx: PX509_STORE; x: PX509): cint
+
+  {.pop.}
+
+  when isMainModule:
+    # A simple certificate test
+    let certbytes = readFile("certificate.der")
+    let cert = d2i_X509(certbytes)
+    let encoded = cert.i2d_X509()
+    assert encoded == certbytes

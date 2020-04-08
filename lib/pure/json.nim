@@ -102,16 +102,23 @@
 ## In addition to reading dynamic data, Nim can also unmarshal JSON directly
 ## into a type with the ``to`` macro.
 ##
+## Note: Use `Option <options.html#Option>`_ for keys sometimes missing in json
+## responses, and backticks around keys with a reserved keyword as name.
+##
 ## .. code-block:: Nim
 ##   import json
+##   import options
 ##
 ##   type
 ##     User = object
 ##       name: string
 ##       age: int
+##       `type`: Option[string]
 ##
 ##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
 ##   let user = to(userJson, User)
+##   if user.`type`.isSome():
+##     assert user.`type`.get() != "robot"
 ##
 ## Creating JSON
 ## =============
@@ -523,8 +530,10 @@ proc getOrDefault*(node: JsonNode, key: string): JsonNode =
   if not isNil(node) and node.kind == JObject:
     result = node.fields.getOrDefault(key)
 
-template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode,
-    key: string): JsonNode = node.getOrDefault(key)
+proc `{}`*(node: JsonNode, key: string): JsonNode =
+  ## Gets a field from a `node`. If `node` is nil or not an object or
+  ## value at `key` does not exist, returns nil
+  node.getOrDefault(key)
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
