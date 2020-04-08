@@ -818,7 +818,7 @@ proc parseResponse(client: HttpClient | AsyncHttpClient,
   if not fullyRead:
     httpError("Connection was closed before full request has been made")
 
-  if getBody:
+  if getBody and result.code != Http204:
     when client is HttpClient:
       client.bodyStream = newStringStream()
       result.bodyStream = client.bodyStream

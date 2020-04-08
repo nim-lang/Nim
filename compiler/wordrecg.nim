@@ -44,7 +44,7 @@ type
     wAlign, wNodecl, wPure, wSideEffect, wHeader,
     wNoSideEffect, wGcSafe, wNoreturn, wNosinks, wMerge, wLib, wDynlib,
     wCompilerProc, wCore, wProcVar, wBase, wUsed,
-    wFatal, wError, wWarning, wHint, wLine, wPush, wPop, wDefine, wUndef,
+    wFatal, wError, wWarning, wHint, wWarningAsError, wLine, wPush, wPop, wDefine, wUndef,
     wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
     wLinksys, wDeprecated, wVarargs, wCallconv, wDebugger,
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
@@ -131,7 +131,7 @@ const
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
     "compilerproc", "core", "procvar", "base", "used",
-    "fatal", "error", "warning", "hint", "line",
+    "fatal", "error", "warning", "hint", "warningaserror", "line",
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
     "link", "compile", "linksys", "deprecated", "varargs",
     "callconv", "debugger", "nimcall", "stdcall",
@@ -212,4 +212,5 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wCodegenDecl: "codegenDecl"
   of wLiftLocals: "liftLocals"
   of wLocalPassc: "localPassc"
+  of wWarningAsError: "warningAsError"
   else: specialWords[w]

@@ -205,8 +205,6 @@ proc mapType(typ: PType): TJSTypeKind =
 proc mapType(p: PProc; typ: PType): TJSTypeKind =
   result = mapType(typ)
 
-var mangled = initSet[string]()
-
 proc mangleName(m: BModule, s: PSym): Rope =
   proc validJsName(name: string): bool =
     result = true
@@ -260,11 +258,6 @@ proc mangleName(m: BModule, s: PSym): Rope =
         result.add("_")
         result.add(rope(s.id))
     s.loc.r = result
-
-  # TODO: optimize
-  let s = $result
-  if '_' in s:
-    mangled.incl(s)
 
 proc escapeJSString(s: string): string =
   result = newStringOfCap(s.len + s.len shr 2)
@@ -2609,7 +2602,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
 
     if optSourcemap in m.config.globalOptions:
       var map: SourceMap
-      (code, map) = genSourceMap($(code), mangled, outFile.string)
+      (code, map) = genSourceMap($(code), outFile.string)
       writeFile(outFile.string & ".map", $(%map))
     discard writeRopeIfNotEqual(code, outFile)
     

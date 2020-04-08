@@ -102,16 +102,23 @@
 ## In addition to reading dynamic data, Nim can also unmarshal JSON directly
 ## into a type with the ``to`` macro.
 ##
+## Note: Use `Option <options.html#Option>`_ for keys sometimes missing in json
+## responses, and backticks around keys with a reserved keyword as name.
+##
 ## .. code-block:: Nim
 ##   import json
+##   import options
 ##
 ##   type
 ##     User = object
 ##       name: string
 ##       age: int
+##       `type`: Option[string]
 ##
 ##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
 ##   let user = to(userJson, User)
+##   if user.`type`.isSome():
+##     assert user.`type`.get() != "robot"
 ##
 ## Creating JSON
 ## =============

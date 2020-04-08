@@ -99,8 +99,9 @@ proc respond*(req: Request, code: HttpCode, content: string,
 
   if headers != nil:
     msg.addHeaders(headers)
-    
-  if not headers.hasKey("Content-Length"):
+
+  # If the headers did not contain a Content-Length use our own
+  if headers.isNil() or not headers.hasKey("Content-Length"):
     msg.add("Content-Length: ")
     # this particular way saves allocations:
     msg.addInt content.len

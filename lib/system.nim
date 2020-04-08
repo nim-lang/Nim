@@ -2049,7 +2049,7 @@ const
   NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 1
+  NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.
 
   NimPatch* {.intdefine.}: int = 1

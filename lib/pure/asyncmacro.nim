@@ -46,7 +46,7 @@ template createCb(retFutureSym, iteratorNameSym,
         else:
           {.gcsafe.}:
             {.push hint[ConvFromXtoItselfNotNeeded]: off.}
-            next.callback = cast[proc() {.closure, gcsafe.}](identName)
+            next.addCallback cast[proc() {.closure, gcsafe.}](identName)
             {.pop.}
     except:
       futureVarCompletions

@@ -13,6 +13,8 @@
 
 ## Compiler changes
 
+- Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
+- The `define` and `undef` pragmas have been de-deprecated.
 
 ## Tool changes
 
