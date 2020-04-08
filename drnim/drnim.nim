@@ -472,10 +472,13 @@ proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (
   c.graph = graph
   result = proofEngineAux(c, assumptions, toProve)
 
+proc skipAddr(n: PNode): PNode {.inline.} =
+  (if n.kind == nkHiddenAddr: n[0] else: n)
+
 proc translateReq(r, call: PNode): PNode =
   if r.kind == nkSym and r.sym.kind == skParam:
     if r.sym.position+1 < call.len:
-      result = call[r.sym.position+1]
+      result = call[r.sym.position+1].skipAddr
     else:
       notImplemented("no argument given for formal parameter: " & r.sym.name.s)
   else:
@@ -548,6 +551,13 @@ type
     currOptions: TOptions
     owner: PSym
 
+proc echoFacts(c: DrnimContext) =
+  echo "FACTS:"
+  for i in 0 ..< c.facts.len:
+    let f = c.facts[i]
+    if f != nil:
+      echo f
+
 template config(c: typed): untyped = c.graph.config
 
 proc addFact(c: DrnimContext; n: PNode) =
@@ -588,9 +598,6 @@ proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
         message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
 
 proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
-  proc skipAddr(n: PNode): PNode {.inline.} =
-    (if n.kind == nkHiddenAddr: n[0] else: n)
-
   proc coveredByOldClause(e: PNode; markedParams: var IntSet; oldSym: var PSym) =
     if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
       oldSym = e[0].sym
@@ -618,7 +625,6 @@ proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
     if ensures != nil and ensures.kind != nkEmpty:
       var oldSym: PSym
       coveredByOldClause(ensures, markedParams, oldSym)
-      echo markedParams
       for i in 0 ..< c.facts.len:
         let f = c.facts[i]
         if f != nil:
