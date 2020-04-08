@@ -67,6 +67,45 @@ type
     mapping: Table[string, Z3_ast]
     canonParameterNames: bool
 
+proc isLoc(m: PNode; assumeUniqueness: bool): bool =
+  # We can reason about "locations" and map them to Z3 constants.
+  # For code that is full of "ref" (e.g. the Nim compiler itself) that
+  # is too limiting
+  proc isLet(n: PNode): bool =
+    if n.kind == nkSym:
+      if n.sym.kind in {skLet, skTemp, skForVar}:
+        result = true
+      elif n.sym.kind == skParam and skipTypes(n.sym.typ,
+                                               abstractInst).kind != tyVar:
+        result = true
+
+  var n = m
+  while true:
+    case n.kind
+    of nkDotExpr, nkCheckedFieldExpr, nkObjUpConv, nkObjDownConv, nkHiddenDeref:
+      n = n[0]
+    of nkDerefExpr:
+      n = n[0]
+      if not assumeUniqueness: return false
+    of nkBracketExpr:
+      if isConstExpr(n[1]) or isLet(n[1]) or isConstExpr(n[1].skipConv):
+        n = n[0]
+      else: return
+    of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+      n = n[1]
+    else:
+      break
+  if n.kind == nkSym:
+    case n.sym.kind
+    of skLet, skTemp, skForVar:
+      result = true
+    of skParam:
+      result = skipTypes(n.sym.typ, abstractInst).kind != tyVar
+    of skResult, skVar:
+      result = {sfAddrTaken} * n.sym.flags == {}
+    else:
+      discard
+
 proc stableName(result: var string; n: PNode) =
   # we can map full Nim expressions like 'f(a, b, c)' to Z3 variables.
   # We must be carefult to select a unique, stable name for these expressions
@@ -759,7 +798,7 @@ proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
   of nkEmpty..nkNilLit:
     discard "nothing to do"
-  of nkRaiseStmt, nkBreakStmt:
+  of nkRaiseStmt, nkBreakStmt, nkContinueStmt:
     inc c.hasUnstructedCf
     for i in 0..<n.safeLen:
       traverse(c, n[i])
