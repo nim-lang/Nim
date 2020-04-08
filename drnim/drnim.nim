@@ -575,6 +575,7 @@ type
     o: Operators
     hasUnstructedCf: int
     currOptions: TOptions
+    owner: PSym
 
 template config(c: typed): untyped = c.graph.config
 
@@ -615,13 +616,31 @@ proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
       if not success:
         message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
 
-proc ensuresCheck(c: DrnimContext, call: PNode; op: PType) =
+proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
+
+  proc coveredByOldClause(e: PNode; markedParams: var IntSet) =
+    if e.kind == nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
+      assert e[1].kind == nkSym and e[1].sym.kind == skParam
+      markedParams.incl e[1].sym.position
+    for i in 0 ..< safeLen(e): coveredByOldClause(e[i], markedParams)
+
   assert op.n[0].kind == nkEffectList
   var markedParams = initIntSet()
   if ensuresEffects < op.n[0].len:
     let ensures = op.n[0][ensuresEffects]
     if ensures != nil and ensures.kind != nkEmpty:
-      discard
+      coveredByOldClause(ensures, markedParams)
+      for i in 0 ..< c.facts.len:
+        let f = c.facts[i]
+        if f != nil:
+          # inc ensures: old(a)+1 == a
+          # fact: x > 0
+          # inc x  # but let parameter be named 'a':
+          #
+          #  replace 'x' by 'old(x)'
+          c.facts[i] = replaceByOldParams(c.facts[i], call, markedParams)
+
+      addFact(c, translateReq(ensures, call))
 
   # invalidate what we know for pass-by-ref parameters unless
   # they previously where subject of an '.ensures' annotation:
@@ -712,6 +731,14 @@ proc addFactLe(c: DrnimContext; a, b: PNode) =
 proc addFactLt(c: DrnimContext; a, b: PNode) =
   c.facts.add c.o.opLt.buildCall(a, b)
 
+proc ensuresCheck(c: DrnimContext; owner: PSym) =
+  if owner.typ != nil and owner.typ.kind == tyProc and owner.typ.n != nil:
+    let n = owner.typ.n
+    if n.len > 0 and n[0].kind == nkEffectList and ensuresEffects < n[0].len:
+      let ensures = n[0][ensuresEffects]
+      if ensures != nil and ensures.kind != nkEmpty:
+        discard prove(c, ensures)
+
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
   of nkSym:
@@ -720,13 +747,14 @@ proc traverse(c: DrnimContext; n: PNode) =
     inc c.hasUnstructedCf
     for i in 0..<n.safeLen:
       traverse(c, n[i])
+    if n.kind == nkReturnStmt: ensuresCheck(c, c.owner)
   of nkCallKinds:
     # p's effects are ours too:
     var a = n[0]
     let op = a.typ
     if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
       requiresCheck(c, n, op)
-      ensuresCheck(c, n, op)
+      collectEnsuredFacts(c, n, op)
     if a.kind == nkSym:
       case a.sym.magic
       of mNew, mNewFinalize, mNewSeq:
@@ -847,14 +875,9 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
   if optStaticBoundsCheck in c.currOptions:
     c.o = initOperators(graph)
     c.graph = graph
+    c.owner = owner
     traverse(c, n)
-
-    if owner.typ != nil and owner.typ.kind == tyProc and owner.typ.n != nil:
-      let n = owner.typ.n
-      if n.len > 0 and n[0].kind == nkEffectList and ensuresEffects < n[0].len:
-        let ensures = n[0][ensuresEffects]
-        if ensures != nil and ensures.kind != nkEmpty:
-          discard prove(c, ensures)
+    ensuresCheck(c, owner)
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
