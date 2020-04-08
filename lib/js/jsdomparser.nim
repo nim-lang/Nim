@@ -10,8 +10,8 @@
 include "system/inclrtl"
 
 since (1, 3):
-  from dom import Document
-  export Document
+  import dom
+  export dom
 
   type DOMParser* = ref object  ## \
     ## DOM Parser object (defined on browser only, may not be on NodeJS).
