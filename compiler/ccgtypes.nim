@@ -834,7 +834,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t[1], check)
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
-    else: maybeDo addAbiCheck(m, t, result)
   of tyObject, tyTuple:
     # echo0b (incompleteType(t), t.typeToString, )
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
@@ -898,7 +897,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
         if not isImportedType(t):
           m.s[cfsTypes].add(recdesc)
         elif tfIncompleteStruct notin t.flags:
-          maybeDo addAbiCheck(m, t, result)
+          discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType

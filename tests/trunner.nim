@@ -57,4 +57,6 @@ else: # don't run twice the same test
     block:
       let (output, exitCode) = runCmd("ccgbugs/mimportc_size_check.nim", "-d:caseBad")
       doAssert "sizeof(struct Foo2) == 1" in output, output
+      doAssert "sizeof(Foo5) == 16" in output, output
+      doAssert "sizeof(Foo5) == 3" in output, output
       doAssert exitCode != 0
