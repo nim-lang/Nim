@@ -97,7 +97,7 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     elif defined(gcc) or defined(llvm_gcc) or defined(clang):
       {.emit: """__uint128_t r = a; r *= b; `result` = (r >> 64) ^ r;""".}
     elif defined(windows) and not defined(tcc):
-      {.emit: """a = _umul128(a, b, &b); return a ^ b;""".}
+      {.emit: """a = _umul128(a, b, &b); `result` = a ^ b;""".}
     else:
       result = hiXorLoFallback64(a, b)
 
