@@ -247,8 +247,12 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   result = tab.getOrDefault(sig)
 
 proc addAbiCheck(m: BModule, t: PType, name: Rope) =
-  if isDefined(m.config, "checkabi") and (let size = getSize(m.config, t); size != szUnknownSize):
-    m.s[cfsTypeInfo].addf("NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
+  if (let size = getSize(m.config, t); size != szUnknownSize):
+    var msg = "backend and Nim disagree on size for: "
+    msg.addTypeHeader(m.config, t)
+    var msg2 = ""
+    msg2.addQuoted msg # not a hostspot so extra allocation doesn't matter
+    m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
 
 proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
