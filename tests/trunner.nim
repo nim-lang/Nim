@@ -27,9 +27,9 @@ proc testCodegenStaticAssert() =
 proc testCodegenABICheck() =
   let (output, exitCode) = runCmd("ccgbugs/mabi_check.nim")
   # on platforms that support _StaticAssert natively, will show full context, eg:
-  # error: static_assert failed due to requirement 'sizeof(char) == 8'
+  # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
   # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
-  doAssert "sizeof(char) == " in output
+  doAssert "sizeof(unsigned char) == " in output
   doAssert exitCode != 0
 
 proc testCTFFI() =

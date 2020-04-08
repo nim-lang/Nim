@@ -25,7 +25,8 @@ type
                               # this is needed for strange type generation
                               # reasons
     cfsFieldInfo,             # section for field information
-    cfsTypeInfo,              # section for type information
+    cfsEmits,                 # section for {.emit.} (default location)
+    cfsTypeInfo,              # section for type information (ag ABI checks)
     cfsProcHeaders,           # section for C procs prototypes
     cfsData,                  # section for C constant data
     cfsVars,                  # section for C variable declarations

@@ -26,6 +26,7 @@ const
     cfsTypes: "NIM_merge_TYPES",
     cfsSeqTypes: "NIM_merge_SEQ_TYPES",
     cfsFieldInfo: "NIM_merge_FIELD_INFO",
+    cfsEmits: "NIM_merge_EMITS",
     cfsTypeInfo: "NIM_merge_TYPE_INFO",
     cfsProcHeaders: "NIM_merge_PROC_HEADERS",
     cfsData: "NIM_merge_DATA",
@@ -48,6 +49,10 @@ const
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
+  # useful for debugging and only adds at most a few lines in each file
+  result.add("\n/* section: ")
+  result.add(CFileSectionNames[fs])
+  result.add(" */\n")
   if compilationCachePresent(conf):
     result = nil
     result.add("\n/*\t")

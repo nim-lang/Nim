@@ -1455,12 +1455,12 @@ proc genAsmStmt(p: BProc, t: PNode) =
   # work:
   if p.prc == nil:
     # top level asm statement?
-    p.module.s[cfsProcHeaders].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
+    p.module.s[cfsEmits].add runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s])
   else:
     p.s(cpsStmts).add indentLine(p, runtimeFormat(CC[p.config.cCompiler].asmStmtFrmt, [s]))
 
 proc determineSection(n: PNode): TCFileSection =
-  result = cfsProcHeaders
+  result = cfsEmits # WAS: cfsProcHeaders
   if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
     let sec = n[0].strVal
     if sec.startsWith("/*TYPESECTION*/"): result = cfsTypes

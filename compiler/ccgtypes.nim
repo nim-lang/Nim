@@ -329,9 +329,12 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
+  echo0b ("D20200407T210057.2",typ.typeToString, result == nil)
   if result != nil and typ.isImportedType():
+    echo0b ("D20200407T210057.3",typ.typeToString)
     let sig = hashType typ
     if cacheGetType(m.typeCache, sig) == nil:
+      echo0b ("D20200407T210057.4",typ.typeToString)
       m.typeCache[sig] = result
       addAbiCheck(m, typ, result)
 
@@ -681,6 +684,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
+
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
@@ -691,6 +695,20 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   if t.sym != nil: useHeader(m, t.sym)
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp)
+
+  var wasFound = sig in m.typeCache
+  defer:
+    if not wasFound:
+      # of tyEnum:
+      # sig in m.typeCache
+      # let ret = cacheGetType(m.typeCache, sig)
+      # addAbiCheck
+      echo0b t.typeToString, t.kind
+      if isImportedType(t):
+        echo0b ($result, t.typeToString, t.kind, isImportedType(t), isImportedCppType(t), isImportedType(origTyp), isImportedCppType(origTyp))
+        # TODO: isImportedCppType ?  origTyp?
+        addAbiCheck(m, t, result)
+
   result = getTypePre(m, t, sig)
   if result != nil:
     excl(check, t.id)
@@ -825,6 +843,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
            [foo, result, rope(n)])
     else: addAbiCheck(m, t, result)
   of tyObject, tyTuple:
+    echo0b (incompleteType(t), t.typeToString, )
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
       let cppName = getTypeName(m, t, sig)
       var i = 0
@@ -879,6 +898,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           addForwardStructFormat(m, structOrUnion(t), result)
         assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
+      echo0b (incompleteType(t), t.typeToString, )
       if not incompleteType(t):
         let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
                       else: getTupleDesc(m, t, result, check)
