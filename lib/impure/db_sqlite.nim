@@ -184,6 +184,9 @@ proc tryExec*(db: DbConn, query: SqlQuery,
     let x = step(stmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
       result = finalize(stmt) == SQLITE_OK
+    else:
+      discard finalize(stmt)
+      result = false
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
@@ -531,6 +534,8 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
       result = last_insert_rowid(db)
     if finalize(stmt) != SQLITE_OK:
       result = -1
+  else:
+    discard finalize(stmt)
 
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =

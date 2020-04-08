@@ -330,31 +330,28 @@ proc processDynLib(c: PContext, n: PNode, sym: PSym) =
       sym.typ.callConv = ccCDecl
 
 proc processNote(c: PContext, n: PNode) =
+  template handleNote(toStrArray, msgMin, notes) =
+    let x = findStr(toStrArray, n[0][1].ident.s)
+    if x >= 0:
+      nk = TNoteKind(x + ord(msgMin))
+      let x = c.semConstBoolExpr(c, n[1])
+      n[1] = x
+      if x.kind == nkIntLit and x.intVal != 0: incl(notes, nk)
+      else: excl(notes, nk)
+    else:
+      invalidPragma(c, n)
+
   if n.kind in nkPragmaCallKinds and n.len == 2 and
       n[0].kind == nkBracketExpr and
       n[0].len == 2 and
       n[0][1].kind == nkIdent and n[0][0].kind == nkIdent:
     var nk: TNoteKind
     case whichKeyword(n[0][0].ident)
-    of wHint:
-      var x = findStr(HintsToStr, n[0][1].ident.s)
-      if x >= 0: nk = TNoteKind(x + ord(hintMin))
-      else: invalidPragma(c, n); return
-    of wWarning:
-      var x = findStr(WarningsToStr, n[0][1].ident.s)
-      if x >= 0: nk = TNoteKind(x + ord(warnMin))
-      else: invalidPragma(c, n); return
-    else:
-      invalidPragma(c, n)
-      return
-
-    let x = c.semConstBoolExpr(c, n[1])
-    n[1] = x
-    if x.kind == nkIntLit and x.intVal != 0: incl(c.config.notes, nk)
-    else: excl(c.config.notes, nk)
-    # checkme: honor cmdlineNotes with: c.setNote(nk, x.kind == nkIntLit and x.intVal != 0)
-  else:
-    invalidPragma(c, n)
+    of wHint: handleNote(HintsToStr, hintMin, c.config.notes)
+    of wWarning: handleNote(WarningsToStr, warnMin, c.config.notes)
+    of wWarningAsError: handleNote(WarningsToStr, warnMin, c.config.warningAsErrors)
+    else: invalidPragma(c, n)
+  else: invalidPragma(c, n)
 
 proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   case w
@@ -473,14 +470,12 @@ proc processPop(c: PContext, n: PNode) =
 proc processDefine(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     defineSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "define is deprecated")
   else:
     invalidPragma(c, n)
 
 proc processUndef(c: PContext, n: PNode) =
   if (n.kind in nkPragmaCallKinds and n.len == 2) and (n[1].kind == nkIdent):
     undefSymbol(c.config.symbols, n[1].ident.s)
-    message(c.config, n.info, warnDeprecated, "undef is deprecated")
   else:
     invalidPragma(c, n)
 

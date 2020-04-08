@@ -31,6 +31,7 @@ import
   os, strutils, parseopt, osproc
 
 import tools / kochdocs
+import tools / deps
 
 const VersionAsString = system.NimVersion
 
@@ -73,6 +74,7 @@ Commands for core developers:
   zip                      builds the installation zip package
   xz                       builds the installation tar.xz package
   testinstall              test tar.xz package; Unix only!
+  installdeps [options]    installs external dependency (eg tinyc) to dist/
   tests [options]          run the testsuite (run a subset of tests by
                            specifying a category, e.g. `tests cat async`)
   temp options             creates a temporary compiler for testing
@@ -120,6 +122,7 @@ proc copyExe(source, dest: string) =
 
 const
   compileNimInst = "tools/niminst/niminst"
+  distDir = "dist"
 
 proc csource(args: string) =
   nimexec(("cc $1 -r $3 --var:version=$2 --var:mingw=none csource " &
@@ -127,18 +130,13 @@ proc csource(args: string) =
        [args, VersionAsString, compileNimInst])
 
 proc bundleC2nim(args: string) =
-  if not dirExists("dist/c2nim/.git"):
-    exec("git clone -q https://github.com/nim-lang/c2nim.git dist/c2nim")
+  cloneDependency(distDir, "https://github.com/nim-lang/c2nim.git")
   nimCompile("dist/c2nim/c2nim",
              options = "--noNimblePath --path:. " & args)
 
 proc bundleNimbleExe(latest: bool, args: string) =
-  if not dirExists("dist/nimble/.git"):
-    exec("git clone -q https://github.com/nim-lang/nimble.git dist/nimble")
-  if not latest:
-    withDir("dist/nimble"):
-      exec("git fetch")
-      exec("git checkout " & NimbleStableCommit)
+  let commit = if latest: "HEAD" else: NimbleStableCommit
+  cloneDependency(distDir, "https://github.com/nim-lang/nimble.git", commit = commit)
   # installer.ini expects it under $nim/bin
   nimCompile("dist/nimble/src/nimble.nim",
              options = "-d:release --nilseqs:on " & args)
@@ -156,6 +154,7 @@ proc buildNimble(latest: bool, args: string) =
         while dirExists("dist/nimble" & $id):
           inc id
         installDir = "dist/nimble" & $id
+      # consider using/adapting cloneDependency
       exec("git clone -q https://github.com/nim-lang/nimble.git " & installDir)
     withDir(installDir):
       if latest:
@@ -504,6 +503,17 @@ proc hostInfo(): string =
   "hostOS: $1, hostCPU: $2, int: $3, float: $4, cpuEndian: $5, cwd: $6" %
     [hostOS, hostCPU, $int.sizeof, $float.sizeof, $cpuEndian, getCurrentDir()]
 
+proc installDeps(dep: string, commit = "") =
+  # the hashes/urls are version controlled here, so can be changed seamlessly
+  # and tied to a nim release (mimicking git submodules)
+  var commit = commit
+  case dep
+  of "tinyc":
+    if commit.len == 0: commit = "916cc2f94818a8a382dd8d4b8420978816c1dfb3"
+    cloneDependency(distDir, "https://github.com/timotheecour/nim-tinyc-archive", commit)
+  else: doAssert false, "unsupported: " & dep
+  # xxx: also add linenoise, niminst etc, refs https://github.com/nim-lang/RFCs/issues/206
+
 proc runCI(cmd: string) =
   doAssert cmd.len == 0, cmd # avoid silently ignoring
   echo "runCI: ", cmd
@@ -648,6 +658,7 @@ when isMainModule:
       of "distrohelper": geninstall()
       of "install": install(op.cmdLineRest)
       of "testinstall": testUnixInstall(op.cmdLineRest)
+      of "installdeps": installDeps(op.cmdLineRest)
       of "runci": runCI(op.cmdLineRest)
       of "test", "tests": tests(op.cmdLineRest)
       of "temp": temp(op.cmdLineRest)

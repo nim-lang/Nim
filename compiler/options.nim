@@ -44,6 +44,7 @@ type                          # please make sure we have under 32 options
     optOldAst,
     optSinkInference          # 'sink T' inference
 
+
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
     gloptNone, optForceFullMake,
@@ -94,6 +95,7 @@ type                          # please make sure we have under 32 options
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
+    optSourcemap
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -235,6 +237,7 @@ type
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
+    warningAsErrors*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int

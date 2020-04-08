@@ -98,7 +98,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
     if conf.cmd == cmdRun:
-      tccgen.run(conf.arguments)
+      tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     var ex = quoteShell conf.absOutFile
     if conf.cmd == cmdCompileToJS:
