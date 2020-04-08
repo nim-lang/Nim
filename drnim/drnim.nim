@@ -8,41 +8,12 @@
 #
 
 #[
-
 - we need a 'location' abstraction
-
+- the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - forall/exists need syntactic sugar as the manual
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
   'x in n..m; inc x' implies 'x in n+1..m+1'
-
-- We need an ``old`` annotation:
-
-proc f(x: var int; y: var int) {.ensures: x == old(x)+1 and y == old(y)+1 .} =
-  inc x
-  inc y
-
-var x = 3
-var y: range[N..M]
-f(x, y)
-{.assume: y in N+1 .. M+1.}
-# --> y in N+1..M+1
-
-proc myinc(x: var int) {.ensures: x-1 == old(x).} =
-  inc x
-
-facts(x) # x < 3
-myinc x
-facts(x+1)
-
-We handle state transitions in this way:
-
-  for every f in facts:
-    replace 'x' by 'old(x)'
-  facts.add ensuresClause
-
-  # then we know: old(x) < 3; x-1 == old(x)
-  # we can conclude:  x-1 < 3 but leave this task to Z3
 
 ]#
 
@@ -617,19 +588,37 @@ proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
         message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
 
 proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
+  proc skipAddr(n: PNode): PNode {.inline.} =
+    (if n.kind == nkHiddenAddr: n[0] else: n)
 
-  proc coveredByOldClause(e: PNode; markedParams: var IntSet) =
-    if e.kind == nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
+  proc coveredByOldClause(e: PNode; markedParams: var IntSet; oldSym: var PSym) =
+    if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
+      oldSym = e[0].sym
       assert e[1].kind == nkSym and e[1].sym.kind == skParam
       markedParams.incl e[1].sym.position
-    for i in 0 ..< safeLen(e): coveredByOldClause(e[i], markedParams)
+    for i in 0 ..< safeLen(e): coveredByOldClause(e[i], markedParams, oldSym)
+
+  proc replaceByOldParams(fact, call: PNode; markedParams: IntSet; oldSym: PSym): PNode =
+    for i in 1 ..< call.len:
+      if (i-1) in markedParams:
+        if guards.sameTree(fact, call[i].skipAddr):
+          result = newNodeIT(nkCall, fact.info, fact.typ)
+          assert oldSym != nil
+          result.add newSymNode oldSym
+          result.add fact
+          return result
+    result = shallowCopy(fact)
+    for i in 0 ..< safeLen(fact):
+      result[i] = replaceByOldParams(fact[i], call, markedParams, oldSym)
 
   assert op.n[0].kind == nkEffectList
   var markedParams = initIntSet()
   if ensuresEffects < op.n[0].len:
     let ensures = op.n[0][ensuresEffects]
     if ensures != nil and ensures.kind != nkEmpty:
-      coveredByOldClause(ensures, markedParams)
+      var oldSym: PSym
+      coveredByOldClause(ensures, markedParams, oldSym)
+      echo markedParams
       for i in 0 ..< c.facts.len:
         let f = c.facts[i]
         if f != nil:
@@ -638,8 +627,7 @@ proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
           # inc x  # but let parameter be named 'a':
           #
           #  replace 'x' by 'old(x)'
-          c.facts[i] = replaceByOldParams(c.facts[i], call, markedParams)
-
+          c.facts[i] = replaceByOldParams(c.facts[i], call, markedParams, oldSym)
       addFact(c, translateReq(ensures, call))
 
   # invalidate what we know for pass-by-ref parameters unless
