@@ -19,5 +19,5 @@ since (1, 3):
   func newDOMParser*(): DOMParser {.importcpp: "(new DOMParser()​​)".}
     ## DOM Parser constructor.
 
-  func parseFromString*(this: DOMParser; str: cstring, mimeType = "text/html".cstring): Document {.importcpp.}
+  func parseFromString*(this: DOMParser; str: cstring; mimeType = "text/html".cstring): Document {.importcpp.}
     ## Parse from string to Document.
