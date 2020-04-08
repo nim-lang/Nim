@@ -248,11 +248,12 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
 
 proc addAbiCheck(m: BModule, t: PType, name: Rope) =
   if (let size = getSize(m.config, t); size != szUnknownSize):
-    var msg = "backend and Nim disagree on size for: "
+    var msg = "backend & Nim disagree on size for: "
     msg.addTypeHeader(m.config, t)
     var msg2 = ""
     msg2.addQuoted msg # not a hostspot so extra allocation doesn't matter
     m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
+    # see `testCodegenABICheck` for example error message it generates
 
 proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)

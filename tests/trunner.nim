@@ -24,6 +24,14 @@ proc testCodegenStaticAssert() =
   doAssert "sizeof(bool) == 2" in output
   doAssert exitCode != 0
 
+proc testCodegenABICheck() =
+  let (output, exitCode) = runCmd("ccgbugs/mabi_check.nim")
+  # on platforms that support _StaticAssert natively, will show full context, eg:
+  # error: static_assert failed due to requirement 'sizeof(char) == 8'
+  # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
+  doAssert "sizeof(char) == " in output
+  doAssert exitCode != 0
+
 proc testCTFFI() =
   let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
   let expected = """
@@ -44,3 +52,4 @@ when defined(nimHasLibFFIEnabled):
   testCTFFI()
 else: # don't run twice the same test
   testCodegenStaticAssert()
+  testCodegenABICheck()
