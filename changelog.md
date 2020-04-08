@@ -12,9 +12,8 @@
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
 - The `define` and `undef` pragmas have been de-deprecated.
-- JavaScript backend adds compile-time optional `let` variable declarations,
-  compile Nim with `-d:nimJsVar` for `var` and without for `let`,
-  for a transition period, for more information see https://caniuse.com/let
+- JavaScript backend now uses `let` instead of `var` declarations;
+  for previous behavior, compile with `-d:nimJsVar`; see also https://caniuse.com/let
 
 ## Tool changes
 
