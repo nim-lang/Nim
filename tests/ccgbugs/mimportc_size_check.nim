@@ -30,6 +30,8 @@ block:
   type Foo3b{.importc, size: sizeof(cint).} = enum
     k1, k2
   discard Foo3b.default
+  static:
+    doAssert Foo3b.sizeof == cint.sizeof
 
 when defined caseBad:
   # bad size => should assert fail
