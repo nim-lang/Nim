@@ -1,8 +1,11 @@
 discard """
-  nimout: '''tensures.nim(11, 10) Warning: BEGIN [User]
-tensures.nim(20, 5) Warning: cannot prove:
+  nimout: '''tensures.nim(14, 10) Warning: BEGIN [User]
+tensures.nim(23, 5) Warning: cannot prove:
 0 < n [IndexCheck]
-tensures.nim(56, 10) Warning: END [User]'''
+tensures.nim(63, 17) Warning: cannot prove: a < 4; counter example: y -> 2
+a -> 4
+old(a) -> 2
+tensures.nim(67, 10) Warning: END [User]'''
   cmd: "drnim $file"
   action: "compile"
 """
@@ -52,6 +55,14 @@ type
 
 var
   x: F = a # valid?
+
+proc testAsgn(y: int) =
+  var a = y
+  if a < 3:
+    a = a + 2
+    {.assert: a < 4.}
+
+testAsgn(3)
 
 {.warning: "END".}
 {.pop.}

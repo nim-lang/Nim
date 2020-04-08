@@ -733,15 +733,40 @@ proc ensuresCheck(c: DrnimContext; owner: PSym) =
       if ensures != nil and ensures.kind != nkEmpty:
         discard prove(c, ensures)
 
+proc traverseAsgn(c: DrnimContext; n: PNode) =
+  traverse(c, n[0])
+  traverse(c, n[1])
+
+  proc replaceByOldParams(fact, le: PNode): PNode =
+    if guards.sameTree(fact, le):
+      result = newNodeIT(nkCall, fact.info, fact.typ)
+      result.add newSymNode createMagic(c.graph, "old", mOld)
+      result.add fact
+      return result
+    result = shallowCopy(fact)
+    for i in 0 ..< safeLen(fact):
+      result[i] = replaceByOldParams(fact[i], le)
+
+  for i in 0 ..< c.facts.len:
+    let f = c.facts[i]
+    if f != nil:
+      #  replace 'x' by 'old(x)'
+      c.facts[i] = replaceByOldParams(c.facts[i], n[0])
+
+  addAsgnFact(c, n[0], replaceByOldParams(n[1], n[0]))
+
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
   of nkEmpty..nkNilLit:
     discard "nothing to do"
-  of nkRaiseStmt, nkReturnStmt, nkBreakStmt:
+  of nkRaiseStmt, nkBreakStmt:
     inc c.hasUnstructedCf
     for i in 0..<n.safeLen:
       traverse(c, n[i])
-    if n.kind == nkReturnStmt: ensuresCheck(c, c.owner)
+  of nkReturnStmt:
+    for i in 0 ..< n.safeLen:
+      traverse(c, n[i])
+    ensuresCheck(c, c.owner)
   of nkCallKinds:
     # p's effects are ours too:
     var a = n[0]
@@ -772,11 +797,7 @@ proc traverse(c: DrnimContext; n: PNode) =
     #checkFieldAccess(c.facts, n, c.config)
   of nkTryStmt: traverseTryStmt(c, n)
   of nkPragma: traversePragmaStmt(c, n)
-  of nkAsgn, nkFastAsgn:
-    traverse(c, n[1])
-    invalidateFacts(c.facts, n[0])
-    traverse(c, n[0])
-    addAsgnFact(c, n[0], n[1])
+  of nkAsgn, nkFastAsgn: traverseAsgn(c, n)
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
@@ -860,7 +881,7 @@ proc traverse(c: DrnimContext; n: PNode) =
         checkBounds(c, n[0], n[1])
     for i in 0 ..< n.len: traverse(c, n[i])
   else:
-    for i in 0..<n.len: traverse(c, n[i])
+    for i in 0 ..< n.len: traverse(c, n[i])
 
 
 proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
