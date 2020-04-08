@@ -8,7 +8,7 @@
 #
 
 #[
-- we need a 'location' abstraction
+
 - the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - forall/exists need syntactic sugar as the manual
@@ -66,6 +66,25 @@ type
     graph: ModuleGraph
     mapping: Table[string, Z3_ast]
     canonParameterNames: bool
+    assumeUniqueness: bool
+
+  DrnimContext = ref object
+    graph: ModuleGraph
+    facts: seq[PNode]
+    o: Operators
+    hasUnstructedCf: int
+    currOptions: TOptions
+    owner: PSym
+
+var
+  assumeUniqueness: bool
+
+proc echoFacts(c: DrnimContext) =
+  echo "FACTS:"
+  for i in 0 ..< c.facts.len:
+    let f = c.facts[i]
+    if f != nil:
+      echo f
 
 proc isLoc(m: PNode; assumeUniqueness: bool): bool =
   # We can reason about "locations" and map them to Z3 constants.
@@ -244,6 +263,11 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
           vars.add n
       else:
         notImplemented(renderTree(n))
+    of mHigh:
+      let addOpr = createMagic(c.graph, "+", mAddI)
+      let lenOpr = createMagic(c.graph, "len", mLengthOpenArray)
+      let asLenExpr = addOpr.buildCall(lenOpr.buildCall(n[1]), nkIntLit.newIntNode(-1))
+      result = rec asLenExpr
     of mAddI, mSucc:
       result = binary(Z3_mk_add, rec n[1], rec n[2])
     of mSubI, mPred:
@@ -353,7 +377,16 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
   of nkHiddenDeref:
     result = rec n[0]
   else:
-    notImplemented(renderTree(n))
+    if isLoc(n, c.assumeUniqueness):
+      let key = stableName(n)
+      result = c.mapping.getOrDefault(key)
+      if pointer(result) == nil:
+        let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
+        result = Z3_mk_const(ctx, name, typeToZ3(c, n.sym.typ))
+        c.mapping[key] = result
+        vars.add n
+    else:
+      notImplemented(renderTree(n))
 
 proc addRangeInfo(c: var DrCon, n: PNode, res: var seq[Z3_ast]) =
   var cmpOp = mLeI
@@ -506,9 +539,10 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (boo
   finally:
     Z3_del_context(ctx)
 
-proc proofEngine(graph: ModuleGraph; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
+proc proofEngine(ctx: DrnimContext; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
   var c: DrCon
-  c.graph = graph
+  c.graph = ctx.graph
+  c.assumeUniqueness = assumeUniqueness
   result = proofEngineAux(c, assumptions, toProve)
 
 proc skipAddr(n: PNode): PNode {.inline.} =
@@ -525,11 +559,11 @@ proc translateReq(r, call: PNode): PNode =
     for i in 0 ..< safeLen(r):
       result[i] = translateReq(r[i], call)
 
-proc requirementsCheck(graph: ModuleGraph; assumptions: seq[PNode];
-                      call, requirement: PNode): (bool, string) {.nimcall.} =
+proc requirementsCheck(ctx: DrnimContext; assumptions: seq[PNode];
+                      call, requirement: PNode): (bool, string) =
   try:
     let r = translateReq(requirement, call)
-    result = proofEngine(graph, assumptions, r)
+    result = proofEngine(ctx, assumptions, r)
   except ValueError:
     result[0] = false
     result[1] = getCurrentExceptionMsg()
@@ -581,22 +615,6 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       # we already know from the type system?
       result = frequires.isEmpty and fensures.isEmpty
 
-type
-  DrnimContext = ref object
-    graph: ModuleGraph
-    facts: seq[PNode]
-    o: Operators
-    hasUnstructedCf: int
-    currOptions: TOptions
-    owner: PSym
-
-proc echoFacts(c: DrnimContext) =
-  echo "FACTS:"
-  for i in 0 ..< c.facts.len:
-    let f = c.facts[i]
-    if f != nil:
-      echo f
-
 template config(c: typed): untyped = c.graph.config
 
 proc addFact(c: DrnimContext; n: PNode) =
@@ -611,7 +629,7 @@ proc addFactNeg(c: DrnimContext; n: PNode) =
   addFact(c, neg)
 
 proc prove(c: DrnimContext; prop: PNode): bool =
-  let (success, m) = proofEngine(c.graph, c.facts, prop)
+  let (success, m) = proofEngine(c, c.facts, prop)
   if not success:
     message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
   result = success
@@ -632,7 +650,7 @@ proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
     if requires != nil and requires.kind != nkEmpty:
       # we need to map the call arguments to the formal parameters used inside
       # 'requires':
-      let (success, m) = requirementsCheck(c.graph, c.facts, call, requires)
+      let (success, m) = requirementsCheck(c, c.facts, call, requires)
       if not success:
         message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
 
@@ -751,12 +769,6 @@ proc traverseIf(c: DrnimContext; n: PNode) =
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
   traverse(c, n)
-
-proc buildCall(op: PSym; a, b: PNode): PNode =
-  result = newNodeI(nkInfix, a.info, 3)
-  result[0] = newSymNode(op)
-  result[1] = a
-  result[2] = b
 
 proc addFactLe(c: DrnimContext; a, b: PNode) =
   c.facts.add c.o.opLe.buildCall(a, b)
@@ -992,7 +1004,11 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
-        processSwitch(pass, p, config)
+        case p.key.normalize
+        of "assumeunique":
+          assumeUniqueness = true
+        else:
+          processSwitch(pass, p, config)
     of cmdArgument:
       config.commandLine.add " "
       config.commandLine.add p.key.quoteShell

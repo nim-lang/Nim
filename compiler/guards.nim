@@ -156,12 +156,12 @@ proc neg(n: PNode; o: Operators): PNode =
     result[0] = newSymNode(o.opNot)
     result[1] = n
 
-proc buildCall(op: PSym; a: PNode): PNode =
+proc buildCall*(op: PSym; a: PNode): PNode =
   result = newNodeI(nkCall, a.info, 2)
   result[0] = newSymNode(op)
   result[1] = a
 
-proc buildCall(op: PSym; a, b: PNode): PNode =
+proc buildCall*(op: PSym; a, b: PNode): PNode =
   result = newNodeI(nkInfix, a.info, 3)
   result[0] = newSymNode(op)
   result[1] = a
