@@ -59,4 +59,5 @@ else: # don't run twice the same test
       doAssert "sizeof(struct Foo2) == 1" in output, output
       doAssert "sizeof(Foo5) == 16" in output, output
       doAssert "sizeof(Foo5) == 3" in output, output
+      doAssert "sizeof(struct Foo6) == " in output, output
       doAssert exitCode != 0

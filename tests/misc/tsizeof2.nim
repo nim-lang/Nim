@@ -1,5 +1,5 @@
 discard """
-errormsg: "cannot evaluate 'sizeof' because its type is not defined completely"
+errormsg: "'mSizeOf' requires `importc` types to be {.completeStruct.}"
 line: 9
 """
 

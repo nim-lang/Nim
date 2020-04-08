@@ -12,6 +12,13 @@ typedef enum Foo3 Foo3b;
 typedef enum Foo4{k3, k4} Foo4;
 
 typedef int Foo5[3];
+
+typedef struct Foo6{
+  int a1;
+  bool a2;
+  double a3;
+  struct Foo6* a4;
+} Foo6;
 """.}
 
 block:
@@ -19,7 +26,6 @@ block:
     a: cint
   ## ensures cgen
   discard Foo1Alias.default
-
 
 block:
   type Foo3Alias{.importc: "enum Foo3", size: sizeof(cint).} = enum
@@ -56,6 +62,29 @@ block:
   type Foo5{.importc.} = array[3, cint]
   discard Foo5.default
 
+block: # CT sizeof
+  type Foo6Groundtruth = object
+    a1: cint
+    a2: bool
+    a3: cfloat
+    a4: ptr Foo6Groundtruth
+
+  type Foo6{.importc, completeStruct.} = object
+    a1: cint
+    a2: bool
+    a3: cfloat
+    a4: ptr Foo6
+
+  static: doAssert Foo6.sizeof == Foo6Groundtruth.sizeof
+  static: doAssert compiles(static(Foo6.sizeof))
+
+block:
+  type Foo6{.importc.} = object
+    a1: cint
+  doAssert compiles(Foo6.sizeof)
+  static: doAssert not compiles(static(Foo6.sizeof))
+  echo static(Foo6.sizeof)
+
 when defined caseBad:
   # bad sizes => each should give an assert fail message
   block:
@@ -70,6 +99,14 @@ when defined caseBad:
   block:
     type Foo5{.importc.} = array[3, bool]
     discard Foo5.default
+
+  block:
+    type Foo6{.importc, completeStruct.} = object
+      a1: cint
+      # a2: bool # missing this should trigger assert fail
+      a3: cfloat
+      a4: ptr Foo6
+    discard Foo6.default
 
   when false:
     block:
