@@ -335,3 +335,14 @@ ProcDef
 
   static: assert bar("x") == "x"
 
+#------------------------------------------------------
+# issue #13909
+
+template dependency*(id: string, weight = 0.0) {.pragma.}
+
+type
+  MyObject* = object
+    provider*: proc(obj: string): pointer {.dependency("Data/" & obj, 16.1), noSideEffect.}
+
+proc myproc(obj: string): string {.dependency("Data/" & obj, 16.1).} =
+  result = obj
