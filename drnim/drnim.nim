@@ -381,8 +381,8 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       let key = stableName(n)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
-        let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
-        result = Z3_mk_const(ctx, name, typeToZ3(c, n.sym.typ))
+        let name = Z3_mk_string_symbol(ctx, $n)
+        result = Z3_mk_const(ctx, name, typeToZ3(c, n.typ))
         c.mapping[key] = result
         vars.add n
     else:
@@ -834,7 +834,8 @@ proc traverse(c: DrnimContext; n: PNode) =
         traverse(c, arg)
         addAsgnFact(c, arg, newNodeIT(nkObjConstr, arg.info, arg.typ))
       of mArrGet, mArrPut:
-        if optStaticBoundsCheck in c.currOptions: checkBounds(c, n[1], n[2])
+        #if optStaticBoundsCheck in c.currOptions: checkBounds(c, n[1], n[2])
+        discard
       else:
         discard
 
