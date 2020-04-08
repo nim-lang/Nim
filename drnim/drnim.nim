@@ -729,7 +729,7 @@ proc ensuresCheck(c: DrnimContext; owner: PSym) =
 
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
-  of nkSym:
+  of nkEmpty..nkNilLit:
     discard "nothing to do"
   of nkRaiseStmt, nkReturnStmt, nkBreakStmt:
     inc c.hasUnstructedCf
@@ -854,7 +854,7 @@ proc traverse(c: DrnimContext; n: PNode) =
         checkBounds(c, n[0], n[1])
     for i in 0 ..< n.len: traverse(c, n[i])
   else:
-    for i in 0..<n.safeLen: traverse(c, n[i])
+    for i in 0..<n.len: traverse(c, n[i])
 
 
 proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
