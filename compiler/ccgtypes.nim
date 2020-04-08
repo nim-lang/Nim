@@ -14,8 +14,6 @@
 import sighashes, modulegraphs
 from lowerings import createObj
 
-template maybeDo(body): untyped = discard
-
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
 proc isKeyword(w: PIdent): bool =
@@ -831,7 +829,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
   of tyObject, tyTuple:
-    # echo0b (incompleteType(t), t.typeToString, )
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
       let cppName = getTypeName(m, t, sig)
       var i = 0
@@ -886,7 +883,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           addForwardStructFormat(m, structOrUnion(t), result)
         assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
-      # echo0b (incompleteType(t), t.typeToString, )
       if not incompleteType(t):
         let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
                       else: getTupleDesc(m, t, result, check)
