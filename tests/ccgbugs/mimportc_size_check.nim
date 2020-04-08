@@ -1,3 +1,5 @@
+## tests for addAbiCheck (via NIM_STATIC_ASSERT)
+
 {.emit:"""
 struct Foo1{
   int a;
@@ -7,6 +9,7 @@ struct Foo2{
 };
 enum Foo3{k1, k2};
 typedef enum Foo3 Foo3b;
+typedef enum Foo4{k3, k4} Foo4;
 """.}
 
 block:
@@ -32,6 +35,15 @@ block:
   discard Foo3b.default
   static:
     doAssert Foo3b.sizeof == cint.sizeof
+
+block:
+  type Foo4{.importc, size: sizeof(cint).} = enum
+    k3, k4
+  # adding entries should not yield duplicate ABI checks. Currently the
+  # test doesn't check for this but you can inspect the cgen'd file
+  discard Foo4.default
+  discard Foo4.default
+  discard Foo4.default
 
 when defined caseBad:
   # bad size => should assert fail

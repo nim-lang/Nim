@@ -14,6 +14,8 @@
 import sighashes, modulegraphs
 from lowerings import createObj
 
+template maybeDo(body): untyped = discard
+
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
 
 proc isKeyword(w: PIdent): bool =
@@ -329,14 +331,10 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     result = getSimpleTypeDesc(m, lastSon typ)
   else: result = nil
 
-  echo0b ("D20200407T210057.2",typ.typeToString, result == nil)
   if result != nil and typ.isImportedType():
-    echo0b ("D20200407T210057.3",typ.typeToString)
     let sig = hashType typ
     if cacheGetType(m.typeCache, sig) == nil:
-      echo0b ("D20200407T210057.4",typ.typeToString)
       m.typeCache[sig] = result
-      addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
   for i in 0..high(m.typeStack):
@@ -696,16 +694,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp)
 
-  var wasFound = sig in m.typeCache
+  # var wasFound = sig in m.typeCache
+  var wasFound = sig in m.typeABICache
   defer:
-    if not wasFound:
-      # of tyEnum:
-      # sig in m.typeCache
-      # let ret = cacheGetType(m.typeCache, sig)
-      # addAbiCheck
-      echo0b t.typeToString, t.kind
-      if isImportedType(t):
-        echo0b ($result, t.typeToString, t.kind, isImportedType(t), isImportedCppType(t), isImportedType(origTyp), isImportedCppType(origTyp))
+    if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
+        echo0b ($result, t.typeToString, t.kind, isImportedType(t), isImportedCppType(t), isImportedType(origTyp), isImportedCppType(origTyp), sig, sig in m.typeCache)
         # TODO: isImportedCppType ?  origTyp?
         addAbiCheck(m, t, result)
 
@@ -841,9 +834,9 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t[1], check)
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
-    else: addAbiCheck(m, t, result)
+    else: maybeDo addAbiCheck(m, t, result)
   of tyObject, tyTuple:
-    echo0b (incompleteType(t), t.typeToString, )
+    # echo0b (incompleteType(t), t.typeToString, )
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
       let cppName = getTypeName(m, t, sig)
       var i = 0
@@ -898,13 +891,14 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           addForwardStructFormat(m, structOrUnion(t), result)
         assert m.forwTypeCache[sig] == result
       m.typeCache[sig] = result # always call for sideeffects:
-      echo0b (incompleteType(t), t.typeToString, )
+      # echo0b (incompleteType(t), t.typeToString, )
       if not incompleteType(t):
         let recdesc = if t.kind != tyTuple: getRecordDesc(m, t, result, check)
                       else: getTupleDesc(m, t, result, check)
         if not isImportedType(t):
           m.s[cfsTypes].add(recdesc)
-        elif tfIncompleteStruct notin t.flags: addAbiCheck(m, t, result)
+        elif tfIncompleteStruct notin t.flags:
+          maybeDo addAbiCheck(m, t, result)
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType
