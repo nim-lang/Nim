@@ -1217,7 +1217,7 @@ proc genProc(orig: BModule, prc: PSym) =
     return
 
   # FIXME: tree-shake
-  if sfUsed notin prc.flags:
+  if {sfUsed, sfImportc} * prc.flags == {}:
     return
 
   # we only generate code when the proc is completely defined
