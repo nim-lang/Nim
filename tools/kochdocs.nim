@@ -170,6 +170,7 @@ lib/posix/posix_linux_amd64.nim
 lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
+lib/posix/posix_haiku.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
