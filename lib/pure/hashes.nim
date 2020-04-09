@@ -170,7 +170,7 @@ proc hashIdentity*[T: Ordinal](x: T): Hash {.inline.} =
   ## The identity hash.  I.e. ``hashIdentity(x) = x``.
   cast[Hash](ord(x))
 
-when defined(nimV1hash):
+when defined(nimIntHash1):
   proc hash*[T: Ordinal](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     hashIdentity(x)

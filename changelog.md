@@ -6,7 +6,7 @@
 
 - The default hash for `Ordinal` has changed to something more bit-scrambling.
   `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
-  one in an instantiation context while `-d:nimV1hash` recovers it globally.
+  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
 
 ## Language changes
 
