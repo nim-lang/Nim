@@ -1,8 +1,10 @@
 discard """
-outputsub: "SUCCESS"
+  cmd: "nim $target $options -r $file"
+  targets: "c cpp"
+  matrix: "--threads:on; "
 """
 
-import os, osproc
+import os, osproc, times, std / monotimes
 
 when defined(Windows):
   const ProgramWhichDoesNotEnd = "notepad"
@@ -19,7 +21,21 @@ while process.running() and TimeToWait > 0:
   sleep(100)
   TimeToWait = TimeToWait - 100
 
-if process.running():
-  echo("FAILED")
-else:
-  echo("SUCCESS")
+doAssert not process.running()
+echo("stopped process")
+
+process.close()
+
+echo("starting " & ProgramWhichDoesNotEnd)
+process = startProcess(ProgramWhichDoesNotEnd)
+echo("process should be stopped after 2s")
+
+let start = getMonoTime()
+discard process.waitForExit(2000)
+let took = getMonoTime() - start
+
+doAssert not process.running()
+# some additional time to account for overhead
+doAssert took < initDuration(seconds = 3)
+
+echo("stopped process after ", took)
