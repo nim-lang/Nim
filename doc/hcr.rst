@@ -189,14 +189,14 @@ Native projects using the hot code reloading option will be implicitly
 compiled with the `-d:useNimRtl` option and they will depend on both
 the ``nimrtl`` library and the ``nimhcr`` library which implements the
 hot code reloading run-time. Both libraries can be found in the ``lib``
-folder of Nim and can be compiled to a ``.dylib`` file to satisfy compiling
-of the example code above. An example of compiling ``nimhcr.nim`` and
-``nimrtl.nim`` when the source dir of Nim is installed with choosenim
-follows.
+folder of Nim and can be compiled into dynamic libraries to satisfy
+runtime demands of the example code above. An example of compiling 
+``nimhcr.nim`` and ``nimrtl.nim`` when the source dir of Nim is installed
+with choosenim follows.
 
 ::
 
-  # UNIX/MacOS
+  # Unix/MacOS
   # Make sure you are in the directory containing your .nim files
   $ cd your-source-directory
 
@@ -204,9 +204,8 @@ follows.
   $ nim c --outdir:$PWD ~/.choosenim/toolchains/nim-#devel/lib/nimhcr.nim
   $ nim c --outdir:$PWD ~/.choosenim/toolchains/nim-#devel/lib/nimrtl.nim
 
-  # verify that you have two files named libnimhcr.dylib and libnimrtl.dylib
-  # in your source directory
-  $ ls libnimhcr.dylib libnimrtl.dylib
+  # verify that you have two files named libnimhcr and libnimrtl in your
+  # source directory (.dll for Windows, .so for Unix, .dylib for MacOS)
 
 All modules of the project will be compiled to separate dynamic link
 libraries placed in the ``nimcache`` directory. Please note that during
