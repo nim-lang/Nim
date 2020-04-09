@@ -249,6 +249,9 @@ proc pred(n: PNode): PNode =
   else:
     result = n
 
+proc buildLe*(o: Operators; a, b: PNode): PNode =
+  result = o.opLe.buildCall(a, b)
+
 proc canon*(n: PNode; o: Operators): PNode =
   if n.safeLen >= 1:
     result = shallowCopy(n)

@@ -2791,23 +2791,23 @@ when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
     const KERN_PROC_PATHNAME = 9
 
   proc getApplFreebsd(): string =
-    var pathLength = csize_t(MAX_PATH)
-    result = newString(pathLength)
+    var pathLength = csize_t(0)
     var req = [CTL_KERN.cint, KERN_PROC.cint, KERN_PROC_PATHNAME.cint, -1.cint]
-    while true:
-      let res = sysctl(addr req[0], 4, cast[pointer](addr result[0]),
-                       addr pathLength, nil, 0)
-      if res < 0:
-        let err = osLastError()
-        if err.int32 == ENOMEM:
-          result = newString(pathLength)
-        else:
-          result.setLen(0) # error!
-          break
-      else:
-        # trim the trailing null byte, as the result is a string not a cstring
-        result.setLen(pathLength-1)
-        break
+
+    # first call to get the required length
+    var res = sysctl(addr req[0], 4, nil, addr pathLength, nil, 0)
+
+    if res < 0:
+      return ""
+
+    result.setLen(pathLength)
+    res = sysctl(addr req[0], 4, addr result[0], addr pathLength, nil, 0)
+
+    if res < 0:
+      return ""
+
+    let realLen = len(cstring(result))
+    setLen(result, realLen)
 
 when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or defined(aix)):
   proc getApplAux(procPath: string): string =

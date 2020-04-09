@@ -259,6 +259,7 @@ type
                       # needed for the code generator
     sfProcvar,        # proc can be passed to a proc var
     sfDiscriminant,   # field is a discriminant in a record/object
+    sfRequiresInit,   # field must be initialized during construction
     sfDeprecated,     # symbol is deprecated
     sfExplain,        # provide more diagnostics when this symbol is used
     sfError,          # usage of symbol should trigger a compile-time error
@@ -335,8 +336,8 @@ const
   nkEffectList* = nkArgList
   # hacks ahead: an nkEffectList is a node with 4 children:
   exceptionEffects* = 0 # exceptions at position 0
-  usesEffects* = 1      # read effects at position 1
-  writeEffects* = 2     # write effects at position 2
+  requiresEffects* = 1      # 'requires' annotation
+  ensuresEffects* = 2     # 'ensures' annotation
   tagEffects* = 3       # user defined tag ('gc', 'time' etc.)
   pragmasEffects* = 4    # not an effect, but a slot for pragmas in proc type
   effectListLen* = 5    # list of effects list
@@ -455,6 +456,9 @@ const
 
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
   tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
+  # consider renaming as `tyAbstractVarRange`
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
 
 type
   TTypeKinds* = set[TTypeKind]
@@ -516,9 +520,11 @@ type
     tfIterator,       # type is really an iterator, not a tyProc
     tfPartial,        # type is declared as 'partial'
     tfNotNil,         # type cannot be 'nil'
-
-    tfNeedsInit,      # type constains a "not nil" constraint somewhere or some
-                      # other type so that it requires initialization
+    tfRequiresInit,   # type constains a "not nil" constraint somewhere or
+                      # a `requiresInit` field, so the default zero init
+                      # is not appropriate
+    tfNeedsFullInit,  # object type marked with {.requiresInit.}
+                      # all fields must be initialized
     tfVarIsPtr,       # 'var' type is translated like 'ptr' even in C++ mode
     tfHasMeta,        # type contains "wildcard" sub-types such as generic params
                       # or other type classes
@@ -633,6 +639,7 @@ type
     mCharToStr, mBoolToStr, mIntToStr, mInt64ToStr, mFloatToStr, mCStrToStr,
     mStrToStr, mEnumToStr,
     mAnd, mOr,
+    mImplies, mIff, mExists, mForall, mOld,
     mEqStr, mLeStr, mLtStr,
     mEqSet, mLeSet, mLtSet, mMulSet, mPlusSet, mMinusSet,
     mConStrStr, mSlice,
@@ -1268,12 +1275,8 @@ proc skipTypes*(t: PType, kinds: TTypeKinds): PType =
   while result.kind in kinds: result = lastSon(result)
 
 proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
-
-  # this is dirty. abstractVarRange isn't defined yet and therefore it
-  # is duplicated here.
-  const abstractVarRange = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
-  case skipTypes(typ, abstractVarRange).kind
+  let kind = skipTypes(typ, abstractVarRange).kind
+  case kind
   of tyInt:     result = newNode(nkIntLit)
   of tyInt8:    result = newNode(nkInt8Lit)
   of tyInt16:   result = newNode(nkInt16Lit)
@@ -1285,9 +1288,12 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  else: # tyBool, tyEnum
+  of tyBool,tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
+  of tyStatic: # that's a pre-existing bug, will fix in another PR
+    result = newNode(nkIntLit)
+  else: doAssert false, $kind
   result.intVal = intVal
   result.typ = typ
 
@@ -1392,6 +1398,9 @@ proc copyType*(t: PType, owner: PSym, keepId: bool): PType =
 
 proc exactReplica*(t: PType): PType = copyType(t, t.owner, true)
 
+template requiresInit*(t: PType): bool =
+  t.flags * {tfRequiresInit, tfNotNil} != {}
+
 proc copySym*(s: PSym): PSym =
   result = newSym(s.kind, s.name, s.owner, s.info, s.options)
   #result.ast = nil            # BUGFIX; was: s.ast which made problems
@@ -1482,12 +1491,6 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
       owner.flags.incl tfNotNil
-    elif owner.kind notin HaveTheirOwnEmpty:
-      owner.flags.incl tfNeedsInit
-
-  if tfNeedsInit in elem.flags:
-    if owner.kind in HaveTheirOwnEmpty: discard
-    else: owner.flags.incl tfNeedsInit
 
   if elem.isMetaType:
     owner.flags.incl tfHasMeta
@@ -1597,47 +1600,42 @@ proc transitionToLet*(s: PSym) =
   s.bitsize = obj.bitsize
   s.alignment = obj.alignment
 
-proc shallowCopy*(src: PNode): PNode =
-  # does not copy its sons, but provides space for them:
-  if src == nil: return nil
-  result = newNode(src.kind)
-  result.info = src.info
-  result.typ = src.typ
-  result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
+template copyNodeImpl(dst, src, processSonsStmt) =
+  if src == nil: return
+  dst = newNode(src.kind)
+  dst.info = src.info
+  dst.typ = src.typ
+  dst.flags = src.flags * PersistentNodeFlags
+  dst.comment = src.comment
   when defined(useNodeIds):
-    if result.id == nodeIdToDebug:
+    if dst.id == nodeIdToDebug:
       echo "COMES FROM ", src.id
   case src.kind
-  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLiterals: result.floatVal = src.floatVal
-  of nkSym: result.sym = src.sym
-  of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else: newSeq(result.sons, src.len)
+  of nkCharLit..nkUInt64Lit: dst.intVal = src.intVal
+  of nkFloatLiterals: dst.floatVal = src.floatVal
+  of nkSym: dst.sym = src.sym
+  of nkIdent: dst.ident = src.ident
+  of nkStrLit..nkTripleStrLit: dst.strVal = src.strVal
+  else: processSonsStmt
+
+proc shallowCopy*(src: PNode): PNode =
+  # does not copy its sons, but provides space for them:
+  copyNodeImpl(result, src):
+    newSeq(result.sons, src.len)
 
 proc copyTree*(src: PNode): PNode =
   # copy a whole syntax tree; performs deep copying
-  if src == nil:
-    return nil
-  result = newNode(src.kind)
-  result.info = src.info
-  result.typ = src.typ
-  result.flags = src.flags * PersistentNodeFlags
-  result.comment = src.comment
-  when defined(useNodeIds):
-    if result.id == nodeIdToDebug:
-      echo "COMES FROM ", src.id
-  case src.kind
-  of nkCharLit..nkUInt64Lit: result.intVal = src.intVal
-  of nkFloatLiterals: result.floatVal = src.floatVal
-  of nkSym: result.sym = src.sym
-  of nkIdent: result.ident = src.ident
-  of nkStrLit..nkTripleStrLit: result.strVal = src.strVal
-  else:
+  copyNodeImpl(result, src):
     newSeq(result.sons, src.len)
     for i in 0..<src.len:
       result[i] = copyTree(src[i])
+
+proc copyTreeWithoutNode*(src, skippedNode: PNode): PNode =
+  copyNodeImpl(result, src):
+    result.sons = newSeqOfCap[PNode](src.len)
+    for n in src.sons:
+      if n != skippedNode:
+        result.sons.add copyTreeWithoutNode(n, skippedNode)
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in 0..<n.len:

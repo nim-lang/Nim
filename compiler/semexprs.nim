@@ -10,6 +10,9 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -619,11 +622,12 @@ proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult 
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc isUnresolvedSym(s: PSym): bool =
-  return s.kind == skGenericParam or
-         tfInferrableStatic in s.typ.flags or
-         (s.kind == skParam and s.typ.isMetaType) or
-         (s.kind == skType and
-          s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+  result = s.kind == skGenericParam
+  if not result and s.typ != nil:
+    result = tfInferrableStatic in s.typ.flags or
+        (s.kind == skParam and s.typ.isMetaType) or
+        (s.kind == skType and
+        s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
 
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
   # Checks whether an expression depends on generic parameters that
@@ -2079,7 +2083,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   var err: string
   try:
     result = semExpr(c, n, flags)
-    if c.config.errorCounter != oldErrorCount: result = nil
+    if result != nil and efNoSem2Check notin flags:
+      trackStmt(c, c.module, result, isTopLevel = false)
+    if c.config.errorCounter != oldErrorCount:
+      result = nil
   except ERecoverableError:
     discard
   # undo symbol table changes (as far as it's possible):
@@ -2557,6 +2564,8 @@ proc shouldBeBracketExpr(n: PNode): bool =
           return true
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2638,6 +2647,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    result.typ = makeTypeDesc(c, typ)
+  of nkStmtListType:
+    let typ = semTypeNode(c, n, nil)
     result.typ = makeTypeDesc(c, typ)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:

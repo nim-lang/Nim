@@ -46,20 +46,16 @@ type
   IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
     elems: int           # only valid for small numbers
     counter, max: int
-    countDeleted: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
 proc mustRehash[T](t: T): bool {.inline.} =
-  # FACTOR between hashcommon.mustRehash, intsets.mustRehash
-  let counter2 = t.counter + t.countDeleted
   let length = t.max + 1
-  assert length > counter2
-  result = (length * 2 < counter2 * 3) or (length - counter2 < 4)
+  assert length > t.counter
+  result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
-  # FACTOR between hashcommon.nextTry, intsets.nextTry
   const PERTURB_SHIFT = 5
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)

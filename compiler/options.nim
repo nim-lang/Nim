@@ -28,7 +28,9 @@ type                          # please make sure we have under 32 options
     optOverflowCheck, optNilCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
-    optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
+    optOptimizeSpeed, optOptimizeSize,
+    optStackTrace, # stack tracing support
+    optStackTraceMsgs, # enable custom runtime msgs via `setFrameMsg`
     optLineTrace,             # line tracing support (includes stack tracing)
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
@@ -41,6 +43,7 @@ type                          # please make sure we have under 32 options
     optNilSeqs,
     optOldAst,
     optSinkInference          # 'sink T' inference
+
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -91,6 +94,8 @@ type                          # please make sure we have under 32 options
     optBenchmarkVM            # Enables cpuTime() in the VM
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
+    optNimV1Emulation         # emulate Nim v1.0
+    optSourcemap
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -157,7 +162,7 @@ type
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
-    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
+    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccZig, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   ExceptionSystem* = enum
@@ -232,6 +237,7 @@ type
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
+    warningAsErrors*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
@@ -324,7 +330,7 @@ const
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
-    optHints, optStackTrace, optLineTrace,
+    optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
     optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}

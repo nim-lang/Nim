@@ -17,8 +17,7 @@ pkg "c2nim", false, "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", true, "nim c -o:chr -r chronicles.nim"
-# disable until my chronos fix was merged
-#pkg "chronos", true
+pkg "chronos", true
 pkg "cligen", false, "nim c -o:cligenn -r cligen.nim"
 pkg "coco", true
 pkg "combparser"
@@ -82,7 +81,7 @@ pkg "sdl2_nim", false, "nim c -r sdl2/sdl.nim"
 pkg "snip", false, "nimble test", "https://github.com/genotrance/snip"
 pkg "stint", false, "nim c -o:stintt -r stint.nim"
 pkg "strunicode", true, "nim c -r src/strunicode.nim"
-pkg "telebot", true, "nim c -o:tbot --oldgensym:on -r telebot.nim"
+pkg "telebot", true, "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "tensordsl", false, "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg "tiny_sqlite"
