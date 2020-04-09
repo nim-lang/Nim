@@ -1472,9 +1472,14 @@ proc semProcAnnotation(c: PContext, prc: PNode;
     if whichPragma(it) != wInvalid:
       # Not a custom pragma
       continue
-    elif strTableGet(c.userPragmas, considerQuotedIdent(c, key)) != nil:
-      # User-defined pragma
-      continue
+    else:
+      let ident = considerQuotedIdent(c, key)
+      if strTableGet(c.userPragmas, ident) != nil:
+        continue # User defined pragma
+      else: 
+        let sym = searchInScopes(c, ident)
+        if sym != nil and sfCustomPragma in sym.flags: 
+          continue # User custom pragma
 
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
     # let the semantic checker deal with it:
