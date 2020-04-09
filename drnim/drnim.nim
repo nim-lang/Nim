@@ -11,7 +11,6 @@
 
 - the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
-- forall/exists need syntactic sugar as the manual
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
   'x in n..m; inc x' implies 'x in n+1..m+1'
 
@@ -188,20 +187,41 @@ template binary(op, a, b): untyped =
 
 proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast
 
+proc nodeToDomain(c: var DrCon; n, q: PNode; opAnd: PSym): PNode =
+  assert n.kind == nkInfix
+  let opLe = createMagic(c.graph, "<=", mLeI)
+  case $n[0]
+  of "..":
+    result = buildCall(opAnd, buildCall(opLe, n[1], q), buildCall(opLe, q, n[2]))
+  of "..<":
+    let opLt = createMagic(c.graph, "<", mLtI)
+    result = buildCall(opAnd, buildCall(opLe, n[1], q), buildCall(opLt, q, n[2]))
+  else:
+    notImplemented($n)
+
 template quantorToZ3(fn) {.dirty.} =
   template ctx: untyped = c.z3
 
-  var bound = newSeq[Z3_app](n.len-1)
-  for i in 0..n.len-2:
-    doAssert n[i].kind == nkSym
-    let v = n[i].sym
+  var bound = newSeq[Z3_app](n.len-2)
+  let opAnd = createMagic(c.graph, "and", mAnd)
+  var known: PNode
+  for i in 1..n.len-2:
+    let it = n[i]
+    doAssert it.kind == nkInfix
+    let v = it[1].sym
     let name = Z3_mk_string_symbol(ctx, v.name.s)
     let vz3 = Z3_mk_const(ctx, name, typeToZ3(c, v.typ))
-    c.mapping[stableName(n[i])] = vz3
-    bound[i] = Z3_to_app(ctx, vz3)
+    c.mapping[stableName(it[1])] = vz3
+    bound[i-1] = Z3_to_app(ctx, vz3)
+    let domain = nodeToDomain(c, it[2], it[1], opAnd)
+    if known == nil:
+      known = domain
+    else:
+      known = buildCall(opAnd, known, domain)
 
   var dummy: seq[PNode]
-  let x = nodeToZ3(c, n[^1], dummy)
+  assert known != nil
+  let x = nodeToZ3(c, buildCall(createMagic(c.graph, "->", mImplies), known, n[^1]), dummy)
   result = fn(ctx, 0, bound.len.cuint, addr(bound[0]), 0, nil, x)
 
 proc forallToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_forall_const)
