@@ -268,6 +268,8 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       let lenOpr = createMagic(c.graph, "len", mLengthOpenArray)
       let asLenExpr = addOpr.buildCall(lenOpr.buildCall(n[1]), nkIntLit.newIntNode(-1))
       result = rec asLenExpr
+    of mLow:
+      result = rec lowBound(c.graph.config, n[1])
     of mAddI, mSucc:
       result = binary(Z3_mk_add, rec n[1], rec n[2])
     of mSubI, mPred:

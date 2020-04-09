@@ -444,10 +444,10 @@ proc semQuantifier(c: PContext; n: PNode): PNode =
         let v = newSymS(skForVar, it[1], c)
         styleCheckDef(c.config, v)
         onDef(it[1].info, v)
-        addDecl(c, v)
-        let domain = semExprWithType(c, it[2])
+        let domain = semExprWithType(c, it[2], {efWantIterator})
         v.typ = domain.typ
         valid = true
+        addDecl(c, v)
         result.add newTree(nkInfix, it[0], newSymNode(v), domain)
     if not valid:
       localError(c.config, n.info, "<quantifier> 'in' <range> expected")
