@@ -116,10 +116,10 @@ proc isLoc(m: PNode; assumeUniqueness: bool): bool =
       break
   if n.kind == nkSym:
     case n.sym.kind
-    of skLet, skTemp, skForVar:
+    of skLet, skTemp, skForVar, skParam:
       result = true
-    of skParam:
-      result = skipTypes(n.sym.typ, abstractInst).kind != tyVar
+    #of skParam:
+    #  result = skipTypes(n.sym.typ, abstractInst).kind != tyVar
     of skResult, skVar:
       result = {sfAddrTaken} * n.sym.flags == {}
     else:
@@ -252,12 +252,11 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
       result = Z3_mk_lt(ctx, rec n[1], rec n[2])
     of mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq:
       # len(x) needs the same logic as 'x' itself
-      if n[1].kind == nkSym:
+      if isLoc(n[1], c.assumeUniqueness):
         let key = stableName(n)
-        let sym = n[1].sym
         result = c.mapping.getOrDefault(key)
         if pointer(result) == nil:
-          let name = Z3_mk_string_symbol(ctx, sym.name.s & ".len")
+          let name = Z3_mk_string_symbol(ctx, $n[1] & ".len")
           result = Z3_mk_const(ctx, name, Z3_mk_int_sort(ctx))
           c.mapping[key] = result
           vars.add n
