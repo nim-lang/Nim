@@ -1,5 +1,5 @@
 discard """
-errormsg: "'sizeof' requires `importc` types to be {.completeStruct.}"
+errormsg: "'sizeof' requires 'importc' types to be 'completeStruct'"
 line: 9
 """
 

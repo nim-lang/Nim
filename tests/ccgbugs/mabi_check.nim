@@ -3,6 +3,5 @@ type GoodImportcType {.importc: "signed char", nodecl.} = char
 type BadImportcType {.importc: "unsigned char", nodecl.} = uint64
   # "sizeof" check will fail
 
-## ensures cgen
-discard GoodImportcType.default
-discard BadImportcType.default
+echo GoodImportcType.default
+echo BadImportcType.default

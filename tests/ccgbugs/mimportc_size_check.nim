@@ -21,26 +21,29 @@ typedef struct Foo6{
 } Foo6;
 """.}
 
+template ensureCgen(T: typedesc) =
+  ## ensures cgen
+  var a {.volatile.}: T
+
 block:
   type Foo1Alias{.importc: "struct Foo1", size: sizeof(cint).} = object
     a: cint
-  ## ensures cgen
-  discard Foo1Alias.default
+  ensureCgen Foo1Alias
 
 block:
   type Foo3Alias{.importc: "enum Foo3", size: sizeof(cint).} = enum
     k1, k2
-  discard Foo3Alias.default
+  ensureCgen Foo3Alias
 
 block:
   type Foo3bAlias{.importc: "Foo3b", size: sizeof(cint).} = enum
     k1, k2
-  discard Foo3bAlias.default
+  ensureCgen Foo3bAlias
 
 block:
   type Foo3b{.importc, size: sizeof(cint).} = enum
     k1, k2
-  discard Foo3b.default
+  ensureCgen Foo3b
   static:
     doAssert Foo3b.sizeof == cint.sizeof
 
@@ -50,17 +53,17 @@ block:
   # adding entries should not yield duplicate ABI checks, as enforced by
   # `typeABICache`.
   # Currently the test doesn't check for this but you can inspect the cgen'd file
-  discard Foo4.default
-  discard Foo4.default
-  discard Foo4.default
+  ensureCgen Foo4
+  ensureCgen Foo4
+  ensureCgen Foo4
 
 block:
   type Foo5{.importc.} = array[3, cint]
-  discard Foo5.default
+  ensureCgen Foo5
 
 block:
   type Foo5{.importc.} = array[3, cint]
-  discard Foo5.default
+  ensureCgen Foo5
 
 block: # CT sizeof
   type Foo6GT = object # grountruth
@@ -91,15 +94,15 @@ when defined caseBad:
   block:
     type Foo2AliasBad{.importc: "struct Foo2", size: 1.} = object
       a: cint
-    discard Foo2AliasBad.default
+    ensureCgen Foo2AliasBad
 
   block:
     type Foo5{.importc.} = array[4, cint]
-    discard Foo5.default
+    ensureCgen Foo5
 
   block:
     type Foo5{.importc.} = array[3, bool]
-    discard Foo5.default
+    ensureCgen Foo5
 
   block:
     type Foo6{.importc, completeStruct.} = object
@@ -107,11 +110,11 @@ when defined caseBad:
       # a2: bool # missing this should trigger assert fail
       a3: cfloat
       a4: ptr Foo6
-    discard Foo6.default
+    ensureCgen Foo6
 
   when false:
     block:
       # pre-existing BUG: this should give a CT error in semcheck because `size`
       # disagrees with `array[3, cint]`
       type Foo5{.importc, size: 1.} = array[3, cint]
-      discard Foo5.default
+      ensureCgen Foo5

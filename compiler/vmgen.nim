@@ -727,7 +727,7 @@ proc genBinaryABCD(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp3)
 
 template sizeOfLikeMsg(name): string =
-  "'$1' requires `importc` types to be {.completeStruct.} " % [name]
+  "'$1' requires 'importc' types to be 'completeStruct'" % [name]
 
 proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
