@@ -4,7 +4,7 @@
 
 ## Standard library additions and changes
 
-- `base64` adds Data URI Base64, implements RFC-2397.
+- `uri` adds Data URI Base64, implements RFC-2397.
 
 ## Language changes
 
