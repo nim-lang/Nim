@@ -986,13 +986,13 @@ type
     passive*: bool
 
 since (1, 3):
-  type DOMParser* = ref object  ## \
+  type DomParser* = ref object  ## \
     ## DOM Parser object (defined on browser only, may not be on NodeJS).
     ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
     ##
     ## .. code-block:: nim
-    ##   let prsr = newDOMParser()
-    ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring)
+    ##   let prsr = newDomParser()
+    ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
 
 
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
@@ -1308,9 +1308,8 @@ proc offsetWidth*(e: Node): int {.importcpp: "#.offsetWidth", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 
-
 since (1, 3):
-  func newDOMParser*(): DOMParser {.importcpp: "(new DOMParser()​​)".}
+  func newDomParser*(): DOMParser {.importcpp: "(new DOMParser()​​)".}
     ## DOM Parser constructor.
 
   func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
