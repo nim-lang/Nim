@@ -59,18 +59,5 @@ proc main() =
     doAssert encode("", safe = true) == ""
     doAssert encode("the quick brown dog jumps over the lazy fox", safe = true) == "dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA=="
 
-  block dataUriBase64:
-    doAssert dataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
-    doAssert dataUri(" ", "text/plain") == "data:text/plain;charset=utf-8;base64,IA=="
-    doAssert dataUri("c\xf7>", "text/plain") == "data:text/plain;charset=utf-8;base64,Y/c+"
-    doAssert dataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-    doAssert dataUri("leasure.", "text/plain") == "data:text/plain;charset=utf-8;base64,bGVhc3VyZS4="
-    doAssert dataUri("""!@#$%^&*()_+""", "text/plain") == "data:text/plain;charset=utf-8;base64,IUAjJCVeJiooKV8r"
-    doAssert(dataUri("the quick brown dog jumps over the lazy fox", "text/plain") ==
-      "data:text/plain;charset=utf-8;base64,dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA==")
-    doAssert(dataUri("""The present is theirs
-      The future, for which I really worked, is mine.""", "text/plain") ==
-      "data:text/plain;charset=utf-8;base64,VGhlIHByZXNlbnQgaXMgdGhlaXJzCiAgICAgIFRoZSBmdXR1cmUsIGZvciB3aGljaCBJIHJlYWxseSB3b3JrZWQsIGlzIG1pbmUu")
-
 
 main()
