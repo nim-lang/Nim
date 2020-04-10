@@ -24,7 +24,7 @@ proc nimLoadLibraryError(path: string) =
   cstderr.rawWrite(path)
   when not defined(nimDebugDlOpen) and not defined(windows):
     cstderr.rawWrite("\n(compile with -d:nimDebugDlOpen for more information)")
-  when defined(windows)
+  when defined(windows):
     const badExe = "\n(bad format; library may be wrong architecture)"
     let loadError = GetLastError()
     if loadError == ERROR_BAD_EXE_FORMAT:
