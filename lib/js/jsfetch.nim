@@ -8,7 +8,22 @@ when not defined(js) and not defined(nimdoc):
 when defined(nodejs):
   {.warning: "By design 'fetch()' is defined on the web browser, but may not be on NodeJS.".}
 
-template method2cstring(metod: HttpMethod): cstring =
+type
+  FetchOptions* = ref object
+    `method`, body, integrity, referrer, mode, credentials, cache, redirect, referrerPolicy: cstring
+    keepalive: bool
+  FetchModes* = enum            ## JavaScript Fetch API mode options.
+    fmCors, fmNoCors, fmSameOrigin
+  FetchCredentials* = enum      ## JavaScript Fetch API Credential options.
+    fcInclude, fcSameOrigin, fcOmit
+  FetchCaches* = enum           ## https://developer.mozilla.org/docs/Web/API/Request/cache
+    fchDefault, fchNoStore, fchReload, fchNoCache, fchForceCache
+  FetchRedirects* = enum        ## JavaScript Fetch API Redirects options.
+    frFollow, frError, frManual
+  FetchReferrerPolicies* = enum ## JavaScript Fetch API Referrer Policy options.
+    frpNoReferrer, frpNoReferrerWhenDowngrade, frpOrigin, frpOriginWhenCrossOrigin, frpUnsafeUrl
+
+template fetchMethodToCstring(metod: HttpMethod): cstring =
   ## Template that takes an `HttpMethod` and returns an *Uppercase* `cstring`,
   ## but *only* for the HTTP Methods that are supported by the fetch API.
   ## High performance and minimal code compared to just `$(HttpMethod)`.
@@ -22,57 +37,54 @@ template method2cstring(metod: HttpMethod): cstring =
   of HttpPatch:  "PATCH".cstring
   else:          "GET".cstring
 
+template `$`(x: FetchCredentials): cstring =
+  case x
+  of fcInclude:    "include".cstring
+  of fcSameOrigin: "same-origin".cstring
+  of fcOmit:       "omit".cstring
+
+template `$`(x: FetchModes): cstring =
+  case x
+  of fmCors:       "cors".cstring
+  of fmNoCors:     "no-cors".cstring
+  of fmSameOrigin: "same-origin".cstring
+
+template `$`(x: FetchCaches): cstring =
+  case x
+  of fchDefault:    "default".cstring
+  of fchNoStore:    "no-store".cstring
+  of fchReload:     "reload".cstring
+  of fchNoCache:    "no-cache".cstring
+  of fchForceCache: "force-cache".cstring
+
+template `$`(x: FetchRedirects): cstring =
+  case x
+  of frFollow: "follow".cstring
+  of frError:  "error".cstring
+  of frManual: "manual".cstring
+
+template `$`(x: FetchReferrerPolicies): cstring =
+  case x
+  of frpNoReferrer:              "no-referrer".cstring
+  of frpNoReferrerWhenDowngrade: "no-referrer-when-downgrade".cstring
+  of frpOrigin:                  "origin".cstring
+  of frpOriginWhenCrossOrigin:   "origin-when-cross-origin".cstring
+  of frpUnsafeUrl:               "unsafe-url".cstring
+
+func unsafeNewFetchOptions*(`method`, body, mode, credentials, cache, referrerPolicy: cstring,
+    keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importcpp:
+    "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
+  ## **Unsafe** `newfetchOptions`. Low-level proc, usage is discouraged, only for optimization purposes.
+
+func newfetchOptions*(metod: HttpMethod, body: cstring,
+    mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
+    keepalive: bool, redirect = frFollow, referrer = "client".cstring, integrity = "".cstring): FetchOptions =
+  result = FetchOptions(`method`: fetchMethodTocstring(metod), body: body, mode: $mode,
+    credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
+    keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
+
 func fetch*(url: cstring): PromiseJs {.importcpp: "fetch(#)".}
   ## `fetch()` API, Simple GET only (generates `fetch(url)`).
-  ##
-  ## .. code-block:: nim
-  ##   doAssert fetch("https://nim-lang.org") is PromiseJs
 
-func fetch*(url: cstring, httpMethod: static[HttpMethod], body: cstring): PromiseJs {.asmNoStackFrame.} =
-  ## `fetch()` API, for any HTTP Method (static overload for optimization).
-  ##
-  ## .. code-block:: nim
-  ##   doAssert fetch("https://my.api.org", HttpPost, "body") is PromiseJs
-  # See the generated code if you dont understand why this overload exists.
-  assert url.len > 0, "url must not be empty string"
-  const x: cstring = method2cstring(httpMethod)
-  {.emit: """return fetch(`url`, {method: "`x`", body: `body`});""".}
-
-func fetch*(url: cstring, httpMethod: HttpMethod, body: cstring): PromiseJs {.asmNoStackFrame.} =
-  ## .. code-block:: nim
-  ##   let mthd = HttpPost
-  ##   doAssert fetch("https://my.api.org", mthd, "body") is PromiseJs
-  # See the generated code if you dont understand why this overload exists.
-  assert url.len > 0, "url must not be empty string"
-  let x: cstring = method2cstring(httpMethod)
-  {.emit: """return fetch(`url`, {method: `x`, body: `body`});""".}
-
-func fetch*(url: cstring, httpMethod: HttpMethod, body, mode, cache, redirect,
-    credentials, referrerPolicy: cstring, keepalive = false, integrity = "".cstring,
-    referrer = "client".cstring): PromiseJs {.asmNoStackFrame.} =
-  ## `fetch()` API, for any HTTP Method, overload with all arguments supported by fetch API.
-  # For Code Reviewers: Why dont use "Enum" for argument flags instead?.
-  # Because this is *Low-Level* API,a jshttpclient may stand on top,with Enums,Types,etc
-  # See the generated code if you dont understand why this overload exists.
-  assert url.len > 0, "url must not be empty string"
-  assert referrer.len > 0, "referrer must not be empty string"
-  assert redirect in ["follow".cstring, "error".cstring, "manual".cstring]
-  assert mode in ["cors".cstring, "no-cors".cstring, "same-origin".cstring]
-  assert credentials in ["include".cstring, "same-origin".cstring, "omit".cstring]
-  assert cache in ["no-store".cstring, "reload".cstring, "default".cstring, "no-cache".cstring, "force-cache".cstring]
-  assert referrerPolicy in ["no-referrer".cstring, "no-referrer-when-downgrade".cstring,
-    "origin".cstring, "origin-when-cross-origin".cstring, "unsafe-url".cstring]
-  let x: cstring = method2cstring(httpMethod)
-  {.emit: """return fetch(`url`, {
-      method:         `x`,
-      body:           `body`,
-      integrity:      (`integrity` || undefined),
-      referrer:       `referrer`,
-      mode:           `mode`,
-      credentials:    `credentials`,
-      cache:          `cache`,
-      redirect:       `redirect`,
-      referrerPolicy: `referrerPolicy`,
-      keepalive:      `keepalive`
-    });
-  """.}
+func fetch*(url: cstring, options: FetchOptions): PromiseJs {.importcpp: "fetch(#, #)".}
+  ## `fetch()` API, Simple GET only (generates `fetch(url, options)`).
