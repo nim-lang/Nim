@@ -68,10 +68,10 @@ when defined(nimHasalignOf):
   import macros
 
   type BitsRange*[T] = range[0..sizeof(T)*8-1]
-    ## Returns a range with all bit positions for type ``T``
+    ## Returns a range with all bit positions for type ``T``.
 
   proc setMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setMask(0b0000_1010'u8)
@@ -80,7 +80,7 @@ when defined(nimHasalignOf):
     v = v or mask
 
   proc clearMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.clearMask(0b0000_1010'u8)
@@ -89,7 +89,7 @@ when defined(nimHasalignOf):
     v = v and not mask
 
   proc flipMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.flipMask(0b0000_1010'u8)
@@ -98,7 +98,7 @@ when defined(nimHasalignOf):
     v = v xor mask
 
   proc setBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
-    ## Returns ``v``, with the bit at position ``bit`` set to 1
+    ## Returns ``v``, with the bit at position ``bit`` set to 1.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setBit(5'u8)
@@ -107,7 +107,7 @@ when defined(nimHasalignOf):
     v.setMask(1.T shl bit)
 
   proc clearBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
-    ## Returns ``v``, with the bit at position ``bit`` set to 0
+    ## Returns ``v``, with the bit at position ``bit`` set to 0.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.clearBit(1'u8)
@@ -116,7 +116,7 @@ when defined(nimHasalignOf):
     v.clearMask(1.T shl bit)
 
   proc flipBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
-    ## Returns ``v``, with the bit at position ``bit`` flipped
+    ## Returns ``v``, with the bit at position ``bit`` flipped.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.flipBit(1'u8)
@@ -129,7 +129,7 @@ when defined(nimHasalignOf):
     v.flipMask(1.T shl bit)
 
   macro setBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 1
+    ## Returns ``v``, with the bits at positions ``bits`` set to 1.
     ##
     ## **Note:**
     ## * ``v`` must be `var` variable.
@@ -144,7 +144,7 @@ when defined(nimHasalignOf):
       result.add newCall("setBit", v, bit)
 
   macro clearBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0.
     ##
     ## **Note:**
     ## * ``v`` must be `var` variable.
@@ -159,7 +159,7 @@ when defined(nimHasalignOf):
       result.add newCall("clearBit", v, bit)
 
   macro flipBits*(v: typed, bits: varargs[typed]): untyped =
-    ## Returns ``v``, with the bits at positions ``bits`` set to 0
+    ## Returns ``v``, with the bits at positions ``bits`` set to 0.
     ##
     ## **Note:**
     ## * ``v`` must be `var` variable.
@@ -174,7 +174,7 @@ when defined(nimHasalignOf):
       result.add newCall("flipBit", v, bit)
 
   proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
-    ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1
+    ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1.
     runnableExamples:
       var v = 0b0000_1111'u8
       doAssert v.testBit(0)
@@ -371,7 +371,7 @@ proc countSetBits*(x: SomeInteger): int {.inline, noSideEffect.} =
       else: result = countSetBitsNim(x.uint64)
 
 proc popcount*(x: SomeInteger): int {.inline, noSideEffect.} =
-  ## Alias for for `countSetBits <#countSetBits,SomeInteger>`_ (Hamming weight.)
+  ## Alias for for `countSetBits <#countSetBits,SomeInteger>`_. (Hamming weight.)
   result = countSetBits(x)
 
 proc parityBits*(x: SomeInteger): int {.inline, noSideEffect.} =
