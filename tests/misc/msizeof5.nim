@@ -1,4 +1,4 @@
-## tests for addAbiCheck (via NIM_STATIC_ASSERT)
+## tests for -d:checkAbi used by addAbiCheck via NIM_STATIC_ASSERT
 
 {.emit:"""
 struct Foo1{
@@ -84,13 +84,24 @@ block: # CT sizeof
     (Foo6GT, int, array[2, Foo6GT]).sizeof
 
 block:
+  type GoodImportcType {.importc: "signed char", nodecl.} = char
+    # "good" in sense the sizeof will match
+  ensureCgen GoodImportcType
+
+block:
   type Foo6{.importc.} = object
     a1: cint
   doAssert compiles(Foo6.sizeof)
   static: doAssert not compiles(static(Foo6.sizeof))
 
 when defined caseBad:
-  # bad sizes => each should give an assert fail message
+  # Each case below should give a static cgen assert fail message
+
+  block:
+    type BadImportcType {.importc: "unsigned char", nodecl.} = uint64
+      # "sizeof" check will fail
+    ensureCgen BadImportcType
+
   block:
     type Foo2AliasBad{.importc: "struct Foo2", size: 1.} = object
       a: cint

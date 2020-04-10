@@ -37,27 +37,26 @@ ret={s1:foobar s2:foobar age:25 pi:3.14}
     doAssert exitCode == 0
 
 else: # don't run twice the same test
+  template check(msg) = doAssert msg in output, output
+
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
-    doAssert "sizeof(bool) == 2" in output, output
+    check "sizeof(bool) == 2"
     doAssert exitCode != 0
 
-  block: # mabi_check
-    let (output, exitCode) = runCmd("ccgbugs/mabi_check.nim")
-    # on platforms that support _StaticAssert natively, will show full context, eg:
-    # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
-    # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
-    doAssert "sizeof(unsigned char) == " in output, output
-    doAssert exitCode != 0
-
-  block: # mimportc_size_check
+  block: # ABI checks
+    let file = "misc/msizeof5.nim"
     block:
-      let (_, exitCode) = runCmd("ccgbugs/mimportc_size_check.nim")
+      let (_, exitCode) = runCmd(file, "-d:checkAbi")
       doAssert exitCode == 0
     block:
-      let (output, exitCode) = runCmd("ccgbugs/mimportc_size_check.nim", "-d:caseBad")
-      doAssert "sizeof(struct Foo2) == 1" in output, output
-      doAssert "sizeof(Foo5) == 16" in output, output
-      doAssert "sizeof(Foo5) == 3" in output, output
-      doAssert "sizeof(struct Foo6) == " in output, output
+      let (output, exitCode) = runCmd(file, "-d:checkAbi -d:caseBad")
+      # on platforms that support _StaticAssert natively, errors will show full context, eg:
+      # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
+      # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
+      check "sizeof(unsigned char) == 8"
+      check "sizeof(struct Foo2) == 1"
+      check "sizeof(Foo5) == 16"
+      check "sizeof(Foo5) == 3"
+      check "sizeof(struct Foo6) == "
       doAssert exitCode != 0
