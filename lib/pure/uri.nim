@@ -41,8 +41,8 @@
 ## ---------------
 ##
 ## .. code-block::nim
-##    doAssert dataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
-##    doAssert dataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
 include "system/inclrtl"
 
