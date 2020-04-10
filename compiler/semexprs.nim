@@ -622,11 +622,12 @@ proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult 
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc isUnresolvedSym(s: PSym): bool =
-  return s.kind == skGenericParam or
-         tfInferrableStatic in s.typ.flags or
-         (s.kind == skParam and s.typ.isMetaType) or
-         (s.kind == skType and
-          s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+  result = s.kind == skGenericParam
+  if not result and s.typ != nil:
+    result = tfInferrableStatic in s.typ.flags or
+        (s.kind == skParam and s.typ.isMetaType) or
+        (s.kind == skType and
+        s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
 
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
   # Checks whether an expression depends on generic parameters that
