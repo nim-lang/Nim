@@ -15,7 +15,7 @@ include system/inclrtl
 import macros
 import typetraits
 
-proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
+proc createProcPrototype(p, b: NimNode): NimNode {.compileTime.} =
   #echo treeRepr(p)
   #echo treeRepr(b)
   result = newNimNode(nnkProcTy)
@@ -45,23 +45,24 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
     formalParams.add identDefs
 
   result.add formalParams
-  result.add newEmptyNode()
+  #result.add newEmptyNode()
   #echo(treeRepr(result))
   #echo(result.toStrLit())
 
-macro `=>`*(p, b: untyped): untyped =
-  ## Syntax sugar for anonymous procedures.
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
-  ##     f(2, 2)
-  ##
-  ##   passTwoAndTwo((x, y) => x + y) # 4
+proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
+  result = createProcPrototype(p,b)
+  result.add newEmptyNode()
 
-  #echo treeRepr(p)
-  #echo(treeRepr(b))
-  var params: seq[NimNode] = @[newIdentNode("auto")]
+proc createFuncType(p, b: NimNode): NimNode {.compileTime.} =
+  var pragma = newNimNode(nnkPragma)
+  pragma.add newIdentNode("noSideEffect")
+
+  result = createProcPrototype(p,b)
+  result.add pragma
+  #result.add newEmptyNode()
+
+proc createParams(p: NimNode): seq[NimNode] {.compileTime.} =
+  result = @[newIdentNode("auto")]
 
   case p.kind
   of nnkPar, nnkTupleConstr:
@@ -79,36 +80,66 @@ macro `=>`*(p, b: untyped): untyped =
       of nnkInfix:
         if c[0].kind == nnkIdent and c[0].ident == !"->":
           var procTy = createProcType(c[1], c[2])
-          params[0] = procTy[0][0]
+          result[0] = procTy[0][0]
           for i in 1 ..< procTy[0].len:
-            params.add(procTy[0][i])
+            result.add(procTy[0][i])
         else:
           error("Expected proc type (->) got (" & $c[0].ident & ").")
         break
       else:
         echo treeRepr c
         error("Incorrect procedure parameter list.")
-      params.add(identDefs)
+      result.add(identDefs)
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add(p)
     identDefs.add(newIdentNode("auto"))
     identDefs.add(newEmptyNode())
-    params.add(identDefs)
+    result.add(identDefs)
   of nnkInfix:
     if p[0].kind == nnkIdent and p[0].ident == !"->":
       var procTy = createProcType(p[1], p[2])
-      params[0] = procTy[0][0]
+      result[0] = procTy[0][0]
       for i in 1 ..< procTy[0].len:
-        params.add(procTy[0][i])
+        result.add(procTy[0][i])
     else:
       error("Expected proc type (->) got (" & $p[0].ident & ").")
   else:
     error("Incorrect procedure parameter list.")
+
+
+macro `=>`*(p, b: untyped): untyped =
+  ## Syntax sugar for anonymous procedures.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc passTwoAndTwo(f: (int, int) -> int): int =
+  ##     f(2, 2)
+  ##
+  ##   passTwoAndTwo((x, y) => x + y) # 4
+
+  #echo treeRepr(p)
+  #echo(treeRepr(b))
+  var params = createParams(p)
   result = newProc(params = params, body = b, procType = nnkLambda)
   #echo(result.treeRepr)
   #echo(result.toStrLit())
   #return result # TODO: Bug?
+
+macro `|=>`*(p, b: untyped): untyped =
+  ## Syntax sugar for anonymous functions, or procedures with the `{.noSideEffect}` pragma enabled.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc passTwoAndTwo(f: (int, int) |-> int): int =
+  ##     f(2, 2)
+  ##
+  ##   passTwoAndTwo((x, y) |=> x + y) # 4
+
+  var params = createParams(p)
+  var pragma = newNimNode(nnkPragma)
+  pragma.add newIdentNode("noSideEffect")
+  result = newProc(params = params, body = b, procType = nnkLambda, pragmas = pragma)
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.
@@ -124,6 +155,21 @@ macro `->`*(p, b: untyped): untyped =
   ##     f(2, 2)
 
   result = createProcType(p, b)
+
+macro `|->`*(p, b: untyped): untyped =
+  ## Syntax sugar for `func` types, or procedure types with the `{.noSideEffect.}` pragma enabled.
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   proc pass2(f: (float, float) |-> float): float =
+  ##     f(2, 2)
+  ##
+  ##   # is the same as:
+  ##
+  ##   proc pass2(f: proc (x, y: float): float {.noSideEffect.}): float =
+  ##     f(2, 2)
+
+  result = createFuncType(p, b)
 
 macro dump*(x: typed): untyped =
   ## Dumps the content of an expression, useful for debugging.
@@ -369,3 +415,12 @@ when isMainModule:
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+  block: #test first class function macros
+    type FooFunc = (int,int) |-> int
+
+    func addf(x,y:int): int = x + y
+    func appf(f: FooFunc, x,y: int): int = f(x,y)
+
+    assert appf(addf,1,2) == 3
+
+    assert appf((x,y) |=> x+y, 1,2) == 3
