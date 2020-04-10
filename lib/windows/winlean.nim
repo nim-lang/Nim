@@ -700,6 +700,7 @@ const
   ERROR_LOCK_VIOLATION* = 33
   ERROR_HANDLE_EOF* = 38
   ERROR_BAD_ARGUMENTS* = 165
+  ERROR_BAD_EXE_FORMAT* = 193
 
 proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
                       hTargetProcessHandle: Handle,
