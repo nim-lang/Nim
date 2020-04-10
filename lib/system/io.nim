@@ -507,12 +507,10 @@ const
     # should not be translated.
 
 when defined(posix) and not defined(nimscript):
-  type
-    Mode {.importc: "mode_t", header: "<sys/types.h>".} = cushort
-      # BUGFIX: was cint
-
   when defined(linux) and defined(amd64):
     type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+
       # fillers ensure correct size & offsets
       Stat {.importc: "struct stat",
               header: "<sys/stat.h>", final, pure.} = object ## struct stat
@@ -526,6 +524,8 @@ when defined(posix) and not defined(nimscript):
 
   else:
     type
+      Mode {.importc: "mode_t", header: "<sys/types.h>".} = cint
+
       Stat {.importc: "struct stat",
                header: "<sys/stat.h>", final, pure.} = object ## struct stat
         st_mode: Mode        ## Mode of file

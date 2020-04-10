@@ -140,15 +140,12 @@ type
     ## used for block sizes
   Clock* {.importc: "clock_t", header: "<sys/types.h>".} = int
   ClockId* {.importc: "clockid_t", header: "<sys/types.h>".} = int
-  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = uint64
-    # WAS: int. Probably not correct but more correct than previous definition
-    # https://lists.debian.org/debian-mips/2011/11/msg00006.html
+  Dev* {.importc: "dev_t", header: "<sys/types.h>".} = int
   Fsblkcnt* {.importc: "fsblkcnt_t", header: "<sys/types.h>".} = int
   Fsfilcnt* {.importc: "fsfilcnt_t", header: "<sys/types.h>".} = int
   Gid* {.importc: "gid_t", header: "<sys/types.h>".} = int
   Id* {.importc: "id_t", header: "<sys/types.h>".} = int
-  Ino* {.importc: "ino_t", header: "<sys/types.h>".} = cuint
-    ## BUGFIX: was int; probably still somewhat incorrect
+  Ino* {.importc: "ino_t", header: "<sys/types.h>".} = int
   Key* {.importc: "key_t", header: "<sys/types.h>".} = int
   Mode* {.importc: "mode_t", header: "<sys/types.h>".} = (
     when defined(android) or defined(macos) or defined(macosx) or
@@ -158,10 +155,7 @@ type
       uint32
   )
   Nlink* {.importc: "nlink_t", header: "<sys/types.h>".} = int
-  Off* {.importc: "off_t", header: "<sys/types.h>".} = cint
-    # WAS: int64 but this broke on CI in 32bit; a but underspecified, see
-    # https://stackoverflow.com/questions/9073667/where-to-find-the-complete-definition-of-off-t-type
-    # and https://www.ibm.com/support/knowledgecenter/en/SSLTBW_2.1.0/com.ibm.zos.v2r1.cbcpx01/datatypesize64.htm
+  Off* {.importc: "off_t", header: "<sys/types.h>".} = int64
   Pid* {.importc: "pid_t", header: "<sys/types.h>".} = int32
   Pthread_attr* {.importc: "pthread_attr_t", header: "<sys/types.h>".} = int
   Pthread_barrier* {.importc: "pthread_barrier_t",
