@@ -11,21 +11,45 @@ when defined(nodejs):
 type
   FetchOptions* = ref object
     metod {.importc: "method".}: cstring
-    body, integrity, referrer, mode, credentials: cstring
-    cache, redirect, referrerPolicy: cstring
+    body: cstring
+    integrity: cstring
+    referrer: cstring
+    mode: cstring
+    credentials: cstring
+    cache: cstring
+    redirect: cstring
+    referrerPolicy: cstring
     keepalive: bool
+
   FetchModes* = enum            ## JavaScript Fetch API mode options.
-    fmCors = "cors".cstring, fmNoCors = "no-cors".cstring, fmSameOrigin = "same-origin".cstring
+    fmCors = "cors".cstring
+    fmNoCors = "no-cors".cstring
+    fmSameOrigin = "same-origin".cstring
+
   FetchCredentials* = enum      ## JavaScript Fetch API Credential options.
-    fcInclude = "include".cstring, fcSameOrigin = "same-origin".cstring, fcOmit = "omit".cstring
+    fcInclude = "include".cstring
+    fcSameOrigin = "same-origin".cstring
+    fcOmit = "omit".cstring
+
   FetchCaches* = enum           ## https://developer.mozilla.org/docs/Web/API/Request/cache
-    fchDefault = "default".cstring, fchNoStore = "no-store".cstring,
-    fchReload = "reload".cstring, fchNoCache = "no-cache".cstring, fchForceCache = "force-cache".cstring
+    fchDefault = "default".cstring
+    fchNoStore = "no-store".cstring
+    fchReload = "reload".cstring
+    fchNoCache = "no-cache".cstring
+    fchForceCache = "force-cache".cstring
+
   FetchRedirects* = enum        ## JavaScript Fetch API Redirects options.
-    frFollow = "follow".cstring, frError = "error".cstring, frManual = "manual".cstring
+    frFollow = "follow".cstring
+    frError = "error".cstring
+    frManual = "manual".cstring
+
   FetchReferrerPolicies* = enum ## JavaScript Fetch API Referrer Policy options.
-    frpNoReferrer = "no-referrer".cstring, frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade".cstring,
-    frpOrigin = "origin".cstring, frpOriginWhenCrossOrigin = "origin-when-cross-origin".cstring, frpUnsafeUrl = "unsafe-url".cstring
+    frpNoReferrer = "no-referrer".cstring
+    frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade".cstring
+    frpOrigin = "origin".cstring
+    frpOriginWhenCrossOrigin = "origin-when-cross-origin".cstring
+    frpUnsafeUrl = "unsafe-url".cstring
+
 
 template fetchMethodToCstring(metod: HttpMethod): cstring =
   ## Template that takes an `HttpMethod` and returns an *Uppercase* `cstring`,
