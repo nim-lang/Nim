@@ -4,6 +4,7 @@
 
 ## Standard library additions and changes
 
+- Add `|=>` and `|->` macro operators to the sugar module which behave like `=>` and `->` respectively, but guarding against side effects.
 
 ## Language changes
 
@@ -14,4 +15,3 @@
 - The `define` and `undef` pragmas have been de-deprecated.
 
 ## Tool changes
-
