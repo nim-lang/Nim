@@ -104,3 +104,12 @@ typedef enum FooEnum{
   when false:
     checkSize Foo1Alias # pending https://github.com/nim-lang/Nim/issues/13945
     checkSize FooEnum # pending https://github.com/nim-lang/Nim/issues/13927
+
+block: # cstaticIf
+  var a = 1
+  cstaticIf "defined(nonexistant)":
+    a = 2
+  doAssert a == 1
+  cstaticIf "defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L":
+    a = 3
+  doAssert a == 3, "really old compiler"

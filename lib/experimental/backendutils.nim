@@ -36,3 +36,8 @@ template c_sizeof*(T: typedesc): int =
   var s: int
   {.emit("here"): [s," = sizeof(", T, ");"].}
   s
+
+template cstaticIf*(cond: string, body) =
+  {.emit("here"): ["""#if """, cond, "\n"].}
+  body
+  {.emit("here"): "#endif\n".}
