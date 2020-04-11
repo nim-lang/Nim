@@ -9,7 +9,7 @@ when defined(nodejs):
   {.warning: "By design 'fetch()' is defined on the web browser, but may not be on NodeJS.".}
 
 type
-  FetchOptions* = ref object
+  FetchOptions* = ref object    ## Options for `fetch()`
     metod {.importc: "method".}: cstring
     body: cstring
     integrity: cstring
