@@ -6,39 +6,16 @@ import experimental/backendutils
 import macros, strutils, os
 import unittest
 
-macro test(body: untyped): untyped =
+macro checkSizes(body: untyped): untyped =
   result = newStmtList()
   for T in body:
     result.add quote do:
       let s1 = `T`.sizeof
       let s2 = `T`.c_sizeof
       if s1 != s2:
+        # improve pending https://github.com/nim-lang/Nim/pull/10558
         echo "$1 $2 => sizeof: $3 vs c_sizeof: $4" % [$astToStr(`T`), c_astToStr(`T`), $s1, $s2]
-
-type FooEmpty = object
-const N = 10
-type FooEmptyArr = array[N, FooEmpty]
-type Bar = object
-  x: FooEmpty
-  y: cint
-
-type BarTup = (FooEmpty, cint)
-type BarTup2 = (().type, cint)
-
-# type MyEnum = enum k1, k2
-type MyEnum {.exportc.} = enum k1, k2
-type Obj = object
-  x1: MyEnum
-  x2: cint
-
-test:
-  FooEmpty
-  FooEmptyArr
-  Bar
-  BarTup
-  BarTup2
-  MyEnum
-  Obj
+      check s1 == s2
 
 block: # c_currentFunction
   proc test1(){.exportc.} =
@@ -71,45 +48,63 @@ block: # c_astToStr
   type Foo = object
   doAssert c_astToStr(Foo).startsWith "tyObject_Foo_"
 
+block: # cstaticIf
+  var a = 1
+  cstaticIf "defined(nonexistant)":
+    a = 2
+  cstaticIf "0 || 1":
+    a = 3
+  doAssert a == 3
+
 block: # c_sizeof
   doAssert char.c_sizeof == 1
   {.emit("here"):"""
 typedef struct Foo1{
 } Foo1;
-typedef enum FooEnum{
-  k1, k2
-} FooEnum;
 """.}
 
-  # type Foo1 {.importc, completeStruct.} = object # pending https://github.com/nim-lang/Nim/pull/13926
   type Foo1 {.importc.} = object
-  type Foo1Alias = object
 
-  type FooEnum {.importc.} = enum k1, k2
-  when defined(cpp):
-    doAssert Foo1.c_sizeof == 1
-  else:
-    doAssert Foo1.c_sizeof == 0
+  when defined(cpp): doAssert Foo1.c_sizeof == 1
+  else: doAssert Foo1.c_sizeof == 0
 
-  template checkSize(T) =
-    let s1 = T.c_sizeof
-    let s2 = T.sizeof
-    # check s1 == s2, $($T, c_astToStr(T), s1, s2) # pending https://github.com/nim-lang/Nim/pull/10558
-    if s1 != s2:
-      echo "sizeof mismatch " & $($T, c_astToStr(T), s1, s2)
-    check s1 == s2
-  checkSize cint
-  checkSize int
-  checkSize Foo1
-  when false:
-    checkSize Foo1Alias # pending https://github.com/nim-lang/Nim/issues/13945
-    checkSize FooEnum # pending https://github.com/nim-lang/Nim/issues/13927
+  checkSizes:
+    cint
+    int
+    Foo1
 
-block: # cstaticIf
-  var a = 1
-  cstaticIf "defined(nonexistant)":
-    a = 2
-  doAssert a == 1
-  cstaticIf "defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L":
-    a = 3
-  doAssert a == 3, "really old compiler"
+when false: # broken tests
+  block:
+    {.emit("here"):"""
+  typedef struct Foo2{
+  } Foo2;
+  """.}
+
+    # add this after https://github.com/nim-lang/Nim/pull/13926
+    # type Foo2 {.importc, completeStruct.} = object
+
+    type FooEmpty = object
+    const N = 10
+    type FooEmptyArr = array[N, FooEmpty]
+    type Bar = object
+      x: FooEmpty
+      y: cint
+
+    type BarTup = (FooEmpty, cint)
+    type BarTup2 = (().type, cint)
+
+    type MyEnum1 = enum g1, g2
+    type MyEnum2 {.exportc.} = enum k1, k2
+    type Obj = object
+      x1: MyEnum2
+      x2: cint
+
+    checkSizes:
+      FooEmpty # pending https://github.com/nim-lang/Nim/issues/13945
+      FooEmptyArr
+      Bar
+      BarTup
+      BarTup2
+      MyEnum1
+      MyEnum2 # pending https://github.com/nim-lang/Nim/issues/13927
+      Obj
