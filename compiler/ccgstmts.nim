@@ -1467,14 +1467,15 @@ proc determineSection(p: BProc, n: PNode): tuple[kind: SectionKind, filesec: TCF
     of "includeSection".normalize: retFile cfsHeaders
     of "here".normalize: result = (kProc, TCFileSection.default, cpsStmts)
     else: bail("expected: `typeSection, varSection, includeSection, here`, got: $1".format n1.ident.s)
-  else: # legacy syntax; no need to add new section values here
+  elif n.len == 2: # legacy syntax; no need to add new section values here
+    let n = n[1]
     if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
       let sec = n[0].strVal
       if sec.startsWith("/*TYPESECTION*/"): retFile cfsTypes
       elif sec.startsWith("/*VARSECTION*/"): retFile cfsVars
       elif sec.startsWith("/*INCLUDESECTION*/"): retFile cfsHeaders
-    if result.kind == kUnknown:
-      result = (kUnknown, cfsProcHeaders, cpsStmts)
+    if result.kind == kUnknown: result = (kUnknown, cfsProcHeaders, cpsStmts)
+  else: doAssert false, $n.len
 
 proc genAsmStmt(p: BProc, t: PNode) =
   assert(t.kind == nkAsmStmt)
