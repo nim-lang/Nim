@@ -13,15 +13,17 @@ type
     `method`, body, integrity, referrer, mode, credentials, cache, redirect, referrerPolicy: cstring
     keepalive: bool
   FetchModes* = enum            ## JavaScript Fetch API mode options.
-    fmCors, fmNoCors, fmSameOrigin
+    fmCors = "cors".cstring, fmNoCors = "no-cors".cstring, fmSameOrigin = "same-origin".cstring
   FetchCredentials* = enum      ## JavaScript Fetch API Credential options.
-    fcInclude, fcSameOrigin, fcOmit
+    fcInclude = "include".cstring, fcSameOrigin = "same-origin".cstring, fcOmit = "omit".cstring
   FetchCaches* = enum           ## https://developer.mozilla.org/docs/Web/API/Request/cache
-    fchDefault, fchNoStore, fchReload, fchNoCache, fchForceCache
+    fchDefault = "default".cstring, fchNoStore = "no-store".cstring,
+    fchReload = "reload".cstring, fchNoCache = "no-cache".cstring, fchForceCache = "force-cache".cstring
   FetchRedirects* = enum        ## JavaScript Fetch API Redirects options.
-    frFollow, frError, frManual
+    frFollow = "follow".cstring, frError = "error".cstring, frManual = "manual".cstring
   FetchReferrerPolicies* = enum ## JavaScript Fetch API Referrer Policy options.
-    frpNoReferrer, frpNoReferrerWhenDowngrade, frpOrigin, frpOriginWhenCrossOrigin, frpUnsafeUrl
+    frpNoReferrer = "no-referrer".cstring, frpNoReferrerWhenDowngrade = "no-referrer-when-downgrade".cstring,
+    frpOrigin = "origin".cstring, frpOriginWhenCrossOrigin = "origin-when-cross-origin".cstring, frpUnsafeUrl = "unsafe-url".cstring
 
 template fetchMethodToCstring(metod: HttpMethod): cstring =
   ## Template that takes an `HttpMethod` and returns an *Uppercase* `cstring`,
