@@ -47,8 +47,8 @@ else: # don't run twice the same test
   block: # ABI checks
     let file = "misc/msizeof5.nim"
     block:
-      let (_, exitCode) = runCmd(file, "-d:checkAbi")
-      doAssert exitCode == 0
+      let (output, exitCode) = runCmd(file, "-d:checkAbi")
+      doAssert exitCode == 0, output
     block:
       let (output, exitCode) = runCmd(file, "-d:checkAbi -d:caseBad")
       # on platforms that support _StaticAssert natively, errors will show full context, eg:

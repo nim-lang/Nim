@@ -26,7 +26,6 @@ const
     cfsTypes: "NIM_merge_TYPES",
     cfsSeqTypes: "NIM_merge_SEQ_TYPES",
     cfsFieldInfo: "NIM_merge_FIELD_INFO",
-    cfsEmits: "NIM_merge_EMITS",
     cfsTypeInfo: "NIM_merge_TYPE_INFO",
     cfsProcHeaders: "NIM_merge_PROC_HEADERS",
     cfsData: "NIM_merge_DATA",

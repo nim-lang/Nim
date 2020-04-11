@@ -1,6 +1,6 @@
 ## tests for -d:checkAbi used by addAbiCheck via NIM_STATIC_ASSERT
 
-{.emit:"""
+{.emit:"""/*TYPESECTION*/
 struct Foo1{
   int a;
 };
