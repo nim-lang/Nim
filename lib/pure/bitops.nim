@@ -73,58 +73,64 @@ when defined(nimHasalignOf):
   proc setMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.setMask(0b0000_1010'u8)
-      doAssert v == 0b0000_1011'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.setMask(0b0000_1010'u8)
+        doAssert v == 0b0000_1011'u8
 
     v = v or mask
 
   proc clearMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.clearMask(0b0000_1010'u8)
-      doAssert v == 0b0000_0001'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.clearMask(0b0000_1010'u8)
+        doAssert v == 0b0000_0001'u8
 
     v = v and not mask
 
   proc flipMask*[T: SomeInteger](v: var T, mask: T) {.inline.} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.flipMask(0b0000_1010'u8)
-      doAssert v == 0b0000_1001'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.flipMask(0b0000_1010'u8)
+        doAssert v == 0b0000_1001'u8
 
     v = v xor mask
 
   proc setBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
     ## Returns ``v``, with the bit at position ``bit`` set to 1.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.setBit(5'u8)
-      doAssert v == 0b0010_0011'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.setBit(5'u8)
+        doAssert v == 0b0010_0011'u8
 
     v.setMask(1.T shl bit)
 
   proc clearBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
     ## Returns ``v``, with the bit at position ``bit`` set to 0.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.clearBit(1'u8)
-      doAssert v == 0b0000_0001'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.clearBit(1'u8)
+        doAssert v == 0b0000_0001'u8
 
     v.clearMask(1.T shl bit)
 
   proc flipBit*[T: SomeInteger](v: var T, bit: BitsRange[T]) {.inline.} =
     ## Returns ``v``, with the bit at position ``bit`` flipped.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.flipBit(1'u8)
-      doAssert v == 0b0000_0001'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.flipBit(1'u8)
+        doAssert v == 0b0000_0001'u8
 
-      v = 0b0000_0011'u8
-      v.flipBit(2'u8)
-      doAssert v == 0b0000_0111'u8
+        v = 0b0000_0011'u8
+        v.flipBit(2'u8)
+        doAssert v == 0b0000_0111'u8
 
     v.flipMask(1.T shl bit)
 
@@ -134,9 +140,10 @@ when defined(nimHasalignOf):
     ## **Note:**
     ## * ``v`` must be `var` variable.
     runnableExamples:
-      var v = 0b0000_0011'u8
-      v.setBits(3, 5, 7)
-      doAssert v == 0b1010_1011'u8
+      static:
+        var v = 0b0000_0011'u8
+        v.setBits(3, 5, 7)
+        doAssert v == 0b1010_1011'u8
 
     bits.expectKind(nnkBracket)
     result = newStmtList()
@@ -149,9 +156,10 @@ when defined(nimHasalignOf):
     ## **Note:**
     ## * ``v`` must be `var` variable.
     runnableExamples:
-      var v = 0b1111_1111'u8
-      v.clearBits(1, 3, 5, 7)
-      doAssert v == 0b0101_0101'u8
+      static:
+        var v = 0b1111_1111'u8
+        v.clearBits(1, 3, 5, 7)
+        doAssert v == 0b0101_0101'u8
 
     bits.expectKind(nnkBracket)
     result = newStmtList()
@@ -164,9 +172,10 @@ when defined(nimHasalignOf):
     ## **Note:**
     ## * ``v`` must be `var` variable.
     runnableExamples:
-      var v = 0b0000_1111'u8
-      v.flipBits(1, 3, 5, 7)
-      doAssert v == 0b1010_0101'u8
+      static:
+        var v = 0b0000_1111'u8
+        v.flipBits(1, 3, 5, 7)
+        doAssert v == 0b1010_0101'u8
 
     bits.expectKind(nnkBracket)
     result = newStmtList()
@@ -176,15 +185,16 @@ when defined(nimHasalignOf):
   proc testBit*[T: SomeInteger](v: T, bit: BitsRange[T]): bool {.inline.} =
     ## Returns true if the bit in ``v`` at positions ``bit`` is set to 1.
     runnableExamples:
-      var v = 0b0000_1111'u8
-      doAssert v.testBit(0)
-      doAssert v.testBit(1)
-      doAssert v.testBit(2)
-      doAssert v.testBit(3)
-      doAssert not v.testBit(4)
-      doAssert not v.testBit(5)
-      doAssert not v.testBit(6)
-      doAssert not v.testBit(7)
+      static:
+        var v = 0b0000_1111'u8
+        doAssert v.testBit(0)
+        doAssert v.testBit(1)
+        doAssert v.testBit(2)
+        doAssert v.testBit(3)
+        doAssert not v.testBit(4)
+        doAssert not v.testBit(5)
+        doAssert not v.testBit(6)
+        doAssert not v.testBit(7)
 
     let mask = 1.T shl bit
     return (v and mask) == mask
@@ -342,8 +352,9 @@ elif useICC_builtins:
 proc countSetBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Counts the set bits in integer. (also called `Hamming weight`:idx:.)
   runnableExamples:
-    doAssert countSetBits(0b0000_0011'u8) == 2
-    doAssert countSetBits(0b1010_1010'u8) == 4
+    static:
+      doAssert countSetBits(0b0000_0011'u8) == 2
+      doAssert countSetBits(0b1010_1010'u8) == 4
 
   # TODO: figure out if ICC support _popcnt32/_popcnt64 on platform without POPCNT.
   # like GCC and MSVC
@@ -378,10 +389,11 @@ proc parityBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## Calculate the bit parity in integer. If number of 1-bit
   ## is odd parity is 1, otherwise 0.
   runnableExamples:
-    doAssert parityBits(0b0000_0000'u8) == 0
-    doAssert parityBits(0b0101_0001'u8) == 1
-    doAssert parityBits(0b0110_1001'u8) == 0
-    doAssert parityBits(0b0111_1111'u8) == 1
+    static:
+      doAssert parityBits(0b0000_0000'u8) == 0
+      doAssert parityBits(0b0101_0001'u8) == 1
+      doAssert parityBits(0b0110_1001'u8) == 0
+      doAssert parityBits(0b0111_1111'u8) == 1
 
   # Can be used a base if creating ASM version.
   # https://stackoverflow.com/questions/21617970/how-to-check-if-value-has-even-parity-of-bits-or-odd
@@ -402,11 +414,12 @@ proc firstSetBit*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is 0,
   ## otherwise result is undefined.
   runnableExamples:
-    doAssert firstSetBit(0b0000_0001'u8) == 1
-    doAssert firstSetBit(0b0000_0010'u8) == 2
-    doAssert firstSetBit(0b0000_0100'u8) == 3
-    doAssert firstSetBit(0b0000_1000'u8) == 4
-    doAssert firstSetBit(0b0000_1111'u8) == 1
+    static:
+      doAssert firstSetBit(0b0000_0001'u8) == 1
+      doAssert firstSetBit(0b0000_0010'u8) == 2
+      doAssert firstSetBit(0b0000_0100'u8) == 3
+      doAssert firstSetBit(0b0000_1000'u8) == 4
+      doAssert firstSetBit(0b0000_1111'u8) == 1
 
   # GCC builtin 'builtin_ffs' already handle zero input.
   when x is SomeSignedInt:
@@ -446,11 +459,12 @@ proc fastLog2*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## If `x` is zero, when ``noUndefinedBitOpts`` is set, result is -1,
   ## otherwise result is undefined.
   runnableExamples:
-    doAssert fastLog2(0b0000_0001'u8) == 0
-    doAssert fastLog2(0b0000_0010'u8) == 1
-    doAssert fastLog2(0b0000_0100'u8) == 2
-    doAssert fastLog2(0b0000_1000'u8) == 3
-    doAssert fastLog2(0b0000_1111'u8) == 3
+    static:
+      doAssert fastLog2(0b0000_0001'u8) == 0
+      doAssert fastLog2(0b0000_0010'u8) == 1
+      doAssert fastLog2(0b0000_0100'u8) == 2
+      doAssert fastLog2(0b0000_1000'u8) == 3
+      doAssert fastLog2(0b0000_1111'u8) == 3
 
   when x is SomeSignedInt:
     let x = x.toUnsigned
@@ -489,11 +503,12 @@ proc countLeadingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## See also:
   ## * `countTrailingZeroBits proc <#countTrailingZeroBits,SomeInteger>`_
   runnableExamples:
-    doAssert countLeadingZeroBits(0b0000_0001'u8) == 7
-    doAssert countLeadingZeroBits(0b0000_0010'u8) == 6
-    doAssert countLeadingZeroBits(0b0000_0100'u8) == 5
-    doAssert countLeadingZeroBits(0b0000_1000'u8) == 4
-    doAssert countLeadingZeroBits(0b0000_1111'u8) == 4
+    static:
+      doAssert countLeadingZeroBits(0b0000_0001'u8) == 7
+      doAssert countLeadingZeroBits(0b0000_0010'u8) == 6
+      doAssert countLeadingZeroBits(0b0000_0100'u8) == 5
+      doAssert countLeadingZeroBits(0b0000_1000'u8) == 4
+      doAssert countLeadingZeroBits(0b0000_1111'u8) == 4
 
   when x is SomeSignedInt:
     let x = x.toUnsigned
@@ -518,11 +533,12 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
   ## See also:
   ## * `countLeadingZeroBits proc <#countLeadingZeroBits,SomeInteger>`_
   runnableExamples:
-    doAssert countTrailingZeroBits(0b0000_0001'u8) == 0
-    doAssert countTrailingZeroBits(0b0000_0010'u8) == 1
-    doAssert countTrailingZeroBits(0b0000_0100'u8) == 2
-    doAssert countTrailingZeroBits(0b0000_1000'u8) == 3
-    doAssert countTrailingZeroBits(0b0000_1111'u8) == 0
+    static:
+      doAssert countTrailingZeroBits(0b0000_0001'u8) == 0
+      doAssert countTrailingZeroBits(0b0000_0010'u8) == 1
+      doAssert countTrailingZeroBits(0b0000_0100'u8) == 2
+      doAssert countTrailingZeroBits(0b0000_1000'u8) == 3
+      doAssert countTrailingZeroBits(0b0000_1111'u8) == 0
 
   when x is SomeSignedInt:
     let x = x.toUnsigned
@@ -543,10 +559,11 @@ proc rotateLeftBits*(value: uint8;
            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 8-bits value.
   runnableExamples:
-    doAssert rotateLeftBits(0b0000_0001'u8, 1) == 0b0000_0010'u8
-    doAssert rotateLeftBits(0b0000_0001'u8, 2) == 0b0000_0100'u8
-    doAssert rotateLeftBits(0b0100_0001'u8, 1) == 0b1000_0010'u8
-    doAssert rotateLeftBits(0b0100_0001'u8, 2) == 0b0000_0101'u8
+    static:
+      doAssert rotateLeftBits(0b0000_0001'u8, 1) == 0b0000_0010'u8
+      doAssert rotateLeftBits(0b0000_0001'u8, 2) == 0b0000_0100'u8
+      doAssert rotateLeftBits(0b0100_0001'u8, 1) == 0b1000_0010'u8
+      doAssert rotateLeftBits(0b0100_0001'u8, 2) == 0b0000_0101'u8
 
   # using this form instead of the one below should handle any value
   # out of range as well as negative values.
@@ -587,10 +604,11 @@ proc rotateRightBits*(value: uint8;
             amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 8-bits value.
   runnableExamples:
-    doAssert rotateRightBits(0b0000_0001'u8, 1) == 0b1000_0000'u8
-    doAssert rotateRightBits(0b0000_0001'u8, 2) == 0b0100_0000'u8
-    doAssert rotateRightBits(0b0100_0001'u8, 1) == 0b1010_0000'u8
-    doAssert rotateRightBits(0b0100_0001'u8, 2) == 0b0101_0000'u8
+    static:
+      doAssert rotateRightBits(0b0000_0001'u8, 1) == 0b1000_0000'u8
+      doAssert rotateRightBits(0b0000_0001'u8, 2) == 0b0100_0000'u8
+      doAssert rotateRightBits(0b0100_0001'u8, 1) == 0b1010_0000'u8
+      doAssert rotateRightBits(0b0100_0001'u8, 2) == 0b0101_0000'u8
 
   let amount = amount and 7
   result = (value shr amount) or (value shl ( (-amount) and 7))
@@ -633,10 +651,11 @@ proc repeatBits[T: SomeUnsignedInt](x: SomeUnsignedInt; retType: type[T]): T {.
 proc reverseBits*[T: SomeUnsignedInt](x: T): T {.noSideEffect.} =
   ## Return the bit reversal of x.
   runnableExamples:
-    doAssert reverseBits(0b10100100'u8) == 0b00100101'u8
-    doAssert reverseBits(0xdd'u8) == 0xbb'u8
-    doAssert reverseBits(0xddbb'u16) == 0xddbb'u16
-    doAssert reverseBits(0xdeadbeef'u32) == 0xf77db57b'u32
+    static:
+      doAssert reverseBits(0b10100100'u8) == 0b00100101'u8
+      doAssert reverseBits(0xdd'u8) == 0xbb'u8
+      doAssert reverseBits(0xddbb'u16) == 0xddbb'u16
+      doAssert reverseBits(0xdeadbeef'u32) == 0xf77db57b'u32
 
   template repeat(x: SomeUnsignedInt): T = repeatBits(x, T)
 
