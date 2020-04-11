@@ -9,6 +9,8 @@
 
 # included from cgen.nim
 
+from strutils import format
+
 const
   RangeExpandLimit = 256      # do not generate ranges
                               # over 'RangeExpandLimit' elements
@@ -1449,19 +1451,19 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
 type SectionKind = enum kUnknown, kFile, kProc
 
 proc determineSection(p: BProc, n: PNode): tuple[kind: SectionKind, filesec: TCFileSection, procsec: TCProcSection] =
-  template bail() =
-    localError(p.config, n.info, "invalid emit section")
+  template bail(msg) =
+    localError(p.config, n.info, msg)
     return
   template retFile(sec) = result = (kFile, sec, TCProcSection.default)
   if n.len == 3:
     let n1 = n[1]
-    if n1.kind != nkIdent: bail()
+    if n1.kind != nkIdent: bail("expected: nkIdent, got $1".format n1.kind)
     case n1.ident.s.normalize
-    of "typeSection": retFile cfsTypes
-    of "varSection": retFile cfsVars
-    of "includeSection": retFile cfsHeaders
-    of "here": result = (kProc, TCFileSection.default, cpsStmts)
-    else: bail()
+    of "typeSection".normalize: retFile cfsTypes
+    of "varSection".normalize: retFile cfsVars
+    of "includeSection".normalize: retFile cfsHeaders
+    of "here".normalize: result = (kProc, TCFileSection.default, cpsStmts)
+    else: bail("expected: `typeSection, varSection, includeSection, here`, got: $1".format n1.ident.s)
   else: # legacy syntax; no need to add new section values here
     if n.len >= 1 and n[0].kind in {nkStrLit..nkTripleStrLit}:
       let sec = n[0].strVal
