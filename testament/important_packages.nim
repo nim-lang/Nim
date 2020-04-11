@@ -49,8 +49,9 @@ pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 # pkg "nico", true
 pkg "nicy", false, "nim c src/nicy.nim"
 
-when defined(osx): # could not load: libgtk-3.0.dylib
+when defined(osx):
   # do this more generally by installing non-nim dependencies automatically
+  # as specified in nimble file
   doAssert execShellCmd("brew install gtk+3") == 0
 pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
 
