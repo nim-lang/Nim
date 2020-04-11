@@ -1,3 +1,4 @@
+import os
 
 template pkg(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
   packages.add((name, cmd, hasDeps, url))
@@ -47,8 +48,12 @@ pkg "nake", false, "nim c nakefile.nim"
 pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 # pkg "nico", true
 pkg "nicy", false, "nim c src/nicy.nim"
-when not defined(osx): # could not load: libgtk-3.0.dylib
-  pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
+
+when defined(osx): # could not load: libgtk-3.0.dylib
+  # do this more generally by installing non-nim dependencies automatically
+  doAssert execShellCmd("brew install gtk+3") == 0
+pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
+
 pkg "nimcrypto", false, "nim c -r tests/testall.nim"
 pkg "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", true, "nim c src/nimes.nim"
