@@ -10,7 +10,9 @@ when defined(nodejs):
 
 type
   FetchOptions* = ref object
-    `method`, body, integrity, referrer, mode, credentials, cache, redirect, referrerPolicy: cstring
+    metod {.importc: "method".}: cstring
+    body, integrity, referrer, mode, credentials: cstring
+    cache, redirect, referrerPolicy: cstring
     keepalive: bool
   FetchModes* = enum            ## JavaScript Fetch API mode options.
     fmCors = "cors".cstring, fmNoCors = "no-cors".cstring, fmSameOrigin = "same-origin".cstring
@@ -73,7 +75,7 @@ template `$`(x: FetchReferrerPolicies): cstring =
   of frpOriginWhenCrossOrigin:   "origin-when-cross-origin".cstring
   of frpUnsafeUrl:               "unsafe-url".cstring
 
-func unsafeNewFetchOptions*(`method`, body, mode, credentials, cache, referrerPolicy: cstring,
+func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importcpp:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
   ## **Unsafe** `newfetchOptions`. Low-level proc, usage is discouraged, only for optimization purposes.
@@ -81,7 +83,7 @@ func unsafeNewFetchOptions*(`method`, body, mode, credentials, cache, referrerPo
 func newfetchOptions*(metod: HttpMethod, body: cstring,
     mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
     keepalive: bool, redirect = frFollow, referrer = "client".cstring, integrity = "".cstring): FetchOptions =
-  result = FetchOptions(`method`: fetchMethodTocstring(metod), body: body, mode: $mode,
+  result = FetchOptions(metod: fetchMethodTocstring(metod), body: body, mode: $mode,
     credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
 
