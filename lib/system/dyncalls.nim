@@ -40,8 +40,9 @@ proc nimLoadLibraryError(path: string) =
       let pathLen = min(path.len + 1, charsLeft)
       copyMem(msg[msg.len - charsLeft].addr, path.cstring, pathLen)
       charsLeft -= pathLen
-      if loadError == ERROR_BAD_EXE_FORMAT and charsLeft >= badExe.len:
-        copyMem(msg[msg.len - charsLeft].addr, badExe.cstring, badExe.len)
+      if loadError == ERROR_BAD_EXE_FORMAT and charsLeft >= badExe.len + 1:
+        msg[msg.len - charsLeft - 1] = ' '
+        copyMem(msg[msg.len - charsLeft].addr, badExe.cstring, badExe.len + 1)
       discard MessageBoxA(nil, msg[0].addr, nil, 0)
   cstderr.rawWrite("\n")
   quit(1)
