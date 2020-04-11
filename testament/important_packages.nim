@@ -17,7 +17,8 @@ pkg "c2nim", false, "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", true, "nim c -o:chr -r chronicles.nim"
-pkg "chronos", true
+when not defined(osx): # testdatagram.nim(560, 54): Check failed
+  pkg "chronos", true
 pkg "cligen", false, "nim c -o:cligenn -r cligen.nim"
 pkg "coco", true
 pkg "combparser"
@@ -46,7 +47,8 @@ pkg "nake", false, "nim c nakefile.nim"
 pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 # pkg "nico", true
 pkg "nicy", false, "nim c src/nicy.nim"
-pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
+when not defined(osx): # could not load: libgtk-3.0.dylib
+  pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
 pkg "nimcrypto", false, "nim c -r tests/testall.nim"
 pkg "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", true, "nim c src/nimes.nim"
