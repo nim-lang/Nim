@@ -1495,18 +1495,12 @@ proc isModuleLevel(p: BProc): bool =
 proc genEmit(p: BProc, t: PNode) =
   var s = genAsmOrEmitStmt(p, t[^1])
   let (status, fileSection, procSection) = determineSection(p, t)
-  template emitProcSection(section) =
+  if status == kFile or (status == kUnknown and p.isModuleLevel):
+    genCLineDir(p.module.s[fileSection], t.info, p.config)
+    p.module.s[fileSection].add(s)
+  else:
     genLineDir(p, t)
-    line(p, section, s)
-  template emitFileSection(section) =
-    genCLineDir(p.module.s[section], t.info, p.config)
-    p.module.s[section].add(s)
-
-  case status
-  of kFile: emitFileSection(fileSection)
-  of kProc: emitProcSection(procSection)
-  elif p.isModuleLevel: emitFileSection(fileSection)
-  else: emitProcSection(procSection) # could be inside a top level `block:`
+    line(p, procSection, s)
 
 proc genPragma(p: BProc, n: PNode) =
   for it in n.sons:
