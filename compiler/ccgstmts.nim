@@ -1457,8 +1457,11 @@ proc determineSection(p: BProc, n: PNode): tuple[kind: SectionKind, filesec: TCF
   template retFile(sec) = result = (kFile, sec, TCProcSection.default)
   if n.len == 3:
     let n1 = n[1]
-    if n1.kind != nkIdent: bail("expected: nkIdent, got $1".format n1.kind)
-    case n1.ident.s.normalize
+    if n1.kind != nkStrLit: bail("expected: 'nkStrLit', got '$1'".format n1.kind)
+    # using nkStrLit instead of nkIdent as it'll allow to pass a constant
+    # string argument to emit without ambiguity, eg:
+    # const section = "here"; emit(section): "/**/"
+    case n1.strVal.normalize
     of "typeSection".normalize: retFile cfsTypes
     of "varSection".normalize: retFile cfsVars
     of "includeSection".normalize: retFile cfsHeaders
