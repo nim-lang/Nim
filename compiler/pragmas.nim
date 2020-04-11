@@ -567,21 +567,20 @@ proc semAsmOrEmit*(con: PContext, n: PNode, marker: char): PNode =
     result = newNode(nkAsmStmt, n.info)
 
 proc pragmaEmit(c: PContext, n: PNode) =
-  if n.kind notin nkPragmaCallKinds:
+  if n.kind notin nkPragmaCallKinds or (n.len != 2 and n.len != 3):
     localError(c.config, n.info, errStringLiteralExpected)
   else:
-    let last = n.len-1 # easier to spot than `^1` here
-    let n1 = n[last]
+    let n1 = n[^1]
     if n1.kind == nkBracket:
       var b = newNodeI(nkBracket, n1.info, n1.len)
       for i in 0..<n1.len:
         b[i] = c.semExpr(c, n1[i])
-      n[last] = b
+      n[^1] = b
     else:
-      n[last] = c.semConstExpr(c, n1)
-      case n[last].kind
+      n[^1] = c.semConstExpr(c, n1)
+      case n[^1].kind
       of nkStrLit, nkRStrLit, nkTripleStrLit:
-        n[last] = semAsmOrEmit(c, n, '`')
+        n[^1] = semAsmOrEmit(c, n, '`')
       else:
         localError(c.config, n.info, errStringLiteralExpected)
 

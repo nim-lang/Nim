@@ -39,7 +39,6 @@ type
     cfsDynLibInit,            # section for init of dynamic library binding
     cfsDynLibDeinit           # section for deinitialization of dynamic
                               # libraries
-
   TCTypeKind* = enum          # describes the type kind of a C type
     ctVoid, ctChar, ctBool,
     ctInt, ctInt8, ctInt16, ctInt32, ctInt64,
