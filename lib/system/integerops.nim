@@ -19,7 +19,7 @@ proc raiseDivByZero {.compilerproc, noinline.} =
 
 {.pragma: nimbaseH, importc, nodecl, noSideEffect, compilerproc.}
 
-when (defined(gcc) or defined(clang)) and not defined(nimEmulateOverflowChecks):
+when (defined(gcc) or defined(clang) or defined(zig)) and not defined(nimEmulateOverflowChecks):
   # take the #define from nimbase.h
 
   proc nimAddInt(a, b: int, res: ptr int): bool {.nimbaseH.}
