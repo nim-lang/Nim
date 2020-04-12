@@ -73,6 +73,7 @@ func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolic
 func newfetchOptions*(metod: HttpMethod, body: cstring,
     mode: FetchModes, credentials: FetchCredentials, cache: FetchCaches, referrerPolicy: FetchReferrerPolicies,
     keepalive: bool, redirect = frFollow, referrer = "client".cstring, integrity = "".cstring): FetchOptions =
+  ## Constructor for `FetchOptions`.
   result = FetchOptions(metod: fetchMethodTocstring(metod), body: body, mode: $mode,
     credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
@@ -81,4 +82,4 @@ func fetch*(url: cstring): PromiseJs {.importcpp: "fetch(#)".}
   ## `fetch()` API, Simple GET only (generates `fetch(url)`).
 
 func fetch*(url: cstring, options: FetchOptions): PromiseJs {.importcpp: "fetch(#, #)".}
-  ## `fetch()` API, Simple GET only (generates `fetch(url, options)`).
+  ## `fetch()` API that takes a `FetchOptions` (generates `fetch(url, options)`).
