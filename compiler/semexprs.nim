@@ -1577,9 +1577,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
         root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
-  of nkHiddenDeref, nkDerefExpr: return n[0]
+  of nkDerefExpr: return n[0]
   of nkBracketExpr:
     if n.len == 1: return n[0]
+  of nkHiddenDeref:
+    # issue #13848
+    # `proc fun(a: var int): var int = a`
+    discard
   else: discard
   let valid = isAssignable(c, n, isLent)
   if valid != arLValue:
