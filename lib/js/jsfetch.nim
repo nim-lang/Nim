@@ -1,7 +1,7 @@
 ## - Fetch for the JavaScript target: https://developer.mozilla.org/docs/Web/API/Fetch_API
-from asyncjs import PromiseJs
+import asyncjs
 from httpcore import HttpMethod
-export PromiseJs, HttpMethod
+export asyncjs, HttpMethod
 
 when not defined(js) and not defined(nimdoc):
   {.fatal: "Module jsfetch is designed to be used with the JavaScript backend.".}
@@ -78,8 +78,8 @@ func newfetchOptions*(metod: HttpMethod, body: cstring,
     credentials: $credentials, cache: $cache, referrerPolicy: $referrerPolicy,
     keepalive: keepalive, redirect: $redirect , referrer: referrer, integrity: integrity)
 
-func fetch*(url: cstring): PromiseJs {.importcpp: "fetch(#)".}
+func fetch*(url: cstring): Future[PromiseJs] {.importcpp: "fetch(#)".}
   ## `fetch()` API, Simple GET only (generates `fetch(url)`).
 
-func fetch*(url: cstring, options: FetchOptions): PromiseJs {.importcpp: "fetch(#, #)".}
+func fetch*(url: cstring, options: FetchOptions): Future[PromiseJs] {.importcpp: "fetch(#, #)".}
   ## `fetch()` API that takes a `FetchOptions` (generates `fetch(url, options)`).
