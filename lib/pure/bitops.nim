@@ -128,11 +128,8 @@ when defined(nimHasalignOf):
 
     v.flipMask(1.T shl bit)
 
-  macro setBits*(v: typed, bits: varargs[typed]): untyped =
+  macro setBits*(v: var typed, bits: varargs[typed]): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 1.
-    ##
-    ## **Note:**
-    ## * ``v`` must be `var` variable.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setBits(3, 5, 7)
@@ -143,11 +140,8 @@ when defined(nimHasalignOf):
     for bit in bits:
       result.add newCall("setBit", v, bit)
 
-  macro clearBits*(v: typed, bits: varargs[typed]): untyped =
+  macro clearBits*(v: var typed, bits: varargs[typed]): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 0.
-    ##
-    ## **Note:**
-    ## * ``v`` must be `var` variable.
     runnableExamples:
       var v = 0b1111_1111'u8
       v.clearBits(1, 3, 5, 7)
@@ -158,11 +152,8 @@ when defined(nimHasalignOf):
     for bit in bits:
       result.add newCall("clearBit", v, bit)
 
-  macro flipBits*(v: typed, bits: varargs[typed]): untyped =
+  macro flipBits*(v: var typed, bits: varargs[typed]): untyped =
     ## Returns ``v``, with the bits at positions ``bits`` set to 0.
-    ##
-    ## **Note:**
-    ## * ``v`` must be `var` variable.
     runnableExamples:
       var v = 0b0000_1111'u8
       v.flipBits(1, 3, 5, 7)
