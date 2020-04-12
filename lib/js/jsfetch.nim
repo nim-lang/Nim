@@ -65,40 +65,6 @@ template fetchMethodToCstring(metod: HttpMethod): cstring =
   of HttpPatch:  "PATCH".cstring
   else:          "GET".cstring
 
-template `$`(x: FetchCredentials): cstring =
-  case x
-  of fcInclude:    "include".cstring
-  of fcSameOrigin: "same-origin".cstring
-  of fcOmit:       "omit".cstring
-
-template `$`(x: FetchModes): cstring =
-  case x
-  of fmCors:       "cors".cstring
-  of fmNoCors:     "no-cors".cstring
-  of fmSameOrigin: "same-origin".cstring
-
-template `$`(x: FetchCaches): cstring =
-  case x
-  of fchDefault:    "default".cstring
-  of fchNoStore:    "no-store".cstring
-  of fchReload:     "reload".cstring
-  of fchNoCache:    "no-cache".cstring
-  of fchForceCache: "force-cache".cstring
-
-template `$`(x: FetchRedirects): cstring =
-  case x
-  of frFollow: "follow".cstring
-  of frError:  "error".cstring
-  of frManual: "manual".cstring
-
-template `$`(x: FetchReferrerPolicies): cstring =
-  case x
-  of frpNoReferrer:              "no-referrer".cstring
-  of frpNoReferrerWhenDowngrade: "no-referrer-when-downgrade".cstring
-  of frpOrigin:                  "origin".cstring
-  of frpOriginWhenCrossOrigin:   "origin-when-cross-origin".cstring
-  of frpUnsafeUrl:               "unsafe-url".cstring
-
 func unsafeNewFetchOptions*(metod, body, mode, credentials, cache, referrerPolicy: cstring,
     keepalive: bool, redirect = "follow".cstring, referrer = "client".cstring, integrity = "".cstring): FetchOptions {.importcpp:
     "{method: #, body: #, mode: #, credentials: #, cache: #, referrerPolicy: #, keepalive: #, redirect: #, referrer: #, integrity: #}".}
