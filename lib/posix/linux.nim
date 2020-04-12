@@ -26,3 +26,7 @@ proc clone*(fn: pointer; child_stack: pointer; flags: cint;
             ctid: ptr Pid): cint {.importc, header: "<sched.h>".}
 
 proc pipe2*(a: array[0..1, cint], flags: cint): cint {.importc, header: "<unistd.h>".}
+
+proc getresuid*(ruid: ptr Uid, euid: ptr Uid, suid: ptr Uid): cint {.importc, header: "<unistd.h>".}
+
+proc getresgid*(rgid: ptr Gid, egid: ptr Gid, sgid: ptr Gid): cint {.importc, header: "<unistd.h>".}

@@ -976,16 +976,41 @@ elif not defined(useNimRtl):
       var pid: Pid
       var dataCopy = data
 
+      # TODO: deprecate this flag?
       when defined(useClone):
-        const stackSize = 65536
-        let stackEnd = cast[clong](alloc(stackSize))
-        let stack = cast[pointer](stackEnd + stackSize)
-        let fn: pointer = startProcessAfterFork
-        pid = clone(fn, stack,
-                    cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
-                    pointer(addr dataCopy), nil, nil, nil)
-        discard close(data.pErrorPipe[writeIdx])
-        dealloc(stack)
+        var ruid: Uid
+        var euid: Uid
+        var suid: Uid
+        if getresuid(ruid, euid, suid) == -1:
+          raiseOSError(osLastError())
+        var rgid: Gid
+        var egid: Gid
+        var sgid: Gid
+        if getresgid(rgid, egid, sgid) == -1:
+           raiseOSError(osLastError())
+
+        # If the process has privilege, the parent process or
+        # the child process can change UID/GID.
+        # if clone(2) is used to create the child process and
+        # the parent or child process changes effective UID/GID,
+        # different privileged processes shares memory.
+        if euid != 0 and euid == ruid and egid == rgid:
+          # TODO: The child process must ensure that no signal handlers
+          #       are enabled because it shares memory with parent.
+          const stackSize = 65536
+          let stackEnd = cast[clong](alloc(stackSize))
+          let stack = cast[pointer](stackEnd + stackSize)
+          let fn: pointer = startProcessAfterFork
+          pid = clone(fn, stack,
+                      cint(CLONE_VM or CLONE_VFORK or SIGCHLD),
+                      pointer(addr dataCopy), nil, nil, nil)
+          discard close(data.pErrorPipe[writeIdx])
+          dealloc(stack)
+        else:
+          pid = fork()
+          if pid == 0:
+            startProcessAfterFork(addr(dataCopy))
+            exitnow(1)
       else:
         pid = fork()
         if pid == 0:
