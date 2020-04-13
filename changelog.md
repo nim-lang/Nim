@@ -4,6 +4,8 @@
 
 ## Standard library additions and changes
 
+- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
+  to the `dom` module for the JavaScript target.
 
 ## Language changes
 
