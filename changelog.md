@@ -4,6 +4,7 @@
 
 ## Standard library additions and changes
 
+- `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
   to the `dom` module for the JavaScript target.
 
