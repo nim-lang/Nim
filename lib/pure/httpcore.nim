@@ -109,7 +109,7 @@ proc toTitleCase(s: string): string =
     upper = s[i] == '-'
 
 
-proc newHttpHeaders*(titleCase: bool =false): HttpHeaders =
+proc newHttpHeaders*(titleCase =false): HttpHeaders =
   ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true, 
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
@@ -117,7 +117,7 @@ proc newHttpHeaders*(titleCase: bool =false): HttpHeaders =
   result.convert = if titleCase: toTitleCase else : toLowerAscii
 
 proc newHttpHeaders*(keyValuePairs:
-    openArray[tuple[key: string, val: string]],titleCase: bool =false): HttpHeaders =
+    openArray[tuple[key: string, val: string]], titleCase =false): HttpHeaders =
   ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true, 
   ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
