@@ -171,6 +171,9 @@ proc mydiv(a, b): int {.raises: [].} =
   (likewise with other hints and warnings), which is consistent with all other bool flags.
   (since 1.3.3).
 - `nim doc -r main` and `nim rst2html -r main` now call openDefaultBrowser
+- new hint: `--hint:msgOrigin` will show where a compiler msg (hint|warning|error) was generated; this
+  helps in particular when it's non obvious where it came from either because multiple locations generate
+  the same message, or because the message involves runtime formatting.
 
 ## Tool changes
 
