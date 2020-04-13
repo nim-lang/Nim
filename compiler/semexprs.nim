@@ -189,6 +189,11 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if conf.selectedGC in {gcArc, gcOrc}:
+    let d = skipTypes(dst, abstractInst)
+    let s = skipTypes(src, abstractInst)
+    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal: 
+      return false
 
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
