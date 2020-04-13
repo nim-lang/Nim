@@ -93,13 +93,15 @@ jobs:
 
       - name: 'Run SSL server tests'
         # Not supported on Windows due to old openssl version
+        # Use testssl.sh from buster-backports to run up-to-date tests
         if: runner.os == 'Linux'
         shell: bash
         run: |
+          echo 'deb http://deb.debian.org/debian buster-backports main' | sudo tee -a /etc/apt/sources.list
           sudo apt-fast update -qq
           DEBIAN_FRONTEND='noninteractive' \
             sudo apt-fast install --no-install-recommends -y testssl.sh
           nim c -d:ssl -p:. -d:sync -d:danger tests/untestable/tssl_server.nim
           tests/untestable/tssl_server &
-          testssl --ip=127.0.0.1 --parallel --csvfile testssl.csv --severity LOW https://127.0.0.1:8333 || true
-          diff -q testssl.csv tests/untestable/testssl_expected.csv
+          testssl --ip=127.0.0.1 --nodns=none --csvfile testssl.csv --severity LOW https://127.0.0.1:8333 || true
+          diff testssl.csv tests/untestable/testssl_expected.csv
