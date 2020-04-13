@@ -169,12 +169,6 @@ when defined(nimHasalignOf):
     runnableExamples:
       var v = 0b0000_1111'u8
       doAssert v.testBit(0)
-      doAssert v.testBit(1)
-      doAssert v.testBit(2)
-      doAssert v.testBit(3)
-      doAssert not v.testBit(4)
-      doAssert not v.testBit(5)
-      doAssert not v.testBit(6)
       doAssert not v.testBit(7)
 
     let mask = 1.T shl bit
