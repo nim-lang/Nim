@@ -101,5 +101,5 @@ jobs:
             sudo apt-fast install --no-install-recommends -y testssl.sh
           nim c -d:ssl -p:. -d:sync -d:danger tests/untestable/tssl_server.nim
           tests/untestable/tssl_server &
-          testssl --ip=127.0.0.1 --parallel --csvfile testssl.csv --severity LOW https://127.0.0.1:8333
+          testssl --ip=127.0.0.1 --parallel --csvfile testssl.csv --severity LOW https://127.0.0.1:8333 || true
           diff -q testssl.csv tests/untestable/testssl_expected.csv

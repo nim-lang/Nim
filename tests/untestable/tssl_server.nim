@@ -13,88 +13,46 @@ discard """
 ##
 ## Warning: this test performs local networking.
 ## Test with:
-## ./bin/nim c -d:ssl -p:. -r tests/untestable/tssl_server.nim
+## nim c -d:ssl -p:. -d:sync -d:danger -r tests/untestable/tssl_server.nim
+## testssl --ip=127.0.0.1 --csvfile testssl.csv --severity LOW https://127.0.0.1:8333
 
 # testssl --parallel https://localhost:8333
 
-import strutils,
- times
-
+import times
 
 # bogus self-signed certificate
 const
+  reply = "HTTP/1.0 200 OK\r\nServer: Nimtest\r\nContent-type: text/html\r\nContent-Length: 0\r\nStrict-Transport-Security: max-age=63072000; includeSubDomains\r\n\r\n"
   certFile = "tests/stdlib/thttpclient_ssl_cert.pem"
   keyFile = "tests/stdlib/thttpclient_ssl_key.pem"
-  reply = "HTTP/1.0 200 OK\r\nServer: Nimtest\r\nContent-type: text/html\r\nContent-Length: 0\r\nStrict-Transport-Security: max-age=63072000; includeSubDomains\r\n\r\n"
 
 proc log(msg: string) =
   echo "    [" & $epochTime() & "] " & msg
+
 
 when not defined(windows) and defined(sync):
 
   from net import Port, newContext
   import
     net,
-    openssl,
-    os,
-    strutils,
-    times
+    openssl
 
-  proc runServer(port: Port) =
-    ## Run a trivial HTTPS server
-    var socket = newSocket()
-    socket.setSockOpt(OptReuseAddr, true)
-    socket.bindAddr(port)
-    socket.listen()
-    log "server: ready"
-    while true:
-      var client: Socket
-      var address = ""
-      socket.acceptAddr(client, address)
-      var ctx = newContext(certFile = certFile, keyFile = keyFile)
-      var ssl: SslPtr = SSL_new(ctx.context)
+  when defined(multithread):
+    import threadpool
 
-      discard SSL_set_fd(ssl, client.getFd())
-      if SSL_accept(ssl) <= 0:
-        ERR_print_errors_fp(stderr)
-      else:
-        discard SSL_write(ssl, reply.cstring, reply.len)
-
-      let line = client.recvLine()
-      SSL_free(ssl)
-      close(client)
-
-    log "closing"
-    close(socket)
-    log "server: exited"
-
-
-  when isMainModule:
-    runServer(8333.Port)
-
-
-when not defined(windows) and defined(multithread):
-
-  from net import Port, newContext
-  import
-    net,
-    openssl,
-    os,
-    strutils,
-    threadpool,
-    times
+  when not defined(multithread):
+    var ctx = newContext(certFile = certFile, keyFile = keyFile)
 
   proc handleClient(client: Socket) =
-    var ctx = newContext(certFile = certFile, keyFile = keyFile)
+    when defined(multithread):
+      var ctx = newContext(certFile = certFile, keyFile = keyFile)
     var ssl: SslPtr = SSL_new(ctx.context)
-
-    discard SSL_set_fd(ssl, client.getFd())
+    doAssert SSL_set_fd(ssl, client.getFd()) == 1
     if SSL_accept(ssl) <= 0:
-      ERR_print_errors_fp(stderr)
+      ERR_print_errors_fp(stdout)
+      log "server: error"
     else:
       discard SSL_write(ssl, reply.cstring, reply.len)
-
-    let line = client.recvLine()
     SSL_free(ssl)
     close(client)
 
@@ -108,12 +66,13 @@ when not defined(windows) and defined(multithread):
     while true:
       var client: Socket
       socket.accept(client)
-      spawn handleClient(client)
+      when defined(multithread):
+        spawn handleClient(client)
+      else:
+        handleClient(client)
 
   when isMainModule:
     runServer(8333.Port)
-
-
 
 
 when not defined(windows) and defined(async):
@@ -125,29 +84,23 @@ when not defined(windows) and defined(async):
 
   proc runServer(port: Port) {.async.} =
     ## Run a trivial HTTPS server in a {.thread.}
-
     var socket = newAsyncSocket()
     socket.setSockOpt(OptReuseAddr, true)
     socket.bindAddr(port)
     socket.listen()
-
     log "server: ready"
     while true:
       let client = await socket.accept()
       log "server: incoming connection"
-
       var ctx = newContext(certFile = certFile, keyFile = keyFile)
       var ssl: SslPtr = SSL_new(ctx.context)
-
-      discard SSL_set_fd(ssl, client.getFd())
-      log "server: accepting connection"
+      doAssert SSL_set_fd(ssl, client.getFd()) == 1
       if SSL_accept(ssl) <= 0:
         ERR_print_errors_fp(stderr)
         log "error!"
       else:
         echo SSL_write(ssl, reply.cstring, reply.len)
 
-      let line = await client.recvLine()
       close(client)
       SSL_free(ssl)
 
