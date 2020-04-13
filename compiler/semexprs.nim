@@ -189,6 +189,11 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if conf.selectedGC in {gcArc, gcOrc}:
+    let d = skipTypes(dst, abstractInst)
+    let s = skipTypes(src, abstractInst)
+    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal: 
+      return false
 
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
@@ -1577,9 +1582,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
         root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
-  of nkHiddenDeref, nkDerefExpr: return n[0]
+  of nkDerefExpr: return n[0]
   of nkBracketExpr:
     if n.len == 1: return n[0]
+  of nkHiddenDeref:
+    # issue #13848
+    # `proc fun(a: var int): var int = a`
+    discard
   else: discard
   let valid = isAssignable(c, n, isLent)
   if valid != arLValue:
