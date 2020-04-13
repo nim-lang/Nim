@@ -17,6 +17,7 @@ import tables, strutils, parseutils
 type
   HttpHeaders* = ref object
     table*: TableRef[string, seq[string]]
+    convert: proc (str: string): string
 
   HttpHeaderValues* = distinct seq[string]
 
@@ -100,16 +101,30 @@ const
 const httpNewLine* = "\c\L"
 const headerLimit* = 10_000
 
-proc newHttpHeaders*(): HttpHeaders =
+proc toTitleCase(s: string): string =
+  result = newString(len(s))
+  var upper = true
+  for i in 0..len(s) - 1:
+    result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
+    upper = s[i] == '-'
+
+
+proc newHttpHeaders*(titleCase: bool =false): HttpHeaders =
+  ## Returns a new ``HttpHeaders`` object. if ``titleCase`` is set to true, 
+  ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
+  result.convert = if titleCase: toTitleCase else : toLowerAscii
 
 proc newHttpHeaders*(keyValuePairs:
-    openArray[tuple[key: string, val: string]]): HttpHeaders =
+    openArray[tuple[key: string, val: string]],titleCase: bool =false): HttpHeaders =
+  ## Returns a new ``HttpHeaders`` object from an array. if ``titleCase`` is set to true, 
+  ## headers are passed to the server in title case (e.g. "Content-Length")
   new result
   result.table = newTable[string, seq[string]]()
+  result.convert = if titleCase: toTitleCase else : toLowerAscii
   for pair in keyValuePairs:
-    let key = pair.key.toLowerAscii()
+    let key = result.convert(pair.key)
     if key in result.table:
       result.table[key].add(pair.val)
     else:
@@ -130,7 +145,7 @@ proc `[]`*(headers: HttpHeaders, key: string): HttpHeaderValues =
   ##
   ## To access multiple values of a key, use the overloaded ``[]`` below or
   ## to get all of them access the ``table`` field directly.
-  return headers.table[key.toLowerAscii].HttpHeaderValues
+  return headers.table[headers.convert(key)].HttpHeaderValues
 
 converter toString*(values: HttpHeaderValues): string =
   return seq[string](values)[0]
@@ -139,30 +154,30 @@ proc `[]`*(headers: HttpHeaders, key: string, i: int): string =
   ## Returns the ``i``'th value associated with the given key. If there are
   ## no values associated with the key or the ``i``'th value doesn't exist,
   ## an exception is raised.
-  return headers.table[key.toLowerAscii][i]
+  return headers.table[headers.convert(key)][i]
 
 proc `[]=`*(headers: HttpHeaders, key, value: string) =
   ## Sets the header entries associated with ``key`` to the specified value.
   ## Replaces any existing values.
-  headers.table[key.toLowerAscii] = @[value]
+  headers.table[headers.convert(key)] = @[value]
 
 proc `[]=`*(headers: HttpHeaders, key: string, value: seq[string]) =
   ## Sets the header entries associated with ``key`` to the specified list of
   ## values.
   ## Replaces any existing values.
-  headers.table[key.toLowerAscii] = value
+  headers.table[headers.convert(key)] = value
 
 proc add*(headers: HttpHeaders, key, value: string) =
   ## Adds the specified value to the specified key. Appends to any existing
   ## values associated with the key.
-  if not headers.table.hasKey(key.toLowerAscii):
-    headers.table[key.toLowerAscii] = @[value]
+  if not headers.table.hasKey(headers.convert(key)):
+    headers.table[headers.convert(key)] = @[value]
   else:
-    headers.table[key.toLowerAscii].add(value)
+    headers.table[headers.convert(key)].add(value)
 
 proc del*(headers: HttpHeaders, key: string) =
   ## Delete the header entries associated with ``key``
-  headers.table.del(key.toLowerAscii)
+  headers.table.del(headers.convert(key))
 
 iterator pairs*(headers: HttpHeaders): tuple[key, value: string] =
   ## Yields each key, value pair.
@@ -177,7 +192,7 @@ proc contains*(values: HttpHeaderValues, value: string): bool =
     if val.toLowerAscii == value.toLowerAscii: return true
 
 proc hasKey*(headers: HttpHeaders, key: string): bool =
-  return headers.table.hasKey(key.toLowerAscii())
+  return headers.table.hasKey(headers.convert(key))
 
 proc getOrDefault*(headers: HttpHeaders, key: string,
     default = @[""].HttpHeaderValues): HttpHeaderValues =
@@ -336,3 +351,12 @@ when isMainModule:
   doAssert test["foobar"] == ""
 
   doAssert parseHeader("foobar:") == ("foobar", @[""])
+
+  block: # test title case
+    var testTitleCase = newHttpHeaders(titleCase=true)
+    testTitleCase.add("content-length", "1")
+    doAssert testTitleCase.hasKey("Content-Length")
+    for key, val in testTitleCase:
+        doAssert key == "Content-Length"
+
+
