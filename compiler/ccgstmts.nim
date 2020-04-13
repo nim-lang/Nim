@@ -1489,15 +1489,6 @@ proc genPragma(p: BProc, n: PNode) =
       p.module.injectStmt = p.s(cpsStmts)
     else: discard
 
-proc fieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool =
-  if optFieldCheck in p.options:
-    var le = asgn[0]
-    if le.kind == nkCheckedFieldExpr:
-      var field = le[0][1].sym
-      result = sfDiscriminant in field.flags
-    elif le.kind == nkDotExpr:
-      var field = le[1].sym
-      result = sfDiscriminant in field.flags
 
 proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
@@ -1551,7 +1542,11 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   if e[0].kind == nkSym and sfGoto in e[0].sym.flags:
     genLineDir(p, e)
     genGotoVar(p, e[1])
-  elif not fieldDiscriminantCheckNeeded(p, e):
+  elif optFieldCheck in p.options and isDiscriminantField(e[0]):
+    genLineDir(p, e)
+    asgnFieldDiscriminant(p, e)
+    message(p.config, e.info, warnCaseTransition)
+  else:
     let le = e[0]
     let ri = e[1]
     var a: TLoc
@@ -1565,10 +1560,6 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     assert(a.t != nil)
     genLineDir(p, ri)
     loadInto(p, le, ri, a)
-  else:
-    genLineDir(p, e)
-    asgnFieldDiscriminant(p, e)
-    message(p.config, e.info, warnCaseTransition)
 
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc

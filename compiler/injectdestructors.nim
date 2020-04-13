@@ -24,7 +24,7 @@
 import
   intsets, ast, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns, sighashes
+  lineinfos, parampatterns, sighashes, liftdestructors
 
 from trees import exprStructuralEquivalent
 from algorithm import reverse
@@ -220,16 +220,19 @@ proc makePtrType(c: Con, baseType: PType): PType =
   result = newType(tyPtr, c.owner)
   addSonSkipIntLit(result, baseType)
 
+proc genOp(c: Con; op: PSym; dest, ri: PNode): PNode =
+  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+  addrExp.add(dest)
+  result = newTree(nkCall, newSymNode(op), addrExp)
+
 proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
-
   if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = canon.attachedOps[kind]
-
   if op == nil:
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
@@ -241,9 +244,7 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
     if kind == attachedDestructor:
       echo "destructor is ", op.id, " ", op.ast
   if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
-  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
-  addrExp.add(dest)
-  result = newTree(nkCall, newSymNode(op), addrExp)
+  genOp(c, op, dest, ri)
 
 proc genDestroy(c: Con; dest: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -291,6 +292,28 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     if c.otherRead == nil: discard isLastRead(ri, c)
     checkForErrorPragma(c, t, ri, "=")
   result = genCopyNoCheck(c, dest, ri)
+
+proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
+  result = copyNode(n)
+  result.add p(n[0], c, mode)
+  result.add p(n[1], c, consumed)
+
+  let le = n[0]
+  let objType = if le.kind == nkCheckedFieldExpr: le[0][0].typ
+                else:  le[0].typ
+
+  if hasDestructor(objType) and not isFirstWrite(le, c):
+
+    let branchDestructor
+    result = newTree(nkStmtList, genOp(c, ))
+    result.add p(n[0], c, mode)
+    result.add p(n[1], c, consumed)
+
+
+  else:
+    result = copyNode(n)
+    result.add p(n[0], c, mode)
+    result.add p(n[1], c, consumed)
 
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
@@ -865,8 +888,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
             cycleCheck(n, c)
-          assert n[1].kind notin {nkAsgn, nkFastAsgn}
+          assert n[1].kind notiastn {nkAsgn, nkFastAsgn}
           result = moveOrCopy(p(n[0], c, mode), n[1], c)
+      elif isDiscriminatorField(n[0]):
+        result = genDiscriminantAsgn(c, n)
       else:
         result = copyNode(n)
         result.add p(n[0], c, mode)
