@@ -105,24 +105,28 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
   ## details.  This passed all scrambling tests in Spring 2019 and is simple.
   ## NOTE: It's ok to define ``proc(x: int16): Hash = hashWangYi1(Hash(x))``.
-  when defined(js) and not nimvm:
-    asm """
-      function hi_xor_lo_js(a, b) {
-        var prod = BigInt(a) * BigInt(b);
-        var mask = (BigInt(1) << BigInt(64)) - BigInt(1);
-        return (prod >> BigInt(64)) ^ (prod & mask);
-      }
-      const P0  = BigInt(0xa0761d64)<<BigInt(32)|BigInt(0x78bd642f);
-      const P1  = BigInt(0xe7037ed1)<<BigInt(32)|BigInt(0xa0b428db);
-      const P58 = BigInt(0xeb44acca)<<BigInt(32)|BigInt(0xb455d165) ^ BigInt(8);
-      var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
-      `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
-    """
-  else:
+  when nimvm:
     const P0  = 0xa0761d6478bd642f'u64
     const P1  = 0xe7037ed1a0b428db'u64
     const P58 = 0xeb44accab455d165'u64 xor 8'u64
     cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
+  else:
+    when defined(js):
+      asm """function hi_xor_lo_js(a, b) {
+          const prod = BigInt(a) * BigInt(b);
+          const mask = (BigInt(1) << BigInt(64)) - BigInt(1);
+          return (prod >> BigInt(64)) ^ (prod & mask);
+        }
+        const P0  = BigInt(0xa0761d64)<<BigInt(32)|BigInt(0x78bd642f);
+        const P1  = BigInt(0xe7037ed1)<<BigInt(32)|BigInt(0xa0b428db);
+        const P58 = BigInt(0xeb44acca)<<BigInt(32)|BigInt(0xb455d165) ^ BigInt(8);
+        var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
+        `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));"""
+    else:
+      const P0  = 0xa0761d6478bd642f'u64
+      const P1  = 0xe7037ed1a0b428db'u64
+      const P58 = 0xeb44accab455d165'u64 xor 8'u64
+      cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
 
 proc hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
