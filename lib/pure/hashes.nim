@@ -105,10 +105,10 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
   ## details.  This passed all scrambling tests in Spring 2019 and is simple.
   ## NOTE: It's ok to define ``proc(x: int16): Hash = hashWangYi1(Hash(x))``.
+  const P0  = 0xa0761d6478bd642f'u64
+  const P1  = 0xe7037ed1a0b428db'u64
+  const P58 = 0xeb44accab455d165'u64 xor 8'u64
   when nimvm:
-    const P0  = 0xa0761d6478bd642f'u64
-    const P1  = 0xe7037ed1a0b428db'u64
-    const P58 = 0xeb44accab455d165'u64 xor 8'u64
     cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
   else:
     when defined(js):
@@ -123,9 +123,6 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
         var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
         `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));"""
     else:
-      const P0  = 0xa0761d6478bd642f'u64
-      const P1  = 0xe7037ed1a0b428db'u64
-      const P58 = 0xeb44accab455d165'u64 xor 8'u64
       cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
 
 proc hashData*(data: pointer, size: int): Hash =
