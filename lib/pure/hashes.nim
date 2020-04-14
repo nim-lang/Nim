@@ -112,16 +112,21 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
     cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
   else:
     when defined(js):
-      asm """function hi_xor_lo_js(a, b) {
-          const prod = BigInt(a) * BigInt(b);
-          const mask = (BigInt(1) << BigInt(64)) - BigInt(1);
-          return (prod >> BigInt(64)) ^ (prod & mask);
-        }
-        const P0  = BigInt(0xa0761d64)<<BigInt(32)|BigInt(0x78bd642f);
-        const P1  = BigInt(0xe7037ed1)<<BigInt(32)|BigInt(0xa0b428db);
-        const P58 = BigInt(0xeb44acca)<<BigInt(32)|BigInt(0xb455d165) ^ BigInt(8);
-        var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
-        `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));"""
+      asm """
+        if (typeof BigInt == 'undefined') {
+          `result` = `x`; // For Node < 10.4, etc. we do the old identity hash
+        } else {          // Otherwise we match the low 32-bits of C/C++ hash
+          function hi_xor_lo_js(a, b) {
+            const prod = BigInt(a) * BigInt(b);
+            const mask = (BigInt(1) << BigInt(64)) - BigInt(1);
+            return (prod >> BigInt(64)) ^ (prod & mask);
+          }
+          const P0  = BigInt(0xa0761d64)<<BigInt(32)|BigInt(0x78bd642f);
+          const P1  = BigInt(0xe7037ed1)<<BigInt(32)|BigInt(0xa0b428db);
+          const P58 = BigInt(0xeb44acca)<<BigInt(32)|BigInt(0xb455d165)^BigInt(8);
+          var res   = hi_xor_lo_js(hi_xor_lo_js(P0, BigInt(`x`) ^ P1), P58);
+          `result`  = Number(res & ((BigInt(1) << BigInt(53)) - BigInt(1)));
+        }"""
     else:
       cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
 
