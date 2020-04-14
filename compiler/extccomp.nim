@@ -138,6 +138,16 @@ compiler clang:
   result.compilerExe = "clang"
   result.cppCompiler = "clang++"
 
+# Zig cc (Clang) C/C++ Compiler
+compiler zig:
+  result = clang() # Uses settings from llvmGcc
+
+  result.name = "zig"
+  result.compilerExe = "zig"
+  result.cppCompiler = "zig"
+  result.compileTmpl = "cc " & result.compileTmpl
+  result.linkTmpl = "cc " & result.linkTmpl
+
 # Microsoft Visual C/C++ Compiler
 compiler vcc:
   result = (
@@ -375,6 +385,7 @@ const
     nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
+    zig(),
     lcc(),
     bcc(),
     dmc(),
