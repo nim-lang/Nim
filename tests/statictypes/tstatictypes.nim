@@ -202,3 +202,17 @@ block: #13529
     proc fun[T](a: static[T]) = (const a2 = a)
     fun(1)
     fun(1.2)
+
+block: # #12713
+  block:
+    type Cell = object
+      c: int
+    proc test(c: static string) = discard #Remove this and it compiles
+    proc test(c: Cell) = discard
+    test Cell(c: 0)
+  block:
+    type Cell = object
+      c: int
+    proc test(c: static string) = discard #Remove this and it compiles
+    proc test(c: Cell) = discard
+    test Cell()
