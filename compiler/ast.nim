@@ -972,8 +972,6 @@ type
 # the poor naming choices in the standard library.
 
 const
-  mTypedDefines* = {mIntDefine, mStrDefine, mBoolDefine}
-
   OverloadableSyms* = {skProc, skFunc, skMethod, skIterator,
     skConverter, skModule, skTemplate, skMacro}
 

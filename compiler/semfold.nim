@@ -522,36 +522,6 @@ proc newSymNodeTypeDesc*(s: PSym; info: TLineInfo): PNode =
   else:
     result.typ = s.typ
 
-proc getTypedDefine*(s: PSym, n: PNode; g: ModuleGraph): PNode =
-  case s.magic
-  of mIntDefine:
-    if isDefined(g.config, s.name.s):
-      try:
-        result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseInt), n, g)
-      except ValueError:
-        localError(g.config, s.info,
-          "{.intdefine.} const was set to an invalid integer: '" &
-            g.config.symbols[s.name.s] & "'")
-    else:
-      result = copyTree(s.ast)
-  of mStrDefine:
-    if isDefined(g.config, s.name.s):
-      result = newStrNodeT(g.config.symbols[s.name.s], n, g)
-    else:
-      result = copyTree(s.ast)
-  of mBoolDefine:
-    if isDefined(g.config, s.name.s):
-      try:
-        result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseBool.int), n, g)
-      except ValueError:
-        localError(g.config, s.info,
-          "{.booldefine.} const was set to an invalid bool: '" &
-            g.config.symbols[s.name.s] & "'")
-    else:
-      result = copyTree(s.ast)
-  else:
-    doAssert false
-
 proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   result = nil
   case n.kind
@@ -571,8 +541,33 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
       of mBuildOS: result = newStrNodeT(toLowerAscii(platform.OS[g.config.target.hostOS].name), n, g)
       of mBuildCPU: result = newStrNodeT(platform.CPU[g.config.target.hostCPU].name.toLowerAscii, n, g)
       of mAppType: result = getAppType(n, g)
-      of mTypedDefines: result = getTypedDefine(s, n, g)
-      else: result = copyTree(s.ast)
+      of mIntDefine:
+        if isDefined(g.config, s.name.s):
+          try:
+            result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseInt), n, g)
+          except ValueError:
+            localError(g.config, s.info,
+              "{.intdefine.} const was set to an invalid integer: '" &
+                g.config.symbols[s.name.s] & "'")
+        else:
+          result = copyTree(s.ast)
+      of mStrDefine:
+        if isDefined(g.config, s.name.s):
+          result = newStrNodeT(g.config.symbols[s.name.s], n, g)
+        else:
+          result = copyTree(s.ast)
+      of mBoolDefine:
+        if isDefined(g.config, s.name.s):
+          try:
+            result = newIntNodeT(toInt128(g.config.symbols[s.name.s].parseBool.int), n, g)
+          except ValueError:
+            localError(g.config, s.info,
+              "{.booldefine.} const was set to an invalid bool: '" &
+                g.config.symbols[s.name.s] & "'")
+        else:
+          result = copyTree(s.ast)
+      else:
+        result = copyTree(s.ast)
     of skProc, skFunc, skMethod:
       result = n
     of skParam:

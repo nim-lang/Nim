@@ -1137,14 +1137,6 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     markUsed(c, n.info, s)
     onUse(n.info, s)
     let typ = skipTypes(s.typ, abstractInst-{tyTypeDesc})
-    case s.magic
-    of mTypedDefines:
-      result = getTypedDefine(s, n, c.graph)
-      result.typ = s.typ
-      result.info = n.info
-      return result
-    else: discard
-
     case typ.kind
     of  tyNil, tyChar, tyInt..tyInt64, tyFloat..tyFloat128,
         tyTuple, tySet, tyUInt..tyUInt64:
