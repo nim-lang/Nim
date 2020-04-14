@@ -1954,14 +1954,7 @@ template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
   ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
-  when declared(owned):
-    var e: owned(ref exceptn)
-  else:
-    var e: ref exceptn
-  new(e)
-  e.msg = message
-  e.parent = parentException
-  e
+  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -2044,6 +2037,94 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
+  ## Adds a char to string `s` and applies the following escaping:
+  ##
+  ## * replaces any ``\`` by ``\\``
+  ## * replaces any ``'`` by ``\'``
+  ## * replaces any ``"`` by ``\"``
+  ## * replaces any ``\a`` by ``\\a``
+  ## * replaces any ``\b`` by ``\\b``
+  ## * replaces any ``\t`` by ``\\t``
+  ## * replaces any ``\n`` by ``\\n``
+  ## * replaces any ``\v`` by ``\\v``
+  ## * replaces any ``\f`` by ``\\f``
+  ## * replaces any ``\c`` by ``\\c``
+  ## * replaces any ``\e`` by ``\\e``
+  ## * replaces any other character not in the set ``{'\21..'\126'}
+  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
+  ##
+  ## The procedure has been designed so that its output is usable for many
+  ## different common syntaxes.
+  ##
+  ## **Note**: This is **not correct** for producing Ansi C code!
+  case c
+  of '\a': s.add "\\a" # \x07
+  of '\b': s.add "\\b" # \x08
+  of '\t': s.add "\\t" # \x09
+  of '\L': s.add "\\n" # \x0A
+  of '\v': s.add "\\v" # \x0B
+  of '\f': s.add "\\f" # \x0C
+  of '\c': s.add "\\c" # \x0D
+  of '\e': s.add "\\e" # \x1B
+  of '\\': s.add("\\\\")
+  of '\'': s.add("\\'")
+  of '\"': s.add("\\\"")
+  of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
+  else:
+    s.add("\\x")
+    const HexChars = "0123456789ABCDEF"
+    let n = ord(c)
+    s.add(HexChars[int((n and 0xF0) shr 4)])
+    s.add(HexChars[int(n and 0xF)])
+
+proc addQuoted*[T](s: var string, x: T) =
+  ## Appends `x` to string `s` in place, applying quoting and escaping
+  ## if `x` is a string or char.
+  ##
+  ## See `addEscapedChar <#addEscapedChar,string,char>`_
+  ## for the escaping scheme. When `x` is a string, characters in the
+  ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
+  ## characters are untouched (note that this behavior is different from
+  ## ``addEscapedChar``).
+  ##
+  ## The Nim standard library uses this function on the elements of
+  ## collections when producing a string representation of a collection.
+  ## It is recommended to use this function as well for user-side collections.
+  ## Users may overload `addQuoted` for custom (string-like) types if
+  ## they want to implement a customized element representation.
+  ##
+  ## .. code-block:: Nim
+  ##   var tmp = ""
+  ##   tmp.addQuoted(1)
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted("string")
+  ##   tmp.add(", ")
+  ##   tmp.addQuoted('c')
+  ##   assert(tmp == """1, "string", 'c'""")
+  when T is string or T is cstring:
+    when T is cstring:
+      if x == nil: s.add "nil"; return
+    s.add("\"")
+    for c in x:
+      # Only ASCII chars are escaped to avoid butchering
+      # multibyte UTF-8 characters.
+      if c <= 127.char:
+        s.addEscapedChar(c)
+      else:
+        s.add c
+    s.add("\"")
+  elif T is char:
+    s.add("'")
+    s.addEscapedChar(x)
+    s.add("'")
+  # prevent temporary string allocation
+  elif T is SomeSignedInt:
+    s.addInt(x)
+  elif T is SomeFloat:
+    s.addFloat(x)
+  else:
+    s.add($x)
 
 import system/dollars
 export dollars
@@ -2221,7 +2302,10 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include "system/arithm"
+  when defined(nimNewIntegerOps):
+    include "system/integerops"
+  else:
+    include "system/arithm"
   {.pop.}
 
 
@@ -2682,10 +2766,10 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
-macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  varargsLenImpl(x)
 
 when false:
   template eval*(blk: typed): typed =
@@ -2716,95 +2800,6 @@ when hasAlloc or defined(nimscript):
 
 when declared(initDebugger):
   initDebugger()
-
-proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
-  ## Adds a char to string `s` and applies the following escaping:
-  ##
-  ## * replaces any ``\`` by ``\\``
-  ## * replaces any ``'`` by ``\'``
-  ## * replaces any ``"`` by ``\"``
-  ## * replaces any ``\a`` by ``\\a``
-  ## * replaces any ``\b`` by ``\\b``
-  ## * replaces any ``\t`` by ``\\t``
-  ## * replaces any ``\n`` by ``\\n``
-  ## * replaces any ``\v`` by ``\\v``
-  ## * replaces any ``\f`` by ``\\f``
-  ## * replaces any ``\c`` by ``\\c``
-  ## * replaces any ``\e`` by ``\\e``
-  ## * replaces any other character not in the set ``{'\21..'\126'}
-  ##   by ``\xHH`` where ``HH`` is its hexadecimal value.
-  ##
-  ## The procedure has been designed so that its output is usable for many
-  ## different common syntaxes.
-  ##
-  ## **Note**: This is **not correct** for producing Ansi C code!
-  case c
-  of '\a': s.add "\\a" # \x07
-  of '\b': s.add "\\b" # \x08
-  of '\t': s.add "\\t" # \x09
-  of '\L': s.add "\\n" # \x0A
-  of '\v': s.add "\\v" # \x0B
-  of '\f': s.add "\\f" # \x0C
-  of '\c': s.add "\\c" # \x0D
-  of '\e': s.add "\\e" # \x1B
-  of '\\': s.add("\\\\")
-  of '\'': s.add("\\'")
-  of '\"': s.add("\\\"")
-  of {'\32'..'\126'} - {'\\', '\'', '\"'}: s.add(c)
-  else:
-    s.add("\\x")
-    const HexChars = "0123456789ABCDEF"
-    let n = ord(c)
-    s.add(HexChars[int((n and 0xF0) shr 4)])
-    s.add(HexChars[int(n and 0xF)])
-
-proc addQuoted*[T](s: var string, x: T) =
-  ## Appends `x` to string `s` in place, applying quoting and escaping
-  ## if `x` is a string or char.
-  ##
-  ## See `addEscapedChar <#addEscapedChar,string,char>`_
-  ## for the escaping scheme. When `x` is a string, characters in the
-  ## range ``{\128..\255}`` are never escaped so that multibyte UTF-8
-  ## characters are untouched (note that this behavior is different from
-  ## ``addEscapedChar``).
-  ##
-  ## The Nim standard library uses this function on the elements of
-  ## collections when producing a string representation of a collection.
-  ## It is recommended to use this function as well for user-side collections.
-  ## Users may overload `addQuoted` for custom (string-like) types if
-  ## they want to implement a customized element representation.
-  ##
-  ## .. code-block:: Nim
-  ##   var tmp = ""
-  ##   tmp.addQuoted(1)
-  ##   tmp.add(", ")
-  ##   tmp.addQuoted("string")
-  ##   tmp.add(", ")
-  ##   tmp.addQuoted('c')
-  ##   assert(tmp == """1, "string", 'c'""")
-  when T is string or T is cstring:
-    s.add("\"")
-    for c in x:
-      # Only ASCII chars are escaped to avoid butchering
-      # multibyte UTF-8 characters.
-      if c <= 127.char:
-        s.addEscapedChar(c)
-      else:
-        s.add c
-    s.add("\"")
-  elif T is char:
-    s.add("'")
-    s.addEscapedChar(x)
-    s.add("'")
-  # prevent temporary string allocation
-  elif T is SomeSignedInt:
-    s.addInt(x)
-  elif T is SomeFloat:
-    s.addFloat(x)
-  elif compiles(s.add(x)):
-    s.add(x)
-  else:
-    s.add($x)
 
 proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## Generates a tuple constructor expression listing all the local variables

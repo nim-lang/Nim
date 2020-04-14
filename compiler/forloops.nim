@@ -13,8 +13,8 @@ import ast, astalgo
 
 const
   someCmp = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
-    mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
-    mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
+    mLeI, mLeF64, mLeU, mLeEnum,
+    mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtEnum,
     mLtCh, mLtB, mLtPtr}
 
 proc isCounter(s: PSym): bool {.inline.} =

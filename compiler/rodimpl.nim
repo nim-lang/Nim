@@ -667,7 +667,7 @@ proc loadType(g; id: int; info: TLineInfo): PType =
       rawAddSon(result, nil)
     else:
       let d = decodeVInt(b.s, b.pos)
-      rawAddSon(result, loadType(g, d, info))
+      result.sons.add loadType(g, d, info)
 
 proc decodeLib(g; b; info: TLineInfo): PLib =
   result = nil
@@ -719,10 +719,8 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
   else:
     internalError(g.config, info, "decodeSym: no ident")
   #echo "decoding: {", ident.s
-  new(result)
-  result.id = id
-  result.kind = k
-  result.name = ident         # read the rest of the symbol description:
+  result = PSym(id: id, kind: k, name: ident)
+  # read the rest of the symbol description:
   g.incr.r.syms.add(result.id, result)
   if b.s[b.pos] == '^':
     inc(b.pos)

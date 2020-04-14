@@ -6,11 +6,11 @@ destroy
 123
 destroy Foo: 123
 destroy Foo: 5
-(x1: (val: ...))
+test
 destroy
 ---------------
 app begin
-(val: ...)
+test2
 destroy
 app end
 '''
@@ -96,7 +96,7 @@ proc newObj2(x:int, y: float): MyObject2 =
 
 proc test =
   let obj2 = newObj2(1, 1.0)
-  echo obj2
+  echo "test"
 
 test()
 
@@ -104,12 +104,12 @@ test()
 #------------------------------------------------------------
 # Issue #12883
 
-type 
+type
   TopObject = object
     internal: UniquePtr[int]
 
 proc deleteTop(p: ptr TopObject) =
-  if p != nil:    
+  if p != nil:
     `=destroy`(p[]) # !!! this operation used to leak the integer
     deallocshared(p)
 
@@ -117,12 +117,12 @@ proc createTop(): ptr TopObject =
   result = cast[ptr TopObject](allocShared0(sizeof(TopObject)))
   result.internal = newUniquePtr(1)
 
-proc test2() = 
+proc test2() =
   let x = createTop()
-  echo $x.internal
+  echo "test2"
   deleteTop(x)
 
-echo "---------------"  
+echo "---------------"
 echo "app begin"
 test2()
 echo "app end"

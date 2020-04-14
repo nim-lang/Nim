@@ -3,6 +3,12 @@
 
 ## Changes affecting backwards compatibility
 
+- The Nim compiler now implements a faster way to detect overflows based
+  on GCC's `__builtin_sadd_overflow` family of functions. (Clang also
+  supports these). Some versions of GCC lack this feature and unfortunately
+  we cannot detect this case reliably. So if you get compilation errors like
+  "undefined reference to `__builtin_saddll_overflow`" compile your programs
+  with `-d:nimEmulateOverflowChecks`.
 
 
 ### Breaking changes in the standard library
@@ -28,9 +34,22 @@
 - `options` now treats `proc` like other pointer types, meaning `nil` proc variables
   are converted to `None`.
 - `relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid path
-  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to restore the old
-  behavior
+  and shouldn't be conflated with `"."`; use -d:nimOldRelativePathBehavior to
+  restore the old behavior
 - `joinPath(a,b)` now honors trailing slashes in `b` (or `a` if `b` = "")
+- `times.parse` now only uses input to compute its result, and not `now`:
+  `parse("2020", "YYYY", utc())` is now `2020-01-01T00:00:00Z` instead of
+  `2020-03-02T00:00:00Z` if run on 03-02; it also doesn't crash anymore when
+  used on 29th, 30th, 31st of each month.
+- `httpcore.==(string, HttpCode)` is now deprecated due to lack of practical
+  usage. The `$` operator can be used to obtain the string form of `HttpCode`
+  for comparison if desired.
+- `os.walkDir` and `os.walkDirRec` now have new flag, `checkDir` (default: false).
+  If it is set to true, it will throw if input dir is invalid instead of a noop
+  (which is the default behaviour, as it was before this change),
+  `os.walkDirRec` only throws if top-level dir is invalid, but ignores errors for
+  subdirs, otherwise it would be impossible to resume iteration.
+
 
 ### Breaking changes in the compiler
 
@@ -40,6 +59,10 @@
 - The `{.dynlib.}` pragma is now required for exporting symbols when making
   shared objects on POSIX and macOS, which make it consistent with the behavior
   on Windows.
+- The compiler is now more strict about type conversions concerning proc
+  types: Type conversions cannot be used to hide `.raise` effects or side
+  effects, instead a `cast` must be used. With the flag `--useVersion:1.0` the
+  old behaviour is emulated.
 
 
 ## Library additions
@@ -58,7 +81,7 @@
 - Added `sugar.collect` that does comprehension for seq/set/table collections.
 - Added `sugar.capture` for capturing some local loop variables when creating a closure.
   This is an enhanced version of `closureScope`.
-- Added `typetraits.lenTuple` to get number of elements of a tuple/type tuple,
+- Added `typetraits.tupleLen` to get number of elements of a tuple/type tuple,
   and `typetraits.get` to get the ith element of a type tuple.
 - Added `typetraits.genericParams` to return a tuple of generic params from a generic instantiation
 - Added `os.normalizePathEnd` for additional path sanitization.
@@ -69,7 +92,8 @@
 - Added `minIndex`, `maxIndex` and `unzip` to the `sequtils` module.
 - Added `os.isRelativeTo` to tell whether a path is relative to another
 - Added `resetOutputFormatters` to `unittest`
-
+- Added `expectIdent` to the `macros` module.
+- Added `os.isValidFilename` that returns `true` if `filename` argument is valid for crossplatform use.
 
 - Added a `with` macro for easy function chaining that's available
   everywhere, there is no need to concern your APIs with returning the first argument
@@ -94,6 +118,10 @@ echo f
 - Added `times.isLeapDay`
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
+- `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
+- Added `net.getPeerCertificates` and `asyncnet.getPeerCertificates` for
+  retrieving the verified certificate chain of the peer we are connected to
+  through an SSL-wrapped `Socket`/`AsyncSocket`.
 
 
 ## Library changes
@@ -115,7 +143,13 @@ echo f
   serve no purpose whatsoever.
 - `httpclient.newHttpClient` and `httpclient.newAsyncHttpClient` added `headers`
   argument to set initial HTTP Headers, instead of a hardcoded empty `newHttpHeader()`.
-
+- `parseutils.parseUntil` has now a different behaviour if the `until` parameter is
+  empty. This was required for intuitive behaviour of the strscans module
+  (see bug #13605).
+- `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs
+- `net.newContext` now performs SSL Certificate checking on Linux and OSX.
+  Define `nimDisableCertificateValidation` to disable it globally.
+- new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by `import pragmas`
 
 ## Language additions
 
@@ -124,6 +158,9 @@ echo f
 
 - `=sink` type bound operator is now optional. Compiler can now use combination
   of `=destroy` and `copyMem` to move objects efficiently.
+
+- `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for non builtin pragmas,
+  enabling things like lvalue references, see `pragmas.byaddr`
 
 ## Language changes
 
@@ -150,6 +187,15 @@ echo f
 - The compiler now inferes "sink parameters". To disable this for a specific routine,
   annotate it with `.nosinks`. To disable it for a section of code, use
   `{.push sinkInference: off.}`...`{.pop.}`.
+- The compiler now supports a new switch `--panics:on` that turns runtime
+  errors like `IndexError` or `OverflowError` into fatal errors that **cannot**
+  be caught via Nim's `try` statement. `--panics:on` can improve the
+  runtime efficiency and code size of your program significantly.
+- The compiler now warns about inheriting directly from `system.Exception` as
+  this is **very bad** style. You should inherit from `ValueError`, `IOError`,
+  `OSError` or from a different specific exception type that inherits from
+  `CatchableError` and cannot be confused with a `Defect`.
+- The error reporting for Nim's effect system has been improved.
 
 
 ## Bugfixes

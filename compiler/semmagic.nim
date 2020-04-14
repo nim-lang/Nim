@@ -187,7 +187,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
-  of "lenTuple":
+  of "tupleLen":
     var operand = operand.skipTypes({tyGenericInst})
     assert operand.kind == tyTuple, $operand.kind
     result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
@@ -202,6 +202,10 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
       result = newType(tyError, context).toNode(traitCall.info)
+  of "isRecursivePointer":
+    let operand = operand.skipTypes({tyGenericInst})
+    let cond = isRecursivePointer(operand)
+    result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
   else:
     localError(c.config, traitCall.info, "unknown trait: " & s)
     result = newNodeI(nkEmpty, traitCall.info)

@@ -225,7 +225,7 @@ proc semRangeAux(c: PContext, n: PNode, prev: PType): PType =
   if not hasUnknownTypes:
     if not sameType(rangeT[0].skipTypes({tyRange}), rangeT[1].skipTypes({tyRange})):
       localError(c.config, n.info, "type mismatch")
-    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin tyFloat..tyFloat128 or
+    elif not isOrdinalType(rangeT[0]) and rangeT[0].kind notin {tyFloat..tyFloat128} or
         rangeT[0].kind == tyBool:
       localError(c.config, n.info, "ordinal or float type expected")
     elif enumHasHoles(rangeT[0]):
@@ -804,7 +804,7 @@ proc addInheritedFieldsAux(c: PContext, check: var IntSet, pos: var int,
         addInheritedFieldsAux(c, check, pos, lastSon(n[i]))
       else: internalError(c.config, n.info, "addInheritedFieldsAux(record case branch)")
   of nkRecList, nkRecWhen, nkElifBranch, nkElse:
-    for i in 0..<n.len:
+    for i in int(n.kind == nkElifBranch)..<n.len:
       addInheritedFieldsAux(c, check, pos, n[i])
   of nkSym:
     incl(check, n.sym.name.id)
@@ -847,6 +847,9 @@ proc semObjectNode(c: PContext, n: PNode, prev: PType; isInheritable: bool): PTy
         # specialized object, there will be second check after instantiation
         # located in semGeneric.
         if concreteBase.kind == tyObject:
+          if concreteBase.sym != nil and concreteBase.sym.magic == mException and
+              sfSystemModule notin c.module.flags:
+            message(c.config, n.info, warnInheritFromException, "")
           addInheritedFields(c, check, pos, concreteBase)
       else:
         if concreteBase.kind != tyError:
@@ -893,7 +896,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
-    var isOwned = false
+    var wrapperKind = tyNone
     # check every except the last is an object:
     for i in isCall..<n.len-1:
       let ni = n[i]
@@ -901,8 +904,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
         isNilable = true
       else:
         let region = semTypeNode(c, ni, nil)
-        if region.kind == tyOwned:
-          isOwned = true
+        if region.kind in {tyOwned, tySink}:
+          wrapperKind = region.kind
         elif region.skipTypes({tyGenericInst, tyAlias, tySink}).kind notin {
               tyError, tyObject}:
           message c.config, n[i].info, errGenerated, "region needs to be an object type"
@@ -914,11 +917,18 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if tfPartial in result.flags:
       if result.lastSon.kind == tyObject: incl(result.lastSon.flags, tfPartial)
     #if not isNilable: result.flags.incl tfNotNil
-    if isOwned and optOwnedRefs in c.config.globalOptions:
-      let t = newTypeS(tyOwned, c)
-      t.flags.incl tfHasOwned
+    case wrapperKind
+    of tyOwned:
+      if optOwnedRefs in c.config.globalOptions:
+        let t = newTypeS(tyOwned, c)
+        t.flags.incl tfHasOwned
+        t.rawAddSonNoPropagationOfTypeFlags result
+        result = t
+    of tySink:
+      let t = newTypeS(tySink, c)
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
+    else: discard
     #if result.kind == tyRef and c.config.selectedGC == gcDestructors:
     #  result.flags.incl tfHasAsgn
     # XXX Something like this is a good idea but it should be done

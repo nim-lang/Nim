@@ -1,5 +1,5 @@
 discard """
-cmd: "nim c --nimcache:myNimCache --nimblePath:myNimblePath $file"
+cmd: "nim c --nimcache:build/myNimCache --nimblePath:myNimblePath $file"
 joinable: false
 """
 

@@ -392,7 +392,7 @@ proc apply*[T](s: var openArray[T], op: proc (x: T): T {.closure.})
 
   for i in 0 ..< s.len: s[i] = op(s[i])
 
-iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
+iterator filter*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): T =
   ## Iterates through a container `s` and yields every item that fulfills the
   ## predicate `pred` (function that returns a `bool`).
   ##
@@ -407,12 +407,6 @@ iterator filter*[T](s: seq[T], pred: proc(x: T): bool {.closure.}): T =
       evens.add(n)
     assert evens == @[4, 8, 4]
 
-  for i in 0 ..< s.len:
-    if pred(s[i]):
-      yield s[i]
-
-iterator filter*[IX, T](s: array[IX, T], pred: proc(x: T): bool {.closure.}): T =
-  # does not use `openarray`, because of #13417
   for i in 0 ..< s.len:
     if pred(s[i]):
       yield s[i]
@@ -669,6 +663,8 @@ template anyIt*(s, pred: untyped): bool =
 
 template toSeqBuiltin[IX, T](arg: array[IX, T]): seq[T] = @arg
 
+template toSeqBuiltin[T](arg: openArray[T]): seq[T] = @arg
+
 template toSeqBuiltin(arg: string): seq[char] = @arg
 
 template toSeqBuiltin[T](arg: seq[T]): seq[T] = arg
@@ -704,7 +700,13 @@ macro toSeqBuiltin(arg: iterator): untyped =
       `tmpSym`.add it
   result.add tmpSym
 
-import strutils
+template toSeqBuiltin[T: not proc](arg: T): untyped =
+  # fallback for ``IntSet`` and ``HashSet``. Explicit overload would
+  # be better, but this would require an additional import here.
+  var tmp: seq[typeof(items(arg), typeOfIter)]
+  for it in arg:
+    tmp.add it
+  tmp
 
 macro toSeqImpl(arg: typed): untyped =
   let iteratorCall = arg[1]
@@ -720,25 +722,39 @@ macro toSeqImpl(arg: typed): untyped =
         tmp.add it
       tmp
 
+proc genCallToSeqImpl(arg: NimNode): NimNode =
+  newCall(bindSym"toSeqImpl",
+    nnkForStmt.newTree(
+      ident"x", arg, newStmtList()))
+
+macro toSeqImplSingleSym(arg: typed): untyped =
+  if arg.kind != nnkSym:
+    error "identifier not unique", arg # arg is symChoice
+  elif arg.symKind == nskIterator:
+    result = genCallToSeqImpl(newCall(arg))
+  else:
+    result = genCallToSeqImpl(arg)
+
 macro toSeq*(arg: untyped): untyped =
   ## Transforms any iterable (anything that can be iterated over, e.g. with
   ## a for-loop) into a sequence.
-  ##
+  runnableExamples:
+    let
+      myRange = 1..5
+      mySet: set[int8] = {5'i8, 3, 1}
+    assert type(myRange) is HSlice[system.int, system.int]
+    assert type(mySet) is set[int8]
 
-  result = newStmtList()
-  var arg = arg
-  if arg.kind == nnkSym and arg.symKind == nskIterator:
-    # This branch is questionalble.
-    arg = newCall(arg)
+    let
+      mySeq1 = toSeq(myRange)
+      mySeq2 = toSeq(mySet)
+    assert mySeq1 == @[1, 2, 3, 4, 5]
+    assert mySeq2 == @[1'i8, 3, 5]
 
-  result.add newCall(
-    bindSym"toSeqImpl",
-    nnkForStmt.newTree(
-      ident"x",
-      arg,
-      newStmtList()
-    )
-  )
+  if arg.kind in {nnkSym, nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice}:
+    result = newCall(bindSym"toSeqImplSingleSym", arg)
+  else:
+    result = genCallToSeqImpl(arg)
 
 template foldl*(sequence, operation: untyped): untyped =
   ## Template to fold a sequence from left to right, returning the accumulation.
@@ -872,28 +888,14 @@ template mapIt*(s: typed, op: untyped): untyped =
       strings = nums.mapIt($(4 * it))
     assert strings == @["4", "8", "12", "16"]
 
-  when defined(nimHasTypeof):
-    type OutType = typeof((
-      block:
-        var it{.inject.}: typeof(items(s), typeOfIter);
-        op), typeOfProc)
-  else:
-    type OutType = type((
-      block:
-        var it{.inject.}: type(items(s));
-        op))
-  when s is (array | seq | openarray):
-    var i = 0
-    var result = newSeq[OutType](s.len)
-    for it {.inject.} in s:
-      result[i] = op
-      i += 1
-    result
-  else:
-    var result: seq[OutType]
-    for it {.inject.} in s:
-      result.add(op)
-    result
+  type OutType = typeof((
+    block:
+      var it{.inject.}: typeof(items(s), typeOfIter);
+      op), typeOfProc)
+  var result: seq[OutType]
+  for it {.inject.} in s:
+    result.add(op)
+  result
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
@@ -1295,7 +1297,7 @@ when isMainModule:
         yield 2
 
       doAssert myIter.toSeq == @[1, 2]
-      doAssert toSeq(myIter()) == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
       iterator myIter(): int {.closure.} =
@@ -1303,7 +1305,7 @@ when isMainModule:
         yield 2
 
       doAssert myIter.toSeq == @[1, 2]
-      doAssert toSeq(myIter()) == @[1, 2]
+      doAssert toSeq(myIter) == @[1, 2]
 
     block:
       proc myIter(): auto =

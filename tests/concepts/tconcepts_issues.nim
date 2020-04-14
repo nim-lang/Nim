@@ -114,6 +114,7 @@ block t976:
   # bug #6249
   type
       Obj2 = ref object
+      # Note: since everything is Printable now, this test isn't really that useful anymore.
       PrintAble = concept x
           $x is string
 
@@ -121,7 +122,7 @@ block t976:
       when T is PrintAble: result = "Printable"
       else: result = "Non Printable"
 
-  echo Obj2()
+  echo toObj1(Obj2())
 
 
 

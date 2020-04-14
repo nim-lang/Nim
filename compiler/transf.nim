@@ -128,6 +128,19 @@ proc transformSymAux(c: PTransf, n: PNode): PNode =
     b = s.getBody
     if b.kind != nkSym: internalError(c.graph.config, n.info, "wrong AST for borrowed symbol")
     b = newSymNode(b.sym, n.info)
+  elif c.inlining > 0:
+    # see bug #13596: we use ref-based equality in the DFA for destruction
+    # injections so we need to ensure unique nodes after iterator inlining
+    # which can lead to duplicated for loop bodies! Consider:
+    #[
+      while remaining > 0:
+        if ending == nil:
+          yield ms
+          break
+        ...
+        yield ms
+    ]#
+    b = newSymNode(n.sym, n.info)
   else:
     b = n
   while tc != nil:
@@ -541,7 +554,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   # inline context.
   if formal.kind == tyTypeDesc: return paDirectMapping
   if skipTypes(formal, abstractInst).kind in {tyOpenArray, tyVarargs}:
-    case arg.kind
+    case arg.skipHidden.kind
     of nkBracket:
       return paFastAsgnTakeTypeFromArg
     of nkSym:
@@ -552,10 +565,19 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
-  of nkPar, nkTupleConstr, nkCurly, nkBracket:
-    result = paFastAsgn
+  of nkDotExpr, nkDerefExpr, nkHiddenDeref, nkAddr, nkHiddenAddr:
+    result = putArgInto(arg[0], formal)
+  of nkCurly, nkBracket:
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: return
+      if putArgInto(arg[i], formal) != paDirectMapping: 
+        return paFastAsgn
+    result = paDirectMapping
+  of nkPar, nkTupleConstr, nkObjConstr:
+    for i in 0..<arg.len:
+      let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
+              else: arg[0]
+      if putArgInto(a, formal) != paDirectMapping: 
+        return paFastAsgn
     result = paDirectMapping
   else:
     if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
@@ -569,8 +591,6 @@ proc findWrongOwners(c: PTransf, n: PNode) =
         x.sym.owner.name.s & " " & getCurrOwner(c).name.s)
   else:
     for i in 0..<n.safeLen: findWrongOwners(c, n[i])
-
-import strutils
 
 proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
@@ -596,14 +616,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
     discard c.breakSyms.pop
     return result
 
-  let str: string = renderTree(n)
-  let debug: bool = 0 <= find(str, "identity")
-  if debug:
-    echo "transforming: "
-    echo str
-    echo "debug:"
-    debug n
-
+  #echo "transforming: ", renderTree(n)
   var stmtList = newTransNode(nkStmtList, n.info, 0)
   result[1] = stmtList
 
@@ -631,7 +644,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   # generate access statements for the parameters (unless they are constant)
   pushTransCon(c, newC)
   for i in 1..<call.len:
-    var arg = transform(c, call[i])
+    let arg = transform(c, call[i])
     let ff = skipTypes(iter.typ, abstractInst)
     # can happen for 'nim check':
     if i >= ff.n.len: return result
@@ -658,9 +671,8 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:
-      let typ = newType(tySequence, formal.owner)
-      addSonSkipIntLit(typ, formal.typ[0])
-      var temp = newTemp(c, typ, formal.info)
+      # arrays will deep copy here (pretty bad).
+      var temp = newTemp(c, arg.typ, formal.info)
       addVar(v, temp)
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
@@ -673,9 +685,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
   dec(c.inlining)
   popInfoContext(c.graph.config)
   popTransCon(c)
-  if debug:
-    echo "transformed:\n", stmtList.renderTree
-    debug stmtList
+  # echo "transformed: ", stmtList.renderTree
 
 proc transformCase(c: PTransf, n: PNode): PNode =
   # removes `elif` branches of a case stmt

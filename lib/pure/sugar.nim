@@ -216,14 +216,7 @@ when (NimMajor, NimMinor) >= (1, 1):
     result = newNimNode(nnkStmtListExpr, arg)
     let tmp = genSym(nskVar, "dupResult")
     result.add newVarStmt(tmp, arg)
-    expectKind calls, nnkArgList
-    let body =
-      if calls.len == 1 and calls[0].kind in {nnkStmtList, nnkStmtListExpr}:
-        calls[0]
-      else:
-        calls
-    for call in body:
-      result.add underscoredCall(call, tmp)
+    underscoredCalls(result, calls, tmp)
     result.add tmp
 
 

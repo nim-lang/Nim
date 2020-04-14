@@ -422,6 +422,11 @@ when isMainModule:
       check some("a") != stringNone
       check intNone == intNone
 
+      when compiles(some("a") == some(5)):
+        check false
+      when compiles(none(string) == none(int)):
+        check false
+
     test "get with a default value":
       check(some("Correct").get("Wrong") == "Correct")
       check(stringNone.get("Correct") == "Correct")

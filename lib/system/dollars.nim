@@ -68,6 +68,11 @@ else:
 type
   SomePointer = ptr | ref | pointer
 
+when defined(nimHasTypeIsRecursive):
+  proc isRecursivePointer(t: typedesc): bool {.magic: "TypeTrait".}
+else:
+  template isRecursivePointer(t: typedesc): bool = false
+
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
@@ -86,11 +91,13 @@ proc `$`*[T: tuple|object](x: T): string =
       result.add(name)
       result.add(": ")
 
-    when value is SomePointer:
-      if value == nil:
+    when isRecursivePointer(typeof(value)):
+      if cast[pointer](value) == nil:
+        # nil can always be printed safely
         result.add "nil"
       else:
-        result.add("...") # cannot follow pointers as there is no cycle detection
+        # value may cycle back to origin, don't print it.
+        result.add("...")
     else:
       result.addQuoted(value)
 
@@ -100,6 +107,7 @@ proc `$`*[T: tuple|object](x: T): string =
   result.add(")")
 
 proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
+  mixin addQuoted
   result = prefix
   var firstElement = true
   for value in items(x):
@@ -108,7 +116,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
     else:
       result.add(separator)
 
-    when T is SomePointer:
+    when value is SomePointer:
       # this branch should not be necessary
       if value.isNil:
         result.add "nil"
@@ -157,3 +165,44 @@ proc `$`*[T](x: openArray[T]): string =
   ## .. code-block:: Nim
   ##   $(@[23, 45].toOpenArray(0, 1)) == "[23, 45]"
   collectionToString(x, "[", ", ", "]")
+
+proc `$`*[T: ref](arg: T): string =
+  if arg == nil:
+    "nil"
+  else:
+    $arg[]
+
+proc `$`*(arg: pointer): string =
+  if arg == nil:
+    return "nil"
+  else:
+    # maybe print something so people know it is a pointer.
+    result.add "0x"
+    const
+      HexChars = "0123456789ABCDEF"
+    var buffer: array[16, char]
+    var idx = 0
+    var tmp = cast[uint](arg)
+    while tmp > 0:
+      buffer[idx] = HexChars[tmp and 0xf]
+      tmp = tmp shr 4
+      inc idx
+    while idx > 0:
+      dec idx
+      result.add buffer[idx]
+
+proc `$`*[T: ptr](arg: T): string =
+  $cast[pointer](arg)
+
+proc distinctBase(T: typedesc): typedesc {.magic: "TypeTrait".}
+
+proc `$`*[T: distinct](arg: T): string =
+  $distinctBase(T)(arg)
+
+proc `$`*[T: proc](arg: T): string =
+  if arg == nil:
+    return "nil"
+  else:
+    return "..."
+
+proc `$`*[T](arg: UncheckedArray[T]): string = "[...]"

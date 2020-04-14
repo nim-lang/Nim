@@ -48,6 +48,20 @@ import
 
 const weirdTarget = defined(nimscript) or defined(js)
 
+since (1, 1):
+  const
+    invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
+    ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
+    ## You can check if your filename contains these char and strip them for safety.
+    ## Mac bans ``':'``, Linux bans ``'/'``, Windows bans all others.
+    invalidFilenames* = [
+      "CON", "PRN", "AUX", "NUL",
+      "COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+      "LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"] ## \
+    ## Filenames that may be invalid across Linux, Windows, Mac, etc.
+    ## You can check if your filename match these and rename it for safety
+    ## (Currently all invalid filenames are from Windows only).
+
 when weirdTarget:
   discard
 elif defined(windows):
@@ -2014,8 +2028,8 @@ proc staticWalkDir(dir: string; relative: bool): seq[
                   tuple[kind: PathComponent, path: string]] =
   discard
 
-iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path: string] {.
-  tags: [ReadDirEffect].} =
+iterator walkDir*(dir: string; relative = false, checkDir = false):
+  tuple[kind: PathComponent, path: string] {.tags: [ReadDirEffect].} =
   ## Walks over the directory `dir` and yields for each directory or file in
   ## `dir`. The component type and full path for each item are returned.
   ##
@@ -2055,7 +2069,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
     elif defined(windows):
       var f: WIN32_FIND_DATA
       var h = findFirstFile(dir / "*", f)
-      if h != -1:
+      if h == -1:
+        if checkDir:
+          raiseOSError(osLastError(), dir)
+      else:
         defer: findClose(h)
         while true:
           var k = pcFile
@@ -2073,7 +2090,10 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
             else: raiseOSError(errCode.OSErrorCode)
     else:
       var d = opendir(dir)
-      if d != nil:
+      if d == nil:
+        if checkDir:
+          raiseOSError(osLastError(), dir)
+      else:
         defer: discard closedir(d)
         while true:
           var x = readdir(d)
@@ -2108,7 +2128,7 @@ iterator walkDir*(dir: string; relative=false): tuple[kind: PathComponent, path:
 
 iterator walkDirRec*(dir: string,
                      yieldFilter = {pcFile}, followFilter = {pcDir},
-                     relative = false): string {.tags: [ReadDirEffect].} =
+                     relative = false, checkDir = false): string {.tags: [ReadDirEffect].} =
   ## Recursively walks over the directory `dir` and yields for each file
   ## or directory in `dir`.
   ##
@@ -2145,14 +2165,20 @@ iterator walkDirRec*(dir: string,
   ## * `walkDir iterator <#walkDir.i,string>`_
 
   var stack = @[""]
+  var checkDir = checkDir
   while stack.len > 0:
     let d = stack.pop()
-    for k, p in walkDir(dir / d, relative = true):
+    for k, p in walkDir(dir / d, relative = true, checkDir = checkDir):
       let rel = d / p
       if k in {pcDir, pcLinkToDir} and k in followFilter:
         stack.add rel
       if k in yieldFilter:
         yield if relative: rel else: dir / rel
+    checkDir = false
+      # We only check top-level dir, otherwise if a subdir is invalid (eg. wrong
+      # permissions), it'll abort iteration and there would be no way to
+      # continue iteration.
+      # Future work can provide a way to customize this and do error reporting.
 
 proc rawRemoveDir(dir: string) {.noNimScript.} =
   when defined(windows):
@@ -2167,13 +2193,13 @@ proc rawRemoveDir(dir: string) {.noNimScript.} =
   else:
     if rmdir(dir) != 0'i32 and errno != ENOENT: raiseOSError(osLastError(), dir)
 
-proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
+proc removeDir*(dir: string, checkDir = false) {.rtl, extern: "nos$1", tags: [
   WriteDirEffect, ReadDirEffect], benign, noNimScript.} =
   ## Removes the directory `dir` including all subdirectories and files
   ## in `dir` (recursively).
   ##
   ## If this fails, `OSError` is raised. This does not fail if the directory never
-  ## existed in the first place.
+  ## existed in the first place, unless `checkDir` = true
   ##
   ## See also:
   ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
@@ -2183,10 +2209,13 @@ proc removeDir*(dir: string) {.rtl, extern: "nos$1", tags: [
   ## * `copyDir proc <#copyDir,string,string>`_
   ## * `copyDirWithPermissions proc <#copyDirWithPermissions,string,string>`_
   ## * `moveDir proc <#moveDir,string,string>`_
-  for kind, path in walkDir(dir):
+  for kind, path in walkDir(dir, checkDir = checkDir):
     case kind
     of pcFile, pcLinkToFile, pcLinkToDir: removeFile(path)
-    of pcDir: removeDir(path)
+    of pcDir: removeDir(path, true)
+      # for subdirectories there is no benefit in `checkDir = false`
+      # (unless perhaps for edge case of concurrent processes also deleting
+      # the same files)
   rawRemoveDir(dir)
 
 proc rawCreateDir(dir: string): bool {.noNimScript.} =
@@ -2741,6 +2770,10 @@ when declared(paramCount) or defined(nimdoc):
     result = @[]
     for i in 1..paramCount():
       result.add(paramStr(i))
+else:
+  proc commandLineParams*(): seq[TaintedString] {.error:
+  "commandLineParams() unsupported by dynamic libraries".} =
+    discard
 
 when not weirdTarget and (defined(freebsd) or defined(dragonfly)):
   proc sysctl(name: ptr cint, namelen: cuint, oldp: pointer, oldplen: ptr csize_t,
@@ -3194,6 +3227,32 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+  ## Returns true if ``filename`` is valid for crossplatform use.
+  ##
+  ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
+  ## You can pass full paths as argument too, but func only checks filenames.
+  ## It uses ``invalidFilenameChars``, ``invalidFilenames`` and ``maxLen`` to verify the specified ``filename``.
+  ##
+  ## .. code-block:: nim
+  ##   assert not isValidFilename(" foo")    ## Leading white space
+  ##   assert not isValidFilename("foo ")    ## Trailing white space
+  ##   assert not isValidFilename("foo.")    ## Ends with Dot
+  ##   assert not isValidFilename("con.txt") ## "CON" is invalid (Windows)
+  ##   assert not isValidFilename("OwO:UwU") ## ":" is invalid (Mac)
+  ##   assert not isValidFilename("aux.bat") ## "AUX" is invalid (Windows)
+  ##
+  # https://docs.microsoft.com/en-us/dotnet/api/system.io.pathtoolongexception
+  # https://docs.microsoft.com/en-us/windows/win32/fileio/naming-a-file
+  # https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247%28v=vs.85%29.aspx
+  result = true
+  let f = filename.splitFile()
+  if unlikely(f.name.len + f.ext.len > maxLen or
+    f.name[0] == ' ' or f.name[^1] == ' ' or f.name[^1] == '.' or
+    find(f.name, invalidFilenameChars) != -1): return false
+  for invalid in invalidFilenames:
+    if cmpIgnoreCase(f.name, invalid) == 0: return false
+
 
 when isMainModule:
   assert quoteShellWindows("aaa") == "aaa"
@@ -3228,3 +3287,31 @@ when isMainModule:
       doAssert r"D:\".normalizePathEnd == r"D:"
       doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
       doAssert "/".normalizePathEnd == r"\"
+
+
+  block isValidFilenameTest:
+    # Negative Tests.
+    doAssert not isValidFilename("abcd", maxLen = 2)
+    doAssert not isValidFilename("0123456789", maxLen = 8)
+    doAssert not isValidFilename("con")
+    doAssert not isValidFilename("aux")
+    doAssert not isValidFilename("prn")
+    doAssert not isValidFilename("OwO|UwU")
+    doAssert not isValidFilename(" foo")
+    doAssert not isValidFilename("foo ")
+    doAssert not isValidFilename("foo.")
+    doAssert not isValidFilename("con.txt")
+    doAssert not isValidFilename("aux.bat")
+    doAssert not isValidFilename("prn.exe")
+    doAssert not isValidFilename("nim>.nim")
+    doAssert not isValidFilename(" foo.log")
+    # Positive Tests.
+    doAssert isValidFilename("abcd", maxLen = 42.Positive)
+    doAssert isValidFilename("c0n")
+    doAssert isValidFilename("foo.aux")
+    doAssert isValidFilename("bar.prn")
+    doAssert isValidFilename("OwO_UwU")
+    doAssert isValidFilename("cron")
+    doAssert isValidFilename("ux.bat")
+    doAssert isValidFilename("nim.nim")
+    doAssert isValidFilename("foo.log")

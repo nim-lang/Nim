@@ -69,7 +69,7 @@ proc llStreamClose*(s: PLLStream) =
   of llsFile:
     close(s.f)
 
-when not hasRstdin:
+when not declared(readLineFromStdin):
   # fallback implementation:
   proc readLineFromStdin(prompt: string, line: var string): bool =
     stderr.write(prompt)

@@ -75,6 +75,6 @@ proc alloc(r: var MemRegion, size: int): pointer =
 proc alloc0Impl(r: var MemRegion, size: int): pointer =
   result = alloc0Impl(size)
 proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
-proc deallocOsPages(r: var MemRegion) {.inline.} = discard
-proc deallocOsPages() {.inline.} = discard
+proc deallocOsPages(r: var MemRegion) = discard
+proc deallocOsPages() = discard
 

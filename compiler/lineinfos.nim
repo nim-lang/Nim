@@ -34,8 +34,10 @@ type
     warnTypelessParam,
     warnUseBase, warnWriteToForeignHeap, warnUnsafeCode,
     warnUnusedImportX,
+    warnInheritFromException,
     warnEachIdentIsTuple,
-    warnProveInit, warnProveField, warnProveIndex, warnGcUnsafe, warnGcUnsafe2,
+    warnProveInit, warnProveField, warnProveIndex,
+    warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
     warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
     hintSuccess, hintSuccessX, hintCC,
@@ -81,10 +83,12 @@ const
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
     warnUnusedImportX: "imported and not used: '$1'",
+    warnInheritFromException: "inherit from a more precise exception type like ValueError, IOError or OSError",
     warnEachIdentIsTuple: "each identifier is a tuple",
     warnProveInit: "Cannot prove that '$1' is initialized. This will become a compile time error in the future.",
     warnProveField: "cannot prove that field '$1' is accessible",
     warnProveIndex: "cannot prove index '$1' is valid",
+    warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
     warnUninit: "'$1' might not have been initialized",
@@ -97,9 +101,9 @@ const
     warnCycleCreated: "$1",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
-    # keep in sync with `pegSuccess` see testament.nim
+    # keep in sync with `testament.isSuccess`
     hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
-    hintCC: "CC: \'$1\'", # unused
+    hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",
     hintConvToBaseNotNeeded: "conversion to base object is not needed",
@@ -138,8 +142,10 @@ const
     "LanguageXNotSupported", "FieldXNotSupported",
     "CommentXIgnored",
     "TypelessParam", "UseBase", "WriteToForeignHeap",
-    "UnsafeCode", "UnusedImport", "EachIdentIsTuple",
-    "ProveInit", "ProveField", "ProveIndex", "GcUnsafe", "GcUnsafe2", "Uninit",
+    "UnsafeCode", "UnusedImport", "InheritFromException",
+    "EachIdentIsTuple",
+    "ProveInit", "ProveField", "ProveIndex",
+    "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
     "Spacing", "CaseTransition", "CycleCreated", "User"]
 
@@ -227,7 +233,7 @@ type
   TErrorOutputs* = set[TErrorOutput]
 
   ERecoverableError* = object of ValueError
-  ESuggestDone* = object of Exception
+  ESuggestDone* = object of ValueError
 
 proc `==`*(a, b: FileIndex): bool {.borrow.}
 

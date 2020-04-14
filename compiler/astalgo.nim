@@ -182,6 +182,7 @@ proc getModule*(s: PSym): PSym =
   assert((result.kind == skModule) or (result.owner != result))
   while result != nil and result.kind != skModule: result = result.owner
 
+proc fromSystem*(op: PSym): bool {.inline.} = sfSystemModule in getModule(op).flags
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   for i in start..<list.len:
     if list[i].kind == nkSym:
@@ -416,6 +417,7 @@ type
     currentLine: int
     firstItem: bool
     useColor: bool
+    compressBuiltinTypes: bool
     res: string
 
 proc indentMore(this: var DebugPrinter) =
@@ -540,7 +542,23 @@ proc value(this: var DebugPrinter; value: PSym) =
 
   this.closeCurly
 
+const CompressedBuiltinTypes = {
+  tyBool, tyChar, tyPointer, tyString,tyCString, tyInt, tyInt8, tyInt16,
+  tyInt32, tyInt64, tyFloat, tyFloat32, tyFloat64, tyUInt, tyUInt8,
+  tyUInt16, tyUInt32, tyUInt64
+}
+
 proc value(this: var DebugPrinter; value: PType) =
+  # these shortcuts for builtin types are done before ``earlyExit``
+  # because they are shorter that backreference links.
+  if this.compressBuiltinTypes and value != nil and
+      value.kind in CompressedBuiltinTypes:
+    if this.useColor:
+      this.res.add backrefStyle
+    this.res.add toLowerAscii("<" & ($value.kind)[2..^1] & ">")
+    if this.useColor:
+      this.res.add resetStyle
+    return
   earlyExit(this, value)
 
   this.openCurly
@@ -633,6 +651,7 @@ when declared(echo):
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
     this.useColor = not defined(windows)
+    this.compressBuiltinTypes = true
     this.value(n)
     echo($this.res)
 
@@ -641,6 +660,7 @@ when declared(echo):
     this.visited = initTable[pointer, int]()
     this.renderSymType = true
     this.useColor = not defined(windows)
+    this.compressBuiltinTypes = true
     this.value(n)
     echo($this.res)
 
@@ -649,6 +669,7 @@ when declared(echo):
     this.visited = initTable[pointer, int]()
     #this.renderSymType = true
     this.useColor = not defined(windows)
+    this.compressBuiltinTypes = true
     this.value(n)
     echo($this.res)
 

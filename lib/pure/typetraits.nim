@@ -72,13 +72,13 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## compile time error otherwise
 
 
-proc lenTuple*(T: typedesc[tuple]): int {.magic: "TypeTrait", since: (1, 1).}
+proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait", since: (1, 1).}
   ## Return number of elements of `T`
 
 since (1, 1):
-  template lenTuple*(t: tuple): int =
+  template tupleLen*(t: tuple): int =
     ## Return number of elements of `t`
-    lenTuple(type(t))
+    tupleLen(type(t))
 
 since (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
@@ -111,7 +111,8 @@ macro genericParamsImpl(T: typedesc): untyped =
           var ret: NimNode
           case ai.typeKind
           of ntyStatic:
-            ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+            since (1, 1):
+              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           of ntyTypeDesc:
             ret = ai
           else:

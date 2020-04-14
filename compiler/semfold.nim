@@ -288,9 +288,9 @@ proc evalOp(m: TMagic, n, a, b, c: PNode; g: ModuleGraph): PNode =
   of mLtStr: result = newIntNodeT(toInt128(ord(getStr(a) < getStr(b))), n, g)
   of mLeStr: result = newIntNodeT(toInt128(ord(getStr(a) <= getStr(b))), n, g)
   of mEqStr: result = newIntNodeT(toInt128(ord(getStr(a) == getStr(b))), n, g)
-  of mLtU, mLtU64:
+  of mLtU:
     result = newIntNodeT(toInt128(ord(`<%`(toInt64(getOrdValue(a)), toInt64(getOrdValue(b))))), n, g)
-  of mLeU, mLeU64:
+  of mLeU:
     result = newIntNodeT(toInt128(ord(`<=%`(toInt64(getOrdValue(a)), toInt64(getOrdValue(b))))), n, g)
   of mBitandI, mAnd: result = newIntNodeT(bitand(a.getInt, b.getInt), n, g)
   of mBitorI, mOr: result = newIntNodeT(bitor(getInt(a), getInt(b)), n, g)
@@ -439,7 +439,6 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
       result = newIntNodeT(toInt128(getFloat(a)), n, g)
     of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
       var val = a.getOrdValue
-
       if check: rangeCheck(n, val, g)
       result = newIntNodeT(val, n, g)
       if dstTyp.kind in {tyUInt..tyUInt64}:
