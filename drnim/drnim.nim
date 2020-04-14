@@ -68,6 +68,7 @@ type
     o: Operators
     hasUnstructedCf: int
     currOptions: TOptions
+    currentScope: VersionScope
     owner: PSym
 
   DrCon = object
@@ -374,7 +375,8 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     of mOrd, mChr:
       result = rec n[1]
     of mOld:
-      let key = if c.canonParameterNames: (paramName(c.up, n[1]) & ".old") else: stableName(c.up, n[1], scope, isOld = true)
+      let key = if c.canonParameterNames: (paramName(c.up, n[1]) & ".old")
+                else: stableName(c.up, n[1], allScopes(c.up), isOld = true)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
         let name = Z3_mk_string_symbol(ctx, $n)
@@ -516,7 +518,8 @@ proc setupZ3(): Z3_context =
   Z3_del_config(cfg)
   Z3_set_error_handler(result, on_err)
 
-proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)]; toProve: PNode): (bool, string) =
+proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)];
+                    toProve: (PNode, VersionScope)): (bool, string) =
   c.mapping = initTable[string, Z3_ast]()
   try:
 
@@ -550,10 +553,9 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)]; toPro
       except CannotMapToZ3Error:
         discard "ignore a fact we cannot map to Z3"
 
-    # XXX Find a better way to do 'collectedVars'.
-    let z3toProve = nodeToZ3(c, toProve, VersionScope(0), collectedVars)
+    let z3toProve = nodeToZ3(c, toProve[0], toProve[1], collectedVars)
     for v in collectedVars:
-      addRangeInfo(c, v, VersionScope(0), lhs)
+      addRangeInfo(c, v, toProve[1], lhs)
 
     # to make Z3 produce nice counterexamples, we try to prove the
     # negation of our conjecture and see if it's Z3_L_FALSE
@@ -561,7 +563,7 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)]; toPro
 
     #Z3_mk_not(ctx, forall(ctx, collectedVars, conj(ctx, lhs), z3toProve))
 
-    #echo "toProve: ", Z3_ast_to_string(ctx, fa), " ", c.graph.config $ toProve.info
+    #echo "toProve: ", Z3_ast_to_string(ctx, fa), " ", c.graph.config $ toProve[0].info
     Z3_solver_assert ctx, solver, fa
 
     let z3res = Z3_solver_check(ctx, solver)
@@ -575,7 +577,8 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)]; toPro
     result[0] = false
     result[1] = getCurrentExceptionMsg()
 
-proc proofEngine(ctx: DrnimContext; assumptions: seq[(PNode, VersionScope)]; toProve: PNode): (bool, string) =
+proc proofEngine(ctx: DrnimContext; assumptions: seq[(PNode, VersionScope)];
+                 toProve: (PNode, VersionScope)): (bool, string) =
   var c: DrCon
   c.graph = ctx.graph
   c.assumeUniqueness = assumeUniqueness
@@ -600,7 +603,7 @@ proc requirementsCheck(ctx: DrnimContext; assumptions: seq[(PNode, VersionScope)
                       call, requirement: PNode): (bool, string) =
   try:
     let r = translateReq(requirement, call)
-    result = proofEngine(ctx, assumptions, r)
+    result = proofEngine(ctx, assumptions, (r, ctx.currentScope))
   except ValueError:
     result[0] = false
     result[1] = getCurrentExceptionMsg()
@@ -642,12 +645,13 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       c.canonParameterNames = true
       try:
         c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil)
+        template zero: untyped = VersionScope(0)
         if not frequires.isEmpty:
-          result = not arequires.isEmpty and proofEngineAux(c, @[(frequires, VersionScope(0))], arequires)[0]
+          result = not arequires.isEmpty and proofEngineAux(c, @[(frequires, zero)], (arequires, zero))[0]
 
         if result:
           if not fensures.isEmpty:
-            result = not aensures.isEmpty and proofEngineAux(c, @[(aensures, VersionScope(0))], fensures)[0]
+            result = not aensures.isEmpty and proofEngineAux(c, @[(aensures, zero)], (fensures, zero))[0]
       finally:
         Z3_del_context(c.up.z3)
     else:
@@ -659,7 +663,7 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
 template config(c: typed): untyped = c.graph.config
 
 proc addFact(c: DrnimContext; n: PNode) =
-  let v = allScopes(c)
+  let v = c.currentScope
   if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
     c.facts.add((n[1], v))
   c.facts.add((n, v))
@@ -671,7 +675,7 @@ proc addFactNeg(c: DrnimContext; n: PNode) =
   addFact(c, neg)
 
 proc prove(c: DrnimContext; prop: PNode): bool =
-  let (success, m) = proofEngine(c, c.facts, prop)
+  let (success, m) = proofEngine(c, c.facts, (prop, c.currentScope))
   if not success:
     message(c.config, prop.info, warnStaticIndexCheck, "cannot prove: " & $prop & m)
   result = success
@@ -766,7 +770,7 @@ proc addAsgnFact*(c: DrnimContext, key, value: PNode) =
   fact[0] = newSymNode(c.o.opEq)
   fact[1] = key
   fact[2] = value
-  c.facts.add((fact, allScopes(c)))
+  c.facts.add((fact, c.currentScope))
 
 proc traverse(c: DrnimContext; n: PNode)
 
@@ -836,7 +840,7 @@ proc traverseAsgn(c: DrnimContext; n: PNode) =
 
   freshVersion(c, n[0])
   addAsgnFact(c, n[0], replaceByOldParams(n[1], n[0]))
-  echoFacts(c)
+  #echoFacts(c)
 
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
