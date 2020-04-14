@@ -1,12 +1,14 @@
 discard """
-  nimout: '''
-tsetlen_invalidates.nim(15, 12) Warning: cannot prove: 0 <= len(a) + -1; counter example: a.len -> 0 [IndexCheck]
+  nimout: '''BEGIN
+tsetlen_invalidates.nim(17, 12) Warning: cannot prove: 0 <= len(a) + -1; counter example: a.len -> 0 [IndexCheck]
+END
 '''
   cmd: "drnim $file"
   action: "compile"
 """
 
 {.push staticBoundChecks: defined(nimDrNim).}
+{.warning: "BEGIN".}
 
 proc p() =
   var a = newSeq[int](3)
@@ -20,3 +22,4 @@ proc p() =
 {.pop.}
 
 p()
+{.warning: "END".}

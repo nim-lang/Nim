@@ -17,7 +17,7 @@
 ]#
 
 import std / [
-  parseopt, strutils, os, tables, times, intsets
+  parseopt, strutils, os, tables, times, intsets, hashes
 ]
 
 import ".." / compiler / [
@@ -59,21 +59,29 @@ proc helpOnError(conf: ConfigRef) =
 type
   CannotMapToZ3Error = object of ValueError
   Z3Exception = object of ValueError
-
-  DrCon = object
+  DrnimContext = ref object
     z3: Z3_context
     graph: ModuleGraph
-    mapping: Table[string, Z3_ast]
-    canonParameterNames: bool
-    assumeUniqueness: bool
-
-  DrnimContext = ref object
-    graph: ModuleGraph
     facts: seq[PNode]
+    mutatedVars: seq[PSym]
     o: Operators
     hasUnstructedCf: int
     currOptions: TOptions
     owner: PSym
+    toVarVersion: Table[int, int] # we effectively use an SSA representation of the program
+                                  # with "versionized" variables.
+    z3cache: Table[PNode, Z3_ast] # because "versionized" variables have been introduced
+                                  # rather lately, this "cache" is currently
+                                  # essential for correctness!
+
+  DrCon = object
+    graph: ModuleGraph
+    mapping: Table[string, Z3_ast]
+    canonParameterNames: bool
+    assumeUniqueness: bool
+    up: DrnimContext
+
+proc hash(n: PNode): Hash = cast[Hash](n)
 
 var
   assumeUniqueness: bool
@@ -124,7 +132,7 @@ proc isLoc(m: PNode; assumeUniqueness: bool): bool =
     else:
       discard
 
-proc stableName(result: var string; n: PNode) =
+proc stableName(result: var string; c: DrnimContext; n: PNode; version: int) =
   # we can map full Nim expressions like 'f(a, b, c)' to Z3 variables.
   # We must be carefult to select a unique, stable name for these expressions
   # based on structural equality. 'stableName' helps us with this problem.
@@ -136,6 +144,10 @@ proc stableName(result: var string; n: PNode) =
     result.add n.sym.name.s
     result.add '_'
     result.addInt n.sym.id
+    result.add '_'
+    let v = c.toVarVersion.getOrDefault(n.sym.id) - version
+    assert v >= 0
+    result.addInt v
   of nkCharLit..nkUInt64Lit:
     result.addInt n.intVal
   of nkFloatLit..nkFloat64Lit:
@@ -147,10 +159,10 @@ proc stableName(result: var string; n: PNode) =
     result.add '('
     for i in 0..<n.len:
       if i > 0: result.add ", "
-      stableName(result, n[i])
+      stableName(result, c, n[i], version)
     result.add ')'
 
-proc stableName(n: PNode): string = stableName(result, n)
+proc stableName(c: DrnimContext; n: PNode; version = 0): string = stableName(result, c, n, version)
 
 proc notImplemented(msg: string) {.noinline.} =
   when defined(debug):
@@ -167,7 +179,7 @@ proc translateEnsures(e, x: PNode): PNode =
       result[i] = translateEnsures(e[i], x)
 
 proc typeToZ3(c: DrCon; t: PType): Z3_sort =
-  template ctx: untyped = c.z3
+  template ctx: untyped = c.up.z3
   case t.skipTypes(abstractInst+{tyVar}).kind
   of tyEnum, tyInt..tyInt64:
     result = Z3_mk_int_sort(ctx)
@@ -200,7 +212,7 @@ proc nodeToDomain(c: var DrCon; n, q: PNode; opAnd: PSym): PNode =
     notImplemented($n)
 
 template quantorToZ3(fn) {.dirty.} =
-  template ctx: untyped = c.z3
+  template ctx: untyped = c.up.z3
 
   var bound = newSeq[Z3_app](n.len-2)
   let opAnd = createMagic(c.graph, "and", mAnd)
@@ -211,7 +223,7 @@ template quantorToZ3(fn) {.dirty.} =
     let v = it[1].sym
     let name = Z3_mk_string_symbol(ctx, v.name.s)
     let vz3 = Z3_mk_const(ctx, name, typeToZ3(c, v.typ))
-    c.mapping[stableName(it[1])] = vz3
+    c.mapping[stableName(c.up, it[1])] = vz3
     bound[i-1] = Z3_to_app(ctx, vz3)
     let domain = nodeToDomain(c, it[2], it[1], opAnd)
     if known == nil:
@@ -227,18 +239,18 @@ template quantorToZ3(fn) {.dirty.} =
 proc forallToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_forall_const)
 proc existsToZ3(c: var DrCon; n: PNode): Z3_ast = quantorToZ3(Z3_mk_exists_const)
 
-proc paramName(n: PNode): string =
+proc paramName(c: DrnimContext; n: PNode): string =
   case n.sym.kind
   of skParam: result = "arg" & $n.sym.position
   of skResult: result = "result"
-  else: result = stableName(n)
+  else: result = stableName(c, n)
 
 proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
-  template ctx: untyped = c.z3
+  template ctx: untyped = c.up.z3
   template rec(n): untyped = nodeToZ3(c, n, vars)
   case n.kind
   of nkSym:
-    let key = if c.canonParameterNames: paramName(n) else: stableName(n)
+    let key = if c.canonParameterNames: paramName(c.up, n) else: stableName(c.up, n)
     result = c.mapping.getOrDefault(key)
     if pointer(result) == nil:
       let name = Z3_mk_string_symbol(ctx, n.sym.name.s)
@@ -273,7 +285,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     of mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq:
       # len(x) needs the same logic as 'x' itself
       if isLoc(n[1], c.assumeUniqueness):
-        let key = stableName(n)
+        let key = stableName(c.up, n)
         result = c.mapping.getOrDefault(key)
         if pointer(result) == nil:
           let name = Z3_mk_string_symbol(ctx, $n[1] & ".len")
@@ -358,11 +370,11 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     of mOrd, mChr:
       result = rec n[1]
     of mOld:
-      let key = (if c.canonParameterNames: paramName(n[1]) else: stableName(n[1])) & ".old"
+      let key = if c.canonParameterNames: (paramName(c.up, n[1]) & ".old") else: stableName(c.up, n[1], -1)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
         let name = Z3_mk_string_symbol(ctx, $n)
-        result = Z3_mk_const(ctx, name, typeToZ3(c, n.typ))
+        result = Z3_mk_const(ctx, name, typeToZ3(c, n[1].typ))
         c.mapping[key] = result
         # XXX change the logic in `addRangeInfo` for this
         #vars.add n
@@ -377,7 +389,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
           ensuresEffects < op.n[0].len:
         let ensures = op.n[0][ensuresEffects]
         if ensures != nil and ensures.kind != nkEmpty:
-          let key = stableName(n)
+          let key = stableName(c.up, n)
           result = c.mapping.getOrDefault(key)
           if pointer(result) == nil:
             let name = Z3_mk_string_symbol(ctx, $n)
@@ -399,7 +411,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; vars: var seq[PNode]): Z3_ast =
     result = rec n[0]
   else:
     if isLoc(n, c.assumeUniqueness):
-      let key = stableName(n)
+      let key = stableName(c.up, n)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
         let name = Z3_mk_string_symbol(ctx, $n)
@@ -491,18 +503,17 @@ proc conj(ctx: Z3_context; conds: seq[Z3_ast]): Z3_ast =
   else:
     result = Z3_mk_true(ctx)
 
-proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
-  c.mapping = initTable[string, Z3_ast]()
+proc setupZ3(): Z3_context =
   let cfg = Z3_mk_config()
-  Z3_set_param_value(cfg, "model", "true");
-  let ctx = Z3_mk_context(cfg)
-  c.z3 = ctx
-  Z3_del_config(cfg)
-  Z3_set_error_handler(ctx, on_err)
-
   when false:
     Z3_set_param_value(cfg, "timeout", "1000")
+  Z3_set_param_value(cfg, "model", "true")
+  result = Z3_mk_context(cfg)
+  Z3_del_config(cfg)
+  Z3_set_error_handler(result, on_err)
 
+proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
+  c.mapping = initTable[string, Z3_ast]()
   try:
 
     #[
@@ -523,16 +534,22 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (boo
 
     var collectedVars: seq[PNode]
 
+    template ctx(): untyped = c.up.z3
+
     let solver = Z3_mk_solver(ctx)
     var lhs: seq[Z3_ast]
     for assumption in assumptions:
-      if assumption != nil:
+      let za0 = c.up.z3cache.getOrDefault(assumption)
+      if pointer(za0) == nil:
         try:
           let za = nodeToZ3(c, assumption, collectedVars)
           #Z3_solver_assert ctx, solver, za
           lhs.add za
+          c.up.z3cache[assumption] = za
         except CannotMapToZ3Error:
           discard "ignore a fact we cannot map to Z3"
+      else:
+        lhs.add za0
 
     let z3toProve = nodeToZ3(c, toProve, collectedVars)
     for v in collectedVars:
@@ -557,13 +574,12 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[PNode]; toProve: PNode): (boo
   except ValueError:
     result[0] = false
     result[1] = getCurrentExceptionMsg()
-  finally:
-    Z3_del_context(ctx)
 
 proc proofEngine(ctx: DrnimContext; assumptions: seq[PNode]; toProve: PNode): (bool, string) =
   var c: DrCon
   c.graph = ctx.graph
   c.assumeUniqueness = assumeUniqueness
+  c.up = ctx
   result = proofEngineAux(c, assumptions, toProve)
 
 proc skipAddr(n: PNode): PNode {.inline.} =
@@ -624,12 +640,17 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       var c: DrCon
       c.graph = graph
       c.canonParameterNames = true
-      if not frequires.isEmpty:
-        result = not arequires.isEmpty and proofEngineAux(c, @[frequires], arequires)[0]
+      try:
+        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil,
+          z3cache: initTable[PNode, Z3_ast]())
+        if not frequires.isEmpty:
+          result = not arequires.isEmpty and proofEngineAux(c, @[frequires], arequires)[0]
 
-      if result:
-        if not fensures.isEmpty:
-          result = not aensures.isEmpty and proofEngineAux(c, @[aensures], fensures)[0]
+        if result:
+          if not fensures.isEmpty:
+            result = not aensures.isEmpty and proofEngineAux(c, @[aensures], fensures)[0]
+      finally:
+        Z3_del_context(c.up.z3)
     else:
       # formal has requirements but 'actual' has none, so make it
       # incompatible. XXX What if the requirement only mentions that
@@ -675,50 +696,44 @@ proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
       if not success:
         message(c.config, call.info, warnStaticIndexCheck, "cannot prove: " & $requires & m)
 
+proc freshVersion(c: DrnimContext; arg: PNode) =
+  let v = getRoot(arg)
+  if v != nil:
+    c.mutatedVars.add v
+    c.toVarVersion[v.id] = c.toVarVersion.getOrDefault(v.id) + 1
+
+proc translateEnsures(c: DrnimContext, e, call: PNode; markedParams: var IntSet): PNode =
+  if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
+    assert e[1].kind == nkSym and e[1].sym.kind == skParam
+    let param = e[1].sym
+    let arg = call[param.position+1].skipAddr
+    result = buildCall(e[0].sym, arg)
+    if not markedParams.containsOrIncl(param.position):
+      freshVersion(c, arg)
+
+  elif e.kind == nkSym and e.sym.kind == skParam:
+    let param = e.sym
+    let arg = call[param.position+1].skipAddr
+    if not markedParams.containsOrIncl(param.position):
+      freshVersion(c, arg)
+    result = arg
+  else:
+    result = shallowCopy(e)
+    for i in 0 ..< safeLen(e): result[i] = translateEnsures(c, e[i], call, markedParams)
+
 proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
-  proc coveredByOldClause(e: PNode; markedParams: var IntSet; oldSym: var PSym) =
-    if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
-      oldSym = e[0].sym
-      assert e[1].kind == nkSym and e[1].sym.kind == skParam
-      markedParams.incl e[1].sym.position
-    for i in 0 ..< safeLen(e): coveredByOldClause(e[i], markedParams, oldSym)
-
-  proc replaceByOldParams(fact, call: PNode; markedParams: IntSet; oldSym: PSym): PNode =
-    for i in 1 ..< call.len:
-      if (i-1) in markedParams:
-        if guards.sameTree(fact, call[i].skipAddr):
-          result = newNodeIT(nkCall, fact.info, fact.typ)
-          assert oldSym != nil
-          result.add newSymNode oldSym
-          result.add fact
-          return result
-    result = shallowCopy(fact)
-    for i in 0 ..< safeLen(fact):
-      result[i] = replaceByOldParams(fact[i], call, markedParams, oldSym)
-
   assert op.n[0].kind == nkEffectList
   var markedParams = initIntSet()
   if ensuresEffects < op.n[0].len:
     let ensures = op.n[0][ensuresEffects]
     if ensures != nil and ensures.kind != nkEmpty:
-      var oldSym: PSym
-      coveredByOldClause(ensures, markedParams, oldSym)
-      for i in 0 ..< c.facts.len:
-        let f = c.facts[i]
-        if f != nil:
-          # inc ensures: old(a)+1 == a
-          # fact: x > 0
-          # inc x  # but let parameter be named 'a':
-          #
-          #  replace 'x' by 'old(x)'
-          c.facts[i] = replaceByOldParams(c.facts[i], call, markedParams, oldSym)
-      addFact(c, translateReq(ensures, call))
+      addFact(c, translateEnsures(c, ensures, call, markedParams))
 
   # invalidate what we know for pass-by-ref parameters unless
   # they previously where subject of an '.ensures' annotation:
   for i in 1 ..< min(call.len, op.len):
     if op[i].kind == tyVar and not markedParams.contains(i-1):
-      invalidateFacts(c.facts, call[i])
+      freshVersion(c, call[i])
 
 proc checkLe(c: DrnimContext, a, b: PNode) =
   var cmpOp = mLeI
@@ -814,18 +829,15 @@ proc traverseAsgn(c: DrnimContext; n: PNode) =
       result = newNodeIT(nkCall, fact.info, fact.typ)
       result.add newSymNode createMagic(c.graph, "old", mOld)
       result.add fact
-      return result
-    result = shallowCopy(fact)
-    for i in 0 ..< safeLen(fact):
-      result[i] = replaceByOldParams(fact[i], le)
+    else:
+      result = shallowCopy(fact)
+      for i in 0 ..< safeLen(fact):
+        result[i] = replaceByOldParams(fact[i], le)
 
-  for i in 0 ..< c.facts.len:
-    let f = c.facts[i]
-    if f != nil:
-      #  replace 'x' by 'old(x)'
-      c.facts[i] = replaceByOldParams(c.facts[i], n[0])
-
+  freshVersion(c, n[0])
   addAsgnFact(c, n[0], replaceByOldParams(n[1], n[0]))
+  #echoFacts(c)
+  #echo c.toVarVersion
 
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind
@@ -956,16 +968,21 @@ proc traverse(c: DrnimContext; n: PNode) =
   else:
     for i in 0 ..< n.len: traverse(c, n[i])
 
-
 proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
   var c = DrnimContext()
   c.currOptions = graph.config.options + owner.options
   if optStaticBoundsCheck in c.currOptions:
+    c.z3 = setupZ3()
     c.o = initOperators(graph)
     c.graph = graph
     c.owner = owner
-    traverse(c, n)
-    ensuresCheck(c, owner)
+    c.z3cache = initTable[PNode, Z3_ast]()
+    try:
+      traverse(c, n)
+      ensuresCheck(c, owner)
+    finally:
+      Z3_del_context(c.z3)
+
 
 proc mainCommand(graph: ModuleGraph) =
   let conf = graph.config
