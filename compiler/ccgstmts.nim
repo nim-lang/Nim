@@ -1526,15 +1526,7 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   getTemp(p, a.t, tmp)
   expr(p, e[1], tmp)
   let field = dotExpr[1].sym
-  if optTinyRtti in p.config.globalOptions:
-    let t = dotExpr[0].typ.skipTypes(abstractInst)
-    var oldVal, newVal: TLoc
-    genCaseObjDiscMapping(p, e[0], t, field, oldVal)
-    genCaseObjDiscMapping(p, e[1], t, field, newVal)
-    lineCg(p, cpsStmts,
-          "if ($1 != $2) { #raiseObjectCaseTransition(); $3}$n",
-          [rdLoc(oldVal), rdLoc(newVal), raiseInstr(p)])
-  else:
+  if optTinyRtti notin p.config.globalOptions:
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
   genAssignment(p, a, tmp, {})
 

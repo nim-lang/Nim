@@ -22,7 +22,7 @@
 # - eliminate 'wasMoved(x); destroy(x)' pairs as a post processing step.
 
 import
-  intsets, ast, msgs, renderer, magicsys, types, idents,
+  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes, liftdestructors
 
@@ -49,12 +49,21 @@ type
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
 
+  ProcessMode = enum
+    normal
+    consumed
+    sinkArg
+
+
 const toDebug {.strdefine.} = ""
 
 template dbg(body) =
   when toDebug.len > 0:
     if c.owner.name.s == toDebug or toDebug == "always":
       body
+
+proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
+proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
 proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
   var pc = pc
@@ -220,7 +229,7 @@ proc makePtrType(c: Con, baseType: PType): PType =
   result = newType(tyPtr, c.owner)
   addSonSkipIntLit(result, baseType)
 
-proc genOp(c: Con; op: PSym; dest, ri: PNode): PNode =
+proc genOp(c: Con; op: PSym; dest: PNode): PNode =
   let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
   addrExp.add(dest)
   result = newTree(nkCall, newSymNode(op), addrExp)
@@ -244,7 +253,7 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
     if kind == attachedDestructor:
       echo "destructor is ", op.id, " ", op.ast
   if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
-  genOp(c, op, dest, ri)
+  genOp(c, op, dest)
 
 proc genDestroy(c: Con; dest: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -294,26 +303,21 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
   result = genCopyNoCheck(c, dest, ri)
 
 proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
-  result = copyNode(n)
-  result.add p(n[0], c, mode)
-  result.add p(n[1], c, consumed)
+  var asgn = copyNode(n)
+  asgn.add p(n[0], c, normal)
+  asgn.add p(n[1], c, consumed)
 
-  let le = n[0]
-  let objType = if le.kind == nkCheckedFieldExpr: le[0][0].typ
-                else:  le[0].typ
+  let le = if n[0].kind == nkCheckedFieldExpr: n[0][0] else: n[0]
+  let objType = le[0].typ
 
-  if hasDestructor(objType) and not isFirstWrite(le, c):
-
-    let branchDestructor
-    result = newTree(nkStmtList, genOp(c, ))
-    result.add p(n[0], c, mode)
-    result.add p(n[1], c, consumed)
-
+  if hasDestructor(objType):
+    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, le[1].sym, n[0].info)
+    result = newTree(nkStmtList)
+    result.add genOp(c, branchDestructor, asgn[0])
+    result.add asgn
 
   else:
-    result = copyNode(n)
-    result.add p(n[0], c, mode)
-    result.add p(n[1], c, consumed)
+    result = asgn
 
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
@@ -360,15 +364,6 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
   if not isLastRead(s, c):
     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
-
-type
-  ProcessMode = enum
-    normal
-    consumed
-    sinkArg
-
-proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
-proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
 
@@ -888,9 +883,9 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         else:
           if n[0].kind in {nkDotExpr, nkCheckedFieldExpr}:
             cycleCheck(n, c)
-          assert n[1].kind notiastn {nkAsgn, nkFastAsgn}
+          assert n[1].kind notin {nkAsgn, nkFastAsgn}
           result = moveOrCopy(p(n[0], c, mode), n[1], c)
-      elif isDiscriminatorField(n[0]):
+      elif isDiscriminantField(n[0]):
         result = genDiscriminantAsgn(c, n)
       else:
         result = copyNode(n)
