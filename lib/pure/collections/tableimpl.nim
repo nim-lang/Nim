@@ -101,10 +101,7 @@ template delImpl() {.dirty.} =
 
 template clearImpl() {.dirty.} =
   for i in 0 ..< t.dataLen:
-    when t.data is KeyValuePairSeq: # CountTable records don't contain a hcode
-      t.data[i].hcode = 0
-    t.data[i].key = default(type(t.data[i].key))
-    t.data[i].val = default(type(t.data[i].val))
+    t.data[i] = default(typeof(t.data[i]))
   t.counter = 0
 
 template initImpl(result: typed, size: int) =
