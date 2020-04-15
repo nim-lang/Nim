@@ -547,12 +547,17 @@ proc getOptSize(conf: ConfigRef; c: TSystemCC): string =
   if result == "":
     result = CC[c].optSize    # use default settings from this file
 
+proc flagsToNative(flags: string, c: TSystemCC): string =
+  ## replaces ' -X' by ' /X' for VCC; works ok for some common flags.
+  if c == ccVcc: result = flags.replace(" -", " /")
+  else: result = flags
+
 proc getWarnings(conf: ConfigRef; c: TSystemCC): string =
   result = getConfigVar(conf, c, ".options.warnings")
-  if not conf.hasWarn(warnBackendWarning): # disable all warnings
-    case c
-    of ccVcc: result.add " /w"
-    else: result.add " -w"
+  if not conf.hasWarn(warnBackendWarning):
+    result.add " -w".flagsToNative(c) # disable all warnings
+  else:
+    result.add " -DNIM_UNIGNORE_DEFAULT_BACKEND_WARNINGS".flagsToNative(c)
 
 proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # We used to check current OS != specified OS, but this makes no sense
