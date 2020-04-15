@@ -1,11 +1,15 @@
 discard """
-  nimout: '''tensures.nim(14, 10) Warning: BEGIN [User]
-tensures.nim(23, 5) Warning: cannot prove:
+  nimout: '''tensures.nim(18, 10) Warning: BEGIN [User]
+tensures.nim(27, 5) Warning: cannot prove:
 0 < n [IndexCheck]
-tensures.nim(63, 17) Warning: cannot prove: a < 4; counter example: y -> 2
+tensures.nim(47, 17) Warning: cannot prove: a < 4; counter example: y -> 2
+a`2 -> 4
+a`1 -> 3
+a -> 2 [IndexCheck]
+tensures.nim(69, 17) Warning: cannot prove: a < 4; counter example: y -> 2
 a`1 -> 4
-a -> 2
-tensures.nim(67, 10) Warning: END [User]'''
+a -> 2 [IndexCheck]
+tensures.nim(73, 10) Warning: END [User]'''
   cmd: "drnim $file"
   action: "compile"
 """
@@ -39,6 +43,8 @@ proc mainB(y: int) =
   if a < 3:
     myinc a
     {.assert: a < 4.}
+    myinc a
+    {.assert: a < 4.} # now this is wrong!
 
 mainB(3)
 

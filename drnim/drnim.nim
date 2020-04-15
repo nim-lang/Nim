@@ -762,24 +762,19 @@ proc freshVersion(c: DrnimContext; arg: PNode) =
   if v != nil:
     c.varVersions.add v.id
 
-proc translateEnsures(c: DrnimContext, e, call: PNode; markedParams: var IntSet): PNode =
+proc translateEnsuresFromCall(c: DrnimContext, e, call: PNode): PNode =
   if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
     assert e[1].kind == nkSym and e[1].sym.kind == skParam
     let param = e[1].sym
     let arg = call[param.position+1].skipAddr
     result = buildCall(e[0].sym, arg)
-    if not markedParams.containsOrIncl(param.position):
-      freshVersion(c, arg)
-
   elif e.kind == nkSym and e.sym.kind == skParam:
     let param = e.sym
     let arg = call[param.position+1].skipAddr
-    if not markedParams.containsOrIncl(param.position):
-      freshVersion(c, arg)
     result = arg
   else:
     result = shallowCopy(e)
-    for i in 0 ..< safeLen(e): result[i] = translateEnsures(c, e[i], call, markedParams)
+    for i in 0 ..< safeLen(e): result[i] = translateEnsuresFromCall(c, e[i], call)
 
 proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
   assert op.n[0].kind == nkEffectList
@@ -790,8 +785,7 @@ proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
   if ensuresEffects < op.n[0].len:
     let ensures = op.n[0][ensuresEffects]
     if ensures != nil and ensures.kind != nkEmpty:
-      var markedParams = initIntSet()
-      addFact(c, translateEnsures(c, ensures, call, markedParams))
+      addFact(c, translateEnsuresFromCall(c, ensures, call))
 
 proc checkLe(c: DrnimContext, a, b: PNode) =
   var cmpOp = mLeI
