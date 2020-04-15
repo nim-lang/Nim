@@ -42,7 +42,7 @@ func bitand*[T: SomeInteger](x, y: T; z: varargs[T]): T =
 
 func bitor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
   ## Computes the `bitwise or` of all arguments collectively.
-  result = internalBitxor(x, y)
+  result = internalBitor(x, y)
   for extra in z:
     result = internalBitor(result, extra)
 
