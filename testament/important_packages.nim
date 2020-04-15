@@ -92,6 +92,7 @@ pkg "strunicode", true, "nim c -r src/strunicode.nim"
 pkg "telebot", true, "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "tensordsl", false, "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
+pkg "timezones"
 pkg "tiny_sqlite"
 pkg "unicodedb"
 pkg "unicodeplus", true
