@@ -49,6 +49,7 @@ __AVR__
 
 
 /* ------------ ignore typical warnings in Nim-generated files ------------- */
+#ifndef NIM_ENABLE_BACKEND_WARNING
 #  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
 #  pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
 #  pragma GCC diagnostic ignored "-Winvalid-noreturn"
@@ -56,7 +57,6 @@ __AVR__
 // for C++:
 // -Winvalid-offsetof
 
-#ifndef NIM_ENABLE_BACKEND_WARNING
 #if defined(__GNUC__) || defined(__clang__)
 // note:
 
