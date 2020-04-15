@@ -3,8 +3,8 @@ discard """
 tensures.nim(23, 5) Warning: cannot prove:
 0 < n [IndexCheck]
 tensures.nim(63, 17) Warning: cannot prove: a < 4; counter example: y -> 2
-a -> 4
-old(a) -> 2
+a`1 -> 4
+a -> 2
 tensures.nim(67, 10) Warning: END [User]'''
   cmd: "drnim $file"
   action: "compile"

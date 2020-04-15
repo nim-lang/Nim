@@ -70,6 +70,7 @@ type
     currOptions: TOptions
     currentScope: VersionScope
     owner: PSym
+    mangler: seq[PSym]
 
   DrCon = object
     graph: ModuleGraph
@@ -131,29 +132,85 @@ proc varVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
   for i in countdown(int(begin)-1, 0):
     if c.varVersions[i] == s.id: inc result
 
+proc disamb(c: DrnimContext; s: PSym): int =
+  # we group by 's.name.s' to compute the stable name ID.
+  result = 0
+  for i in 0 ..< c.mangler.len:
+    if s == c.mangler[i]: return result
+    if s.name.s == c.mangler[i].name.s: inc result
+  c.mangler.add s
+
 proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionScope;
                 isOld: bool) =
   # we can map full Nim expressions like 'f(a, b, c)' to Z3 variables.
-  # We must be carefult to select a unique, stable name for these expressions
+  # We must be careful to select a unique, stable name for these expressions
   # based on structural equality. 'stableName' helps us with this problem.
+  # In the future we will also use this string for the caching mechanism.
   case n.kind
   of nkEmpty, nkNilLit, nkType: discard
   of nkIdent:
     result.add n.ident.s
   of nkSym:
     result.add n.sym.name.s
-    result.add '_'
-    result.addInt n.sym.id
-    result.add '_'
-    let v = c.varVersion(n.sym, version) - ord(isOld)
-    assert v >= 0
-    result.addInt v
+    if n.sym.magic == mNone:
+      let d = disamb(c, n.sym)
+      if d != 0:
+        result.add "`scope="
+        result.addInt d
+      let v = c.varVersion(n.sym, version) - ord(isOld)
+      if v < 0:
+        echo "fuck you ", isOld, " ", n.sym.name.s, " ", c.graph.config $ n.info
+      assert v >= 0
+      if v > 0:
+        result.add '`'
+        result.addInt v
+    else:
+      result.add "`magic="
+      result.addInt ord(n.sym.magic)
+
   of nkCharLit..nkUInt64Lit:
     result.addInt n.intVal
   of nkFloatLit..nkFloat64Lit:
     result.addFloat n.floatVal
   of nkStrLit..nkTripleStrLit:
     result.add strutils.escape n.strVal
+  of nkDotExpr:
+    stableName(result, c, n[0], version, isOld)
+    result.add '.'
+    stableName(result, c, n[1], version, isOld)
+  of nkBracketExpr:
+    stableName(result, c, n[0], version, isOld)
+    result.add '['
+    stableName(result, c, n[1], version, isOld)
+    result.add ']'
+  of nkCallKinds:
+    if n.len == 2:
+      stableName(result, c, n[1], version, isOld)
+      result.add '.'
+      case getMagic(n)
+      of mLengthArray, mLengthOpenArray, mLengthSeq, mLengthStr:
+        result.add "len"
+      of mHigh:
+        result.add "high"
+      of mLow:
+        result.add "low"
+      else:
+        stableName(result, c, n[0], version, isOld)
+    elif n.kind == nkInfix and n.len == 3:
+      result.add '('
+      stableName(result, c, n[1], version, isOld)
+      result.add ' '
+      stableName(result, c, n[0], version, isOld)
+      result.add ' '
+      stableName(result, c, n[2], version, isOld)
+      result.add ')'
+    else:
+      stableName(result, c, n[0], version, isOld)
+      result.add '('
+      for i in 1..<n.len:
+        if i > 1: result.add ", "
+        stableName(result, c, n[i], version, isOld)
+      result.add ')'
   else:
     result.add $n.kind
     result.add '('
@@ -258,7 +315,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     let key = if c.canonParameterNames: paramName(c.up, n) else: stableName(c.up, n, scope)
     result = c.mapping.getOrDefault(key)
     if pointer(result) == nil:
-      let name = Z3_mk_string_symbol(ctx, key) # n.sym.name.s)
+      let name = Z3_mk_string_symbol(ctx, key)
       result = Z3_mk_const(ctx, name, typeToZ3(c, n.sym.typ))
       c.mapping[key] = result
       vars.add n
@@ -293,7 +350,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
         let key = stableName(c.up, n, scope)
         result = c.mapping.getOrDefault(key)
         if pointer(result) == nil:
-          let name = Z3_mk_string_symbol(ctx, $n[1] & ".len")
+          let name = Z3_mk_string_symbol(ctx, key)
           result = Z3_mk_const(ctx, name, Z3_mk_int_sort(ctx))
           c.mapping[key] = result
           vars.add n
@@ -379,7 +436,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
                 else: stableName(c.up, n[1], allScopes(c.up), isOld = true)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
-        let name = Z3_mk_string_symbol(ctx, $n)
+        let name = Z3_mk_string_symbol(ctx, key)
         result = Z3_mk_const(ctx, name, typeToZ3(c, n[1].typ))
         c.mapping[key] = result
         # XXX change the logic in `addRangeInfo` for this
@@ -398,7 +455,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
           let key = stableName(c.up, n, scope)
           result = c.mapping.getOrDefault(key)
           if pointer(result) == nil:
-            let name = Z3_mk_string_symbol(ctx, $n)
+            let name = Z3_mk_string_symbol(ctx, key)
             result = Z3_mk_const(ctx, name, typeToZ3(c, n.typ))
             c.mapping[key] = result
             vars.add n
@@ -420,7 +477,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
       let key = stableName(c.up, n, scope)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
-        let name = Z3_mk_string_symbol(ctx, $n)
+        let name = Z3_mk_string_symbol(ctx, key)
         result = Z3_mk_const(ctx, name, typeToZ3(c, n.typ))
         c.mapping[key] = result
         vars.add n
@@ -563,7 +620,8 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)];
 
     #Z3_mk_not(ctx, forall(ctx, collectedVars, conj(ctx, lhs), z3toProve))
 
-    #echo "toProve: ", Z3_ast_to_string(ctx, fa), " ", c.graph.config $ toProve[0].info
+    when defined(verbose):
+      echo "toProve: ", Z3_ast_to_string(ctx, fa), " ", c.graph.config $ toProve[0].info, " ", int(toProve[1])
     Z3_solver_assert ctx, solver, fa
 
     let z3res = Z3_solver_check(ctx, solver)
@@ -705,6 +763,7 @@ proc freshVersion(c: DrnimContext; arg: PNode) =
   let v = getRoot(arg)
   if v != nil:
     c.varVersions.add v.id
+    inc c.currentScope
 
 proc translateEnsures(c: DrnimContext, e, call: PNode; markedParams: var IntSet): PNode =
   if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
@@ -737,7 +796,7 @@ proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
   # they previously where subject of an '.ensures' annotation:
   for i in 1 ..< min(call.len, op.len):
     if op[i].kind == tyVar and not markedParams.contains(i-1):
-      freshVersion(c, call[i])
+      freshVersion(c, call[i].skipAddr)
 
 proc checkLe(c: DrnimContext, a, b: PNode) =
   var cmpOp = mLeI
@@ -840,7 +899,8 @@ proc traverseAsgn(c: DrnimContext; n: PNode) =
 
   freshVersion(c, n[0])
   addAsgnFact(c, n[0], replaceByOldParams(n[1], n[0]))
-  #echoFacts(c)
+  when defined(debug):
+    echoFacts(c)
 
 proc traverse(c: DrnimContext; n: PNode) =
   case n.kind

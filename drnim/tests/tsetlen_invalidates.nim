@@ -1,7 +1,8 @@
 discard """
-  nimout: '''BEGIN
-tsetlen_invalidates.nim(17, 12) Warning: cannot prove: 0 <= len(a) + -1; counter example: a.len -> 0 [IndexCheck]
-END
+  nimout: '''tsetlen_invalidates.nim(12, 10) Warning: BEGIN [User]
+tsetlen_invalidates.nim(18, 12) Warning: cannot prove: 0 <= len(a) + -1; counter example: a`1.len -> 0
+a.len -> 1 [IndexCheck]
+tsetlen_invalidates.nim(26, 10) Warning: END [User]
 '''
   cmd: "drnim $file"
   action: "compile"

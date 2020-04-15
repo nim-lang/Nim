@@ -180,7 +180,7 @@ proc getRoot*(n: PNode): PSym =
   ## determined as the owner; ``obj`` in the example.
   case n.kind
   of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar}:
+    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar, skParam}:
       result = n.sym
   of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
       nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
