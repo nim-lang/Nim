@@ -302,44 +302,6 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     checkForErrorPragma(c, t, ri, "=")
   result = genCopyNoCheck(c, dest, ri)
 
-proc findLocation(n: PNode): PNode = 
-  result = n
-  while result.kind in {nkStmtList, nkStmtListExpr}:
-    result = result[^1]
-
-proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
-  var asgn = copyNode(n)
-  asgn.add p(n[0], c, normal)
-  asgn.add p(n[1], c, consumed)
-
-  let le = findLocation(asgn[0]) 
-  let leDotExpr = if le.kind == nkCheckedFieldExpr: le[0] else: le
-  let ri = findLocation(asgn[1])
-  let objType = leDotExpr[0].typ
-
-  if hasDestructor(objType):
-    if objType.attachedOps[attachedDestructor] != nil and
-        sfOverriden in objType.attachedOps[attachedDestructor].flags:
-      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor. 
-It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
-      result = asgn
-      return
-
-    # generate: if le != ri: `=destroy`(le)
-    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info)
-    let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-    cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
-    cond.add le
-    cond.add ri
-    let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
-    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
-    notExpr.add cond
-    result = newTree(nkStmtList)
-    result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, genOp(c, branchDestructor, le)))
-    result.add asgn
-  else:
-    result = asgn
-  echo result
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
@@ -347,6 +309,45 @@ proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   let sym = newSym(skTemp, getIdent(c.graph.cache, ":tmpD"), c.owner, info)
   sym.typ = typ
   result = newSymNode(sym)
+
+proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
+  # discriminator is ordinal value that doesn't need sink destroy
+  # but fields within active case branch might need destruction
+
+  # tmp to support self assignments 
+  let tmp = getTemp(c, n[1].typ, n.info)
+  c.addTopVar(tmp)
+
+  result = newTree(nkStmtList)
+  result.add newTree(nkFastAsgn, tmp, p(n[1], c, consumed))
+  result.add p(n[0], c, normal)
+
+  let le = p(n[0], c, normal)
+  let leDotExpr = if le.kind == nkCheckedFieldExpr: le[0] else: le
+  let objType = leDotExpr[0].typ
+
+  if hasDestructor(objType):
+    if objType.attachedOps[attachedDestructor] != nil and
+        sfOverriden in objType.attachedOps[attachedDestructor].flags:
+      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor. 
+It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
+      result.add newTree(nkFastAsgn, le, tmp)
+      return
+
+    # generate: if le != tmp: `=destroy`(le)
+    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info)
+    let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
+    cond.add le
+    cond.add tmp
+    let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
+    notExpr.add cond
+    result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, genOp(c, branchDestructor, le)))
+    result.add newTree(nkFastAsgn, le, tmp)
+  else:
+    result.add newTree(nkFastAsgn, le, tmp)
+  echo result
 
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
