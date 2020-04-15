@@ -549,15 +549,10 @@ proc getOptSize(conf: ConfigRef; c: TSystemCC): string =
 
 proc getWarnings(conf: ConfigRef; c: TSystemCC): string =
   result = getConfigVar(conf, c, ".options.warnings")
-  if not conf.hasWarn(warnBackendWarning):
-    # TODO: /w for vcc?
-    result.add " -w"
-  # if result == "":
-  #   result = CC[c].optSize    # use default settings from this file
-
-  # case c
-  # of ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccZig, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
-  # # ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccZig, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
+  if not conf.hasWarn(warnBackendWarning): # disable all warnings
+    case c
+    of ccVcc: result.add " /w"
+    else: result.add " -w"
 
 proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # We used to check current OS != specified OS, but this makes no sense
@@ -570,8 +565,9 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
   result = conf.compileOptions
 
   block: # warnings
-    # must occur before `compileOptionsCmd` so cmdline can override
+    # must occur before `compileOptionsCmd` so user config/cmdline can override
     let key = nimname & ".warnings"
+    echo0b key
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getWarnings(conf, conf.cCompiler))
 
