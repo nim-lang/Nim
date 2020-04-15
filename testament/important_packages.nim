@@ -1,3 +1,4 @@
+import os
 
 template pkg(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
   packages.add((name, cmd, hasDeps, url))
@@ -17,8 +18,8 @@ pkg "c2nim", false, "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
 pkg "chronicles", true, "nim c -o:chr -r chronicles.nim"
-# disable until my chronos fix was merged
-#pkg "chronos", true
+when not defined(osx): # testdatagram.nim(560, 54): Check failed
+  pkg "chronos", true
 pkg "cligen", false, "nim c -o:cligenn -r cligen.nim"
 pkg "coco", true
 pkg "combparser"
@@ -36,7 +37,7 @@ pkg "glob"
 pkg "gnuplot"
 pkg "hts", false, "nim c -o:htss src/hts.nim"
 pkg "illwill", false, "nimble examples"
-pkg "inim"
+pkg "inim", true
 pkg "itertools", false, "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
@@ -47,7 +48,13 @@ pkg "nake", false, "nim c nakefile.nim"
 pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 # pkg "nico", true
 pkg "nicy", false, "nim c src/nicy.nim"
+
+when defined(osx):
+  # do this more generally by installing non-nim dependencies automatically
+  # as specified in nimble file
+  doAssert execShellCmd("brew install gtk+3") == 0
 pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
+
 pkg "nimcrypto", false, "nim c -r tests/testall.nim"
 pkg "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg "nimes", true, "nim c src/nimes.nim"
@@ -85,6 +92,7 @@ pkg "strunicode", true, "nim c -r src/strunicode.nim"
 pkg "telebot", true, "nim c -o:tbot -r src/telebot.nim"
 pkg "tempdir"
 pkg "tensordsl", false, "nim c -r tests/tests.nim", "https://krux02@bitbucket.org/krux02/tensordslnim.git"
+pkg "timezones"
 pkg "tiny_sqlite"
 pkg "unicodedb"
 pkg "unicodeplus", true

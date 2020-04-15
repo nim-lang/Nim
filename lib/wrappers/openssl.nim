@@ -244,7 +244,7 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
-when compileOption("dynlibOverride", "ssl"):
+when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
   # Static linking
 
   when defined(openssl10):
@@ -285,40 +285,59 @@ else:
   proc thisModule(): LibHandle {.inline.} =
     var thisMod {.global.}: LibHandle
     if thisMod.isNil: thisMod = loadLib()
+
     result = thisMod
 
   proc sslModule(): LibHandle {.inline.} =
     var sslMod {.global.}: LibHandle
     if sslMod.isNil: sslMod = loadLibPattern(DLLSSLName)
+
     result = sslMod
 
-  proc sslSym(name: string): pointer =
-    var dl = thisModule()
-    if not dl.isNil:
-      result = symAddr(dl, name)
+  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+    # Load from DLL.
+    var sslDynlib = sslModule()
+    if not sslDynlib.isNil:
+      result = symAddr(sslDynlib, name)
+      if result.isNil and alternativeName.len > 0:
+        result = symAddr(sslDynlib, alternativeName)
+
+    # Attempt to load from current exe.
     if result.isNil:
-      dl = sslModule()
-      if not dl.isNil:
-        result = symAddr(dl, name)
+      let thisDynlib = thisModule()
+      if thisDynlib.isNil: return nil
+      result = symAddr(thisDynlib, name)
+      if result.isNil and alternativeName.len > 0:
+        result = symAddr(sslDynlib, alternativeName)
+
+  proc sslSymThrows(name: string, alternativeName = ""): pointer =
+    result = sslSymNullable(name, alternativeName)
+    if result.isNil: raiseInvalidLibrary(name)
 
   proc loadPSSLMethod(method1, method2: string): PSSL_METHOD =
     ## Load <method1> from OpenSSL if available, otherwise <method2>
-    let m1 = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym(method1))
-    if not m1.isNil:
-      return m1()
-    cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](sslSym(method2))()
+    ##
+    let methodSym = sslSymNullable(method1, method2)
+    if methodSym.isNil:
+      raise newException(LibraryError, "Could not load " & method1 & " nor " & method2)
+
+    let method2Proc = cast[proc(): PSSL_METHOD {.cdecl, gcsafe.}](methodSym)
+    return method2Proc()
 
   proc SSL_library_init*(): cint {.discardable.} =
     ## Initialize SSL using OPENSSL_init_ssl for OpenSSL >= 1.1.0 otherwise
     ## SSL_library_init
-    let theProc = cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](sslSym("OPENSSL_init_ssl"))
-    if not theProc.isNil:
-      return theProc(0, 0)
-    let olderProc = cast[proc(): cint {.cdecl.}](sslSym("SSL_library_init"))
+    let newInitSym = sslSymNullable("OPENSSL_init_ssl")
+    if not newInitSym.isNil:
+      let newInitProc =
+        cast[proc(opts: uint64, settings: uint8): cint {.cdecl.}](newInitSym)
+      return newInitProc(0, 0)
+    let olderProc = cast[proc(): cint {.cdecl.}](sslSymThrows("SSL_library_init"))
     if not olderProc.isNil: result = olderProc()
 
   proc SSL_load_error_strings*() =
-    let theProc = cast[proc() {.cdecl.}](sslSym("SSL_load_error_strings"))
+    # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
+    let theProc = cast[proc() {.cdecl.}](sslSymNullable("SSL_load_error_strings"))
     if not theProc.isNil: theProc()
 
   proc SSLv23_client_method*(): PSSL_METHOD =
@@ -343,12 +362,13 @@ else:
     loadPSSLMethod("TLS_server_method", "SSLv23_server_method")
 
   proc OpenSSL_add_all_algorithms*() =
-    let theProc = cast[proc() {.cdecl.}](sslSym("OPENSSL_add_all_algorithms_conf"))
+    # TODO: Are we ignoring this on purpose? SSL GitHub CI fails otherwise.
+    let theProc = cast[proc() {.cdecl.}](sslSymNullable("OPENSSL_add_all_algorithms_conf"))
     if not theProc.isNil: theProc()
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl.}](sslSym("OpenSSL_version_num"))
+    let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num"))
     result =
       if theProc.isNil: 0.culong
       else: theProc()

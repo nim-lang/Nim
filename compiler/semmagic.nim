@@ -429,15 +429,29 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result.typ.addParam newParam
 
 proc semQuantifier(c: PContext; n: PNode): PNode =
-  checkMinSonsLen(n, 2, c.config)
+  checkSonsLen(n, 2, c.config)
   openScope(c)
-  for i in 0..n.len-2:
-    let v = newSymS(skForVar, n[i], c)
-    styleCheckDef(c.config, v)
-    onDef(n.info, v)
-    n[i] = newSymNode(v)
-    addDecl(c, v)
-  n[^1] = forceBool(c, semExprWithType(c, n[^1]))
+  result = newNodeIT(n.kind, n.info, n.typ)
+  result.add n[0]
+  let args = n[1]
+  assert args.kind == nkArgList
+  for i in 0..args.len-2:
+    let it = args[i]
+    var valid = false
+    if it.kind == nkInfix:
+      let op = considerQuotedIdent(c, it[0])
+      if op.id == ord(wIn):
+        let v = newSymS(skForVar, it[1], c)
+        styleCheckDef(c.config, v)
+        onDef(it[1].info, v)
+        let domain = semExprWithType(c, it[2], {efWantIterator})
+        v.typ = domain.typ
+        valid = true
+        addDecl(c, v)
+        result.add newTree(nkInfix, it[0], newSymNode(v), domain)
+    if not valid:
+      localError(c.config, n.info, "<quantifier> 'in' <range> expected")
+  result.add forceBool(c, semExprWithType(c, args[^1]))
   closeScope(c)
 
 proc semOld(c: PContext; n: PNode): PNode =

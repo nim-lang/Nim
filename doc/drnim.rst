@@ -120,8 +120,7 @@ you assume.
 Example: insertionSort
 ======================
 
-**Note**: This example does not yet work with DrNim. ``forall`` and ``exists``
-are not implemented.
+**Note**: This example does not yet work with DrNim.
 
 .. code-block:: nim
 
