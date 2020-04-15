@@ -62,7 +62,6 @@ template compiler(name, settings: untyped): untyped =
 
 const
   gnuAsmListing = "-Wa,-acdl=$asmfile -g -fverbose-asm -masm=intel"
-  warningsOff* = "-w" # if needed, can be compiler specific
 
 # GNU C and C++ Compiler
 compiler gcc:
@@ -100,7 +99,7 @@ compiler nintendoSwitchGCC:
     optSize: " -Os ",
     compilerExe: "aarch64-none-elf-gcc",
     cppCompiler: "aarch64-none-elf-g++",
-    compileTmpl: "-w -MMD -MP -MF $dfile -c $options $include -o $objfile $file",
+    compileTmpl: "-MMD -MP -MF $dfile -c $options $include -o $objfile $file",
     buildGui: " -mwindows",
     buildDll: " -shared",
     buildLib: "aarch64-none-elf-gcc-ar rcs $libfile $objfiles",
@@ -550,6 +549,9 @@ proc getOptSize(conf: ConfigRef; c: TSystemCC): string =
 
 proc getWarnings(conf: ConfigRef; c: TSystemCC): string =
   result = getConfigVar(conf, c, ".options.warnings")
+  if not conf.hasWarn(warnBackendWarning):
+    # TODO: /w for vcc?
+    result.add " -w"
   # if result == "":
   #   result = CC[c].optSize    # use default settings from this file
 
