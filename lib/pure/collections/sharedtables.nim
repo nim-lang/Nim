@@ -31,7 +31,7 @@ type
 template maxHash(t): untyped = t.dataLen-1
 
 template checkIfInitialized() =
-  discard
+  assert t.data != nil, "shared table use before initialization"
 
 include tableimpl
 
