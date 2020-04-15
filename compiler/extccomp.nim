@@ -567,7 +567,6 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
   block: # warnings
     # must occur before `compileOptionsCmd` so user config/cmdline can override
     let key = nimname & ".warnings"
-    echo0b key
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getWarnings(conf, conf.cCompiler))
 

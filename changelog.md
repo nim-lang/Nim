@@ -44,6 +44,8 @@
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
+- new warning `--warning:backendWarning:on` to enable default backend warnings;
+  the defaults can be customized with additional flags eg: `--passc:-Wwritable-strings`
 - The `define` and `undef` pragmas have been de-deprecated.
 
 ## Tool changes

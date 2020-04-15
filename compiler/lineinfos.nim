@@ -194,7 +194,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[3] = {low(TNoteKind)..high(TNoteKind)} - {}
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
   result[1] = result[2] - {warnProveField, warnProveIndex,
-    warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
+    warnGcUnsafe, warnBackendWarning, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
     hintSource, hintGlobalVar, hintGCStats}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
