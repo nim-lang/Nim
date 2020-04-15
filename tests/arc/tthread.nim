@@ -1,5 +1,5 @@
 discard """
-  cmd: "nim c --gc:arc --threads:on $file"
+  cmd: "nim cpp --gc:arc --threads:on $file"
   output: '''ok1
 ok2
 destroyed
