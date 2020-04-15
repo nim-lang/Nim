@@ -7,8 +7,9 @@ discard """
 
 import std/[strformat,os,osproc,strutils]
 
+let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
+
 proc runCmd(file, options = ""): auto =
-  let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
   const nim = getCurrentCompilerExe()
   const testsDir = currentSourcePath().parentDir
   let fileabs = testsDir / file.unixToNativePath
@@ -23,6 +24,15 @@ proc testCodegenStaticAssert() =
   let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim")
   doAssert "sizeof(bool) == 2" in output
   doAssert exitCode != 0
+
+proc testCmdline() =
+  let (output, exitCode) = runCmd("misc/mbackendwarnings.nim", "-f --warning:backendWarning:on --stacktrace:off")
+  doAssert r"warning_1" in output, output
+  doAssert r"warning_2" in output, output
+  if mode == "cpp":
+    doAssert r"warning_3" in output, output
+  doAssert r"no_warning" notin output, output  # sanity check
+  doAssert exitCode == 0, output
 
 proc testCTFFI() =
   let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
@@ -43,3 +53,4 @@ when defined(nimHasLibFFIEnabled):
   testCTFFI()
 else: # don't run twice the same test
   testCodegenStaticAssert()
+  testCmdline()
