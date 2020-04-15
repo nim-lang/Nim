@@ -123,7 +123,6 @@ proc destructorCall(c: TLiftCtx; op: PSym; x: PNode): PNode =
   destroy.add genAddr(c.g, x)
   if c.addMemReset:
     result = newTree(nkStmtList, destroy, genBuiltin(c.g, mWasMoved,  "wasMoved", x))
-    echo result
   else:
     result = destroy
 
