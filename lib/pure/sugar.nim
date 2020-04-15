@@ -291,7 +291,7 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
     let z = collect(initTable(2)):
       for i, d in data.pairs: {i: d}
 
-    assert z == {1: "word", 0: "bird"}.toTable
+    assert z == {0: "bird", 1: "word"}.toTable
   # analyse the body, find the deepest expression 'it' and replace it via
   # 'result.add it'
   let res = genSym(nskVar, "collectResult")
@@ -334,8 +334,8 @@ when isMainModule:
 
     let data = @["bird", "word"] # if this gets stuck in your head, its not my fault
     assert collect(newSeq, for (i, d) in data.pairs: (if i mod 2 == 0: d)) == @["bird"]
-    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {1: "word",
-          0: "bird"}.toTable
+    assert collect(initTable(2), for (i, d) in data.pairs: {i: d}) == {0: "bird",
+          1: "word"}.toTable
     assert initHashSet.collect(for d in data.items: {d}) == data.toHashSet
 
     let x = collect(newSeqOfCap(4)):
