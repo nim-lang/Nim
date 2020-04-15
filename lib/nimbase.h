@@ -47,48 +47,6 @@ __AVR__
 #  endif
 #endif
 
-
-/* ------------ ignore typical warnings in Nim-generated files ------------- */
-#ifndef NIM_ENABLE_BACKEND_WARNING
-#  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
-#  pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
-#  pragma GCC diagnostic ignored "-Winvalid-noreturn"
-
-// for C++:
-// -Winvalid-offsetof
-
-#if defined(__GNUC__) || defined(__clang__)
-// note:
-
-#  pragma GCC diagnostic ignored "-Wpragmas"
-#  pragma GCC diagnostic ignored "-Wwritable-strings"
-#  pragma GCC diagnostic ignored "-Winvalid-noreturn"
-// #  pragma GCC diagnostic ignored "-Wformat" // this warning is always useful
-#  pragma GCC diagnostic ignored "-Wlogical-not-parentheses"
-#  pragma GCC diagnostic ignored "-Wlogical-op-parentheses"
-#  pragma GCC diagnostic ignored "-Wshadow"
-#  pragma GCC diagnostic ignored "-Wunused-function"
-#  pragma GCC diagnostic ignored "-Wunused-variable"
-#  pragma GCC diagnostic ignored "-Winvalid-offsetof"
-#  pragma GCC diagnostic ignored "-Wtautological-compare"
-#  pragma GCC diagnostic ignored "-Wswitch-bool"
-#  pragma GCC diagnostic ignored "-Wmacro-redefined"
-// this will prevent `--passC:-Wwrite-strings` from warning for char*s = "foo"
-// which can indicate serious bugs but cgen also generates a lot of these
-#  pragma GCC diagnostic ignored "-Wincompatible-pointer-types-discards-qualifiers"
-#  pragma GCC diagnostic ignored "-Wpointer-bool-conversion"
-#  pragma GCC diagnostic ignored "-Wconstant-conversion"
-#endif
-
-#if defined(_MSC_VER)
-#  pragma warning(disable: 4005 4100 4101 4189 4191 4200 4244 4293 4296 4309)
-#  pragma warning(disable: 4310 4365 4456 4477 4514 4574 4611 4668 4702 4706)
-#  pragma warning(disable: 4710 4711 4774 4800 4809 4820 4996 4090 4297)
-#endif
-#endif // NIM_ENABLE_BACKEND_WARNING
-/* ------------------------------------------------------------------------- */
-
-
 #if defined(__GNUC__)
 #  define _GNU_SOURCE 1
 #endif

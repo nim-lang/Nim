@@ -548,6 +548,15 @@ proc getOptSize(conf: ConfigRef; c: TSystemCC): string =
   if result == "":
     result = CC[c].optSize    # use default settings from this file
 
+proc getWarnings(conf: ConfigRef; c: TSystemCC): string =
+  result = getConfigVar(conf, c, ".options.warnings")
+  # if result == "":
+  #   result = CC[c].optSize    # use default settings from this file
+
+  # case c
+  # of ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccZig, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
+  # # ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccZig, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc, ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
+
 proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
   # We used to check current OS != specified OS, but this makes no sense
   # really: Cross compilation from Linux to Linux for example is entirely
@@ -557,8 +566,14 @@ proc noAbsolutePaths(conf: ConfigRef): bool {.inline.} =
 
 proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string =
   result = conf.compileOptions
-  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
 
+  block: # warnings
+    # must occur before `compileOptionsCmd` so cmdline can override
+    let key = nimname & ".warnings"
+    if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
+    else: addOpt(result, getWarnings(conf, conf.cCompiler))
+
+  addOpt(result, conf.cfileSpecificOptions.getOrDefault(fullNimFile))
   for option in conf.compileOptionsCmd:
     if strutils.find(result, option, 0) < 0:
       addOpt(result, option)
@@ -575,6 +590,8 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
     let key = nimname & ".size"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getOptSize(conf, conf.cCompiler))
+
+
   let key = nimname & ".always"
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
