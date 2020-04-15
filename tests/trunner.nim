@@ -25,14 +25,13 @@ proc testCodegenStaticAssert() =
   doAssert "sizeof(bool) == 2" in output
   doAssert exitCode != 0
 
-proc testCmdline() =
-  let (output, exitCode) = runCmd("misc/mbackendwarnings.nim", "-f --warning:backendWarning:on --stacktrace:off")
-  doAssert r"warning_1" in output, output
-  doAssert r"warning_2" in output, output
-  if mode == "cpp":
-    doAssert r"warning_3" in output, output
-  doAssert r"no_warning" notin output, output  # sanity check
-  doAssert exitCode == 0, output
+proc testBackendWarnings() =
+  when defined clang:
+    let (output, exitCode) = runCmd("misc/mbackendwarnings.nim", "-f --warning:backendWarning:on --stacktrace:off")
+    doAssert r"warning_1" in output, output
+    doAssert r"warning_2" in output, output
+    doAssert r"no_warning" notin output, output  # sanity check
+    doAssert exitCode == 0, output
 
 proc testCTFFI() =
   let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
@@ -53,4 +52,4 @@ when defined(nimHasLibFFIEnabled):
   testCTFFI()
 else: # don't run twice the same test
   testCodegenStaticAssert()
-  testCmdline()
+  testBackendWarnings()
