@@ -28,14 +28,29 @@
 proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
 
-proc bitand*[T: SomeInteger](x, y: T): T {.magic: "BitandI", noSideEffect.}
-  ## Computes the `bitwise and` of numbers `x` and `y`.
+func internalBitand[T: SomeInteger](x, y: T): T {.magic: "BitandI".}
 
-proc bitor*[T: SomeInteger](x, y: T): T {.magic: "BitorI", noSideEffect.}
-  ## Computes the `bitwise or` of numbers `x` and `y`.
+func internalBitor[T: SomeInteger](x, y: T): T {.magic: "BitorI".}
 
-proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
-  ## Computes the `bitwise xor` of numbers `x` and `y`.
+func internalBitxor[T: SomeInteger](x, y: T): T {.magic: "BitxorI".}
+
+func bitand*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise and` of all arguments collectively.
+  result = internalBitand(x, y)
+  for extra in z:
+    result = internalBitand(result, extra)
+
+func bitor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise or` of all arguments collectively.
+  result = internalBitxor(x, y)
+  for extra in z:
+    result = internalBitor(result, extra)
+
+func bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise xor` of all arguments collectively.
+  result = internalBitxor(x, y)
+  for extra in z:
+    result = internalBitxor(result, extra)
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
