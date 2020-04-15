@@ -320,7 +320,7 @@ proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
   if hasDestructor(objType):
     if objType.attachedOps[attachedDestructor] != nil and
         sfOverriden in objType.attachedOps[attachedDestructor].flags:
-      localError(c.graph.config, n.info, errGenerated, """Assignment to discrimant for object's with user defined destructor is not supported, object must have default destructor. 
+      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor. 
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result = asgn
       return
