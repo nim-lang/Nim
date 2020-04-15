@@ -68,7 +68,6 @@ type
     o: Operators
     hasUnstructedCf: int
     currOptions: TOptions
-    currentScope: VersionScope
     owner: PSym
     mangler: seq[PSym]
 
@@ -158,8 +157,6 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
         result.add "`scope="
         result.addInt d
       let v = c.varVersion(n.sym, version) - ord(isOld)
-      if v < 0:
-        echo "fuck you ", isOld, " ", n.sym.name.s, " ", c.graph.config $ n.info
       assert v >= 0
       if v > 0:
         result.add '`'
@@ -224,6 +221,7 @@ proc stableName(c: DrnimContext; n: PNode; version: VersionScope;
   stableName(result, c, n, version, isOld)
 
 template allScopes(c): untyped = VersionScope(c.varVersions.len)
+template currentScope(c): untyped = VersionScope(c.varVersions.len)
 
 proc notImplemented(msg: string) {.noinline.} =
   when defined(debug):
@@ -433,7 +431,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
       result = rec n[1]
     of mOld:
       let key = if c.canonParameterNames: (paramName(c.up, n[1]) & ".old")
-                else: stableName(c.up, n[1], allScopes(c.up), isOld = true)
+                else: stableName(c.up, n[1], scope, isOld = true)
       result = c.mapping.getOrDefault(key)
       if pointer(result) == nil:
         let name = Z3_mk_string_symbol(ctx, key)
@@ -620,7 +618,7 @@ proc proofEngineAux(c: var DrCon; assumptions: seq[(PNode, VersionScope)];
 
     #Z3_mk_not(ctx, forall(ctx, collectedVars, conj(ctx, lhs), z3toProve))
 
-    when defined(verbose):
+    when defined(dz3):
       echo "toProve: ", Z3_ast_to_string(ctx, fa), " ", c.graph.config $ toProve[0].info, " ", int(toProve[1])
     Z3_solver_assert ctx, solver, fa
 
@@ -763,7 +761,6 @@ proc freshVersion(c: DrnimContext; arg: PNode) =
   let v = getRoot(arg)
   if v != nil:
     c.varVersions.add v.id
-    inc c.currentScope
 
 proc translateEnsures(c: DrnimContext, e, call: PNode; markedParams: var IntSet): PNode =
   if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
@@ -786,17 +783,15 @@ proc translateEnsures(c: DrnimContext, e, call: PNode; markedParams: var IntSet)
 
 proc collectEnsuredFacts(c: DrnimContext, call: PNode; op: PType) =
   assert op.n[0].kind == nkEffectList
-  var markedParams = initIntSet()
+  for i in 1 ..< min(call.len, op.len):
+    if op[i].kind == tyVar:
+      freshVersion(c, call[i].skipAddr)
+
   if ensuresEffects < op.n[0].len:
     let ensures = op.n[0][ensuresEffects]
     if ensures != nil and ensures.kind != nkEmpty:
+      var markedParams = initIntSet()
       addFact(c, translateEnsures(c, ensures, call, markedParams))
-
-  # invalidate what we know for pass-by-ref parameters unless
-  # they previously where subject of an '.ensures' annotation:
-  for i in 1 ..< min(call.len, op.len):
-    if op[i].kind == tyVar and not markedParams.contains(i-1):
-      freshVersion(c, call[i].skipAddr)
 
 proc checkLe(c: DrnimContext, a, b: PNode) =
   var cmpOp = mLeI
