@@ -65,7 +65,7 @@ testament.db
 /tests/**/*.json
 /tests/**/*.js
 /csources
-dist/
+/dist/
 
 # Private directories and files (IDEs)
 .*/

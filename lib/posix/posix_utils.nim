@@ -11,8 +11,6 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 import posix
 
 type Uname* = object

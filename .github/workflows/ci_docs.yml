@@ -6,12 +6,14 @@ on:
       - 'lib/**.nim'
       - 'doc/**.rst'
       - 'doc/nimdoc.css'
+      - '.github/workflows/ci_docs.yml'
 
   pull_request:
     # Run only on changes on these files
     paths:
       - 'lib/**.nim'
       - 'doc/**.rst'
+      - '.github/workflows/ci_docs.yml'
 
 jobs:
   build:
@@ -114,14 +116,18 @@ jobs:
         run: ./koch doc --git.commit:devel
 
       - name: 'Prepare documentation for deployment'
-        if: github.event_name == 'push' && github.ref == 'devel' && matrix.target == 'linux'
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
+          matrix.target == 'linux'
         shell: bash
         run: cp -f doc/html/{overview,index}.html
 
       - name: 'Publish documentation to Github Pages'
-        if: github.event_name == 'push' && github.ref == 'devel' && matrix.target == 'linux'
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
+          matrix.target == 'linux'
         uses: crazy-max/ghaction-github-pages@v1
         with:
-          build-dir: doc/html
+          build_dir: doc/html
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

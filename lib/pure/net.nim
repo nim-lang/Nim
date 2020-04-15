@@ -66,7 +66,6 @@
 
 include "system/inclrtl"
 
-{.deadCodeElim: on.} # dce option deprecated
 import nativesockets, os, strutils, times, sets, options, std/monotimes
 from ssl_certs import scanSSLCertificates
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`

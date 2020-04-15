@@ -49,9 +49,6 @@ when defined(haiku):
 proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   ## returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
-  ##
-  ## .. code-block:: nim
-  ##   block: doAssert countProcessors() >= 0
   when defined(windows):
     type
       SYSTEM_INFO {.final, pure.} = object
@@ -98,3 +95,8 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0
+
+
+runnableExamples:
+  block:
+    doAssert countProcessors() > 0

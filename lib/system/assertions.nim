@@ -50,7 +50,7 @@ template assert*(cond: untyped, msg = "") =
   ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
   ##
   ## .. code-block:: nim
-  ##   static: assert 1 == 9, "This works when not built with -d:danger or --assertions:off"
+  ##   static: assert 1 == 9, "This assertion generates code when not built with -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
@@ -58,7 +58,7 @@ template doAssert*(cond: untyped, msg = "") =
   ## Similar to ``assert`` but is always turned on regardless of ``--assertions``.
   ##
   ## .. code-block:: nim
-  ##   static: assert 1 == 9, "This works when built with/without -d:danger or --assertions:off"
+  ##   static: doAssert 1 == 9, "This assertion generates code when built with/without -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 

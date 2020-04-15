@@ -20,9 +20,6 @@
 ## * `unidecode module <unidecode.html>`_
 ## * `encodings module <encodings.html>`_
 
-
-{.deadCodeElim: on.} # dce option deprecated
-
 include "system/inclrtl"
 
 type

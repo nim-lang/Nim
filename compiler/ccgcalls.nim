@@ -9,6 +9,18 @@
 #
 # included from cgen.nim
 
+proc canRaiseDisp(p: BProc; n: PNode): bool =
+  # we assume things like sysFatal cannot raise themselves
+  if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
+    result = false
+  elif optPanics in p.config.globalOptions or
+      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
+    # we know we can be strict:
+    result = canRaise(n)
+  else:
+    # we have to be *very* conservative:
+    result = canRaiseConservative(n)
+
 proc leftAppearsOnRightSide(le, ri: PNode): bool =
   if le != nil:
     for i in 1..<ri.len:
@@ -18,8 +30,19 @@ proc leftAppearsOnRightSide(le, ri: PNode): bool =
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
 
+proc isHarmlessStore(p: BProc; canRaise: bool; d: TLoc): bool =
+  if d.k in {locTemp, locNone} or not canRaise:
+    result = true
+  elif d.k == locLocalVar and p.withinTryWithExcept == 0:
+    # we cannot observe a store to a local variable if the current proc
+    # has no error handler:
+    result = true
+  else:
+    result = false
+
 proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
                callee, params: Rope) =
+  let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
   genLineDir(p, ri)
   var pl = callee & ~"(" & params
   # getUniqueType() is too expensive here:
@@ -44,6 +67,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         pl.add(~");$n")
         line(p, cpsStmts, pl)
         genAssignment(p, d, tmp, {}) # no need for deep copying
+      if canRaise: raiseExit(p)
     else:
       pl.add(~")")
       if p.module.compileToCpp:
@@ -63,16 +87,29 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
             initLoc(list, locCall, d.lode, OnUnknown)
             list.r = pl
             genAssignment(p, d, list, {}) # no need for deep copying
-      else:
+            if canRaise: raiseExit(p)
+
+      elif isHarmlessStore(p, canRaise, d):
         if d.k == locNone: getTemp(p, typ[0], d)
         assert(d.t != nil)        # generate an assignment to d:
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
         list.r = pl
         genAssignment(p, d, list, {}) # no need for deep copying
+        if canRaise: raiseExit(p)
+      else:
+        var tmp: TLoc
+        getTemp(p, typ[0], tmp, needsInit=true)
+        var list: TLoc
+        initLoc(list, locCall, d.lode, OnUnknown)
+        list.r = pl
+        genAssignment(p, tmp, list, {}) # no need for deep copying
+        if canRaise: raiseExit(p)
+        genAssignment(p, d, tmp, {})
   else:
     pl.add(~");$n")
     line(p, cpsStmts, pl)
+    if canRaise: raiseExit(p)
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
@@ -244,6 +281,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
   let rawProc = getRawProcType(p, typ)
+  let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
       if ri.len > 1: pl.add(~", ")
@@ -262,8 +300,9 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         getTemp(p, typ[0], tmp, needsInit=true)
         pl.add(addrLoc(p.config, tmp))
         genCallPattern()
+        if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {}) # no need for deep copying
-    else:
+    elif isHarmlessStore(p, canRaise, d):
       if d.k == locNone: getTemp(p, typ[0], d)
       assert(d.t != nil)        # generate an assignment to d:
       var list: TLoc
@@ -272,10 +311,24 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
         list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
       else:
         list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
-
       genAssignment(p, d, list, {}) # no need for deep copying
+      if canRaise: raiseExit(p)
+    else:
+      var tmp: TLoc
+      getTemp(p, typ[0], tmp)
+      assert(d.t != nil)        # generate an assignment to d:
+      var list: TLoc
+      initLoc(list, locCall, d.lode, OnUnknown)
+      if tfIterator in typ.flags:
+        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+      else:
+        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+      genAssignment(p, tmp, list, {})
+      if canRaise: raiseExit(p)
+      genAssignment(p, d, tmp, {})
   else:
     genCallPattern()
+    if canRaise: raiseExit(p)
 
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   if i < typ.len:
@@ -557,18 +610,6 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(~"];$n")
     line(p, cpsStmts, pl)
 
-proc canRaiseDisp(p: BProc; n: PNode): bool =
-  # we assume things like sysFatal cannot raise themselves
-  if n.kind == nkSym and {sfNeverRaises, sfImportc, sfCompilerProc} * n.sym.flags != {}:
-    result = false
-  elif optPanics in p.config.globalOptions or
-      (n.kind == nkSym and sfSystemModule in getModule(n.sym).flags):
-    # we know we can be strict:
-    result = canRaise(n)
-  else:
-    # we have to be *very* conservative:
-    result = canRaiseConservative(n)
-
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
   if e[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
@@ -579,8 +620,6 @@ proc genCall(p: BProc, e: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, nil, e, d)
   postStmtActions(p)
-  if p.config.exc == excGoto and canRaiseDisp(p, e[0]):
-    raiseExit(p)
 
 proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
@@ -592,5 +631,3 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
-  if p.config.exc == excGoto and canRaiseDisp(p, ri[0]):
-    raiseExit(p)
