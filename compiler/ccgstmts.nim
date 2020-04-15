@@ -1528,6 +1528,7 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   let field = dotExpr[1].sym
   if optTinyRtti notin p.config.globalOptions:
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
+    message(p.config, e.info, warnCaseTransition)
   genAssignment(p, a, tmp, {})
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
@@ -1537,7 +1538,6 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   elif optFieldCheck in p.options and isDiscriminantField(e[0]):
     genLineDir(p, e)
     asgnFieldDiscriminant(p, e)
-    message(p.config, e.info, warnCaseTransition)
   else:
     let le = e[0]
     let ri = e[1]

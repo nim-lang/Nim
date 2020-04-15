@@ -302,23 +302,37 @@ proc genCopy(c: var Con; dest, ri: PNode): PNode =
     checkForErrorPragma(c, t, ri, "=")
   result = genCopyNoCheck(c, dest, ri)
 
+proc findLocation(n: PNode): PNode = 
+  result = n
+  while result.kind in {nkStmtList, nkStmtListExpr}:
+    result = result[^1]
+
 proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
   var asgn = copyNode(n)
   asgn.add p(n[0], c, normal)
   asgn.add p(n[1], c, consumed)
 
-  let le = if n[0].kind == nkCheckedFieldExpr: n[0][0] else: n[0]
-  let objType = le[0].typ
+  let le = findLocation(asgn[0]) 
+  let leDotExpr = if le.kind == nkCheckedFieldExpr: le[0] else: le
+  let ri = findLocation(asgn[1])
+  let objType = leDotExpr[0].typ
 
   if hasDestructor(objType):
-    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, le[1].sym, n[0].info)
+    # generate: if le != ri: `=destroy`(le)
+    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info)
+    let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
+    cond.add le
+    cond.add ri
+    let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
+    notExpr.add cond
     result = newTree(nkStmtList)
-    result.add genOp(c, branchDestructor, asgn[0])
+    result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, genOp(c, branchDestructor, le)))
     result.add asgn
-
   else:
     result = asgn
-
+  echo result
 proc addTopVar(c: var Con; v: PNode) =
   c.topLevelVars.add newTree(nkIdentDefs, v, c.emptyNode, c.emptyNode)
 
