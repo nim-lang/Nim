@@ -347,7 +347,6 @@ It is best to factor out piece of object that needs custom destructor into separ
     result.add newTree(nkFastAsgn, le, tmp)
   else:
     result.add newTree(nkFastAsgn, le, tmp)
-  echo result
 
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
