@@ -588,8 +588,6 @@ proc cFileSpecificOptions(conf: ConfigRef; nimname, fullNimFile: string): string
     let key = nimname & ".size"
     if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
     else: addOpt(result, getOptSize(conf, conf.cCompiler))
-
-
   let key = nimname & ".always"
   if existsConfigVar(conf, key): addOpt(result, getConfigVar(conf, key))
 
