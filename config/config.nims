@@ -20,7 +20,10 @@ block: # warnings
 
   ## suspicious warnings for which we should fix code instead of ignoring warning:
   -Wno-tautological-constant-out-of-range-compare
-  -Wswitch-bool: occurs for object variants with bool switch, eg btrees.Node
+  -Wno-switch-bool: occurs for object variants with bool switch, eg btrees.Node
+  -Wno-incompatible-pointer-types-discards-qualifiers: will prevent 
+    `--passC:-Wwrite-strings` from giving warning for `char*s = "foo"
+    which can indicate a real bug, but cgen also generates a lot of these
   ]#
 
   let clangWarningsCommon = "-Wno-logical-op-parentheses -Wno-invalid-noreturn -Wno-tautological-constant-out-of-range-compare -Wno-switch-bool"
