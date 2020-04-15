@@ -96,7 +96,7 @@ proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode =
   let intType = getSysType(c.g, unknownLineInfo, tyInt)
 
   let addrOf = newNodeIT(nkAddr, c.info, makePtrType(x.owner, x.typ))
-  addrOf.add newSymNode(x)
+  addrOf.add newDeref(newSymNode(x))
   let castExpr1 = newNodeIT(nkCast, c.info, intType)
   castExpr1.add newNodeIT(nkType, c.info, intType)
   castExpr1.add addrOf
