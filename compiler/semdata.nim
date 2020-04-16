@@ -278,9 +278,12 @@ proc addToLib*(lib: PLib, sym: PSym) =
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner(c))
 
-proc makePtrType*(c: PContext, baseType: PType): PType =
-  result = newTypeS(tyPtr, c)
+proc makePtrType*(owner: PSym, baseType: PType): PType =
+  result = newType(tyPtr, owner)
   addSonSkipIntLit(result, baseType)
+
+proc makePtrType*(c: PContext, baseType: PType): PType =
+  makePtrType(getCurrOwner(c), baseType)
 
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
