@@ -12,4 +12,4 @@ proc main() =
 
   doAssert counter <= 4
 
-for i in 0 .. 10: main()
+for i in 0 .. 4: main()

@@ -1767,12 +1767,15 @@ further information.
 Nil
 ---
 
-If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
-the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
-is an unrecoverable fatal runtime error (and not a panic).
-A dereferencing operation ``p[]`` implies that ``p`` is not nil. This can be
-exploited by the implementation to optimize code like:
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is the
+default value for all ``ref`` and ``ptr`` types. The ``nil`` value can also be
+used like any other literal value. For example, it can be used in an assignment
+like ``myRef = nil``.
 
+Dereferencing ``nil`` is an unrecoverable fatal runtime error (and not a panic).
+
+A successful dereferencing operation ``p[]`` implies that ``p`` is not nil. This
+can be exploited by the implementation to optimize code like:
 
 .. code-block:: nim
 
@@ -5350,26 +5353,6 @@ powerful programming construct that still suffices. So the "check list" is:
 (4) Else: Use a macro.
 
 
-Macros as pragmas
------------------
-
-Whole routines (procs, iterators etc.) can also be passed to a template or
-a macro via the pragma notation:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  proc p() {.m.} = discard
-
-This is a simple syntactic transformation into:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  m:
-    proc p() = discard
-
-
 For Loop Macro
 --------------
 
@@ -6405,29 +6388,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-pragma pragma
--------------
-
-The ``pragma`` pragma can be used to declare user defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User
-defined pragmas are in a different module-wide scope than all other symbols.
-They cannot be imported from a module.
-
-Example:
-
-.. code-block:: nim
-  when appType == "lib":
-    {.pragma: rtl, exportc, dynlib, cdecl.}
-  else:
-    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
-
-  proc p*(a, b: int): int {.rtl.} =
-    result = a+b
-
-In the example a new pragma named ``rtl`` is introduced that either imports
-a symbol from a dynamic library or exports the symbol for dynamic library
-generation.
-
 Disabling certain messages
 --------------------------
 Nim generates some warnings and hints ("line too long") that may annoy the
@@ -7124,6 +7084,34 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 
 The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
 
+User-defined pragmas
+====================
+
+
+pragma pragma
+-------------
+
+The ``pragma`` pragma can be used to declare user defined pragmas. This is
+useful because Nim's templates and macros do not affect pragmas. User
+defined pragmas are in a different module-wide scope than all other symbols.
+They cannot be imported from a module.
+
+Example:
+
+.. code-block:: nim
+  when appType == "lib":
+    {.pragma: rtl, exportc, dynlib, cdecl.}
+  else:
+    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
+
+  proc p*(a, b: int): int {.rtl.} =
+    result = a+b
+
+In the example a new pragma named ``rtl`` is introduced that either imports
+a symbol from a dynamic library or exports the symbol for dynamic library
+generation.
+
+
 Custom annotations
 ------------------
 It is possible to define custom typed pragmas. Custom pragmas do not effect
@@ -7189,6 +7177,51 @@ More examples with custom pragmas:
     position {.editable, animatable.}: Vector3
     alpha {.editRange: [0.0..1.0], animatable.}: float32
 
+
+Macro pragmas
+-------------
+
+All macros and templates can also be used as pragmas. They can be attached
+to routines (procs, iterators, etc), type names or type expressions. The
+compiler will perform the following simple syntactic transformations:
+
+.. code-block:: nim
+  template command(name: string, def: untyped) = discard
+
+  proc p() {.command("print").} = discard
+
+This is translated to:
+
+.. code-block:: nim
+  command("print"):
+    proc p() = discard
+
+------
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = proc (x: Event) {.async.}
+
+This is translated to:
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = async(proc (x: Event))
+
+------
+
+.. code-block:: nim
+  type
+    MyObject {.schema: "schema.protobuf".} = object
+
+This is translated to a call to the ``schema`` macro with a `nnkTypeDef`
+AST node capturing both the left-hand side and right-hand side of the
+definition. The macro can return a potentially modified `nnkTypeDef` tree
+which will replace the original row in the type section.
+
+When multiple macro pragmas are applied to the same definition, the
+compiler will apply them consequently from left to right. Each macro
+will receive as input the output of the previous one.
 
 
 
@@ -7266,7 +7299,6 @@ In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
 
-
 Bycopy pragma
 -------------
 
@@ -7309,6 +7341,7 @@ checked.
 
 **Future directions**: GC'ed memory should be allowed in unions and the GC
 should scan unions conservatively.
+
 
 Packed pragma
 -------------

@@ -102,34 +102,35 @@ proc staticWalkDirImpl(path: string, relative: bool): PNode =
     result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
                               newStrNode(nkStrLit, f))
 
-from std / compilesettings import SingleValueSetting, MultipleValueSetting
+when defined(nimHasInvariant):
+  from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
-proc querySettingImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): string =
-  case SingleValueSetting(switch)
-  of arguments: result = conf.arguments
-  of outFile: result = conf.outFile.string
-  of outDir: result = conf.outDir.string
-  of nimcacheDir: result = conf.nimcacheDir.string
-  of projectName: result = conf.projectName
-  of projectPath: result = conf.projectPath.string
-  of projectFull: result = conf.projectFull.string
-  of command: result = conf.command
-  of commandLine: result = conf.commandLine
-  of linkOptions: result = conf.linkOptions
-  of compileOptions: result = conf.compileOptions
-  of ccompilerPath: result = conf.cCompilerPath
+  proc querySettingImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): string =
+    case SingleValueSetting(switch)
+    of arguments: result = conf.arguments
+    of outFile: result = conf.outFile.string
+    of outDir: result = conf.outDir.string
+    of nimcacheDir: result = conf.nimcacheDir.string
+    of projectName: result = conf.projectName
+    of projectPath: result = conf.projectPath.string
+    of projectFull: result = conf.projectFull.string
+    of command: result = conf.command
+    of commandLine: result = conf.commandLine
+    of linkOptions: result = conf.linkOptions
+    of compileOptions: result = conf.compileOptions
+    of ccompilerPath: result = conf.cCompilerPath
 
-proc querySettingSeqImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): seq[string] =
-  template copySeq(field: untyped): untyped =
-    for i in field: result.add i.string
+  proc querySettingSeqImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): seq[string] =
+    template copySeq(field: untyped): untyped =
+      for i in field: result.add i.string
 
-  case MultipleValueSetting(switch)
-  of nimblePaths: copySeq(conf.nimblePaths)
-  of searchPaths: copySeq(conf.searchPaths)
-  of lazyPaths: copySeq(conf.lazyPaths)
-  of commandArgs: result = conf.commandArgs
-  of cincludes: copySeq(conf.cIncludes)
-  of clibs: copySeq(conf.cLibs)
+    case MultipleValueSetting(switch)
+    of nimblePaths: copySeq(conf.nimblePaths)
+    of searchPaths: copySeq(conf.searchPaths)
+    of lazyPaths: copySeq(conf.lazyPaths)
+    of commandArgs: result = conf.commandArgs
+    of cincludes: copySeq(conf.cIncludes)
+    of clibs: copySeq(conf.cLibs)
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
@@ -181,10 +182,11 @@ proc registerAdditionalOps*(c: PCtx) =
     systemop getCurrentException
     registerCallback c, "stdlib.*.staticWalkDir", proc (a: VmArgs) {.nimcall.} =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
-    registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, querySettingImpl(a, c.config, getInt(a, 0)))
-    registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
-      setResult(a, querySettingSeqImpl(a, c.config, getInt(a, 0)))
+    when defined(nimHasInvariant):
+      registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) {.nimcall.} =
+        setResult(a, querySettingImpl(a, c.config, getInt(a, 0)))
+      registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
+        setResult(a, querySettingSeqImpl(a, c.config, getInt(a, 0)))
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"

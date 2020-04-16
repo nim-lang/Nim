@@ -462,7 +462,7 @@ proc transformConv(c: PTransf, n: PNode): PNode =
   var dest = skipTypes(n.typ, abstractVarRange)
   var source = skipTypes(n[1].typ, abstractVarRange)
   case dest.kind
-  of tyInt..tyInt64, tyEnum, tyChar, tyBool, tyUInt8..tyUInt32:
+  of tyInt..tyInt64, tyEnum, tyChar, tyUInt8..tyUInt32:
     # we don't include uint and uint64 here as these are no ordinal types ;-)
     if not isOrdinalType(source):
       # float -> int conversions. ugh.
@@ -560,8 +560,8 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     of nkSym:
       return paDirectMapping
     else:
+      # XXX potential performance problem as this creataes an intermediate variable copy
       return paComplexOpenarray
-
   case arg.kind
   of nkEmpty..nkNilLit:
     result = paDirectMapping
@@ -569,14 +569,14 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = putArgInto(arg[0], formal)
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: 
+      if putArgInto(arg[i], formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkObjConstr:
     for i in 0..<arg.len:
       let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
               else: arg[0]
-      if putArgInto(a, formal) != paDirectMapping: 
+      if putArgInto(a, formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   else:

@@ -138,13 +138,23 @@ compiler clang:
   result.compilerExe = "clang"
   result.cppCompiler = "clang++"
 
+# Zig cc (Clang) C/C++ Compiler
+compiler zig:
+  result = clang() # Uses settings from llvmGcc
+
+  result.name = "zig"
+  result.compilerExe = "zig"
+  result.cppCompiler = "zig"
+  result.compileTmpl = "cc " & result.compileTmpl
+  result.linkTmpl = "cc " & result.linkTmpl
+
 # Microsoft Visual C/C++ Compiler
 compiler vcc:
   result = (
     name: "vcc",
     objExt: "obj",
-    optSpeed: " /Ogityb2 /G7 ",
-    optSize: " /O1 /G7 ",
+    optSpeed: " /Ogityb2 ",
+    optSize: " /O1 ",
     compilerExe: "cl",
     cppCompiler: "cl",
     compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
@@ -375,6 +385,7 @@ const
     nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
+    zig(),
     lcc(),
     bcc(),
     dmc(),
@@ -612,6 +623,11 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
   # We produce files like module.nim.cpp, so the absolute Nim filename is not
   # cfile.name but `cfile.cname.changeFileExt("")`:
   var options = cFileSpecificOptions(conf, cfile.nimname, cfile.cname.changeFileExt("").string)
+  if useCpp(conf, cfile.cname):
+    # needs to be prepended so that --passc:-std=c++17 can override default.
+    # we could avoid allocation by making cFileSpecificOptions inplace
+    options = CC[c].cppXsupport & ' ' & options
+
   var exe = getConfigVar(conf, c, ".exe")
   if exe.len == 0: exe = getCompilerExe(conf, c, cfile.cname)
 
@@ -619,9 +635,6 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
   if (optGenDynLib in conf.globalOptions or (conf.hcrOn and not isMainFile)) and
       ospNeedsPIC in platform.OS[conf.target.targetOS].props:
     options.add(' ' & CC[c].pic)
-
-  if useCpp(conf, cfile.cname):
-    options.add(' ' & CC[c].cppXsupport)
 
   var compilePattern: string
   # compute include paths:

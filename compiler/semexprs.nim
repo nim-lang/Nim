@@ -10,6 +10,9 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -147,7 +150,9 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     result = checkConversionBetweenObjects(d.skipTypes(abstractInst), s.skipTypes(abstractInst), pointers)
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
-    if targetTyp.isOrdinalType:
+    if targetTyp.kind == tyBool:
+      discard "convOk"
+    elif targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
           src.getInt notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
@@ -184,6 +189,11 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if conf.selectedGC in {gcArc, gcOrc}:
+    let d = skipTypes(dst, abstractInst)
+    let s = skipTypes(src, abstractInst)
+    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal: 
+      return false
 
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
@@ -617,11 +627,12 @@ proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult 
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc isUnresolvedSym(s: PSym): bool =
-  return s.kind == skGenericParam or
-         tfInferrableStatic in s.typ.flags or
-         (s.kind == skParam and s.typ.isMetaType) or
-         (s.kind == skType and
-          s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+  result = s.kind == skGenericParam
+  if not result and s.typ != nil:
+    result = tfInferrableStatic in s.typ.flags or
+        (s.kind == skParam and s.typ.isMetaType) or
+        (s.kind == skType and
+        s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
 
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
   # Checks whether an expression depends on generic parameters that
@@ -1571,9 +1582,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
         root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
-  of nkHiddenDeref, nkDerefExpr: return n[0]
+  of nkDerefExpr: return n[0]
   of nkBracketExpr:
     if n.len == 1: return n[0]
+  of nkHiddenDeref:
+    # issue #13848
+    # `proc fun(a: var int): var int = a`
+    discard
   else: discard
   let valid = isAssignable(c, n, isLent)
   if valid != arLValue:
@@ -2077,7 +2092,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   var err: string
   try:
     result = semExpr(c, n, flags)
-    if c.config.errorCounter != oldErrorCount: result = nil
+    if result != nil and efNoSem2Check notin flags:
+      trackStmt(c, c.module, result, isTopLevel = false)
+    if c.config.errorCounter != oldErrorCount:
+      result = nil
   except ERecoverableError:
     discard
   # undo symbol table changes (as far as it's possible):
@@ -2555,6 +2573,8 @@ proc shouldBeBracketExpr(n: PNode): bool =
           return true
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2636,6 +2656,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    result.typ = makeTypeDesc(c, typ)
+  of nkStmtListType:
+    let typ = semTypeNode(c, n, nil)
     result.typ = makeTypeDesc(c, typ)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:

@@ -13,57 +13,58 @@
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
-import macros
+type Console* = ref object of RootObj
 
-type Console* {.importc.} = ref object of RootObj
+proc log*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/log
 
-proc convertToConsoleLoggable*[T](v: T): RootRef {.importcpp: "#".}
-template convertToConsoleLoggable*(v: string): RootRef = cast[RootRef](cstring(v))
+proc debug*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/debug
 
-proc logImpl(console: Console) {.importcpp: "log", varargs.}
-proc debugImpl(console: Console) {.importcpp: "debug", varargs.}
-proc infoImpl(console: Console) {.importcpp: "info", varargs.}
-proc errorImpl(console: Console) {.importcpp: "error", varargs.}
-proc warnImpl(console: Console) {.importcpp: "warn", varargs.}
+proc info*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/info
 
-proc makeConsoleCall(console: NimNode, procName: NimNode, args: NimNode): NimNode =
-  result = newCall(procName, console)
-  for c in args: result.add(c)
+proc error*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/error
 
-macro log*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  makeConsoleCall(console, bindSym "logImpl", args)
+template exception*(console: Console, args: varargs[untyped]) =
+  ## Alias for `console.error()`.
+  error(console, args)
 
-macro debug*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  makeConsoleCall(console, bindSym "debugImpl", args)
+proc trace*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/trace
 
-macro info*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  makeConsoleCall(console, bindSym "infoImpl", args)
+proc warn*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/warn
 
-macro error*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  makeConsoleCall(console, bindSym "errorImpl", args)
+proc clear*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/clear
 
+proc count*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/count
 
-macro warn*(console: Console, args: varargs[RootRef, convertToConsoleLoggable]): untyped =
-  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/warn
-  makeConsoleCall(console, bindSym "warnImpl", args)
+proc countReset*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/countReset
 
-proc clear*(console: Console) {.importcpp: "clear".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/clear
+proc group*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/group
 
-proc count*(console: Console, label = "".cstring) {.importcpp: "count".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/count
+proc groupCollapsed*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/en-US/docs/Web/API/Console/groupCollapsed
 
-proc countReset*(console: Console, label = "".cstring) {.importcpp: "countReset".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/countReset
+proc groupEnd*(console: Console) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/groupEnd
 
-proc group*(console: Console, label = "".cstring) {.importcpp: "group".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/group
+proc time*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/time
 
-proc groupCollapsed*(console: Console, label = "".cstring) {.importcpp: "groupCollapsed".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/groupCollapsed
+proc timeEnd*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/timeEnd
 
-proc groupEnd*(console: Console) {.importcpp: "groupEnd".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/groupEnd
+proc timeLog*(console: Console, label = "".cstring) {.importcpp.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/timeLog
 
-proc time*(console: Console, label = "".cstring) {.importcpp: "time".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/time
-
-proc timeEnd*(console: Console, label = "".cstring) {.importcpp: "timeEnd".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeEnd
-
-proc timeLog*(console: Console, label = "".cstring) {.importcpp: "timeLog".} ## https://developer.mozilla.org/en-US/docs/Web/API/Console/timeLog
-
+proc table*(console: Console) {.importcpp, varargs.}
+  ## https://developer.mozilla.org/docs/Web/API/Console/table
 
 var console* {.importc, nodecl.}: Console

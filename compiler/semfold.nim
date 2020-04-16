@@ -20,26 +20,6 @@ proc errorType*(g: ModuleGraph): PType =
   result = newType(tyError, g.owners[^1])
   result.flags.incl tfCheckedForDestructor
 
-proc newIntNodeT*(intVal: BiggestInt, n: PNode; g: ModuleGraph): PNode {.deprecated: "intVal should be Int128".} =
-  case skipTypes(n.typ, abstractVarRange).kind
-  of tyInt:
-    result = newIntNode(nkIntLit, intVal)
-    # See bug #6989. 'pred' et al only produce an int literal type if the
-    # original type was 'int', not a distinct int etc.
-    if n.typ.kind == tyInt:
-      result.typ = getIntLitType(g, result)
-    else:
-      result.typ = n.typ
-    # hrm, this is not correct: 1 + high(int) shouldn't produce tyInt64 ...
-    #setIntLitType(result)
-  of tyChar:
-    result = newIntNode(nkCharLit, intVal)
-    result.typ = n.typ
-  else:
-    result = newIntNode(nkIntLit, intVal)
-    result.typ = n.typ
-  result.info = n.info
-
 proc newIntNodeT*(intVal: Int128, n: PNode; g: ModuleGraph): PNode =
   result = newIntTypeNode(intVal, n.typ)
   # See bug #6989. 'pred' et al only produce an int literal type if the
@@ -433,6 +413,16 @@ proc foldConv(n, a: PNode; g: ModuleGraph; check = false): PNode =
   #   echo high(int64)
   #   writeStackTrace()
   case dstTyp.kind
+  of tyBool:
+    case srcTyp.kind
+    of tyFloat..tyFloat64:
+      result = newIntNodeT(toInt128(getFloat(a) != 0.0), n, g)
+    of tyChar, tyUInt..tyUInt64, tyInt..tyInt64:
+      result = newIntNodeT(toInt128(a.getOrdValue != 0), n, g)
+    of tyBool, tyEnum: # xxx shouldn't we disallow `tyEnum`?
+      result = a
+      result.typ = n.typ
+    else: doAssert false, $srcTyp.kind
   of tyInt..tyInt64, tyUInt..tyUInt64:
     case srcTyp.kind
     of tyFloat..tyFloat64:
@@ -559,9 +549,13 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
             localError(g.config, s.info,
               "{.intdefine.} const was set to an invalid integer: '" &
                 g.config.symbols[s.name.s] & "'")
+        else:
+          result = copyTree(s.ast)
       of mStrDefine:
         if isDefined(g.config, s.name.s):
           result = newStrNodeT(g.config.symbols[s.name.s], n, g)
+        else:
+          result = copyTree(s.ast)
       of mBoolDefine:
         if isDefined(g.config, s.name.s):
           try:
@@ -570,6 +564,8 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
             localError(g.config, s.info,
               "{.booldefine.} const was set to an invalid bool: '" &
                 g.config.symbols[s.name.s] & "'")
+        else:
+          result = copyTree(s.ast)
       else:
         result = copyTree(s.ast)
     of skProc, skFunc, skMethod:

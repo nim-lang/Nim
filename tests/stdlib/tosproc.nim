@@ -47,7 +47,7 @@ when defined(case_testfile): # compiled test file for child process
 
 else:
 
-  import os, osproc, strutils, posix
+  import os, osproc, strutils
   const nim = getCurrentCompilerExe()
 
   block execShellCmdTest:
@@ -74,7 +74,7 @@ else:
 
   block execProcessTest:
     let dir = parentDir(currentSourcePath())
-    let (outp, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
+    let (_, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
     doAssert err == 0
     let exePath = dir / addFileExt("osproctest", ExeExt)
     let outStr1 = execProcess(exePath, workingDir = dir, args = ["foo",

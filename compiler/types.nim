@@ -63,8 +63,7 @@ const
                   tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
                     tyAlias, tyInferred, tySink, tyOwned}
-  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  # see also ast.abstractVarRange
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
                    tyInferred, tySink, tyOwned}
   abstractInstOwned* = abstractInst + {tyOwned}
@@ -1502,6 +1501,13 @@ proc containsCompileTimeOnly*(t: PType): bool =
     if t[i] != nil and isCompileTimeOnly(t[i]):
       return true
   return false
+
+proc safeSkipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## same as 'skipTypes' but with a simple cycle detector.
+  result = t
+  var seen = initIntSet()
+  while result.kind in kinds and not containsOrIncl(seen, result.id):
+    result = lastSon(result)
 
 type
   OrdinalType* = enum
