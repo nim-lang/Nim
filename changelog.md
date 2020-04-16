@@ -6,7 +6,7 @@
 
 
 ## Language changes
-- In newruntime it is now allowed to assign discriminator field    without restrictions as long as case object doesn't have custom destructor. Discriminator field value doesn't have to be constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
+- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator field value doesn't have to be constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
   ```nim
   type
     MyObj = object
