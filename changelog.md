@@ -6,7 +6,34 @@
 
 
 ## Language changes
+- In newruntime it is now allowed to assign discriminator field    without restrictions as long as case object doesn't have custom destructor. Discriminator field value doesn't have to be constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
+  ```nim
+  type
+    MyObj = object
+      case kind: bool
+        of true: y: ptr UncheckedArray[float]
+        of false: z: seq[int]
 
+  proc `=destroy`(x: MyObj) =
+    if x.kind and x.y != nil:
+      deallocShared(x.y)
+      x.y = nil
+  ```
+  Refactor into:
+  ```nim
+  type
+    MySubObj = object
+      val: ptr UncheckedArray[float]
+    MyObj = object
+      case kind: bool
+      of true: y: MySubObj
+      of false: z: seq[int]
+
+  proc `=destroy`(x: MySubObj) =
+    if x.val != nil:
+      deallocShared(x.val)
+      x.val = nil
+  ```
 
 ## Compiler changes
 
