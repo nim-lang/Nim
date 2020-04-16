@@ -75,7 +75,8 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
-  var firstElement = true
+  # when x is empty, this gives an unused warning
+  var firstElement {.used.} = true
   const isNamed = T is object or isNamedTuple(T)
   when not isNamed:
     var count = 0
