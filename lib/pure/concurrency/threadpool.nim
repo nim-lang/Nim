@@ -256,22 +256,14 @@ proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
     result = cast[ptr T](fv.data)
   finished(fv[])
 
-when defined(nimV2):
-  proc `^`*[T](fv: FlowVar[T]): T =
-    ## Blocks until the value is available and then returns this value.
-    blockUntil(fv[])
+proc `^`*[T](fv: FlowVar[T]): T =
+  ## Blocks until the value is available and then returns this value.
+  blockUntil(fv[])
+  when not defined(nimV2) and (T is string or T is seq or T is ref):
+    deepCopy result, cast[T](fv.data)
+  else:
     result = fv.blob
-    finished(fv[])
-
-else:
-  proc `^`*[T](fv: FlowVar[T]): T =
-    ## Blocks until the value is available and then returns this value.
-    blockUntil(fv[])
-    when T is string or T is seq or T is ref:
-      deepCopy result, cast[T](fv.data)
-    else:
-      result = fv.blob
-    finished(fv[])
+  finished(fv[])
 
 proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
   ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
