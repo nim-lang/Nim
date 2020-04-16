@@ -10,7 +10,7 @@
 ## This program verifies Nim against the testcases.
 
 import
-  strutils, pegs, os, osproc, streams, json,
+  strutils, pegs, os, osproc, streams, json, random,
   backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, times, md5, sequtils, azure
 
@@ -40,6 +40,7 @@ Options:
   --print                   also print results to the console
   --simulate                see what tests would be run but don't run them (for debugging)
   --failing                 only show failing/ignored tests
+  --randomize               Random order for tests (unwanted unit crossdependency)
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
@@ -624,6 +625,7 @@ proc main() =
   var isMainProcess = true
   var skipFrom = ""
   var useMegatest = true
+  var optRandomize = false
 
   var p = initOptParser()
   p.next()
@@ -631,6 +633,7 @@ proc main() =
     case p.key.string.normalize
     of "print", "verbose": optPrintResults = true
     of "failing": optFailing = true
+    of "randomize": optRandomize = true
     of "pedantic": discard "now always enabled"
     of "targets":
       targetsStr = p.val.string
@@ -702,6 +705,11 @@ proc main() =
     for cat in cats:
       let runtype = if useMegatest: " pcat " else: " cat "
       cmds.add(myself & runtype & quoteShell(cat) & rest)
+
+    if optRandomize:
+      randomize()   # On Unittests a "Unit" must not depend on previous unit,
+      shuffle(cmds) # and next unit must not depend on the current unit, etc.
+      echo "Unittests order randomized for safety against unwanted unit crossdependency"
 
     proc progressStatus(idx: int) =
       echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
