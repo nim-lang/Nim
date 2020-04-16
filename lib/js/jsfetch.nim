@@ -83,3 +83,9 @@ func fetch*(url: cstring): Future[PromiseJs] {.importcpp: "fetch(#)".}
 
 func fetch*(url: cstring, options: FetchOptions): Future[PromiseJs] {.importcpp: "fetch(#, #)".}
   ## `fetch()` API that takes a `FetchOptions` (generates `fetch(url, options)`).
+
+func fetchToCstring*(url: cstring): Future[cstring] {.importcpp: "fetch(#).then(function(result){result.text()})".}
+  ## Convenience proc for `fetch()` API that returns a `cstring` directly.
+
+func fetchToCstring*(url: cstring, options: FetchOptions): Future[cstring] {.importcpp: "fetch(#, #).then(function(result){result.text()})".}
+  ## Convenience proc for `fetch()` API that returns a `cstring` directly.

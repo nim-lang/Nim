@@ -11,7 +11,7 @@
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
   lowerings
-from trees import getMagic
+from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
@@ -74,7 +74,7 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
         varInit.add call
       else:
         varInit.add newFastAsgnStmt(newSymNode(result), v)
-    else:      
+    else:
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
         varInit.add newFastAsgnStmt(newSymNode(result), v)
       else:
@@ -196,7 +196,7 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
 
-proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; 
+proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
                              owner: PSym; scratchObj: PSym,
                              castExpr, call,
                              varSection, varInit, result: PNode) =
@@ -220,23 +220,6 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     let temp = addLocalVar(g, varSection, varInit, owner, argType,
                            indirectAccess(castExpr, field, n.info))
     call.add(newSymNode(temp))
-
-proc getRoot*(n: PNode): PSym =
-  ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
-  ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
-  ## determined as the owner; ``obj`` in the example.
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar}:
-      result = n.sym
-  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = getRoot(n[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = getRoot(n[1])
-  of nkCallKinds:
-    if getMagic(n) == mSlice: result = getRoot(n[1])
-  else: discard
 
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
                              owner: PSym; scratchObj: PSym;
@@ -344,7 +327,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
       localError(g.config, n.info, "'spawn' takes a GC safe call expression")
 
-  var fn = n[0] 
+  var fn = n[0]
   let
     name = (if fn.kind == nkSym: fn.sym.name.s else: genPrefix) & "Wrapper"
     wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)

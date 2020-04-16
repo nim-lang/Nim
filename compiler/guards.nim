@@ -84,8 +84,8 @@ proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
 type
   Operators* = object
-    opNot, opContains, opLe, opLt, opAnd, opOr, opIsNil, opEq: PSym
-    opAdd, opSub, opMul, opDiv, opLen: PSym
+    opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
+    opAdd*, opSub*, opMul*, opDiv*, opLen*: PSym
 
 proc initOperators*(g: ModuleGraph): Operators =
   result.opLe = createMagic(g, "<=", mLeI)
@@ -156,12 +156,12 @@ proc neg(n: PNode; o: Operators): PNode =
     result[0] = newSymNode(o.opNot)
     result[1] = n
 
-proc buildCall(op: PSym; a: PNode): PNode =
+proc buildCall*(op: PSym; a: PNode): PNode =
   result = newNodeI(nkCall, a.info, 2)
   result[0] = newSymNode(op)
   result[1] = a
 
-proc buildCall(op: PSym; a, b: PNode): PNode =
+proc buildCall*(op: PSym; a, b: PNode): PNode =
   result = newNodeI(nkInfix, a.info, 3)
   result[0] = newSymNode(op)
   result[1] = a
@@ -464,7 +464,7 @@ proc hasSubTree(n, x: PNode): bool =
     for i in 0..n.safeLen-1:
       if hasSubTree(n[i], x): return true
 
-proc invalidateFacts*(m: var TModel, n: PNode) =
+proc invalidateFacts*(s: var seq[PNode], n: PNode) =
   # We are able to guard local vars (as opposed to 'let' variables)!
   # 'while p != nil: f(p); p = p.next'
   # This is actually quite easy to do:
@@ -482,8 +482,11 @@ proc invalidateFacts*(m: var TModel, n: PNode) =
   # The same mechanism could be used for more complex data stored on the heap;
   # procs that 'write: []' cannot invalidate 'n.kind' for instance. In fact, we
   # could CSE these expressions then and help C's optimizer.
-  for i in 0..high(m.s):
-    if m.s[i] != nil and m.s[i].hasSubTree(n): m.s[i] = nil
+  for i in 0..high(s):
+    if s[i] != nil and s[i].hasSubTree(n): s[i] = nil
+
+proc invalidateFacts*(m: var TModel, n: PNode) =
+  invalidateFacts(m.s, n)
 
 proc valuesUnequal(a, b: PNode): bool =
   if a.isValue and b.isValue:
