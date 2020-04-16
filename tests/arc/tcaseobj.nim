@@ -165,7 +165,7 @@ type
         
 proc test_myobject = 
   var x: MyObject
-  x.x1 = "x2"
+  x.x1 = "x1"
   x.x2 = "x2"
   x.y1 = "ljhkjhkjh"
   x.kind1 = true
@@ -178,7 +178,7 @@ proc test_myobject =
   x.z1 = "yes"
   x.kind2 = true # should be no effect
   doAssert(x.z1 == "yes")
-  x.kind2 = false #
+  x.kind2 = false
   x.kind1 = x.kind2 # support self assignment with effect
 
   try:
