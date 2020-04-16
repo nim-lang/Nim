@@ -8,6 +8,7 @@ A
 B
 begin
 end
+prevented
 myobj destroyed
 '''
 """
@@ -144,3 +145,46 @@ when true:
     let x = sequence([charSet({'a'..'z', 'A'..'Z', '_'})])
     echo "end"
   testSubObjAssignment()
+
+
+#------------------------------------------------
+
+type
+  MyObject = object
+    x1: string
+
+    case kind1: bool
+      of false: y1: string
+      of true: 
+          y2: seq[string]
+          case kind2: bool
+              of true: z1: string
+              of false: 
+                z2: seq[string]
+                flag: bool
+        
+proc test_myobject = 
+  var x: MyObject
+  x.y1 = "ljhkjhkjh"
+  x.kind1 = true
+  x.y2 = @["1", "2"]
+  x.kind2 = true
+  x.z1 = "yes"
+  x.kind2 = false
+  x.z2 = @["1", "2"]
+  x.kind2 = true
+  x.z1 = "yes"
+  x.kind2 = true # should be no effect
+  doAssert(x.z1 ==  "yes")
+  x.kind2 = false #
+  x.kind1 = x.kind2 # support self assignment with effect
+
+  try:
+    x.kind1 = x.flag # flag is not accesible
+  except FieldError:
+    echo "prevented"
+
+
+test_myobject()
+
+
