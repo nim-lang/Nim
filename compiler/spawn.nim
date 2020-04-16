@@ -10,7 +10,7 @@
 ## This module implements threadpool's ``spawn``.
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings
+  lowerings, liftdestructors
 from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
@@ -36,8 +36,9 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
   else: srFlowVar
 
-proc flowVarKind(t: PType): TFlowVarKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
+proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
+  if c.selectedGC in {gcArc, gcOrc}: fvBlob 
+  elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
 
@@ -66,17 +67,11 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   varSection.add vpart
   if varInit != nil:
     if g.config.selectedGC in {gcArc, gcOrc}:
-      if typ.attachedOps[attachedAsgn] != nil:
-        var call = newNode(nkCall)
-        call.add newSymNode(typ.attachedOps[attachedAsgn])
-        call.add genAddrOf(newSymNode(result), tyVar)
-        call.add v
-        varInit.add call
-      else:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
+      # inject destructors pass will do its own analysis
+      varInit.add newFastMoveStmt(g, newSymNode(result), v)
     else:
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
+        varInit.add newFastMoveStmt(g, newSymNode(result), v)
       else:
         let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
         deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
@@ -145,7 +140,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = fv.typ[1].flowVarKind
+    let fk = flowVarKind(g.config, fv.typ[1])
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ[1]))
@@ -333,6 +328,8 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)
     threadParam = newSym(skParam, getIdent(g.cache, "thread"), wrapperProc, n.info, g.config.options)
     argsParam = newSym(skParam, getIdent(g.cache, "args"), wrapperProc, n.info, g.config.options)
+
+  wrapperProc.flags.incl sfInjectDestructors
   block:
     let ptrType = getSysType(g, n.info, tyPointer)
     threadParam.typ = ptrType
@@ -411,6 +408,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
+  createTypeBoundOps(g, nil, objType, n.info)
   createWrapperProc(g, fn, threadParam, argsParam,
                       varSection, varInit, call,
                       barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)
