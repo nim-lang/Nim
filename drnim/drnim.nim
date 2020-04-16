@@ -9,6 +9,7 @@
 
 #[
 
+- introduce Phi nodes to complete the SSA representation
 - the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -126,8 +127,17 @@ proc isLoc(m: PNode; assumeUniqueness: bool): bool =
     else:
       discard
 
-proc varVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
+proc currentVarVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
+  # we need to take into account both en- and disabled var bindings here,
+  # hence the 'abs' call:
   result = 0
+  for i in countdown(int(begin)-1, 0):
+    if abs(c.varVersions[i]) == s.id: inc result
+
+proc previousVarVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
+  # we need to ignore currently disabled var bindings here,
+  # hence no 'abs' call here.
+  result = -1
   for i in countdown(int(begin)-1, 0):
     if c.varVersions[i] == s.id: inc result
 
@@ -156,7 +166,8 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
       if d != 0:
         result.add "`scope="
         result.addInt d
-      let v = c.varVersion(n.sym, version) - ord(isOld)
+      let v = if isOld: c.previousVarVersion(n.sym, version)
+              else: c.currentVarVersion(n.sym, version)
       assert v >= 0
       if v > 0:
         result.add '`'
@@ -837,12 +848,18 @@ proc traverseCase(c: DrnimContext; n: PNode) =
   # XXX make this as smart as 'if elif'
   setLen(c.facts, oldFacts)
 
+proc disableVarVersions(c: DrnimContext; until: int) =
+  for i in until..<c.varVersions.len:
+    c.varVersions[i] = - abs(c.varVersions[i])
+
 proc traverseIf(c: DrnimContext; n: PNode) =
   traverse(c, n[0][0])
   let oldFacts = c.facts.len
   addFact(c, n[0][0])
 
+  let oldVars = c.varVersions.len
   traverse(c, n[0][1])
+  disableVarVersions(c, oldVars)
 
   for i in 1..<n.len:
     let branch = n[i]
@@ -853,6 +870,8 @@ proc traverseIf(c: DrnimContext; n: PNode) =
       addFact(c, branch[0])
     for i in 0..<branch.len:
       traverse(c, branch[i])
+    disableVarVersions(c, oldVars)
+  #introducePhiNode(c, oldVars)
   setLen(c.facts, oldFacts)
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
