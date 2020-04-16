@@ -1489,15 +1489,6 @@ proc genPragma(p: BProc, n: PNode) =
       p.module.injectStmt = p.s(cpsStmts)
     else: discard
 
-proc fieldDiscriminantCheckNeeded(p: BProc, asgn: PNode): bool =
-  if optFieldCheck in p.options:
-    var le = asgn[0]
-    if le.kind == nkCheckedFieldExpr:
-      var field = le[0][1].sym
-      result = sfDiscriminant in field.flags
-    elif le.kind == nkDotExpr:
-      var field = le[1].sym
-      result = sfDiscriminant in field.flags
 
 proc genDiscriminantCheck(p: BProc, a, tmp: TLoc, objtype: PType,
                           field: PSym) =
@@ -1534,24 +1525,20 @@ proc asgnFieldDiscriminant(p: BProc, e: PNode) =
   initLocExpr(p, e[0], a)
   getTemp(p, a.t, tmp)
   expr(p, e[1], tmp)
-  let field = dotExpr[1].sym
-  if optTinyRtti in p.config.globalOptions:
-    let t = dotExpr[0].typ.skipTypes(abstractInst)
-    var oldVal, newVal: TLoc
-    genCaseObjDiscMapping(p, e[0], t, field, oldVal)
-    genCaseObjDiscMapping(p, e[1], t, field, newVal)
-    lineCg(p, cpsStmts,
-          "if ($1 != $2) { #raiseObjectCaseTransition(); $3}$n",
-          [rdLoc(oldVal), rdLoc(newVal), raiseInstr(p)])
-  else:
+  if optTinyRtti notin p.config.globalOptions:
+    let field = dotExpr[1].sym
     genDiscriminantCheck(p, a, tmp, dotExpr[0].typ, field)
+    message(p.config, e.info, warnCaseTransition)
   genAssignment(p, a, tmp, {})
 
 proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
   if e[0].kind == nkSym and sfGoto in e[0].sym.flags:
     genLineDir(p, e)
     genGotoVar(p, e[1])
-  elif not fieldDiscriminantCheckNeeded(p, e):
+  elif optFieldCheck in p.options and isDiscriminantField(e[0]):
+    genLineDir(p, e)
+    asgnFieldDiscriminant(p, e)
+  else:
     let le = e[0]
     let ri = e[1]
     var a: TLoc
@@ -1565,10 +1552,6 @@ proc genAsgn(p: BProc, e: PNode, fastAsgn: bool) =
     assert(a.t != nil)
     genLineDir(p, ri)
     loadInto(p, le, ri, a)
-  else:
-    genLineDir(p, e)
-    asgnFieldDiscriminant(p, e)
-    message(p.config, e.info, warnCaseTransition)
 
 proc genStmts(p: BProc, t: PNode) =
   var a: TLoc
