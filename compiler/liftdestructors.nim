@@ -140,6 +140,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       fillBody(c, f.typ, body, x.dotField(f), b)
   of nkNilLit: discard
   of nkRecCase:
+    let oldfilterDiscriminator = c.filterDiscriminator
     if c.filterDiscriminator == n[0].sym:
       c.filterDiscriminator = nil # we have found the case part, proceed as normal
     # XXX This is only correct for 'attachedSink'!
@@ -173,6 +174,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
+    c.filterDiscriminator = oldfilterDiscriminator 
   of nkRecList:
     for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
   else:
