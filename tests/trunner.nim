@@ -1,4 +1,5 @@
 discard """
+  targets: "c cpp"
   joinable: false
 """
 
@@ -9,16 +10,18 @@ import std/[strformat,os,osproc,strutils]
 
 const nim = getCurrentCompilerExe()
 
+const mode =
+  when defined(c): "c"
+  elif defined(cpp): "cpp"
+  else: static: doAssert false
+
 proc runCmd(file, options = ""): auto =
-  let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
   const testsDir = currentSourcePath().parentDir
   let fileabs = testsDir / file.unixToNativePath
   doAssert fileabs.existsFile, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
   result = execCmdEx(cmd)
-  when false: # uncomment if you need to debug
-    echo result[0]
-    echo result[1]
+  when false:  echo result[0] & "\n" & result[1] # for debugging
 
 when defined(nimHasLibFFIEnabled):
   block: # mevalffi

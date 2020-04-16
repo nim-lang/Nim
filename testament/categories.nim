@@ -545,7 +545,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   if existsFile(test):
     testSpec r, makeTest(test, options, cat), {target}
   else:
-    echo "[Warning] - ", test, " test does not exist"
+    doAssert false, test & " test does not exist"
 
 proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
