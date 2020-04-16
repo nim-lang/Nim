@@ -1769,6 +1769,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcNSetLineInfo:
       decodeB(rkNode)
       regs[ra].node.info = regs[rb].node.info
+      if regs[ra].node.kind == nkSym:
+        regs[ra].node.sym.info = regs[rb].node.info
     of opcEqIdent:
       decodeBC(rkInt)
       # aliases for shorter and easier to understand code below
