@@ -1,7 +1,6 @@
 discard """
   cmd: "nim c --gc:arc --exceptions:goto --panics:off $file"
-  output: '''field error prevented
-prevented!
+  output: '''prevented!
 caught
 AssertionError
 900'''
@@ -26,11 +25,8 @@ proc helper = doAssert(false)
 
 proc main(i: int) =
   var obj = Obj(kind: kindA, s: "abc")
-  try:
-    obj.kind = kindB
-  except FieldError:
-    echo "field error prevented"
-
+  obj.kind = kindB
+  obj.i = 2
   try:
     var objA = ObjA()
     bplease(ObjB(objA))
