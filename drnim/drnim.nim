@@ -66,6 +66,7 @@ type
     graph: ModuleGraph
     facts: seq[(PNode, VersionScope)]
     varVersions: seq[int] # this maps variable IDs to their current version.
+    varSyms: seq[PSym] # mirrors 'varVersions'
     o: Operators
     hasUnstructedCf: int
     currOptions: TOptions
@@ -175,7 +176,22 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
     else:
       result.add "`magic="
       result.addInt ord(n.sym.magic)
-
+  of nkBind:
+    # we use 'bind x 3' to use the 3rd version of variable 'x'. This
+    # is easier than using 'old' which is position relative.
+    assert n.len == 2
+    assert n[0].kind == nkSym
+    assert n[1].kind == nkIntLit
+    let s = n[0].sym
+    let v = int(n[1].intVal)
+    result.add s.name.s
+    let d = disamb(c, s)
+    if d != 0:
+      result.add "`scope="
+      result.addInt d
+    if v > 0:
+      result.add '`'
+      result.addInt v
   of nkCharLit..nkUInt64Lit:
     result.addInt n.intVal
   of nkFloatLit..nkFloat64Lit:
@@ -732,14 +748,22 @@ template config(c: typed): untyped = c.graph.config
 proc addFact(c: DrnimContext; n: PNode) =
   let v = c.currentScope
   if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
-    c.facts.add((n[1], v))
+    c.addFact(n[1])
   c.facts.add((n, v))
 
+proc neg(c: DrnimContext; n: PNode): PNode =
+  result = newNodeI(nkCall, n.info, 2)
+  result[0] = newSymNode(c.o.opNot)
+  result[1] = n
+
 proc addFactNeg(c: DrnimContext; n: PNode) =
-  var neg = newNodeI(nkCall, n.info, 2)
-  neg[0] = newSymNode(c.o.opNot)
-  neg[1] = n
-  addFact(c, neg)
+  addFact(c, neg(c, n))
+
+proc combineFacts(c: DrnimContext; a, b: PNode): PNode =
+  if a == nil:
+    result = b
+  else:
+    result = buildCall(c.o.opAnd, a, b)
 
 proc prove(c: DrnimContext; prop: PNode): bool =
   let (success, m) = proofEngine(c, c.facts, (prop, c.currentScope))
@@ -772,6 +796,7 @@ proc freshVersion(c: DrnimContext; arg: PNode) =
   let v = getRoot(arg)
   if v != nil:
     c.varVersions.add v.id
+    c.varSyms.add v
 
 proc translateEnsuresFromCall(c: DrnimContext, e, call: PNode): PNode =
   if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
@@ -852,9 +877,66 @@ proc disableVarVersions(c: DrnimContext; until: int) =
   for i in until..<c.varVersions.len:
     c.varVersions[i] = - abs(c.varVersions[i])
 
+proc varOfVersion(x: PSym; version: int): PNode =
+  result = newTree(nkBind, newSymNode(x), newIntNode(nkIntLit, version))
+
 proc traverseIf(c: DrnimContext; n: PNode) =
+  #[ Consider this example::
+
+    var x = y   # x'0
+    if a:
+      inc x     # x'1 == x'0 + 1
+    elif b:
+      inc x, 2  # x'2 == x'0 + 2
+
+  afterwards we know this is fact::
+
+    x'3 = Phi(x'0, x'1, x'2)
+
+  So a Phi node from SSA representation is an 'or' formula like::
+
+    x'3 == x'1 or x'3 == x'2 or x'3 == x'0
+
+  However, this loses some information. The formula that doesn't
+  lose information is::
+
+    (a -> (x'3 == x'1)) and
+    ((not a and b) -> (x'3 == x'2)) and
+    ((not a and not b) -> (x'3 == x'0))
+
+  (Where ``->`` is the logical implication.)
+
+  In addition to the Phi information we also know the 'facts'
+  computed by the branches, for example::
+
+    if a:
+      factA
+    elif b:
+      factB
+    else:
+      factC
+
+    (a -> factA) and
+    ((not a and b) -> factB) and
+    ((not a and not b) -> factC)
+
+  We can combine these two aspects by producing the following facts
+  after each branch::
+
+    var x = y   # x'0
+    if a:
+      inc x     # x'1 == x'0 + 1
+      # also:     x'1 == x'final
+    elif b:
+      inc x, 2  # x'2 == x'0 + 2
+      # also:     x'2 == x'final
+    else:
+      # also:     x'0 == x'final
+
+  ]#
   traverse(c, n[0][0])
   let oldFacts = c.facts.len
+  var branches: seq[seq[PNode]] = newSeq[seq[PNode]](n.len)
   addFact(c, n[0][0])
 
   let oldVars = c.varVersions.len
@@ -864,15 +946,22 @@ proc traverseIf(c: DrnimContext; n: PNode) =
   for i in 1..<n.len:
     let branch = n[i]
     setLen(c.facts, oldFacts)
+
+    var cond = PNode(nil)
     for j in 0..i-1:
       addFactNeg(c, n[j][0])
+      cond = combineFacts(c, cond, neg(c, n[j][0]))
     if branch.len > 1:
       addFact(c, branch[0])
+      cond = combineFacts(c, cond, branch[0])
+
+    let newFacts = c.facts.len
     for i in 0..<branch.len:
       traverse(c, branch[i])
+    collectImplication(c, newFacts)
     disableVarVersions(c, oldVars)
   #introducePhiNode(c, oldVars)
-  setLen(c.facts, oldFacts)
+  #setLen(c.facts, oldFacts)
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
   traverse(c, n)
