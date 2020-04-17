@@ -1311,11 +1311,11 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
   else:
     typeName = rope("NIM_NIL")
 
+  m.s[cfsData].addf("N_LIB_PRIVATE TNimType $1;$n", [name])
   let destroyImpl = genHook(m, t, info, attachedDestructor)
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)
 
-  addf(m.s[cfsVars], "TNimType $1;$n", [name])
   addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6;", [
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
