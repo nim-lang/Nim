@@ -31,11 +31,11 @@ const nimSeqVersion {.core.} = 2
 
 # XXX make code memory safe for overflows in '*'
 
-proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
+proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    var p = cast[ptr NimSeqPayloadBase](allocShared0(cap * elemSize + sizeof(NimSeqPayloadBase)))
+    var p = cast[ptr NimSeqPayloadBase](allocShared0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize))
     p.cap = cap
     result = p
   else:
