@@ -298,7 +298,7 @@ when defined(nimHasStyleChecks):
 
 type
   MonthdayRange* = range[0..31]
-    ## 0 represents an invalid month
+    ## 0 represents an invalid day of the month
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
   SecondRange* = range[0..60]
