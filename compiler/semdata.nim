@@ -21,6 +21,7 @@ type
     notes*: TNoteKinds
     features*: set[Feature]
     otherPragmas*: PNode      # every pragma can be pushed
+    warningAsErrors*: TNoteKinds
 
   POptionEntry* = ref TOptionEntry
   PProcCon* = ref TProcCon
@@ -63,7 +64,7 @@ type
       # to the user.
     efWantStmt, efAllowStmt, efDetermineType, efExplain,
     efAllowDestructor, efWantValue, efOperand, efNoSemCheck,
-    efNoEvaluateGeneric, efInCall, efFromHlo,
+    efNoEvaluateGeneric, efInCall, efFromHlo, efNoSem2Check,
     efNoUndeclared
       # Use this if undeclared identifiers should not raise an error during
       # overload resolution.
@@ -103,6 +104,9 @@ type
     semExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryExpr*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semTryConstExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.}
+    computeRequiresInit*: proc (c: PContext, t: PType): bool {.nimcall.}
+    hasUnresolvedArgs*: proc (c: PContext, n: PNode): bool
+
     semOperand*: proc (c: PContext, n: PNode, flags: TExprFlags = {}): PNode {.nimcall.}
     semConstBoolExpr*: proc (c: PContext, n: PNode): PNode {.nimcall.} # XXX bite the bullet
     semOverloadedCall*: proc (c: PContext, n, nOrig: PNode,
@@ -162,11 +166,10 @@ proc getCurrOwner*(c: PContext): PSym =
   result = c.graph.owners[^1]
 
 proc pushOwner*(c: PContext; owner: PSym) =
-  add(c.graph.owners, owner)
+  c.graph.owners.add(owner)
 
 proc popOwner*(c: PContext) =
-  var length = len(c.graph.owners)
-  if length > 0: setLen(c.graph.owners, length - 1)
+  if c.graph.owners.len > 0: setLen(c.graph.owners, c.graph.owners.len - 1)
   else: internalError(c.config, "popOwner")
 
 proc lastOptionEntry*(c: PContext): POptionEntry =
@@ -203,7 +206,7 @@ proc considerGenSyms*(c: PContext; n: PNode) =
       n.sym = s
   else:
     for i in 0..<n.safeLen:
-      considerGenSyms(c, n.sons[i])
+      considerGenSyms(c, n[i])
 
 proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   new(result)
@@ -211,6 +214,7 @@ proc newOptionEntry*(conf: ConfigRef): POptionEntry =
   result.defaultCC = ccDefault
   result.dynlib = nil
   result.notes = conf.notes
+  result.warningAsErrors = conf.warningAsErrors
 
 proc pushOptionEntry*(c: PContext): POptionEntry =
   new(result)
@@ -219,12 +223,14 @@ proc pushOptionEntry*(c: PContext): POptionEntry =
   result.defaultCC = prev.defaultCC
   result.dynlib = prev.dynlib
   result.notes = c.config.notes
+  result.warningAsErrors = c.config.warningAsErrors
   result.features = c.features
   c.optionStack.add(result)
 
 proc popOptionEntry*(c: PContext) =
   c.config.options = c.optionStack[^1].options
   c.config.notes = c.optionStack[^1].notes
+  c.config.warningAsErrors = c.optionStack[^1].warningAsErrors
   c.features = c.optionStack[^1].features
   c.optionStack.setLen(c.optionStack.len - 1)
 
@@ -250,11 +256,9 @@ proc newContext*(graph: ModuleGraph; module: PSym): PContext =
   result.features = graph.config.features
 
 proc inclSym(sq: var seq[PSym], s: PSym) =
-  var L = len(sq)
-  for i in 0 ..< L:
+  for i in 0..<sq.len:
     if sq[i].id == s.id: return
-  setLen(sq, L + 1)
-  sq[L] = s
+  sq.add s
 
 proc addConverter*(c: PContext, conv: PSym) =
   inclSym(c.converters, conv)
@@ -407,8 +411,8 @@ proc makeRangeType*(c: PContext; first, last: BiggestInt;
                     info: TLineInfo; intType: PType = nil): PType =
   let intType = if intType != nil: intType else: getSysType(c.graph, info, tyInt)
   var n = newNodeI(nkRange, info)
-  addSon(n, newIntTypeNode(first, intType))
-  addSon(n, newIntTypeNode(last, intType))
+  n.add newIntTypeNode(first, intType)
+  n.add newIntTypeNode(last, intType)
   result = newTypeS(tyRange, c)
   result.n = n
   addSonSkipIntLit(result, intType) # basetype of range
@@ -425,16 +429,16 @@ proc illFormedAstLocal*(n: PNode; conf: ConfigRef) =
   localError(conf, n.info, errIllFormedAstX, renderTree(n, {renderNoComments}))
 
 proc checkSonsLen*(n: PNode, length: int; conf: ConfigRef) =
-  if len(n) != length: illFormedAst(n, conf)
+  if n.len != length: illFormedAst(n, conf)
 
 proc checkMinSonsLen*(n: PNode, length: int; conf: ConfigRef) =
-  if len(n) < length: illFormedAst(n, conf)
+  if n.len < length: illFormedAst(n, conf)
 
 proc isTopLevel*(c: PContext): bool {.inline.} =
   result = c.currentScope.depthLevel <= 2
 
 proc pushCaseContext*(c: PContext, caseNode: PNode) =
-  add(c.p.caseContext, (caseNode, 0))
+  c.p.caseContext.add((caseNode, 0))
 
 proc popCaseContext*(c: PContext) =
   discard pop(c.p.caseContext)

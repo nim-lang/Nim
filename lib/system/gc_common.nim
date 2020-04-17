@@ -82,7 +82,7 @@ template decTypeSize(cell, t) =
         if t.kind == tyString:
           cap + 1 + GenericSeqSize
         else:
-          addInt(align(GenericSeqSize, t.base.align), mulInt(cap, t.base.size))
+          align(GenericSeqSize, t.base.align) + cap * t.base.size
       atomicDec t.sizes, size+sizeof(Cell)
     else:
       atomicDec t.sizes, t.base.size+sizeof(Cell)

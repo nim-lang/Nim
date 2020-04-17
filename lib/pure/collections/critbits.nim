@@ -324,6 +324,32 @@ proc `$`*[T](c: CritBitTree[T]): string =
         result.addQuoted(val)
     result.add("}")
 
+
+runnableExamples:
+  static:
+    block:
+      var critbitAsSet: CritBitTree[void]
+      doAssert critbitAsSet.len == 0
+      incl critbitAsSet, "kitten"
+      doAssert critbitAsSet.len == 1
+      incl critbitAsSet, "puppy"
+      doAssert critbitAsSet.len == 2
+      incl critbitAsSet, "kitten"
+      doAssert critbitAsSet.len == 2
+      incl critbitAsSet, ""
+      doAssert critbitAsSet.len == 3
+  block:
+    var critbitAsDict: CritBitTree[int]
+    critbitAsDict["key"] = 42
+    doAssert critbitAsDict["key"] == 42
+    critbitAsDict["key"] = 0
+    doAssert critbitAsDict["key"] == 0
+    critbitAsDict["key"] = -int.high
+    doAssert critbitAsDict["key"] == -int.high
+    critbitAsDict["key"] = int.high
+    doAssert critbitAsDict["key"] == int.high
+
+
 when isMainModule:
   import sequtils
 

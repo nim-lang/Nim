@@ -309,7 +309,7 @@ suite "ttimes":
     check dt.nanosecond == convert(Milliseconds, Nanoseconds, 1)
     check d(seconds = 1, milliseconds = 500) * 2 == d(seconds = 3)
     check d(seconds = 3) div 2 == d(seconds = 1, milliseconds = 500)
-    check d(milliseconds = 1001).seconds == 1
+    check d(milliseconds = 1001).inSeconds == 1
     check d(seconds = 1, milliseconds = 500) - d(milliseconds = 1250) ==
       d(milliseconds = 250)
     check d(seconds = 1, milliseconds = 1) < d(seconds = 1, milliseconds = 2)
@@ -345,20 +345,24 @@ suite "ttimes":
   test "adding/subtracting TimeInterval":
     # add/subtract TimeIntervals and Time/TimeInfo
     let now = getTime().utc
+    let isSpecial = now.isLeapDay
     check now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
     check now + 1.weeks == now + 7.days
     check now - 1.seconds == now - 3.seconds + 2.seconds
     check now + 65.seconds == now + 1.minutes + 5.seconds
     check now + 60.minutes == now + 1.hours
     check now + 24.hours == now + 1.days
-    check now + 13.months == now + 1.years + 1.months
+    if not isSpecial:
+      check now + 13.months == now + 1.years + 1.months
     check toUnix(fromUnix(0) + 2.seconds) == 2
     check toUnix(fromUnix(0) - 2.seconds) == -2
     var ti1 = now + 1.years
     ti1 = ti1 - 1.years
-    check ti1 == now
+    if not isSpecial:
+      check ti1 == now
     ti1 = ti1 + 1.days
-    check ti1 == now + 1.days
+    if not isSpecial:
+      check ti1 == now + 1.days
 
     # Bug with adding a day to a Time
     let day = 24.hours
@@ -499,12 +503,6 @@ suite "ttimes":
     )
     check $parse("02 Fir 2019", "dd MMM yyyy", utc(), loc) == "2019-01-02T00:00:00Z"
     check $parse("Fourthy 6, 2017", "MMMM d, yyyy", utc(), loc) == "2017-04-06T00:00:00Z"
-
-  test "countLeapYears":
-    # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
-    check countLeapYears(1920) + 1 == countLeapYears(1921)
-    check countLeapYears(2004) + 1 == countLeapYears(2005)
-    check countLeapYears(2020) + 1 == countLeapYears(2021)
 
   test "timezoneConversion":
     var l = now()

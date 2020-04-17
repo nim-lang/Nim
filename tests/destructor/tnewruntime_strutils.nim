@@ -1,16 +1,39 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
-  output: '''422 422'''
+  valgrind: true
+  cmd: '''nim c -d:nimAllocStats --newruntime -d:useMalloc $file'''
+  output: '''
+@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]'''
 """
 
 import strutils, os, std / wordwrap
 
-import core / allocators
 import system / ansi_c
 
 # bug #11004
 proc retTuple(): (seq[int], int) =
   return (@[1], 1)
+
+# bug #12899
+
+import sequtils, strmisc
+
+const input = ["KXSC, BGMC => 7 PTHL", "PXFX => LBZJ", "WXRQ, ZSCZD => HLQM"]
+
+type
+  Reaction = object
+    input: seq[string]
+
+proc bug12899 =
+  var reactions: seq[Reaction] = @[]
+  for l in input:
+    let x = l.partition(" => ")
+    reactions.add Reaction(input: @(x[0].split(", ")))
+
+  let x = $reactions
+  echo x
+
+bug12899()
+
 
 proc nonStaticTests =
   doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
@@ -185,5 +208,6 @@ proc staticTests =
 nonStaticTests()
 staticTests()
 
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)
+# bug #12965
+let xaa = @[""].join()
+let xbb = @["", ""].join()

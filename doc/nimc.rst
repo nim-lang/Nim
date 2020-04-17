@@ -160,7 +160,7 @@ passed as a command line argument to the compiler.
 The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
-1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``<Nim's installation director>\config\nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
+1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``<Nim's installation directory>\config\nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
 2) If environment variable ``XDG_CONFIG_HOME`` is defined, ``$XDG_CONFIG_HOME/nim/nim.cfg`` or ``~/.config/nim/nim.cfg`` (POSIX) or ``%APPDATA%/nim/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
@@ -237,8 +237,8 @@ This uses the configuration defined in ``config\nim.cfg`` for ``lvm_gcc``.
 If nimcache already contains compiled code from a different compiler for the same project,
 add the ``-f`` flag to force all files to be recompiled.
 
-The default compiler is defined at the top of ``config\nim.cfg``.  Changing this setting
-affects the compiler used by ``koch`` to (re)build Nim.
+The default compiler is defined at the top of ``config\nim.cfg``.
+Changing this setting affects the compiler used by ``koch`` to (re)build Nim.
 
 
 Cross compilation
@@ -528,7 +528,7 @@ for further information.
 
   The Nim compiler supports an interactive mode. This is also known as
   a `REPL`:idx: (*read eval print loop*). If Nim has been built with the
-  ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
+  ``-d:nimUseLinenoise`` switch, it uses the GNU readline library for terminal
   input management. To start Nim in interactive mode use the command
   ``nim secret``. To quit use the ``quit()`` command. To determine whether an input
   line is an incomplete statement to be continued these rules are used:
@@ -542,26 +542,44 @@ for further information.
 Nim for embedded systems
 ========================
 
-The standard library can be avoided to a point where C code generation
-for 16bit micro controllers is feasible. Use the `standalone`:idx: target
-(``--os:standalone``) for a bare bones standard library that lacks any
-OS features.
+While the default Nim configuration is targeted for optimal performance on
+modern PC hardware and operating systems with ample memory, it is very well
+possible to run Nim code and a good part of the Nim standard libraries on small
+embedded microprocessors with only a few kilobytes of memory.
 
-To make the compiler output code for a 16bit target use the ``--cpu:avr``
-target.
+A good start is to use the ``any`` operating target together with the
+``malloc`` memory allocator and the ``arc`` garbage collector. For example:
 
-For example, to generate code for an `AVR`:idx: processor use this command::
+``nim c --os:any --gc:arc -d:useMalloc [...] x.nim``
 
-  nim c --cpu:avr --os:standalone --genScript x.nim
+- ``--gc:arc`` will enable the reference counting memory management instead
+  of the default garbage collector. This enables Nim to use heap memory which
+  is required for strings and seqs, for example.
 
-For the ``standalone`` target one needs to provide
-a file ``panicoverride.nim``.
-See ``tests/manyloc/standalone/panicoverride.nim`` for an example
-implementation.  Additionally, users should specify the
-amount of heap space to use with the ``-d:StandaloneHeapSize=<size>``
-command line switch.  Note that the total heap size will be
-``<size> * sizeof(float64)``.
+- The ``--os:any`` target makes sure Nim does not depend on any specific
+  operating system primitives. Your platform should support only some basic
+  ANSI C library ``stdlib`` and ``stdio`` functions which should be available
+  on almost any platform.
 
+- The ``-d:useMalloc`` option configures Nim to use only the standard C memory
+  manage primitives ``malloc()``, ``free()``, ``realloc()``.
+
+If your platform does not provide these functions it should be trivial to
+provide an implementation for them and link these to your program.
+
+For targets with very restricted memory, it might be beneficial to pass some
+additional flags to both the Nim compiler and the C compiler and/or linker
+to optimize the build for size. For example, the following flags can be used
+when targeting a gcc compiler:
+
+``--opt:size --passC:-flto --passL:-flto``
+
+The ``--opt:size`` flag instructs Nim to optimize code generation for small
+size (with the help of the C compiler), the ``flto`` flags enable link-time
+optimization in the compiler and linker.
+
+Check the `Cross compilation` section for instructions how to compile the
+program for your target.
 
 Nim for realtime systems
 ========================

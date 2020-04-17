@@ -612,20 +612,20 @@ proc expectMinLen*(n: NimNode, min: int) {.compileTime.} =
   ## Checks that `n` has at least `min` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len < min: error("macro expects a node with " & $min & " children", n)
+  if n.len < min: error("Expected a node with at least " & $min & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, len: int) {.compileTime.} =
   ## Checks that `n` has exactly `len` children. If this is not the case,
   ## compilation aborts with an error message. This is useful for writing
   ## macros that check its number of arguments.
-  if n.len != len: error("macro expects a node with " & $len & " children", n)
+  if n.len != len: error("Expected a node with " & $len & " children, got " & $n.len, n)
 
 proc expectLen*(n: NimNode, min, max: int) {.compileTime.} =
   ## Checks that `n` has a number of children in the range ``min..max``.
   ## If this is not the case, compilation aborts with an error message.
   ## This is useful for writing macros that check its number of arguments.
   if n.len < min or n.len > max:
-    error("macro expects a node with " & $min & ".." & $max & " children", n)
+    error("Expected a node with " & $min & ".." & $max & " children, got " & $n.len, n)
 
 proc newTree*(kind: NimNodeKind,
               children: varargs[NimNode]): NimNode {.compileTime.} =
@@ -1085,7 +1085,7 @@ proc last*(node: NimNode): NimNode {.compileTime.} = node[node.len-1]
 
 const
   RoutineNodes* = {nnkProcDef, nnkFuncDef, nnkMethodDef, nnkDo, nnkLambda,
-                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef}
+                   nnkIteratorDef, nnkTemplateDef, nnkConverterDef, nnkMacroDef}
   AtomicNodes* = {nnkNone..nnkNilLit}
   CallNodes* = {nnkCall, nnkInfix, nnkPrefix, nnkPostfix, nnkCommand,
     nnkCallStrLit, nnkHiddenCallConv}
@@ -1328,8 +1328,9 @@ proc insert*(a: NimNode; pos: int; b: NimNode) {.compileTime.} =
 proc basename*(a: NimNode): NimNode =
   ## Pull an identifier from prefix/postfix expressions.
   case a.kind
-  of nnkIdent: return a
-  of nnkPostfix, nnkPrefix: return a[1]
+  of nnkIdent: result = a
+  of nnkPostfix, nnkPrefix: result = a[1]
+  of nnkPragmaExpr: result = basename(a[0])
   else:
     error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
       repr(a), a)
@@ -1340,6 +1341,7 @@ proc `basename=`*(a: NimNode; val: string) {.compileTime.}=
     a.strVal = val
   of nnkPostfix, nnkPrefix:
     a[1] = ident(val)
+  of nnkPragmaExpr: `basename=`(a[0], val)
   else:
     error("Do not know how to get basename of (" & treeRepr(a) & ")\n" &
       repr(a), a)
@@ -1431,6 +1433,13 @@ else:
     else:
       result = false
 
+proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
+  ## Check that ``eqIdent(n,name)`` holds true. If this is not the
+  ## case, compilation aborts with an error message. This is useful
+  ## for writing macros that check the AST that is passed to them.
+  if not eqIdent(n, name):
+    error("Expected identifier to be `" & name & "` here", n)
+
 proc hasArgOfName*(params: NimNode; name: string): bool {.compileTime.}=
   ## Search ``nnkFormalParams`` for an argument.
   expectKind(params, nnkFormalParams)
@@ -1456,7 +1465,7 @@ proc boolVal*(n: NimNode): bool {.compileTime, noSideEffect.} =
   else: n == bindSym"true" # hacky solution for now
 
 when defined(nimMacrosGetNodeId):
-  proc nodeID*(n: NimNode): int {.magic: NodeId.}
+  proc nodeID*(n: NimNode): int {.magic: "NodeId".}
     ## Returns the id of ``n``, when the compiler has been compiled
     ## with the flag ``-d:useNodeids``, otherwise returns ``-1``. This
     ## proc is for the purpose to debug the compiler only.
@@ -1469,7 +1478,7 @@ macro expandMacros*(body: typed): untyped =
   ## For instance,
   ##
   ## .. code-block:: nim
-  ##   import future, macros
+  ##   import sugar, macros
   ##
   ##   let
   ##     x = 10

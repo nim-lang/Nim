@@ -54,16 +54,27 @@ when true:
 
   proc `==`*[T: AnyPath](x, y: T): bool = eqImpl(x.string, y.string)
 
+  template postProcessBase(base: AbsoluteDir): untyped =
+    # xxx: as argued here https://github.com/nim-lang/Nim/pull/10018#issuecomment-448192956
+    # empty paths should not mean `cwd` so the correct behavior would be to throw
+    # here and make sure `outDir` is always correctly initialized; for now
+    # we simply preserve pre-existing external semantics and treat it as `cwd`
+    when false:
+      doAssert isAbsolute(base.string), base.string
+      base
+    else:
+      if base.isEmpty: getCurrentDir().AbsoluteDir else: base
+
   proc `/`*(base: AbsoluteDir; f: RelativeFile): AbsoluteFile =
-    #assert isAbsolute(base.string)
-    assert(not isAbsolute(f.string))
+    let base = postProcessBase(base)
+    assert(not isAbsolute(f.string), f.string)
     result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
     addNormalizePath(base.string, result.string, state)
     addNormalizePath(f.string, result.string, state)
 
   proc `/`*(base: AbsoluteDir; f: RelativeDir): AbsoluteDir =
-    #assert isAbsolute(base.string)
+    let base = postProcessBase(base)
     assert(not isAbsolute(f.string))
     result = AbsoluteDir newStringOfCap(base.string.len + f.string.len)
     var state = 0
@@ -72,7 +83,10 @@ when true:
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
-    RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
+    # this currently fails for `tests/compilerapi/tcompilerapi.nim`
+    # it's needed otherwise would returns an absolute path
+    # assert not baseFilename.isEmpty, $fullPath
+    result = RelativeFile(relativePath(fullPath.string, baseFilename.string, sep))
 
   proc toAbsolute*(file: string; base: AbsoluteDir): AbsoluteFile =
     if isAbsolute(file): result = AbsoluteFile(file)
@@ -88,6 +102,8 @@ when true:
 
 when isMainModule:
   doAssert AbsoluteDir"/Users/me///" / RelativeFile"z.nim" == AbsoluteFile"/Users/me/z.nim"
+  doAssert AbsoluteDir"/Users/me" / RelativeFile"../z.nim" == AbsoluteFile"/Users/z.nim"
+  doAssert AbsoluteDir"/Users/me/" / RelativeFile"../z.nim" == AbsoluteFile"/Users/z.nim"
   doAssert relativePath("/foo/bar.nim", "/foo/", '/') == "bar.nim"
   doAssert $RelativeDir"foo/bar" == "foo/bar"
   doAssert RelativeDir"foo/bar" == RelativeDir"foo/bar"

@@ -7,10 +7,13 @@
 #    distribution, for details about the copyright.
 #
 
+const
+  TableSize = when sizeof(int) <= 2: 0xff else: 0xff_ffff
+
 type
   PtrTable = ptr object
     counter, max: int
-    data: array[0xff_ffff, (pointer, pointer)]
+    data: array[TableSize, (pointer, pointer)]
 
 template hashPtr(key: pointer): int = cast[int](key) shr 8
 template allocPtrTable: untyped =

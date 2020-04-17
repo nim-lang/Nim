@@ -1,7 +1,12 @@
 ﻿discard """
-  output: "OK"
+  output: '''YQ=='''
+  nimout: '''YQ=='''
 """
 import base64
+
+import base64
+static: echo encode("a")
+echo encode("a")
 
 proc main() =
   doAssert encode("Hello World") == "SGVsbG8gV29ybGQ="
@@ -39,6 +44,19 @@ proc main() =
   except ValueError:
     discard
 
-  echo "OK"
+  block base64urlSafe:
+    doAssert encode("c\xf7>", safe = true) == "Y_c-"
+    doAssert encode("c\xf7>", safe = false) == "Y/c+" # Not a nice URL :(
+    doAssert decode("Y/c+") == decode("Y_c-")
+    # Output must not change with safe=true
+    doAssert encode("Hello World", safe = true) == "SGVsbG8gV29ybGQ="
+    doAssert encode("leasure.", safe = true)  == "bGVhc3VyZS4="
+    doAssert encode("easure.", safe = true) == "ZWFzdXJlLg=="
+    doAssert encode("asure.", safe = true) == "YXN1cmUu"
+    doAssert encode("sure.", safe = true) == "c3VyZS4="
+    doAssert encode([1,2,3], safe = true) == "AQID"
+    doAssert encode(['h','e','y'], safe = true) == "aGV5"
+    doAssert encode("", safe = true) == ""
+    doAssert encode("the quick brown dog jumps over the lazy fox", safe = true) == "dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA=="
 
 main()

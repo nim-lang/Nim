@@ -202,6 +202,41 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
+proc minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+  ## Returns the index of the minimum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = @[6, 5, 4, 3]
+      c = [2, -7, 8, -5]
+      d = "ziggy"
+    assert minIndex(a) == 0
+    assert minIndex(b) == 3
+    assert minIndex(c) == 1
+    assert minIndex(d) == 2
+
+  for i in 1..high(s):
+    if s[i] < s[result]: result = i
+
+proc maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+  ## Returns the index of the maximum value of `s`.
+  ## ``T`` needs to have a ``<`` operator.
+  runnableExamples:
+    let
+      a = @[1, 2, 3, 4]
+      b = @[6, 5, 4, 3]
+      c = [2, -7, 8, -5]
+      d = "ziggy"
+    assert maxIndex(a) == 3
+    assert maxIndex(b) == 0
+    assert maxIndex(c) == 2
+    assert maxIndex(d) == 0
+
+  for i in 1..high(s):
+    if s[i] > s[result]: result = i
+
+
 template zipImpl(s1, s2, retType: untyped): untyped =
   proc zip*[S, T](s1: openArray[S], s2: openArray[T]): retType =
     ## Returns a new sequence with a combination of the two input containers.
@@ -245,6 +280,21 @@ when (NimMajor, NimMinor) <= (1, 0):
   zipImpl(s1, s2, seq[tuple[a: S, b: T]])
 else:
   zipImpl(s1, s2, seq[(S, T)])
+
+proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
+  ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
+  runnableExamples:
+    let
+      zipped = @[(1, 'a'), (2, 'b'), (3, 'c')]
+      unzipped1 = @[1, 2, 3]
+      unzipped2 = @['a', 'b', 'c']
+    assert zipped.unzip() == (unzipped1, unzipped2)
+    assert zip(unzipped1, unzipped2).unzip() == (unzipped1, unzipped2)
+  result[0] = newSeq[S](s.len)
+  result[1] = newSeq[T](s.len)
+  for i in 0..<s.len:
+    result[0][i] = s[i][0]
+    result[1][i] = s[i][1]
 
 proc distribute*[T](s: seq[T], num: Positive, spread = true): seq[seq[T]] =
   ## Splits and distributes a sequence `s` into `num` sub-sequences.
@@ -447,7 +497,9 @@ proc delete*[T](s: var seq[T]; first, last: Natural) =
     var dest = @[1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1]
     dest.delete(3, 8)
     assert outcome == dest
-
+  doAssert first <= last
+  if first >= s.len:
+    return
   var i = first
   var j = min(len(s), last+1)
   var newLen = len(s)-j+i
@@ -547,6 +599,25 @@ template keepItIf*(varSeq: seq, pred: untyped) =
           shallowCopy(varSeq[pos], varSeq[i])
       inc(pos)
   setLen(varSeq, pos)
+
+since (1, 1):
+  template countIt*(s, pred: untyped): int =
+    ## Returns a count of all the items that fulfilled the predicate.
+    ##
+    ## The predicate needs to be an expression using
+    ## the ``it`` variable for testing, like: ``countIt(@[1, 2, 3], it > 2)``.
+    ##
+    runnableExamples:
+      let numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+      iterator iota(n: int): int =
+        for i in 0..<n: yield i
+      assert numbers.countIt(it < 0) == 3
+      assert countIt(iota(10), it < 2) == 2
+
+    var result = 0
+    for it {.inject.} in s:
+      if pred: result += 1
+    result
 
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
@@ -1173,6 +1244,9 @@ when isMainModule:
     assert outcome == dest, """\
     Deleting range 3-9 from [1,1,1,2,2,2,2,2,2,1,1,1,1,1]
     is [1,1,1,1,1,1,1,1]"""
+    var x = @[1, 2, 3]
+    x.delete(100, 100)
+    assert x == @[1, 2, 3]
 
   block: # insert tests
     var dest = @[1, 1, 1, 1, 1, 1, 1, 1]

@@ -64,9 +64,10 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 
-{.deadCodeElim: on.} # dce option deprecated
-import nativesockets, os, strutils, parseutils, times, sets, options,
-  std/monotimes
+include "system/inclrtl"
+
+import nativesockets, os, strutils, times, sets, options, std/monotimes
+from ssl_certs import scanSSLCertificates
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
@@ -80,10 +81,12 @@ when defineSsl:
 
 when defineSsl:
   type
+    Certificate* = string ## DER encoded certificate
+
     SslError* = object of Exception
 
     SslCVerifyMode* = enum
-      CVerifyNone, CVerifyPeer
+      CVerifyNone, CVerifyPeer, CVerifyPeerUseEnvVars
 
     SslProtVersion* = enum
       protSSLv2, protSSLv3, protTLSv1, protSSLv23
@@ -124,8 +127,8 @@ type
     bufLen: int            # current length of buffer
     when defineSsl:
       isSsl: bool
-      sslHandle: SSLPtr
-      sslContext: SSLContext
+      sslHandle: SslPtr
+      sslContext: SslContext
       sslNoHandshake: bool # True if needs handshake.
       sslHasPeekChar: bool
       sslPeekChar: char
@@ -450,30 +453,30 @@ proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
 when defineSsl:
   CRYPTO_malloc_init()
   doAssert SslLibraryInit() == 1
-  SslLoadErrorStrings()
-  ErrLoadBioStrings()
+  SSL_load_error_strings()
+  ERR_load_BIO_strings()
   OpenSSL_add_all_algorithms()
 
   proc raiseSSLError*(s = "") =
     ## Raises a new SSL error.
     if s != "":
-      raise newException(SSLError, s)
-    let err = ErrPeekLastError()
+      raise newException(SslError, s)
+    let err = ERR_peek_last_error()
     if err == 0:
-      raise newException(SSLError, "No error reported.")
+      raise newException(SslError, "No error reported.")
     if err == -1:
       raiseOSError(osLastError())
-    var errStr = $ErrErrorString(err, nil)
+    var errStr = $ERR_error_string(err, nil)
     case err
     of 336032814, 336032784:
       errStr = "Please upgrade your OpenSSL library, it does not support the " &
                "necessary protocols. OpenSSL error is: " & errStr
     else:
       discard
-    raise newException(SSLError, errStr)
+    raise newException(SslError, errStr)
 
-  proc getExtraData*(ctx: SSLContext, index: int): RootRef =
-    ## Retrieves arbitrary data stored inside SSLContext.
+  proc getExtraData*(ctx: SslContext, index: int): RootRef =
+    ## Retrieves arbitrary data stored inside SslContext.
     if index notin ctx.referencedData:
       raise newException(IndexError, "No data with that index.")
     let res = ctx.context.SSL_CTX_get_ex_data(index.cint)
@@ -481,8 +484,8 @@ when defineSsl:
       raiseSSLError()
     return cast[RootRef](res)
 
-  proc setExtraData*(ctx: SSLContext, index: int, data: RootRef) =
-    ## Stores arbitrary data inside SSLContext. The unique `index`
+  proc setExtraData*(ctx: SslContext, index: int, data: RootRef) =
+    ## Stores arbitrary data inside SslContext. The unique `index`
     ## should be retrieved using getSslContextExtraDataIndex.
     if index in ctx.referencedData:
       GC_unref(getExtraData(ctx, index))
@@ -495,7 +498,7 @@ when defineSsl:
     GC_ref(data)
 
   # http://simplestcodings.blogspot.co.uk/2010/08/secure-server-client-using-openssl-in-c.html
-  proc loadCertificates(ctx: SSL_CTX, certFile, keyFile: string) =
+  proc loadCertificates(ctx: SslCtx, certFile, keyFile: string) =
     if certFile != "" and not existsFile(certFile):
       raise newException(system.IOError,
           "Certificate file could not be found: " & certFile)
@@ -503,7 +506,7 @@ when defineSsl:
       raise newException(system.IOError, "Key file could not be found: " & keyFile)
 
     if certFile != "":
-      var ret = SSLCTXUseCertificateChainFile(ctx, certFile)
+      var ret = SSL_CTX_use_certificate_chain_file(ctx, certFile)
       if ret != 1:
         raiseSSLError()
 
@@ -517,17 +520,30 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-      certFile = "", keyFile = "", cipherList = "ALL"): SSLContext =
+                   certFile = "", keyFile = "", cipherList = "ALL",
+                   caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##
     ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
     ## are available with the addition of ``protSSLv23`` which allows for
     ## compatibility with all of them.
     ##
-    ## There are currently only two options for verify mode;
-    ## one is ``CVerifyNone`` and with it certificates will not be verified
-    ## the other is ``CVerifyPeer`` and certificates will be verified for
-    ## it, ``CVerifyPeer`` is the safest choice.
+    ## There are three options for verify mode:
+    ## ``CVerifyNone``: certificates are not verified;
+    ## ``CVerifyPeer``: certificates are verified;
+    ## ``CVerifyPeerUseEnvVars``: certificates are verified and the optional
+    ## environment variables SSL_CERT_FILE and SSL_CERT_DIR are also used to
+    ## locate certificates
+    ##
+    ## The `nimDisableCertificateValidation` define overrides verifyMode and
+    ## disables certificate verification globally!
+    ##
+    ## CA certificates will be loaded, in the following order, from:
+    ##
+    ##  - caFile, caDir, parameters, if set
+    ##  - if `verifyMode` is set to ``CVerifyPeerUseEnvVars``,
+    ##    the SSL_CERT_FILE and SSL_CERT_DIR environment variables are used
+    ##  - a set of files and directories from the `ssl_certs <ssl_certs.html>`_ file.
     ##
     ## The last two parameters specify the certificate file path and the key file
     ## path, a server socket will most likely not work without these.
@@ -537,38 +553,61 @@ when defineSsl:
     ## or using ECDSA:
     ## - ``openssl ecparam -out mykey.pem -name secp256k1 -genkey``
     ## - ``openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem``
-    var newCTX: SSL_CTX
+    var newCTX: SslCtx
     case protVersion
     of protSSLv23:
       newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
     of protSSLv2:
-      raiseSslError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
+      raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
     of protSSLv3:
-      raiseSslError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
+      raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
     of protTLSv1:
       newCTX = SSL_CTX_new(TLSv1_method())
 
-    if newCTX.SSLCTXSetCipherList(cipherList) != 1:
+    if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
-    case verifyMode
-    of CVerifyPeer:
-      newCTX.SSLCTXSetVerify(SSLVerifyPeer, nil)
-    of CVerifyNone:
-      newCTX.SSLCTXSetVerify(SSLVerifyNone, nil)
+
+    when defined(nimDisableCertificateValidation) or defined(windows):
+      newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+    else:
+      case verifyMode
+      of CVerifyPeer, CVerifyPeerUseEnvVars:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_PEER, nil)
+      of CVerifyNone:
+        newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)
+
     if newCTX == nil:
       raiseSSLError()
 
     discard newCTX.SSLCTXSetMode(SSL_MODE_AUTO_RETRY)
     newCTX.loadCertificates(certFile, keyFile)
 
-    result = SSLContext(context: newCTX, referencedData: initSet[int](),
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
+      if verifyMode != CVerifyNone:
+        # Use the caDir and caFile parameters if set
+        if caDir != "" or caFile != "":
+          if newCTX.SSL_CTX_load_verify_locations(caDir, caFile) != 0:
+            raise newException(IOError, "Failed to load SSL/TLS CA certificate(s).")
+
+        else:
+          # Scan for certs in known locations. For CVerifyPeerUseEnvVars also scan
+          # the SSL_CERT_FILE and SSL_CERT_DIR env vars
+          var found = false
+          for fn in scanSSLCertificates():
+            if newCTX.SSL_CTX_load_verify_locations(fn, "") == 0:
+              found = true
+              break
+          if not found:
+            raise newException(IOError, "No SSL/TLS CA certificates found.")
+
+    result = SSLContext(context: newCTX, referencedData: initHashSet[int](),
       extraInternal: new(SslContextExtraInternal))
 
-  proc getExtraInternal(ctx: SSLContext): SslContextExtraInternal =
+  proc getExtraInternal(ctx: SslContext): SslContextExtraInternal =
     return ctx.extraInternal
 
-  proc destroyContext*(ctx: SSLContext) =
-    ## Free memory referenced by SSLContext.
+  proc destroyContext*(ctx: SslContext) =
+    ## Free memory referenced by SslContext.
 
     # We assume here that OpenSSL's internal indexes increase by 1 each time.
     # That means we can assume that the next internal index is the length of
@@ -577,20 +616,20 @@ when defineSsl:
       GC_unref(getExtraData(ctx, i).RootRef)
     ctx.context.SSL_CTX_free()
 
-  proc `pskIdentityHint=`*(ctx: SSLContext, hint: string) =
+  proc `pskIdentityHint=`*(ctx: SslContext, hint: string) =
     ## Sets the identity hint passed to server.
     ##
     ## Only used in PSK ciphersuites.
     if ctx.context.SSL_CTX_use_psk_identity_hint(hint) <= 0:
       raiseSSLError()
 
-  proc clientGetPskFunc*(ctx: SSLContext): SslClientGetPskFunc =
+  proc clientGetPskFunc*(ctx: SslContext): SslClientGetPskFunc =
     return ctx.getExtraInternal().clientGetPskFunc
 
   proc pskClientCallback(ssl: SslPtr; hint: cstring; identity: cstring;
       max_identity_len: cuint; psk: ptr cuchar;
       max_psk_len: cuint): cuint {.cdecl.} =
-    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
+    let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let hintString = if hint == nil: "" else: $hint
     let (identityString, pskString) = (ctx.clientGetPskFunc)(hintString)
     if psk.len.cuint > max_psk_len:
@@ -603,7 +642,7 @@ when defineSsl:
 
     return pskString.len.cuint
 
-  proc `clientGetPskFunc=`*(ctx: SSLContext, fun: SslClientGetPskFunc) =
+  proc `clientGetPskFunc=`*(ctx: SslContext, fun: SslClientGetPskFunc) =
     ## Sets function that returns the client identity and the PSK based on identity
     ## hint from the server.
     ##
@@ -612,12 +651,12 @@ when defineSsl:
     ctx.context.SSL_CTX_set_psk_client_callback(
         if fun == nil: nil else: pskClientCallback)
 
-  proc serverGetPskFunc*(ctx: SSLContext): SslServerGetPskFunc =
+  proc serverGetPskFunc*(ctx: SslContext): SslServerGetPskFunc =
     return ctx.getExtraInternal().serverGetPskFunc
 
   proc pskServerCallback(ssl: SslCtx; identity: cstring; psk: ptr cuchar;
       max_psk_len: cint): cuint {.cdecl.} =
-    let ctx = SSLContext(context: ssl.SSL_get_SSL_CTX)
+    let ctx = SslContext(context: ssl.SSL_get_SSL_CTX)
     let pskString = (ctx.serverGetPskFunc)($identity)
     if psk.len.cint > max_psk_len:
       return 0
@@ -625,7 +664,7 @@ when defineSsl:
 
     return pskString.len.cuint
 
-  proc `serverGetPskFunc=`*(ctx: SSLContext, fun: SslServerGetPskFunc) =
+  proc `serverGetPskFunc=`*(ctx: SslContext, fun: SslServerGetPskFunc) =
     ## Sets function that returns PSK based on the client identity.
     ##
     ## Only used in PSK ciphersuites.
@@ -635,30 +674,49 @@ when defineSsl:
 
   proc getPskIdentity*(socket: Socket): string =
     ## Gets the PSK identity provided by the client.
-    assert socket.isSSL
+    assert socket.isSsl
     return $(socket.sslHandle.SSL_get_psk_identity)
 
-  proc wrapSocket*(ctx: SSLContext, socket: Socket) =
+  proc wrapSocket*(ctx: SslContext, socket: Socket) =
     ## Wraps a socket in an SSL context. This function effectively turns
     ## ``socket`` into an SSL socket.
     ##
     ## This must be called on an unconnected socket; an SSL session will
     ## be started when the socket is connected.
     ##
+    ## FIXME:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
 
-    assert(not socket.isSSL)
-    socket.isSSL = true
+    assert(not socket.isSsl)
+    socket.isSsl = true
     socket.sslContext = ctx
-    socket.sslHandle = SSLNew(socket.sslContext.context)
+    socket.sslHandle = SSL_new(socket.sslContext.context)
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
     if socket.sslHandle == nil:
       raiseSSLError()
 
-    if SSLSetFd(socket.sslHandle, socket.fd) != 1:
+    if SSL_set_fd(socket.sslHandle, socket.fd) != 1:
       raiseSSLError()
+
+  proc checkCertName(socket: Socket, hostname: string) =
+    ## Check if the certificate Subject Alternative Name (SAN) or Subject CommonName (CN) matches hostname.
+    ## Wildcards match only in the left-most label.
+    ## When name starts with a dot it will be matched by a certificate valid for any subdomain
+    when not defined(nimDisableCertificateValidation) and not defined(windows):
+      assert socket.isSSL
+      let certificate = socket.sslHandle.SSL_get_peer_certificate()
+      if certificate.isNil:
+        raiseSSLError("No SSL certificate found.")
+
+      const X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT = 0x1.cuint
+      const size = 1024
+      var peername: string = newString(size)
+      let match = certificate.X509_check_host(hostname.cstring, hostname.len.cint,
+        X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT, peername)
+      if match != 1:
+        raiseSSLError("SSL Certificate check failed.")
 
   proc wrapConnectedSocket*(ctx: SSLContext, socket: Socket,
                             handshake: SslHandshakeType,
@@ -671,6 +729,7 @@ when defineSsl:
     ## This should be called on a connected socket, and will perform
     ## an SSL handshake immediately.
     ##
+    ## FIXME:
     ## **Disclaimer**: This code is not well tested, may be very unsafe and
     ## prone to security vulnerabilities.
     wrapSocket(ctx, socket)
@@ -680,11 +739,44 @@ when defineSsl:
         # Discard result in case OpenSSL version doesn't support SNI, or we're
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
-      let ret = SSLConnect(socket.sslHandle)
+      let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
+        if hostname.len > 0 and not isIpAddress(hostname):
+          socket.checkCertName(hostname)
     of handshakeAsServer:
-      let ret = SSLAccept(socket.sslHandle)
+      let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
+
+  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the OpenSSL connection represented by ``sslHandle``.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    result = newSeq[Certificate]()
+    if SSL_get_verify_result(sslHandle) != X509_V_OK:
+      return
+    let stack = SSL_get0_verified_chain(sslHandle)
+    if stack == nil:
+      return
+    let length = OPENSSL_sk_num(stack)
+    if length == 0:
+      return
+    for i in 0 .. length - 1:
+      let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
+      result.add(i2d_X509(x509))
+
+  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
 
 proc getSocketError*(socket: Socket): OSErrorCode =
   ## Checks ``osLastError`` for a valid error. If it has been reset it uses
@@ -697,7 +789,7 @@ proc getSocketError*(socket: Socket): OSErrorCode =
 
 proc socketError*(socket: Socket, err: int = -1, async = false,
                   lastError = (-1).OSErrorCode) =
-  ## Raises an OSError based on the error code returned by ``SSLGetError``
+  ## Raises an OSError based on the error code returned by ``SSL_get_error``
   ## (for SSL sockets) and ``osLastError`` otherwise.
   ##
   ## If ``async`` is ``true`` no error will be thrown in the case when the
@@ -705,9 +797,9 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
   ##
   ## If ``err`` is not lower than 0 no exception will be raised.
   when defineSsl:
-    if socket.isSSL:
+    if socket.isSsl:
       if err <= 0:
-        var ret = SSLGetError(socket.sslHandle, err.cint)
+        var ret = SSL_get_error(socket.sslHandle, err.cint)
         case ret
         of SSL_ERROR_ZERO_RETURN:
           raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
@@ -723,13 +815,13 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL:
           var errStr = "IO error has occurred "
-          let sslErr = ErrPeekLastError()
+          let sslErr = ERR_peek_last_error()
           if sslErr == 0 and err == 0:
             errStr.add "because an EOF was observed that violates the protocol"
           elif sslErr == 0 and err == -1:
             errStr.add "in the BIO layer"
           else:
-            let errStr = $ErrErrorString(sslErr, nil)
+            let errStr = $ERR_error_string(sslErr, nil)
             raiseSSLError(errStr & ": " & errStr)
           let osErr = osLastError()
           raiseOSError(osErr, errStr)
@@ -737,7 +829,7 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
 
-  if err == -1 and not (when defineSsl: socket.isSSL else: false):
+  if err == -1 and not (when defineSsl: socket.isSsl else: false):
     var lastE = if lastError.int == -1: getSocketError(socket) else: lastError
     if async:
       when useWinVersion:
@@ -812,16 +904,16 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
 
     # Handle SSL.
     when defineSsl:
-      if server.isSSL:
+      if server.isSsl:
         # We must wrap the client sock in a ssl context.
 
         server.sslContext.wrapSocket(client)
-        let ret = SSLAccept(client.sslHandle)
+        let ret = SSL_accept(client.sslHandle)
         socketError(client, ret, false)
 
 when false: #defineSsl:
   proc acceptAddrSSL*(server: Socket, client: var Socket,
-                      address: var string): SSLAcceptResult {.
+                      address: var string): SSL_acceptResult {.
                       tags: [ReadIOEffect].} =
     ## This procedure should only be used for non-blocking **SSL** sockets.
     ## It will immediately return with one of the following values:
@@ -839,15 +931,15 @@ when false: #defineSsl:
     ## to connect.
     template doHandshake(): untyped =
       when defineSsl:
-        if server.isSSL:
+        if server.isSsl:
           client.setBlocking(false)
           # We must wrap the client sock in a ssl context.
 
-          if not client.isSSL or client.sslHandle == nil:
+          if not client.isSsl or client.sslHandle == nil:
             server.sslContext.wrapSocket(client)
-          let ret = SSLAccept(client.sslHandle)
+          let ret = SSL_accept(client.sslHandle)
           while ret <= 0:
-            let err = SSLGetError(client.sslHandle, ret)
+            let err = SSL_get_error(client.sslHandle, ret)
             if err != SSL_ERROR_WANT_ACCEPT:
               case err
               of SSL_ERROR_ZERO_RETURN:
@@ -864,7 +956,7 @@ when false: #defineSsl:
                 raiseSSLError("Unknown error")
           client.sslNoHandshake = false
 
-    if client.isSSL and client.sslNoHandshake:
+    if client.isSsl and client.sslNoHandshake:
       doHandshake()
       return AcceptSuccess
     else:
@@ -887,21 +979,21 @@ proc close*(socket: Socket) =
   ## Closes a socket.
   try:
     when defineSsl:
-      if socket.isSSL and socket.sslHandle != nil:
+      if socket.isSsl and socket.sslHandle != nil:
         ErrClearError()
         # As we are closing the underlying socket immediately afterwards,
         # it is valid, under the TLS standard, to perform a unidirectional
         # shutdown i.e not wait for the peers "close notify" alert with a second
-        # call to SSLShutdown
-        let res = SSLShutdown(socket.sslHandle)
+        # call to SSL_shutdown
+        let res = SSL_shutdown(socket.sslHandle)
         if res == 0:
           discard
         elif res != 1:
           socketError(socket, res)
   finally:
     when defineSsl:
-      if socket.isSSL and socket.sslHandle != nil:
-        SSLFree(socket.sslHandle)
+      if socket.isSsl and socket.sslHandle != nil:
+        SSL_free(socket.sslHandle)
         socket.sslHandle = nil
 
     socket.fd.close()
@@ -980,7 +1072,7 @@ when defined(ssl):
     ## and the server that ``socket`` is connected to.
     ##
     ## Throws SslError if ``socket`` is not an SSL socket.
-    if socket.isSSL:
+    if socket.isSsl:
       return not socket.sslNoHandshake
     else:
       raiseSSLError("Socket is not an SSL socket.")
@@ -992,7 +1084,7 @@ proc hasDataBuffered*(s: Socket): bool =
     result = s.bufLen > 0 and s.currPos != s.bufLen
 
   when defineSsl:
-    if s.isSSL and not result:
+    if s.isSsl and not result:
       result = s.sslHasPeekChar
 
 proc select(readfd: Socket, timeout = 500): int =
@@ -1015,7 +1107,7 @@ proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
   assert(not socket.isClosed, "Cannot `recv` on a closed socket")
   when defineSsl:
     if socket.isSsl:
-      return SSLRead(socket.sslHandle, buffer, size)
+      return SSL_read(socket.sslHandle, buffer, size)
 
   return recv(socket.fd, buffer, size, flags)
 
@@ -1067,7 +1159,7 @@ proc recv*(socket: Socket, data: pointer, size: int): int {.tags: [
     result = read
   else:
     when defineSsl:
-      if socket.isSSL:
+      if socket.isSsl:
         if socket.sslHasPeekChar: # TODO: Merge this peek char mess into uniRecv
           copyMem(data, addr(socket.sslPeekChar), 1)
           socket.sslHasPeekChar = false
@@ -1106,11 +1198,11 @@ proc waitFor(socket: Socket, waited: var Duration, timeout, size: int,
       raise newException(TimeoutError, "Call to '" & funcName & "' timed out.")
 
     when defineSsl:
-      if socket.isSSL:
+      if socket.isSsl:
         if socket.hasDataBuffered:
           # sslPeekChar is present.
           return 1
-        let sslPending = SSLPending(socket.sslHandle)
+        let sslPending = SSL_pending(socket.sslHandle)
         if sslPending != 0:
           return min(sslPending, size)
 
@@ -1212,7 +1304,7 @@ proc peekChar(socket: Socket, c: var char): int {.tags: [ReadIOEffect].} =
     c = socket.buffer[socket.currPos]
   else:
     when defineSsl:
-      if socket.isSSL:
+      if socket.isSsl:
         if not socket.sslHasPeekChar:
           result = uniRecv(socket, addr(socket.sslPeekChar), 1, 0'i32)
           socket.sslHasPeekChar = true
@@ -1351,8 +1443,8 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   ## the version below.
   assert(not socket.isClosed, "Cannot `send` on a closed socket")
   when defineSsl:
-    if socket.isSSL:
-      return SSLWrite(socket.sslHandle, cast[cstring](data), size)
+    if socket.isSsl:
+      return SSL_write(socket.sslHandle, cast[cstring](data), size)
 
   when useWinVersion or defined(macosx):
     result = send(socket.fd, data, size.cint, 0'i32)
@@ -1431,7 +1523,7 @@ proc sendTo*(socket: Socket, address: string, port: Port,
 proc isSsl*(socket: Socket): bool =
   ## Determines whether ``socket`` is a SSL socket.
   when defineSsl:
-    result = socket.isSSL
+    result = socket.isSsl
   else:
     result = false
 
@@ -1629,15 +1721,18 @@ proc connect*(socket: Socket, address: string,
   if not success: raiseOSError(lastError)
 
   when defineSsl:
-    if socket.isSSL:
+    if socket.isSsl:
       # RFC3546 for SNI specifies that IP addresses are not allowed.
       if not isIpAddress(address):
         # Discard result in case OpenSSL version doesn't support SNI, or we're
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
 
-      let ret = SSLConnect(socket.sslHandle)
+      let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
+      when not defined(nimDisableCertificateValidation) and not defined(windows):
+        if not isIpAddress(address):
+          socket.checkCertName(address)
 
 proc connectAsync(socket: Socket, name: string, port = Port(0),
                   af: Domain = AF_INET) {.tags: [ReadIOEffect].} =
@@ -1693,7 +1788,7 @@ proc connect*(socket: Socket, address: string, port = Port(0),
     if res != 0:
       raiseOSError(OSErrorCode(res))
     when defineSsl and not defined(nimdoc):
-      if socket.isSSL:
+      if socket.isSsl:
         socket.fd.setBlocking(true)
         doAssert socket.gotHandshake()
   socket.fd.setBlocking(true)

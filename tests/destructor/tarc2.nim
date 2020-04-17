@@ -1,6 +1,6 @@
 discard """
-  output: '''leak: true'''
-  cmd: '''nim c --gc:arc $file'''
+  output: '''leak: false'''
+  cmd: '''nim c --gc:orc $file'''
 """
 
 type
@@ -13,17 +13,18 @@ proc create(): T = T(s: @[], data: "abc")
 proc addX(x: T; data: string) =
   x.data = data
 
+{.push sinkInference: off.}
+
 proc addX(x: T; child: T) =
   x.s.add child
+
+{.pop.}
 
 proc main(rootName: string) =
   var root = create()
   root.data = rootName
-  # this implies we do the refcounting wrong. We should leak memory here
-  # and not create a destruction cycle:
   root.addX root
 
 let mem = getOccupiedMem()
 main("yeah")
-# since we created a retain cycle, we MUST leak memory here:
 echo "leak: ", getOccupiedMem() - mem > 0

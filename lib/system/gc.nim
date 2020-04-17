@@ -440,13 +440,15 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
+{.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
-  let size = addInt(align(GenericSeqSize, typ.base.align), mulInt(len, typ.base.size))
-  result = newObj(typ, size) # needs alignment
+  let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
+  result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
+{.pop.}
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
@@ -475,12 +477,14 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert(allocInv(gch.region), "newObjRC1 end")
   when defined(memProfiler): nimProfile(size)
 
+{.push overflowChecks: on.}
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = addInt(align(GenericSeqSize, typ.base.align),  mulInt(len, typ.base.size))
+  let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
+{.pop.}
 
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   collectCT(gch)
@@ -683,7 +687,7 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
  ]#
 proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl,
-    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
+    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS N_LIB_PRIVATE $# $#$#".} =
   forEachStackSlot(gch, gcMark)
 
 proc collectZCT(gch: var GcHeap): bool =

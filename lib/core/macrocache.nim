@@ -11,8 +11,7 @@
 ## time information across module boundaries in global variables.
 ## Starting with version 0.19 of Nim this is not directly supported anymore
 ## as it breaks incremental compilations.
-## Instead the API here needs to be used. See XXX (wikipedia page) for a
-## theoretical foundation behind this.
+## Instead the API here needs to be used.
 
 type
   CacheSeq* = distinct string

@@ -24,8 +24,10 @@ doAssert(existsEnv("dummy") == false)
 
 # issue #7283
 putEnv("dummy", "myval")
-doAssert(existsEnv("dummy") == true)
+doAssert(existsEnv("dummy"))
 doAssert(getEnv("dummy") == "myval")
+delEnv("dummy")
+doAssert(existsEnv("dummy") == false)
 
 # issue #7393
 let wd = getCurrentDir()
@@ -64,6 +66,8 @@ else:
   assert toDll("nim") == "libnim.so"
 
 rmDir("tempXYZ")
+doAssertRaises(OSError):
+  rmDir("tempXYZ", checkDir = true)
 assert dirExists("tempXYZ") == false
 mkDir("tempXYZ")
 assert dirExists("tempXYZ") == true
@@ -81,8 +85,3 @@ when false:
 
 rmDir("tempXYZ")
 assert dirExists("tempXYZ") == false
-
-putEnv("dummy", "myval")
-doAssert(existsEnv("dummy") == true)
-delEnv("dummy")
-doAssert(existsEnv("dummy") == false)
