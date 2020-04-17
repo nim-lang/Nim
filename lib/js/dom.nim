@@ -1309,7 +1309,7 @@ proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 
 since (1, 3):
-  func newDomParser*(): DOMParser {.importcpp: "(new DOMParser()​​)".}
+  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
 
   func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}

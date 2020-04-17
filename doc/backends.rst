@@ -265,7 +265,7 @@ Create a ``maths.c`` file with the following content:
   }
 
 Now you can run the following Unix like commands to first generate C sources
-form the Nim code, then link them into a static binary along your main C
+from the Nim code, then link them into a static binary along your main C
 program::
 
   $ nim c --noMain --noLinking --header:fib.h fib.nim
@@ -276,7 +276,7 @@ generating a ``main()`` function in the generated files, avoid linking the
 object files into a final binary, and explicitly generate a header file for C
 integration. All the generated files are placed into the ``nimcache``
 directory. That's why the next command compiles the ``maths.c`` source plus
-all the ``.c`` files form ``nimcache``. In addition to this path, you also
+all the ``.c`` files from ``nimcache``. In addition to this path, you also
 have to tell the C compiler where to find Nim's ``nimbase.h`` header file.
 
 Instead of depending on the generation of the individual ``.c`` files you can
