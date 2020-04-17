@@ -672,7 +672,7 @@ proc getDaysInYear*(year: int): int =
 
 proc assertValidDate(monthday: MonthdayRange, month: Month, year: int)
     {.inline.} =
-  assert monthday <= getDaysInMonth(month, year),
+  assert monthday > 0 and monthday <= getDaysInMonth(month, year),
     $year & "-" & intToStr(ord(month), 2) & "-" & $monthday &
       " is not a valid date"
 
@@ -1578,9 +1578,14 @@ proc `<=`*(a, b: DateTime): bool =
   ## Returns true if ``a`` happened before or at the same time as ``b``.
   return a.toTime <= b.toTime
 
+proc isDefault[T](a: T): bool =
+  system.`==`(a, default(T))
+
 proc `==`*(a, b: DateTime): bool =
   ## Returns true if ``a`` and ``b`` represent the same point in time.
-  return a.toTime == b.toTime
+  if a.isDefault: b.isDefault
+  elif b.isDefault: false
+  else: a.toTime == b.toTime
 
 proc isStaticInterval(interval: TimeInterval): bool =
   interval.years == 0 and interval.months == 0 and

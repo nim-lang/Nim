@@ -615,14 +615,19 @@ suite "ttimes":
       doAssert between(x, y) == 1.months + 1.weeks
 
   test "default DateTime": # https://github.com/nim-lang/RFCs/issues/211
+    var num = 0
+    for ai in Month: num.inc
+    doAssert num == 12
+
     var a: DateTime
     doAssert a == DateTime.default
     doAssert ($a).len > 0 # no crash
     doAssert a.month.Month.ord == 0
     doAssert a.month.Month == cast[Month](0)
-    var num = 0
-    for ai in Month: num.inc
-    doAssert num == 12
+    doAssert a.monthday == 0
+
+    doAssertRaises(AssertionError): discard getDayOfWeek(a.monthday, a.month, a.year)
+    doAssertRaises(AssertionError): discard a.toTime
 
   test "inX procs":
     doAssert initDuration(seconds = 1).inSeconds == 1
