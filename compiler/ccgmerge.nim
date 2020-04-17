@@ -69,7 +69,7 @@ proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = rope(NimMergeEndMark & "\n")
 
-proc writeTypeCache(a: TypeCache, s: var string) =
+proc writeTypeCache(a: TypeCache, s: var EncodingString) =
   var i = 0
   for id, value in pairs(a):
     if i == 10:
@@ -83,7 +83,7 @@ proc writeTypeCache(a: TypeCache, s: var string) =
     inc i
   s.add('}')
 
-proc writeIntSet(a: IntSet, s: var string) =
+proc writeIntSet(a: IntSet, s: var EncodingString) =
   var i = 0
   for x in items(a):
     if i == 10:

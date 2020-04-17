@@ -1330,20 +1330,23 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
                 genTypeInfo(p.module, seqtype, e.info), a.rdLoc]))
     gcUsage(p.config, e)
 
-proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
-  let t = n.typ
+proc rawConstExpr(p: BProc, n: PNode): TLoc =
+  let
+    t = n.typ
+    id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
+    name = makeTempName(p.module, id, create = false)
   discard getTypeDesc(p.module, t) # so that any fields are initialized
-  let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-  fillLoc(d, locData, n, p.module.tmpBase & rope(id), OnStatic)
+  result.rawFillLoc(locData, n, name, OnStatic)
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
-          [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true)])
+          [getTypeDesc(p.module, t), result.r,
+           genBracedInit(p, n, isConst = true)])
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
-    rawConstExpr(p, n, d)
+    d = rawConstExpr(p, n)
     result = true
   else:
     result = false
@@ -2513,26 +2516,29 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
     else:
       putIntoDest(p, d, n, r, a.storage)
 
-proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
-  let t = n.typ
+proc exprComplexConst(p: BProc, n: PNode, d: TLoc): TLoc =
+  result = d
+  let
+    t = n.typ
+    id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
   discard getTypeDesc(p.module, t) # so that any fields are initialized
-  let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-  let tmp = p.module.tmpBase & rope(id)
+  var tmp = p.module.makeTempName(id, create = false)
 
   if id == p.module.labels:
     # expression not found in the cache:
     inc(p.module.labels)
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
-         [getTypeDesc(p.module, t), tmp, genBracedInit(p, n, isConst = true)])
+         [getTypeDesc(p.module, t), tmp,
+          genBracedInit(p, n, isConst = true)])
 
   if d.k == locNone:
-    fillLoc(d, locData, n, tmp, OnStatic)
+    result.rawFillLoc(locData, n, tmp, OnStatic)
   else:
-    putDataIntoDest(p, d, n, tmp)
+    putDataIntoDest(p, result, n, tmp)
     # This fixes bug #4551, but we really need better dataflow
     # analysis to make this 100% safe.
     if t.kind notin {tySequence, tyString}:
-      d.storage = OnStatic
+      result.storage = OnStatic
 
 proc expr(p: BProc, n: PNode, d: var TLoc) =
   p.currLineInfo = n.info
@@ -2637,7 +2643,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
       genSetConstr(p, n, d)
   of nkBracket:
     if isDeepConstExpr(n) and n.len != 0:
-      exprComplexConst(p, n, d)
+      d = exprComplexConst(p, n, d)
     elif skipTypes(n.typ, abstractVarRange).kind == tySequence:
       genSeqConstr(p, n, d)
     else:
@@ -2646,7 +2652,7 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
     if n.typ != nil and n.typ.kind == tyProc and n.len == 2:
       genClosure(p, n, d)
     elif isDeepConstExpr(n) and n.len != 0:
-      exprComplexConst(p, n, d)
+      d = exprComplexConst(p, n, d)
     else:
       genTupleConstr(p, n, d)
   of nkObjConstr: genObjConstr(p, n, d)

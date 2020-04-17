@@ -1039,10 +1039,16 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
+proc r*(a: TLoc): Rope =
+  result = a.roap
+
 proc `loc=`*(p: PSym; loc: TLoc) =
   when defined(debugTLoc):
     echo "set location"
-  system.`=`(p.location, loc)
+  assert p.location.k == loc.k or p.location.k == locNone
+  assert p.location.roap == nil or $p.location.r == $loc.r
+  raise
+  #system.`=`(p.location, loc)
 
 proc loc*(p: PSym): TLoc =
   result = p.location
@@ -1050,11 +1056,7 @@ proc loc*(p: PSym): TLoc =
 proc mloc*(p: PSym): var TLoc =
   result = p.location
   when defined(debugTLoc):
-    assert result.k == locNone
     echo "mut loc"
-
-proc r*(a: TLoc): Rope =
-  result = a.roap
 
 proc mr*(a: var TLoc): var Rope =
   when defined(debugTLoc):
@@ -1479,7 +1481,7 @@ proc copySym*(s: PSym): PSym =
     copyStrTable(result.tab, s.tab)
   result.options = s.options
   result.position = s.position
-  result.loc = s.loc
+  result.location = s.loc
   result.annex = s.annex      # BUGFIX
   if result.kind in {skVar, skLet, skField}:
     result.guard = s.guard

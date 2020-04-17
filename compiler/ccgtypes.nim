@@ -278,12 +278,15 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
       result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
   else: result = false
 
-proc fillResult(conf: ConfigRef; param: PNode) =
-  fillLoc(param.sym.mloc, locParam, param, ~"Result", OnStack)
+proc fillResult(m: BModule; conf: ConfigRef; param: PNode) =
+  m.fillLoc(param.sym, locParam, param, ~"Result", OnStack)
   let t = param.sym.typ
   if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, t):
-    incl(param.sym.mloc.flags, lfIndirect)
-    param.sym.mloc.storage = OnUnknown
+    var
+      l = param.sym.loc
+    l.flags.incl lfIndirect
+    l.storage = OnUnknown
+    m.setLocation(param.sym, l)
 
 proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
@@ -452,13 +455,16 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: params.add(~", ")
-    fillLoc(param.mloc, locParam, t.n[i], mangleParamName(m, param),
-            param.paramStorageLoc)
+    m.fillLoc(param, locParam, t.n[i], mangleParamName(m, param),
+              param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check))
       params.add(~"*")
-      incl(param.mloc.flags, lfIndirect)
-      param.mloc.storage = OnUnknown
+      var
+        l = param.loc
+      l.flags.incl lfIndirect
+      l.storage = OnUnknown
+      m.setLocation(param, l)
     elif weakDep:
       params.add(getTypeDescWeak(m, param.typ, check))
     else:
@@ -545,7 +551,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
     if field.typ.kind == tyVoid: return
     #assert(field.ast == nil)
     let sname = mangleRecFieldName(m, field)
-    fillLoc(field.mloc, locField, n, unionPrefix & sname, OnUnknown)
+    m.fillLoc(field, locField, n, unionPrefix & sname, OnUnknown)
     if field.alignment > 0:
       result.addf "NIM_ALIGN($1) ", [rope(field.alignment)]
     # for importcpp'ed objects, we only need to set field.loc, but don't
@@ -955,7 +961,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
   elif sfImportc notin prc.flags:
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
-  fillLoc(prc.mloc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
+  m.fillLoc(prc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
   genProcParams(m, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix

@@ -9,6 +9,7 @@
 
 ## Serialization utilities for the compiler.
 import strutils, math
+import lineinfos
 
 # bcc on windows doesn't have C99 functions
 when defined(windows) and defined(bcc):
@@ -31,6 +32,67 @@ when defined(windows) and defined(bcc):
   #endif
   """.}
 
+
+type
+  EncodingString* = distinct string
+  EncodingKind* = enum
+    FileNum = "unused?"
+    OpenType
+    CloseType
+    OpenLoc
+    CloseLoc
+    OpenNode
+    CloseNode
+    OpenSym
+    CloseSym
+    Comma
+    CallConv
+    JustCol
+    LineAndCol
+    LineColFile
+    SomeFlags = "flags in an int32"
+    UniqueId = "a type's uniqueId"
+    SymbolId = "a symbol's id"
+    OwnerId = "a symbol's id"
+    SizeValue = "type's size"
+    TypeAlignment = "type's alignment"
+    AnLiteral
+    AnType
+    AnNode
+    AnIdent
+    LocStorage
+    LockLevel
+    PaddingAtEnd
+    AttachedOps
+    MethodIndex
+    MethodId
+    TypeInst
+    TypeId
+    TypeCompiles
+    SymbolFlags
+    SymbolMagic
+    SymbolPos
+    SymbolOffset
+    SymbolConstraint
+    Unsafety
+    Transformed
+    Guard
+    BitSize
+
+converter toEncodingString*(s: var string): var EncodingString = s.EncodingString
+converter toEncodingString*(s: string): EncodingString = s.EncodingString
+converter toChar*(k: EncodingKind): char = k.char
+converter toEncodingKind*(c: char): EncodingKind = ord(c).EncodingKind
+
+proc `$`*(e: EncodingString): string {.borrow.}
+proc len*(e: EncodingString): int {.borrow.}
+proc setLen*(e: EncodingString; newlen: Natural) {.borrow.}
+proc add*(e: var EncodingString; s: string) {.borrow.}
+proc add*(e: var EncodingString; c: char) {.borrow.}
+proc add*(e: var EncodingString; kinds: varargs[EncodingKind]) =
+  for v in kinds.items:
+    e.add v.char
+
 proc c_snprintf(s: cstring; n:uint; frmt: cstring): cint {.importc: "snprintf", header: "<stdio.h>", nodecl, varargs.}
 
 proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
@@ -50,7 +112,7 @@ proc toStrMaxPrecision*(f: BiggestFloat, literalPostfix = ""): string =
     let n = c_snprintf(result.cstring, result.len.uint, "%#.16e%s", f, literalPostfix.cstring)
     setLen(result, n)
 
-proc encodeStr*(s: string, result: var string) =
+proc encodeStr*(s: string, result: var EncodingString) =
   for i in 0..<s.len:
     case s[i]
     of 'a'..'z', 'A'..'Z', '0'..'9', '_': result.add(s[i])
@@ -107,22 +169,36 @@ template encodeIntImpl(self) =
   if v != 0: self(v, result)
   result.add(d)
 
-proc encodeVBiggestIntAux(x: BiggestInt, result: var string) =
+proc encodeVBiggestIntAux(x: BiggestInt, result: var EncodingString) =
   ## encode a biggest int as a variable length base 190 int.
   encodeIntImpl(encodeVBiggestIntAux)
 
-proc encodeVBiggestInt*(x: BiggestInt, result: var string) =
-  ## encode a biggest int as a variable length base 190 int.
-  encodeVBiggestIntAux(x +% vintDelta, result)
-  #  encodeIntImpl(encodeVBiggestInt)
-
-proc encodeVIntAux(x: int, result: var string) =
+proc encodeVIntAux(x: int, result: var EncodingString) =
   ## encode an int as a variable length base 190 int.
   encodeIntImpl(encodeVIntAux)
 
-proc encodeVInt*(x: int, result: var string) =
+proc add*(e: var EncodingString; i: BiggestInt) =
+  ## encode a biggest int as a variable length base 190 int.
+  encodeVBiggestIntAux(i +% vintDelta, e)
+
+proc add*(e: var EncodingString; i: int | uint16 | int16 | int32) =
   ## encode an int as a variable length base 190 int.
-  encodeVIntAux(x +% vintDelta, result)
+  encodeVIntAux(i.int +% vintDelta, e)
+
+template add*(e: var EncodingString; i: FileIndex) =
+  ## a file index is simply encoded as an integer, of course
+  e.add i.int32
+
+proc add*(e: var EncodingString; k: EncodingKind) =
+  e.add k.char
+
+proc encodeVBiggestInt*(x: BiggestInt, result: var EncodingString)
+  {.deprecated: "use add()".} =
+  result.add x
+
+proc encodeVInt*(x: int, result: var EncodingString)
+  {.deprecated: "use add()".} =
+  result.add x
 
 template decodeIntImpl() =
   var i = pos
@@ -134,10 +210,11 @@ template decodeIntImpl() =
   result = 0
   while true:
     case s[i]
-    of '0'..'9': result = result * 190 - (ord(s[i]) - ord('0'))
-    of 'a'..'z': result = result * 190 - (ord(s[i]) - ord('a') + 10)
-    of 'A'..'Z': result = result * 190 - (ord(s[i]) - ord('A') + 36)
-    of '\x80'..'\xFF': result = result * 190 - (ord(s[i]) - 128 + 62)
+    #of '0'..'9': result = result * 190 - (ord(s[i]) - ord('0'))
+    #of 'a'..'z': result = result * 190 - (ord(s[i]) - ord('a') + 10)
+    #of 'A'..'Z': result = result * 190 - (ord(s[i]) - ord('A') + 36)
+    #of '\x80'..'\xFF': result = result * 190 - (ord(s[i]) - 128 + 62)
+    of '\x80'..'\xFF': result = result * 128 - (ord(s[i]) - 128)
     else: break
     inc(i)
   result = result * sign -% vintDelta
@@ -162,3 +239,35 @@ iterator decodeStrArray*(s: cstring): string =
   while s[i] != '\0':
     yield decodeStr(s, i)
     if s[i] == ' ': inc i
+
+proc addLineInfo*(e: var EncodingString; kind: EncodingKind;
+                  line = uint16(0); column = int16(-1); file = FileIndex(-1)) =
+  e.add kind
+  case kind
+  of JustCol:
+    e.add column
+  of LineAndCol:
+    e.add column
+    e.add Comma
+    e.add line
+  of LineColFile:
+    e.add column
+    e.add Comma
+    e.add line
+    e.add Comma
+    e.add file
+  else:
+    raise newException(Defect, "use JustCol, LineAndCol, or LineColFile")
+
+proc addLineInfo*(e: var EncodingString; kind: EncodingKind; info: TLineInfo) =
+  e.addLineInfo(kind, line = info.line,
+                      column = info.col,
+                      file = info.fileIndex)
+
+proc addLineInfoDelta*(e: var EncodingString; info: TLineInfo; old: TLineInfo) =
+  if old.fileIndex != info.fileIndex:
+    e.addLineInfo(LineColFile, info)
+  elif old.line == info.line:
+    e.addLineInfo(JustCol, info)
+  else:
+    e.addLineInfo(LineAndCol, info)

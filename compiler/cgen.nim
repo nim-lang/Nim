@@ -70,14 +70,21 @@ proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.clearRope
   result.flags = {}
 
-proc fillLoc(a: var TLoc, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
+proc rawFillLoc(t: var TLoc; k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
+  t.k = k
+  t.lode = lode
+  t.storage = s
+  t.roap = r
+
+proc rawFillLoc(k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc): TLoc =
+  result.rawFillLoc(k, lode, r, s)
+
+proc fillLoc(m: BModule; p: PSym, k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
   # fills the loc if it is not already initialized
-  if a.k == locNone:
-    a.k = k
-    a.lode = lode
-    a.storage = s
-    if a.r == nil:
-      a.setRope r
+  var
+    a = p.loc
+  a.rawFillLoc(k, lode, r, s)
+  m.setLocation(p, a)
 
 proc t(a: TLoc): PType {.inline.} =
   if a.lode.kind == nkSym:
@@ -340,7 +347,7 @@ type
   TAssignmentFlags = set[TAssignmentFlag]
 
 proc genObjConstr(p: BProc, e: PNode, d: var TLoc)
-proc rawConstExpr(p: BProc, n: PNode; d: var TLoc)
+proc rawConstExpr(p: BProc, n: PNode): TLoc
 proc genAssignment(p: BProc, dest, src: TLoc, flags: TAssignmentFlags)
 
 type
@@ -368,12 +375,12 @@ proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
       var tmp: TLoc
       if mode == constructRefObj:
         let objType = t.skipTypes(abstractInst+{tyRef})
-        rawConstExpr(p, newNodeIT(nkType, a.lode.info, objType), tmp)
+        tmp = rawConstExpr(p, newNodeIT(nkType, a.lode.info, objType))
         linefmt(p, cpsStmts,
             "#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
             [rdLoc(a), rdLoc(tmp), getTypeDesc(p.module, objType)])
       else:
-        rawConstExpr(p, newNodeIT(nkType, a.lode.info, t), tmp)
+        tmp = rawConstExpr(p, newNodeIT(nkType, a.lode.info, t))
         genAssignment(p, a, tmp, {})
     else:
       # worst case for performance:
@@ -487,8 +494,9 @@ proc getIntTemp(p: BProc, result: var TLoc) =
 proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.mloc, locLocalVar, n, mangleLocalName(p, s), OnStack)
-    if s.kind == skLet: incl(s.mloc.flags, lfNoDeepCopy)
+    p.module.fillLoc(s, locLocalVar, n, mangleLocalName(p, s), OnStack)
+    if s.kind == skLet:
+      p.module.inclLocationFlags(s, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
   result.add getTypeDesc(p.module, s.typ)
@@ -515,17 +523,15 @@ include ccgthreadvars
 proc varInDynamicLib(m: BModule, sym: PSym)
 
 proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
-  # XXX: ?
   return m.hcrOn and {sfThread, sfGlobal} * s.flags == {sfGlobal} and
       ({lfNoDecl, lfHeader} * s.loc.flags == {})
       # and s.owner.kind == skModule # owner isn't always a module (global pragma on local var)
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
-  # XXX: ?
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.mloc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
+    p.module.fillLoc(s, locGlobalVar, n, mangleName(p.module, s), OnHeap)
     if treatGlobalDifferentlyForHCR(p.module, s): incl(s.mloc.flags, lfIndirect)
 
   if lfDynamicLib in s.loc.flags:
@@ -533,7 +539,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     if q != nil and not containsOrIncl(q.declaredThings, s.id):
       varInDynamicLib(q, s)
     else:
-      s.loc.setRope mangleDynLibProc(s)
+      p.module.setLocationRope s, mangleDynLibProc(s)
     if value != nil:
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
@@ -583,8 +589,7 @@ proc assignParam(p: BProc, s: PSym, retType: PType) =
 
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
-  if sym.loc.k == locNone:
-    fillLoc(sym.mloc, locProc, n, mangleName(m, sym), OnStack)
+  m.fillLoc(sym, locProc, n, mangleName(m, sym), OnStack)
 
 proc getLabel(p: BProc): TLabel =
   inc(p.labels)
@@ -1026,7 +1031,7 @@ proc genProcAux(m: BModule, prc: PSym) =
         initLocalVar(p, res, immediateAsgn=false)
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     else:
-      fillResult(p.config, resNode)
+      m.fillResult(p.config, resNode)
       assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
@@ -1192,7 +1197,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.mloc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+    p.module.fillLoc(sym, locData, sym.ast, mangleName(p.module, sym), OnStatic)
   if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
@@ -1268,7 +1273,7 @@ proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
   useHeader(m, sym)
-  fillLoc(sym.mloc, locGlobalVar, n, mangleName(m, sym), OnHeap)
+  m.fillLoc(sym, locGlobalVar, n, mangleName(m, sym), OnHeap)
   if treatGlobalDifferentlyForHCR(m, sym): incl(sym.mloc.flags, lfIndirect)
 
   if (lfNoDecl in sym.loc.flags) or contains(m.declaredThings, sym.id):
