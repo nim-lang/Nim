@@ -260,6 +260,7 @@ type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``,
                 ## so ``ord(month)`` will give the month number in the
                 ## range ``1..12``.
+    # mInvalid = (0, "Invalid") # intentionally left out so `items` works
     mJan = (1, "January")
     mFeb = "February"
     mMar = "March"
@@ -296,7 +297,8 @@ when defined(nimHasStyleChecks):
   {.pop.}
 
 type
-  MonthdayRange* = range[1..31]
+  MonthdayRange* = range[0..31]
+    ## 0 represents an invalid month
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
   SecondRange* = range[0..60]
