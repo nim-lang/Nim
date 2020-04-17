@@ -1,12 +1,12 @@
 discard """
-  cmd: '''nim c --newruntime $file'''
+  valgrind: true
+  cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''OK 3
-5 1'''
+(allocCount: 8, deallocCount: 5)'''
 """
 
 import strutils, math
 import system / ansi_c
-import core / allocators
 
 proc mainA =
   try:
@@ -50,6 +50,4 @@ except:
   inc ok
 
 echo "OK ", ok
-
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)
+echo getAllocStats()

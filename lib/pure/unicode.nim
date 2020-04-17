@@ -20,9 +20,6 @@
 ## * `unidecode module <unidecode.html>`_
 ## * `encodings module <encodings.html>`_
 
-
-{.deadCodeElim: on.} # dce option deprecated
-
 include "system/inclrtl"
 
 type
@@ -701,7 +698,7 @@ proc capitalize*(s: string): string {.noSideEffect, procvar,
     doAssert capitalize("βeta") == "Βeta"
 
   if len(s) == 0:
-    return s
+    return ""
   var
     rune: Rune
     i = 0
@@ -914,12 +911,12 @@ proc size*(r: Rune): int {.noSideEffect.} =
     doAssert size(a[1]) == 2
 
   let v = r.uint32
-  if v <= 0x007F: result = 1
-  elif v <= 0x07FF: result = 2
-  elif v <= 0xFFFF: result = 3
-  elif v <= 0x1FFFFF: result = 4
-  elif v <= 0x3FFFFFF: result = 5
-  elif v <= 0x7FFFFFFF: result = 6
+  if v <= 0x007F'u32: result = 1
+  elif v <= 0x07FF'u32: result = 2
+  elif v <= 0xFFFF'u32: result = 3
+  elif v <= 0x1FFFFF'u32: result = 4
+  elif v <= 0x3FFFFFF'u32: result = 5
+  elif v <= 0x7FFFFFFF'u32: result = 6
   else: result = 1
 
 # --------- Private templates for different split separators -----------
@@ -933,27 +930,23 @@ proc stringHasSep(s: string, index: int, sep: Rune): bool =
   fastRuneAt(s, index, rune, false)
   return sep == rune
 
-template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
+template splitCommon(s, sep, maxsplit: untyped) =
   ## Common code for split procedures.
+  let
+    sLen = len(s)
   var
     last = 0
     splits = maxsplit
-  if len(s) > 0:
-    while last <= len(s):
+  if sLen > 0:
+    while last <= sLen:
       var first = last
-      while last < len(s) and not stringHasSep(s, last, sep):
-        when sep is Rune:
-          inc(last, sepLen)
-        else:
-          inc(last, runeLenAt(s, last))
-      if splits == 0: last = len(s)
+      while last < sLen and not stringHasSep(s, last, sep):
+        inc(last, runeLenAt(s, last))
+      if splits == 0: last = sLen
       yield s[first .. (last - 1)]
       if splits == 0: break
       dec(splits)
-      when sep is Rune:
-        inc(last, sepLen)
-      else:
-        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+      inc(last, if last < sLen: runeLenAt(s, last) else: 1)
 
 iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   maxsplit: int = -1): string =
@@ -1037,7 +1030,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit, sep.size)
+  splitCommon(s, sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):
     seq[string] {.noSideEffect, rtl, extern: "nucSplitRunes".} =
@@ -1424,6 +1417,7 @@ when isMainModule:
         "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+    doAssert s3.split("×".runeAt(0)) == @[":this", "is", "an:example", "", ""]
 
   block stripTests:
     doAssert(strip("") == "")

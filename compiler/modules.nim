@@ -39,7 +39,8 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
         # but starting with version 0.20 we now produce a fake Nimble package instead
         # to resolve the conflicts:
         let pck3 = fakePackageName(graph.config, filename)
-        packSym = newSym(skPackage, getIdent(graph.cache, pck3), nil, result.info)
+        # this makes the new `packSym`'s owner be the original `packSym`
+        packSym = newSym(skPackage, getIdent(graph.cache, pck3), packSym, result.info)
         initStrTable(packSym.tab)
         graph.packageSyms.strTableAdd(packSym)
 
@@ -55,16 +56,14 @@ proc partialInitModule(result: PSym; graph: ModuleGraph; fileIdx: FileIndex; fil
   strTableAdd(packSym.tab, result)
 
 proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
+  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
   # We cannot call ``newSym`` here, because we have to circumvent the ID
   # mechanism, which we do in order to assign each module a persistent ID.
-  new(result)
-  result.id = -1             # for better error checking
-  result.kind = skModule
-  let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
-  result.name = getIdent(graph.cache, splitFile(filename).name)
+  result = PSym(kind: skModule, id: -1, # for better error checking
+                name: getIdent(graph.cache, splitFile(filename).name),
+                info: newLineInfo(fileIdx, 1, 1))
   if not isNimIdentifier(result.name.s):
     rawMessage(graph.config, errGenerated, "invalid module name: " & result.name.s)
-  result.info = newLineInfo(fileIdx, 1, 1)
   partialInitModule(result, graph, fileIdx, filename)
 
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
@@ -93,7 +92,7 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
       if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
     graph.markClientsDirty(fileIdx)
 
-proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym {.procvar.} =
+proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
   result = compileModule(graph, fileIdx, {})
@@ -108,7 +107,7 @@ proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym {.proc
     if s.owner.id == graph.config.mainPackageId or isDefined(graph.config, "booting"): graph.config.mainPackageNotes
     else: graph.config.foreignPackageNotes
 
-proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode {.procvar.} =
+proc includeModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PNode =
   result = syntaxes.parseFile(fileIdx, graph.cache, graph.config)
   graph.addDep(s, fileIdx)
   graph.addIncludeDep(s.position.FileIndex, fileIdx)

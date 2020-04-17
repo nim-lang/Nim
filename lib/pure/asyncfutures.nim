@@ -382,7 +382,7 @@ proc read*[T](future: Future[T] | FutureVar[T]): T =
       injectStacktrace(fut)
       raise fut.error
     when T isnot void:
-      return fut.value
+      result = fut.value
   else:
     # TODO: Make a custom exception type for this?
     raise newException(ValueError, "Future still in progress.")

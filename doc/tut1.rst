@@ -645,7 +645,7 @@ is possible, and actually an idiom:
     :test: "nim c $1"
   proc printSeq(s: seq, nprinted: int = -1) =
     var nprinted = if nprinted == -1: s.len else: min(nprinted, s.len)
-    for i in 0 .. <nprinted:
+    for i in 0 ..< nprinted:
       echo s[i]
 
 If the procedure needs to modify the argument for the
@@ -688,9 +688,6 @@ been declared with the ``discardable`` pragma:
     return x + y
 
   p(3, 4) # now valid
-
-The ``discard`` statement can also be used to create block comments as
-described in the `Comments`_ section.
 
 
 Named arguments
@@ -746,13 +743,19 @@ Overloaded procedures
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
-  proc toString(x: int): string = ...
-  proc toString(x: bool): string =
-    if x: result = "true"
-    else: result = "false"
+  proc toString(x: int): string =
+    result =
+      if x < 0: "negative"
+      elif x > 0: "positive"
+      else: "zero"
 
-  echo toString(13)   # calls the toString(x: int) proc
-  echo toString(true) # calls the toString(x: bool) proc
+  proc toString(x: bool): string =
+    result =
+      if x: "yep"
+      else: "nope"
+
+  assert toString(13) == "positive" # calls the toString(x: int) proc
+  assert toString(true) == "yep"    # calls the toString(x: bool) proc
 
 (Note that ``toString`` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the ``toString``
@@ -1396,7 +1399,7 @@ define operators which accept Slice objects to define ranges.
     :test: "nim c $1"
 
   var
-    a = "Nim is a progamming language"
+    a = "Nim is a programming language"
     b = "Slices are useless."
 
   echo a[7..12] # --> 'a prog'

@@ -105,13 +105,13 @@ identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
 this manual are static errors when not otherwise specified.
 
-A `checked runtime error`:idx: is an error that the implementation detects
+A `panic`:idx: is an error that the implementation detects
 and reports at runtime. The method for reporting such errors is via
 *raising exceptions* or *dying with a fatal error*. However, the implementation
 provides a means to disable these `runtime checks`:idx:. See the section
 pragmas_ for details.
 
-Whether a checked runtime error results in an exception or in a fatal error is
+Whether a panic results in an exception or in a fatal error is
 implementation specific. Thus the following program is invalid; even though the
 code purports to catch the `IndexError` from an out-of-bounds array access, the
 compiler may instead choose to allow the program to die with a fatal error.
@@ -123,6 +123,12 @@ compiler may instead choose to allow the program to die with a fatal error.
     a[i] = 'N'
   except IndexError:
     echo "invalid index"
+
+The current implementation allows to switch between these different behaviors
+via ``--panics:on|off``. When panics are turned on, the program dies on a
+panic, if they are turned off the runtime errors are turned into
+exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
+code and the compiler has more freedom to optimize the code.
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
@@ -555,8 +561,11 @@ following characters::
        @     $     ~     &     %     |
        !     ?     ^     .     :     \
 
+(The grammar uses the terminal OPR to refer to operator symbols as
+defined here.)
+
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot of``.
+``and or not xor shl shr div mod in notin is isnot of as``.
 
 `.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
@@ -629,21 +638,21 @@ has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 
-================  ===============================================  ==================  ===============
-Precedence level    Operators                                      First character     Terminal symbol
-================  ===============================================  ==================  ===============
- 10 (highest)                                                      ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``            ``*  %  \  /``      OP9
-  8               ``+    -``                                       ``+  -  ~  |``      OP8
-  7               ``&``                                            ``&``               OP7
-  6               ``..``                                           ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of``   ``=  <  >  !``      OP5
-  4               ``and``                                                              OP4
-  3               ``or xor``                                                           OP3
-  2                                                                ``@  :  ?``         OP2
-  1               *assignment operator* (like ``+=``, ``*=``)                          OP1
-  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
-================  ===============================================  ==================  ===============
+================  ==================================================  ==================  ===============
+Precedence level    Operators                                         First character     Terminal symbol
+================  ==================================================  ==================  ===============
+ 10 (highest)                                                         ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``               ``*  %  \  /``      OP9
+  8               ``+    -``                                          ``+  -  ~  |``      OP8
+  7               ``&``                                               ``&``               OP7
+  6               ``..``                                              ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of as``   ``=  <  >  !``      OP5
+  4               ``and``                                                                 OP4
+  3               ``or xor``                                                              OP3
+  2                                                                   ``@  :  ?``         OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                             OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                             OP0
+================  ==================================================  ==================  ===============
 
 
 Whether an operator is used a prefix operator is also affected by preceding
@@ -866,9 +875,9 @@ Ordinal types have the following characteristics:
   the operation of functions as ``inc``, ``ord``, ``dec`` on ordinal types to
   be defined.
 - Ordinal values have a smallest possible value. Trying to count further
-  down than the smallest value gives a checked runtime or static error.
+  down than the smallest value produces a panic or a static error.
 - Ordinal values have a largest possible value. Trying to count further
-  than the largest value gives a checked runtime or static error.
+  than the largest value produces a panic or a static error.
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
@@ -979,7 +988,7 @@ lowest and highest value of the type. For example:
 to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
 NaN does not belong to any subrange of floating point types.
 Assigning any other value to a variable of type ``Subrange`` is a
-checked runtime error (or static error if it can be determined during
+panic (or a static error if it can be determined during
 semantic analysis). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
@@ -1644,7 +1653,7 @@ object branch, the initialization is considered valid. This analysis only works
 for immutable discriminators of an ordinal type and disregards ``elif``
 branches. For discriminator values with a ``range`` type, the compiler
 checks if the entire range of possible values for the discriminator value is
-valid for the choosen object branch.
+valid for the chosen object branch.
 
 A small example:
 
@@ -1758,12 +1767,15 @@ further information.
 Nil
 ---
 
-If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
-the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
-is an unrecoverable fatal runtime error. A dereferencing operation ``p[]``
-implies that ``p`` is not nil. This can be exploited by the implementation to
-optimize code like:
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is the
+default value for all ``ref`` and ``ptr`` types. The ``nil`` value can also be
+used like any other literal value. For example, it can be used in an assignment
+like ``myRef = nil``.
 
+Dereferencing ``nil`` is an unrecoverable fatal runtime error (and not a panic).
+
+A successful dereferencing operation ``p[]`` implies that ``p`` is not nil. This
+can be exploited by the implementation to optimize code like:
 
 .. code-block:: nim
 
@@ -2840,6 +2852,35 @@ expanded into a list of its elements:
     of '0'..'9': echo "a number"
     else: echo "other"
 
+The ``case`` statement doesn't produce an l-value, so the following example
+won't work:
+
+.. code-block:: nim
+  type
+    Foo = ref object
+      x: seq[string]
+
+  proc get_x(x: Foo): var seq[string] =
+    # doesn't work
+    case true
+    of true:
+      x.x
+    else:
+      x.x
+
+  var foo = Foo(x: @[])
+  foo.get_x().add("asd")
+
+This can be fixed by explicitly using ``return``:
+
+.. code-block:: nim
+  proc get_x(x: Foo): var seq[string] =
+    case true
+    of true:
+      return x.x
+    else:
+      return x.x
+
 
 When statement
 --------------
@@ -3188,6 +3229,7 @@ has lots of advantages:
 
 Type conversions
 ----------------
+
 Syntactically a `type conversion` is like a procedure call, but a
 type name replaces the procedure name. A type conversion is always
 safe in the sense that a failure to convert a type to another
@@ -3206,6 +3248,19 @@ A type conversion can also be used to disambiguate overloaded routines:
 
   let procVar = (proc(x: string))(p)
   procVar("a")
+
+Since operations on unsigned numbers wrap around and are unchecked so are
+type conversion to unsigned integers and between unsigned integers. The
+rationale for this is mostly better interoperability with the C Programming
+language when algorithms are ported from C to Nim.
+
+Exception: Values that are converted to an unsigned type at compile time
+are checked so that code like ``byte(-1)`` does not compile.
+
+**Note**: Historically the operations
+were unchecked and the conversions were sometimes checked but starting with
+the revision 1.0.4 of this document and the language implementation the
+conversions too are now *always unchecked*.
 
 
 Type casts
@@ -3426,14 +3481,14 @@ different; for this a special setter syntax is needed:
     ## setter of hostAddr.
     ## This accesses the 'host' field and is not a recursive call to
     ## ``host=`` because the builtin dot access is preferred if it is
-    ## avaliable:
+    ## available:
     s.host = value
 
   proc host*(s: Socket): int {.inline.} =
     ## getter of hostAddr
     ## This accesses the 'host' field and is not a recursive call to
     ## ``host`` because the builtin dot access is preferred if it is
-    ## avaliable:
+    ## available:
     s.host
 
 .. code-block:: nim
@@ -3507,7 +3562,8 @@ Creating closures in loops
 
 Since closures capture local variables by reference it is often not wanted
 behavior inside loop bodies. See `closureScope
-<system.html#closureScope.t,untyped>`_ for details on how to change this behavior.
+<system.html#closureScope.t,untyped>`_ and `capture
+<sugar.html#capture.m,openArray[typed],untyped>`_ for details on how to change this behavior.
 
 Anonymous Procs
 ---------------
@@ -3665,7 +3721,7 @@ a syntax like:
   proc foo(other: Y; container: var X): var T from container
 
 Here ``var T from container`` explicitly exposes that the
-location is deviated from the second parameter (called
+location is derived from the second parameter (called
 'container' in this case). The syntax ``var T from p`` specifies a type
 ``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
 
@@ -4059,6 +4115,8 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
+  from strutils import parseInt
+
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -4115,6 +4173,23 @@ error message from ``e``, and for such situations it is enough to use
   except:
     echo getCurrentExceptionMsg()
 
+Custom exceptions
+-----------------
+
+Is it possible to create custom exceptions. These make it easy to distinguish between exceptions raised by nim and those from your own code.
+
+A custom exception is a custom type:
+
+.. code-block:: nim
+  type
+    LoadError* = object of Exception
+
+Ending the custom exception's name with ``Error`` is recommended.
+
+Custom exceptions can be raised like any others, e.g.:
+
+.. code-block:: nim
+  raise newException(LoadError, "Failed to load data")
 
 Defer statement
 ---------------
@@ -4156,7 +4231,7 @@ Raise statement
 Example:
 
 .. code-block:: nim
-  raise newEOS("operating system failed")
+  raise newException(IOError, "IO failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
 the ``raise`` statement is the only way to raise an exception.
@@ -4176,9 +4251,11 @@ The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
 and are stricly speaking not catchable as they can also be mapped to an operation
-that terminates the whole process. Exceptions that indicate any other runtime
-error that can be caught inherit from ``system.CatchableError``
-(which is a subtype of ``Exception``).
+that terminates the whole process. If panics are turned into exceptions, these
+exceptions inherit from `Defect`.
+
+Exceptions that indicate any other runtime error that can be caught inherit from
+``system.CatchableError`` (which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -5276,26 +5353,6 @@ powerful programming construct that still suffices. So the "check list" is:
 (4) Else: Use a macro.
 
 
-Macros as pragmas
------------------
-
-Whole routines (procs, iterators etc.) can also be passed to a template or
-a macro via the pragma notation:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  proc p() {.m.} = discard
-
-This is a simple syntactic transformation into:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  m:
-    proc p() = discard
-
-
 For Loop Macro
 --------------
 
@@ -5395,7 +5452,7 @@ expression by coercing it to a corresponding ``static`` type:
 
   echo static(fac(5)), " ", static[bool](16.isPowerOfTwo)
 
-The complier will report any failure to evaluate the expression or a
+The compiler will report any failure to evaluate the expression or a
 possible type mismatch error.
 
 typedesc[T]
@@ -5407,7 +5464,7 @@ all values must have a type, ``typedesc`` is considered their special type.
 
 ``typedesc`` acts like a generic type. For instance, the type of the symbol
 ``int`` is ``typedesc[int]``. Just like with regular generic types, when the
-generic param is ommited, ``typedesc`` denotes the type class of all types.
+generic param is omitted, ``typedesc`` denotes the type class of all types.
 As a syntactic convenience, you can also use ``typedesc`` as a modifier.
 
 Procs featuring ``typedesc`` params are considered implicitly generic.
@@ -5579,6 +5636,8 @@ It is not checked that the ``except`` list is really exported from the module.
 This feature allows to compile against an older version of the module that
 does not export these identifiers.
 
+The ``import`` statement is only allowed at the top level.
+
 
 Include statement
 ~~~~~~~~~~~~~~~~~
@@ -5589,6 +5648,18 @@ statement is useful to split up a large module into several files:
 .. code-block:: nim
   include fileA, fileB, fileC
 
+The ``include`` statement can be used outside of the top level, as such:
+
+.. code-block:: nim
+  # Module A
+  echo "Hello World!"
+
+.. code-block:: nim
+  # Module B
+  proc main() =
+    include A
+
+  main() # => Hello World!
 
 
 Module names in imports
@@ -5986,8 +6057,32 @@ The ``noreturn`` pragma is used to mark a proc that never returns.
 
 acyclic pragma
 --------------
-The ``acyclic`` pragma applies to type declarations. It is deprecated and
-ignored.
+The ``acyclic`` pragma can be used for object types to mark them as acyclic
+even though they seem to be cyclic. This is an **optimization** for the garbage
+collector to not consider objects of this type as part of a cycle:
+
+.. code-block:: nim
+  type
+    Node = ref NodeObj
+    NodeObj {.acyclic.} = object
+      left, right: Node
+      data: string
+
+Or if we directly use a ref object:
+
+.. code-block:: nim
+  type
+    Node {.acyclic.} = ref object
+      left, right: Node
+      data: string
+
+In the example a tree structure is declared with the ``Node`` type. Note that
+the type definition is recursive and the GC has to assume that objects of
+this type may form a cyclic graph. The ``acyclic`` pragma passes the
+information that this cannot happen to the GC. If the programmer uses the
+``acyclic`` pragma for data types that are in reality cyclic, the memory leaks
+can be the result, but memory safety is preserved.
+
 
 
 final pragma
@@ -6293,29 +6388,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-pragma pragma
--------------
-
-The ``pragma`` pragma can be used to declare user defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User
-defined pragmas are in a different module-wide scope than all other symbols.
-They cannot be imported from a module.
-
-Example:
-
-.. code-block:: nim
-  when appType == "lib":
-    {.pragma: rtl, exportc, dynlib, cdecl.}
-  else:
-    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
-
-  proc p*(a, b: int): int {.rtl.} =
-    result = a+b
-
-In the example a new pragma named ``rtl`` is introduced that either imports
-a symbol from a dynamic library or exports the symbol for dynamic library
-generation.
-
 Disabling certain messages
 --------------------------
 Nim generates some warnings and hints ("line too long") that may annoy the
@@ -6434,6 +6506,39 @@ generates:
   };
 
 
+Align pragma
+------------
+
+The `align`:idx: pragma is for variables and object field members. It
+modifies the alignment requirement of the entity being declared. The
+argument must be a constant power of 2. Valid non-zero
+alignments that are weaker than nother align pragmas on the same
+declaration are ignored. Alignments that are weaker that the
+alignment requirement of the type are ignored.
+
+.. code-block:: Nim
+
+   type
+     sseType = object
+       sseData {.align(16).}: array[4, float32]
+
+     # every object will be aligned to 128-byte boundary
+     Data = object
+       x: char
+       cacheline {.align(128).}: array[128, char] # over-aligned array of char,
+
+   proc main() =
+     echo "sizeof(Data) = ", sizeof(Data), " (1 byte + 127 bytes padding + 128-byte array)"
+     # output: sizeof(Data) = 256 (1 byte + 127 bytes padding + 128-byte array)
+     echo "alignment of sseType is ", alignof(sseType)
+     # output: alignment of sseType is 16
+     var d {.align(2048).}: Data # this instance of data is aligned even stricter
+
+   main()
+
+This pragma has no effect for the JS backend.
+
+
 Volatile pragma
 ---------------
 The ``volatile`` pragma is for variables only. It declares the variable as
@@ -6513,18 +6618,31 @@ The ``link`` pragma can be used to link an additional file with the project:
 
 PassC pragma
 ------------
-The ``passC`` pragma can be used to pass additional parameters to the C
-compiler like you would using the commandline switch ``--passC``:
+The ``passc`` pragma can be used to pass additional parameters to the C
+compiler like you would using the commandline switch ``--passc``:
 
 .. code-block:: Nim
-  {.passC: "-Wall -Werror".}
+  {.passc: "-Wall -Werror".}
 
 Note that you can use ``gorge`` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
 .. code-block:: Nim
-  {.passC: gorge("pkg-config --cflags sdl").}
+  {.passc: gorge("pkg-config --cflags sdl").}
+
+
+LocalPassc pragma
+-----------------
+The ``localPassc`` pragma can be used to pass additional parameters to the C
+compiler, but only for the C/C++ file that is produced from the Nim module
+the pragma resides in:
+
+.. code-block:: Nim
+  # Module A.nim
+  # Produces: A.nim.cpp
+  {.localPassc: "-Wall -Werror".} # Passed when compiling A.nim.cpp
+
 
 PassL pragma
 ------------
@@ -6645,15 +6763,6 @@ pragmas this allows *sloppy* interfacing with libraries written in C++:
 The compiler needs to be told to generate C++ (command ``cpp``) for
 this to work. The conditional symbol ``cpp`` is defined when the compiler
 emits C++ code.
-
-
-ImportJs pragma
----------------
-
-Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
-the ``importjs`` pragma can be used to import Javascript methods or
-symbols in general. The generated code then uses the Javascript method
-calling syntax: ``obj.method(arg)``.
 
 Namespaces
 ~~~~~~~~~~
@@ -6837,6 +6946,15 @@ Produces:
   std::vector<int>::iterator x;
 
 
+ImportJs pragma
+---------------
+
+Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+the ``importjs`` pragma can be used to import Javascript methods or
+symbols in general. The generated code then uses the Javascript method
+calling syntax: ``obj.method(arg)``.
+
+
 ImportObjC pragma
 -----------------
 Similar to the `importc pragma for C
@@ -6966,6 +7084,34 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 
 The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
 
+User-defined pragmas
+====================
+
+
+pragma pragma
+-------------
+
+The ``pragma`` pragma can be used to declare user defined pragmas. This is
+useful because Nim's templates and macros do not affect pragmas. User
+defined pragmas are in a different module-wide scope than all other symbols.
+They cannot be imported from a module.
+
+Example:
+
+.. code-block:: nim
+  when appType == "lib":
+    {.pragma: rtl, exportc, dynlib, cdecl.}
+  else:
+    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
+
+  proc p*(a, b: int): int {.rtl.} =
+    result = a+b
+
+In the example a new pragma named ``rtl`` is introduced that either imports
+a symbol from a dynamic library or exports the symbol for dynamic library
+generation.
+
+
 Custom annotations
 ------------------
 It is possible to define custom typed pragmas. Custom pragmas do not effect
@@ -7032,6 +7178,51 @@ More examples with custom pragmas:
     alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
+Macro pragmas
+-------------
+
+All macros and templates can also be used as pragmas. They can be attached
+to routines (procs, iterators, etc), type names or type expressions. The
+compiler will perform the following simple syntactic transformations:
+
+.. code-block:: nim
+  template command(name: string, def: untyped) = discard
+
+  proc p() {.command("print").} = discard
+
+This is translated to:
+
+.. code-block:: nim
+  command("print"):
+    proc p() = discard
+
+------
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = proc (x: Event) {.async.}
+
+This is translated to:
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = async(proc (x: Event))
+
+------
+
+.. code-block:: nim
+  type
+    MyObject {.schema: "schema.protobuf".} = object
+
+This is translated to a call to the ``schema`` macro with a `nnkTypeDef`
+AST node capturing both the left-hand side and right-hand side of the
+definition. The macro can return a potentially modified `nnkTypeDef` tree
+which will replace the original row in the type section.
+
+When multiple macro pragmas are applied to the same definition, the
+compiler will apply them consequently from left to right. Each macro
+will receive as input the output of the previous one.
+
 
 
 Foreign function interface
@@ -7053,7 +7244,7 @@ spelled*:
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
 
 Note that this pragma has been abused in the past to also work in the
-js backand for js objects and functions. : Other backends do provide
+js backend for js objects and functions. : Other backends do provide
 the same feature under the same name. Also, when the target language
 is not set to C, other pragmas are available:
 
@@ -7090,6 +7281,9 @@ The string literal passed to ``exportc`` can be a format string:
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
+If the symbol should also be exported to a dynamic library, the ``dynlib``
+pragma should be used in addition to the ``exportc`` pragma. See
+`Dynlib pragma for export <#foreign-function-interface-dynlib-pragma-for-export>`_.
 
 
 Extern pragma
@@ -7103,7 +7297,6 @@ mangling. The string literal passed to ``extern`` can be a format string:
 
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
-
 
 
 Bycopy pragma
@@ -7148,6 +7341,7 @@ checked.
 
 **Future directions**: GC'ed memory should be allowed in unions and the GC
 should scan unions conservatively.
+
 
 Packed pragma
 -------------
@@ -7229,10 +7423,7 @@ conjunction with the ``exportc`` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command line option. This pragma only has an effect for the code
-generation on the Windows target, so when this pragma is forgotten and the dynamic
-library is only tested on Mac and/or Linux, there won't be an error. On Windows
-this pragma adds ``__declspec(dllexport)`` to the function declaration.
+``--app:lib`` command line option.
 
 
 

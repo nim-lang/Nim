@@ -217,6 +217,10 @@ or to a tag e.g. `--git.commit:1.2.3` or a commit.
 
 Source URLs are generated as `href="${url}/tree/${commit}/${path}#L${line}"` by default and this compatible with GitHub but not with GitLab.
 
+Similarly, ``git.devel`` switch overrides the hardcoded `devel` branch for the `Edit` link which is also useful if you have a different working branch than `devel` e.g. `--git.devel:master`.
+
+Edit URLs are generated as `href="${url}/tree/${devel}/${path}#L${line}"` by default.
+
 You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value with a hyperlink to your own code repository.
 
 In the case of Nim's own documentation, the ``commit`` value is just a commit

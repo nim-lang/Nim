@@ -1,5 +1,7 @@
 discard """
-  output: "OK"
+  output: '''OK
+@[@[], @[], @[], @[], @[]]
+'''
 """
 const characters = "abcdefghijklmnopqrstuvwxyz"
 const numbers = "1234567890"
@@ -76,3 +78,16 @@ proc test_string_cmp() =
 
 test_string_slice()
 test_string_cmp()
+
+
+#--------------------------
+# bug #7816
+import sugar
+import sequtils
+
+proc tester[T](x: T) =
+  let test = toSeq(0..4).map(i => newSeq[int]())
+  echo test
+
+tester(1)
+

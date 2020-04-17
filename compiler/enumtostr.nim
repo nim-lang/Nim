@@ -13,7 +13,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   result.typ = newType(tyProc, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
-  addSon(result.typ.n, newNodeI(nkEffectList, info))
+  result.typ.n.add newNodeI(nkEffectList, info)
 
   result.typ.addParam dest
 
@@ -22,7 +22,7 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   caseStmt.add(newSymNode dest)
 
   # copy the branches over, but replace the fields with the for loop body:
-  for i in 0 ..< t.n.len:
+  for i in 0..<t.n.len:
     assert(t.n[i].kind == nkSym)
     var field = t.n[i].sym
     let val = if field.ast == nil: field.name.s else: field.ast.strVal
@@ -33,27 +33,34 @@ proc genEnumToStrProc*(t: PType; info: TLineInfo; g: ModuleGraph): PSym =
   body.add(caseStmt)
 
   var n = newNodeI(nkProcDef, info, bodyPos+2)
-  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
-  n.sons[namePos] = newSymNode(result)
-  n.sons[paramsPos] = result.typ.n
-  n.sons[bodyPos] = body
-  n.sons[resultPos] = newSymNode(res)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  n[bodyPos] = body
+  n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric
+  incl result.flags, sfNeverRaises
 
-proc searchObjCase(obj: PNode; field: PSym): PNode =
+proc searchObjCaseImpl(obj: PNode; field: PSym): PNode =
   case obj.kind
   of nkSym:
     result = nil
   of nkElse, nkOfBranch:
-    result = searchObjCase(obj.lastSon, field)
+    result = searchObjCaseImpl(obj.lastSon, field)
   else:
     if obj.kind == nkRecCase and obj[0].kind == nkSym and obj[0].sym == field:
       result = obj
     else:
       for x in obj:
-        result = searchObjCase(x, field)
+        result = searchObjCaseImpl(x, field)
         if result != nil: break
+
+proc searchObjCase(t: PType; field: PSym): PNode =
+  result = searchObjCaseImpl(t.n, field)
+  if result == nil and t.len > 0:
+    result = searchObjCase(t[0].skipTypes({tyAlias, tyGenericInst, tyRef, tyPtr}), field)
+  doAssert result != nil
 
 proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGraph): PSym =
   result = newSym(skProc, getIdent(g.cache, "objDiscMapping"), t.owner, info)
@@ -67,7 +74,7 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   result.typ = newType(tyProc, t.owner)
   result.typ.n = newNodeI(nkFormalParams, info)
   rawAddSon(result.typ, res.typ)
-  addSon(result.typ.n, newNodeI(nkEffectList, info))
+  result.typ.n.add newNodeI(nkEffectList, info)
 
   result.typ.addParam dest
 
@@ -75,12 +82,11 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   var caseStmt = newNodeI(nkCaseStmt, info)
   caseStmt.add(newSymNode dest)
 
-  let subObj = searchObjCase(t.n, field)
-  doAssert subObj != nil
-  for i in 1 ..< subObj.len:
+  let subObj = searchObjCase(t, field)
+  for i in 1..<subObj.len:
     let ofBranch = subObj[i]
     var newBranch = newNodeI(ofBranch.kind, ofBranch.info)
-    for j in 0..ofBranch.len-2:
+    for j in 0..<ofBranch.len-1:
       newBranch.add ofBranch[j]
 
     newBranch.add newTree(nkStmtList, newTree(nkFastAsgn, newSymNode(res), newIntNode(nkInt8Lit, i)))
@@ -89,10 +95,11 @@ proc genCaseObjDiscMapping*(t: PType; field: PSym; info: TLineInfo; g: ModuleGra
   body.add(caseStmt)
 
   var n = newNodeI(nkProcDef, info, bodyPos+2)
-  for i in 0 ..< n.len: n.sons[i] = newNodeI(nkEmpty, info)
-  n.sons[namePos] = newSymNode(result)
-  n.sons[paramsPos] = result.typ.n
-  n.sons[bodyPos] = body
-  n.sons[resultPos] = newSymNode(res)
+  for i in 0..<n.len: n[i] = newNodeI(nkEmpty, info)
+  n[namePos] = newSymNode(result)
+  n[paramsPos] = result.typ.n
+  n[bodyPos] = body
+  n[resultPos] = newSymNode(res)
   result.ast = n
   incl result.flags, sfFromGeneric
+  incl result.flags, sfNeverRaises

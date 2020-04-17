@@ -139,7 +139,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
       result.add modname
   of nkPrefix:
     when false:
-      if n.sons[0].kind == nkIdent and n.sons[0].ident.s == "$":
+      if n[0].kind == nkIdent and n[0].ident.s == "$":
         result = lookupPackage(n[1], nil)
       else:
         discard
@@ -149,7 +149,7 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     localError(conf, n.info, warnDeprecated, "using '.' instead of '/' in import paths is deprecated")
     result = renderTree(n, {renderNoComments}).replace(".", "/")
   of nkImportAs:
-    result = getModuleName(conf, n.sons[0])
+    result = getModuleName(conf, n[0])
   else:
     localError(conf, n.info, "invalid module name: '$1'" % n.renderTree)
     result = ""

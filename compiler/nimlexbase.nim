@@ -157,7 +157,7 @@ proc getCurrentLine(L: TBaseLexer, marker: bool = true): string =
   result = ""
   var i = L.lineStart
   while not (L.buf[i] in {CR, LF, EndOfFile}):
-    add(result, L.buf[i])
+    result.add(L.buf[i])
     inc(i)
   result.add("\n")
   if marker:

@@ -79,7 +79,7 @@ when not defined(useNimRtl):
 # use ``stdcall`` since it is mapped to ``noconv`` on UNIX anyway.
 
 type
-  Thread* {.pure, final.}[TArg] = object
+  Thread*[TArg] = object
     core: PGcThread
     sys: SysThread
     when TArg is void:
@@ -98,9 +98,6 @@ proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
   ## A thread is destructed when the ``.thread`` proc returns
   ## normally or when it raises an exception. Note that unhandled exceptions
   ## in a thread nevertheless cause the whole process to die.
-  when not defined(nimNoNilSeqs):
-    if threadDestructionHandlers.isNil:
-      threadDestructionHandlers = @[]
   threadDestructionHandlers.add handler
 
 template afterThreadRuns() =
@@ -313,10 +310,11 @@ else:
     t.dataFn = tp
     when hasSharedHeap: t.core.stackSize = ThreadStackSize
     var a {.noinit.}: Pthread_attr
-    pthread_attr_init(a)
-    pthread_attr_setstacksize(a, ThreadStackSize)
+    doAssert pthread_attr_init(a) == 0
+    doAssert pthread_attr_setstacksize(a, ThreadStackSize) == 0
     if pthread_create(t.sys, a, threadProcWrapper[TArg], addr(t)) != 0:
       raise newException(ResourceExhaustedError, "cannot create thread")
+    doAssert pthread_attr_destroy(a) == 0
 
   proc pinToCpu*[Arg](t: var Thread[Arg]; cpu: Natural) =
     ## Pins a thread to a `CPU`:idx:.
@@ -327,7 +325,7 @@ else:
       var s {.noinit.}: CpuSet
       cpusetZero(s)
       cpusetIncl(cpu.cint, s)
-      setAffinity(t.sys, sizeof(s), s)
+      setAffinity(t.sys, csize_t(sizeof(s)), s)
 
 proc createThread*(t: var Thread[void], tp: proc () {.thread, nimcall.}) =
   createThread[void](t, tp)
