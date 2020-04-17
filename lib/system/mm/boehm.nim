@@ -1,4 +1,6 @@
 
+
+
 proc boehmGCinit {.importc: "GC_init", boehmGC.}
 proc boehmGC_disable {.importc: "GC_disable", boehmGC.}
 proc boehmGC_enable {.importc: "GC_enable", boehmGC.}
@@ -96,6 +98,7 @@ proc initGC() =
 proc boehmgc_finalizer(obj: pointer, typedFinalizer: (proc(x: pointer) {.cdecl.})) =
   typedFinalizer(obj)
 
+
 proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
   if ntfNoRefs in typ.flags: result = allocAtomic(size)
   else: result = alloc(size)
@@ -103,7 +106,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     boehmRegisterFinalizer(result, boehmgc_finalizer, typ.finalizer, nil, nil)
 {.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-  result = newObj(typ, align(GenericSeqSize, typ.base.align) len * typ.base.size)
+  result = newObj(typ, align(GenericSeqSize, typ.base.align) + len * typ.base.size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 {.pop.}
