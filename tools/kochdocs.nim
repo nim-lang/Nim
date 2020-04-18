@@ -110,6 +110,7 @@ doc/tut2.rst
 doc/tut3.rst
 doc/nimc.rst
 doc/hcr.rst
+doc/drnim.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst
@@ -150,10 +151,10 @@ lib/posix/termios.nim
 lib/js/jscore.nim
 """.splitWhitespace()
 
+  # some of these are include files so shouldn't be docgen'd
   ignoredModules = """
+lib/prelude.nim
 lib/pure/future.nim
-lib/impure/osinfo_posix.nim
-lib/impure/osinfo_win.nim
 lib/pure/collections/hashcommon.nim
 lib/pure/collections/tableimpl.nim
 lib/pure/collections/setimpl.nim
@@ -169,6 +170,7 @@ lib/posix/posix_linux_amd64.nim
 lib/posix/posix_linux_amd64_consts.nim
 lib/posix/posix_other_consts.nim
 lib/posix/posix_openbsd_amd64.nim
+lib/posix/posix_haiku.nim
 """.splitWhitespace()
 
 when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):

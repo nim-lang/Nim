@@ -9,7 +9,7 @@ proc foo*(b: any) =
 
 import sets
 
-var intset = initSet[int]()
+var intset = initHashSet[int]()
 
 proc fn*[T](a: T) =
   if a in intset: echo("true")

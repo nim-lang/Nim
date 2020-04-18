@@ -262,6 +262,21 @@ __AVR__
 #include <limits.h>
 #include <stddef.h>
 
+// define NIM_STATIC_ASSERT
+// example use case: CT sizeof for importc types verification
+// where we have {.completeStruct.} (or lack of {.incompleteStruct.})
+#if (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L)
+#define NIM_STATIC_ASSERT(x, msg) _Static_assert((x), msg)
+#elif defined(__cplusplus)
+#define NIM_STATIC_ASSERT(x, msg) static_assert((x), msg)
+#else
+#define NIM_STATIC_ASSERT(x, msg) typedef int NIM_STATIC_ASSERT_AUX[(x) ? 1 : -1];
+// On failure, your C compiler will say something like:
+//   "error: 'NIM_STATIC_ASSERT_AUX' declared as an array with a negative size"
+// we could use a better fallback to also show line number, using:
+// http://www.pixelbeat.org/programming/gcc/static_assert.html
+#endif
+
 /* C99 compiler? */
 #if (defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901))
 #  define HAVE_STDINT_H
@@ -288,34 +303,40 @@ __AVR__
 namespace USE_NIM_NAMESPACE {
 #endif
 
+// preexisting check, seems paranoid, maybe remove
+#if defined(NIM_TRUE) || defined(NIM_FALSE) || defined(NIM_BOOL)
+#error "nim reserved preprocessor macros clash"
+#endif
+
 /* bool types (C++ has it): */
 #ifdef __cplusplus
-#  ifndef NIM_TRUE
-#    define NIM_TRUE true
-#  endif
-#  ifndef NIM_FALSE
-#    define NIM_FALSE false
-#  endif
-#  define NIM_BOOL bool
+#define NIM_BOOL bool
+#elif (defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901)
+// see #13798: to avoid conflicts for code emitting `#include <stdbool.h>`
+#define NIM_BOOL _Bool
+#else
+typedef unsigned char NIM_BOOL; // best effort
+#endif
+
+NIM_STATIC_ASSERT(sizeof(NIM_BOOL) == 1, ""); // check whether really needed
+
+#define NIM_TRUE true
+#define NIM_FALSE false
+
+#ifdef __cplusplus
 #  if __cplusplus >= 201103L
 #    /* nullptr is more type safe (less implicit conversions than 0) */
 #    define NIM_NIL nullptr
 #  else
-#    /* consider using NULL if comment below for NIM_NIL doesn't apply to C++ */
+#    // both `((void*)0)` and `NULL` would cause codegen to emit
+#    // error: assigning to 'Foo *' from incompatible type 'void *'
+#    // but codegen could be fixed if need. See also potential caveat regarding
+#    // NULL.
+#    // However, `0` causes other issues, see #13798
 #    define NIM_NIL 0
 #  endif
 #else
-#  ifdef bool
-#    define NIM_BOOL bool
-#  else
-  typedef unsigned char NIM_BOOL;
-#  endif
-#  ifndef NIM_TRUE
-#    define NIM_TRUE ((NIM_BOOL) 1)
-#  endif
-#  ifndef NIM_FALSE
-#    define NIM_FALSE ((NIM_BOOL) 0)
-#  endif
+#  include <stdbool.h>
 #  define NIM_NIL ((void*)0) /* C's NULL is fucked up in some C compilers, so
                               the generated code does not rely on it anymore */
 #endif
@@ -489,6 +510,7 @@ struct TFrame_ {
   NCSTRING filename;
   NI16 len;
   NI16 calldepth;
+  NI frameMsgLen;
 };
 
 #define NIM_POSIX_INIT  __attribute__((constructor))
@@ -515,10 +537,8 @@ static inline void GCGuard (void *ptr) { asm volatile ("" :: "X" (ptr)); }
 #  define GC_GUARD
 #endif
 
-/* Test to see if Nim and the C compiler agree on the size of a pointer.
-   On disagreement, your C compiler will say something like:
-   "error: 'Nim_and_C_compiler_disagree_on_target_architecture' declared as an array with a negative size" */
-typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8 ? 1 : -1];
+// Test to see if Nim and the C compiler agree on the size of a pointer.
+NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, "");
 
 #ifdef USE_NIM_NAMESPACE
 }
@@ -544,5 +564,29 @@ typedef int Nim_and_C_compiler_disagree_on_target_architecture[sizeof(NI) == siz
 /* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
 #define NIM_CHECK_SIZE(typ, sz) \
   _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
+
+/* these exist to make the codegen logic simpler */
+#define nimModInt(a, b, res) (((*res) = (a) % (b)), 0)
+#define nimModInt64(a, b, res) (((*res) = (a) % (b)), 0)
+
+#if (!defined(_MSC_VER) || defined(__clang__)) && !defined(NIM_EmulateOverflowChecks)
+  /* these exist because we cannot have .compilerProcs that are importc'ed
+    by a different name */
+
+  #define nimAddInt64(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
+  #define nimSubInt64(a, b, res) __builtin_ssubll_overflow(a, b, (long long int*)res)
+  #define nimMulInt64(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
+
+  #if NIM_INTBITS == 32
+    #define nimAddInt(a, b, res) __builtin_sadd_overflow(a, b, res)
+    #define nimSubInt(a, b, res) __builtin_ssub_overflow(a, b, res)
+    #define nimMulInt(a, b, res) __builtin_smul_overflow(a, b, res)
+  #else
+    /* map it to the 'long long' variant */
+    #define nimAddInt(a, b, res) __builtin_saddll_overflow(a, b, (long long int*)res)
+    #define nimSubInt(a, b, res) __builtin_ssubll_overflow(a, b, (long long int*)res)
+    #define nimMulInt(a, b, res) __builtin_smulll_overflow(a, b, (long long int*)res)
+  #endif
+#endif
 
 #endif /* NIMBASE_H */

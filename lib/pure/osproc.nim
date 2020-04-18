@@ -293,6 +293,7 @@ proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
+  ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
 proc execProcesses*(cmds: openArray[string],
@@ -826,10 +827,10 @@ elif not defined(useNimRtl):
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid {.
       tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessAfterFork(data: ptr StartProcessData) {.
-    tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
-  {.pop.}
+    {.push stacktrace: off, profiler: off.}
+    proc startProcessAfterFork(data: ptr StartProcessData) {.
+      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
+    {.pop.}
 
   proc startProcess(command: string, workingDir: string = "",
       args: openArray[string] = [], env: StringTableRef = nil,
@@ -891,7 +892,7 @@ elif not defined(useNimRtl):
 
     # Parent process. Copy process information.
     if poEchoCmd in options:
-      when declared(echo): echo(command, " ", join(args, " "))
+      echo(command, " ", join(args, " "))
     result.id = pid
     result.exitFlag = false
 
@@ -1003,56 +1004,57 @@ elif not defined(useNimRtl):
 
       return pid
 
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessFail(data: ptr StartProcessData) =
-    var error: cint = errno
-    discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
-    exitnow(1)
+    {.push stacktrace: off, profiler: off.}
+    proc startProcessFail(data: ptr StartProcessData) =
+      var error: cint = errno
+      discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
+      exitnow(1)
 
-  when not defined(uClibc) and (not defined(linux) or defined(android)):
-    var environ {.importc.}: cstringArray
+    when not defined(uClibc) and (not defined(linux) or defined(android)) and
+         not defined(haiku):
+      var environ {.importc.}: cstringArray
 
-  proc startProcessAfterFork(data: ptr StartProcessData) =
-    # Warning: no GC here!
-    # Or anything that touches global structures - all called nim procs
-    # must be marked with stackTrace:off. Inspect C code after making changes.
-    if not (poParentStreams in data.options):
-      discard close(data.pStdin[writeIdx])
-      if dup2(data.pStdin[readIdx], readIdx) < 0:
-        startProcessFail(data)
-      discard close(data.pStdout[readIdx])
-      if dup2(data.pStdout[writeIdx], writeIdx) < 0:
-        startProcessFail(data)
-      discard close(data.pStderr[readIdx])
-      if (poStdErrToStdOut in data.options):
-        if dup2(data.pStdout[writeIdx], 2) < 0:
+    proc startProcessAfterFork(data: ptr StartProcessData) =
+      # Warning: no GC here!
+      # Or anything that touches global structures - all called nim procs
+      # must be marked with stackTrace:off. Inspect C code after making changes.
+      if not (poParentStreams in data.options):
+        discard close(data.pStdin[writeIdx])
+        if dup2(data.pStdin[readIdx], readIdx) < 0:
           startProcessFail(data)
-      else:
-        if dup2(data.pStderr[writeIdx], 2) < 0:
+        discard close(data.pStdout[readIdx])
+        if dup2(data.pStdout[writeIdx], writeIdx) < 0:
+          startProcessFail(data)
+        discard close(data.pStderr[readIdx])
+        if (poStdErrToStdOut in data.options):
+          if dup2(data.pStdout[writeIdx], 2) < 0:
+            startProcessFail(data)
+        else:
+          if dup2(data.pStderr[writeIdx], 2) < 0:
+            startProcessFail(data)
+
+      if data.workingDir.len > 0:
+        if chdir(data.workingDir) < 0:
           startProcessFail(data)
 
-    if data.workingDir.len > 0:
-      if chdir(data.workingDir) < 0:
-        startProcessFail(data)
+      discard close(data.pErrorPipe[readIdx])
+      discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
-    discard close(data.pErrorPipe[readIdx])
-    discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
-
-    if (poUsePath in data.options):
-      when defined(uClibc) or defined(linux):
-        # uClibc environment (OpenWrt included) doesn't have the full execvpe
-        let exe = findExe(data.sysCommand)
-        discard execve(exe, data.sysArgs, data.sysEnv)
+      if (poUsePath in data.options):
+        when defined(uClibc) or defined(linux) or defined(haiku):
+          # uClibc environment (OpenWrt included) doesn't have the full execvpe
+          let exe = findExe(data.sysCommand)
+          discard execve(exe, data.sysArgs, data.sysEnv)
+        else:
+          # MacOSX doesn't have execvpe, so we need workaround.
+          # On MacOSX we can arrive here only from fork, so this is safe:
+          environ = data.sysEnv
+          discard execvp(data.sysCommand, data.sysArgs)
       else:
-        # MacOSX doesn't have execvpe, so we need workaround.
-        # On MacOSX we can arrive here only from fork, so this is safe:
-        environ = data.sysEnv
-        discard execvp(data.sysCommand, data.sysArgs)
-    else:
-      discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
+        discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
-    startProcessFail(data)
-  {.pop.}
+      startProcessFail(data)
+    {.pop.}
 
   proc close(p: Process) =
     if poParentStreams notin p.options:
@@ -1165,6 +1167,67 @@ elif not defined(useNimRtl):
           discard posix.close(kqFD)
 
       result = exitStatusLikeShell(p.exitStatus)
+  elif defined(haiku):
+    const
+      B_OBJECT_TYPE_THREAD = 3
+      B_EVENT_INVALID = 0x1000
+      B_RELATIVE_TIMEOUT = 0x8
+
+    type
+      ObjectWaitInfo {.importc: "object_wait_info", header: "OS.h".} = object
+        obj {.importc: "object".}: int32
+        typ {.importc: "type".}: uint16
+        events: uint16
+
+    proc waitForObjects(infos: ptr ObjectWaitInfo, numInfos: cint, flags: uint32,
+                        timeout: int64): clong
+                       {.importc: "wait_for_objects_etc", header: "OS.h".}
+
+    proc waitForExit(p: Process, timeout: int = -1): int =
+      if p.exitFlag:
+        return exitStatusLikeShell(p.exitStatus)
+
+      if timeout == -1:
+        var status: cint = 1
+        if waitpid(p.id, status, 0) < 0:
+          raiseOSError(osLastError())
+        p.exitFlag = true
+        p.exitStatus = status
+      else:
+        var info = ObjectWaitInfo(
+          obj: p.id, # Haiku's PID is actually the main thread ID.
+          typ: B_OBJECT_TYPE_THREAD,
+          events: B_EVENT_INVALID # notify when the thread die.
+        )
+
+        while true:
+          var status: cint = 1
+          let count = waitForObjects(addr info, 1, B_RELATIVE_TIMEOUT, timeout)
+
+          if count < 0:
+            let err = count.cint
+            if err == ETIMEDOUT:
+              # timeout expired, so we try to kill the process
+              if posix.kill(p.id, SIGKILL) == -1:
+                raiseOSError(osLastError())
+              if waitpid(p.id, status, 0) < 0:
+                raiseOSError(osLastError())
+              p.exitFlag = true
+              p.exitStatus = status
+              break
+            elif err != EINTR:
+              raiseOSError(err.OSErrorCode)
+          elif count > 0:
+            if waitpid(p.id, status, 0) < 0:
+              raiseOSError(osLastError())
+            p.exitFlag = true
+            p.exitStatus = status
+            break
+          else:
+            doAssert false, "unreachable!"
+
+      result = exitStatusLikeShell(p.exitStatus)
+
   else:
     import times
 

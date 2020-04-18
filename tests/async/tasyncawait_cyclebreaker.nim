@@ -1,5 +1,5 @@
 discard """
-  output: "50000"
+  output: "20000"
   cmd: "nim c -d:nimTypeNames -d:nimCycleBreaker $file"
 """
 import asyncdispatch, asyncnet, nativesockets, net, strutils, os
@@ -7,8 +7,8 @@ import asyncdispatch, asyncnet, nativesockets, net, strutils, os
 var msgCount = 0
 
 const
-  swarmSize = 500
-  messagesToSend = 100
+  swarmSize = 400
+  messagesToSend = 50
 
 var clientCount = 0
 

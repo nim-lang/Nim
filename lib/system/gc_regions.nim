@@ -8,22 +8,7 @@
 
 # "Stack GC" for embedded devices or ultra performance requirements.
 
-when defined(nimphpext):
-  proc roundup(x, v: int): int {.inline.} =
-    result = (x + (v-1)) and not (v-1)
-  proc emalloc(size: int): pointer {.importc: "_emalloc".}
-  proc efree(mem: pointer) {.importc: "_efree".}
-
-  proc osAllocPages(size: int): pointer {.inline.} =
-    emalloc(size)
-
-  proc osTryAllocPages(size: int): pointer {.inline.} =
-    emalloc(size)
-
-  proc osDeallocPages(p: pointer, size: int) {.inline.} =
-    efree(p)
-
-elif defined(useMalloc):
+when defined(useMalloc):
   proc roundup(x, v: int): int {.inline.} =
     result = (x + (v-1)) and not (v-1)
   proc emalloc(size: int): pointer {.importc: "malloc", header: "<stdlib.h>".}
@@ -334,20 +319,21 @@ proc newObjNoInit(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)
   when defined(memProfiler): nimProfile(size)
 
+{.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = roundup(addInt(mulInt(len, typ.base.size), GenericSeqSize),
-                     MemAlign)
+  let size = roundup(len * typ.base.size + GenericSeqSize, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   zeroMem(result, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 
 proc newStr(typ: PNimType, len: int; init: bool): pointer {.compilerRtl.} =
-  let size = roundup(addInt(len, GenericSeqSize), MemAlign)
+  let size = roundup(len + GenericSeqSize, MemAlign)
   result = rawNewSeq(tlRegion, typ, size)
   if init: zeroMem(result, size)
   cast[PGenericSeq](result).len = 0
   cast[PGenericSeq](result).reserved = len
+{.pop.}
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   result = rawNewObj(tlRegion, typ, size)

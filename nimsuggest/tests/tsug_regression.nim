@@ -7,9 +7,9 @@ type X = object
 proc main =
   # bug #52
   var
-    set0 = initSet[int]()
-    set1 = initSet[X]()
-    set2 = initSet[ref int]()
+    set0 = initHashSet[int]()
+    set1 = initHashSet[X]()
+    set2 = initHashSet[ref int]()
 
     map0 = initTable[int, int]()
     map1 = initOrderedTable[string, int]()

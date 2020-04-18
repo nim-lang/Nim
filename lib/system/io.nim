@@ -39,7 +39,7 @@ type
 # text file handling:
 when not defined(nimscript) and not defined(js):
   # duplicated between io and ansi_c
-  const stdioUsesMacros = (defined(osx) or defined(bsd)) and not defined(emscripten)
+  const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(dragonfly)) and not defined(emscripten)
   const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
   const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
   const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"
@@ -735,7 +735,7 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   else:
     sysFatal(IOError, "cannot open: " & filename)
 
-proc readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
+template readLines*(filename: string): seq[TaintedString] {.deprecated: "use readLines with two arguments".} =
   readLines(filename, 1)
 
 iterator lines*(filename: string): TaintedString {.tags: [ReadIOEffect].} =

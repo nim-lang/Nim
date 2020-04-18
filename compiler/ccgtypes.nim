@@ -532,7 +532,7 @@ proc genRecordFieldsAux(m: BModule, n: PNode,
               unionBody.add("struct {")
             else:
               if hasAttribute in CC[m.config.cCompiler].props:
-                unionBody.add("struct __attribute__((__packed__)){" )
+                unionBody.add("struct __attribute__((__packed__)){")
               else:
                 unionBody.addf("#pragma pack(push, 1)$nstruct{", [])
             unionBody.add(a)
@@ -609,13 +609,14 @@ proc getRecordDesc(m: BModule, typ: PType, name: Rope,
       appcg(m, result, " : public $1 {$n",
                       [getTypeDescAux(m, typ[0].skipTypes(skipPtrs), check)])
       if typ.isException and m.config.exc == excCpp:
-        appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
-        if typ.sym.magic == mException:
-          # Add cleanup destructor to Exception base class
-          appcg(m, result, "~$1();$n", [name])
-          # define it out of the class body and into the procs section so we don't have to
-          # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
-          appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
+        when false:
+          appcg(m, result, "virtual void raise() { throw *this; }$n", []) # required for polymorphic exceptions
+          if typ.sym.magic == mException:
+            # Add cleanup destructor to Exception base class
+            appcg(m, result, "~$1();$n", [name])
+            # define it out of the class body and into the procs section so we don't have to
+            # artificially forward-declare popCurrentExceptionEx (very VERY troublesome for HCR)
+            appcg(m, cfsProcs, "inline $1::~$1() {if(this->raiseId) #popCurrentExceptionEx(this->raiseId);}$n", [name])
       hasField = true
     else:
       appcg(m, result, " {$n  $1 Sup;$n",
@@ -880,7 +881,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
           m.s[cfsTypes].add(recdesc)
         elif tfIncompleteStruct notin t.flags: addAbiCheck(m, t, result)
   of tySet:
-    result = $t.kind & '_' & getTypeName(m, t.lastSon, hashType t.lastSon)
+    # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
+    result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
@@ -1289,6 +1291,11 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     genProc(m, theProc)
     result = theProc.loc.r
   else:
+    if op == attachedTrace and m.config.selectedGC == gcOrc and
+        containsGarbageCollectedRef(t):
+      when false:
+        # re-enable this check
+        internalError(m.config, info, "no attached trace proc found")
     result = rope("NIM_NIL")
 
 proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) =

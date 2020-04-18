@@ -1,24 +1,25 @@
 # see https://man.sr.ht/builds.sr.ht/compatibility.md#freebsd
-# these are all broken, pending https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=244549
-# image: freebsd/latest 
-# image: freebsd/current
-# image: freebsd/12.x
-image: freebsd/11.x
-packages:
-- databases/sqlite3
-- devel/boehm-gc-threaded
-- devel/pcre
-- devel/sdl20
-- devel/sfml
-- www/node
-- devel/gmake
-- devel/git
+image: freebsd/latest
+
+# packages:
+# - databases/sqlite3
+# - devel/boehm-gc-threaded
+# - devel/pcre
+# - devel/sdl20
+# - devel/sfml
+# - www/node
+# - devel/gmake
+# - devel/git
 sources:
 - https://github.com/nim-lang/Nim
 environment:
   CC: /usr/bin/clang
 tasks:
 - setup: |
+    # workaround https://github.com/timotheecour/Nim/issues/76
+    sudo pkg update -q -f
+    sudo pkg install -y -q databases/sqlite3 devel/boehm-gc-threaded devel/pcre \
+      devel/sdl20 devel/sfml www/node devel/gmake devel/git
     cd Nim
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
     gmake -C csources -j $(sysctl -n hw.ncpu)

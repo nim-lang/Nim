@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
@@ -200,7 +200,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:
-      extccomp.setCC("tcc")
+      extccomp.setCC(conf, "tcc", unknownLineInfo)
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
@@ -225,6 +225,12 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf)
       commandDoc(cache, conf)
   of "doc2", "doc":
+    conf.setNoteDefaults(warnLockLevel, false) # issue #13218
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
+      # because currently generates lots of false positives due to conflation
+      # of labels links in doc comments, eg for random.rand:
+      #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
+      #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -233,6 +239,7 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       commandDoc2(graph, false)
   of "rst2html":
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -308,6 +315,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "nimExe", val: %(getAppFilename())),
         (key: "prefixdir", val: %conf.getPrefixDir().string),
         (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),

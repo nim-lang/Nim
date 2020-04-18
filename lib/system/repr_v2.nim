@@ -14,6 +14,11 @@ proc repr*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## repr for an integer argument. Returns `x`
   ## converted to a decimal string.
 
+proc repr*(x: uint64): string {.noSideEffect.} =
+  ## repr for an unsigned integer argument. Returns `x`
+  ## converted to a decimal string.
+  $x #Calls `$` from system/strmantle.nim
+
 proc repr*(x: float): string {.magic: "FloatToStr", noSideEffect.}
   ## repr for a float argument. Returns `x`
   ## converted to a decimal string.
@@ -27,7 +32,7 @@ proc repr*(x: char): string {.magic: "CharToStr", noSideEffect.}
   ## converted to a string.
   ##
   ## .. code-block:: Nim
-  ##   assert $'c' == "c"
+  ##   assert repr('c') == "c"
 
 proc repr*(x: cstring): string {.magic: "CStrToStr", noSideEffect.}
   ## repr for a CString argument. Returns `x`
@@ -47,7 +52,7 @@ proc repr*[Enum: enum](x: Enum): string {.magic: "EnumToStr", noSideEffect.}
 
 proc repr*(p: pointer): string =
   ## repr of pointer as its hexadecimal value
-  if p == nil: 
+  if p == nil:
     result = "nil"
   else:
     when nimvm:
@@ -66,7 +71,7 @@ template repr*(x: distinct): string =
 
 template repr*(t: typedesc): string = $t
 
-proc reprObject[T: tuple|object](res: var string, x: T) = 
+proc reprObject[T: tuple|object](res: var string, x: T) =
   res.add '('
   var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
@@ -98,10 +103,6 @@ proc repr*[T: tuple|object](x: T): string =
   when T is object:
     result = $typeof(x)
   reprObject(result, x)
- 
-proc repr*[T](x: ptr T): string =
-  result.add repr(pointer(x)) & " "
-  result.add repr(x[])
 
 proc repr*[T](x: ref T | ptr T): string =
   if isNil(x): return "nil"

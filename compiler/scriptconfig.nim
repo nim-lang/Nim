@@ -12,9 +12,9 @@
 
 import
   ast, modules, idents, passes, condsyms,
-  options, sem, llstream, vm, vmdef, commands, msgs,
+  options, sem, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
-  lineinfos, pathutils
+  pathutils
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -57,15 +57,15 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
 
   # Idea: Treat link to file as a file, but ignore link to directory to prevent
   # endless recursions out of the box.
-  cbos listFiles:
+  cbos listFilesImpl:
     listDirs(a, {pcFile, pcLinkToFile})
-  cbos listDirs:
+  cbos listDirsImpl:
     listDirs(a, {pcDir})
   cbos removeDir:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard
     else:
-      os.removeDir getString(a, 0)
+      os.removeDir(getString(a, 0), getBool(a, 1))
   cbos removeFile:
     if defined(nimsuggest) or graph.config.cmd == cmdCheck:
       discard

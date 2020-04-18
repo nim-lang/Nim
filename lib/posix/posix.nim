@@ -33,7 +33,6 @@
 # Dead code elimination ensures that we don't accidentally generate #includes
 # for files that might not exist on a specific platform! The user will get an
 # error only if they actually try to use the missing declaration
-{.deadCodeElim: on.}  # dce option deprecated
 
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
@@ -89,7 +88,7 @@ const
 type Sighandler = proc (a: cint) {.noconv.}
 
 const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
-    defined(osx) or defined(openbsd) or defined(dragonfly) ## \
+    defined(osx) or defined(openbsd) or defined(dragonfly) or defined(haiku) ## \
   ## Boolean flag that indicates if the system supports nanosecond time
   ## resolution in the fields of ``Stat``. Note that the nanosecond based fields
   ## (``Stat.st_atim``, ``Stat.st_mtim`` and ``Stat.st_ctim``) can be accessed
@@ -106,6 +105,8 @@ elif (defined(macos) or defined(macosx) or defined(bsd)) and defined(cpu64):
   include posix_macos_amd64
 elif defined(nintendoswitch):
   include posix_nintendoswitch
+elif defined(haiku):
+  include posix_haiku
 else:
   include posix_other
 
@@ -637,7 +638,8 @@ proc posix_madvise*(a1: pointer, a2: int, a3: cint): cint {.
   importc, header: "<sys/mman.h>".}
 proc posix_mem_offset*(a1: pointer, a2: int, a3: var Off,
            a4: var int, a5: var cint): cint {.importc, header: "<sys/mman.h>".}
-when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch):
+when not (defined(linux) and defined(amd64)) and not defined(nintendoswitch) and
+     not defined(haiku):
   proc posix_typed_mem_get_info*(a1: cint,
     a2: var Posix_typed_mem_info): cint {.importc, header: "<sys/mman.h>".}
 proc posix_typed_mem_open*(a1: cstring, a2, a3: cint): cint {.

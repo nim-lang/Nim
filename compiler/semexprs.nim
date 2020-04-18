@@ -10,6 +10,9 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -147,7 +150,9 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     result = checkConversionBetweenObjects(d.skipTypes(abstractInst), s.skipTypes(abstractInst), pointers)
   elif (targetBaseTyp.kind in IntegralTypes) and
       (srcBaseTyp.kind in IntegralTypes):
-    if targetTyp.isOrdinalType:
+    if targetTyp.kind == tyBool:
+      discard "convOk"
+    elif targetTyp.isOrdinalType:
       if src.kind in nkCharLit..nkUInt64Lit and
           src.getInt notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
         result = convNotInRange
@@ -184,6 +189,11 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if conf.selectedGC in {gcArc, gcOrc}:
+    let d = skipTypes(dst, abstractInst)
+    let s = skipTypes(src, abstractInst)
+    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal: 
+      return false
 
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
@@ -232,13 +242,14 @@ proc semConv(c: PContext, n: PNode): PNode =
   result = newNodeI(nkConv, n.info)
 
   var targetType = semTypeNode(c, n[0], nil)
-  if targetType.kind == tyTypeDesc:
+  case targetType.kind
+  of tyTypeDesc:
     internalAssert c.config, targetType.len > 0
     if targetType.base.kind == tyNone:
       return semTypeOf(c, n)
     else:
       targetType = targetType.base
-  elif targetType.kind == tyStatic:
+  of tyStatic:
     var evaluated = semStaticExpr(c, n[1])
     if evaluated.kind == nkType or evaluated.typ.kind == tyTypeDesc:
       result = n
@@ -248,6 +259,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       return evaluated
     else:
       targetType = targetType.base
+  else: discard
 
   maybeLiftType(targetType, c, n[0].info)
 
@@ -268,7 +280,7 @@ proc semConv(c: PContext, n: PNode): PNode =
       targetType.skipTypes(abstractPtrs).kind == tyObject:
     localError(c.config, n.info, "object construction uses ':', not '='")
   var op = semExprWithType(c, n[1])
-  if targetType.isMetaType:
+  if targetType.kind != tyGenericParam and targetType.isMetaType:
     let final = inferWithMetatype(c, targetType, op, true)
     result.add final
     result.typ = final.typ
@@ -278,6 +290,10 @@ proc semConv(c: PContext, n: PNode): PNode =
   # XXX op is overwritten later on, this is likely added too early
   # here or needs to be overwritten too then.
   result.add op
+
+  if targetType.kind == tyGenericParam:
+    result.typ = makeTypeFromExpr(c, copyTree(result))
+    return result
 
   if not isSymChoice(op):
     let status = checkConvertible(c, result.typ, op)
@@ -516,7 +532,7 @@ proc changeType(c: PContext; n: PNode, newType: PType, check: bool) =
           a.add m
           changeType(m, tup[i], check)
   of nkCharLit..nkUInt64Lit:
-    if check and n.kind != nkUInt64Lit:
+    if check and n.kind != nkUInt64Lit and not sameType(n.typ, newType):
       let value = n.intVal
       if value < firstOrd(c.config, newType) or value > lastOrd(c.config, newType):
         localError(c.config, n.info, "cannot convert " & $value &
@@ -611,11 +627,12 @@ proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult 
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc isUnresolvedSym(s: PSym): bool =
-  return s.kind == skGenericParam or
-         tfInferrableStatic in s.typ.flags or
-         (s.kind == skParam and s.typ.isMetaType) or
-         (s.kind == skType and
-          s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+  result = s.kind == skGenericParam
+  if not result and s.typ != nil:
+    result = tfInferrableStatic in s.typ.flags or
+        (s.kind == skParam and s.typ.isMetaType) or
+        (s.kind == skType and
+        s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
 
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
   # Checks whether an expression depends on generic parameters that
@@ -1136,7 +1153,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
       # It is clear that ``[]`` means two totally different things. Thus, we
       # copy `x`'s AST into each context, so that the type fixup phase can
       # deal with two different ``[]``.
-      if s.ast.len == 0: result = inlineConst(c, n, s)
+      if s.ast.safeLen == 0: result = inlineConst(c, n, s)
       else: result = newSymNode(s, n.info)
     of tyStatic:
       if typ.n != nil:
@@ -1565,9 +1582,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
         root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
-  of nkHiddenDeref, nkDerefExpr: return n[0]
+  of nkDerefExpr: return n[0]
   of nkBracketExpr:
     if n.len == 1: return n[0]
+  of nkHiddenDeref:
+    # issue #13848
+    # `proc fun(a: var int): var int = a`
+    discard
   else: discard
   let valid = isAssignable(c, n, isLent)
   if valid != arLValue:
@@ -2071,7 +2092,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   var err: string
   try:
     result = semExpr(c, n, flags)
-    if c.config.errorCounter != oldErrorCount: result = nil
+    if result != nil and efNoSem2Check notin flags:
+      trackStmt(c, c.module, result, isTopLevel = false)
+    if c.config.errorCounter != oldErrorCount:
+      result = nil
   except ERecoverableError:
     discard
   # undo symbol table changes (as far as it's possible):
@@ -2549,6 +2573,8 @@ proc shouldBeBracketExpr(n: PNode): bool =
           return true
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2630,6 +2656,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    result.typ = makeTypeDesc(c, typ)
+  of nkStmtListType:
+    let typ = semTypeNode(c, n, nil)
     result.typ = makeTypeDesc(c, typ)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:
