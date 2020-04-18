@@ -72,14 +72,14 @@ when defined(nimHasalignOf):
 
   func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline.} =
     ## Returns an extracted (and shifted) slice of bits from ``v``, e.g.
-    ## ``0b010111.bitslice(1 .. 3) == 0b101``
+    ## ``0b010111.bitsliced(1 .. 3) == 0b101``
     let upmost = sizeof(T) * 8 - 1
     (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline.} =
     ## Mutates ``v`` into an extracted (and shifted) slice of bits from ``v``
     let upmost = sizeof(T) * 8 - 1
-    (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
+    v = (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline.} =
     ## Creates a bitmask based on a slice of bits, e.g.
