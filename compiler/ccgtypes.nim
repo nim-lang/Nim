@@ -11,7 +11,7 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, rod
+import sighashes, modulegraphs, rod, ast
 from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
@@ -47,10 +47,8 @@ when false:
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
-    result = s.name.s.mangle.rope
-    # XXX: wut
-    result.add(idOrSig(m, s))
-    s.mloc.setRope result
+    result = idOrSig(m, s)
+    m.setLocationRope s, result
     writeMangledName(m.ndi, s, m.config)
 
 proc mangleParamName(m: BModule; s: PSym): Rope =
@@ -59,7 +57,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
   ## cause any trouble.
   result = s.loc.r
   if result == nil:
-    var res = s.name.s.mangle
+    var res = mangle(s.name.s)
     # Take into account if HCR is on because of the following scenario:
     #   if a module gets imported and it has some more importc symbols in it,
     # some param names might receive the "_0" suffix to distinguish from what
@@ -79,7 +77,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
     if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
       res.add "_0"
     result = res.rope
-    s.mloc.setRope result # need mutable location
+    m.setLocationRope s, result
     writeMangledName(m.ndi, s, m.config)
 
 proc mangleLocalName(p: BProc; s: PSym): Rope =
@@ -87,27 +85,17 @@ proc mangleLocalName(p: BProc; s: PSym): Rope =
   #assert sfGlobal notin s.flags
   result = s.loc.r
   if result == nil:
-    var key = s.name.s.mangle
-    shallow(key)
-    let counter = p.sigConflicts.getOrDefault(key, 0)
-    result = key.rope
-    if s.kind == skTemp:
-      # speed up conflict search for temps (these are quite common):
-      if counter != 0: result.add "_" & rope(counter+1)
-    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
-      result.add "_" & rope(counter+1)
-    p.sigConflicts.inc(key)
-    s.mloc.setRope result # need mutable location
-    if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
+    result = p.module.idOrSig(s)
+    p.module.setLocationRope s, result
+    if s.kind != skTemp:
+      writeMangledName(p.module.ndi, s, p.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
   ## parameter generation only takes BModule, not a BProc, so we have to
   ## remember these parameter names are already in scope to be able to
   ## generate unique identifiers reliably (consider that ``var a = a`` is
   ## even an idiom in Nim).
-  var key = param.name.s.mangle
-  shallow(key)
-  p.sigConflicts.inc(key)
+  discard p.module.idOrSig(param)  # essentially, just register the name
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
@@ -118,7 +106,7 @@ proc typeName(typ: PType): Rope =
   let typ = typ.skipTypes(irrelevantForBackend)
   result =
     if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
-      rope($typ.kind & '_' & typ.sym.name.s.mangle)
+      rope($typ.kind & '_' & mangle(typ.sym.name.s))
     else:
       rope($typ.kind)
 
@@ -134,7 +122,7 @@ proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
       break
   let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
   if typ.loc.r == nil:
-    typ.loc.setRope typ.typeName & $sig
+    m.setLocationRope(typ, typ.typeName & $sig)
   else:
     when defined(debugSigHashes):
       # check consistency:
@@ -211,6 +199,7 @@ proc isImportedCppType(t: PType): bool =
            (x.sym != nil and sfInfixCall in x.sym.flags)
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope
+  {.tags: [LocSafe, LocWrite, LocRead, RootEffect].}
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
@@ -288,7 +277,8 @@ proc fillResult(m: BModule; conf: ConfigRef; param: PNode) =
     l.storage = OnUnknown
     m.setLocation(param.sym, l)
 
-proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope =
+proc typeNameOrLiteral(m: BModule; t: PType, literal: string): Rope
+  {.tags: [LocRead].} =
   if t.sym != nil and sfImportc in t.sym.flags and t.sym.magic == mNone:
     useHeader(m, t.sym)
     result = t.sym.loc.r
@@ -333,7 +323,8 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
       m.typeCache[sig] = result
       addAbiCheck(m, typ, result)
 
-proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope =
+proc getTypePre(m: BModule, typ: PType; sig: SigHash): Rope
+  {.tags: [LocRead, RootEffect].} =
   if typ == nil:
     result = rope("void")
   else:
@@ -358,7 +349,8 @@ proc seqStar(m: BModule): string =
   if optSeqDestructors in m.config.globalOptions: result = ""
   else: result = "*"
 
-proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
+proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope
+  {.tags: [LocSafe, LocWrite, LocRead, RootEffect].} =
   result = cacheGetType(m.forwTypeCache, sig)
   if result != nil: return
   result = getTypePre(m, typ, sig)
@@ -585,7 +577,8 @@ proc fillObjectFields*(m: BModule; typ: PType) =
 proc mangleDynLibProc(sym: PSym): Rope
 
 proc getRecordDesc(m: BModule, typ: PType, name: Rope,
-                   check: var IntSet): Rope =
+                   check: var IntSet): Rope
+  {.tags: [LocRead, LocSafe, LocWrite, RootEffect].} =
   # declare the record:
   var hasField = false
 
@@ -676,8 +669,9 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
       result = if result.kind == tyGenericInst: result[1]
                else: result.elemType
 
-proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
-  # returns only the type's name
+proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope
+  {.tags: [LocSafe, LocRead, LocWrite, RootEffect].} =
+  ## returns only the type's name
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
@@ -696,6 +690,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   of tyRef, tyPtr, tyVar, tyLent:
     var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
+    # et == element type of "ptr T" is T, the last kid
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
     if mapType(m.config, t) == ctPtrToArray:
@@ -901,7 +896,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # fixes bug #145:
   excl(check, t.id)
 
-proc getTypeDesc(m: BModule, typ: PType): Rope =
+proc getTypeDesc(m: BModule, typ: PType): Rope
+  {.tags: [LocSafe, LocRead, LocWrite, RootEffect].} =
   var check = initIntSet()
   result = getTypeDescAux(m, typ, check)
 

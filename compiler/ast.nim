@@ -785,6 +785,11 @@ type
     lode*: PNode              # Node where the location came from; can be faked
     roap*: Rope               # rope value of location (code generators)
 
+  LocRead* = object
+  LocWrite* = object
+  LocBreak* = object
+  LocSafe* = object
+
   # ---------------- end of backend information ------------------------------
 
   TLibKind* = enum
@@ -919,7 +924,7 @@ type
     align*: int16             # the type's alignment requirements
     paddingAtEnd*: int16      #
     lockLevel*: TLockLevel    # lock level as required for deadlock checking
-    loc*: TLoc
+    location: TLoc
     typeInst*: PType          # for generic instantiations the tyGenericInst that led to this
                               # type.
     uniqueId*: int            # due to a design mistake, we need to keep the real ID here as it
@@ -1039,66 +1044,70 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
-proc r*(a: TLoc): Rope =
+proc r*(a: TLoc): Rope {.tags: [LocRead].} =
   result = a.roap
 
-proc `loc=`*(p: PSym; loc: TLoc) =
+proc `loc=`*(p: PSym or PType; loc: TLoc) {.tags: [LocRead, LocWrite].}=
   when defined(debugTLoc):
     echo "set location"
   assert p.location.k == loc.k or p.location.k == locNone
   assert p.location.roap == nil or $p.location.r == $loc.r
-  raise
-  #system.`=`(p.location, loc)
+  system.`=`(p.location, loc)
 
-proc loc*(p: PSym): TLoc =
+proc loc*(p: PSym or PType): TLoc {.tags: [LocRead].} =
   result = p.location
 
-proc mloc*(p: PSym): var TLoc =
+proc mloc*(p: PSym or PType): var TLoc {.tags: [LocRead, LocWrite].} =
   result = p.location
   when defined(debugTLoc):
     echo "mut loc"
 
-proc mr*(a: var TLoc): var Rope =
+proc setLocation*(p: PSym or PType; a: TLoc) {.tags: [LocWrite, LocSafe].} =
+  ## this should be run almost nowhere
+  p.location = a
+
+proc mr*(a: var TLoc): var Rope {.tags: [LocRead, LocWrite].} =
   when defined(debugTLoc):
     echo "get rope mut"
   result = a.roap
 
-proc clearRope*(a: TLoc) =
+proc clearRope*(a: TLoc) {.tags: [LocWrite].} =
   assert a.roap == nil
   when defined(debugTLoc):
     echo "clear imm"
 
-proc clearRope*(a: var TLoc) =
+proc clearRope*(a: var TLoc) {.tags: [LocWrite].} =
   a.roap = nil
   when defined(debugTLoc):
     echo "clear mut"
 
-proc setRope*(a: TLoc; roap: Rope) =
+proc setRope*(a: TLoc; roap: Rope) {.tags: [LocWrite].} =
+  ## a trap to catch bad attempts to mutate an immutable
   assert roap == nil
   assert a.roap == nil
   when defined(debugTLoc):
     echo "set rope imm"
 
-proc setRope*(a: var TLoc; roap: Rope) =
+proc setRope*(a: var TLoc; roap: Rope) {.tags: [LocWrite].} =
   assert roap != nil
   a.roap = roap
   when defined(debugTLoc):
     echo "set rope mut"
 
-proc setRope*(a: var TLoc; roap: var Rope) =
+proc setRope*(a: var TLoc; roap: var Rope) {.tags: [LocWrite].} =
   assert roap != nil
   a.roap = roap
   when defined(debugTLoc):
     echo "set rope remains mut"
 
 when false:
-  proc addRope*(a: var TLoc; roap: Rope) =
+  proc addRope*(a: var TLoc; roap: Rope) {.tags: [LocWrite].} =
     assert roap != nil
     a.roap.add roap
     when defined(debugTLoc):
       echo "add rope"
 
-proc mergeLoc(a: var TLoc; b: TLoc) =
+proc mergeLoc(a: var TLoc; b: TLoc) {.tags: [LocRead, LocWrite].} =
   when defined(debugTLoc):
     echo "mut merge"
   if a.k == locNone:

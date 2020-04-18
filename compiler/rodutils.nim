@@ -86,7 +86,7 @@ converter toEncodingKind*(c: char): EncodingKind = ord(c).EncodingKind
 
 proc `$`*(e: EncodingString): string {.borrow.}
 proc len*(e: EncodingString): int {.borrow.}
-proc setLen*(e: EncodingString; newlen: Natural) {.borrow.}
+proc setLen*(e: var EncodingString; newlen: Natural) {.borrow.}
 proc add*(e: var EncodingString; s: string) {.borrow.}
 proc add*(e: var EncodingString; c: char) {.borrow.}
 proc add*(e: var EncodingString; kinds: varargs[EncodingKind]) =

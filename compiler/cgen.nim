@@ -10,12 +10,11 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
-  nversion, nimsets, msgs, bitsets, idents, types,
-  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
-  rodutils, renderer, cgendata, aliases, ccgmerge,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
-  injectdestructors, rod, strformat
+  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options,
+  intsets, nversion, nimsets, msgs, bitsets, idents, types, ccgutils, os,
+  ropes, math, passes, wordrecg, treetab, cgmeth, rodutils, renderer,
+  cgendata, aliases, ccgmerge, lowerings, tables, sets, ndi, lineinfos,
+  pathutils, transf, enumtostr, injectdestructors, rod, strformat
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -63,14 +62,16 @@ proc findPendingModule(m: BModule, s: PSym): BModule =
   #
   # module a, b, c
 
-proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
+proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc)
+  {.tags: [LocWrite].} =
   result.k = k
   result.storage = s
   result.lode = lode
   result.clearRope
   result.flags = {}
 
-proc rawFillLoc(t: var TLoc; k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc) =
+proc rawFillLoc(t: var TLoc; k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc)
+  {.tags: [LocWrite].} =
   t.k = k
   t.lode = lode
   t.storage = s
@@ -102,7 +103,7 @@ proc isSimpleConst(typ: PType): bool =
       {tyTuple, tyObject, tyArray, tySet, tySequence} and not
       (t.kind == tyProc and t.callConv == ccClosure)
 
-proc useHeader(m: BModule, sym: PSym) =
+proc useHeader(m: BModule, sym: PSym) {.tags: [LocRead].} =
   if lfHeader in sym.loc.flags:
     assert(sym.annex != nil)
     let str = getStr(sym.annex.path)
@@ -434,6 +435,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       # XXX: We can be extra clever here and call memset only
       # on the bytes following the m_type field?
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
+  p.module.setLocation(p.prc, loc)
 
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
@@ -462,29 +464,29 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
     # Nowadays the logic in ccgcalls deals with this case however.
     if not immediateAsgn:
       constructLoc(p, v.mloc)
+      p.module.setLocation(v, v.loc)
 
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
-  inc(p.labels)
-  result.setRope "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+  result.setRope p.module.getTempName
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
   result.flags = {}
+  linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   constructLoc(p, result, not needsInit)
+  p.module.setLocation(t, result)
 
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
-  inc(p.labels)
-  result.setRope "T" & rope(p.labels) & "_"
+  result.setRope p.module.getTempName
   linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t), result.r, value])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
   result.flags = {}
+  p.module.setLocation(t, result)
 
 proc getIntTemp(p: BProc, result: var TLoc) =
-  inc(p.labels)
-  result.setRope "T" & rope(p.labels) & "_"
+  result.setRope p.module.getTempName
   linefmt(p, cpsLocals, "NI $1;$n", [result.r])
   result.k = locTemp
   result.storage = OnStack
@@ -532,7 +534,8 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   let s = n.sym
   if s.loc.k == locNone:
     p.module.fillLoc(s, locGlobalVar, n, mangleName(p.module, s), OnHeap)
-    if treatGlobalDifferentlyForHCR(p.module, s): incl(s.mloc.flags, lfIndirect)
+    if treatGlobalDifferentlyForHCR(p.module, s):
+      incl(s.mloc.flags, lfIndirect)
 
   if lfDynamicLib in s.loc.flags:
     var q = findPendingModule(p.module, s)
@@ -543,8 +546,10 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
     if value != nil:
       internalError(p.config, n.info, ".dynlib variables cannot have a value")
     return
+
   useHeader(p.module, s)
-  if lfNoDecl in s.loc.flags: return
+  if lfNoDecl in s.loc.flags:
+    return
   if not containsOrIncl(p.module.declaredThings, s.id):
     if sfThread in s.flags:
       declareThreadVar(p.module, s, sfImportc in s.flags)
@@ -556,15 +561,22 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
       if s.constraint.isNil:
         if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
-        if p.hcrOn: decl.add("static ")
-        elif sfImportc in s.flags: decl.add("extern ")
-        elif lfExportLib in s.loc.flags: decl.add("N_LIB_EXPORT_VAR ")
-        else: decl.add("N_LIB_PRIVATE ")
-        if s.kind == skLet and value != nil: decl.add("NIM_CONST ")
+        if p.hcrOn:
+          decl.add("static ")
+        elif sfImportc in s.flags:
+          decl.add("extern ")
+        elif lfExportLib in s.loc.flags:
+          decl.add("N_LIB_EXPORT_VAR ")
+        else:
+          decl.add("N_LIB_PRIVATE ")
+        if s.kind == skLet and value != nil:
+          decl.add("NIM_CONST ")
         decl.add(td)
         if p.hcrOn: decl.add("*")
-        if sfRegister in s.flags: decl.add(" register")
-        if sfVolatile in s.flags: decl.add(" volatile")
+        if sfRegister in s.flags:
+          decl.add(" register")
+        if sfVolatile in s.flags:
+          decl.add(" volatile")
         if value != nil:
           decl.addf(" $1 = $2;$n", [s.loc.r, value])
         else:
@@ -609,9 +621,11 @@ proc genLiteral(p: BProc, n: PNode): Rope
 proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope
 proc raiseExit(p: BProc)
 
-proc initLocExpr(p: BProc, e: PNode, result: var TLoc) =
+proc initLocExpr(p: BProc, e: PNode, result: var TLoc)
+  {.tags: [RootEffect, LocWrite].} =
   initLoc(result, locNone, e, OnUnknown)
   expr(p, e, result)
+  {.warning: "need to stash the loc?".}
 
 proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   initLoc(result, locNone, e, OnUnknown)
@@ -625,6 +639,7 @@ proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
   else:
     result.flags.incl lfSingleUse
   expr(p, e, result)
+  {.warning: "need to stash the loc?".}
 
 include ccgcalls, "ccgstmts.nim"
 
@@ -670,7 +685,8 @@ proc isGetProcAddr(lib: PLib): bool =
   result = n.kind in nkCallKinds and n.typ != nil and
     n.typ.kind in {tyPointer, tyProc}
 
-proc loadDynamicLib(m: BModule, lib: PLib) =
+proc loadDynamicLib(m: BModule, lib: PLib)
+  {.tags: [RootEffect, LocWrite, LocRead, LocSafe].} =
   assert(lib != nil)
   if not lib.generated:
     lib.generated = true

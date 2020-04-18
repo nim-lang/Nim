@@ -12,7 +12,8 @@
 import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
   treetab, condsyms, nversion, pathutils, cgendata, sequtils, trees, ndi,
-  sighashes, modulegraphs, idgen, lineinfos, incremental, types, hashes, macros
+  sighashes, modulegraphs, idgen, lineinfos, incremental, types, hashes,
+  macros, ccgutils
 
 import strformat, os
 
@@ -69,7 +70,6 @@ type
     PreInit
     Labels
     SetLoc
-    SetLocRope
     LiteralData
 
   TransformTable = OrderedTable[SigHash, Transform]
@@ -87,7 +87,7 @@ type
       filenames: seq[string]
     of TypeStack:
       stack: TTypeSeq
-    of Injection, SetLocRope:
+    of Injection:
       rope: Rope
     of GraphRope:
       field: string
@@ -97,7 +97,8 @@ type
     of Labels:
       labels: int
     of SetLoc:
-      sym: PSym
+      nkind: TNodeKind
+      id: int
       loc: TLoc
     of LiteralData:
       node: PNode
@@ -140,32 +141,44 @@ proc getSetConflict*(m: BModule; s: PSym;
   template g(): ModuleGraph = m.g.graph
   var
     counter: int
-  let
-    signature = s.sigHash
-    name = $signature
+    name: string
+  {.warning: "another mangle:".}
+  #
+  # needed for keywords and such
+  # isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
+  #
   if g.config.symbolFiles == disabledSf:
+    let
+      signature = s.sigHash
+      sigstring = $signature
     if create:
-      m.sigConflicts.inc name
-    counter = m.sigConflicts[name]
+      m.sigConflicts.inc sigstring
+    counter = m.sigConflicts[sigstring]
+    name = mangle(s.name.s) & "_" & sigstring
   else:
+    {.warning: "remove sigHash".}
+    let
+      signature = s.sigHash
+      sigstring = $signature
+    name = mangle(s.name.s)
     const
       query = sql"""
         select id from conflicts
-        where nimid = ? and signature = ?
+        where nimid = ? and signature = ? and name = ?
         order by id desc
         limit 1
       """
       insert = sql"""
-        insert into conflicts (nimid, signature)
+        insert into conflicts (nimid, signature, name)
         values (?, ?)
       """
     let
-      id = db.getValue(query, s.id, name)
+      id = db.getValue(query, s.id, sigstring, name)
     block creation:
       if id == "":
         if not create:
           raise newException(Defect, "life is a strange place")
-        counter = db.insertID(insert, s.id, name).int
+        counter = db.insertID(insert, s.id, sigstring, name).int
       else:
         counter = id.parseInt
         if not create:
@@ -213,6 +226,8 @@ proc makeTempName*(m: BModule; label: int, create = false): Rope =
   else:
     result.add "_"
     result.add $counter
+  if $result == "TM__Q5wkpxktOdTGvlSRo9bzt9aw__system___pF9ac9cU2tnA6T9aZkkGK9clsg_156":
+    raise
 
 proc getTempName*(m: BModule): Rope =
   ## a factory for making temporary names for use in the backend; this mutates
@@ -1713,7 +1728,7 @@ proc encodeTransform(t: Transform): EncodingString =
     result = mapIt(t.diff, $it).join("\n")
   of FlagSet:
     result = mapIt(t.flags, $it).join("\n")
-  of Injection, SetLocRope:
+  of Injection:
     result = $t.rope
   of GraphRope:
     result = $t.grope
@@ -1724,8 +1739,8 @@ proc encodeTransform(t: Transform): EncodingString =
   of Labels:
     result = $t.labels
   of SetLoc:
-    result = $t.sym.id
-    #encodeLoc(t.module.g.graph, t.loc, result)
+    encodeLoc(t.module.g.graph, t.loc, result)
+    result = $ord(t.nkind) & "\n" & $t.id & "\n" & $result
   of LiteralData:
     encodeNode(g, t.module.module.info, t.node, result)
     result = $t.val & "\n" & $result
@@ -1744,7 +1759,7 @@ proc decodeTransform(kind: string; module: BModule;
   of FlagSet:
     for value in mapIt(data.split('\n'), parseEnum[CodegenFlag](it)):
       result.flags.incl value
-  of Injection, SetLocRope:
+  of Injection:
     result.rope = rope(data)
   of GraphRope:
     let
@@ -1753,25 +1768,32 @@ proc decodeTransform(kind: string; module: BModule;
     result.grope = rope(splat[1])
   of TypeStack:
     for value in mapIt(data.split('\n'), parseInt(it)):
-      {.warning: "faked out line info; terrible".}
-      result.stack.add loadType(module.g.graph, value, module.module.info)
+      result.stack.add loadType(module.g.graph, value, unknownLineInfo)
   of InitProc, PreInit:
-    {.warning: "faked out line info; terrible".}
-    result.prc = loadSym(module.g.graph, data.parseInt, module.module.info)
+    result.prc = loadSym(module.g.graph, data.parseInt, unknownLineInfo)
   of Labels:
-    result.labels = data.parseInt
+    result.labels = parseInt(data)
   of SetLoc:
-    #{.warning: "faked out line info; terrible".}
-    #var b = newBlobReader(data)
-    #decodeLoc(module.g.graph, b, result.loc, module.module.info)
-    {.warning: "a setloc is a lost-info situation".}
+    let
+      splat = data.split('\n', maxsplit = 2)
+    for i, data in splat.pairs:
+      case i
+      of 0:
+        result.nkind = parseInt(data).TNodeKind
+      of 1:
+        result.id = parseInt(data)
+      of 2:
+        var b = newBlobReader(data)
+        decodeLoc(module.g.graph, b, result.loc, unknownLineInfo)
+      else:
+        raise
   of LiteralData:
     let
       splat = data.split('\n', maxsplit = 1)
     result.val = splat[0].parseInt
     var
       b = newBlobReader(splat[1])
-    result.node = decodeNode(module.g.graph, b, module.module.info)
+    result.node = decodeNode(module.g.graph, b, unknownLineInfo)
 
 proc storeTransform*[T](cache: var CacheUnit[T]; node: T;
                         transform: Transform) =
@@ -2130,8 +2152,6 @@ proc apply(parents: BModuleList; transform: Transform) =
       parent.injectStmt = transform.rope
     else:
       parent.injectStmt.add transform.rope
-  of SetLocRope:
-    raise newException(Defect, "unimplemented")
   of GraphRope:
     case transform.field:
     of "mainModProcs":
@@ -2161,7 +2181,7 @@ proc apply(parents: BModuleList; transform: Transform) =
   of Labels:
     parent.labels.inc transform.labels
   of SetLoc:
-    {.warning: "a setloc is a lost-info situation".}
+    {.warning: "SetLoc unimplemented!".}
   of LiteralData:
     nodeTablePut(parent.dataCache, transform.node, transform.val)
 
@@ -2293,11 +2313,22 @@ proc merge(cache: var CacheUnit; parent: var BModuleList) =
   else:
     {.warning: "nodes unimplemented".}
 
-proc setLocation*(m: BModule; p: PSym; t: TLoc) =
-  ## set the location of a symbol in the given module
+proc setLocation*(m: BModule; p: PSym or PType; t: TLoc)
+  {.tags: [LocSafe, LocWrite, RootEffect].} =
+  ## set the location of a symbol|type in the given module
+  when p is PSym:
+    let
+      id = p.id
+      k = nkSym
+  elif p is PType:
+    let
+      id = p.uniqueId
+      k = nkType
   var
-    transform = Transform(kind: SetLoc, module: m, sym: p, loc: t)
+    transform = Transform(kind: SetLoc, module: m, nkind: k, id: id, loc: t)
   echo transform
+  {.warning: "this is temporary; should be performed by a transform".}
+  p.setLocation(t)
   #m.transforms.add p.sigHash, transform
 
 proc inclLocationFlags*(m: BModule; p: PSym; f: set[TLocFlag] | TLocFlag) =
@@ -2314,7 +2345,9 @@ proc exclLocationFlags*(m: BModule; p: PSym; f: set[TLocFlag] | TLocFlag) =
   t.flags.excl f
   m.setLocation(p, t)
 
-proc setLocationRope*(m: BModule; p: PSym; r: Rope) =
+proc setLocationRope*(m: BModule; p: PSym or PType; r: Rope) =
+  ## set the symbol's location rope and then push the location
+  ## into the module with a setLocation() for good measure
   var
     t = p.loc
   t.setRope r
