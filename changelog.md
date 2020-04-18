@@ -4,6 +4,12 @@
 
 ## Standard library additions and changes
 
+- `uri` adds Data URI Base64, implements RFC-2397.
+- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
+  to the `dom` module for the JavaScript target.
+- The default hash for `Ordinal` has changed to something more bit-scrambling.
+  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
+  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
 - `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
 
 ## Language changes
