@@ -100,7 +100,7 @@ jobs:
           echo 'deb http://deb.debian.org/debian buster-backports main' | sudo tee -a /etc/apt/sources.list
           sudo apt-fast update -qq
           DEBIAN_FRONTEND='noninteractive' \
-            sudo apt-fast install --no-install-recommends -y testssl.sh
+            sudo apt-fast install --no-install-recommends -y -t buster-backports testssl.sh
           nim c -d:ssl -p:. -d:sync -d:danger tests/untestable/tssl_server.nim
           tests/untestable/tssl_server &
           testssl --ip=127.0.0.1 --nodns=none --csvfile testssl.csv --severity LOW https://127.0.0.1:8333 || true
