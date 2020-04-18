@@ -72,6 +72,7 @@ type
     currOptions: TOptions
     owner: PSym
     mangler: seq[PSym]
+    opImplies: PSym
 
   DrCon = object
     graph: ModuleGraph
@@ -727,7 +728,8 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       c.graph = graph
       c.canonParameterNames = true
       try:
-        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil)
+        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil,
+          opImplies: createMagic(graph, "->", mImplies))
         template zero: untyped = VersionScope(0)
         if not frequires.isEmpty:
           result = not arequires.isEmpty and proofEngineAux(c, @[(frequires, zero)], (arequires, zero))[0]
@@ -877,7 +879,8 @@ proc disableVarVersions(c: DrnimContext; until: int) =
   for i in until..<c.varVersions.len:
     c.varVersions[i] = - abs(c.varVersions[i])
 
-proc varOfVersion(x: PSym; version: int): PNode =
+proc varOfVersion(c: DrnimContext; x: PSym; scope: int): PNode =
+  let version = currentVarVersion(c, x, VersionScope(scope))
   result = newTree(nkBind, newSymNode(x), newIntNode(nkIntLit, version))
 
 proc traverseIf(c: DrnimContext; n: PNode) =
@@ -934,16 +937,12 @@ proc traverseIf(c: DrnimContext; n: PNode) =
       # also:     x'0 == x'final
 
   ]#
-  traverse(c, n[0][0])
   let oldFacts = c.facts.len
-  var branches: seq[seq[PNode]] = newSeq[seq[PNode]](n.len)
-  addFact(c, n[0][0])
-
   let oldVars = c.varVersions.len
-  traverse(c, n[0][1])
-  disableVarVersions(c, oldVars)
+  var newFacts: seq[PNode]
+  var branches = newSeq[(PNode, int)](n.len) # (cond, newVars) pairs
 
-  for i in 1..<n.len:
+  for i in 0..<n.len:
     let branch = n[i]
     setLen(c.facts, oldFacts)
 
@@ -955,13 +954,37 @@ proc traverseIf(c: DrnimContext; n: PNode) =
       addFact(c, branch[0])
       cond = combineFacts(c, cond, branch[0])
 
-    let newFacts = c.facts.len
     for i in 0..<branch.len:
       traverse(c, branch[i])
-    collectImplication(c, newFacts)
+
+    assert cond != nil
+    branches[i] = (cond, c.varVersions.len)
+
+    var newInfo = PNode(nil)
+    for f in oldFacts..<c.facts.len:
+      newInfo = combineFacts(c, newInfo, c.facts[f][0])
+    if newInfo != nil:
+      newFacts.add buildCall(c.opImplies, cond, newInfo)
+
     disableVarVersions(c, oldVars)
-  #introducePhiNode(c, oldVars)
-  #setLen(c.facts, oldFacts)
+
+  setLen(c.facts, oldFacts)
+  for f in newFacts: c.addFact(f)
+  # build the 'Phi' information:
+  let varsWithoutFinals = c.varVersions.len
+  var mutatedVars = initIntSet()
+  for i in oldVars ..< varsWithoutFinals:
+    let vv = c.varVersions[i]
+    if not mutatedVars.containsOrIncl(vv):
+      c.varVersions.add vv
+      c.varSyms.add c.varSyms[i]
+
+  var prevIdx = oldVars
+  for i in 0 ..< branches.len:
+    for v in prevIdx .. branches[i][1] - 1:
+      c.addFact(buildCall(c.opImplies, branches[i][0],
+        buildCall(c.o.opEq, varOfVersion(c, c.varSyms[v], branches[i][1]), newSymNode(c.varSyms[v]))))
+    prevIdx = branches[i][1]
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
   traverse(c, n)
@@ -1136,6 +1159,7 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
     c.o = initOperators(graph)
     c.graph = graph
     c.owner = owner
+    c.opImplies = createMagic(c.graph, "->", mImplies)
     try:
       traverse(c, n)
       ensuresCheck(c, owner)
