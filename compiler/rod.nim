@@ -1400,7 +1400,7 @@ proc loadType(g; id: int; info: TLineInfo): PType =
     inc(b.pos)
     let y = loadSym(g, decodeVInt(b.s, b.pos), info)
     result.methods.add((x, y))
-  decodeLoc(g, b, result.loc, info)
+  decodeLoc(g, b, result.mloc, info)
   if b.s[b.pos] == TypeInst:
     inc(b.pos)
     let d = decodeVInt(b.s, b.pos)
