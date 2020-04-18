@@ -30,9 +30,7 @@ macro enumMap*(body): untyped =
   for i, ai in elems:
     if i>0:
       v.add ai[^1]
-
-  for i, ai in elems:
-    if i>0: elems[i] = ai[0]
+      elems[i] = ai[0]
 
   let valsIdent = ident"vals".maybeExport(isExported)
   let val = ident"val".maybeExport(isExported)
