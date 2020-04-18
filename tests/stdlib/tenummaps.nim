@@ -19,8 +19,9 @@ block:
 
   doAssert k1.ord == 0
   doAssert k1.val == 1
-  doAssert k2.ord == 1
-  doAssert k2.val == 4
+  static:
+    doAssert k2.ord == 1
+    doAssert k2.val == 4
   doAssert k2 == MyHoly.k2
   for ai in MyHoly: discard
   doAssert toSeq(MyHoly) == @[k1, k2, k3]
@@ -44,9 +45,18 @@ block:
     type MyHoly2 = enum
       k1 = (1.3, 'x', @[10]) # any type is ok
       k2 = (1.0, 'y', @[])
-  doAssert k1.ord == 0
-  doAssert k1.val == (1.3, 'x', @[10])
-  doAssert $k1 == "k1"
+
+  template fun() =
+    doAssert k1.ord == 0
+    doAssert k1.val == (1.3, 'x', @[10])
+    doAssert k1.val == (1.3, 'x', @[10])
+    doAssert $k1 == "k1"
+
+  static: fun()
+  fun()
+
+  # checks that we can't mutate values
+  doAssert not compiles(k1.val[0] = 5.2)
 
 import menummaps
 
@@ -90,3 +100,44 @@ block:
   doAssert "run".process == 1
   doAssert "h".process == 2
   doAssert "nonexistant".process == 0
+
+when true:
+  # example showing we can define an `OrderedEnum` type class for enums
+  # with a strict ordering
+  proc isOrderedEnum(a: typedesc[enum]): bool =
+    mixin val
+    when compiles(a.default.val):
+      var ret = a.default.val
+      var first = true
+      for ai in a:
+        if first: first = false
+        elif ai.val <= ret: return false
+        else: ret = ai.val
+    return true
+
+  enumMap:
+    type MyHoly1 = enum
+      k1 = 1
+      k2 = 4
+      k3 = 4
+  enumMap:
+    type MyHoly2 = enum
+      g1 = 1
+      g2 = 4
+      g3 = 5
+  static:
+    doAssert not MyHoly1.isOrderedEnum
+    doAssert MyHoly2.isOrderedEnum
+
+  type OrderedEnum = concept a
+    isOrderedEnum(a.type)
+  proc fun2(a: OrderedEnum) = discard
+  doAssert not compiles(fun2(k1))
+  doAssert compiles(fun2(g1))
+  doAssert MyHoly1 isnot OrderedEnum
+  doAssert MyHoly2 is OrderedEnum
+
+  when false:
+    # pending https://github.com/nim-lang/Nim/pull/12048
+    # we'll be allowed to use:
+    proc fun(a: T) {.enableif: isOrderedEnum(T).} = discard
