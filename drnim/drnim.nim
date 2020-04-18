@@ -9,7 +9,6 @@
 
 #[
 
-- introduce Phi nodes to complete the SSA representation
 - the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -170,14 +169,13 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
         result.addInt d
       let v = if isOld: c.previousVarVersion(n.sym, version)
               else: c.currentVarVersion(n.sym, version)
-      assert v >= 0
       if v > 0:
         result.add '`'
         result.addInt v
     else:
       result.add "`magic="
       result.addInt ord(n.sym.magic)
-  of nkBind:
+  of nkBindStmt:
     # we use 'bind x 3' to use the 3rd version of variable 'x'. This
     # is easier than using 'old' which is position relative.
     assert n.len == 2
@@ -782,6 +780,8 @@ proc traversePragmaStmt(c: DrnimContext, n: PNode) =
       elif pragma == wInvariant or pragma == wAssert:
         if prove(c, it[1]):
           addFact(c, it[1])
+        else:
+          echoFacts(c)
 
 proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
   assert op.n[0].kind == nkEffectList
@@ -881,7 +881,7 @@ proc disableVarVersions(c: DrnimContext; until: int) =
 
 proc varOfVersion(c: DrnimContext; x: PSym; scope: int): PNode =
   let version = currentVarVersion(c, x, VersionScope(scope))
-  result = newTree(nkBind, newSymNode(x), newIntNode(nkIntLit, version))
+  result = newTree(nkBindStmt, newSymNode(x), newIntNode(nkIntLit, version))
 
 proc traverseIf(c: DrnimContext; n: PNode) =
   #[ Consider this example::
@@ -941,6 +941,7 @@ proc traverseIf(c: DrnimContext; n: PNode) =
   let oldVars = c.varVersions.len
   var newFacts: seq[PNode]
   var branches = newSeq[(PNode, int)](n.len) # (cond, newVars) pairs
+  template condVersion(): untyped = VersionScope(oldVars)
 
   for i in 0..<n.len:
     let branch = n[i]
@@ -969,7 +970,7 @@ proc traverseIf(c: DrnimContext; n: PNode) =
     disableVarVersions(c, oldVars)
 
   setLen(c.facts, oldFacts)
-  for f in newFacts: c.addFact(f)
+  for f in newFacts: c.facts.add((f, condVersion))
   # build the 'Phi' information:
   let varsWithoutFinals = c.varVersions.len
   var mutatedVars = initIntSet()
@@ -982,8 +983,9 @@ proc traverseIf(c: DrnimContext; n: PNode) =
   var prevIdx = oldVars
   for i in 0 ..< branches.len:
     for v in prevIdx .. branches[i][1] - 1:
-      c.addFact(buildCall(c.opImplies, branches[i][0],
-        buildCall(c.o.opEq, varOfVersion(c, c.varSyms[v], branches[i][1]), newSymNode(c.varSyms[v]))))
+      c.facts.add((buildCall(c.opImplies, branches[i][0],
+        buildCall(c.o.opEq, varOfVersion(c, c.varSyms[v], branches[i][1]), newSymNode(c.varSyms[v]))),
+        condVersion))
     prevIdx = branches[i][1]
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
