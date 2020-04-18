@@ -384,13 +384,8 @@ proc resolveOverloads(c: PContext, n, orig: PNode,
 
       template tryOp(x) =
         let op = newIdentNode(getIdent(c.cache, x), n.info)
-<<<<<<< HEAD
-        n.sons[0] = op
-        if orig != nil: orig.sons[0] = op
-=======
         n[0] = op
-        orig[0] = op
->>>>>>> devel
+        if orig != nil: orig[0] = op
         pickBest(op)
 
       if nfExplicitCall in n.flags:
