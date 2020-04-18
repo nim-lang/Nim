@@ -2562,8 +2562,6 @@ proc expr(p: BProc, n: PNode, d: var TLoc) =
         localError(p.config, n.info, "request to generate code for .compileTime proc: " &
            sym.name.s)
       genProc(p.module, sym)
-      if sym.loc.r == nil or sym.loc.lode == nil:
-        internalError(p.config, n.info, "expr: proc not init " & sym.name.s)
       putLocIntoDest(p, d, sym.loc)
     of skConst:
       if isSimpleConst(sym.typ):

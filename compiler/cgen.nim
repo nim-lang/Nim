@@ -1269,6 +1269,11 @@ proc genProc(orig: BModule, prc: PSym) =
             # this also generates the nimFrame and popFrame, etc.
             genProcAux(m.g.generatedHeader, prc)
 
+  # if we generated the prc, make sure it has a loc
+  if prc.loc.r == nil or prc.loc.lode == nil:
+    internalError(orig.config, prc.info,
+                  "expr: proc not init " & prc.name.s)
+
 proc genVarPrototype(m: BModule, n: PNode) =
   #assert(sfGlobal in sym.flags)
   let sym = n.sym
