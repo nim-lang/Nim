@@ -97,7 +97,7 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          echo 'deb http://deb.debian.org/debian buster-backports main' | sudo tee -a /etc/apt/sources.list
+          echo 'deb [trusted=yes] http://deb.debian.org/debian buster-backports main' | sudo tee -a /etc/apt/sources.list
           sudo apt-fast update -qq
           DEBIAN_FRONTEND='noninteractive' \
             sudo apt-fast install --no-install-recommends -y -t buster-backports testssl.sh
