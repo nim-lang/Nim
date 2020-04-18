@@ -103,5 +103,6 @@ jobs:
             sudo apt-fast install --no-install-recommends -y -t buster-backports testssl.sh
           nim c -d:ssl -p:. -d:sync -d:danger tests/untestable/tssl_server.nim
           tests/untestable/tssl_server &
-          testssl --ip=127.0.0.1 --nodns=none --csvfile testssl.csv --severity LOW https://127.0.0.1:8333 || true
+          testssl --ip=127.0.0.1 --nodns=none --csvfile testssl.tmp.csv --severity LOW https://127.0.0.1:8333 || true
+          sort testssl.tmp.csv > testssl.csv
           diff testssl.csv tests/untestable/testssl_expected.csv
