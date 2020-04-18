@@ -102,7 +102,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
         getTemp(p, typ[0], tmp, needsInit=true)
         var list: TLoc
         initLoc(list, locCall, d.lode, OnUnknown)
-        list.r = pl
+        list.setRope pl
         genAssignment(p, tmp, list, {}) # no need for deep copying
         if canRaise: raiseExit(p)
         genAssignment(p, d, tmp, {})
@@ -327,9 +327,9 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
       var list: TLoc
       initLoc(list, locCall, d.lode, OnUnknown)
       if tfIterator in typ.flags:
-        list.r = PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
+        list.setRope PatIter % [rdLoc(op), pl, pl.addComma, rawProc]
       else:
-        list.r = PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
+        list.setRope PatProc % [rdLoc(op), pl, pl.addComma, rawProc]
       genAssignment(p, tmp, list, {})
       if canRaise: raiseExit(p)
       genAssignment(p, d, tmp, {})
