@@ -71,15 +71,21 @@ macro enumMap*(body): untyped =
     if i>0:
       elems[i] = ai[0]
       v.add newTree(nnkExprColonExpr, elems[i], ai[^1])
-
-  let valsIdent = ident"vals".maybeExport(isExported)
+  let vals = ident"vals".maybeExport(isExported)
   let val = ident"val".maybeExport(isExported)
-
   result = quote do:
     `body2`
     const varr = `v`
     template `val`(a: `name`): untyped = varr[a]
-    template `valsIdent`(t: type `name`): untyped = varr
+    template `vals`(t: type `name`): untyped = varr
+
+when false:
+  # broken pending https://github.com/nim-lang/Nim/issues/13747
+  # so we use an auxiliary template as workaround
+  proc byValImpl[V](a: V, T: typedesc): T =
+    mixin vals
+    for ai in T:
+      if T.vals[ai] == a: return ai
 
 proc byValImpl[V](a: V, T: typedesc, vals: array): T =
   ## can be optimized in different ways if ever needed, eg building a trie

@@ -95,7 +95,7 @@ block:
     of kDefault: 0
     of kRun: 1
     of kJump: 2
-    of kHelp, kHelpAlt: (echo help(); 2)
+    of kHelp, kHelpAlt: (if false: echo help(); 2)
 
   doAssert "run".process == 1
   doAssert "h".process == 2
