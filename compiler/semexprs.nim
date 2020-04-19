@@ -62,12 +62,18 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
 
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
   if result.kind == nkEmpty:
+    # bug #12741, redundant error messages are the lesser evil here:
+    localError(c.config, n.info, errExprXHasNoType %
+                renderTree(result, {renderNoComments}))
     # do not produce another redundant error message:
     result = errorNode(c, n)
+
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  result = semExprCheck(c, n, flags)
   if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -76,11 +82,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  rejectEmptyNode(n)
-  result = semExpr(c, n, flags+{efWantValue})
-  if result.kind == nkEmpty:
-    # do not produce another redundant error message:
-    result = errorNode(c, n)
+  result = semExprCheck(c, n, flags)
   if result.typ == nil:
     localError(c.config, n.info, errExprXHasNoType %
                renderTree(result, {renderNoComments}))
@@ -192,7 +194,7 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
   if conf.selectedGC in {gcArc, gcOrc}:
     let d = skipTypes(dst, abstractInst)
     let s = skipTypes(src, abstractInst)
-    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal: 
+    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal:
       return false
 
   var dstSize, srcSize: BiggestInt
