@@ -174,16 +174,16 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-proc hashIdentity*[T: Ordinal](x: T): Hash {.inline, since: (1, 3).} =
+proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
   ## The identity hash.  I.e. ``hashIdentity(x) = x``.
   cast[Hash](ord(x))
 
 when defined(nimIntHash1):
-  proc hash*[T: Ordinal](x: T): Hash {.inline.} =
+  proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     cast[Hash](ord(x))
 else:
-  proc hash*[T: Ordinal](x: T): Hash {.inline.} =
+  proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
 
