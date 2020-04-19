@@ -29,7 +29,6 @@ proc main1() =
   doAssert( (I32 and I32) == bitand(I32,I32) )
   doAssert( (U64A and U64B) == bitand(U64A,U64B) )
   doAssert( (I64A and I64B) == bitand(I64A,I64B) )
-  doAssert( (I64A and I64B) == bitand(I64A,I64B) )
   doAssert( (U64A and U64B and U64C) == bitand(U64A,U64B,U64C) )
   doAssert( (I64A and I64B and I64C) == bitand(I64A,I64B,I64C) )
 
