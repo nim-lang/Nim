@@ -36,7 +36,7 @@ func internalBitor[T: SomeInteger](x, y: T): T {.magic: "BitorI".}
 
 func internalBitxor[T: SomeInteger](x, y: T): T {.magic: "BitxorI".}
 
-macro bitand*[T: SomeInteger](x, y: T; z: varargs[T]): untyped =
+macro bitand*[T: SomeInteger](x, y: T; z: varargs[T]): T =
   ## Computes the `bitwise and` of all arguments collectively.
   let fn = bindSym("internalBitand")
   result = newCall(fn, x, y)
