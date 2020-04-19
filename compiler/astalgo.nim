@@ -1048,3 +1048,7 @@ proc listSymbolNames*(symbols: openArray[PSym]): string =
       result.add ", "
     result.add sym.name.s
 
+proc isDiscriminantField*(n: PNode): bool =
+  if n.kind == nkCheckedFieldExpr: sfDiscriminant in n[0][1].sym.flags
+  elif n.kind == nkDotExpr: sfDiscriminant in n[1].sym.flags
+  else: false

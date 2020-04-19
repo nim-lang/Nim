@@ -33,7 +33,7 @@
 - Added `expectIdent` to the `macros` module.
 - Added `os.isValidFilename` that returns `true` if `filename` argument is valid
   for cross-platform use.
-- Added `times.isLeapDay`
+- Added `times.isLeapDay`.
 - `base64` adds URL-Safe Base64, implements RFC-4648 Section-7.
 - Added a new module, `std / compilesettings` for querying the compiler about
   diverse configuration settings.
@@ -53,6 +53,8 @@
   was designed for it. For example:
 
 ```nim
+import std/with
+
 type
   Foo = object
     col, pos: string
@@ -113,8 +115,6 @@ echo f
   usage. The `$` operator can be used to obtain the string form of `HttpCode`
   for comparison if desired.
 - `std/oswalkdir` was buggy, it's now deprecated and reuses `std/os` procs.
-- `net.newContext` now performs SSL Certificate checking on Linux and OSX.
-  Define `nimDisableCertificateValidation` to disable it globally.
 - `os.walkDir` and `os.walkDirRec` now have new flag, `checkDir` (default: false).
   If it is set to true, it will throw if input dir is invalid instead of a noop
   (which is the default behaviour, as it was before this change),
@@ -128,8 +128,8 @@ echo f
   of children nodes.
 - `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/"
   as the dir component of `/root_sub_dir` instead of the empty string.
-- The deprecated `lc` macro has been removed from `sugar`. It is now replaced with the
-  more powerful `collect` macro.
+- The deprecated `lc` macro has been removed from `sugar`. It is now replaced
+  with the more powerful `collect` macro.
 - `os.relativePath("foo", "foo")` is now `"."`, not `""`, as `""` means invalid
   path and shouldn't be conflated with `"."`; use `-d:nimOldRelativePathBehavior`
   to restore the old behavior.
@@ -138,25 +138,33 @@ echo f
   Use `base64.encodeMime` instead.
 
 
+### Breaking changes
+
+- `net.newContext` now performs SSL Certificate checking on Linux and OSX.
+  Define `nimDisableCertificateValidation` to disable it globally.
+
+
+
 ## Language changes
 
 - An `align` pragma can now be used for variables and object fields, similar
   to the `alignas` declaration modifier in C/C++.
-- `=sink` type bound operator is now optional. Compiler can now use combination
-  of `=destroy` and `copyMem` to move objects efficiently.
+- The `=sink` type bound operator is now optional. The compiler can now use a
+  combination of `=destroy` and `copyMem` to move objects efficiently.
 - Unsigned integer operators have been fixed to allow promotion of the first operand.
 - Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
   versions. The documentation was improved to acknowledge this special case.
   See https://github.com/nim-lang/RFCs/issues/175 for more details.
-- New syntax for lvalue references: `var b {.byaddr.} = expr` enabled by
+- There is a new syntax for lvalue references: `var b {.byaddr.} = expr` enabled by
   `import std/decls`.
 - `var a {.foo.}: MyType = expr` now lowers to `foo(a, MyType, expr)` for
   non-builtin pragmas, enabling things like lvalue references (see `decls.byaddr`).
 
 
+
 ## Compiler changes
 
-- Generated JS code uses spaces, instead of mixed spaces and tabs.
+- The generated JS code uses spaces, instead of mixing spaces and tabs.
 - The Nim compiler now supports the ``--asm`` command option for easier
   inspection of the produced assembler code.
 - The Nim compiler now supports a new pragma called ``.localPassc`` to
@@ -192,10 +200,6 @@ echo f
   with `-d:nimEmulateOverflowChecks`.
 
 
-## Tool changes
-
-- Nimpretty doesn't accept negative indentation argument anymore, because it was
-  breaking files.
 
 
 ## Bugfixes

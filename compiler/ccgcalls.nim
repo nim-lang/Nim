@@ -113,7 +113,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
 
 proc genBoundsCheck(p: BProc; arr, a, b: TLoc)
 
-proc openArrayLoc(p: BProc, n: PNode): Rope =
+proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
   var a: TLoc
 
   var q = skipConv(n)
@@ -149,8 +149,11 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyOpenArray, tyVarargs, tyUncheckedArray, tyCString:
       result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
     of tyString, tySequence:
-      if skipTypes(n.typ, abstractInst).kind == tyVar and
-          not compileToCpp(p.module):
+      let atyp = skipTypes(a.t, abstractInst)
+      if formalType.skipTypes(abstractInst).kind == tyVar and atyp.kind == tyString and 
+          optSeqDestructors in p.config.globalOptions:
+        linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+      if atyp.kind == tyVar and not compileToCpp(p.module):
         result = "($5*)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
       else:
         result = "($5*)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
@@ -162,8 +165,11 @@ proc openArrayLoc(p: BProc, n: PNode): Rope =
     of tyOpenArray, tyVarargs:
       result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
-      if skipTypes(n.typ, abstractInst).kind == tyVar and
-            not compileToCpp(p.module):
+      let ntyp = skipTypes(n.typ, abstractInst)
+      if formalType.skipTypes(abstractInst).kind == tyVar and ntyp.kind == tyString and 
+          optSeqDestructors in p.config.globalOptions:
+        linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
+      if ntyp.kind == tyVar and not compileToCpp(p.module):
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
         result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
@@ -194,7 +200,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
     result = genArgStringToCString(p, n)
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n[0]
-    result = openArrayLoc(p, n)
+    result = openArrayLoc(p, param.typ, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)

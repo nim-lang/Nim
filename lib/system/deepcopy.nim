@@ -108,9 +108,8 @@ proc genericDeepCopyAux(dest, src: pointer, mt: PNimType; tab: var PtrTable) =
     var dst = cast[ByteAddress](cast[PPointer](dest)[])
     for i in 0..seq.len-1:
       genericDeepCopyAux(
-        cast[pointer](dst +% i *% mt.base.size +% GenericSeqSize),
-        cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                     GenericSeqSize),
+        cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
+        cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size),
         mt.base, tab)
   of tyObject:
     # we need to copy m_type field for tyObject, as it could be empty for

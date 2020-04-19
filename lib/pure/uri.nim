@@ -36,8 +36,17 @@
 ##      assert res.port == "4343"
 ##    else:
 ##      echo "Wrong format"
+##
+## Data URI Base64
+## ---------------
+##
+## .. code-block::nim
+##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
-import strutils, parseutils
+include "system/inclrtl"
+
+import strutils, parseutils, base64
 type
   Url* = distinct string
 
@@ -466,6 +475,18 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
+proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
+  ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
+  ##
+  ## **See also:**
+  ## * `mimetypes <mimetypes.html>`_ for `mime` argument
+  ## * https://tools.ietf.org/html/rfc2397
+  ## * https://en.wikipedia.org/wiki/Data_URI_scheme
+  runnableExamples: static: doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
+  assert encoding.len > 0 and mime.len > 0 # Must *not* be URL-Safe, see RFC-2397
+  result = "data:" & mime & ";charset=" & encoding & ";base64," & base64.encode(data)
+
+
 when isMainModule:
   block:
     const test1 = "abc\L+def xyz"
@@ -734,5 +755,18 @@ when isMainModule:
       var foo = parseUri("http://example.com") / "foo" ? {"do": "do", "bar": ""}
       var foo1 = parseUri("http://example.com/foo?do=do&bar")
       doAssert foo == foo1
+
+  block dataUriBase64:
+    doAssert getDataUri("", "text/plain") == "data:text/plain;charset=utf-8;base64,"
+    doAssert getDataUri(" ", "text/plain") == "data:text/plain;charset=utf-8;base64,IA=="
+    doAssert getDataUri("c\xf7>", "text/plain") == "data:text/plain;charset=utf-8;base64,Y/c+"
+    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
+    doAssert getDataUri("leasure.", "text/plain") == "data:text/plain;charset=utf-8;base64,bGVhc3VyZS4="
+    doAssert getDataUri("""!@#$%^&*()_+""", "text/plain") == "data:text/plain;charset=utf-8;base64,IUAjJCVeJiooKV8r"
+    doAssert(getDataUri("the quick brown dog jumps over the lazy fox", "text/plain") ==
+      "data:text/plain;charset=utf-8;base64,dGhlIHF1aWNrIGJyb3duIGRvZyBqdW1wcyBvdmVyIHRoZSBsYXp5IGZveA==")
+    doAssert(getDataUri("""The present is theirs
+      The future, for which I really worked, is mine.""", "text/plain") ==
+      "data:text/plain;charset=utf-8;base64,VGhlIHByZXNlbnQgaXMgdGhlaXJzCiAgICAgIFRoZSBmdXR1cmUsIGZvciB3aGljaCBJIHJlYWxseSB3b3JrZWQsIGlzIG1pbmUu")
 
   echo("All good!")

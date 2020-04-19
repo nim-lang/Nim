@@ -549,9 +549,13 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
             localError(g.config, s.info,
               "{.intdefine.} const was set to an invalid integer: '" &
                 g.config.symbols[s.name.s] & "'")
+        else:
+          result = copyTree(s.ast)
       of mStrDefine:
         if isDefined(g.config, s.name.s):
           result = newStrNodeT(g.config.symbols[s.name.s], n, g)
+        else:
+          result = copyTree(s.ast)
       of mBoolDefine:
         if isDefined(g.config, s.name.s):
           try:
@@ -560,6 +564,8 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
             localError(g.config, s.info,
               "{.booldefine.} const was set to an invalid bool: '" &
                 g.config.symbols[s.name.s] & "'")
+        else:
+          result = copyTree(s.ast)
       else:
         result = copyTree(s.ast)
     of skProc, skFunc, skMethod:
@@ -716,7 +722,11 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
   of nkBracketExpr: result = foldArrayAccess(m, n, g)
   of nkDotExpr: result = foldFieldAccess(m, n, g)
   of nkStmtListExpr:
-    if n.len == 2 and n[0].kind == nkComesFrom:
-      result = getConstExpr(m, n[1], g)
+    var i = 0
+    while i <= n.len - 2:
+      if n[i].kind in {nkComesFrom, nkCommentStmt, nkEmpty}: i.inc
+      else: break
+    if i == n.len - 1:
+      result = getConstExpr(m, n[i], g)
   else:
     discard

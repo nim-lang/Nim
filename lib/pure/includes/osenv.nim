@@ -93,8 +93,7 @@ else:
       when useNSGetEnviron:
         var gEnv = NSGetEnviron()[]
       var i = 0
-      while true:
-        if gEnv[i] == nil: break
+      while gEnv[i] != nil:
         add environment, $gEnv[i]
         inc(i)
       envComputed = true

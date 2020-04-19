@@ -9,7 +9,7 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
-
+include "system/inclrtl"
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -985,6 +985,16 @@ type
     once*: bool
     passive*: bool
 
+since (1, 3):
+  type DomParser* = ref object  ## \
+    ## DOM Parser object (defined on browser only, may not be on NodeJS).
+    ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
+    ##
+    ## .. code-block:: nim
+    ##   let prsr = newDomParser()
+    ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+
+
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
 proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
 proc class*(n: Node): cstring {.importcpp: "#.className", nodecl.}
@@ -1297,3 +1307,10 @@ proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetWidth*(e: Node): int {.importcpp: "#.offsetWidth", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
+
+since (1, 3):
+  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+    ## DOM Parser constructor.
+
+  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+    ## Parse from string to `Document`.
