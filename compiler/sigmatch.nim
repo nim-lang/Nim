@@ -1276,7 +1276,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a):
+    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric

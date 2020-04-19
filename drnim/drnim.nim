@@ -9,6 +9,7 @@
 
 #[
 
+- introduce Phi nodes to complete the SSA representation
 - the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
