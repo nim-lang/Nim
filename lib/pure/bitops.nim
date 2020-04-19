@@ -25,6 +25,8 @@
 ## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
 ## may return undefined and/or platform dependent value if given invalid input.
 
+import macros
+
 proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
 
@@ -34,23 +36,26 @@ func internalBitor[T: SomeInteger](x, y: T): T {.magic: "BitorI".}
 
 func internalBitxor[T: SomeInteger](x, y: T): T {.magic: "BitxorI".}
 
-func bitand*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+macro bitand*[T: SomeInteger](x, y: T; z: varargs[T]): untyped =
   ## Computes the `bitwise and` of all arguments collectively.
-  result = internalBitand(x, y)
+  let fn = bindSym("internalBitand")
+  result = newCall(fn, x, y)
   for extra in z:
-    result = internalBitand(result, extra)
+    result = newCall(fn, result, extra)
 
-func bitor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+macro bitor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
   ## Computes the `bitwise or` of all arguments collectively.
-  result = internalBitor(x, y)
+  let fn = bindSym("internalBitor")
+  result = newCall(fn, x, y)
   for extra in z:
-    result = internalBitor(result, extra)
+    result = newCall(fn, result, extra)
 
-func bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+macro bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
   ## Computes the `bitwise xor` of all arguments collectively.
-  result = internalBitxor(x, y)
+  let fn = bindSym("internalBitxor")
+  result = newCall(fn, x, y)
   for extra in z:
-    result = internalBitxor(result, extra)
+    result = newCall(fn, result, extra)
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
@@ -79,9 +84,6 @@ template forwardImpl(impl, arg) {.dirty.} =
       impl(x.uint64)
 
 when defined(nimHasalignOf):
-
-  import macros
-
   type BitsRange*[T] = range[0..sizeof(T)*8-1]
     ## Returns a range with all bit positions for type ``T``
 
