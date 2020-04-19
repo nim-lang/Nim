@@ -72,6 +72,7 @@ type
     currOptions: TOptions
     owner: PSym
     mangler: seq[PSym]
+    opImplies: PSym
 
   DrCon = object
     graph: ModuleGraph
@@ -169,14 +170,13 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
         result.addInt d
       let v = if isOld: c.previousVarVersion(n.sym, version)
               else: c.currentVarVersion(n.sym, version)
-      assert v >= 0
       if v > 0:
         result.add '`'
         result.addInt v
     else:
       result.add "`magic="
       result.addInt ord(n.sym.magic)
-  of nkBind:
+  of nkBindStmt:
     # we use 'bind x 3' to use the 3rd version of variable 'x'. This
     # is easier than using 'old' which is position relative.
     assert n.len == 2
@@ -727,7 +727,8 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       c.graph = graph
       c.canonParameterNames = true
       try:
-        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil)
+        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil,
+          opImplies: createMagic(graph, "->", mImplies))
         template zero: untyped = VersionScope(0)
         if not frequires.isEmpty:
           result = not arequires.isEmpty and proofEngineAux(c, @[(frequires, zero)], (arequires, zero))[0]
@@ -780,6 +781,8 @@ proc traversePragmaStmt(c: DrnimContext, n: PNode) =
       elif pragma == wInvariant or pragma == wAssert:
         if prove(c, it[1]):
           addFact(c, it[1])
+        else:
+          echoFacts(c)
 
 proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
   assert op.n[0].kind == nkEffectList
@@ -877,8 +880,9 @@ proc disableVarVersions(c: DrnimContext; until: int) =
   for i in until..<c.varVersions.len:
     c.varVersions[i] = - abs(c.varVersions[i])
 
-proc varOfVersion(x: PSym; version: int): PNode =
-  result = newTree(nkBind, newSymNode(x), newIntNode(nkIntLit, version))
+proc varOfVersion(c: DrnimContext; x: PSym; scope: int): PNode =
+  let version = currentVarVersion(c, x, VersionScope(scope))
+  result = newTree(nkBindStmt, newSymNode(x), newIntNode(nkIntLit, version))
 
 proc traverseIf(c: DrnimContext; n: PNode) =
   #[ Consider this example::
@@ -934,16 +938,13 @@ proc traverseIf(c: DrnimContext; n: PNode) =
       # also:     x'0 == x'final
 
   ]#
-  traverse(c, n[0][0])
   let oldFacts = c.facts.len
-  var branches: seq[seq[PNode]] = newSeq[seq[PNode]](n.len)
-  addFact(c, n[0][0])
-
   let oldVars = c.varVersions.len
-  traverse(c, n[0][1])
-  disableVarVersions(c, oldVars)
+  var newFacts: seq[PNode]
+  var branches = newSeq[(PNode, int)](n.len) # (cond, newVars) pairs
+  template condVersion(): untyped = VersionScope(oldVars)
 
-  for i in 1..<n.len:
+  for i in 0..<n.len:
     let branch = n[i]
     setLen(c.facts, oldFacts)
 
@@ -955,13 +956,38 @@ proc traverseIf(c: DrnimContext; n: PNode) =
       addFact(c, branch[0])
       cond = combineFacts(c, cond, branch[0])
 
-    let newFacts = c.facts.len
     for i in 0..<branch.len:
       traverse(c, branch[i])
-    collectImplication(c, newFacts)
+
+    assert cond != nil
+    branches[i] = (cond, c.varVersions.len)
+
+    var newInfo = PNode(nil)
+    for f in oldFacts..<c.facts.len:
+      newInfo = combineFacts(c, newInfo, c.facts[f][0])
+    if newInfo != nil:
+      newFacts.add buildCall(c.opImplies, cond, newInfo)
+
     disableVarVersions(c, oldVars)
-  #introducePhiNode(c, oldVars)
-  #setLen(c.facts, oldFacts)
+
+  setLen(c.facts, oldFacts)
+  for f in newFacts: c.facts.add((f, condVersion))
+  # build the 'Phi' information:
+  let varsWithoutFinals = c.varVersions.len
+  var mutatedVars = initIntSet()
+  for i in oldVars ..< varsWithoutFinals:
+    let vv = c.varVersions[i]
+    if not mutatedVars.containsOrIncl(vv):
+      c.varVersions.add vv
+      c.varSyms.add c.varSyms[i]
+
+  var prevIdx = oldVars
+  for i in 0 ..< branches.len:
+    for v in prevIdx .. branches[i][1] - 1:
+      c.facts.add((buildCall(c.opImplies, branches[i][0],
+        buildCall(c.o.opEq, varOfVersion(c, c.varSyms[v], branches[i][1]), newSymNode(c.varSyms[v]))),
+        condVersion))
+    prevIdx = branches[i][1]
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
   traverse(c, n)
@@ -1136,6 +1162,7 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
     c.o = initOperators(graph)
     c.graph = graph
     c.owner = owner
+    c.opImplies = createMagic(c.graph, "->", mImplies)
     try:
       traverse(c, n)
       ensuresCheck(c, owner)

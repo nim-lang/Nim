@@ -46,7 +46,7 @@ const
   PageSize = 1 shl PageShift
   PageMask = PageSize-1
 
-  MemAlign = 8 # also minimal allocatable memory block
+  MemAlign = 16 # also minimal allocatable memory block
 
   BitsPerPage = PageSize div MemAlign
   UnitsPerPage = BitsPerPage div (sizeof(int)*8)
@@ -108,7 +108,7 @@ when not declared(nimNewSeqOfCap) and not defined(nimSeqsV2):
       let s = cap * typ.base.size  # newStr already adds GenericSeqSize
       result = newStr(typ, s, ntfNoRefs notin typ.base.flags)
     else:
-      let s = cap * typ.base.size + GenericSeqSize
+      let s = align(GenericSeqSize, typ.base.align) + cap * typ.base.size
       when declared(newObjNoInit):
         result = if ntfNoRefs in typ.base.flags: newObjNoInit(typ, s) else: newObj(typ, s)
       else:

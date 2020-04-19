@@ -48,3 +48,20 @@ proc `=destroy`(x: var AObj) =
   echo "closed"
   
 var x = B(io: newStringStream("thestream"))
+
+
+#------------------------------------------------------------------------------
+# issue #14003
+
+proc cryptCTR*(nonce: var openArray[char]) =
+  nonce[1] = 'A'
+
+proc main() =
+  var nonce1 = "0123456701234567"
+  cryptCTR(nonce1)
+  doAssert(nonce1 == "0A23456701234567")
+  var nonce2 = "01234567"
+  cryptCTR(nonce2.toOpenArray(0, nonce2.len-1))
+  doAssert(nonce2 == "0A234567")
+
+main()
