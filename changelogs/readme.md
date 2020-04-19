@@ -1,16 +1,23 @@
 # Update changelog
-After each release, call:
+After releasing x1.y1.z1, assuming next release will be x2.y2.z2:
 ```
-git mv changelog.md changelogs/changelog_0_19_0.md # use correct version
-cp changelogs/changelog_X_XX_X.md changelog.md
-git add changelog.md
+cp changelogs/changelog_X_XX_X.md changelogs/changelog_x2_y2_z2.md
+update 1st line in changelog.md to point to changelogs/changelog_x2_y2_z2.md
+update system.NimMinor,NimMinor,NimPatch if needed
 ```
 
 ## Recent changelogs are saved here (with their git history)
 
-## Older changelogs are stored in https://github.com/nim-lang/website
+## Released changelogs
+released changlogs are copied to the nim website repo, see list in
+https://github.com/nim-lang/website/tree/master/jekyll/_posts
+see website urls below.
 
 ## source files:
+changelogs from 0.8.6 to 0.17.2 are version controlled in https://github.com/nim-lang/website/tree/master/jekyll/_posts
+changelogs since 0.18.0 are version controlled in $nim/changelogs/
+any updates to past changelogs should be done in $nim/changelogs/ and backported to website repo
+
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2009-12-21-version-086-released.md
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2010-03-14-version-088-released.md
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2010-10-20-version-0810-released.md
@@ -59,3 +66,13 @@ git add changelog.md
 * https://nim-lang.org/blog/2017/09/07/version-0172-released.html
 * https://nim-lang.org/blog/2018/03/01/version-0180-released.html
 * https://nim-lang.org/blog/2018/09/26/version-0190-released.html
+* https://nim-lang.org/blog//2018/12/31/version-0192-released.html
+* https://nim-lang.org/blog//2019/02/01/version-0194-released.html
+* https://nim-lang.org/blog//2019/05/13/version-0196-released.html
+* https://nim-lang.org/blog//2019/06/06/version-0200-released.html
+* https://nim-lang.org/blog//2019/07/17/version-0202-released.html
+* https://nim-lang.org/blog//2019/09/23/version-100-released.html
+* https://nim-lang.org/blog//2019/10/23/version-102-released.html
+* https://nim-lang.org/blog//2019/11/26/version-104-released.html
+* https://nim-lang.org/blog//2020/01/24/version-106-released.html
+* https://nim-lang.org/blog//2020/04/03/version-120-released.html

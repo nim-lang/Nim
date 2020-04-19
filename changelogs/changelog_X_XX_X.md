@@ -1,7 +1,6 @@
 # v1.xx.x - yyyy-mm-dd
 
-This is an example file.
-The changes should go to changelog.md!
+This is an example file. See instructions in $nim/changelogs/readme.md
 
 
 ## Standard library additions and changes
