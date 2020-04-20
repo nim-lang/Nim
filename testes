@@ -22,7 +22,7 @@ function clean
 end
 
 function build-compiler
-	if ./koch temp -d:debugTLoc -d:nimIncremental --nimcache:nimcache --stackTrace:on
+	if ./koch temp -d:nimIncremental --nimcache:nimcache --stackTrace:on
 		notice compiler built
 	else
 		error failed compiler build

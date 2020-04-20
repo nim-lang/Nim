@@ -57,53 +57,6 @@ type
     modules*: BModuleList        # modules being built by the backend
     origin*: BModule             # presumed original module
 
-  TransformKind = enum
-    Unknown
-    HeaderFile
-    ProtoSet
-    ThingSet
-    FlagSet
-    TypeStack
-    Injection
-    GraphRope
-    InitProc
-    PreInit
-    Labels
-    SetLoc
-    LiteralData
-
-  TransformTable = OrderedTable[SigHash, Transform]
-
-  Transform = object
-    module: BModule
-    case kind: TransformKind
-    of Unknown:
-      discard
-    of FlagSet:
-      flags: set[CodegenFlag]
-    of ProtoSet, ThingSet:
-      diff: IntSet
-    of HeaderFile:
-      filenames: seq[string]
-    of TypeStack:
-      stack: TTypeSeq
-    of Injection:
-      rope: Rope
-    of GraphRope:
-      field: string
-      grope: Rope
-    of InitProc, PreInit:
-      prc: PSym
-    of Labels:
-      labels: int
-    of SetLoc:
-      nkind: TNodeKind
-      id: int
-      loc: TLoc
-    of LiteralData:
-      node: PNode
-      val: int
-
   # the in-memory representation of the database record
   Snippet = object
     signature: SigHash       # we use the signature to associate the node
@@ -226,8 +179,9 @@ proc makeTempName*(m: BModule; label: int, create = false): Rope =
   else:
     result.add "_"
     result.add $counter
-  if $result == "TM__Q5wkpxktOdTGvlSRo9bzt9aw__system___pF9ac9cU2tnA6T9aZkkGK9clsg_156":
-    raise
+  when true:
+    if $result == "TM__Q5wkpxktOdTGvlSRo9bzt9aw__system___pF9ac9cU2tnA6T9aZkkGK9clsg_156":
+      raise
 
 proc getTempName*(m: BModule): Rope =
   ## a factory for making temporary names for use in the backend; this mutates
@@ -2181,7 +2135,13 @@ proc apply(parents: BModuleList; transform: Transform) =
   of Labels:
     parent.labels.inc transform.labels
   of SetLoc:
-    {.warning: "SetLoc unimplemented!".}
+    case transform.nkind
+    of nkSym:
+      loadsymb
+    of nkType:
+      loadstype
+    else:
+      raise newException(Defect, "unknown kind of location: " & $transform.nkind)
   of LiteralData:
     nodeTablePut(parent.dataCache, transform.node, transform.val)
 
@@ -2295,23 +2255,25 @@ proc isHot(cache: CacheUnit[PSym]): bool =
 proc merge(cache: var CacheUnit; parent: var BModuleList) =
   ## merging is as simple as applying the snippets and transforms,
   ## and then pointing the ast to its real module origin
-  if cache.rejected:
-    return
+  if not cache.rejected:
+    when not defined(release):
+      echo "merging ", cache, " ", $cache.origin
 
-  when not defined(release):
-    echo "merging ", cache, " ", $cache.origin
+    for snippet in cache.snippets.values:
+      parent.apply snippet
 
-  for snippet in cache.snippets.values:
-    cache.modules.apply snippet
+    for transform in cache.transforms.values:
+      parent.apply transform
 
-  for transform in cache.transforms.values:
-    cache.modules.apply transform
+    for module in cache.modules.items:
+      for transform in module.transforms.values:
+        parent.apply transform
 
-  # reset the owning module for the cache's node
-  if cache.kind != Node:
-    pointToModuleIn(addr cache.node.origin, parent)
-  else:
-    {.warning: "nodes unimplemented".}
+    # reset the owning module for the cache's node
+    if cache.kind != Node:
+      pointToModuleIn(addr cache.node.origin, parent)
+    else:
+      {.warning: "nodes unimplemented".}
 
 proc setLocation*(m: BModule; p: PSym or PType; t: TLoc)
   {.tags: [LocSafe, LocWrite, RootEffect].} =

@@ -162,6 +162,54 @@ type
     sigConflicts*: CountTableRef[string]
     g*: BModuleList           # the complete module graph
     ndi*: NdiFile             # "nim debug info" files
+    transforms*: TransformTable
+
+  TransformKind* = enum
+    Unknown
+    HeaderFile
+    ProtoSet
+    ThingSet
+    FlagSet
+    TypeStack
+    Injection
+    GraphRope
+    InitProc
+    PreInit
+    Labels
+    SetLoc
+    LiteralData
+
+  TransformTable* = OrderedTable[SigHash, Transform]
+
+  Transform* = object
+    module: BModule
+    case kind: TransformKind
+    of Unknown:
+      discard
+    of FlagSet:
+      flags: set[CodegenFlag]
+    of ProtoSet, ThingSet:
+      diff: IntSet
+    of HeaderFile:
+      filenames: seq[string]
+    of TypeStack:
+      stack: TTypeSeq
+    of Injection:
+      rope: Rope
+    of GraphRope:
+      field: string
+      grope: Rope
+    of InitProc, PreInit:
+      prc: PSym
+    of Labels:
+      labels: int
+    of SetLoc:
+      nkind: TNodeKind
+      id: int
+      loc: TLoc
+    of LiteralData:
+      node: PNode
+      val: int
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config

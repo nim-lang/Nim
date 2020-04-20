@@ -627,7 +627,8 @@ proc initLocExpr(p: BProc, e: PNode, result: var TLoc)
   expr(p, e, result)
   {.warning: "need to stash the loc?".}
 
-proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc) =
+proc initLocExprSingleUse(p: BProc, e: PNode, result: var TLoc)
+  {.tags: [RootEffect, LocWrite].} =
   initLoc(result, locNone, e, OnUnknown)
   if e.kind in nkCallKinds and (e[0].kind != nkSym or e[0].sym.magic == mNone):
     # We cannot check for tfNoSideEffect here because of mutable parameters.
