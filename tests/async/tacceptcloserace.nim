@@ -1,7 +1,6 @@
 discard """
   exitcode: 0
   output: ""
-  disabled: "openbsd"
 """
 
 import asyncdispatch, net, os, nativesockets
