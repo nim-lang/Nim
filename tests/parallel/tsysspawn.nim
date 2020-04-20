@@ -29,3 +29,32 @@ sync()
 
 echo x
 echo y
+
+
+#--------------------------------------------------------
+# issue #14014
+
+import threadpool
+
+type A = object
+    a: int
+
+proc f(t: typedesc): t =
+  t(a:1)
+
+let r = spawn f(A)
+echo ^r
+
+proc f2(x: static[int]): int =
+  x
+
+let r2 = spawn f2(2)
+echo ^r2
+
+type statint = static[int]
+
+proc f3(x: statint): int =
+  x
+
+let r3 = spawn f3(2)
+echo ^r3
