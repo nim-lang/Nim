@@ -9,14 +9,14 @@ update system.NimMinor,NimMinor,NimPatch if needed
 ## Recent changelogs are saved here (with their git history)
 
 ## Released changelogs
-released changlogs are copied to the nim website repo, see list in
-https://github.com/nim-lang/website/tree/master/jekyll/_posts
-see website urls below.
+Released changelogs are copied to the [nim website](https://github.com/nim-lang/website/tree/master/jekyll/_posts).
 
-## source files:
-changelogs from 0.8.6 to 0.17.2 are version controlled in https://github.com/nim-lang/website/tree/master/jekyll/_posts
-changelogs since 0.18.0 are version controlled in $nim/changelogs/
-any updates to past changelogs should be done in $nim/changelogs/ and backported to website repo
+See below for website urls.
+
+## source files
+* Changelogs from 0.8.6 to 0.17.2 are version controlled in the [nim website](https://github.com/nim-lang/website/tree/master/jekyll/_posts).
+* Changelogs since 0.18.0 are version controlled in `$nim/changelogs/`.
+* Any updates to past changelogs should be done in `$nim/changelogs/` first, and backported to the nim website.
 
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2009-12-21-version-086-released.md
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2010-03-14-version-088-released.md
@@ -42,7 +42,7 @@ any updates to past changelogs should be done in $nim/changelogs/ and backported
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2018-03-01-version-0180-released.md
 * https://github.com/nim-lang/website/blob/master/jekyll/_posts/2018-09-26-version-0190-released.md
 
-## urls:
+## urls
 * https://nim-lang.org/blog/2009/12/21/version-086-released.html
 * https://nim-lang.org/blog/2010/03/14/version-088-released.html
 * https://nim-lang.org/blog/2010/10/20/version-0810-released.html
