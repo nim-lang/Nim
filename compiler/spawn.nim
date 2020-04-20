@@ -201,8 +201,11 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
-    if i < formals.len and formals[i].typ.kind in {tyVar, tyLent}:
-      localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+    if i < formals.len: 
+      if formals[i].typ.kind in {tyVar, tyLent}:
+        localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+      if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
+        continue
     #elif containsTyRef(argType):
     #  localError(n[i].info, "'spawn'ed function cannot refer to 'ref'/closure")
 
@@ -226,6 +229,8 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
   # for correctness: These are called 'threadLocal' here.
   for i in 1..<n.len:
     let n = n[i]
+    if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
+      continue
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
     #if containsTyRef(argType):
