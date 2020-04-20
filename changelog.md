@@ -1,5 +1,80 @@
-* Next release changelog: see latest entry in `changelogs/`, currently at `changelogs/changelog_1_4_0.md`
+## Changelogs for past and upcoming releases
+* 1.4.0 [source](changelogs/changelog_1_4_0.md). Upcoming release.
+* 1.2.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2020-04-03-version-120-released.md)
+ [url](https://nim-lang.org/blog//2020/04/03/version-120-released.html)
+* 1.0.6: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2020-01-24-version-106-released.md)
+ [url](https://nim-lang.org/blog//2020/01/24/version-106-released.html)
+* 1.0.4: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-11-26-version-104-released.md)
+ [url](https://nim-lang.org/blog//2019/11/26/version-104-released.html)
+* 1.0.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-10-23-version-102-released.md)
+ [url](https://nim-lang.org/blog//2019/10/23/version-102-released.html)
+* 1.0.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-09-23-version-100-released.md)
+ [url](https://nim-lang.org/blog//2019/09/23/version-100-released.html)
+* 0.20.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-07-17-version-0202-released.md)
+ [url](https://nim-lang.org/blog//2019/07/17/version-0202-released.html)
+* 0.20.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-06-06-version-0200-released.md)
+ [url](https://nim-lang.org/blog//2019/06/06/version-0200-released.html)
+* 0.19.6: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-05-13-version-0196-released.md)
+ [url](https://nim-lang.org/blog//2019/05/13/version-0196-released.html)
+* 0.19.4: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2019-02-01-version-0194-released.md)
+ [url](https://nim-lang.org/blog//2019/02/01/version-0194-released.html)
+* 0.19.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2018-12-31-version-0192-released.md)
+ [url](https://nim-lang.org/blog//2018/12/31/version-0192-released.html)
+* 0.19.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2018-09-26-version-0190-released.md)
+ [url](https://nim-lang.org/blog/2018/09/26/version-0190-released.html)
+* 0.18.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2018-03-01-version-0180-released.md)
+ [url](https://nim-lang.org/blog/2018/03/01/version-0180-released.html)
+* 0.17.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2017-09-07-version-0172-released.md)
+ [url](https://nim-lang.org/blog/2017/09/07/version-0172-released.html)
+* 0.17.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2017-05-17-version-0170-released.md)
+ [url](https://nim-lang.org/blog/2017/05/17/version-0170-released.html)
+* 0.16.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2017-01-08-version-0160-released.md)
+ [url](https://nim-lang.org/blog/2017/01/08/version-0160-released.html)
+* 0.15.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2016-10-23-version-0152-released.md)
+ [url](https://nim-lang.org/blog/2016/10/23/version-0152-released.html)
+* 0.15.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2016-09-30-version-0150-released.md)
+ [url](https://nim-lang.org/blog/2016/09/30/version-0150-released.html)
+* 0.14.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2016-06-09-version-0142-released.md)
+ [url](https://nim-lang.org/blog/2016/06/09/version-0142-released.html)
+* 0.14.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2016-06-07-version-0140-released.md)
+ [url](https://nim-lang.org/blog/2016/06/07/version-0140-released.html)
+* 0.13.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2016-01-18-version-0130-released.md)
+ [url](https://nim-lang.org/blog/2016/01/18/version-0130-released.html)
+* 0.12.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2015-10-27-version-0120-released.md)
+ [url](https://nim-lang.org/blog/2015/10/27/version-0120-released.html)
+* 0.11.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2015-05-04-version-0112-released.md)
+ [url](https://nim-lang.org/blog/2015/05/04/version-0112-released.html)
+* 0.11.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2015-04-30-version-0110-released.md)
+ [url](https://nim-lang.org/blog/2015/04/30/version-0110-released.html)
+* 0.10.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2014-12-29-version-0102-released.md)
+ [url](https://nim-lang.org/blog/2014/12/29/version-0102-released.html)
+* 0.9.6: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2014-10-19-version-096-released.md)
+ [url](https://nim-lang.org/blog/2014/10/19/version-096-released.html)
+* 0.9.4: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2014-04-21-version-094-released.md)
+ [url](https://nim-lang.org/blog/2014/04/21/version-094-released.html)
+* 0.9.2: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2013-05-20-version-092-released.md)
+ [url](https://nim-lang.org/blog/2013/05/20/version-092-released.html)
+* 0.9.0: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2012-09-23-version-090-released.md)
+ [url](https://nim-lang.org/blog/2012/09/23/version-090-released.html)
+* 0.8.14: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2012-02-09-version-0814-released.md)
+ [url](https://nim-lang.org/blog/2012/02/09/version-0814-released.html)
+* 0.8.12: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2011-07-10-version-0812-released.md)
+ [url](https://nim-lang.org/blog/2011/07/10/version-0812-released.html)
+* 0.8.10: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2010-10-20-version-0810-released.md)
+ [url](https://nim-lang.org/blog/2010/10/20/version-0810-released.html)
+* 0.8.8: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2010-03-14-version-088-released.md)
+ [url](https://nim-lang.org/blog/2010/03/14/version-088-released.html)
+* 0.8.6: [source](https://github.com/nim-lang/website/blob/master/jekyll/_posts/2009-12-21-version-086-released.md)
+ [url](https://nim-lang.org/blog/2009/12/21/version-086-released.html)
 
-* Changelog template: see `changelogs/changelog_X_XX_X.md`
+## Changelog source files
+* Changelogs from 0.8.6 to 0.17.2 are version controlled in the [nim website](https://github.com/nim-lang/website/tree/master/jekyll/_posts).
+* Changelogs since 0.18.0 are version controlled in [changelogs/](changelogs/).
+* Any updates to past changelogs should be done in [changelogs/](changelogs/) first, and backported to the nim website.
 
-* Changelog instructions and old changelogs: see `changelogs/readme.md`
+## Creating a new release changelog
+After a release, supposing next version will be 1.4.0:
+* Run `cp changelogs/changelog_X_XX_X.md changelogs/changelog_1_4_0.md`
+* Update `current changelog` entry in this file
+* Update `system.NimMinor,NimMinor,NimPatch` to (1, 4, 0)
+* Copy the changelog to [nim website](https://github.com/nim-lang/website/tree/master/jekyll/_posts).
