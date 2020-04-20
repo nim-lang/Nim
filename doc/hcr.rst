@@ -26,39 +26,40 @@ To install SDL2 you can use ``nimble install sdl2``.
 .. code-block:: nim
 
   # logic.nim
-  import sdl2/sdl
+  import sdl2
 
   #*** import the hotcodereloading stdlib module ***
   import hotcodereloading
 
   var runGame*: bool = true
-  var window: Window
-  var renderer: Renderer
+  var window: WindowPtr
+  var renderer: RendererPtr
+  var evt = sdl2.defaultEvent
 
   proc init*() =
-    discard sdl.init(INIT_EVERYTHING)
-    window = createWindow("testing", WINDOWPOS_UNDEFINED.cint, WINDOWPOS_UNDEFINED.cint, 640, 480, 0'u32)
-    assert(window != nil, $sdl.getError())
+    discard sdl2.init(INIT_EVERYTHING)
+    window = createWindow("testing", SDL_WINDOWPOS_UNDEFINED.cint, SDL_WINDOWPOS_UNDEFINED.cint, 640, 480, 0'u32)
+    assert(window != nil, $sdl2.getError())
     renderer = createRenderer(window, -1, RENDERER_SOFTWARE)
-    assert(renderer != nil, $sdl.getError())
+    assert(renderer != nil, $sdl2.getError())
 
   proc destroy*() =
     destroyRenderer(renderer)
     destroyWindow(window)
 
-  var posX = 1
-  var posY = 0
-  var dX = 1
-  var dY = 1
+  var posX: cint = 1
+  var posY: cint = 0
+  var dX: cint = 1
+  var dY: cint = 1
 
   proc update*() =
-    for evt in events():
-      if evt.kind == QUIT:
+    while pollEvent(evt):
+      if evt.kind == QuitEvent:
         runGame = false
         break
-      if evt.kind == KEY_DOWN:
-        if evt.key.keysym.scancode == SCANCODE_ESCAPE: runGame = false
-        elif evt.key.keysym.scancode == SCANCODE_F9:
+      if evt.kind == KeyDown:
+        if evt.key.keysym.scancode == SDL_SCANCODE_ESCAPE: runGame = false
+        elif evt.key.keysym.scancode == SDL_SCANCODE_F9:
           #*** reload this logic.nim module on the F9 keypress ***
           performCodeReload()
 
@@ -71,14 +72,14 @@ To install SDL2 you can use ``nimble install sdl2``.
     if posY >= 480: dY = -2
     if posY <= 0: dY = +2
 
-    discard renderer.setRenderDrawColor(0, 0, 255, 255)
-    discard renderer.renderClear()
-    discard renderer.setRenderDrawColor(255, 128, 128, 0)
+    discard renderer.setDrawColor(0, 0, 255, 255)
+    discard renderer.clear()
+    discard renderer.setDrawColor(255, 128, 128, 0)
 
-    var rect: Rect(x: posX - 25, y: posY - 25, w: 50, h: 50)
-    discard renderer.renderFillRect(rect.addr)
+    var rect: Rect = (x: posX - 25, y: posY - 25, w: 50.cint, h: 50.cint)
+    discard renderer.fillRect(rect)
     delay(16)
-    renderer.renderPresent()
+    renderer.present()
 
 
 .. code-block:: nim
@@ -111,11 +112,11 @@ Now start the program and KEEP it running!
 
 For example, change the line::
 
-  discard renderer.setRenderDrawColor(255, 128, 128, 0)
+  discard renderer.setDrawColor(255, 128, 128, 0)
 
 into::
 
-  discard renderer.setRenderDrawColor(255, 255, 128, 0)
+  discard renderer.setDrawColor(255, 255, 128, 0)
 
 (This will change the color of the rectangle.)
 
@@ -187,7 +188,24 @@ Native code targets
 Native projects using the hot code reloading option will be implicitly
 compiled with the `-d:useNimRtl` option and they will depend on both
 the ``nimrtl`` library and the ``nimhcr`` library which implements the
-hot code reloading run-time.
+hot code reloading run-time. Both libraries can be found in the ``lib``
+folder of Nim and can be compiled into dynamic libraries to satisfy
+runtime demands of the example code above. An example of compiling 
+``nimhcr.nim`` and ``nimrtl.nim`` when the source dir of Nim is installed
+with choosenim follows.
+
+::
+
+  # Unix/MacOS
+  # Make sure you are in the directory containing your .nim files
+  $ cd your-source-directory
+
+  # Compile two required files and set their output directory to current dir
+  $ nim c --outdir:$PWD ~/.choosenim/toolchains/nim-#devel/lib/nimhcr.nim
+  $ nim c --outdir:$PWD ~/.choosenim/toolchains/nim-#devel/lib/nimrtl.nim
+
+  # verify that you have two files named libnimhcr and libnimrtl in your
+  # source directory (.dll for Windows, .so for Unix, .dylib for MacOS)
 
 All modules of the project will be compiled to separate dynamic link
 libraries placed in the ``nimcache`` directory. Please note that during
