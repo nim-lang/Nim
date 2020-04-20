@@ -532,6 +532,8 @@ when defined(nimdoc):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
+var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
+
 var MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
 
 when hasSpawnH:

@@ -10,6 +10,25 @@
 - The default hash for `Ordinal` has changed to something more bit-scrambling.
   `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
   one in an instantiation context while `-d:nimIntHash1` recovers it globally.
+- File handles created from high-level abstractions in the stdlib will no longer
+  be inherited by child processes. In particular, these modules are affected:
+  `system`, `nativesockets`, `net` and `selectors`.
+
+  For `net` and `nativesockets`, an `inheritable` flag has been added to all
+  `proc`s that create sockets, allowing the user to control whether the
+  resulting socket is inheritable. This flag is provided to ease the writing of
+  multi-process servers, where sockets inheritance is desired.
+
+  For a transistion period, define `nimInheritHandles` to enable file handle
+  inheritance by default. This flag does **not** affect the `selectors` module
+  due to the differing semantics between operating systems.
+
+  `system.setInheritable` and `nativesockets.setInheritable` is also introduced
+  for setting file handle or socket inheritance. Not all platform have these
+  `proc`s defined.
+
+- The file descriptors created for internal bookkeeping by `ioselector_kqueue`
+  and `ioselector_epoll` will no longer be leaked to child processes.
 
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 

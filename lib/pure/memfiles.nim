@@ -228,7 +228,7 @@ proc open*(filename: string, mode: FileMode = fmRead,
       if result.handle != -1: discard close(result.handle)
       raiseOSError(errCode)
 
-    var flags = if readonly: O_RDONLY else: O_RDWR
+    var flags = (if readonly: O_RDONLY else: O_RDWR) or O_CLOEXEC
 
     if newFileSize != -1:
       flags = flags or O_CREAT or O_TRUNC
