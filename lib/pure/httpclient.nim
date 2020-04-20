@@ -25,15 +25,19 @@
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
-##   import httpClient
+## import asyncdispatch, httpclient
+## 
+## proc asyncProc(): Future[string] {.async.} =
 ##   var client = newAsyncHttpClient()
-##   echo await client.getContent("http://google.com")
+##   return await client.getContent("http://example.com")
+## 
+## echo waitFor asyncProc()
 ##
 ## The functionality implemented by ``HttpClient`` and ``AsyncHttpClient``
 ## is the same, so you can use whichever one suits you best in the examples
 ## shown here.
 ##
-## **Note:** You will need to run asynchronous examples in an async proc
+## **Note:** You need to run asynchronous examples in an async proc
 ## otherwise you will get an ``Undeclared identifier: 'await'`` error.
 ##
 ## Using HTTP POST
