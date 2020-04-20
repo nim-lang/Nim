@@ -25,17 +25,37 @@
 ## At this time only `fastLog2`, `firstSetBit, `countLeadingZeroBits`, `countTrailingZeroBits`
 ## may return undefined and/or platform dependent value if given invalid input.
 
+import macros
+
 proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
 
-proc bitand*[T: SomeInteger](x, y: T): T {.magic: "BitandI", noSideEffect.}
-  ## Computes the `bitwise and` of numbers `x` and `y`.
+func internalBitand[T: SomeInteger](x, y: T): T {.magic: "BitandI".}
 
-proc bitor*[T: SomeInteger](x, y: T): T {.magic: "BitorI", noSideEffect.}
-  ## Computes the `bitwise or` of numbers `x` and `y`.
+func internalBitor[T: SomeInteger](x, y: T): T {.magic: "BitorI".}
 
-proc bitxor*[T: SomeInteger](x, y: T): T {.magic: "BitxorI", noSideEffect.}
-  ## Computes the `bitwise xor` of numbers `x` and `y`.
+func internalBitxor[T: SomeInteger](x, y: T): T {.magic: "BitxorI".}
+
+macro bitand*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise and` of all arguments collectively.
+  let fn = bindSym("internalBitand")
+  result = newCall(fn, x, y)
+  for extra in z:
+    result = newCall(fn, result, extra)
+
+macro bitor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise or` of all arguments collectively.
+  let fn = bindSym("internalBitor")
+  result = newCall(fn, x, y)
+  for extra in z:
+    result = newCall(fn, result, extra)
+
+macro bitxor*[T: SomeInteger](x, y: T; z: varargs[T]): T =
+  ## Computes the `bitwise xor` of all arguments collectively.
+  let fn = bindSym("internalBitxor")
+  result = newCall(fn, x, y)
+  for extra in z:
+    result = newCall(fn, result, extra)
 
 const useBuiltins = not defined(noIntrinsicsBitOpts)
 const noUndefined = defined(noUndefinedBitOpts)
@@ -64,9 +84,6 @@ template forwardImpl(impl, arg) {.dirty.} =
       impl(x.uint64)
 
 when defined(nimHasalignOf):
-
-  import macros
-
   type BitsRange*[T] = range[0..sizeof(T)*8-1]
     ## Returns a range with all bit positions for type ``T``.
 
