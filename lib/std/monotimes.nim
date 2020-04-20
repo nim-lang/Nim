@@ -51,13 +51,9 @@ when defined(macosx):
   proc mach_timebase_info(info: var MachTimebaseInfoData) {.importc,
     header: "<mach/mach_time.h>".}
 
-  let machAbsoluteTimeFreq = block:
-    var freq: MachTimebaseInfoData
-    mach_timebase_info(freq)
-    freq
-
 when defined(js):
   proc getJsTicks: float =
+    ## Returns ticks in the unit seconds
     {.emit: """
       var isNode = typeof module !== 'undefined' && module.exports
 
@@ -66,7 +62,7 @@ when defined(js):
         var time = process.hrtime()
         return time[0] + time[1] / 1000000000;
       } else {
-        return window.performance.now() * 1000000;
+        return window.performance.now() / 1000;
       }
     """.}
 
@@ -87,11 +83,6 @@ elif defined(windows):
   proc QueryPerformanceFrequency(res: var uint64) {.
     importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
 
-  let queryPerformanceCounterFreq = block:
-    var freq: uint64
-    QueryPerformanceFrequency(freq)
-    1_000_000_000'u64 div freq
-
 proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## Get the current `MonoTime` timestamp.
   ##
@@ -99,11 +90,13 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   ## this proc calls `window.performance.now()`, which is not supported by
   ## older browsers. See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Performance/now)
   ## for more information.
-  when defined(JS):
+  when defined(js):
     let ticks = getJsTicks()
     result = MonoTime(ticks: (ticks * 1_000_000_000).int64)
   elif defined(macosx):
     let ticks = mach_absolute_time()
+    var machAbsoluteTimeFreq: MachTimebaseInfoData
+    mach_timebase_info(machAbsoluteTimeFreq)
     result = MonoTime(ticks: ticks * machAbsoluteTimeFreq.numer div
       machAbsoluteTimeFreq.denom)
   elif defined(posix):
@@ -114,6 +107,10 @@ proc getMonoTime*(): MonoTime {.tags: [TimeEffect].} =
   elif defined(windows):
     var ticks: uint64
     QueryPerformanceCounter(ticks)
+
+    var freq: uint64
+    QueryPerformanceFrequency(freq)
+    let queryPerformanceCounterFreq = 1_000_000_000'u64 div freq
     result = MonoTime(ticks: (ticks * queryPerformanceCounterFreq).int64)
 
 proc ticks*(t: MonoTime): int64 =

@@ -58,8 +58,12 @@
 
 import typetraits
 
-type
-  SomePointer = ref | ptr | pointer
+when (NimMajor, NimMinor) >= (1, 1):
+  type
+    SomePointer = ref | ptr | pointer | proc
+else:
+  type
+    SomePointer = ref | ptr | pointer
 
 type
   Option*[T] = object
@@ -74,7 +78,7 @@ type
 
 
 proc option*[T](val: T): Option[T] =
-  ## Can be used to convert a pointer type (`ptr` or `ref`) to an option type.
+  ## Can be used to convert a pointer type (`ptr` or `ref` or `proc`) to an option type.
   ## It converts `nil` to `None`.
   ##
   ## See also:
@@ -258,7 +262,7 @@ proc map*[T, R](self: Option[T], callback: proc (input: T): R): Option[R] =
     assert $(b.map(isEven)) == "None[bool]"
 
   if self.isSome:
-    some[R]( callback(self.val) )
+    some[R](callback(self.val))
   else:
     none(R)
 
@@ -273,7 +277,8 @@ proc flatten*[A](self: Option[Option[A]]): Option[A] =
   else:
     none(A)
 
-proc flatMap*[A, B](self: Option[A], callback: proc (input: A): Option[B]): Option[B] =
+proc flatMap*[A, B](self: Option[A],
+                    callback: proc (input: A): Option[B]): Option[B] =
   ## Applies a `callback` function to the value of the `Option` and returns an
   ## `Option` containing the new value.
   ##
@@ -481,6 +486,11 @@ when isMainModule:
 
       let tmp = option(intref)
       check(sizeof(tmp) == sizeof(ptr int))
+      
+      var prc = proc (x: int): int = x + 1
+      check(option(prc).isSome)
+      prc = nil
+      check(option(prc).isNone)
 
     test "none[T]":
       check(none[int]().isNone)

@@ -26,13 +26,13 @@ proc makeCString*(s: string): Rope =
   const MaxLineLength = 64
   result = nil
   var res = newStringOfCap(int(s.len.toFloat * 1.1) + 1)
-  add(res, "\"")
-  for i in 0 ..< len(s):
+  res.add("\"")
+  for i in 0..<s.len:
     if (i + 1) mod MaxLineLength == 0:
-      add(res, "\"\L\"")
+      res.add("\"\L\"")
     toCChar(s[i], res)
-  add(res, '\"')
-  add(result, rope(res))
+  res.add('\"')
+  result.add(rope(res))
 
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
@@ -81,6 +81,7 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     pseudoPath = true
 
   if conf.m.filenameToIndexTbl.hasKey(canon.string):
+    isKnownFile = true
     result = conf.m.filenameToIndexTbl[canon.string]
   else:
     isKnownFile = false
@@ -152,12 +153,11 @@ proc pushInfoContext*(conf: ConfigRef; info: TLineInfo; detail: string = "") =
   conf.m.msgContext.add((info, detail))
 
 proc popInfoContext*(conf: ConfigRef) =
-  setLen(conf.m.msgContext, len(conf.m.msgContext) - 1)
+  setLen(conf.m.msgContext, conf.m.msgContext.len - 1)
 
 proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
-  let L = conf.m.msgContext.len
-  let i = if index < 0: L + index else: index
-  if i >=% L: result = unknownLineInfo()
+  let i = if index < 0: conf.m.msgContext.len + index else: index
+  if i >=% conf.m.msgContext.len: result = unknownLineInfo
   else: result = conf.m.msgContext[i].info
 
 const
@@ -333,14 +333,14 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
 type
   TErrorHandling = enum doNothing, doAbort, doRaise
 
-proc log*(s: string) {.procvar.} =
+proc log*(s: string) =
   var f: File
   if open(f, getHomeDir() / "nimsuggest.log", fmAppend):
     f.writeLine(s)
     close(f)
 
 proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
-  if defined(debug) or msg == errInternal or hintStackTrace in conf.notes:
+  if defined(debug) or msg == errInternal or conf.hasHint(hintStackTrace):
     {.gcsafe.}:
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
@@ -354,7 +354,8 @@ proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) 
   if msg >= fatalMin and msg <= fatalMax:
     if conf.cmd == cmdIdeTools: log(s)
     quit(conf, msg)
-  if msg >= errMin and msg <= errMax:
+  if msg >= errMin and msg <= errMax or
+      (msg in warnMin..warnMax and msg in conf.warningAsErrors):
     inc(conf.errorCounter)
     conf.exitcode = 1'i8
     if conf.errorCounter >= conf.errorMax:
@@ -374,7 +375,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
   const instantiationFrom = "template/generic instantiation from here"
   const instantiationOfFrom = "template/generic instantiation of `$1` from here"
   var info = lastinfo
-  for i in 0 ..< len(conf.m.msgContext):
+  for i in 0..<conf.m.msgContext.len:
     let context = conf.m.msgContext[i]
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
@@ -405,22 +406,20 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   case msg
   of errMin..errMax:
     sev = Severity.Error
-    writeContext(conf, unknownLineInfo())
+    writeContext(conf, unknownLineInfo)
     title = ErrorTitle
     color = ErrorColor
   of warnMin..warnMax:
     sev = Severity.Warning
-    if optWarns notin conf.options: return
-    if msg notin conf.notes: return
-    writeContext(conf, unknownLineInfo())
-    title = WarningTitle
+    if not conf.hasWarn(msg): return
+    writeContext(conf, unknownLineInfo)
+    title = if msg in conf.warningAsErrors: ErrorTitle else: WarningTitle
     color = WarningColor
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
-    if optHints notin conf.options: return
-    if msg notin conf.notes: return
+    if not conf.hasHint(msg): return
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -428,7 +427,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let s = msgKindToString(msg) % args
 
   if conf.structuredErrorHook != nil:
-    conf.structuredErrorHook(conf, unknownLineInfo(),
+    conf.structuredErrorHook(conf, unknownLineInfo,
       s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
@@ -500,15 +499,15 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     conf.m.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
-    ignoreMsg = optWarns notin conf.options or msg notin conf.notes
+    ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg: writeContext(conf, info)
-    title = WarningTitle
+    title = if msg in conf.warningAsErrors: ErrorTitle else: WarningTitle
     color = WarningColor
     kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
-    ignoreMsg = optHints notin conf.options or msg notin conf.notes
+    ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
@@ -526,7 +525,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                          KindColor, `%`(KindFormat, kind))
       else:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if hintSource in conf.notes:
+      if conf.hasHint(hintSource):
         conf.writeSurroundingSrc(info)
   handleError(conf, msg, eh, s)
 
@@ -561,7 +560,7 @@ proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
-  writeContext(conf, unknownLineInfo())
+  writeContext(conf, unknownLineInfo)
   rawMessage(conf, errInternal, errMsg)
 
 template assertNotNil*(conf: ConfigRef; e): untyped =

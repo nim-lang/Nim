@@ -11,6 +11,8 @@
 ## you'll be in trouble. Uses a single lock to protect the table, lockfree
 ## implementations welcome but if lock contention is so high that you need a
 ## lockfree hash table, you're doing it wrong.
+##
+## Unstable API.
 
 import
   hashes, math, locks
@@ -30,7 +32,7 @@ template maxHash(t): untyped = t.dataLen-1
 include tableimpl
 
 template st_maybeRehashPutImpl(enlarge) {.dirty.} =
-  if mustRehash(t.dataLen, t.counter):
+  if mustRehash(t):
     enlarge(t)
     index = rawGetKnownHC(t, key, hc)
   index = -1 - index # important to transform for mgetOrPutImpl
@@ -201,6 +203,11 @@ proc del*[A, B](t: var SharedTable[A, B], key: A) =
   ## deletes `key` from hash table `t`.
   withLock t:
     delImpl()
+
+proc len*[A, B](t: var SharedTable[A, B]): int =
+  ## number of elements in `t`
+  withLock t:
+    result = t.counter
 
 proc init*[A, B](t: var SharedTable[A, B], initialSize = 64) =
   ## creates a new hash table that is empty.

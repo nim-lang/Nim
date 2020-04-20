@@ -13,8 +13,8 @@ import ast, astalgo
 
 const
   someCmp = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
-    mEqUntracedRef, mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
-    mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
+    mLeI, mLeF64, mLeU, mLeEnum,
+    mLeCh, mLeB, mLePtr, mLtI, mLtF64, mLtU, mLtEnum,
     mLtCh, mLtB, mLtPtr}
 
 proc isCounter(s: PSym): bool {.inline.} =
@@ -45,13 +45,13 @@ proc counterInTree(n, loop: PNode; counter: PSym): bool =
     for it in n:
       if counterInTree(it.lastSon): return true
   else:
-    for i in 0 ..< safeLen(n):
+    for i in 0..<n.safeLen:
       if counterInTree(n[i], loop, counter): return true
 
 proc copyExcept(n: PNode, x, dest: PNode) =
   if x == n: return
   if n.kind in {nkStmtList, nkStmtListExpr}:
-    for i in 0 ..< n.len: copyExcept(n[i], x, dest)
+    for i in 0..<n.len: copyExcept(n[i], x, dest)
   else:
     dest.add n
 

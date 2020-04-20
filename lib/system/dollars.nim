@@ -49,18 +49,22 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ##   doAssert $(type("Foo")) == "string"
   ##   static: doAssert $(type(@['A', 'B'])) == "seq[char]"
 
+when defined(nimHasIsNamedTuple):
+  proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+else:
+  # for bootstrap; remove after release 1.2
+  proc isNamedTuple(T: typedesc): bool =
+    # Taken from typetraits.
+    when T isnot tuple: result = false
+    else:
+      var t: T
+      for name, _ in t.fieldPairs:
+        when name == "Field0":
+          return compiles(t.Field0)
+        else:
+          return true
+      return false
 
-proc isNamedTuple(T: typedesc): bool =
-  # Taken from typetraits.
-  when T isnot tuple: result = false
-  else:
-    var t: T
-    for name, _ in t.fieldPairs:
-      when name == "Field0":
-        return compiles(t.Field0)
-      else:
-        return true
-    return false
 
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
@@ -71,7 +75,8 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
-  var firstElement = true
+  # when x is empty, this gives an unused warning
+  var firstElement {.used.} = true
   const isNamed = T is object or isNamedTuple(T)
   when not isNamed:
     var count = 0

@@ -13,7 +13,7 @@ template processTest(t, x: untyped) =
 when defined(macosx):
   echo "All tests passed!"
 elif not defined(windows):
-  import os, posix, nativesockets, times
+  import os, posix, nativesockets
 
   when ioselSupportedPlatform:
     import osproc
@@ -128,9 +128,9 @@ elif not defined(windows):
     var event = newSelectEvent()
     selector.registerEvent(event, 1)
     var rc0 = selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc1 = selector.select(0)
-    event.setEvent()
+    event.trigger()
     var rc2 = selector.select(0)
     var rc3 = selector.select(0)
     assert(len(rc0) == 0 and len(rc1) == 1 and len(rc2) == 1 and len(rc3) == 0)
@@ -445,14 +445,14 @@ elif not defined(windows):
       var
         thr: array[0..7, Thread[SelectEvent]]
       var selector = newSelector[int]()
-      var sock = newNativeSocket()
+      var sock = createNativeSocket()
       var event = newSelectEvent()
       for i in 0..high(thr):
         createThread(thr[i], event_wait_thread, event)
       selector.registerHandle(sock, {Event.Read}, 1)
       discard selector.select(500)
       selector.unregister(sock)
-      event.setEvent()
+      event.trigger()
       joinThreads(thr)
       assert(counter == 1)
       result = true
@@ -475,7 +475,7 @@ else:
 
   proc socket_notification_test(): bool =
     proc create_test_socket(): SocketHandle =
-      var sock = newNativeSocket()
+      var sock = createNativeSocket()
       setBlocking(sock, false)
       result = sock
 

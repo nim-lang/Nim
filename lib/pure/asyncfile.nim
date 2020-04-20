@@ -132,8 +132,7 @@ proc readBuffer*(f: AsyncFile, buf: pointer, size: int): Future[int] =
   var retFuture = newFuture[int]("asyncfile.readBuffer")
 
   when defined(windows) or defined(nimdoc):
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -212,8 +211,7 @@ proc read*(f: AsyncFile, size: int): Future[string] =
   when defined(windows) or defined(nimdoc):
     var buffer = alloc0(size)
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -340,8 +338,7 @@ proc writeBuffer*(f: AsyncFile, buf: pointer, size: int): Future[void] =
   ## specified file.
   var retFuture = newFuture[void]("asyncfile.writeBuffer")
   when defined(windows) or defined(nimdoc):
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -414,8 +411,7 @@ proc write*(f: AsyncFile, data: string): Future[void] =
     var buffer = alloc0(data.len)
     copyMem(buffer, addr copy[0], data.len)
 
-    var ol = PCustomOverlapped()
-    GC_ref(ol)
+    var ol = newCustom()
     ol.data = CompletionData(fd: f.fd, cb:
       proc (fd: AsyncFD, bytesCount: DWORD, errcode: OSErrorCode) =
         if not retFuture.finished:
@@ -488,7 +484,7 @@ proc setFileSize*(f: AsyncFile, length: int64) =
       status = setFilePointer(f.fd.Handle, low, addr high, 0)
       lastErr = osLastError()
     if (status == INVALID_SET_FILE_POINTER and lastErr.int32 != NO_ERROR) or
-       (setEndOfFile(f.fd.Handle) == 0):
+        (setEndOfFile(f.fd.Handle) == 0):
       raiseOSError(osLastError())
   else:
     # will truncate if Off is a 32-bit type!

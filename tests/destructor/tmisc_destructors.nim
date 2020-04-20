@@ -22,13 +22,13 @@ proc `=`(dest: var Foo, src: Foo) =
   assign_counter.inc
 
 proc test(): auto =
-  var a,b : Foo
+  var a, b: Foo
   return (a, b, Foo(boo: 5))
 
 var (a, b, _) = test()
 
 doAssert assign_counter == 0
-doAssert sink_counter == 12 # + 3 because of the conservative tuple unpacking transformation
+doAssert sink_counter == 0
 
 # bug #11510
 proc main =

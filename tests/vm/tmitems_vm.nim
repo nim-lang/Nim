@@ -7,7 +7,7 @@ discard """
 # bug #3731
 var list {.compileTime.} = newSeq[int]()
 
-macro calc*(): typed =
+macro calc*(): void =
   list.add(1)
   for c in list.mitems:
     c = 13
@@ -19,7 +19,7 @@ calc()
 
 # bug #3859
 import macros
-macro m: typed =
+macro m: void =
   var s = newseq[NimNode](3)
   # var s: array[3,NimNode]                 # not working either
   for i in 0..<s.len: s[i] = newLit(3)    # works

@@ -27,7 +27,7 @@
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
-import os, strutils, nativesockets
+import os, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
@@ -186,7 +186,7 @@ when defined(nimdoc):
   proc setData*[T](s: Selector[T], fd: SocketHandle|int, data: var T): bool =
     ## Associate application-defined ``data`` with descriptor ``fd``.
     ##
-    ## Returns ``true``, if data was succesfully updated, ``false`` otherwise.
+    ## Returns ``true``, if data was successfully updated, ``false`` otherwise.
 
   template isEmpty*[T](s: Selector[T]): bool = # TODO: Why is this a template?
     ## Returns ``true``, if there are no registered events or descriptors
@@ -230,6 +230,7 @@ when defined(nimdoc):
     ## For *poll* and *select* selectors ``-1`` is returned.
 
 else:
+  import strutils
   when hasThreadSupport:
     import locks
 
@@ -316,7 +317,7 @@ else:
 
   proc verifySelectParams(timeout: int) =
     # Timeout of -1 means: wait forever
-    # Anything higher is the time to wait in miliseconds.
+    # Anything higher is the time to wait in milliseconds.
     doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
 
   when defined(linux):

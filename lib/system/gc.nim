@@ -16,7 +16,8 @@
 
 const
   CycleIncrease = 2 # is a multiplicative increase
-  InitialCycleThreshold = 4*1024*1024 # X MB because cycle checking is slow
+  InitialCycleThreshold = when defined(nimCycleBreaker): high(int)
+                          else: 4*1024*1024 # X MB because cycle checking is slow
   InitialZctThreshold = 500  # we collect garbage if the ZCT's size
                              # reaches this threshold
                              # this seems to be a good value
@@ -157,10 +158,10 @@ when defined(logGC):
           typName = c.typ.name
 
     when leakDetector:
-      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
+      c_printf("[GC] %s: %p %d %s rc=%ld from %s(%ld)\n",
                 msg, c, kind, typName, c.refcount shr rcShift, c.filename, c.line)
     else:
-      c_fprintf(stdout, "[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
+      c_printf("[GC] %s: %p %d %s rc=%ld; thread=%ld\n",
                 msg, c, kind, typName, c.refcount shr rcShift, gch.gcThreadId)
 
 template logCell(msg: cstring, c: PCell) =
@@ -244,7 +245,7 @@ proc asgnRefNoCycle(dest: PPointer, src: pointer) {.compilerproc, inline,
 
 proc unsureAsgnRef(dest: PPointer, src: pointer) {.compilerproc.} =
   # unsureAsgnRef updates the reference counters only if dest is not on the
-  # stack. It is used by the code generator if it cannot decide wether a
+  # stack. It is used by the code generator if it cannot decide whether a
   # reference is in the stack or not (this can happen for var parameters).
   if not isOnStack(dest):
     if src != nil: incRef(usrToCell(src))
@@ -338,8 +339,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
       var s = cast[PGenericSeq](d)
       if s != nil:
         for i in 0..s.len-1:
-          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-            GenericSeqSize), cell.typ.base, op)
+          forAllChildrenAux(cast[pointer](d +% align(GenericSeqSize, cell.typ.base.align) +% i *% cell.typ.base.size), cell.typ.base, op)
     else: discard
 
 proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
@@ -440,13 +440,15 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
   zeroMem(result, size)
   when defined(memProfiler): nimProfile(size)
 
+{.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+  let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
+{.pop.}
 
 proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   # generates a new object and sets its reference counter to 1
@@ -475,12 +477,14 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
   sysAssert(allocInv(gch.region), "newObjRC1 end")
   when defined(memProfiler): nimProfile(size)
 
+{.push overflowChecks: on.}
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = addInt(mulInt(len, typ.base.size), GenericSeqSize)
+  let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
   when defined(memProfiler): nimProfile(size)
+{.pop.}
 
 proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   collectCT(gch)
@@ -490,11 +494,13 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   sysAssert(allocInv(gch.region), "growObj begin")
 
   var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
-  var elemSize = 1
-  if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+  var elemSize,elemAlign = 1
+  if ol.typ.kind != tyString:
+    elemSize = ol.typ.base.size
+    elemAlign = ol.typ.base.align
   incTypeSize ol.typ, newsize
 
-  var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  var oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len * elemSize
   copyMem(res, ol, oldsize + sizeof(Cell))
   zeroMem(cast[pointer](cast[ByteAddress](res) +% oldsize +% sizeof(Cell)),
           newsize-oldsize)
@@ -610,7 +616,7 @@ when logGC:
     else:
       writeCell("cell {", s)
       forAllChildren(s, waDebug)
-      c_fprintf(stdout, "}\n")
+      c_printf("}\n")
 
 proc doOperation(p: pointer, op: WalkOp) =
   if p == nil: return
@@ -621,7 +627,7 @@ proc doOperation(p: pointer, op: WalkOp) =
   case op
   of waZctDecRef:
     #if not isAllocatedPtr(gch.region, c):
-    #  c_fprintf(stdout, "[GC] decref bug: %p", c)
+    #  c_printf("[GC] decref bug: %p", c)
     gcAssert(isAllocatedPtr(gch.region, c), "decRef: waZctDecRef")
     gcAssert(c.refcount >=% rcIncrement, "doOperation 2")
     logCell("decref (from doOperation)", c)
@@ -680,7 +686,8 @@ proc gcMark(gch: var GcHeap, p: pointer) {.inline.} =
   garbage collection that is used by Nim. For more information, please see the documentation of
   `CLANG_NO_SANITIZE_ADDRESS` in `lib/nimbase.h`.
  ]#
-proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl, codegenDecl: "CLANG_NO_SANITIZE_ADDRESS $# $#$#".} =
+proc markStackAndRegisters(gch: var GcHeap) {.noinline, cdecl,
+    codegenDecl: "CLANG_NO_SANITIZE_ADDRESS N_LIB_PRIVATE $# $#$#".} =
   forEachStackSlot(gch, gcMark)
 
 proc collectZCT(gch: var GcHeap): bool =
@@ -778,7 +785,7 @@ proc collectCTBody(gch: var GcHeap) =
     gch.stat.maxPause = max(gch.stat.maxPause, duration)
     when defined(reportMissedDeadlines):
       if gch.maxPause > 0 and duration > gch.maxPause:
-        c_fprintf(stdout, "[GC] missed deadline: %ld\n", duration)
+        c_printf("[GC] missed deadline: %ld\n", duration)
 
 proc collectCT(gch: var GcHeap) =
   if (gch.zct.len >= gch.zctThreshold or (cycleGC and
@@ -790,6 +797,12 @@ proc collectCT(gch: var GcHeap) =
       markForDebug(gch)
     collectCTBody(gch)
     gch.zctThreshold = max(InitialZctThreshold, gch.zct.len * CycleIncrease)
+
+proc GC_collectZct*() =
+  ## Collect the ZCT (zero count table). Unstable, experimental API for
+  ## testing purposes.
+  ## DO NOT USE!
+  collectCTBody(gch)
 
 when withRealTime:
   proc toNano(x: int): Nanos {.inline.} =

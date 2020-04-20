@@ -35,7 +35,7 @@ when defined(case_testfile): # compiled test file for child process
       # failed. The shell (and lldb debugger) solves that by inserting a
       # helpful msg: `segmentation fault` when it detects a signal killed
       # the child.
-      # todo: expose an API that will show more diagnostic, returing
+      # todo: expose an API that will show more diagnostic, returning
       # (exitCode, signal) instead of just `shellExitCode`.
       if true: quit(139)
     of "exit_recursion": # stack overflow by infinite recursion
@@ -47,7 +47,7 @@ when defined(case_testfile): # compiled test file for child process
 
 else:
 
-  import os, osproc, strutils, posix
+  import os, osproc, strutils
   const nim = getCurrentCompilerExe()
 
   block execShellCmdTest:
@@ -74,7 +74,7 @@ else:
 
   block execProcessTest:
     let dir = parentDir(currentSourcePath())
-    let (outp, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
+    let (_, err) = execCmdEx(nim & " c " & quoteShell(dir / "osproctest.nim"))
     doAssert err == 0
     let exePath = dir / addFileExt("osproctest", ExeExt)
     let outStr1 = execProcess(exePath, workingDir = dir, args = ["foo",

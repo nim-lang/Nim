@@ -49,12 +49,12 @@ proc findDocComment(n: PNode): PNode =
   if n == nil: return nil
   if n.comment.len > 0: return n
   if n.kind in {nkStmtList, nkStmtListExpr, nkObjectTy, nkRecList} and n.len > 0:
-    result = findDocComment(n.sons[0])
+    result = findDocComment(n[0])
     if result != nil: return
     if n.len > 1:
-      result = findDocComment(n.sons[1])
+      result = findDocComment(n[1])
   elif n.kind in {nkAsgn, nkFastAsgn} and n.len == 2:
-    result = findDocComment(n.sons[1])
+    result = findDocComment(n[1])
 
 proc extractDocComment(s: PSym): string =
   var n = findDocComment(s.ast)
@@ -106,11 +106,15 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
       result = 0
   else:
-    result = skipWhile(line, OpChars + {'[', '(', '{', ']', ')', '}'}, column)
+    var sourceIdent: string
+    result = parseWhile(line, sourceIdent,
+                        OpChars + {'[', '(', '{', ']', ')', '}'}, column)
     if ident[^1] == '=' and ident[0] in linter.Letters:
-      if line[column..column + result - 1] != "=":
+      if sourceIdent != "=":
         result = 0
-    elif line[column..column + result - 1] != ident:
+    elif sourceIdent.len > ident.len and sourceIdent[..ident.high] == ident:
+      result = ident.len
+    elif sourceIdent != ident:
       result = 0
 
 proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
@@ -256,7 +260,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
 
 proc getQuality(s: PSym): range[0..100] =
   if s.typ != nil and s.typ.len > 1:
-    var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+    var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
@@ -275,26 +279,25 @@ template wholeSymTab(cond, section: untyped) {.dirty.} =
                                  pm, c.inTypeContext > 0, scopeN))
 
 proc suggestSymList(c: PContext, list, f: PNode; info: TLineInfo, outputs: var Suggestions) =
-  for i in 0 ..< len(list):
-    if list.sons[i].kind == nkSym:
-      suggestField(c, list.sons[i].sym, f, info, outputs)
+  for i in 0..<list.len:
+    if list[i].kind == nkSym:
+      suggestField(c, list[i].sym, f, info, outputs)
     #else: InternalError(list.info, "getSymFromList")
 
 proc suggestObject(c: PContext, n, f: PNode; info: TLineInfo, outputs: var Suggestions) =
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n): suggestObject(c, n.sons[i], f, info, outputs)
+    for i in 0..<n.len: suggestObject(c, n[i], f, info, outputs)
   of nkRecCase:
-    var L = len(n)
-    if L > 0:
-      suggestObject(c, n.sons[0], f, info, outputs)
-      for i in 1 ..< L: suggestObject(c, lastSon(n.sons[i]), f, info, outputs)
+    if n.len > 0:
+      suggestObject(c, n[0], f, info, outputs)
+      for i in 1..<n.len: suggestObject(c, lastSon(n[i]), f, info, outputs)
   of nkSym: suggestField(c, n.sym, f, info, outputs)
   else: discard
 
 proc nameFits(c: PContext, s: PSym, n: PNode): bool =
-  var op = n.sons[0]
-  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op.sons[0]
+  var op = if n.kind in nkCallKinds: n[0] else: n
+  if op.kind in {nkOpenSymChoice, nkClosedSymChoice}: op = op[0]
   var opr: PIdent
   case op.kind
   of nkSym: opr = op.sym.name
@@ -305,8 +308,7 @@ proc nameFits(c: PContext, s: PSym, n: PNode): bool =
 proc argsFit(c: PContext, candidate: PSym, n, nOrig: PNode): bool =
   case candidate.kind
   of OverloadableSyms:
-    var m: TCandidate
-    initCandidate(c, m, candidate, nil)
+    var m = newCandidate(c, candidate, nil)
     sigmatch.partialMatch(c, n, nOrig, m)
     result = m.state != csNoMatch
   else:
@@ -317,18 +319,22 @@ proc suggestCall(c: PContext, n, nOrig: PNode, outputs: var Suggestions) =
   wholeSymTab(filterSym(it, nil, pm) and nameFits(c, it, n) and argsFit(c, it, n, nOrig),
               ideCon)
 
+proc suggestVar(c: PContext, n: PNode, outputs: var Suggestions) =
+  let info = n.info
+  wholeSymTab(nameFits(c, it, n), ideCon)
+
 proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
-  if s.typ != nil and len(s.typ) > 1 and s.typ.sons[1] != nil:
+  if s.typ != nil and s.typ.len > 1 and s.typ[1] != nil:
     # special rule: if system and some weird generic match via 'tyUntyped'
     # or 'tyGenericParam' we won't list it either to reduce the noise (nobody
     # wants 'system.`-|` as suggestion
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ.sons[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+      var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
-    result = sigmatch.argtypeMatches(c, s.typ.sons[1], firstArg)
+    result = sigmatch.argtypeMatches(c, s.typ[1], firstArg)
 
 proc suggestOperations(c: PContext, n, f: PNode, typ: PType, outputs: var Suggestions) =
   assert typ != nil
@@ -391,7 +397,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     var t = typ
     while t != nil:
       suggestSymList(c, t.n, field, n.info, outputs)
-      t = t.sons[0]
+      t = t[0]
     suggestOperations(c, n, field, typ, outputs)
   else:
     let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
@@ -400,8 +406,8 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
       var t = typ
       while true:
         suggestObject(c, t.n, field, n.info, outputs)
-        if t.sons[0] == nil: break
-        t = skipTypes(t.sons[0], skipPtrs)
+        if t[0] == nil: break
+        t = skipTypes(t[0], skipPtrs)
     elif typ.kind == tyTuple and typ.n != nil:
       suggestSymList(c, typ.n, field, n.info, outputs)
     suggestOperations(c, n, field, orig, outputs)
@@ -452,7 +458,7 @@ proc findUsages(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym) =
 
 when defined(nimsuggest):
   proc listUsages*(conf: ConfigRef; s: PSym) =
-    #echo "usages ", len(s.allUsages)
+    #echo "usages ", s.allUsages.len
     for info in s.allUsages:
       let x = if info == s.info and info.col == s.info.col: ideDef else: ideUse
       suggestResult(conf, symToSuggest(conf, s, isLocal=false, x, info, 100, PrefixMatch.None, false, 0))
@@ -495,9 +501,11 @@ proc suggestSym*(conf: ConfigRef; info: TLineInfo; s: PSym; usageSym: var PSym; 
 proc extractPragma(s: PSym): PNode =
   if s.kind in routineKinds:
     result = s.ast[pragmasPos]
-  elif s.kind in {skType, skVar, skLet} and s.ast[0].kind == nkPragmaExpr:
-    # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
-    result = s.ast[0][1]
+  elif s.kind in {skType, skVar, skLet}:
+    if s.ast != nil and s.ast.len > 0:
+      if s.ast[0].kind == nkPragmaExpr and s.ast[0].len > 1:
+        # s.ast = nkTypedef / nkPragmaExpr / [nkSym, nkPragma]
+        result = s.ast[0][1]
   doAssert result == nil or result.kind == nkPragma
 
 proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
@@ -519,14 +527,16 @@ proc warnAboutDeprecated(conf: ConfigRef; info: TLineInfo; s: PSym) =
 
 proc userError(conf: ConfigRef; info: TLineInfo; s: PSym) =
   let pragmaNode = extractPragma(s)
-
+  template bail(prefix: string) =
+    localError(conf, info, "$1usage of '$2' is an {.error.} defined at $3" %
+      [prefix, s.name.s, toFileLineCol(conf, s.ast.info)])
   if pragmaNode != nil:
     for it in pragmaNode:
       if whichPragma(it) == wError and it.safeLen == 2 and
           it[1].kind in {nkStrLit..nkTripleStrLit}:
-        localError(conf, info, it[1].strVal & "; usage of '$1' is a user-defined error" % s.name.s)
+        bail(it[1].strVal & "; ")
         return
-  localError(conf, info, "usage of '$1' is a user-defined error" % s.name.s)
+  bail("")
 
 proc markOwnerModuleAsUsed(c: PContext; s: PSym) =
   var module = s
@@ -567,7 +577,7 @@ proc safeSemExpr*(c: PContext, n: PNode): PNode =
 
 proc sugExpr(c: PContext, n: PNode, outputs: var Suggestions) =
   if n.kind == nkDotExpr:
-    var obj = safeSemExpr(c, n.sons[0])
+    var obj = safeSemExpr(c, n[0])
     # it can happen that errnously we have collected the fieldname
     # of the next line, so we check the 'field' is actually on the same
     # line as the object to prevent this from happening:
@@ -592,15 +602,19 @@ proc suggestExprNoCheck*(c: PContext, n: PNode) =
   elif c.config.ideCmd == ideCon:
     if n.kind in nkCallKinds:
       var a = copyNode(n)
-      var x = safeSemExpr(c, n.sons[0])
-      if x.kind == nkEmpty or x.typ == nil: x = n.sons[0]
-      addSon(a, x)
-      for i in 1..len(n)-1:
+      var x = safeSemExpr(c, n[0])
+      if x.kind == nkEmpty or x.typ == nil: x = n[0]
+      a.add x
+      for i in 1..<n.len:
         # use as many typed arguments as possible:
-        var x = safeSemExpr(c, n.sons[i])
+        var x = safeSemExpr(c, n[i])
         if x.kind == nkEmpty or x.typ == nil: break
-        addSon(a, x)
+        a.add x
       suggestCall(c, a, n, outputs)
+    elif n.kind in nkIdentKinds:
+      var x = safeSemExpr(c, n)
+      if x.kind == nkEmpty or x.typ == nil: x = n
+      suggestVar(c, x, outputs)
 
   dec(c.compilesContextId)
   if outputs.len > 0 and c.config.ideCmd in {ideSug, ideCon, ideDef}:

@@ -182,7 +182,7 @@ proc setRow(res: PPGresult, r: var Row, line, cols: int32) =
 iterator fastRows*(db: DbConn, query: SqlQuery,
                    args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## executes the query and iterates over the result dataset. This is very
-  ## fast, but potenially dangerous: If the for-loop-body executes another
+  ## fast, but potentially dangerous: If the for-loop-body executes another
   ## query, the results can be undefined. For Postgres it is safe though.
   var res = setupQuery(db, query, args)
   var L = pqnfields(res)
@@ -441,8 +441,12 @@ proc getValue*(db: DbConn, query: SqlQuery,
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
-  var x = pqgetvalue(setupQuery(db, query, args), 0, 0)
-  result = if isNil(x): "" else: $x
+  var res = setupQuery(db, query, args)
+  if pqntuples(res) > 0:
+    var x = pqgetvalue(res, 0, 0)
+    result = if isNil(x): "" else: $x
+  else:
+    result = ""
 
 proc getValue*(db: DbConn, stmtName: SqlPrepared,
                args: varargs[string, `$`]): string {.
@@ -450,8 +454,12 @@ proc getValue*(db: DbConn, stmtName: SqlPrepared,
   ## executes the query and returns the first column of the first row of the
   ## result dataset. Returns "" if the dataset contains no rows or the database
   ## value is NULL.
-  var x = pqgetvalue(setupQuery(db, stmtName, args), 0, 0)
-  result = if isNil(x): "" else: $x
+  var res = setupQuery(db, stmtName, args)
+  if pqntuples(res) > 0:
+    var x = pqgetvalue(res, 0, 0)
+    result = if isNil(x): "" else: $x
+  else:
+    result = ""
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64 {.

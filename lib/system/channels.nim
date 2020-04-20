@@ -20,12 +20,126 @@
 ##
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
+##
+## Example
+## =======
+## The following is a simple example of two different ways to use channels:
+## blocking and non-blocking.
+##
+## .. code-block :: Nim
+##   # Be sure to compile with --threads:on.
+##   # The channels and threads modules are part of system and should not be
+##   # imported.
+##   import os
+##
+##   # Channels can either be:
+##   #  - declared at the module level, or
+##   #  - passed to procedures by ptr (raw pointer) -- see note on safety.
+##   #
+##   # For simplicity, in this example a channel is declared at module scope.
+##   # Channels are generic, and they include support for passing objects between
+##   # threads.
+##   # Note that objects passed through channels will be deeply copied.
+##   var chan: Channel[string]
+##
+##   # This proc will be run in another thread using the threads module.
+##   proc firstWorker() =
+##     chan.send("Hello World!")
+##
+##   # This is another proc to run in a background thread. This proc takes a while
+##   # to send the message since it sleeps for 2 seconds (or 2000 milliseconds).
+##   proc secondWorker() =
+##     sleep(2000)
+##     chan.send("Another message")
+##
+##   # Initialize the channel.
+##   chan.open()
+##
+##   # Launch the worker.
+##   var worker1: Thread[void]
+##   createThread(worker1, firstWorker)
+##
+##   # Block until the message arrives, then print it out.
+##   echo chan.recv() # "Hello World!"
+##
+##   # Wait for the thread to exit before moving on to the next example.
+##   worker1.joinThread()
+##
+##   # Launch the other worker.
+##   var worker2: Thread[void]
+##   createThread(worker2, secondWorker)
+##   # This time, use a non-blocking approach with tryRecv.
+##   # Since the main thread is not blocked, it could be used to perform other
+##   # useful work while it waits for data to arrive on the channel.
+##   while true:
+##     let tried = chan.tryRecv()
+##     if tried.dataAvailable:
+##       echo tried.msg # "Another message"
+##       break
+##
+##     echo "Pretend I'm doing useful work..."
+##     # For this example, sleep in order not to flood stdout with the above
+##     # message.
+##     sleep(400)
+##
+##   # Wait for the second thread to exit before cleaning up the channel.
+##   worker2.joinThread()
+##
+##   # Clean up the channel.
+##   chan.close()
+##
+## Sample output
+## -------------
+## The program should output something similar to this, but keep in mind that
+## exact results may vary in the real world::
+##   Hello World!
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Another message
+##
+## Passing Channels Safely
+## ----------------------
+## Note that when passing objects to procedures on another thread by pointer
+## (for example through a thread's argument), objects created using the default
+## allocator will use thread-local, GC-managed memory. Thus it is generally
+## safer to store channel objects in global variables (as in the above example),
+## in which case they will use a process-wide (thread-safe) shared heap.
+##
+## However, it is possible to manually allocate shared memory for channels
+## using e.g. ``system.allocShared0`` and pass these pointers through thread
+## arguments:
+##
+## .. code-block :: Nim
+##   proc worker(channel: ptr Channel[string]) =
+##     let greeting = channel[].recv()
+##     echo greeting
+##
+##   proc localChannelExample() =
+##     # Use allocShared0 to allocate some shared-heap memory and zero it.
+##     # The usual warnings about dealing with raw pointers apply. Exercise caution.
+##     var channel = cast[ptr Channel[string]](
+##       allocShared0(sizeof(Channel[string]))
+##     )
+##     channel[].open()
+##     # Create a thread which will receive the channel as an argument.
+##     var thread: Thread[ptr Channel[string]]
+##     createThread(thread, worker, channel)
+##     channel[].send("Hello from the main thread!")
+##     # Clean up resources.
+##     thread.joinThread()
+##     channel[].close()
+##     deallocShared(channel)
+##
+##   localChannelExample() # "Hello from the main thread!"
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
 
 type
-  pbytes = ptr array[0.. 0xffff, byte]
+  pbytes = ptr UncheckedArray[byte]
   RawChannel {.pure, final.} = object ## msg queue for a thread
     rd, wr, count, mask, maxItems: int
     data: pbytes
@@ -33,7 +147,8 @@ type
     cond: SysCond
     elemType: PNimType
     ready: bool
-    region: MemRegion
+    when not usesDestructors:
+      region: MemRegion
   PRawChannel = ptr RawChannel
   LoadStoreMode = enum mStore, mLoad
   Channel* {.gcsafe.}[TMsg] = RawChannel ## a channel for thread communication
@@ -52,130 +167,135 @@ proc deinitRawChannel(p: pointer) =
   # we need to grab the lock to be safe against sending threads!
   acquireSys(c.lock)
   c.mask = ChannelDeadMask
-  deallocOsPages(c.region)
+  when not usesDestructors:
+    deallocOsPages(c.region)
+  else:
+    if c.data != nil: deallocShared(c.data)
   deinitSys(c.lock)
   deinitSysCond(c.cond)
 
-proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
-              mode: LoadStoreMode) {.benign.}
+when not usesDestructors:
 
-proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
-              mode: LoadStoreMode) {.benign.} =
-  var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
-  case n.kind
-  of nkSlot: storeAux(cast[pointer](d +% n.offset),
-                      cast[pointer](s +% n.offset), n.typ, t, mode)
-  of nkList:
-    for i in 0..n.len-1: storeAux(dest, src, n.sons[i], t, mode)
-  of nkCase:
-    copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
-            n.typ.size)
-    var m = selectBranch(src, n)
-    if m != nil: storeAux(dest, src, m, t, mode)
-  of nkNone: sysAssert(false, "storeAux")
+  proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
+                mode: LoadStoreMode) {.benign.}
 
-proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
-              mode: LoadStoreMode) =
-  template `+!`(p: pointer; x: int): pointer =
-    cast[pointer](cast[int](p) +% x)
+  proc storeAux(dest, src: pointer, n: ptr TNimNode, t: PRawChannel,
+                mode: LoadStoreMode) {.benign.} =
+    var
+      d = cast[ByteAddress](dest)
+      s = cast[ByteAddress](src)
+    case n.kind
+    of nkSlot: storeAux(cast[pointer](d +% n.offset),
+                        cast[pointer](s +% n.offset), n.typ, t, mode)
+    of nkList:
+      for i in 0..n.len-1: storeAux(dest, src, n.sons[i], t, mode)
+    of nkCase:
+      copyMem(cast[pointer](d +% n.offset), cast[pointer](s +% n.offset),
+              n.typ.size)
+      var m = selectBranch(src, n)
+      if m != nil: storeAux(dest, src, m, t, mode)
+    of nkNone: sysAssert(false, "storeAux")
 
-  var
-    d = cast[ByteAddress](dest)
-    s = cast[ByteAddress](src)
-  sysAssert(mt != nil, "mt == nil")
-  case mt.kind
-  of tyString:
-    if mode == mStore:
+  proc storeAux(dest, src: pointer, mt: PNimType, t: PRawChannel,
+                mode: LoadStoreMode) =
+    template `+!`(p: pointer; x: int): pointer =
+      cast[pointer](cast[int](p) +% x)
+
+    var
+      d = cast[ByteAddress](dest)
+      s = cast[ByteAddress](src)
+    sysAssert(mt != nil, "mt == nil")
+    case mt.kind
+    of tyString:
+      if mode == mStore:
+        var x = cast[PPointer](dest)
+        var s2 = cast[PPointer](s)[]
+        if s2 == nil:
+          x[] = nil
+        else:
+          var ss = cast[NimString](s2)
+          var ns = cast[NimString](alloc(t.region, GenericSeqSize + ss.len+1))
+          copyMem(ns, ss, ss.len+1 + GenericSeqSize)
+          x[] = ns
+      else:
+        var x = cast[PPointer](dest)
+        var s2 = cast[PPointer](s)[]
+        if s2 == nil:
+          unsureAsgnRef(x, s2)
+        else:
+          let y = copyDeepString(cast[NimString](s2))
+          #echo "loaded ", cast[int](y), " ", cast[string](y)
+          unsureAsgnRef(x, y)
+          dealloc(t.region, s2)
+    of tySequence:
+      var s2 = cast[PPointer](src)[]
+      var seq = cast[PGenericSeq](s2)
       var x = cast[PPointer](dest)
-      var s2 = cast[PPointer](s)[]
       if s2 == nil:
-        x[] = nil
+        if mode == mStore:
+          x[] = nil
+        else:
+          unsureAsgnRef(x, nil)
       else:
-        var ss = cast[NimString](s2)
-        var ns = cast[NimString](alloc(t.region, ss.len+1 + GenericSeqSize))
-        copyMem(ns, ss, ss.len+1 + GenericSeqSize)
-        x[] = ns
-    else:
+        sysAssert(dest != nil, "dest == nil")
+        if mode == mStore:
+          x[] = alloc0(t.region, align(GenericSeqSize, mt.base.align) +% seq.len *% mt.base.size)
+        else:
+          unsureAsgnRef(x, newSeq(mt, seq.len))
+        var dst = cast[ByteAddress](cast[PPointer](dest)[])
+        var dstseq = cast[PGenericSeq](dst)
+        dstseq.len = seq.len
+        dstseq.reserved = seq.len
+        for i in 0..seq.len-1:
+          storeAux(
+            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i*% mt.base.size),
+            cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +%
+                          i *% mt.base.size),
+            mt.base, t, mode)
+        if mode != mStore: dealloc(t.region, s2)
+    of tyObject:
+      if mt.base != nil:
+        storeAux(dest, src, mt.base, t, mode)
+      else:
+        # copy type field:
+        var pint = cast[ptr PNimType](dest)
+        pint[] = cast[ptr PNimType](src)[]
+      storeAux(dest, src, mt.node, t, mode)
+    of tyTuple:
+      storeAux(dest, src, mt.node, t, mode)
+    of tyArray, tyArrayConstr:
+      for i in 0..(mt.size div mt.base.size)-1:
+        storeAux(cast[pointer](d +% i*% mt.base.size),
+                cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
+    of tyRef:
+      var s = cast[PPointer](src)[]
       var x = cast[PPointer](dest)
-      var s2 = cast[PPointer](s)[]
-      if s2 == nil:
-        unsureAsgnRef(x, s2)
+      if s == nil:
+        if mode == mStore:
+          x[] = nil
+        else:
+          unsureAsgnRef(x, nil)
       else:
-        let y = copyDeepString(cast[NimString](s2))
-        #echo "loaded ", cast[int](y), " ", cast[string](y)
-        unsureAsgnRef(x, y)
-        dealloc(t.region, s2)
-  of tySequence:
-    var s2 = cast[PPointer](src)[]
-    var seq = cast[PGenericSeq](s2)
-    var x = cast[PPointer](dest)
-    if s2 == nil:
-      if mode == mStore:
-        x[] = nil
-      else:
-        unsureAsgnRef(x, nil)
+        #let size = if mt.base.kind == tyObject: cast[ptr PNimType](s)[].size
+        #           else: mt.base.size
+        if mode == mStore:
+          let dyntype = when declared(usrToCell): usrToCell(s).typ
+                        else: mt
+          let size = dyntype.base.size
+          # we store the real dynamic 'ref type' at offset 0, so that
+          # no information is lost
+          let a = alloc0(t.region, size+sizeof(pointer))
+          x[] = a
+          cast[PPointer](a)[] = dyntype
+          storeAux(a +! sizeof(pointer), s, dyntype.base, t, mode)
+        else:
+          let dyntype = cast[ptr PNimType](s)[]
+          var obj = newObj(dyntype, dyntype.base.size)
+          unsureAsgnRef(x, obj)
+          storeAux(x[], s +! sizeof(pointer), dyntype.base, t, mode)
+          dealloc(t.region, s)
     else:
-      sysAssert(dest != nil, "dest == nil")
-      if mode == mStore:
-        x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
-      else:
-        unsureAsgnRef(x, newSeq(mt, seq.len))
-      var dst = cast[ByteAddress](cast[PPointer](dest)[])
-      var dstseq = cast[PGenericSeq](dst)
-      dstseq.len = seq.len
-      dstseq.reserved = seq.len
-      for i in 0..seq.len-1:
-        storeAux(
-          cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                        GenericSeqSize),
-          mt.base, t, mode)
-      if mode != mStore: dealloc(t.region, s2)
-  of tyObject:
-    if mt.base != nil:
-      storeAux(dest, src, mt.base, t, mode)
-    else:
-      # copy type field:
-      var pint = cast[ptr PNimType](dest)
-      pint[] = cast[ptr PNimType](src)[]
-    storeAux(dest, src, mt.node, t, mode)
-  of tyTuple:
-    storeAux(dest, src, mt.node, t, mode)
-  of tyArray, tyArrayConstr:
-    for i in 0..(mt.size div mt.base.size)-1:
-      storeAux(cast[pointer](d +% i*% mt.base.size),
-               cast[pointer](s +% i*% mt.base.size), mt.base, t, mode)
-  of tyRef:
-    var s = cast[PPointer](src)[]
-    var x = cast[PPointer](dest)
-    if s == nil:
-      if mode == mStore:
-        x[] = nil
-      else:
-        unsureAsgnRef(x, nil)
-    else:
-      #let size = if mt.base.kind == tyObject: cast[ptr PNimType](s)[].size
-      #           else: mt.base.size
-      if mode == mStore:
-        let dyntype = when declared(usrToCell): usrToCell(s).typ
-                      else: mt
-        let size = dyntype.base.size
-        # we store the real dynamic 'ref type' at offset 0, so that
-        # no information is lost
-        let a = alloc0(t.region, size+sizeof(pointer))
-        x[] = a
-        cast[PPointer](a)[] = dyntype
-        storeAux(a +! sizeof(pointer), s, dyntype.base, t, mode)
-      else:
-        let dyntype = cast[ptr PNimType](s)[]
-        var obj = newObj(dyntype, dyntype.base.size)
-        unsureAsgnRef(x, obj)
-        storeAux(x[], s +! sizeof(pointer), dyntype.base, t, mode)
-        dealloc(t.region, s)
-  else:
-    copyMem(dest, src, mt.size) # copy raw bits
+      copyMem(dest, src, mt.size) # copy raw bits
 
 proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
   ## Adds an `item` to the end of the queue `q`.
@@ -183,7 +303,10 @@ proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
   if q.count >= cap:
     # start with capacity for 2 entries in the queue:
     if cap == 0: cap = 1
-    var n = cast[pbytes](alloc0(q.region, cap*2*typ.size))
+    when not usesDestructors:
+      var n = cast[pbytes](alloc0(q.region, cap*2*typ.size))
+    else:
+      var n = cast[pbytes](allocShared0(cap*2*typ.size))
     var z = 0
     var i = q.rd
     var c = q.count
@@ -192,19 +315,29 @@ proc rawSend(q: PRawChannel, data: pointer, typ: PNimType) =
       copyMem(addr(n[z*typ.size]), addr(q.data[i*typ.size]), typ.size)
       i = (i + 1) and q.mask
       inc z
-    if q.data != nil: dealloc(q.region, q.data)
+    if q.data != nil:
+      when not usesDestructors:
+        dealloc(q.region, q.data)
+      else:
+        deallocShared(q.data)
     q.data = n
     q.mask = cap*2 - 1
     q.wr = q.count
     q.rd = 0
-  storeAux(addr(q.data[q.wr * typ.size]), data, typ, q, mStore)
+  when not usesDestructors:
+    storeAux(addr(q.data[q.wr * typ.size]), data, typ, q, mStore)
+  else:
+    copyMem(addr(q.data[q.wr * typ.size]), data, typ.size)
   inc q.count
   q.wr = (q.wr + 1) and q.mask
 
 proc rawRecv(q: PRawChannel, data: pointer, typ: PNimType) =
   sysAssert q.count > 0, "rawRecv"
   dec q.count
-  storeAux(data, addr(q.data[q.rd * typ.size]), typ, q, mLoad)
+  when not usesDestructors:
+    storeAux(data, addr(q.data[q.rd * typ.size]), typ, q, mLoad)
+  else:
+    copyMem(data, addr(q.data[q.rd * typ.size]), typ.size)
   q.rd = (q.rd + 1) and q.mask
 
 template lockChannel(q, action): untyped =
@@ -231,18 +364,23 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
   signalSysCond(q.cond)
   result = true
 
-proc send*[TMsg](c: var Channel[TMsg], msg: TMsg) {.inline.} =
+proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
   ## Sends a message to a thread. `msg` is deeply copied.
   discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
+  when defined(gcDestructors):
+    wasMoved(msg)
 
-proc trySend*[TMsg](c: var Channel[TMsg], msg: TMsg): bool {.inline.} =
+proc trySend*[TMsg](c: var Channel[TMsg], msg: sink TMsg): bool {.inline.} =
   ## Tries to send a message to a thread.
   ##
   ## `msg` is deeply copied. Doesn't block.
   ##
   ## Returns `false` if the message was not sent because number of pending items
   ## in the channel exceeded `maxItems`.
-  sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
+  result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
+  when defined(gcDestructors):
+    if result:
+      wasMoved(msg)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = true
@@ -314,4 +452,3 @@ proc ready*[TMsg](c: var Channel[TMsg]): bool =
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
-

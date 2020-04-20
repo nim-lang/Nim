@@ -1,102 +1,50 @@
-# v1.1 - XXXX-XX-XX
+# v1.4.0 - yyyy-mm-dd
 
 
-## Changes affecting backwards compatibility
 
-- The switch ``-d:nimBinaryStdFiles`` does not exist anymore. Instead
-  stdin/stdout/stderr are binary files again. This change only affects
-  Windows.
-- On Windows console applications the code-page is set at program startup
-  to UTF-8. Use the new switch `-d:nimDontSetUtf8CodePage` to disable this
-  feature.
+## Standard library additions and changes
 
-- The language definition and compiler are now stricter about ``gensym``'ed
-  symbols in hygienic templates. See the section in the
-  [manual](https://nim-lang.org/docs/manual.html#templates-hygiene-in-templates)
-  for further details. Use the compiler switch `--oldgensym:on` for a
-  transition period.
-
-
-### Breaking changes in the standard library
-
-- We removed `unicode.Rune16` without any deprecation period as the name
-  was wrong (see the [RFC](https://github.com/nim-lang/RFCs/issues/151) for details)
-  and we didn't find any usages of it in the wild. If you still need it, add this
-  piece of code to your project:
-
-```nim
-
-type
-  Rune16* = distinct int16
-
-```
-
-- `exportc` now uses C instead of C++ mangling with `nim cpp`, matching behavior of `importc`, see #10578
-  Use the new `exportcpp` to mangle as C++ when using `nim cpp`.
-
-### Breaking changes in the compiler
-
-- A bug allowing `int` to be implicitly converted to range types of smaller size (e.g `range[0'i8..10'i8]`) has been fixed.
-
-
-## Library additions
-
-- `encodings.getCurrentEncoding` now distinguishes between the console's
-  encoding and the OS's encoding. This distinction is only meaningful on
-  Windows.
-- Added `system.getOsFileHandle` which is usually more useful
-  than `system.getFileHandle`. This distinction is only meaningful on
-  Windows.
-- Added a `json.parseJsonFragments` iterator that can be used to speedup
-  JSON processing substantially when there are JSON fragments separated
-  by whitespace.
-
-
-## Library changes
-
-- Added `os.delEnv` and `nimscript.delEnv`. (#11466)
-
-- Enabled Oid usage in hashtables. (#11472)
-
-- Added `unsafeColumnAt` procs, that return unsafe cstring from InstantRow. (#11647)
-
-- Make public `Sha1Digest` and `Sha1State` types and `newSha1State`,
-  `update` and `finalize` procedures from `sha1` module. (#11694)
-
-- Added the `std/monotimes` module which implements monotonic timestamps.
-
-- Consistent error handling of two `exec` overloads. (#10967)
-
-## Language additions
-
-- Inline iterators returning `lent T` types are now supported, similarly to iterators returning `var T`:
-```nim
-iterator myitems[T](x: openarray[T]): lent T
-iterator mypairs[T](x: openarray[T]): tuple[idx: int, val: lent T]
-```
+- `uri` adds Data URI Base64, implements RFC-2397.
+- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
+  to the `dom` module for the JavaScript target.
+- The default hash for `Ordinal` has changed to something more bit-scrambling.
+  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
+  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
 
 ## Language changes
+- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
+  ```nim
+  type
+    MyObj = object
+      case kind: bool
+        of true: y: ptr UncheckedArray[float]
+        of false: z: seq[int]
 
-- `uint64` is now finally a regular ordinal type. This means `high(uint64)` compiles
-  and yields the correct value.
+  proc `=destroy`(x: MyObj) =
+    if x.kind and x.y != nil:
+      deallocShared(x.y)
+      x.y = nil
+  ```
+  Refactor into:
+  ```nim
+  type
+    MySubObj = object
+      val: ptr UncheckedArray[float]
+    MyObj = object
+      case kind: bool
+      of true: y: MySubObj
+      of false: z: seq[int]
 
+  proc `=destroy`(x: MySubObj) =
+    if x.val != nil:
+      deallocShared(x.val)
+      x.val = nil
+  ```
 
-### Tool changes
+## Compiler changes
 
-- The Nim compiler now does not recompile the Nim project via ``nim c -r`` if
-  no dependent Nim file changed. This feature can be overridden by
-  the ``--forceBuild`` command line option.
-- The Nim compiler now warns about unused module imports. You can use a
-  top level ``{.used.}`` pragma in the module that you want to be importable
-  without producing this warning.
-- The "testament" testing tool's name was changed
-  from `tester` to `testament` and is generally available as a tool to run Nim
-  tests automatically.
+- Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
+- The `define` and `undef` pragmas have been de-deprecated.
 
+## Tool changes
 
-### Compiler changes
-
-- VM can now cast integer type arbitrarily. (#11459)
-
-
-## Bugfixes

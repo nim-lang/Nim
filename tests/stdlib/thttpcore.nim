@@ -4,7 +4,7 @@ output: "[Suite] httpcore"
 
 import unittest
 
-import httpcore
+import httpcore, strutils
 
 suite "httpcore":
 
@@ -29,3 +29,8 @@ suite "httpcore":
     assert "baR" in h["cookiE"]
     h.del("coOKie")
     assert h.len == 0
+
+    # Test that header constructor works with repeated values
+    let h1 = newHttpHeaders({"a": "1", "a": "2", "A": "3"})
+
+    assert seq[string](h1["a"]).join(",") == "1,2,3"

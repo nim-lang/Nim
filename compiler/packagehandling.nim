@@ -15,10 +15,8 @@ iterator myParentDirs(p: string): string =
     if current.len == 0: break
     yield current
 
-proc resetPackageCache*(conf: ConfigRef) =
-  conf.packageCache = newPackageCache()
-
-proc getPackageName*(conf: ConfigRef; path: string): string =
+proc getNimbleFile*(conf: ConfigRef; path: string): string =
+  ## returns absolute path to nimble file, eg: /pathto/cligen.nimble
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
@@ -27,7 +25,7 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
         return conf.packageCache[d]
       inc parents
       for file in walkFiles(d / "*.nimble"):
-        result = file.splitFile.name
+        result = file
         break packageSearch
   # we also store if we didn't find anything:
   when not defined(nimNoNilSeqs):
@@ -38,21 +36,26 @@ proc getPackageName*(conf: ConfigRef; path: string): string =
     dec parents
     if parents <= 0: break
 
+proc getPackageName*(conf: ConfigRef; path: string): string =
+  ## returns nimble package name, eg: `cligen`
+  let path = getNimbleFile(conf, path)
+  result = path.splitFile.name
+
 proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =
+  # Convert `path` so that 2 modules with same name
+  # in different directory get different name and they can be
+  # placed in a directory.
   # foo-#head/../bar becomes @foo-@hhead@s..@sbar
-  result = "@m" & relativeTo(path, conf.projectPath, '/').string.multiReplace({"/": "@s", "#": "@h", "@": "@@"})
+  result = "@m" & relativeTo(path, conf.projectPath).string.multiReplace({$os.DirSep: "@s", $os.AltSep: "@s", "#": "@h", "@": "@@", ":": "@c"})
 
 proc demanglePackageName*(path: string): string =
-  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": ""})
+  result = path.multiReplace({"@@": "@", "@h": "#", "@s": "/", "@m": "", "@c": ":"})
 
 proc withPackageName*(conf: ConfigRef; path: AbsoluteFile): AbsoluteFile =
   let x = getPackageName(conf, path.string)
-  if x.len == 0:
-    result = path
+  let (p, file, ext) = path.splitFile
+  if x == "stdlib":
+    # Hot code reloading now relies on 'stdlib_system' names etc.
+    result = p / RelativeFile((x & '_' & file) & ext)
   else:
-    let (p, file, ext) = path.splitFile
-    if x == "stdlib":
-      # Hot code reloading now relies on 'stdlib_system' names etc.
-      result = p / RelativeFile((x & '_' & file) & ext)
-    else:
-      result = p / RelativeFile(fakePackageName(conf, path))
+    result = p / RelativeFile(fakePackageName(conf, path))

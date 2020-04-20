@@ -13,10 +13,11 @@
 import unicode
 
 proc editDistance*(a, b: string): int {.noSideEffect.} =
-  ## Returns the unicode-rune edit distance between ``a`` and ``b``.
+  ## Returns the **unicode-rune** edit distance between ``a`` and ``b``.
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
+  runnableExamples: static: doAssert editdistance("Kitten", "Bitten") == 1
   if len(a) > len(b):
     # make ``b`` the longer string
     return editDistance(b, a)
@@ -181,6 +182,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   ##
   ## This uses the `Levenshtein`:idx: distance algorithm with only a linear
   ## memory overhead.
+  runnableExamples: static: doAssert editDistanceAscii("Kitten", "Bitten") == 1
   var len1 = a.len
   var len2 = b.len
   if len1 > len2:
@@ -210,7 +212,7 @@ proc editDistanceAscii*(a, b: string): int {.noSideEffect.} =
   inc(len1)
   inc(len2)
   var half = len1 shr 1
-  # initalize first row:
+  # initialize first row:
   #var row = cast[ptr array[0..high(int) div 8, int]](alloc(len2*sizeof(int)))
   var row: seq[int]
   newSeq(row, len2)
@@ -293,3 +295,13 @@ when isMainModule:
   doAssert editDistanceAscii("", "") == 0
   doAssert editDistanceAscii("kitten", "sitting") == 3 # from Wikipedia
   doAssert editDistanceAscii("flaw", "lawn") == 2 # from Wikipedia
+
+
+  assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffix") == 0)
+  assert(editDistance("prefix__hallo_suffix", "prefix__hallo_suffi1") == 1)
+  assert(editDistance("prefix__hallo_suffix", "prefix__HALLO_suffix") == 5)
+  assert(editDistance("prefix__hallo_suffix", "prefix__ha_suffix") == 3)
+  assert(editDistance("prefix__hallo_suffix", "prefix") == 14)
+  assert(editDistance("prefix__hallo_suffix", "suffix") == 14)
+  assert(editDistance("prefix__hallo_suffix", "prefix__hao_suffix") == 2)
+  assert(editDistance("main", "malign") == 2)

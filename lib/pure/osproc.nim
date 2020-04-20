@@ -27,27 +27,27 @@ when defined(windows):
 else:
   import posix
 
-when defined(linux):
+when defined(linux) and defined(useClone):
   import linux
 
 type
   ProcessOption* = enum ## Options that can be passed to `startProcess proc
-    ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
-    poEchoCmd,              ## Echo the command before execution.
-    poUsePath,              ## Asks system to search for executable using PATH environment
-                            ## variable.
-                            ## On Windows, this is the default.
-    poEvalCommand,          ## Pass `command` directly to the shell, without quoting.
-                            ## Use it only if `command` comes from trusted source.
-    poStdErrToStdOut,       ## Merge stdout and stderr to the stdout stream.
-    poParentStreams,        ## Use the parent's streams.
-    poInteractive,          ## Optimize the buffer handling for responsiveness for
-                            ## UI applications. Currently this only affects
-                            ## Windows: Named pipes are used so that you can peek
-                            ## at the process' output streams.
-    poDaemon                ## Windows: The program creates no Window.
-                            ## Unix: Start the program as a daemon. This is still
-                            ## work in progress!
+                        ## <#startProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_.
+    poEchoCmd,          ## Echo the command before execution.
+    poUsePath,          ## Asks system to search for executable using PATH environment
+                        ## variable.
+                        ## On Windows, this is the default.
+    poEvalCommand,      ## Pass `command` directly to the shell, without quoting.
+                        ## Use it only if `command` comes from trusted source.
+    poStdErrToStdOut,   ## Merge stdout and stderr to the stdout stream.
+    poParentStreams,    ## Use the parent's streams.
+    poInteractive,      ## Optimize the buffer handling for responsiveness for
+                        ## UI applications. Currently this only affects
+                        ## Windows: Named pipes are used so that you can peek
+                        ## at the process' output streams.
+    poDaemon            ## Windows: The program creates no Window.
+                        ## Unix: Start the program as a daemon. This is still
+                        ## work in progress!
 
   ProcessObj = object of RootObj
     when defined(windows):
@@ -66,21 +66,16 @@ type
   Process* = ref ProcessObj ## Represents an operating system process.
 
 const poDemon* {.deprecated.} = poDaemon ## Nim versions before 0.20
-  ## used the wrong spelling ("demon").
-  ## Now `ProcessOption` uses the correct spelling ("daemon"),
-  ## and this is needed just for backward compatibility.
+                                         ## used the wrong spelling ("demon").
+                                         ## Now `ProcessOption` uses the correct spelling ("daemon"),
+                                         ## and this is needed just for backward compatibility.
 
 
-proc execProcess*(command: string,
-                  workingDir: string = "",
-                  args: openArray[string] = [],
-                  env: StringTableRef = nil,
-                  options: set[ProcessOption] = {poStdErrToStdOut,
-                                                  poUsePath,
-                                                  poEvalCommand}): TaintedString {.
-                                                  rtl, extern: "nosp$1",
-                                                  tags: [ExecIOEffect, ReadIOEffect,
-                                                  RootEffect].}
+proc execProcess*(command: string, workingDir: string = "",
+    args: openArray[string] = [], env: StringTableRef = nil,
+    options: set[ProcessOption] = {poStdErrToStdOut, poUsePath, poEvalCommand}):
+  TaintedString {.rtl, extern: "nosp$1",
+                  tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## A convenience procedure that executes ``command`` with ``startProcess``
   ## and returns its output as a string.
   ##
@@ -102,8 +97,8 @@ proc execProcess*(command: string,
   ##  # Note: outp may have an interleave of text from the nim compile
   ##  # and any output from mytestfile when it runs
 
-proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect,
-  ReadIOEffect, RootEffect].}
+proc execCmd*(command: string): int {.rtl, extern: "nosp$1",
+    tags: [ExecIOEffect, ReadIOEffect, RootEffect].}
   ## Executes ``command`` and returns its error code.
   ##
   ## Standard input, output, error streams are inherited from the calling process.
@@ -121,13 +116,11 @@ proc execCmd*(command: string): int {.rtl, extern: "nosp$1", tags: [ExecIOEffect
   ## .. code-block:: Nim
   ##  let errC = execCmd("nim c -r mytestfile.nim")
 
-proc startProcess*(command: string,
-                   workingDir: string = "",
-                   args: openArray[string] = [],
-                   env: StringTableRef = nil,
-                   options: set[ProcessOption] = {poStdErrToStdOut}):
-              owned(Process) {.rtl, extern: "nosp$1", tags: [ExecIOEffect, ReadEnvEffect,
-              RootEffect].}
+proc startProcess*(command: string, workingDir: string = "",
+    args: openArray[string] = [], env: StringTableRef = nil,
+    options: set[ProcessOption] = {poStdErrToStdOut}):
+  owned(Process) {.rtl, extern: "nosp$1",
+                   tags: [ExecIOEffect, ReadEnvEffect, RootEffect].}
   ## Starts a process. `Command` is the executable file, `workingDir` is the
   ## process's working directory. If ``workingDir == ""`` the current directory
   ## is used (default). `args` are the command line arguments that are passed to the
@@ -216,7 +209,7 @@ proc processID*(p: Process): int {.rtl, extern: "nosp$1".} =
   return p.id
 
 proc waitForExit*(p: Process, timeout: int = -1): int {.rtl,
-  extern: "nosp$1", tags: [].}
+    extern: "nosp$1", tags: [].}
   ## Waits for the process to finish and returns `p`'s error code.
   ##
   ## **WARNING**: Be careful when using `waitForExit` for processes created without
@@ -274,7 +267,7 @@ proc inputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   result = p.inHandle
 
 proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
-  tags: [].} =
+    tags: [].} =
   ## Returns ``p``'s output file handle for reading from.
   ##
   ## **WARNING**: The returned `FileHandle` should not be closed manually as
@@ -286,7 +279,7 @@ proc outputHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
   result = p.outHandle
 
 proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
-  tags: [].} =
+    tags: [].} =
   ## Returns ``p``'s error file handle for reading from.
   ##
   ## **WARNING**: The returned `FileHandle` should not be closed manually as
@@ -300,15 +293,15 @@ proc errorHandle*(p: Process): FileHandle {.rtl, extern: "nosp$1",
 proc countProcessors*(): int {.rtl, extern: "nosp$1".} =
   ## Returns the number of the processors/cores the machine has.
   ## Returns 0 if it cannot be detected.
+  ## It is implemented just calling `cpuinfo.countProcessors`.
   result = cpuinfo.countProcessors()
 
 proc execProcesses*(cmds: openArray[string],
-                    options = {poStdErrToStdOut, poParentStreams},
-                    n = countProcessors(),
-                    beforeRunEvent: proc(idx: int) = nil,
-                    afterRunEvent: proc(idx: int, p: Process) = nil): int
-                    {.rtl, extern: "nosp$1",
-                    tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
+    options = {poStdErrToStdOut, poParentStreams}, n = countProcessors(),
+    beforeRunEvent: proc(idx: int) = nil,
+    afterRunEvent: proc(idx: int, p: Process) = nil):
+  int {.rtl, extern: "nosp$1",
+        tags: [ExecIOEffect, TimeEffect, ReadEnvEffect, RootEffect].} =
   ## Executes the commands `cmds` in parallel.
   ## Creates `n` processes that execute in parallel.
   ##
@@ -413,20 +406,20 @@ proc execProcesses*(cmds: openArray[string],
     for i in 0..high(cmds):
       if beforeRunEvent != nil:
         beforeRunEvent(i)
-      var p = startProcess(cmds[i], options=options + {poEvalCommand})
+      var p = startProcess(cmds[i], options = options + {poEvalCommand})
       result = max(abs(waitForExit(p)), result)
       if afterRunEvent != nil: afterRunEvent(i, p)
       close(p)
 
 when not defined(useNimRtl):
-  proc execProcess(command: string,
-                   workingDir: string = "",
-                   args: openArray[string] = [],
-                   env: StringTableRef = nil,
-                   options: set[ProcessOption] = {poStdErrToStdOut,
-                                                   poUsePath,
-                                                   poEvalCommand}): TaintedString =
-    var p = startProcess(command, workingDir=workingDir, args=args, env=env, options=options)
+  proc execProcess(command: string, workingDir: string = "",
+      args: openArray[string] = [], env: StringTableRef = nil,
+      options: set[ProcessOption] = {poStdErrToStdOut, poUsePath,
+          poEvalCommand}):
+    TaintedString =
+
+    var p = startProcess(command, workingDir = workingDir, args = args,
+        env = env, options = options)
     var outp = outputStream(p)
     result = TaintedString""
     var line = newStringOfCap(120).TaintedString
@@ -501,16 +494,14 @@ when defined(Windows) and not defined(useNimRtl):
   #var
   #  O_WRONLY {.importc: "_O_WRONLY", header: "<fcntl.h>".}: int
   #  O_RDONLY {.importc: "_O_RDONLY", header: "<fcntl.h>".}: int
-  proc myDup(h: Handle; inherit: WINBOOL=1): Handle =
+  proc myDup(h: Handle; inherit: WINBOOL = 1): Handle =
     let thisProc = getCurrentProcess()
-    if duplicateHandle(thisProc, h,
-                       thisProc, addr result,0,inherit,
+    if duplicateHandle(thisProc, h, thisProc, addr result, 0, inherit,
                        DUPLICATE_SAME_ACCESS) == 0:
       raiseOSError(osLastError())
 
   proc createAllPipeHandles(si: var STARTUPINFO;
-                            stdin, stdout, stderr: var Handle;
-                            hash: int) =
+                            stdin, stdout, stderr: var Handle; hash: int) =
     var sa: SECURITY_ATTRIBUTES
     sa.nLength = sizeof(SECURITY_ATTRIBUTES).cint
     sa.lpSecurityDescriptor = nil
@@ -518,38 +509,38 @@ when defined(Windows) and not defined(useNimRtl):
     let pipeOutName = newWideCString(r"\\.\pipe\stdout" & $hash)
     let pipeInName = newWideCString(r"\\.\pipe\stdin" & $hash)
     let pipeOut = createNamedPipe(pipeOutName,
-      dwOpenMode=PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
-      dwPipeMode=PIPE_NOWAIT,
-      nMaxInstances=1,
-      nOutBufferSize=1024, nInBufferSize=1024,
-      nDefaultTimeOut=0,addr sa)
+      dwOpenMode = PIPE_ACCESS_INBOUND or FILE_FLAG_WRITE_THROUGH,
+      dwPipeMode = PIPE_NOWAIT,
+      nMaxInstances = 1,
+      nOutBufferSize = 1024, nInBufferSize = 1024,
+      nDefaultTimeOut = 0, addr sa)
     if pipeOut == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
     let pipeIn = createNamedPipe(pipeInName,
-      dwOpenMode=PIPE_ACCESS_OUTBOUND or FILE_FLAG_WRITE_THROUGH,
-      dwPipeMode=PIPE_NOWAIT,
-      nMaxInstances=1,
-      nOutBufferSize=1024, nInBufferSize=1024,
-      nDefaultTimeOut=0,addr sa)
+      dwOpenMode = PIPE_ACCESS_OUTBOUND or FILE_FLAG_WRITE_THROUGH,
+      dwPipeMode = PIPE_NOWAIT,
+      nMaxInstances = 1,
+      nOutBufferSize = 1024, nInBufferSize = 1024,
+      nDefaultTimeOut = 0, addr sa)
     if pipeIn == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
     si.hStdOutput = createFileW(pipeOutName,
         FILE_WRITE_DATA or SYNCHRONIZE, 0, addr sa,
         OPEN_EXISTING, # very important flag!
-        FILE_ATTRIBUTE_NORMAL,
-        0 # no template file for OPEN_EXISTING
-      )
+      FILE_ATTRIBUTE_NORMAL,
+      0 # no template file for OPEN_EXISTING
+    )
     if si.hStdOutput == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
     si.hStdError = myDup(si.hStdOutput)
     si.hStdInput = createFileW(pipeInName,
         FILE_READ_DATA or SYNCHRONIZE, 0, addr sa,
         OPEN_EXISTING, # very important flag!
-        FILE_ATTRIBUTE_NORMAL,
-        0 # no template file for OPEN_EXISTING
-      )
-    if si.hStdOutput == INVALID_HANDLE_VALUE:
+      FILE_ATTRIBUTE_NORMAL,
+      0 # no template file for OPEN_EXISTING
+    )
+    if si.hStdInput == INVALID_HANDLE_VALUE:
       raiseOSError(osLastError())
 
     stdin = myDup(pipeIn, 0)
@@ -569,11 +560,10 @@ when defined(Windows) and not defined(useNimRtl):
   proc fileClose(h: Handle) {.inline.} =
     if h > 4: discard closeHandle(h)
 
-  proc startProcess(command: string,
-                 workingDir: string = "",
-                 args: openArray[string] = [],
-                 env: StringTableRef = nil,
-                 options: set[ProcessOption] = {poStdErrToStdOut}): owned Process =
+  proc startProcess(command: string, workingDir: string = "",
+      args: openArray[string] = [], env: StringTableRef = nil,
+      options: set[ProcessOption] = {poStdErrToStdOut}):
+    owned Process =
     var
       si: STARTUPINFO
       procInfo: PROCESS_INFORMATION
@@ -628,7 +618,7 @@ when defined(Windows) and not defined(useNimRtl):
     when useWinUnicode:
       var tmp = newWideCString(cmdl)
       var ee =
-        if e.str.isNil: nil
+        if e.str.isNil: newWideCString(cstring(nil))
         else: newWideCString(e.str, e.len)
       var wwd = newWideCString(wd)
       var flags = NORMAL_PRIORITY_CLASS or CREATE_UNICODE_ENVIRONMENT
@@ -789,7 +779,7 @@ when defined(Windows) and not defined(useNimRtl):
 
   proc hasData*(p: Process): bool =
     var x: int32
-    if peekNamedPipe(p.outHandle, lpTotalBytesAvail=addr x):
+    if peekNamedPipe(p.outHandle, lpTotalBytesAvail = addr x):
       result = x > 0
 
 elif not defined(useNimRtl):
@@ -837,16 +827,15 @@ elif not defined(useNimRtl):
   else:
     proc startProcessAuxFork(data: StartProcessData): Pid {.
       tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], gcsafe.}
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessAfterFork(data: ptr StartProcessData) {.
-    tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
-  {.pop.}
+    {.push stacktrace: off, profiler: off.}
+    proc startProcessAfterFork(data: ptr StartProcessData) {.
+      tags: [ExecIOEffect, ReadEnvEffect, ReadDirEffect, RootEffect], cdecl, gcsafe.}
+    {.pop.}
 
-  proc startProcess(command: string,
-                 workingDir: string = "",
-                 args: openArray[string] = [],
-                 env: StringTableRef = nil,
-                 options: set[ProcessOption] = {poStdErrToStdOut}): owned Process =
+  proc startProcess(command: string, workingDir: string = "",
+      args: openArray[string] = [], env: StringTableRef = nil,
+      options: set[ProcessOption] = {poStdErrToStdOut}):
+    owned Process =
     var
       pStdin, pStdout, pStderr: array[0..1, cint]
     new(result)
@@ -858,17 +847,17 @@ elif not defined(useNimRtl):
          pipe(pStderr) != 0'i32:
         raiseOSError(osLastError())
 
-    var sysCommand: string
+    var data: StartProcessData
     var sysArgsRaw: seq[string]
     if poEvalCommand in options:
       const useShPath {.strdefine.} =
         when not defined(android): "/bin/sh"
         else: "/system/bin/sh"
-      sysCommand = useShPath
-      sysArgsRaw = @[sysCommand, "-c", command]
+      data.sysCommand = useShPath
+      sysArgsRaw = @[data.sysCommand, "-c", command]
       assert args.len == 0, "`args` has to be empty when using poEvalCommand."
     else:
-      sysCommand = command
+      data.sysCommand = command
       sysArgsRaw = @[command]
       for arg in args.items:
         sysArgsRaw.add arg
@@ -885,8 +874,6 @@ elif not defined(useNimRtl):
 
     defer: deallocCStringArray(sysEnv)
 
-    var data: StartProcessData
-    shallowCopy(data.sysCommand, sysCommand)
     data.sysArgs = sysArgs
     data.sysEnv = sysEnv
     data.pStdin = pStdin
@@ -905,7 +892,7 @@ elif not defined(useNimRtl):
 
     # Parent process. Copy process information.
     if poEchoCmd in options:
-      when declared(echo): echo(command, " ", join(args, " "))
+      echo(command, " ", join(args, " "))
     result.id = pid
     result.exitFlag = false
 
@@ -1013,60 +1000,61 @@ elif not defined(useNimRtl):
       if sizeRead == sizeof(error):
         raiseOSError(osLastError(),
                      "Could not find command: '$1'. OS error: $2" %
-                     [$data.sysCommand, $strerror(error)])
+                      [$data.sysCommand, $strerror(error)])
 
       return pid
 
-  {.push stacktrace: off, profiler: off.}
-  proc startProcessFail(data: ptr StartProcessData) =
-    var error: cint = errno
-    discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
-    exitnow(1)
+    {.push stacktrace: off, profiler: off.}
+    proc startProcessFail(data: ptr StartProcessData) =
+      var error: cint = errno
+      discard write(data.pErrorPipe[writeIdx], addr error, sizeof(error))
+      exitnow(1)
 
-  when not defined(uClibc) and (not defined(linux) or defined(android)):
-    var environ {.importc.}: cstringArray
+    when not defined(uClibc) and (not defined(linux) or defined(android)) and
+         not defined(haiku):
+      var environ {.importc.}: cstringArray
 
-  proc startProcessAfterFork(data: ptr StartProcessData) =
-    # Warning: no GC here!
-    # Or anything that touches global structures - all called nim procs
-    # must be marked with stackTrace:off. Inspect C code after making changes.
-    if not (poParentStreams in data.options):
-      discard close(data.pStdin[writeIdx])
-      if dup2(data.pStdin[readIdx], readIdx) < 0:
-        startProcessFail(data)
-      discard close(data.pStdout[readIdx])
-      if dup2(data.pStdout[writeIdx], writeIdx) < 0:
-        startProcessFail(data)
-      discard close(data.pStderr[readIdx])
-      if (poStdErrToStdOut in data.options):
-        if dup2(data.pStdout[writeIdx], 2) < 0:
+    proc startProcessAfterFork(data: ptr StartProcessData) =
+      # Warning: no GC here!
+      # Or anything that touches global structures - all called nim procs
+      # must be marked with stackTrace:off. Inspect C code after making changes.
+      if not (poParentStreams in data.options):
+        discard close(data.pStdin[writeIdx])
+        if dup2(data.pStdin[readIdx], readIdx) < 0:
           startProcessFail(data)
-      else:
-        if dup2(data.pStderr[writeIdx], 2) < 0:
+        discard close(data.pStdout[readIdx])
+        if dup2(data.pStdout[writeIdx], writeIdx) < 0:
+          startProcessFail(data)
+        discard close(data.pStderr[readIdx])
+        if (poStdErrToStdOut in data.options):
+          if dup2(data.pStdout[writeIdx], 2) < 0:
+            startProcessFail(data)
+        else:
+          if dup2(data.pStderr[writeIdx], 2) < 0:
+            startProcessFail(data)
+
+      if data.workingDir.len > 0:
+        if chdir(data.workingDir) < 0:
           startProcessFail(data)
 
-    if data.workingDir.len > 0:
-      if chdir(data.workingDir) < 0:
-        startProcessFail(data)
+      discard close(data.pErrorPipe[readIdx])
+      discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
 
-    discard close(data.pErrorPipe[readIdx])
-    discard fcntl(data.pErrorPipe[writeIdx], F_SETFD, FD_CLOEXEC)
-
-    if (poUsePath in data.options):
-      when defined(uClibc) or defined(linux):
-        # uClibc environment (OpenWrt included) doesn't have the full execvpe
-        let exe = findExe(data.sysCommand)
-        discard execve(exe, data.sysArgs, data.sysEnv)
+      if (poUsePath in data.options):
+        when defined(uClibc) or defined(linux) or defined(haiku):
+          # uClibc environment (OpenWrt included) doesn't have the full execvpe
+          let exe = findExe(data.sysCommand)
+          discard execve(exe, data.sysArgs, data.sysEnv)
+        else:
+          # MacOSX doesn't have execvpe, so we need workaround.
+          # On MacOSX we can arrive here only from fork, so this is safe:
+          environ = data.sysEnv
+          discard execvp(data.sysCommand, data.sysArgs)
       else:
-        # MacOSX doesn't have execvpe, so we need workaround.
-        # On MacOSX we can arrive here only from fork, so this is safe:
-        environ = data.sysEnv
-        discard execvp(data.sysCommand, data.sysArgs)
-    else:
-      discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
+        discard execve(data.sysCommand, data.sysArgs, data.sysEnv)
 
-    startProcessFail(data)
-  {.pop}
+      startProcessFail(data)
+    {.pop.}
 
   proc close(p: Process) =
     if poParentStreams notin p.options:
@@ -1179,6 +1167,67 @@ elif not defined(useNimRtl):
           discard posix.close(kqFD)
 
       result = exitStatusLikeShell(p.exitStatus)
+  elif defined(haiku):
+    const
+      B_OBJECT_TYPE_THREAD = 3
+      B_EVENT_INVALID = 0x1000
+      B_RELATIVE_TIMEOUT = 0x8
+
+    type
+      ObjectWaitInfo {.importc: "object_wait_info", header: "OS.h".} = object
+        obj {.importc: "object".}: int32
+        typ {.importc: "type".}: uint16
+        events: uint16
+
+    proc waitForObjects(infos: ptr ObjectWaitInfo, numInfos: cint, flags: uint32,
+                        timeout: int64): clong
+                       {.importc: "wait_for_objects_etc", header: "OS.h".}
+
+    proc waitForExit(p: Process, timeout: int = -1): int =
+      if p.exitFlag:
+        return exitStatusLikeShell(p.exitStatus)
+
+      if timeout == -1:
+        var status: cint = 1
+        if waitpid(p.id, status, 0) < 0:
+          raiseOSError(osLastError())
+        p.exitFlag = true
+        p.exitStatus = status
+      else:
+        var info = ObjectWaitInfo(
+          obj: p.id, # Haiku's PID is actually the main thread ID.
+          typ: B_OBJECT_TYPE_THREAD,
+          events: B_EVENT_INVALID # notify when the thread die.
+        )
+
+        while true:
+          var status: cint = 1
+          let count = waitForObjects(addr info, 1, B_RELATIVE_TIMEOUT, timeout)
+
+          if count < 0:
+            let err = count.cint
+            if err == ETIMEDOUT:
+              # timeout expired, so we try to kill the process
+              if posix.kill(p.id, SIGKILL) == -1:
+                raiseOSError(osLastError())
+              if waitpid(p.id, status, 0) < 0:
+                raiseOSError(osLastError())
+              p.exitFlag = true
+              p.exitStatus = status
+              break
+            elif err != EINTR:
+              raiseOSError(err.OSErrorCode)
+          elif count > 0:
+            if waitpid(p.id, status, 0) < 0:
+              raiseOSError(osLastError())
+            p.exitFlag = true
+            p.exitStatus = status
+            break
+          else:
+            doAssert false, "unreachable!"
+
+      result = exitStatusLikeShell(p.exitStatus)
+
   else:
     import times
 
@@ -1401,7 +1450,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## .. code-block:: Nim
   ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
 
-  var p = startProcess(command, options=options + {poEvalCommand})
+  var p = startProcess(command, options = options + {poEvalCommand})
   var outp = outputStream(p)
 
   # There is no way to provide input for the child process

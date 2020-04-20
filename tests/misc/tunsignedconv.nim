@@ -1,3 +1,7 @@
+discard """
+  output: '''uint
+1'''
+"""
 
 # Tests unsigned literals and implicit conversion between uints and ints
 # Passes if it compiles
@@ -23,7 +27,7 @@ when false:
   var d32 = v8 + 10'i32
 
 when false:
-  # these dont work yet because unsigned.nim is stupid. XXX We need to fix this.
+  # these don't work yet because unsigned.nim is stupid. XXX We need to fix this.
   var f8  = v16 + 10'u8
   var f16 = v16 + 10'u16
   var f32 = v16 + 10'u32
@@ -43,3 +47,21 @@ block t4176:
   var yyy: uint8 = 0
   yyy = yyy - 127
   doAssert type(yyy) is uint8
+
+# bug #13661
+
+proc fun(): uint = cast[uint](-1)
+const x0 = fun()
+
+echo typeof(x0)
+
+discard $x0
+
+# bug #13671
+
+const x1 = cast[uint](-1)
+discard $(x1,)
+
+# bug 13698
+let n: csize = 1
+echo n.int32

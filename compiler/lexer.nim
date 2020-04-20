@@ -134,7 +134,7 @@ type
   TErrorHandler* = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string)
   TLexer* = object of TBaseLexer
     fileIdx*: FileIndex
-    indentAhead*: int         # if > 0 an indendation has already been read
+    indentAhead*: int         # if > 0 an indentation has already been read
                               # this is needed because scanning comments
                               # needs so much look-ahead
     currLineIndent*: int
@@ -304,11 +304,11 @@ template tokenEndPrevious(tok, pos) =
     tok.offsetB = L.offsetBase + pos
 
 template eatChar(L: var TLexer, t: var TToken, replacementChar: char) =
-  add(t.literal, replacementChar)
+  t.literal.add(replacementChar)
   inc(L.bufpos)
 
 template eatChar(L: var TLexer, t: var TToken) =
-  add(t.literal, L.buf[L.bufpos])
+  t.literal.add(L.buf[L.bufpos])
   inc(L.bufpos)
 
 proc getNumber(L: var TLexer, result: var TToken) =
@@ -317,7 +317,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     result = 0
     while true:
       if L.buf[pos] in chars:
-        add(tok.literal, L.buf[pos])
+        tok.literal.add(L.buf[pos])
         inc(pos)
         inc(result)
       else:
@@ -328,14 +328,14 @@ proc getNumber(L: var TLexer, result: var TToken) =
             "only single underscores may occur in a token and token may not " &
             "end with an underscore: e.g. '1__1' and '1_' are invalid")
           break
-        add(tok.literal, '_')
+        tok.literal.add('_')
         inc(pos)
     L.bufpos = pos
 
   proc matchChars(L: var TLexer, tok: var TToken, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
     while L.buf[pos] in chars:
-      add(tok.literal, L.buf[pos])
+      tok.literal.add(L.buf[pos])
       inc(pos)
     L.bufpos = pos
 
@@ -351,12 +351,12 @@ proc getNumber(L: var TLexer, result: var TToken) =
     # We must verify +/- specifically so that we're not past the literal
     if  L.buf[L.bufpos] in {'+', '-'} and
         L.buf[L.bufpos - 1] in {'e', 'E'}:
-      add(t.literal, L.buf[L.bufpos])
+      t.literal.add(L.buf[L.bufpos])
       inc(L.bufpos)
       matchChars(L, t, literalishChars)
     if L.buf[L.bufpos] in {'\'', 'f', 'F', 'd', 'D', 'i', 'I', 'u', 'U'}:
       inc(L.bufpos)
-      add(t.literal, L.buf[L.bufpos])
+      t.literal.add(L.buf[L.bufpos])
       matchChars(L, t, {'0'..'9'})
     L.bufpos = msgPos
     lexMessage(L, msgKind, msg % t.literal)
@@ -687,51 +687,51 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
     if L.config.oldNewlines:
       if tok.tokType == tkCharLit:
         lexMessage(L, errGenerated, "\\n not allowed in character literal")
-      add(tok.literal, L.config.target.tnl)
+      tok.literal.add(L.config.target.tnl)
     else:
-      add(tok.literal, '\L')
+      tok.literal.add('\L')
     inc(L.bufpos)
   of 'p', 'P':
     if tok.tokType == tkCharLit:
       lexMessage(L, errGenerated, "\\p not allowed in character literal")
-    add(tok.literal, L.config.target.tnl)
+    tok.literal.add(L.config.target.tnl)
     inc(L.bufpos)
   of 'r', 'R', 'c', 'C':
-    add(tok.literal, CR)
+    tok.literal.add(CR)
     inc(L.bufpos)
   of 'l', 'L':
-    add(tok.literal, LF)
+    tok.literal.add(LF)
     inc(L.bufpos)
   of 'f', 'F':
-    add(tok.literal, FF)
+    tok.literal.add(FF)
     inc(L.bufpos)
   of 'e', 'E':
-    add(tok.literal, ESC)
+    tok.literal.add(ESC)
     inc(L.bufpos)
   of 'a', 'A':
-    add(tok.literal, BEL)
+    tok.literal.add(BEL)
     inc(L.bufpos)
   of 'b', 'B':
-    add(tok.literal, BACKSPACE)
+    tok.literal.add(BACKSPACE)
     inc(L.bufpos)
   of 'v', 'V':
-    add(tok.literal, VT)
+    tok.literal.add(VT)
     inc(L.bufpos)
   of 't', 'T':
-    add(tok.literal, '\t')
+    tok.literal.add('\t')
     inc(L.bufpos)
   of '\'', '\"':
-    add(tok.literal, L.buf[L.bufpos])
+    tok.literal.add(L.buf[L.bufpos])
     inc(L.bufpos)
   of '\\':
-    add(tok.literal, '\\')
+    tok.literal.add('\\')
     inc(L.bufpos)
   of 'x', 'X':
     inc(L.bufpos)
     var xi = 0
     handleHexChar(L, xi, 1)
     handleHexChar(L, xi, 2)
-    add(tok.literal, chr(xi))
+    tok.literal.add(chr(xi))
   of 'u', 'U':
     if tok.tokType == tkCharLit:
       lexMessage(L, errGenerated, "\\u not allowed in character literal")
@@ -761,14 +761,14 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
       lexMessage(L, warnOctalEscape)
     var xi = 0
     handleDecChars(L, xi)
-    if (xi <= 255): add(tok.literal, chr(xi))
+    if (xi <= 255): tok.literal.add(chr(xi))
     else: lexMessage(L, errGenerated, "invalid character constant")
   else: lexMessage(L, errGenerated, "invalid character constant")
 
 proc newString(s: cstring, len: int): string =
   ## XXX, how come there is no support for this?
   result = newString(len)
-  for i in 0 ..< len:
+  for i in 0..<len:
     result[i] = s[i]
 
 proc handleCRLF(L: var TLexer, pos: int): int =
@@ -815,12 +815,12 @@ proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
           tokenEndIgnore(tok, pos+2)
           L.bufpos = pos + 3 # skip the three """
           break
-        add(tok.literal, '\"')
+        tok.literal.add('\"')
         inc(pos)
       of CR, LF:
         tokenEndIgnore(tok, pos)
         pos = handleCRLF(L, pos)
-        add(tok.literal, "\n")
+        tok.literal.add("\n")
       of nimlexbase.EndOfFile:
         tokenEndIgnore(tok, pos)
         var line2 = L.lineNumber
@@ -830,7 +830,7 @@ proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
         L.bufpos = pos
         break
       else:
-        add(tok.literal, L.buf[pos])
+        tok.literal.add(L.buf[pos])
         inc(pos)
   else:
     # ordinary string literal
@@ -841,7 +841,7 @@ proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
       if c == '\"':
         if mode != normal and L.buf[pos+1] == '\"':
           inc(pos, 2)
-          add(tok.literal, '"')
+          tok.literal.add('"')
         else:
           tokenEndIgnore(tok, pos)
           inc(pos) # skip '"'
@@ -855,7 +855,7 @@ proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
         getEscapedChar(L, tok)
         pos = L.bufpos
       else:
-        add(tok.literal, c)
+        tok.literal.add(c)
         inc(pos)
     L.bufpos = pos
 
@@ -947,15 +947,14 @@ proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
 
   case tok.tokType
   of tkOpr:
-    let L = tok.ident.s.len
     let relevantChar = tok.ident.s[0]
 
     # arrow like?
-    if L > 1 and tok.ident.s[L-1] == '>' and
-      tok.ident.s[L-2] in {'-', '~', '='}: return considerStrongSpaces(1)
+    if tok.ident.s.len > 1 and tok.ident.s[^1] == '>' and
+      tok.ident.s[^2] in {'-', '~', '='}: return considerStrongSpaces(1)
 
     template considerAsgn(value: untyped) =
-      result = if tok.ident.s[L-1] == '=': 1 else: value
+      result = if tok.ident.s[^1] == '=': 1 else: value
 
     case relevantChar
     of '$', '^': considerAsgn(10)
@@ -1081,7 +1080,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
     var lastBackslash = -1
     while L.buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
       if L.buf[pos] == '\\': lastBackslash = pos+1
-      add(tok.literal, L.buf[pos])
+      tok.literal.add(L.buf[pos])
       inc(pos)
     tokenEndIgnore(tok, pos)
     pos = handleCRLF(L, pos)
@@ -1351,7 +1350,7 @@ proc getPrecedence*(ident: PIdent): int =
   initToken(tok)
   tok.ident = ident
   tok.tokType =
-    if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol) .. ord(tokKeywordHigh) - ord(tkSymbol):
+    if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol)..ord(tokKeywordHigh) - ord(tkSymbol):
       TTokType(tok.ident.id + ord(tkSymbol))
     else: tkOpr
   getPrecedence(tok, false)

@@ -11,8 +11,6 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 import posix
 
 type Uname* = object
@@ -83,7 +81,7 @@ proc sendSignal*(pid: Pid, signal: int) =
 proc mkstemp*(prefix: string): (string, File) =
   ## Creates a unique temporary file from a prefix string. Adds a six chars suffix.
   ## The file is created with perms 0600.
-  ## Returs the filename and a file opened in r/w mode.
+  ## Returns the filename and a file opened in r/w mode.
   var tmpl = cstring(prefix & "XXXXXX")
   let fd = mkstemp(tmpl)
   var f: File
@@ -98,4 +96,3 @@ proc mkdtemp*(prefix: string): string =
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
-

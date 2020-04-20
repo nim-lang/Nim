@@ -50,6 +50,11 @@
 ## * `streams module <streams.html>`_
 ## * `json module <json.html>`_
 
+when defined(nimV2):
+  {.error: """marshal module is not supported in new runtime.
+Please use alternative packages for serialization. 
+It is possible to reimplement this module using generics and type traits. 
+Please contribute new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 
@@ -384,7 +389,7 @@ when not defined(testing) and isMainModule:
   test4.b = "ref string test: B"
   testit(test4)
 
-  var test5 = @[(0,1),(2,3),(4,5)]
+  var test5 = @[(0, 1), (2, 3), (4, 5)]
   testit(test5)
 
   var test6: set[char] = {'A'..'Z', '_'}

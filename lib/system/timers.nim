@@ -31,7 +31,7 @@ when defined(windows):
 
     result = Nanos(float64(a.int64 - b.int64) * performanceCounterRate)
 
-elif defined(macosx):
+elif defined(macosx) and not defined(emscripten):
   type
     MachTimebaseInfoData {.pure, final,
         importc: "mach_timebase_info_data_t",

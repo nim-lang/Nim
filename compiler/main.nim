@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
@@ -108,6 +108,7 @@ proc commandJsonScript(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandCompileToJS(graph: ModuleGraph) =
     let conf = graph.config
+    conf.exc = excCpp
 
     if conf.outDir.isEmpty:
       conf.outDir = conf.projectPath
@@ -184,10 +185,12 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc":
     # compile means compileToC currently
     conf.cmd = cmdCompileToC
+    if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
+    if conf.exc == excNone: conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":
@@ -197,7 +200,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:
-      extccomp.setCC("tcc")
+      extccomp.setCC(conf, "tcc", unknownLineInfo)
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
@@ -222,6 +225,12 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf)
       commandDoc(cache, conf)
   of "doc2", "doc":
+    conf.setNoteDefaults(warnLockLevel, false) # issue #13218
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
+      # because currently generates lots of false positives due to conflation
+      # of labels links in doc comments, eg for random.rand:
+      #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
+      #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -230,6 +239,7 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       commandDoc2(graph, false)
   of "rst2html":
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -290,7 +300,9 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
+      var lazyPaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
+      for dir in conf.lazyPaths: lazyPaths.elems.add(%dir.string)
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
@@ -303,9 +315,13 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "nimExe", val: %(getAppFilename())),
+        (key: "prefixdir", val: %conf.getPrefixDir().string),
+        (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "lazyPaths", val: %lazyPaths),
         (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),
@@ -353,16 +369,25 @@ proc mainCommand*(graph: ModuleGraph) =
 
   if conf.errorCounter == 0 and
      conf.cmd notin {cmdInterpret, cmdRun, cmdDump}:
-    when declared(system.getMaxMem):
-      let usedMem = formatSize(getMaxMem()) & " peakmem"
-    else:
-      let usedMem = formatSize(getTotalMem())
-    rawMessage(conf, hintSuccessX, [$conf.linesCompiled,
-               formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3),
-               usedMem,
-               if isDefined(conf, "danger"): "Dangerous Release Build"
-               elif isDefined(conf, "release"): "Release Build"
-               else: "Debug Build"])
+    let mem =
+      when declared(system.getMaxMem): formatSize(getMaxMem()) & " peakmem"
+      else: formatSize(getTotalMem()) & " totmem"
+    let loc = $conf.linesCompiled
+    let build = if isDefined(conf, "danger"): "Dangerous Release"
+                elif isDefined(conf, "release"): "Release"
+                else: "Debug"
+    let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
+    let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
+    var output = $conf.absOutFile
+    if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
+    rawMessage(conf, hintSuccessX, [
+      "loc", loc,
+      "sec", sec,
+      "mem", mem,
+      "build", build,
+      "project", project,
+      "output", output,
+      ])
 
   when PrintRopeCacheStats:
     echo "rope cache stats: "

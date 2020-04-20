@@ -14,11 +14,11 @@ proc addObjFieldsToLocalScope(c: PContext; n: PNode) =
   template rec(n) = addObjFieldsToLocalScope(c, n)
   case n.kind
   of nkRecList:
-    for i in 0 ..< len(n):
+    for i in 0..<n.len:
       rec n[i]
   of nkRecCase:
-    if n.len > 0: rec n.sons[0]
-    for i in 1 ..< len(n):
+    if n.len > 0: rec n[0]
+    for i in 1..<n.len:
       if n[i].kind in {nkOfBranch, nkElse}: rec lastSon(n[i])
   of nkSym:
     let f = n.sym
@@ -47,8 +47,8 @@ proc rawHandleSelf(c: PContext; owner: PSym) =
         var t = c.p.selfSym.typ.skipTypes(abstractPtrs)
         while t.kind == tyObject:
           addObjFieldsToLocalScope(c, t.n)
-          if t.sons[0] == nil: break
-          t = t.sons[0].skipTypes(skipPtrs)
+          if t[0] == nil: break
+          t = t[0].skipTypes(skipPtrs)
 
 proc pushProcCon*(c: PContext; owner: PSym) =
   rawPushProcCon(c, owner)
@@ -123,24 +123,24 @@ proc freshGenSyms(n: PNode, owner, orig: PSym, symMap: var TIdTable) =
       idTablePut(symMap, s, x)
       n.sym = x
   else:
-    for i in 0 ..< safeLen(n): freshGenSyms(n.sons[i], owner, orig, symMap)
+    for i in 0..<n.safeLen: freshGenSyms(n[i], owner, orig, symMap)
 
 proc addParamOrResult(c: PContext, param: PSym, kind: TSymKind)
 
 proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
-  if n.sons[bodyPos].kind != nkEmpty:
+  if n[bodyPos].kind != nkEmpty:
     let procParams = result.typ.n
-    for i in 1 ..< procParams.len:
+    for i in 1..<procParams.len:
       addDecl(c, procParams[i].sym)
     maybeAddResult(c, result, result.ast)
 
     inc c.inGenericInst
     # add it here, so that recursive generic procs are possible:
-    var b = n.sons[bodyPos]
+    var b = n[bodyPos]
     var symMap: TIdTable
     initIdTable symMap
     if params != nil:
-      for i in 1 ..< params.len:
+      for i in 1..<params.len:
         let param = params[i].sym
         if sfGenSym in param.flags:
           idTablePut(symMap, params[i].sym, result.typ.n[param.position+1].sym)
@@ -152,7 +152,7 @@ proc instantiateBody(c: PContext, n, params: PNode, result, orig: PSym) =
     dec c.inGenericInst
 
 proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
-  for i in 0 ..< c.generics.len:
+  for i in 0..<c.generics.len:
     if c.generics[i].genericSym.id == s.id:
       var oldPrc = c.generics[i].inst.sym
       pushProcCon(c, oldPrc)
@@ -160,7 +160,7 @@ proc fixupInstantiatedSymbols(c: PContext, s: PSym) =
       pushInfoContext(c.config, oldPrc.info)
       openScope(c)
       var n = oldPrc.ast
-      n.sons[bodyPos] = copyTree(s.getBody)
+      n[bodyPos] = copyTree(s.getBody)
       instantiateBody(c, n, oldPrc.typ.n, oldPrc, s)
       closeScope(c)
       popInfoContext(c.config)
@@ -195,7 +195,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
   # perhaps the code can be extracted in a shared function.
   openScope(c)
   let genericTyp = header.base
-  for i in 0 .. (genericTyp.len - 2):
+  for i in 0..<genericTyp.len - 1:
     let genParam = genericTyp[i]
     var param: PSym
 
@@ -211,7 +211,7 @@ proc instGenericContainer(c: PContext, info: TLineInfo, header: PType,
       param.typ = makeTypeDesc(c, header[i+1])
 
     # this scope was not created by the user,
-    # unused params shoudn't be reported.
+    # unused params shouldn't be reported.
     param.flags.incl sfUsed
     addDecl(c, param)
 
@@ -248,7 +248,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   var result = instCopyType(cl, prc.typ)
   let originalParams = result.n
   result.n = originalParams.shallowCopy
-  for i in 1 ..< result.len:
+  for i in 1..<result.len:
     # twrong_field_caching requires these 'resetIdTable' calls:
     if i > 1:
       resetIdTable(cl.symMap)
@@ -280,7 +280,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
     if oldParam.ast != nil:
       var def = oldParam.ast.copyTree
       if def.kind == nkCall:
-        for i in 1 ..< def.len:
+        for i in 1..<def.len:
           def[i] = replaceTypeVarsN(cl, def[i])
 
       def = semExprWithType(c, def)
@@ -307,11 +307,11 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   resetIdTable(cl.symMap)
   resetIdTable(cl.localCache)
   cl.isReturnType = true
-  result.sons[0] = replaceTypeVarsT(cl, result.sons[0])
+  result[0] = replaceTypeVarsT(cl, result[0])
   cl.isReturnType = false
-  result.n.sons[0] = originalParams[0].copyTree
-  if result.sons[0] != nil:
-    propagateToOwner(result, result.sons[0])
+  result.n[0] = originalParams[0].copyTree
+  if result[0] != nil:
+    propagateToOwner(result, result[0])
 
   eraseVoidParams(result)
   skipIntLiteralParams(result)
@@ -346,9 +346,9 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
   pushOwner(c, result)
 
   openScope(c)
-  let gp = n.sons[genericParamsPos]
+  let gp = n[genericParamsPos]
   internalAssert c.config, gp.kind != nkEmpty
-  n.sons[namePos] = newSymNode(result)
+  n[namePos] = newSymNode(result)
   pushInfoContext(c.config, info, fn.detailedInfo)
   var entry = TInstantiation.new
   entry.sym = result
@@ -363,12 +363,12 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     inc i
   rawPushProcCon(c, result)
   instantiateProcType(c, pt, result, info)
-  for j in 1 .. result.typ.len-1:
-    entry.concreteTypes[i] = result.typ.sons[j]
+  for j in 1..<result.typ.len:
+    entry.concreteTypes[i] = result.typ[j]
     inc i
   if tfTriggersCompileTime in result.typ.flags:
     incl(result.flags, sfCompileTime)
-  n.sons[genericParamsPos] = c.graph.emptyNode
+  n[genericParamsPos] = c.graph.emptyNode
   var oldPrc = genericCacheGet(fn, entry[], c.compilesContextId)
   if oldPrc == nil:
     # we MUST not add potentially wrong instantiations to the caching mechanism.
@@ -380,10 +380,10 @@ proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
     entry.compilesId = c.compilesContextId
     fn.procInstCache.add(entry)
     c.generics.add(makeInstPair(fn, entry))
-    if n.sons[pragmasPos].kind != nkEmpty:
-      pragma(c, result, n.sons[pragmasPos], allRoutinePragmas)
-    if isNil(n.sons[bodyPos]):
-      n.sons[bodyPos] = copyTree(fn.getBody)
+    if n[pragmasPos].kind != nkEmpty:
+      pragma(c, result, n[pragmasPos], allRoutinePragmas)
+    if isNil(n[bodyPos]):
+      n[bodyPos] = copyTree(fn.getBody)
     if c.inGenericContext == 0:
       instantiateBody(c, n, fn.typ.n, result, fn)
     sideEffectsCheck(c, result)

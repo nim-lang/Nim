@@ -181,7 +181,7 @@ proc writeProfile() {.noconv.} =
 
     var perProc = initCountTable[string]()
     for i in 0..entries-1:
-      var dups = initSet[string]()
+      var dups = initHashSet[string]()
       for ii in 0..high(typeof(StackTrace.lines)):
         let procname = profileData[i].st[ii]
         if isNil(procname): break
@@ -201,7 +201,8 @@ proc writeProfile() {.noconv.} =
           let procname = profileData[i].st[ii]
           let filename = profileData[i].st.files[ii]
           if isNil(procname): break
-          writeLine(f, "  ", $filename & ": " & $procname, " ", perProc[$procname] // totalCalls)
+          writeLine(f, "  ", $filename & ": " & $procname, " ",
+                    perProc[$procname] // totalCalls)
     close(f)
     echo "... done"
   else:

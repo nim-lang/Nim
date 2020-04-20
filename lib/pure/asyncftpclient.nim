@@ -100,27 +100,27 @@ type
     of JRetr, JStore:
       file: File
       filename: string
-      total: BiggestInt # In bytes.
-      progress: BiggestInt # In bytes.
-      oneSecond: BiggestInt # Bytes transferred in one second.
+      total: BiggestInt         # In bytes.
+      progress: BiggestInt      # In bytes.
+      oneSecond: BiggestInt     # Bytes transferred in one second.
       lastProgressReport: float # Time
-      toStore: string # Data left to upload (Only used with async)
+      toStore: string           # Data left to upload (Only used with async)
 
   FtpEventType* = enum
     EvTransferProgress, EvLines, EvRetr, EvStore
 
-  FtpEvent* = object ## Event
+  FtpEvent* = object             ## Event
     filename*: string
     case typ*: FtpEventType
     of EvLines:
-      lines*: string ## Lines that have been transferred.
-    of EvRetr, EvStore: ## Retr/Store operation finished.
+      lines*: string             ## Lines that have been transferred.
+    of EvRetr, EvStore:          ## Retr/Store operation finished.
       nil
     of EvTransferProgress:
-      bytesTotal*: BiggestInt     ## Bytes total.
-      bytesFinished*: BiggestInt  ## Bytes transferred.
-      speed*: BiggestInt          ## Speed in bytes/s
-      currentJob*: FtpJobType     ## The current job being performed.
+      bytesTotal*: BiggestInt    ## Bytes total.
+      bytesFinished*: BiggestInt ## Bytes transferred.
+      speed*: BiggestInt         ## Speed in bytes/s
+      currentJob*: FtpJobType    ## The current job being performed.
 
   ReplyError* = object of IOError
 
@@ -131,12 +131,13 @@ type
 const multiLineLimit = 10000
 
 proc expectReply(ftp: AsyncFtpClient): Future[TaintedString] {.async.} =
-  result = await ftp.csock.recvLine()
+  var line = await ftp.csock.recvLine()
+  result = TaintedString(line)
   var count = 0
-  while result[3] == '-':
+  while line[3] == '-':
     ## Multi-line reply.
-    let line = await ftp.csock.recvLine()
-    result.add("\n" & line)
+    line = await ftp.csock.recvLine()
+    string(result).add("\n" & line)
     count.inc()
     if count >= multiLineLimit:
       raise newException(ReplyError, "Reached maximum multi-line reply count.")
@@ -154,7 +155,7 @@ proc assertReply(received: TaintedString, expected: varargs[string]) =
     if received.string.startsWith(i): return
   raise newException(ReplyError,
                      "Expected reply '$1' got: $2" %
-                     [expected.join("' or '"), received.string])
+                      [expected.join("' or '"), received.string])
 
 proc pasv(ftp: AsyncFtpClient) {.async.} =
   ## Negotiate a data connection.
@@ -164,10 +165,10 @@ proc pasv(ftp: AsyncFtpClient) {.async.} =
   assertReply(pasvMsg, "227")
   var betweenParens = captureBetween(pasvMsg.string, '(', ')')
   var nums = betweenParens.split(',')
-  var ip = nums[0.. ^3]
-  var port = nums[^2.. ^1]
+  var ip = nums[0 .. ^3]
+  var port = nums[^2 .. ^1]
   var properPort = port[0].parseInt()*256+port[1].parseInt()
-  await ftp.dsock.connect(ip.join("."), Port(properPort.toU16))
+  await ftp.dsock.connect(ip.join("."), Port(properPort))
   ftp.dsockConnected = true
 
 proc normalizePathSep(path: string): string =
@@ -178,7 +179,7 @@ proc connect*(ftp: AsyncFtpClient) {.async.} =
   await ftp.csock.connect(ftp.address, ftp.port)
 
   var reply = await ftp.expectReply()
-  if reply.startsWith("120"):
+  if string(reply).startsWith("120"):
     # 120 Service ready in nnn minutes.
     # We wait until we receive 220.
     reply = await ftp.expectReply()
@@ -321,7 +322,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   assertReply(await(ftp.expectReply()), "226")
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
-    speed: float): Future[void] {.nimcall,gcsafe,procvar.} =
+    speed: float): Future[void] {.nimcall, gcsafe, procvar.} =
   ## Default FTP ``onProgressChanged`` handler. Does nothing.
   result = newFuture[void]()
   #echo(total, " ", progress, " ", speed)
@@ -351,15 +352,13 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   assert ftp.dsockConnected
 
   let total = file.getFileSize()
-  var data = newStringOfCap(4000)
+  var data = newString(4000)
   var progress = 0
   var progressInSecond = 0
   var countdownFut = sleepAsync(1000)
   var sendFut: Future[void] = nil
   while ftp.dsockConnected:
-    if sendFut == nil or sendFut.finished:
-      progress.inc(data.len)
-      progressInSecond.inc(data.len)
+    if sendFut == nil or sendFut.finished: 
       # TODO: Async file reading.
       let len = file.readBuffer(addr(data[0]), 4000)
       setLen(data, len)
@@ -370,6 +369,8 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
 
         assertReply(await(ftp.expectReply()), "226")
       else:
+        progress.inc(len)
+        progressInSecond.inc(len)
         sendFut = ftp.dsock.send(data)
 
     if countdownFut.finished:

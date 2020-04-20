@@ -303,7 +303,7 @@ proc dosearch(value: cstring): Element =
       matches.add((db[i], score))
 
   matches.sort(proc(a, b: auto): int = b[1] - a[1])
-  for i in 0 ..< min(matches.len, 19):
+  for i in 0 ..< min(matches.len, 29):
     matches[i][0].innerHTML = matches[i][0].getAttribute("data-doc-search-tag")
     ul.add(tree("LI", cast[Element](matches[i][0])))
   if ul.len == 0:

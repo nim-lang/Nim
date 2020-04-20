@@ -48,13 +48,11 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimalias")
   defineSymbol("nimlocks")
   defineSymbol("nimnode")
-  defineSymbol("nimnomagic64")
   defineSymbol("nimvarargstyped")
   defineSymbol("nimtypedescfixed")
   defineSymbol("nimKnowsNimvm")
   defineSymbol("nimArrIdx")
   defineSymbol("nimHasalignOf")
-  defineSymbol("nimNewShiftOps")
   defineSymbol("nimDistros")
   defineSymbol("nimHasCppDefine")
   defineSymbol("nimGenericInOutFlags")
@@ -87,6 +85,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasDefault")
   defineSymbol("nimMacrosSizealignof")
   defineSymbol("nimNoZeroExtendMagic")
+  defineSymbol("nimMacrosGetNodeId")
   for f in low(Feature)..high(Feature):
     defineSymbol("nimHas" & $f)
 
@@ -99,3 +98,22 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimHasStyleChecks")
   defineSymbol("nimToOpenArrayCString")
   defineSymbol("nimHasUsed")
+  defineSymbol("nimFixedForwardGeneric")
+  defineSymbol("nimnomagic64")
+  defineSymbol("nimNewShiftOps")
+  defineSymbol("nimHasCursor")
+  defineSymbol("nimAlignPragma")
+  defineSymbol("nimHasExceptionsQuery")
+  defineSymbol("nimHasIsNamedTuple")
+  defineSymbol("nimHashOrdinalFixed")
+
+  when defined(nimHasLibFFI):
+    # Renaming as we can't conflate input vs output define flags; e.g. this
+    # will report the right thing regardless of whether user adds
+    # `-d:nimHasLibFFI` in his user config.
+    defineSymbol("nimHasLibFFIEnabled")
+
+  defineSymbol("nimHasSinkInference")
+  defineSymbol("nimNewIntegerOps")
+  defineSymbol("nimHasInvariant")
+  defineSymbol("nimHasStacktraceMsgs")

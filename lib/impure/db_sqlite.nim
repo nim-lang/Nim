@@ -94,14 +94,24 @@
 ##
 ##    db.close()
 ##
+##
+## Note
+## ====
+## This module does not implement any ORM features such as mapping the types from the schema.
+## Instead, a ``seq[string]`` is returned for each row.
+##
+## The reasoning is as follows:
+## 1. it's close to what many DBs offer natively (char**)
+## 2. it hides the number of types that the DB supports
+## (int? int64? decimal up to 10 places? geo coords?)
+## 3. it's convenient when all you do is to forward the data to somewhere else (echo, log, put the data into a new query)
+##
 ## See also
 ## ========
 ##
 ## * `db_odbc module <db_odbc.html>`_ for ODBC database wrapper
 ## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
 ## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
-
-{.deadCodeElim: on.}  # dce option deprecated
 
 import sqlite3
 
@@ -174,6 +184,9 @@ proc tryExec*(db: DbConn, query: SqlQuery,
     let x = step(stmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
       result = finalize(stmt) == SQLITE_OK
+    else:
+      discard finalize(stmt)
+      result = false
 
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
@@ -521,6 +534,8 @@ proc tryInsertID*(db: DbConn, query: SqlQuery,
       result = last_insert_rowid(db)
     if finalize(stmt) != SQLITE_OK:
       result = -1
+  else:
+    discard finalize(stmt)
 
 proc insertID*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =

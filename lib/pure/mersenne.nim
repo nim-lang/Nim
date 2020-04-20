@@ -16,7 +16,8 @@ proc newMersenneTwister*(seed: uint32): MersenneTwister =
   result.index = 0
   result.mt[0] = seed
   for i in 1'u32 .. 623'u32:
-    result.mt[i] = (0x6c078965'u32 * (result.mt[i-1] xor (result.mt[i-1] shr 30'u32)) + i)
+    result.mt[i] = (0x6c078965'u32 * (result.mt[i-1] xor
+                                      (result.mt[i-1] shr 30'u32)) + i)
 
 proc generateNumbers(m: var MersenneTwister) =
   for i in 0..623:
@@ -37,6 +38,14 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor ((result shl 7'u32) and 0x9d2c5680'u32)
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
+
+
+runnableExamples:
+  static:
+    block:
+      var rando: MersenneTwister = newMersenneTwister(uint32.high)  ## Must be "var".
+      doAssert rando.getNum() != rando.getNum()  ## Pseudo random number. Works at compile-time.
+
 
 # Test
 when not defined(testing) and isMainModule:

@@ -31,3 +31,19 @@ var y = MyCaseObjectB(kind: A)
 y.x = 1
 y.kind = C
 echo "no crash"
+
+
+#################
+## bug #12821
+
+type
+  RefBaseObject* = ref object of RootObj
+    case kind: bool
+      of true: a: int
+      of false: b: float
+
+  MyRefObject = ref object of RefBaseObject
+    x: float
+
+let z = new(MyRefObject)
+z.kind = false

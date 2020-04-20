@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -62,7 +60,7 @@ const
   SQLITE_EMPTY* = 16          # Database is empty
   SQLITE_SCHEMA* = 17         # The database schema changed
   SQLITE_TOOBIG* = 18         # Too much data for one row of a table
-  SQLITE_CONSTRAINT* = 19     # Abort due to contraint violation
+  SQLITE_CONSTRAINT* = 19     # Abort due to constraint violation
   SQLITE_MISMATCH* = 20       # Data type mismatch
   SQLITE_MISUSE* = 21         # Library used incorrectly
   SQLITE_NOLFS* = 22          # Uses OS features not supported on host
@@ -110,6 +108,9 @@ type
   Sqlite3 {.pure, final.} = object
   PSqlite3* = ptr Sqlite3
   PPSqlite3* = ptr PSqlite3
+  Sqlite3_Backup {.pure, final.} = object
+  PSqlite3_Backup* = ptr Sqlite3_Backup
+  PPSqlite3_Backup* = ptr PSqlite3_Backup
   Context{.pure, final.} = object
   Pcontext* = ptr Context
   TStmt{.pure, final.} = object
@@ -366,6 +367,20 @@ proc version*(): cstring{.cdecl, mylib, importc: "sqlite3_libversion".}
   # Not published functions
 proc libversion_number*(): int32{.cdecl, mylib,
                                   importc: "sqlite3_libversion_number".}
+
+proc backup_init*(pDest: PSqlite3, zDestName: cstring, pSource: PSqlite3, zSourceName: cstring): PSqlite3_Backup {.
+    cdecl, mylib, importc: "sqlite3_backup_init".}
+
+proc backup_step*(pBackup: PSqlite3_Backup, nPage: int32): int32 {.cdecl, mylib, importc: "sqlite3_backup_step".}
+
+proc backup_finish*(pBackup: PSqlite3_Backup): int32 {.cdecl, mylib, importc: "sqlite3_backup_finish".}
+
+proc backup_pagecount*(pBackup: PSqlite3_Backup): int32 {.cdecl, mylib, importc: "sqlite3_backup_pagecount".}
+
+proc backup_remaining*(pBackup: PSqlite3_Backup): int32 {.cdecl, mylib, importc: "sqlite3_backup_remaining".}
+
+proc sqlite3_sleep*(t: int64): int64 {.cdecl, mylib, importc: "sqlite3_sleep".}
+
   #function sqlite3_key(db:Psqlite3; pKey:pointer; nKey:longint):longint;cdecl; external Sqlite3Lib name 'sqlite3_key';
   #function sqlite3_rekey(db:Psqlite3; pKey:pointer; nKey:longint):longint;cdecl; external Sqlite3Lib name 'sqlite3_rekey';
   #function sqlite3_sleep(_para1:longint):longint;cdecl; external Sqlite3Lib name 'sqlite3_sleep';

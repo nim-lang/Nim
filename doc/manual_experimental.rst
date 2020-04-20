@@ -27,7 +27,7 @@ Package level objects
 Every Nim module resides in a (nimble) package. An object type can be attached
 to the package it resides in. If that is done, the type can be referenced from
 other modules as an `incomplete`:idx: object type. This feature allows to
-break up recursive type dependencies accross module boundaries. Incomplete
+break up recursive type dependencies across module boundaries. Incomplete
 object types are always passed ``byref`` and can only be used in pointer like
 contexts (``var/ref/ptr IncompleteObject``) in general since the compiler does
 not yet know the size of the object. To complete an incomplete object
@@ -203,9 +203,10 @@ useful only when interfacing with imported types having such semantics.
 Automatic dereferencing
 =======================
 
-If the `experimental mode <#pragmas-experimental-pragma>`_ is active and no other match
-is found, the first argument ``a`` is dereferenced automatically if it's a
-pointer type and overloading resolution is tried with ``a[]`` instead.
+If the `experimental mode <manual.html#pragmas-experimental-pragma>`_ is active
+and no other match is found, the first argument ``a`` is dereferenced
+automatically if it's a pointer type and overloading resolution is tried
+with ``a[]`` instead.
 
 
 Automatic self insertions
@@ -266,7 +267,7 @@ calls can use the ``do`` keyword:
 ``do`` is written after the parentheses enclosing the regular proc params.
 The proc expression represented by the do block is appended to them.
 In calls using the command syntax, the do block will bind to the immediately
-preceeding expression, transforming it in a call.
+preceding expression, transforming it in a call.
 
 ``do`` with parentheses is an anonymous ``proc``; however a ``do`` without
 parentheses is just a block of code. The ``do`` notation can be used to
@@ -814,7 +815,7 @@ This mechanism will be used by most data structures that support shared memory
 like channels to implement thread safe automatic memory management.
 
 The builtin ``deepCopy`` can even clone closures and their environments. See
-the documentation of `spawn`_ for details.
+the documentation of `spawn <#parallel-amp-spawn-spawn-statement>`_ for details.
 
 
 Case statement macros
@@ -1617,7 +1618,7 @@ Aliasing restrictions in parameter passing
 ==========================================
 
 **Note**: The aliasing restrictions are currently not enforced by the
-implementation and need to be fleshed out futher.
+implementation and need to be fleshed out further.
 
 "Aliasing" here means that the underlying storage locations overlap in memory
 at runtime. An "output parameter" is a parameter of type ``var T``, an input

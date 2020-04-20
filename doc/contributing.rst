@@ -140,9 +140,6 @@ commands.
 Comparing tests
 ===============
 
-Because some tests fail in the current ``devel`` branch, not every failure
-after your change is necessarily caused by your changes. Some tests are
-flaky and will fail on occasion; these are typically bugs that should be fixed.
 Test failures can be grepped using ``Failure:``.
 
 The tester can compare two test runs. First, you need to create the
@@ -191,7 +188,7 @@ the old name and introduce a new name:
   type Barz  = enum baz0, baz1 {.deprecated.}, baz2
 
 
-See also `Deprecated <https://nim-lang.org/docs/manual.html#pragmas-deprecated-pragma>`_
+See also `Deprecated <manual.html#pragmas-deprecated-pragma>`_
 pragma in the manual.
 
 
@@ -216,8 +213,7 @@ as well as ``testament`` and guarantee they stay in sync.
       assert "baz".addBar == "bazBar"
     result = a & "Bar"
 
-See `parentDir <https://nim-lang.github.io/Nim/os.html#parentDir%2Cstring>`_
-example.
+See `parentDir <os.html#parentDir,string>`_ example.
 
 The RestructuredText Nim uses has a special syntax for including code snippets
 embedded in documentation; these are not run by ``nim doc`` and therefore are
@@ -256,6 +252,7 @@ the imperative (command) form. That is, between:
   proc hello*(): string =
     ## Return "hello"
     result = "hello"
+
 or
 
 .. code-block:: nim
@@ -268,11 +265,25 @@ the first is preferred.
 
 
 Best practices
-=============
+==============
 
 Note: these are general guidelines, not hard rules; there are always exceptions.
 Code reviews can just point to a specific section here to save time and
 propagate best practices.
+
+.. _define_needs_prefix:
+New `defined(foo)` symbols need to be prefixed by the nimble package name, or
+by `nim` for symbols in nim sources (e.g. compiler, standard library). This is
+to avoid name conflicts across packages.
+
+.. code-block:: nim
+
+  # if in nim sources
+  when defined(allocStats): discard # bad, can cause conflicts
+  when defined(nimAllocStats): discard # preferred
+  # if in a pacakge `cligen`:
+  when defined(debug): discard # bad, can cause conflicts
+  when defined(cligenDebug): discard # preferred
 
 .. _noimplicitbool:
 Take advantage of no implicit bool conversion
@@ -348,19 +359,17 @@ The Git stuff
 General commit rules
 --------------------
 
-1. The commit message should contain either ``[bugfix]`` or ``[feature]``
-   or ``[refactoring]`` or ``[other]``. In practice however this is very
-   often forgotten and a commit message like ``fixes #xyz`` is good enough.
-
-   Every commit is backported unless
-   tagged with either ``[feature]`` or with ``[nobackport]``. They are
-   backported to the latest stable release branch (currently 0.20.x).
-
-   Refactorings are backported because they often enable further bugfixes.
+1. Important, critical bugfixes that have a tiny chance of breaking
+   somebody's code should be backported to the latest stable release
+   branch (currently 1.2.x) and maybe also to the 1.0 branch.
+   The commit message should contain the tag ``[backport]`` for "backport to all
+   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
+   given $VERSION.
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
-   the changes should be mentioned in `<changelog.md>`_.
+   the changes should be mentioned in `the changelog
+   <https://github.com/nim-lang/Nim/blob/devel/changelog.md>`_.
 
 3. All changes introduced by the commit (diff lines) must be related to the
    subject of the commit.
@@ -435,7 +444,7 @@ Code reviews
    .. code-block:: sh
 
       git fetch origin pull/10431/head && git checkout FETCH_HEAD
-      git show --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
+      git diff --color-moved-ws=allow-indentation-change --color-moved=blocks HEAD^
 
 3. In addition, you can view github-like diffs locally to identify what was changed
    within a code block using `diff-highlight` or `diff-so-fancy`, e.g.:
@@ -451,3 +460,78 @@ Code reviews
 .. include:: docstyle.rst
 
 
+Evolving the stdlib
+===================
+
+As outlined in https://github.com/nim-lang/RFCs/issues/173 there are a couple
+of guidelines about what should go into the stdlib, what should be added and
+what eventually should be removed.
+
+
+What the compiler itself needs must be part of the stdlib
+---------------------------------------------------------
+
+Maybe in the future the compiler itself can depend on Nimble packages but for
+the time being, we strive to have zero dependencies in the compiler as the
+compiler is the root of the bootstrapping process and is also used to build
+Nimble.
+
+
+Vocabulary types must be part of the stdlib
+-------------------------------------------
+
+These are types most packages need to agree on for better interoperability,
+for example ``Option[T]``. This rule also covers the existing collections like
+``Table``, ``CountTable`` etc. "Sorted" containers based on a tree-like data
+structure are still missing and should be added.
+
+Time handling, especially the ``Time`` type are also covered by this rule.
+
+
+Existing, battle-tested modules stay
+------------------------------------
+
+Reason: There is no benefit in moving them around just to fullfill some design
+fashion as in "Nim's core MUST BE SMALL". If you don't like an existing module,
+don't import it. If a compilation target (e.g. JS) cannot support a module,
+document this limitation.
+
+This covers modules like ``os``, ``osproc``, ``strscans``, ``strutils``,
+``strformat``, etc.
+
+
+Syntactic helpers can start as experimental stdlib modules
+----------------------------------------------------------
+
+Reason: Generally speaking as external dependencies they are not exposed
+to enough users so that we can see if the shortcuts provide enough benefit
+or not. Many programmers avoid external dependencies, even moreso for
+"tiny syntactic improvements". However, this is only true for really good
+syntactic improvements that have the potential to clean up other parts of
+the Nim library substantially. If in doubt, new stdlib modules should start
+as external, successful Nimble packages.
+
+
+
+Other new stdlib modules do not start as stdlib modules
+-------------------------------------------------------
+
+As we strive for higher quality everywhere, it's easier to adopt existing,
+battle-tested modules eventually rather than creating modules from scratch.
+
+
+Little additions are acceptable
+-------------------------------
+
+As long as they are documented and tested well, adding little helpers
+to existing modules is acceptable. For two reasons:
+
+1. It makes Nim easier to learn and use in the long run.
+   ("Why does sequtils lack a ``countIt``?
+   Because version 1.0 happens to have lacked it? Silly...")
+2. To encourage contributions. Contributors often start with PRs that
+   add simple things and then they stay and also fix bugs. Nim is an
+   open source project and lives from people's contributions and involvement.
+   Newly introduced issues have to be balanced against motivating new people. We know where
+   to find perfectly designed pieces of software that have no bugs -- these are the systems
+   that nobody uses.

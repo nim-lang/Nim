@@ -78,7 +78,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   result = $e & " (invalid data!)"
 
 type
-  PByteArray = ptr array[0xffff, byte]
+  PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
@@ -160,7 +160,7 @@ when not defined(useNimRtl):
       reprAux(result, cast[pointer](cast[ByteAddress](p) + i*bs), typ.base, cl)
     add result, "]"
 
-  when defined(gcDestructors):
+  when defined(nimSeqsV2):
     type
       GenericSeq = object
         len: int
@@ -172,7 +172,7 @@ when not defined(useNimRtl):
 
     template payloadPtr(x: untyped): untyped = cast[PGenericSeq](x).p
   else:
-    const payloadOffset = GenericSeqSize
+    const payloadOffset = GenericSeqSize ## the payload offset always depends on the alignment of the member type.
     template payloadPtr(x: untyped): untyped = x
 
   proc reprSequence(result: var string, p: pointer, typ: PNimType,
@@ -185,7 +185,7 @@ when not defined(useNimRtl):
     var bs = typ.base.size
     for i in 0..cast[PGenericSeq](p).len-1:
       if i > 0: add result, ", "
-      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + payloadOffset + i*bs),
+      reprAux(result, cast[pointer](cast[ByteAddress](payloadPtr(p)) + align(payloadOffset, typ.align) + i*bs),
               typ.base, cl)
     add result, "]"
 
@@ -226,7 +226,7 @@ when not defined(useNimRtl):
                cl: var ReprClosure) =
     # we know that p is not nil here:
     when declared(CellSet):
-      when defined(boehmGC) or defined(gogc) or defined(nogc) or defined(gcDestructors):
+      when defined(boehmGC) or defined(gogc) or defined(nogc) or usesDestructors:
         var cell = cast[PCell](p)
       else:
         var cell = usrToCell(p)

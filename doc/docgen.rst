@@ -217,6 +217,10 @@ or to a tag e.g. `--git.commit:1.2.3` or a commit.
 
 Source URLs are generated as `href="${url}/tree/${commit}/${path}#L${line}"` by default and this compatible with GitHub but not with GitLab.
 
+Similarly, ``git.devel`` switch overrides the hardcoded `devel` branch for the `Edit` link which is also useful if you have a different working branch than `devel` e.g. `--git.devel:master`.
+
+Edit URLs are generated as `href="${url}/tree/${devel}/${path}#L${line}"` by default.
+
 You can edit ``config/nimdoc.cfg`` and modify the ``doc.item.seesrc`` value with a hyperlink to your own code repository.
 
 In the case of Nim's own documentation, the ``commit`` value is just a commit
@@ -295,8 +299,8 @@ The relationship of type to suffix is made by the proc ``complexName`` in the
 ``compiler/docgen.nim`` file. Here are some examples of complex names for
 symbols in the `system module <system.html>`_.
 
-* ``type SignedInt = int | int8 | int16 | int32 | int64`` **=>**
-  `#SignedInt <system.html#SignedInt>`_
+* ``type SomeSignedInt = int | int8 | int16 | int32 | int64`` **=>**
+  `#SomeSignedInt <system.html#SomeSignedInt>`_
 * ``var globalRaiseHook: proc (e: ref E_Base): bool {.nimcall.}`` **=>**
   `#globalRaiseHook <system.html#globalRaiseHook>`_
 * ``const NimVersion = "0.0.0"`` **=>**
@@ -307,23 +311,25 @@ symbols in the `system module <system.html>`_.
   `#len,seq[T] <system.html#len,seq[T]>`_
 * ``iterator pairs[T](a: seq[T]): tuple[key: int, val: T] {.inline.}`` **=>**
   `#pairs.i,seq[T] <system.html#pairs.i,seq[T]>`_
-* ``template newException[](exceptn: type; message: string): expr`` **=>**
-  `#newException.t,type,string
-  <system.html#newException.t,type,string>`_
+* ``template newException[](exceptn: typedesc; message: string;
+    parentException: ref Exception = nil): untyped`` **=>**
+  `#newException.t,typedesc,string,ref.Exception
+  <system.html#newException.t,typedesc,string,ref.Exception>`_
 
 
 Index (idx) file format
 =======================
 
 Files with the ``.idx`` extension are generated when you use the `Index
-switch`_ along with commands to generate documentation from source or text
-files. You can programatically generate indices with the `setIndexTerm()
-<rstgen.html#setIndexTerm>`_ and `writeIndexFile()
-<rstgen.html#writeIndexFile>`_ procs. The purpose of ``idx`` files is to hold
-the interesting symbols and their HTML references so they can be later
-concatenated into a big index file with `mergeIndexes()
-<rstgen.html#mergeIndexes>`_.  This section documents the file format in
-detail.
+switch <#related-options-index-switch>`_ along with commands to generate
+documentation from source or text files. You can programatically generate
+indices with the `setIndexTerm()
+<rstgen.html#setIndexTerm,RstGenerator,string,string,string,string,string>`_
+and `writeIndexFile() <rstgen.html#writeIndexFile,RstGenerator,string>`_ procs.
+The purpose of ``idx`` files is to hold the interesting symbols and their HTML
+references so they can be later concatenated into a big index file with
+`mergeIndexes() <rstgen.html#mergeIndexes,string>`_.  This section documents
+the file format in detail.
 
 Index files are line oriented and tab separated (newline and tab characters
 have to be escaped). Each line represents a record with at least two fields,
@@ -368,7 +374,7 @@ final index, and TOC entries found in ``.nim`` files are discarded.
 Additional resources
 ====================
 
-`Nim Compiler User Guide <nimc.html#command-line-switches>`_
+`Nim Compiler User Guide <nimc.html#compiler-usage-command-line-switches>`_
 
 `RST Quick Reference
 <http://docutils.sourceforge.net/docs/user/rst/quickref.html>`_

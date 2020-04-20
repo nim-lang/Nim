@@ -203,12 +203,12 @@ when defined(windows):
       add(result, c)
 
   proc sendMessages(client: AsyncFD) {.async.} =
-    for i in 0 .. <messagesToSend:
+    for i in 0 ..< messagesToSend:
       await winSend(client, "Message " & $i & "\c\L")
 
   proc launchSwarm(port: Port) {.async.} =
-    for i in 0 .. <swarmSize:
-      var sock = newNativeSocket()
+    for i in 0 ..< swarmSize:
+      var sock = createNativeSocket()
       setBlocking(sock, false)
 
       await winConnect(AsyncFD(sock), "localhost", port)
@@ -229,7 +229,7 @@ when defined(windows):
           doAssert false
 
   proc createServer(port: Port) {.async.} =
-    var server = newNativeSocket()
+    var server = createNativeSocket()
     setBlocking(server, false)
     block:
       var name = Sockaddr_in()

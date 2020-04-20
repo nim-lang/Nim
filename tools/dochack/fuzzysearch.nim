@@ -5,7 +5,6 @@
 #
 import strutils
 import math
-import macros
 
 
 const
@@ -24,9 +23,9 @@ type
     CharDiff             = -1   ## An unmatched character was found.
     CharMatch            = 0    ## A matched character was found.
     ConsecutiveMatch     = 5    ## A consecutive match was found.
-    LeadingCharMatch     = 10   ## The character matches the begining of the
+    LeadingCharMatch     = 10   ## The character matches the beginning of the
                                 ## string or the first character of a word
-                                ## or camel case boundry.
+                                ## or camel case boundary.
     WordBoundryMatch     = 20   ## The last ConsecutiveCharMatch that
                                 ## immediately precedes the end of the string,
                                 ## end of the pattern, or a LeadingCharMatch.
@@ -132,6 +131,9 @@ proc fuzzyMatch*(pattern, str: cstring) : tuple[score: int, matched: bool] =
         transition(CharDiff)
 
     strIndex += 1
+
+  if patIndex == pattern.len and (strIndex == str.len or str[strIndex] notin Letters):
+    score += 10
 
   result = (
     score:   max(0, score),

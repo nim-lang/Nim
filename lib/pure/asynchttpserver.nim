@@ -30,7 +30,7 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
+import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
 export httpcore except parseHeader
@@ -50,7 +50,7 @@ type
     headers*: HttpHeaders
     protocol*: tuple[orig: string, major, minor: int]
     url*: Uri
-    hostname*: string ## The hostname of the client that made the request.
+    hostname*: string    ## The hostname of the client that made the request.
     body*: string
 
   AsyncHttpServer* = ref object
@@ -99,9 +99,13 @@ proc respond*(req: Request, code: HttpCode, content: string,
 
   if headers != nil:
     msg.addHeaders(headers)
-  msg.add("Content-Length: ")
-  # this particular way saves allocations:
-  msg.add content.len
+
+  # If the headers did not contain a Content-Length use our own
+  if headers.isNil() or not headers.hasKey("Content-Length"):
+    msg.add("Content-Length: ")
+    # this particular way saves allocations:
+    msg.addInt content.len
+  
   msg.add "\c\L\c\L"
   msg.add(content)
   result = req.client.send(msg)
@@ -127,20 +131,6 @@ proc parseProtocol(protocol: string): tuple[orig: string, major, minor: int] =
 
 proc sendStatus(client: AsyncSocket, status: string): Future[void] =
   client.send("HTTP/1.1 " & status & "\c\L\c\L")
-
-proc parseUppercaseMethod(name: string): HttpMethod =
-  result =
-    case name
-    of "GET": HttpGet
-    of "POST": HttpPost
-    of "HEAD": HttpHead
-    of "PUT": HttpPut
-    of "DELETE": HttpDelete
-    of "PATCH": HttpPatch
-    of "OPTIONS": HttpOptions
-    of "CONNECT": HttpConnect
-    of "TRACE": HttpTrace
-    else: raise newException(ValueError, "Invalid HTTP method " & name)
 
 proc processRequest(
   server: AsyncHttpServer,
@@ -169,7 +159,7 @@ proc processRequest(
   for i in 0..1:
     lineFut.mget().setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine) # TODO: Timeouts.
+    await client.recvLineInto(lineFut, maxLength = maxLine) # TODO: Timeouts.
 
     if lineFut.mget == "":
       client.close()
@@ -187,9 +177,17 @@ proc processRequest(
   for linePart in lineFut.mget.split(' '):
     case i
     of 0:
-      try:
-        request.reqMethod = parseUppercaseMethod(linePart)
-      except ValueError:
+      case linePart
+      of "GET": request.reqMethod = HttpGet
+      of "POST": request.reqMethod = HttpPost
+      of "HEAD": request.reqMethod = HttpHead
+      of "PUT": request.reqMethod = HttpPut
+      of "DELETE": request.reqMethod = HttpDelete
+      of "PATCH": request.reqMethod = HttpPatch
+      of "OPTIONS": request.reqMethod = HttpOptions
+      of "CONNECT": request.reqMethod = HttpConnect
+      of "TRACE": request.reqMethod = HttpTrace
+      else:
         asyncCheck request.respondError(Http400)
         return true # Retry processing of request
     of 1:
@@ -214,7 +212,7 @@ proc processRequest(
     i = 0
     lineFut.mget.setLen(0)
     lineFut.clean()
-    await client.recvLineInto(lineFut, maxLength=maxLine)
+    await client.recvLineInto(lineFut, maxLength = maxLine)
 
     if lineFut.mget == "":
       client.close(); return false
@@ -296,7 +294,7 @@ proc processClient(server: AsyncHttpServer, client: AsyncSocket, address: string
     if not retry: break
 
 proc serve*(server: AsyncHttpServer, port: Port,
-            callback: proc (request: Request): Future[void] {.closure,gcsafe.},
+            callback: proc (request: Request): Future[void] {.closure, gcsafe.},
             address = "") {.async.} =
   ## Starts the process of listening for incoming HTTP connections on the
   ## specified address and port.

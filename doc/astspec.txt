@@ -157,7 +157,7 @@ AST:
 
 As a side note, if you choose to use infix operators in a prefix form, the AST
 behaves as a
-[parenthetical function call](./macros.html#calls-expressions-call-with) with
+[parenthetical function call](#callsslashexpressions-call-with) with
 ``nnkAccQuoted``, as follows:
 
 Concrete syntax:
@@ -237,7 +237,7 @@ Call with raw string literal
 ----------------------------
 
 This is used, for example, in the ``bindSym`` examples
-[here](http://nim-lang.org/docs/manual.html#macros-bindsym) and with
+[here](manual.html#macros-bindsym) and with
 ``re"some regexp"`` in the regular expression module.
 
 Concrete syntax:
@@ -902,7 +902,7 @@ as the compiler needs to know the type somehow (which it can infer from
 the given assignment).
 
 This is not the same AST for all uses of ``var``. See
-[Procedure declaration](http://nim-lang.org/docs/macros.html#statements-procedure-declaration)
+[Procedure declaration](macros.html#statements-procedure-declaration)
 for details.
 
 Let section
@@ -1361,7 +1361,7 @@ Template declaration
 
 Templates (as well as macros, as we'll see) have a slightly expanded AST when
 compared to procs and iterators. The reason for this is [term-rewriting
-macros](http://nim-lang.org/docs/manual.html#term-rewriting-macros). Notice
+macros](manual.html#term-rewriting-macros). Notice
 the ``nnkEmpty()`` as the second argument to ``nnkProcDef`` and
 ``nnkIteratorDef`` above? That's where the term-rewriting macros go.
 

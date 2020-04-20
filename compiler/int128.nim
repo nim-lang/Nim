@@ -29,27 +29,27 @@ template high*(t: typedesc[Int128]): Int128 = Max
 
 proc `$`*(a: Int128): string
 
-proc toInt128*[T: SomeInteger](arg: T): Int128 =
-  when T is SomeUnsignedInt:
+proc toInt128*[T: SomeInteger | bool](arg: T): Int128 =
+  when T is bool: result.sdata(0) = int32(arg)
+  elif T is SomeUnsignedInt:
     when sizeof(arg) <= 4:
       result.udata[0] = uint32(arg)
     else:
       result.udata[0] = uint32(arg and T(0xffffffff))
       result.udata[1] = uint32(arg shr 32)
+  elif sizeof(arg) <= 4:
+    result.sdata(0) = int32(arg)
+    if arg < 0: # sign extend
+      result.sdata(1) = -1
+      result.sdata(2) = -1
+      result.sdata(3) = -1
   else:
-    when sizeof(arg) <= 4:
-      result.sdata(0) = int32(arg)
-      if arg < 0: # sign extend
-        result.sdata(1) = -1
-        result.sdata(2) = -1
-        result.sdata(3) = -1
-    else:
-      let tmp = int64(arg)
-      result.udata[0] = uint32(tmp and 0xffffffff)
-      result.sdata(1) = int32(tmp shr 32)
-      if arg < 0: # sign extend
-        result.sdata(2) = -1
-        result.sdata(3) = -1
+    let tmp = int64(arg)
+    result.udata[0] = uint32(tmp and 0xffffffff)
+    result.sdata(1) = int32(tmp shr 32)
+    if arg < 0: # sign extend
+      result.sdata(2) = -1
+      result.sdata(3) = -1
 
 template isNegative(arg: Int128): bool =
   arg.sdata(3) < 0
@@ -72,6 +72,15 @@ proc toInt64*(arg: Int128): int64 =
     assert(arg.sdata(2) == 0, "out of range")
 
   cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
+
+proc toInt64Checked*(arg: Int128; onError: int64): int64 =
+  if isNegative(arg):
+    if arg.sdata(3) != -1 or arg.sdata(2) != -1:
+      return onError
+  else:
+    if arg.sdata(3) != 0 or arg.sdata(2) != 0:
+      return onError
+  return cast[int64](bitconcat(arg.udata[1], arg.udata[0]))
 
 proc toInt32*(arg: Int128): int32 =
   if isNegative(arg):
@@ -153,7 +162,7 @@ proc castToUInt64*(arg: Int128): uint64 =
   cast[uint64](bitconcat(arg.udata[1], arg.udata[0]))
 
 proc addToHex(result: var string; arg: uint32) =
-  for i in 0 ..< 8:
+  for i in 0..<8:
     let idx = (arg shr ((7-i) * 4)) and 0xf
     result.add "0123456789abcdef"[idx]
 
@@ -241,14 +250,14 @@ proc `shr`*(a: Int128, b: int): Int128 =
     if isNegative(a):
       result.sdata(3) = -1
     result.sdata(2) = a.sdata(3) shr (b and 31)
-    result.udata[1] = cast[uint32](bitconcat(a.udata[2], a.udata[1]) shr (b and 31))
-    result.udata[0] = cast[uint32](bitconcat(a.udata[1], a.udata[0]) shr (b and 31))
+    result.udata[1] = cast[uint32](bitconcat(a.udata[3], a.udata[2]) shr (b and 31))
+    result.udata[0] = cast[uint32](bitconcat(a.udata[2], a.udata[1]) shr (b and 31))
   elif b < 96:
     if isNegative(a):
       result.sdata(3) = -1
       result.sdata(2) = -1
     result.sdata(1) = a.sdata(3) shr (b and 31)
-    result.udata[0] = cast[uint32](bitconcat(a.udata[1], a.udata[0]) shr (b and 31))
+    result.udata[0] = cast[uint32](bitconcat(a.udata[3], a.udata[2]) shr (b and 31))
   else: # b < 128
     if isNegative(a):
       result.sdata(3) = -1
@@ -326,7 +335,6 @@ proc `*`(a: Int128, b: uint32): Int128 =
   result.udata[3] = cast[uint32](tmp3) + cast[uint32](tmp2 shr 32)
 
 proc `*`*(a: Int128, b: int32): Int128 =
-  let isNegative = isNegative(a) xor isNegative(b)
   result = a * cast[uint32](abs(b))
   if b < 0:
     result = -result
@@ -347,8 +355,6 @@ proc low64(a: Int128): uint64 =
   bitconcat(a.udata[1], a.udata[0])
 
 proc `*`*(lhs,rhs: Int128): Int128 =
-  let isNegative = isNegative(lhs) xor isNegative(rhs)
-
   let
     a = cast[uint64](lhs.udata[0])
     b = cast[uint64](lhs.udata[1])
@@ -369,9 +375,6 @@ proc `*`*(lhs,rhs: Int128): Int128 =
   result = makeInt128(high64(lhs) * low64(rhs) + low64(lhs) * high64(rhs) + a32 * b32, a00 * b00)
   result = result + toInt128(a32 * b00) shl 32
   result = result + toInt128(a00 * b32) shl 32
-
-  if isNegative != isNegative(result):
-    assert(false, "overflow")
 
 proc `*=`*(a: var Int128, b: Int128) =
   a = a * b
@@ -398,11 +401,17 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   if divisor > dividend:
     result.quotient = Zero
-    result.remainder = dividend
+    if isNegativeA:
+      result.remainder = -dividend
+    else:
+      result.remainder = dividend
     return
 
   if divisor == dividend:
-    result.quotient = One
+    if isNegativeA xor isNegativeB:
+      result.quotient = NegOne
+    else:
+      result.quotient = One
     result.remainder = Zero
     return
 
@@ -415,7 +424,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
 
   # Uses shift-subtract algorithm to divide dividend by denominator. The
   # remainder will be left in dividend.
-  for i in 0 .. shift:
+  for i in 0..shift:
     quotient = quotient shl 1
     if dividend >= denominator:
       dividend = dividend - denominator
@@ -427,7 +436,7 @@ proc divMod*(dividend, divisor: Int128): tuple[quotient, remainder: Int128] =
     result.quotient = -quotient
   else:
     result.quotient = quotient
-  if isNegativeB:
+  if isNegativeA:
     result.remainder = -dividend
   else:
     result.remainder = dividend
@@ -477,7 +486,7 @@ proc parseDecimalInt128*(arg: string, pos: int = 0): Int128 =
     pos += 1
 
   result = Zero
-  while pos < arg.len and arg[pos] in '0' .. '9':
+  while pos < arg.len and arg[pos] in '0'..'9':
     result = result * Ten
     result.inc(uint32(arg[pos]) - uint32('0'))
     pos += 1
@@ -534,8 +543,6 @@ template bitor(a,b,c: Int128): Int128 = bitor(bitor(a,b), c)
 
 proc toInt128*(arg: float64): Int128 =
   let isNegative = arg < 0
-  assert(arg <  0x47E0000000000000'f64, "out of range")
-  assert(arg >= 0xC7E0000000000000'f64, "out of range")
   let v0 = ldexp(abs(arg), -100)
   let w0 = uint64(trunc(v0))
   let v1 = ldexp(v0 - float64(w0), 50)
@@ -639,8 +646,8 @@ when isMainModule:
   d[37] = parseDecimalInt128("10000000000000000000000000000000000000")
   d[38] = parseDecimalInt128("100000000000000000000000000000000000000")
 
-  for i in 0 ..< d.len:
-    for j in 0 ..< d.len:
+  for i in 0..<d.len:
+    for j in 0..<d.len:
       doAssert(cmp(d[i], d[j]) == cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == d[i+j]
@@ -657,8 +664,8 @@ when isMainModule:
   for it in d.mitems:
     it = -it
 
-  for i in 0 ..< d.len:
-    for j in 0 ..< d.len:
+  for i in 0..<d.len:
+    for j in 0..<d.len:
       doAssert(cmp(d[i], d[j]) == -cmp(i,j))
       if i + j < d.len:
         doAssert d[i] * d[j] == -d[i+j]
@@ -667,3 +674,108 @@ when isMainModule:
 
   doAssert $high(Int128) == "170141183460469231731687303715884105727"
   doAssert $low(Int128) == "-170141183460469231731687303715884105728"
+
+  var ma = 100'i64
+  var mb = 13
+
+  doAssert toInt128(ma) * toInt128(0) == toInt128(0)
+  doAssert toInt128(-ma) * toInt128(0) == toInt128(0)
+
+  # sign correctness
+  doAssert divMod(toInt128( ma),toInt128( mb)) == (toInt128( ma div  mb), toInt128( ma mod  mb))
+  doAssert divMod(toInt128(-ma),toInt128( mb)) == (toInt128(-ma div  mb), toInt128(-ma mod  mb))
+  doAssert divMod(toInt128( ma),toInt128(-mb)) == (toInt128( ma div -mb), toInt128( ma mod -mb))
+  doAssert divMod(toInt128(-ma),toInt128(-mb)) == (toInt128(-ma div -mb), toInt128(-ma mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( mb)) == (toInt128( mb div  mb), toInt128( mb mod  mb))
+  doAssert divMod(toInt128(-mb),toInt128( mb)) == (toInt128(-mb div  mb), toInt128(-mb mod  mb))
+  doAssert divMod(toInt128( mb),toInt128(-mb)) == (toInt128( mb div -mb), toInt128( mb mod -mb))
+  doAssert divMod(toInt128(-mb),toInt128(-mb)) == (toInt128(-mb div -mb), toInt128(-mb mod -mb))
+
+  doAssert divMod(toInt128( mb),toInt128( ma)) == (toInt128( mb div  ma), toInt128( mb mod  ma))
+  doAssert divMod(toInt128(-mb),toInt128( ma)) == (toInt128(-mb div  ma), toInt128(-mb mod  ma))
+  doAssert divMod(toInt128( mb),toInt128(-ma)) == (toInt128( mb div -ma), toInt128( mb mod -ma))
+  doAssert divMod(toInt128(-mb),toInt128(-ma)) == (toInt128(-mb div -ma), toInt128(-mb mod -ma))
+
+  let e = parseDecimalInt128("70997106675279150998592376708984375")
+
+  let strArray = [
+    # toHex(e shr 0), toHex(e shr 1), toHex(e shr 2), toHex(e shr 3)
+    "000dac6d782d266a37300c32591eee37", "0006d636bc1693351b9806192c8f771b", "00036b1b5e0b499a8dcc030c9647bb8d", "0001b58daf05a4cd46e601864b23ddc6",
+    "0000dac6d782d266a37300c32591eee3", "00006d636bc1693351b9806192c8f771", "000036b1b5e0b499a8dcc030c9647bb8", "00001b58daf05a4cd46e601864b23ddc",
+    "00000dac6d782d266a37300c32591eee", "000006d636bc1693351b9806192c8f77", "0000036b1b5e0b499a8dcc030c9647bb", "000001b58daf05a4cd46e601864b23dd",
+    "000000dac6d782d266a37300c32591ee", "0000006d636bc1693351b9806192c8f7", "00000036b1b5e0b499a8dcc030c9647b", "0000001b58daf05a4cd46e601864b23d",
+    "0000000dac6d782d266a37300c32591e", "00000006d636bc1693351b9806192c8f", "000000036b1b5e0b499a8dcc030c9647", "00000001b58daf05a4cd46e601864b23",
+    "00000000dac6d782d266a37300c32591", "000000006d636bc1693351b9806192c8", "0000000036b1b5e0b499a8dcc030c964", "000000001b58daf05a4cd46e601864b2",
+    "000000000dac6d782d266a37300c3259", "0000000006d636bc1693351b9806192c", "00000000036b1b5e0b499a8dcc030c96", "0000000001b58daf05a4cd46e601864b",
+    "0000000000dac6d782d266a37300c325", "00000000006d636bc1693351b9806192", "000000000036b1b5e0b499a8dcc030c9", "00000000001b58daf05a4cd46e601864",
+    "00000000000dac6d782d266a37300c32", "000000000006d636bc1693351b980619", "0000000000036b1b5e0b499a8dcc030c", "000000000001b58daf05a4cd46e60186",
+    "000000000000dac6d782d266a37300c3", "0000000000006d636bc1693351b98061", "00000000000036b1b5e0b499a8dcc030", "0000000000001b58daf05a4cd46e6018",
+    "0000000000000dac6d782d266a37300c", "00000000000006d636bc1693351b9806", "000000000000036b1b5e0b499a8dcc03", "00000000000001b58daf05a4cd46e601",
+    "00000000000000dac6d782d266a37300", "000000000000006d636bc1693351b980", "0000000000000036b1b5e0b499a8dcc0", "000000000000001b58daf05a4cd46e60",
+    "000000000000000dac6d782d266a3730", "0000000000000006d636bc1693351b98", "00000000000000036b1b5e0b499a8dcc", "0000000000000001b58daf05a4cd46e6",
+    "0000000000000000dac6d782d266a373", "00000000000000006d636bc1693351b9", "000000000000000036b1b5e0b499a8dc", "00000000000000001b58daf05a4cd46e",
+    "00000000000000000dac6d782d266a37", "000000000000000006d636bc1693351b", "0000000000000000036b1b5e0b499a8d", "000000000000000001b58daf05a4cd46",
+    "000000000000000000dac6d782d266a3", "0000000000000000006d636bc1693351", "00000000000000000036b1b5e0b499a8", "0000000000000000001b58daf05a4cd4",
+    "0000000000000000000dac6d782d266a", "00000000000000000006d636bc169335", "000000000000000000036b1b5e0b499a", "00000000000000000001b58daf05a4cd",
+    "00000000000000000000dac6d782d266", "000000000000000000006d636bc16933", "0000000000000000000036b1b5e0b499", "000000000000000000001b58daf05a4c",
+    "000000000000000000000dac6d782d26", "0000000000000000000006d636bc1693", "00000000000000000000036b1b5e0b49", "0000000000000000000001b58daf05a4",
+    "0000000000000000000000dac6d782d2", "00000000000000000000006d636bc169", "000000000000000000000036b1b5e0b4", "00000000000000000000001b58daf05a",
+    "00000000000000000000000dac6d782d", "000000000000000000000006d636bc16", "0000000000000000000000036b1b5e0b", "000000000000000000000001b58daf05",
+    "000000000000000000000000dac6d782", "0000000000000000000000006d636bc1", "00000000000000000000000036b1b5e0", "0000000000000000000000001b58daf0",
+    "0000000000000000000000000dac6d78", "00000000000000000000000006d636bc", "000000000000000000000000036b1b5e", "00000000000000000000000001b58daf",
+    "00000000000000000000000000dac6d7", "000000000000000000000000006d636b", "0000000000000000000000000036b1b5", "000000000000000000000000001b58da",
+    "000000000000000000000000000dac6d", "0000000000000000000000000006d636", "00000000000000000000000000036b1b", "0000000000000000000000000001b58d",
+    "0000000000000000000000000000dac6", "00000000000000000000000000006d63", "000000000000000000000000000036b1", "00000000000000000000000000001b58",
+    "00000000000000000000000000000dac", "000000000000000000000000000006d6", "0000000000000000000000000000036b", "000000000000000000000000000001b5",
+    "000000000000000000000000000000da", "0000000000000000000000000000006d", "00000000000000000000000000000036", "0000000000000000000000000000001b",
+    "0000000000000000000000000000000d", "00000000000000000000000000000006", "00000000000000000000000000000003", "00000000000000000000000000000001",
+    "00000000000000000000000000000000", "00000000000000000000000000000000", "00000000000000000000000000000000", "00000000000000000000000000000000",
+    "00000000000000000000000000000000", "00000000000000000000000000000000", "00000000000000000000000000000000", "00000000000000000000000000000000",
+    "00000000000000000000000000000000", "00000000000000000000000000000000", "00000000000000000000000000000000", "00000000000000000000000000000000",
+  ]
+
+  for i in 0 ..< 128:
+    let str1 = toHex(e shr i)
+    let str2 = strArray[i]
+    doAssert str1 == str2
+
+  let strArray2 = [
+    "000dac6d782d266a37300c32591eee37", "001b58daf05a4cd46e601864b23ddc6e", "0036b1b5e0b499a8dcc030c9647bb8dc", "006d636bc1693351b9806192c8f771b8",
+    "00dac6d782d266a37300c32591eee370", "01b58daf05a4cd46e601864b23ddc6e0", "036b1b5e0b499a8dcc030c9647bb8dc0", "06d636bc1693351b9806192c8f771b80",
+    "0dac6d782d266a37300c32591eee3700", "1b58daf05a4cd46e601864b23ddc6e00", "36b1b5e0b499a8dcc030c9647bb8dc00", "6d636bc1693351b9806192c8f771b800",
+    "dac6d782d266a37300c32591eee37000", "b58daf05a4cd46e601864b23ddc6e000", "6b1b5e0b499a8dcc030c9647bb8dc000", "d636bc1693351b9806192c8f771b8000",
+    "ac6d782d266a37300c32591eee370000", "58daf05a4cd46e601864b23ddc6e0000", "b1b5e0b499a8dcc030c9647bb8dc0000", "636bc1693351b9806192c8f771b80000",
+    "c6d782d266a37300c32591eee3700000", "8daf05a4cd46e601864b23ddc6e00000", "1b5e0b499a8dcc030c9647bb8dc00000", "36bc1693351b9806192c8f771b800000",
+    "6d782d266a37300c32591eee37000000", "daf05a4cd46e601864b23ddc6e000000", "b5e0b499a8dcc030c9647bb8dc000000", "6bc1693351b9806192c8f771b8000000",
+    "d782d266a37300c32591eee370000000", "af05a4cd46e601864b23ddc6e0000000", "5e0b499a8dcc030c9647bb8dc0000000", "bc1693351b9806192c8f771b80000000",
+    "782d266a37300c32591eee3700000000", "f05a4cd46e601864b23ddc6e00000000", "e0b499a8dcc030c9647bb8dc00000000", "c1693351b9806192c8f771b800000000",
+    "82d266a37300c32591eee37000000000", "05a4cd46e601864b23ddc6e000000000", "0b499a8dcc030c9647bb8dc000000000", "1693351b9806192c8f771b8000000000",
+    "2d266a37300c32591eee370000000000", "5a4cd46e601864b23ddc6e0000000000", "b499a8dcc030c9647bb8dc0000000000", "693351b9806192c8f771b80000000000",
+    "d266a37300c32591eee3700000000000", "a4cd46e601864b23ddc6e00000000000", "499a8dcc030c9647bb8dc00000000000", "93351b9806192c8f771b800000000000",
+    "266a37300c32591eee37000000000000", "4cd46e601864b23ddc6e000000000000", "99a8dcc030c9647bb8dc000000000000", "3351b9806192c8f771b8000000000000",
+    "66a37300c32591eee370000000000000", "cd46e601864b23ddc6e0000000000000", "9a8dcc030c9647bb8dc0000000000000", "351b9806192c8f771b80000000000000",
+    "6a37300c32591eee3700000000000000", "d46e601864b23ddc6e00000000000000", "a8dcc030c9647bb8dc00000000000000", "51b9806192c8f771b800000000000000",
+    "a37300c32591eee37000000000000000", "46e601864b23ddc6e000000000000000", "8dcc030c9647bb8dc000000000000000", "1b9806192c8f771b8000000000000000",
+    "37300c32591eee370000000000000000", "6e601864b23ddc6e0000000000000000", "dcc030c9647bb8dc0000000000000000", "b9806192c8f771b80000000000000000",
+    "7300c32591eee3700000000000000000", "e601864b23ddc6e00000000000000000", "cc030c9647bb8dc00000000000000000", "9806192c8f771b800000000000000000",
+    "300c32591eee37000000000000000000", "601864b23ddc6e000000000000000000", "c030c9647bb8dc000000000000000000", "806192c8f771b8000000000000000000",
+    "00c32591eee370000000000000000000", "01864b23ddc6e0000000000000000000", "030c9647bb8dc0000000000000000000", "06192c8f771b80000000000000000000",
+    "0c32591eee3700000000000000000000", "1864b23ddc6e00000000000000000000", "30c9647bb8dc00000000000000000000", "6192c8f771b800000000000000000000",
+    "c32591eee37000000000000000000000", "864b23ddc6e000000000000000000000", "0c9647bb8dc000000000000000000000", "192c8f771b8000000000000000000000",
+    "32591eee370000000000000000000000", "64b23ddc6e0000000000000000000000", "c9647bb8dc0000000000000000000000", "92c8f771b80000000000000000000000",
+    "2591eee3700000000000000000000000", "4b23ddc6e00000000000000000000000", "9647bb8dc00000000000000000000000", "2c8f771b800000000000000000000000",
+    "591eee37000000000000000000000000", "b23ddc6e000000000000000000000000", "647bb8dc000000000000000000000000", "c8f771b8000000000000000000000000",
+    "91eee370000000000000000000000000", "23ddc6e0000000000000000000000000", "47bb8dc0000000000000000000000000", "8f771b80000000000000000000000000",
+    "1eee3700000000000000000000000000", "3ddc6e00000000000000000000000000", "7bb8dc00000000000000000000000000", "f771b800000000000000000000000000",
+    "eee37000000000000000000000000000", "ddc6e000000000000000000000000000", "bb8dc000000000000000000000000000", "771b8000000000000000000000000000",
+    "ee370000000000000000000000000000", "dc6e0000000000000000000000000000", "b8dc0000000000000000000000000000", "71b80000000000000000000000000000",
+    "e3700000000000000000000000000000", "c6e00000000000000000000000000000", "8dc00000000000000000000000000000", "1b800000000000000000000000000000",
+    "37000000000000000000000000000000", "6e000000000000000000000000000000", "dc000000000000000000000000000000", "b8000000000000000000000000000000",
+    "70000000000000000000000000000000", "e0000000000000000000000000000000", "c0000000000000000000000000000000", "80000000000000000000000000000000",
+  ]
+
+  for i in 0 ..< 128:
+    let str1 = toHex(e shl i)
+    let str2 = strArray2[i]
+    doAssert str1 == str2

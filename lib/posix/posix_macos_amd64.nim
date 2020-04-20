@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -217,7 +215,11 @@ type
                           ## For a typed memory object, the length in bytes.
                           ## For other file types, the use of this field is
                           ## unspecified.
-    when StatHasNanoseconds:
+    when defined(osx):
+      st_atim* {.importc:"st_atimespec".}: Timespec  ## Time of last access.
+      st_mtim* {.importc:"st_mtimespec".}: Timespec  ## Time of last data modification.
+      st_ctim*  {.importc:"st_ctimespec".}: Timespec  ## Time of last status change.
+    elif StatHasNanoseconds:
       st_atim*: Timespec  ## Time of last access.
       st_mtim*: Timespec  ## Time of last data modification.
       st_ctim*: Timespec  ## Time of last status change.
@@ -225,6 +227,7 @@ type
       st_atime*: Time     ## Time of last access.
       st_mtime*: Time     ## Time of last data modification.
       st_ctime*: Time     ## Time of last status change.
+
     st_blksize*: Blksize  ## A file system-specific preferred I/O block size
                           ## for this object. In some file system types, this
                           ## may vary from file to file.
@@ -562,7 +565,7 @@ when defined(macosx):
   var
     SO_NOSIGPIPE* {.importc, header: "<sys/socket.h>".}: cint
 elif defined(solaris):
-  # Solaris dont have MSG_NOSIGNAL
+  # Solaris doesn't have MSG_NOSIGNAL
   const
     MSG_NOSIGNAL* = 0'i32
 else:

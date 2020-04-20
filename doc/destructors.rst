@@ -53,7 +53,8 @@ written as:
         a.data[i] = b.data[i]
 
   proc `=sink`*[T](a: var myseq[T]; b: myseq[T]) =
-    # move assignment
+    # move assignment, optional.
+    # Compiler is using `=destroy` and `copyMem` when not provided
     `=destroy`(a)
     a.len = b.len
     a.cap = b.cap
@@ -68,7 +69,7 @@ written as:
     assert i < x.len
     x.data[i]
 
-  proc `[]=`*[T](x: myseq[T]; i: Natural; y: sink T) =
+  proc `[]=`*[T](x: var myseq[T]; i: Natural; y: sink T) =
     assert i < x.len
     x.data[i] = y
 
@@ -130,7 +131,10 @@ A `=sink` hook moves an object around, the resources are stolen from the source
 and passed to the destination. It is ensured that source's destructor does
 not free the resources afterwards by setting the object to its default value
 (the value the object's state started in). Setting an object ``x`` back to its
-default value is written as ``wasMoved(x)``.
+default value is written as ``wasMoved(x)``. When not provided the compiler
+is using a combination of `=destroy` and `copyMem` instead. This is efficient
+hence users rarely need to implement their own `=sink` operator, it is enough to
+provide `=destroy` and `=`, compiler will take care about the rest.
 
 The prototype of this hook for a type ``T`` needs to be:
 
@@ -199,7 +203,7 @@ objects inside ``=`` and ``=sink`` is a strong indicator to treat
 ``system.swap`` as a builtin primitive of its own that simply swaps every
 field in the involved objects via ``copyMem`` or a comparable mechanism.
 In other words, ``swap(a, b)`` is **not** implemented
-as ``let tmp = move(a); b = move(a); a = move(tmp)``.
+as ``let tmp = move(b); b = move(a); a = move(tmp)``.
 
 This has further consequences:
 
@@ -251,6 +255,23 @@ Sometimes it is required to explicitly ``move`` a value into its final position:
 An implementation is allowed, but not required to implement even more move
 optimizations (and the current implementation does not).
 
+
+Sink parameter inference
+========================
+
+The current implementation does a limited form of sink parameter
+inference. The `.nosinks`:idx: pragma can be used to disable this inference
+for a single routine:
+
+.. code-block:: nim
+
+  proc addX(x: T; child: T) {.nosinks.} =
+    x.s.add child
+
+To disable it for a section of code, one can
+use `{.push sinkInference: off.}`...`{.pop.}`.
+
+The details of the inference algorithm are currently undocumented.
 
 
 Rewrite rules
@@ -430,6 +451,7 @@ for expressions of type ``lent T`` or of type ``var T``.
     result = Tree(kids: kids)
     # converted into:
     `=sink`(result.kids, kids); wasMoved(kids)
+    `=destroy`(kids)
 
   proc `[]`*(x: Tree; i: int): lent Tree =
     result = x.kids[i]

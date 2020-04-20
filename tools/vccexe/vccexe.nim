@@ -30,9 +30,9 @@ proc discoverVccVcVarsAllPath*(version: VccVersion = vccUndefined): string =
   if result.len > 0:
     return
 
-  # All attempts to dicover vcc failed
+  # All attempts to discover vcc failed
 
-const 
+const
   vccversionPrefix = "--vccversion"
   printPathPrefix = "--printPath"
   vcvarsallPrefix = "--vcvarsall"
@@ -49,7 +49,7 @@ const
   platformSepIdx = platformPrefix.len
   sdktypeSepIdx = sdktypePrefix.len
   sdkversionSepIdx = sdkversionPrefix.len
-  
+
   vcvarsallDefaultPath = "vcvarsall.bat"
 
   helpText = """
@@ -73,11 +73,11 @@ Options:
                       of the VCC version specified with the --vccversion argument.
                       For each specified version the utility prints a line with the
                       following format: <version>: <path>
-  --noCommand         Flag to supress VCC secondary command execution
-                      Useful in conjuction with --vccversion and --printPath to
-                      only perfom VCC discovery, but without executing VCC tools
+  --noCommand         Flag to suppress VCC secondary command execution
+                      Useful in conjunction with --vccversion and --printPath to
+                      only perform VCC discovery, but without executing VCC tools
   --vcvarsall:<path>  Path to the Developer Command Prompt utility vcvarsall.bat that selects
-                      the appropiate devlopment settings.
+                      the appropriate development settings.
                       Usual path for Visual Studio 2015 and below:
                         %VSInstallDir%\VC\vcvarsall
                       Usual path for Visual Studio 2017 and above:
@@ -104,28 +104,29 @@ Microsoft (R) C/C++ Optimizing Compiler if no secondary
 command was specified
 """
 
-when isMainModule:
-  var vccversionArg: seq[string] = @[]
-  var printPathArg: bool = false
-  var vcvarsallArg: string
-  var commandArg: string
-  var noCommandArg: bool = false
-  var platformArg: VccArch
-  var sdkTypeArg: VccPlatformType
-  var sdkVersionArg: string
-  var verboseArg: bool = false
-
-  var clArgs: seq[TaintedString] = @[]
-
-  # Cannot use usual command-line argument parser here
-  # Since vccexe command-line arguments are intermingled
-  # with the secondary command-line arguments which have
-  # a syntax that is not supported by the default nim
-  # argument parser.
-  var wrapperArgs = commandLineParams()
-  for wargv in wrapperArgs:
+proc parseVccexeCmdLine(argseq: seq[TaintedString],
+    vccversionArg: var seq[string], printPathArg: var bool,
+    vcvarsallArg: var string, commandArg: var string, noCommandArg: var bool,
+    platformArg: var VccArch, sdkTypeArg: var VccPlatformType,
+    sdkVersionArg: var string, verboseArg: var bool,
+    clArgs: var seq[TaintedString]) =
+  ## Cannot use usual command-line argument parser here
+  ## Since vccexe command-line arguments are intermingled
+  ## with the secondary command-line arguments which have
+  ## a syntax that is not supported by the default nim
+  ## argument parser.
+  for wargv in argseq:
     # Check whether the current argument contains -- prefix
-    if wargv.startsWith(vccversionPrefix): # Check for vccversion
+    if wargv.startsWith("@"): # Check for response file prefix
+      let
+        responsefilename = wargv.substr(1)
+        responsefilehandle = open(responsefilename)
+        responsecontent = responsefilehandle.readAll()
+        responseargs = parseCmdLine(responsecontent)
+      parseVccexeCmdLine(responseargs, vccversionArg, printPathArg,
+        vcvarsallArg, commandArg, noCommandArg, platformArg, sdkTypeArg,
+        sdkVersionArg, verboseArg, clArgs)
+    elif wargv.startsWith(vccversionPrefix): # Check for vccversion
       vccversionArg.add(wargv.substr(vccversionSepIdx + 1))
     elif wargv.cmpIgnoreCase(printPathPrefix) == 0: # Check for printPath
       printPathArg = true
@@ -147,6 +148,25 @@ when isMainModule:
       if (wargv.len == 2) and (wargv[1] == '?'):
         echo helpText
       clArgs.add(wargv)
+
+when isMainModule:
+  var vccversionArg: seq[string] = @[]
+  var printPathArg: bool = false
+  var vcvarsallArg: string
+  var commandArg: string
+  var noCommandArg: bool = false
+  var platformArg: VccArch
+  var sdkTypeArg: VccPlatformType
+  var sdkVersionArg: string
+  var verboseArg: bool = false
+
+  var clArgs: seq[TaintedString] = @[]
+
+  let wrapperArgs = commandLineParams()
+  parseVccexeCmdLine(wrapperArgs, vccversionArg, printPathArg, vcvarsallArg,
+    commandArg, noCommandArg, platformArg, sdkTypeArg, sdkVersionArg,
+    verboseArg,
+    clArgs)
 
   # Support for multiple specified versions. Attempt VCC discovery for each version
   # specified, first successful discovery wins
@@ -174,7 +194,7 @@ when isMainModule:
       head = "latest"
     echo "$1: $2" % [head, vcvarsallArg]
 
-  # Call vcvarsall to get the appropiate VCC process environment
+  # Call vcvarsall to get the appropriate VCC process environment
   var vcvars = vccVarsAll(vcvarsallArg, platformArg, sdkTypeArg, sdkVersionArg, verboseArg)
   if vcvars != nil:
     for vccEnvKey, vccEnvVal in vcvars:

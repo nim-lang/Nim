@@ -113,8 +113,8 @@ proc close*[T](s: Selector[T]) =
 
 when defined(windows):
   proc newSelectEvent*(): SelectEvent =
-    var ssock = newNativeSocket()
-    var wsock = newNativeSocket()
+    var ssock = createNativeSocket()
+    var wsock = createNativeSocket()
     var rsock: SocketHandle = INVALID_SOCKET
     var saddr = Sockaddr_in()
 
@@ -286,7 +286,7 @@ proc unregister*[T](s: Selector[T], fd: SocketHandle|int) =
   s.withSelectLock():
     let fd = fd.SocketHandle
     var pkey = s.getKey(fd)
-    if Event.Read in pkey.events:
+    if Event.Read in pkey.events or Event.User in pkey.events:
       IOFD_CLR(fd, addr s.rSet)
       dec(s.count)
     if Event.Write in pkey.events:

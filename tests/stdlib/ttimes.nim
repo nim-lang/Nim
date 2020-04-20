@@ -95,7 +95,7 @@ template runTimezoneTests() =
 
   # Bug with parse not setting DST properly if the current local DST differs from
   # the date being parsed. Need to test parse dates both in and out of DST. We
-  # are testing that be relying on the fact that tranforming a TimeInfo to a Time
+  # are testing that be relying on the fact that transforming a TimeInfo to a Time
   # and back again will correctly set the DST value. With the incorrect parse
   # behavior this will introduce a one hour offset from the named time and the
   # parsed time if the DST value differs between the current time and the date we
@@ -155,7 +155,7 @@ suite "ttimes":
       # impossible time period
       check initDateTime(26, mMar, 2017, 02, 30, 00).format(f) ==
         "2017-03-26 03:30 +02:00"
-      # In case of an ambiguous time, the earlier time is choosen
+      # In case of an ambiguous time, the earlier time is chosen
       check initDateTime(29, mOct, 2017, 02, 00, 00).format(f) ==
         "2017-10-29 02:00 +02:00"
       # These are just dates on either side of the dst switch
@@ -309,7 +309,7 @@ suite "ttimes":
     check dt.nanosecond == convert(Milliseconds, Nanoseconds, 1)
     check d(seconds = 1, milliseconds = 500) * 2 == d(seconds = 3)
     check d(seconds = 3) div 2 == d(seconds = 1, milliseconds = 500)
-    check d(milliseconds = 1001).seconds == 1
+    check d(milliseconds = 1001).inSeconds == 1
     check d(seconds = 1, milliseconds = 500) - d(milliseconds = 1250) ==
       d(milliseconds = 250)
     check d(seconds = 1, milliseconds = 1) < d(seconds = 1, milliseconds = 2)
@@ -345,20 +345,24 @@ suite "ttimes":
   test "adding/subtracting TimeInterval":
     # add/subtract TimeIntervals and Time/TimeInfo
     let now = getTime().utc
+    let isSpecial = now.isLeapDay
     check now + convert(Seconds, Nanoseconds, 1).nanoseconds == now + 1.seconds
     check now + 1.weeks == now + 7.days
     check now - 1.seconds == now - 3.seconds + 2.seconds
     check now + 65.seconds == now + 1.minutes + 5.seconds
     check now + 60.minutes == now + 1.hours
     check now + 24.hours == now + 1.days
-    check now + 13.months == now + 1.years + 1.months
+    if not isSpecial:
+      check now + 13.months == now + 1.years + 1.months
     check toUnix(fromUnix(0) + 2.seconds) == 2
     check toUnix(fromUnix(0) - 2.seconds) == -2
     var ti1 = now + 1.years
     ti1 = ti1 - 1.years
-    check ti1 == now
+    if not isSpecial:
+      check ti1 == now
     ti1 = ti1 + 1.days
-    check ti1 == now + 1.days
+    if not isSpecial:
+      check ti1 == now + 1.days
 
     # Bug with adding a day to a Time
     let day = 24.hours
@@ -500,12 +504,6 @@ suite "ttimes":
     check $parse("02 Fir 2019", "dd MMM yyyy", utc(), loc) == "2019-01-02T00:00:00Z"
     check $parse("Fourthy 6, 2017", "MMMM d, yyyy", utc(), loc) == "2017-04-06T00:00:00Z"
 
-  test "countLeapYears":
-    # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
-    check countLeapYears(1920) + 1 == countLeapYears(1921)
-    check countLeapYears(2004) + 1 == countLeapYears(2005)
-    check countLeapYears(2020) + 1 == countLeapYears(2021)
-
   test "timezoneConversion":
     var l = now()
     let u = l.utc
@@ -615,6 +613,21 @@ suite "ttimes":
       let y = initDateTime(10, mMar, 1995, 00, 00, 00, utc())
       doAssert x + between(x, y) == y
       doAssert between(x, y) == 1.months + 1.weeks
+
+  test "default DateTime": # https://github.com/nim-lang/RFCs/issues/211
+    var num = 0
+    for ai in Month: num.inc
+    doAssert num == 12
+
+    var a: DateTime
+    doAssert a == DateTime.default
+    doAssert ($a).len > 0 # no crash
+    doAssert a.month.Month.ord == 0
+    doAssert a.month.Month == cast[Month](0)
+    doAssert a.monthday == 0
+
+    doAssertRaises(AssertionError): discard getDayOfWeek(a.monthday, a.month, a.year)
+    doAssertRaises(AssertionError): discard a.toTime
 
   test "inX procs":
     doAssert initDuration(seconds = 1).inSeconds == 1

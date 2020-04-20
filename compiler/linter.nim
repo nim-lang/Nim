@@ -37,7 +37,7 @@ proc beautifyName(s: string, k: TSymKind): string =
     # Types should start with a capital unless builtins like 'int' etc.:
     if s =~ ["int", "uint", "cint", "cuint", "clong", "cstring", "string",
              "char", "byte", "bool", "openArray", "seq", "array", "void",
-             "pointer", "float", "csize", "cdouble", "cchar", "cschar",
+             "pointer", "float", "csize", "csize_t", "cdouble", "cchar", "cschar",
              "cshort", "cu", "nil", "typedesc", "auto", "any",
              "range", "openarray", "varargs", "set", "cfloat", "ref", "ptr",
              "untyped", "typed", "static", "sink", "lent", "type", "owned"]:
@@ -72,10 +72,9 @@ proc beautifyName(s: string, k: TSymKind): string =
 proc differ*(line: string, a, b: int, x: string): string =
   proc substrEq(s: string, pos, last: int, substr: string): bool =
     var i = 0
-    var length = substr.len
-    while i < length and pos+i <= last and s[pos+i] == substr[i]:
+    while i < substr.len and pos+i <= last and s[pos+i] == substr[i]:
       inc i
-    return i == length
+    return i == substr.len
 
   let last = min(b, line.len)
 

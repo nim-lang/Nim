@@ -26,14 +26,11 @@ template builtin = discard
 # We know the effects better than the compiler:
 {.push hint[XDeclaredButNotUsed]: off.}
 
-proc listDirs*(dir: string): seq[string] =
-  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
-  builtin
-proc listFiles*(dir: string): seq[string] =
-  ## Lists all the files (non-recursively) in the directory `dir`.
-  builtin
-
-proc removeDir(dir: string) {.
+proc listDirsImpl(dir: string): seq[string] {.
+  tags: [ReadIOEffect], raises: [OSError].} = builtin
+proc listFilesImpl(dir: string): seq[string] {.
+  tags: [ReadIOEffect], raises: [OSError].} = builtin
+proc removeDir(dir: string, checkDir = true) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -47,6 +44,7 @@ proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
+
 proc getError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir*(): string =
@@ -196,10 +194,20 @@ template log(msg: string, body: untyped) =
   if mode != ScriptMode.WhatIf:
     body
 
-proc rmDir*(dir: string) {.raises: [OSError].} =
+proc listDirs*(dir: string): seq[string] =
+  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
+  result = listDirsImpl(dir)
+  checkOsError()
+
+proc listFiles*(dir: string): seq[string] =
+  ## Lists all the files (non-recursively) in the directory `dir`.
+  result = listFilesImpl(dir)
+  checkOsError()
+
+proc rmDir*(dir: string, checkDir = false) {.raises: [OSError].} =
   ## Removes the directory `dir`.
   log "rmDir: " & dir:
-    removeDir dir
+    removeDir(dir, checkDir = checkDir)
     checkOsError()
 
 proc rmFile*(file: string) {.raises: [OSError].} =
@@ -311,9 +319,9 @@ proc cd*(dir: string) {.raises: [OSError].} =
   ## Changes the current directory.
   ##
   ## The change is permanent for the rest of the execution, since this is just
-  ## a shortcut for `os.setCurrentDir()
-  ## <http://nim-lang.org/docs/os.html#setCurrentDir,string>`_ . Use the `withDir()
-  ## <#withDir>`_ template if you want to perform a temporary change only.
+  ## a shortcut for `os.setCurrentDir() <os.html#setCurrentDir,string>`_ . Use
+  ## the `withDir() <#withDir.t,string,untyped>`_ template if you want to
+  ## perform a temporary change only.
   setCurrentDir(dir)
   checkOsError()
 
@@ -326,7 +334,8 @@ proc findExe*(bin: string): string =
 template withDir*(dir: string; body: untyped): untyped =
   ## Changes the current directory temporarily.
   ##
-  ## If you need a permanent change, use the `cd() <#cd>`_ proc. Usage example:
+  ## If you need a permanent change, use the `cd() <#cd,string>`_ proc.
+  ## Usage example:
   ##
   ## .. code-block:: nim
   ##   withDir "foo":

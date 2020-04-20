@@ -48,7 +48,7 @@ template inclImpl() {.dirty.} =
   var hc: Hash
   var index = rawGet(s, key, hc)
   if index < 0:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -62,7 +62,7 @@ template containsOrInclImpl() {.dirty.} =
   if index >= 0:
     result = true
   else:
-    if mustRehash(len(s.data), s.counter):
+    if mustRehash(s):
       enlarge(s)
       index = rawGetKnownHC(s, key, hc)
     rawInsert(s, s.data, key, hc, -1 - index)
@@ -92,7 +92,7 @@ proc exclImpl[A](s: var HashSet[A], key: A): bool {.inline.} =
         if isEmpty(s.data[i].hcode): # end of collision cluster; So all done
           return
         r = s.data[i].hcode and msk # "home" location of key@i
-      shallowCopy(s.data[j], s.data[i]) # data[i] will be marked EMPTY next loop
+      s.data[j] = move(s.data[i]) # data[i] will be marked EMPTY next loop
 
 template dollarImpl() {.dirty.} =
   result = "{"

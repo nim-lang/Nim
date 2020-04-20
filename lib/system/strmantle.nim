@@ -14,7 +14,7 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let blen = b.len
   let minlen = min(alen, blen)
   if minlen > 0:
-    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], minlen.csize)
+    result = c_memcmp(unsafeAddr a[0], unsafeAddr b[0], cast[csize_t](minlen))
     if result == 0:
       result = alen - blen
   else:
@@ -74,6 +74,15 @@ proc nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
 
+proc addCstringN(result: var string, buf: cstring; buflen: int) =
+  # no nimvm support needed, so it doesn't need to be fast here either
+  let oldLen = result.len
+  let newLen = oldLen + buflen
+  result.setLen newLen
+  copyMem(result[oldLen].addr, buf, buflen)
+
+import formatfloat
+
 proc addFloat*(result: var string; x: float) =
   ## Converts float to its string representation and appends it to `result`.
   ##
@@ -85,37 +94,9 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buf: array[0..64, char]
-    when defined(nimNoArrayToCstringConversion):
-      var n: int = c_sprintf(addr buf, "%.16g", x)
-    else:
-      var n: int = c_sprintf(buf, "%.16g", x)
-    var hasDot = false
-    for i in 0..n-1:
-      if buf[i] == ',':
-        buf[i] = '.'
-        hasDot = true
-      elif buf[i] in {'a'..'z', 'A'..'Z', '.'}:
-        hasDot = true
-    if not hasDot:
-      buf[n] = '.'
-      buf[n+1] = '0'
-      buf[n+2] = '\0'
-    # On Windows nice numbers like '1.#INF', '-1.#INF' or '1.#NAN'
-    # of '-1.#IND' are produced.
-    # We want to get rid of these here:
-    if buf[n-1] in {'n', 'N', 'D', 'd'}:
-      result.add "nan"
-    elif buf[n-1] == 'F':
-      if buf[0] == '-':
-        result.add "-inf"
-      else:
-        result.add "inf"
-    else:
-      var i = 0
-      while buf[i] != '\0':
-        result.add buf[i]
-        inc i
+    var buffer: array[65, char]
+    let n = writeFloatToBuffer(buffer, x)
+    result.addCstringN(cstring(buffer[0].addr), n)
 
 proc add*(result: var string; x: float) {.deprecated:
   "Deprecated since v0.20, use 'addFloat'".} =
@@ -133,6 +114,9 @@ const
   powtens =  [1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9,
               1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19,
               1e20, 1e21, 1e22]
+
+when defined(nimHasInvariant):
+  {.push staticBoundChecks: off.}
 
 proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
@@ -255,7 +239,7 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     # if exponent is greater try to fit extra exponent above 22 by multiplying
     # integer part is there is space left.
     let slop = 15 - kdigits - fdigits
-    if  absExponent <= 22 + slop and not expNegative:
+    if absExponent <= 22 + slop and not expNegative:
       number = sign * integer.float * powtens[slop] * powtens[absExponent-slop]
       return i - start
 
@@ -293,6 +277,9 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
   else:
     number = c_strtod(t, nil)
 
+when defined(nimHasInvariant):
+  {.pop.} # staticBoundChecks
+
 proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
@@ -323,3 +310,12 @@ proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
     let half = i div 2
     # Reverse
     for t in 0 .. half-1: swap(result[t], result[i-t-1])
+
+when defined(gcDestructors):
+  proc GC_getStatistics*(): string =
+    result = "[GC] total memory: "
+    result.addInt getTotalMem()
+    result.add "\n[GC] occupied memory: "
+    result.addInt getOccupiedMem()
+    result.add '\n'
+    #"[GC] cycle collections: " & $gch.stat.cycleCollections & "\n" &

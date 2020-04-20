@@ -95,6 +95,8 @@
 ##   runForever()
 ##
 
+include "system/inclrtl"
+
 import asyncdispatch
 import nativesockets
 import net
@@ -114,11 +116,11 @@ type
   # AsyncSocket* {.borrow: `.`.} = distinct Socket. But that doesn't work.
   AsyncSocketDesc = object
     fd: SocketHandle
-    closed: bool ## determines whether this socket has been closed
+    closed: bool     ## determines whether this socket has been closed
     isBuffered: bool ## determines whether this socket is buffered.
     buffer: array[0..BufferSize, char]
-    currPos: int # current index in buffer
-    bufLen: int # current length of buffer
+    currPos: int     # current index in buffer
+    bufLen: int      # current length of buffer
     isSsl: bool
     when defineSsl:
       sslHandle: SslPtr
@@ -189,7 +191,7 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
 when defineSsl:
   proc getSslError(handle: SslPtr, err: cint): cint =
     assert err < 0
-    var ret = SSLGetError(handle, err.cint)
+    var ret = SSL_get_error(handle, err.cint)
     case ret
     of SSL_ERROR_ZERO_RETURN:
       raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
@@ -211,9 +213,9 @@ when defineSsl:
       let read = bioRead(socket.bioOut, addr data[0], len)
       assert read != 0
       if read < 0:
-        raiseSslError()
+        raiseSSLError()
       data.setLen(read)
-      await socket.fd.AsyncFd.send(data, flags)
+      await socket.fd.AsyncFD.send(data, flags)
 
   proc appeaseSsl(socket: AsyncSocket, flags: set[SocketFlag],
                   sslError: cint): owned(Future[bool]) {.async.} =
@@ -603,7 +605,8 @@ proc recvLine*(socket: AsyncSocket,
   await socket.recvLineInto(resString, flags, maxLength)
   result = resString.mget()
 
-proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [ReadIOEffect].} =
+proc listen*(socket: AsyncSocket, backlog = SOMAXCONN) {.tags: [
+    ReadIOEffect].} =
   ## Marks ``socket`` as accepting connections.
   ## ``Backlog`` specifies the maximum length of the
   ## queue of pending connections.
@@ -620,7 +623,7 @@ proc bindAddr*(socket: AsyncSocket, port = Port(0), address = "") {.
   if realaddr == "":
     case socket.domain
     of AF_INET6: realaddr = "::"
-    of AF_INET:  realaddr = "0.0.0.0"
+    of AF_INET: realaddr = "0.0.0.0"
     else:
       raise newException(ValueError,
         "Unknown socket address family and no address specified to bindAddr")
@@ -653,7 +656,7 @@ when defined(posix):
 
       var socketAddr = makeUnixAddr(path)
       let ret = socket.fd.connect(cast[ptr SockAddr](addr socketAddr),
-                       (sizeof(socketAddr.sun_family) + path.len).SockLen)
+                        (sizeof(socketAddr.sun_family) + path.len).SockLen)
       if ret == 0:
         # Request to connect completed immediately.
         retFuture.complete()
@@ -671,7 +674,7 @@ when defined(posix):
     when not defined(nimdoc):
       var socketAddr = makeUnixAddr(path)
       if socket.fd.bindAddr(cast[ptr SockAddr](addr socketAddr),
-                            (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
+          (sizeof(socketAddr.sun_family) + path.len).SockLen) != 0'i32:
         raiseOSError(osLastError())
 
 elif defined(nimdoc):
@@ -691,13 +694,13 @@ proc close*(socket: AsyncSocket) =
   defer:
     socket.fd.AsyncFD.closeSocket()
   when defineSsl:
-    if socket.isSSL:
-      let res = SslShutdown(socket.sslHandle)
-      SSLFree(socket.sslHandle)
+    if socket.isSsl:
+      let res = SSL_shutdown(socket.sslHandle)
+      SSL_free(socket.sslHandle)
       if res == 0:
         discard
       elif res != 1:
-        raiseSslError()
+        raiseSSLError()
   socket.closed = true # TODO: Add extra debugging checks for this.
 
 when defineSsl:
@@ -709,12 +712,12 @@ when defineSsl:
     ## prone to security vulnerabilities.
     socket.isSsl = true
     socket.sslContext = ctx
-    socket.sslHandle = SSLNew(socket.sslContext.context)
+    socket.sslHandle = SSL_new(socket.sslContext.context)
     if socket.sslHandle == nil:
-      raiseSslError()
+      raiseSSLError()
 
-    socket.bioIn = bioNew(bio_s_mem())
-    socket.bioOut = bioNew(bio_s_mem())
+    socket.bioIn = bioNew(bioSMem())
+    socket.bioOut = bioNew(bioSMem())
     sslSetBio(socket.sslHandle, socket.bioIn, socket.bioOut)
 
   proc wrapConnectedSocket*(ctx: SslContext, socket: AsyncSocket,
@@ -741,6 +744,17 @@ when defineSsl:
       sslSetConnectState(socket.sslHandle)
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
+
+  proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
 
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =

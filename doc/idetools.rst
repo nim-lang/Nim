@@ -124,9 +124,9 @@ separators!).
 
 The typical usage scenario for this option is to call it after the
 user has typed the dot character for `the object oriented call
-syntax <tut2.html#method-call-syntax>`_. Idetools will try to return
-the suggestions sorted first by scope (from innermost to outermost)
-and then by item name.
+syntax <tut2.html#object-oriented-programming-method-call-syntax>`_.
+Idetools will try to return the suggestions sorted first by scope
+(from innermost to outermost) and then by item name.
 
 
 Invocation context
@@ -359,7 +359,8 @@ defined, since at that point in the file the parser hasn't processed
 the full line yet. The signature will be returned complete in
 posterior instances of the method.
 
-Methods imply `dynamic dispatch <tut2.html#dynamic-dispatch>`_ and
+Methods imply `dynamic dispatch
+<tut2.html#object-oriented-programming-dynamic-dispatch>`_ and
 idetools performs a static analysis on the code. For this reason
 idetools may not return the definition of the correct method you
 are querying because it may be impossible to know until the code

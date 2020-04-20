@@ -40,7 +40,7 @@ proc getSysMagic*(g: ModuleGraph; info: TLineInfo; name: string, m: TMagic): PSy
   while r != nil:
     if r.magic == m:
       # prefer the tyInt variant:
-      if r.typ.sons[0] != nil and r.typ.sons[0].kind == tyInt: return r
+      if r.typ[0] != nil and r.typ[0].kind == tyInt: return r
       result = r
     r = nextIdentIter(ti, g.systemModule.tab)
   if result != nil: return result
@@ -68,7 +68,7 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     of tyUInt64: result = sysTypeFromName("uint64")
     of tyFloat: result = sysTypeFromName("float")
     of tyFloat32: result = sysTypeFromName("float32")
-    of tyFloat64: return sysTypeFromName("float64")
+    of tyFloat64: result = sysTypeFromName("float64")
     of tyFloat128: result = sysTypeFromName("float128")
     of tyBool: result = sysTypeFromName("bool")
     of tyChar: result = sysTypeFromName("char")
@@ -79,7 +79,9 @@ proc getSysType*(g: ModuleGraph; info: TLineInfo; kind: TTypeKind): PType =
     else: internalError(g.config, "request for typekind: " & $kind)
     g.sysTypes[kind] = result
   if result.kind != kind:
-    internalError(g.config, "wanted: " & $kind & " got: " & $result.kind)
+    if kind == tyFloat64 and result.kind == tyFloat: discard # because of aliasing
+    else:
+      internalError(g.config, "wanted: " & $kind & " got: " & $result.kind)
   if result == nil: internalError(g.config, "type not found: " & $kind)
 
 proc resetSysTypes*(g: ModuleGraph) =
@@ -123,7 +125,7 @@ proc addSonSkipIntLit*(father, son: PType) =
   when not defined(nimNoNilSeqs):
     if isNil(father.sons): father.sons = @[]
   let s = son.skipIntLit
-  add(father.sons, s)
+  father.sons.add(s)
   propagateToOwner(father, s)
 
 proc setIntLitType*(g: ModuleGraph; result: PNode) =
@@ -175,3 +177,28 @@ proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
   strTableGet(g.exposed, getIdent(g.cache, name))
 
 proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)
+
+proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
+  case t.kind
+  of tyInt,  tyInt8, tyInt16, tyInt32, tyInt64,
+     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64: 
+    result = getSysMagic(g, info, "==", mEqI)
+  of tyEnum: 
+    result = getSysMagic(g, info, "==", mEqEnum)
+  of tyBool: 
+    result = getSysMagic(g, info, "==", mEqB)
+  of tyRef, tyPtr, tyPointer: 
+    result = getSysMagic(g, info, "==", mEqRef)
+  of tyString:
+    result = getSysMagic(g, info, "==", mEqStr)
+  of tyChar:
+    result = getSysMagic(g, info, "==", mEqCh)
+  of tySet:
+    result = getSysMagic(g, info, "==", mEqSet)
+  of tyProc:
+    result = getSysMagic(g, info, "==", mEqProc)
+  else:
+    globalError(g.config, info,
+      "can't find magic equals operator for type kind " & $t.kind)
+
+
