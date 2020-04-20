@@ -226,6 +226,8 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
   # for correctness: These are called 'threadLocal' here.
   for i in 1..<n.len:
     let n = n[i]
+    if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
+      continue
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
     #if containsTyRef(argType):
