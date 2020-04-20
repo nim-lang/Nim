@@ -24,7 +24,6 @@ Runtime checks (see -x):
   --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
-  --nilChecks:on|off        turn nil checks on|off
   --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
