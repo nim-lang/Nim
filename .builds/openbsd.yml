@@ -16,7 +16,7 @@ tasks:
 - setup: |
     cd Nim
     git clone --depth 1 -q https://github.com/nim-lang/csources.git
-    gmake -C csources -j $(sysctl -n hw.ncpu)
+    gmake -C csources -j $(sysctl -n hw.ncpuonline)
     bin/nim c koch
     echo 'export PATH=$HOME/Nim/bin:$PATH' >> $HOME/.buildenv
 - test: |
