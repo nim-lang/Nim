@@ -35,7 +35,7 @@ pkg "gnuplot"
 # pkg "godot", "nim c -r godot/godot.nim" # not yet compatible with Nim 0.19
 pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "illwill", "nimble examples"
-pkg "inim"
+pkg "inim", "", true
 pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
