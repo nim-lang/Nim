@@ -182,7 +182,7 @@ proc writeProfile() {.noconv.} =
     var perProc = initCountTable[string]()
     for i in 0..entries-1:
       var dups = initHashSet[string]()
-      for ii in 0..high(typeof(StackTrace.lines)):
+      for ii in 0..high(StackTrace.lines):
         let procname = profileData[i].st[ii]
         if isNil(procname): break
         let p = $procname
