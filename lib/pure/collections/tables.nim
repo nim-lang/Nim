@@ -1098,7 +1098,7 @@ iterator pairs*[A, B](t: TableRef[A, B]): (A, B) =
   ##   # value: [1, 5, 7, 9]
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledAndValid(t.data[h].hcode):
+    if isFilled(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -1120,7 +1120,7 @@ iterator mpairs*[A, B](t: TableRef[A, B]): (A, var B) =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledAndValid(t.data[h].hcode):
+    if isFilled(t.data[h].hcode):
       yield (t.data[h].key, t.data[h].val)
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -1141,7 +1141,7 @@ iterator keys*[A, B](t: TableRef[A, B]): A =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledAndValid(t.data[h].hcode):
+    if isFilled(t.data[h].hcode):
       yield t.data[h].key
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -1162,7 +1162,7 @@ iterator values*[A, B](t: TableRef[A, B]): B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledAndValid(t.data[h].hcode):
+    if isFilled(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -1183,7 +1183,7 @@ iterator mvalues*[A, B](t: TableRef[A, B]): var B =
 
   let L = len(t)
   for h in 0 .. high(t.data):
-    if isFilledAndValid(t.data[h].hcode):
+    if isFilled(t.data[h].hcode):
       yield t.data[h].val
       assert(len(t) == L, "the length of the table changed while iterating over it")
 
@@ -1258,10 +1258,6 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
     var h = t.first
     while h >= 0:
       var nxt = t.data[h].next
-       # For OrderedTable/OrderedTableRef, isFilled is ok because `del` is O(n)
-       # and doesn't create tombsones, but if it does start using tombstones,
-       # carefully replace `isFilled` by `isFilledAndValid` as appropriate for these
-       # table types only, ditto with `OrderedSet`.
       if isFilled(t.data[h].hcode):
         yieldStmt
       h = nxt
