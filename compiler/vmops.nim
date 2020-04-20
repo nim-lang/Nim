@@ -19,6 +19,9 @@ from sighashes import symBodyDigest
 from times import cpuTime
 
 from hashes import hash
+from osproc import nil
+
+import vmconv
 
 template mathop(op) {.dirty.} =
   registerCallback(c, "stdlib.math." & astToStr(op), `op Wrapper`)
@@ -99,13 +102,12 @@ proc getCurrentExceptionWrapper(a: VmArgs) {.nimcall.} =
 proc staticWalkDirImpl(path: string, relative: bool): PNode =
   result = newNode(nkBracket)
   for k, f in walkDir(path, relative):
-    result.add newTree(nkTupleConstr, newIntNode(nkIntLit, k.ord),
-                              newStrNode(nkStrLit, f))
+    result.add toLit((k, f))
 
 when defined(nimHasInvariant):
   from std / compilesettings import SingleValueSetting, MultipleValueSetting
 
-  proc querySettingImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): string =
+  proc querySettingImpl(conf: ConfigRef, switch: BiggestInt): string =
     case SingleValueSetting(switch)
     of arguments: result = conf.arguments
     of outFile: result = conf.outFile.string
@@ -120,7 +122,7 @@ when defined(nimHasInvariant):
     of compileOptions: result = conf.compileOptions
     of ccompilerPath: result = conf.cCompilerPath
 
-  proc querySettingSeqImpl(a: VmArgs, conf: ConfigRef, switch: BiggestInt): seq[string] =
+  proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
       for i in field: result.add i.string
 
@@ -134,9 +136,9 @@ when defined(nimHasInvariant):
 
 proc registerAdditionalOps*(c: PCtx) =
   proc gorgeExWrapper(a: VmArgs) =
-    let (s, e) = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
+    let ret = opGorge(getString(a, 0), getString(a, 1), getString(a, 2),
                          a.currentLineInfo, c.config)
-    setResult a, newTree(nkTupleConstr, newStrNode(nkStrLit, s), newIntNode(nkIntLit, e))
+    setResult a, ret.toLit
 
   proc getProjectPathWrapper(a: VmArgs) =
     setResult a, c.config.projectPath.string
@@ -184,9 +186,9 @@ proc registerAdditionalOps*(c: PCtx) =
       setResult(a, staticWalkDirImpl(getString(a, 0), getBool(a, 1)))
     when defined(nimHasInvariant):
       registerCallback c, "stdlib.compilesettings.querySetting", proc (a: VmArgs) {.nimcall.} =
-        setResult(a, querySettingImpl(a, c.config, getInt(a, 0)))
+        setResult(a, querySettingImpl(c.config, getInt(a, 0)))
       registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
-        setResult(a, querySettingSeqImpl(a, c.config, getInt(a, 0)))
+        setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"
@@ -238,8 +240,21 @@ proc registerAdditionalOps*(c: PCtx) =
   registerCallback c, "stdlib.hashes.hashVmImplByte", hashVmImplByte
   registerCallback c, "stdlib.hashes.hashVmImplChar", hashVmImplByte
 
-  if optBenchmarkVM in c.config.globalOptions:
+  if optBenchmarkVM in c.config.globalOptions or vmopsDanger in c.config.features:
     wrap0(cpuTime, timesop)
   else:
     proc cpuTime(): float = 5.391245e-44  # Randomly chosen
     wrap0(cpuTime, timesop)
+
+  if vmopsDanger in c.config.features:
+    ## useful procs but these should be opt-in because they may impact
+    ## reproducible builds and users need to understand that this runs at CT.
+    ## Note that `staticExec` can already do equal amount of damage so it's more
+    ## of a semantic issue than a security issue.
+    registerCallback c, "stdlib.os.getCurrentDir", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, os.getCurrentDir())
+    registerCallback c, "stdlib.osproc.execCmdEx", proc (a: VmArgs) {.nimcall.} =
+      let options = getNode(a, 1).fromLit(set[osproc.ProcessOption])
+      a.setResult osproc.execCmdEx(getString(a, 0), options).toLit
+    registerCallback c, "stdlib.times.getTime", proc (a: VmArgs) {.nimcall.} =
+      setResult(a, times.getTime().toLit)
