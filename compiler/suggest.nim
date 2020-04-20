@@ -106,11 +106,15 @@ proc getTokenLenFromSource(conf: ConfigRef; ident: string; info: TLineInfo): int
     if cmpIgnoreStyle(line[column..column + result - 1], ident) != 0:
       result = 0
   else:
-    result = skipWhile(line, OpChars + {'[', '(', '{', ']', ')', '}'}, column)
+    var sourceIdent: string
+    result = parseWhile(line, sourceIdent,
+                        OpChars + {'[', '(', '{', ']', ')', '}'}, column)
     if ident[^1] == '=' and ident[0] in linter.Letters:
-      if line[column..column + result - 1] != "=":
+      if sourceIdent != "=":
         result = 0
-    elif line[column..column + result - 1] != ident:
+    elif sourceIdent.len > ident.len and sourceIdent[..ident.high] == ident:
+      result = ident.len
+    elif sourceIdent != ident:
       result = 0
 
 proc symToSuggest(conf: ConfigRef; s: PSym, isLocal: bool, section: IdeCmd, info: TLineInfo;
