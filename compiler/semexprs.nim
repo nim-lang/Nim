@@ -1271,6 +1271,54 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(info, s)
     result = newSymNode(s, info)
 
+proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
+  case t.kind
+  of tyTypeParamsHolders:
+    result = readTypeParameter(c, t, i, n.info)
+    if result == c.graph.emptyNode:
+      result = n
+      n.typ = makeTypeFromExpr(c, n.copyTree)
+  of tyUserTypeClasses:
+    if t.isResolvedUserTypeClass:
+      result = readTypeParameter(c, t, i, n.info)
+    else:
+      n.typ = makeTypeFromExpr(c, copyTree(n))
+      result = n
+  of tyGenericParam, tyAnything:
+    n.typ = makeTypeFromExpr(c, copyTree(n))
+    result = n
+  else:
+    discard
+
+proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
+  var ty = ty.skipTypes(tyDotOpTransparent)
+  case ty.kind
+  of tyEnum:
+    # look up if the identifier belongs to the enum:
+    var f = PSym(nil)
+    while ty != nil:
+      f = getSymFromList(ty.n, i)
+      if f != nil: break
+      ty = ty.sons[0]         # enum inheritance
+    if f != nil:
+      result = newSymNode(f)
+      result.info = n.info
+      result.typ = ty
+      markUsed(c, n.info, f)
+      onUse(n.info, f)
+  of tyObject, tyTuple:
+    if ty.n != nil and ty.n.kind == nkRecList:
+      let field = lookupInRecord(ty.n, i)
+      if field != nil:
+        n.typ = makeTypeDesc(c, field.typ)
+        result = n
+  of tyGenericInst:
+    result = tryReadingTypeField(c, n, i, ty.lastSon)
+    if result == nil:
+      result = tryReadingGenericParam(c, n, i, ty)
+  else:
+    result = tryReadingGenericParam(c, n, i, ty)
+
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
   checkSonsLen(n, 2, c.config)
@@ -1301,28 +1349,6 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var f: PSym = nil
   result = nil
 
-  template tryReadingGenericParam(t: PType) =
-    case t.kind
-    of tyTypeParamsHolders:
-      result = readTypeParameter(c, t, i, n.info)
-      if result == c.graph.emptyNode:
-        result = n
-        n.typ = makeTypeFromExpr(c, n.copyTree)
-      return
-    of tyUserTypeClasses:
-      if t.isResolvedUserTypeClass:
-        return readTypeParameter(c, t, i, n.info)
-      else:
-        n.typ = makeTypeFromExpr(c, copyTree(n))
-        return n
-    of tyGenericParam, tyAnything:
-      n.typ = makeTypeFromExpr(c, copyTree(n))
-      return n
-    else:
-      discard
-
-  var argIsType = false
-
   if ty.kind == tyTypeDesc:
     if ty.base.kind == tyNone:
       # This is a still unresolved typedesc parameter.
@@ -1335,40 +1361,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       else:
         return nil
     else:
-      ty = ty.base
-      argIsType = true
-  else:
-    argIsType = isTypeExpr(n[0])
+      return tryReadingTypeField(c, n, i, ty.base)
+  elif isTypeExpr(n.sons[0]):
+    return tryReadingTypeField(c, n, i, ty)
 
-  if argIsType:
-    ty = ty.skipTypes(tyDotOpTransparent)
-    case ty.kind
-    of tyEnum:
-      # look up if the identifier belongs to the enum:
-      while ty != nil:
-        f = getSymFromList(ty.n, i)
-        if f != nil: break
-        ty = ty[0]         # enum inheritance
-      if f != nil:
-        result = newSymNode(f)
-        result.info = n.info
-        result.typ = ty
-        markUsed(c, n.info, f)
-        onUse(n.info, f)
-        return
-    of tyObject, tyTuple:
-      if ty.n != nil and ty.n.kind == nkRecList:
-        let field = lookupInRecord(ty.n, i)
-        if field != nil:
-          n.typ = makeTypeDesc(c, field.typ)
-          return n
-    else:
-      tryReadingGenericParam(ty)
-      return
-    # XXX: This is probably not relevant any more
-    # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
-    ty = n[0].typ
-    return nil
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
@@ -1412,7 +1408,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we didn't find any field, let's look for a generic param
   if result == nil:
     let t = n[0].typ.skipTypes(tyDotOpTransparent)
-    tryReadingGenericParam(t)
+    result = tryReadingGenericParam(c, n, i, t)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]):
