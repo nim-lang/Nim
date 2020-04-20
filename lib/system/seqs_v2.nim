@@ -75,7 +75,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
     setLen(x, newLen)
   else:
     mixin `=destroy`
-    sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
+    #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
     when not supportsCopyMem(T):
       for i in countdown(x.len - 1, newLen):
         `=destroy`(x[i])
