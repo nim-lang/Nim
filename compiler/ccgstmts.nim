@@ -1440,7 +1440,7 @@ proc genAsmOrEmitStmt(p: BProc, t: PNode, isAsmStmt=false): Rope =
         else:
           # ignore empty lines
           result.add("\"")
-          result.add(x)
+          result.add(x.replace("\"", "\\\""))
           result.add("\\n\"\n")
   else:
     res.add("\L")
