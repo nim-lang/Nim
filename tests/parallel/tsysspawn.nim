@@ -1,6 +1,10 @@
 discard """
   output: '''4
-8'''
+8
+(a: 1)
+2
+2
+'''
   cmd: "nim $target --threads:on $options $file"
 """
 
