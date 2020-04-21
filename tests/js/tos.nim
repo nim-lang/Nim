@@ -19,4 +19,3 @@ block:
   if not isWindows:
     doAssert cwd.isAbsolute
     doAssert relativePath(getCurrentDir() / "foo", "bar") == "../foo"
-    doAssert relativePath(getCurrentDir()) == "."

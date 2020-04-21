@@ -1367,11 +1367,6 @@ when not defined(nimscript):
           else:
             raiseOSError(osLastError())
 
-proc relativePath*(path: string, sep = DirSep): string =
-  ## returns `path` relative to current directory
-  let base = if path.isAbsolute: getCurrentDir() else: "."
-  relativePath(path, base, sep)
-
 proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   ## Sets the `current working directory`:idx:; `OSError`
   ## is raised if `newDir` cannot been set.

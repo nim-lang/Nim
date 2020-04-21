@@ -348,8 +348,6 @@ block ospaths:
   doAssert relativePath("", "foo") == ""
   doAssert relativePath("././/foo", "foo//./") == "."
 
-  doAssert relativePath(getCurrentDir()) == "."
-  doAssert relativePath(getCurrentDir() / "bar") == "bar"
   doAssert relativePath(getCurrentDir() / "bar", "foo") == "../bar".unixToNativePath
   doAssert relativePath("bar", getCurrentDir() / "foo") == "../bar".unixToNativePath
 
