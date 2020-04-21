@@ -348,3 +348,65 @@ when true:
 
 main()
 #OUT ha/home/a1xyz/usr/bin
+
+
+# `parseEnum`, ref issue #14030
+# check enum defined at top level
+type
+  Foo = enum
+    A
+    B = "bb"
+    C = (5, "ccc")
+    D = 15
+    E = "ee" # check that we count enum fields correctly
+
+block:
+  let a = parseEnum[Foo]("A")
+  let b = parseEnum[Foo]("bb")
+  let c = parseEnum[Foo]("ccc")
+  let d = parseEnum[Foo]("D")
+  let e = parseEnum[Foo]("ee")
+  doAssert a == A
+  doAssert b == B
+  doAssert c == C
+  doAssert d == D
+  doAssert e == E
+  try:
+    let f = parseEnum[Foo]("Bar")
+    doAssert false
+  except ValueError:
+    discard
+
+  # finally using default
+  let g = parseEnum[Foo]("Bar", A)
+  doAssert g == A
+
+block:
+  # check enum defined in block
+  type
+    Bar = enum
+      V
+      W = "ww"
+      X = (3, "xx")
+      Y = 10
+      Z = "zz" # check that we count enum fields correctly
+
+  let a = parseEnum[Bar]("V")
+  let b = parseEnum[Bar]("ww")
+  let c = parseEnum[Bar]("xx")
+  let d = parseEnum[Bar]("Y")
+  let e = parseEnum[Bar]("zz")
+  doAssert a == V
+  doAssert b == W
+  doAssert c == X
+  doAssert d == Y
+  doAssert e == Z
+  try:
+    let f = parseEnum[Bar]("Baz")
+    doAssert false
+  except ValueError:
+    discard
+
+  # finally using default
+  let g = parseEnum[Bar]("Baz", V)
+  doAssert g == V

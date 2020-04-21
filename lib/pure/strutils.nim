@@ -75,6 +75,7 @@
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
+import macros # for `parseEnum`
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
@@ -1229,6 +1230,53 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+proc addOfBranch(n, field, enumType, norm: NimNode): NimNode =
+  result = nnkOfBranch.newTree(
+    nnkDotExpr.newTree(n, norm), # `<field>.normalize`
+    nnkCall.newTree(enumType, field)) # `T(<fieldValue>)`
+
+macro genEnumStmt(n, argIdent: typed,
+                  default: typed): untyped =
+  # generates a case stmt, which assigns the correct enum field given
+  # a normalized string comparison to the `argIdent` input.
+  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
+  # `of "Foo".normalize: Foo`.
+  # This will fail, if the enum is not defined at top level (e.g. in a block).
+  # Thus we check for the field value of the (possible holed enum) and convert
+  # the integer value to the generic argument `n`.
+  let impl = n.getTypeInst[1].getImpl[2]
+  expectKind impl, nnkEnumTy
+  let norm = bindSym"normalize"
+  result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argIdent, norm))
+  var fieldNum: BiggestInt = 0
+  for f in impl:
+    case f.kind
+    of nnkEmpty: continue # skip first node of `enumTy`
+    of nnkSym, nnkIdent:
+      result.add addOfBranch(f.toStrLit, newLit fieldNum, n, norm)
+    of nnkEnumFieldDef:
+      case f[1].kind
+      of nnkStrLit: result.add addOfBranch(f[1], newLit fieldNum, n, norm)
+      of nnkTupleConstr:
+        let enumFieldNum = f[1][0]
+        result.add addOfBranch(f[1][1], enumFieldNum, n, norm)
+        fieldNum = enumFieldNum.intVal
+      of nnkIntLit:
+        let enumFieldNum = f[1]
+        result.add addOfBranch(f[0].toStrLit, f[1], n, norm)
+        fieldNum = enumFieldNum.intVal
+      else: error("Invalid tuple syntax!")
+    else: error("Invalid node for enum type!")
+    inc fieldNum
+  # finally add else branch to raise or use default
+  expectKind(default, nnkSym)
+  if default == newLit false:
+    let raiseStmt = quote do:
+      raise newException(ValueError, "Invalid enum value: " & $`argIdent`)
+    result.add nnkElse.newTree(raiseStmt)
+  else:
+    result.add nnkElse.newTree(default)
+
 proc parseEnum*[T: enum](s: string): T =
   ## Parses an enum ``T``.
   ##
@@ -1245,11 +1293,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
-
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  raise newException(ValueError, "invalid enum value: " & s)
+  genEnumStmt(T, s, default = false)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
   ## Parses an enum ``T``.
@@ -1267,10 +1311,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  result = default
+  genEnumStmt(T, s, default)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =
