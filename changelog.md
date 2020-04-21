@@ -35,6 +35,12 @@
   1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
   is now `3.`, not `3`.
 
+- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
+  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
+  and this can now throw in edge cases where `getCurrentDir` throws.
+  `relativePath` also now works for js with `-d:nodejs`.
+
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
