@@ -410,3 +410,28 @@ block:
   # finally using default
   let g = parseEnum[Bar]("Baz", V)
   doAssert g == V
+
+block:
+  # check ambiguous enum fails to parse
+  type
+    Ambig = enum
+      f1 = "A"
+      f2 = "B"
+      f3 = "A"
+
+  doAssert not compiles((let a = parseEnum[Ambig]("A")))
+
+block:
+  # check almost ambiguous enum
+  type
+    AlmostAmbig = enum
+      f1 = "someA"
+      f2 = "someB"
+      f3 = "SomeA"
+
+  let a = parseEnum[AlmostAmbig]("someA")
+  let b = parseEnum[AlmostAmbig]("someB")
+  let c = parseEnum[AlmostAmbig]("SomeA")
+  doAssert a == f1
+  doAssert b == f2
+  doAssert c == f3
