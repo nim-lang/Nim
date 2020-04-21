@@ -30,6 +30,12 @@
 - The file descriptors created for internal bookkeeping by `ioselector_kqueue`
   and `ioselector_epoll` will no longer be leaked to child processes.
 
+- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
+  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
+  and this can now throw in edge cases where `getCurrentDir` throws.
+  `relativePath` also now works for js with `-d:nodejs`.
+
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
   ```nim
