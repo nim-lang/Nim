@@ -280,12 +280,12 @@ proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
   else: result = toUpperAscii(s[0]) & substr(s, 1)
 
 proc nimIdentNormalize*(s: string): string =
-  ## Normalizes the string `s`as Nim identifier.
+  ## Normalizes the string `s` as a Nim identifier.
   ##
-  ## That means to convert to lower case and remove any '_' on all characters except
-  ## first one.
+  ## That means to convert to lower case and remove any '_' on all characters
+  ## except first one.
   runnableExamples:
-    doAssert normalize("Foo_bar") == "Foobar"
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
   result = newString(s.len)
   if s.len > 0:
     result[0] = s[0]
