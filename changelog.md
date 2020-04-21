@@ -10,6 +10,7 @@
 - The default hash for `Ordinal` has changed to something more bit-scrambling.
   `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
   one in an instantiation context while `-d:nimIntHash1` recovers it globally.
+- `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
 - File handles created from high-level abstractions in the stdlib will no longer
   be inherited by child processes. In particular, these modules are affected:
   `system`, `nativesockets`, `net` and `selectors`.

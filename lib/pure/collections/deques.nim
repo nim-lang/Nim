@@ -51,6 +51,7 @@
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
 ## * `channels module <channels.html>`_ for inter-thread communication
 
+include system/inclrtl
 
 import math
 
@@ -344,6 +345,46 @@ proc peekFirst*[T](deq: Deque[T]): T {.inline.} =
   result = deq.data[deq.head]
 
 proc peekLast*[T](deq: Deque[T]): T {.inline.} =
+  ## Returns the last element of `deq`, but does not remove it from the deque.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekFirst proc <#peekFirst,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.peekLast == 50
+    assert len(a) == 5
+
+  emptyCheck(deq)
+  result = deq.data[(deq.tail - 1) and deq.mask]
+
+proc peekFirst*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
+  ## Returns the first element of `deq`, but does not remove it from the deque.
+  ##
+  ## See also:
+  ## * `addFirst proc <#addFirst,Deque[T],T>`_
+  ## * `addLast proc <#addLast,Deque[T],T>`_
+  ## * `peekLast proc <#peekLast,Deque[T]>`_
+  ## * `popFirst proc <#popFirst,Deque[T]>`_
+  ## * `popLast proc <#popLast,Deque[T]>`_
+  runnableExamples:
+    var a = initDeque[int]()
+    for i in 1 .. 5:
+      a.addLast(10*i)
+    assert $a == "[10, 20, 30, 40, 50]"
+    assert a.peekFirst == 10
+    assert len(a) == 5
+
+  emptyCheck(deq)
+  result = deq.data[deq.head]
+
+proc peekLast*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
   ## Returns the last element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
