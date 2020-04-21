@@ -915,20 +915,18 @@ template mapIt*(s: typed, op: untyped): untyped =
     assert strings == @["4", "8", "12", "16"]
 
   when defined(nimHasTypeof):
-    type
-      InType = typeof(items(s), typeOfIter)
-      OutType = typeof((
+    type OutType = typeof((
         block:
           var it{.inject.}: typeof(items(s), typeOfIter);
           op), typeOfProc)
   else:
-    type
-      InType = type(items(s))
-      OutType = type((
+    type OutType = type((
         block:
           var it{.inject.}: type(items(s));
           op))
   when OutType is not (proc):
+    # Here, we avoid to create closures in loops.
+    # This avoids https://github.com/nim-lang/Nim/issues/12625
     when compiles(s.len):
       block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
 
@@ -944,10 +942,24 @@ template mapIt*(s: typed, op: untyped): untyped =
         result
     else:
       var result: seq[OutType] = @[]
+      # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
       for it {.inject.} in items(s):
         result.add(op)
       result
   else:
+    # `op` is going to create closures in loops, let's fallback to `map`.
+    # NOTE: Without this fallback, developers have to define a helper function and
+    # call `map`:
+    #   [1, 2].map((it) => ((x: int) => it + x))
+    # With this fallback, above code can be simplified to:
+    #   [1, 2].mapIt((x: int) => it + x)
+    # In this case, `mapIt` is just syntax sugar for `map`.
+
+    when defined(nimHasTypeof):
+      type InType = typeof(items(s), typeOfIter)
+    else:
+      type InType = type(items(s))
+    # Use a help proc `f` to create closures for each element in `s`
     let f = proc (x: InType): OutType =
               let it {.inject.} = x
               op
