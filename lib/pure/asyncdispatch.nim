@@ -267,7 +267,7 @@ when defined(windows) or defined(nimdoc):
       pcd: PostCallbackDataPtr
     AsyncEvent* = ptr AsyncEventImpl
 
-    Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
+    Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
   proc hash(x: AsyncFD): Hash {.borrow.}
   proc `==`*(x: AsyncFD, y: AsyncFD): bool {.borrow.}
@@ -1098,7 +1098,7 @@ else:
                                      # queue.
   type
     AsyncFD* = distinct cint
-    Callback = proc (fd: AsyncFD): bool {.closure, gcsafe.}
+    Callback* = proc (fd: AsyncFD): bool {.closure, gcsafe.}
 
     AsyncData = object
       readList: seq[Callback]
