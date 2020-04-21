@@ -328,7 +328,7 @@ macro multisync*(prc: untyped): untyped =
   # echo result.repr
 
 # overload for type which is not Future[T], based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-template await*(f: untyped): untyped =
+template await*(f: typed): untyped =
   when declared(retFuture):
     static:
       error "await expects Future[T], got " & $typeof(f)
