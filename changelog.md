@@ -60,6 +60,9 @@
       x.val = nil
   ```
 
+- getImpl() on enum type symbols now return field syms instead of idents. This helps
+  with writing typed macros.
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
