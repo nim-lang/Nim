@@ -62,7 +62,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter, x: BiggestInt
     e: PSym
     base: PType
-    identToReplace: PNode
+    identToReplace: ptr PNode
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -84,11 +84,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     of nkEnumFieldDef:
       if n[i][0].kind == nkPragmaExpr:
         e = newSymS(skEnumField, n[i][0][0], c)
-        identToReplace = n[i][0][0]
+        identToReplace = addr n[i][0][0]
         pragma(c, e, n[i][0][1], enumFieldPragmas)
       else:
         e = newSymS(skEnumField, n[i][0], c)
-        identToReplace = n[i][0]
+        identToReplace = addr n[i][0]
       var v = semConstExpr(c, n[i][1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
@@ -121,18 +121,18 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = n[i].sym
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n[i], c)
-      identToReplace = n[i]
+      identToReplace = addr n[i]
     of nkPragmaExpr:
       e = newSymS(skEnumField, n[i][0], c)
       pragma(c, e, n[i][1], enumFieldPragmas)
-      identToReplace = n[i][0]
+      identToReplace = addr n[i][0]
     else:
       illFormedAst(n[i], c.config)
     e.typ = result
     e.position = int(counter)
     let symNode = newSymNode(e)
-    if identToReplace != nil:
-      identToReplace[] = symNode[]
+    if optOldAst notin c.config.options and identToReplace != nil:
+      identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
       incl(e.flags, sfUsed)
