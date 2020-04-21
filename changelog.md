@@ -60,6 +60,10 @@
       x.val = nil
   ```
 
+- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+  with writing typed macros. Old behavior for backwards compatiblity can be restored 
+  with command line switch `--oldast`.
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
