@@ -82,6 +82,9 @@ type
       v: T
 converter toObj1[T](t: T): Obj1[T] =
   return Obj1[T](v: t)
+
+proc echo2(a: varargs[string, mytostr]) = echo a[0]
+
 block t976:
   type
     int1 = distinct int
@@ -117,12 +120,12 @@ block t976:
       PrintAble = concept x
           $x is string
 
-  proc `$`[T](nt: Obj1[T]): string =
+  proc mytostr[T](nt: Obj1[T]): string =
       when T is PrintAble: result = "Printable"
       else: result = "Non Printable"
 
-  echo Obj2()
 
+  echo2 Obj2()
 
 
 block t1128:

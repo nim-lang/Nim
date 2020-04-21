@@ -4,7 +4,7 @@ discard """
 0
 float32
 float32
-(name: "Resource 1", readers: ..., writers: ...)
+(name: "Resource 1", readers: @[], writers: @[])
 '''
 """
 

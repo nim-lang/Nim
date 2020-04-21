@@ -6,11 +6,9 @@ destroy
 123
 destroy Foo: 123
 destroy Foo: 5
-(x1: (val: ...))
 destroy
 ---------------
 app begin
-(val: ...)
 destroy
 app end
 '''
@@ -96,7 +94,7 @@ proc newObj2(x:int, y: float): MyObject2 =
 
 proc test =
   let obj2 = newObj2(1, 1.0)
-  echo obj2
+  doAssert obj2.x1.val != nil
 
 test()
 
@@ -119,7 +117,7 @@ proc createTop(): ptr TopObject =
 
 proc test2() = 
   let x = createTop()
-  echo $x.internal
+  doAssert x.internal.val != nil
   deleteTop(x)
 
 echo "---------------"  

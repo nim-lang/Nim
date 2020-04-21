@@ -1,7 +1,3 @@
-discard """
-  output: "(M: 3, N: 3, fp: ...)"
-"""
-
 # bug #6843
 
 type
@@ -26,4 +22,4 @@ var
     [7'f64, 8, 9]
   ]
   m = stackMatrix(data)
-echo m
+doAssert m.M == 3 and m.N == 3 and m.fp != nil
