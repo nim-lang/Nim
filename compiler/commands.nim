@@ -209,12 +209,18 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     incl(conf.modifiedyNotes, n)
     case val
     of "on":
-      incl(conf.notes, n)
-      incl(conf.mainPackageNotes, n)
+      if state == wWarningAsError:
+        incl(conf.warningAsErrors, n)
+      else:
+        incl(conf.notes, n)
+        incl(conf.mainPackageNotes, n)
     of "off":
-      excl(conf.notes, n)
-      excl(conf.mainPackageNotes, n)
-      excl(conf.foreignPackageNotes, n)
+      if state == wWarningAsError:
+        excl(conf.warningAsErrors, n)
+      else:
+        excl(conf.notes, n)
+        excl(conf.mainPackageNotes, n)
+        excl(conf.foreignPackageNotes, n)
 
 proc processCompile(conf: ConfigRef; filename: string) =
   var found = findFile(conf, filename)
@@ -281,6 +287,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "hints": result = contains(conf.options, optHints)
   of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
   of "stacktrace": result = contains(conf.options, optStackTrace)
+  of "stacktracemsgs": result = contains(conf.options, optStackTraceMsgs)
   of "linetrace": result = contains(conf.options, optLineTrace)
   of "debugger": result = contains(conf.globalOptions, optCDebug)
   of "profiler": result = contains(conf.options, optProfiler)
@@ -290,7 +297,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
     result = conf.options * {optNaNCheck, optInfCheck} == {optNaNCheck, optInfCheck}
   of "infchecks": result = contains(conf.options, optInfCheck)
   of "nanchecks": result = contains(conf.options, optNaNCheck)
-  of "nilchecks": result = contains(conf.options, optNilCheck)
+  of "nilchecks": result = false # not a thing
   of "objchecks": result = contains(conf.options, optObjCheck)
   of "fieldchecks": result = contains(conf.options, optFieldCheck)
   of "rangechecks": result = contains(conf.options, optRangeCheck)
@@ -527,10 +534,12 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
+  of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
+  of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)
   of "debugger":
@@ -585,7 +594,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitch(conf, {optNaNCheck, optInfCheck}, arg, pass, info)
   of "infchecks": processOnOffSwitch(conf, {optInfCheck}, arg, pass, info)
   of "nanchecks": processOnOffSwitch(conf, {optNaNCheck}, arg, pass, info)
-  of "nilchecks": processOnOffSwitch(conf, {optNilCheck}, arg, pass, info)
+  of "nilchecks": discard "no such thing anymore"
   of "objchecks": processOnOffSwitch(conf, {optObjCheck}, arg, pass, info)
   of "fieldchecks": processOnOffSwitch(conf, {optFieldCheck}, arg, pass, info)
   of "rangechecks": processOnOffSwitch(conf, {optRangeCheck}, arg, pass, info)
@@ -888,6 +897,10 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     processOnOffSwitchG(conf, {optPanics}, arg, pass, info)
     if optPanics in conf.globalOptions:
       defineSymbol(conf.symbols, "nimPanics")
+  of "sourcemap":
+    conf.globalOptions.incl optSourcemap
+    conf.options.incl optLineDir
+    # processOnOffSwitchG(conf, {optSourcemap, opt}, arg, pass, info)
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:

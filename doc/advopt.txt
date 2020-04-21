@@ -24,7 +24,6 @@ Runtime checks (see -x):
   --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
-  --nilChecks:on|off        turn nil checks on|off
   --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
@@ -38,6 +37,8 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
+  --warningAsError[X]:on|off
+                            turn specific warning X into an error on|off
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
@@ -92,6 +93,7 @@ Advanced options:
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility

@@ -33,20 +33,6 @@ when defined(profiler) or defined(memProfiler):
   {.hint: "Profiling support is turned on!".}
   import nimprof
 
-proc prependCurDir(f: AbsoluteFile): AbsoluteFile =
-  when defined(unix):
-    if os.isAbsolute(f.string): result = f
-    else: result = AbsoluteFile("./" & f.string)
-  else:
-    result = f
-
-proc addCmdPrefix*(result: var string, kind: CmdLineKind) =
-  # consider moving this to std/parseopt
-  case kind
-  of cmdLongOption: result.add "--"
-  of cmdShortOption: result.add "-"
-  of cmdArgument, cmdEnd: discard
-
 proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
   var p = parseopt.initOptParser(cmd)
   var argsCount = 0
@@ -98,7 +84,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
   if conf.errorCounter != 0: return
   when hasTinyCBackend:
     if conf.cmd == cmdRun:
-      tccgen.run(conf.arguments)
+      tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     var ex = quoteShell conf.absOutFile
     if conf.cmd == cmdCompileToJS:

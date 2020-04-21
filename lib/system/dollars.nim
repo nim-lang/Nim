@@ -75,27 +75,22 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
-  var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
-  when not isNamed:
-    var count = 0
+  var count = 0
   for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
+    if count > 0: result.add(", ")
     when isNamed:
       result.add(name)
       result.add(": ")
-    else:
-      count.inc
+    count.inc
     when compiles($value):
       when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
         else: result.addQuoted(value)
       else:
         result.addQuoted(value)
-      firstElement = false
     else:
       result.add("...")
-      firstElement = false
   when not isNamed:
     if count == 1:
       result.add(",") # $(1,) should print as the semantically legal (1,)

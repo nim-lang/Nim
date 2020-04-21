@@ -9,11 +9,11 @@ block: #6100
   done.complete(1)
 
   proc asyncSum: Future[int] {.async.} =
-    for _ in 1..10_000_000:
+    for _ in 1..1_000_000:
       result += await done
 
   let res = waitFor asyncSum()
-  doAssert(res == 10000000)
+  doAssert(res == 1_000_000)
 
 block: #7985
   proc getData(): Future[JsonNode] {.async.} =

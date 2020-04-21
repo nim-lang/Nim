@@ -17,13 +17,15 @@ var
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
-
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
-
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
@@ -53,6 +55,8 @@ type
     len: int
     prev: ptr GcFrameHeader
 
+when NimStackTraceMsgs:
+  var frameMsgBuf* {.threadvar.}: string
 var
   framePtr {.threadvar.}: PFrame
   excHandler {.threadvar.}: PSafePoint
@@ -224,10 +228,17 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
                               filename: it.filename)
+    when NimStackTraceMsgs:
+      let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
+      if it.frameMsgLen > first:
+        s[last].frameMsg.setLen(it.frameMsgLen - first)
+        # somehow string slicing not available here
+        for i in first .. it.frameMsgLen-1:
+          s[last].frameMsg[i-first] = frameMsgBuf[i]
     it = it.prev
     dec last
 
-template addFrameEntry(s, f: untyped) =
+template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
   add(s, f.filename)
   if f.line > 0:
@@ -236,6 +247,12 @@ template addFrameEntry(s, f: untyped) =
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
+  when NimStackTraceMsgs:
+    when type(f) is StackTraceEntry:
+      add(s, f.frameMsg)
+    else:
+      var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
+      for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
 proc `$`(s: seq[StackTraceEntry]): string =
@@ -519,7 +536,12 @@ proc callDepthLimitReached() {.noinline.} =
   quit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
-  s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  if framePtr == nil:
+    s.calldepth = 0
+    when NimStackTraceMsgs: s.frameMsgLen = 0
+  else:
+    s.calldepth = framePtr.calldepth+1
+    when NimStackTraceMsgs: s.frameMsgLen = framePtr.frameMsgLen
   s.prev = framePtr
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()

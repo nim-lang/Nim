@@ -9,7 +9,7 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
-
+include "system/inclrtl"
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -102,6 +102,8 @@ type
   Performance* {.importc.} = ref object
     memory*: PerformanceMemory
     timing*: PerformanceTiming
+
+  Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
 
   LocalStorage* {.importc.} = ref object
 
@@ -985,6 +987,16 @@ type
     once*: bool
     passive*: bool
 
+since (1, 3):
+  type DomParser* = ref object  ## \
+    ## DOM Parser object (defined on browser only, may not be on NodeJS).
+    ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
+    ##
+    ## .. code-block:: nim
+    ##   let prsr = newDomParser()
+    ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+
+
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
 proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
 proc class*(n: Node): cstring {.importcpp: "#.className", nodecl.}
@@ -1145,7 +1157,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): cstring
+proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
 proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1235,6 +1247,11 @@ proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: c
 # Performance "methods"
 proc now*(p: Performance): float
 
+# Selection "methods"
+proc removeAllRanges*(s: Selection)
+converter toString*(s: Selection): cstring
+proc `$`*(s: Selection): string = $(s.toString())
+
 # LocalStorage "methods"
 proc getItem*(ls: LocalStorage, key: cstring): cstring
 proc setItem*(ls: LocalStorage, key, value: cstring)
@@ -1297,3 +1314,10 @@ proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetWidth*(e: Node): int {.importcpp: "#.offsetWidth", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
+
+since (1, 3):
+  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+    ## DOM Parser constructor.
+
+  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+    ## Parse from string to `Document`.

@@ -25,10 +25,12 @@ type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
-    optOverflowCheck, optNilCheck, optRefCheck,
+    optOverflowCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
-    optOptimizeSpeed, optOptimizeSize, optStackTrace, # stack tracing support
+    optOptimizeSpeed, optOptimizeSize,
+    optStackTrace, # stack tracing support
+    optStackTraceMsgs, # enable custom runtime msgs via `setFrameMsg`
     optLineTrace,             # line tracing support (includes stack tracing)
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
@@ -41,6 +43,7 @@ type                          # please make sure we have under 32 options
     optNilSeqs,
     optOldAst,
     optSinkInference          # 'sink T' inference
+
 
   TOptions* = set[TOption]
   TGlobalOption* = enum       # **keep binary compatible**
@@ -92,6 +95,7 @@ type                          # please make sure we have under 32 options
     optProduceAsm             # produce assembler code
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
+    optSourcemap
 
   TGlobalOptions* = set[TGlobalOption]
 
@@ -143,6 +147,7 @@ type
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
+    vmopsDanger,
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -158,7 +163,7 @@ type
     disabledSf, writeOnlySf, readOnlySf, v2Sf
 
   TSystemCC* = enum
-    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
+    ccNone, ccGcc, ccNintendoSwitch, ccLLVM_Gcc, ccCLang, ccZig, ccLcc, ccBcc, ccDmc, ccWcc, ccVcc,
     ccTcc, ccPcc, ccUcc, ccIcl, ccIcc, ccClangCl
 
   ExceptionSystem* = enum
@@ -233,6 +238,7 @@ type
     cmdlineNotes*: TNoteKinds # notes that have been set/unset from cmdline
     foreignPackageNotes*: TNoteKinds
     notes*: TNoteKinds # notes after resolving all logic(defaults, verbosity)/cmdline/configs
+    warningAsErrors*: TNoteKinds
     mainPackageNotes*: TNoteKinds
     mainPackageId*: int
     errorCounter*: int
@@ -319,14 +325,14 @@ template depConfigFields*(fn) {.dirty.} =
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
 const
-  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
+  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
     optStyleCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
-    optHints, optStackTrace, optLineTrace,
-    optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
+    optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
+    optTrMacros, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 

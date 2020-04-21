@@ -1482,8 +1482,8 @@ Tuples and object types
 A variable of a tuple or object type is a heterogeneous storage
 container.
 A tuple or object defines various named *fields* of a type. A tuple also
-defines an *order* of the fields. Tuples are meant for heterogeneous storage
-types with no overhead and few abstraction possibilities. The constructor ``()``
+defines a lexicographic *order* of the fields. Tuples are meant to be
+heterogeneous storage types with few abstractions. The ``()`` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
@@ -1503,8 +1503,10 @@ of the assignment operator is described `here
   var
     person: Person
   person = (name: "Peter", age: 30)
+  echo person.name
   # the same, but less readable:
   person = ("Peter", 30)
+  echo person[0]
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
@@ -1528,11 +1530,12 @@ can also be defined with indentation instead of ``[]``:
   type
     Person = tuple   # type representing a person
       name: string   # a person consists of a name
-      age: natural   # and an age
+      age: Natural   # and an age
 
 Objects provide many features that tuples do not. Object provide inheritance and
-information hiding. Objects have access to their type during at runtime, so that
-the ``of`` operator can be used to determine the object's type. The ``of``
+the ability to hide fields from other modules. Objects with inheritance enabled
+have information about their type at runtime, so that the ``of`` operator can be
+used to determine the object's type. The ``of``
 operator is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
@@ -1552,9 +1555,19 @@ operator is similar to the ``instanceof`` operator in Java.
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. Objects that have no ancestor are implicitly ``final``
-and thus have no hidden type field. One can use the ``inheritable`` pragma to
+never *equivalent*, they are nominal types whereas tuples are structural.
+Objects that have no ancestor are implicitly ``final`` and thus have no hidden
+type information. One can use the ``inheritable`` pragma to
 introduce new object roots apart from ``system.RootObj``.
+
+.. code-block:: nim
+  type
+    Person = object # example of a final object
+      name*: string
+      age: int
+
+    Student = ref object of Person # Error: inheritance only works with non-final objects
+      id: int
 
 
 Object construction
@@ -1836,32 +1849,6 @@ binary zero which the string assignment can handle. One needs to know low level
 details like this when mixing garbage collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
-
-
-Not nil annotation
-------------------
-
-All types for which ``nil`` is a valid value can be annotated to
-exclude ``nil`` as a valid value with the ``not nil`` annotation:
-
-.. code-block:: nim
-  type
-    PObject = ref TObj not nil
-    TProc = (proc (x, y: int)) not nil
-
-  proc p(x: PObject) =
-    echo "not nil"
-
-  # compiler catches this:
-  p(nil)
-
-  # and also this:
-  var x: PObject
-  p(x)
-
-The compiler ensures that every code path initializes variables which contain
-non nilable pointers. The details of this analysis are still to be specified
-here.
 
 
 Procedural type
@@ -5353,26 +5340,6 @@ powerful programming construct that still suffices. So the "check list" is:
 (4) Else: Use a macro.
 
 
-Macros as pragmas
------------------
-
-Whole routines (procs, iterators etc.) can also be passed to a template or
-a macro via the pragma notation:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  proc p() {.m.} = discard
-
-This is a simple syntactic transformation into:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  m:
-    proc p() = discard
-
-
 For Loop Macro
 --------------
 
@@ -6408,29 +6375,6 @@ the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
 
-pragma pragma
--------------
-
-The ``pragma`` pragma can be used to declare user defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User
-defined pragmas are in a different module-wide scope than all other symbols.
-They cannot be imported from a module.
-
-Example:
-
-.. code-block:: nim
-  when appType == "lib":
-    {.pragma: rtl, exportc, dynlib, cdecl.}
-  else:
-    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
-
-  proc p*(a, b: int): int {.rtl.} =
-    result = a+b
-
-In the example a new pragma named ``rtl`` is introduced that either imports
-a symbol from a dynamic library or exports the symbol for dynamic library
-generation.
-
 Disabling certain messages
 --------------------------
 Nim generates some warnings and hints ("line too long") that may annoy the
@@ -7127,6 +7071,34 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 
 The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
 
+User-defined pragmas
+====================
+
+
+pragma pragma
+-------------
+
+The ``pragma`` pragma can be used to declare user defined pragmas. This is
+useful because Nim's templates and macros do not affect pragmas. User
+defined pragmas are in a different module-wide scope than all other symbols.
+They cannot be imported from a module.
+
+Example:
+
+.. code-block:: nim
+  when appType == "lib":
+    {.pragma: rtl, exportc, dynlib, cdecl.}
+  else:
+    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
+
+  proc p*(a, b: int): int {.rtl.} =
+    result = a+b
+
+In the example a new pragma named ``rtl`` is introduced that either imports
+a symbol from a dynamic library or exports the symbol for dynamic library
+generation.
+
+
 Custom annotations
 ------------------
 It is possible to define custom typed pragmas. Custom pragmas do not effect
@@ -7192,6 +7164,51 @@ More examples with custom pragmas:
     position {.editable, animatable.}: Vector3
     alpha {.editRange: [0.0..1.0], animatable.}: float32
 
+
+Macro pragmas
+-------------
+
+All macros and templates can also be used as pragmas. They can be attached
+to routines (procs, iterators, etc), type names or type expressions. The
+compiler will perform the following simple syntactic transformations:
+
+.. code-block:: nim
+  template command(name: string, def: untyped) = discard
+
+  proc p() {.command("print").} = discard
+
+This is translated to:
+
+.. code-block:: nim
+  command("print"):
+    proc p() = discard
+
+------
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = proc (x: Event) {.async.}
+
+This is translated to:
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = async(proc (x: Event))
+
+------
+
+.. code-block:: nim
+  type
+    MyObject {.schema: "schema.protobuf".} = object
+
+This is translated to a call to the ``schema`` macro with a `nnkTypeDef`
+AST node capturing both the left-hand side and right-hand side of the
+definition. The macro can return a potentially modified `nnkTypeDef` tree
+which will replace the original row in the type section.
+
+When multiple macro pragmas are applied to the same definition, the
+compiler will apply them consequently from left to right. Each macro
+will receive as input the output of the previous one.
 
 
 
@@ -7269,7 +7286,6 @@ In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
 
-
 Bycopy pragma
 -------------
 
@@ -7312,6 +7328,7 @@ checked.
 
 **Future directions**: GC'ed memory should be allowed in unions and the GC
 should scan unions conservatively.
+
 
 Packed pragma
 -------------

@@ -68,7 +68,6 @@ type
     ## before calling other procs on it.
     data: KeyValuePairSeq[A]
     counter: int
-    countDeleted: int
 
 type
   OrderedKeyValuePair[A] = tuple[
@@ -81,7 +80,6 @@ type
     ## <#initOrderedSet,int>`_ before calling other procs on it.
     data: OrderedKeyValuePairSeq[A]
     counter, first, last: int
-    countDeleted: int
 
 const
   defaultInitialSize* = 64
@@ -249,7 +247,7 @@ iterator items*[A](s: HashSet[A]): A =
   ##   echo b
   ##   # --> {(a: 1, b: 3), (a: 0, b: 4)}
   for h in 0 .. high(s.data):
-    if isFilledAndValid(s.data[h].hcode): yield s.data[h].key
+    if isFilled(s.data[h].hcode): yield s.data[h].key
 
 proc containsOrIncl*[A](s: var HashSet[A], key: A): bool =
   ## Includes `key` in the set `s` and tells if `key` was already in `s`.
@@ -336,12 +334,11 @@ proc pop*[A](s: var HashSet[A]): A =
   ## * `clear proc <#clear,HashSet[A]>`_
   runnableExamples:
     var s = toHashSet([2, 1])
-    assert s.pop == 1
-    assert s.pop == 2
+    assert [s.pop, s.pop] in [[1, 2], [2,1]] # order unspecified
     doAssertRaises(KeyError, echo s.pop)
 
   for h in 0 .. high(s.data):
-    if isFilledAndValid(s.data[h].hcode):
+    if isFilled(s.data[h].hcode):
       result = s.data[h].key
       excl(s, result)
       return result
@@ -574,8 +571,7 @@ proc map*[A, B](data: HashSet[A], op: proc (x: A): B {.closure.}): HashSet[B] =
 proc hash*[A](s: HashSet[A]): Hash =
   ## Hashing of HashSet.
   for h in 0 .. high(s.data):
-    if isFilledAndValid(s.data[h].hcode):
-      result = result xor s.data[h].hcode
+    result = result xor s.data[h].hcode
   result = !$result
 
 proc `$`*[A](s: HashSet[A]): string =
@@ -592,6 +588,7 @@ proc `$`*[A](s: HashSet[A]): string =
   ##   echo toHashSet(["no", "esc'aping", "is \" provided"])
   ##   # --> {no, esc'aping, is " provided}
   dollarImpl()
+
 
 proc initSet*[A](initialSize = defaultInitialSize): HashSet[A] {.deprecated:
      "Deprecated since v0.20, use 'initHashSet'".} = initHashSet[A](initialSize)
@@ -624,7 +621,7 @@ template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
     var idx = 0
     while h >= 0:
       var nxt = s.data[h].next
-      if isFilledAndValid(s.data[h].hcode):
+      if isFilled(s.data[h].hcode):
         yieldStmt
         inc(idx)
       h = nxt
@@ -858,7 +855,7 @@ proc `==`*[A](s, t: OrderedSet[A]): bool =
   while h >= 0 and g >= 0:
     var nxh = s.data[h].next
     var nxg = t.data[g].next
-    if isFilledAndValid(s.data[h].hcode) and isFilledAndValid(t.data[g].hcode):
+    if isFilled(s.data[h].hcode) and isFilled(t.data[g].hcode):
       if s.data[h].key == t.data[g].key:
         inc compared
       else:
@@ -1010,7 +1007,7 @@ when isMainModule and not defined(release):
 
     block toSeqAndString:
       var a = toHashSet([2, 7, 5])
-      var b = initHashSet[int]()
+      var b = initHashSet[int](rightSize(a.len))
       for x in [2, 7, 5]: b.incl(x)
       assert($a == $b)
       #echo a

@@ -309,7 +309,7 @@ suite "ttimes":
     check dt.nanosecond == convert(Milliseconds, Nanoseconds, 1)
     check d(seconds = 1, milliseconds = 500) * 2 == d(seconds = 3)
     check d(seconds = 3) div 2 == d(seconds = 1, milliseconds = 500)
-    check d(milliseconds = 1001).seconds == 1
+    check d(milliseconds = 1001).inSeconds == 1
     check d(seconds = 1, milliseconds = 500) - d(milliseconds = 1250) ==
       d(milliseconds = 250)
     check d(seconds = 1, milliseconds = 1) < d(seconds = 1, milliseconds = 2)
@@ -504,12 +504,6 @@ suite "ttimes":
     check $parse("02 Fir 2019", "dd MMM yyyy", utc(), loc) == "2019-01-02T00:00:00Z"
     check $parse("Fourthy 6, 2017", "MMMM d, yyyy", utc(), loc) == "2017-04-06T00:00:00Z"
 
-  test "countLeapYears":
-    # 1920, 2004 and 2020 are leap years, and should be counted starting at the following year
-    check countLeapYears(1920) + 1 == countLeapYears(1921)
-    check countLeapYears(2004) + 1 == countLeapYears(2005)
-    check countLeapYears(2020) + 1 == countLeapYears(2021)
-
   test "timezoneConversion":
     var l = now()
     let u = l.utc
@@ -619,6 +613,21 @@ suite "ttimes":
       let y = initDateTime(10, mMar, 1995, 00, 00, 00, utc())
       doAssert x + between(x, y) == y
       doAssert between(x, y) == 1.months + 1.weeks
+
+  test "default DateTime": # https://github.com/nim-lang/RFCs/issues/211
+    var num = 0
+    for ai in Month: num.inc
+    doAssert num == 12
+
+    var a: DateTime
+    doAssert a == DateTime.default
+    doAssert ($a).len > 0 # no crash
+    doAssert a.month.Month.ord == 0
+    doAssert a.month.Month == cast[Month](0)
+    doAssert a.monthday == 0
+
+    doAssertRaises(AssertionError): discard getDayOfWeek(a.monthday, a.month, a.year)
+    doAssertRaises(AssertionError): discard a.toTime
 
   test "inX procs":
     doAssert initDuration(seconds = 1).inSeconds == 1

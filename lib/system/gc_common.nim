@@ -78,8 +78,11 @@ template decTypeSize(cell, t) =
   when defined(nimTypeNames):
     if t.kind in {tyString, tySequence}:
       let cap = cast[PGenericSeq](cellToUsr(cell)).space
-      let size = if t.kind == tyString: cap+1+GenericSeqSize
-                 else: cap * t.base.size + GenericSeqSize
+      let size =
+        if t.kind == tyString:
+          cap + 1 + GenericSeqSize
+        else:
+          align(GenericSeqSize, t.base.align) + cap * t.base.size
       atomicDec t.sizes, size+sizeof(Cell)
     else:
       atomicDec t.sizes, t.base.size+sizeof(Cell)

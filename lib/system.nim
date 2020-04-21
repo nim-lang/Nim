@@ -54,6 +54,23 @@ type
 
 include "system/basic_types"
 
+
+proc compileOption*(option: string): bool {.
+  magic: "CompileOption", noSideEffect.}
+  ## Can be used to determine an `on|off` compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("floatchecks"):
+  ##     echo "compiled with floating point NaN and Inf checks"
+
+proc compileOption*(option, arg: string): bool {.
+  magic: "CompileOptionArg", noSideEffect.}
+  ## Can be used to determine an enum compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
+  ##     echo "compiled with optimization for size and uses Boehm's GC"
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
@@ -497,6 +514,7 @@ when not defined(js) and not defined(nimSeqsV2):
       len, reserved: int
       when defined(gogc):
         elemSize: int
+        elemAlign: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
@@ -1040,22 +1058,6 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
-  ## Can be used to determine an `on|off` compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
-
-proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
-  ## Can be used to determine an enum compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
-
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
@@ -1121,6 +1123,13 @@ when defined(js) and defined(nodejs) and not defined(nimscript):
 elif hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
+
+proc align(address, alignment: int): int =
+  if alignment == 0: # Actually, this is illegal. This branch exists to actively
+                     # hide problems.
+    result = address
+  else:
+    result = (address + (alignment - 1)) and not (alignment - 1)
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -1697,6 +1706,7 @@ when not defined(js) and defined(nimV2):
     TNimType {.compilerproc.} = object
       destructor: pointer
       size: int
+      align: int
       name: cstring
       traceImpl: pointer
       disposeImpl: pointer
@@ -1707,7 +1717,6 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/seqs_v2"
 
 {.pop.}
-
 
 when notJSnotNims:
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
@@ -1891,6 +1900,7 @@ var
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
+  # keep in sync with nimbase.h `struct TFrame_`
   TFrame* {.importc, nodecl, final.} = object ## The frame itself.
     prev*: PFrame       ## Previous frame; used for chaining the call stack.
     procname*: cstring  ## Name of the proc that is currently executing.
@@ -1898,6 +1908,8 @@ type
     filename*: cstring  ## Filename of the proc that is currently executing.
     len*: int16         ## Length of the inspectable slots.
     calldepth*: int16   ## Used for max call depth checking.
+    when NimStackTraceMsgs:
+      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -1984,8 +1996,8 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   result = if x < 0: -x else: x
 {.pop.}
 
-
 when not defined(js):
+
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
   proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
@@ -2045,7 +2057,7 @@ const
   NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version.
 
-  NimMinor* {.intdefine.}: int = 1
+  NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.
 
   NimPatch* {.intdefine.}: int = 1

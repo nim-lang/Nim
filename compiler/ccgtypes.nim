@@ -999,11 +999,14 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
   let nameHcr = tiNameForHcr(m, name)
 
   var size: Rope
-  if tfIncompleteStruct in typ.flags: size = rope"void*"
-  else: size = getTypeDesc(m, origType)
+  if tfIncompleteStruct in typ.flags:
+    size = rope"void*"
+  else:
+    size = getTypeDesc(m, origType)
   m.s[cfsTypeInit3].addf(
-       "$1.size = sizeof($2);$n" & "$1.kind = $3;$n" & "$1.base = $4;$n",
-       [nameHcr, size, rope(nimtypeKind), base])
+    "$1.size = sizeof($2);$n$1.align = NIM_ALIGNOF($2);$n$1.kind = $3;$n$1.base = $4;$n",
+    [nameHcr, size, rope(nimtypeKind), base]
+  )
   # compute type flags for GC optimization
   var flags = 0
   if not containsGarbageCollectedRef(typ): flags = flags or 1
@@ -1313,10 +1316,7 @@ proc genTypeInfoV2(m: BModule, t, origType: PType, name: Rope; info: TLineInfo) 
   let traceImpl = genHook(m, t, info, attachedTrace)
   let disposeImpl = genHook(m, t, info, attachedDispose)
 
-  m.s[cfsTypeInit3].addf("$1.destructor = (void*)$2; $1.size = sizeof($3);$n" &
-    "$1.name = $4;$n" &
-    "$1.traceImpl = (void*)$5;$n" &
-    "$1.disposeImpl = (void*)$6;$n", [
+  addf(m.s[cfsTypeInit3], "$1.destructor = (void*)$2; $1.size = sizeof($3); $1.align = NIM_ALIGNOF($3); $1.name = $4;$n; $1.traceImpl = (void*)$5; $1.disposeImpl = (void*)$6;", [
     name, destroyImpl, getTypeDesc(m, t), typeName,
     traceImpl, disposeImpl])
 

@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors
+  transf, injectdestructors, sourcemap, json, sets
 
 
 from modulegraphs import ModuleGraph, PPassContext
@@ -641,11 +641,16 @@ proc hasFrameInfo(p: PProc): bool =
   ({optLineTrace, optStackTrace} * p.options == {optLineTrace, optStackTrace}) and
       ((p.prc == nil) or not (sfPure in p.prc.flags))
 
+proc lineDir(config: ConfigRef, info: TLineInfo, line: int): Rope =
+  ropes.`%`("// line $2 \"$1\"$n",
+         [rope(toFullPath(config, info)), rope(line)])
+
 proc genLineDir(p: PProc, n: PNode) =
   let line = toLinenumber(n.info)
-  if optLineDir in p.options:
-    lineF(p, "// line $2 \"$1\"$n",
-         [rope(toFilename(p.config, n.info)), rope(line)])
+  if line < 0:
+    return
+  if optLineDir in p.options or optLineDir in p.config.options:
+    lineF(p, "$1", [lineDir(p.config, n.info, line)])
   if hasFrameInfo(p):
     lineF(p, "F.line = $1;$n", [rope(line)])
 
@@ -2241,6 +2246,10 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
 
   p.nested: genStmt(p, transformedBody)
 
+
+  if optLineDir in p.config.options:
+    result = lineDir(p.config, prc.info, toLinenumber(prc.info))
+
   var def: Rope
   if not prc.constraint.isNil:
     def = runtimeFormat(prc.constraint.strVal & " {$n$#$#$#$#$#",
@@ -2253,7 +2262,8 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
               optionalLine(genProcBody(p, prc)),
               optionalLine(p.indentLine(returnStmt))])
   else:
-    result = ~"\L"
+    # if optLineDir in p.config.options:
+      # result.add(~"\L")
 
     if p.config.hcrOn:
       # Here, we introduce thunks that create the equivalent of a jump table
@@ -2336,6 +2346,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   if r.kind != resCallee: r.kind = resNone
   #r.address = nil
   r.res = nil
+  
   case n.kind
   of nkSym:
     genSym(p, n, r)
@@ -2382,14 +2393,15 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
     else: r.res = rope(f.toStrMaxPrecision)
     r.kind = resExpr
   of nkCallKinds:
-    if isEmptyType(n.typ): genLineDir(p, n)
+    if isEmptyType(n.typ):
+      genLineDir(p, n)
     if (n[0].kind == nkSym) and (n[0].sym.magic != mNone):
       genMagic(p, n, r)
     elif n[0].kind == nkSym and sfInfixCall in n[0].sym.flags and
         n.len >= 1:
       genInfixCall(p, n, r)
     else:
-      genCall(p, n, r)
+      genCall(p, n, r)    
   of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
@@ -2585,10 +2597,15 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       n.add destructorCall
   if passes.skipCodegen(m.config, n): return n
   if sfMainModule in m.module.flags:
-    let code = wholeCode(graph, m)
+    var code = genHeader() & wholeCode(graph, m)
     let outFile = m.config.prepareToWriteOutput()
-    discard writeRopeIfNotEqual(genHeader() & code, outFile)
 
+    if optSourcemap in m.config.globalOptions:
+      var map: SourceMap
+      (code, map) = genSourceMap($(code), outFile.string)
+      writeFile(outFile.string & ".map", $(%map))
+    discard writeRopeIfNotEqual(code, outFile)
+    
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 

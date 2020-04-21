@@ -10,6 +10,9 @@
 # this module does the semantic checking for expressions
 # included from sem.nim
 
+when defined(nimCompilerStackraceHints):
+  import std/stackframes
+
 const
   errExprXHasNoType = "expression '$1' has no type (or is ambiguous)"
   errXExpectsTypeOrValue = "'$1' expects a type or value"
@@ -59,12 +62,18 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
 
-proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+proc semExprCheck(c: PContext, n: PNode, flags: TExprFlags): PNode =
   rejectEmptyNode(n)
   result = semExpr(c, n, flags+{efWantValue})
   if result.kind == nkEmpty:
+    # bug #12741, redundant error messages are the lesser evil here:
+    localError(c.config, n.info, errExprXHasNoType %
+                renderTree(result, {renderNoComments}))
     # do not produce another redundant error message:
     result = errorNode(c, n)
+
+proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  result = semExprCheck(c, n, flags)
   if result.typ == nil or result.typ == c.enforceVoidContext:
     localError(c.config, n.info, errExprXHasNoType %
                 renderTree(result, {renderNoComments}))
@@ -73,11 +82,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
-  rejectEmptyNode(n)
-  result = semExpr(c, n, flags+{efWantValue})
-  if result.kind == nkEmpty:
-    # do not produce another redundant error message:
-    result = errorNode(c, n)
+  result = semExprCheck(c, n, flags)
   if result.typ == nil:
     localError(c.config, n.info, errExprXHasNoType %
                renderTree(result, {renderNoComments}))
@@ -186,6 +191,11 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if conf.selectedGC in {gcArc, gcOrc}:
+    let d = skipTypes(dst, abstractInst)
+    let s = skipTypes(src, abstractInst)
+    if d.kind == tyRef and s.kind == tyRef and s[0].isFinal != d[0].isFinal:
+      return false
 
   var dstSize, srcSize: BiggestInt
   dstSize = computeSize(conf, dst)
@@ -619,11 +629,12 @@ proc isAssignable(c: PContext, n: PNode; isUnsafeAddr=false): TAssignableResult 
   result = parampatterns.isAssignable(c.p.owner, n, isUnsafeAddr)
 
 proc isUnresolvedSym(s: PSym): bool =
-  return s.kind == skGenericParam or
-         tfInferrableStatic in s.typ.flags or
-         (s.kind == skParam and s.typ.isMetaType) or
-         (s.kind == skType and
-          s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
+  result = s.kind == skGenericParam
+  if not result and s.typ != nil:
+    result = tfInferrableStatic in s.typ.flags or
+        (s.kind == skParam and s.typ.isMetaType) or
+        (s.kind == skType and
+        s.typ.flags * {tfGenericTypeParam, tfImplicitTypeParam} != {})
 
 proc hasUnresolvedArgs(c: PContext, n: PNode): bool =
   # Checks whether an expression depends on generic parameters that
@@ -1260,6 +1271,54 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     onUse(info, s)
     result = newSymNode(s, info)
 
+proc tryReadingGenericParam(c: PContext, n: PNode, i: PIdent, t: PType): PNode =
+  case t.kind
+  of tyTypeParamsHolders:
+    result = readTypeParameter(c, t, i, n.info)
+    if result == c.graph.emptyNode:
+      result = n
+      n.typ = makeTypeFromExpr(c, n.copyTree)
+  of tyUserTypeClasses:
+    if t.isResolvedUserTypeClass:
+      result = readTypeParameter(c, t, i, n.info)
+    else:
+      n.typ = makeTypeFromExpr(c, copyTree(n))
+      result = n
+  of tyGenericParam, tyAnything:
+    n.typ = makeTypeFromExpr(c, copyTree(n))
+    result = n
+  else:
+    discard
+
+proc tryReadingTypeField(c: PContext, n: PNode, i: PIdent, ty: PType): PNode =
+  var ty = ty.skipTypes(tyDotOpTransparent)
+  case ty.kind
+  of tyEnum:
+    # look up if the identifier belongs to the enum:
+    var f = PSym(nil)
+    while ty != nil:
+      f = getSymFromList(ty.n, i)
+      if f != nil: break
+      ty = ty.sons[0]         # enum inheritance
+    if f != nil:
+      result = newSymNode(f)
+      result.info = n.info
+      result.typ = ty
+      markUsed(c, n.info, f)
+      onUse(n.info, f)
+  of tyObject, tyTuple:
+    if ty.n != nil and ty.n.kind == nkRecList:
+      let field = lookupInRecord(ty.n, i)
+      if field != nil:
+        n.typ = makeTypeDesc(c, field.typ)
+        result = n
+  of tyGenericInst:
+    result = tryReadingTypeField(c, n, i, ty.lastSon)
+    if result == nil:
+      result = tryReadingGenericParam(c, n, i, ty)
+  else:
+    result = tryReadingGenericParam(c, n, i, ty)
+
 proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   ## returns nil if it's not a built-in field access
   checkSonsLen(n, 2, c.config)
@@ -1290,28 +1349,6 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   var f: PSym = nil
   result = nil
 
-  template tryReadingGenericParam(t: PType) =
-    case t.kind
-    of tyTypeParamsHolders:
-      result = readTypeParameter(c, t, i, n.info)
-      if result == c.graph.emptyNode:
-        result = n
-        n.typ = makeTypeFromExpr(c, n.copyTree)
-      return
-    of tyUserTypeClasses:
-      if t.isResolvedUserTypeClass:
-        return readTypeParameter(c, t, i, n.info)
-      else:
-        n.typ = makeTypeFromExpr(c, copyTree(n))
-        return n
-    of tyGenericParam, tyAnything:
-      n.typ = makeTypeFromExpr(c, copyTree(n))
-      return n
-    else:
-      discard
-
-  var argIsType = false
-
   if ty.kind == tyTypeDesc:
     if ty.base.kind == tyNone:
       # This is a still unresolved typedesc parameter.
@@ -1324,40 +1361,10 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
       else:
         return nil
     else:
-      ty = ty.base
-      argIsType = true
-  else:
-    argIsType = isTypeExpr(n[0])
+      return tryReadingTypeField(c, n, i, ty.base)
+  elif isTypeExpr(n.sons[0]):
+    return tryReadingTypeField(c, n, i, ty)
 
-  if argIsType:
-    ty = ty.skipTypes(tyDotOpTransparent)
-    case ty.kind
-    of tyEnum:
-      # look up if the identifier belongs to the enum:
-      while ty != nil:
-        f = getSymFromList(ty.n, i)
-        if f != nil: break
-        ty = ty[0]         # enum inheritance
-      if f != nil:
-        result = newSymNode(f)
-        result.info = n.info
-        result.typ = ty
-        markUsed(c, n.info, f)
-        onUse(n.info, f)
-        return
-    of tyObject, tyTuple:
-      if ty.n != nil and ty.n.kind == nkRecList:
-        let field = lookupInRecord(ty.n, i)
-        if field != nil:
-          n.typ = makeTypeDesc(c, field.typ)
-          return n
-    else:
-      tryReadingGenericParam(ty)
-      return
-    # XXX: This is probably not relevant any more
-    # reset to prevent 'nil' bug: see "tests/reject/tenumitems.nim":
-    ty = n[0].typ
-    return nil
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
   ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
@@ -1401,7 +1408,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we didn't find any field, let's look for a generic param
   if result == nil:
     let t = n[0].typ.skipTypes(tyDotOpTransparent)
-    tryReadingGenericParam(t)
+    result = tryReadingGenericParam(c, n, i, t)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]):
@@ -1573,9 +1580,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
         root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
-  of nkHiddenDeref, nkDerefExpr: return n[0]
+  of nkDerefExpr: return n[0]
   of nkBracketExpr:
     if n.len == 1: return n[0]
+  of nkHiddenDeref:
+    # issue #13848
+    # `proc fun(a: var int): var int = a`
+    discard
   else: discard
   let valid = isAssignable(c, n, isLent)
   if valid != arLValue:
@@ -2079,7 +2090,10 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   var err: string
   try:
     result = semExpr(c, n, flags)
-    if c.config.errorCounter != oldErrorCount: result = nil
+    if result != nil and efNoSem2Check notin flags:
+      trackStmt(c, c.module, result, isTopLevel = false)
+    if c.config.errorCounter != oldErrorCount:
+      result = nil
   except ERecoverableError:
     discard
   # undo symbol table changes (as far as it's possible):
@@ -2557,6 +2571,8 @@ proc shouldBeBracketExpr(n: PNode): bool =
           return true
 
 proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
+  when defined(nimCompilerStackraceHints):
+    setFrameMsg c.config$n.info & " " & $n.kind
   result = n
   if c.config.cmd == cmdIdeTools: suggestExpr(c, n)
   if nfSem in n.flags: return
@@ -2638,6 +2654,9 @@ proc semExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
         result.typ = c.makeTypeDesc(c.newTypeWithSons(modifier, @[baseType]))
         return
     var typ = semTypeNode(c, n, nil).skipTypes({tyTypeDesc})
+    result.typ = makeTypeDesc(c, typ)
+  of nkStmtListType:
+    let typ = semTypeNode(c, n, nil)
     result.typ = makeTypeDesc(c, typ)
   of nkCall, nkInfix, nkPrefix, nkPostfix, nkCommand, nkCallStrLit:
     # check if it is an expression macro:

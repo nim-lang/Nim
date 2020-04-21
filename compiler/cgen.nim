@@ -406,8 +406,6 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
   else:
-    if optNilCheck in p.options:
-      linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", [addrLoc(p.config, loc)])
     if loc.storage != OnStack and containsGcRef:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
@@ -1924,8 +1922,8 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 # it would generate multiple 'main' procs, for instance.
 
 proc writeModule(m: BModule, pending: bool) =
+  template onExit() = close(m.ndi, m.config)
   let cfile = getCFile(m)
-
   if true or optForceFullMake in m.config.globalOptions:
     if moduleHasChanged(m.g.graph, m.module):
       genInitCode(m)
@@ -1941,8 +1939,9 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cf)
     if code != nil or m.config.symbolFiles != disabledSf:
       when hasTinyCBackend:
-        if conf.cmd == cmdRun:
-          tccgen.compileCCode($code)
+        if m.config.cmd == cmdRun:
+          tccgen.compileCCode($code, m.config)
+          onExit()
           return
 
       if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
@@ -1966,7 +1965,7 @@ proc writeModule(m: BModule, pending: bool) =
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
-  close(m.ndi)
+  onExit()
 
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)

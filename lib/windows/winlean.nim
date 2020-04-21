@@ -10,8 +10,6 @@
 ## This module implements a small wrapper for some needed Win API procedures,
 ## so that the Nim compiler does not depend on the huge Windows module.
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 import dynlib
 
 when defined(nimHasStyleChecks):
@@ -127,6 +125,8 @@ const
   SYNCHRONIZE* = 0x00100000'i32
 
   CREATE_NO_WINDOW* = 0x08000000'i32
+
+  HANDLE_FLAG_INHERIT* = 0x00000001'i32
 
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
@@ -709,6 +709,9 @@ proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
+
+proc getHandleInformation*(hObject: Handle, lpdwFlags: ptr DWORD): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetHandleInformation".}
 
 proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
                            dwFlags: DWORD): WINBOOL {.stdcall,

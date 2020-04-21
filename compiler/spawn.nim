@@ -10,8 +10,8 @@
 ## This module implements threadpool's ``spawn``.
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings
-from trees import getMagic
+  lowerings, liftdestructors
+from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
@@ -36,8 +36,9 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
   else: srFlowVar
 
-proc flowVarKind(t: PType): TFlowVarKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
+proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
+  if c.selectedGC in {gcArc, gcOrc}: fvBlob 
+  elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
 
@@ -66,17 +67,11 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   varSection.add vpart
   if varInit != nil:
     if g.config.selectedGC in {gcArc, gcOrc}:
-      if typ.attachedOps[attachedAsgn] != nil:
-        var call = newNode(nkCall)
-        call.add newSymNode(typ.attachedOps[attachedAsgn])
-        call.add genAddrOf(newSymNode(result), tyVar)
-        call.add v
-        varInit.add call
-      else:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
-    else:      
+      # inject destructors pass will do its own analysis
+      varInit.add newFastMoveStmt(g, newSymNode(result), v)
+    else:
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
+        varInit.add newFastMoveStmt(g, newSymNode(result), v)
       else:
         let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
         deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
@@ -116,24 +111,22 @@ stmtList:
 
 proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
                        varSection, varInit, call, barrier, fv: PNode;
-                       spawnKind: TSpawnResult): PSym =
+                       spawnKind: TSpawnResult, result: PSym) =
   var body = newNodeI(nkStmtList, f.info)
-  body.flags.incl nfTransf # do not transform further
-
   var threadLocalBarrier: PSym
   if barrier != nil:
     var varSection2 = newNodeI(nkVarSection, barrier.info)
-    threadLocalBarrier = addLocalVar(g, varSection2, nil, argsParam.owner,
+    threadLocalBarrier = addLocalVar(g, varSection2, nil, result,
                                      barrier.typ, barrier)
     body.add varSection2
     body.add callCodegenProc(g, "barrierEnter", threadLocalBarrier.info,
       threadLocalBarrier.newSymNode)
   var threadLocalProm: PSym
   if spawnKind == srByVar:
-    threadLocalProm = addLocalVar(g, varSection, nil, argsParam.owner, fv.typ, fv)
+    threadLocalProm = addLocalVar(g, varSection, nil, result, fv.typ, fv)
   elif fv != nil:
     internalAssert g.config, fv.typ.kind == tyGenericInst
-    threadLocalProm = addLocalVar(g, varSection, nil, argsParam.owner, fv.typ, fv)
+    threadLocalProm = addLocalVar(g, varSection, nil, result, fv.typ, fv)
   body.add varSection
   body.add varInit
   if fv != nil and spawnKind != srByVar:
@@ -147,7 +140,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = fv.typ[1].flowVarKind
+    let fk = flowVarKind(g.config, fv.typ[1])
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ[1]))
@@ -184,9 +177,6 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   t.n.add threadParam.newSymNode
   t.n.add argsParam.newSymNode
 
-  let name = (if f.kind == nkSym: f.sym.name.s else: genPrefix) & "Wrapper"
-  result = newSym(skProc, getIdent(g.cache, name), argsParam.owner, f.info,
-                  argsParam.options)
   let emptyNode = newNodeI(nkEmpty, f.info)
   result.ast = newProcNode(nkProcDef, f.info, body = body,
       params = params, name = newSymNode(result), pattern = emptyNode,
@@ -201,7 +191,8 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
 
-proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; scratchObj: PSym,
+proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
+                             owner: PSym; scratchObj: PSym,
                              castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
@@ -210,8 +201,11 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; scratchOb
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
-    if i < formals.len and formals[i].typ.kind in {tyVar, tyLent}:
-      localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+    if i < formals.len: 
+      if formals[i].typ.kind in {tyVar, tyLent}:
+        localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+      if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
+        continue
     #elif containsTyRef(argType):
     #  localError(n[i].info, "'spawn'ed function cannot refer to 'ref'/closure")
 
@@ -221,28 +215,12 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; scratchOb
     objType.addField(field, g.cache)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n[i])
 
-    let temp = addLocalVar(g, varSection, varInit, objType.owner, argType,
+    let temp = addLocalVar(g, varSection, varInit, owner, argType,
                            indirectAccess(castExpr, field, n.info))
     call.add(newSymNode(temp))
 
-proc getRoot*(n: PNode): PSym =
-  ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
-  ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
-  ## determined as the owner; ``obj`` in the example.
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar}:
-      result = n.sym
-  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = getRoot(n[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = getRoot(n[1])
-  of nkCallKinds:
-    if getMagic(n) == mSlice: result = getRoot(n[1])
-  else: discard
-
-proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchObj: PSym;
+proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
+                             owner: PSym; scratchObj: PSym;
                              castExpr, call,
                              varSection, varInit, result: PNode) =
   let formals = n[0].typ.n
@@ -251,6 +229,8 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
   # for correctness: These are called 'threadLocal' here.
   for i in 1..<n.len:
     let n = n[i]
+    if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
+      continue
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
     #if containsTyRef(argType):
@@ -281,7 +261,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldA), n[2])
         result.add newFastAsgnStmt(newDotExpr(scratchObj, fieldB), n[3])
 
-        let threadLocal = addLocalVar(g, varSection,nil, objType.owner, fieldA.typ,
+        let threadLocal = addLocalVar(g, varSection,nil, owner, fieldA.typ,
                                       indirectAccess(castExpr, fieldA, n.info),
                                       useShallowCopy=true)
         slice[2] = threadLocal.newSymNode
@@ -296,7 +276,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
       # the array itself does not need to go through a thread local variable:
       slice[1] = genDeref(indirectAccess(castExpr, field, n.info))
 
-      let threadLocal = addLocalVar(g, varSection,nil, objType.owner, fieldB.typ,
+      let threadLocal = addLocalVar(g, varSection,nil, owner, fieldB.typ,
                                     indirectAccess(castExpr, fieldB, n.info),
                                     useShallowCopy=true)
       slice[3] = threadLocal.newSymNode
@@ -308,7 +288,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
       field.typ = a.typ
       objType.addField(field, g.cache)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), a)
-      let threadLocal = addLocalVar(g, varSection,nil, objType.owner, field.typ,
+      let threadLocal = addLocalVar(g, varSection,nil, owner, field.typ,
                                     indirectAccess(castExpr, field, n.info),
                                     useShallowCopy=true)
       call.add(genDeref(threadLocal.newSymNode))
@@ -318,7 +298,7 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType; scratchOb
       objType.addField(field, g.cache)
       result.add newFastAsgnStmt(newDotExpr(scratchObj, field), n)
       let threadLocal = addLocalVar(g, varSection, varInit,
-                                    objType.owner, field.typ,
+                                    owner, field.typ,
                                     indirectAccess(castExpr, field, n.info),
                                     useShallowCopy=true)
       call.add(threadLocal.newSymNode)
@@ -346,9 +326,15 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   if optThreadAnalysis in g.config.globalOptions:
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
       localError(g.config, n.info, "'spawn' takes a GC safe call expression")
-  var
-    threadParam = newSym(skParam, getIdent(g.cache, "thread"), owner, n.info, g.config.options)
-    argsParam = newSym(skParam, getIdent(g.cache, "args"), owner, n.info, g.config.options)
+
+  var fn = n[0]
+  let
+    name = (if fn.kind == nkSym: fn.sym.name.s else: genPrefix) & "Wrapper"
+    wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)
+    threadParam = newSym(skParam, getIdent(g.cache, "thread"), wrapperProc, n.info, g.config.options)
+    argsParam = newSym(skParam, getIdent(g.cache, "args"), wrapperProc, n.info, g.config.options)
+
+  wrapperProc.flags.incl sfInjectDestructors
   block:
     let ptrType = getSysType(g, n.info, tyPointer)
     threadParam.typ = ptrType
@@ -368,7 +354,6 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     result.add varSectionB
 
   var call = newNodeIT(nkCall, n.info, n.typ)
-  var fn = n[0]
   # templates and macros are in fact valid here due to the nature of
   # the transformation:
   if fn.kind == nkClosure or (fn.typ != nil and fn.typ.callConv == ccClosure):
@@ -391,10 +376,10 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
   var varSection = newNodeI(nkVarSection, n.info)
   var varInit = newNodeI(nkStmtList, n.info)
   if barrier.isNil:
-    setupArgsForConcurrency(g, n, objType, scratchObj, castExpr, call,
+    setupArgsForConcurrency(g, n, objType, wrapperProc, scratchObj, castExpr, call,
                             varSection, varInit, result)
   else:
-    setupArgsForParallelism(g, n, objType, scratchObj, castExpr, call,
+    setupArgsForParallelism(g, n, objType, wrapperProc, scratchObj, castExpr, call,
                             varSection, varInit, result)
 
   var barrierAsExpr: PNode = nil
@@ -428,11 +413,12 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
-  let wrapper = createWrapperProc(g, fn, threadParam, argsParam,
-                                  varSection, varInit, call,
-                                  barrierAsExpr, fvAsExpr, spawnKind)
-  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapper.info,
-    wrapper.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
+  createTypeBoundOps(g, nil, objType, n.info)
+  createWrapperProc(g, fn, threadParam, argsParam,
+                      varSection, varInit, call,
+                      barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)
+  result.add callCodegenProc(g, "nimSpawn" & $spawnExpr.len, wrapperProc.info,
+    wrapperProc.newSymNode, genAddrOf(scratchObj.newSymNode), nil, spawnExpr)
 
   if spawnKind == srFlowVar: result.add fvField
 
