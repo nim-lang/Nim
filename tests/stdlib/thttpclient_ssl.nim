@@ -1,5 +1,6 @@
 discard """
   cmd: "nim $target --threads:on -d:ssl $options $file"
+  disabled: "openbsd"
 """
 
 #            Nim - Basic SSL integration tests

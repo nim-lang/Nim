@@ -2,6 +2,7 @@ discard """
 action: compile
 disabled: "windows"
 disabled: "freebsd"
+disabled: "openbsd"
 """
 
 import sfml, os
