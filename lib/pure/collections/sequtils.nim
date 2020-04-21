@@ -919,7 +919,7 @@ template mapIt*(s: typed, op: untyped): untyped =
       InType = typeof(items(s), typeOfIter)
       OutType = typeof((
         block:
-          var it{.inject.}: InType;
+          var it{.inject.}: typeof(items(s), typeOfIter);
           op), typeOfProc)
   else:
     type
