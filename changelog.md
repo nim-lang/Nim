@@ -31,6 +31,10 @@
 - The file descriptors created for internal bookkeeping by `ioselector_kqueue`
   and `ioselector_epoll` will no longer be leaked to child processes.
 
+- `strutils.formatFloat` with `precision = 0` has been restored to the version
+  1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
+  is now `3.`, not `3`.
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
