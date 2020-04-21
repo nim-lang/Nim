@@ -19,6 +19,7 @@ from sighashes import symBodyDigest
 from times import cpuTime
 
 from hashes import hash
+from system/dollars import toHexImpl
 from osproc import nil
 
 import vmconv
@@ -198,6 +199,9 @@ proc registerAdditionalOps*(c: PCtx) =
 
   registerCallback c, "stdlib.os.getCurrentCompilerExe", proc (a: VmArgs) {.nimcall.} =
     setResult(a, getAppFilename())
+
+  registerCallback c, "stdlib.dollars.toHexImpl", proc (a: VmArgs) {.nimcall.} =
+    setResult(a, a.getInt(0).int.toHexImpl)
 
   registerCallback c, "stdlib.macros.symBodyHash", proc (a: VmArgs) {.nimcall.} =
     let n = getNode(a, 0)

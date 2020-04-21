@@ -65,6 +65,36 @@ else:
           return true
       return false
 
+proc c_sprintf(buf, frmt: cstring): cint {.importc: "sprintf", header: "<stdio.h>", varargs, noSideEffect.}
+
+proc toHexImpl*(x: int): string {.inline.} =
+  var buf {.noinit.}: array[int.sizeof*2+3, char] # 3 for 0x+\0
+  let num = c_sprintf(buf.addr, "%p", cast[int](x))
+  result = newString(num)
+  for i in 0..<num: result[i] = buf[i] # or memcpy
+
+when defined(js):
+  var objectID = 0
+  proc getNimJsObjectID*(x: pointer): int =
+    asm """
+      if (typeof `x` == "object") {
+        if ("_NimID" in `x`)
+          `result` = `x`["_NimID"];
+        else {
+          `result` = ++`objectID`;
+          `x`["_NimID"] = `result`;
+        }
+      }
+    """
+
+proc `$`*(x: ref|ptr|pointer): string =
+  if x == nil: "nil"
+  else:
+    template fun(): untyped = toHexImpl(cast[int](x))
+    when defined(js):
+      when nimvm: fun()
+      else: "@" & $getNimJsObjectID(cast[pointer](x))
+    else: fun()
 
 proc `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components

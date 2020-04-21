@@ -149,21 +149,12 @@ proc hashData*(data: pointer, size: int): Hash =
   result = !$h
 
 when defined(js):
-  var objectID = 0
+  from system/dollars import getNimJsObjectID
 
 proc hash*(x: pointer): Hash {.inline.} =
   ## Efficient hashing of pointers.
   when defined(js):
-    asm """
-      if (typeof `x` == "object") {
-        if ("_NimID" in `x`)
-          `result` = `x`["_NimID"];
-        else {
-          `result` = ++`objectID`;
-          `x`["_NimID"] = `result`;
-        }
-      }
-    """
+    result = getNimJsObjectID(x)
   else:
     result = cast[Hash](cast[uint](x) shr 3) # skip the alignment
 

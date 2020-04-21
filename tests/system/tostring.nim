@@ -1,6 +1,8 @@
 discard """
   output: "DONE: tostring.nim"
+  targets: "c cpp js"
 """
+# xxx move this to tests/system/tdollars.nim
 
 doAssert "@[23, 45]" == $(@[23, 45])
 doAssert "[32, 45]" == $([32, 45])
@@ -46,12 +48,13 @@ const
 # ensure same result when on VM or when at program execution
 doAssert dataStr == $data
 
-import strutils
+from strutils import contains
 # array test
 
 let arr = ['H','e','l','l','o',' ','W','o','r','l','d','!','\0']
 doAssert $arr == "['H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\\x00']"
-doAssert $cstring(unsafeAddr arr) == "Hello World!"
+when not defined js: # bug
+  doAssert $cstring(unsafeAddr arr) == "Hello World!"
 
 proc takes(c: cstring) =
   doAssert c == cstring""
@@ -82,10 +85,11 @@ proc stringCompare() =
   b.add "bee"
   doAssert b == "bee"
   b.add g
-  doAssert b == "bee"
-  c.add 123.456
+  when not defined js: # bug
+    doAssert b == "bee"
+  c.addFloat 123.456
   doAssert c == "123.456"
-  d.add 123456
+  d.addInt 123456
   doAssert d == "123456"
 
   doAssert e == ""
@@ -94,7 +98,8 @@ proc stringCompare() =
   doAssert "" == ""
 
   g.setLen(10)
-  doAssert g == "\0\0\0\0\0\0\0\0\0\0"
+  when not defined(js): # bug
+    doAssert g == "\0\0\0\0\0\0\0\0\0\0"
   doAssert "" != "\0\0\0\0\0\0\0\0\0\0"
 
   var nilstring: string
@@ -103,7 +108,8 @@ proc stringCompare() =
 
 stringCompare()
 var nilstring: string
-bar(nilstring)
+when not defined(js): # bug
+  bar(nilstring)
 
 static:
   stringCompare()
@@ -116,5 +122,29 @@ block:
   s.addQuoted a2
   doAssert s == "\"fo\\\"o2\""
 
+block: # ptr-like types
+  type
+    TFoo = object
+      x1: int
+      x2: pointer
+      x3: seq[Foo]
+      x4: ptr TFoo
+    Foo = ref TFoo
+  
+  template fun() =
+    doAssert $Foo.default == "nil"
+    var z = 0
+    var a = Foo(x1: 1, x2: z.addr)
+    let sa = $a
+    a.x3 = @[nil, a, Foo()]
+    a.x4 = a[].addr
+    doAssert $a.x4 == sa
+    doAssert $a.x3[0] == "nil"
+    doAssert $a.x3[1] == sa
+    doAssert $a.x3[2] != sa
+    doAssert sa in $a[]
+
+  fun()
+  static: fun()
 
 echo "DONE: tostring.nim"

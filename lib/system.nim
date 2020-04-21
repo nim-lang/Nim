@@ -2051,7 +2051,7 @@ template unlikely*(val: bool): bool =
 
 
 import system/dollars
-export dollars
+export dollars except toHexImpl, getNimJsObjectID
 
 const
   NimMajor* {.intdefine.}: int = 1

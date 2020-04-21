@@ -599,18 +599,22 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
 
     of opcCastPtrToInt: # RENAME opcCastPtrOrRefToInt
       decodeBImm(rkInt)
+      var val = 0
       case imm
       of 1: # PtrLikeKinds
         case regs[rb].kind
         of rkNode:
-          regs[ra].intVal = cast[int](regs[rb].node.intVal)
-        of rkNodeAddr:
-          regs[ra].intVal = cast[int](regs[rb].nodeAddr)
+          let node = regs[rb].node
+          if nfIsRef in node.flags: val = cast[int](node)
+          elif node.kind == nkIntLit: val = cast[int](node.intVal)
+          else: assert false, $node.kind
+        of rkNodeAddr: val = cast[int](regs[rb].nodeAddr)
         else:
           stackTrace(c, tos, pc, "opcCastPtrToInt: got " & $regs[rb].kind)
       of 2: # tyRef
-        regs[ra].intVal = cast[int](regs[rb].node)
+        val = cast[int](regs[rb].node)
       else: assert false, $imm
+      regs[ra].intVal = val
     of opcCastIntToPtr:
       let rb = instr.regB
       let typ = regs[ra].node.typ
