@@ -164,10 +164,15 @@ proc detectOsImpl(d: Distribution): bool =
   of Distribution.Linux: result = defined(linux)
   of Distribution.BSD: result = defined(bsd)
   else:
-    when defined(linux):
+    when defined(bsd):
       case d
-      of Distribution.Gentoo, Distribution.FreeBSD,
-        Distribution.OpenBSD:
+      of Distribution.FreeBSD, Distribution.OpenBSD:
+        result = $d in uname()
+      else:
+        result = false
+    elif defined(linux):
+      case d
+      of Distribution.Gentoo:
         result = ("-" & $d & " ") in uname()
       of Distribution.Elementary, Distribution.Ubuntu, Distribution.Debian, Distribution.Fedora,
         Distribution.OpenMandriva, Distribution.CentOS, Distribution.Alpine,
