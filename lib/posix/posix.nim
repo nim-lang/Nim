@@ -896,6 +896,10 @@ proc `==`*(x, y: SocketHandle): bool {.borrow.}
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>", sideEffect.}
 
+when defined(linux) or defined(bsd):
+  proc accept4*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen,
+                flags: cint): SocketHandle {.importc, header: "<sys/socket.h>".}
+
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
@@ -1035,6 +1039,9 @@ proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## can't be a string literal. If in doubt copy the string before passing it.
 
 proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
+
+when defined(linux) or defined(bsd):
+  proc mkostemp*(tmpl: cstring, oflags: cint): cint {.importc, header: "<stdlib.h>", sideEffect.}
 
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>", sideEffect.}

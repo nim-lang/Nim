@@ -18,6 +18,8 @@ proc main1() =
   const I64A = 0b01000100_00111111_01111100_10001010_10011001_01001000_01111010_00010001'i64
   const U64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'u64
   const I64B = 0b00110010_11011101_10001111_00101000_00000000_00000000_00000000_00000000'i64
+  const U64C = 0b00101010_11110101_10001111_00101000_00000100_00000000_00000100_00000000'u64
+  const I64C = 0b00101010_11110101_10001111_00101000_00000100_00000000_00000100_00000000'i64
 
   doAssert( (U8 and U8) == bitand(U8,U8) )
   doAssert( (I8 and I8) == bitand(I8,I8) )
@@ -27,6 +29,8 @@ proc main1() =
   doAssert( (I32 and I32) == bitand(I32,I32) )
   doAssert( (U64A and U64B) == bitand(U64A,U64B) )
   doAssert( (I64A and I64B) == bitand(I64A,I64B) )
+  doAssert( (U64A and U64B and U64C) == bitand(U64A,U64B,U64C) )
+  doAssert( (I64A and I64B and I64C) == bitand(I64A,I64B,I64C) )
 
   doAssert( (U8 or U8) == bitor(U8,U8) )
   doAssert( (I8 or I8) == bitor(I8,I8) )
@@ -36,6 +40,8 @@ proc main1() =
   doAssert( (I32 or I32) == bitor(I32,I32) )
   doAssert( (U64A or U64B) == bitor(U64A,U64B) )
   doAssert( (I64A or I64B) == bitor(I64A,I64B) )
+  doAssert( (U64A or U64B or U64C) == bitor(U64A,U64B,U64C) )
+  doAssert( (I64A or I64B or I64C) == bitor(I64A,I64B,I64C) )
 
   doAssert( (U8 xor U8) == bitxor(U8,U8) )
   doAssert( (I8 xor I8) == bitxor(I8,I8) )
@@ -45,6 +51,8 @@ proc main1() =
   doAssert( (I32 xor I32) == bitxor(I32,I32) )
   doAssert( (U64A xor U64B) == bitxor(U64A,U64B) )
   doAssert( (I64A xor I64B) == bitxor(I64A,I64B) )
+  doAssert( (U64A xor U64B xor U64C) == bitxor(U64A,U64B,U64C) )
+  doAssert( (I64A xor I64B xor I64C) == bitxor(I64A,I64B,I64C) )
 
   doAssert( not(U8) == bitnot(U8) )
   doAssert( not(I8) == bitnot(I8) )

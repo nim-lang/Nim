@@ -1482,8 +1482,8 @@ Tuples and object types
 A variable of a tuple or object type is a heterogeneous storage
 container.
 A tuple or object defines various named *fields* of a type. A tuple also
-defines an *order* of the fields. Tuples are meant for heterogeneous storage
-types with no overhead and few abstraction possibilities. The constructor ``()``
+defines a lexicographic *order* of the fields. Tuples are meant to be
+heterogeneous storage types with few abstractions. The ``()`` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
@@ -1503,8 +1503,10 @@ of the assignment operator is described `here
   var
     person: Person
   person = (name: "Peter", age: 30)
+  echo person.name
   # the same, but less readable:
   person = ("Peter", 30)
+  echo person[0]
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
@@ -1528,11 +1530,12 @@ can also be defined with indentation instead of ``[]``:
   type
     Person = tuple   # type representing a person
       name: string   # a person consists of a name
-      age: natural   # and an age
+      age: Natural   # and an age
 
 Objects provide many features that tuples do not. Object provide inheritance and
-information hiding. Objects have access to their type during at runtime, so that
-the ``of`` operator can be used to determine the object's type. The ``of``
+the ability to hide fields from other modules. Objects with inheritance enabled
+have information about their type at runtime, so that the ``of`` operator can be
+used to determine the object's type. The ``of``
 operator is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
@@ -1552,9 +1555,19 @@ operator is similar to the ``instanceof`` operator in Java.
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. Objects that have no ancestor are implicitly ``final``
-and thus have no hidden type field. One can use the ``inheritable`` pragma to
+never *equivalent*, they are nominal types whereas tuples are structural.
+Objects that have no ancestor are implicitly ``final`` and thus have no hidden
+type information. One can use the ``inheritable`` pragma to
 introduce new object roots apart from ``system.RootObj``.
+
+.. code-block:: nim
+  type
+    Person = object # example of a final object
+      name*: string
+      age: int
+
+    Student = ref object of Person # Error: inheritance only works with non-final objects
+      id: int
 
 
 Object construction
@@ -1836,32 +1849,6 @@ binary zero which the string assignment can handle. One needs to know low level
 details like this when mixing garbage collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
-
-
-Not nil annotation
-------------------
-
-All types for which ``nil`` is a valid value can be annotated to
-exclude ``nil`` as a valid value with the ``not nil`` annotation:
-
-.. code-block:: nim
-  type
-    PObject = ref TObj not nil
-    TProc = (proc (x, y: int)) not nil
-
-  proc p(x: PObject) =
-    echo "not nil"
-
-  # compiler catches this:
-  p(nil)
-
-  # and also this:
-  var x: PObject
-  p(x)
-
-The compiler ensures that every code path initializes variables which contain
-non nilable pointers. The details of this analysis are still to be specified
-here.
 
 
 Procedural type

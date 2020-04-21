@@ -259,6 +259,31 @@ else:
     IOFBF {.importc: "_IOFBF", nodecl.}: cint
     IONBF {.importc: "_IONBF", nodecl.}: cint
 
+const SupportIoctlInheritCtl = (defined(linux) or defined(bsd)) and
+                              not defined(nimscript)
+when SupportIoctlInheritCtl:
+  var
+    FIOCLEX {.importc, header: "<sys/ioctl.h>".}: cint
+    FIONCLEX {.importc, header: "<sys/ioctl.h>".}: cint
+
+  proc c_ioctl(fd: cint, request: cint): cint {.
+    importc: "ioctl", header: "<sys/ioctl.h>", varargs.}
+elif defined(posix) and not defined(nimscript):
+  var
+    F_GETFD {.importc, header: "<fcntl.h>".}: cint
+    F_SETFD {.importc, header: "<fcntl.h>".}: cint
+    FD_CLOEXEC {.importc, header: "<fcntl.h>".}: cint
+
+  proc c_fcntl(fd: cint, cmd: cint): cint {.
+    importc: "fcntl", header: "<fcntl.h>", varargs.}
+elif defined(windows):
+  const HANDLE_FLAG_INHERIT = culong 0x1
+  proc getOsfhandle(fd: cint): FileHandle {.
+    importc: "_get_osfhandle", header: "<io.h>".}
+
+  proc setHandleInformation(handle: FileHandle, mask, flags: culong): cint {.
+    importc: "SetHandleInformation", header: "<handleapi.h>".}
+
 const
   BufSize = 4000
 
@@ -292,11 +317,28 @@ proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
   when defined(windows):
-    proc getOsfhandle(fd: cint): FileHandle {.
-      importc: "_get_osfhandle", header: "<io.h>".}
     result = getOsfhandle(getFileHandle(f))
   else:
     result = c_fileno(f)
+
+when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(windows):
+  proc setInheritable*(f: FileHandle, inheritable: bool): bool =
+    ## control whether a file handle can be inherited by child processes. Returns
+    ## ``true`` on success. This requires the OS file handle, which can be
+    ## retrieved via `getOsFileHandle <#getOsFileHandle,File>`_.
+    ##
+    ## This procedure is not guaranteed to be available for all platforms. Test for
+    ## availability with `declared() <system.html#declared,untyped>`.
+    when SupportIoctlInheritCtl:
+      result = c_ioctl(f, if inheritable: FIONCLEX else: FIOCLEX) != -1
+    elif defined(posix):
+      var flags = c_fcntl(f, F_GETFD)
+      if flags == -1:
+        return false
+      flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
+      result = c_fcntl(f, F_SETFD, flags) != -1
+    else:
+      result = setHandleInformation(f, HANDLE_FLAG_INHERIT, culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -501,7 +543,21 @@ else:
     importc: "freopen", nodecl.}
 
 const
-  FormatOpen: array[FileMode, string] = ["rb", "wb", "w+b", "r+b", "ab"]
+  NoInheritFlag =
+    # Platform specific flag for creating a File without inheritance.
+    when not defined(nimInheritHandles):
+      when defined(windows):
+        "N"
+      elif defined(linux) or defined(bsd):
+        "e"
+      else:
+        ""
+    else:
+      ""
+  FormatOpen: array[FileMode, string] = [
+    "rb" & NoInheritFlag, "wb" & NoInheritFlag, "w+b" & NoInheritFlag,
+    "r+b" & NoInheritFlag, "ab" & NoInheritFlag
+  ]
     #"rt", "wt", "w+t", "r+t", "at"
     # we always use binary here as for Nim the OS line ending
     # should not be translated.
@@ -544,17 +600,25 @@ proc open*(f: var File, filename: string,
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
   ## This throws no exception if the file could not be opened.
+  ##
+  ## The file handle associated with the resulting ``File`` is not inheritable.
   var p = fopen(filename, FormatOpen[mode])
   if p != nil:
+    var f2 = cast[File](p)
     when defined(posix) and not defined(nimscript):
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
-      var f2 = cast[File](p)
       var res: Stat
       if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
+    when not defined(nimInheritHandles) and declared(setInheritable) and
+         NoInheritFlag.len == 0:
+      if not setInheritable(getOsFileHandle(f2), false):
+        close(f2)
+        return false
+
     result = true
     f = cast[File](p)
     if bufSize > 0 and bufSize <= high(cint).int:
@@ -569,13 +633,27 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## file variables.
   ##
   ## Default mode is readonly. Returns true iff the file could be reopened.
-  result = freopen(filename, FormatOpen[mode], f) != nil
+  ##
+  ## The file handle associated with `f` won't be inheritable.
+  if freopen(filename, FormatOpen[mode], f) != nil:
+    when not defined(nimInheritHandles) and declared(setInheritable) and
+         NoInheritFlag.len == 0:
+      if not setInheritable(getOsFileHandle(f), false):
+        close(f)
+        return false
+    result = true
 
 proc open*(f: var File, filehandle: FileHandle,
            mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
   ## Creates a ``File`` from a `filehandle` with given `mode`.
   ##
   ## Default mode is readonly. Returns true iff the file could be opened.
+  ##
+  ## The passed file handle will no longer be inheritable.
+  when not defined(nimInheritHandles) and declared(setInheritable):
+    let oshandle = when defined(windows): getOsfhandle(filehandle) else: filehandle
+    if not setInheritable(oshandle, false):
+      return false
   f = c_fdopen(filehandle, FormatOpen[mode])
   result = f != nil
 
@@ -585,6 +663,8 @@ proc open*(filename: string,
   ##
   ## Default mode is readonly. Raises an ``IOError`` if the file
   ## could not be opened.
+  ##
+  ## The file handle associated with the resulting ``File`` is not inheritable.
   if not open(result, filename, mode, bufSize):
     sysFatal(IOError, "cannot open: " & filename)
 

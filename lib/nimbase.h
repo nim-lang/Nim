@@ -477,7 +477,6 @@ typedef char* NCSTRING;
 #define ALLOC_0(size)  calloc(1, size)
 #define DL_ALLOC_0(size) dlcalloc(1, size)
 
-#define GenericSeqSize sizeof(TGenericSeq)
 #define paramCount() cmdCount
 
 // NAN definition copied from math.h included in the Windows SDK version 10.0.14393.0
@@ -546,8 +545,10 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, ""
 
 #if defined(_MSC_VER)
 #  define NIM_ALIGN(x)  __declspec(align(x))
+#  define NIM_ALIGNOF(x) __alignof(x)
 #else
 #  define NIM_ALIGN(x)  __attribute__((aligned(x)))
+#  define NIM_ALIGNOF(x) __alignof__(x)
 #endif
 
 /* ---------------- platform specific includes ----------------------- */

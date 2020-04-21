@@ -339,8 +339,7 @@ proc forAllChildren(cell: PCell, op: WalkOp) =
       var s = cast[PGenericSeq](d)
       if s != nil:
         for i in 0..s.len-1:
-          forAllChildrenAux(cast[pointer](d +% i *% cell.typ.base.size +%
-            GenericSeqSize), cell.typ.base, op)
+          forAllChildrenAux(cast[pointer](d +% align(GenericSeqSize, cell.typ.base.align) +% i *% cell.typ.base.size), cell.typ.base, op)
     else: discard
 
 proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
@@ -444,7 +443,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerRtl.} =
 {.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerRtl.} =
   # `newObj` already uses locks, so no need for them here.
-  let size = len * typ.base.size + GenericSeqSize
+  let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObj(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
@@ -480,7 +479,7 @@ proc newObjRC1(typ: PNimType, size: int): pointer {.compilerRtl.} =
 
 {.push overflowChecks: on.}
 proc newSeqRC1(typ: PNimType, len: int): pointer {.compilerRtl.} =
-  let size = len * typ.base.size + GenericSeqSize
+  let size = align(GenericSeqSize, typ.base.align) + len * typ.base.size
   result = newObjRC1(typ, size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
@@ -495,11 +494,13 @@ proc growObj(old: pointer, newsize: int, gch: var GcHeap): pointer =
   sysAssert(allocInv(gch.region), "growObj begin")
 
   var res = cast[PCell](rawAlloc(gch.region, newsize + sizeof(Cell)))
-  var elemSize = 1
-  if ol.typ.kind != tyString: elemSize = ol.typ.base.size
+  var elemSize,elemAlign = 1
+  if ol.typ.kind != tyString:
+    elemSize = ol.typ.base.size
+    elemAlign = ol.typ.base.align
   incTypeSize ol.typ, newsize
 
-  var oldsize = cast[PGenericSeq](old).len*elemSize + GenericSeqSize
+  var oldsize = align(GenericSeqSize, elemAlign) + cast[PGenericSeq](old).len * elemSize
   copyMem(res, ol, oldsize + sizeof(Cell))
   zeroMem(cast[pointer](cast[ByteAddress](res) +% oldsize +% sizeof(Cell)),
           newsize-oldsize)

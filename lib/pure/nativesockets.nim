@@ -185,19 +185,53 @@ proc toSockType*(protocol: Protocol): SockType =
   of IPPROTO_IP, IPPROTO_IPV6, IPPROTO_RAW, IPPROTO_ICMP, IPPROTO_ICMPV6:
     SOCK_RAW
 
-proc createNativeSocket*(domain: Domain = AF_INET,
-                      sockType: SockType = SOCK_STREAM,
-                      protocol: Protocol = IPPROTO_TCP): SocketHandle =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  socket(toInt(domain), toInt(sockType), toInt(protocol))
+proc close*(socket: SocketHandle) =
+  ## closes a socket.
+  when useWinVersion:
+    discard winlean.closesocket(socket)
+  else:
+    discard posix.close(socket)
+  # TODO: These values should not be discarded. An OSError should be raised.
+  # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
-proc createNativeSocket*(domain: cint, sockType: cint,
-                      protocol: cint): SocketHandle =
+when declared(setInheritable) or defined(nimdoc):
+  proc setInheritable*(s: SocketHandle, inheritable: bool): bool {.inline.} =
+    ## Set whether a socket is inheritable by child processes. Returns `true`
+    ## on success.
+    ##
+    ## This function is not implemented on all platform, test for availability
+    ## with `declared() <system.html#declared,untyped>`.
+    setInheritable(FileHandle s, inheritable)
+
+proc createNativeSocket*(domain: cint, sockType: cint, protocol: cint,
+                         inheritable: bool = defined(nimInheritHandles)): SocketHandle =
   ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## `inheritable` decides if the resulting SocketHandle can be inherited
+  ## by child processes.
   ##
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
-  socket(domain, sockType, protocol)
+  let sockType =
+    when (defined(linux) or defined(bsd)) and not defined(nimdoc):
+      if inheritable: sockType and not SOCK_CLOEXEC else: sockType or SOCK_CLOEXEC
+    else:
+      sockType
+  result = socket(domain, sockType, protocol)
+  when declared(setInheritable) and not (defined(linux) or defined(bsd)):
+    if not setInheritable(result, inheritable):
+      close result
+      return osInvalidSocket
+
+proc createNativeSocket*(domain: Domain = AF_INET,
+                         sockType: SockType = SOCK_STREAM,
+                         protocol: Protocol = IPPROTO_TCP,
+                         inheritable: bool = defined(nimInheritHandles)): SocketHandle =
+  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
+  ##
+  ## `inheritable` decides if the resulting SocketHandle can be inherited
+  ## by child processes.
+  createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol))
 
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,
@@ -214,15 +248,6 @@ proc newNativeSocket*(domain: cint, sockType: cint,
   ## Use this overload if one of the enums specified above does
   ## not contain what you need.
   createNativeSocket(domain, sockType, protocol)
-
-proc close*(socket: SocketHandle) =
-  ## closes a socket.
-  when useWinVersion:
-    discard winlean.closesocket(socket)
-  else:
-    discard posix.close(socket)
-  # TODO: These values should not be discarded. An OSError should be raised.
-  # http://stackoverflow.com/questions/12463473/what-happens-if-you-call-close-on-a-bsd-socket-multiple-times
 
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
     namelen: SockLen): cint =
@@ -652,14 +677,25 @@ proc selectWrite*(writefds: var seq[SocketHandle],
 
   pruneSocketSet(writefds, (wr))
 
-proc accept*(fd: SocketHandle): (SocketHandle, string) =
+proc accept*(fd: SocketHandle, inheritable = defined(nimInheritHandles)): (SocketHandle, string) =
   ## Accepts a new client connection.
+  ##
+  ## `inheritable` decides if the resulting SocketHandle can be inherited by
+  ## child processes.
   ##
   ## Returns (osInvalidSocket, "") if an error occurred.
   var sockAddress: Sockaddr_in
   var addrLen = sizeof(sockAddress).SockLen
-  var sock = accept(fd, cast[ptr SockAddr](addr(sockAddress)),
-                    addr(addrLen))
+  var sock =
+    when (defined(linux) or defined(bsd)) and not defined(nimdoc):
+      accept4(fd, cast[ptr SockAddr](addr(sockAddress)), addr(addrLen),
+              if inheritable: 0 else: SOCK_CLOEXEC)
+    else:
+      accept(fd, cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+  when declared(setInheritable) and not (defined(linux) or defined(bsd)):
+    if not setInheritable(sock, inheritable):
+      close sock
+      sock = osInvalidSocket
   if sock == osInvalidSocket:
     return (osInvalidSocket, "")
   else:

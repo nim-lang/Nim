@@ -126,6 +126,8 @@ const
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
+  HANDLE_FLAG_INHERIT* = 0x00000001'i32
+
 proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
     stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
 proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
@@ -707,6 +709,9 @@ proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
                       dwDesiredAccess: DWORD, bInheritHandle: WINBOOL,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
+
+proc getHandleInformation*(hObject: Handle, lpdwFlags: ptr DWORD): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetHandleInformation".}
 
 proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
                            dwFlags: DWORD): WINBOOL {.stdcall,

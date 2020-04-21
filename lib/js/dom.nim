@@ -103,6 +103,8 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
+  Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+
   LocalStorage* {.importc.} = ref object
 
   Window* = ref WindowObj
@@ -1155,7 +1157,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): cstring
+proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
 proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1244,6 +1246,11 @@ proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: c
 
 # Performance "methods"
 proc now*(p: Performance): float
+
+# Selection "methods"
+proc removeAllRanges*(s: Selection)
+converter toString*(s: Selection): cstring
+proc `$`*(s: Selection): string = $(s.toString())
 
 # LocalStorage "methods"
 proc getItem*(ls: LocalStorage, key: cstring): cstring

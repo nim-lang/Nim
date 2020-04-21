@@ -1,5 +1,6 @@
 discard """
   target: "c"
+  disabled: "openbsd"
 """
 
 import coro
