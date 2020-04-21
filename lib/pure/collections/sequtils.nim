@@ -916,14 +916,14 @@ template mapIt*(s: typed, op: untyped): untyped =
 
   when defined(nimHasTypeof):
     type OutType = typeof((
-        block:
-          var it{.inject.}: typeof(items(s), typeOfIter);
-          op), typeOfProc)
+      block:
+        var it{.inject.}: typeof(items(s), typeOfIter);
+        op), typeOfProc)
   else:
     type OutType = type((
-        block:
-          var it{.inject.}: type(items(s));
-          op))
+      block:
+        var it{.inject.}: type(items(s));
+        op))
   when OutType is not (proc):
     # Here, we avoid to create closures in loops.
     # This avoids https://github.com/nim-lang/Nim/issues/12625
