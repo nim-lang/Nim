@@ -32,7 +32,7 @@
   and `ioselector_epoll` will no longer be leaked to child processes.
 
 ## Language changes
-- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
+- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
   type
     MyObj = object
@@ -62,8 +62,8 @@
   ```
 
 - getImpl() on enum type symbols now returns field syms instead of idents. This helps
-  with writing typed macros. Old behavior for backwards compatiblity can be restored 
-  with command line switch `--oldast`.
+  with writing typed macros. Old behavior for backwards compatiblity can be restored
+  with command line switch `--useVersion:1.0`.
 
 ## Compiler changes
 

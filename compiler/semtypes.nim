@@ -131,7 +131,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     e.typ = result
     e.position = int(counter)
     let symNode = newSymNode(e)
-    if optOldAst notin c.config.options and identToReplace != nil:
+    if optNimV1Emulation notin c.config.options and identToReplace != nil:
       identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
@@ -1590,7 +1590,7 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
         discard "User-defined pragma"
       else:
         let sym = searchInScopes(c, ident)
-        if sym != nil and sfCustomPragma in sym.flags: 
+        if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
         else:
           # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and
