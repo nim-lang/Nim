@@ -915,33 +915,43 @@ template mapIt*(s: typed, op: untyped): untyped =
     assert strings == @["4", "8", "12", "16"]
 
   when defined(nimHasTypeof):
-    type OutType = typeof((
-      block:
-        var it{.inject.}: typeof(items(s), typeOfIter);
-        op), typeOfProc)
+    type
+      InType = typeof(items(s), typeOfIter)
+      OutType = typeof((
+        block:
+          var it{.inject.}: InType;
+          op), typeOfProc)
   else:
-    type OutType = type((
-      block:
-        var it{.inject.}: type(items(s));
-        op))
-  when compiles(s.len):
-    block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
+    type
+      InType = type(items(s))
+      OutType = type((
+        block:
+          var it{.inject.}: type(items(s));
+          op))
+  when OutType is not (proc):
+    when compiles(s.len):
+      block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
 
-      # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
-      # (`error: use of undeclared identifier`) instead of Nim compile errors
-      evalOnceAs(s2, s, compiles((let _ = s)))
+        # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
+        # (`error: use of undeclared identifier`) instead of Nim compile errors
+        evalOnceAs(s2, s, compiles((let _ = s)))
 
-      var i = 0
-      var result = newSeq[OutType](s2.len)
-      for it {.inject.} in s2:
-        result[i] = op
-        i += 1
+        var i = 0
+        var result = newSeq[OutType](s2.len)
+        for it {.inject.} in s2:
+          result[i] = op
+          i += 1
+        result
+    else:
+      var result: seq[OutType] = @[]
+      for it {.inject.} in items(s):
+        result.add(op)
       result
   else:
-    var result: seq[OutType] = @[]
-    for it {.inject.} in s:
-      result.add(op)
-    result
+    let f = proc (x: InType): OutType =
+              let it {.inject.} = x
+              op
+    map(s, f)
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
