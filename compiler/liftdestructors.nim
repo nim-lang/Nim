@@ -91,7 +91,7 @@ proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
 proc genIf(c: var TLiftCtx; cond, action: PNode): PNode =
   result = newTree(nkIfStmt, newTree(nkElifBranch, cond, action))
 
-proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode = 
+proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode =
   # generate: cast[ptr ObjType](cast[int](addr(x)) - offsetOf(objType.field))
   let intType = getSysType(c.g, unknownLineInfo, tyInt)
 
@@ -104,7 +104,7 @@ proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode =
   let dotExpr = newNodeIT(nkDotExpr, c.info, x.typ)
   dotExpr.add newNodeIT(nkType, c.info, objType)
   dotExpr.add newSymNode(field)
-  
+
   let offsetOf = genBuiltin(c.g, mOffsetOf, "offsetof", dotExpr)
   offsetOf.typ = intType
 
@@ -174,7 +174,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
-    c.filterDiscriminator = oldfilterDiscriminator 
+    c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
   else:
