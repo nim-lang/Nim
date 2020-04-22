@@ -1256,8 +1256,7 @@ proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
     nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
   )
 
-macro genEnumStmt(typ, argSym: typed,
-                  default: typed): untyped =
+macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
   # generates a case stmt, which assigns the correct enum field given
   # a normalized string comparison to the `argSym` input.
   # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
@@ -1287,12 +1286,13 @@ macro genEnumStmt(typ, argSym: typed,
       of nnkIntLit:
         fStr = f[0].strVal
         fNum = f[1].intVal
-      else: error("Invalid tuple syntax!")
-    else: error("Invalid node for enum type!")
+      else: error("Invalid tuple syntax!", f[1])
+    else: error("Invalid node for enum type!", f)
     # add field if string not already added
-    if nimIdentNormalize(fStr) notin foundFields:
-      result.add addOfBranch(nimIdentNormalize(fStr), newLit fNum, typ)
-      foundFields.add nimIdentNormalize(fStr)
+    fStr = nimIdentNormalize(fStr)
+    if fStr notin foundFields:
+      result.add addOfBranch(fStr, newLit fNum, typ)
+      foundFields.add fStr
     else:
       error("Ambiguous enums cannot be parsed, field " & $fStr &
         " appears multiple times!")
@@ -1323,6 +1323,7 @@ proc parseEnum*[T: enum](s: string): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
+
   genEnumStmt(T, s, default = nil)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
