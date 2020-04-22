@@ -157,12 +157,12 @@ compiler vcc:
     optSize: " /O1 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
-    buildGui: " /link /SUBSYSTEM:WINDOWS ",
+    compileTmpl: "/c$vccplatform $options $include /nologo /Fo$objfile $file",
+    buildGui: " /SUBSYSTEM:WINDOWS user32.lib ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui $options",
+    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui /link /nologo $options",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -180,6 +180,7 @@ compiler clangcl:
   result.compilerExe = "clang-cl"
   result.cppCompiler = "clang-cl"
   result.linkerExe = "clang-cl"
+  result.linkTmpl = "-fuse-ld=lld " & result.linkTmpl
 
 # Intel C/C++ Compiler
 compiler icl:
