@@ -1115,10 +1115,10 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
       "\\href{$2}{$1}", [tmp0, tmp1])
   of rnDirArg, rnRaw: renderAux(d, n, result)
   of rnRawHtml:
-    if d.target != outLatex:
+    if d.target != outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
   of rnRawLatex:
-    if d.target == outLatex:
+    if d.target == outLatex and not lastSon(n).isNil:
       result.add addNodes(lastSon(n))
 
   of rnImage, rnFigure: renderImage(d, n, result)

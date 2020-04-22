@@ -50,6 +50,11 @@
 ## * `streams module <streams.html>`_
 ## * `json module <json.html>`_
 
+when defined(nimV2):
+  {.error: """marshal module is not supported in new runtime.
+Please use alternative packages for serialization. 
+It is possible to reimplement this module using generics and type traits. 
+Please contribute new implementation.""".}
 
 import streams, typeinfo, json, intsets, tables, unicode
 

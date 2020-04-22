@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -558,6 +556,9 @@ when defined(linux) or defined(nimdoc):
     const SO_REUSEPORT* = cint(15)
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
+
+when defined(linux) or defined(bsd):
+  var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 when defined(macosx):
   # We can't use the NOSIGNAL flag in the ``send`` function, it has no effect

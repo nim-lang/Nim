@@ -184,3 +184,29 @@ proc testMinMax(a,b: float32) =
 
 testMinMax(0.0, NaN)
 testMinMax(NaN, 0.0)
+
+
+block:
+  type Foo = enum
+    k1, k2
+  var
+    a = {k1}
+    b = {k1,k2}
+  doAssert a < b
+
+
+block: # Ordinal
+  doAssert int is Ordinal
+  doAssert uint is Ordinal
+  doAssert int64 is Ordinal
+  doAssert uint64 is Ordinal
+  doAssert char is Ordinal
+  type Foo = enum k1, k2
+  doAssert Foo is Ordinal
+  doAssert Foo is SomeOrdinal
+  doAssert enum is SomeOrdinal
+
+  # these fail:
+  # doAssert enum is Ordinal # fails
+  # doAssert Ordinal is SomeOrdinal
+  # doAssert SomeOrdinal is Ordinal

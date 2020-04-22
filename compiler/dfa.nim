@@ -37,13 +37,10 @@ type
   InstrKind* = enum
     goto, fork, join, def, use
   Instr* = object
-    n*: PNode
+    n*: PNode # contains the def/use location.
     case kind*: InstrKind
-    of def, use: sym*: PSym # 'sym' can also be 'nil' and
-                            # then 'n' contains the def/use location.
-                            # This is used so that we can track object
-                            # and tuple field accesses precisely.
     of goto, fork, join: dest*: int
+    else: discard
 
   ControlFlowGraph* = seq[Instr]
 
@@ -94,8 +91,7 @@ proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
-  when declared(echo):
-    echo buf
+  echo buf
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -594,10 +590,12 @@ proc genUse(c: var Con; orig: PNode) =
     of PathKinds1:
       n = n[1]
     else: break
+    if n.kind in nkCallKinds:
+      gen(c, n)
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use, sym: if orig != n: nil else: n.sym)
+    c.code.add Instr(n: orig, kind: use)
 
-proc aliases(obj, field: PNode): bool =
+proc aliases*(obj, field: PNode): bool =
   var n = field
   var obj = obj
   while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
@@ -605,49 +603,39 @@ proc aliases(obj, field: PNode): bool =
   while true:
     if sameTrees(obj, n): return true
     case n.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr,
-       nkHiddenDeref, nkDerefExpr:
+    of PathKinds0, PathKinds1:
       n = n[0]
     else:
       break
-  return false
 
 proc useInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == use
-  if ins.sym != nil and loc.kind == nkSym:
-    result = ins.sym == loc.sym
-  else:
-    result = ins.n == loc or sameTrees(ins.n, loc)
-  if not result:
-    # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-    # def x.f; question: does it affect the full 'x'? No.
-    # def x; question: does it affect the 'x.f'? Yes.
-    # use x.f;  question: does it affect the full 'x'? No.
-    # use x; question does it affect 'x.f'? Yes.
-    result = aliases(ins.n, loc) or aliases(loc, ins.n)
+  result = sameTrees(ins.n, loc) or
+    ins.n.aliases(loc) or loc.aliases(ins.n)
+  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  # use x.f;  question: does it affect the full 'x'? No.
+  # use x; question does it affect 'x.f'? Yes.
 
 proc defInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == def
-  if ins.sym != nil and loc.kind == nkSym:
-    result = ins.sym == loc.sym
-  else:
-    result = ins.n == loc or sameTrees(ins.n, loc)
-  if not result:
-    # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
-    # def x.f; question: does it affect the full 'x'? No.
-    # def x; question: does it affect the 'x.f'? Yes.
-    # use x.f;  question: does it affect the full 'x'? No.
-    # use x; question does it affect 'x.f'? Yes.
-    result = aliases(ins.n, loc)
+  result = sameTrees(ins.n, loc) or ins.n.aliases(loc)
+  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  # def x.f; question: does it affect the full 'x'? No.
+  # def x; question: does it affect the 'x.f'? Yes.
 
 proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
   while true:
     case n.kind
     of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr, nkBracketExpr:
+       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
       n = n[0]
+    of nkBracketExpr:
+      # in a[i] the 'i' must be known
+      if n.len > 1 and n[1].kind in {nkCharLit..nkUInt64Lit}:
+        n = n[0]
+      else:
+        return false
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.
@@ -689,9 +677,13 @@ proc genDef(c: var Con; n: PNode) =
       break
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: n, kind: def, sym: n.sym)
+    c.code.add Instr(n: n, kind: def)
   elif isAnalysableFieldAccess(n, c.owner):
-    c.code.add Instr(n: n, kind: def, sym: nil)
+    c.code.add Instr(n: n, kind: def)
+  else:
+    # bug #13314: An assignment to t5.w = -5 is a usage of 't5'
+    # we still need to gather the use information:
+    gen(c, n)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])

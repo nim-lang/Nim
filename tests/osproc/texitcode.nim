@@ -19,5 +19,8 @@ doAssert(waitForExit(p) == QuitFailure)
 
 # make sure that first call to running() after process exit returns false
 p = startProcess(filename, dir)
-os.sleep(500)
+for j in 0..<30: # refs #13449
+  os.sleep(50)
+  if not running(p): break
 doAssert(not running(p))
+doAssert(waitForExit(p) == QuitFailure) # avoid zombies

@@ -21,11 +21,13 @@ import
 
 const
   exportSection = skField
+  htmldocsDir = RelativeDir"htmldocs"
 
 type
   TSections = array[TSymKind, Rope]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
+    module: PSym
     modDeprecationMsg: Rope
     toc, section: TSections
     indexValFilename: string
@@ -42,8 +44,53 @@ type
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     examples: string
+    wroteCss*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
+
+proc nativeToUnix(path: string): string =
+  doAssert not path.isAbsolute # absolute files need more care for the drive
+  when DirSep == '\\':
+    result = replace(path, '\\', '/')
+  else: result = path
+
+proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
+  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
+
+proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
+  ## returns a relative file that will be appended to outDir
+  let file2 = $file
+  template bail() =
+    result = relativeTo(file, conf.projectPath)
+  proc nimbleDir(): AbsoluteDir =
+    getNimbleFile(conf, file2).parentDir.AbsoluteDir
+  case conf.docRoot:
+  of "@default": # using `@` instead of `$` to avoid shell quoting complications
+    result = getRelativePathFromConfigPath(conf, file)
+    let dir = nimbleDir()
+    if not dir.isEmpty:
+      let result2 = relativeTo(file, dir)
+      if not result2.isEmpty and (result.isEmpty or result2.string.len < result.string.len):
+        result = result2
+    if result.isEmpty: bail()
+  of "@pkg":
+    let dir = nimbleDir()
+    if dir.isEmpty: bail()
+    else: result = relativeTo(file, dir)
+  of "@path":
+    result = getRelativePathFromConfigPath(conf, file)
+    if result.isEmpty: bail()
+  elif conf.docRoot.len > 0:
+    doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
+    doAssert conf.docRoot.existsDir, conf.docRoot
+    result = relativeTo(file, conf.docRoot.AbsoluteDir)
+  else:
+    bail()
+  if isTitle:
+    result = result.string.nativeToUnix.RelativeFile
+  else:
+    result = result.string.replace("..", "@@").RelativeFile ## refs #13223
+  doAssert not result.isEmpty
 
 proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
@@ -102,12 +149,11 @@ proc parseRst(text, filename: string,
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
   if optWholeProject in conf.globalOptions:
-    let d = if conf.outDir.isEmpty: conf.projectPath / dir else: conf.outDir
+    let d = conf.docOutDir(dir)
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif guessTarget:
-    let d = if not conf.outDir.isEmpty: conf.outDir
-            else: conf.projectPath
+    let d = conf.docOutDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif not conf.outFile.isEmpty:
@@ -115,9 +161,10 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
   else:
     result = getOutFile(conf, filename, ext)
 
-proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt): PDoc =
+proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, outExt: string = HtmlExt, module: PSym = nil): PDoc =
   declareClosures()
   new(result)
+  result.module = module
   result.conf = conf
   result.cache = cache
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
@@ -146,10 +193,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
       if filename.len == 0:
-        inc(d.id)
         let nameOnly = splitFile(d.filename).name
         outp = getNimcacheDir(conf) / RelativeDir(nameOnly) /
                RelativeFile(nameOnly & "_snippet_" & $d.id & ".nim")
@@ -171,8 +218,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if execShellCmd(c2) != status:
         rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, relativeTo(filename, conf.projectPath),
-                                outExt, RelativeDir"htmldocs", false)
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
+                                outExt, htmldocsDir, false)
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -291,14 +338,13 @@ proc getPlainDocstring(n: PNode): string =
       if result.len > 0: return
 
 proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
-  result = module.kind == skModule and module.owner != nil and
-      module.owner.id == conf.mainPackageId
+  result = module.kind == skModule and module.getnimblePkgId == conf.mainPackageId
 
 proc externalDep(d: PDoc; module: PSym): string =
-  if optWholeProject in d.conf.globalOptions:
+  if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, full.relativeTo(d.conf.projectPath), HtmlExt,
-        RelativeDir"htmldocs", sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
+                          htmldocsDir, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -630,8 +676,12 @@ proc genDeprecationMsg(d: PDoc, n: PNode): Rope =
   else:
     doAssert false
 
-proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind) =
-  if not isVisible(d, nameNode): return
+type DocFlags = enum
+  kDefault
+  kForceExport
+
+proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
+  if (docFlags != kForceExport) and not isVisible(d, nameNode): return
   let
     name = getName(d, nameNode)
     nameRope = name.rope
@@ -746,6 +796,35 @@ proc genJsonItem(d: PDoc, n, nameNode: PNode, k: TSymKind): JsonNode =
     result["description"] = %comm
   if r.buf.len > 0:
     result["code"] = %r.buf
+  if k in routineKinds:
+    result["signature"] = newJObject()
+    if n[paramsPos][0].kind != nkEmpty:
+      result["signature"]["return"] = %($n[paramsPos][0])
+    if n[paramsPos].len > 1:
+      result["signature"]["arguments"] = newJArray()
+    for paramIdx in 1 ..< n[paramsPos].len:
+      for identIdx in 0 ..< n[paramsPos][paramIdx].len - 2:
+        let
+          paramName = $n[paramsPos][paramIdx][identIdx]
+          paramType = $n[paramsPos][paramIdx][^2]
+        if n[paramsPos][paramIdx][^1].kind != nkEmpty:
+          let paramDefault = $n[paramsPos][paramIdx][^1]
+          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType, "default": %paramDefault}
+        else:
+          result["signature"]["arguments"].add %{"name": %paramName, "type": %paramType}
+    if n[pragmasPos].kind != nkEmpty:
+      result["signature"]["pragmas"] = newJArray()
+      for pragma in n[pragmasPos]:
+        result["signature"]["pragmas"].add %($pragma)
+    if n[genericParamsPos].kind != nkEmpty:
+      result["signature"]["genericParams"] = newJArray()
+      for genericParam in n[genericParamsPos]:
+        var param = %{"name": %($genericParam)}
+        if genericParam.sym.typ.sons.len > 0:
+          param["types"] = newJArray()
+        for kind in genericParam.sym.typ.sons:
+          param["types"].add %($kind)
+        result["signature"]["genericParams"].add param
 
 proc checkForFalse(n: PNode): bool =
   result = n.kind == nkIdent and cmpIgnoreStyle(n.ident.s, "false") == 0
@@ -847,7 +926,9 @@ proc documentRaises*(cache: IdentCache; n: PNode) =
     if p4 != nil: n[pragmasPos].add p4
     if p5 != nil: n[pragmasPos].add p5
 
-proc generateDoc*(d: PDoc, n, orig: PNode) =
+proc generateDoc*(d: PDoc, n, orig: PNode, docFlags: DocFlags = kDefault) =
+  template genItemAux(skind) =
+    genItem(d, n, n[namePos], skind, docFlags)
   case n.kind
   of nkPragma:
     let pragmaNode = findPragma(n, wDeprecated)
@@ -855,27 +936,27 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
   of nkCommentStmt: d.modDesc.add(genComment(d, n))
   of nkProcDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skProc)
+    genItemAux(skProc)
   of nkFuncDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skFunc)
+    genItemAux(skFunc)
   of nkMethodDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skMethod)
+    genItemAux(skMethod)
   of nkIteratorDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skIterator)
-  of nkMacroDef: genItem(d, n, n[namePos], skMacro)
-  of nkTemplateDef: genItem(d, n, n[namePos], skTemplate)
+    genItemAux(skIterator)
+  of nkMacroDef: genItemAux(skMacro)
+  of nkTemplateDef: genItemAux(skTemplate)
   of nkConverterDef:
     when useEffectSystem: documentRaises(d.cache, n)
-    genItem(d, n, n[namePos], skConverter)
+    genItemAux(skConverter)
   of nkTypeSection, nkVarSection, nkLetSection, nkConstSection:
     for i in 0..<n.len:
       if n[i].kind != nkCommentStmt:
         # order is always 'type var let const':
         genItem(d, n[i], n[i][0],
-                succ(skType, ord(n.kind)-ord(nkTypeSection)))
+                succ(skType, ord(n.kind)-ord(nkTypeSection)), docFlags)
   of nkStmtList:
     for i in 0..<n.len: generateDoc(d, n[i], orig)
   of nkWhenStmt:
@@ -886,7 +967,11 @@ proc generateDoc*(d: PDoc, n, orig: PNode) =
     for it in n: traceDeps(d, it)
   of nkExportStmt:
     for it in n:
-      if it.kind == nkSym: exportSym(d, it.sym)
+      if it.kind == nkSym:
+        if d.module != nil and d.module == it.sym.owner:
+          generateDoc(d, it.sym.ast, orig, kForceExport)
+        else:
+          exportSym(d, it.sym)
   of nkExportExceptStmt: discard "transformed into nkExportStmt by semExportExcept"
   of nkFromStmt, nkImportExceptStmt: traceDeps(d, n[0])
   of nkCallKinds:
@@ -996,6 +1081,12 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
+const nimdocOutCss = "nimdoc.out.css"
+  # `out` to make it easier to use with gitignore in user's repos
+
+proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
+  rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
+
 proc genOutFile(d: PDoc): Rope =
   var
     code, content: Rope
@@ -1014,11 +1105,12 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = AbsoluteFile(d.filename).relativeTo(d.conf.projectPath, '/').changeFileExt(HtmlExt).string
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
-    title = extractFilename(changeFileExt(d.filename, ""))
+    # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
+    title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
@@ -1029,24 +1121,26 @@ proc genOutFile(d: PDoc): Rope =
       rope(getClockStr()), code, d.modDeprecationMsg])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
-    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), ["title",
-        "tableofcontents", "moduledesc", "date", "time",
+    code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
+        "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [title.rope, toc, d.modDesc, rope(getDateStr()),
-                     rope(getClockStr()), content, d.meta[metaAuthor].rope,
-                     d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
+        [cssHref(d.conf.outDir, d.destFile), title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
   result = code
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = if not d.conf.outDir.isEmpty: d.conf.outDir
-              else: d.conf.projectPath / RelativeDir"htmldocs"
+    let dir = d.conf.docOutDir(htmldocsDir)
     createDir(dir)
-    let dest = dir / changeFileExt(relativeTo(AbsoluteFile d.filename,
-                                              d.conf.projectPath), IndexExt)
+    let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
+
+proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
+  if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
+    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
+    if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1055,11 +1149,18 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     writeRope(stdout, content)
   else:
     template outfile: untyped = d.destFile
-    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, "htmldocs")
-    createDir(outfile.splitFile.dir)
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
+    let dir = outfile.splitFile.dir
+    createDir(dir)
+    updateOutfile(d, outfile)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
+    elif not d.wroteCss:
+      let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
+      let cssDest = $dir / nimdocOutCss
+      copyFile(cssSource, cssDest)
+      d.wroteCss = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1077,6 +1178,7 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
     if open(f, d.destFile.string, fmWrite):
       write(f, $content)
       close(f)
+      updateOutfile(d, d.destFile)
     else:
       localError(d.conf, newLineInfo(d.conf, AbsoluteFile d.filename, -1, -1),
                  warnUser, "unable to open file \"" & d.destFile.string &
@@ -1162,15 +1264,17 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
 proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
   var content = mergeIndexes(conf.projectFull.string).rope
 
-  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), ["title",
-      "tableofcontents", "moduledesc", "date", "time",
-      "content", "author", "version", "analytics"],
-      ["Index".rope, nil, nil, rope(getDateStr()),
-                   rope(getClockStr()), content, nil, nil, nil])
-  # no analytics because context is not available
   var outFile = RelativeFile"theindex"
   if conf.outFile != RelativeFile"":
     outFile = conf.outFile
   let filename = getOutFile(conf, outFile, HtmlExt)
+
+  let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
+      "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+      "content", "author", "version", "analytics"],
+      [cssHref(conf.outDir, filename), rope"Index", nil, nil, rope(getDateStr()),
+      rope(getClockStr()), content, nil, nil, nil])
+  # no analytics because context is not available
+
   if not writeRope(code, filename):
     rawMessage(conf, errCannotOpenFile, filename.string)

@@ -57,8 +57,6 @@ template head(p: pointer): Cell =
 const
   traceCollector = defined(traceArc)
 
-var allocs*: int
-
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
@@ -71,19 +69,33 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
-  when hasThreadSupport:
-    atomicInc allocs
-  else:
-    inc allocs
   when traceCollector:
-    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
+
+proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+  # Same as 'newNewObj' but do not initialize the memory to zero.
+  # The codegen proved for us that this is not necessary.
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    var orig = cast[ptr RefHeader](c_malloc(cuint s))
+  elif compileOption("threads"):
+    var orig = cast[ptr RefHeader](allocShared(s))
+  else:
+    var orig = cast[ptr RefHeader](alloc(s))
+  orig.rc = 0
+  result = orig +! sizeof(RefHeader)
+  when traceCollector:
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   dec head(p).rc, rcIncrement
 
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   inc head(p).rc, rcIncrement
-  #cprintf("[INCREF] %p\n", p)
+  when traceCollector:
+    cprintf("[INCREF] %p\n", head(p))
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
@@ -99,14 +111,6 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       deallocShared(p -! sizeof(RefHeader))
     else:
       dealloc(p -! sizeof(RefHeader))
-    if allocs > 0:
-      when hasThreadSupport:
-        discard atomicDec(allocs)
-      else:
-        dec allocs
-    else:
-      cstderr.rawWrite "[FATAL] unpaired dealloc\n"
-      quit 1
 
 template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)
@@ -124,18 +128,23 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   nimRawDispose(p)
 
 when defined(gcOrc):
-  include cyclicrefs_v2
+  when defined(nimThinout):
+    include cyclebreaker
+  else:
+    include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
     if (cell.rc and not rcMask) == 0:
       result = true
-      #cprintf("[DESTROY] %p\n", p)
+      when traceCollector:
+        cprintf("[ABOUT TO DESTROY] %p\n", cell)
     else:
       dec cell.rc, rcIncrement
       # According to Lins it's correct to do nothing else here.
-      #cprintf("[DeCREF] %p\n", p)
+      when traceCollector:
+        cprintf("[DeCREF] %p\n", cell)
 
 proc GC_unref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.

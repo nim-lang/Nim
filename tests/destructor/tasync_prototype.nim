@@ -32,7 +32,12 @@ proc serve(server: PAsyncHttpServer): PFutureBase =
       yield acceptAddrFut
       var fut = acceptAddrFut.value
 
+      # with the new scope based destruction, this cannot
+      # possibly work:
       var f {.cursor.} = processClient()
+      # It also seems to be the wrong way how to avoid the
+      # cycle. The cycle is caused by capturing the 'env'
+      # part from 'env.f'.
       when true:
         f.callback =
           proc () =

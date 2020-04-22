@@ -9,13 +9,18 @@
 
 ## This file implements the FFI part of the evaluator for Nim code.
 
-import ast, astalgo, ropes, types, options, tables, dynlib, msgs, os, lineinfos
+import ast, types, options, tables, dynlib, msgs, lineinfos
+from os import getAppFilename
 import pkg/libffi
 
 when defined(windows):
   const libcDll = "msvcrt.dll"
 elif defined(linux):
   const libcDll = "libc.so(.6|.5|)"
+elif defined(openbsd):
+  const libcDll = "/usr/lib/libc.so(.95.1|)"
+elif defined(bsd):
+  const libcDll = "/lib/libc.so.7"
 elif defined(osx):
   const libcDll = "/usr/lib/libSystem.dylib"
 else:
@@ -27,7 +32,7 @@ var
   gDllCache = initTable[string, LibHandle]()
 
 when defined(windows):
-  var gExeHandle = loadLib(os.getAppFilename())
+  var gExeHandle = loadLib(getAppFilename())
 else:
   var gExeHandle = loadLib()
 
@@ -52,11 +57,13 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
   # that contains the address instead:
   result = newNodeIT(nkPtrLit, sym.info, sym.typ)
   when true:
+    var libPathMsg = ""
     let lib = sym.annex
     if lib != nil and lib.path.kind notin {nkStrLit..nkTripleStrLit}:
       globalError(conf, sym.info, "dynlib needs to be a string lit")
     var theAddr: pointer
     if (lib.isNil or lib.kind == libHeader) and not gExeHandle.isNil:
+      libPathMsg = "current exe: " & getAppFilename() & " nor libc: " & libcDll
       # first try this exe itself:
       theAddr = gExeHandle.symAddr(name)
       # then try libc:
@@ -65,12 +72,14 @@ proc importcSymbol*(conf: ConfigRef, sym: PSym): PNode =
         theAddr = dllhandle.symAddr(name)
     elif not lib.isNil:
       let dll = if lib.kind == libHeader: libcDll else: lib.path.strVal
+      libPathMsg = dll
       let dllhandle = getDll(conf, gDllCache, dll, sym.info)
       theAddr = dllhandle.symAddr(name)
-    if theAddr.isNil: globalError(conf, sym.info, "cannot import: " & name)
+    if theAddr.isNil: globalError(conf, sym.info,
+      "cannot import symbol: " & name & " from " & libPathMsg)
     result.intVal = cast[ByteAddress](theAddr)
 
-proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.TType =
+proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
   if t == nil: return addr libffi.type_void
 
   case t.kind
@@ -320,7 +329,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     else:
       reset n[]
       result = n
-      result.kind = nkNilLit
+      result[] = TNode(kind: nkNilLit)
       result.typ = typ
 
   template awi(kind, v: untyped): untyped = aw(kind, v, intVal)
@@ -415,7 +424,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
   internalAssert conf, call[0].kind == nkPtrLit
 
   var cif: TCif
-  var sig: TParamList
+  var sig: ParamList
   # use the arguments' types for varargs support:
   for i in 1..<call.len:
     sig[i-1] = mapType(conf, call[i].typ)
@@ -427,7 +436,7 @@ proc callForeignFunction*(conf: ConfigRef, call: PNode): PNode =
               mapType(conf, typ[0]), sig) != OK:
     globalError(conf, call.info, "error in FFI call")
 
-  var args: TArgList
+  var args: ArgList
   let fn = cast[pointer](call[0].intVal)
   for i in 1..<call.len:
     var t = call[i].typ
@@ -455,7 +464,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
   internalAssert conf, fn.kind == nkPtrLit
 
   var cif: TCif
-  var sig: TParamList
+  var sig: ParamList
   for i in 0..len-1:
     var aTyp = args[i+start].typ
     if aTyp.isNil:
@@ -469,7 +478,7 @@ proc callForeignFunction*(conf: ConfigRef, fn: PNode, fntyp: PType,
               mapType(conf, fntyp[0]), sig) != OK:
     globalError(conf, info, "error in FFI call")
 
-  var cargs: TArgList
+  var cargs: ArgList
   let fn = cast[pointer](fn.intVal)
   for i in 0..len-1:
     let t = args[i+start].typ

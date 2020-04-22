@@ -43,6 +43,7 @@ proc markCyclic*[T](x: ref T) {.inline.} =
   ## Experimental API. Do not use!
   let h = head(cast[pointer](x))
   h.setColor colYellow
+
 type
   CellTuple = (Cell, PNimType)
   CellArray = ptr UncheckedArray[CellTuple]
@@ -153,18 +154,19 @@ proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
     when traceCollector:
       cprintf("[Cycle inc] %p %ld color %ld\n", t, t.rc shr rcShift, t.color)
 
-proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
-  if p != nil:
-    var t = head(p)
+proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
+  if p[] != nil:
     var j = cast[ptr GcEnv](env)
+    var t = head(p[])
     j.traceStack.add(t, desc)
 
-proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
-  if p != nil:
-    let desc = cast[ptr PNimType](p)[]
-    var t = head(p)
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
+  if p[] != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(t, desc)
+    var t = head(p[])
+    j.traceStack.add(t, cast[ptr PNimType](p[])[])
 
 proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
   when traceCollector:

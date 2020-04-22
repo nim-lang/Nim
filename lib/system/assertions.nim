@@ -15,8 +15,10 @@ proc `$`(info: InstantiationInfo): string =
 
 # ---------------------------------------------------------------------------
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
 
-proc raiseAssert*(msg: string) {.noinline, noreturn.} =
+proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   sysFatal(AssertionError, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
@@ -24,7 +26,7 @@ proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
-  Hide(raiseAssert)(msg)
+  cast[Hide](raiseAssert)(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   when enabled:
@@ -46,11 +48,17 @@ template assert*(cond: untyped, msg = "") =
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:danger`` or ``--assertions:off``
   ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
+  ##
+  ## .. code-block:: nim
+  ##   static: assert 1 == 9, "This assertion generates code when not built with -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to ``assert`` but is always turned on regardless of ``--assertions``.
+  ##
+  ## .. code-block:: nim
+  ##   static: doAssert 1 == 9, "This assertion generates code when built with/without -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 

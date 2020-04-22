@@ -25,7 +25,7 @@ proc checkConstructedType*(conf: ConfigRef; info: TLineInfo, typ: PType) =
   elif t.kind in {tyVar, tyLent} and t[0].kind in {tyVar, tyLent}:
     localError(conf, info, "type 'var var' is not allowed")
   elif computeSize(conf, t) == szIllegalRecursion or isTupleRecursive(t):
-    localError(conf, info,  "illegal recursion in type '" & typeToString(t) & "'")
+    localError(conf, info, "illegal recursion in type '" & typeToString(t) & "'")
   when false:
     if t.kind == tyObject and t[0] != nil:
       if t[0].kind != tyObject or tfFinal in t[0].flags:
@@ -613,10 +613,15 @@ proc replaceTypeVarsTAux(cl: var TReplTypeVars, t: PType): PType =
 
       of tyObject, tyTuple:
         propagateFieldFlags(result, result.n)
+        if result.kind == tyObject and cl.c.computeRequiresInit(cl.c, result):
+          result.flags.incl tfRequiresInit
 
       of tyProc:
         eraseVoidParams(result)
         skipIntLiteralParams(result)
+
+      of tyRange:
+        result[0] = result[0].skipTypes({tyStatic, tyDistinct})
 
       else: discard
     else:

@@ -27,7 +27,7 @@
 ##
 ## TODO: ``/dev/poll``, ``event ports`` and filesystem events.
 
-import os, strutils, nativesockets
+import os, nativesockets
 
 const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 
@@ -230,6 +230,7 @@ when defined(nimdoc):
     ## For *poll* and *select* selectors ``-1`` is returned.
 
 else:
+  import strutils
   when hasThreadSupport:
     import locks
 
@@ -251,7 +252,7 @@ else:
       VnodeRename, VnodeRevoke
 
   type
-    IOSelectorsException* = object of Exception
+    IOSelectorsException* = object of CatchableError
 
     ReadyKey* = object
       fd* : int

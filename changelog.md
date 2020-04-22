@@ -1,94 +1,80 @@
-# 1.2 - xxxx-xx-xx
-
-
-## Changes affecting backwards compatibility
+# v1.4.0 - yyyy-mm-dd
 
 
 
-### Breaking changes in the standard library
+## Standard library additions and changes
 
-- `base64.encode` no longer supports `lineLen` and `newLine`.
-  Use `base64.encodeMIME` instead.
-- `os.splitPath()` behavior synchronized with `os.splitFile()` to return "/"
-   as the dir component of "/root_sub_dir" instead of the empty string.
-- `sequtils.zip` now returns a sequence of anonymous tuples i.e. those tuples
-  now do not have fields named "a" and "b".
-- `strutils.formatFloat` with `precision = 0` has the same behavior in all
-  backends, and it is compatible with Python's behavior,
-  e.g. `formatFloat(3.14159, precision = 0)` is now `3`, not `3.`.
-- Global variable `lc` has been removed from sugar.nim.
+- `uri` adds Data URI Base64, implements RFC-2397.
+- Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
+  to the `dom` module for the JavaScript target.
+- The default hash for `Ordinal` has changed to something more bit-scrambling.
+  `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
+  one in an instantiation context while `-d:nimIntHash1` recovers it globally.
+- `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
+- File handles created from high-level abstractions in the stdlib will no longer
+  be inherited by child processes. In particular, these modules are affected:
+  `system`, `nativesockets`, `net` and `selectors`.
 
-### Breaking changes in the compiler
+  For `net` and `nativesockets`, an `inheritable` flag has been added to all
+  `proc`s that create sockets, allowing the user to control whether the
+  resulting socket is inheritable. This flag is provided to ease the writing of
+  multi-process servers, where sockets inheritance is desired.
 
-- Implicit conversions for `const` behave correctly now, meaning that code like
-  `const SOMECONST = 0.int; procThatTakesInt32(SOMECONST)` will be illegal now.
-  Simply write `const SOMECONST = 0` instead.
+  For a transistion period, define `nimInheritHandles` to enable file handle
+  inheritance by default. This flag does **not** affect the `selectors` module
+  due to the differing semantics between operating systems.
 
+  `system.setInheritable` and `nativesockets.setInheritable` is also introduced
+  for setting file handle or socket inheritance. Not all platform have these
+  `proc`s defined.
 
+- The file descriptors created for internal bookkeeping by `ioselector_kqueue`
+  and `ioselector_epoll` will no longer be leaked to child processes.
 
-## Library additions
+- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
+  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
+  and this can now throw in edge cases where `getCurrentDir` throws.
+  `relativePath` also now works for js with `-d:nodejs`.
 
-- `macros.newLit` now works for ref object types.
-- `system.writeFile` has been overloaded to also support `openarray[byte]`.
-- Added overloaded `strformat.fmt` macro that use specified characters as
-  delimiter instead of '{' and '}'.
-- introduced new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
-  `CountTable.pop`, `Table.pop`
-- To `strtabs.nim`, added `StringTable.clear` overload that reuses the existing mode.
-
-
-- Added `sugar.outplace` for turning in-place algorithms like `sort` and `shuffle` into
-  operations that work on a copy of the data and return the mutated copy. As the existing
-  `sorted` does.
-- Added `sugar.collect` that does comprehension for seq/set/table collections.
-
-- Added `sugar.capture` for capturing some local loop variables when creating a closure.
-  This is an enhanced version of `closureScope`.
-
-## Library changes
-
-- `asyncdispatch.drain` now properly takes into account `selector.hasPendingOperations`
-  and only returns once all pending async operations are guaranteed to have completed.
-- `asyncdispatch.drain` now consistently uses the passed timeout value for all
-  iterations of the event loop, and not just the first iteration.
-  This is more consistent with the other asyncdispatch apis, and allows
-  `asyncdispatch.drain` to be more efficient.
-- `base64.encode` and `base64.decode` was made faster by about 50%.
-- `htmlgen` adds [MathML](https://wikipedia.org/wiki/MathML) support
-  (ISO 40314).
-- `macros.eqIdent` is now invariant to export markers and backtick quotes.
-- `htmlgen.html` allows `lang` on the `<html>` tag and common valid attributes.
-
-
-## Language additions
-
-- An `align` pragma can now be used for variables and object fields, similar
-  to the `alignas` declaration modifier in C/C++.
 
 ## Language changes
+- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+  ```nim
+  type
+    MyObj = object
+      case kind: bool
+        of true: y: ptr UncheckedArray[float]
+        of false: z: seq[int]
 
-- Unsigned integer operators have been fixed to allow promotion of the first operand.
-- Conversions to unsigned integers are unchecked at runtime, imitating earlier Nim
-  versions. The documentation was improved to acknowledge this special case.
-  See https://github.com/nim-lang/RFCs/issues/175 for more details.
+  proc `=destroy`(x: MyObj) =
+    if x.kind and x.y != nil:
+      deallocShared(x.y)
+      x.y = nil
+  ```
+  Refactor into:
+  ```nim
+  type
+    MySubObj = object
+      val: ptr UncheckedArray[float]
+    MyObj = object
+      case kind: bool
+      of true: y: MySubObj
+      of false: z: seq[int]
 
+  proc `=destroy`(x: MySubObj) =
+    if x.val != nil:
+      deallocShared(x.val)
+      x.val = nil
+  ```
 
-### Tool changes
+- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+  with writing typed macros. Old behavior for backwards compatiblity can be restored
+  with command line switch `--useVersion:1.0`.
 
+## Compiler changes
 
+- Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
+- The `define` and `undef` pragmas have been de-deprecated.
 
-### Compiler changes
+## Tool changes
 
-- JS target indent is all spaces, instead of mixed spaces and tabs, for
-  generated JavaScript.
-- The Nim compiler now supports the ``--asm`` command option for easier
-  inspection of the produced assembler code.
-- The Nim compiler now supports a new pragma called ``.localPassc`` to
-  pass specific compiler options to the C(++) backend for the C(++) file
-  that was produced from the current Nim module.
-
-
-## Bugfixes
-
-- The `FD` variant of `selector.unregister` for `ioselector_epoll` and
-  `ioselector_select` now properly handle the `Event.User` select event type.

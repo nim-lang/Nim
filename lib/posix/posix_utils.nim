@@ -11,8 +11,6 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 import posix
 
 type Uname* = object
@@ -85,7 +83,11 @@ proc mkstemp*(prefix: string): (string, File) =
   ## The file is created with perms 0600.
   ## Returns the filename and a file opened in r/w mode.
   var tmpl = cstring(prefix & "XXXXXX")
-  let fd = mkstemp(tmpl)
+  let fd =
+    when declared(mkostemp):
+      mkostemp(tmpl, O_CLOEXEC)
+    else:
+      mkstemp(tmpl)
   var f: File
   if open(f, fd, fmReadWrite):
     return ($tmpl, f)
@@ -98,4 +100,3 @@ proc mkdtemp*(prefix: string): string =
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
-

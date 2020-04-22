@@ -1,29 +1,36 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc
+import os, strutils, osproc, sets, pathnorm
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
-
-  nimArgs = "--hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  # --warning[LockLevel]:off pending #13218
+  nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
   docHackDir = "tools/dochack"
+
+var nimExe*: string
 
 proc exe*(f: string): string =
   result = addFileExt(f, ExeExt)
   when defined(windows):
     result = result.replace('/','\\')
 
-proc findNim*(): string =
-  var nim = "nim".exe
-  result = "bin" / nim
-  if existsFile(result): return
+proc findNimImpl*(): tuple[path: string, ok: bool] =
+  if nimExe.len > 0: return (nimExe, true)
+  let nim = "nim".exe
+  result.path = "bin" / nim
+  result.ok = true
+  if existsFile(result.path): return
   for dir in split(getEnv("PATH"), PathSep):
-    if existsFile(dir / nim): return dir / nim
+    result.path = dir / nim
+    if existsFile(result.path): return
   # assume there is a symlink to the exe or something:
-  return nim
+  return (nim, false)
+
+proc findNim*(): string = findNimImpl().path
 
 proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
   let prevPath = getEnv("PATH")
@@ -67,16 +74,16 @@ proc execCleanPath*(cmd: string,
 
 proc nimexec*(cmd: string) =
   # Consider using `nimCompile` instead
-  exec findNim() & " " & cmd
+  exec findNim().quoteShell() & " " & cmd
 
 proc nimCompile*(input: string, outputDir = "bin", mode = "c", options = "") =
   let output = outputDir / input.splitFile.name.exe
-  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   exec cmd
 
 proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options = "") =
   let output = outputDir / input.splitFile.name.exe
-  let cmd = findNim() & " " & mode & " -o:" & output & " " & options & " " & input
+  let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
 const
@@ -103,6 +110,7 @@ doc/tut2.rst
 doc/tut3.rst
 doc/nimc.rst
 doc/hcr.rst
+doc/drnim.rst
 doc/overview.rst
 doc/filters.rst
 doc/tools.rst
@@ -123,149 +131,10 @@ doc/packaging.rst
 doc/manual/var_t_return.rst
 """.splitWhitespace()
 
-  doc = """
-lib/system.nim
-lib/system/io.nim
-lib/system/nimscript.nim
-lib/system/assertions.nim
-lib/system/iterators.nim
-lib/system/dollars.nim
-lib/system/widestrs.nim
-lib/deprecated/pure/ospaths.nim
-lib/pure/parsejson.nim
-lib/pure/cstrutils.nim
-lib/core/macros.nim
-lib/pure/marshal.nim
-lib/core/typeinfo.nim
-lib/impure/re.nim
-lib/pure/typetraits.nim
-nimsuggest/sexp.nim
-lib/pure/concurrency/threadpool.nim
-lib/pure/concurrency/cpuinfo.nim
-lib/pure/concurrency/cpuload.nim
-lib/js/dom.nim
-lib/js/jsffi.nim
-lib/js/jsconsole.nim
-lib/js/asyncjs.nim
-lib/pure/os.nim
-lib/pure/strutils.nim
-lib/pure/math.nim
-lib/std/editdistance.nim
-lib/std/wordwrap.nim
-lib/experimental/diff.nim
-lib/pure/algorithm.nim
-lib/pure/stats.nim
-lib/windows/winlean.nim
-lib/windows/registry.nim
-lib/pure/random.nim
-lib/pure/complex.nim
-lib/pure/times.nim
-lib/std/monotimes.nim
-lib/pure/osproc.nim
-lib/pure/pegs.nim
-lib/pure/dynlib.nim
-lib/pure/strscans.nim
-lib/pure/parseopt.nim
-lib/pure/hashes.nim
-lib/pure/strtabs.nim
-lib/pure/lexbase.nim
-lib/pure/parsecfg.nim
-lib/pure/parsexml.nim
-lib/pure/parsecsv.nim
-lib/pure/parsesql.nim
-lib/pure/streams.nim
-lib/pure/terminal.nim
-lib/pure/cgi.nim
-lib/pure/unicode.nim
-lib/pure/strmisc.nim
-lib/pure/htmlgen.nim
-lib/pure/parseutils.nim
-lib/pure/browsers.nim
-lib/impure/db_postgres.nim
-lib/impure/db_mysql.nim
-lib/impure/db_sqlite.nim
-lib/impure/db_odbc.nim
-lib/pure/db_common.nim
-lib/pure/httpclient.nim
-lib/pure/smtp.nim
-lib/pure/ropes.nim
-lib/pure/unidecode/unidecode.nim
-lib/pure/xmlparser.nim
-lib/pure/htmlparser.nim
-lib/pure/xmltree.nim
-lib/pure/colors.nim
-lib/pure/mimetypes.nim
-lib/pure/json.nim
-lib/pure/base64.nim
-lib/impure/nre.nim
-lib/impure/nre/private/util.nim
-lib/pure/collections/tables.nim
-lib/pure/collections/sets.nim
-lib/pure/collections/lists.nim
-lib/pure/collections/sharedlist.nim
-lib/pure/collections/sharedtables.nim
-lib/pure/collections/intsets.nim
-lib/pure/collections/deques.nim
-lib/pure/encodings.nim
-lib/pure/collections/sequtils.nim
-lib/pure/collections/rtarrays.nim
-lib/pure/cookies.nim
-lib/pure/memfiles.nim
-lib/pure/collections/critbits.nim
-lib/core/locks.nim
-lib/core/rlocks.nim
-lib/pure/oids.nim
-lib/pure/endians.nim
-lib/pure/uri.nim
-lib/pure/nimprof.nim
-lib/pure/unittest.nim
-lib/packages/docutils/highlite.nim
-lib/packages/docutils/rst.nim
-lib/packages/docutils/rstast.nim
-lib/packages/docutils/rstgen.nim
-lib/pure/logging.nim
-lib/pure/options.nim
-lib/pure/asyncdispatch.nim
-lib/pure/asyncnet.nim
-lib/pure/asyncstreams.nim
-lib/pure/asyncfutures.nim
-lib/pure/nativesockets.nim
-lib/pure/asynchttpserver.nim
-lib/pure/net.nim
-lib/pure/selectors.nim
-lib/pure/sugar.nim
-lib/pure/collections/chains.nim
-lib/pure/asyncfile.nim
-lib/pure/asyncftpclient.nim
-lib/pure/lenientops.nim
-lib/pure/md5.nim
-lib/pure/rationals.nim
-lib/pure/distros.nim
-lib/pure/oswalkdir.nim
-lib/pure/collections/heapqueue.nim
-lib/pure/fenv.nim
-lib/std/sha1.nim
-lib/std/sums.nim
-lib/std/varints.nim
-lib/std/time_t.nim
-lib/impure/rdstdin.nim
-lib/wrappers/linenoise/linenoise.nim
-lib/pure/strformat.nim
-lib/pure/segfaults.nim
-lib/pure/mersenne.nim
-lib/pure/coro.nim
-lib/pure/httpcore.nim
-lib/pure/bitops.nim
-lib/pure/nimtracker.nim
-lib/pure/punycode.nim
-lib/pure/volatile.nim
-lib/posix/posix_utils.nim
-""".splitWhitespace()
-
   doc0 = """
 lib/system/threads.nim
 lib/system/channels.nim
-""".splitWhitespace()
+""".splitWhitespace() # ran by `nim doc0` instead of `nim doc`
 
   withoutIndex = """
 lib/wrappers/mysql.nim
@@ -279,9 +148,66 @@ lib/wrappers/openssl.nim
 lib/posix/posix.nim
 lib/posix/linux.nim
 lib/posix/termios.nim
-lib/wrappers/odbcsql.nim
 lib/js/jscore.nim
 """.splitWhitespace()
+
+  # some of these are include files so shouldn't be docgen'd
+  ignoredModules = """
+lib/prelude.nim
+lib/pure/future.nim
+lib/pure/collections/hashcommon.nim
+lib/pure/collections/tableimpl.nim
+lib/pure/collections/setimpl.nim
+lib/pure/ioselects/ioselectors_kqueue.nim
+lib/pure/ioselects/ioselectors_select.nim
+lib/pure/ioselects/ioselectors_poll.nim
+lib/pure/ioselects/ioselectors_epoll.nim
+lib/posix/posix_macos_amd64.nim
+lib/posix/posix_other.nim
+lib/posix/posix_nintendoswitch.nim
+lib/posix/posix_nintendoswitch_consts.nim
+lib/posix/posix_linux_amd64.nim
+lib/posix/posix_linux_amd64_consts.nim
+lib/posix/posix_other_consts.nim
+lib/posix/posix_openbsd_amd64.nim
+lib/posix/posix_haiku.nim
+""".splitWhitespace()
+
+when (NimMajor, NimMinor) < (1, 1) or not declared(isRelativeTo):
+  proc isRelativeTo(path, base: string): bool =
+    let path = path.normalizedPath
+    let base = base.normalizedPath
+    let ret = relativePath(path, base)
+    result = path.len > 0 and not ret.startsWith ".."
+
+proc getDocList(): seq[string] =
+  var docIgnore: HashSet[string]
+  for a in doc0: docIgnore.incl a
+  for a in withoutIndex: docIgnore.incl a
+  for a in ignoredModules: docIgnore.incl a
+
+  # don't ignore these even though in lib/system
+  const goodSystem = """
+lib/system/io.nim
+lib/system/nimscript.nim
+lib/system/assertions.nim
+lib/system/iterators.nim
+lib/system/dollars.nim
+lib/system/widestrs.nim
+""".splitWhitespace()
+
+  for a in walkDirRec("lib"):
+    if a.splitFile.ext != ".nim" or
+       a.isRelativeTo("lib/pure/includes") or
+       a.isRelativeTo("lib/genode") or
+       a.isRelativeTo("lib/deprecated") or
+       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
+       a.replace('\\', '/') in docIgnore:
+         continue
+    result.add a
+  result.add normalizePath("nimsuggest/sexp.nim")
+
+let doc = getDocList()
 
 proc sexec(cmds: openArray[string]) =
   ## Serial queue wrapper around exec.
@@ -302,7 +228,7 @@ proc buildDocSamples(nimArgs, destPath: string) =
   ##
   ## TODO: consider integrating into the existing generic documentation builders
   ## now that we have a single `doc` command.
-  exec(findNim() & " doc $# -o:$# $#" %
+  exec(findNim().quoteShell() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
 proc buildDoc(nimArgs, destPath: string) =
@@ -310,7 +236,7 @@ proc buildDoc(nimArgs, destPath: string) =
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
     i = 0
-  let nim = findNim()
+  let nim = findNim().quoteShell()
   for d in items(rst2html):
     commands[i] = nim & " rst2html $# --git.url:$# -o:$# --index:on $#" %
       [nimArgs, gitUrl,
@@ -322,9 +248,11 @@ proc buildDoc(nimArgs, destPath: string) =
       destPath / changeFileExt(splitFile(d).name, "html"), d]
     i.inc
   for d in items(doc):
-    commands[i] = nim & " doc $# --git.url:$# -o:$# --index:on $#" %
-      [nimArgs, gitUrl,
-      destPath / changeFileExt(splitFile(d).name, "html"), d]
+    var nimArgs2 = nimArgs
+    if d.isRelativeTo("compiler"):
+      nimArgs2.add " --docroot"
+    commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
+      [nimArgs2, gitUrl, destPath, d]
     i.inc
   for d in items(withoutIndex):
     commands[i] = nim & " doc2 $# --git.url:$# -o:$# $#" %
@@ -342,7 +270,7 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
   else:
     const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(pdf):
-      exec(findNim() & " rst2tex $# $#" % [nimArgs, d])
+      exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
       # call LaTeX twice to get cross references right:
       exec(pdflatexcmd & changeFileExt(d, "tex"))
       exec(pdflatexcmd & changeFileExt(d, "tex"))
@@ -359,21 +287,18 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(changeFileExt(d, "tex"))
 
 proc buildJS() =
-  exec(findNim() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
+  exec(findNim().quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
-  exec(findNim() & " js " & (docHackDir / "dochack.nim"))
+  exec(findNim().quoteShell() & " js " & (docHackDir / "dochack.nim"))
 
 proc buildDocs*(args: string) =
   const
     docHackJs = "dochack.js"
-    css = "nimdoc.css"
   let
     a = nimArgs & " " & args
     docHackJsSource = docHackDir / docHackJs
     docHackJsDest = docHtmlOutput / docHackJs
 
-    cssSource = "doc" / css
-    cssDest = docHtmlOutput / css
   buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
@@ -387,6 +312,3 @@ proc buildDocs*(args: string) =
   buildDoc(nimArgs, docHtmlOutput)
   copyFile(docHackJsSource, docHackJsDest)
   copyFile(docHackJsSource, docup / docHackJs)
-
-  copyFile(cssSource, cssDest)
-  copyFile(cssSource, docup / css)

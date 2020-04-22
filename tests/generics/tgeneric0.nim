@@ -4,6 +4,7 @@ discard """
 0
 float32
 float32
+(name: "Resource 1", readers: ..., writers: ...)
 '''
 """
 
@@ -124,3 +125,18 @@ block tgeneric5:
     echo T
 
   bar(0.0'f32)
+
+# bug #13378
+
+type
+  Resource = ref object of RootObj
+    name: string
+    readers, writers: seq[RenderTask]
+
+  RenderTask = ref object
+    name: string
+
+var res = Resource(name: "Resource 1")
+
+(proc (r: typeof(res)) =
+   echo r[])(res)

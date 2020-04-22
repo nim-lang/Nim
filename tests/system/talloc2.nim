@@ -1,5 +1,6 @@
 discard """
 disabled: "windows"
+disabled: "openbsd"
 joinable: false
 disabled: 32bit
 """

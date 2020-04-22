@@ -30,7 +30,7 @@
 ##
 ##    waitFor server.serve(Port(8080), cb)
 
-import tables, asyncnet, asyncdispatch, parseutils, uri, strutils
+import asyncnet, asyncdispatch, parseutils, uri, strutils
 import httpcore
 
 export httpcore except parseHeader
@@ -99,9 +99,13 @@ proc respond*(req: Request, code: HttpCode, content: string,
 
   if headers != nil:
     msg.addHeaders(headers)
-  msg.add("Content-Length: ")
-  # this particular way saves allocations:
-  msg.add content.len
+
+  # If the headers did not contain a Content-Length use our own
+  if headers.isNil() or not headers.hasKey("Content-Length"):
+    msg.add("Content-Length: ")
+    # this particular way saves allocations:
+    msg.addInt content.len
+  
   msg.add "\c\L\c\L"
   msg.add(content)
   result = req.client.send(msg)

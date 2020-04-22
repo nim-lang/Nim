@@ -7,8 +7,6 @@
 #    distribution, for details about the copyright.
 #
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 when defined(nimHasStyleChecks):
   {.push styleChecks: off.}
 
@@ -533,6 +531,8 @@ when defined(nimdoc):
   const SO_REUSEPORT* = cint(0x0200)
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
+
+var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
 
 var MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
 

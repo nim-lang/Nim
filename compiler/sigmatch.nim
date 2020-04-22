@@ -646,6 +646,8 @@ proc procTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
         return isNone
     when useEffectSystem:
       if compatibleEffects(f, a) != efCompat: return isNone
+    when defined(drnim):
+      if not c.c.graph.compatibleProps(c.c.graph, f, a): return isNone
 
   of tyNil:
     result = f.allowsNil
@@ -832,9 +834,6 @@ proc inferStaticParam*(c: var TCandidate, lhs: PNode, rhs: BiggestInt): bool =
   #
   if lhs.kind in nkCallKinds and lhs[0].kind == nkSym:
     case lhs[0].sym.magic
-    of mUnaryLt:
-      return inferStaticParam(c, lhs[1], rhs + 1)
-
     of mAddI, mAddU, mInc, mSucc:
       if lhs[1].kind == nkIntLit:
         return inferStaticParam(c, lhs[2], rhs - lhs[1].intVal)
@@ -1149,9 +1148,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
             f.n[i] = tryResolvingStaticExpr(c, f.n[i])
         result = typeRangeRel(f, a)
     else:
-      if skipTypes(f, {tyRange}).kind == a.kind:
+      let f = skipTypes(f, {tyRange})
+      if f.kind == a.kind and (f.kind != tyEnum or sameEnumTypes(f, a)):
         result = isIntConv
-      elif isConvertibleToRange(skipTypes(f, {tyRange}), a):
+      elif isConvertibleToRange(f, a):
         result = isConvertible  # a convertible to f
   of tyInt:      result = handleRange(f, a, tyInt8, tyInt32)
   of tyInt8:     result = handleRange(f, a, tyInt8, tyInt8)
@@ -1276,7 +1276,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a):
+    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric
@@ -1714,7 +1714,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
       if result == isGeneric:
         var concrete = a
         if tfWildcard in a.flags:
-          a.sym.kind = skType
+          a.sym.transitionGenericParamToType()
           a.flags.excl tfWildcard
         else:
           concrete = concreteType(c, a, f)
@@ -1937,13 +1937,18 @@ proc localConvMatch(c: PContext, m: var TCandidate, f, a: PType,
   var call = newNodeI(nkCall, arg.info)
   call.add(f.n.copyTree)
   call.add(arg.copyTree)
-  result = c.semExpr(c, call)
+  # XXX: This would be much nicer if we don't use `semTryExpr` and
+  # instead we directly search for overloads with `resolveOverloads`:
+  result = c.semTryExpr(c, call, {efNoSem2Check})
+
   if result != nil:
     if result.typ == nil: return nil
+    # bug #13378, ensure we produce a real generic instantiation:
+    result = c.semExpr(c, call)
     # resulting type must be consistent with the other arguments:
     var r = typeRel(m, f[0], result.typ)
     if r < isGeneric: return nil
-    if result.kind == nkCall: result.kind = nkHiddenCallConv
+    if result.kind == nkCall: result.transitionSonsKind(nkHiddenCallConv)
     inc(m.convMatches)
     if r == isGeneric:
       result.typ = getInstantiatedType(c, arg, m, base(f))
@@ -1999,6 +2004,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         let typ = newTypeS(tyStatic, c)
         typ.sons = @[evaluated.typ]
         typ.n = evaluated
+        arg = copyTree(arg) # fix #12864
         arg.typ = typ
         a = typ
       else:
@@ -2602,7 +2608,7 @@ when not declared(tests):
   template tests(s: untyped) = discard
 
 tests:
-  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, UnknownLineInfo())
+  var dummyOwner = newSym(skModule, getIdent("test_module"), nil, unknownLineInfo)
 
   proc `|` (t1, t2: PType): PType =
     result = newType(tyOr, dummyOwner)
@@ -2625,7 +2631,7 @@ tests:
   proc array(x: int, t: PType): PType =
     result = newType(tyArray, dummyOwner)
 
-    var n = newNodeI(nkRange, UnknownLineInfo())
+    var n = newNodeI(nkRange, unknownLineInfo)
     n.add newIntNode(nkIntLit, 0)
     n.add newIntNode(nkIntLit, x)
     let range = newType(tyRange, dummyOwner)
@@ -2643,14 +2649,14 @@ tests:
       number = int | float
 
     var TFoo = newType(tyObject, dummyOwner)
-    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, UnknownLineInfo())
+    TFoo.sym = newSym(skType, getIdent"TFoo", dummyOwner, unknownLineInfo)
 
     var T1 = newType(tyGenericParam, dummyOwner)
-    T1.sym = newSym(skType, getIdent"T1", dummyOwner, UnknownLineInfo())
+    T1.sym = newSym(skType, getIdent"T1", dummyOwner, unknownLineInfo)
     T1.sym.position = 0
 
     var T2 = newType(tyGenericParam, dummyOwner)
-    T2.sym = newSym(skType, getIdent"T2", dummyOwner, UnknownLineInfo())
+    T2.sym = newSym(skType, getIdent"T2", dummyOwner, unknownLineInfo)
     T2.sym.position = 1
 
     setup:
