@@ -75,6 +75,17 @@
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
 - The `define` and `undef` pragmas have been de-deprecated.
+- New command: `nim r main.nim [args...]` which compiles and runs main.nim, saving
+  the binary to $nimcache/main$exeExt, using the same logic as `nim c -r` to
+  avoid recompiling when sources don't change. This is now the preferred way to
+  run tests, avoiding the usual pain of clobbering your repo with binaries or
+  using tricky gitignore rules on posix. Example:
+  ```nim
+  nim r compiler/nim.nim --help # only compiled the first time
+  echo 'import os; echo getCurrentCompilerExe()' | nim r - # this works too
+  nim r compiler/nim.nim --fullhelp # no recompilation
+  nim r --nimcache:/tmp main # binary saved to /tmp/main
+  ```
 
 ## Tool changes
 

@@ -57,6 +57,7 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
+    optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
@@ -254,7 +255,8 @@ type
     nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
-    outFile*: RelativeFile
+    outFileAbs*: AbsoluteFile
+    outFile*: RelativeFile # used if outFileAbs is empty
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
@@ -524,18 +526,19 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  result = conf.outDir / conf.outFile
-  when defined(posix):
-    if dirExists(result.string):
-      result.string.add ".out"
+  result = conf.outFileAbs
+  if result.isEmpty:
+    doAssert not conf.outDir.isEmpty
+    doAssert not conf.outFile.isEmpty
+    result = conf.outDir / conf.outFile
+    when defined(posix):
+      if dirExists(result.string): result.string.add ".out"
+    conf.outFileAbs = result
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
-  createDir conf.outDir
-  result = conf.outDir / conf.outFile
-  when defined(posix):
-    if dirExists(result.string):
-      result.string.add ".out"
+  result = conf.absOutFile
+  createDir result.string.parentDir
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
