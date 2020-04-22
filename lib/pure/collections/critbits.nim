@@ -518,7 +518,7 @@ proc `$`*[T](c: CritBitTree[T]): string =
         result.addQuoted(val)
     result.add("}")
 
-proc commonPrefixLen*[T](c: CritBitTree[T]): int =
+proc commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
   ## Returns longest common prefix length of all keys of `c`.
   ## If `c` is empty, returns 0.
   runnableExamples:
