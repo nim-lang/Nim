@@ -35,7 +35,7 @@
 ## * `htmlgen module <htmlgen.html>`_ for html code generator
 
 import macros, strtabs, strutils
-include inclrtl
+include "system/inclrtl"
 
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.

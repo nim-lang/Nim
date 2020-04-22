@@ -1,8 +1,8 @@
-# v1.2.0 - 2020-04-02
+# v1.2.0 - 2020-04-22
 
 
 ## Standard library additions and changes
-
+- Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - Added overloaded `strformat.fmt` macro that use specified characters as
   delimiter instead of '{' and '}'.
 - Added new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,
