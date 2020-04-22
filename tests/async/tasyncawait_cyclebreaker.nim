@@ -65,7 +65,7 @@ while true:
   GC_collectZct()
 
   let (allocs, deallocs) = getMemCounters()
-  doAssert allocs < deallocs + 150_000 # changed after await_template, not sure if it isn't too much
+  doAssert allocs < deallocs + 1000
 
   if clientCount == swarmSize: break
 

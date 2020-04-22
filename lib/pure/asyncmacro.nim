@@ -178,7 +178,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     outerProcBody.add(prc.body[0])
 
   # -> var retFuture = newFuture[T]()
-  var retFutureSym = ident"retFuture"
+  var retFutureSym = genSym(nskVar, "retFuture")
   var subRetType =
     if returnType.kind == nnkEmpty: newIdentNode("void")
     else: baseType
@@ -253,8 +253,18 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     if returnType.kind == nnkEmpty:
       # Add Future[void]
       result.params[0] = parseExpr("owned(Future[void])")
+
+  var awaitDefinition = quote:
+    template await[T](f: Future[T]): auto =
+      var internalTmpFuture: FutureBase = f
+      yield internalTmpFuture
+      (cast[type(f)](internalTmpFuture)).read()
+
   if procBody.kind != nnkEmpty:
-    result.body = outerProcBody
+    result.body = quote:
+      `awaitDefinition`
+      `outerProcBody`
+
   #echo(treeRepr(result))
   #if prcName == "recvLineInto":
   #  echo(toStrLit(result))
@@ -304,8 +314,11 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
     # Sync proc (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
     result[0][3][i][1] = splitParamType(result[0][3][i][1], async=false)
-  var inMultisync = newVarStmt(ident"inMultisync", newLit(true))
-  result[0][^1] = nnkStmtList.newTree(inMultisync, result[0][^1])
+  var multisyncAwait = quote:
+    template await(value: typed): untyped =
+      value
+
+  result[0][^1] = nnkStmtList.newTree(multisyncAwait, result[0][^1])
 
   result[1] = prc.copyNimTree()
   if result[1][3][0].kind == nnkBracketExpr:
@@ -327,26 +340,8 @@ macro multisync*(prc: untyped): untyped =
   result.add(sync)
   # echo result.repr
 
-# overload for type which is not Future[T], based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-template await*(f: typed): untyped =
-  when declared(retFuture):
-    static:
-      error "await expects Future[T], got " & $typeof(f)
-  elif not declared(inMultisync):
-    static:
-      error "await only available within {.async.}"
-  else:
-    f
 
-# based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-template await*[T](f: Future[T]): auto =
-  when declared(retFuture):
-    when not declared(internalTmpFuture):
-      var internalTmpFuture: FutureBase
-    internalTmpFuture = f
-    yield internalTmpFuture
-    (cast[type(f)](internalTmpFuture)).read()
-  else:
-    static:
-      error "await only available within {.async.}"
-  
+# overload for await as a fallback handler, based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
+template await*(f: typed): untyped =
+  static:
+    error "await only available within {.async.} or {.multisync.}, if in {.async.} it is expecting Future[T], got " & $typeof(f)

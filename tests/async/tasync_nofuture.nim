@@ -1,5 +1,5 @@
 discard """
-  errormsg: "await expects Future[T], got int"
+  errormsg: "await only available within {.async.} or {.multisync.}, if in {.async.} it is expecting Future[T], got int"
   cmd: "nim c $file"
   file: "asyncmacro.nim"
 """
