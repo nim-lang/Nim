@@ -198,7 +198,7 @@ type
   Captures* = distinct RegexMatch
   CaptureBounds* = distinct RegexMatch
 
-  RegexError* = ref object of Exception
+  RegexError* = ref object of CatchableError
 
   RegexInternalError* = ref object of RegexError
     ## Internal error in the module, this probably means that there is a bug

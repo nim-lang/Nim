@@ -87,7 +87,8 @@ const
     warnWriteToForeignHeap: "write to foreign heap",
     warnUnsafeCode: "unsafe code: '$1'",
     warnUnusedImportX: "imported and not used: '$1'",
-    warnInheritFromException: "inherit from a more precise exception type like ValueError, IOError or OSError",
+    warnInheritFromException: "inherit from a more precise exception type like ValueError, " &
+      "IOError or OSError. If these don't suit, inherit from CatchableError or Defect.",
     warnEachIdentIsTuple: "each identifier is a tuple",
     warnUnsafeSetLen: "setLen can potentially expand the sequence, " &
                       "but the element type '$1' doesn't have a valid default value",

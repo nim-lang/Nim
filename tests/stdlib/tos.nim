@@ -348,6 +348,9 @@ block ospaths:
   doAssert relativePath("", "foo") == ""
   doAssert relativePath("././/foo", "foo//./") == "."
 
+  doAssert relativePath(getCurrentDir() / "bar", "foo") == "../bar".unixToNativePath
+  doAssert relativePath("bar", getCurrentDir() / "foo") == "../bar".unixToNativePath
+
   when doslikeFileSystem:
     doAssert relativePath(r"c:\foo.nim", r"C:\") == r"foo.nim"
     doAssert relativePath(r"c:\foo\bar\baz.nim", r"c:\foo") == r"bar\baz.nim"

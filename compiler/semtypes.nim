@@ -62,6 +62,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter, x: BiggestInt
     e: PSym
     base: PType
+    identToReplace: ptr PNode
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -83,9 +84,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     of nkEnumFieldDef:
       if n[i][0].kind == nkPragmaExpr:
         e = newSymS(skEnumField, n[i][0][0], c)
+        identToReplace = addr n[i][0][0]
         pragma(c, e, n[i][0][1], enumFieldPragmas)
       else:
         e = newSymS(skEnumField, n[i][0], c)
+        identToReplace = addr n[i][0]
       var v = semConstExpr(c, n[i][1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
@@ -118,19 +121,24 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = n[i].sym
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n[i], c)
+      identToReplace = addr n[i]
     of nkPragmaExpr:
       e = newSymS(skEnumField, n[i][0], c)
       pragma(c, e, n[i][1], enumFieldPragmas)
+      identToReplace = addr n[i][0]
     else:
       illFormedAst(n[i], c.config)
     e.typ = result
     e.position = int(counter)
+    let symNode = newSymNode(e)
+    if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil:
+      identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
       incl(e.flags, sfUsed)
       incl(e.flags, sfExported)
       if not isPure: strTableAdd(c.module.tab, e)
-    result.n.add newSymNode(e)
+    result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
@@ -1582,7 +1590,7 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
         discard "User-defined pragma"
       else:
         let sym = searchInScopes(c, ident)
-        if sym != nil and sfCustomPragma in sym.flags: 
+        if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
         else:
           # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and

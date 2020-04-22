@@ -3,13 +3,14 @@
 
 
 ## Standard library additions and changes
-
+- Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
   to the `dom` module for the JavaScript target.
 - The default hash for `Ordinal` has changed to something more bit-scrambling.
   `import hashes; proc hash(x: myInt): Hash = hashIdentity(x)` recovers the old
   one in an instantiation context while `-d:nimIntHash1` recovers it globally.
+- `deques.peekFirst` and `deques.peekLast` now have `var Deque[T] -> var T` overloads.
 - File handles created from high-level abstractions in the stdlib will no longer
   be inherited by child processes. In particular, these modules are affected:
   `system`, `nativesockets`, `net` and `selectors`.
@@ -31,10 +32,14 @@
   and `ioselector_epoll` will no longer be leaked to child processes.
 
 - `critbits` adds `commonPrefixLen`.
+- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
+  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
+  and this can now throw in edge cases where `getCurrentDir` throws.
+  `relativePath` also now works for js with `-d:nodejs`.
 
 
 ## Language changes
-- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this: 
+- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
   type
     MyObj = object
@@ -62,6 +67,10 @@
       deallocShared(x.val)
       x.val = nil
   ```
+
+- getImpl() on enum type symbols now returns field syms instead of idents. This helps
+  with writing typed macros. Old behavior for backwards compatiblity can be restored
+  with command line switch `--useVersion:1.0`.
 
 ## Compiler changes
 
