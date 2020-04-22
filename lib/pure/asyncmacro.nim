@@ -254,7 +254,13 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       # Add Future[void]
       result.params[0] = parseExpr("owned(Future[void])")
 
+  # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
+  # however here the overloads are placed inside each expanded async
   var awaitDefinition = quote:
+    template await(f: typed): untyped =
+      static:
+        error "await expects Future[T], got " & $typeof(f)
+    
     template await[T](f: Future[T]): auto =
       var internalTmpFuture: FutureBase = f
       yield internalTmpFuture
@@ -340,8 +346,7 @@ macro multisync*(prc: untyped): untyped =
   result.add(sync)
   # echo result.repr
 
-
 # overload for await as a fallback handler, based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
 template await*(f: typed): untyped =
   static:
-    error "await only available within {.async.} or {.multisync.}, if in {.async.} it is expecting Future[T], got " & $typeof(f)
+    error "await only available within {.async.}"

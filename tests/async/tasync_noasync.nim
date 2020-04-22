@@ -1,11 +1,12 @@
 discard """
-  errormsg: "await expects Future[T], got int"
+  errormsg: "await only available within {.async.}"
   cmd: "nim c $file"
   file: "asyncmacro.nim"
 """
 import async
 
 proc a {.async.} =
-  await 0
+  discard
 
-waitFor a()
+await a()
+
