@@ -1,5 +1,6 @@
 #!/bin/fish
 
+choosenim devel
 set summary "compiler testing"
 set app testes
 

@@ -9,13 +9,16 @@
 
 ## This module implements the new compilation cache.
 
-import strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
+import
+
+  strutils, intsets, tables, ropes, db_sqlite, msgs, options, ast,
   renderer, rodutils, idents, astalgo, btrees, magicsys, cgmeth, extccomp,
   treetab, condsyms, nversion, pathutils, cgendata, sequtils, trees, ndi,
   sighashes, modulegraphs, idgen, lineinfos, incremental, types, hashes,
   macros, ccgutils
 
 import strformat, os
+import sets except rightSize
 
 export nimIncremental
 
@@ -57,6 +60,11 @@ type
     modules*: BModuleList        # modules being built by the backend
     origin*: BModule             # presumed original module
 
+  TreeNode*[T: CacheableObject] = object
+    strategy*: set[CacheStrategy]
+    kind*: CacheUnitKind
+    node*: T                     # the node itself
+
   # the in-memory representation of the database record
   Snippet = object
     signature: SigHash       # we use the signature to associate the node
@@ -94,8 +102,7 @@ proc getSetConflict*(m: BModule; s: PSym;
   template g(): ModuleGraph = m.g.graph
   var
     counter: int
-    name: string
-  {.warning: "another mangle:".}
+    name = mangle(s.name.s)
   #
   # needed for keywords and such
   # isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
@@ -107,13 +114,14 @@ proc getSetConflict*(m: BModule; s: PSym;
     if create:
       m.sigConflicts.inc sigstring
     counter = m.sigConflicts[sigstring]
-    name = mangle(s.name.s) & "_" & sigstring
+    name.add "_" & sigstring
   else:
     {.warning: "remove sigHash".}
     let
       signature = s.sigHash
       sigstring = $signature
-    name = mangle(s.name.s)
+    if isKeyword(s.name) or m.config.cppDefines.contains(s.name.s):
+      name.add "_" & sigstring
     const
       query = sql"""
         select id from conflicts
@@ -470,6 +478,24 @@ proc initCacheUnit(cache: var CacheUnit[PSym]; modules: BModuleList; node: PSym)
 
 proc initCacheUnit(cache: var CacheUnit[PType]; modules: BModuleList; node: var PType) =
   cache.kind = CacheUnitKind.Type
+
+proc newTreeNode*[T: CacheableObject](node: var T): TreeNode[T] =
+  assert node != nil
+  result.strategy = {Writes}
+  result.node = node
+  when T is PNode:
+    result.kind = CacheUnitKind.Node
+  elif T is PSym:
+    result.kind = CacheUnitKind.Symbol
+  elif T is PType:
+    result.kind = CacheUnitKind.Type
+  else:
+    {.fatal: "unsupported node type".}
+
+proc seal*[T: CacheableObject](tree: var TreeNode[T]) =
+  assert tree.strategy and {Writes}
+  tree.strategy.excl Writes
+  tree.strategy.incl Immutable
 
 proc newCacheUnit*[T: CacheableObject](modules: BModuleList; origin: BModule;
                                        node: var T): CacheUnit[T] =
@@ -865,6 +891,33 @@ proc encodeSym(g: ModuleGraph, s: PSym, result: var EncodingString) =
     # make that unfeasible nowadays:
     encodeNode(g, s.info, s.ast, result)
 
+proc ultimateOwner(p: PSym): PSym =
+  if p == nil or p.owner == nil or p.kind in {skModule, skPackage}:
+    result = p
+  else:
+    result = p.owner.ultimateOwner
+
+proc ultimateOwner(p: PType): PSym =
+  if p == nil or p.sym == nil:
+    assert false
+    result = nil
+  else:
+    result = p.sym.ultimateOwner
+proc typeId*(g: ModuleGraph; p: PType): SqlId =
+  ## like typeAlreadyStored, but returns the SqlId
+  const
+    query = sql"""
+      select id from types
+      where nimid = ?
+      limit 1
+    """
+  let
+    m = p.ultimateOwner
+    mid = if m == nil: 0 else: abs(m.id)
+    id = db.getValue(query, mid, p.uniqueId)
+  if id != "":
+    result = id.parseInt
+
 proc symbolId*(g: ModuleGraph; p: PSym): SqlId =
   const
     query = sql"""
@@ -1035,6 +1088,12 @@ proc typeAlreadyStored(g: ModuleGraph; nimid: int): bool =
   if g.config.symbolFiles == disabledSf: return
   const
     query = sql"select nimid from types where nimid = ? limit 1"
+  result = db.getValue(query, nimid) == $nimid
+
+proc symbolAlreadyStored(g: ModuleGraph; nimid: int): bool =
+  if g.config.symbolFiles == disabledSf: return
+  const
+    query = sql"select nimid from symbols where nimid = ? limit 1"
   result = db.getValue(query, nimid) == $nimid
 
 proc storeType(g: ModuleGraph; t: PType) =
@@ -1672,7 +1731,7 @@ proc setupModuleCache*(g: ModuleGraph) =
 
 proc encodeTransform(t: Transform): EncodingString =
   template g(): ModuleGraph = t.module.g.graph
-  case t.kind:
+  case t.kind
   of Unknown:
     raise newException(Defect, "don't encode unknown transforms")
   of HeaderFile:
@@ -2137,9 +2196,13 @@ proc apply(parents: BModuleList; transform: Transform) =
   of SetLoc:
     case transform.nkind
     of nkSym:
-      loadsymb
+      if parents.graph.symbolAlreadyStored(transform.id):
+        raise newException(Defect, "attempt to rewrite nksym")
+      #cache.tree.setSymbolLocation(transform.id, transform.loc)
     of nkType:
-      loadstype
+      if parents.graph.typeAlreadyStored(transform.id):
+        raise newException(Defect, "attempt to rewrite nktype")
+      #cache.tree.setTypeLocation(transform.id, transform.loc)
     else:
       raise newException(Defect, "unknown kind of location: " & $transform.nkind)
   of LiteralData:
@@ -2265,7 +2328,7 @@ proc merge(cache: var CacheUnit; parent: var BModuleList) =
     for transform in cache.transforms.values:
       parent.apply transform
 
-    for module in cache.modules.items:
+    for module in cache.modules.modules.items:
       for transform in module.transforms.values:
         parent.apply transform
 

@@ -182,34 +182,34 @@ type
   TransformTable* = OrderedTable[SigHash, Transform]
 
   Transform* = object
-    module: BModule
-    case kind: TransformKind
+    module*: BModule
+    case kind*: TransformKind
     of Unknown:
       discard
     of FlagSet:
-      flags: set[CodegenFlag]
+      flags*: set[CodegenFlag]
     of ProtoSet, ThingSet:
-      diff: IntSet
+      diff*: IntSet
     of HeaderFile:
-      filenames: seq[string]
+      filenames*: seq[string]
     of TypeStack:
-      stack: TTypeSeq
+      stack*: TTypeSeq
     of Injection:
-      rope: Rope
+      rope*: Rope
     of GraphRope:
-      field: string
-      grope: Rope
+      field*: string
+      grope*: Rope
     of InitProc, PreInit:
-      prc: PSym
+      prc*: PSym
     of Labels:
-      labels: int
+      labels*: int
     of SetLoc:
-      nkind: TNodeKind
-      id: int
-      loc: TLoc
+      nkind*: TNodeKind
+      id*: int
+      loc*: TLoc
     of LiteralData:
-      node: PNode
-      val: int
+      node*: PNode
+      val*: int
 
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
