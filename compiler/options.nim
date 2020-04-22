@@ -255,8 +255,7 @@ type
     nimblePaths*: seq[AbsoluteDir]
     searchPaths*: seq[AbsoluteDir]
     lazyPaths*: seq[AbsoluteDir]
-    outFileAbs*: AbsoluteFile
-    outFile*: RelativeFile # used if outFileAbs is empty
+    outFile*: RelativeFile
     outDir*: AbsoluteDir
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
@@ -526,14 +525,14 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  result = conf.outFileAbs
-  if result.isEmpty:
+  if false:
     doAssert not conf.outDir.isEmpty
     doAssert not conf.outFile.isEmpty
-    result = conf.outDir / conf.outFile
-    when defined(posix):
-      if dirExists(result.string): result.string.add ".out"
-    conf.outFileAbs = result
+    # xxx: fix this pre-existing bug causing `SuccessX` error messages to lie
+    # for `jsonscript`
+  result = conf.outDir / conf.outFile
+  when defined(posix):
+    if dirExists(result.string): result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
