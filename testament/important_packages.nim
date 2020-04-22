@@ -11,12 +11,12 @@ pkg "ast_pattern_matching", "nim c -r --oldgensym:on tests/test1.nim"
 pkg "asyncmysql", "", true
 pkg "bigints"
 pkg "binaryheap", "nim c -r binaryheap.nim"
-pkg "blscurve", "", true
+# pkg "blscurve", "", true
 pkg "bncurve", "", true
 pkg "c2nim", "nim c testsuite/tester.nim"
 pkg "cascade"
 pkg "chroma"
-pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
+# pkg "chronicles", "nim c -o:chr -r chronicles.nim", true
 pkg "chronos", "", true
 pkg "cligen", "nim c -o:cligenn -r cligen.nim"
 pkg "coco", "", true
@@ -79,9 +79,9 @@ pkg "rosencrantz", "nim c -o:rsncntz -r rosencrantz.nim"
 pkg "sdl1", "nim c -r src/sdl.nim"
 pkg "sdl2_nim", "nim c -r sdl2/sdl.nim"
 pkg "snip", "", false, "https://github.com/genotrance/snip"
-pkg "stint", "nim c -o:stintt -r stint.nim"
+# pkg "stint", "nim c -o:stintt -r stint.nim"
 pkg "strunicode", "nim c -r src/strunicode.nim", true
-pkg "telebot", "nim c -o:tbot --oldgensym:on -r telebot.nim", true
+pkg "telebot", "nim c -o:tbot -r src/telebot.nim", true
 pkg "tempdir"
 pkg "tensordsl", "nim c -r tests/tests.nim", false, "https://krux02@bitbucket.org/krux02/tensordslnim.git"
 pkg "tiny_sqlite"
