@@ -74,6 +74,8 @@
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
+- `--warningAsError:on|off` turns all enabled warnings into errors (or back to warnings),
+- `--warningAsError:on` is now enabled in compiler/config.nims
 - The `define` and `undef` pragmas have been de-deprecated.
 
 ## Tool changes
