@@ -39,6 +39,7 @@ Advanced options:
   --hint[X]:on|off          turn specific hint X on|off
   --warningAsError[X]:on|off
                             turn specific warning X into an error on|off
+  --warningAsError:on|off   turn all enabled warnings on|off (since 1.3.2)
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide

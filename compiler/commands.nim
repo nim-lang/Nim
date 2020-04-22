@@ -206,18 +206,18 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
   elif n notin conf.cmdlineNotes or pass == passCmd1:
     if pass == passCmd1: incl(conf.cmdlineNotes, n)
-    incl(conf.modifiedyNotes, n)
     case val
     of "on":
-      if state == wWarningAsError:
+      if state == wWarningAsError: # this also enables the warning
         incl(conf.warningAsErrors, n)
-      else:
-        incl(conf.notes, n)
-        incl(conf.mainPackageNotes, n)
+      incl(conf.modifiedyNotes, n)
+      incl(conf.notes, n)
+      incl(conf.mainPackageNotes, n)
     of "off":
-      if state == wWarningAsError:
+      if state == wWarningAsError:  # this does not disable the warning
         excl(conf.warningAsErrors, n)
       else:
+        incl(conf.modifiedyNotes, n) # incl intended
         excl(conf.notes, n)
         excl(conf.mainPackageNotes, n)
         excl(conf.foreignPackageNotes, n)
@@ -534,7 +534,13 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if processOnOffSwitchOrList(conf, {optWarns}, arg, pass, info): listWarnings(conf)
   of "warning": processSpecificNote(arg, wWarning, pass, info, switch, conf)
   of "hint": processSpecificNote(arg, wHint, pass, info, switch, conf)
-  of "warningaserror": processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
+  of "warningaserror":
+    case arg.normalize
+    of "", "on":
+      for a in warnMin..warnMax: incl(conf.warningAsErrors, a)
+    of "off":
+      for a in warnMin..warnMax: excl(conf.warningAsErrors, a)
+    else: processSpecificNote(arg, wWarningAsError, pass, info, switch, conf)
   of "hints":
     if processOnOffSwitchOrList(conf, {optHints}, arg, pass, info): listHints(conf)
   of "threadanalysis": processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
