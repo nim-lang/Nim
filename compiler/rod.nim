@@ -62,7 +62,7 @@ type
 
   TreeNode*[T: CacheableObject] = object
     strategy*: set[CacheStrategy]
-    kind*: CacheUnitKind
+    #kind*: CacheUnitKind
     node*: T                     # the node itself
 
   # the in-memory representation of the database record
@@ -76,6 +76,16 @@ type
 
 using
   cache: CacheUnit
+
+template kind[T](tree: TreeNode[T]): CacheUnitKind =
+  when T is PNode:
+    Node
+  elif T is PType:
+    Type
+  elif T is PSym:
+    Symbol
+  else:
+    {.fatal: "undefined cache unit kind for tree node".}
 
 template db(): DbConn = g.incr.db
 template config(): ConfigRef = cache.modules.config
@@ -187,7 +197,7 @@ proc makeTempName*(m: BModule; label: int, create = false): Rope =
   else:
     result.add "_"
     result.add $counter
-  when true:
+  when false:
     if $result == "TM__Q5wkpxktOdTGvlSRo9bzt9aw__system___pF9ac9cU2tnA6T9aZkkGK9clsg_156":
       raise
 
@@ -492,10 +502,31 @@ proc newTreeNode*[T: CacheableObject](node: var T): TreeNode[T] =
   else:
     {.fatal: "unsupported node type".}
 
-proc seal*[T: CacheableObject](tree: var TreeNode[T]) =
-  assert tree.strategy and {Writes}
-  tree.strategy.excl Writes
-  tree.strategy.incl Immutable
+proc seal[T: CacheableObject](tree: var TreeNode[T]) =
+  ## furry lobster
+  if Writes in tree.strategy:
+    tree.strategy.excl Writes
+    tree.strategy.incl Immutable
+
+proc write[T: CacheableObject](g: ModuleGraph; tree: var TreeNode[T]) =
+  assert Writes in tree.strategy
+  if not Writes in tree.trategy:
+    raise newException(Defect, "attempt to write unwritable tree node")
+  case tree.kind
+  of Node:
+    g.storeNode(tree.node)
+  of Symbol:
+    g.storeSym(tree.node)
+  of Type:
+    g.storeType(tree.node)
+  tree.seal
+
+proc read[T: CacheableObject](g: ModuleGraph; tree: var TreeNode[T]) =
+
+proc setLocation*[T: PSym or PType](tree: var TreeNode[T]; loc: TLoc) =
+  if Write in tree.strategy:
+    raise newException(Defect, "tree is sealed")
+  tree.node.setLocation(loc)
 
 proc newCacheUnit*[T: CacheableObject](modules: BModuleList; origin: BModule;
                                        node: var T): CacheUnit[T] =
@@ -1758,6 +1789,9 @@ proc encodeTransform(t: Transform): EncodingString =
     encodeNode(g, t.module.module.info, t.node, result)
     result = $t.val & "\n" & $result
 
+proc `$`(t: Transform): string =
+  result = $t.kind & " from " & $t.nkind & " size " & $encodeTransform(t).len
+
 proc decodeTransform(kind: string; module: BModule;
                      data: string): Transform =
   result = Transform(kind: parseEnum[TransformKind](kind), module: module)
@@ -2208,6 +2242,8 @@ proc apply(parents: BModuleList; transform: Transform) =
   of LiteralData:
     nodeTablePut(parent.dataCache, transform.node, transform.val)
 
+  echo "\t" & $transform
+
 proc loadTransformsIntoCache(cache: var CacheUnit) =
   ## read transforms from the database for the given cache node and merge
   ## them into the fake module graph
@@ -2339,7 +2375,7 @@ proc merge(cache: var CacheUnit; parent: var BModuleList) =
       {.warning: "nodes unimplemented".}
 
 proc setLocation*(m: BModule; p: PSym or PType; t: TLoc)
-  {.tags: [LocSafe, LocWrite, RootEffect].} =
+  {.tags: [LocSafe, LocRead, LocWrite, RootEffect].} =
   ## set the location of a symbol|type in the given module
   when p is PSym:
     let
@@ -2349,12 +2385,20 @@ proc setLocation*(m: BModule; p: PSym or PType; t: TLoc)
     let
       id = p.uniqueId
       k = nkType
+  else:
+    {.fatal: "turn back!".}
   var
     transform = Transform(kind: SetLoc, module: m, nkind: k, id: id, loc: t)
-  echo transform
-  {.warning: "this is temporary; should be performed by a transform".}
+  when p is PType:
+    # use the sighash of the module symbol
+    m.transforms.add m.module.sigHash, transform
+  elif p is PSym:
+    # see above
+    m.transforms.add p.sigHash, transform
+  else:
+    {.fatal: "turn back!".}
+  #{.warning: "this is temporary; should be performed by a transform".}
   p.setLocation(t)
-  #m.transforms.add p.sigHash, transform
 
 proc inclLocationFlags*(m: BModule; p: PSym; f: set[TLocFlag] | TLocFlag) =
   ## set the location flags of a symbol in the given module

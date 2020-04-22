@@ -785,10 +785,15 @@ type
     lode*: PNode              # Node where the location came from; can be faked
     roap*: Rope               # rope value of location (code generators)
 
-  LocRead* = object
-  LocWrite* = object
-  LocBreak* = object
-  LocSafe* = object
+  TreeRead* = object
+  TreeWrite* = object
+  TreeBreak* = object
+  TreeSafe* = object
+
+  LocRead* {.deprecated.} = TreeRead
+  LocWrite* {.deprecated.} = TreeWrite
+  LocBreak* {.deprecated.} = TreeBreak
+  LocSafe* {.deprecated.} = TreeSafe
 
   # ---------------- end of backend information ------------------------------
 
@@ -1044,70 +1049,70 @@ const
   defaultAlignment = -1
   defaultOffset = -1
 
-proc r*(a: TLoc): Rope {.tags: [LocRead].} =
+proc r*(a: TLoc): Rope {.tags: [TreeRead].} =
   result = a.roap
 
-proc `loc=`*(p: PSym or PType; loc: TLoc) {.tags: [LocRead, LocWrite].}=
+proc `loc=`*(p: PSym or PType; loc: TLoc) {.tags: [TreeRead, TreeWrite].} =
   when defined(debugTLoc):
     echo "set location"
   assert p.location.k == loc.k or p.location.k == locNone
   assert p.location.roap == nil or $p.location.r == $loc.r
   system.`=`(p.location, loc)
 
-proc loc*(p: PSym or PType): TLoc {.tags: [LocRead].} =
+proc loc*(p: PSym or PType): TLoc {.tags: [TreeRead].} =
   result = p.location
 
-proc mloc*(p: PSym or PType): var TLoc {.tags: [LocRead, LocWrite].} =
+proc mloc*(p: PSym or PType): var TLoc {.tags: [TreeRead, TreeWrite].} =
   result = p.location
   when defined(debugTLoc):
     echo "mut loc"
 
-proc setLocation*(p: PSym or PType; a: TLoc) {.tags: [LocWrite, LocSafe].} =
+proc setLocation*(p: PSym or PType; a: TLoc) {.tags: [TreeWrite, TreeSafe].} =
   ## this should be run almost nowhere
   p.location = a
 
-proc mr*(a: var TLoc): var Rope {.tags: [LocRead, LocWrite].} =
+proc mr*(a: var TLoc): var Rope {.tags: [TreeRead, TreeWrite].} =
   when defined(debugTLoc):
     echo "get rope mut"
   result = a.roap
 
-proc clearRope*(a: TLoc) {.tags: [LocWrite].} =
+proc clearRope*(a: TLoc) {.tags: [TreeWrite].} =
   assert a.roap == nil
   when defined(debugTLoc):
     echo "clear imm"
 
-proc clearRope*(a: var TLoc) {.tags: [LocWrite].} =
+proc clearRope*(a: var TLoc) {.tags: [TreeWrite].} =
   a.roap = nil
   when defined(debugTLoc):
     echo "clear mut"
 
-proc setRope*(a: TLoc; roap: Rope) {.tags: [LocWrite].} =
+proc setRope*(a: TLoc; roap: Rope) {.tags: [TreeWrite].} =
   ## a trap to catch bad attempts to mutate an immutable
   assert roap == nil
   assert a.roap == nil
   when defined(debugTLoc):
     echo "set rope imm"
 
-proc setRope*(a: var TLoc; roap: Rope) {.tags: [LocWrite].} =
+proc setRope*(a: var TLoc; roap: Rope) {.tags: [TreeWrite].} =
   assert roap != nil
   a.roap = roap
   when defined(debugTLoc):
     echo "set rope mut"
 
-proc setRope*(a: var TLoc; roap: var Rope) {.tags: [LocWrite].} =
+proc setRope*(a: var TLoc; roap: var Rope) {.tags: [TreeWrite].} =
   assert roap != nil
   a.roap = roap
   when defined(debugTLoc):
     echo "set rope remains mut"
 
 when false:
-  proc addRope*(a: var TLoc; roap: Rope) {.tags: [LocWrite].} =
+  proc addRope*(a: var TLoc; roap: Rope) {.tags: [TreeWrite].} =
     assert roap != nil
     a.roap.add roap
     when defined(debugTLoc):
       echo "add rope"
 
-proc mergeLoc(a: var TLoc; b: TLoc) {.tags: [LocRead, LocWrite].} =
+proc mergeLoc(a: var TLoc; b: TLoc) {.tags: [TreeRead, TreeWrite].} =
   when defined(debugTLoc):
     echo "mut merge"
   if a.k == locNone:

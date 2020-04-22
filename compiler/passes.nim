@@ -85,12 +85,21 @@ proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
-  var m = n
-  for i in 0..<graph.passes.len:
-    if not isNil(graph.passes[i].process):
-      m = graph.passes[i].process(a[i], m)
-      if isNil(m): return false
-  result = true
+  var
+    tree = newTreeNode[PNode](n)
+  try:
+    var
+      m: PNode = n
+    block prematureEvacuation:
+      for i in 0..<graph.passes.len:
+        echo "pass ", i
+        if graph.passes[i].process != nil:
+          m = graph.passes[i].process(a[i], m)
+          if m == nil:
+            break prematureEvacuation
+      result = true
+  finally:
+    tree.seal
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
@@ -179,6 +188,7 @@ proc processUncachedModule*(graph: ModuleGraph; module: PSym;
     s = stream
 
   while true:
+    # open the parsers on every pass; ie. read streaming data from stdin
     openParsers(p, fileIdx, s, graph.cache, graph.config)
     if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
       # TODO what about caching? no processing then? what if I change the
@@ -192,9 +202,12 @@ proc processUncachedModule*(graph: ModuleGraph; module: PSym;
                          a, module)
 
     while true:
+      # this is we consume chunks of toplevel statements
       if graph.stopCompile(): break
+      # parse it
       var n = parseTopLevelStmt(p)
       if n.kind == nkEmpty: break
+      # if it's something that should be reordered...
       if (sfSystemModule notin module.flags and
           ({sfNoForward, sfReorder} * module.flags != {} or
           codeReordering in graph.config.features)):
@@ -202,6 +215,7 @@ proc processUncachedModule*(graph: ModuleGraph; module: PSym;
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n
         while true:
+          # keep iterating on every toplevel chunk
           var n = parseTopLevelStmt(p)
           if n.kind == nkEmpty: break
           sl.add n
@@ -209,23 +223,30 @@ proc processUncachedModule*(graph: ModuleGraph; module: PSym;
           sl = reorder(graph, sl, module)
         discard processTopLevelStmt(graph, sl, a)
         break
+      # else we'll consume as just another chunk
       elif n.kind in imperativeCode:
         # read everything until the next proc declaration etc.
         var sl = newNodeI(nkStmtList, n.info)
         sl.add n
         var rest: PNode = nil
         while true:
+          # keep iterating on every toplevel chunk
           var n = parseTopLevelStmt(p)
           if n.kind == nkEmpty or n.kind notin imperativeCode:
+            # if it found a reordered bit, then stash it and break out
             rest = n
             break
+          # adding it to the statement list
           sl.add n
         #echo "-----\n", sl
+        # consume that entire list of the toplevel statements
         if not processTopLevelStmt(graph, sl, a): break
+        # if there was some reordered stuff, consume that here
         if rest != nil:
           #echo "-----\n", rest
           if not processTopLevelStmt(graph, rest, a): break
       else:
+        # super-naive consume whatever is held in the node only
         #echo "----- single\n", n
         if not processTopLevelStmt(graph, n, a): break
 

@@ -88,6 +88,7 @@ proc fillLoc(m: BModule; p: PSym, k: TLocKind, lode: PNode, r: Rope, s: TStorage
   m.setLocation(p, a)
 
 proc t(a: TLoc): PType {.inline.} =
+  assert a.lode != nil
   if a.lode.kind == nkSym:
     result = a.lode.sym.typ
   else:
@@ -1240,6 +1241,7 @@ proc genProc(orig: BModule, prc: PSym) =
 
   # FIXME: tree-shake
   if {sfUsed, sfImportc} * prc.flags == {}:
+    echo "shook ", prc.name.s
     return
 
   # we only generate code when the proc is completely defined

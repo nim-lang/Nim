@@ -67,30 +67,44 @@ proc newModule(graph: ModuleGraph; fileIdx: FileIndex): PSym =
   partialInitModule(result, graph, fileIdx, filename)
 
 proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): PSym =
+  var
+    stream: PLLStream
+  # open stdin if we're to read the module from stdin
+  if sfMainModule in flags and graph.config.projectIsStdin:
+    stream = stdin.llStreamOpen
   result = graph.getModule(fileIdx)
+  # if it doesn't exist yet
   if result == nil:
     let filename = AbsoluteFile toFullPath(graph.config, fileIdx)
+    # try to load it
     let (r, id) = loadModuleSym(graph, fileIdx, filename)
     result = r
+    # if it's not the in db
     if result == nil:
+      # create it from scratch
       result = newModule(graph, fileIdx)
       result.flags = result.flags + flags
       result.id = id
+      # register it
       registerModule(graph, result)
     else:
+      # partial init it
       partialInitModule(result, graph, fileIdx, filename)
       result.id = id
       assert result.id < 0
-    processModule(graph, result,
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
+    # the module is ready; process it
+    processModule(graph, result, stream)
   elif graph.isDirty(result):
+    # it exists but it's dirty!  clean it.
     result.flags.excl sfDirty
     # reset module fields:
     initStrTable(result.tab)
     result.ast = nil
-    processModule(graph, result,
-      if sfMainModule in flags and graph.config.projectIsStdin: stdin.llStreamOpen else: nil)
+    processModule(graph, result, stream)
     graph.markClientsDirty(fileIdx)
+  else:
+    # the module is already in the graph and not dirty; do nothing
+    discard
 
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
