@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![Build Status][badge-nim-travisci]][nim-travisci] [![builds.sr.ht freebsd status](https://builds.sr.ht/~araq/nim/freebsd.yml.svg)](https://builds.sr.ht/~araq/nim/freebsd.yml?) [![builds.sr.ht openbsd status](https://builds.sr.ht/~araq/nim/openbsd.yml.svg)](https://builds.sr.ht/~araq/nim/openbsd.yml?)
+# <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim [![builds.sr.ht freebsd status](https://builds.sr.ht/~araq/nim/freebsd.yml.svg)](https://builds.sr.ht/~araq/nim/freebsd.yml?) [![builds.sr.ht openbsd status](https://builds.sr.ht/~araq/nim/openbsd.yml.svg)](https://builds.sr.ht/~araq/nim/openbsd.yml?)
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
@@ -195,7 +195,6 @@ Copyright © 2006-2020 Andreas Rumpf, all rights reserved.
 [nim-issues]: https://github.com/nim-lang/Nim/issues
 [nim-issues-easy]: https://github.com/nim-lang/Nim/labels/Easy
 [nim-irc]: https://webchat.freenode.net/?channels=nim
-[nim-travisci]: https://travis-ci.org/nim-lang/Nim
 [nim-twitter]: https://twitter.com/nim_lang
 [nim-stackoverflow]: https://stackoverflow.com/questions/tagged/nim-lang
 [nim-stackoverflow-newest]: https://stackoverflow.com/questions/tagged/nim-lang?sort=newest&pageSize=15
