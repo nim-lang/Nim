@@ -35,6 +35,7 @@
 ## * `htmlgen module <htmlgen.html>`_ for html code generator
 
 import macros, strtabs, strutils
+include inclrtl
 
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
@@ -44,7 +45,7 @@ type
 
   XmlNodeKind* = enum ## Different kinds of XML nodes.
     xnText,           ## a text element
-    xnRawText,
+    xnVerbatimText,   ## 
     xnElement,        ## an element with 0 or more children
     xnCData,          ## a CDATA node
     xnEntity,         ## an entity (like ``&thing;``)
@@ -57,7 +58,7 @@ type
 
   XmlNodeObj {.acyclic.} = object
     case k: XmlNodeKind # private, use the kind() proc to read this field.
-    of xnText, xnRawText, xnComment, xnCData, xnEntity:
+    of xnText, xnVerbatimText, xnComment, xnCData, xnEntity:
       fText: string
     of xnElement:
       fTag: string
@@ -100,9 +101,10 @@ proc newText*(text: string): XmlNode =
   result = newXmlNode(xnText)
   result.fText = text
 
-proc newRawText*(text: string): XmlNode =
-  ## Creates a new ``XmlNode`` of kind ``xnText`` with the text `text`.
-  result = newXmlNode(xnRawText)
+proc newVerbatimText*(text: string): XmlNode {.since:(1, 2).} = 
+  ## Creates a new ``XmlNode`` of kind ``xnVerbatimText`` with the text `text`.
+  ## **Since**: Version 1.2.
+  result = newXmlNode(xnVerbatimText)
   result.fText = text
 
 proc newComment*(comment: string): XmlNode =
@@ -630,7 +632,7 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
       result.add(" />")
   of xnText:
     result.addEscaped(n.fText)
-  of xnRawText:
+  of xnVerbatimText:
     result.add(n.fText)
   of xnComment:
     result.add("<!-- ")
