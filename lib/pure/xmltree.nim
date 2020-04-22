@@ -44,6 +44,7 @@ type
 
   XmlNodeKind* = enum ## Different kinds of XML nodes.
     xnText,           ## a text element
+    xnRawText,
     xnElement,        ## an element with 0 or more children
     xnCData,          ## a CDATA node
     xnEntity,         ## an entity (like ``&thing;``)
@@ -56,7 +57,7 @@ type
 
   XmlNodeObj {.acyclic.} = object
     case k: XmlNodeKind # private, use the kind() proc to read this field.
-    of xnText, xnComment, xnCData, xnEntity:
+    of xnText, xnRawText, xnComment, xnCData, xnEntity:
       fText: string
     of xnElement:
       fTag: string
@@ -97,6 +98,11 @@ proc newText*(text: string): XmlNode =
     assert $b == "my text"
 
   result = newXmlNode(xnText)
+  result.fText = text
+
+proc newRawText*(text: string): XmlNode =
+  ## Creates a new ``XmlNode`` of kind ``xnText`` with the text `text`.
+  result = newXmlNode(xnRawText)
   result.fText = text
 
 proc newComment*(comment: string): XmlNode =
@@ -624,6 +630,8 @@ proc add*(result: var string, n: XmlNode, indent = 0, indWidth = 2,
       result.add(" />")
   of xnText:
     result.addEscaped(n.fText)
+  of xnRawText:
+    result.add(n.fText)
   of xnComment:
     result.add("<!-- ")
     result.addEscaped(n.fText)
