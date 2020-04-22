@@ -252,7 +252,7 @@ else:
       VnodeRename, VnodeRevoke
 
   type
-    IOSelectorsException* = object of Exception
+    IOSelectorsException* = object of CatchableError
 
     ReadyKey* = object
       fd* : int
