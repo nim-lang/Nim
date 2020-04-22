@@ -347,6 +347,6 @@ macro multisync*(prc: untyped): untyped =
   # echo result.repr
 
 # overload for await as a fallback handler, based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
-template await*(f: typed): untyped =
-  static:
-    error "await only available within {.async.}"
+# template await*(f: typed): untyped =
+  # static:
+    # error "await only available within {.async.}"

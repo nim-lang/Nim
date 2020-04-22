@@ -134,7 +134,6 @@ if resLines.len != expLines.len:
   quit(QuitFailure)
 
 var ok = true
-echo result
 for i in 0 ..< resLines.len:
   if not resLines[i].match(re(expLines[i])):
     echo "Not matched! Line ", i + 1
