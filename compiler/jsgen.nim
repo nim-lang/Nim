@@ -238,11 +238,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
       while i < s.name.s.len:
         let c = s.name.s[i]
         case c
-        of 'A'..'Z':
-          if i > 0 and s.name.s[i-1] in {'a'..'z'}:
-            x.add '_'
-          x.add(chr(c.ord - 'A'.ord + 'a'.ord))
-        of 'a'..'z', '_', '0'..'9':
+        of 'A'..'Z', 'a'..'z', '_', '0'..'9':
           x.add c
         else:
           x.add("HEX" & toHex(ord(c), 2))
