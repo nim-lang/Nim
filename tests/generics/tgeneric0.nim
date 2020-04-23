@@ -140,3 +140,16 @@ var res = Resource(name: "Resource 1")
 
 (proc (r: typeof(res)) =
    echo r[])(res)
+
+# bug #4061
+
+type List[T] = object
+  e: T
+  n: ptr List[T]
+
+proc zip*[T,U](xs: List[T], ys: List[U]): List[(T,U)] = discard
+
+proc unzip*[T,U](xs: List[tuple[t: T, u: U]]): (List[T], List[U]) = discard
+
+proc unzip2*[T,U](xs: List[(T,U)]): (List[T], List[U]) = discard
+
