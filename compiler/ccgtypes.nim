@@ -11,19 +11,10 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs, rod, ast
+import sighashes, modulegraphs, ic, ast
 from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
-
-proc isKeyword(w: PIdent): bool =
-  # Nim and C++ share some keywords
-  # it's more efficient to test the whole Nim keywords range
-  case w.id
-  of ccgKeywordsLow..ccgKeywordsHigh,
-     nimKeywordsLow..nimKeywordsHigh,
-     ord(wInline): return true
-  else: return false
 
 proc mangleField(m: BModule; name: PIdent): string =
   result = mangle(name.s)

@@ -54,7 +54,7 @@ proc exprStructuralEquivalent*(a, b: PNode; strictSymEquality=false): bool =
                                           strictSymEquality): return
         result = true
 
-proc sameTree*(a, b: PNode): bool =
+func sameTree*(a, b: PNode): bool =
   if a == b:
     result = true
   elif a != nil and b != nil and a.kind == b.kind:
@@ -145,8 +145,8 @@ proc effectSpec*(n: PNode, effectType: TSpecialWord): PNode =
       result = it[1]
       if result.kind notin {nkCurly, nkBracket}:
         result = newNodeI(nkCurly, result.info)
-        result.add(it[1])
-      return
+        result.safeAdd(it[1])
+      break
 
 proc propSpec*(n: PNode, effectType: TSpecialWord): PNode =
   for i in 0..<n.len:
@@ -158,7 +158,7 @@ proc unnestStmts(n, result: PNode) =
   if n.kind == nkStmtList:
     for x in items(n): unnestStmts(x, result)
   elif n.kind notin {nkCommentStmt, nkNilLit}:
-    result.add(n)
+    result.safeAdd(n)
 
 proc flattenStmts*(n: PNode): PNode =
   result = newNodeI(nkStmtList, n.info)

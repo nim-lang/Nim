@@ -23,7 +23,7 @@ function clean
 end
 
 function build-compiler
-	if ./koch temp -d:nimIncremental --nimcache:nimcache --stackTrace:on
+	if ./koch temp --verbosity:2 -d:nimIncremental --nimcache:nimcache --stackTrace:on
 		notice compiler built
 	else
 		error failed compiler build
@@ -32,7 +32,7 @@ function build-compiler
 end
 
 function build-sanity
-	if bin/nim_temp --nimcache:nimcache c --listcmd --run --embedsrc --debuginfo --stackTrace:on $test
+	if bin/nim_temp --verbosity:2 --nimcache:nimcache c --listcmd --run --embedsrc --debuginfo --stackTrace:on $test
 		notice sanity built
 	else
 		error failed sanity build
@@ -41,7 +41,7 @@ function build-sanity
 end
 
 function build-test
-	if bin/nim_temp c --listcmd --nimcache:goats --incremental:on --debuginfo --embedsrc --stackTrace:on $test
+	if bin/nim_temp c --verbosity:2 --listcmd --nimcache:goats --incremental:on --debuginfo --embedsrc --stackTrace:on $test
 		notice test built
 	else
 		error failed test build

@@ -10,8 +10,13 @@
 ## This module contains the data structures for the C code generation phase.
 
 import
-  ast, ropes, options, intsets,
-  tables, ndi, lineinfos, pathutils, modulegraphs
+
+  ast, options, intsets, idents, ndi, lineinfos, pathutils, modulegraphs,
+  wordrecg
+
+import
+
+  std / [ ropes, tables ]
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope
@@ -162,6 +167,9 @@ type
     sigConflicts*: CountTableRef[string]
     g*: BModuleList           # the complete module graph
     ndi*: NdiFile             # "nim debug info" files
+
+
+    # move all this transform stuff into ic backend?
     transforms*: TransformTable
 
   TransformKind* = enum
@@ -214,6 +222,15 @@ type
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 
+proc isKeyword*(w: PIdent): bool =
+  # Nim and C++ share some keywords
+  # it's more efficient to test the whole Nim keywords range
+  case w.id
+  of ccgKeywordsLow..ccgKeywordsHigh,
+     nimKeywordsLow..nimKeywordsHigh,
+     ord(wInline): return true
+  else: return false
+
 proc includeHeader*(this: BModule; header: string) =
   if not this.headerFiles.contains header:
     this.headerFiles.add header
@@ -253,3 +270,12 @@ proc pushType*(m: BModule, typ: PType) =
     # pointer equality is good enough here:
     if m.typeStack[i] == typ: return
   m.typeStack.add(typ)
+
+proc newPreInitProc*(m: BModule): BProc =
+  result = newProc(nil, m)
+  # little hack so that unique temporaries are generated:
+  result.labels = 100_000
+
+proc initProcOptions*(m: BModule): TOptions =
+  let opts = m.config.options
+  if sfSystemModule in m.module.flags: opts-{optStackTrace} else: opts

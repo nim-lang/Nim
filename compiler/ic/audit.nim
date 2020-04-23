@@ -1,4 +1,10 @@
-import ast, ropes, hashes, intsets, cgendata, pathutils, sighashes
+import
+
+  ".." / [ ast, cgendata, pathutils, sighashes, lineinfos ]
+
+import
+
+  hashes, intsets, strutils, ropes, tables
 
 proc hash(s: TTypeSeq): Hash =
   var
@@ -28,10 +34,10 @@ proc hash(s: IntSet): Hash =
 proc hash(s: TCFileSections): Hash =
   var
     h: Hash = 0
-  for section, rope in s.pairs:
-    if rope != nil:
+  for section, roap in s.pairs:
+    if roap != nil:
       h = h !& hash(ord(section))
-    h = h !& hash(rope)
+    h = h !& hash(roap)
   result = !$h
 
 proc hash(b: BProc): Hash =
@@ -40,7 +46,7 @@ proc hash(b: BProc): Hash =
     h: Hash = 0
   h = h !& hash(b.flags)
   if b.prc == nil:
-    h = h !& hash(nil)
+    h = h !& hash("")
   else:
     h = h !& hash($hashProc(b.prc))
   result = !$h
@@ -93,7 +99,6 @@ proc hash(list: BModuleList): Hash =
     h = h !& h.hash
   result = !$h
 
-import strutils
 proc dumpLine*(info: TLineInfo): string =
   result = "fileIndex[$#] line: $#, col: $#" % [ $info.fileIndex.int32,
                                                  $info.line, $(info.col+1) ]

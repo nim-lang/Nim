@@ -14,7 +14,7 @@ import
   intsets, nversion, nimsets, msgs, bitsets, idents, types, ccgutils, os,
   ropes, math, passes, wordrecg, treetab, cgmeth, rodutils, renderer,
   cgendata, aliases, ccgmerge, lowerings, tables, sets, ndi, lineinfos,
-  pathutils, transf, enumtostr, injectdestructors, rod, strformat
+  pathutils, transf, enumtostr, injectdestructors, ic, strformat
 
 when not defined(leanCompiler):
   import spawn, semparallel

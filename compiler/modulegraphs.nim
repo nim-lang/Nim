@@ -25,8 +25,10 @@
 ## - Its dependent module stays the same.
 ##
 
-import ast, intsets, tables, options, lineinfos, hashes, idents,
-  incremental, btrees, md5
+import
+
+  incremental, ast, intsets, tables, options, lineinfos, hashes, idents,
+  btrees, md5
 
 type
   SigHash* = distinct MD5Digest

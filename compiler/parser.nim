@@ -30,6 +30,7 @@ when isMainModule:
   checkGrammarFile()
 
 import
+
   llstream, lexer, idents, strutils, ast, msgs, options, lineinfos,
   pathutils
 

@@ -11,10 +11,9 @@
 ## `TPass` interface.
 
 import
-  options, ast, llstream, msgs,
-  idents,
-  syntaxes, idgen, modulegraphs, reorder, rod,
-  lineinfos, pathutils
+
+  options, ast, llstream, msgs, idents, syntaxes, idgen, modulegraphs,
+  reorder, lineinfos, pathutils, ic
 
 type
   TPassData* = tuple[input: PNode, closeOutput: PNode]
@@ -85,21 +84,16 @@ proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
-  var
-    tree = newTreeNode[PNode](n)
-  try:
+  compileUncachedIt(graph, n):
     var
-      m: PNode = n
+      m: PNode = it
     block prematureEvacuation:
       for i in 0..<graph.passes.len:
-        echo "pass ", i
         if graph.passes[i].process != nil:
           m = graph.passes[i].process(a[i], m)
           if m == nil:
             break prematureEvacuation
       result = true
-  finally:
-    tree.seal
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
@@ -155,13 +149,13 @@ proc processCachedModule*(graph: ModuleGraph; module: PSym;
       a[i] = nil
 
   if not graph.stopCompile():
-    let n = loadNode(graph, module)
-    var m = n
-    for i in 0..<graph.passes.len:
-      if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
-        m = graph.passes[i].process(a[i], m)
-        if isNil(m):
-          break
+    compileCachedIt(graph, module):
+      var m = it
+      for i in 0..<graph.passes.len:
+        if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
+          m = graph.passes[i].process(a[i], m)
+          if isNil(m):
+            break
 
   var m: PNode = nil
   for i in 0..<graph.passes.len:

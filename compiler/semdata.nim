@@ -115,8 +115,8 @@ type
     semInferredLambda*: proc(c: PContext, pt: TIdTable, n: PNode): PNode
     semGenerateInstance*: proc (c: PContext, fn: PSym, pt: TIdTable,
                                 info: TLineInfo): PSym
-    includedFiles*: IntSet    # used to detect recursive include files
-    pureEnumFields*: TStrTable   # pure enum fields that can be used unambiguously
+    includedFiles*: IntSet     # used to detect recursive include files
+    pureEnumFields*: TStrTable # pure enum fields that can be used unambiguously
     userPragmas*: TStrTable
     evalContext*: PEvalContext
     unknownIdents*: IntSet     # ids of all unknown identifiers to prevent
@@ -143,6 +143,7 @@ type
       # would otherwise fail.
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
+    sealed: bool  # the tree is sealed and immutable
 
 template config*(c: PContext): ConfigRef = c.graph.config
 
@@ -448,3 +449,14 @@ proc popCaseContext*(c: PContext) =
 
 proc setCaseContextIdx*(c: PContext, idx: int) =
   c.p.caseContext[^1].idx = idx
+
+# ie. Indexable.add
+proc add*(tree: PContext; father, son: PNode or PType) =
+  assert son != nil
+  assert not tree.sealed
+  if tree.sealed:
+    raise newException(Defect, "sealed tree attempted mutation")
+  when not defined(nimNoNilSeqs):
+    if father.sons == nil:
+      father.sons = @[]
+  father.sons.add son

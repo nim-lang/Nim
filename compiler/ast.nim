@@ -783,7 +783,7 @@ type
     storage*: TStorageLoc
     flags*: TLocFlags         # location's flags
     lode*: PNode              # Node where the location came from; can be faked
-    roap*: Rope               # rope value of location (code generators)
+    roap: Rope                # rope value of location (code generators)
 
   TreeRead* = object
   TreeWrite* = object
@@ -1158,7 +1158,7 @@ proc isCallExpr*(n: PNode): bool =
 
 proc discardSons*(father: PNode)
 
-type Indexable = PNode | PType
+include astmut
 
 proc len*(n: Indexable): int {.inline.} =
   when defined(nimNoNilSeqs):
@@ -1177,12 +1177,6 @@ proc safeArrLen*(n: PNode): int {.inline.} =
   if n.kind in {nkStrLit..nkTripleStrLit}:result = n.strVal.len
   elif n.kind in {nkNone..nkFloat128Lit}: result = 0
   else: result = n.len
-
-proc add*(father, son: Indexable) =
-  assert son != nil
-  when not defined(nimNoNilSeqs):
-    if isNil(father.sons): father.sons = @[]
-  father.sons.add(son)
 
 template `[]`*(n: Indexable, i: int): Indexable = n.sons[i]
 template `[]=`*(n: Indexable, i: int; x: Indexable) = n.sons[i] = x
@@ -1719,7 +1713,7 @@ proc copyTreeWithoutNode*(src, skippedNode: PNode): PNode =
     result.sons = newSeqOfCap[PNode](src.len)
     for n in src.sons:
       if n != skippedNode:
-        result.sons.add copyTreeWithoutNode(n, skippedNode)
+        result.safeAdd copyTreeWithoutNode(n, skippedNode)
 
 proc hasSonWith*(n: PNode, kind: TNodeKind): bool =
   for i in 0..<n.len:
@@ -1968,7 +1962,7 @@ proc newProcType*(info: TLineInfo; owner: PSym): PType =
   # result.n[0] used to be `nkType`, but now it's `nkEffectList` because
   # the effects are now stored in there too ... this is a bit hacky, but as
   # usual we desperately try to save memory:
-  result.n.add newNodeI(nkEffectList, info)
+  result.n.safeAdd newNodeI(nkEffectList, info)
 
 proc addParam*(procType: PType; param: PSym) =
   param.position = procType.len-1

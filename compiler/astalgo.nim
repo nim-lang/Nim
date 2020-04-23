@@ -12,8 +12,9 @@
 # the data structures here are used in various places of the compiler.
 
 import
-  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents, rodutils,
-  msgs
+
+  ast, hashes, intsets, strutils, options, lineinfos, ropes, idents,
+  rodutils, msgs
 
 proc hashNode*(p: RootRef): Hash
 proc treeToYaml*(conf: ConfigRef; n: PNode, indent: int = 0, maxRecDepth: int = - 1): Rope
