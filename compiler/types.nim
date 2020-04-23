@@ -22,7 +22,9 @@ type
     preferGenericArg,
     preferTypeName,
     preferResolved, # fully resolved symbols
-    preferMixed, # show symbol + resolved symbols if it differs, eg: seq[cint{int32}, float]
+    preferMixed,
+      # most useful, shows: symbol + resolved symbols if it differs, eg:
+      # tuple[a: MyInt{int}, b: float]
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 template `$`*(typ: PType): string = typeToString(typ)
@@ -121,6 +123,13 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
+proc addDeclaredLoc(result: var string, conf: ConfigRef; sym: PSym) =
+  result.add " [declared in " & conf$sym.info & "]"
+
+proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
+  result.add typeToString(typ, prefer)
+  if getDeclarationPath: result.addDeclaredLoc(conf, typ.sym)
+
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
   # consider using `skipGenericOwner` to avoid fun2.fun2 when fun2 is generic
@@ -140,10 +149,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     result.add(')')
     if n[0].typ != nil:
       result.add(": " & typeToString(n[0].typ, prefer))
-  if getDeclarationPath:
-    result.add " [declared in "
-    result.add(conf$sym.info)
-    result.add "]"
+  if getDeclarationPath: result.addDeclaredLoc(conf, sym)
 
 proc elemType*(t: PType): PType =
   assert(t != nil)

@@ -562,10 +562,6 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, ""
 #  include <sys/types.h>
 #endif
 
-/* Compile with -d:checkAbi and a sufficiently C11:ish compiler to enable */
-#define NIM_CHECK_SIZE(typ, sz) \
-  _Static_assert(sizeof(typ) == sz, "Nim & C disagree on type size")
-
 /* these exist to make the codegen logic simpler */
 #define nimModInt(a, b, res) (((*res) = (a) % (b)), 0)
 #define nimModInt64(a, b, res) (((*res) = (a) % (b)), 0)
