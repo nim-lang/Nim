@@ -273,6 +273,7 @@ type
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
     outDir*: AbsoluteDir
+    jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
@@ -556,11 +557,12 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   result = conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  if false:
-    doAssert not conf.outDir.isEmpty
-    doAssert not conf.outFile.isEmpty
-    # xxx: fix this pre-existing bug causing `SuccessX` error messages to lie
-    # for `jsonscript`
+  doAssert not conf.outDir.isEmpty
+  if conf.outFile.isEmpty:
+    if conf.cmd != cmdDoc:
+      # xxx fails with `nim doc lib/system/io.nim`; this is a preexisting bug;
+      # also, that doesn't show a SuccessX message
+      doAssert not conf.outFile.isEmpty
   result = conf.outDir / conf.outFile
   when defined(posix):
     if dirExists(result.string): result.string.add ".out"

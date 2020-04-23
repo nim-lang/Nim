@@ -1003,10 +1003,16 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
   var buf = newStringOfCap(50)
 
   let jsonFile = conf.getNimcacheDir / RelativeFile(conf.projectName & ".json")
+  conf.jsonBuildFile = jsonFile
+  let output = conf.absOutFile
 
   var f: File
   if open(f, jsonFile.string, fmWrite):
-    lit "{\"compile\":[\L"
+    lit "{\L"
+    lit "\"outputFile\": "
+    str $output
+
+    lit ",\L\"compile\":[\L"
     cfiles(conf, f, buf, conf.toCompile, false)
     lit "],\L\"link\":[\L"
     var objfiles = ""
@@ -1014,7 +1020,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     linkfiles(conf, f, buf, objfiles, conf.toCompile, conf.externalToLink)
 
     lit "],\L\"linkcmd\": "
-    str getLinkCmd(conf, conf.absOutFile, objfiles)
+    str getLinkCmd(conf, output, objfiles)
 
     lit ",\L\"extraCmds\": "
     lit $(%* getExtraCmds(conf, conf.absOutFile))
@@ -1074,6 +1080,17 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
   let jsonFile = toGeneratedFile(conf, projectfile, "json")
   try:
     let data = json.parseFile(jsonFile.string)
+
+    let output = data["outputFile"].getStr
+    createDir output.parentDir
+    let outputCurrent = $conf.absOutFile
+    if output != outputCurrent:
+      # previously, any specified output file would be silently ignored;
+      # simply copying won't work in some cases, for example with `extraCmds`,
+      # so we just make it an error, user should use same command for jsonscript
+      # as was used with --compileOnly.
+      globalError(conf, gCmdLineInfo, "jsonscript command outputFile '$1' must match '$2' which was specified during --compileOnly, see \"outputFile\" entry in '$3' " % [outputCurrent, output, jsonFile.string])
+
     let toCompile = data["compile"]
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq

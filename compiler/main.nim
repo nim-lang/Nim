@@ -66,8 +66,7 @@ when not defined(leanCompiler):
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
-proc commandCompileToC(graph: ModuleGraph) =
-  let conf = graph.config
+proc setOutFile(conf: ConfigRef) =
   if conf.outFile.isEmpty:
     let base = conf.projectName
     let targetName = if optGenDynLib in conf.globalOptions:
@@ -76,6 +75,9 @@ proc commandCompileToC(graph: ModuleGraph) =
       base & platform.OS[conf.target.targetOS].exeExt
     conf.outFile = RelativeFile targetName
 
+proc commandCompileToC(graph: ModuleGraph) =
+  let conf = graph.config
+  setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
@@ -370,6 +372,7 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdDump
   of "jsonscript":
     conf.cmd = cmdJsonScript
+    setOutFile(graph.config)
     commandJsonScript(graph)
   elif commandAlreadyProcessed: discard # already handled
   else:
@@ -386,7 +389,10 @@ proc mainCommand*(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    var output = $conf.absOutFile
+    var output = if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonScript:
+      $conf.jsonBuildFile
+    else:
+      $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,

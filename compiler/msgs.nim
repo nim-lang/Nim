@@ -117,6 +117,8 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
 proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
+const gCmdLineInfo* = newLineInfo(commandLineIdx, 1, 1)
+
 proc concat(strings: openArray[string]): string =
   var totalLen = 0
   for s in strings: totalLen += s.len
