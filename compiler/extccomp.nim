@@ -157,7 +157,7 @@ compiler vcc:
     optSize: " /O1 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c$vccplatform $options $include /nologo /MD /Fo$objfile $file",
+    compileTmpl: "/c$vccplatform $options $include /nologo /Fo$objfile $file",
     buildGui: " /SUBSYSTEM:WINDOWS user32.lib ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
