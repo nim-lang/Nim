@@ -56,7 +56,7 @@ proc newRope(data: string): Rope =
 
 var
   cache {.threadvar.}: Rope # the root of the cache tree
-  N {.threadvar.}: Rope     # dummy rope needed for splay algorithm
+  styleN {.threadvar.}: Rope     # dummy rope needed for splay algorithm
 
 when countCacheMisses:
   var misses, hits: int
@@ -64,10 +64,10 @@ when countCacheMisses:
 proc splay(s: string, tree: Rope, cmpres: var int): Rope =
   var c: int
   var t = tree
-  N.left = nil
-  N.right = nil # reset to nil
-  var le = N
-  var r = N
+  styleN.left = nil
+  styleN.right = nil # reset to nil
+  var le = styleN
+  var r = styleN
   while true:
     c = cmp(s, t.data)
     if c < 0:
@@ -95,8 +95,8 @@ proc splay(s: string, tree: Rope, cmpres: var int): Rope =
   cmpres = c
   le.right = t.left
   r.left = t.right
-  t.left = N.right
-  t.right = N.left
+  t.left = styleN.right
+  t.right = styleN.left
   result = t
 
 proc insertInCache(s: string, tree: Rope): Rope =
@@ -328,6 +328,6 @@ proc equalsFile*(r: Rope, filename: string): bool {.rtl, extern: "nro$1Str".} =
     result = equalsFile(r, f)
     close(f)
 
-new(N) # init dummy node for splay algorithm
+new(styleN) # init dummy node for splay algorithm
 
 {.pop.}
