@@ -239,6 +239,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(arm64): result.err = reDisabled
         of "openbsd":
           when defined(openbsd): result.err = reDisabled
+        of "netbsd":
+          when defined(netbsd): result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
