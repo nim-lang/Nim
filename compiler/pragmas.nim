@@ -251,7 +251,7 @@ proc wordToCallConv(sw: TSpecialWord): TCallingConvention =
 
 proc isTurnedOn(c: PContext, n: PNode): bool =
   if n.kind in nkPragmaCallKinds and n.len == 2:
-    let x = forceBool(c, c.semConstExpr(c, n[1]))
+    let x = c.semConstBoolExpr(c, n[1])
     n[1] = x
     if x.kind == nkIntLit: return x.intVal != 0
   localError(c.config, n.info, "'on' or 'off' expected")
@@ -334,8 +334,7 @@ proc processNote(c: PContext, n: PNode) =
     let x = findStr(toStrArray, n[0][1].ident.s)
     if x >= 0:
       nk = TNoteKind(x + ord(msgMin))
-      let x = forceBool(c, c.semConstExpr(c, n[1]))
-      
+      let x = c.semConstBoolExpr(c, n[1])
       n[1] = x
       if x.kind == nkIntLit and x.intVal != 0: incl(notes, nk)
       else: excl(notes, nk)
