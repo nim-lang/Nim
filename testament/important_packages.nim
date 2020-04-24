@@ -50,8 +50,9 @@ pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 pkg "nicy", false, "nim c src/nicy.nim"
 
 when defined(osx):
-  # do this more generally by installing non-nim dependencies automatically
-  # as specified in nimble file
+  # xxx: do this more generally by installing non-nim dependencies automatically
+  # as specified in nimble file and calling `distros.foreignDepInstallCmd`, but
+  # it currently would fail work if a package is already installed.
   doAssert execShellCmd("brew ls --versions gtk+3 || brew install gtk+3") == 0
 pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
 
