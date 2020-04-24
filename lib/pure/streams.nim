@@ -841,7 +841,7 @@ proc peekFloat64*(s: Stream): float64 =
 
   peek(s, result)
 
-proc readStr*(s: Stream, length: int, str: var TaintedString) =
+proc readStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
 
@@ -862,7 +862,7 @@ proc readStr*(s: Stream, length: int): TaintedString =
   result = newString(length).TaintedString
   readStr(s, length, result)
 
-proc peekStr*(s: Stream, length: int, str: var TaintedString) =
+proc peekStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
 
