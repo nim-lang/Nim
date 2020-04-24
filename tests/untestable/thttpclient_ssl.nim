@@ -101,11 +101,12 @@ template evaluate(exception_msg: string, category: Category, desc: string) =
     if category in {good_broken, dubious_broken, bad_broken}:
       skip()
     if raised:
-      check exception_msg == "No SSL certificate found." or
+      # check exception_msg == "No SSL certificate found." or
+      doAssert exception_msg == "No SSL certificate found." or
         exception_msg == "SSL Certificate check failed." or
         exception_msg.contains("certificate verify failed") or
         exception_msg.contains("key too small") or
-        exception_msg.contains "shutdown while in init"
+        exception_msg.contains "shutdown while in init", exception_msg
 
   else:
     # this is unexpected
