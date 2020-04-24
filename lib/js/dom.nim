@@ -1346,39 +1346,29 @@ proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 since (1, 3):
   func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
-
   func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
     ## Parse from string to `Document`.
 
   proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
     ## DOM Exception constructor
-    
   proc message*(ex: DomException): cstring {.importcpp: "#.message", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/message
-  
   proc name*(ex: DomException): cstring  {.importcpp: "#.name", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
 
   proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
     ## File Reader constructor
-
   proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
-
   proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
-
   proc resultAsString*(f: FileReader): cstring {.importcpp: "#.result", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/result
-
   proc abort*(f: FileReader) {.importcpp: "#.abort()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/abort
-
   proc readAsBinaryString*(f: FileReader, b: Blob) {.importcpp: "#.readAsBinaryString(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
-  
   proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
-    
   proc readAsText*(f: FileReader, f: File, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText
