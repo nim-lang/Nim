@@ -720,7 +720,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
       of nkElifBranch:
         checkSonsLen(it, 2, c.config)
         if c.inGenericContext == 0:
-          var e = semConstBoolExpr(c, it[0])
+          var e = forceBool(c, semConstExpr(c, it[0]))
           if e.kind != nkIntLit: internalError(c.config, e.info, "semRecordNodeAux")
           elif e.intVal != 0 and branch == nil: branch = it[1]
         else:

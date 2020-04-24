@@ -480,17 +480,6 @@ proc forceBool(c: PContext, n: PNode): PNode =
   result = fitNode(c, getSysType(c.graph, n.info, tyBool), n, n.info)
   if result == nil: result = n
 
-proc semConstBoolExpr(c: PContext, n: PNode): PNode =
-  let nn = semExprWithType(c, n)
-  result = fitNode(c, getSysType(c.graph, n.info, tyBool), nn, nn.info)
-  if result == nil:
-    localError(c.config, n.info, errConstExprExpected)
-    return nn
-  result = getConstExpr(c.module, result, c.graph)
-  if result == nil:
-    localError(c.config, n.info, errConstExprExpected)
-    result = nn
-
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
 
@@ -515,7 +504,6 @@ proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
   c.semTryConstExpr = tryConstExpr
   c.computeRequiresInit = computeRequiresInit
   c.semOperand = semOperand
-  c.semConstBoolExpr = semConstBoolExpr
   c.semOverloadedCall = semOverloadedCall
   c.semInferredLambda = semInferredLambda
   c.semGenerateInstance = generateInstance
