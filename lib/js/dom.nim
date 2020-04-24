@@ -1361,7 +1361,7 @@ since (1, 3):
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
   proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
-  proc resultAsString*(f: FileReader): cstring {.importcpp: "(DOMString) #.result", nodecl.}
+  proc resultAsString*(f: FileReader): cstring {.importcpp: "#.result", nodecl.}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/result
   proc abort*(f: FileReader) {.importcpp: "#.abort()".}
     ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/abort
