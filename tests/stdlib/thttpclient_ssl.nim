@@ -126,6 +126,5 @@ when not defined(windows):
         # SSL_shutdown:shutdown while in init
         if not (msg.contains("shutdown while in init") or msg.contains("alert number 48") or
           msg.contains("routines:CONNECT_CR_CERT:certificate verify failed")):
-          # pending https://github.com/nim-lang/Nim/pull/10558 simplify as: check(condition, msg)
           echo "CVerifyPeer exception: " & msg
           check(false)
