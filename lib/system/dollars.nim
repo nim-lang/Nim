@@ -45,9 +45,9 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ## `typetraits module <typetraits.html>`_.
   ##
   ## .. code-block:: Nim
-  ##   doAssert $(type(42)) == "int"
-  ##   doAssert $(type("Foo")) == "string"
-  ##   static: doAssert $(type(@['A', 'B'])) == "seq[char]"
+  ##   doAssert $(typeof(42)) == "int"
+  ##   doAssert $(typeof("Foo")) == "string"
+  ##   static: doAssert $(typeof(@['A', 'B'])) == "seq[char]"
 
 when defined(nimHasIsNamedTuple):
   proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}

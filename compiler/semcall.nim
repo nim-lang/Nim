@@ -633,7 +633,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     if s.ast[genericParamsPos].safeLen != n.len-1:
       let expected = s.ast[genericParamsPos].safeLen
       localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
-         "'; got " & $(n.len-1) & " type(s) but expected " & $expected)
+         "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)

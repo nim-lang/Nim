@@ -651,7 +651,7 @@ Example: Lifting Procs
     ##  # now abs(@[@[1,-2], @[-2,-3]]) == @[@[1,2], @[2,3]]
     proc fname[T](x: openarray[T]): auto =
       var temp: T
-      type outType = type(fname(temp))
+      type outType = typeof(fname(temp))
       result = newSeq[outType](x.len)
       for i in 0..<x.len:
         result[i] = fname(x[i])

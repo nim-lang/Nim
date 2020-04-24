@@ -587,7 +587,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if t.n == nil:
         result = "unknown"
       else:
-        result = "type(" & renderTree(t.n) & ")"
+        result = "typeof(" & renderTree(t.n) & ")"
     of tyArray:
       if t[0].kind == tyRange:
         result = "array[" & rangeToStr(t[0].n) & ", " &

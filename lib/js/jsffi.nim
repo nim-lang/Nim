@@ -83,7 +83,7 @@ proc toJsKey*[T: SomeFloat](text: cstring, t: type T): T {.importcpp: "parseFloa
 
 type
   JsKey* = concept a, type T
-    cstring.toJsKey(T) is type(a)
+    cstring.toJsKey(T) is T
 
   JsObject* = ref object of JsRoot
     ## Dynamically typed wrapper around a JavaScript object.

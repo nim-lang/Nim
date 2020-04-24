@@ -48,7 +48,7 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## .. code-block:: nim
   ##   type
   ##     Functor[A] = concept f
-  ##       type MatchedGenericType = genericHead(f.type)
+  ##       type MatchedGenericType = genericHead(typeof(f))
   ##         # `f` will be a value of a type such as `Option[T]`
   ##         # `MatchedGenericType` will become the `Option` type
 
