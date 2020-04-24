@@ -89,7 +89,7 @@ since (1, 1):
 
 since (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
-    ## Return `i`th element of `T`
+    ## Return `i`\th element of `T`
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     type(default(T)[i])
 
