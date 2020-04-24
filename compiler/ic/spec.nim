@@ -65,4 +65,5 @@ when false:
 const
   nimIcAudit = when not defined(release): true else: false
 when nimIcAudit:
-  include audit
+  import audit
+  export audit

@@ -4,7 +4,7 @@ import
 
 import
 
-  hashes, intsets, strutils, ropes, tables
+  hashes, intsets, strutils, ropes
 
 proc hash(s: TTypeSeq): Hash =
   var
