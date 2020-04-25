@@ -43,6 +43,10 @@ type
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
+    when defined(gcOrc):
+      rootIdx: int # thanks to this we can delete potential cycle roots
+                   # in O(1) without doubly linked lists
+
   Cell = ptr RefHeader
 
 template `+!`(p: pointer, s: int): pointer =
@@ -85,6 +89,8 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   else:
     var orig = cast[ptr RefHeader](alloc(s))
   orig.rc = 0
+  when defined(gcOrc):
+    orig.rootIdx = 0
   result = orig +! sizeof(RefHeader)
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
@@ -131,7 +137,9 @@ when defined(gcOrc):
   when defined(nimThinout):
     include cyclebreaker
   else:
-    include cyclicrefs_v2
+    include cyclicrefs_bacon
+    #include cyclecollector
+    #include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:

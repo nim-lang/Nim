@@ -14,6 +14,7 @@
 # "Cyclic reference counting" by Rafael Dueire Lins
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 
+type PT = ptr pointer
 include cellseqs_v2
 
 const
