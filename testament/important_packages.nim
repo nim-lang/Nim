@@ -35,7 +35,7 @@ pkg "gnuplot"
 # pkg "godot", "nim c -r godot/godot.nim" # not yet compatible with Nim 0.19
 pkg "hts", "nim c -o:htss src/hts.nim"
 pkg "illwill", "nimble examples"
-pkg "inim", "", true
+# pkg "inim", "", true
 pkg "itertools", "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
@@ -61,7 +61,7 @@ pkg "nimquery"
 pkg "nimsl", "", true
 pkg "nimsvg"
 # pkg "nimterop", "", true
-pkg "nimx", "nim c --threads:on test/main.nim", true
+# pkg "nimx", "nim c --threads:on test/main.nim", true
 pkg "norm", "nim c -r tests/tsqlite.nim", true
 pkg "npeg"
 pkg "ormin", "nim c -o:orminn ormin.nim", true
