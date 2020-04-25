@@ -1,11 +1,11 @@
 ## This module implements the new compilation cache.
 import
 
-  ".." / [ ast, cgendata, sighashes, modulegraphs ]
+  ".." / [ ast, cgendata, sighashes, modulegraphs, ropes ]
 
 import
 
-  tables, ropes
+  std / [ os, tables ]
 
 type
   CacheStrategy* {.pure.} = enum
@@ -67,3 +67,6 @@ const
 when nimIcAudit:
   import audit
   export audit
+
+proc `$`*(m: BModule): string =
+  result = $m.module.id & ".." & splitFile(m.cfilename.string).name

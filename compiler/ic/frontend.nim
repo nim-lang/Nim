@@ -1,15 +1,16 @@
 import
 
   ".." / [ ast, cgendata, sighashes, options, modulegraphs, pathutils,
-  astalgo, nversion, condsyms, lineinfos, incremental, msgs, idgen, btrees ]
+  ropes, astalgo, nversion, condsyms, lineinfos, incremental, msgs, idgen,
+  btrees, idents, magicsys, cgmeth, extccomp, trees ]
 
 import
 
-  db_sqlite, ropes, intsets, strutils, tables
+  std / [ db_sqlite, intsets, strutils, tables ]
 
 import
 
-  spec, utils
+  spec, utils, store
 
 type
   SqlId = int64
@@ -105,8 +106,8 @@ proc pushSym(w: var Writer, s: PSym) =
 
 template w: untyped = g.incr.w
 
-proc encodeNode(g: ModuleGraph; fInfo: TLineInfo; n: PNode;
-                result: var EncodingString) =
+proc encodeNode*(g: ModuleGraph; fInfo: TLineInfo; n: PNode;
+                 result: var EncodingString) =
   if n == nil:
     # nil nodes have to be stored too:
     result.add OpenNode, CloseNode
@@ -163,7 +164,7 @@ proc encodeNode(g: ModuleGraph; fInfo: TLineInfo; n: PNode;
       encodeNode(g, n.info, n[i], result)
   result.add(CloseNode)
 
-proc encodeLoc(g: ModuleGraph; loc: TLoc, result: var EncodingString) =
+proc encodeLoc*(g: ModuleGraph; loc: TLoc, result: var EncodingString) =
   var oldLen = result.len
   result.add OpenLoc
   if loc.k != low(loc.k):
@@ -183,7 +184,7 @@ proc encodeLoc(g: ModuleGraph; loc: TLoc, result: var EncodingString) =
       encodeNode(g, unknownLineInfo, loc.lode, result)
   if loc.r != nil:
     result.add AnLiteral
-    encodeStr($(Rope cast[Rope](Rope $(Rope loc.r))), result)
+    encodeStr($loc.r, result)
   if oldLen + 1 == result.len:
     # no data was necessary, so remove the '<' again:
     setLen(result, oldLen)
@@ -441,13 +442,13 @@ proc typeAlreadyStored*(g: ModuleGraph; p: PType): bool =
     query = sql"select nimid from types where nimid = ? limit 1"
   result = db.getValue(query, p.uniqueId) == $p.uniqueId
 
-proc typeAlreadyStored(g: ModuleGraph; nimid: int): bool =
+proc typeAlreadyStored*(g: ModuleGraph; nimid: int): bool =
   if g.config.symbolFiles == disabledSf: return
   const
     query = sql"select nimid from types where nimid = ? limit 1"
   result = db.getValue(query, nimid) == $nimid
 
-proc symbolAlreadyStored(g: ModuleGraph; nimid: int): bool =
+proc symbolAlreadyStored*(g: ModuleGraph; nimid: int): bool =
   if g.config.symbolFiles == disabledSf: return
   const
     query = sql"select nimid from symbols where nimid = ? limit 1"
@@ -553,17 +554,12 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
 
 # ---------------- decoder -----------------------------------
 
-type
-  BlobReader = object
-    s: string
-    pos: int
-
 using
   b: var BlobReader
   g: ModuleGraph
 
-proc loadSym(g; id: int, info: TLineInfo): PSym
-proc loadType(g; id: int, info: TLineInfo): PType
+proc loadSym*(g; id: int, info: TLineInfo): PSym
+proc loadType*(g; id: int, info: TLineInfo): PType
 
 proc decodeLineInfo(g; b; info: var TLineInfo) =
   if b.s[b.pos] in {JustCol, LineAndCol, LineColFile}:
@@ -658,10 +654,10 @@ proc decodeNodeLazyBody(g; b; fInfo: TLineInfo,
   else:
     internalError(g.config, fInfo, "decodeNode: '(' missing " & $b.pos)
 
-proc decodeNode(g; b; fInfo: TLineInfo): PNode =
+proc decodeNode*(g; b; fInfo: TLineInfo): PNode =
   result = decodeNodeLazyBody(g, b, fInfo, nil)
 
-proc decodeLoc(g; b; loc: var TLoc, info: TLineInfo) =
+proc decodeLoc*(g; b; loc: var TLoc, info: TLineInfo) =
   if b.s[b.pos] == OpenLoc:
     inc(b.pos)
     if b.s[b.pos] in {'0'..'9', 'a'..'z', 'A'..'Z'}:
@@ -692,25 +688,7 @@ proc decodeLoc(g; b; loc: var TLoc, info: TLineInfo) =
     if b.s[b.pos] == CloseLoc: inc(b.pos)
     else: internalError(g.config, info, "decodeLoc " & b.s[b.pos])
 
-proc newBlobReader(blob: string): BlobReader =
-  result = BlobReader(pos: 0)
-  shallowCopy(result.s, blob)
-  # ensure we can read without index checks:
-  result.s.add '\0'
-  result = BlobReader(pos: 0)
-  shallowCopy(result.s, blob)
-  # ensure we can read without index checks:
-  result.s.add '\0'
-
-proc loadBlob(g; query: SqlQuery; id: int): BlobReader =
-  let blob = db.getValue(query, id)
-  if blob.len == 0:
-    writeStackTrace()
-    raise newException(Defect, "cannot find id " & $id)
-    #internalError(g.config, "symbolfiles: cannot find ID " & $ id)
-  result = newBlobReader(blob)
-
-proc loadType(g; id: int; info: TLineInfo): PType =
+proc loadType*(g; id: int; info: TLineInfo): PType =
   result = g.incr.r.types.getOrDefault(id)
   if result != nil: return result
   var b = loadBlob(g, sql"select data from types where nimid = ?", id)
@@ -920,7 +898,7 @@ proc loadSymFromBlob(g; b; info: TLineInfo): PSym =
     registerCompilerProc(g, result)
     #echo "loading ", result.name.s
 
-proc loadSym(g; id: int; info: TLineInfo): PSym =
+proc loadSym*(g; id: int; info: TLineInfo): PSym =
   result = g.incr.r.syms.getOrDefault(id)
   if result != nil: return result
   var b = loadBlob(g, sql"select data from syms where nimid = ?", id)
@@ -1086,30 +1064,36 @@ proc setupModuleCache*(g: ModuleGraph) =
   if lastId.len > 0:
     idgen.setId(parseInt lastId)
 
-template performCachingOnIt*(context: typed;
-                             it: PNode; strategy: set[CacheStrategy];
+template seal*(tree: typed) =
+  ## furry lobster
+  tree.sealed = true
+
+template performCachingOnIt*(context: typed; n: PNode;
+                             strategy: set[CacheStrategy];
                              body: untyped): untyped =
-  #var
-  #  tree = newTreeNode(it, strategy = strategy)
   let
     audit = it.hash
+  var
+    it {.inject.} = n
   try:
     body
   finally:
     context.seal
 
     when nimIcAudit:
-      if audit != it.hash:
+      if audit != it.hash and Write notin strategy:
         raise newException(Defect, "audit fail")
 
-template compileUncachedIt*(g: ModuleGraph; context: typed; it: PNode;
+template compileUncachedIt*(g: ModuleGraph; context: typed; n: PNode;
                             body: untyped): untyped =
-  context.performCachingOnIt(it, {Write, Read}):
+  var
+    it {.inject.} = n
+  context.performCachingOnIt(n, {Write, Read}):
     body
 
 template compileCachedIt*(g: ModuleGraph; context: typed; p: PSym;
                           body: untyped): untyped =
   var
     it {.inject.} = loadNode(graph, p)
-  context.performCachingOnIt(it, {Read, Immutable}):
+  context.performCachingOnIt(n, {Read, Immutable}):
     body

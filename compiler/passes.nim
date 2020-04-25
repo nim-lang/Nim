@@ -86,7 +86,7 @@ proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray)
   # this implements the code transformation pipeline
   compileUncachedIt(graph, n):
     var
-      m: PNode = it
+      m: PNode = n
     block prematureEvacuation:
       for i in 0..<graph.passes.len:
         if graph.passes[i].process != nil:

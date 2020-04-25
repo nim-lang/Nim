@@ -1,12 +1,14 @@
 import
 
-  ".." / [ ast, cgendata, pathutils, sighashes, lineinfos ]
+  ".." / [ ast, cgendata, pathutils, sighashes, lineinfos, ropes,
+  modulegraphs ]
 
 import
 
-  hashes, intsets, strutils, ropes
+  std / [ hashes, intsets, strutils ]
 
 proc hash(s: TTypeSeq): Hash =
+  # good enough indeed
   var
     h: Hash = 0
   for t in s.items:

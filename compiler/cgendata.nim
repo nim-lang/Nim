@@ -12,11 +12,11 @@
 import
 
   ast, options, intsets, idents, ndi, lineinfos, pathutils, modulegraphs,
-  wordrecg
+  wordrecg, ropes
 
 import
 
-  std / [ ropes, tables ]
+  std / [ tables ]
 
 type
   TLabel* = Rope              # for the C generator a label is just a rope

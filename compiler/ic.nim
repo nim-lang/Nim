@@ -13,12 +13,13 @@ import
 
   msgs, options, ast, renderer, idents, astalgo, btrees, magicsys, cgmeth,
   extccomp, treetab, condsyms, nversion, pathutils, cgendata, trees, ndi,
-  sighashes, modulegraphs, idgen, lineinfos, incremental, types, ccgutils
+  sighashes, modulegraphs, idgen, lineinfos, incremental, types, ccgutils,
+  ropes
 
 import
 
-  strformat, os, db_sqlite, intsets, tables, strutils, sequtils, hashes,
-  macros, ropes
+  std / [ strformat, os, db_sqlite, intsets, tables, strutils, sequtils,
+  hashes, macros ]
 
 import sets except rightSize
 
@@ -28,7 +29,7 @@ export nimIncremental
 
 import # ic imports
 
-  ic / [ spec, backend, frontend, utils ]
+  ic / [ spec, backend, frontend, store, utils ]
 
 # backend API
 export
@@ -39,7 +40,7 @@ export
 # frontend API
 export
 
-  compileCachedIt, compileUncachedIt
+  compileCachedIt, compileUncachedIt, seal
 
 ## TODO:
 ## - Add some backend logic dealing with generics.
@@ -54,29 +55,22 @@ template config(): ConfigRef = cache.modules.config
 # idea for testing all this logic: *Always* load the AST from the DB, whether
 # we already have it in RAM or not!
 
-proc `$`(m: BModule): string =
-  result = $m.module.id & ".." & splitFile(m.cfilename.string).name
-
-proc newTreeNode*[T: CacheableObject](node: var T;
-                                      strategy = {Read, Immutable}):
-                                      TreeNode =
-  assert node != nil
-  result.strategy = {Writes}
-  result.node = node
-  when T is PNode:
-    result.kind = CacheUnitKind.Node
-  elif T is PSym:
-    result.kind = CacheUnitKind.Symbol
-  elif T is PType:
-    result.kind = CacheUnitKind.Type
-  else:
-    {.fatal: "unsupported node type".}
-
-proc seal(tree: var TreeNode) =
-  ## furry lobster
-  tree.sealed = true
-
 when false:
+  proc newTreeNode*[T: CacheableObject](node: var T;
+                                        strategy = {Reads, Immutable}):
+                                        TreeNode =
+    assert node != nil
+    result.strategy = {Writes}
+    result.node = node
+    when T is PNode:
+      result.kind = CacheUnitKind.Node
+    elif T is PSym:
+      result.kind = CacheUnitKind.Symbol
+    elif T is PType:
+      result.kind = CacheUnitKind.Type
+    else:
+      {.fatal: "unsupported node type".}
+
   proc write[T: CacheableObject](g: ModuleGraph; tree: var TreeNode[T]) =
     assert Writes in tree.strategy
     if not Writes in tree.trategy:
