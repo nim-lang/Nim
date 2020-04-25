@@ -39,9 +39,10 @@ type
     onselect*: proc (event: Event) {.nimcall.}
     onsubmit*: proc (event: Event) {.nimcall.}
     onunload*: proc (event: Event) {.nimcall.}
-    onloadstart*: proc (event: Event) {.nimcall.}
-    onprogress*: proc (event: Event) {.nimcall.}
-    onloadend*: proc (event: Event) {.nimcall.}
+    when (NimMajor, NimMinor) >= (1, 3):
+      onloadstart*: proc (event: Event) {.nimcall.}
+      onprogress*: proc (event: Event) {.nimcall.}
+      onloadend*: proc (event: Event) {.nimcall.}
 
   DomEvent* {.pure.} = enum
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
