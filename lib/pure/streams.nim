@@ -841,6 +841,16 @@ proc peekFloat64*(s: Stream): float64 =
 
   peek(s, result)
 
+proc readStrPrivate(s: Stream, length: int, str: var TaintedString) =
+  if length > len(str): setLen(str.string, length)
+  var L = readData(s, cstring(str), length)
+  if L != len(str): setLen(str.string, L)
+
+proc readStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+  ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
+  ## an error occurred.
+  readStrPrivate(s, length, str)
+
 proc readStr*(s: Stream, length: int): TaintedString =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
@@ -851,10 +861,18 @@ proc readStr*(s: Stream, length: int): TaintedString =
     doAssert strm.readStr(2) == "e"
     doAssert strm.readStr(2) == ""
     strm.close()
-
   result = newString(length).TaintedString
-  var L = readData(s, cstring(result), length)
-  if L != length: setLen(result.string, L)
+  readStrPrivate(s, length, result)
+
+proc peekStrPrivate(s: Stream, length: int, str: var TaintedString) =
+  if length > len(str): setLen(str.string, length)
+  var L = peekData(s, cstring(str), length)
+  if L != len(str): setLen(str.string, L)
+
+proc peekStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+  ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
+  ## an error occurred.
+  peekStrPrivate(s, length, str)
 
 proc peekStr*(s: Stream, length: int): TaintedString =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
@@ -867,10 +885,8 @@ proc peekStr*(s: Stream, length: int): TaintedString =
     doAssert strm.readStr(2) == "ab"
     doAssert strm.peekStr(2) == "cd"
     strm.close()
-
   result = newString(length).TaintedString
-  var L = peekData(s, cstring(result), length)
-  if L != length: setLen(result.string, L)
+  peekStrPrivate(s, length, result)
 
 proc readLine*(s: Stream, line: var TaintedString): bool =
   ## Reads a line of text from the stream `s` into `line`. `line` must not be

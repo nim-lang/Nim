@@ -53,4 +53,13 @@ block: # nkCheckedFieldExpr
 
   waitFor foo()
 
+block: # 12743
+
+  template templ = await sleepAsync 0
+
+  proc prc {.async.} = templ
+
+  waitFor prc()
+
+
 echo "ok"
