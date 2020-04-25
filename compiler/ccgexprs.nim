@@ -821,7 +821,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     initLoc(test, locNone, it, OnStack)
     initLocExpr(p, it[1], u)
     initLoc(v, locExpr, disc, OnUnknown)
-    v.setRope obj & "." & "." & disc.sym.loc.r
+    v.setRope obj & "." & disc.sym.loc.r
     genInExprAux(p, it, u, v, test)
     let msg = genFieldError(field, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
