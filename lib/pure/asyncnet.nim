@@ -782,7 +782,7 @@ proc isClosed*(socket: AsyncSocket): bool =
 
 proc sendTo*(socket: AsyncSocket, data: pointer, dataSize: int, address: string,
              port: Port, flags = {SocketFlag.SafeDisconn}): owned(Future[void])
-            {.async.} =
+            {.async, since: (1, 3).} =
   ## This proc sends ``data`` to the specified ``address``, which may be an IP
   ## address or a hostname. If a hostname is specified this function will try
   ## each IP of that hostname. The returned future will complete once all data
@@ -804,7 +804,7 @@ proc sendTo*(socket: AsyncSocket, data: pointer, dataSize: int, address: string,
   
   while it != nil:
     let fut = sendTo(socket.fd.AsyncFD, data, dataSize, it.ai_addr,
-                   it.ai_addrlen.SockLen, flags)
+                     it.ai_addrlen.SockLen, flags)
     
     yield fut
 
@@ -831,7 +831,7 @@ proc sendTo*(socket: AsyncSocket, data: pointer, dataSize: int, address: string,
     retFuture.complete()
 
 proc sendTo*(socket: AsyncSocket, data, address: string, port: Port):
-             owned(Future[void]) {.async.} =
+            owned(Future[void]) {.async, since: (1, 3).} =
   ## This proc sends ``data`` to the specified ``address``, which may be an IP
   ## address or a hostname. If a hostname is specified this function will try
   ## each IP of that hostname. The returned future will complete once all data
@@ -842,7 +842,8 @@ proc sendTo*(socket: AsyncSocket, data, address: string, port: Port):
 
 proc recvFrom*(socket: AsyncSocket, data: pointer, size: int,
                address: FutureVar[string], port: FutureVar[Port],
-               flags = {SocketFlag.SafeDisconn}): owned(Future[int]) {.async.} =
+               flags = {SocketFlag.SafeDisconn}): owned(Future[int])
+              {.async, since: (1, 3).} =
   ## Receives a datagram data from ``socket`` into ``data``, which must be at
   ## least of size ``size``. The address and port of datagram's sender will be
   ## stored into ``address`` and ``port``, respectively. Returned future will
@@ -880,8 +881,8 @@ proc recvFrom*(socket: AsyncSocket, data: pointer, size: int,
     port.complete(ntohs(sAddr.sin_port).Port)
 
 proc recvFrom*(socket: AsyncSocket, data: pointer, size: int):
-               owned(Future[tuple[size: int, address: string, port: Port]])
-               {.async.} =
+              owned(Future[tuple[size: int, address: string, port: Port]])
+              {.async, since: (1, 3).} =
   ## Receives a datagram data from ``socket`` into ``data``, which must be at
   ## least of size ``size``. Returned future will complete once one datagram has
   ## been received and will return tuple with: size of packet received; and
