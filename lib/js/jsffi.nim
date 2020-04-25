@@ -22,7 +22,7 @@
 ##  var document {.importc, nodecl.}: JsObject
 ##  var console {.importc, nodecl.}: JsObject
 ##  # import the "$" function
-##  proc jq(selector: JsObject): JsObject {.importcpp: "$(#)".}
+##  proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
 ##
 ##  # Use jQuery to make the following code run, after the document is ready.
 ##  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
