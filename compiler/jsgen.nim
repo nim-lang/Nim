@@ -530,11 +530,10 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
     gen(p, n[1], r)
     xLoc = r.rdLoc
 
-  template applyFormat(frmtA, frmtB: string) =
-    if i == 0:
-      r.res = frmtA % [xLoc, yLoc]
-    else:
-      r.res = frmtB % [xLoc, yLoc]
+  template applyFormat(frmt) =
+    r.res = frmt % [xLoc, yLoc]
+  template applyFormat(frmtA, frmtB) =
+    if i == 0: applyFormat(frmtA) else: applyFormat(frmtB)
 
   case op:
   of mAddI: applyFormat("addInt($1, $2)", "($1 + $2)")
@@ -596,7 +595,9 @@ proc arithAux(p: PProc, n: PNode, r: var TCompRes, op: TMagic) =
   of mBoolToStr: applyFormat("nimBoolToStr($1)", "nimBoolToStr($1)")
   of mIntToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
   of mInt64ToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
-  of mFloatToStr: applyFormat("cstrToNimstr(($1)+\"\")", "cstrToNimstr(($1)+\"\")")
+  of mFloatToStr:
+    useMagic(p, "nimFloatToString")
+    applyFormat "cstrToNimstr(nimFloatToString($1))"
   of mCStrToStr: applyFormat("cstrToNimstr($1)", "cstrToNimstr($1)")
   of mStrToStr, mUnown: applyFormat("$1", "$1")
   else:
