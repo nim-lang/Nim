@@ -722,7 +722,8 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
 const stdlibDirs = [
   "pure", "core", "arch",
   "pure/collections",
-  "pure/concurrency", "impure",
+  "pure/concurrency",
+  "pure/unidecode", "impure",
   "wrappers", "wrappers/linenoise",
   "windows", "posix", "js"]
 
