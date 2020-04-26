@@ -1,7 +1,24 @@
+include system/inclrtl
+
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. ``$`` is Nim's general way of
   ## spelling `toString`:idx:.
+
+when defined(js):
+  when (NimMajor, NimMinor, NimPatch) >= (1, 3, 3):
+    proc `$`*(x: uint): string =
+      ## Caveat: currently implemented as $(cast[int](x)), tied to current
+      ## semantics of js' Number type.
+      # for c, see strmantle.`$`
+      $(cast[int](x))
+
+    proc `$`*(x: uint64): string =
+      ## Compatibility note:
+      ## the results may change in future releases if/when js target implements
+      ## 64bit ints.
+      # pending https://github.com/nim-lang/RFCs/issues/187
+      $(cast[int](x))
 
 proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`

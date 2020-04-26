@@ -54,6 +54,18 @@ type
 
 include "system/basic_types"
 
+const
+  NimMajor* {.intdefine.}: int = 1
+    ## is the major number of Nim's version.
+
+  NimMinor* {.intdefine.}: int = 3
+    ## is the minor number of Nim's version.
+    # Odd for devel, even for releases.
+
+  NimPatch* {.intdefine.}: int = 3
+    ## is the patch number of Nim's version.
+    # For devel, increment by 2 as needed to keep it odd or change docgen logic
+    # from `NimPatch mod 2 == 1` to  `NimMinor mod 2 == 1`.
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
@@ -2054,15 +2066,6 @@ import system/dollars
 export dollars
 
 const
-  NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 3
-    ## is the minor number of Nim's version.
-
-  NimPatch* {.intdefine.}: int = 1
-    ## is the patch number of Nim's version.
-
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 

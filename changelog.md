@@ -43,6 +43,8 @@
 
 - Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
 
+- `dollars.$` now works for unsigned ints with `nim js`
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
