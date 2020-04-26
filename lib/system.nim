@@ -54,17 +54,6 @@ type
 
 include "system/basic_types"
 
-const
-  NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 3
-    ## is the minor number of Nim's version.
-    ## Odd for devel, even for releases.
-
-  NimPatch* {.intdefine.}: int = 1
-    ## is the patch number of Nim's version.
-
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
   ## Can be used to determine an `on|off` compile-time option. Example:
@@ -2059,6 +2048,16 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+const
+  NimMajor* {.intdefine.}: int = 1
+    ## is the major number of Nim's version.
+
+  NimMinor* {.intdefine.}: int = 3
+    ## is the minor number of Nim's version.
+    ## Odd for devel, even for releases.
+
+  NimPatch* {.intdefine.}: int = 1
+    ## is the patch number of Nim's version.
 
 import system/dollars
 export dollars
