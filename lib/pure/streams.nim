@@ -96,6 +96,9 @@
 
 include "system/inclrtl"
 
+when defined(js):
+  import std/jsarrays
+
 const taintMode = compileOption("taintmode")
 
 proc newEIO(msg: string): owned(ref IOError) =
@@ -393,8 +396,6 @@ proc writeLine*(s: Stream, args: varargs[string, `$`]) =
 
 proc read*[T](s: Stream, result: var T) =
   ## Generic read procedure. Reads `result` from the stream `s`.
-  ##
-  ## **Note:** Not available for JS backend. Use `readStr <#readStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream("012")
     ## readInt
@@ -412,8 +413,6 @@ proc read*[T](s: Stream, result: var T) =
 
 proc peek*[T](s: Stream, result: var T) =
   ## Generic peek procedure. Peeks `result` from the stream `s`.
-  ##
-  ## **Note:** Not available for JS backend. Use `peekStr <#peekStr,Stream,int>`_ for now.
   runnableExamples:
     var strm = newStringStream("012")
     ## peekInt
@@ -1134,6 +1133,10 @@ type
                   ## This is updated when called `writeLine` etc.
     pos: int
 
+    when defined js:
+      data2: ArrayBuffer
+      dataView: DataView
+
 when (NimMajor, NimMinor) < (1, 3) and defined(js):
   proc ssAtEnd(s: Stream): bool {.compileTime.} =
     var s = StringStream(s)
@@ -1217,11 +1220,19 @@ else: # after 1.3 or JS not defined
     result = min(bufLen, s.data.len - s.pos)
     if result > 0:
       when defined(js):
-        try:
-          cast[ptr string](buffer)[][0..<result] = s.data[s.pos..<s.pos+result]
-        except:
-          raise newException(Defect, "could not read string stream, " &
-            "did you use a non-string buffer pointer?", getCurrentException())
+        let view = s.dataView
+        template fun(T) =
+          cast[ptr T](buffer)[] = view.getTyped(T, 0, true)
+        case bufLen
+        of int8.sizeof: fun(int8)
+        of int32.sizeof: fun(int32)
+        of int16.sizeof: fun(int16)
+        else: doAssert false, $bufLen
+        # try:
+        #   cast[ptr string](buffer)[][0..<result] = s.data[s.pos..<s.pos+result]
+        # except:
+        #   raise newException(Defect, "could not read string stream, " &
+        #     "did you use a non-string buffer pointer?", getCurrentException())
       elif not defined(nimscript):
         copyMem(buffer, addr(s.data[s.pos]), result)
       inc(s.pos, result)
@@ -1285,6 +1296,10 @@ else: # after 1.3 or JS not defined
 
     new(result)
     result.data = s
+    when defined js:
+      # IMPROVE, move
+      result.data2 = s.toArrayBuffer
+      result.dataView = newDataView(result.data2, 0)
     result.pos = 0
     result.closeImpl = ssClose
     result.atEndImpl = ssAtEnd
