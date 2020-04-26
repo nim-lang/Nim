@@ -44,7 +44,7 @@ proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   h.setColor colPurple # mark as potential cycle!
 
 const
-  useJumpStack = true
+  useJumpStack = false # for thavlak the jump stack doesn't improve the performance at all
 
 type
   GcEnv = object
@@ -190,6 +190,21 @@ proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
           if (t.rc shr rcShift) >= 0:
             scanBlack(t, desc, j)
           else:
+            when useJumpStack:
+              # first we have to repair all the nodes we have seen
+              # that are still alive; we also need to mark what they
+              # refer to as alive:
+              while j.jumpStack.len > 0:
+                let (t, desc) = j.jumpStack.pop
+                # not in jump stack anymore!
+                t.rc = t.rc and not jumpStackFlag
+                if t.color == colGray and (t.rc shr rcShift) >= 0:
+                  scanBlack(t, desc, j)
+                  # XXX this should be done according to Lins' paper but currently breaks
+                  #t.setColor colPurple
+                  when traceCollector:
+                    cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
+
             t.setColor(colWhite)
             trace(t, desc, j)
 
@@ -267,7 +282,7 @@ const
 var
   rootsThreshold = defaultThreshold
 
-proc collectCycles*() =
+proc collectCycles() =
   ## Collect cycles.
   var j: GcEnv
   init j.traceStack
@@ -301,6 +316,11 @@ proc registerCycle(s: Cell; desc: PNimType) =
   add(roots, s, desc)
   if roots.len >= rootsThreshold:
     collectCycles()
+
+proc GC_fullCollect* =
+  ## Forces a full garbage collection pass. With ``--gc:orc`` triggers the cycle
+  ## collector.
+  collectCycles()
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimType) {.noinline.} =
   if isDestroyAction:

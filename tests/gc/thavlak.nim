@@ -437,5 +437,5 @@ proc main =
 let mem = getOccupiedMem()
 main()
 when defined(gcOrc):
-  collectCycles()
+  GC_fullCollect()
   doAssert getOccupiedMem() == mem

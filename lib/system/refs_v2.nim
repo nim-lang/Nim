@@ -171,9 +171,10 @@ proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   if x != nil: nimIncRef(cast[pointer](x))
 
-template GC_fullCollect* =
-  ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
-  discard
+when not defined(gcOrc):
+  template GC_fullCollect* =
+    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    discard
 
 template setupForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
