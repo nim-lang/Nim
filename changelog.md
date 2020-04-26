@@ -37,6 +37,17 @@
   and this can now throw in edge cases where `getCurrentDir` throws.
   `relativePath` also now works for js with `-d:nodejs`.
 
+- JavaScript and NimScript standard library changes: `streams.StringStream` is
+  now supported in JavaScript, with the limitation that any buffer `pointer`s
+  used must be castable to `ptr string`, any incompatible pointer type will not
+  work. The `lexbase` and `streams` modules used to fail to compile on
+  NimScript due to a bug, but this has been fixed.
+  
+  The following modules now compile on both JS and NimScript: `parsecsv`,
+  `parsecfg`, `parsesql`, `xmlparser`, `htmlparser` and `ropes`. Additionally
+  supported for JS is `cstrutils.startsWith` and `cstrutils.endsWith`, for
+  NimScript: `json`, `parsejson`, `strtabs` and `unidecode`. 
+
 - Added `streams.readStr` and `streams.peekStr` overloads to
   accept an existing string to modify, which avoids memory
   allocations, similar to `streams.readLine` (#13857).
