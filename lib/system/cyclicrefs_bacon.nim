@@ -45,6 +45,7 @@ proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
 type
   GcEnv = object
     traceStack: CellSeq
+    freed, touched: int
 
 proc trace(s: Cell; desc: PNimType; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
@@ -127,12 +128,14 @@ proc markGray(s: Cell; desc: PNimType; j: var GcEnv) =
   ]#
   if s.color != colGray:
     s.setColor colGray
+    inc j.touched
     trace(s, desc, j)
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
       dec t.rc, rcIncrement
       if t.color != colGray:
         t.setColor colGray
+        inc j.touched
         trace(t, desc, j)
 
 proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
@@ -200,6 +203,7 @@ proc collectWhite(s: Cell; desc: PNimType; j: var GcEnv) =
           trace(t, desc, j)
       for i in 0 ..< subgraph.len:
         free(subgraph.d[i][0], subgraph.d[i][1])
+      inc j.freed, subgraph.len
       deinit subgraph
 
 proc collectCyclesBacon(j: var GcEnv) =
@@ -227,6 +231,12 @@ proc collectCyclesBacon(j: var GcEnv) =
     collectWhite(s, roots.d[i][1], j)
   #roots.len = 0
 
+const
+  defaultThreshold = 10_000
+
+var
+  rootsThreshold = defaultThreshold
+
 proc collectCycles*() =
   ## Collect cycles.
   var j: GcEnv
@@ -234,12 +244,22 @@ proc collectCycles*() =
   collectCyclesBacon(j)
   deinit j.traceStack
   deinit roots
+  # compute the threshold based on the previous history
+  # of the cycle collector's effectiveness:
+  # we're effective when we collected 50% or more of the nodes
+  # we touched. If we're effective, we can reset the threshold:
+  if j.freed * 2 >= j.touched:
+    rootsThreshold = defaultThreshold
+  else:
+    rootsThreshold = rootsThreshold * 3 div 2
+  when false:
+    cprintf("[collectCycles] freed %ld new threshold %ld\n", j.freed, rootsThreshold)
 
 proc registerCycle(s: Cell; desc: PNimType) =
   if roots.d == nil: init(roots)
   s.rootIdx = roots.len
   add(roots, s, desc)
-  if roots.len >= 10_000:
+  if roots.len >= rootsThreshold:
     collectCycles()
 
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimType) {.noinline.} =
