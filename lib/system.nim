@@ -62,10 +62,8 @@ const
     ## is the minor number of Nim's version.
     # Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 3
+  NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
-    # For devel, increment by 2 as needed to keep it odd or change docgen logic
-    # from `NimPatch mod 2 == 1` to  `NimMinor mod 2 == 1`.
 
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
