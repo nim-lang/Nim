@@ -435,7 +435,7 @@ proc `[]=`*(p: MultipartData, name: string,
 proc getBoundary(p: MultipartData): string =
   if p == nil or p.content.len == 0: return
   while true:
-    result = $random(int.high)
+    result = $rand(int.high)
     for i, entry in p.content:
       if result in entry.content: break
       elif i == p.content.high: return

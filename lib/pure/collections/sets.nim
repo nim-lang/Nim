@@ -111,9 +111,7 @@ proc init*[A](s: var HashSet[A], initialSize = defaultInitialSize) =
   ## * `toHashSet proc <#toHashSet,openArray[A]>`_
   runnableExamples:
     var a: HashSet[int]
-    assert(not a.isValid)
     init(a)
-    assert a.isValid
 
   initImpl(s, initialSize)
 
@@ -647,9 +645,7 @@ proc init*[A](s: var OrderedSet[A], initialSize = defaultInitialSize) =
   ## * `toOrderedSet proc <#toOrderedSet,openArray[A]>`_
   runnableExamples:
     var a: OrderedSet[int]
-    assert(not a.isValid)
     init(a)
-    assert a.isValid
 
   initImpl(s, initialSize)
 
@@ -923,21 +919,6 @@ iterator pairs*[A](s: OrderedSet[A]): tuple[a: int, b: A] =
 
 
 
-proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
-     "Deprecated since v0.20; sets are initialized by default".} =
-  ##
-  ## Returns `true` if the set has been initialized (with `initHashSet proc
-  ## <#initOrderedSet,int>`_ or `init proc <#init,OrderedSet[A],int>`_).
-  ##
-  ## **Examples:**
-  ##
-  ## .. code-block ::
-  ##   proc savePreferences(options: OrderedSet[string]) =
-  ##     assert options.isValid, "Pass an initialized set!"
-  ##     # Do stuff here, may crash in release builds!
-  result = s.data.len > 0
-
-
 # -----------------------------------------------------------------------
 
 
@@ -945,16 +926,8 @@ proc isValid*[A](s: OrderedSet[A]): bool {.deprecated:
 when isMainModule and not defined(release):
   proc testModule() =
     ## Internal micro test to validate docstrings and such.
-    block isValidTest: # isValid is deprecated
-      var options: HashSet[string]
-      proc savePreferences(options: HashSet[string]) =
-        assert options.isValid, "Pass an initialized set!"
-      options = initHashSet[string]()
-      options.savePreferences
-
     block lenTest:
       var values: HashSet[int]
-      assert(not values.isValid)
       assert values.len == 0
       assert values.card == 0
 
@@ -1046,16 +1019,8 @@ when isMainModule and not defined(release):
       var b = a.map(proc (x: int): string = $x)
       assert b == toHashSet(["1", "2", "3"])
 
-    block isValidTest: # isValid is deprecated
-      var cards: OrderedSet[string]
-      proc saveTarotCards(cards: OrderedSet[string]) =
-        assert cards.isValid, "Pass an initialized set!"
-      cards = initOrderedSet[string]()
-      cards.saveTarotCards
-
     block lenTest:
       var values: OrderedSet[int]
-      assert(not values.isValid)
       assert values.len == 0
       assert values.card == 0
 
@@ -1119,7 +1084,7 @@ when isMainModule and not defined(release):
       a.init(4)
       a.incl(2)
       a.init
-      assert a.len == 0 and a.isValid
+      assert a.len == 0
       a = initOrderedSet[int](4)
       a.incl(2)
       assert a.len == 1
@@ -1128,7 +1093,7 @@ when isMainModule and not defined(release):
       b.init(4)
       b.incl(2)
       b.init
-      assert b.len == 0 and b.isValid
+      assert b.len == 0
       b = initHashSet[int](4)
       b.incl(2)
       assert b.len == 1

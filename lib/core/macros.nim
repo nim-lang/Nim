@@ -994,12 +994,6 @@ macro dumpAstGen*(s: untyped): untyped = echo s.astGenRepr
   ##
   ## Also see ``dumpTree`` and ``dumpLisp``.
 
-macro dumpTreeImm*(s: untyped): untyped {.deprecated.} = echo s.treeRepr
-  ## Deprecated. Use `dumpTree` instead.
-
-macro dumpLispImm*(s: untyped): untyped {.deprecated.} = echo s.lispRepr
-  ## Deprecated. Use `dumpLisp` instead.
-
 proc newEmptyNode*(): NimNode {.compileTime, noSideEffect.} =
   ## Create a new empty node.
   result = newNimNode(nnkEmpty)

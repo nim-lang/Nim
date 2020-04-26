@@ -421,7 +421,7 @@ proc generateRss(outputFilename: string, news: seq[TRssItem]) =
   output.write(link(href = rssNewsUrl))
   output.write(id(rssNewsUrl))
 
-  let now = getGMTime(getTime())
+  let now = utc(getTime())
   output.write(updatedDate($now.year, $(int(now.month) + 1), $now.monthday))
 
   for rss in news:
