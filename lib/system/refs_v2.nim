@@ -34,9 +34,15 @@ hash of ``package & "." & module & "." & name`` to save space.
 
 ]#
 
-const
-  rcIncrement = 0b1000 # so that lowest 3 bits are not touched
-  rcMask = 0b111
+when defined(gcOrc):
+  const
+    rcIncrement = 0b10000 # so that lowest 4 bits are not touched
+    rcMask = 0b1111
+
+else:
+  const
+    rcIncrement = 0b1000 # so that lowest 3 bits are not touched
+    rcMask = 0b111
 
 type
   RefHeader = object

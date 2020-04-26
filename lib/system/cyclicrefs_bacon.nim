@@ -23,7 +23,8 @@ const
   colWhite = 0b010
   colPurple = 0b011
   isCycleCandidate = 0b100 # cell is marked as a cycle candidate
-  rcShift = 3      # shift by rcShift to get the reference counter
+  jumpStackFlag = 0b1000
+  rcShift = 4      # shift by rcShift to get the reference counter
   colorMask = 0b011
 
 type
@@ -42,9 +43,14 @@ proc nimIncRefCyclic(p: pointer) {.compilerRtl, inl.} =
   inc h.rc, rcIncrement
   h.setColor colPurple # mark as potential cycle!
 
+const
+  useJumpStack = true
+
 type
   GcEnv = object
     traceStack: CellSeq
+    when useJumpStack:
+      jumpStack: CellSeq   # Lins' jump stack in order to speed up traversals
     freed, touched: int
 
 proc trace(s: Cell; desc: PNimType; j: var GcEnv) {.inline.} =
@@ -133,6 +139,12 @@ proc markGray(s: Cell; desc: PNimType; j: var GcEnv) =
     while j.traceStack.len > 0:
       let (t, desc) = j.traceStack.pop()
       dec t.rc, rcIncrement
+      when useJumpStack:
+        if (t.rc shr rcShift) >= 0 and (t.rc and jumpStackFlag) == 0:
+          t.rc = t.rc or jumpStackFlag
+          when traceCollector:
+            cprintf("[Now in jumpstack] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
+          j.jumpStack.add(t, desc)
       if t.color != colGray:
         t.setColor colGray
         inc j.touched
@@ -151,7 +163,25 @@ proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
   if s.color == colGray:
     if (s.rc shr rcShift) >= 0:
       scanBlack(s, desc, j)
+      # XXX this should be done according to Lins' paper but currently breaks
+      #when useJumpStack:
+      #  s.setColor colPurple
     else:
+      when useJumpStack:
+        # first we have to repair all the nodes we have seen
+        # that are still alive; we also need to mark what they
+        # refer to as alive:
+        while j.jumpStack.len > 0:
+          let (t, desc) = j.jumpStack.pop
+          # not in jump stack anymore!
+          t.rc = t.rc and not jumpStackFlag
+          if t.color == colGray and (t.rc shr rcShift) >= 0:
+            scanBlack(t, desc, j)
+            # XXX this should be done according to Lins' paper but currently breaks
+            #t.setColor colPurple
+            when traceCollector:
+              cprintf("[jump stack] %p %ld\n", t, t.rc shr rcShift)
+
       s.setColor(colWhite)
       trace(s, desc, j)
       while j.traceStack.len > 0:
@@ -241,7 +271,17 @@ proc collectCycles*() =
   ## Collect cycles.
   var j: GcEnv
   init j.traceStack
-  collectCyclesBacon(j)
+  when useJumpStack:
+    init j.jumpStack
+    collectCyclesBacon(j)
+    while j.jumpStack.len > 0:
+      let (t, desc) = j.jumpStack.pop
+      # not in jump stack anymore!
+      t.rc = t.rc and not jumpStackFlag
+    deinit j.jumpStack
+  else:
+    collectCyclesBacon(j)
+
   deinit j.traceStack
   deinit roots
   # compute the threshold based on the previous history
