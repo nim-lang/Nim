@@ -54,6 +54,7 @@ type
 
 include "system/basic_types"
 
+
 proc compileOption*(option: string): bool {.
   magic: "CompileOption", noSideEffect.}
   ## Can be used to determine an `on|off` compile-time option. Example:
