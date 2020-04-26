@@ -237,6 +237,8 @@ proc parseSpec*(filename: string): TSpec =
           when defined(freebsd): result.err = reDisabled
         of "arm64":
           when defined(arm64): result.err = reDisabled
+        of "i386":
+          when defined(i386): result.err = reDisabled
         of "openbsd":
           when defined(openbsd): result.err = reDisabled
         of "netbsd":
