@@ -1425,21 +1425,30 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## so when ``socket`` is buffered the non-buffered implementation will be
   ## used. Therefore if ``socket`` contains something in its buffer this
   ## function will make no effort to return it.
+  template recvFrom(domain: Domain) =
+    var addrLen = sizeof(sockAddress).SockLen
+    result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
+                      cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+    
+    if result != -1:
+      data.setLen(result)
+      address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
+      when domain == AF_INET6:
+        port = ntohs(sockAddress.sin6_port).Port
+      else:
+        port = ntohs(sockAddress.sin_port).Port
+    else:
+      raiseOSError(osLastError())
 
   assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
-  var sockAddress: Sockaddr_in
-  var addrLen = sizeof(sockAddress).SockLen
-  result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
-                    cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
-
-  if result != -1:
-    data.setLen(result)
-    address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
-    port = ntohs(sockAddress.sin_port).Port
+  if socket.domain == AF_INET6:
+    var sockAddress: Sockaddr_in6
+    recvFrom(AF_INET6)
   else:
-    raiseOSError(osLastError())
+    var sockAddress: Sockaddr_in
+    recvFrom(AF_INET)
 
 proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
