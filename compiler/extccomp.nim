@@ -850,12 +850,12 @@ proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
 
 proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
   when defined(osx):
-    if optCDebug notin conf.globalOptions: return
-    # if needed, add an option to skip or override location
-    let cmd = "dsymutil " & $(exe).quoteShell
-    conf.extraCmds.add cmd
-    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
-      execExternalProgram(conf, cmd, hintExecuting)
+    if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
+      # if needed, add an option to skip or override location
+      let cmd = "dsymutil " & $(exe).quoteShell
+      conf.extraCmds.add cmd
+      tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+        execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
