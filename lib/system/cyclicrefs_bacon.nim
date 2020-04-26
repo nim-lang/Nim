@@ -322,6 +322,12 @@ proc GC_fullCollect* =
   ## collector.
   collectCycles()
 
+proc GC_enableMarkAndSweep() =
+  rootsThreshold = defaultThreshold
+
+proc GC_disableMarkAndSweep() =
+  rootsThreshold = high(int)
+
 proc rememberCycle(isDestroyAction: bool; s: Cell; desc: PNimType) {.noinline.} =
   if isDestroyAction:
     if (s.rc and isCycleCandidate) != 0:

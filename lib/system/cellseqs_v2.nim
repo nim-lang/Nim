@@ -42,11 +42,12 @@ proc init(s: var CellSeq, cap: int = 1024) =
     s.d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
 
 proc deinit(s: var CellSeq) =
-  when defined(useMalloc):
-    c_free(s.d)
-  else:
-    dealloc(s.d)
-  s.d = nil
+  if s.d != nil:
+    when defined(useMalloc):
+      c_free(s.d)
+    else:
+      dealloc(s.d)
+    s.d = nil
   s.len = 0
   s.cap = 0
 
