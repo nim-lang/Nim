@@ -6,7 +6,7 @@ proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## spelling `toString`:idx:.
 
 when defined(js):
-  when (NimMajor, NimMinor) >= (1, 3):
+  since (1, 3):
     proc `$`*(x: uint): string =
       ## Caveat: currently implemented as $(cast[int](x)), tied to current
       ## semantics of js' Number type.
