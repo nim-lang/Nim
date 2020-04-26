@@ -789,8 +789,11 @@ proc sendTo*(socket: AsyncSocket, data: pointer, dataSize: int, address: string,
   ## has been sent.
   ## 
   ## If an error occurs an OSError exception will be raised.
-  assert(socket.protocol != IPPROTO_TCP, "Cannot `sendTo` on a TCP socket")
-  assert(not socket.closed, "Cannot `sendTo` on a closed socket")
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `sendTo` on a TCP socket. Use `send` instead.")
+  assert(not socket.closed, "Cannot `sendTo` on a closed socket.")
 
   let
     aiList = getAddrInfo(address, port, socket.domain, socket.sockType,
@@ -838,6 +841,8 @@ proc sendTo*(socket: AsyncSocket, data, address: string, port: Port):
   ## has been sent.
   ## 
   ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
   await sendTo(socket, cstring(data), len(data), address, port)
 
 proc recvFrom*(socket: AsyncSocket, data: pointer, size: int,
@@ -851,6 +856,8 @@ proc recvFrom*(socket: AsyncSocket, data: pointer, size: int,
   ## packet received.
   ## 
   ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
   template awaitRecvFromInto() =
     var lAddr = sizeof(sAddr).SockLen
     
@@ -861,8 +868,9 @@ proc recvFrom*(socket: AsyncSocket, data: pointer, size: int,
 
     address.complete()
     
-  assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
-  assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead.")
+  assert(not socket.closed, "Cannot `recvFrom` on a closed socket.")
 
   var readSize: int
 
@@ -889,6 +897,8 @@ proc recvFrom*(socket: AsyncSocket, data: pointer, size: int):
   ## address and port of datagram's sender.
   ## 
   ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
   var
     fromIp = newFutureVar[string]()
     fromPort = newFutureVar[Port]()
