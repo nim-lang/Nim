@@ -2049,10 +2049,6 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
-
-import system/dollars
-export dollars
-
 const
   NimMajor* {.intdefine.}: int = 1
     ## is the major number of Nim's version. Example:
@@ -2063,10 +2059,15 @@ const
 
   NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.
+    ## Odd for devel, even for releases.
 
   NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
 
+import system/dollars
+export dollars
+
+const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
