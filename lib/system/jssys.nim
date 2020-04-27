@@ -477,14 +477,18 @@ proc negInt64(a: int64): int64 {.compilerproc.} =
   result = a*(-1)
 
 proc nimFloatToString(a: float): cstring {.compilerproc.} =
-  ## https://stackoverflow.com/questions/3885817/how-do-i-check-that-a-number-is-float-or-integer/20779354#20779354
-  ## Number.isInteger() is currently implemented in everything but IE, MDN
-  ## also provides a polyfill.
-  ## Using `Number.isSafeInteger` would produce the wrong result for `5e20`
-  ## (ie, would not append .0)
+  ## ensures the result doesn't print like an integer, ie return 2.0, not 2
   asm """
-    if(Number.isInteger(`a`)) `result` =  `a`+".0"
-    else `result` =  `a`+""
+    function nimOnlyDigitsOrMinus(n) {
+      return n.toString().match(/^-?\d+$/);
+    }
+    if (Number.isSafeInteger(`a`)) `result` =  `a`+".0"
+    else {
+      `result` = `a`+""
+      if(nimOnlyDigitsOrMinus(`result`)){
+        `result` = `a`+".0"
+      }
+    }
   """
 
 proc absInt(a: int): int {.compilerproc.} =

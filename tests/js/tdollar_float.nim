@@ -6,6 +6,11 @@ is merged
 import unittest
 
 block: # https://github.com/timotheecour/Nim/issues/133
+  # simple test
+  var a: float = 2
+  check $a == "2.0"
+
+  # systematic tests
   template fun(a2: static float) =
     const a: float = a2 # needed pending https://github.com/timotheecour/Nim/issues/132
     var b = a
@@ -19,5 +24,31 @@ block: # https://github.com/timotheecour/Nim/issues/133
   fun 1_000_000_000.1
   fun 1_000_000_000_000.1
 
-  var a: float = 2
-  doAssert $a == "2.0"
+  # negatives
+  fun -2.0
+  fun -2.1
+
+  # 0
+  fun 0
+  fun -0
+  fun 0.0
+
+  when false:
+    fun -0.0 # pending https://github.com/timotheecour/Nim/issues/136
+  block:
+    var a = -0.0
+    check $a in ["-0.0", "0.0"]
+
+  # exponents
+  when false: # edge case
+    fun 5e20
+  block:
+    var a = 5e20
+    check $a in ["5e20", "500000000000000000000.0"]
+
+  fun 3.4e1'f32
+  fun 3.4e-1'f32
+  fun -3.4e-1'f32
+  fun 3.4e-1'f32
+  fun 3e-1'f32
+  fun 3.4e38'f32
