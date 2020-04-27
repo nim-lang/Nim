@@ -103,7 +103,7 @@ proc getSetConflictFromCache(m: BModule;
   let
     signature = s.sigHash
     sigstring = $signature
-  if s.name.isKeyword or s.name.s in m.config.cppDefines:
+  if s.name.isNimOrCKeyword or s.name.s in m.config.cppDefines:
     name.add "_" & sigstring
   const
     query = sql"""
@@ -337,6 +337,30 @@ proc initCacheUnit(cache: var CacheUnit[PSym]; modules: BModuleList; node: PSym)
 proc initCacheUnit(cache: var CacheUnit[PType]; modules: BModuleList; node: var PType) =
   cache.kind = CacheUnitKind.Type
 
+#
+# NOTE:
+# the origin is the first psym from which we can reach a parent module
+#
+template origin*(p: var PSym): var PSym = p
+template origin*(p: var PType): var PSym = p.sym
+proc origin*(p: var PNode): var PSym =
+  assert p != nil
+  case p.kind
+  of nkSym:
+    assert p.sym != nil
+    result = p.sym.origin
+  of nkType:
+    assert p.typ != nil
+    result = p.typ.origin
+  else:
+    debug p
+    raise
+
+proc origin*(p: PNode): PSym =
+  var
+    p = p
+  result = p.origin
+
 proc findModule*(list: BModuleList; start: PSym): BModule =
   let
     parent = getModule(start)
@@ -373,20 +397,21 @@ proc findTargetModule*(cache; child: PSym | PType): BModule =
   else:
     result = findModule(cache.modules, child.origin)
 
-proc pointToModuleIn(p: ptr PSym; modules: BModuleList) =
-  {.warning: "this probably doesn't work".}
-  if p != nil:
-    if p.kind == skModule:
-      p[] = findModule(modules, p[]).module
-    else:
-      pointToModuleIn(addr p[].owner, modules)
+when false:
+  proc pointToModuleIn(p: ptr PSym; modules: BModuleList) =
+    {.warning: "this probably doesn't work".}
+    if p != nil:
+      if p.kind == skModule:
+        p[] = findModule(modules, p[]).module
+      else:
+        pointToModuleIn(addr p[].owner, modules)
 
-proc pointToModuleIn(p: var CacheableObject; modules: BModuleList) =
-  when true:
-    when p isnot PNode:
-      pointToModuleIn(addr p.origin, modules)
-  else:
-    {.warning: "this is not even enabled".}
+  proc pointToModuleIn(p: var CacheableObject; modules: BModuleList) =
+    when true:
+      when p isnot PNode:
+        pointToModuleIn(addr p.origin, modules)
+    else:
+      {.warning: "this is not even enabled".}
 
 proc encodeTransform(t: Transform): EncodingString =
   template g(): ModuleGraph = t.module.g.graph
@@ -455,40 +480,6 @@ template storeIdSets(cache;
     #parent.name = parent.name + child.name
     storeTransform(cache, cache.node, transform)
 
-proc newCacheUnit*[T: CacheableObject](modules: BModuleList; origin: BModule;
-                                       node: var T): CacheUnit[T] =
-  assert node != nil
-  result = CacheUnit[T](node: node, origin: origin, graph: modules.graph)
-  # figure out if we're in a position to cache anything
-  result.assignCachability(modules.config, node)
-
-  #echo "ncu ", result
-  if not result.rejected:
-    # add a container for relevant snippets
-    let
-      size = rightSize(TCFileSection.high.ord)
-    result.snippets = initOrderedTable[SigHash, Snippet](size)
-    # and transformations
-    result.transforms = initOrderedTable[SigHash, Transform](size * 16)
-
-    # create a fake module graph
-    result.modules = createFakeGraph(modules, node.sigHash)
-
-    # initialize the cache unit and assign its kind
-    initCacheUnit(result, modules, node)
-
-    # generic repoint ast to fake module
-    if result.kind != Node:
-      pointToModuleIn(node.origin, result.modules)
-
-    # remove the read flag if the target isn't in the cache
-    if not result.isHot:
-      result.strategy.excl Reads
-
-  when not defined(release):
-    if Reads in result.strategy:
-      assert result.isHot
-
 # the snippet's module is not necessarily the same as the symbol!
 proc newSnippet*[T](node: T; module: BModule; sect: TCFileSection): Snippet =
   result = Snippet(signature: node.sigHash, module: module, section: sect)
@@ -508,30 +499,6 @@ proc readable*(cache: var CacheUnit; value: bool): bool =
     else:
       cache.strategy.excl Reads
   result = cache.readable
-
-#
-# NOTE:
-# the origin is the first psym from which we can reach a parent module
-#
-template origin*(p: var PSym): var PSym = p
-template origin*(p: var PType): var PSym = p.sym
-proc origin*(p: var PNode): var PSym =
-  assert p != nil
-  case p.kind
-  of nkSym:
-    assert p.sym != nil
-    result = p.sym.origin
-  of nkType:
-    assert p.typ != nil
-    result = p.typ.origin
-  else:
-    debug p
-    raise
-
-proc origin*(p: PNode): PSym =
-  var
-    p = p
-  result = p.origin
 
 template storeHeaders(cache; parent: BModule; child: BModule) =
   # nil-separated list?
@@ -606,99 +573,49 @@ template storeImpl(cache: var CacheUnit;
   # TODO: if we wrote the cache, we can read it (???)
   #discard cache.readable(true)
 
-proc store(cache: var CacheUnit[PNode]; orig: BModule) =
-  storeImpl cache, orig:
-    cache.graph.storeNode(orig.module, cache.node)
+macro storeRopes(cache; parent: BModuleList; child: untyped): untyped =
+  expectKind child, nnkDotExpr
+  let
+    field = newStrLitNode($child[1])
+    parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
+    #graph = newDotExpr(cache, ident"graph")
+    node = newDotExpr(cache, ident"node")
+  result = quote do:
+    if `child` != nil:
+      let
+        transform = Transform(kind: TransformKind.GraphRope,
+                              field: `field`, grope: `child`)
+      storeTransform(cache, `node`, transform)
 
-proc store(cache: var CacheUnit[PSym]; orig: BModule) =
-  storeImpl cache, orig:
-    if cache.writable:
-      #debug cache.node
-      if cache.node.typ == nil or cache.node.typ.sym == nil:
-        echo "NIL FOUND"
-    cache.graph.storeSym(cache.node)
+macro storeRope(cache; parent: BModule; child: untyped): untyped =
+  expectKind child, nnkDotExpr
+  let
+    field = newStrLitNode($child[1])
+    parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
+    #graph = newDotExpr(cache, ident"graph")
+    node = newDotExpr(cache, ident"node")
+  result = quote do:
+    if `child` != nil:
+      let
+        transform = Transform(kind: TransformKind.Injection,
+                              rope: `child`)
+      storeTransform(cache, `node`, transform)
 
-proc store(cache: var CacheUnit; parent: BModule; child: BModule) =
-  ## miscellaneous ropes
-  assert cache.writable, "attempt to write unwritable module to cache"
-
-  assert parent.filename == child.filename
-  assert parent.cfilename == child.cfilename
-
-  cache.storeRope(parent, child.injectStmt)
-
-  if parent.initProc.prc == nil and child.initProc.prc != nil:
-    cache.storeProc(InitProc, parent, child.initProc)
-  if parent.preInitProc.prc == nil and child.preInitProc.prc != nil:
-    cache.storeProc(PreInit, parent, child.preInitProc)
-
-  cache.storeHeaders parent, child
-
-  # 0. flags
-  if parent.flags != child.flags:
-    let
-      transform = Transform(kind: FlagSet, module: parent,
-                            flags: child.flags - parent.flags)
-    #parent.flags = child.flags
-    storeTransform(cache, cache.node, transform)
-
-  for pair in child.dataCache.data.items:
-    if pair.key != nil:
-      if nodeTableGet(parent.dataCache, pair.key) >= 0:
-        let
-          transform = Transform(kind: LiteralData, module: parent,
-                                node: pair.key, val: pair.val)
-        storeTransform(cache, cache.node, transform)
-
-  ## ✅1. ropes to store per section
-  cache.storeSections(parent, child)
-
-  ## ✅2. ptypes to store
-  cache.storeTypeStack(parent, child)
-
-  cache.storeIdSets parent, child, ThingSet, declaredThings
-  cache.storeIdSets parent, child, ProtoSet, declaredProtos
-
-  cache.storeLabels(parent, child)
-
-proc store(cache: var CacheUnit; parent: BModuleList) =
-  if cache.rejected:
-    return
-
-  #assert cache.writable, "attempt to write unwritable cache"
-  template child(): BModuleList = cache.modules
-
-  when not defined(release):
-    echo "storing ", cache
-  assert child != nil
-  cache.storeRopes(parent, child.mainModProcs)
-  cache.storeRopes(parent, child.mainModInit)
-  cache.storeRopes(parent, child.otherModsInit)
-  cache.storeRopes(parent, child.mainDatInit)
-  cache.storeRopes(parent, child.mapping)
-
-  var
-    stored = false
-  for m in child.modules.items:
-    if m != nil:
-      var
-        dad = findModule(parent, m)
-
-      # dad is the final backend module in codegen
-      if dad == nil:
-        raise newException(Defect, "missing dad of " & $m.module.id)
-      else:
-        if not stored:
-          stored = true
-          if cache.writable:
-            cache.store(m)
-        cache.store(dad, m)
-  if not stored:
-    raise newException(Defect, "unable to place node with a module")
-
-  when not defined(release):
-    echo "\tstore yielding snippets      ", cache.snippets.len
-    echo "\tstore yielding transforms    ", cache.transforms.len
+macro storeProc(cache; k: TransformKind, parent: BModule;
+                child: untyped): untyped =
+  expectKind child, nnkDotExpr
+  let
+    field = newStrLitNode($child[1])
+    parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
+    #graph = newDotExpr(cache, ident"graph")
+    node = newDotExpr(cache, ident"node")
+  result = quote do:
+    if `child` != nil and `child`.prc != nil:
+      if `parent` != nil and `parent`.prc != nil:
+        raise newException(Defect, "attempt to replace parent proc")
+      let
+        transform = Transform(kind: `k`, prc: `child`.prc)
+      storeTransform(cache, `node`, transform)
 
 template mergeRope(parent: var Rope; child: Rope): untyped =
   if parent == nil:
@@ -1017,6 +934,100 @@ proc storeSections(cache: var CacheUnit; parent: BModule;
       snippet.code = rope
       storeSnippet(cache, snippet)
 
+proc store(cache: var CacheUnit; parent: BModule; child: BModule) =
+  ## miscellaneous ropes
+  assert cache.writable, "attempt to write unwritable module to cache"
+
+  assert parent.filename == child.filename
+  assert parent.cfilename == child.cfilename
+
+  cache.storeRope(parent, child.injectStmt)
+
+  if parent.initProc.prc == nil and child.initProc.prc != nil:
+    cache.storeProc(InitProc, parent, child.initProc)
+  if parent.preInitProc.prc == nil and child.preInitProc.prc != nil:
+    cache.storeProc(PreInit, parent, child.preInitProc)
+
+  cache.storeHeaders parent, child
+
+  # 0. flags
+  if parent.flags != child.flags:
+    let
+      transform = Transform(kind: FlagSet, module: parent,
+                            flags: child.flags - parent.flags)
+    #parent.flags = child.flags
+    storeTransform(cache, cache.node, transform)
+
+  for pair in child.dataCache.data.items:
+    if pair.key != nil:
+      if nodeTableGet(parent.dataCache, pair.key) >= 0:
+        let
+          transform = Transform(kind: LiteralData, module: parent,
+                                node: pair.key, val: pair.val)
+        storeTransform(cache, cache.node, transform)
+
+  ## ✅1. ropes to store per section
+  cache.storeSections(parent, child)
+
+  ## ✅2. ptypes to store
+  cache.storeTypeStack(parent, child)
+
+  cache.storeIdSets parent, child, ThingSet, declaredThings
+  cache.storeIdSets parent, child, ProtoSet, declaredProtos
+
+  cache.storeLabels(parent, child)
+
+proc store(cache: var CacheUnit[PNode]; orig: BModule) =
+  storeImpl cache, orig:
+    cache.graph.storeNode(orig.module, cache.node)
+
+proc store(cache: var CacheUnit[PSym]; orig: BModule) =
+  storeImpl cache, orig:
+    if cache.writable:
+      #debug cache.node
+      if cache.node.typ == nil or cache.node.typ.sym == nil:
+        echo "NIL FOUND"
+    cache.graph.storeSym(cache.node)
+
+proc store(cache: var CacheUnit; parent: BModuleList) =
+  if cache.rejected:
+    return
+
+  #assert cache.writable, "attempt to write unwritable cache"
+  template child(): BModuleList = cache.modules
+
+  when not defined(release):
+    echo "storing ", cache
+  assert child != nil
+  cache.storeRopes(parent, child.mainModProcs)
+  cache.storeRopes(parent, child.mainModInit)
+  cache.storeRopes(parent, child.otherModsInit)
+  cache.storeRopes(parent, child.mainDatInit)
+  cache.storeRopes(parent, child.mapping)
+
+  var
+    stored = false
+  for m in child.modules.items:
+    if m != nil:
+      var
+        dad = findModule(parent, m)
+
+      # dad is the final backend module in codegen
+      if dad == nil:
+        raise newException(Defect, "missing dad of " & $m.module.id)
+      else:
+        if not stored:
+          stored = true
+          if cache.writable:
+            cache.store(m)
+        cache.store(dad, m)
+  if not stored:
+    raise newException(Defect, "unable to place node with a module")
+
+  when not defined(release):
+    echo "\tstore yielding snippets      ", cache.snippets.len
+    echo "\tstore yielding transforms    ", cache.transforms.len
+
 proc loadSnippetsIntoCache*(cache: var CacheUnit) =
   ## read snippets from the database for the given cache node and merge
   ## them into the fake module graph
@@ -1112,6 +1123,41 @@ proc isHot(cache: CacheUnit[PSym]): bool =
   if {Reads, Immutable} * cache.strategy != {Immutable}:
     result = symbolAlreadyStored(cache.graph, cache.node)
 
+proc newCacheUnit*[T: CacheableObject](modules: BModuleList; origin: BModule;
+                                       node: var T): CacheUnit[T] =
+  assert node != nil
+  result = CacheUnit[T](node: node, origin: origin, graph: modules.graph)
+  # figure out if we're in a position to cache anything
+  result.assignCachability(modules.config, node)
+
+  #echo "ncu ", result
+  if not result.rejected:
+    # add a container for relevant snippets
+    let
+      size = tables.rightSize(TCFileSection.high.ord)
+    result.snippets = initOrderedTable[SigHash, Snippet](size)
+    # and transformations
+    result.transforms = initOrderedTable[SigHash, Transform](size * 16)
+
+    # create a fake module graph
+    result.modules = createFakeGraph(modules, node.sigHash)
+
+    # initialize the cache unit and assign its kind
+    initCacheUnit(result, modules, node)
+
+    when false:
+      # generic repoint ast to fake module
+      if result.kind != Node:
+        pointToModuleIn(node.origin, result.modules)
+
+    # remove the read flag if the target isn't in the cache
+    if not result.isHot:
+      result.strategy.excl Reads
+
+  when not defined(release):
+    if Reads in result.strategy:
+      assert result.isHot
+
 proc merge(cache: var CacheUnit; parent: var BModuleList) =
   ## merging is as simple as applying the snippets and transforms,
   ## and then pointing the ast to its real module origin
@@ -1129,11 +1175,12 @@ proc merge(cache: var CacheUnit; parent: var BModuleList) =
       for transform in module.transforms.values:
         parent.apply transform
 
-    # reset the owning module for the cache's node
-    if cache.kind != Node:
-      pointToModuleIn(addr cache.node.origin, parent)
-    else:
-      {.warning: "nodes unimplemented".}
+    when false:
+      # reset the owning module for the cache's node
+      if cache.kind != Node:
+        pointToModuleIn(addr cache.node.origin, parent)
+      else:
+        {.warning: "nodes unimplemented".}
 
 proc setLocation*(m: BModule; p: PSym or PType; t: TLoc)
   {.tags: [LocSafe, LocRead, LocWrite, RootEffect].} =
@@ -1185,50 +1232,6 @@ proc setLocationRope*(m: BModule; p: PSym or PType; r: Rope) =
 
 proc `$`(t: Transform): string =
   result = $t.kind & " from " & $t.nkind & " size " & $encodeTransform(t).len
-
-macro storeRopes(cache; parent: BModuleList; child: untyped): untyped =
-  expectKind child, nnkDotExpr
-  let
-    field = newStrLitNode($child[1])
-    parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
-    #graph = newDotExpr(cache, ident"graph")
-    node = newDotExpr(cache, ident"node")
-  result = quote do:
-    if `child` != nil:
-      let
-        transform = Transform(kind: TransformKind.GraphRope,
-                              field: `field`, grope: `child`)
-      storeTransform(cache, `node`, transform)
-
-macro storeRope(cache; parent: BModule; child: untyped): untyped =
-  expectKind child, nnkDotExpr
-  let
-    field = newStrLitNode($child[1])
-    parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
-    #graph = newDotExpr(cache, ident"graph")
-    node = newDotExpr(cache, ident"node")
-  result = quote do:
-    if `child` != nil:
-      let
-        transform = Transform(kind: TransformKind.Injection,
-                              rope: `child`)
-      storeTransform(cache, `node`, transform)
-
-macro storeProc(cache; k: TransformKind, parent: BModule;
-                child: untyped): untyped =
-  expectKind child, nnkDotExpr
-  let
-    field = newStrLitNode($child[1])
-    parent = newDotExpr(parent, child[1])  # 2nd half of dot expr
-    #graph = newDotExpr(cache, ident"graph")
-    node = newDotExpr(cache, ident"node")
-  result = quote do:
-    if `child` != nil and `child`.prc != nil:
-      if `parent` != nil and `parent`.prc != nil:
-        raise newException(Defect, "attempt to replace parent proc")
-      let
-        transform = Transform(kind: `k`, prc: `child`.prc)
-      storeTransform(cache, `node`, transform)
 
 template performCaching*(g: var BModuleList; origin: var BModule;
                          p: var CacheableObject; body: untyped): untyped =

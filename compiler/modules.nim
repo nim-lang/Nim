@@ -10,9 +10,9 @@
 ## Implements the module handling, including the caching of modules.
 
 import
-  ast, astalgo, magicsys, msgs, options,
-  idents, lexer, idgen, passes, syntaxes, llstream, modulegraphs, rod,
-  lineinfos, pathutils, tables
+
+  ast, astalgo, magicsys, msgs, options, idents, lexer, idgen, passes,
+  syntaxes, llstream, modulegraphs, lineinfos, pathutils, tables, ic
 
 proc resetSystemArtifacts*(g: ModuleGraph) =
   magicsys.resetSysTypes(g)

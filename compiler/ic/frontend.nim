@@ -2,7 +2,7 @@ import
 
   ".." / [ ast, cgendata, sighashes, options, modulegraphs, pathutils,
   ropes, astalgo, nversion, condsyms, lineinfos, incremental, msgs, idgen,
-  btrees, idents, magicsys, cgmeth, extccomp, trees ]
+  btrees, idents, magicsys, cgmeth, extccomp, trees, semdata ]
 
 import
 
@@ -18,6 +18,27 @@ type
 template db(): DbConn = g.incr.db
 template config(): ConfigRef = cache.modules.config
 
+#[
+
+how it works:
+
+the TContext has a pointer to the module's symbol
+
+anywhere that we need to track mutability, we have a TContext
+
+we compare the mutating symbol's owner to the TContext module symbol
+
+if they don't match, it's a bug
+
+else, we allow the mutation, producing a new ast
+
+so you let it do all that mutation.  then you push it into the cache
+as a final pass.
+
+don't we want our ast to be typed?  another day, but definitely.
+
+
+]#
 proc encodeConfig(g: ModuleGraph): string =
   result = newStringOfCap(100)
   result.add RodFileVersion
@@ -527,6 +548,10 @@ proc storeNode*(g: ModuleGraph; module: PSym; n: PNode) =
   inc module.offset
   transitiveClosure(g)
 
+template storeNode(c: PContext; n: PNode) =
+  assert c.isSealed, "attempt to store unsealed pcontext"
+  storeNode(c.graph, c.module, n)
+
 proc recordStmt*(g: ModuleGraph; module: PSym; n: PNode) =
   storeNode(g, module, n)
 
@@ -551,6 +576,10 @@ proc storeRemaining*(g: ModuleGraph; module: PSym) =
   for x in items(g.config.m.fileInfos):
     storeFilename(g, x.fullPath, FileIndex(nimid))
     inc nimid
+
+proc storeRemaining*(c: PContext; module: PSym) =
+  assert c.isSealed, "attempt to store unsealed pcontext"
+  c.graph.storeRemaining module
 
 # ---------------- decoder -----------------------------------
 
@@ -1064,36 +1093,51 @@ proc setupModuleCache*(g: ModuleGraph) =
   if lastId.len > 0:
     idgen.setId(parseInt lastId)
 
-template seal*(tree: typed) =
+proc seal*(context: PContext) =
   ## furry lobster
-  tree.sealed = true
+  for item in context.consumer:
+    case item.kind
+    of nkSym:
+      context.storeRemaining item.asSym
+    of nkNone:
+      context.storeNode item.asNode
+    else:
+      raise newException(Defect, "not implemented")
 
-template performCachingOnIt*(context: typed; n: PNode;
-                             strategy: set[CacheStrategy];
+when true:
+  template performCachingOnIt*(context: PContext; n: PNode;
+                               strategy: set[CacheStrategy];
+                               body: untyped): untyped =
+    ## TODO:
+    ## verify that we're safe from cyclic dependency issues
+    let
+      audit = it.hash
+    var
+      it {.inject.} = n
+    try:
+      if context.isSealed:
+        raise newException(Defect, "context already sealed")
+      #
+      # check that the modules we depend on are all sealed
+      #
+      body
+    finally:
+      context.seal
+
+      when nimIcAudit:
+        if audit != it.hash and Write notin strategy:
+          raise newException(Defect, "audit fail")
+
+  template compileUncachedIt(context: PContext; n: PNode;
                              body: untyped): untyped =
-  let
-    audit = it.hash
-  var
-    it {.inject.} = n
-  try:
-    body
-  finally:
-    context.seal
+    var
+      it {.inject.} = n
+    context.performCachingOnIt(n, {Writes, Reads}):
+      body
 
-    when nimIcAudit:
-      if audit != it.hash and Write notin strategy:
-        raise newException(Defect, "audit fail")
-
-template compileUncachedIt*(g: ModuleGraph; context: typed; n: PNode;
+  template compileCachedIt*(context: PContext; p: PSym;
                             body: untyped): untyped =
-  var
-    it {.inject.} = n
-  context.performCachingOnIt(n, {Write, Read}):
-    body
-
-template compileCachedIt*(g: ModuleGraph; context: typed; p: PSym;
-                          body: untyped): untyped =
-  var
-    it {.inject.} = loadNode(graph, p)
-  context.performCachingOnIt(n, {Read, Immutable}):
-    body
+    var
+      it {.inject.} = loadNode(context.graph, p)
+    context.performCachingOnIt(n, {Read, Immutable}):
+      body

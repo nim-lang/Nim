@@ -10,13 +10,14 @@
 # This module implements the semantic checking pass.
 
 import
-  ast, strutils, options, astalgo, trees,
-  wordrecg, ropes, msgs, idents, renderer, types, platform, math,
-  magicsys, nversion, nimsets, semfold, modulepaths, importer,
-  procfind, lookups, pragmas, passes, semdata, semtypinst, sigmatch,
-  intsets, transf, vmdef, vm, idgen, aliases, cgmeth, lambdalifting,
-  evaltempl, patterns, parampatterns, sempass2, linter, semmacrosanity,
-  lowerings, plugins/active, rod, lineinfos, strtabs, int128
+
+  ast, strutils, options, astalgo, trees, wordrecg, ropes, msgs, idents,
+  renderer, types, platform, math, magicsys, nversion, nimsets, semfold,
+  modulepaths, importer, procfind, lookups, pragmas, passes, semdata,
+  semtypinst, sigmatch, intsets, transf, vmdef, vm, idgen, aliases,
+  cgmeth, lambdalifting, evaltempl, patterns, parampatterns, sempass2,
+  linter, semmacrosanity, lowerings, plugins/active, lineinfos, strtabs,
+  int128, ic
 
 from modulegraphs import ModuleGraph, PPassContext, onUse, onDef, onDefResolveForward
 
@@ -617,7 +618,7 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  rod.storeNode(c.graph, c.module, result)
+  c.addIcCache result
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):
@@ -639,7 +640,8 @@ proc myClose(graph: ModuleGraph; context: PPassContext, n: PNode): PNode =
     result.add(c.module.ast)
   popOwner(c)
   popProcCon(c)
-  storeRemaining(c.graph, c.module)
+  c.addIcCache c.module
+  c.seal
 
 const semPass* = makePass(myOpen, myProcess, myClose,
                           isFrontend = true)

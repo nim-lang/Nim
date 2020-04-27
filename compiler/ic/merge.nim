@@ -11,8 +11,17 @@
 ## is needed for incremental compilation.
 
 import
-  ast, ropes, options, strutils, nimlexbase, cgendata, rodutils,
-  intsets, llstream, tables, modulegraphs, pathutils
+
+  ".." / [ ast, ropes, options, nimlexbase, cgendata, rodutils,
+  llstream, modulegraphs, pathutils ]
+
+import
+
+  std / [ intsets, tables, strutils ]
+
+import
+
+  spec, utils
 
 # Careful! Section marks need to contain a tabulator so that they cannot
 # be part of C string literals.
@@ -68,6 +77,20 @@ proc genSectionStart*(ps: TCProcSection; conf: ConfigRef): Rope =
 proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = rope(NimMergeEndMark & "\n")
+
+proc writeTypeCache(a: TypeCache, s: var EncodingString) =
+  var i = 0
+  for id, value in pairs(a):
+    if i == 10:
+      i = 0
+      s.add('\L')
+    else:
+      s.add(' ')
+    encodeStr($id, s)
+    s.add(':')
+    encodeStr($value, s)
+    inc i
+  s.add('}')
 
 proc genMergeInfo*(m: BModule): Rope =
   if not compilationCachePresent(m.config): return nil

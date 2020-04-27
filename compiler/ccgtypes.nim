@@ -24,7 +24,7 @@ proc mangleField(m: BModule; name: PIdent): string =
   # meaning we produce inconsistent field names (see bug #5404).
   # Hence we do not check for ``m.g.config.cppDefines.contains(result)`` here
   # anymore:
-  if isKeyword(name):
+  if isNimOrCKeyword(name):
     result.add "_0"
 
 when false:
@@ -65,7 +65,7 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
     # and a function called in main or proxy uses `socket` as a parameter name.
     # That would lead to either needing to reload `proxy` or to overwrite the
     # executable file for the main module, which is running (or both!) -> error.
-    if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
+    if m.hcrOn or isNimOrCKeyword(s.name) or m.g.config.cppDefines.contains(res):
       res.add "_0"
     result = res.rope
     m.setLocationRope s, result

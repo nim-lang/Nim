@@ -13,13 +13,11 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
-  condsyms, times,
-  sem, idents, passes, extccomp,
-  cgen, json, nversion,
-  platform, nimconf, passaux, depends, vm, idgen,
-  modules,
-  modulegraphs, tables, rod, lineinfos, pathutils
+
+  llstream, strutils, os, ast, lexer, syntaxes, options, msgs, condsyms,
+  times, sem, idents, passes, extccomp, cgen, json, nversion, platform,
+  nimconf, passaux, depends, vm, idgen, modules, modulegraphs, tables, ic,
+  lineinfos, pathutils
 
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2

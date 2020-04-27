@@ -84,16 +84,15 @@ proc closePasses(graph: ModuleGraph; a: var TPassContextArray) =
 
 proc processTopLevelStmt(graph: ModuleGraph, n: PNode, a: var TPassContextArray): bool =
   # this implements the code transformation pipeline
-  compileUncachedIt(graph, n):
-    var
-      m: PNode = n
-    block prematureEvacuation:
-      for i in 0..<graph.passes.len:
-        if graph.passes[i].process != nil:
-          m = graph.passes[i].process(a[i], m)
-          if m == nil:
-            break prematureEvacuation
-      result = true
+  var
+    m: PNode = n  # shoulda been an it
+  block prematureEvacuation:
+    for i in 0..<graph.passes.len:
+      if graph.passes[i].process != nil:
+        m = graph.passes[i].process(a[i], m)
+        if m == nil:
+          break prematureEvacuation
+    result = true
 
 proc resolveMod(conf: ConfigRef; module, relativeTo: string): FileIndex =
   let fullPath = findModule(conf, module, relativeTo)
@@ -149,13 +148,12 @@ proc processCachedModule*(graph: ModuleGraph; module: PSym;
       a[i] = nil
 
   if not graph.stopCompile():
-    compileCachedIt(graph, module):
-      var m = it
-      for i in 0..<graph.passes.len:
-        if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
-          m = graph.passes[i].process(a[i], m)
-          if isNil(m):
-            break
+    var m = loadNode(graph, module)
+    for i in 0..<graph.passes.len:
+      if not isNil(graph.passes[i].process) and not graph.passes[i].isFrontend:
+        m = graph.passes[i].process(a[i], m)
+        if isNil(m):
+          break
 
   var m: PNode = nil
   for i in 0..<graph.passes.len:

@@ -10,11 +10,11 @@
 ## Serialization utilities for the compiler.
 import
 
-  ".."/[ lineinfos, rodutils ]
+  ".." / [ lineinfos, rodutils ]
 
 import
 
-  strutils, math
+  std / [ strutils, math, intsets ]
 
 
 type
@@ -236,3 +236,15 @@ proc addLineInfoDelta*(e: var EncodingString; info: TLineInfo; old: TLineInfo) =
     e.addLineInfo(JustCol, info)
   else:
     e.addLineInfo(LineAndCol, info)
+
+proc writeIntSet*(a: IntSet, s: var EncodingString) =
+  var i = 0
+  for x in items(a):
+    if i == 10:
+      i = 0
+      s.add('\L')
+    else:
+      s.add(' ')
+    encodeVInt(x, s)
+    inc i
+  s.add('}')

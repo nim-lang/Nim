@@ -13,6 +13,9 @@ import
   intsets, options, ast, astalgo, msgs, idents, renderer,
   magicsys, vmdef, modulegraphs, lineinfos, sets
 
+import
+  std / deques
+
 type
   TOptionEntry* = object      # entries to put on a stack for pragma parsing
     options*: TOptions
@@ -70,6 +73,19 @@ type
       # overload resolution.
 
   TExprFlags* = set[TExprFlag]
+
+  SomeNode = object
+    case kind*: TNodeKind
+    of nkSym:
+      sym: PSym
+    of nkType:
+      typ: PType
+    of nkNone:
+      node: PNode
+    else:
+      discard
+
+  SomeIcNodes = Deque[SomeNode]
 
   PContext* = ref TContext
   TContext* = object of TPassContext # a context represents the module
@@ -144,8 +160,75 @@ type
     unusedImports*: seq[(PSym, TLineInfo)]
     exportIndirections*: HashSet[(int, int)]
     sealed: bool  # the tree is sealed and immutable
+    icCache: SomeIcNodes
 
 template config*(c: PContext): ConfigRef = c.graph.config
+
+proc isSealed*(c: PContext): bool = c.sealed
+
+iterator consumer*(c: PContext): SomeNode =
+  assert not c.isSealed
+  if c.isSealed:
+    raise newException(Defect, "context already sealed")
+  c.sealed = true
+  while c.icCache.len > 0:
+    yield c.icCache.popFirst
+
+proc isValid(n: SomeNode): bool  =
+  block:
+    case n.kind
+    of nkNone:
+      if n.node != nil:
+        break
+    of nkSym:
+      if n.sym != nil:
+        break
+    of nkType:
+      if n.typ != nil:
+        break
+    else:
+      raise newException(Defect, "unexpected node kind")
+    raise newException(Defect, "nil node")
+
+proc ultimateOwner(n: SomeNode): PSym =
+  case n.kind
+  of nkSym:
+    result = n.sym.ultimateOwner
+  of nkType:
+    result = n.typ.ultimateOwner
+  of nkNone:
+    result = n.node.ultimateOwner
+  else:
+    raise newException(Defect, "unexpected type")
+
+proc isValid(c: PContext; n: SomeNode): bool  =
+  result = n.isValid and c.module == n.ultimateOwner
+
+proc asType*(n: SomeNode): PType =
+  assert n.kind == nkType
+  assert n.isValid
+  result = n.typ
+
+proc asSym*(n: SomeNode): PSym =
+  assert n.kind == nkSym
+  assert n.isValid
+  result = n.sym
+
+proc asNode*(n: SomeNode): PNode =
+  assert n.kind == nkNone
+  assert n.isValid
+  result = n.node
+
+proc newSomeNode(p: PNode): SomeNode = SomeNode(kind: nkNone, node: p)
+proc newSomeNode(p: PSym): SomeNode = SomeNode(kind: nkSym, sym: p)
+proc newSomeNode(p: PType): SomeNode = SomeNode(kind: nkType, typ: p)
+
+proc addIcCache*(c: PContext; p: PNode | PSym | PType) =
+  ## add the given node to the context's cache
+  let
+    value = newSomeNode(p)
+  assert c.isValid(value)
+  c.icCache.addFirst value
 
 proc makeInstPair*(s: PSym, inst: PInstantiation): TInstantiationPair =
   result.genericSym = s
@@ -453,8 +536,8 @@ proc setCaseContextIdx*(c: PContext, idx: int) =
 # ie. Indexable.add
 proc add*(tree: PContext; father, son: PNode or PType) =
   assert son != nil
-  assert not tree.sealed
-  if tree.sealed:
+  assert not tree.isSealed
+  if tree.isSealed:
     raise newException(Defect, "sealed tree attempted mutation")
   when not defined(nimNoNilSeqs):
     if father.sons == nil:

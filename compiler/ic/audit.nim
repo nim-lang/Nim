@@ -7,7 +7,7 @@ import
 
   std / [ hashes, intsets, strutils ]
 
-proc hash(s: TTypeSeq): Hash =
+proc hash*(s: TTypeSeq): Hash =
   # good enough indeed
   var
     h: Hash = 0
@@ -15,7 +15,7 @@ proc hash(s: TTypeSeq): Hash =
     h = h !& hash($hashType(t))
   result = !$h
 
-proc hash(r: Rope): Hash =
+proc hash*(r: Rope): Hash =
   # good enough indeed
   var
     h: Hash = 0
@@ -26,14 +26,14 @@ proc hash(r: Rope): Hash =
       h = h !& hash(leaf)
   result = !$h
 
-proc hash(s: IntSet): Hash =
+proc hash*(s: IntSet): Hash =
   var
     h: Hash = 0
   for i in s.items:
     h = h !& hash(i)
   result = !$h
 
-proc hash(s: TCFileSections): Hash =
+proc hash*(s: TCFileSections): Hash =
   var
     h: Hash = 0
   for section, roap in s.pairs:
@@ -42,7 +42,7 @@ proc hash(s: TCFileSections): Hash =
     h = h !& hash(roap)
   result = !$h
 
-proc hash(b: BProc): Hash =
+proc hash*(b: BProc): Hash =
   # also lousy
   var
     h: Hash = 0
@@ -53,7 +53,7 @@ proc hash(b: BProc): Hash =
     h = h !& hash($hashProc(b.prc))
   result = !$h
 
-proc hash(d: TNodeTable): Hash =
+proc hash*(d: TNodeTable): Hash =
   # lousy, but probably good enough
   var
     h: Hash = 0
@@ -62,7 +62,7 @@ proc hash(d: TNodeTable): Hash =
     h = h !& hash(pair.val)
   result = !$h
 
-proc hash(m: BModule): Hash =
+proc hash*(m: BModule): Hash =
   var
     h: Hash = 0
   h = h !& hash(m.headerFiles)
@@ -89,7 +89,7 @@ proc hash(m: BModule): Hash =
 
   result = !$h
 
-proc hash(list: BModuleList): Hash =
+proc hash*(list: BModuleList): Hash =
   var
     h: Hash = 0
   h = h !& hash(list.mainModProcs)

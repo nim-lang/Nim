@@ -29,18 +29,34 @@ export nimIncremental
 
 import # ic imports
 
-  ic / [ spec, backend, frontend, store, utils ]
+  ic / [ spec, backend, frontend, store, utils, merge ]
+
+# true when an audit is available
+export
+  nimIcAudit
+when nimIcAudit:
+  export hash
 
 # backend API
 export
 
   getSetConflict, rawNewModule, getTempName, makeTempName, idOrSig,
-  performCaching
+  performCaching,
+  rejected, `$`,
+  reject, # used in an exported template
+  setLocation, setLocationRope,
+  inclLocationFlags, exclLocationFlags
+
+# merging
+export
+
+  genSectionStart, genSectionEnd,
+  genMergeInfo, mergeRequired, mergeFiles
 
 # frontend API
 export
 
-  compileCachedIt, compileUncachedIt, seal
+  seal, loadNode, loadModuleSym, registerModule, setupModuleCache
 
 ## TODO:
 ## - Add some backend logic dealing with generics.
@@ -84,7 +100,7 @@ when false:
       g.storeType(tree.node)
     tree.seal
 
-  proc setLocation*[T: PSym or PType](tree: var TreeNode; node: T; loc: TLoc) =
+  proc setLocation*[T: PSym or PType](context: PContext; node: T; loc: TLoc) =
     if tree.sealed:
       raise newException(Defect, "tree is sealed")
     tree.setLocation(node, loc)

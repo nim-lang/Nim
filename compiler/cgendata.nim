@@ -222,7 +222,7 @@ type
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 
-proc isKeyword*(w: PIdent): bool =
+proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
   case w.id

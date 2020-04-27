@@ -8,7 +8,7 @@ import
   std / [ os, tables ]
 
 type
-  CacheStrategy* {.pure.} = enum
+  CacheStrategy* = enum
     Reads       = "📖"
     Writes      = "✒️"
     Immutable   = "🔏"
@@ -38,19 +38,6 @@ type
   SnippetTable* = OrderedTable[SigHash, Snippet]
   Snippets* = seq[Snippet]
 
-proc ultimateOwner*(p: PSym): PSym =
-  if p == nil or p.owner == nil or p.kind in {skModule, skPackage}:
-    result = p
-  else:
-    result = p.owner.ultimateOwner
-
-proc ultimateOwner*(p: PType): PSym =
-  if p == nil or p.sym == nil:
-    assert false
-    result = nil
-  else:
-    result = p.sym.ultimateOwner
-
 when false:
   template kind[T](tree: TreeNode[T]): CacheUnitKind =
     when T is PNode:
@@ -63,7 +50,7 @@ when false:
       {.fatal: "undefined cache unit kind for tree node".}
 
 const
-  nimIcAudit = when not defined(release): true else: false
+  nimIcAudit* = when not defined(release): true else: false
 when nimIcAudit:
   import audit
   export audit

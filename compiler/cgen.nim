@@ -10,11 +10,15 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options,
-  intsets, nversion, nimsets, msgs, bitsets, idents, types, ccgutils, os,
-  ropes, math, passes, wordrecg, treetab, cgmeth, rodutils, renderer,
-  cgendata, aliases, ccgmerge, lowerings, tables, sets, ndi, lineinfos,
-  pathutils, transf, enumtostr, injectdestructors, ic, strformat
+
+  ast, astalgo, trees, magicsys, extccomp, options, nversion, wordrecg,
+  platform, treetab, cgmeth, rodutils, renderer, cgendata, nimsets, msgs,
+  bitsets, idents, types, ccgutils, ropes, passes, aliases, lowerings,
+  ndi, lineinfos, pathutils, transf, enumtostr, injectdestructors, ic
+
+import
+
+  std / [ tables, sets, strformat, hashes, intsets, os, math ]
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -75,7 +79,7 @@ proc rawFillLoc(t: var TLoc; k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc)
   t.k = k
   t.lode = lode
   t.storage = s
-  t.roap = r
+  t.setRope r
 
 proc rawFillLoc(k: TLocKind, lode: PNode, r: Rope, s: TStorageLoc): TLoc =
   result.rawFillLoc(k, lode, r, s)
@@ -1256,12 +1260,6 @@ proc genProc(orig: BModule, prc: PSym) =
     performCaching(orig.g, orig, prc):
       if not cache.rejected:
         assert prc.typ != nil
-        when false:
-          if prc.typ.sym == nil:
-            echo "PROC WITH NIL TYP SYM"
-            debug prc
-            #prc.typ.sym = prc
-            #raise
 
       if sfWasForwarded in prc.flags:
         # telling the BModule that we will need a forward declaration section
@@ -2128,9 +2126,6 @@ proc genForwardedProcs(g: BModuleList) =
 
     # otherwise, generate the proc
     genProcMayForward(m, prc)
-
-when not defined(release):
-  include icaudit
 
 proc cgenWriteModules*(backend: RootRef, config: ConfigRef) =
   var g = BModuleList(backend)
