@@ -69,32 +69,6 @@ proc genSectionEnd*(ps: TCProcSection; conf: ConfigRef): Rope =
   if compilationCachePresent(conf):
     result = rope(NimMergeEndMark & "\n")
 
-proc writeTypeCache(a: TypeCache, s: var EncodingString) =
-  var i = 0
-  for id, value in pairs(a):
-    if i == 10:
-      i = 0
-      s.add('\L')
-    else:
-      s.add(' ')
-    encodeStr($id, s)
-    s.add(':')
-    encodeStr($value, s)
-    inc i
-  s.add('}')
-
-proc writeIntSet(a: IntSet, s: var EncodingString) =
-  var i = 0
-  for x in items(a):
-    if i == 10:
-      i = 0
-      s.add('\L')
-    else:
-      s.add(' ')
-    encodeVInt(x, s)
-    inc i
-  s.add('}')
-
 proc genMergeInfo*(m: BModule): Rope =
   if not compilationCachePresent(m.config): return nil
   var s = "/*\tNIM_merge_INFO:\n"
