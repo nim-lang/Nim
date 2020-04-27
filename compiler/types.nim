@@ -253,7 +253,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   else:
     discard
 
-proc searchTypeFor(t: PType, predicate: TTypePredicate): bool =
+proc searchTypeFor*(t: PType, predicate: TTypePredicate): bool =
   var marker = initIntSet()
   result = searchTypeForAux(t, predicate, marker)
 
