@@ -32,22 +32,22 @@ pkNonTerminal: Sum @(2, 3)
 
 Event parser output
 -------------------
-@[5]
+@[5.0]
 +
-@[5, 3]
-@[8]
+@[5.0, 3.0]
+@[8.0]
 
 /
-@[8, 2]
-@[4]
+@[8.0, 2.0]
+@[4.0]
 
 -
-@[4, 7]
+@[4.0, 7.0]
 -*
-@[4, 7, 22]
-@[4, 154]
+@[4.0, 7.0, 22.0]
+@[4.0, 154.0]
 -
-@[-150]
+@[-150.0]
 '''
 """
 
@@ -105,7 +105,7 @@ block:
 block:
   var
     pStack: seq[string] = @[]
-    valStack: seq[int] = @[]
+    valStack: seq[float] = @[]
     opStack = ""
   let
     parseArithExpr = pegAst.eventParser:
@@ -119,20 +119,20 @@ block:
             case p.nt.name
             of "Value":
               try:
-                valStack.add matchStr.parseInt
+                valStack.add matchStr.parseFloat
                 echo valStack
               except ValueError:
                 discard
             of "Sum", "Product":
               try:
-                let val = matchStr.parseInt
+                let val = matchStr.parseFloat
               except ValueError:
                 if valStack.len > 1 and opStack.len > 0:
                   valStack[^2] = case opStack[^1]
                   of '+': valStack[^2] + valStack[^1]
                   of '-': valStack[^2] - valStack[^1]
                   of '*': valStack[^2] * valStack[^1]
-                  else: valStack[^2] div valStack[^1]
+                  else: valStack[^2] / valStack[^1]
                   valStack.setLen valStack.high
                   echo valStack
                   opStack.setLen opStack.high

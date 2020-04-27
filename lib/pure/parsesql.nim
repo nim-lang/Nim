@@ -556,14 +556,6 @@ type
   SqlParser* = object of SqlLexer ## SQL parser object
     tok: Token
 
-proc newNode*(k: SqlNodeKind, s: string): SqlNode =
-  result = SqlNode(kind: k)
-  result.strVal = s
-
-proc newNode*(k: SqlNodeKind, sons: seq[SqlNode]): SqlNode =
-  result = SqlNode(kind: k)
-  result.sons = sons
-
 proc newNode*(k: SqlNodeKind): SqlNode =
   when defined(js): # bug #14117
     case k
@@ -573,6 +565,14 @@ proc newNode*(k: SqlNodeKind): SqlNode =
       result = SqlNode(kind: k, sons: @[])
   else:
     result = SqlNode(kind: k)
+
+proc newNode*(k: SqlNodeKind, s: string): SqlNode =
+  result = SqlNode(kind: k)
+  result.strVal = s
+
+proc newNode*(k: SqlNodeKind, sons: seq[SqlNode]): SqlNode =
+  result = SqlNode(kind: k)
+  result.sons = sons
 
 proc len*(n: SqlNode): int =
   if n.kind in LiteralNodes:
