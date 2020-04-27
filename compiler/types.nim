@@ -623,7 +623,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     of tyOpenArray:
       result = "openArray"
       if t.len > 0:
-        result = "[" & typeToString(t[0]) & ']'
+        result &= "[" & typeToString(t[0]) & ']'
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
