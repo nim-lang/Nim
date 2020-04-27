@@ -1443,12 +1443,15 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
-  if socket.domain == AF_INET6:
+  case socket.domain
+  of AF_INET6:
     var sockAddress: Sockaddr_in6
     recvFrom(AF_INET6)
-  else:
+  of AF_INET:
     var sockAddress: Sockaddr_in
     recvFrom(AF_INET)
+  else:
+    raise newException(ValueError, "Unknown socket address family")
 
 proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.
