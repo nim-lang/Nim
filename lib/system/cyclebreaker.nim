@@ -52,6 +52,8 @@ That seems acceptable, no leak is produced. This implies that the standard
 depth-first traversal suffices.
 
 ]#
+
+type PT = ptr pointer
 include cellseqs_v2
 
 const
