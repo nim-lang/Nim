@@ -27,7 +27,7 @@
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from strutils import contains, toLowerAscii
+from strutils import contains, toLowerAscii, replace
 
 when not defined(nimscript):
   from osproc import execProcess
@@ -138,7 +138,8 @@ const
 
 # we cache the result of the 'cmdRelease'
 # execution for faster platform detections.
-var unameRes, osReleaseIDRes, releaseRes, hostnamectlRes: string
+var
+  unameRes, unameVersionRes, osReleaseIDRes, osReleaseVersionRes, lsbReleaseRes, hostnamectlRes: string
 
 template cmdRelease(cmd, cache): untyped =
   if cache.len == 0:
@@ -146,13 +147,15 @@ template cmdRelease(cmd, cache): untyped =
   cache
 
 template uname(): untyped = cmdRelease("uname -a", unameRes)
+template unameVersion(): untyped = cmdRelease("uname -r", unameVersionRes)
 template osReleaseID(): untyped = cmdRelease("cat /etc/os-release | grep ^ID=", osReleaseIDRes)
-template release(): untyped = cmdRelease("lsb_release -d", releaseRes)
+template osReleaseVersion(): untyped = cmdRelease("cat /etc/os-release | grep ^VERSION_ID=", osReleaseVersionRes)
+template lsbRelease(): untyped = cmdRelease("lsb_release -d", lsbReleaseRes)
 template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
 
 proc detectOsWithAllCmd(d: Distribution): bool =
   let dd = toLowerAscii($d)
-  result = dd in toLowerAscii(osReleaseID()) or dd in toLowerAscii(release()) or
+  result = dd in toLowerAscii(osReleaseID()) or dd in toLowerAscii(lsbRelease()) or
             dd in toLowerAscii(uname()) or ("operating system: " & dd) in toLowerAscii(hostnamectl())
 
 proc detectOsImpl(d: Distribution): bool =
@@ -186,7 +189,7 @@ proc detectOsImpl(d: Distribution): bool =
         result = existsEnv("NIX_BUILD_TOP") or existsEnv("__NIXOS_SET_ENVIRONMENT_DONE")
         # Check if this is a Nix build or NixOS environment
       of Distribution.OpenSUSE:
-        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(release())
+        result = "suse" in toLowerAscii(uname()) or "suse" in toLowerAscii(lsbRelease())
       of Distribution.GoboLinux:
         result = "-Gobo " in uname()
       of Distribution.Solaris:
@@ -199,6 +202,7 @@ proc detectOsImpl(d: Distribution): bool =
     else:
       result = false
 
+# TODO: add var to store result for the next time
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
   ## required ``Distribution.`` qualifier is added to the
@@ -270,6 +274,31 @@ proc echoForeignDeps*() =
   ## Writes the list of registered foreign deps to stdout.
   for d in foreignDeps:
     echo d
+    
+proc getOSVersion*(): string =
+    ## Get OS version.
+    ## Return empty string if not found.
+    when defined(windows):
+        result = command("wmic os get Version")
+        result = result.strip().split("\n")[^1].strip()
+    elif defined(bsd):
+      if detectOs(FreeBSD) or detectOs(OpenBSD):
+        result = unameVersion()
+      else:
+        result = ""
+    elif defined(linux):
+      if detectOs(Elementary) or detectOs(Ubuntu) or detectOs(Debian) or detectOs(Fedora) or
+        detectOs(OpenMandriva) or detectOs(CentOS) or detectOs(Alpine) or
+        detectOs(Mageia) or detectOs(Zorin) or detectOs(RedHat) or detectOs(ArchLinux):
+        result = osReleaseVersion().replace(result, "\"").replace("VERSION_ID=")
+      elif detectOs(Gentoo) or detectOs(OpenSUSE) or detectOs(GoboLinux) or detectOs(Solaris):
+        result = unameVersion()
+      else:
+        result = ""
+    elif defined(macosx):
+        result = command("sw_vers -productVersion").strip()
+    else:
+        result = ""
 
 when false:
   foreignDep("libblas-dev")
