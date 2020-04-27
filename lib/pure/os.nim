@@ -2707,7 +2707,23 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-elif defined(nintendoswitch) or weirdTarget:
+elif defined(nimscript):
+  proc paramStr*(i: int): string =
+    ## Retrieves the ``i``'th command line parameter.
+    discard
+
+  proc paramCount*(): int =
+    ## Retrieves the number of command line parameters.
+    discard
+
+elif defined(js):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on JavaScript")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on JavaScript")
+
+elif defined(nintendoswitch):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
