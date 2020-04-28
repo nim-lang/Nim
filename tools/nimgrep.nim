@@ -8,7 +8,7 @@
 #
 
 import
-  os, strutils, parseopt, pegs, re, terminal
+  os, strutils, parseopt, pegs, re, terminal, osproc, tables
 
 const
   Version = "1.5"
@@ -33,6 +33,7 @@ Options:
   --word, -w          the match should have word boundaries (buggy for pegs!)
   --ignoreCase, -i    be case insensitive
   --ignoreStyle, -y   be style insensitive
+  --nWorkers:N, -n:N  speed up search by N additional workers (threads)
   --ext:EX1|EX2|...   only search the files with the given extension(s),
                       empty one ("--ext") means files with missing extension
   --noExt:EX1|...     exclude files having given extension(s), use empty one to
@@ -68,11 +69,28 @@ type
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
   Pattern = Regex | Peg
+  SearchInfo = tuple[buf: string, filename: string]
+  MatchInfo = tuple[first: int, last: int;
+                    lineBeg: int, lineEnd: int, match: string]
+  outputKind = enum
+    OpenError, Rejected, GroupFirstMatch, GroupNextMatch, GroupEnd, FileContents
+  Output = object
+    case kind: outputKind
+    of OpenError: msg: string
+    of Rejected: discard
+    of GroupFirstMatch, GroupNextMatch:
+      pre: string
+      match: MatchInfo
+    of GroupEnd:
+      groupEnding: string
+      firstLine: int       # = last lineNo of last match
+    of FileContents:
+      buffer: string
 
 using pattern: Pattern
 
 var
-  filenames: seq[string] = @[]
+  paths: seq[string] = @[]
   pattern = ""
   replacement = ""
   extensions: seq[string] = @[]
@@ -88,6 +106,10 @@ var
   linesContext = 0
   colorTheme = "simple"
   newLine = false
+  gVar = (matches: 0, errors: 0, reallyReplace: false)
+  nWorkers = 0  # run in single thread by default
+  requests: Channel[(int, string)]
+  results: Channel[tuple[fileNo: int, result: seq[Output]]]
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -201,11 +223,6 @@ proc printBlockLineN(s: string) =
     of "ack": stdout.styledWrite(styleUnderscore, fgYellow, s)
     of "gnu": stdout.styledWrite(styleUnderscore, fgGreen, s)
 
-type
-  SearchInfo = tuple[buf: string, filename: string]
-  MatchInfo = tuple[first: int, last: int;
-                    lineBeg: int, lineEnd: int, match: string]
-
 proc writeColored(s: string) =
   whenColors:
     case colorTheme
@@ -252,150 +269,146 @@ proc printMatch(fileName: string, mi: MatchInfo) =
     if i < lines.len - 1:
       stdout.write("\n")
 
-proc printLinesBefore(si: SearchInfo, curMi: MatchInfo, nLines: int,
-                      replMode=false) =
+proc getLinesBefore(si: SearchInfo, curMi: MatchInfo): string =
+  let first = beforePattern(si.buf, curMi.first-1, linesBefore+1)
+  result = substr(si.buf, first, curMi.first-1)
+
+proc printLinesBefore(filename: string, beforeMatch: string, lineBeg: int, replMode=false) =
   # start block: print 'linesBefore' lines before current match `curMi`
-  let first = beforePattern(si.buf, curMi.first-1, nLines)
-  let lines = splitLines(substr(si.buf, first, curMi.first-1))
-  let startLine = curMi.lineBeg - lines.len + 1
-  blockHeader(si.filename, curMi.lineBeg, replMode=replMode)
+  let lines = splitLines(beforeMatch)
+  let startLine = lineBeg - lines.len + 1
+  blockHeader(filename, lineBeg, replMode=replMode)
   for i, l in lines:
-    lineHeader(si.filename, startLine + i, isMatch = (i == lines.len - 1))
+    lineHeader(filename, startLine + i, isMatch = (i == lines.len - 1))
     stdout.write(l)
     if i < lines.len - 1:
       stdout.write("\n")
 
-proc printLinesAfter(si: SearchInfo, mi: MatchInfo, nLines: int) =
+proc getLinesAfter(si: SearchInfo, mi: MatchInfo): string =
+  let last = afterPattern(si.buf, mi.last+1, 1+linesAfter)
+  result = substr(si.buf, mi.last+1, last)
+
+proc printLinesAfter(filename: string, afterMatch: string, matchLineEnd: int) =
   # finish block: print 'linesAfter' lines after match `mi`
-  let s = si.buf
-  let last = afterPattern(s, mi.last+1, nLines)
-  let lines = splitLines(substr(s, mi.last+1, last))
+  let lines = splitLines(afterMatch)
   if lines.len == 0: # EOF
     stdout.write("\n")
   else:
     stdout.write(lines[0]) # complete the line after match itself
     stdout.write("\n")
-    let skipLine =  # workaround posix line ending at the end of file
-      if last == s.len-1 and s.len >= 2 and s[^1] == '\l' and s[^2] != '\c': 1
-      else: 0
+    #let skipLine =  # workaround posix line ending at the end of file
+    #  if last == s.len-1 and s.len >= 2 and s[^1] == '\l' and s[^2] != '\c': 1
+    #  else: 0
+    let skipLine = 0
     for i in 1 ..< lines.len - skipLine:
-      lineHeader(si.filename, mi.lineEnd + i, isMatch = false)
+      lineHeader(filename, matchLineEnd + i, isMatch = false)
       stdout.write(lines[i])
       stdout.write("\n")
   if linesAfter + linesBefore >= 2 and not newLine: stdout.write("\n")
 
-proc printBetweenMatches(si: SearchInfo, prevMi: MatchInfo, curMi: MatchInfo) =
+proc getLinesBetween(si: SearchInfo, prevMi: MatchInfo, curMi: MatchInfo): string =
+  si.buf.substr(prevMi.last+1, curMi.first-1)
+
+proc printBetweenMatches(filename: string, betweenMatches: string, lastLineBeg: int) =
   # continue block: print between `prevMi` and `curMi`
-  let lines = si.buf.substr(prevMi.last+1, curMi.first-1).splitLines()
+  let lines = betweenMatches.splitLines()
   stdout.write(lines[0]) # finish the line of previous Match
   if lines.len > 1:
     stdout.write("\n")
     for i in 1 ..< lines.len:
-      lineHeader(si.filename, prevMi.lineEnd + i,
+      lineHeader(filename, lastLineBeg - lines.len + i + 1,
                  isMatch = (i == lines.len - 1))
       stdout.write(lines[i])
       if i < lines.len - 1:
         stdout.write("\n")
 
-proc printContextBetween(si: SearchInfo, prevMi, curMi: MatchInfo) =
-  # print context after previous match prevMi and before current match curMi
-  let nLinesBetween = curMi.lineBeg - prevMi.lineEnd
-  if nLinesBetween <= linesAfter + linesBefore + 1: # print as 1 block
-    printBetweenMatches(si, prevMi, curMi)
-  else: # finalize previous block and then print next block
-    printLinesAfter(si, prevMi, 1+linesAfter)
-    printLinesBefore(si, curMi, linesBefore+1)
-
 proc printReplacement(si: SearchInfo, mi: MatchInfo, repl: string,
                       showRepl: bool, curPos: int,
                       newBuf: string, curLine: int) =
-  printLinesBefore(si, mi, linesBefore+1)
-  printMatch(si.fileName, mi)
-  printLinesAfter(si, mi, 1+linesAfter)
+  let filename = si.fileName
+  printLinesBefore(fileName, getLinesBefore(si, mi), mi.lineBeg)
+  printMatch(fileName, mi)
+  printLinesAfter(fileName, getLinesAfter(si, mi), mi.lineEnd)
   stdout.flushFile()
   if showRepl:
-    let newSi: SearchInfo = (buf: newBuf, filename: si.filename)
+    let newSi: SearchInfo = (buf: newBuf, filename: filename)
     let miForNewBuf: MatchInfo =
       (first: newBuf.len, last: newBuf.len,
        lineBeg: curLine, lineEnd: curLine, match: "")
-    printLinesBefore(newSi, miForNewBuf, linesBefore+1, replMode=true)
+    printLinesBefore(fileName, getLinesBefore(newSi, miForNewBuf), miForNewBuf.lineBeg, replMode=true)
 
     let replLines = countLineBreaks(repl, 0, repl.len-1)
     let miFixLines: MatchInfo =
       (first: mi.first, last: mi.last,
        lineBeg: curLine, lineEnd: curLine + replLines, match: repl)
-    printMatch(si.fileName, miFixLines)
-    printLinesAfter(si, miFixLines, 1+linesAfter)
+    printMatch(fileName, miFixLines)
+    printLinesAfter(fileName, getLinesAfter(si, miFixLines), miFixLines.lineEnd)
     stdout.flushFile()
 
-proc doReplace(si: SearchInfo, mi: MatchInfo, i: int, r: string;
-               newBuf: var string, curLine: var int, reallyReplace: var bool) =
+proc replace1match(si: SearchInfo, mi: MatchInfo, i: int, r: string;
+               newBuf: var string, curLine: var int): bool =
   newBuf.add(si.buf.substr(i, mi.first-1))
   inc(curLine, countLineBreaks(si.buf, i, mi.first-1))
   if optConfirm in options:
     printReplacement(si, mi, r, showRepl=true, i, newBuf, curLine)
     case confirm()
     of ceAbort: quit(0)
-    of ceYes: reallyReplace = true
+    of ceYes: gVar.reallyReplace = true
     of ceAll:
-      reallyReplace = true
+      gVar.reallyReplace = true
       options.excl(optConfirm)
     of ceNo:
-      reallyReplace = false
+      gVar.reallyReplace = false
     of ceNone:
-      reallyReplace = false
+      gVar.reallyReplace = false
       options.excl(optConfirm)
   else:
-    printReplacement(si, mi, r, showRepl=reallyReplace, i, newBuf, curLine)
-  if reallyReplace:
+    printReplacement(si, mi, r, showRepl=gVar.reallyReplace, i, newBuf, curLine)
+  if gVar.reallyReplace:
+    result = true
     newBuf.add(r)
     inc(curLine, countLineBreaks(r, 0, r.len-1))
   else:
     newBuf.add(mi.match)
     inc(curLine, countLineBreaks(mi.match, 0, mi.match.len-1))
 
-proc processFile(pattern; filename: string; counter: var int, errors: var int) =
-  var filenameShown = false
-  template beforeHighlight =
-    if not filenameShown and optVerbose notin options and not oneline:
-      printBlockFile(filename)
-      stdout.write("\n")
-      stdout.flushFile()
-      filenameShown = true
+template updateCounters(output: Output) =
+    case output.kind
+    of GroupFirstMatch, GroupNextMatch: inc gVar.matches
+    of OpenError: inc gVar.errors
+    of Rejected, GroupEnd, FileContents: discard
 
-  var buffer: string
-  if optFilenames in options:
-    buffer = filename
-  else:
-    try:
-      buffer = system.readFile(filename)
-    except IOError:
-      printError "Error: cannot open file: " & filename
-      inc(errors)
-      return
-  if optVerbose in options:
-    printFile(filename)
-    stdout.write("\n")
-    stdout.flushFile()
-  var result: string
+proc printOutput(filename: string, output: Output) =
+    case output.kind
+    of OpenError:
+      printError("can not open file " & filename)
+    of Rejected: discard
+    of FileContents: discard # impossible
+    of GroupFirstMatch:
+      printLinesBefore(filename, output.pre, output.match.lineBeg)
+      printMatch(filename, output.match)
+      #flush: TODO
+    of GroupNextMatch:
+      printBetweenMatches(filename, output.pre, output.match.lineBeg)
+      printMatch(filename, output.match)
+    of GroupEnd:
+      printLinesAfter(filename, output.groupEnding, output.firstLine)
 
-  if optReplace in options:
-    result = newStringOfCap(buffer.len)
-
-  var lineRepl = 1
+iterator searchFile(pattern; filename: string; buffer: string): Output =
+  #echo "thread id:", getThreadId(), " pat: ", cast[int](unsafeAddr pattern)
   let si: SearchInfo = (buf: buffer, filename: filename)
   var prevMi, curMi: MatchInfo
   curMi.lineEnd = 1
   var i = 0
   var matches: array[0..re.MaxSubpatterns-1, string]
   for j in 0..high(matches): matches[j] = ""
-  var reallyReplace = true
   while i < buffer.len:
     let t = findBounds(buffer, pattern, matches, i)
     if t.first < 0 or t.last < t.first:
-      if optReplace notin options and prevMi.lineBeg != 0: # finalize last match
-        printLinesAfter(si, prevMi, 1+linesAfter)
-        stdout.flushFile()
+      if prevMi.lineBeg != 0: # finalize last match
+        yield Output(kind: GroupEnd,
+                     groupEnding: getLinesAfter(si, prevMi),
+                     firstLine: prevMi.lineEnd)
       break
 
     let lineBeg = curMi.lineEnd + countLineBreaks(buffer, i, t.first-1)
@@ -404,32 +417,47 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
              lineBeg: lineBeg,
              lineEnd: lineBeg + countLineBreaks(buffer, t.first, t.last),
              match: buffer.substr(t.first, t.last))
-    beforeHighlight()
-    inc counter
-    if optReplace notin options:
-      if prevMi.lineBeg == 0: # no previous match, so no previous block to finalize
-        printLinesBefore(si, curMi, linesBefore+1)
-      else:
-        printContextBetween(si, prevMi, curMi)
-      printMatch(si.fileName, curMi)
-      if t.last == buffer.len - 1:
-        stdout.write("\n")
-      stdout.flushFile()
+    if prevMi.lineBeg == 0: # no previous match, so no previous block to finalize
+      yield Output(kind: GroupFirstMatch,
+                   pre: getLinesBefore(si, curMi),
+                   match: curMi)
     else:
-      let r = replace(curMi.match, pattern, replacement % matches)
-      doReplace(si, curMi, i, r, result, lineRepl, reallyReplace)
+      let nLinesBetween = curMi.lineBeg - prevMi.lineEnd
+      if nLinesBetween <= linesAfter + linesBefore + 1: # print as 1 block
+        yield Output(kind: GroupNextMatch,
+                     pre: getLinesBetween(si, prevMi, curMi),
+                     match: curMi)
+      else: # finalize previous block and then print next block
+        yield Output(kind: GroupEnd,
+                     groupEnding: getLinesAfter(si, prevMi),
+                     firstLine: prevMi.lineEnd)
+        yield Output(kind: GroupFirstMatch,
+                     pre: getLinesBefore(si, curMi),
+                     match: curMi)
+      #if t.last == buffer.len - 1:  # TODO
+      #  stdout.write("\n")
+      #stdout.flushFile()
 
     i = t.last+1
     prevMi = curMi
 
-  if optReplace in options:
-    result.add(substr(buffer, i))  # finalize new buffer after last match
-    var f: File
-    if open(f, filename, fmWrite):
-      f.write(result)
-      f.close()
-    else:
-      quit "cannot open file for overwriting: " & filename
+iterator processFile(pattern; filename: string, yieldContents=false): Output =
+  var buffer: string
+
+  if optFilenames in options:
+    buffer = filename
+  else:
+    try:
+      buffer = system.readFile(filename)
+    except IOError:
+      yield Output(kind: OpenError)
+  var found = false
+  for output in searchFile(pattern, filename, buffer):
+    yield output
+    found = true
+  if yieldContents and found:
+    yield Output(kind: FileContents, buffer: buffer)
+
 
 proc hasRightFileName(path: string): bool =
   let filename = path.lastPathPart
@@ -494,28 +522,180 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-proc walker(pattern; dir: string; counter: var int, errors: var int) =
+proc walker(dir: string; files: var seq[string]) =
   if dirExists(dir):
     for kind, path in walkDir(dir):
       case kind
       of pcFile:
         if path.hasRightFileName:
-          processFile(pattern, path, counter, errors)
+          files.add(path)
       of pcLinkToFile:
         if optFollow in options and path.hasRightFileName:
-          processFile(pattern, path, counter, errors)
+          files.add(path)
       of pcDir:
         if optRecursive in options and path.hasRightDirectory:
-          walker(pattern, path, counter, errors)
+          walker(path, files)
       of pcLinkToDir:
         if optFollow in options and optRecursive in options and
            path.hasRightDirectory:
-          walker(pattern, path, counter, errors)
+          walker(path, files)
   elif fileExists(dir):
-    processFile(pattern, dir, counter, errors)
+    files.add(dir)
   else:
     printError "Error: no such file or directory: " & dir
-    inc(errors)
+    inc(gVar.errors)
+
+iterator walkDirBasic(dir: string): string =
+  var dirs = @[dir]  # stack of directories
+  while dirs.len > 0:
+    let d = dirs.pop()
+    for kind, path in walkDir(d):
+      case kind
+      of pcFile:
+        if path.hasRightFileName:
+          yield path
+      of pcLinkToFile:
+        if optFollow in options and path.hasRightFileName:
+          yield path
+      of pcDir:
+        if optRecursive in options and path.hasRightDirectory:
+          dirs.add path
+      of pcLinkToDir:
+        if optFollow in options and optRecursive in options and
+           path.hasRightDirectory:
+          dirs.add path
+
+iterator walkRec(paths: seq[string]): string =
+  for path in paths:
+    if existsDir(path):
+      for p in walkDirBasic(path):
+        yield p
+    elif existsFile(path):
+      yield path
+    else:
+      printError "Error: no such file or directory: " & path
+      inc(gVar.errors)
+
+template printResult(filename: string, body: untyped) =
+  var filenameShown = false
+  template showFilename =
+    if not filenameShown and not oneline:
+      printBlockFile(filename)
+      stdout.write("\n")
+      stdout.flushFile()
+      filenameShown = true
+  if optVerbose in options:
+    showFilename
+  for output in body:
+    updateCounters(output)
+    if output.kind notin {Rejected, OpenError}:
+      showFilename
+    printOutput(filename, output)
+  
+proc worker(pattern: Pattern) {.thread.} =
+  while true:
+    let (fileNo, filename) = requests.recv()
+    var rslt = newSeq[Output]();
+    for output in processFile(pattern, filename, yieldContents=(optReplace in options)):
+      rslt.add(output)
+    results.send((fileNo, move(rslt)))
+    
+proc replaceMatches(filename: string, buffer: string, outpSeq: seq[Output]) =
+      var newBuf = newStringOfCap(buffer.len)
+
+      var changed = false
+      var lineRepl = 1
+      let si: SearchInfo = (buf: buffer, filename: filename)
+      var i = 0
+      for output in outpSeq:
+        if output.kind in {GroupFirstMatch, GroupNextMatch}:
+          #let r = replace(curMi.match, pattern, replacement % matches) #TODO
+          let curMi = output.match
+          let r = replace(curMi.match, pattern, replacement)
+          if replace1match(si, curMi, i, r, newBuf, lineRepl):
+            changed = true
+          i = curMi.last + 1
+      if changed:
+        newBuf.add(substr(buffer, i))  # finalize new buffer after last match
+        var f: File
+        if open(f, filename, fmWrite):
+          f.write(newBuf)
+          f.close()
+        else:
+          printError "cannot open file for overwriting: " & filename
+          inc(gVar.errors)
+
+proc runMultiThread(pattern) =
+    stdout.flushFile()
+    var
+      workers = newSeq[Thread[Pattern]](nWorkers)
+    open(requests)
+    open(results)
+    for n in 0 ..< nWorkers:
+      createThread(workers[n], worker, pattern)
+    var
+      inWork = 0
+      nextFile = 0
+      firstFile = 0
+      storage = newTable[int, seq[Output]]() # file number -> accumulated result
+      files = newTable[int, string]()
+    template proc1result(fileNo, newOutpSeq) =
+        storage[fileNo] = newOutpSeq
+        var outpSeq: seq[Output]
+        while storage.haskey(firstFile):
+          outpSeq = storage[firstFile]
+          let filename = files[firstFile]
+          if optReplace notin options:
+            printResult(filename, outpSeq)
+          else:
+            var buffer = ""
+
+            var matches = newSeq[Output]()
+            for output in outpSeq:
+              updateCounters(output)
+              case output.kind
+              of Rejected, OpenError: discard
+              of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
+              of FileContents: buffer = output.buffer
+            if matches.len > 0:
+              replaceMatches(filename, buffer, matches)
+          firstFile += 1
+    for filename in walkRec(paths):
+      requests.send((nextFile,filename))
+      files[nextFile] = filename
+      nextFile += 1
+      inWork += 1
+      let (available, msg) = results.tryRecv()
+      if available:
+        proc1result(msg.fileNo, msg.result)
+        inWork -= 1
+    while inWork > 0:
+      let (fileNo, newOutpSeq) = results.recv()
+      proc1result(fileNo, newOutpSeq)
+      inWork -= 1
+
+proc run1Thread(pattern) =
+  for filename in walkRec(paths):
+    if optReplace notin options:
+      printResult(filename, processFile(pattern, filename))
+    else:
+      var matches = newSeq[Output]()
+      var buffer = ""
+
+      for output in processFile(pattern, filename, yieldContents=true):
+        updateCounters(output)
+        case output.kind
+        of Rejected, OpenError: discard
+        of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
+        of FileContents: buffer = output.buffer
+      if matches.len > 0:
+        replaceMatches(filename, buffer, matches)
+
+proc run(pattern) =
+  if nWorkers == 0:
+    run1Thread(pattern)
+  else:
+    runMultiThread(pattern)
 
 proc reportError(msg: string) =
   printError "Error: " & msg
@@ -543,13 +723,13 @@ for kind, key, val in getopt():
   case kind
   of cmdArgument:
     if options.contains(optStdin):
-      filenames.add(key)
+      paths.add(key)
     elif pattern.len == 0:
       pattern = key
     elif options.contains(optReplace) and replacement.len == 0:
       replacement = key
     else:
-      filenames.add(key)
+      paths.add(key)
   of cmdLongOption, cmdShortOption:
     case normalize(key)
     of "find", "f": incl(options, optFind)
@@ -571,6 +751,11 @@ for kind, key, val in getopt():
     of "word", "w": incl(options, optWord)
     of "ignorecase", "i": incl(options, optIgnoreCase)
     of "ignorestyle", "y": incl(options, optIgnoreStyle)
+    of "nworkers", "n":
+      if val == "":
+        nWorkers = countProcessors()
+      else:
+        nWorkers = parseInt(val)
     of "ext": extensions.add val.split('|')
     of "noext": skipExtensions.add val.split('|')
     of "excludedir", "exclude-dir": excludeDir.add rex(val)
@@ -632,10 +817,8 @@ if optStdin in options:
 if pattern.len == 0:
   reportError("empty pattern was given")
 else:
-  var counter = 0
-  var errors = 0
-  if filenames.len == 0:
-    filenames.add(os.getCurrentDir())
+  if paths.len == 0:
+    paths.add(os.getCurrentDir())
   if optRegex notin options:
     if optWord in options:
       pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
@@ -644,8 +827,7 @@ else:
     elif optIgnoreCase in options:
       pattern = "\\i " & pattern
     let pegp = peg(pattern)
-    for f in items(filenames):
-      walker(pegp, f, counter, errors)
+    run(pegp)
   else:
     var reflags = {reStudy}
     if optIgnoreStyle in options:
@@ -657,10 +839,9 @@ else:
       reflags.incl reIgnoreCase
     let rep = if optRex in options: rex(pattern, reflags)
               else: re(pattern, reflags)
-    for f in items(filenames):
-      walker(rep, f, counter, errors)
-  if errors != 0:
-    printError $errors & " errors"
-  stdout.write($counter & " matches\n")
-  if errors != 0:
+    run(rep)
+  if gVar.errors != 0:
+    printError $gVar.errors & " errors"
+  stdout.write($gVar.matches & " matches\n")
+  if gVar.errors != 0:
     quit(1)
