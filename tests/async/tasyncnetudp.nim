@@ -21,9 +21,7 @@ proc saveReceivedPort(port: Port) =
   recvports = recvports + int(port)
 
 proc launchSwarm(serverIp: string, serverPort: Port) {.async.} =
-  var
-    buffer = newString(16384)
-    i = 0
+  var i = 0
 
   while i < swarmSize:
     var sock = newAsyncSocket(nativesockets.AF_INET, nativesockets.SOCK_DGRAM,
@@ -36,16 +34,13 @@ proc launchSwarm(serverIp: string, serverPort: Port) {.async.} =
     var k = 0
     
     while k < messagesToSend:
-      zeroMem(addr(buffer[0]), 16384)
-
       let message = "Message " & $(i * messagesToSend + k)
 
-      await sendTo(sock, message, serverIp, serverPort)
+      await asyncnet.sendTo(sock, message, serverIp, serverPort)
 
-      let (size, fromIp, fromPort) = await recvFrom(sock, addr buffer[0],
-                                                    16384)
+      let (data, fromIp, fromPort) = await recvFrom(sock, 16384)
 
-      if buffer[0 .. (size - 1)] == message:
+      if data == message:
         saveSendingPort(localPort)
 
         inc(recvCount)
@@ -59,17 +54,13 @@ proc launchSwarm(serverIp: string, serverPort: Port) {.async.} =
 proc readMessages(server: AsyncSocket) {.async.} =
   let maxResponses = (swarmSize * messagesToSend)
 
-  var
-    buffer = newString(16384)
-    i = 0
+  var i = 0
   
   while i < maxResponses:
-    zeroMem(addr(buffer[0]), 16384)
-    
-    let (size, fromIp, fromPort) = await recvFrom(server, addr buffer[0], 16384)
+    let (data, fromIp, fromPort) = await recvFrom(server, 16384)
 
-    if buffer.startswith("Message ") and fromIp == "127.0.0.1":
-      await sendTo(server, buffer[0 .. (size - 1)], fromIp, fromPort)
+    if data.startswith("Message ") and fromIp == "127.0.0.1":
+      await sendTo(server, data, fromIp, fromPort)
 
       inc(msgCount)
 
