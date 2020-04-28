@@ -251,7 +251,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
     template rawPrint() = echo(prefix, "[", $testResult.status, "] ",
         testResult.testName)
     when not defined(ECMAScript):
-      if formatter.colorOutput and not defined(ECMAScript):
+      if formatter.colorOutput:
         var color = case testResult.status
           of TestStatus.OK: fgGreen
           of TestStatus.FAILED: fgRed

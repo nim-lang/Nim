@@ -19,27 +19,18 @@ Hi Andreas! How do you feel, Rumpf?
 @[1, 0, 2]
 @[0, 2, 1]
 @[0, 1, 2]
-055this should be the casehugh@["(", "+", " 1", " 2", ")"]
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
-caught a crash!
 [5]
 [4, 5]
 [3, 4, 5]
 [2, 3, 4, 5]
 [2, 3, 4, 5, 6]
 [1, 2, 3, 4, 5, 6]
-true
-<h1><a href="http://force7.de/nim">Nim</a></h1>
 '''
 """
 
 import
-  critbits, cstrutils, sets, strutils, tables, random, algorithm, re, ropes,
-  segfaults, lists, parsesql, streams, os, htmlgen, xmltree, strtabs
+  critbits, cstrutils, sets, strutils, tables, random, algorithm, ropes,
+  lists, htmlgen, xmltree, strtabs
 
 
 block tcritbits:
@@ -60,15 +51,15 @@ block tcritbits:
 
 
 block testequivalence:
-  doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3,4]), "equivalent or subset")
-  doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3]), "equivalent or subset")
-  doAssert((not(toSet(@[1,2,3]) <= toSet(@[1,2]))), "equivalent or subset")
-  doAssert(toSet(@[1,2,3]) <= toSet(@[1,2,3,4]), "strict subset")
-  doAssert((not(toSet(@[1,2,3]) < toSet(@[1,2,3]))), "strict subset")
-  doAssert((not(toSet(@[1,2,3]) < toSet(@[1,2]))), "strict subset")
-  doAssert((not(toSet(@[1,2,3]) == toSet(@[1,2,3,4]))), "==")
-  doAssert(toSet(@[1,2,3]) == toSet(@[1,2,3]), "==")
-  doAssert((not(toSet(@[1,2,3]) == toSet(@[1,2]))), "==")
+  doAssert(toHashSet(@[1,2,3]) <= toHashSet(@[1,2,3,4]), "equivalent or subset")
+  doAssert(toHashSet(@[1,2,3]) <= toHashSet(@[1,2,3]), "equivalent or subset")
+  doAssert((not(toHashSet(@[1,2,3]) <= toHashSet(@[1,2]))), "equivalent or subset")
+  doAssert(toHashSet(@[1,2,3]) <= toHashSet(@[1,2,3,4]), "strict subset")
+  doAssert((not(toHashSet(@[1,2,3]) < toHashSet(@[1,2,3]))), "strict subset")
+  doAssert((not(toHashSet(@[1,2,3]) < toHashSet(@[1,2]))), "strict subset")
+  doAssert((not(toHashSet(@[1,2,3]) == toHashSet(@[1,2,3,4]))), "==")
+  doAssert(toHashSet(@[1,2,3]) == toHashSet(@[1,2,3]), "==")
+  doAssert((not(toHashSet(@[1,2,3]) == toHashSet(@[1,2]))), "==")
 
 
 
@@ -111,35 +102,6 @@ block tpermutations:
     echo v
 
 
-
-block treguse:
-  proc main(a, b: int) =
-    var x = 0
-    write(stdout, x)
-    if x == 0:
-      var y = 55
-      write(stdout, y)
-      write(stdout, "this should be the case")
-      var input = "<no input>"
-      if input == "Andreas":
-        write(stdout, "wow")
-      else:
-        write(stdout, "hugh")
-    else:
-      var z = 66
-      write(stdout, z) # "bug!")
-
-  main(45, 1000)
-
-
-
-block treloop:
-  let str = "(+ 1 2)"
-  var tokenRE = re"""[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)"""
-  echo str.findAll(tokenRE)
-
-
-
 block tropes:
   var
     r1 = rope("")
@@ -159,23 +121,6 @@ block tropes:
   doAssert $r2[2] == "3"
 
 
-
-block tsegfaults:
-  proc main =
-    try:
-      var x: ptr int
-      echo x[]
-      try:
-        raise newException(ValueError, "not a crash")
-      except ValueError:
-        discard
-    except NilAccessError:
-      echo "caught a crash!"
-  for i in 0..5:
-    main()
-
-
-
 block tsinglylinkedring:
   var r = initSinglyLinkedRing[int]()
   r.prepend(5)
@@ -191,8 +136,6 @@ block tsinglylinkedring:
   r.prepend(1)
   echo r
 
-
-
 block tsplit:
   var s = ""
   for w in split("|abc|xy|z", {'|'}):
@@ -201,34 +144,23 @@ block tsplit:
 
   doAssert s == "##abc#xy#z"
 
-
-
 block tsplit2:
   var s = ""
   for w in split("|abc|xy|z", {'|'}):
     s.add("#")
     s.add(w)
 
+  var errored = false
   try:
     discard "hello".split("")
-    echo "false"
   except AssertionError:
-    echo "true"
-
-
-
-block tsqlparser:
-  # Just check that we can parse 'somesql' and render it without crashes.
-  var tree = parseSql(newFileStream( parentDir(currentSourcePath) / "somesql.sql"), "somesql")
-  discard renderSql(tree)
-
-
+    errored = true
+  doAssert errored
 
 block txmlgen:
   var nim = "Nim"
-  echo h1(a(href="http://force7.de/nim", nim))
-
-
+  doAssert h1(a(href="http://force7.de/nim", nim)) ==
+    "<h1><a href=\"http://force7.de/nim\">Nim</a></h1>"
 
 block txmltree:
   var x = <>a(href="nim.de", newText("www.nim-test.de"))
@@ -247,6 +179,7 @@ block txmltree:
   doAssert(y.innerText == "foobar")
 
 
+
 block tcstrutils:
   let s = cstring "abcdef"
   doAssert s.startsWith("a")
@@ -259,10 +192,3 @@ block tcstrutils:
   doAssert not a.startsWith("bra")
   doAssert a.endsWith("abra")
   doAssert not a.endsWith("dab")
-
-  doAssert cmpIgnoreCase(cstring "FooBar", "foobar") == 0
-  doAssert cmpIgnoreCase(cstring "bar", "Foo") < 0
-  doAssert cmpIgnoreCase(cstring "Foo5", "foo4") > 0
-
-  doAssert cmpIgnoreStyle(cstring "foo_bar", "FooBar") == 0
-  doAssert cmpIgnoreStyle(cstring "foo_bar_5", "FooBar4") > 0
