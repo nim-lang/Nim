@@ -1425,7 +1425,7 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## so when ``socket`` is buffered the non-buffered implementation will be
   ## used. Therefore if ``socket`` contains something in its buffer this
   ## function will make no effort to return it.
-  template recvFrom(domain: Domain) =
+  template adaptRecvFromToDomain(domain: Domain) =
     var addrLen = sizeof(sockAddress).SockLen
     result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
                       cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
@@ -1446,10 +1446,10 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   case socket.domain
   of AF_INET6:
     var sockAddress: Sockaddr_in6
-    recvFrom(AF_INET6)
+    adaptRecvFromToDomain(AF_INET6)
   of AF_INET:
     var sockAddress: Sockaddr_in
-    recvFrom(AF_INET)
+    adaptRecvFromToDomain(AF_INET)
   else:
     raise newException(ValueError, "Unknown socket address family")
 
