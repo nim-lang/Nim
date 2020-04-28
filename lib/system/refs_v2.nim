@@ -191,4 +191,4 @@ proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
 
 proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionError, "invalid object conversion")
+  if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")

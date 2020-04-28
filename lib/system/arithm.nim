@@ -12,10 +12,10 @@
 
 proc raiseOverflow {.compilerproc, noinline.} =
   # a single proc to reduce code size to a minimum
-  sysFatal(OverflowError, "over- or underflow")
+  sysFatal(OverflowDefect, "over- or underflow")
 
 proc raiseDivByZero {.compilerproc, noinline.} =
-  sysFatal(DivByZeroError, "division by zero")
+  sysFatal(DivByZeroDefect, "division by zero")
 
 when defined(builtinOverflow):
   # Builtin compiler functions for improved performance
@@ -410,16 +410,16 @@ when not declared(mulInt):
 # written in other languages.
 
 proc raiseFloatInvalidOp {.compilerproc, noinline.} =
-  sysFatal(FloatInvalidOpError, "FPU operation caused a NaN result")
+  sysFatal(FloatInvalidOpDefect, "FPU operation caused a NaN result")
 
 proc nanCheck(x: float64) {.compilerproc, inline.} =
   if x != x: raiseFloatInvalidOp()
 
 proc raiseFloatOverflow(x: float64) {.compilerproc, noinline.} =
   if x > 0.0:
-    sysFatal(FloatOverflowError, "FPU operation caused an overflow")
+    sysFatal(FloatOverflowDefect, "FPU operation caused an overflow")
   else:
-    sysFatal(FloatUnderflowError, "FPU operations caused an underflow")
+    sysFatal(FloatUnderflowDefect, "FPU operations caused an underflow")
 
 proc infCheck(x: float64) {.compilerproc, inline.} =
   if x != 0.0 and x*0.5 == x: raiseFloatOverflow(x)

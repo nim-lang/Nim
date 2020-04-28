@@ -169,7 +169,7 @@ block tsegfaults:
         raise newException(ValueError, "not a crash")
       except ValueError:
         discard
-    except NilAccessError:
+    except NilAccessDefect:
       echo "caught a crash!"
   for i in 0..5:
     main()
@@ -212,7 +212,7 @@ block tsplit2:
   try:
     discard "hello".split("")
     echo "false"
-  except AssertionError:
+  except AssertionDefect:
     echo "true"
 
 

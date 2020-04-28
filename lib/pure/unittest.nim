@@ -88,7 +88,7 @@
 ##
 ##     test "out of bounds error is thrown on bad access":
 ##       let v = @[1, 2, 3]  # you can do initialization here
-##       expect(IndexError):
+##       expect(IndexDefect):
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
@@ -190,7 +190,7 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
 
 proc resetOutputFormatters* {.since: (1, 1).} =
   formatters = @[]
-    
+
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
@@ -717,7 +717,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##    of 3: raise newException(IOError, "I can't do that Dave.")
   ##    else: assert 2 + 2 == 5
   ##
-  ##  expect IOError, OSError, ValueError, AssertionError:
+  ##  expect IOError, OSError, ValueError, AssertionDefect:
   ##    defectiveRobot()
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =

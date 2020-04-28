@@ -821,7 +821,7 @@ proc genFieldCheck(p: BProc, e: PNode, obj: Rope, field: PSym) =
     v.r.add(".")
     v.r.add(disc.sym.loc.r)
     genInExprAux(p, it, u, v, test)
-    let msg = genFieldError(field, disc.sym)
+    let msg = genFieldDefect(field, disc.sym)
     let strLit = genStringLiteral(p.module, newStrNode(nkStrLit, msg))
     if op.magic == mNot:
       linefmt(p, cpsStmts,

@@ -11,7 +11,7 @@ import macros
 template rejectParse(e) =
   try:
     discard e
-    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
+    raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
 
 proc testStrip() =

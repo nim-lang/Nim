@@ -1,5 +1,5 @@
 discard """
-  outputsub: '''Error: unhandled exception: cannot dispatch; dispatcher is nil [NilAccessError]'''
+  outputsub: '''Error: unhandled exception: cannot dispatch; dispatcher is nil [NilAccessDefect]'''
   exitcode: 1
 """
 # bug #5599

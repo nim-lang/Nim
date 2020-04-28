@@ -266,7 +266,7 @@ block: # not ready for vm because exception is compile error
     var i = 32
     v.setBit(i)
     doAssert false
-  except RangeError:
+  except RangeDefect:
     discard
   except:
     doAssert false
