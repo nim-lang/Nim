@@ -1897,8 +1897,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let rhsIsLit = n[2].kind in nkStrKinds
     let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCString:
-      r.res = "if ($1 != null) { $4 += $2; } else { $4 = $2$3; }" % [
-        a, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()", tmp]
+      r.res = "if ($1 != null) { $3 += $2; } else { $3 = $2; }" % [
+        a, rhs.rdLoc, tmp]
     else:
       r.res = "if ($1 != null) { $4 = ($4).concat($2); } else { $4 = $2$3; }" % [
           lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()", tmp]
