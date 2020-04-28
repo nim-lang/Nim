@@ -74,8 +74,10 @@ elif defined(posix):
 else:
   {.error: "OS module not ported to your operating system!".}
 
-when weirdTarget and defined(nimErrorProcCanHaveBody):
-  {.pragma: noNimScript, error: "this proc is not available on the NimScript target".}
+when weirdTarget:
+  template noNimScript(body): untyped = discard
+  # Adding a `disable` template and `{.pragma: noNimScript, disable.}`
+  # doesn't work pending https://github.com/timotheecour/Nim/issues/142
 else:
   {.pragma: noNimScript.}
 
