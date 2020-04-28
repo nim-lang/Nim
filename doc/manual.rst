@@ -113,7 +113,7 @@ pragmas_ for details.
 
 Whether a panic results in an exception or in a fatal error is
 implementation specific. Thus the following program is invalid; even though the
-code purports to catch the `IndexError` from an out-of-bounds array access, the
+code purports to catch the `IndexDefect` from an out-of-bounds array access, the
 compiler may instead choose to allow the program to die with a fatal error.
 
 .. code-block:: nim
@@ -121,7 +121,7 @@ compiler may instead choose to allow the program to die with a fatal error.
   let i = 5
   try:
     a[i] = 'N'
-  except IndexError:
+  except IndexDefect:
     echo "invalid index"
 
 The current implementation allows to switch between these different behaviors
@@ -1033,10 +1033,10 @@ The IEEE standard defines five types of floating-point exceptions:
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
 The IEEE exceptions are either ignored during execution or mapped to the
-Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
-`FloatOverflowError`:idx:, `FloatUnderflowError`:idx:,
-and `FloatInexactError`:idx:.
-These exceptions inherit from the `FloatingPointError`:idx: base class.
+Nim exceptions: `FloatInvalidOpDefect`:idx:, `FloatDivByZeroDefect`:idx:,
+`FloatOverflowDefect`:idx:, `FloatUnderflowDefect`:idx:,
+and `FloatInexactDefect`:idx:.
+These exceptions inherit from the `FloatingPointDefect`:idx: base class.
 
 Nim provides the pragmas `nanChecks`:idx: and `infChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nim exception:
@@ -1045,12 +1045,12 @@ whether the IEEE exceptions are ignored or trap a Nim exception:
   {.nanChecks: on, infChecks: on.}
   var a = 1.0
   var b = 0.0
-  echo b / b # raises FloatInvalidOpError
-  echo a / b # raises FloatOverflowError
+  echo b / b # raises FloatInvalidOpDefect
+  echo a / b # raises FloatOverflowDefect
 
-In the current implementation ``FloatDivByZeroError`` and ``FloatInexactError``
-are never raised. ``FloatOverflowError`` is raised instead of
-``FloatDivByZeroError``.
+In the current implementation ``FloatDivByZeroDefect`` and ``FloatInexactDefect``
+are never raised. ``FloatOverflowDefect`` is raised instead of
+``FloatDivByZeroDefect``.
 There is also a `floatChecks`:idx: pragma that is a short-cut for the
 combination of ``nanChecks`` and ``infChecks`` pragmas. ``floatChecks`` are
 turned off as default.
@@ -1620,7 +1620,7 @@ An example:
   # accessing n.thenPart is valid because the ``nkIf`` branch is active:
   n.thenPart = Node(kind: nkFloat, floatVal: 2.0)
 
-  # the following statement raises an `FieldError` exception, because
+  # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit and the ``nkString`` branch is not active:
   n.strVal = ""
 
@@ -4063,7 +4063,7 @@ Example:
       var a = readLine(f)
       var b = readLine(f)
       echo "sum: " & $(parseInt(a) + parseInt(b))
-    except OverflowError:
+    except OverflowDefect:
       echo "overflow!"
     except ValueError:
       echo "could not convert string to integer"
@@ -4226,7 +4226,7 @@ the ``raise`` statement is the only way to raise an exception.
 .. XXX document this better!
 
 If no exception name is given, the current exception is `re-raised`:idx:. The
-`ReraiseError`:idx: exception is raised if there is no exception to
+`ReraiseDefect`:idx: exception is raised if there is no exception to
 re-raise. It follows that the ``raise`` statement *always* raises an
 exception.
 

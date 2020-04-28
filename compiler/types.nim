@@ -253,7 +253,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   else:
     discard
 
-proc searchTypeFor(t: PType, predicate: TTypePredicate): bool =
+proc searchTypeFor*(t: PType, predicate: TTypePredicate): bool =
   var marker = initIntSet()
   result = searchTypeForAux(t, predicate, marker)
 
@@ -589,27 +589,41 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       else:
         result = "typeof(" & renderTree(t.n) & ")"
     of tyArray:
-      if t[0].kind == tyRange:
-        result = "array[" & rangeToStr(t[0].n) & ", " &
-            typeToString(t[1]) & ']'
-      else:
-        result = "array[" & typeToString(t[0]) & ", " &
-            typeToString(t[1]) & ']'
+      result = "array"
+      if t.len > 0:
+        if t[0].kind == tyRange:
+          result &= "[" & rangeToStr(t[0].n) & ", " &
+              typeToString(t[1]) & ']'
+        else:
+          result &= "[" & typeToString(t[0]) & ", " &
+              typeToString(t[1]) & ']'
     of tyUncheckedArray:
-      result = "UncheckedArray[" & typeToString(t[0]) & ']'
+      result = "UncheckedArray"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tySequence:
       if t.sym != nil and prefer != preferResolved:
         result = t.sym.name.s
       else:
-        result = "seq[" & typeToString(t[0]) & ']'
+        result = "seq"
+        if t.len > 0:
+          result &= "[" & typeToString(t[0]) & ']'
     of tyOpt:
-      result = "opt[" & typeToString(t[0]) & ']'
+      result = "opt"
+      if t.len > 0:
+        result &= "opt[" & typeToString(t[0]) & ']'
     of tyOrdinal:
-      result = "ordinal[" & typeToString(t[0]) & ']'
+      result = "ordinal"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tySet:
-      result = "set[" & typeToString(t[0]) & ']'
+      result = "set"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyOpenArray:
-      result = "openArray[" & typeToString(t[0]) & ']'
+      result = "openArray"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
@@ -624,7 +638,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           if i < t.n.len - 1: result.add(", ")
         result.add(']')
       elif t.len == 0:
-        result = "tuple[]"
+        result = "tuple"
       else:
         if prefer == preferTypeName: result = "("
         else: result = "tuple of ("

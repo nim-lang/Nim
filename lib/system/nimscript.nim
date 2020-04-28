@@ -56,14 +56,6 @@ proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
 proc warningImpl(arg, orig: string) = discard
 proc hintImpl(arg, orig: string) = discard
 
-proc paramStr*(i: int): string =
-  ## Retrieves the ``i``'th command line parameter.
-  builtin
-
-proc paramCount*(): int =
-  ## Retrieves the number of command line parameters.
-  builtin
-
 proc switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
   ## example ``switch("checks", "on")``.

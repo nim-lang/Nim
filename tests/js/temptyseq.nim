@@ -2,7 +2,7 @@
 
 proc foo =
   var x: seq[int]
-  doAssertRaises(IndexError):
+  doAssertRaises(IndexDefect):
     inc x[0]
 
 foo()

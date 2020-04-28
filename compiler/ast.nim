@@ -290,7 +290,7 @@ type
     sfTemplateParam   # symbol is a template parameter
     sfCursor          # variable/field is a cursor, see RFC 177 for details
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
-    sfNeverRaises     # proc can never raise an exception, not even OverflowError
+    sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
 
   TSymFlags* = set[TSymFlag]

@@ -76,13 +76,15 @@ available. This includes:
 * manual memory management (``alloc``, etc.)
 * casting and other unsafe operations (``cast`` operator, ``zeroMem``, etc.)
 * file management
-* most modules of the standard library
+* OS-specific operations
+* threading, coroutines
+* some modules of the standard library
 * proper 64 bit integer arithmetic
-* unsigned integer arithmetic
 
-However, the modules `strutils <strutils.html>`_, `math <math.html>`_, and
-`times <times.html>`_ are available! To access the DOM, use the `dom
-<dom.html>`_ module that is only available for the JavaScript platform.
+To compensate, the standard library has modules `catered to the JS backend
+<https://nim-lang.org/docs/lib.html#pure-libraries-modules-for-js-backend>`_
+and more support will come in the future (for instance, Node.js bindings
+to get OS info).
 
 To compile a Nim module into a ``.js`` file use the ``js`` command; the
 default is a ``.js`` file that is supposed to be referenced in an ``.html``

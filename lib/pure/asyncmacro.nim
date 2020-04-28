@@ -31,7 +31,7 @@ template createCb(retFutureSym, iteratorNameSym,
           if not retFutUnown.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
-            raise newException(AssertionError, msg % strName)
+            raise newException(AssertionDefect, msg % strName)
         else:
           {.gcsafe.}:
             {.push hint[ConvFromXtoItselfNotNeeded]: off.}
@@ -260,7 +260,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     template await(f: typed): untyped =
       static:
         error "await expects Future[T], got " & $typeof(f)
-    
+
     template await[T](f: Future[T]): auto =
       var internalTmpFuture: FutureBase = f
       yield internalTmpFuture

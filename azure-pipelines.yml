@@ -30,14 +30,6 @@ jobs:
       Windows_amd64:
         vmImage: 'windows-2019'
         CPU: amd64
-      Linux_amd64_pkg:
-        vmImage: 'ubuntu-16.04'
-        CPU: amd64
-        NIM_TEST_PACKAGES: true
-      OSX_amd64_pkg:
-        vmImage: 'macOS-10.15'
-        CPU: amd64
-        NIM_TEST_PACKAGES: true
 
   pool:
     vmImage: $(vmImage)

@@ -14,6 +14,7 @@
 # "Cyclic reference counting" by Rafael Dueire Lins
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 
+type PT = ptr pointer
 include cellseqs_v2
 
 const
@@ -60,12 +61,25 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
   when traceCollector:
     cprintf("[From ] %p rc %ld color %ld in jumpstack %ld\n", s, s.rc shr rcShift,
             s.color, s.rc and jumpStackFlag)
-  var p = s +! sizeof(RefHeader)
+  let p = s +! sizeof(RefHeader)
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
   nimRawDispose(p)
 
 proc collect(s: Cell; desc: PNimType; j: var GcEnv) =
+  #[ Algorithm from the paper:
+
+    Collect(S) =
+      If (Color(S) == red) then
+        RC(S) = 1;
+        Color(S) = green;
+        for T in Sons(S) do
+          Remove(<S, T>);
+          if (Color(T) == red) then Collect(T);
+      free_list = S;
+
+  (Whatever that really means...)
+  ]#
   if s.color == colRed:
     s.setColor colGreen
     trace(s, desc, j)

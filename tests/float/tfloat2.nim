@@ -1,5 +1,5 @@
 discard """
-  outputsub: "Error: unhandled exception: FPU operation caused a NaN result [FloatInvalidOpError]"
+  outputsub: "Error: unhandled exception: FPU operation caused a NaN result [FloatInvalidOpDefect]"
   exitcode: "1"
 """
 # Test new floating point exceptions

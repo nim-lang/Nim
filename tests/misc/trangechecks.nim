@@ -14,14 +14,14 @@ var x: range[1..10] = 10
 try:
   x += 1
   echo x
-except OverflowError, RangeError:
+except OverflowDefect, RangeDefect:
   expected += 1
   echo x
 
 try:
   inc x
   echo x
-except OverflowError, RangeError:
+except OverflowDefect, RangeDefect:
   expected += 1
   echo x
 
@@ -29,14 +29,14 @@ x = 1
 try:
   x -= 1
   echo x
-except OverflowError, RangeError:
+except OverflowDefect, RangeDefect:
   expected += 1
   echo x
 
 try:
   dec x
   echo x
-except OverflowError, RangeError:
+except OverflowDefect, RangeDefect:
   expected += 1
   echo x
 

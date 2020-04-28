@@ -645,9 +645,9 @@ proc getConstExpr(m: PSym, n: PNode; g: ModuleGraph): PNode =
         discard
       else:
         result = magicCall(m, n, g)
-    except OverflowError:
+    except OverflowDefect:
       localError(g.config, n.info, "over- or underflow")
-    except DivByZeroError:
+    except DivByZeroDefect:
       localError(g.config, n.info, "division by zero")
   of nkAddr:
     var a = getConstExpr(m, n[0], g)

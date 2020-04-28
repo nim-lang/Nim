@@ -393,7 +393,7 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
 
-proc integerOutOfRangeError() {.noinline.} =
+proc integerOutOfRangeDefect() {.noinline.} =
   raise newException(ValueError, "Parsed integer outside of valid range")
 
 # See #6752
@@ -416,11 +416,11 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
       if b >= (low(BiggestInt) + c) div 10:
         b = b * 10 - c
       else:
-        integerOutOfRangeError()
+        integerOutOfRangeDefect()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     if sign == -1 and b == low(BiggestInt):
-      integerOutOfRangeError()
+      integerOutOfRangeDefect()
     else:
       b = b * sign
       result = i - start
@@ -459,7 +459,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
     if res < low(int) or res > high(int):
-      integerOutOfRangeError()
+      integerOutOfRangeDefect()
   if result != 0:
     number = int(res)
 
@@ -493,7 +493,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
     prev = 0.BiggestUInt
     i = start
   if i < s.len - 1 and s[i] == '-' and s[i + 1] in {'0'..'9'}:
-    integerOutOfRangeError()
+    integerOutOfRangeDefect()
   if i < s.len and s[i] == '+': inc(i) # Allow
   if i < s.len and s[i] in {'0'..'9'}:
     b = 0
@@ -501,7 +501,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
       prev = res
       res = res * 10 + (ord(s[i]) - ord('0')).BiggestUInt
       if prev > res:
-        integerOutOfRangeError()
+        integerOutOfRangeDefect()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     b = res
@@ -540,7 +540,7 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
     if res > 0xFFFF_FFFF'u64:
-      integerOutOfRangeError()
+      integerOutOfRangeDefect()
   if result != 0:
     number = uint(res)
 
