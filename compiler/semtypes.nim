@@ -99,6 +99,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
               localError(c.config, v[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
+            n[i][1][0] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
@@ -110,6 +111,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         if not isOrdinalType(v.typ, allowEnumWithHoles=true):
           localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
         x = toInt64(getOrdValue(v))
+        n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter:
