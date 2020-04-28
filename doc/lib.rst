@@ -451,7 +451,7 @@ Miscellaneous
   This module implements a simple logger.
 
 * `segfaults <segfaults.html>`_
-  Turns access violations or segfaults into a ``NilAccessError`` exception.
+  Turns access violations or segfaults into a ``NilAccessDefect`` exception.
 
 * `sugar <sugar.html>`_
   This module implements nice syntactic sugar based on Nim's macro system.

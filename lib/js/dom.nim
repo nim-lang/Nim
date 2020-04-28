@@ -39,6 +39,9 @@ type
     onselect*: proc (event: Event) {.nimcall.}
     onsubmit*: proc (event: Event) {.nimcall.}
     onunload*: proc (event: Event) {.nimcall.}
+    onloadstart*: proc (event: Event) {.nimcall.}
+    onprogress*: proc (event: Event) {.nimcall.}
+    onloadend*: proc (event: Event) {.nimcall.}
 
   DomEvent* {.pure.} = enum
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
@@ -988,14 +991,38 @@ type
     passive*: bool
 
 since (1, 3):
-  type DomParser* = ref object  ## \
-    ## DOM Parser object (defined on browser only, may not be on NodeJS).
-    ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
-    ##
-    ## .. code-block:: nim
-    ##   let prsr = newDomParser()
-    ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+  type 
+    DomParser* = ref object
+      ## DOM Parser object (defined on browser only, may not be on NodeJS).
+      ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
+      ##
+      ## .. code-block:: nim
+      ##   let prsr = newDomParser()
+      ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
 
+    DomException* = ref DOMExceptionObj
+      ## The DOMException interface represents an abnormal event (called an exception) 
+      ## which occurs as a result of calling a method or accessing a property of a web API. 
+      ## Each exception has a name, which is a short "CamelCase" style string identifying 
+      ## the error or abnormal condition.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
+
+    DOMExceptionObj {.importc.} = object 
+
+    FileReader* = ref FileReaderObj
+      ## The FileReader object lets web applications asynchronously read the contents of files 
+      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify 
+      ## the file or data to read.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+
+    FileReaderObj {.importc.} = object of EventTargetObj
+
+    FileReaderState* = distinct range[0'u16..2'u16]
+
+  const 
+    fileReaderEmpty* = 0.FileReaderState
+    fileReaderLoading* = 1.FileReaderState
+    fileReaderDone* = 2.FileReaderState
 
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
 proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
@@ -1318,6 +1345,29 @@ proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 since (1, 3):
   func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
-
   func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
     ## Parse from string to `Document`.
+
+  proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
+    ## DOM Exception constructor
+  proc message*(ex: DomException): cstring {.importcpp: "#.message", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/message
+  proc name*(ex: DomException): cstring  {.importcpp: "#.name", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
+
+  proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
+    ## File Reader constructor
+  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
+  proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
+  proc resultAsString*(f: FileReader): cstring {.importcpp: "#.result", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/result
+  proc abort*(f: FileReader) {.importcpp: "#.abort()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/abort
+  proc readAsBinaryString*(f: FileReader, b: Blob) {.importcpp: "#.readAsBinaryString(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
+  proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
+  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText

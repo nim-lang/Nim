@@ -1300,18 +1300,18 @@ when isMainModule:
   when compileOption("boundChecks"):
     try:
       let a = testJson["a"][9]
-      doAssert(false, "IndexError not thrown")
-    except IndexError:
+      doAssert(false, "IndexDefect not thrown")
+    except IndexDefect:
       discard
     try:
       let a = testJson["a"][-1]
-      doAssert(false, "IndexError not thrown")
-    except IndexError:
+      doAssert(false, "IndexDefect not thrown")
+    except IndexDefect:
       discard
     try:
       doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
     except:
-      doAssert(false, "IndexError thrown for valid index")
+      doAssert(false, "IndexDefect thrown for valid index")
 
   doAssert(testJson{"b"}.getStr() == "asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
@@ -1378,7 +1378,7 @@ when isMainModule:
     try:
       discard parsed["key2"][12123]
       doAssert(false)
-    except IndexError: doAssert(true)
+    except IndexDefect: doAssert(true)
 
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str ==

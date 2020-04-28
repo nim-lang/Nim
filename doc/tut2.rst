@@ -126,7 +126,7 @@ The syntax for type conversions is ``destination_type(expression_to_convert)``
   proc getID(x: Person): int =
     Student(x).id
 
-The ``InvalidObjectConversionError`` exception is raised if ``x`` is not a
+The ``InvalidObjectConversionDefect`` exception is raised if ``x`` is not a
 ``Student``.
 
 
@@ -160,7 +160,7 @@ An example:
         condition, thenPart, elsePart: Node
 
   var n = Node(kind: nkFloat, floatVal: 1.0)
-  # the following statement raises an `FieldError` exception, because
+  # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit:
   n.strVal = ""
 
@@ -388,7 +388,7 @@ The ``try`` statement handles exceptions:
       let a = readLine(f)
       let b = readLine(f)
       echo "sum: ", parseInt(a) + parseInt(b)
-    except OverflowError:
+    except OverflowDefect:
       echo "overflow!"
     except ValueError:
       echo "could not convert string to integer"
@@ -443,7 +443,7 @@ instance, if you specify that a proc raises ``IOError``, and at some point it
 prevent that proc from compiling. Usage example:
 
 .. code-block:: nim
-  proc complexProc() {.raises: [IOError, ArithmeticError].} =
+  proc complexProc() {.raises: [IOError, ArithmeticDefect].} =
     ...
 
   proc simpleProc() {.raises: [].} =

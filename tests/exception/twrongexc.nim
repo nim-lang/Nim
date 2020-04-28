@@ -4,5 +4,5 @@ discard """
 """
 try:
   raise newException(ValueError, "")
-except OverflowError:
+except OverflowDefect:
   echo("Error caught")

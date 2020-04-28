@@ -14,7 +14,7 @@ import asyncdispatch, strutils
 
 proc foobar() {.async.} =
   if 5 == 5:
-    raise newException(IndexError, "Test")
+    raise newException(IndexDefect, "Test")
 
 proc catch() {.async.} =
   # TODO: Create a test for when exceptions are not caught.
@@ -25,26 +25,26 @@ proc catch() {.async.} =
 
   try:
     await foobar()
-  except IndexError:
+  except IndexDefect:
     echo("Specific except")
 
   try:
     await foobar()
-  except OSError, FieldError, IndexError:
+  except OSError, FieldDefect, IndexDefect:
     echo("Multiple idents in except")
 
   try:
     await foobar()
-  except OSError, FieldError:
+  except OSError, FieldDefect:
     assert false
-  except IndexError:
+  except IndexDefect:
     echo("Multiple except branches")
 
   try:
     await foobar()
-  except IndexError:
+  except IndexDefect:
     echo("Multiple except branches 2")
-  except OSError, FieldError:
+  except OSError, FieldDefect:
     assert false
 
 waitFor catch()

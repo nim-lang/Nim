@@ -233,10 +233,10 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
   let newBranch = selectBranch(newDiscVal, L, a)
   when defined(nimOldCaseObjects):
     if newBranch != oldBranch and oldDiscVal != 0:
-      sysFatal(FieldError, "assignment to discriminant changes object branch")
+      sysFatal(FieldDefect, "assignment to discriminant changes object branch")
   else:
     if newBranch != oldBranch:
       if oldDiscVal != 0:
-        sysFatal(FieldError, "assignment to discriminant changes object branch")
+        sysFatal(FieldDefect, "assignment to discriminant changes object branch")
       else:
-        sysFatal(FieldError, "assignment to discriminant changes object branch; compile with -d:nimOldCaseObjects for a transition period")
+        sysFatal(FieldDefect, "assignment to discriminant changes object branch; compile with -d:nimOldCaseObjects for a transition period")

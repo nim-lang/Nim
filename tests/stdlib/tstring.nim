@@ -52,7 +52,7 @@ proc test_string_slice() =
   doAssert s == "ab1234567890cdefghijklmnopqrstuvwxyz"
 
   # bug #6223
-  doAssertRaises(IndexError):
+  doAssertRaises(IndexDefect):
     discard s[0..999]
 
   echo("OK")

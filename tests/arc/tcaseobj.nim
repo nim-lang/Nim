@@ -154,16 +154,16 @@ type
     x1: string
     case kind1: bool
       of false: y1: string
-      of true: 
+      of true:
           y2: seq[string]
           case kind2: bool
               of true: z1: string
-              of false: 
+              of false:
                 z2: seq[string]
                 flag: bool
     x2: string
-        
-proc test_myobject = 
+
+proc test_myobject =
   var x: MyObject
   x.x1 = "x1"
   x.x2 = "x2"
@@ -183,7 +183,7 @@ proc test_myobject =
 
   try:
     x.kind1 = x.flag # flag is not accesible
-  except FieldError:
+  except FieldDefect:
     echo "prevented"
 
   doAssert(x.x1 == "x1")

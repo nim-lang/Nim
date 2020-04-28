@@ -68,8 +68,8 @@ proc main() =
   # shows that checkNotZero won't be called if a nil is found earlier in chain
   doAssert ?.a.x1.checkNotZero == 0.0
 
-  # checks that a chain without nil but with an empty seq still throws IndexError
-  doAssertRaises(IndexError): discard ?.a2.x8[3]
+  # checks that a chain without nil but with an empty seq still throws IndexDefect
+  doAssertRaises(IndexDefect): discard ?.a2.x8[3]
 
   # make sure no double evaluation bug
   doAssert witness == 0

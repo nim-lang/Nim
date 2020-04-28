@@ -457,7 +457,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
 proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
-  ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
+  ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
@@ -488,7 +488,7 @@ when defineSsl:
   proc getExtraData*(ctx: SslContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SslContext.
     if index notin ctx.referencedData:
-      raise newException(IndexError, "No data with that index.")
+      raise newException(IndexDefect, "No data with that index.")
     let res = ctx.context.SSL_CTX_get_ex_data(index.cint)
     if cast[int](res) == 0:
       raiseSSLError()

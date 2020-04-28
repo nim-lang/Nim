@@ -37,11 +37,25 @@
   and this can now throw in edge cases where `getCurrentDir` throws.
   `relativePath` also now works for js with `-d:nodejs`.
 
+- JavaScript and NimScript standard library changes: `streams.StringStream` is
+  now supported in JavaScript, with the limitation that any buffer `pointer`s
+  used must be castable to `ptr string`, any incompatible pointer type will not
+  work. The `lexbase` and `streams` modules used to fail to compile on
+  NimScript due to a bug, but this has been fixed.
+  
+  The following modules now compile on both JS and NimScript: `parsecsv`,
+  `parsecfg`, `parsesql`, `xmlparser`, `htmlparser` and `ropes`. Additionally
+  supported for JS is `cstrutils.startsWith` and `cstrutils.endsWith`, for
+  NimScript: `json`, `parsejson`, `strtabs` and `unidecode`. 
+
 - Added `streams.readStr` and `streams.peekStr` overloads to
   accept an existing string to modify, which avoids memory
   allocations, similar to `streams.readLine` (#13857).
 
 - Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
+
+- `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
+- `dollars.$` now works for unsigned ints with `nim js`
 
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:

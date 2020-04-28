@@ -11,7 +11,7 @@ import macros
 template rejectParse(e) =
   try:
     discard e
-    raise newException(AssertionError, "This was supposed to fail: $#!" % astToStr(e))
+    raise newException(AssertionDefect, "This was supposed to fail: $#!" % astToStr(e))
   except ValueError: discard
 
 proc testStrip() =
@@ -354,9 +354,9 @@ main()
 # check enum defined at top level
 type
   Foo = enum
-    A
+    A = -10
     B = "bb"
-    C = (5, "ccc")
+    C = (-5, "ccc")
     D = 15
     E = "ee" # check that we count enum fields correctly
 

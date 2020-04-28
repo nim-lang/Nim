@@ -1,13 +1,14 @@
-# This nimscript is used to test if the following modules can be imported
-# http://nim-lang.org/docs/nims.html
+discard """
+  action: compile
+"""
 
 {.warning[UnusedImport]: off.}
 
 import std/[
   # Core:
-  bitops, typetraits, lenientops, macros, volatile,
-  # fails: typeinfo, endians
-  # works but shouldn't: cpuinfo, rlocks, locks
+  bitops, typetraits, lenientops, macros, volatile, typeinfo,
+  # fails: endians, rlocks
+  # works but shouldn't: cpuinfo, locks
 
   # Algorithms:
   algorithm, sequtils,
@@ -18,14 +19,13 @@ import std/[
   # fails: sharedtables
 
   # Strings:
-  editdistance, wordwrap, parseutils, ropes,
+  cstrutils, editdistance, wordwrap, parseutils, ropes,
   pegs, punycode, strformat, strmisc, strscans, strtabs,
   strutils, unicode, unidecode,
-  # works but shouldn't: cstrutils, encodings
+  # fails: encodings
 
   # Time handling:
-  # fails: monotimes, times
-  # but times.getTime() implemented for VM
+  monotimes, times,
 
   # Generic operator system services:
   os, streams,
@@ -36,9 +36,9 @@ import std/[
   # works but shouldn't: fenv
 
   # Internet protocols:
-  httpcore, mimetypes, uri,
+  cookies, httpcore, mimetypes, uri,
   # fails: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
-  # asyncnet, cgi, cookies, httpclient, nativesockets, net, selectors, smtp
+  # asyncnet, cgi, httpclient, nativesockets, net, selectors, smtp
   # works but shouldn't test: asyncstreams, asyncfutures
   
   # Threading:
@@ -59,18 +59,13 @@ import std/[
   # fails: md5, oids, sha1
 
   # Miscellaneous:
-  colors, sugar, varints,
-  # fails: browsers, coro, logging (times), segfaults, unittest (uses methods)
+  colors, logging, sugar, unittest, varints,
+  # fails: browsers, coro
+  # works but shouldn't: segfaults
 
   # Modules for JS backend:
-  # fails: asyncjs, dom, jsconsole, jscore, jsffi,
+  asyncjs, dom, jsconsole, jscore, jsffi,
 
   # Unlisted in lib.html:
   decls, compilesettings, with, wrapnils
 ]
-
-
-block:
-  doAssert "./foo//./bar/".normalizedPath == "foo/bar".unixToNativePath
-
-echo "Nimscript imports are successful."

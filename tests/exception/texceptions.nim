@@ -89,10 +89,10 @@ block:
       result.add(1212)
     try:
       try:
-        raise newException(AssertionError, "a")
+        raise newException(AssertionDefect, "a")
       finally:
         result.add(42)
-    except AssertionError:
+    except AssertionDefect:
       result.add(99)
     finally:
       result.add(10)
@@ -104,7 +104,7 @@ block:
       result.add(-1)
     except ValueError:
       result.add(-1)
-    except IndexError:
+    except IndexDefect:
       result.add(2)
     except:
       result.add(3)
