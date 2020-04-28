@@ -30,8 +30,12 @@ jobs:
       Windows_amd64:
         vmImage: 'windows-2019'
         CPU: amd64
-      Windows_amd64_pkg:
-        vmImage: 'windows-2019'
+      Linux_amd64_pkg:
+        vmImage: 'ubuntu-16.04'
+        CPU: amd64
+        NIM_TEST_PACKAGES: true
+      OSX_amd64_pkg:
+        vmImage: 'macOS-10.15'
         CPU: amd64
         NIM_TEST_PACKAGES: true
 
@@ -53,8 +57,8 @@ jobs:
 
     - task: NodeTool@0
       inputs:
-        versionSpec: '8.x'
-      displayName: 'Install node.js 8.x'
+        versionSpec: '12.x'
+      displayName: 'Install node.js 12.x'
 
     - bash: |
         sudo apt-fast update -qq
