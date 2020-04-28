@@ -1131,7 +1131,7 @@ proc genCheckedFieldOp(p: PProc, n: PNode, addrTyp: PType, r: var TCompRes) =
 
   useMagic(p, "raiseFieldError")
   useMagic(p, "makeNimstrLit")
-  let msg = genFieldError(field, disc)
+  let msg = genFieldDefect(field, disc)
   lineF(p, "if ($1[$2.$3]$4undefined) { raiseFieldError(makeNimstrLit($5)); }$n",
     setx.res, tmp, disc.loc.r, if negCheck: ~"!==" else: ~"===",
     makeJSString(msg))
@@ -2343,7 +2343,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
   if r.kind != resCallee: r.kind = resNone
   #r.address = nil
   r.res = nil
-  
+
   case n.kind
   of nkSym:
     genSym(p, n, r)
@@ -2398,7 +2398,7 @@ proc gen(p: PProc, n: PNode, r: var TCompRes) =
         n.len >= 1:
       genInfixCall(p, n, r)
     else:
-      genCall(p, n, r)    
+      genCall(p, n, r)
   of nkClosure: gen(p, n[0], r)
   of nkCurly: genSetConstr(p, n, r)
   of nkBracket: genArrayConstr(p, n, r)
@@ -2602,7 +2602,7 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       (code, map) = genSourceMap($(code), outFile.string)
       writeFile(outFile.string & ".map", $(%map))
     discard writeRopeIfNotEqual(code, outFile)
-    
+
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   result = newModule(graph, s)
 

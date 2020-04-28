@@ -142,7 +142,7 @@ proc raiseException(e: ref Exception, ename: cstring) {.
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
-    raise newException(ReraiseError, "no exception to reraise")
+    raise newException(ReraiseDefect, "no exception to reraise")
   else:
     if excHandler == 0:
       if isNimException():
@@ -151,19 +151,19 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
     asm "throw lastJSError;"
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerproc.} =
-  raise newException(OverflowError, "over- or underflow")
+  raise newException(OverflowDefect, "over- or underflow")
 
 proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerproc.} =
-  raise newException(DivByZeroError, "division by zero")
+  raise newException(DivByZeroDefect, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
-  raise newException(RangeError, "value out of range")
+  raise newException(RangeDefect, "value out of range")
 
 proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
-  raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
+  raise newException(IndexDefect, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldError, f)
+  raise newException(FieldDefect, f)
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -524,7 +524,7 @@ proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
 proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
-    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
+    sysFatal(NilAccessDefect, "cannot dispatch; dispatcher is nil")
 
 include "system/hti"
 
@@ -663,7 +663,7 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   if x == subclass: return # optimized fast path
   while x != subclass:
     if x == nil:
-      raise newException(ObjectConversionError, "invalid object conversion")
+      raise newException(ObjectConversionDefect, "invalid object conversion")
     x = x.base
 
 proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =

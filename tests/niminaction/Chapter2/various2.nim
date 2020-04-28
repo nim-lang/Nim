@@ -179,13 +179,13 @@ for i in list4.low .. list4.high:
   echo(list4[i])
 
 var list5: seq[int] = @[]
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   list5[0] = 1
 
 list5.add(1)
 
 assert list5[0] == 1
-doAssertRaises(IndexError):
+doAssertRaises(IndexDefect):
   echo list5[42]
 
 # -- Errata: var list: seq[int]; echo(list[0]). This now creates an exception,

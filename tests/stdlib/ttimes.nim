@@ -626,8 +626,8 @@ suite "ttimes":
     doAssert a.month.Month == cast[Month](0)
     doAssert a.monthday == 0
 
-    doAssertRaises(AssertionError): discard getDayOfWeek(a.monthday, a.month, a.year)
-    doAssertRaises(AssertionError): discard a.toTime
+    doAssertRaises(AssertionDefect): discard getDayOfWeek(a.monthday, a.month, a.year)
+    doAssertRaises(AssertionDefect): discard a.toTime
 
   test "inX procs":
     doAssert initDuration(seconds = 1).inSeconds == 1

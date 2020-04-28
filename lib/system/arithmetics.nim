@@ -2,7 +2,7 @@ proc succ*[T: Ordinal](x: T, y = 1): T {.magic: "Succ", noSideEffect.}
   ## Returns the ``y``-th successor (default: 1) of the value ``x``.
   ## ``T`` has to be an `ordinal type <#Ordinal>`_.
   ##
-  ## If such a value does not exist, ``OverflowError`` is raised
+  ## If such a value does not exist, ``OverflowDefect`` is raised
   ## or a compile time error occurs.
   ##
   ## .. code-block:: Nim
@@ -14,7 +14,7 @@ proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
   ## Returns the ``y``-th predecessor (default: 1) of the value ``x``.
   ## ``T`` has to be an `ordinal type <#Ordinal>`_.
   ##
-  ## If such a value does not exist, ``OverflowError`` is raised
+  ## If such a value does not exist, ``OverflowDefect`` is raised
   ## or a compile time error occurs.
   ##
   ## .. code-block:: Nim
@@ -25,7 +25,7 @@ proc pred*[T: Ordinal](x: T, y = 1): T {.magic: "Pred", noSideEffect.}
 proc inc*[T: Ordinal](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
   ## Increments the ordinal ``x`` by ``y``.
   ##
-  ## If such a value does not exist, ``OverflowError`` is raised or a compile
+  ## If such a value does not exist, ``OverflowDefect`` is raised or a compile
   ## time error occurs. This is a short notation for: ``x = succ(x, y)``.
   ##
   ## .. code-block:: Nim
@@ -36,7 +36,7 @@ proc inc*[T: Ordinal](x: var T, y = 1) {.magic: "Inc", noSideEffect.}
 proc dec*[T: Ordinal](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
   ## Decrements the ordinal ``x`` by ``y``.
   ##
-  ## If such a value does not exist, ``OverflowError`` is raised or a compile
+  ## If such a value does not exist, ``OverflowDefect`` is raised or a compile
   ## time error occurs. This is a short notation for: ``x = pred(x, y)``.
   ##
   ## .. code-block:: Nim

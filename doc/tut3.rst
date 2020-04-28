@@ -271,7 +271,7 @@ written.
 
     result = quote do:
       if not `arg`:
-        raise newException(AssertionError,$`lhs` & `op` & $`rhs`)
+        raise newException(AssertionDefect,$`lhs` & `op` & $`rhs`)
 
   let a = 1
   let b = 2
@@ -287,7 +287,7 @@ used to get this output.
 
 .. code-block:: nim
   if not (a != b):
-    raise newException(AssertionError, $a & " != " & $b)
+    raise newException(AssertionDefect, $a & " != " & $b)
 
 With Power Comes Responsibility
 -------------------------------

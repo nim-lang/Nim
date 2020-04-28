@@ -240,7 +240,7 @@ proc getinfo[T](pattern: Regex, opt: cint): T =
 
   if retcode < 0:
     # XXX Error message that doesn't expose implementation details
-    raise newException(FieldError, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
+    raise newException(FieldDefect, "Invalid getinfo for $1, errno $2" % [$opt, $retcode])
 
 proc getNameToNumberTable(pattern: Regex): Table[string, int] =
   let entryCount = getinfo[cint](pattern, pcre.INFO_NAMECOUNT)
@@ -331,7 +331,7 @@ func contains*(pattern: Captures, i: int): bool =
 func `[]`*(pattern: CaptureBounds, i: int): HSlice[int, int] =
   let pattern = RegexMatch(pattern)
   if not (i in pattern.captureBounds):
-    raise newException(IndexError, "Group '" & $i & "' was not captured")
+    raise newException(IndexDefect, "Group '" & $i & "' was not captured")
 
   let bounds = pattern.pcreMatchBounds[i + 1]
   int(bounds.a)..int(bounds.b-1)
@@ -517,7 +517,7 @@ proc matchImpl(str: string, pattern: Regex, start, endpos: int, flags: int): Opt
     of pcre.ERROR_NOMATCH:
       return none(RegexMatch)
     of pcre.ERROR_NULL:
-      raise newException(AccessViolationError, "Expected non-null parameters")
+      raise newException(AccessViolationDefect, "Expected non-null parameters")
     of pcre.ERROR_BADOPTION:
       raise RegexInternalError(msg : "Unknown pattern flag. Either a bug or " &
         "outdated PCRE.")
@@ -718,7 +718,7 @@ proc replace*(str: string, pattern: Regex,
   ## -  ``$#`` - first capture
   ## -  ``$0`` - full match
   ##
-  ## If a given capture is missing, ``IndexError`` thrown for un-named captures
+  ## If a given capture is missing, ``IndexDefect`` thrown for un-named captures
   ## and ``KeyError`` for named captures.
   replaceImpl(str, pattern, subproc(match))
 
