@@ -35,6 +35,7 @@
   1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
   is now `3.`, not `3`.
 - `critbits` adds `commonPrefixLen`.
+
 - `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
   (see #13222); instead they now use `getCurrentDir` to resolve those cases,
   and this can now throw in edge cases where `getCurrentDir` throws.
