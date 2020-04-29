@@ -780,9 +780,9 @@ proc isClosed*(socket: AsyncSocket): bool =
   ## Determines whether the socket has been closed.
   return socket.closed
 
-proc sendTo*(socket: AsyncSocket, data: string, address: string, port: Port,
+proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
              flags = {SocketFlag.SafeDisconn}): owned(Future[void])
-            {.async, since: (1, 3, 1).} =
+            {.async, since: (1, 3).} =
   ## This proc sends ``data`` to the specified ``address``, which may be an IP
   ## address or a hostname. If a hostname is specified this function will try
   ## each IP of that hostname. The returned future will complete once all data
@@ -829,7 +829,7 @@ proc sendTo*(socket: AsyncSocket, data: string, address: string, port: Port,
 proc recvFrom*(socket: AsyncSocket, size: int,
                flags = {SocketFlag.SafeDisconn}):
               owned(Future[tuple[data: string, address: string, port: Port]])
-              {.async, since: (1, 3, 1).} =
+              {.async, since: (1, 3).} =
   ## Receives a datagram data from ``socket``, which must be at least of size
   ## ``size``. Returned future will complete once one datagram has been received
   ## and will return tuple with: data of packet received; and address and port
@@ -841,23 +841,19 @@ proc recvFrom*(socket: AsyncSocket, size: int,
   template adaptRecvFromToDomain(domain: Domain) =
     var lAddr = sizeof(sAddr).SockLen
     
-    let fut = recvFromInto(AsyncFD(getFd(socket)), cstring(data), size,
-                           cast[ptr SockAddr](addr sAddr), addr lAddr, flags)
+    let fut = await recvFromInto(AsyncFD(getFd(socket)), cstring(data), size,
+                                 cast[ptr SockAddr](addr sAddr), addr lAddr,
+                                 flags)
     
-    yield fut
+    data.setLen(fut)
+    
+    result.data = data
+    result.address = getAddrString(cast[ptr SockAddr](addr sAddr))
 
-    if fut.failed():
-      raise fut.readError()
+    when domain == AF_INET6:
+      result.port = ntohs(sAddr.sin6_port).Port
     else:
-      data.setLen(fut.read())
-      
-      result.data = data
-      result.address = getAddrString(cast[ptr SockAddr](addr sAddr))
-
-      when domain == AF_INET6:
-        result.port = ntohs(sAddr.sin6_port).Port
-      else:
-        result.port = ntohs(sAddr.sin_port).Port
+      result.port = ntohs(sAddr.sin_port).Port
 
   assert(socket.protocol != IPPROTO_TCP,
          "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead")

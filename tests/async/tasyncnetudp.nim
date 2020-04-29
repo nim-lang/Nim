@@ -36,7 +36,7 @@ proc launchSwarm(serverIp: string, serverPort: Port) {.async.} =
     while k < messagesToSend:
       let message = "Message " & $(i * messagesToSend + k)
 
-      await asyncnet.sendTo(sock, message, serverIp, serverPort)
+      await asyncnet.sendTo(sock, serverIp, serverPort, message)
 
       let (data, fromIp, fromPort) = await recvFrom(sock, 16384)
 
@@ -60,7 +60,7 @@ proc readMessages(server: AsyncSocket) {.async.} =
     let (data, fromIp, fromPort) = await recvFrom(server, 16384)
 
     if data.startswith("Message ") and fromIp == "127.0.0.1":
-      await sendTo(server, data, fromIp, fromPort)
+      await sendTo(server, fromIp, fromPort, data)
 
       inc(msgCount)
 
