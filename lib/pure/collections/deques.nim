@@ -93,7 +93,7 @@ proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
   result = deq.count
 
-proc isEmpty*[T](deq: Deque[T]): bool {.inline.} =
+proc isEmpty*[T](deq: Deque[T]): bool {.inline, since: (1, 3).} =
   ## Returns `true` if `deq` has no elements in it.
   result = deq.count == 0
 
