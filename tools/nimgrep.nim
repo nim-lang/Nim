@@ -8,7 +8,7 @@
 #
 
 import
-  os, strutils, parseopt, pegs, re, terminal, osproc, tables
+  os, strutils, parseopt, pegs, re, terminal, osproc, tables, algorithm, times
 
 const
   Version = "1.5"
@@ -54,6 +54,8 @@ Options:
                -b:N   print N lines of leading context before every match
   --context:N, -c:N   print N lines of leading context before every match and
                       N lines of trailing context after it
+  --sortTime[:desc|asc],
+      -s[:desc|asc]   order files by modification time descending or ascending
   --group, -g         group matches by file
   --newLine, -l       display every matching line starting from a new line
   --verbose           be verbose: list every processed file
@@ -108,6 +110,8 @@ var
   excludeDir: seq[Regex]
   checkBin = biYes
   justCount = false
+  sortTime = false
+  sortTimeOrder = SortOrder.Descending
   useWriteStyled = true
   oneline = true
   linesBefore = 0
@@ -581,17 +585,20 @@ proc walker(dir: string; files: var seq[string]) =
     inc(gVar.errors)
 
 iterator walkDirBasic(dir: string): string =
-  var dirs = @[dir]  # stack of directories
-  while dirs.len > 0:
-    let d = dirs.pop()
+  var dirStack = @[dir]  # stack of directories
+  var timeFiles = newSeq[(times.Time, string)]()
+  while dirStack.len > 0:
+    let d = dirStack.pop()
+    var files = newSeq[string]()
+    var dirs = newSeq[string]()
     for kind, path in walkDir(d):
       case kind
       of pcFile:
         if path.hasRightFileName:
-          yield path
+          files.add(path)
       of pcLinkToFile:
         if optFollow in options and path.hasRightFileName:
-          yield path
+          files.add(path)
       of pcDir:
         if optRecursive in options and path.hasRightDirectory:
           dirs.add path
@@ -599,6 +606,20 @@ iterator walkDirBasic(dir: string): string =
         if optFollow in options and optRecursive in options and
            path.hasRightDirectory:
           dirs.add path
+    if sortTime:
+      for file in files:
+        timeFiles.add((getLastModificationTime(file), file))
+    else:  # alphanumeric sort
+      files.sort()
+      for file in files:
+        yield file
+      dirs.sort(order = SortOrder.Descending)
+    for dir in dirs:
+      dirStack.add(dir)
+  if sortTime:
+    timeFiles.sort(sortTimeOrder)
+    for (_, file) in timeFiles:
+      yield file
 
 iterator walkRec(paths: seq[string]): string =
   for path in paths:
@@ -806,6 +827,13 @@ for kind, key, val in getopt():
       else: reportError("unknown value for --bin")
     of "text", "t": checkBin = biNo
     of "count": justCount = true
+    of "sorttime", "s":
+      sortTime = true
+      case normalize(val)
+      of "": discard
+      of "asc", "ascending": sortTimeOrder = SortOrder.Ascending
+      of "desc", "descending": sortTimeOrder = SortOrder.Descending
+      else: reportError("invalid value '" & val & "' for --sortTime")
     of "nocolor": useWriteStyled = false
     of "color":
       case val
