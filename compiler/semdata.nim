@@ -189,6 +189,7 @@ proc isValid(n: SomeNode): bool  =
     else:
       raise newException(Defect, "unexpected node kind")
     raise newException(Defect, "nil node")
+  result = true
 
 proc ultimateOwner(n: SomeNode): PSym =
   case n.kind
@@ -227,6 +228,7 @@ proc addIcCache*(c: PContext; p: PNode | PSym | PType) =
   ## add the given node to the context's cache
   let
     value = newSomeNode(p)
+  assert value.isValid
   assert c.isValid(value)
   c.icCache.addFirst value
 

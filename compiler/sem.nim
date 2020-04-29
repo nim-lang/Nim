@@ -618,7 +618,8 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
-  c.addIcCache result
+  if result != nil:
+    c.addIcCache result
 
 proc reportUnusedModules(c: PContext) =
   for i in 0..high(c.unusedImports):

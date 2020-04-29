@@ -1915,26 +1915,3 @@ proc toHumanStr*(kind: TSymKind): string =
 proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
-
-proc ultimateOwner*(p: PSym): PSym =
-  ## the eventual package/module owner of the symbol
-  if p == nil or p.owner == nil or p.kind in {skModule, skPackage}:
-    result = p
-  else:
-    result = p.owner.ultimateOwner
-
-proc ultimateOwner*(p: PType): PSym =
-  ## the eventual package/module owner of the type
-  if p == nil or p.sym == nil:
-    assert false
-    result = nil
-  else:
-    result = p.sym.ultimateOwner
-
-proc ultimateOwner*(n: PNode): PSym =
-  ## the eventual package/module owner of the node
-  case n.kind
-  of nkSym:
-    result = n.sym.ultimateOwner
-  else:
-    result = n.typ.ultimateOwner

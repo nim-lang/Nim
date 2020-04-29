@@ -184,6 +184,20 @@ proc getModule*(s: PSym): PSym =
     assert result != result.owner
     result = result.owner
 
+proc getModule*(t: PType): PSym =
+  if t != nil:
+    result = getModule(t.sym)
+
+proc getModule*(n: PNode): PSym =
+  if n != nil:
+    result = case n.kind
+    of nkSym:
+      getModule(n.sym)
+    of nkType:
+      getModule(n.typ)
+    else:
+      getModule(n.typ)
+
 proc fromSystem*(op: PSym): bool {.inline.} = sfSystemModule in getModule(op).flags
 proc getSymFromList*(list: PNode, ident: PIdent, start: int = 0): PSym =
   for i in start..<list.len:

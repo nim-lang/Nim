@@ -393,7 +393,7 @@ proc typeId*(g: ModuleGraph; p: PType): SqlId =
       limit 1
     """
   let
-    m = p.ultimateOwner
+    m = getModule(p)
     mid = if m == nil: 0 else: abs(m.id)
     id = db.getValue(query, mid, p.uniqueId)
   if id != "":
