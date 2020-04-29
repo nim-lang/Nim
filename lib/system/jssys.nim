@@ -397,24 +397,29 @@ else:
     """.}
 
 # Arithmetic:
+proc checkOverflowInt(a: int) {.asmNoStackFrame, compilerproc.} =
+  asm """
+    if (`a` > 2147483647 || `a` < -2147483648) `raiseOverflow`();
+  """
+
 proc addInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
-    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
+    `checkOverflowInt`(result);
     return result;
   """
 
 proc subInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
-    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
+    `checkOverflowInt`(result);
     return result;
   """
 
 proc mulInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
-    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
+    `checkOverflowInt`(result);
     return result;
   """
 
@@ -432,27 +437,29 @@ proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     return Math.trunc(`a` % `b`);
   """
 
+proc checkOverflowInt64(a: int) {.asmNoStackFrame, compilerproc.} =
+  asm """
+    if (`a` > 9223372036854775807 || `a` < -9223372036854775808) `raiseOverflow`();
+  """
+
 proc addInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
-    if (result > 9223372036854775807
-    || result < -9223372036854775808) `raiseOverflow`();
+    `checkOverflowInt64`(result);
     return result;
   """
 
 proc subInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
-    if (result > 9223372036854775807
-    || result < -9223372036854775808) `raiseOverflow`();
+    `checkOverflowInt64`(result);
     return result;
   """
 
 proc mulInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
-    if (result > 9223372036854775807
-    || result < -9223372036854775808) `raiseOverflow`();
+    `checkOverflowInt64`(result);
     return result;
   """
 
