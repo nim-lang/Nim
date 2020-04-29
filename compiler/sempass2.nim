@@ -854,7 +854,8 @@ proc track(tracked: PEffects, n: PNode) =
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n[0].typ, n.info)
-    checkForSink(tracked.config, tracked.owner, n[1])
+    if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
+      checkForSink(tracked.config, tracked.owner, n[1])
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
