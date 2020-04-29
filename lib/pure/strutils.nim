@@ -75,6 +75,7 @@
 import parseutils
 from math import pow, floor, log10
 from algorithm import reverse
+import macros # for `parseEnum`
 
 when defined(nimVmExportFixed):
   from unicode import toLower, toUpper
@@ -277,6 +278,26 @@ proc capitalizeAscii*(s: string): string {.noSideEffect, procvar,
     doAssert capitalizeAscii("-bar") == "-bar"
   if s.len == 0: result = ""
   else: result = toUpperAscii(s[0]) & substr(s, 1)
+
+proc nimIdentNormalize*(s: string): string =
+  ## Normalizes the string `s` as a Nim identifier.
+  ##
+  ## That means to convert to lower case and remove any '_' on all characters
+  ## except first one.
+  runnableExamples:
+    doAssert nimIdentNormalize("Foo_bar") == "Foobar"
+  result = newString(s.len)
+  if s.len > 0:
+    result[0] = s[0]
+  var j = 1
+  for i in 1..len(s) - 1:
+    if s[i] in {'A'..'Z'}:
+      result[j] = chr(ord(s[i]) + (ord('a') - ord('A')))
+      inc j
+    elif s[i] != '_':
+      result[j] = s[i]
+      inc j
+  if j != s.len: setLen(result, j)
 
 proc normalize*(s: string): string {.noSideEffect, procvar,
   rtl, extern: "nsuNormalize".} =
@@ -1229,8 +1250,65 @@ proc parseBool*(s: string): bool =
   of "n", "no", "false", "0", "off": result = false
   else: raise newException(ValueError, "cannot interpret as a bool: " & s)
 
+proc addOfBranch(s: string, field, enumType: NimNode): NimNode =
+  result = nnkOfBranch.newTree(
+    newLit s,
+    nnkCall.newTree(enumType, field) # `T(<fieldValue>)`
+  )
+
+macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
+  # generates a case stmt, which assigns the correct enum field given
+  # a normalized string comparison to the `argSym` input.
+  # NOTE: for an enum with fields Foo, Bar, ... we cannot generate
+  # `of "Foo".nimIdentNormalize: Foo`.
+  # This will fail, if the enum is not defined at top level (e.g. in a block).
+  # Thus we check for the field value of the (possible holed enum) and convert
+  # the integer value to the generic argument `typ`.
+  let typ = typ.getTypeInst[1]
+  let impl = typ.getImpl[2]
+  expectKind impl, nnkEnumTy
+  result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
+                                                  bindSym"nimIdentNormalize"))
+  # stores all processed field strings to give error msg for ambiguous enums
+  var foundFields: seq[string]
+  var fStr: string # string of current field
+  var fNum: BiggestInt # int value of current field
+  for f in impl:
+    case f.kind
+    of nnkEmpty: continue # skip first node of `enumTy`
+    of nnkSym, nnkIdent: fStr = f.strVal
+    of nnkEnumFieldDef:
+      case f[1].kind
+      of nnkStrLit: fStr = f[1].strVal
+      of nnkTupleConstr:
+        fStr = f[1][1].strVal
+        fNum = f[1][0].intVal
+      of nnkIntLit:
+        fStr = f[0].strVal
+        fNum = f[1].intVal
+      else: error("Invalid tuple syntax!", f[1])
+    else: error("Invalid node for enum type!", f)
+    # add field if string not already added
+    fStr = nimIdentNormalize(fStr)
+    if fStr notin foundFields:
+      result.add addOfBranch(fStr, newLit fNum, typ)
+      foundFields.add fStr
+    else:
+      error("Ambiguous enums cannot be parsed, field " & $fStr &
+        " appears multiple times!")
+    inc fNum
+  # finally add else branch to raise or use default
+  if default == nil:
+    let raiseStmt = quote do:
+      raise newException(ValueError, "Invalid enum value: " & $`argSym`)
+    result.add nnkElse.newTree(raiseStmt)
+  else:
+    expectKind(default, nnkSym)
+    result.add nnkElse.newTree(default)
+
 proc parseEnum*[T: enum](s: string): T =
-  ## Parses an enum ``T``.
+  ## Parses an enum ``T``. This errors at compile time, if the given enum
+  ## type contains multiple fields with the same string value.
   ##
   ## Raises ``ValueError`` for an invalid value in `s`. The comparison is
   ## done in a style insensitive way.
@@ -1246,13 +1324,11 @@ proc parseEnum*[T: enum](s: string): T =
     doAssertRaises(ValueError):
       echo parseEnum[MyEnum]("third")
 
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  raise newException(ValueError, "invalid enum value: " & s)
+  genEnumStmt(T, s, default = nil)
 
 proc parseEnum*[T: enum](s: string, default: T): T =
-  ## Parses an enum ``T``.
+  ## Parses an enum ``T``. This errors at compile time, if the given enum
+  ## type contains multiple fields with the same string value.
   ##
   ## Uses `default` for an invalid value in `s`. The comparison is done in a
   ## style insensitive way.
@@ -1267,10 +1343,7 @@ proc parseEnum*[T: enum](s: string, default: T): T =
     doAssert parseEnum[MyEnum]("second") == second
     doAssert parseEnum[MyEnum]("last", third) == third
 
-  for e in low(T)..high(T):
-    if cmpIgnoreStyle(s, $e) == 0:
-      return e
-  result = default
+  genEnumStmt(T, s, default)
 
 proc repeat*(c: char, count: Natural): string {.noSideEffect,
   rtl, extern: "nsuRepeatChar".} =

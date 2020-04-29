@@ -619,7 +619,7 @@ type is an instance of it:
 
   type
     Functor[A] = concept f
-      type MatchedGenericType = genericHead(f.type)
+      type MatchedGenericType = genericHead(typeof(f))
         # `f` will be a value of a type such as `Option[T]`
         # `MatchedGenericType` will become the `Option` type
 
@@ -652,7 +652,7 @@ matched to a concrete type:
 
       t1 < t2 is bool
 
-      type TimeSpan = type(t1 - t2)
+      type TimeSpan = typeof(t1 - t2)
       TimeSpan * int is TimeSpan
       TimeSpan + TimeSpan is TimeSpan
 

@@ -83,7 +83,7 @@ when defineSsl:
   type
     Certificate* = string ## DER encoded certificate
 
-    SslError* = object of Exception
+    SslError* = object of CatchableError
 
     SslCVerifyMode* = enum
       CVerifyNone, CVerifyPeer, CVerifyPeerUseEnvVars
@@ -146,7 +146,7 @@ type
   ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
-  TimeoutError* = object of Exception
+  TimeoutError* = object of CatchableError
 
   SocketFlag* {.pure.} = enum
     Peek,

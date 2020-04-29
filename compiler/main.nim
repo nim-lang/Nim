@@ -66,16 +66,22 @@ when not defined(leanCompiler):
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
+proc setOutDir(conf: ConfigRef) =
+  if conf.outDir.isEmpty:
+    if optUseNimcache in conf.globalOptions:
+      conf.outDir = getNimcacheDir(conf)
+    else:
+      conf.outDir = conf.projectPath
+
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
-
-  if conf.outDir.isEmpty:
-    conf.outDir = conf.projectPath
+  setOutDir(conf)
   if conf.outFile.isEmpty:
+    let base = conf.projectName
     let targetName = if optGenDynLib in conf.globalOptions:
-      platform.OS[conf.target.targetOS].dllFrmt % conf.projectName
+      platform.OS[conf.target.targetOS].dllFrmt % base
     else:
-      conf.projectName & platform.OS[conf.target.targetOS].exeExt
+      base & platform.OS[conf.target.targetOS].exeExt
     conf.outFile = RelativeFile targetName
 
   extccomp.initVars(conf)
@@ -181,13 +187,13 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
-  case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc":
-    # compile means compileToC currently
+  template handleC() =
     conf.cmd = cmdCompileToC
     if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
+  case conf.command.normalize
+  of "c", "cc", "compile", "compiletoc": handleC() # compile means compileToC currently
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
     if conf.exc == excNone: conf.exc = excCpp
@@ -197,6 +203,9 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdCompileToOC
     defineSymbol(graph.config.symbols, "objc")
     commandCompileToC(graph)
+  of "r": # different from `"run"`!
+    conf.globalOptions.incl {optRun, optUseNimcache}
+    handleC()
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:

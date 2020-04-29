@@ -61,4 +61,5 @@ proc main =
 
 let mem = getOccupiedMem()
 main()
+GC_fullCollect()
 echo getOccupiedMem() - mem

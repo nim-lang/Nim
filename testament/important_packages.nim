@@ -37,7 +37,7 @@ pkg "glob"
 pkg "gnuplot"
 pkg "hts", false, "nim c -o:htss src/hts.nim"
 pkg "illwill", false, "nimble examples"
-pkg "inim", true
+# pkg "inim", true # pending https://github.com/inim-repl/INim/issues/74
 pkg "itertools", false, "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"
@@ -50,9 +50,10 @@ pkg "neo", true, "nim c -d:blas=openblas tests/all.nim"
 pkg "nicy", false, "nim c src/nicy.nim"
 
 when defined(osx):
-  # do this more generally by installing non-nim dependencies automatically
-  # as specified in nimble file
-  doAssert execShellCmd("brew install gtk+3") == 0
+  # xxx: do this more generally by installing non-nim dependencies automatically
+  # as specified in nimble file and calling `distros.foreignDepInstallCmd`, but
+  # it currently would fail work if a package is already installed.
+  doAssert execShellCmd("brew ls --versions gtk+3 || brew install gtk+3") == 0
 pkg "nigui", false, "nim c -o:niguii -r src/nigui.nim"
 
 pkg "nimcrypto", false, "nim c -r tests/testall.nim"

@@ -3,7 +3,7 @@
 
 
 ## Standard library additions and changes
-
+- Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
   to the `dom` module for the JavaScript target.
@@ -34,6 +34,17 @@
 - `strutils.formatFloat` with `precision = 0` has been restored to the version
   1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
   is now `3.`, not `3`.
+- `critbits` adds `commonPrefixLen`.
+- `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
+  (see #13222); instead they now use `getCurrentDir` to resolve those cases,
+  and this can now throw in edge cases where `getCurrentDir` throws.
+  `relativePath` also now works for js with `-d:nodejs`.
+
+- Added `streams.readStr` and `streams.peekStr` overloads to
+  accept an existing string to modify, which avoids memory
+  allocations, similar to `streams.readLine` (#13857).
+
+- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
 
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
@@ -73,6 +84,17 @@
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
 - The `define` and `undef` pragmas have been de-deprecated.
+- New command: `nim r main.nim [args...]` which compiles and runs main.nim, saving
+  the binary to $nimcache/main$exeExt, using the same logic as `nim c -r` to
+  avoid recompiling when sources don't change. This is now the preferred way to
+  run tests, avoiding the usual pain of clobbering your repo with binaries or
+  using tricky gitignore rules on posix. Example:
+  ```nim
+  nim r compiler/nim.nim --help # only compiled the first time
+  echo 'import os; echo getCurrentCompilerExe()' | nim r - # this works too
+  nim r compiler/nim.nim --fullhelp # no recompilation
+  nim r --nimcache:/tmp main # binary saved to /tmp/main
+  ```
 
 ## Tool changes
 

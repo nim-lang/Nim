@@ -40,7 +40,10 @@ type
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wImportJs, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
+    wImportc, wImportJs, wExportc, wExportCpp, wExportNims,
+    wIncompleteStruct, # deprecated
+    wCompleteStruct,
+    wRequiresInit,
     wAlign, wNodecl, wPure, wSideEffect, wHeader,
     wNoSideEffect, wGcSafe, wNoreturn, wNosinks, wMerge, wLib, wDynlib,
     wCompilerProc, wCore, wProcVar, wBase, wUsed,
@@ -128,6 +131,7 @@ const
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
     "incompletestruct",
+    "completestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
     "compilerproc", "core", "procvar", "base", "used",
@@ -186,6 +190,7 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wNoSideEffect: "noSideEffect"
   of wImportCompilerProc: "importCompilerProc"
   of wIncompleteStruct: "incompleteStruct"
+  of wCompleteStruct: "completeStruct"
   of wRequiresInit: "requiresInit"
   of wSideEffect: "sideEffect"
   of wLineDir: "lineDir"

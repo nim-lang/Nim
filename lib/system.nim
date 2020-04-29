@@ -2055,7 +2055,11 @@ export dollars
 
 const
   NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
+    ## is the major number of Nim's version. Example:
+    ##
+    ## .. code-block:: Nim
+    ##   when (NimMajor, NimMinor, NimPatch) >=  (1, 3, 1): discard
+    # See also private symbol `since: (1, 3)` reserved for stdlib
 
   NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.

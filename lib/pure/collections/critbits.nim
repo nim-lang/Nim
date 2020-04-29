@@ -518,6 +518,22 @@ proc `$`*[T](c: CritBitTree[T]): string =
         result.addQuoted(val)
     result.add("}")
 
+proc commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
+  ## Returns longest common prefix length of all keys of `c`.
+  ## If `c` is empty, returns 0.
+  runnableExamples:
+    var c: CritBitTree[void]
+    doAssert c.commonPrefixLen == 0
+    incl(c, "key1")
+    doAssert c.commonPrefixLen == 4
+    incl(c, "key2")
+    doAssert c.commonPrefixLen == 3
+
+  if c.root != nil:
+    if c.root.isLeaf: len(c.root.key)
+    else: c.root.byte
+  else: 0
+
 
 runnableExamples:
   static:

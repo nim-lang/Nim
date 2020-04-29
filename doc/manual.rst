@@ -2354,7 +2354,7 @@ The convertible relation can be relaxed by a user-defined type
   echo x # => 97
 
 The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and
-``typeEqualsOrDistinct(T, type(a))`` holds.
+``typeEqualsOrDistinct(T, typeof(a))`` holds.
 
 
 Assignment compatibility

@@ -27,4 +27,5 @@ proc main(rootName: string) =
 
 let mem = getOccupiedMem()
 main("yeah")
+GC_fullCollect()
 echo "leak: ", getOccupiedMem() - mem > 0
