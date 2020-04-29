@@ -91,7 +91,7 @@ proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
 proc genIf(c: var TLiftCtx; cond, action: PNode): PNode =
   result = newTree(nkIfStmt, newTree(nkElifBranch, cond, action))
 
-proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode = 
+proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode =
   # generate: cast[ptr ObjType](cast[int](addr(x)) - offsetOf(objType.field))
   let intType = getSysType(c.g, unknownLineInfo, tyInt)
 
@@ -104,7 +104,7 @@ proc genContainerOf(c: TLiftCtx; objType: PType, field, x: PSym): PNode =
   let dotExpr = newNodeIT(nkDotExpr, c.info, x.typ)
   dotExpr.add newNodeIT(nkType, c.info, objType)
   dotExpr.add newSymNode(field)
-  
+
   let offsetOf = genBuiltin(c.g, mOffsetOf, "offsetof", dotExpr)
   offsetOf.typ = intType
 
@@ -174,7 +174,7 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
-    c.filterDiscriminator = oldfilterDiscriminator 
+    c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
   else:
@@ -253,9 +253,13 @@ proc newOpCall(op: PSym; x: PNode): PNode =
 proc newDeepCopyCall(op: PSym; x, y: PNode): PNode =
   result = newAsgnStmt(x, newOpCall(op, y))
 
+proc usesBuiltinArc(t: PType): bool =
+  proc wrap(t: PType): bool {.nimcall.} = ast.isGCedMem(t)
+  result = types.searchTypeFor(t, wrap)
+
 proc useNoGc(c: TLiftCtx; t: PType): bool {.inline.} =
   result = optSeqDestructors in c.g.config.globalOptions and
-    ({tfHasGCedMem, tfHasOwned} * t.flags != {} or t.isGCedMem)
+    ({tfHasGCedMem, tfHasOwned} * t.flags != {} or usesBuiltinArc(t))
 
 proc requiresDestructor(c: TLiftCtx; t: PType): bool {.inline.} =
   result = optSeqDestructors in c.g.config.globalOptions and

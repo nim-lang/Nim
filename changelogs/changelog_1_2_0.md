@@ -2,7 +2,6 @@
 
 
 ## Standard library additions and changes
-
 - Added overloaded `strformat.fmt` macro that use specified characters as
   delimiter instead of '{' and '}'.
 - Added new procs in `tables.nim`: `OrderedTable.pop`, `CountTable.del`,

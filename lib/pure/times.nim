@@ -225,11 +225,6 @@ elif defined(posix):
 
   type CTime = posix.Time
 
-  when not defined(freebsd) and not defined(netbsd) and not defined(openbsd):
-    var timezone {.importc, header: "<time.h>".}: int
-    when not defined(valgrind_workaround_10121):
-      tzset()
-
   when defined(macosx):
     proc gettimeofday(tp: var Timeval, unused: pointer = nil)
       {.importc: "gettimeofday", header: "<sys/time.h>", sideEffect.}
@@ -237,12 +232,8 @@ elif defined(posix):
 elif defined(windows):
   import winlean, std/time_t
 
-  type CTime = time_t.Time
-
-  # visual c's c runtime exposes these under a different name
-  var timezone {.importc: "_timezone", header: "<time.h>".}: int
-
   type
+    CTime = time_t.Time
     Tm {.importc: "struct tm", header: "<time.h>", final, pure.} = object
       tm_sec*: cint   ## Seconds [0,60].
       tm_min*: cint   ## Minutes [0,59].
@@ -2507,7 +2498,7 @@ proc `-=`*(t: var Time, b: TimeInterval) =
 #
 
 proc epochTime*(): float {.tags: [TimeEffect].} =
-  ## gets time after the UNIX epoch (1970) in seconds. It is a float
+  ## Gets time after the UNIX epoch (1970) in seconds. It is a float
   ## because sub-second resolution is likely to be supported (depending
   ## on the hardware/OS).
   ##
@@ -2545,7 +2536,7 @@ when not defined(js):
     clocksPerSec {.importc: "CLOCKS_PER_SEC", nodecl, used.}: int
 
   proc cpuTime*(): float {.tags: [TimeEffect].} =
-    ## gets time spent that the CPU spent to run the current process in
+    ## Gets time spent that the CPU spent to run the current process in
     ## seconds. This may be more useful for benchmarking than ``epochTime``.
     ## However, it may measure the real time instead (depending on the OS).
     ## The value of the result has no meaning.
@@ -2581,40 +2572,34 @@ proc countLeapYears*(yearSpan: int): int
   ## counts the number of leap years up to January 1st of a given year.
   ## Keep in mind that if specified year is a leap year, the leap day
   ## has not happened before January 1st of that year.
-  ##
-  ## **Deprecated since v0.20.0**.
+  # Deprecated since v0.20.0
   (yearSpan - 1) div 4 - (yearSpan - 1) div 100 + (yearSpan - 1) div 400
 
 proc countDays*(yearSpan: int): int
     {.deprecated.} =
   ## Returns the number of days spanned by a given number of years.
-  ##
-  ## **Deprecated since v0.20.0**.
+  # Deprecated since v0.20.0
   (yearSpan - 1) * 365 + countLeapYears(yearSpan)
 
 proc countYears*(daySpan: int): int
     {.deprecated.} =
   ## Returns the number of years spanned by a given number of days.
-  ##
-  ## **Deprecated since v0.20.0**.
+  # Deprecated since v0.20.0
   ((daySpan - countLeapYears(daySpan div 365)) div 365)
 
 proc countYearsAndDays*(daySpan: int): tuple[years: int, days: int]
     {.deprecated.} =
   ## Returns the number of years spanned by a given number of days and the
   ## remainder as days.
-  ##
-  ## **Deprecated since v0.20.0**.
+  # Deprecated since v0.20.0
   let days = daySpan - countLeapYears(daySpan div 365)
   result.years = days div 365
   result.days = days mod 365
 
 proc toTimeInterval*(time: Time): TimeInterval
-    {.deprecated: "Use `between` instead".} =
+    {.deprecated: "Use 'between' instead".} =
   ## Converts a Time to a TimeInterval. To be used when diffing times.
-  ##
-  ## **Deprecated since version 0.20.0:** Use the `between proc
-  ## <#between,DateTime,DateTime>`_ instead.
+  # Deprecated since version 0.20.0
   runnableExamples:
     let a = fromUnix(10)
     let b = fromUnix(1_500_000_000)
@@ -2625,55 +2610,45 @@ proc toTimeInterval*(time: Time): TimeInterval
     dt.monthday, 0, dt.month.ord - 1, dt.year)
 
 proc weeks*(dur: Duration): int64
-    {.inline, deprecated: "Use `inWeeks` instead".} =
+    {.inline, deprecated: "Use 'inWeeks' instead".} =
   ## Number of whole weeks represented by the duration.
-  ##
-  ## **Deprecated since version v0.20.0**: Use the `inWeeks proc
-  ## <#inWeeks,Duration>`_ instead.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
     doAssert dur.weeks == 1
   dur.inWeeks
 
 proc days*(dur: Duration): int64
-    {.inline, deprecated: "Use `inDays` instead".} =
+    {.inline, deprecated: "Use 'inDays' instead".} =
   ## Number of whole days represented by the duration.
-  ##
-  ## **Deprecated since version v0.20.0**: Use the `inDays proc
-  ## <#inDays,Duration>`_ instead.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(weeks = 1, days = 2, hours = 3, minutes = 4)
     doAssert dur.days == 9
   dur.inDays
 
 proc hours*(dur: Duration): int64
-    {.inline, deprecated: "Use `inHours` instead".} =
+    {.inline, deprecated: "Use 'inHours' instead".} =
   ## Number of whole hours represented by the duration.
-  ##
-  ## **Deprecated since version v0.20.0**: Use the `inHours proc
-  ## <#inHours,Duration>`_ instead.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(days = 1, hours = 2, minutes = 3)
     doAssert dur.hours == 26
   dur.inHours
 
 proc minutes*(dur: Duration): int64
-    {.inline, deprecated: "Use `inMinutes` instead".} =
+    {.inline, deprecated: "Use 'inMinutes' instead".} =
   ## Number of whole minutes represented by the duration.
-  ##
-  ## **Deprecated since version v0.20.0**: Use the `inMinutes proc
-  ## <#inMinutes,Duration>`_ instead.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(days = 1, hours = 2, minutes = 3)
     doAssert dur.minutes == 1563
   dur.inMinutes
 
 proc seconds*(dur: Duration): int64
-    {.inline, deprecated: "Use `inSeconds` instead".} =
+    {.inline, deprecated: "Use 'inSeconds' instead".} =
   ## Number of whole seconds represented by the duration.
-  ##
-  ## **Deprecated since version v0.20.0**: Use the `inSeconds proc
-  ## <#inSeconds,Duration>`_ instead.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(minutes = 10, seconds = 30)
     doAssert dur.seconds == 630
@@ -2682,8 +2657,7 @@ proc seconds*(dur: Duration): int64
 proc milliseconds*(dur: Duration): int {.inline, deprecated.} =
   ## Number of whole milliseconds represented by the **fractional**
   ## part of the duration.
-  ##
-  ## **Deprecated since version v0.20.0**.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
                            microseconds = 8, nanoseconds = 9)
@@ -2693,8 +2667,7 @@ proc milliseconds*(dur: Duration): int {.inline, deprecated.} =
 proc microseconds*(dur: Duration): int {.inline, deprecated.} =
   ## Number of whole microseconds represented by the **fractional**
   ## part of the duration.
-  ##
-  ## **Deprecated since version v0.20.0**.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
                            microseconds = 8, nanoseconds = 9)
@@ -2704,8 +2677,7 @@ proc microseconds*(dur: Duration): int {.inline, deprecated.} =
 proc nanoseconds*(dur: Duration): NanosecondRange {.inline, deprecated.} =
   ## Number of whole microseconds represented by the **fractional**
   ## part of the duration.
-  ##
-  ## **Deprecated since version v0.20.0**.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
                            microseconds = 8, nanoseconds = 9)
@@ -2714,8 +2686,7 @@ proc nanoseconds*(dur: Duration): NanosecondRange {.inline, deprecated.} =
 
 proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
   ## The fractional part of `dur`, as a duration.
-  ##
-  ## **Deprecated since version v0.20.0**.
+  # Deprecated since version v0.20.0
   runnableExamples:
     let dur = initDuration(minutes = 5, seconds = 6, milliseconds = 7,
                            microseconds = 8, nanoseconds = 9)
@@ -2723,112 +2694,29 @@ proc fractional*(dur: Duration): Duration {.inline, deprecated.} =
         nanoseconds = 9)
   initDuration(nanoseconds = dur.nanosecond)
 
-when not defined(js):
-  proc unixTimeToWinTime*(time: CTime): int64
-      {.deprecated: "Use toWinTime instead".} =
-    ## Converts a UNIX `Time` (``time_t``) to a Windows file time
-    ##
-    ## **Deprecated:** use ``toWinTime`` instead.
-    result = int64(time) * rateDiff + epochDiff
-
-  proc winTimeToUnixTime*(time: int64): CTime
-      {.deprecated: "Use fromWinTime instead".} =
-    ## Converts a Windows time to a UNIX `Time` (``time_t``)
-    ##
-    ## **Deprecated:** use ``fromWinTime`` instead.
-    result = CTime((time - epochDiff) div rateDiff)
-
-proc initInterval*(seconds, minutes, hours, days, months, years: int = 0):
-    TimeInterval {.deprecated.} =
-  ## **Deprecated since v0.18.0:** use ``initTimeInterval`` instead.
-  initTimeInterval(0, 0, 0, seconds, minutes, hours, days, 0, months, years)
-
 proc fromSeconds*(since1970: float): Time
-    {.tags: [], raises: [], benign, deprecated: "Use fromUnixFloat or fromUnix".} =
+    {.tags: [], raises: [], benign, deprecated: "Use `fromUnixFloat or 'fromUnix' instead".} =
   ## Takes a float which contains the number of seconds since the unix epoch and
   ## returns a time object.
-  ##
-  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
+  # Deprecated since v0.18.0
   fromUnixFloat(since1970)
 
 proc fromSeconds*(since1970: int64): Time
-    {.tags: [], raises: [], benign, deprecated.} =
+    {.tags: [], raises: [], benign, deprecated: "Use 'fromUnix' instead".} =
   ## Takes an int which contains the number of seconds since the unix epoch and
   ## returns a time object.
-  ##
-  ## **Deprecated since v0.18.0:** use ``fromUnix`` instead
+  # Deprecated since v0.18.0
   fromUnix(since1970)
 
 proc toSeconds*(time: Time): float
-    {.tags: [], raises: [], benign, deprecated: "Use toUnixFloat or toUnix".} =
+    {.tags: [], raises: [], benign, deprecated: "Use 'toUnixFloat' or 'toUnix' instead".} =
   ## Returns the time in seconds since the unix epoch, with subsecond resolution.
+  # Deprecated since v0.18.0
   toUnixFloat(time)
 
-proc getLocalTime*(time: Time): DateTime
-    {.tags: [], raises: [], benign, deprecated.} =
-  ## Converts the calendar time `time` to broken-time representation,
-  ## expressed relative to the user's specified time zone.
-  ##
-  ## **Deprecated since v0.18.0:** use ``local`` instead
-  time.local
-
 proc getGMTime*(time: Time): DateTime
-      {.tags: [], raises: [], benign, deprecated.} =
+      {.tags: [], raises: [], benign, deprecated: "Use 'utc' instead".} =
   ## Converts the calendar time `time` to broken-down time representation,
   ## expressed in Coordinated Universal Time (UTC).
-  ##
-  ## **Deprecated since v0.18.0:** use ``utc`` instead
+  # Deprecated since v0.18.0
   time.utc
-
-proc getTimezone*(): int
-    {.tags: [TimeEffect], raises: [], benign, deprecated.} =
-  ## Returns the offset of the local (non-DST) timezone in seconds west of UTC.
-  ##
-  ## **Deprecated since v0.18.0:** use ``now().utcOffset`` to get the current
-  ## utc offset (including DST).
-  when defined(js):
-    return newDate().getTimezoneOffset() * 60
-  elif defined(freebsd) or defined(netbsd) or defined(openbsd):
-    # This is wrong since it will include DST offsets, but the behavior has
-    # always been wrong for bsd and the proc is deprecated so lets ignore it.
-    return now().utcOffset
-  else:
-    return timezone
-
-proc getDayOfWeek*(day, month, year: int): WeekDay
-    {.tags: [], raises: [], benign, deprecated.} =
-  ## **Deprecated since v0.18.0:** use
-  ## ``getDayOfWeek(monthday: MonthdayRange; month: Month; year: int)`` instead.
-  getDayOfWeek(day, month.Month, year)
-
-proc getDayOfWeekJulian*(day, month, year: int): WeekDay {.deprecated.} =
-  ## Returns the day of the week enum from day, month and year,
-  ## according to the Julian calendar.
-  ## **Deprecated since v0.18.0**
-  # Day & month start from one.
-  let
-    a = (14 - month) div 12
-    y = year - a
-    m = month + (12*a) - 2
-    d = (5 + day + y + (y div 4) + (31*m) div 12) mod 7
-  result = d.WeekDay
-
-proc adjTime*(zt: ZonedTime): Time
-    {.deprecated: "Use zt.time instead".} =
-  ## **Deprecated since v0.19.0:** use the ``time`` field instead.
-  zt.time - initDuration(seconds = zt.utcOffset)
-
-proc `adjTime=`*(zt: var ZonedTime, adjTime: Time)
-    {.deprecated: "Use zt.time instead".} =
-  ## **Deprecated since v0.19.0:** use the ``time`` field instead.
-  zt.time = adjTime + initDuration(seconds = zt.utcOffset)
-
-proc zoneInfoFromUtc*(zone: Timezone, time: Time): ZonedTime
-    {.deprecated: "Use zonedTimeFromTime instead".} =
-  ## **Deprecated since v0.19.0:** use ``zonedTimeFromTime`` instead.
-  zone.zonedTimeFromTime(time)
-
-proc zoneInfoFromTz*(zone: Timezone, adjTime: Time): ZonedTime
-    {.deprecated: "Use zonedTimeFromAdjTime instead".} =
-  ## **Deprecated since v0.19.0:** use the ``zonedTimeFromAdjTime`` instead.
-  zone.zonedTimeFromAdjTime(adjTime)

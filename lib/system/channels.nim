@@ -347,7 +347,7 @@ template lockChannel(q, action): untyped =
 
 proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool =
   if q.mask == ChannelDeadMask:
-    sysFatal(DeadThreadError, "cannot send message; thread died")
+    sysFatal(DeadThreadDefect, "cannot send message; thread died")
   acquireSys(q.lock)
   if q.maxItems > 0:
     # Wait until count is less than maxItems

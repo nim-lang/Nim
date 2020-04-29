@@ -204,14 +204,14 @@ proc `[]`*(x: Any, i: int): Any =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
+      raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
     var s = cast[ppointer](x.value)[]
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
+      raise newException(IndexDefect, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     return newAny(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), x.rawType.base)
   else: assert false
 
@@ -221,7 +221,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
+      raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
@@ -229,7 +229,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
+      raise newException(IndexDefect, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
     genericAssign(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), y.value, y.rawType)
   else: assert false

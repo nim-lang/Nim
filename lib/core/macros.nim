@@ -478,7 +478,7 @@ type
 
 proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
               magic: "NBindSym", noSideEffect.}
-  ## Ceates a node that binds `ident` to a symbol node. The bound symbol
+  ## Creates a node that binds `ident` to a symbol node. The bound symbol
   ## may be an overloaded symbol.
   ## if `ident` is a NimNode, it must have ``nnkIdent`` kind.
   ## If ``rule == brClosed`` either an ``nnkClosedSymChoice`` tree is

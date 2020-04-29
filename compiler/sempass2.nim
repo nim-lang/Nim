@@ -752,7 +752,7 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n[0].typ, n.info)
     else:
       # A `raise` with no arguments means we're going to re-raise the exception
-      # being handled or, if outside of an `except` block, a `ReraiseError`.
+      # being handled or, if outside of an `except` block, a `ReraiseDefect`.
       # Here we add a `Exception` tag in order to cover both the cases.
       addEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:

@@ -483,7 +483,7 @@ proc raiseException(e: sink(ref Exception), ename: cstring) {.compilerRtl.} =
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
-    sysFatal(ReraiseError, "no exception to reraise")
+    sysFatal(ReraiseDefect, "no exception to reraise")
   else:
     when gotoBasedExceptions:
       inc nimInErrorMode

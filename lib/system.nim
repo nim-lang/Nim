@@ -868,8 +868,8 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`.
   ##
   ## .. code-block:: Nim
-  ##   assert(FloatingPointError of Exception)
-  ##   assert(DivByZeroError of Exception)
+  ##   assert(FloatingPointDefect of Exception)
+  ##   assert(DivByZeroDefect of Exception)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc.
@@ -1673,8 +1673,8 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     result = a[pos]
   ##
   ##   when isMainModule:
-  ##     testException(IndexError, tester(30))
-  ##     testException(IndexError, tester(1))
+  ##     testException(IndexDefect, tester(30))
+  ##     testException(IndexDefect, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
 proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
@@ -2049,20 +2049,25 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+const
+  NimMajor* {.intdefine.}: int = 1
+    ## is the major number of Nim's version. Example:
+    ##
+    ## .. code-block:: Nim
+    ##   when (NimMajor, NimMinor, NimPatch) >=  (1, 3, 1): discard
+    # See also private symbol `since: (1, 3)` reserved for stdlib
+
+  NimMinor* {.intdefine.}: int = 3
+    ## is the minor number of Nim's version.
+    ## Odd for devel, even for releases.
+
+  NimPatch* {.intdefine.}: int = 1
+    ## is the patch number of Nim's version.
 
 import system/dollars
 export dollars
 
 const
-  NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 3
-    ## is the minor number of Nim's version.
-
-  NimPatch* {.intdefine.}: int = 1
-    ## is the patch number of Nim's version.
-
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
@@ -2488,7 +2493,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   if L == b.len:
     for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
-    sysFatal(RangeError, "different lengths for slice assignment")
+    sysFatal(RangeDefect, "different lengths for slice assignment")
 
 proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
@@ -2650,7 +2655,7 @@ when compileOption("rangechecks"):
     ## Helper for performing user-defined range checks.
     ## Such checks will be performed only when the ``rangechecks``
     ## compile-time option is enabled.
-    if not cond: sysFatal(RangeError, "range check failed")
+    if not cond: sysFatal(RangeDefect, "range check failed")
 else:
   template rangeCheck*(cond) = discard
 

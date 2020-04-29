@@ -6,7 +6,7 @@ colon = ':' COMMENT?
 colcom = ':' COMMENT?
 operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
          | 'or' | 'xor' | 'and'
-         | 'is' | 'isnot' | 'in' | 'notin' | 'of'
+         | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as'
          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 prefixOperator = operator
 optInd = COMMENT? IND?
@@ -193,6 +193,7 @@ complexOrSimpleStmt = (ifStmt | whenStmt | whileStmt
                     | tryStmt | forStmt
                     | blockStmt | staticStmt | deferStmt | asmStmt
                     | 'proc' routine
+                    | 'func' routine
                     | 'method' routine
                     | 'iterator' routine
                     | 'macro' routine

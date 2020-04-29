@@ -1,8 +1,8 @@
 
 block: # bug #2427
   var x = 0'u8
-  dec x # OverflowError
-  x -= 1 # OverflowError
+  dec x # OverflowDefect
+  x -= 1 # OverflowDefect
   x = x - 1 # No error
 
   doAssert(x == 253'u8)

@@ -74,8 +74,8 @@ type
       val: T
       has: bool
 
-  UnpackError* = object of Defect
-
+  UnpackDefect* = object of Defect
+  UnpackError* {.deprecated: "See corresponding Defect".} = UnpackDefect
 
 proc option*[T](val: T): Option[T] =
   ## Can be used to convert a pointer type (`ptr` or `ref` or `proc`) to an option type.
@@ -486,7 +486,7 @@ when isMainModule:
 
       let tmp = option(intref)
       check(sizeof(tmp) == sizeof(ptr int))
-      
+
       var prc = proc (x: int): int = x + 1
       check(option(prc).isSome)
       prc = nil

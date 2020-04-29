@@ -247,8 +247,13 @@ proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   result = tab.getOrDefault(sig)
 
 proc addAbiCheck(m: BModule, t: PType, name: Rope) =
-  if isDefined(m.config, "checkabi") and (let size = getSize(m.config, t); size != szUnknownSize):
-    m.s[cfsTypeInfo].addf("NIM_CHECK_SIZE($1, $2);$n", [name, rope(size)])
+  if isDefined(m.config, "checkAbi") and (let size = getSize(m.config, t); size != szUnknownSize):
+    var msg = "backend & Nim disagree on size for: "
+    msg.addTypeHeader(m.config, t)
+    var msg2 = ""
+    msg2.addQuoted msg # not a hostspot so extra allocation doesn't matter
+    m.s[cfsTypeInfo].addf("NIM_STATIC_ASSERT(sizeof($1) == $2, $3);$n", [name, rope(size), msg2.rope])
+    # see `testCodegenABICheck` for example error message it generates
 
 proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
   var pt = skipTypes(s.typ, typedescInst)
@@ -328,7 +333,6 @@ proc getSimpleTypeDesc(m: BModule, typ: PType): Rope =
     let sig = hashType typ
     if cacheGetType(m.typeCache, sig) == nil:
       m.typeCache[sig] = result
-      addAbiCheck(m, typ, result)
 
 proc pushType(m: BModule, typ: PType) =
   for i in 0..high(m.typeStack):
@@ -676,6 +680,7 @@ proc resolveStarsInCppType(typ: PType, idx, stars: int): PType =
 
 proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   # returns only the type's name
+
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
@@ -686,6 +691,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
   if t.sym != nil: useHeader(m, t.sym)
   if t != origTyp and origTyp.sym != nil: useHeader(m, origTyp.sym)
   let sig = hashType(origTyp)
+
+  defer: # defer is the simplest in this case
+    if isImportedType(t) and not m.typeABICache.containsOrIncl(sig):
+      addAbiCheck(m, t, result)
+
   result = getTypePre(m, t, sig)
   if result != nil:
     excl(check, t.id)
@@ -818,7 +828,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
       let foo = getTypeDescAux(m, t[1], check)
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
-    else: addAbiCheck(m, t, result)
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
       let cppName = getTypeName(m, t, sig)
@@ -879,7 +888,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                       else: getTupleDesc(m, t, result, check)
         if not isImportedType(t):
           m.s[cfsTypes].add(recdesc)
-        elif tfIncompleteStruct notin t.flags: addAbiCheck(m, t, result)
+        elif tfIncompleteStruct notin t.flags:
+          discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType
@@ -1297,7 +1307,8 @@ proc genHook(m: BModule; t: PType; info: TLineInfo; op: TTypeAttachedOp): Rope =
     if op == attachedTrace and m.config.selectedGC == gcOrc and
         containsGarbageCollectedRef(t):
       when false:
-        # re-enable this check
+        # unfortunately this check is wrong for an object type that only contains
+        # .cursor fields like 'Node' inside 'cycleleak'.
         internalError(m.config, info, "no attached trace proc found")
     result = rope("NIM_NIL")
 

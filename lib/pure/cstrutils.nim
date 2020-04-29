@@ -19,29 +19,43 @@ proc toLowerAscii(c: char): char {.inline.} =
   else:
     result = c
 
-proc startsWith*(s, prefix: cstring): bool {.noSideEffect,
-  rtl, extern: "csuStartsWith".} =
-  ## Returns true iff ``s`` starts with ``prefix``.
-  ##
-  ## If ``prefix == ""`` true is returned.
-  var i = 0
-  while true:
-    if prefix[i] == '\0': return true
-    if s[i] != prefix[i]: return false
-    inc(i)
+when defined(js):
+  proc startsWith*(s, prefix: cstring): bool {.noSideEffect,
+    importjs: "#.startsWith(#)".}
 
-proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
-  rtl, extern: "csuEndsWith".} =
-  ## Returns true iff ``s`` ends with ``suffix``.
-  ##
-  ## If ``suffix == ""`` true is returned.
-  let slen = s.len
-  var i = 0
-  var j = slen - len(suffix)
-  while i+j <% slen:
-    if s[i+j] != suffix[i]: return false
-    inc(i)
-  if suffix[i] == '\0': return true
+  proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
+    importjs: "#.endsWith(#)".}
+  
+  # JS string has more operations that might warrant its own module:
+  # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
+else:
+  proc startsWith*(s, prefix: cstring): bool {.noSideEffect,
+    rtl, extern: "csuStartsWith".} =
+    ## Returns true iff ``s`` starts with ``prefix``.
+    ##
+    ## If ``prefix == ""`` true is returned.
+    ## 
+    ## JS backend uses native ``String.prototype.startsWith``.
+    var i = 0
+    while true:
+      if prefix[i] == '\0': return true
+      if s[i] != prefix[i]: return false
+      inc(i)
+
+  proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
+    rtl, extern: "csuEndsWith".} =
+    ## Returns true iff ``s`` ends with ``suffix``.
+    ##
+    ## If ``suffix == ""`` true is returned.
+    ## 
+    ## JS backend uses native ``String.prototype.endsWith``.
+    let slen = s.len
+    var i = 0
+    var j = slen - len(suffix)
+    while i+j <% slen:
+      if s[i+j] != suffix[i]: return false
+      inc(i)
+    if suffix[i] == '\0': return true
 
 proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect,
   rtl, extern: "csuCmpIgnoreStyle".} =
@@ -53,6 +67,9 @@ proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect,
   ## | 0 iff a == b
   ## | < 0 iff a < b
   ## | > 0 iff a > b
+  ## 
+  ## Not supported for JS backend, use `strutils.cmpIgnoreStyle
+  ## <https://nim-lang.org/docs/strutils.html#cmpIgnoreStyle%2Cstring%2Cstring>`_ instead.
   var i = 0
   var j = 0
   while true:
@@ -72,6 +89,9 @@ proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect,
   ## | 0 iff a == b
   ## | < 0 iff a < b
   ## | > 0 iff a > b
+  ## 
+  ## Not supported for JS backend, use `strutils.cmpIgnoreCase
+  ## <https://nim-lang.org/docs/strutils.html#cmpIgnoreCase%2Cstring%2Cstring>`_ instead.
   var i = 0
   while true:
     var aa = toLowerAscii(a[i])

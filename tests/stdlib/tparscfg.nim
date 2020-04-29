@@ -1,29 +1,5 @@
 discard """
-output: '''
-utf-8
-on
-hello
-lihf8515
-10214028
-lihaifeng@wxm.com
-===
-charset=utf-8
-[Package]
-name=hello
---threads:on
-[Author]
-name=lhf
-qq=10214028
-email="lihaifeng@wxm.com"
-===
-charset=utf-8
-[Package]
-name=hello
---threads:on
-[Author]
-name=lihf8515
-qq=10214028
-'''
+  targets: "c js"
 """
 import parsecfg, streams
 
@@ -46,24 +22,35 @@ var pname = dict2.getSectionValue("Package","name")
 var name = dict2.getSectionValue("Author","name")
 var qq = dict2.getSectionValue("Author","qq")
 var email = dict2.getSectionValue("Author","email")
-echo charset
-echo threads
-echo pname
-echo name
-echo qq
-echo email
-
-echo "==="
+doAssert charset == "utf-8"
+doAssert threads == "on"
+doAssert pname == "hello"
+doAssert name == "lihf8515"
+doAssert qq == "10214028"
+doAssert email == "lihaifeng@wxm.com"
 
 ## Modifying a configuration file.
 var dict3 = loadConfig(newStringStream(ss.data))
 dict3.setSectionKey("Author","name","lhf")
-write(stdout, $dict3)
-
-echo "==="
+doAssert $dict3 == """charset=utf-8
+[Package]
+name=hello
+--threads:on
+[Author]
+name=lhf
+qq=10214028
+email="lihaifeng@wxm.com"
+"""
 
 ## Deleting a section key in a configuration file.
 var dict4 = loadConfig(newStringStream(ss.data))
 dict4.delSectionKey("Author","email")
-write(stdout, $dict4)
+doAssert $dict4 == """charset=utf-8
+[Package]
+name=hello
+--threads:on
+[Author]
+name=lihf8515
+qq=10214028
+"""
 

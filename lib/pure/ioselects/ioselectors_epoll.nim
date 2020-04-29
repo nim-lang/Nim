@@ -110,10 +110,9 @@ proc close*[T](s: Selector[T]) =
     raiseIOSelectorsError(osLastError())
 
 proc newSelectEvent*(): SelectEvent =
-  let fdci = eventfd(0, O_CLOEXEC)
+  let fdci = eventfd(0, O_CLOEXEC or O_NONBLOCK)
   if fdci == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdci)
   result = cast[SelectEvent](allocShared0(sizeof(SelectEventImpl)))
   result.efd = fdci
 
@@ -269,10 +268,9 @@ proc registerTimer*[T](s: Selector[T], timeout: int, oneshot: bool,
   var
     newTs: Itimerspec
     oldTs: Itimerspec
-  let fdi = timerfd_create(CLOCK_MONOTONIC, O_CLOEXEC).int
+  let fdi = timerfd_create(CLOCK_MONOTONIC, O_CLOEXEC or O_NONBLOCK).int
   if fdi == -1:
     raiseIOSelectorsError(osLastError())
-  setNonBlocking(fdi.cint)
 
   s.checkFd(fdi)
   doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -314,10 +312,9 @@ when not defined(android):
     discard sigaddset(nmask, cint(signal))
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, O_CLOEXEC).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)
@@ -341,10 +338,9 @@ when not defined(android):
     discard sigaddset(nmask, posix.SIGCHLD)
     blockSignals(nmask, omask)
 
-    let fdi = signalfd(-1, nmask, O_CLOEXEC).int
+    let fdi = signalfd(-1, nmask, O_CLOEXEC or O_NONBLOCK).int
     if fdi == -1:
       raiseIOSelectorsError(osLastError())
-    setNonBlocking(fdi.cint)
 
     s.checkFd(fdi)
     doAssert(s.fds[fdi].ident == InvalidIdent)

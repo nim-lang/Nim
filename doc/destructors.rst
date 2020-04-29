@@ -48,7 +48,7 @@ written as:
     a.len = b.len
     a.cap = b.cap
     if b.data != nil:
-      a.data = cast[type(a.data)](alloc(a.cap * sizeof(T)))
+      a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
         a.data[i] = b.data[i]
 
@@ -76,7 +76,7 @@ written as:
   proc createSeq*[T](elems: varargs[T]): myseq[T] =
     result.cap = elems.len
     result.len = elems.len
-    result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
+    result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
     for i in 0..<result.len: result.data[i] = elems[i]
 
   proc len*[T](x: myseq[T]): int {.inline.} = x.len
