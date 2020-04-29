@@ -548,7 +548,8 @@ proc allowsNilDeprecated(c: TCandidate, f: PType): TTypeRelation =
     result = isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and (f.kind in {tyVar, tyLent} or a.kind in {tyVar, tyLent})
+  result = f.kind != a.kind and
+    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
