@@ -41,6 +41,9 @@ Options:
   --includeFile:PAT   include only files whose names match the given regex PAT
   --excludeFile:PAT   skip files whose names match the given regex pattern PAT
   --excludeDir:PAT    skip directories whose names match the given regex PAT
+  --bin:yes|no|only   process binary files? (detected by first 1024 bytes)
+  --text, -t          process only text, the same as --bin:no
+  --count             just count number of matches
   --nocolor           output will be given without any colours
   --color[:always]    force color even if output is redirected
   --colorTheme:THEME  select color THEME from 'simple' (default),
@@ -68,16 +71,20 @@ type
   TOptions = set[TOption]
   TConfirmEnum = enum
     ceAbort, ceYes, ceAll, ceNo, ceNone
+  Bin = enum
+    biYes, biOnly, biNo
   Pattern = Regex | Peg
   SearchInfo = tuple[buf: string, filename: string]
   MatchInfo = tuple[first: int, last: int;
                     lineBeg: int, lineEnd: int, match: string]
   outputKind = enum
-    OpenError, Rejected, GroupFirstMatch, GroupNextMatch, GroupEnd, FileContents
+    OpenError, Rejected, JustCount,
+    GroupFirstMatch, GroupNextMatch, GroupEnd, FileContents
   Output = object
     case kind: outputKind
     of OpenError: msg: string
     of Rejected: discard
+    of JustCount: matches: int
     of GroupFirstMatch, GroupNextMatch:
       pre: string
       match: MatchInfo
@@ -99,6 +106,8 @@ var
   excludeFile: seq[Regex]
   includeFile: seq[Regex]
   excludeDir: seq[Regex]
+  checkBin = biYes
+  justCount = false
   useWriteStyled = true
   oneline = true
   linesBefore = 0
@@ -107,6 +116,7 @@ var
   colorTheme = "simple"
   newLine = false
   gVar = (matches: 0, errors: 0, reallyReplace: false)
+    # gVar - variables that can change during search/replace
   nWorkers = 0  # run in single thread by default
   requests: Channel[(int, string)]
   results: Channel[tuple[fileNo: int, result: seq[Output]]]
@@ -374,8 +384,9 @@ proc replace1match(si: SearchInfo, mi: MatchInfo, i: int, r: string;
 
 template updateCounters(output: Output) =
     case output.kind
-    of GroupFirstMatch, GroupNextMatch: inc gVar.matches
-    of OpenError: inc gVar.errors
+    of GroupFirstMatch, GroupNextMatch: inc(gVar.matches)
+    of JustCount: inc(gVar.matches, output.matches)
+    of OpenError: inc(gVar.errors)
     of Rejected, GroupEnd, FileContents: discard
 
 proc printOutput(filename: string, output: Output) =
@@ -383,6 +394,8 @@ proc printOutput(filename: string, output: Output) =
     of OpenError:
       printError("can not open file " & filename)
     of Rejected: discard
+    of JustCount:
+      echo " (" & $output.matches & " matches)"
     of FileContents: discard # impossible
     of GroupFirstMatch:
       printLinesBefore(filename, output.pre, output.match.lineBeg)
@@ -395,7 +408,6 @@ proc printOutput(filename: string, output: Output) =
       printLinesAfter(filename, output.groupEnding, output.firstLine)
 
 iterator searchFile(pattern; filename: string; buffer: string): Output =
-  #echo "thread id:", getThreadId(), " pat: ", cast[int](unsafeAddr pattern)
   let si: SearchInfo = (buf: buffer, filename: filename)
   var prevMi, curMi: MatchInfo
   curMi.lineEnd = 1
@@ -441,6 +453,11 @@ iterator searchFile(pattern; filename: string; buffer: string): Output =
     i = t.last+1
     prevMi = curMi
 
+func detectBin(buffer: string): bool =
+  for i in 0 ..< min(1024, buffer.len):
+    if buffer[i] == '\0':
+      return true
+
 iterator processFile(pattern; filename: string, yieldContents=false): Output =
   var buffer: string
 
@@ -451,13 +468,31 @@ iterator processFile(pattern; filename: string, yieldContents=false): Output =
       buffer = system.readFile(filename)
     except IOError:
       yield Output(kind: OpenError)
-  var found = false
-  for output in searchFile(pattern, filename, buffer):
-    yield output
-    found = true
-  if yieldContents and found:
-    yield Output(kind: FileContents, buffer: buffer)
 
+  var reject = false
+  if checkBin in {biNo, biOnly}:
+    let isBin = detectBin(buffer)
+    if isBin and checkBin == biNo:
+      reject = true
+    if (not isBin) and checkBin == biOnly:
+      reject = true
+
+  if reject:
+    yield Output(kind: Rejected)
+  else:
+    var found = false
+    var cnt = 0
+    for output in searchFile(pattern, filename, buffer):
+      found = true
+      if not justCount:
+        yield output
+      else:
+        if output.kind in {GroupFirstMatch, GroupNextMatch}:
+          inc(cnt)
+    if justCount and cnt > 0:
+      yield Output(kind: JustCount, matches: cnt)
+    if yieldContents and found and not justCount:
+      yield Output(kind: FileContents, buffer: buffer)
 
 proc hasRightFileName(path: string): bool =
   let filename = path.lastPathPart
@@ -579,7 +614,7 @@ iterator walkRec(paths: seq[string]): string =
 template printResult(filename: string, body: untyped) =
   var filenameShown = false
   template showFilename =
-    if not filenameShown and not oneline:
+    if not filenameShown:
       printBlockFile(filename)
       stdout.write("\n")
       stdout.flushFile()
@@ -588,8 +623,10 @@ template printResult(filename: string, body: untyped) =
     showFilename
   for output in body:
     updateCounters(output)
-    if output.kind notin {Rejected, OpenError}:
+    if output.kind notin {Rejected, OpenError, JustCount} and not oneline:
       showFilename
+    if output.kind == JustCount and oneline:
+      printFile(filename & ":")
     printOutput(filename, output)
   
 proc worker(pattern: Pattern) {.thread.} =
@@ -654,7 +691,7 @@ proc runMultiThread(pattern) =
             for output in outpSeq:
               updateCounters(output)
               case output.kind
-              of Rejected, OpenError: discard
+              of Rejected, OpenError, JustCount: discard
               of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
               of FileContents: buffer = output.buffer
             if matches.len > 0:
@@ -685,7 +722,7 @@ proc run1Thread(pattern) =
       for output in processFile(pattern, filename, yieldContents=true):
         updateCounters(output)
         case output.kind
-        of Rejected, OpenError: discard
+        of Rejected, OpenError, JustCount: discard
         of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
         of FileContents: buffer = output.buffer
       if matches.len > 0:
@@ -761,6 +798,14 @@ for kind, key, val in getopt():
     of "excludedir", "exclude-dir": excludeDir.add rex(val)
     of "includefile", "include-file": includeFile.add rex(val)
     of "excludefile", "exclude-file": excludeFile.add rex(val)
+    of "bin":
+      case val
+      of "no": checkBin = biNo
+      of "yes": checkBin = biYes
+      of "only": checkBin = biOnly
+      else: reportError("unknown value for --bin")
+    of "text", "t": checkBin = biNo
+    of "count": justCount = true
     of "nocolor": useWriteStyled = false
     of "color":
       case val
