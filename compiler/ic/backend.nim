@@ -4,7 +4,7 @@ import # compiler imports
 
     ast, cgendata, sighashes, options, modulegraphs, ropes, pathutils,
     ccgutils, extccomp, ndi, msgs, btrees, nversion, condsyms, lineinfos,
-    incremental, idgen, idents, magicsys, cgmeth, astalgo, options,
+    incremental, idgen, idents, magicsys, astalgo, options,
     treetab
 
   ]

@@ -11,7 +11,7 @@
 
 import
 
-  msgs, options, ast, renderer, idents, astalgo, btrees, magicsys, cgmeth,
+  msgs, options, ast, renderer, idents, astalgo, btrees, magicsys,
   extccomp, treetab, condsyms, nversion, pathutils, cgendata, trees, ndi,
   sighashes, modulegraphs, idgen, lineinfos, incremental, types, ccgutils,
   ropes
@@ -36,6 +36,10 @@ export
   nimIcAudit
 when nimIcAudit:
   export hash
+
+export
+#  isSealed,
+  addIcCache
 
 # backend API
 export

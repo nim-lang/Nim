@@ -2,11 +2,11 @@ import
 
   ".." / [ ast, cgendata, sighashes, options, modulegraphs, pathutils,
   ropes, astalgo, nversion, condsyms, lineinfos, incremental, msgs, idgen,
-  btrees, idents, magicsys, cgmeth, extccomp, trees, semdata ]
+  btrees, idents, magicsys, extccomp, trees, somenode, cgmeth ]
 
 import
 
-  std / [ db_sqlite, intsets, strutils, tables ]
+  std / [ db_sqlite, intsets, strutils, tables, deques ]
 
 import
 
@@ -39,6 +39,17 @@ don't we want our ast to be typed?  another day, but definitely.
 
 
 ]#
+# ie. Indexable.add
+proc add*(c: PContext; father, son: PNode or PType) =
+  assert son != nil
+  assert not ic.isSealed(c)
+  if isSealed(c):
+    raise newException(Defect, "sealed tree attempted mutation")
+  when not defined(nimNoNilSeqs):
+    if father.sons == nil:
+      father.sons = @[]
+  father.sons.add son
+
 proc encodeConfig(g: ModuleGraph): string =
   result = newStringOfCap(100)
   result.add RodFileVersion

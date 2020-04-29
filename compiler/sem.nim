@@ -618,6 +618,8 @@ proc myProcess(context: PPassContext, n: PNode): PNode =
       else:
         result = newNodeI(nkEmpty, n.info)
       #if c.config.cmd == cmdIdeTools: findSuggest(c, n)
+
+  # IC: incremental compilation surface
   if result != nil:
     c.addIcCache result
 

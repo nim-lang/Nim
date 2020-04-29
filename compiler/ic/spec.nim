@@ -1,11 +1,16 @@
 ## This module implements the new compilation cache.
 import
 
-  ".." / [ ast, cgendata, sighashes, modulegraphs, ropes ]
+  ".." / [ ast, cgendata, sighashes, modulegraphs, ropes, somenode ]
+
+include
+
+  # so we can see the icCache
+  ".." / pcontext
 
 import
 
-  std / [ os, tables ]
+  std / [ os, tables, deques ]
 
 type
   CacheStrategy* = enum
@@ -54,6 +59,35 @@ const
 when nimIcAudit:
   import audit
   export audit
+
+proc isSealed*(c: PContext): bool = c.icSealed
+
+proc isValid(c: PContext; n: SomeNode): bool  =
+  assert c.module != nil
+  if c.module != nil:
+    assert not n.isNil
+    let
+      m = getModule(n)
+    if m == nil:
+      assert false, $n.kind & " node lacks module"
+    else:
+      if c.module == getModule(n):
+        result = n.isValid
+
+proc addIcCache*(c: PContext; p: PNode | PSym | PType) =
+  ## add the given node to the context's cache
+  let
+    value = newSomeNode(p)
+  assert c.isValid(value)
+  c.icCache.addLast value
+
+iterator consumer*(c: PContext): SomeNode =
+  assert not c.isSealed
+  if c.isSealed:
+    raise newException(Defect, "context already sealed")
+  c.icSealed = true
+  while not c.icCache.isEmpty:
+    yield c.icCache.popFirst
 
 proc `$`*(m: BModule): string =
   result = $m.module.id & ".." & splitFile(m.cfilename.string).name
