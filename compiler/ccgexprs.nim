@@ -2450,6 +2450,8 @@ proc genStmtList(p: BProc, n: PNode) =
   genStmtListExprImpl:
     genStmts(p, n[^1])
 
+from parampatterns import isLValue
+
 proc upConv(p: BProc, n: PNode, d: var TLoc) =
   var a: TLoc
   initLocExpr(p, n[0], a)
@@ -2468,7 +2470,11 @@ proc upConv(p: BProc, n: PNode, d: var TLoc) =
       linefmt(p, cpsStmts, "if (!#isObj($1, $2)){ #raiseObjectConversionError(); $3}$n",
               [r, checkFor, raiseInstr(p)])
   if n[0].typ.kind != tyObject:
-    putIntoDest(p, d, n,
+    if n.isLValue:
+      putIntoDest(p, d, n,
+                "(*(($1*) (&($2))))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
+    else:
+      putIntoDest(p, d, n,
                 "(($1) ($2))" % [getTypeDesc(p.module, n.typ), rdLoc(a)], a.storage)
   else:
     putIntoDest(p, d, n, "(*($1*) ($2))" %
