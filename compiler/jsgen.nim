@@ -2261,7 +2261,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     a: TCompRes
   #if gVerbosity >= 3:
   #  echo "BEGIN generating code for: " & prc.name.s
-  var p = newProc(oldProc.g, oldProc.module, prc.ast, oldProc.options)
+  var p = newProc(oldProc.g, oldProc.module, prc.ast, prc.options)
   p.up = oldProc
   var returnStmt: Rope = nil
   var resultAsgn: Rope = nil
@@ -2652,8 +2652,11 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
 
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
   let m = newModule(graph, s)
-  m.module.options = m.config.options
-  s.options = m.config.options
+  if sfSystemModule in m.module.flags:
+    m.module.options = m.config.options - {optStackTrace}
+  else:
+    m.module.options = m.config.options
+  #s.options = m.config.options
   result = m
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)
