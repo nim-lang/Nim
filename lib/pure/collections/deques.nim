@@ -93,6 +93,10 @@ proc len*[T](deq: Deque[T]): int {.inline.} =
   ## Return the number of elements of `deq`.
   result = deq.count
 
+proc isEmpty*[T](deq: Deque[T]): bool {.inline.} =
+  ## Returns `true` if `deq` has no elements in it.
+  result = deq.count == 0
+
 template emptyCheck(deq) =
   # Bounds check for the regular deque access.
   when compileOption("boundChecks"):
