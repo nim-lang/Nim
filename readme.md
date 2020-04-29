@@ -1,6 +1,12 @@
 # <img src="https://raw.githubusercontent.com/nim-lang/assets/master/Art/logo-crown.png" height="28px"/> Nim
 
-[![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=devel)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=devel)
+devel: [![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=devel)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=devel)
+1.0: [![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=version-1-0)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=version-1-0)
+1.2: [![Build Status](https://dev.azure.com/nim-lang/Nim/_apis/build/status/nim-lang.Nim?branchName=version-1-2)](https://dev.azure.com/nim-lang/Nim/_build/latest?definitionId=1&branchName=version-1-2)
+freebsd: [![builds.sr.ht freebsd status](https://builds.sr.ht/~araq/nim/commits/freebsd.yml.svg)](https://builds.sr.ht/~araq/nim/commits/freebsd.yml?)
+openbsd: [![builds.sr.ht openbsd status](https://builds.sr.ht/~araq/nim/commits/openbsd.yml.svg)](https://builds.sr.ht/~araq/nim/commits/openbsd.yml?)
+ssl: ![](https://github.com/nim-lang/Nim/workflows/Nim%20SSL%20CI/badge.svg)
+docs: ![](https://github.com/nim-lang/Nim/workflows/Nim%20Docs%20CI/badge.svg)
 
 This repository contains the Nim compiler, Nim's stdlib, tools and documentation.
 For more information about Nim, including downloads and documentation for
