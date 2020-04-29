@@ -1161,9 +1161,9 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     first = firstOrd(p.config, typ[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, ($3 != null ? $3.length : 0)+$2-1)-$2" % [b.res, rope(first), tmp]
+    r.res = "chckIndx($1, $2, ($3 != null ? $3.length : 0)+$2-1)-($2)" % [b.res, rope(first), tmp]
   elif first != 0:
-    r.res = "($1)-$2" % [b.res, rope(first)]
+    r.res = "($1)-($2)" % [b.res, rope(first)]
   else:
     r.res = b.res
   r.kind = resExpr
@@ -1897,8 +1897,8 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let rhsIsLit = n[2].kind in nkStrKinds
     let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCString:
-      r.res = "if ($1 != null) { $4 += $2; } else { $4 = $2$3; }" % [
-        a, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()", tmp]
+      r.res = "if ($1 != null) { $3 += $2; } else { $3 = $2; }" % [
+        a, rhs.rdLoc, tmp]
     else:
       r.res = "if ($1 != null) { $4 = ($4).concat($2); } else { $4 = $2$3; }" % [
           lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()", tmp]
