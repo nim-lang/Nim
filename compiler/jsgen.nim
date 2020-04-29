@@ -455,7 +455,61 @@ proc maybeMakeTemp(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
   else:
     (a: a, tmp: b)
 
-template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
+proc maybeMakeTempVar(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
+  var
+    a = x.rdLoc
+    b = a
+  if needsTemp(p, n):
+    # if we have tmp just use it
+    if x.tmpLoc != nil and (mapType(n.typ) == etyBaseIndex or n.kind in {nkHiddenDeref, nkDerefExpr}):
+      b = "$1[0][$1[1]]" % [x.tmpLoc]
+      result = (a: a, tmp: b)
+    elif x.tmpLoc != nil and n.kind == nkBracketExpr:
+      # genArrayAddr
+      var
+        address, index: TCompRes
+        first: Int128
+      gen(p, n[0], address)
+      gen(p, n[1], index)
+      let (m1, tmp1) = maybeMakeTemp(p, n[0], address)
+      let typ = skipTypes(n[0].typ, abstractPtrs)
+      if typ.kind == tyArray:
+        first = firstOrd(p.config, typ[0])
+      if optBoundsCheck in p.options:
+        useMagic(p, "chckIndx")
+        if first == 0: # save a couple chars
+          index.res = "chckIndx($1, 0, ($2).length-1)" % [index.res, tmp1]
+        else:
+          index.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [index.res, rope(first), tmp1]
+      elif first != 0:
+        index.res = "($1)-($2)" % [index.res, rope(first)]
+      else:
+        discard # index.res = index.res
+      let (n1, tmp2) = maybeMakeTemp(p, n[1], index)
+      result = (a: "$1[$2]" % [m1, n1], tmp: "$1[$2]" % [tmp1, tmp2])
+      #echo "temp bracket; ", result
+    #[elif x.tmpLoc != nil and n.kind == nkDotExpr:
+      var body, field: TCompRes
+      gen(p, n[0], body)
+      gen(p, n[1], field)
+      let (m, tmp1) = maybeMakeTemp(p, n[0], body)
+      result = (a: "$1.$2" % [m, field.rdLoc], tmp: "$1.$2" % [tmp1, field.rdLoc])
+      #echo "temp field; ", result
+    elif x.tmpLoc != nil and n.kind == nkCheckedFieldExpr:
+      # ignore check for now
+      var body, field: TCompRes
+      gen(p, n[0][0], body)
+      gen(p, n[0][1], field)
+      let (m, tmp1) = maybeMakeTemp(p, n[0], body)
+      result = (a: "$1.$2" % [m, field.rdLoc], tmp: "$1.$2" % [tmp1, field.rdLoc])
+      #echo "temp checked field; ", result]#
+    else:
+      result = (a: a, tmp: b)
+  else:
+    result = (a: a, tmp: b)
+
+template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string,
+                    reassign = false) =
   # $1 and $2 in the `frmt` string bind to lhs and rhs of the expr,
   # if $3 or $4 are present they will be substituted with temps for
   # lhs and rhs respectively
@@ -467,8 +521,11 @@ template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string) =
   var
     a, tmp = x.rdLoc
     b, tmp2 = y.rdLoc
-  when "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
-  when "$4" in frmt: (b, tmp2) = maybeMakeTemp(p, n[2], y)
+  when reassign:
+    (a, tmp) = maybeMakeTempVar(p, n[1], x)
+  else:
+    when "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
+    when "$4" in frmt: (b, tmp2) = maybeMakeTemp(p, n[2], y)
 
   r.res = frmt % [a, b, tmp, tmp2]
   r.kind = resExpr
@@ -485,13 +542,13 @@ template unsignedTrimmer(size: BiggestInt): Rope =
   size.unsignedTrimmerJS
 
 proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
-                    reassign = false) =
+                    reassign: static[bool] = false) =
   var x, y: TCompRes
   gen(p, n[1], x)
   gen(p, n[2], y)
   let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
-  if reassign:
-    let (a, tmp) = maybeMakeTemp(p, n[1], x)
+  when reassign:
+    let (a, tmp) = maybeMakeTempVar(p, n[1], x)
     r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
     r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
@@ -1161,7 +1218,10 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     first = firstOrd(p.config, typ[0])
   if optBoundsCheck in p.options:
     useMagic(p, "chckIndx")
-    r.res = "chckIndx($1, $2, ($3 != null ? $3.length : 0)+$2-1)-($2)" % [b.res, rope(first), tmp]
+    if first == 0: # save a couple chars
+      r.res = "chckIndx($1, 0, ($2).length-1)" % [b.res, tmp]
+    else:
+      r.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [b.res, rope(first), tmp]
   elif first != 0:
     r.res = "($1)-($2)" % [b.res, rope(first)]
   else:
@@ -1631,7 +1691,11 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("[null, 0]", indirect)
     else:
       result = putToSeq("null", indirect)
-  of tySequence, tyOpt, tyString, tyCString, tyProc:
+  of tySequence, tyString:
+    result = putToSeq("[]", indirect)
+  of tyCString:
+    result = putToSeq("\"\"", indirect)
+  of tyOpt, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -1862,7 +1926,7 @@ proc genReset(p: PProc, n: PNode) =
   if x.typ == etyBaseIndex:
     lineF(p, "$1 = null, $2 = 0;$n", [x.address, x.res])
   else:
-    let (a, tmp) = maybeMakeTemp(p, n[1], x)
+    let (a, tmp) = maybeMakeTempVar(p, n[1], x)
     lineF(p, "$1 = genericReset($3, $2);$n", [a,
                   genTypeInfo(p, n[1].typ), tmp])
 
@@ -1888,37 +1952,34 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mSwap: genSwap(p, n)
   of mAppendStrCh:
     binaryExpr(p, n, r, "addChar",
-        "if ($1 != null) { addChar($3, $2); } else { $3 = [$2]; }")
+        "addChar($1, $2);")
   of mAppendStrStr:
     var lhs, rhs: TCompRes
     gen(p, n[1], lhs)
     gen(p, n[2], rhs)
 
-    let rhsIsLit = n[2].kind in nkStrKinds
-    let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
     if skipTypes(n[1].typ, abstractVarRange).kind == tyCString:
-      r.res = "if ($1 != null) { $3 += $2; } else { $3 = $2; }" % [
-        a, rhs.rdLoc, tmp]
+      r.res = "$1 += $2;" % [lhs.rdLoc, rhs.rdLoc]
     else:
-      r.res = "if ($1 != null) { $4 = ($4).concat($2); } else { $4 = $2$3; }" % [
-          lhs.rdLoc, rhs.rdLoc, if rhsIsLit: nil else: ~".slice()", tmp]
+      let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
+      r.res = "$1.push.apply($3, $2);" % [
+          a, rhs.rdLoc, tmp]
     r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes
     gen(p, n[1], x)
     gen(p, n[2], y)
-    let (a, tmp) = maybeMakeTemp(p, n[1], x)
     if mapType(n[2].typ) == etyBaseIndex:
       let c = "[$1, $2]" % [y.address, y.res]
-      r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, c, tmp]
+      r.res = "$1.push($2);" % [x.rdLoc, c]
     elif needsNoCopy(p, n[2]):
-      r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, y.rdLoc, tmp]
+      r.res = "$1.push($2);" % [x.rdLoc, y.rdLoc]
     else:
       useMagic(p, "nimCopy")
       let c = getTemp(p, defineInLocals=false)
       lineF(p, "var $1 = nimCopy(null, $2, $3);$n",
             [c, y.rdLoc, genTypeInfo(p, n[2].typ)])
-      r.res = "if ($1 != null) { $3.push($2); } else { $3 = [$2]; }" % [a, c, tmp]
+      r.res = "$1.push($2);" % [x.rdLoc, c]
     r.kind = resExpr
   of mConStrStr:
     genConStrStr(p, n, r)
@@ -1950,23 +2011,23 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
   of mDestroy: discard "ignore calls to the default destructor"
   of mOrd: genOrd(p, n, r)
   of mLengthStr, mLengthSeq, mLengthOpenArray, mLengthArray:
-    unaryExpr(p, n, r, "", "($1 != null ? $2.length : 0)")
+    unaryExpr(p, n, r, "", "($1).length")
   of mHigh:
-    unaryExpr(p, n, r, "", "($1 != null ? ($2.length-1) : -1)")
+    unaryExpr(p, n, r, "", "(($1).length-1)")
   of mInc:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "+", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 += $2")
-      else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)")
+      else: binaryExpr(p, n, r, "addInt", "$1 = addInt($3, $2)", true)
   of ast.mDec:
     if n[1].typ.skipTypes(abstractRange).kind in {tyUInt..tyUInt64}:
       binaryUintExpr(p, n, r, "-", true)
     else:
       if optOverflowCheck notin p.options: binaryExpr(p, n, r, "", "$1 -= $2")
-      else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)")
+      else: binaryExpr(p, n, r, "subInt", "$1 = subInt($3, $2)", true)
   of mSetLengthStr:
-    binaryExpr(p, n, r, "mnewString", "($1 == null ? $3 = mnewString($2) : $3.length = $2)")
+    binaryExpr(p, n, r, "mnewString", "($1.length = $2)")
   of mSetLengthSeq:
     var x, y: TCompRes
     gen(p, n[1], x)
@@ -1974,8 +2035,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
     let t = skipTypes(n[1].typ, abstractVar)[0]
     let (a, tmp) = maybeMakeTemp(p, n[1], x)
     let (b, tmp2) = maybeMakeTemp(p, n[2], y)
-    r.res = """if ($1 === null) $4 = [];
-               if ($4.length < $2) { for (var i=$4.length;i<$5;++i) $4.push($3); }
+    r.res = """if ($1.length < $2) { for (var i=$4.length;i<$5;++i) $4.push($3); }
                else { $4.length = $5; }""" % [a, b, createVar(p, t, false), tmp, tmp2]
     r.kind = resExpr
   of mCard: unaryExpr(p, n, r, "SetCard", "SetCard($1)")
@@ -2214,7 +2274,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     a: TCompRes
   #if gVerbosity >= 3:
   #  echo "BEGIN generating code for: " & prc.name.s
-  var p = newProc(oldProc.g, oldProc.module, prc.ast, prc.options)
+  var p = newProc(oldProc.g, oldProc.module, prc.ast, oldProc.options)
   p.up = oldProc
   var returnStmt: Rope = nil
   var resultAsgn: Rope = nil
@@ -2604,6 +2664,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     discard writeRopeIfNotEqual(code, outFile)
 
 proc myOpen(graph: ModuleGraph; s: PSym): PPassContext =
-  result = newModule(graph, s)
+  let m = newModule(graph, s)
+  m.module.options = m.config.options
+  s.options = m.config.options
+  result = m
 
 const JSgenPass* = makePass(myOpen, myProcess, myClose)
