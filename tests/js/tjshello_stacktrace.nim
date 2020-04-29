@@ -1,7 +1,6 @@
 discard """
-  cmd: "nim $target $options --stackTrace:off --lineTrace:off $file"
   output: "Hello World"
-  maxcodesize: 1000
+  maxcodesize: 4500
   ccodecheck: "!@'function'"
 """
 

@@ -130,20 +130,6 @@ proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure)
 
 proc reprArray(a: pointer, typ: PNimType,
               cl: var ReprClosure): string {.compilerRtl.} =
-  var isNilArrayOrSeq: bool
-  # isnil is not enough here as it would try to deref `a` without knowing what's inside
-  {. emit: """
-    if (`a` == null) {
-      `isNilArrayOrSeq` = true;
-    } else if (`a`[0] == null) {
-      `isNilArrayOrSeq` = true;
-    } else {
-      `isNilArrayOrSeq` = false;
-    };
-    """ .}
-  if typ.kind == tySequence and isNilArrayOrSeq:
-    return "nil"
-
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
