@@ -781,7 +781,8 @@ proc isClosed*(socket: AsyncSocket): bool =
   return socket.closed
 
 proc sendTo*(socket: AsyncSocket, data: string, address: string, port: Port,
-             flags = {SocketFlag.SafeDisconn}): owned(Future[void]) {.async.} =
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void])
+            {.async, since: (1, 3, 1).} =
   ## This proc sends ``data`` to the specified ``address``, which may be an IP
   ## address or a hostname. If a hostname is specified this function will try
   ## each IP of that hostname. The returned future will complete once all data
@@ -828,7 +829,7 @@ proc sendTo*(socket: AsyncSocket, data: string, address: string, port: Port,
 proc recvFrom*(socket: AsyncSocket, size: int,
                flags = {SocketFlag.SafeDisconn}):
               owned(Future[tuple[data: string, address: string, port: Port]])
-              {.async.} =
+              {.async, since: (1, 3, 1).} =
   ## Receives a datagram data from ``socket``, which must be at least of size
   ## ``size``. Returned future will complete once one datagram has been received
   ## and will return tuple with: data of packet received; and address and port
