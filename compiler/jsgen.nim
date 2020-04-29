@@ -455,7 +455,7 @@ proc maybeMakeTemp(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
   else:
     (a: a, tmp: b)
 
-proc maybeMakeTempVar(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
+proc maybeMakeTempAssignable(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
   var
     a = x.rdLoc
     b = a
@@ -480,29 +480,16 @@ proc maybeMakeTempVar(p: PProc, n: PNode; x: TCompRes): tuple[a, tmp: Rope] =
         if first == 0: # save a couple chars
           index.res = "chckIndx($1, 0, ($2).length-1)" % [index.res, tmp1]
         else:
-          index.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [index.res, rope(first), tmp1]
+          index.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [
+            index.res, rope(first), tmp1]
       elif first != 0:
         index.res = "($1)-($2)" % [index.res, rope(first)]
       else:
         discard # index.res = index.res
       let (n1, tmp2) = maybeMakeTemp(p, n[1], index)
       result = (a: "$1[$2]" % [m1, n1], tmp: "$1[$2]" % [tmp1, tmp2])
-      #echo "temp bracket; ", result
-    #[elif x.tmpLoc != nil and n.kind == nkDotExpr:
-      var body, field: TCompRes
-      gen(p, n[0], body)
-      gen(p, n[1], field)
-      let (m, tmp1) = maybeMakeTemp(p, n[0], body)
-      result = (a: "$1.$2" % [m, field.rdLoc], tmp: "$1.$2" % [tmp1, field.rdLoc])
-      #echo "temp field; ", result
-    elif x.tmpLoc != nil and n.kind == nkCheckedFieldExpr:
-      # ignore check for now
-      var body, field: TCompRes
-      gen(p, n[0][0], body)
-      gen(p, n[0][1], field)
-      let (m, tmp1) = maybeMakeTemp(p, n[0], body)
-      result = (a: "$1.$2" % [m, field.rdLoc], tmp: "$1.$2" % [tmp1, field.rdLoc])
-      #echo "temp checked field; ", result]#
+    # could also put here: nkDotExpr -> genFieldAccess, nkCheckedFieldExpr -> genCheckedFieldOp
+    # but the uses of maybeMakeTempAssignable don't need them
     else:
       result = (a: a, tmp: b)
   else:
@@ -522,7 +509,7 @@ template binaryExpr(p: PProc, n: PNode, r: var TCompRes, magic, frmt: string,
     a, tmp = x.rdLoc
     b, tmp2 = y.rdLoc
   when reassign:
-    (a, tmp) = maybeMakeTempVar(p, n[1], x)
+    (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
   else:
     when "$3" in frmt: (a, tmp) = maybeMakeTemp(p, n[1], x)
     when "$4" in frmt: (b, tmp2) = maybeMakeTemp(p, n[2], y)
@@ -548,7 +535,7 @@ proc binaryUintExpr(p: PProc, n: PNode, r: var TCompRes, op: string,
   gen(p, n[2], y)
   let trimmer = unsignedTrimmer(n[1].typ.skipTypes(abstractRange).size)
   when reassign:
-    let (a, tmp) = maybeMakeTempVar(p, n[1], x)
+    let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
     r.res = "$1 = (($5 $2 $3) $4)" % [a, rope op, y.rdLoc, trimmer, tmp]
   else:
     r.res = "(($1 $2 $3) $4)" % [x.rdLoc, rope op, y.rdLoc, trimmer]
@@ -1221,7 +1208,8 @@ proc genArrayAddr(p: PProc, n: PNode, r: var TCompRes) =
     if first == 0: # save a couple chars
       r.res = "chckIndx($1, 0, ($2).length-1)" % [b.res, tmp]
     else:
-      r.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [b.res, rope(first), tmp]
+      r.res = "chckIndx($1, $2, ($3).length+($2)-1)-($2)" % [
+        b.res, rope(first), tmp]
   elif first != 0:
     r.res = "($1)-($2)" % [b.res, rope(first)]
   else:
@@ -1926,7 +1914,7 @@ proc genReset(p: PProc, n: PNode) =
   if x.typ == etyBaseIndex:
     lineF(p, "$1 = null, $2 = 0;$n", [x.address, x.res])
   else:
-    let (a, tmp) = maybeMakeTempVar(p, n[1], x)
+    let (a, tmp) = maybeMakeTempAssignable(p, n[1], x)
     lineF(p, "$1 = genericReset($3, $2);$n", [a,
                   genTypeInfo(p, n[1].typ), tmp])
 
@@ -1962,8 +1950,7 @@ proc genMagic(p: PProc, n: PNode, r: var TCompRes) =
       r.res = "$1 += $2;" % [lhs.rdLoc, rhs.rdLoc]
     else:
       let (a, tmp) = maybeMakeTemp(p, n[1], lhs)
-      r.res = "$1.push.apply($3, $2);" % [
-          a, rhs.rdLoc, tmp]
+      r.res = "$1.push.apply($3, $2);" % [a, rhs.rdLoc, tmp]
     r.kind = resExpr
   of mAppendSeqElem:
     var x, y: TCompRes
