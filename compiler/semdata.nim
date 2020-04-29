@@ -191,19 +191,22 @@ proc isValid(n: SomeNode): bool  =
     raise newException(Defect, "nil node")
   result = true
 
-proc ultimateOwner(n: SomeNode): PSym =
+proc getModule(n: SomeNode): PSym =
   case n.kind
   of nkSym:
-    result = n.sym.ultimateOwner
+    result = getModule(n.sym)
   of nkType:
-    result = n.typ.ultimateOwner
+    result = getModule(n.typ)
   of nkNone:
-    result = n.node.ultimateOwner
+    result = getModule(n.node)
   else:
     raise newException(Defect, "unexpected type")
 
 proc isValid(c: PContext; n: SomeNode): bool  =
-  result = n.isValid and c.module == n.ultimateOwner
+  assert c.module != nil
+  if c.module != nil:
+    if c.module == getModule(n):
+      result = n.isValid
 
 proc asType*(n: SomeNode): PType =
   assert n.kind == nkType
