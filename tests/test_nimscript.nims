@@ -69,6 +69,7 @@ import std/[
   decls, compilesettings, with, wrapnils
 ]
 
+
 block:
   doAssert "./foo//./bar/".normalizedPath == "foo/bar".unixToNativePath
 
