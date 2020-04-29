@@ -46,7 +46,7 @@ type
 proc `=destroy`(x: var AObj) =
   close(x.io)
   echo "closed"
-  
+
 var x = B(io: newStringStream("thestream"))
 
 
@@ -65,3 +65,13 @@ proc main() =
   doAssert(nonce2 == "0A234567")
 
 main()
+
+# bug #14079
+import std/algorithm
+
+let
+  n = @["c", "b"]
+  q = @[("c", "2"), ("b", "1")]
+
+assert n.sortedByIt(it) == @["b", "c"], "fine"
+assert q.sortedByIt(it[0]) == @[("b", "1"), ("c", "2")], "fails under arc"

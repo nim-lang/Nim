@@ -504,7 +504,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
     # Nested sort
     assert people.sortedByIt((it.age, it.name)) == @[(name: "p2", age: 20),
        (name: "p3", age: 30), (name: "p4", age: 30), (name: "p1", age: 60)]
-  var result = sorted(seq1, proc(x, y: type(seq1[0])): int =
+  var result = sorted(seq1, proc(x, y: typeof(seq1[0])): int =
     var it {.inject.} = x
     let a = op
     it = y
