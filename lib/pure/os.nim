@@ -76,8 +76,6 @@ else:
 
 when weirdTarget:
   template noNimScript(body): untyped = discard
-  # Adding a `disable` template and `{.pragma: noNimScript, disable.}`
-  # doesn't work pending https://github.com/timotheecour/Nim/issues/142
 else:
   {.pragma: noNimScript.}
 
