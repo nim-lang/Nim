@@ -431,6 +431,9 @@ proc asyncCheck*[T](future: Future[T]) =
       raise future.error
   future.callback = asyncCheckCallback
 
+template discardedFuture*{discard fut}(fut: Future) {.
+  error: "cannot discard future, use asyncCheck instead".} = discard
+
 proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once both ``fut1`` and ``fut2``
   ## complete.
