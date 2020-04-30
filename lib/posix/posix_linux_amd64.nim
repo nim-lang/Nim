@@ -34,9 +34,6 @@ type
 type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
-# not detected by detect.nim, guarded by #ifdef __USE_UNIX98 in glibc
-const SIG_HOLD* = cast[Sighandler](2)
-
 type
   Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
 
@@ -572,8 +569,6 @@ var
 
 # Regenerate using detect.nim!
 include posix_linux_amd64_consts
-
-const POSIX_SPAWN_USEVFORK* = cint(0x40)  # needs _GNU_SOURCE!
 
 # <sys/wait.h>
 proc WEXITSTATUS*(s: cint): cint =  (s and 0xff00) shr 8
