@@ -566,7 +566,7 @@ NIM_STATIC_ASSERT(sizeof(NI) == sizeof(void*) && NIM_INTBITS == sizeof(NI)*8, ""
 #define nimModInt(a, b, res) (((*res) = (a) % (b)), 0)
 #define nimModInt64(a, b, res) (((*res) = (a) % (b)), 0)
 
-#if (!defined(_MSC_VER) || defined(__clang__)) && !defined(NIM_EmulateOverflowChecks)
+#if (!defined(_MSC_VER) || defined(__clang__)) && !defined(NIM_EmulateOverflowChecks) && !defined(__TINYC__)
   /* these exist because we cannot have .compilerProcs that are importc'ed
     by a different name */
 
