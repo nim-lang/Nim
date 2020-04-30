@@ -9,8 +9,6 @@
 
 import os, tables, strutils, times, heapqueue, options, deques, cstrutils
 
-include "system/inclrtl"
-
 # TODO: This shouldn't need to be included, but should ideally be exported.
 type
   CallbackFunc = proc () {.closure, gcsafe.}
@@ -432,13 +430,6 @@ proc asyncCheck*[T](future: Future[T]) =
       injectStacktrace(future)
       raise future.error
   future.callback = asyncCheckCallback
-
-since (1, 3):
-  template discardedFuture*{discard fut}(fut: Future) {.
-    error: "cannot discard future, use asyncCheck instead".} =
-    ## A term-rewriting template that errors at compile time when a `Future`
-    ## is discarded. Do ``asyncCheck fut`` instead of ``discard fut``.
-    discard
 
 proc `and`*[T, Y](fut1: Future[T], fut2: Future[Y]): Future[void] =
   ## Returns a future which will complete once both ``fut1`` and ``fut2``
