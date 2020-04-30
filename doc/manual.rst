@@ -2568,7 +2568,8 @@ Example:
   discard p(3, 4) # discard the return value of `p`
 
 The ``discard`` statement evaluates its expression for side-effects and
-throws the expression's resulting value away.
+throws the expression's resulting value away, and should only be used
+when ignoring this value is known not to cause problems.
 
 Ignoring the return value of a procedure without using a discard statement is
 a static error.
