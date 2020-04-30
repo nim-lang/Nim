@@ -225,7 +225,7 @@ type
     st_mode*: Mode        ## Mode of file (see below).
     st_uid*: Uid          ## User ID of file.
     st_gid*: Gid          ## Group ID of file.
-    pad0: cint
+    pad0 {.importc: "__pad0".}: cint
     st_rdev*: Dev         ## Device ID (if file is character or block special).
     st_size*: Off         ## For regular files, the file size in bytes.
                            ## For symbolic links, the length in bytes of the
@@ -241,8 +241,6 @@ type
     st_atim*: Timespec   ## Time of last access.
     st_mtim*: Timespec   ## Time of last data modification.
     st_ctim*: Timespec   ## Time of last status change.
-    reserved: array[3, clong]
-
 
   Statvfs* {.importc: "struct statvfs", header: "<sys/statvfs.h>",
               final, pure.} = object ## struct statvfs
