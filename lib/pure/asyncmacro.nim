@@ -143,6 +143,12 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     error("Cannot transform this node kind into an async proc." &
           " proc/method definition or lambda node expected.")
 
+  if prc[4].kind != nnkEmpty:
+    for prag in prc[4]:
+      if prag.eqIdent("discardable"):
+        error("Cannot make async proc discardable. Futures have to be " &
+          "checked with `asyncCheck` instead of discarded")
+
   let prcName = prc.name.getName
 
   var returnType = prc.params[0]
