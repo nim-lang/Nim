@@ -41,3 +41,8 @@ except OverflowDefect, RangeDefect:
   echo x
 
 echo expected == 4
+
+# bug #13698
+var
+  x45 = "hello".cstring
+  p = x45.len.int32
