@@ -86,11 +86,14 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     result = relativeTo(file, conf.docRoot.AbsoluteDir)
   else:
     bail()
+  if isAbsolute(result.string):
+    result = file.string.splitPath()[1].RelativeFile
   if isTitle:
     result = result.string.nativeToUnix.RelativeFile
   else:
     result = result.string.replace("..", "@@").RelativeFile ## refs #13223
   doAssert not result.isEmpty
+  doAssert not isAbsolute(result.string)
 
 proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
@@ -1140,7 +1143,10 @@ proc generateIndex*(d: PDoc) =
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
     if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
-    if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+    if d.conf.outFile.isEmpty:
+      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+      if isAbsolute(d.conf.outFile.string):
+        d.conf.outFile = splitPath(d.conf.outFile.string)[1].RelativeFile
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
