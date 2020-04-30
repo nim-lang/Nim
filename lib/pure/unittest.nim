@@ -101,7 +101,9 @@ include "system/inclrtl"
 when declared(stdout):
   import os
 
-when not defined(ECMAScript):
+const useTerminal = not defined(js)
+
+when useTerminal:
   import terminal
 
 type
@@ -224,7 +226,7 @@ proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
 
 method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
   template rawPrint() = echo("\n[Suite] ", suiteName)
-  when not defined(ECMAScript):
+  when useTerminal:
     if formatter.colorOutput:
       styledEcho styleBright, fgBlue, "\n[Suite] ", resetStyle, suiteName
     else: rawPrint()
@@ -250,7 +252,7 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
     let prefix = if testResult.suiteName.len > 0: "  " else: ""
     template rawPrint() = echo(prefix, "[", $testResult.status, "] ",
         testResult.testName)
-    when not defined(ECMAScript):
+    when useTerminal:
       if formatter.colorOutput:
         var color = case testResult.status
           of TestStatus.OK: fgGreen
@@ -515,11 +517,10 @@ template test*(name, body) {.dirty.} =
       body
 
     except:
-      when not defined(js):
-        let e = getCurrentException()
-        let eTypeDesc = "[" & exceptionTypeName(e) & "]"
-        checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-        var stackTrace {.inject.} = e.getStackTrace()
+      let e = getCurrentException()
+      let eTypeDesc = "[" & exceptionTypeName(e) & "]"
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
+      var stackTrace {.inject.} = e.getStackTrace()
       fail()
 
     finally:

@@ -166,8 +166,6 @@
 ##
 ## * The effect system (``raises: []``) does not work with async procedures.
 
-include "system/inclrtl"
-
 import os, tables, strutils, times, heapqueue, options, asyncstreams
 import options, math, std/monotimes
 import asyncfutures except callSoon

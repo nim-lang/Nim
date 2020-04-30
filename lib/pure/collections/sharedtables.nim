@@ -17,8 +17,6 @@
 import
   hashes, math, locks
 
-include "system/inclrtl"
-
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = ptr UncheckedArray[KeyValuePair[A, B]]
