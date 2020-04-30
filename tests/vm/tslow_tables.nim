@@ -26,5 +26,5 @@ proc hop(): bool =
 
   echo "done"
 
-const r = hop()
+const r {.used.} = hop()
 

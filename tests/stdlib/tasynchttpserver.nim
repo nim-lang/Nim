@@ -17,13 +17,13 @@ template runTest(
 
   let server = newAsyncHttpServer()
 
-  discard server.serve(Port(64123), handler)
+  let _ {.inject.} = server.serve(Port(64123), handler)
 
   let
     response = waitFor(request(server))
     body = waitFor(response.body)
 
-  discard test(response, body)
+  let _ {.inject.} = test(response, body)
 
 proc test200() {.async.} =
   proc handler(request: Request) {.async.} =
