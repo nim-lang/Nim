@@ -526,8 +526,10 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  if getEnv("NIM_TEST_PACKAGES", "false") == "true":
-    execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
+  if getEnv("NIM_TEST_PACKAGES", "0") == "1":
+    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
+  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
+    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
   else:
     buildTools()
 

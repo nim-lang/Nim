@@ -29,7 +29,8 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble-packages",
+    "nimble-packages-1",
+    "nimble-packages-2",
     "niminaction",
     "rodfiles",
     "threads",
@@ -448,9 +449,18 @@ let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
 
-iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
+type
+  PkgPart = enum
+    ppOne
+    ppTwo
+
+iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool] =
   let packageList = parseFile(packageIndex)
-  for n, cmd, hasDeps, url in important_packages.packages.items:
+  let importantList =
+    case part
+    of ppOne: important_packages.packages1
+    of ppTwo: important_packages.packages2
+  for n, cmd, hasDeps, url in importantList.items:
     if url.len != 0:
       yield (n, url, cmd, hasDeps)
     else:
@@ -471,7 +481,7 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -483,7 +493,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   let packagesDir = "pkgstemp"
   var errors = 0
   try:
-    for name, url, cmd, hasDep in listPackages():
+    for name, url, cmd, hasDep in listPackages(part):
       if packageFilter notin name:
         continue
       inc r.total
@@ -700,8 +710,10 @@ proc processCategory(r: var TResults, cat: Category,
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-packages":
-    testNimblePackages(r, cat, options)
+  of "nimble-packages-1":
+    testNimblePackages(r, cat, options, ppOne)
+  of "nimble-packages-2":
+    testNimblePackages(r, cat, options, ppTwo)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":
