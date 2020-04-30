@@ -2430,10 +2430,6 @@ proc formatBiggestFloat*(f: BiggestFloat, format: FloatFormatMode = ffDefault,
       # but nothing else is possible:
       if buf[i] in {'.', ','}: result[i] = decimalSep
       else: result[i] = buf[i]
-    since (1, 1):
-      # remove trailing dot, compatible with Python's formatter and JS backend
-      if result[^1] == decimalSep:
-        result.setLen(len(result)-1)
     when defined(windows):
       # VS pre 2015 violates the C standard: "The exponent always contains at
       # least two digits, and only as many more digits as necessary to
@@ -2936,7 +2932,8 @@ proc isNilOrWhitespace*(s: string): bool {.noSideEffect, procvar, rtl,
 when isMainModule:
   proc nonStaticTests =
     doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-    doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235" # bugs 8242, 12586
+    when not defined(js):
+      doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
     doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
     doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
     doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in

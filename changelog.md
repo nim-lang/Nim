@@ -31,7 +31,11 @@
 - The file descriptors created for internal bookkeeping by `ioselector_kqueue`
   and `ioselector_epoll` will no longer be leaked to child processes.
 
+- `strutils.formatFloat` with `precision = 0` has been restored to the version
+  1 behaviour that produces a trailing dot, e.g. `formatFloat(3.14159, precision = 0)`
+  is now `3.`, not `3`.
 - `critbits` adds `commonPrefixLen`.
+
 - `relativePath(rel, abs)` and `relativePath(abs, rel)` used to silently give wrong results
   (see #13222); instead they now use `getCurrentDir` to resolve those cases,
   and this can now throw in edge cases where `getCurrentDir` throws.
