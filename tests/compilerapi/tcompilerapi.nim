@@ -17,7 +17,8 @@ import std / [os]
 
 proc main() =
   let std = findNimStdLibCompileTime()
-  var intr = createInterpreter("myscript.nim",[std, parentDir(currentSourcePath)])
+  var intr = createInterpreter("myscript.nim", [std, parentDir(currentSourcePath),
+    std / "pure", std / "core"])
   intr.implementRoutine("*", "exposed", "addFloats", proc (a: VmArgs) =
     setResult(a, getFloat(a, 0) + getFloat(a, 1) + getFloat(a, 2))
   )
@@ -46,7 +47,7 @@ block issue9180:
   proc evalString(code: string, moduleName = "script.nim") =
     let stream = llStreamOpen(code)
     let std = findNimStdLibCompileTime()
-    var intr = createInterpreter(moduleName, [std])
+    var intr = createInterpreter(moduleName, [std, std / "pure", std / "core"])
     intr.evalScript(stream)
     destroyInterpreter(intr)
     llStreamClose(stream)
