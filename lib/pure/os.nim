@@ -3119,7 +3119,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       assert(path != "") # symlinks can't occur for file handles
       formalInfo.kind = getSymlinkFileKind(path)
 
-when defined(js):
+when defined(js) or defined(nimscript):
   when not declared(FileHandle):
     type FileHandle = distinct int32
   when not declared(File):

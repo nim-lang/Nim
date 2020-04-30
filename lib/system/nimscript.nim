@@ -272,6 +272,9 @@ proc selfExec*(command: string) {.
       raise newException(OSError, "FAILED: " & c)
     checkOsError()
 
+from os import paramCount, paramStr
+export paramCount, paramStr
+
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
   builtin
