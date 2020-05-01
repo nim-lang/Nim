@@ -112,7 +112,7 @@ proc getName(node: NimNode): string {.compileTime.} =
   of nnkEmpty:
     return "anonymous"
   else:
-    error("Unknown name.")
+    error("Unknown name.", node)
 
 proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
   result = @[]
@@ -125,10 +125,10 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
 proc isInvalidReturnType(typeName: string): bool =
   return typeName notin ["Future"] #, "FutureStream"]
 
-proc verifyReturnType(typeName: string) {.compileTime.} =
+proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
-          typeName)
+          typeName, node)
 
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
@@ -141,7 +141,13 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
 
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
     error("Cannot transform this node kind into an async proc." &
-          " proc/method definition or lambda node expected.")
+          " proc/method definition or lambda node expected.", prc)
+
+  if prc[4].kind != nnkEmpty:
+    for prag in prc[4]:
+      if prag.eqIdent("discardable"):
+        error("Cannot make async proc discardable. Futures have to be " &
+          "checked with `asyncCheck` instead of discarded", prag)
 
   let prcName = prc.name.getName
 
@@ -153,16 +159,16 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # Verify that the return type is a Future[T]
   if returnType.kind == nnkBracketExpr:
     let fut = repr(returnType[0])
-    verifyReturnType(fut)
+    verifyReturnType(fut, returnType[0])
     baseType = returnType[1]
   elif returnType.kind in nnkCallKinds and returnType[0].eqIdent("[]"):
     let fut = repr(returnType[1])
-    verifyReturnType(fut)
+    verifyReturnType(fut, returnType[0])
     baseType = returnType[2]
   elif returnType.kind == nnkEmpty:
     baseType = returnType
   else:
-    verifyReturnType(repr(returnType))
+    verifyReturnType(repr(returnType), returntype)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
@@ -303,7 +309,7 @@ proc stripReturnType(returnType: NimNode): NimNode =
   result = returnType
   if returnType.kind == nnkBracketExpr:
     let fut = repr(returnType[0])
-    verifyReturnType(fut)
+    verifyReturnType(fut, returnType)
     result = returnType[1]
 
 proc splitProc(prc: NimNode): (NimNode, NimNode) =
