@@ -829,8 +829,9 @@ proc track(tracked: PEffects, n: PNode) =
           if op != nil:
             n[0].sym = op
 
-    for i in 0..<n.safeLen:
-      track(tracked, n[i])
+    if a.kind != nkSym or a.sym.magic != mRunnableExamples:
+      for i in 0..<n.safeLen:
+        track(tracked, n[i])
     if op != nil and op.kind == tyProc:
       for i in 1..<min(n.safeLen, op.len):
         if op[i].kind == tySink:
