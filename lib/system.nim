@@ -503,8 +503,6 @@ const
 
 include "system/inclrtl"
 
-import std/private/since
-
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
@@ -1125,6 +1123,8 @@ when defined(js) and defined(nodejs) and not defined(nimscript):
 elif hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
+
+import std/private/since
 
 proc align(address, alignment: int): int =
   if alignment == 0: # Actually, this is illegal. This branch exists to actively
