@@ -676,13 +676,13 @@ when isMainModule:
       try:
         discard rand(-1)
         doAssert false
-      except RangeError:
+      except RangeDefect:
         discard
 
       try:
         discard rand(-1.0)
         doAssert false
-      except RangeError:
+      except RangeDefect:
         discard
 
 

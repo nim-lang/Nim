@@ -83,7 +83,7 @@ when defineSsl:
   type
     Certificate* = string ## DER encoded certificate
 
-    SslError* = object of Exception
+    SslError* = object of CatchableError
 
     SslCVerifyMode* = enum
       CVerifyNone, CVerifyPeer, CVerifyPeerUseEnvVars
@@ -146,7 +146,7 @@ type
   ReadLineResult* = enum ## result for readLineAsync
     ReadFullLine, ReadPartialLine, ReadDisconnected, ReadNone
 
-  TimeoutError* = object of Exception
+  TimeoutError* = object of CatchableError
 
   SocketFlag* {.pure.} = enum
     Peek,
@@ -212,22 +212,32 @@ proc newSocket*(fd: SocketHandle, domain: Domain = AF_INET,
   when defined(macosx) and not defined(nimdoc):
     setSockOptInt(fd, SOL_SOCKET, SO_NOSIGPIPE, 1)
 
-proc newSocket*(domain, sockType, protocol: cint, buffered = true): owned(Socket) =
+proc newSocket*(domain, sockType, protocol: cint, buffered = true,
+                inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
+  ## The SocketHandle associated with the resulting Socket will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
+  ##
   ## If an error occurs OSError will be raised.
-  let fd = createNativeSocket(domain, sockType, protocol)
+  let fd = createNativeSocket(domain, sockType, protocol, inheritable)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain.Domain, sockType.SockType, protocol.Protocol,
                      buffered)
 
 proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-                protocol: Protocol = IPPROTO_TCP, buffered = true): owned(Socket) =
+                protocol: Protocol = IPPROTO_TCP, buffered = true,
+                inheritable = defined(nimInheritHandles)): owned(Socket) =
   ## Creates a new socket.
   ##
+  ## The SocketHandle associated with the resulting Socket will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
+  ##
   ## If an error occurs OSError will be raised.
-  let fd = createNativeSocket(domain, sockType, protocol)
+  let fd = createNativeSocket(domain, sockType, protocol, inheritable)
   if fd == osInvalidSocket:
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
@@ -447,7 +457,7 @@ proc fromSockAddrAux(sa: ptr Sockaddr_storage, sl: SockLen,
 proc fromSockAddr*(sa: Sockaddr_storage | SockAddr | Sockaddr_in | Sockaddr_in6,
     sl: SockLen, address: var IpAddress, port: var Port) {.inline.} =
   ## Converts `SockAddr` and `SockLen` to `IpAddress` and `Port`. Raises
-  ## `ObjectConversionError` in case of invalid `sa` and `sl` arguments.
+  ## `ObjectConversionDefect` in case of invalid `sa` and `sl` arguments.
   fromSockAddrAux(cast[ptr Sockaddr_storage](unsafeAddr sa), sl, address, port)
 
 when defineSsl:
@@ -478,7 +488,7 @@ when defineSsl:
   proc getExtraData*(ctx: SslContext, index: int): RootRef =
     ## Retrieves arbitrary data stored inside SslContext.
     if index notin ctx.referencedData:
-      raise newException(IndexError, "No data with that index.")
+      raise newException(IndexDefect, "No data with that index.")
     let res = ctx.context.SSL_CTX_get_ex_data(index.cint)
     if cast[int](res) == 0:
       raiseSSLError()
@@ -872,7 +882,8 @@ proc bindAddr*(socket: Socket, port = Port(0), address = "") {.
   freeaddrinfo(aiList)
 
 proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
-                 flags = {SocketFlag.SafeDisconn}) {.
+                 flags = {SocketFlag.SafeDisconn},
+                 inheritable = defined(nimInheritHandles)) {.
                  tags: [ReadIOEffect], gcsafe, locks: 0.} =
   ## Blocks until a connection is being made from a client. When a connection
   ## is made sets ``client`` to the client socket and ``address`` to the address
@@ -882,19 +893,23 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
   ## The resulting client will inherit any properties of the server socket. For
   ## example: whether the socket is buffered or not.
   ##
+  ## The SocketHandle associated with the resulting client will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
+  ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``
   ## flag is specified then this error will not be raised and instead
   ## accept will be called again.
   if client.isNil:
     new(client)
-  let ret = accept(server.fd)
+  let ret = accept(server.fd, inheritable)
   let sock = ret[0]
 
   if sock == osInvalidSocket:
     let err = osLastError()
     if flags.isDisconnectionError(err):
-      acceptAddr(server, client, address, flags)
+      acceptAddr(server, client, address, flags, inheritable)
     raiseOSError(err)
   else:
     address = ret[1]
@@ -964,9 +979,15 @@ when false: #defineSsl:
         doHandshake()
 
 proc accept*(server: Socket, client: var owned(Socket),
-             flags = {SocketFlag.SafeDisconn}) {.tags: [ReadIOEffect].} =
+             flags = {SocketFlag.SafeDisconn},
+             inheritable = defined(nimInheritHandles))
+            {.tags: [ReadIOEffect].} =
   ## Equivalent to ``acceptAddr`` but doesn't return the address, only the
   ## socket.
+  ##
+  ## The SocketHandle associated with the resulting client will not be
+  ## inheritable by child processes by default. This can be changed via
+  ## the `inheritable` parameter.
   ##
   ## The ``accept`` call may result in an error if the connecting socket
   ## disconnects during the duration of the ``accept``. If the ``SafeDisconn``

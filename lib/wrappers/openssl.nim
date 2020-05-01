@@ -116,6 +116,15 @@ type
 
   pem_password_cb* = proc(buf: cstring, size, rwflag: cint, userdata: pointer): cint {.cdecl.}
 
+  PaddingType* = enum
+    RSA_PKCS1_PADDING = 1.cint,
+    RSA_SSLV23_PADDING = 2.cint,
+    RSA_NO_PADDING = 3.cint,
+    RSA_PKCS1_OAEP_PADDING = 4.cint,
+    RSA_X931_PADDING = 5.cint,
+    RSA_PKCS1_PSS_PADDING = 6.cint
+
+
 const
   SSL_SENT_SHUTDOWN* = 1
   SSL_RECEIVED_SHUTDOWN* = 2
@@ -589,6 +598,20 @@ proc PEM_read_bio_RSA_PUBKEY*(bp: BIO, x: ptr PRSA, pw: pem_password_cb, u: poin
 
 proc RSA_verify*(kind: cint, origMsg: pointer, origMsgLen: cuint, signature: pointer,
     signatureLen: cuint, rsa: PRSA): cint {.cdecl, dynlib: DLLSSLName, importc.}
+proc PEM_read_RSAPrivateKey*(fp: pointer; x: ptr PRSA; cb: pem_password_cb, u: pointer): PRSA {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc PEM_read_RSAPublicKey*(fp: pointer; x: ptr PRSA; cb: pem_password_cb, u: pointer): PRSA {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc RSA_private_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc RSA_public_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc RSA_private_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc RSA_public_decrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc RSA_free*(rsa: PRSA) {.cdecl, dynlib: DLLSSLName, importc.}
+proc RSA_size*(rsa: PRSA): cint {.cdecl, dynlib: DLLSSLName, importc.}
 
 # sha types
 proc EVP_md_null*(): EVP_MD   {.cdecl, importc.}

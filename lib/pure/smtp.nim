@@ -65,12 +65,36 @@ type
   Smtp* = SmtpBase[Socket]
   AsyncSmtp* = SmtpBase[AsyncSocket]
 
-proc debugSend(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
+proc debugSend*(smtp: Smtp | AsyncSmtp, cmd: string) {.multisync.} =
+  ## Sends ``cmd`` on the socket connected to the SMTP server.
+  ##
+  ## If the ``smtp`` object was created with ``debug`` enabled,
+  ## debugSend will invoke ``echo("C:" & cmd)`` before sending.
+  ##
+  ## This is a lower level proc and not something that you typically
+  ## would need to call when using this module. One exception to
+  ## this is if you are implementing any
+  ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
+
   if smtp.debug:
     echo("C:" & cmd)
   await smtp.sock.send(cmd)
 
-proc debugRecv(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+proc debugRecv*(smtp: Smtp | AsyncSmtp): Future[TaintedString] {.multisync.} =
+  ## Receives a line of data from the socket connected to the 
+  ## SMTP server.
+  ##
+  ## If the ``smtp`` object was created with ``debug`` enabled,
+  ## debugRecv will invoke ``echo("S:" & result.string)`` after
+  ## the data is received.
+  ##
+  ## This is a lower level proc and not something that you typically
+  ## would need to call when using this module. One exception to
+  ## this is if you are implementing any
+  ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
+  ##
+  ## See `checkReply(reply)<#checkReply,,string>`_.
+
   result = await smtp.sock.recvLine()
   if smtp.debug:
     echo("S:" & result.string)
@@ -166,7 +190,17 @@ proc quitExcpt(smtp: AsyncSmtp, msg: string): Future[void] =
       retFuture.fail(newException(ReplyError, msg))
   return retFuture
 
-proc checkReply(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
+proc checkReply*(smtp: Smtp | AsyncSmtp, reply: string) {.multisync.} =
+  ## Calls `debugRecv<#debugRecv>`_ and checks that the received
+  ## data starts with ``reply``. If the received data does not start
+  ## with ``reply``, then a ``QUIT`` command will be sent to the SMTP
+  ## server and a ``ReplyError`` exception will be raised.
+  ##
+  ## This is a lower level proc and not something that you typically
+  ## would need to call when using this module. One exception to
+  ## this is if you are implementing any
+  ## `SMTP extensions<https://en.wikipedia.org/wiki/Extended_SMTP>`_.
+
   var line = await smtp.debugRecv()
   if not line.startswith(reply):
     await quitExcpt(smtp, "Expected " & reply & " reply, got: " & line)

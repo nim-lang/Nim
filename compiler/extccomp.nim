@@ -157,12 +157,12 @@ compiler vcc:
     optSize: " /O1 ",
     compilerExe: "cl",
     cppCompiler: "cl",
-    compileTmpl: "/c$vccplatform $options $include /Fo$objfile $file",
-    buildGui: " /link /SUBSYSTEM:WINDOWS ",
+    compileTmpl: "/c$vccplatform $options $include /nologo /Fo$objfile $file",
+    buildGui: " /SUBSYSTEM:WINDOWS user32.lib ",
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui $options",
+    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui /link /nologo $options",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -180,6 +180,7 @@ compiler clangcl:
   result.compilerExe = "clang-cl"
   result.cppCompiler = "clang-cl"
   result.linkerExe = "clang-cl"
+  result.linkTmpl = "-fuse-ld=lld " & result.linkTmpl
 
 # Intel C/C++ Compiler
 compiler icl:
@@ -849,12 +850,12 @@ proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
 
 proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
   when defined(osx):
-    if optCDebug notin conf.globalOptions: return
-    # if needed, add an option to skip or override location
-    let cmd = "dsymutil " & $(exe).quoteShell
-    conf.extraCmds.add cmd
-    tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
-      execExternalProgram(conf, cmd, hintExecuting)
+    if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
+      # if needed, add an option to skip or override location
+      let cmd = "dsymutil " & $(exe).quoteShell
+      conf.extraCmds.add cmd
+      tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
+        execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =

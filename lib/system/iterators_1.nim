@@ -24,7 +24,7 @@ iterator countdown*[T](a, b: T, step: Positive = 1): T {.inline.} =
       yield res
       if res == b: break
       dec(res, step)
-  elif T is IntLikeForCount:
+  elif T is IntLikeForCount and T is Ordinal:
     var res = int(a)
     while res >= int(b):
       yield T(res)
@@ -52,7 +52,7 @@ when defined(nimNewRoof):
     ##   for i in countup(2, 9, 3):
     ##     echo i # => 2; 5; 8
     mixin inc
-    when T is IntLikeForCount:
+    when T is IntLikeForCount and T is Ordinal:
       var res = int(a)
       while res <= int(b):
         yield T(res)
@@ -73,7 +73,7 @@ when defined(nimNewRoof):
     ##   for i in 3 .. 7:
     ##     echo i # => 3; 4; 5; 6; 7
     mixin inc
-    when T is IntLikeForCount:
+    when T is IntLikeForCount and T is Ordinal:
       var res = int(a)
       while res <= int(b):
         yield T(res)
@@ -138,7 +138,7 @@ else: # not defined(nimNewRoof)
     ##
     ##   for i in countup(2, 9, 3):
     ##     echo i # => 2; 5; 8
-    when T is IntLikeForCount:
+    when T is IntLikeForCount and T is Ordinal:
       var res = int(a)
       while res <= int(b):
         yield T(res)
@@ -159,7 +159,7 @@ else: # not defined(nimNewRoof)
     ##   for i in 3 .. 7:
     ##     echo i # => 3; 4; 5; 6; 7
     mixin inc
-    when T is IntLikeForCount:
+    when T is IntLikeForCount and T is Ordinal:
       var res = int(a)
       while res <= int(b):
         yield T(res)

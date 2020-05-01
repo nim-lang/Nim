@@ -17,13 +17,15 @@ var
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
-
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
-
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
@@ -481,7 +483,7 @@ proc raiseException(e: sink(ref Exception), ename: cstring) {.compilerRtl.} =
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
-    sysFatal(ReraiseError, "no exception to reraise")
+    sysFatal(ReraiseDefect, "no exception to reraise")
   else:
     when gotoBasedExceptions:
       inc nimInErrorMode

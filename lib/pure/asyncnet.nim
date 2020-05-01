@@ -780,6 +780,97 @@ proc isClosed*(socket: AsyncSocket): bool =
   ## Determines whether the socket has been closed.
   return socket.closed
 
+proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void])
+            {.async, since: (1, 3).} =
+  ## This proc sends ``data`` to the specified ``address``, which may be an IP
+  ## address or a hostname. If a hostname is specified this function will try
+  ## each IP of that hostname. The returned future will complete once all data
+  ## has been sent.
+  ## 
+  ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `sendTo` on a TCP socket. Use `send` instead")
+  assert(not socket.closed, "Cannot `sendTo` on a closed socket")
+
+  let aiList = getAddrInfo(address, port, socket.domain, socket.sockType,
+                           socket.protocol)
+
+  var
+    it = aiList
+    success = false
+    lastException: ref Exception
+  
+  while it != nil:
+    let fut = sendTo(socket.fd.AsyncFD, cstring(data), len(data), it.ai_addr,
+                     it.ai_addrlen.SockLen, flags)
+    
+    yield fut
+
+    if not fut.failed:
+      success = true
+
+      break
+    
+    lastException = fut.readError()
+
+    it = it.ai_next
+  
+  freeaddrinfo(aiList)
+
+  if not success:
+    if lastException != nil:
+      raise lastException
+    else:
+      raise newException(IOError, "Couldn't resolve address: " & address)
+
+proc recvFrom*(socket: AsyncSocket, size: int,
+               flags = {SocketFlag.SafeDisconn}):
+              owned(Future[tuple[data: string, address: string, port: Port]])
+              {.async, since: (1, 3).} =
+  ## Receives a datagram data from ``socket``, which must be at least of size
+  ## ``size``. Returned future will complete once one datagram has been received
+  ## and will return tuple with: data of packet received; and address and port
+  ## of datagram's sender.
+  ## 
+  ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
+  template adaptRecvFromToDomain(domain: Domain) =
+    var lAddr = sizeof(sAddr).SockLen
+    
+    let fut = await recvFromInto(AsyncFD(getFd(socket)), cstring(data), size,
+                                 cast[ptr SockAddr](addr sAddr), addr lAddr,
+                                 flags)
+    
+    data.setLen(fut)
+    
+    result.data = data
+    result.address = getAddrString(cast[ptr SockAddr](addr sAddr))
+
+    when domain == AF_INET6:
+      result.port = ntohs(sAddr.sin6_port).Port
+    else:
+      result.port = ntohs(sAddr.sin_port).Port
+
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead")
+  assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
+
+  var data = newString(size)
+  
+  case socket.domain
+  of AF_INET6:
+    var sAddr: Sockaddr_in6
+    adaptRecvFromToDomain(AF_INET6)
+  of AF_INET:
+    var sAddr: Sockaddr_in
+    adaptRecvFromToDomain(AF_INET)
+  else:
+    raise newException(ValueError, "Unknown socket address family")
+
 when not defined(testing) and isMainModule:
   type
     TestCases = enum

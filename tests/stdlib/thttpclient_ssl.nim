@@ -1,5 +1,6 @@
 discard """
   cmd: "nim $target --threads:on -d:ssl $options $file"
+  disabled: "openbsd"
 """
 
 #            Nim - Basic SSL integration tests
@@ -123,4 +124,7 @@ when not defined(windows):
         let msg = getCurrentExceptionMsg()
         log "client: exception: " & msg
         # SSL_shutdown:shutdown while in init
-        check(msg.contains("shutdown while in init") or msg.contains("alert number 48"))
+        if not (msg.contains("shutdown while in init") or msg.contains("alert number 48") or
+          msg.contains("routines:CONNECT_CR_CERT:certificate verify failed")):
+          echo "CVerifyPeer exception: " & msg
+          check(false)

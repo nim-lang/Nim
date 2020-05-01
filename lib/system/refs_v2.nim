@@ -34,15 +34,25 @@ hash of ``package & "." & module & "." & name`` to save space.
 
 ]#
 
-const
-  rcIncrement = 0b1000 # so that lowest 3 bits are not touched
-  rcMask = 0b111
+when defined(gcOrc):
+  const
+    rcIncrement = 0b10000 # so that lowest 4 bits are not touched
+    rcMask = 0b1111
+
+else:
+  const
+    rcIncrement = 0b1000 # so that lowest 3 bits are not touched
+    rcMask = 0b111
 
 type
   RefHeader = object
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
+    when defined(gcOrc):
+      rootIdx: int # thanks to this we can delete potential cycle roots
+                   # in O(1) without doubly linked lists
+
   Cell = ptr RefHeader
 
 template `+!`(p: pointer, s: int): pointer =
@@ -85,6 +95,8 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   else:
     var orig = cast[ptr RefHeader](alloc(s))
   orig.rc = 0
+  when defined(gcOrc):
+    orig.rootIdx = 0
   result = orig +! sizeof(RefHeader)
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
@@ -131,7 +143,9 @@ when defined(gcOrc):
   when defined(nimThinout):
     include cyclebreaker
   else:
-    include cyclicrefs_v2
+    include cyclicrefs_bacon
+    #include cyclecollector
+    #include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
@@ -157,9 +171,10 @@ proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   if x != nil: nimIncRef(cast[pointer](x))
 
-template GC_fullCollect* =
-  ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
-  discard
+when not defined(gcOrc):
+  template GC_fullCollect* =
+    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    discard
 
 template setupForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
@@ -176,4 +191,4 @@ proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
 
 proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionError, "invalid object conversion")
+  if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")

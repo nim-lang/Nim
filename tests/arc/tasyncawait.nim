@@ -1,6 +1,6 @@
 discard """
   outputsub: "result: 5000"
-  cmd: "nim c --gc:arc $file"
+  cmd: "nim c --gc:orc $file"
 """
 
 import asyncdispatch, asyncnet, nativesockets, net, strutils, os
@@ -71,4 +71,5 @@ main()
 
 assert msgCount == swarmSize * messagesToSend
 echo "result: ", msgCount
+GC_fullCollect()
 echo "memory: ", formatSize(getOccupiedMem() - mem)

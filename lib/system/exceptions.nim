@@ -62,19 +62,19 @@ type
     ## Raised if a dynamic library could not be loaded.
   ResourceExhaustedError* = object of CatchableError ## \
     ## Raised if a resource request could not be fulfilled.
-  ArithmeticError* = object of Defect ## \
+  ArithmeticDefect* = object of Defect ## \
     ## Raised if any kind of arithmetic error occurred.
-  DivByZeroError* = object of ArithmeticError ## \
+  DivByZeroDefect* = object of ArithmeticDefect ## \
     ## Raised for runtime integer divide-by-zero errors.
 
-  OverflowError* = object of ArithmeticError ## \
+  OverflowDefect* = object of ArithmeticDefect ## \
     ## Raised for runtime integer overflows.
     ##
     ## This happens for calculations whose results are too large to fit in the
     ## provided bits.
-  AccessViolationError* = object of Defect ## \
+  AccessViolationDefect* = object of Defect ## \
     ## Raised for invalid memory access errors
-  AssertionError* = object of Defect ## \
+  AssertionDefect* = object of Defect ## \
     ## Raised when assertion is proved wrong.
     ##
     ## Usually the result of using the `assert() template
@@ -87,54 +87,77 @@ type
     ## Mostly used by the `tables <tables.html>`_ module, it can also be raised
     ## by other collection modules like `sets <sets.html>`_ or `strtabs
     ## <strtabs.html>`_.
-  OutOfMemError* = object of Defect ## \
+  OutOfMemDefect* = object of Defect ## \
     ## Raised for unsuccessful attempts to allocate memory.
-  IndexError* = object of Defect ## \
+  IndexDefect* = object of Defect ## \
     ## Raised if an array index is out of bounds.
 
-  FieldError* = object of Defect ## \
+  FieldDefect* = object of Defect ## \
     ## Raised if a record field is not accessible because its discriminant's
     ## value does not fit.
-  RangeError* = object of Defect ## \
+  RangeDefect* = object of Defect ## \
     ## Raised if a range check error occurred.
-  StackOverflowError* = object of Defect ## \
+  StackOverflowDefect* = object of Defect ## \
     ## Raised if the hardware stack used for subroutine calls overflowed.
-  ReraiseError* = object of Defect ## \
+  ReraiseDefect* = object of Defect ## \
     ## Raised if there is no exception to reraise.
-  ObjectAssignmentError* = object of Defect ## \
+  ObjectAssignmentDefect* = object of Defect ## \
     ## Raised if an object gets assigned to its parent's object.
-  ObjectConversionError* = object of Defect ## \
+  ObjectConversionDefect* = object of Defect ## \
     ## Raised if an object is converted to an incompatible object type.
     ## You can use ``of`` operator to check if conversion will succeed.
-  FloatingPointError* = object of Defect ## \
+  FloatingPointDefect* = object of Defect ## \
     ## Base class for floating point exceptions.
-  FloatInvalidOpError* = object of FloatingPointError ## \
+  FloatInvalidOpDefect* = object of FloatingPointDefect ## \
     ## Raised by invalid operations according to IEEE.
     ##
     ## Raised by ``0.0/0.0``, for example.
-  FloatDivByZeroError* = object of FloatingPointError ## \
+  FloatDivByZeroDefect* = object of FloatingPointDefect ## \
     ## Raised by division by zero.
     ##
     ## Divisor is zero and dividend is a finite nonzero number.
-  FloatOverflowError* = object of FloatingPointError ## \
+  FloatOverflowDefect* = object of FloatingPointDefect ## \
     ## Raised for overflows.
     ##
     ## The operation produced a result that exceeds the range of the exponent.
-  FloatUnderflowError* = object of FloatingPointError ## \
+  FloatUnderflowDefect* = object of FloatingPointDefect ## \
     ## Raised for underflows.
     ##
     ## The operation produced a result that is too small to be represented as a
     ## normal number.
-  FloatInexactError* = object of FloatingPointError ## \
+  FloatInexactDefect* = object of FloatingPointDefect ## \
     ## Raised for inexact results.
     ##
     ## The operation produced a result that cannot be represented with infinite
     ## precision -- for example: ``2.0 / 3.0, log(1.1)``
     ##
     ## **Note**: Nim currently does not detect these!
-  DeadThreadError* = object of Defect ## \
+  DeadThreadDefect* = object of Defect ## \
     ## Raised if it is attempted to send a message to a dead thread.
-  NilAccessError* = object of Defect ## \
+  NilAccessDefect* = object of Defect ## \
     ## Raised on dereferences of ``nil`` pointers.
     ##
     ## This is only raised if the `segfaults module <segfaults.html>`_ was imported!
+
+  ArithmeticError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
+  DivByZeroError* {.deprecated: "See corresponding Defect".} = ArithmeticDefect
+  OverflowError* {.deprecated: "See corresponding Defect".} = OverflowDefect
+  AccessViolationError* {.deprecated: "See corresponding Defect".} = AccessViolationDefect
+  AssertionError* {.deprecated: "See corresponding Defect".} = AssertionDefect
+  OutOfMemError* {.deprecated: "See corresponding Defect".} = OutOfMemDefect
+  IndexError* {.deprecated: "See corresponding Defect".} = IndexDefect
+
+  FieldError* {.deprecated: "See corresponding Defect".} = FieldDefect
+  RangeError* {.deprecated: "See corresponding Defect".} = RangeDefect
+  StackOverflowError* {.deprecated: "See corresponding Defect".} = StackOverflowDefect
+  ReraiseError* {.deprecated: "See corresponding Defect".} = ReraiseDefect
+  ObjectAssignmentError* {.deprecated: "See corresponding Defect".} = ObjectAssignmentDefect
+  ObjectConversionError* {.deprecated: "See corresponding Defect".} = ObjectConversionDefect
+  FloatingPointError* {.deprecated: "See corresponding Defect".} = FloatingPointDefect
+  FloatInvalidOpError* {.deprecated: "See corresponding Defect".} = FloatInvalidOpDefect
+  FloatDivByZeroError* {.deprecated: "See corresponding Defect".} = FloatDivByZeroDefect
+  FloatOverflowError* {.deprecated: "See corresponding Defect".} = FloatOverflowDefect
+  FloatUnderflowError* {.deprecated: "See corresponding Defect".} = FloatUnderflowDefect
+  FloatInexactError* {.deprecated: "See corresponding Defect".} = FloatInexactDefect
+  DeadThreadError* {.deprecated: "See corresponding Defect".} = DeadThreadDefect
+  NilAccessError* {.deprecated: "See corresponding Defect".} = NilAccessDefect

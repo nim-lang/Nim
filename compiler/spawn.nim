@@ -10,8 +10,8 @@
 ## This module implements threadpool's ``spawn``.
 
 import ast, types, idents, magicsys, msgs, options, modulegraphs,
-  lowerings
-from trees import getMagic
+  lowerings, liftdestructors
+from trees import getMagic, getRoot
 
 proc callProc(a: PNode): PNode =
   result = newNodeI(nkCall, a.info)
@@ -36,8 +36,9 @@ proc spawnResult*(t: PType; inParallel: bool): TSpawnResult =
   elif inParallel and not containsGarbageCollectedRef(t): srByVar
   else: srFlowVar
 
-proc flowVarKind(t: PType): TFlowVarKind =
-  if t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
+proc flowVarKind(c: ConfigRef, t: PType): TFlowVarKind =
+  if c.selectedGC in {gcArc, gcOrc}: fvBlob 
+  elif t.skipTypes(abstractInst).kind in {tyRef, tyString, tySequence}: fvGC
   elif containsGarbageCollectedRef(t): fvInvalid
   else: fvBlob
 
@@ -66,17 +67,11 @@ proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: P
   varSection.add vpart
   if varInit != nil:
     if g.config.selectedGC in {gcArc, gcOrc}:
-      if typ.attachedOps[attachedAsgn] != nil:
-        var call = newNode(nkCall)
-        call.add newSymNode(typ.attachedOps[attachedAsgn])
-        call.add genAddrOf(newSymNode(result), tyVar)
-        call.add v
-        varInit.add call
-      else:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
-    else:      
+      # inject destructors pass will do its own analysis
+      varInit.add newFastMoveStmt(g, newSymNode(result), v)
+    else:
       if useShallowCopy and typeNeedsNoDeepCopy(typ) or optTinyRtti in g.config.globalOptions:
-        varInit.add newFastAsgnStmt(newSymNode(result), v)
+        varInit.add newFastMoveStmt(g, newSymNode(result), v)
       else:
         let deepCopyCall = newNodeI(nkCall, varInit.info, 3)
         deepCopyCall[0] = newSymNode(getSysMagic(g, varSection.info, "deepCopy", mDeepCopy))
@@ -145,7 +140,7 @@ proc createWrapperProc(g: ModuleGraph; f: PNode; threadParam, argsParam: PSym;
   if spawnKind == srByVar:
     body.add newAsgnStmt(genDeref(threadLocalProm.newSymNode), call)
   elif fv != nil:
-    let fk = fv.typ[1].flowVarKind
+    let fk = flowVarKind(g.config, fv.typ[1])
     if fk == fvInvalid:
       localError(g.config, f.info, "cannot create a flowVar of type: " &
         typeToString(fv.typ[1]))
@@ -196,7 +191,7 @@ proc createCastExpr(argsParam: PSym; objType: PType): PNode =
   result.typ = newType(tyPtr, objType.owner)
   result.typ.rawAddSon(objType)
 
-proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType; 
+proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
                              owner: PSym; scratchObj: PSym,
                              castExpr, call,
                              varSection, varInit, result: PNode) =
@@ -206,8 +201,11 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     # we pick n's type here, which hopefully is 'tyArray' and not
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
-    if i < formals.len and formals[i].typ.kind in {tyVar, tyLent}:
-      localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+    if i < formals.len: 
+      if formals[i].typ.kind in {tyVar, tyLent}:
+        localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
+      if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
+        continue
     #elif containsTyRef(argType):
     #  localError(n[i].info, "'spawn'ed function cannot refer to 'ref'/closure")
 
@@ -221,23 +219,6 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
                            indirectAccess(castExpr, field, n.info))
     call.add(newSymNode(temp))
 
-proc getRoot*(n: PNode): PSym =
-  ## ``getRoot`` takes a *path* ``n``. A path is an lvalue expression
-  ## like ``obj.x[i].y``. The *root* of a path is the symbol that can be
-  ## determined as the owner; ``obj`` in the example.
-  case n.kind
-  of nkSym:
-    if n.sym.kind in {skVar, skResult, skTemp, skLet, skForVar}:
-      result = n.sym
-  of nkDotExpr, nkBracketExpr, nkHiddenDeref, nkDerefExpr,
-      nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
-    result = getRoot(n[0])
-  of nkHiddenStdConv, nkHiddenSubConv, nkConv:
-    result = getRoot(n[1])
-  of nkCallKinds:
-    if getMagic(n) == mSlice: result = getRoot(n[1])
-  else: discard
-
 proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
                              owner: PSym; scratchObj: PSym;
                              castExpr, call,
@@ -248,6 +229,8 @@ proc setupArgsForParallelism(g: ModuleGraph; n: PNode; objType: PType;
   # for correctness: These are called 'threadLocal' here.
   for i in 1..<n.len:
     let n = n[i]
+    if i < formals.len and formals[i].typ.kind in {tyStatic, tyTypeDesc}:
+      continue
     let argType = skipTypes(if i < formals.len: formals[i].typ else: n.typ,
                             abstractInst)
     #if containsTyRef(argType):
@@ -344,12 +327,14 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     if {tfThread, tfNoSideEffect} * n[0].typ.flags == {}:
       localError(g.config, n.info, "'spawn' takes a GC safe call expression")
 
-  var fn = n[0] 
+  var fn = n[0]
   let
     name = (if fn.kind == nkSym: fn.sym.name.s else: genPrefix) & "Wrapper"
     wrapperProc = newSym(skProc, getIdent(g.cache, name), owner, fn.info, g.config.options)
     threadParam = newSym(skParam, getIdent(g.cache, "thread"), wrapperProc, n.info, g.config.options)
     argsParam = newSym(skParam, getIdent(g.cache, "args"), wrapperProc, n.info, g.config.options)
+
+  wrapperProc.flags.incl sfInjectDestructors
   block:
     let ptrType = getSysType(g, n.info, tyPointer)
     threadParam.typ = ptrType
@@ -428,6 +413,7 @@ proc wrapProcForSpawn*(g: ModuleGraph; owner: PSym; spawnExpr: PNode; retType: P
     fvAsExpr = indirectAccess(castExpr, field, n.info)
     result.add newFastAsgnStmt(newDotExpr(scratchObj, field), genAddrOf(dest))
 
+  createTypeBoundOps(g, nil, objType, n.info)
   createWrapperProc(g, fn, threadParam, argsParam,
                       varSection, varInit, call,
                       barrierAsExpr, fvAsExpr, spawnKind, wrapperProc)

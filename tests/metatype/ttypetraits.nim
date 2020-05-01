@@ -145,6 +145,7 @@ block genericParams:
   doAssert genericParams(Bar3).get(0) is StaticParam
   doAssert genericParams(Bar3).get(0).value == 3
   doAssert genericParams(Bar[3, float]).get(0).value == 3
+  static: doAssert genericParams(Bar[3, float]).get(0).value == 3
 
   type
     VectorElementType = SomeNumber | bool

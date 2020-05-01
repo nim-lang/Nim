@@ -4,6 +4,7 @@
 
 Command:
   //compile, c                compile project with default code generator (C)
+  //r                         compile & run $nimcach/projname [arguments]
   //doc                       generate the documentation for inputfile
 
 Arguments:

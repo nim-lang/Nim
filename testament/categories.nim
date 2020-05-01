@@ -260,9 +260,10 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
-  t.spec.action = actionCompile
-  testSpec r, t
+  if fileExists("tools/nimgrep.nim"):
+    var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
+    t.spec.action = actionCompile
+    testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 

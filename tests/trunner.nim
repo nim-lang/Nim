@@ -19,14 +19,10 @@ proc runCmd(file, options = ""): auto =
     echo result[0]
     echo result[1]
 
-proc testCodegenStaticAssert() =
-  let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim")
-  doAssert "sizeof(bool) == 2" in output
-  doAssert exitCode != 0
-
-proc testCTFFI() =
-  let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
-  let expected = """
+when defined(nimHasLibFFIEnabled):
+  block: # mevalffi
+    let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
+    let expected = """
 hello world stderr
 hi stderr
 foo
@@ -37,10 +33,30 @@ foo:102:103:104
 foo:0.03:asdf:103:105
 ret={s1:foobar s2:foobar age:25 pi:3.14}
 """
-  doAssert output == expected, output
-  doAssert exitCode == 0
+    doAssert output == expected, output
+    doAssert exitCode == 0
 
-when defined(nimHasLibFFIEnabled):
-  testCTFFI()
 else: # don't run twice the same test
-  testCodegenStaticAssert()
+  template check(msg) = doAssert msg in output, output
+
+  block: # mstatic_assert
+    let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
+    check "sizeof(bool) == 2"
+    doAssert exitCode != 0
+
+  block: # ABI checks
+    let file = "misc/msizeof5.nim"
+    block:
+      let (output, exitCode) = runCmd(file, "-d:checkAbi")
+      doAssert exitCode == 0, output
+    block:
+      let (output, exitCode) = runCmd(file, "-d:checkAbi -d:caseBad")
+      # on platforms that support _StaticAssert natively, errors will show full context, eg:
+      # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
+      # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
+      check "sizeof(unsigned char) == 8"
+      check "sizeof(struct Foo2) == 1"
+      check "sizeof(Foo5) == 16"
+      check "sizeof(Foo5) == 3"
+      check "sizeof(struct Foo6) == "
+      doAssert exitCode != 0

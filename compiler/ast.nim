@@ -218,7 +218,7 @@ type
     nkEnumFieldDef,       # `ident = expr` in an enumeration
     nkArgList,            # argument list
     nkPattern,            # a special pattern; used for matching
-    nkHiddenTryStmt,      # token used for interpretation
+    nkHiddenTryStmt,      # a hidden try statement
     nkClosure,            # (prc, env)-pair (internally used for code gen)
     nkGotoState,          # used for the state machine (for iterators)
     nkState,              # give a label to a code section (for iterators)
@@ -290,7 +290,7 @@ type
     sfTemplateParam   # symbol is a template parameter
     sfCursor          # variable/field is a cursor, see RFC 177 for details
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
-    sfNeverRaises     # proc can never raise an exception, not even OverflowError
+    sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
 
   TSymFlags* = set[TSymFlag]
@@ -553,6 +553,9 @@ type
                            # If it has one, t.destructor is not nil.
     tfAcyclic # object type was annotated as .acyclic
     tfIncompleteStruct # treat this type as if it had sizeof(pointer)
+    tfCompleteStruct
+      # (for importc types); type is fully specified, allowing to compute
+      # sizeof, alignof, offsetof at CT
 
   TTypeFlags* = set[TTypeFlag]
 

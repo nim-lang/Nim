@@ -33,7 +33,7 @@ type
 
   FutureVar*[T] = distinct Future[T]
 
-  FutureError* = object of Exception
+  FutureError* = object of Defect
     cause*: FutureBase
 
 when not defined(release):

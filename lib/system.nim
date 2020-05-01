@@ -514,6 +514,7 @@ when not defined(js) and not defined(nimSeqsV2):
       len, reserved: int
       when defined(gogc):
         elemSize: int
+        elemAlign: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
@@ -867,8 +868,8 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`.
   ##
   ## .. code-block:: Nim
-  ##   assert(FloatingPointError of Exception)
-  ##   assert(DivByZeroError of Exception)
+  ##   assert(FloatingPointDefect of Exception)
+  ##   assert(DivByZeroDefect of Exception)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc.
@@ -1122,6 +1123,13 @@ when defined(js) and defined(nodejs) and not defined(nimscript):
 elif hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
+
+proc align(address, alignment: int): int =
+  if alignment == 0: # Actually, this is illegal. This branch exists to actively
+                     # hide problems.
+    result = address
+  else:
+    result = (address + (alignment - 1)) and not (alignment - 1)
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -1665,8 +1673,8 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     result = a[pos]
   ##
   ##   when isMainModule:
-  ##     testException(IndexError, tester(30))
-  ##     testException(IndexError, tester(1))
+  ##     testException(IndexDefect, tester(30))
+  ##     testException(IndexDefect, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
 proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
@@ -1698,6 +1706,7 @@ when not defined(js) and defined(nimV2):
     TNimType {.compilerproc.} = object
       destructor: pointer
       size: int
+      align: int
       name: cstring
       traceImpl: pointer
       disposeImpl: pointer
@@ -1708,7 +1717,6 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/seqs_v2"
 
 {.pop.}
-
 
 when notJSnotNims:
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
@@ -1988,8 +1996,8 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   result = if x < 0: -x else: x
 {.pop.}
 
-
 when not defined(js):
+
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
   proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
@@ -2041,20 +2049,25 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+const
+  NimMajor* {.intdefine.}: int = 1
+    ## is the major number of Nim's version. Example:
+    ##
+    ## .. code-block:: Nim
+    ##   when (NimMajor, NimMinor, NimPatch) >=  (1, 3, 1): discard
+    # See also private symbol `since: (1, 3)` reserved for stdlib
+
+  NimMinor* {.intdefine.}: int = 3
+    ## is the minor number of Nim's version.
+    ## Odd for devel, even for releases.
+
+  NimPatch* {.intdefine.}: int = 1
+    ## is the patch number of Nim's version.
 
 import system/dollars
 export dollars
 
 const
-  NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 3
-    ## is the minor number of Nim's version.
-
-  NimPatch* {.intdefine.}: int = 1
-    ## is the patch number of Nim's version.
-
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
@@ -2480,7 +2493,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   if L == b.len:
     for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
-    sysFatal(RangeError, "different lengths for slice assignment")
+    sysFatal(RangeDefect, "different lengths for slice assignment")
 
 proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
@@ -2642,7 +2655,7 @@ when compileOption("rangechecks"):
     ## Helper for performing user-defined range checks.
     ## Such checks will be performed only when the ``rangechecks``
     ## compile-time option is enabled.
-    if not cond: sysFatal(RangeError, "range check failed")
+    if not cond: sysFatal(RangeDefect, "range check failed")
 else:
   template rangeCheck*(cond) = discard
 

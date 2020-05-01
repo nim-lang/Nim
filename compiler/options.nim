@@ -25,7 +25,7 @@ type                          # please make sure we have under 32 options
                               # (improves code efficiency a lot!)
   TOption* = enum             # **keep binary compatible**
     optNone, optObjCheck, optFieldCheck, optRangeCheck, optBoundsCheck,
-    optOverflowCheck, optNilCheck, optRefCheck,
+    optOverflowCheck, optRefCheck,
     optNaNCheck, optInfCheck, optStaticBoundsCheck, optStyleCheck,
     optAssert, optLineDir, optWarns, optHints,
     optOptimizeSpeed, optOptimizeSize,
@@ -57,6 +57,7 @@ type                          # please make sure we have under 32 options
     optGenScript,             # generate a script file to compile the *.c files
     optGenMapping,            # generate a mapping file
     optRun,                   # run the compiled project
+    optUseNimcache,           # save artifacts (including binary) in $nimcache
     optStyleHint,             # check that the names adhere to NEP-1
     optStyleError,            # enforce that the names adhere to NEP-1
     optSkipSystemConfigFile,  # skip the system's cfg/nims config file
@@ -147,6 +148,7 @@ type
       ## This requires building nim with `-d:nimHasLibFFI`
       ## which itself requires `nimble install libffi`, see #10150
       ## Note: this feature can't be localized with {.push.}
+    vmopsDanger,
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,
@@ -324,14 +326,14 @@ template depConfigFields*(fn) {.dirty.} =
 const oldExperimentalFeatures* = {implicitDeref, dotOperators, callOperator, parallel}
 
 const
-  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck, optNilCheck,
+  ChecksOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optOverflowCheck, optBoundsCheck, optAssert, optNaNCheck, optInfCheck,
     optStyleCheck}
 
   DefaultOptions* = {optObjCheck, optFieldCheck, optRangeCheck,
     optBoundsCheck, optOverflowCheck, optAssert, optWarns, optRefCheck,
     optHints, optStackTrace, optLineTrace, # consider adding `optStackTraceMsgs`
-    optTrMacros, optNilCheck, optStyleCheck, optSinkInference}
+    optTrMacros, optStyleCheck, optSinkInference}
   DefaultGlobalOptions* = {optThreadAnalysis,
     optExcessiveStackTrace, optListFullPaths}
 
@@ -523,18 +525,19 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
+  if false:
+    doAssert not conf.outDir.isEmpty
+    doAssert not conf.outFile.isEmpty
+    # xxx: fix this pre-existing bug causing `SuccessX` error messages to lie
+    # for `jsonscript`
   result = conf.outDir / conf.outFile
   when defined(posix):
-    if dirExists(result.string):
-      result.string.add ".out"
+    if dirExists(result.string): result.string.add ".out"
 
 proc prepareToWriteOutput*(conf: ConfigRef): AbsoluteFile =
   ## Create the output directory and returns a full path to the output file
-  createDir conf.outDir
-  result = conf.outDir / conf.outFile
-  when defined(posix):
-    if dirExists(result.string):
-      result.string.add ".out"
+  result = conf.absOutFile
+  createDir result.string.parentDir
 
 proc getPrefixDir*(conf: ConfigRef): AbsoluteDir =
   ## Gets the prefix dir, usually the parent directory where the binary resides.
@@ -719,7 +722,8 @@ proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile
 const stdlibDirs = [
   "pure", "core", "arch",
   "pure/collections",
-  "pure/concurrency", "impure",
+  "pure/concurrency",
+  "pure/unidecode", "impure",
   "wrappers", "wrappers/linenoise",
   "windows", "posix", "js"]
 

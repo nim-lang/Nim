@@ -1205,7 +1205,7 @@ when isMainModule:
   block: # fac() tests
     try:
       discard fac(-1)
-    except AssertionError:
+    except AssertionDefect:
       discard
 
     doAssert fac(0) == 1

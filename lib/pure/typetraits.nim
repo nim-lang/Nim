@@ -48,7 +48,7 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## .. code-block:: nim
   ##   type
   ##     Functor[A] = concept f
-  ##       type MatchedGenericType = genericHead(f.type)
+  ##       type MatchedGenericType = genericHead(typeof(f))
   ##         # `f` will be a value of a type such as `Option[T]`
   ##         # `MatchedGenericType` will become the `Option` type
 
@@ -59,7 +59,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true iff the type ``t`` is safe to use for
+  ## This trait returns true if the type ``t`` is safe to use for
   ## `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
@@ -89,11 +89,11 @@ since (1, 1):
 
 since (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
-    ## Return `i`th element of `T`
+    ## Return `i`\th element of `T`
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     type(default(T)[i])
 
-  type StaticParam*[value] = object
+  type StaticParam*[value: static type] = object
     ## used to wrap a static value in `genericParams`
 
 # NOTE: See https://github.com/nim-lang/Nim/issues/13758 - `import std/macros` does not work on OpenBSD
@@ -118,13 +118,12 @@ macro genericParamsImpl(T: typedesc): untyped =
           let ai = impl[i]
           var ret: NimNode
           case ai.typeKind
-          of ntyStatic:
-            since (1, 1):
-              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           of ntyTypeDesc:
             ret = ai
+          of ntyStatic: doAssert false
           else:
-            assert false, $(ai.typeKind, ai.kind)
+            since (1, 1):
+              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           result.add ret
         break
       else:

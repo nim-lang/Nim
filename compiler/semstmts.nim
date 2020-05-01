@@ -1476,9 +1476,9 @@ proc semProcAnnotation(c: PContext, prc: PNode;
       let ident = considerQuotedIdent(c, key)
       if strTableGet(c.userPragmas, ident) != nil:
         continue # User defined pragma
-      else: 
+      else:
         let sym = searchInScopes(c, ident)
-        if sym != nil and sfCustomPragma in sym.flags: 
+        if sym != nil and sfCustomPragma in sym.flags:
           continue # User custom pragma
 
     # we transform ``proc p {.m, rest.}`` into ``m(do: proc p {.rest.})`` and
@@ -1594,7 +1594,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
 
-proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
+proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   var n = n
 
   let original = n[namePos].sym

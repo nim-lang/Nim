@@ -406,8 +406,6 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
   else:
-    if optNilCheck in p.options:
-      linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", [addrLoc(p.config, loc)])
     if loc.storage != OnStack and containsGcRef:
       linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
               [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
@@ -1168,21 +1166,43 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
+
   if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
     assert q.initProc.module == q
+    # add a suffix for hcr - will later init the global pointer with this data
+    let actualConstName = if m.hcrOn: sym.loc.r & "_const" else: sym.loc.r
     q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
-        [getTypeDesc(q, sym.typ), sym.loc.r, genBracedInit(q.initProc, sym.ast, isConst = true)])
+        [getTypeDesc(q, sym.typ), actualConstName, genBracedInit(q.initProc, sym.ast, isConst = true)])
+    if m.hcrOn:
+      # generate the global pointer with the real name
+      q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t), sym.loc.r])
+      # register it (but ignore the boolean result of hcrRegisterGlobal)
+      q.initProc.procSec(cpsLocals).addf(
+        "\thcrRegisterGlobal($1, \"$2\", sizeof($3), NULL, (void**)&$2);$n",
+        [getModuleDllPath(q, sym), sym.loc.r, rdLoc(sym.loc)])
+      # always copy over the contents of the actual constant with the _const
+      # suffix ==> this means that the constant is reloadable & updatable!
+      q.initProc.procSec(cpsLocals).add(ropecg(q,
+        "\t#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
+        [sym.loc.r, actualConstName, rdLoc(sym.loc)]))
   # declare header:
   if q != m and not containsOrIncl(m.declaredThings, sym.id):
     assert(sym.loc.r != nil)
-    let headerDecl = "extern NIM_CONST $1 $2;$n" %
-        [getTypeDesc(m, sym.loc.t), sym.loc.r]
-    m.s[cfsData].add(headerDecl)
-    if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
-      p.module.g.generatedHeader.s[cfsData].add(headerDecl)
+    if m.hcrOn:
+      m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t), sym.loc.r]);
+      m.initProc.procSec(cpsLocals).addf(
+        "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
+        getTypeDesc(m, sym.loc.t), getModuleDllPath(q, sym)])
+    else:
+      let headerDecl = "extern NIM_CONST $1 $2;$n" %
+          [getTypeDesc(m, sym.loc.t), sym.loc.r]
+      m.s[cfsData].add(headerDecl)
+      if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
+        p.module.g.generatedHeader.s[cfsData].add(headerDecl)
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
@@ -1804,7 +1824,10 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
@@ -1999,8 +2022,9 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
     if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
       discard cgsym(m, "nimTestErrorFlag")
 
-    for i in countdown(high(graph.globalDestructors), 0):
-      n.add graph.globalDestructors[i]
+    if {optGenStaticLib, optGenDynLib} * m.config.globalOptions == {}:
+      for i in countdown(high(graph.globalDestructors), 0):
+        n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc

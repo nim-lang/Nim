@@ -1,7 +1,24 @@
+include system/inclrtl
+
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. ``$`` is Nim's general way of
   ## spelling `toString`:idx:.
+
+when defined(js):
+  since (1, 3):
+    proc `$`*(x: uint): string =
+      ## Caveat: currently implemented as $(cast[int](x)), tied to current
+      ## semantics of js' Number type.
+      # for c, see strmantle.`$`
+      $(cast[int](x))
+
+    proc `$`*(x: uint64): string =
+      ## Compatibility note:
+      ## the results may change in future releases if/when js target implements
+      ## 64bit ints.
+      # pending https://github.com/nim-lang/RFCs/issues/187
+      $(cast[int](x))
 
 proc `$`*(x: int64): string {.magic: "Int64ToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
@@ -45,9 +62,9 @@ proc `$`*(t: typedesc): string {.magic: "TypeTrait".}
   ## `typetraits module <typetraits.html>`_.
   ##
   ## .. code-block:: Nim
-  ##   doAssert $(type(42)) == "int"
-  ##   doAssert $(type("Foo")) == "string"
-  ##   static: doAssert $(type(@['A', 'B'])) == "seq[char]"
+  ##   doAssert $(typeof(42)) == "int"
+  ##   doAssert $(typeof("Foo")) == "string"
+  ##   static: doAssert $(typeof(@['A', 'B'])) == "seq[char]"
 
 when defined(nimHasIsNamedTuple):
   proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
@@ -75,27 +92,22 @@ proc `$`*[T: tuple|object](x: T): string =
   ##   $(a: 23, b: 45) == "(a: 23, b: 45)"
   ##   $() == "()"
   result = "("
-  var firstElement = true
   const isNamed = T is object or isNamedTuple(T)
-  when not isNamed:
-    var count = 0
+  var count = 0
   for name, value in fieldPairs(x):
-    if not firstElement: result.add(", ")
+    if count > 0: result.add(", ")
     when isNamed:
       result.add(name)
       result.add(": ")
-    else:
-      count.inc
+    count.inc
     when compiles($value):
       when value isnot string and value isnot seq and compiles(value.isNil):
         if value.isNil: result.add "nil"
         else: result.addQuoted(value)
       else:
         result.addQuoted(value)
-      firstElement = false
     else:
       result.add("...")
-      firstElement = false
   when not isNamed:
     if count == 1:
       result.add(",") # $(1,) should print as the semantically legal (1,)

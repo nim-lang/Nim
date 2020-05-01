@@ -28,6 +28,7 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
+    ## `RuneImpl` is the underlying type used to store Runes, currently `int32`.
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 

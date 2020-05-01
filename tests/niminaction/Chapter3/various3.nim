@@ -22,7 +22,7 @@ block:
   assert obj.contents == "Hello"
 
   var obj2 = Box(empty: true)
-  doAssertRaises(FieldError):
+  doAssertRaises(FieldDefect):
     echo(obj2.contents)
 
 import json

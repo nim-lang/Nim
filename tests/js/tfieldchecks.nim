@@ -24,7 +24,7 @@ var obj = X(f0: "foo", f1: C, f3: 3.14)
 block:
   echo obj.f0
   echo obj.f1
-  doAssertRaises(FieldError): echo obj.f2
+  doAssertRaises(FieldDefect): echo obj.f2
   echo obj.f3
 
 block:
@@ -32,7 +32,7 @@ block:
   echo a0[]
   # let a1 = unsafeAddr(obj.f1)
   # echo a1[]
-  doAssertRaises(FieldError):
+  doAssertRaises(FieldDefect):
     let a2 = addr(obj.f2)
     echo a2[]
   let a3 = addr(obj.f3)

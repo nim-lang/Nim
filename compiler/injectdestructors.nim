@@ -22,9 +22,9 @@
 # - eliminate 'wasMoved(x); destroy(x)' pairs as a post processing step.
 
 import
-  intsets, ast, msgs, renderer, magicsys, types, idents,
+  intsets, ast, astalgo, msgs, renderer, magicsys, types, idents,
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
-  lineinfos, parampatterns, sighashes
+  lineinfos, parampatterns, sighashes, liftdestructors
 
 from trees import exprStructuralEquivalent
 from algorithm import reverse
@@ -44,10 +44,16 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop, hasUnstructuredCf, inDangerousBranch: int
+    inLoop, inSpawn, hasUnstructuredCf, inDangerousBranch: int
     declaredVars: IntSet # variables we already moved to the top level
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
+
+  ProcessMode = enum
+    normal
+    consumed
+    sinkArg
+
 
 const toDebug {.strdefine.} = ""
 
@@ -55,6 +61,9 @@ template dbg(body) =
   when toDebug.len > 0:
     if c.owner.name.s == toDebug or toDebug == "always":
       body
+
+proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
+proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
 proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
   var pc = pc
@@ -220,16 +229,19 @@ proc makePtrType(c: Con, baseType: PType): PType =
   result = newType(tyPtr, c.owner)
   addSonSkipIntLit(result, baseType)
 
+proc genOp(c: Con; op: PSym; dest: PNode): PNode =
+  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
+  addrExp.add(dest)
+  result = newTree(nkCall, newSymNode(op), addrExp)
+
 proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
   var op = t.attachedOps[kind]
-
   if op == nil or op.ast[genericParamsPos].kind != nkEmpty:
     # give up and find the canonical type instead:
     let h = sighashes.hashType(t, {CoType, CoConsiderOwned, CoDistinct})
     let canon = c.graph.canonTypes.getOrDefault(h)
     if canon != nil:
       op = canon.attachedOps[kind]
-
   if op == nil:
     #echo dest.typ.id
     globalError(c.graph.config, dest.info, "internal error: '" & AttachedOpToStr[kind] &
@@ -241,9 +253,7 @@ proc genOp(c: Con; t: PType; kind: TTypeAttachedOp; dest, ri: PNode): PNode =
     if kind == attachedDestructor:
       echo "destructor is ", op.id, " ", op.ast
   if sfError in op.flags: checkForErrorPragma(c, t, ri, AttachedOpToStr[kind])
-  let addrExp = newNodeIT(nkHiddenAddr, dest.info, makePtrType(c, dest.typ))
-  addrExp.add(dest)
-  result = newTree(nkCall, newSymNode(op), addrExp)
+  genOp(c, op, dest)
 
 proc genDestroy(c: Con; dest: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
@@ -300,6 +310,44 @@ proc getTemp(c: var Con; typ: PType; info: TLineInfo): PNode =
   sym.typ = typ
   result = newSymNode(sym)
 
+proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
+  # discriminator is ordinal value that doesn't need sink destroy
+  # but fields within active case branch might need destruction
+
+  # tmp to support self assignments 
+  let tmp = getTemp(c, n[1].typ, n.info)
+  c.addTopVar(tmp)
+
+  result = newTree(nkStmtList)
+  result.add newTree(nkFastAsgn, tmp, p(n[1], c, consumed))
+  result.add p(n[0], c, normal)
+
+  let le = p(n[0], c, normal)
+  let leDotExpr = if le.kind == nkCheckedFieldExpr: le[0] else: le
+  let objType = leDotExpr[0].typ
+
+  if hasDestructor(objType):
+    if objType.attachedOps[attachedDestructor] != nil and
+        sfOverriden in objType.attachedOps[attachedDestructor].flags:
+      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor. 
+It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
+      result.add newTree(nkFastAsgn, le, tmp)
+      return
+
+    # generate: if le != tmp: `=destroy`(le)
+    let branchDestructor = produceDestructorForDiscriminator(c.graph, objType, leDotExpr[1].sym, n.info)
+    let cond = newNodeIT(nkInfix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    cond.add newSymNode(getMagicEqSymForType(c.graph, le.typ, n.info))
+    cond.add le
+    cond.add tmp
+    let notExpr = newNodeIT(nkPrefix, n.info, getSysType(c.graph, unknownLineInfo, tyBool))
+    notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
+    notExpr.add cond
+    result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, genOp(c, branchDestructor, le)))
+    result.add newTree(nkFastAsgn, le, tmp)
+  else:
+    result.add newTree(nkFastAsgn, le, tmp)
+
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
   result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
@@ -338,15 +386,6 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-type
-  ProcessMode = enum
-    normal
-    consumed
-    sinkArg
-
-proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
-proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
-
 proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
@@ -359,7 +398,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
-    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef:
+    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "use 'move($1)' to prevent it") % $n)
@@ -791,6 +830,12 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       if mode == normal and isRefConstr:
         result = ensureDestruction(result, c)
     of nkCallKinds:
+      let inSpawn = c.inSpawn
+      if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
+        c.inSpawn.inc
+      elif c.inSpawn > 0:
+        c.inSpawn.dec
+
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
 
@@ -801,7 +846,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
 
       result = shallowCopy(n)
       for i in 1..<n.len:
-        if i < L and isSinkTypeForParam(parameters[i]):
+        if i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
           result[i] = p(n[i], c, sinkArg)
         else:
           result[i] = p(n[i], c, normal)
@@ -867,6 +912,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
             cycleCheck(n, c)
           assert n[1].kind notin {nkAsgn, nkFastAsgn}
           result = moveOrCopy(p(n[0], c, mode), n[1], c)
+      elif isDiscriminantField(n[0]):
+        result = genDiscriminantAsgn(c, n)
       else:
         result = copyNode(n)
         result.add p(n[0], c, mode)
@@ -1044,7 +1091,6 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
       let t = params[i].sym.typ
       if isSinkTypeForParam(t) and hasDestructor(t.skipTypes({tySink})):
         c.destroys.add genDestroy(c, params[i])
-
   #if optNimV2 in c.graph.config.globalOptions:
   #  injectDefaultCalls(n, c)
   let body = p(n, c, normal)

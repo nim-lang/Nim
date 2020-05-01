@@ -8,34 +8,25 @@
 #
 # The generic ``repr`` procedure for the javascript backend.
 
-proc reprInt(x: int64): string {.compilerproc.} = return $x
-proc reprFloat(x: float): string {.compilerproc.} =
-  # Js toString doesn't differentiate between 1.0 and 1,
-  # but we do.
-  if $x == $(x.int): $x & ".0"
-  else: $x
+proc reprInt(x: int64): string {.compilerproc.} = $x
+proc reprFloat(x: float): string {.compilerproc.} = $x
 
 proc reprPointer(p: pointer): string {.compilerproc.} =
   # Do we need to generate the full 8bytes ? In js a pointer is an int anyway
   var tmp: int
-  {. emit: """
-    if (`p`_Idx == null) {
-      `tmp` = 0;
-    } else {
-      `tmp` = `p`_Idx;
-    }
-  """ .}
+  {.emit: "`tmp` = `p`_Idx || 0;".}
   result = $tmp
 
 proc reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
-proc isUndefined[T](x: T): bool {.inline.} = {.emit: "`result` = `x` === undefined;"}
-
 proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
-  if not typ.node.sons[e].isUndefined:
-    result = makeNimstrLit(typ.node.sons[e].name)
+  var tmp: bool
+  let item = typ.node.sons[e]
+  {.emit: "`tmp` = `item` !== undefined".}
+  if tmp:
+    result = makeNimstrLit(item.name)
   else:
     result = $e & " (invalid data!)"
 
@@ -48,7 +39,7 @@ proc reprChar(x: char): string {.compilerRtl.} =
   else: add(result, x)
   add(result, "\'")
 
-proc reprStrAux(result: var string, s: cstring, len: int) =
+proc reprStrAux(result: var string, s: cstring | string, len: int) =
   add(result, "\"")
   for i in 0 .. len-1:
     let c = s[i]
@@ -63,17 +54,7 @@ proc reprStrAux(result: var string, s: cstring, len: int) =
   add(result, "\"")
 
 proc reprStr(s: string): string {.compilerRtl.} =
-  result = ""
-  var sIsNil = false
-  asm """`sIsNil` = `s` === null"""
-  if sIsNil: # cast[pointer](s).isNil:
-    # Handle nil strings here because they don't have a length field in js
-    # TODO: check for null/undefined before generating call to length in js?
-    # Also: c backend repr of a nil string is <pointer>"", but repr of an
-    # array of string that is not initialized is [nil, nil, ...] ??
-    add(result, "nil")
-  else:
-    reprStrAux(result, s, s.len)
+  reprStrAux(result, s, s.len)
 
 proc addSetElem(result: var string, elem: int, typ: PNimType) =
   # Dispatch each set element to the correct repr<Type> proc
@@ -114,7 +95,6 @@ proc reprSetAux(result: var string, s: int, typ: PNimType) =
   add(result, "}")
 
 proc reprSet(e: int, typ: PNimType): string {.compilerRtl.} =
-  result = ""
   reprSetAux(result, e, typ)
 
 type
@@ -130,20 +110,6 @@ proc reprAux(result: var string, p: pointer, typ: PNimType, cl: var ReprClosure)
 
 proc reprArray(a: pointer, typ: PNimType,
               cl: var ReprClosure): string {.compilerRtl.} =
-  var isNilArrayOrSeq: bool
-  # isnil is not enough here as it would try to deref `a` without knowing what's inside
-  {. emit: """
-    if (`a` == null) {
-      `isNilArrayOrSeq` = true;
-    } else if (`a`[0] == null) {
-      `isNilArrayOrSeq` = true;
-    } else {
-      `isNilArrayOrSeq` = false;
-    };
-    """ .}
-  if typ.kind == tySequence and isNilArrayOrSeq:
-    return "nil"
-
   # We prepend @ to seq, the C backend prepends the pointer to the seq.
   result = if typ.kind == tySequence: "@[" else: "["
   var len: int = 0
@@ -163,7 +129,7 @@ proc reprArray(a: pointer, typ: PNimType,
 
   add(result, "]")
 
-proc isPointedToNil(p: pointer): bool {.inline.}=
+proc isPointedToNil(p: pointer): bool =
   {. emit: "if (`p` === null) {`result` = true};\n" .}
 
 proc reprRef(result: var string, p: pointer, typ: PNimType,
@@ -205,7 +171,6 @@ proc reprRecordAux(result: var string, o: pointer, typ: PNimType, cl: var ReprCl
   add(result, "]")
 
 proc reprRecord(o: pointer, typ: PNimType, cl: var ReprClosure): string {.compilerRtl.} =
-  result = ""
   reprRecordAux(result, o, typ, cl)
 
 
@@ -271,6 +236,5 @@ proc reprAux(result: var string, p: pointer, typ: PNimType,
 proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl.} =
   var cl: ReprClosure
   initReprClosure(cl)
-  result = ""
   reprAux(result, p, typ, cl)
   add(result, "\n")

@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-import system/indexerrors
+include system/indexerrors
 
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
@@ -142,7 +142,7 @@ proc raiseException(e: ref Exception, ename: cstring) {.
 
 proc reraiseException() {.compilerproc, asmNoStackFrame.} =
   if lastJSError == nil:
-    raise newException(ReraiseError, "no exception to reraise")
+    raise newException(ReraiseDefect, "no exception to reraise")
   else:
     if excHandler == 0:
       if isNimException():
@@ -151,19 +151,19 @@ proc reraiseException() {.compilerproc, asmNoStackFrame.} =
     asm "throw lastJSError;"
 
 proc raiseOverflow {.exportc: "raiseOverflow", noreturn, compilerproc.} =
-  raise newException(OverflowError, "over- or underflow")
+  raise newException(OverflowDefect, "over- or underflow")
 
 proc raiseDivByZero {.exportc: "raiseDivByZero", noreturn, compilerproc.} =
-  raise newException(DivByZeroError, "division by zero")
+  raise newException(DivByZeroDefect, "division by zero")
 
 proc raiseRangeError() {.compilerproc, noreturn.} =
-  raise newException(RangeError, "value out of range")
+  raise newException(RangeDefect, "value out of range")
 
 proc raiseIndexError(i, a, b: int) {.compilerproc, noreturn.} =
-  raise newException(IndexError, formatErrorIndexBound(int(i), int(a), int(b)))
+  raise newException(IndexDefect, formatErrorIndexBound(int(i), int(a), int(b)))
 
 proc raiseFieldError(f: string) {.compilerproc, noreturn.} =
-  raise newException(FieldError, f)
+  raise newException(FieldDefect, f)
 
 proc setConstr() {.varargs, asmNoStackFrame, compilerproc.} =
   asm """
@@ -397,24 +397,29 @@ else:
     """.}
 
 # Arithmetic:
+proc checkOverflowInt(a: int) {.asmNoStackFrame, compilerproc.} =
+  asm """
+    if (`a` > 2147483647 || `a` < -2147483648) `raiseOverflow`();
+  """
+
 proc addInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
-    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
+    `checkOverflowInt`(result);
     return result;
   """
 
 proc subInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
-    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
+    `checkOverflowInt`(result);
     return result;
   """
 
 proc mulInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
-    if (result > 2147483647 || result < -2147483648) `raiseOverflow`();
+    `checkOverflowInt`(result);
     return result;
   """
 
@@ -432,27 +437,29 @@ proc modInt(a, b: int): int {.asmNoStackFrame, compilerproc.} =
     return Math.trunc(`a` % `b`);
   """
 
+proc checkOverflowInt64(a: int) {.asmNoStackFrame, compilerproc.} =
+  asm """
+    if (`a` > 9223372036854775807 || `a` < -9223372036854775808) `raiseOverflow`();
+  """
+
 proc addInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` + `b`;
-    if (result > 9223372036854775807
-    || result < -9223372036854775808) `raiseOverflow`();
+    `checkOverflowInt64`(result);
     return result;
   """
 
 proc subInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` - `b`;
-    if (result > 9223372036854775807
-    || result < -9223372036854775808) `raiseOverflow`();
+    `checkOverflowInt64`(result);
     return result;
   """
 
 proc mulInt64(a, b: int): int {.asmNoStackFrame, compilerproc.} =
   asm """
     var result = `a` * `b`;
-    if (result > 9223372036854775807
-    || result < -9223372036854775808) `raiseOverflow`();
+    `checkOverflowInt64`(result);
     return result;
   """
 
@@ -475,6 +482,21 @@ proc negInt(a: int): int {.compilerproc.} =
 
 proc negInt64(a: int64): int64 {.compilerproc.} =
   result = a*(-1)
+
+proc nimFloatToString(a: float): cstring {.compilerproc.} =
+  ## ensures the result doesn't print like an integer, ie return 2.0, not 2
+  asm """
+    function nimOnlyDigitsOrMinus(n) {
+      return n.toString().match(/^-?\d+$/);
+    }
+    if (Number.isSafeInteger(`a`)) `result` =  `a`+".0"
+    else {
+      `result` = `a`+""
+      if(nimOnlyDigitsOrMinus(`result`)){
+        `result` = `a`+".0"
+      }
+    }
+  """
 
 proc absInt(a: int): int {.compilerproc.} =
   result = if a < 0: a*(-1) else: a
@@ -509,7 +531,7 @@ proc nimMax(a, b: int): int {.compilerproc.} = return if a >= b: a else: b
 
 proc chckNilDisp(p: pointer) {.compilerproc.} =
   if p == nil:
-    sysFatal(NilAccessError, "cannot dispatch; dispatcher is nil")
+    sysFatal(NilAccessDefect, "cannot dispatch; dispatcher is nil")
 
 include "system/hti"
 
@@ -648,7 +670,7 @@ proc chckObj(obj, subclass: PNimType) {.compilerproc.} =
   if x == subclass: return # optimized fast path
   while x != subclass:
     if x == nil:
-      raise newException(ObjectConversionError, "invalid object conversion")
+      raise newException(ObjectConversionDefect, "invalid object conversion")
     x = x.base
 
 proc isObj(obj, subclass: PNimType): bool {.compilerproc.} =

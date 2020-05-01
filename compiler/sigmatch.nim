@@ -548,7 +548,8 @@ proc allowsNilDeprecated(c: TCandidate, f: PType): TTypeRelation =
     result = isNone
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
-  result = f.kind != a.kind and (f.kind in {tyVar, tyLent} or a.kind in {tyVar, tyLent})
+  result = f.kind != a.kind and
+    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
@@ -1276,7 +1277,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     of tyNil: result = allowsNilDeprecated(c, f)
     else: discard
   of tyOrdinal:
-    if isOrdinalType(a):
+    if isOrdinalType(a, allowEnumWithHoles = optNimV1Emulation in c.c.config.globalOptions):
       var x = if a.kind == tyOrdinal: a[0] else: a
       if f[0].kind == tyNone:
         result = isGeneric
@@ -2004,6 +2005,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
         let typ = newTypeS(tyStatic, c)
         typ.sons = @[evaluated.typ]
         typ.n = evaluated
+        arg = copyTree(arg) # fix #12864
         arg.typ = typ
         a = typ
       else:
@@ -2582,8 +2584,11 @@ proc argtypeMatches*(c: PContext, f, a: PType, fromHlo = false): bool =
     # pattern templates do not allow for conversions except from int literal
     res != nil and m.convMatches == 0 and m.intConvMatches in [0, 256]
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
-                      op: TTypeAttachedOp; col: int): PSym =
+                      op: TTypeAttachedOp; col: int): PSym {.nosinks.} =
   var m = newCandidate(c, dc.typ)
   if col >= dc.typ.len:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
