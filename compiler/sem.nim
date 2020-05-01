@@ -377,6 +377,9 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 include hlo, seminst, semcall
 
 when false:
@@ -501,7 +504,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   var c = newContext(graph, module)
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
@@ -592,7 +595,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode =
+proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:

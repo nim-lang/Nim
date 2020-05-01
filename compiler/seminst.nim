@@ -320,7 +320,7 @@ proc instantiateProcType(c: PContext, pt: TIdTable,
   popInfoContext(c.config)
 
 proc generateInstance(c: PContext, fn: PSym, pt: TIdTable,
-                      info: TLineInfo): PSym =
+                      info: TLineInfo): PSym {.nosinks.} =
   ## Generates a new instance of a generic procedure.
   ## The `pt` parameter is a type-unsafe mapping table used to link generic
   ## parameters to their concrete types within the generic instance.

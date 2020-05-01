@@ -527,6 +527,9 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
   else:
     false
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos
@@ -1722,7 +1725,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -1737,7 +1740,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -2137,7 +2140,7 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
   else:
     refresh(PCtx graph.vm, module)
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())

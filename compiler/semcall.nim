@@ -549,7 +549,7 @@ proc tryDeref(n: PNode): PNode =
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
-                       filter: TSymKinds, flags: TExprFlags): PNode =
+                       filter: TSymKinds, flags: TExprFlags): PNode {.nosinks.} =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
