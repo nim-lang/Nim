@@ -1594,7 +1594,7 @@ proc semLambda(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if optOwnedRefs in c.config.globalOptions:
     result.typ = makeVarType(c, result.typ, tyOwned)
 
-proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode =
+proc semInferredLambda(c: PContext, pt: TIdTable, n: PNode): PNode {.nosinks.} =
   var n = n
 
   let original = n[namePos].sym
