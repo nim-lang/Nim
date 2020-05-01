@@ -460,7 +460,7 @@ proc rawFileSize(file: File): int64 =
   discard c_fseek(file, oldPos, 0)
 
 proc endOfFile*(f: File): bool {.tags: [], benign.} =
-  ## Returns true iff `f` is at the end.
+  ## Returns true if `f` is at the end.
   var c = c_fgetc(f)
   discard c_ungetc(c, f)
   return c < 0'i32
@@ -598,7 +598,7 @@ proc open*(f: var File, filename: string,
           bufSize: int = -1): bool  {.tags: [], raises: [], benign.} =
   ## Opens a file named `filename` with given `mode`.
   ##
-  ## Default mode is readonly. Returns true iff the file could be opened.
+  ## Default mode is readonly. Returns true if the file could be opened.
   ## This throws no exception if the file could not be opened.
   ##
   ## The file handle associated with the resulting ``File`` is not inheritable.
@@ -632,7 +632,7 @@ proc reopen*(f: File, filename: string, mode: FileMode = fmRead): bool {.
   ## is often used to redirect the `stdin`, `stdout` or `stderr`
   ## file variables.
   ##
-  ## Default mode is readonly. Returns true iff the file could be reopened.
+  ## Default mode is readonly. Returns true if the file could be reopened.
   ##
   ## The file handle associated with `f` won't be inheritable.
   if freopen(filename, FormatOpen[mode], f) != nil:
@@ -647,7 +647,7 @@ proc open*(f: var File, filehandle: FileHandle,
            mode: FileMode = fmRead): bool {.tags: [], raises: [], benign.} =
   ## Creates a ``File`` from a `filehandle` with given `mode`.
   ##
-  ## Default mode is readonly. Returns true iff the file could be opened.
+  ## Default mode is readonly. Returns true if the file could be opened.
   ##
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
