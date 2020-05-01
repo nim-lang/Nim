@@ -892,7 +892,7 @@ proc toUnixFloat(t: Time): float {.benign, tags: [], raises: [].} =
     doAssert abs(t.toUnixFloat().fromUnixFloat - t) < initDuration(nanoseconds = 1000)
   t.seconds.float + t.nanosecond / convert(Seconds, Nanoseconds, 1)
 
-since((1, 1)):
+sinceNim((1, 1)):
   export fromUnixFloat
   export toUnixFloat
 
@@ -980,7 +980,7 @@ proc low*(typ: typedesc[Time]): Time =
 # DateTime & Timezone
 #
 
-proc isLeapDay*(t: DateTime): bool {.since: (1,1).} =
+proc isLeapDay*(t: DateTime): bool {.sinceNim: (1, 1).} =
   ## returns whether `t` is a leap day, ie, Feb 29 in a leap year. This matters
   ## as it affects time offset calculations.
   runnableExamples:

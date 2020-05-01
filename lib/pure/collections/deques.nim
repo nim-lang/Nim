@@ -51,8 +51,6 @@
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
 ## * `channels module <channels.html>`_ for inter-thread communication
 
-include system/inclrtl
-
 import math
 
 type
@@ -364,7 +362,7 @@ proc peekLast*[T](deq: Deque[T]): T {.inline.} =
   emptyCheck(deq)
   result = deq.data[(deq.tail - 1) and deq.mask]
 
-proc peekFirst*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
+proc peekFirst*[T](deq: var Deque[T]): var T {.inline, sinceNim: (1, 3).} =
   ## Returns the first element of `deq`, but does not remove it from the deque.
   ##
   ## See also:
@@ -384,7 +382,7 @@ proc peekFirst*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
   emptyCheck(deq)
   result = deq.data[deq.head]
 
-proc peekLast*[T](deq: var Deque[T]): var T {.inline, since: (1, 3).} =
+proc peekLast*[T](deq: var Deque[T]): var T {.inline, sinceNim: (1, 3).} =
   ## Returns the last element of `deq`, but does not remove it from the deque.
   ##
   ## See also:

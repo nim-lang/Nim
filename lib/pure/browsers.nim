@@ -13,7 +13,6 @@
 ## Unstable API.
 
 import strutils
-include "system/inclrtl"
 
 when defined(windows):
   import winlean
@@ -60,7 +59,7 @@ proc openDefaultBrowser*(url: string) =
   doAssert url.len > 0, "URL must not be empty string"
   openDefaultBrowserImpl(url)
 
-proc openDefaultBrowser*() {.since: (1, 1).} =
+proc openDefaultBrowser*() {.sinceNim: (1, 1).} =
   ## Opens the user's default browser without any `url` (blank page). This does not block.
   ## Implements IETF RFC-6694 Section 3, "about:blank" must be reserved for a blank page.
   ##

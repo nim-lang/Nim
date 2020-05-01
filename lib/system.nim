@@ -503,6 +503,40 @@ const
 
 include "system/inclrtl"
 
+template sinceNim*(version: (int, int), body: untyped) {.dirty, used.} =
+  ## Evaluates `body` if the ``(NimMajor, NimMinor)`` is greater than
+  ## or equal to `version`. Usage:
+  ##
+  ## .. code-block:: Nim
+  ##   proc fun*() {.sinceNim: (1, 3).}
+  ##   
+  ##   sinceNim (1, 3): fun()
+  ## 
+  ## See also:
+  ## * `declared <#declared,untyped>`_
+  ## * `compileOption <#sample,string>`_
+  ## * `compileOption <#sample,string,string>`_
+  ## * `std/compilesettings module <https://nim-lang.org/docs/compilesettings.html>`_
+  when (NimMajor, NimMinor) >= version:
+    body
+
+template sinceNim*(version: (int, int, int), body: untyped) {.dirty, used.} =
+  ## Evaluates `body` if ``(NimMajor, NimMinor, NimPatch)`` is greater than 
+  ## or equal to `version`. Usage:
+  ##
+  ## .. code-block:: Nim
+  ##   proc fun*() {.sinceNim: (1, 3, 1).}
+  ##   
+  ##   sinceNim (1, 3, 1): fun()
+  ## 
+  ## See also:
+  ## * `declared <#declared,untyped>`_
+  ## * `compileOption <#sample,string>`_
+  ## * `compileOption <#sample,string,string>`_
+  ## * `std/compilesettings module <https://nim-lang.org/docs/compilesettings.html>`_
+  when (NimMajor, NimMinor, NimPatch) >= version:
+    body
+
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
@@ -2054,8 +2088,7 @@ const
     ## is the major number of Nim's version. Example:
     ##
     ## .. code-block:: Nim
-    ##   when (NimMajor, NimMinor, NimPatch) >=  (1, 3, 1): discard
-    # See also private symbol `since: (1, 3)` reserved for stdlib
+    ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
 
   NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.
@@ -2695,7 +2728,7 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
-macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.sinceNim: (1, 1).} =
   ## returns number of variadic arguments in `x`
   proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
   varargsLenImpl(x)

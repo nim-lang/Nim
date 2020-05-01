@@ -14,8 +14,6 @@
 
 export system.`$` # for backward compatibility
 
-include "system/inclrtl"
-
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
   ##
@@ -71,7 +69,7 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
 
-since (1, 1):
+sinceNim (1, 1):
   template distinctBase*[T](a: T): untyped =
     ## overload for values
     runnableExamples:
@@ -79,15 +77,13 @@ since (1, 1):
       doAssert 12.MyInt.distinctBase == 12
     distinctBase(type(a))(a)
 
-proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait", since: (1, 1).}
-  ## Return number of elements of `T`
+  proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait".}
+    ## Return number of elements of `T`
 
-since (1, 1):
   template tupleLen*(t: tuple): int =
     ## Return number of elements of `t`
     tupleLen(type(t))
 
-since (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
     ## Return `i`\th element of `T`
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
@@ -122,14 +118,14 @@ macro genericParamsImpl(T: typedesc): untyped =
             ret = ai
           of ntyStatic: doAssert false
           else:
-            since (1, 1):
+            sinceNim (1, 1):
               ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           result.add ret
         break
       else:
         error "wrong kind: " & $impl.kind
 
-since (1, 1):
+sinceNim (1, 1):
   template genericParams*(T: typedesc): untyped =
     ## return tuple of generic params for generic `T`
     runnableExamples:

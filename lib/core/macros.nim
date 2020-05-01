@@ -1433,7 +1433,7 @@ else:
     else:
       result = false
 
-proc expectIdent*(n: NimNode, name: string) {.compileTime, since: (1,1).} =
+proc expectIdent*(n: NimNode, name: string) {.compileTime, sinceNim: (1,1).} =
   ## Check that ``eqIdent(n,name)`` holds true. If this is not the
   ## case, compilation aborts with an error message. This is useful
   ## for writing macros that check the AST that is passed to them.

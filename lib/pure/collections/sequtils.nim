@@ -73,8 +73,6 @@
 ##   heterogeneous members
 
 
-include "system/inclrtl"
-
 import macros
 
 when not defined(nimhygiene):
@@ -202,7 +200,7 @@ proc deduplicate*[T](s: openArray[T], isSorted: bool = false): seq[T] =
       for itm in items(s):
         if not result.contains(itm): result.add(itm)
 
-proc minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+proc minIndex*[T](s: openArray[T]): int {.sinceNim: (1, 1).} =
   ## Returns the index of the minimum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -219,7 +217,7 @@ proc minIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
   for i in 1..high(s):
     if s[i] < s[result]: result = i
 
-proc maxIndex*[T](s: openArray[T]): int {.since: (1, 1).} =
+proc maxIndex*[T](s: openArray[T]): int {.sinceNim: (1, 1).} =
   ## Returns the index of the maximum value of `s`.
   ## ``T`` needs to have a ``<`` operator.
   runnableExamples:
@@ -281,7 +279,7 @@ when (NimMajor, NimMinor) <= (1, 0):
 else:
   zipImpl(s1, s2, seq[(S, T)])
 
-proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.since: (1, 1).} =
+proc unzip*[S, T](s: openArray[(S, T)]): (seq[S], seq[T]) {.sinceNim: (1, 1).} =
   ## Returns a tuple of two sequences split out from a sequence of 2-field tuples.
   runnableExamples:
     let
@@ -600,7 +598,7 @@ template keepItIf*(varSeq: seq, pred: untyped) =
       inc(pos)
   setLen(varSeq, pos)
 
-since (1, 1):
+sinceNim (1, 1):
   template countIt*(s, pred: untyped): int =
     ## Returns a count of all the items that fulfilled the predicate.
     ##

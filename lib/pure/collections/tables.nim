@@ -219,8 +219,6 @@
 
 import hashes, math, algorithm
 
-include "system/inclrtl"
-
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]
   KeyValuePairSeq[A, B] = seq[KeyValuePair[A, B]]
@@ -1508,7 +1506,7 @@ proc del*[A, B](t: var OrderedTable[A, B], key: A) =
         rawInsert(t, t.data, move n[h].key, move n[h].val, n[h].hcode, j)
     h = nxt
 
-proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+proc pop*[A, B](t: var OrderedTable[A, B], key: A, val: var B): bool {.sinceNim: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -1982,7 +1980,7 @@ proc del*[A, B](t: OrderedTableRef[A, B], key: A) =
 
   t[].del(key)
 
-proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.since: (1, 1).} =
+proc pop*[A, B](t: OrderedTableRef[A, B], key: A, val: var B): bool {.sinceNim: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -2380,7 +2378,7 @@ proc len*[A](t: CountTable[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
-proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
+proc del*[A](t: var CountTable[A], key: A) {.sinceNim: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
   ## O(n) complexity.
@@ -2399,7 +2397,7 @@ proc del*[A](t: var CountTable[A], key: A) {.since: (1, 1).} =
 
   remove(t, key)
 
-proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.since: (1, 1).} =
+proc pop*[A](t: var CountTable[A], key: A, val: var int): bool {.sinceNim: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is
@@ -2714,7 +2712,7 @@ proc len*[A](t: CountTableRef[A]): int =
   ## Returns the number of keys in ``t``.
   result = t.counter
 
-proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
+proc del*[A](t: CountTableRef[A], key: A) {.sinceNim: (1, 1).} =
   ## Deletes ``key`` from table ``t``. Does nothing if the key does not exist.
   ##
   ## O(n) complexity.
@@ -2724,7 +2722,7 @@ proc del*[A](t: CountTableRef[A], key: A) {.since: (1, 1).} =
   ## * `clear proc<#clear,CountTableRef[A]>`_ to empty the whole table
   del(t[], key)
 
-proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.since: (1, 1).} =
+proc pop*[A](t: CountTableRef[A], key: A, val: var int): bool {.sinceNim: (1, 1).} =
   ## Deletes the ``key`` from the table.
   ## Returns ``true``, if the ``key`` existed, and sets ``val`` to the
   ## mapping of the key. Otherwise, returns ``false``, and the ``val`` is

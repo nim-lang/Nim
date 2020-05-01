@@ -44,8 +44,6 @@
 ##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
 ##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
-include "system/inclrtl"
-
 import strutils, parseutils, base64
 type
   Url* = distinct string
@@ -475,7 +473,7 @@ proc `$`*(u: Uri): string =
     result.add("#")
     result.add(u.anchor)
 
-proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.since: (1, 3).} =
+proc getDataUri*(data, mime: string, encoding = "utf-8"): string {.sinceNim: (1, 3).} =
   ## Convenience proc for `base64.encode` returns a standard Base64 Data URI (RFC-2397)
   ##
   ## **See also:**

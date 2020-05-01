@@ -95,8 +95,6 @@
 ##   runForever()
 ##
 
-include "system/inclrtl"
-
 import asyncdispatch
 import nativesockets
 import net
@@ -745,7 +743,7 @@ when defineSsl:
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
 
-  proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
+  proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.sinceNim: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the given socket.
     ## The handshake must have been completed and the certificate chain must
@@ -782,7 +780,7 @@ proc isClosed*(socket: AsyncSocket): bool =
 
 proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
              flags = {SocketFlag.SafeDisconn}): owned(Future[void])
-            {.async, since: (1, 3).} =
+            {.async, sinceNim: (1, 3).} =
   ## This proc sends ``data`` to the specified ``address``, which may be an IP
   ## address or a hostname. If a hostname is specified this function will try
   ## each IP of that hostname. The returned future will complete once all data
@@ -829,7 +827,7 @@ proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
 proc recvFrom*(socket: AsyncSocket, size: int,
                flags = {SocketFlag.SafeDisconn}):
               owned(Future[tuple[data: string, address: string, port: Port]])
-              {.async, since: (1, 3).} =
+              {.async, sinceNim: (1, 3).} =
   ## Receives a datagram data from ``socket``, which must be at least of size
   ## ``size``. Returned future will complete once one datagram has been received
   ## and will return tuple with: data of packet received; and address and port

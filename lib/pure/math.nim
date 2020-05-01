@@ -52,7 +52,6 @@
 ##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
-include "system/inclrtl"
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
@@ -1068,7 +1067,7 @@ proc gcd*(x, y: SomeInteger): SomeInteger =
     x -= y
   y shl shift
 
-proc gcd*[T](x: openArray[T]): T {.since: (1, 1).} =
+proc gcd*[T](x: openArray[T]): T {.sinceNim: (1, 1).} =
   ## Computes the greatest common (positive) divisor of the elements of ``x``.
   ##
   ## See also:
@@ -1091,7 +1090,7 @@ proc lcm*[T](x, y: T): T =
     doAssert lcm(13, 39) == 39
   x div gcd(x, y) * y
 
-proc lcm*[T](x: openArray[T]): T {.since: (1, 1).} =
+proc lcm*[T](x: openArray[T]): T {.sinceNim: (1, 1).} =
   ## Computes the least common multiple of the elements of ``x``.
   ##
   ## See also:

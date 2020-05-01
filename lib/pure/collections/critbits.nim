@@ -12,8 +12,6 @@
 ## by Adam Langley.
 ## (A crit bit tree is a form of `radix tree`:idx: or `patricia trie`:idx:.)
 
-include "system/inclrtl"
-
 type
   NodeObj[T] {.acyclic.} = object
     byte: int ## byte index of the difference
@@ -518,7 +516,7 @@ proc `$`*[T](c: CritBitTree[T]): string =
         result.addQuoted(val)
     result.add("}")
 
-proc commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, since((1, 3)).} =
+proc commonPrefixLen*[T](c: CritBitTree[T]): int {.inline, sinceNim((1, 3)).} =
   ## Returns longest common prefix length of all keys of `c`.
   ## If `c` is empty, returns 0.
   runnableExamples:

@@ -94,8 +94,6 @@
 ## * `asyncstreams module <asyncstreams.html>`_
 ## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
 
-include "system/inclrtl"
-
 const taintMode = compileOption("taintmode")
 
 proc newEIO(msg: string): owned(ref IOError) =
@@ -935,7 +933,7 @@ proc readStrPrivate(s: Stream, length: int, str: var TaintedString) =
     let L = readData(s, cstring(str.string), length)
   if L != len(str): setLen(str.untaint, L)
 
-proc readStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+proc readStr*(s: Stream, length: int, str: var TaintedString) {.sinceNim: (1, 3).} =
   ## Reads a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   readStrPrivate(s, length, str)
@@ -961,7 +959,7 @@ proc peekStrPrivate(s: Stream, length: int, str: var TaintedString) =
     let L = peekData(s, cstring(str.string), length)
   if L != len(str): setLen(str.untaint, L)
 
-proc peekStr*(s: Stream, length: int, str: var TaintedString) {.since: (1, 3).} =
+proc peekStr*(s: Stream, length: int, str: var TaintedString) {.sinceNim: (1, 3).} =
   ## Peeks a string of length `length` from the stream `s`. Raises `IOError` if
   ## an error occurred.
   peekStrPrivate(s, length, str)

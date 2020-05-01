@@ -49,12 +49,13 @@ when defined(nimlocks):
 else:
   {.pragma: benign, gcsafe.}
 
-template isSince(version: (int, int)): bool =
+template isSince(version: (int, int)): bool {.used.} =
   (NimMajor, NimMinor) >= version
-template isSince(version: (int, int, int)): bool =
+template isSince(version: (int, int, int)): bool {.used.} =
   (NimMajor, NimMinor, NimPatch) >= version
 
-template since(version, body: untyped) {.dirty, used.} =
+template since(version, body: untyped) {.dirty, used, deprecated:
+  "Deprecated since 1.3: Use 'system.sinceNim'".} =
   ## Usage:
   ##
   ## .. code-block:: Nim

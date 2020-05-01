@@ -64,8 +64,6 @@
 ##     socket.acceptAddr(client, address)
 ##     echo("Client connected from: ", address)
 
-include "system/inclrtl"
-
 import nativesockets, os, strutils, times, sets, options, std/monotimes
 from ssl_certs import scanSSLCertificates
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
@@ -758,7 +756,7 @@ when defineSsl:
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
 
-  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.since: (1, 1).} =
+  proc getPeerCertificates*(sslHandle: SslPtr): seq[Certificate] {.sinceNim: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the OpenSSL connection represented by ``sslHandle``.
     ## The handshake must have been completed and the certificate chain must
@@ -777,7 +775,7 @@ when defineSsl:
       let x509 = cast[PX509](OPENSSL_sk_value(stack, i))
       result.add(i2d_X509(x509))
 
-  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.since: (1, 1).} =
+  proc getPeerCertificates*(socket: Socket): seq[Certificate] {.sinceNim: (1, 1).} =
     ## Returns the certificate chain received by the peer we are connected to
     ## through the given socket.
     ## The handshake must have been completed and the certificate chain must

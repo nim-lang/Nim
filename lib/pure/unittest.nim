@@ -96,8 +96,6 @@
 import
   macros, strutils, streams, times, sets, sequtils
 
-include "system/inclrtl"
-
 when declared(stdout):
   import os
 
@@ -190,7 +188,7 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
   keepIf(formatters, proc (x: OutputFormatter): bool =
     x != formatter)
 
-proc resetOutputFormatters* {.since: (1, 1).} =
+proc resetOutputFormatters* {.sinceNim: (1, 1).} =
   formatters = @[]
 
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,

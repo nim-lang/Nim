@@ -10,8 +10,6 @@
 ## This module implements nice syntactic sugar based on Nim's
 ## macro system.
 
-include system/inclrtl
-
 import macros
 import typetraits
 
@@ -165,7 +163,7 @@ template distinctBase*(T: typedesc): typedesc {.deprecated: "use distinctBase fr
   ## reverses ``type T = distinct A``; works recursively.
   typetraits.distinctBase(T)
 
-macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).} =
+macro capture*(locals: varargs[typed], body: untyped): untyped {.sinceNim: (1, 1).} =
   ## Useful when creating a closure in a loop to capture some local loop variables
   ## by their current iteration values. Example:
   ##
@@ -220,7 +218,7 @@ when (NimMajor, NimMinor) >= (1, 1):
     result.add tmp
 
 
-proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.since: (1, 1).} =
+proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.sinceNim: (1, 1).} =
   # Looks for the last statement of the last statement, etc...
   case n.kind
   of nnkIfExpr, nnkIfStmt, nnkTryStmt, nnkCaseStmt:
@@ -257,7 +255,7 @@ proc transLastStmt(n, res, bracketExpr: NimNode): (NimNode, NimNode, NimNode) {.
     template adder(res, v) = res.add(v)
     result[0] = getAst(adder(res, n))
 
-macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
+macro collect*(init, body: untyped): untyped {.sinceNim: (1, 1).} =
   ## Comprehension for seq/set/table collections. ``init`` is
   ## the init call, and so custom collections are supported.
   ##
@@ -311,7 +309,7 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
 when isMainModule:
-  since (1, 1):
+  sinceNim (1, 1):
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]

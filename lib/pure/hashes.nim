@@ -44,8 +44,6 @@
 ## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
 ## * `tables module <tables.html>`_ for hash tables
 
-include "system/inclrtl"
-
 type
   Hash* = int ## A hash value. Hash tables using these values should
                ## always have a size of a power of two and can use the ``and``
@@ -177,7 +175,7 @@ proc hash*[T: proc](x: T): Hash {.inline.} =
   else:
     result = hash(pointer(x))
 
-proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, since: (1, 3).} =
+proc hashIdentity*[T: Ordinal|enum](x: T): Hash {.inline, sinceNim: (1, 3).} =
   ## The identity hash.  I.e. ``hashIdentity(x) = x``.
   cast[Hash](ord(x))
 

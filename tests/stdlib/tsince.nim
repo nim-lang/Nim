@@ -1,9 +1,7 @@
-include system/inclrtl
-
-proc fun1(): int {.since: (1,3).} = 12
-proc fun1Bad(): int {.since: (99,3).} = 12
-proc fun2(): int {.since: (1,3,1).} = 12
-proc fun2Bad(): int {.since: (99,3,1).} = 12
+proc fun1(): int {.sinceNim: (1, 3).} = 12
+proc fun1Bad(): int {.sinceNim: (99, 3).} = 12
+proc fun2(): int {.sinceNim: (1, 3, 1).} = 12
+proc fun2Bad(): int {.sinceNim: (99, 3, 1).} = 12
 
 doAssert fun1() == 12
 doAssert declared(fun1)
@@ -14,19 +12,19 @@ doAssert declared(fun2)
 doAssert not declared(fun2Bad)
 
 var ok = false
-since (1, 3):
+sinceNim (1, 3):
   ok = true
 doAssert ok
 
 ok = false
-since (1, 3, 1):
+sinceNim (1, 3, 1):
   ok = true
 doAssert ok
 
-since (99,3):
+sinceNim (99, 3):
   doAssert false
 
 when false:
   # pending https://github.com/timotheecour/Nim/issues/129
   # Error: cannot attach a custom pragma to 'fun3'
-  template fun3(): int {.since: (1, 3).} = 12
+  template fun3(): int {.sinceNim: (1, 3).} = 12

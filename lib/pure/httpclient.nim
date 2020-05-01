@@ -200,8 +200,6 @@
 ##    let client = newHttpClient(maxRedirects = 0)
 ##
 
-include "system/inclrtl"
-
 import net, strutils, uri, parseutils, base64, os, mimetypes, streams,
   math, random, httpcore, times, tables, streams, std/monotimes
 import asyncnet, asyncdispatch, asyncfile
@@ -332,7 +330,7 @@ proc newMultipartData*: MultipartData =
   ## Constructs a new ``MultipartData`` object.
   MultipartData()
 
-proc `$`*(data: MultipartData): string {.since: (1, 1).} =
+proc `$`*(data: MultipartData): string {.sinceNim: (1, 1).} =
   ## convert MultipartData to string so it's human readable when echo
   ## see https://github.com/nim-lang/Nim/issues/11863
   const sep = "-".repeat(30)

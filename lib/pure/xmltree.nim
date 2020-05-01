@@ -35,7 +35,6 @@
 ## * `htmlgen module <htmlgen.html>`_ for html code generator
 
 import macros, strtabs, strutils
-include "system/inclrtl"
 
 type
   XmlNode* = ref XmlNodeObj ## An XML tree consisting of XML nodes.
@@ -103,7 +102,7 @@ proc newText*(text: string): XmlNode =
   result = newXmlNode(xnText)
   result.fText = text
 
-proc newVerbatimText*(text: string): XmlNode {.since:(1, 3).} = 
+proc newVerbatimText*(text: string): XmlNode {.sinceNim: (1, 3).} = 
   ## Creates a new ``XmlNode`` of kind ``xnVerbatimText`` with the text `text`.
   ## **Since**: Version 1.3.
   result = newXmlNode(xnVerbatimText)

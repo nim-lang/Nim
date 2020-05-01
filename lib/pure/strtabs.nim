@@ -325,7 +325,7 @@ proc clear*(s: StringTableRef, mode: StringTableMode) {.
   for i in 0..<s.data.len:
     s.data[i].hasValue = false
 
-proc clear*(s: StringTableRef) {.since: (1, 1).} =
+proc clear*(s: StringTableRef) {.sinceNim: (1, 1).} =
   ## Resets a string table to be empty again without changing the mode.
   s.clear(s.mode)
 

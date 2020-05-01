@@ -1,12 +1,10 @@
-include system/inclrtl
-
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`
   ## converted to a decimal string. ``$`` is Nim's general way of
   ## spelling `toString`:idx:.
 
 when defined(js):
-  since (1, 3):
+  sinceNim (1, 3):
     proc `$`*(x: uint): string =
       ## Caveat: currently implemented as $(cast[int](x)), tied to current
       ## semantics of js' Number type.

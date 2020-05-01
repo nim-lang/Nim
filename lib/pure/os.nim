@@ -48,7 +48,7 @@ import
 
 const weirdTarget = defined(nimscript) or defined(js)
 
-since (1, 1):
+sinceNim (1, 1):
   const
     invalidFilenameChars* = {'/', '\\', ':', '*', '?', '"', '<', '>', '|', '^', '\0'} ## \
     ## Characters that may produce invalid filenames across Linux, Windows, Mac, etc.
@@ -135,7 +135,7 @@ proc normalizePathEnd(path: string, trailingSep = false): string =
   result = path
   result.normalizePathEnd(trailingSep)
 
-since((1, 1)):
+sinceNim((1, 1)):
   export normalizePathEnd
 
 template endsWith(a: string, b: set[char]): bool =
@@ -454,7 +454,7 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
   when not defined(nimOldRelativePathBehavior):
     if result.len == 0: result.add "."
 
-proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
+proc isRelativeTo*(path: string, base: string): bool {.sinceNim: (1, 1).} =
   ## Returns true if `path` is relative to `base`.
   runnableExamples:
     doAssert isRelativeTo("./foo//bar", "foo")
@@ -3258,7 +3258,7 @@ proc setLastModificationTime*(file: string, t: times.Time) {.noNimScript.} =
     discard h.closeHandle
     if res == 0'i32: raiseOSError(osLastError(), file)
 
-func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1, 1).} =
+func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.sinceNim: (1, 1).} =
   ## Returns true if ``filename`` is valid for crossplatform use.
   ##
   ## This is useful if you want to copy or save files across Windows, Linux, Mac, etc.
