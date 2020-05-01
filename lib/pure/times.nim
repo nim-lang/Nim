@@ -194,6 +194,7 @@
 
 import strutils, math, options
 
+import std/private/since
 include "system/inclrtl"
 
 when defined(js):
@@ -980,7 +981,7 @@ proc low*(typ: typedesc[Time]): Time =
 # DateTime & Timezone
 #
 
-proc isLeapDay*(t: DateTime): bool {.since: (1,1).} =
+proc isLeapDay*(t: DateTime): bool {.since: (1, 1).} =
   ## returns whether `t` is a leap day, ie, Feb 29 in a leap year. This matters
   ## as it affects time offset calculations.
   runnableExamples:

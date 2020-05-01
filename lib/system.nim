@@ -503,6 +503,8 @@ const
 
 include "system/inclrtl"
 
+import std/private/since
+
 const NoFakeVars* = defined(nimscript) ## `true` if the backend doesn't support \
   ## "fake variables" like `var EBADF {.importc.}: cint`.
 
@@ -2054,8 +2056,8 @@ const
     ## is the major number of Nim's version. Example:
     ##
     ## .. code-block:: Nim
-    ##   when (NimMajor, NimMinor, NimPatch) >=  (1, 3, 1): discard
-    # See also private symbol `since: (1, 3)` reserved for stdlib
+    ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
+    # see also std/private/since
 
   NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.

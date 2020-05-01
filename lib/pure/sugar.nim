@@ -10,8 +10,7 @@
 ## This module implements nice syntactic sugar based on Nim's
 ## macro system.
 
-include system/inclrtl
-
+import std/private/since
 import macros
 import typetraits
 

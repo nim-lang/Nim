@@ -52,7 +52,7 @@
 ##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
-include "system/inclrtl"
+import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 

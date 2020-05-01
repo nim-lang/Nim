@@ -12,9 +12,8 @@
 ##
 ## Unstable API.
 
+import std/private/since
 export system.`$` # for backward compatibility
-
-include "system/inclrtl"
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
@@ -79,15 +78,13 @@ since (1, 1):
       doAssert 12.MyInt.distinctBase == 12
     distinctBase(type(a))(a)
 
-proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait", since: (1, 1).}
-  ## Return number of elements of `T`
+  proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait".}
+    ## Return number of elements of `T`
 
-since (1, 1):
   template tupleLen*(t: tuple): int =
     ## Return number of elements of `t`
     tupleLen(type(t))
 
-since (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
     ## Return `i`\th element of `T`
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`

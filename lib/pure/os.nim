@@ -42,6 +42,7 @@
 ## * `streams module <streams.html>`_
 
 include "system/inclrtl"
+import std/private/since
 
 import
   strutils, pathnorm
