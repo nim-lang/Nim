@@ -59,7 +59,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true iff the type ``t`` is safe to use for
+  ## This trait returns true if the type ``t`` is safe to use for
   ## `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
