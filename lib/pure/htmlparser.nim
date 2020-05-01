@@ -988,7 +988,7 @@ proc entityToRune*(entity: string): Rune =
     "DoubleRightArrow": Rune(0x021D2)
   of "dArr", "Downarrow", "DoubleDownArrow": Rune(0x021D3)
   of "hArr", "Leftrightarrow", "DoubleLeftRightArrow",
-    "iff": Rune(0x021D4)
+    "if": Rune(0x021D4)
   of "vArr", "Updownarrow", "DoubleUpDownArrow": Rune(0x021D5)
   of "nwArr": Rune(0x021D6)
   of "neArr": Rune(0x021D7)

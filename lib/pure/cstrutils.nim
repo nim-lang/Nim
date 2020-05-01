@@ -31,7 +31,7 @@ when defined(js):
 else:
   proc startsWith*(s, prefix: cstring): bool {.noSideEffect,
     rtl, extern: "csuStartsWith".} =
-    ## Returns true iff ``s`` starts with ``prefix``.
+    ## Returns true if ``s`` starts with ``prefix``.
     ##
     ## If ``prefix == ""`` true is returned.
     ## 
@@ -44,7 +44,7 @@ else:
 
   proc endsWith*(s, suffix: cstring): bool {.noSideEffect,
     rtl, extern: "csuEndsWith".} =
-    ## Returns true iff ``s`` ends with ``suffix``.
+    ## Returns true if ``s`` ends with ``suffix``.
     ##
     ## If ``suffix == ""`` true is returned.
     ## 
@@ -64,9 +64,9 @@ proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect,
   ## NOT be used to compare Nim identifier names. use `macros.eqIdent`
   ## for that.  Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   ## 
   ## Not supported for JS backend, use `strutils.cmpIgnoreStyle
   ## <https://nim-lang.org/docs/strutils.html#cmpIgnoreStyle%2Cstring%2Cstring>`_ instead.
@@ -86,9 +86,9 @@ proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect,
   rtl, extern: "csuCmpIgnoreCase".} =
   ## Compares two strings in a case insensitive manner. Returns:
   ##
-  ## | 0 iff a == b
-  ## | < 0 iff a < b
-  ## | > 0 iff a > b
+  ## | 0 if a == b
+  ## | < 0 if a < b
+  ## | > 0 if a > b
   ## 
   ## Not supported for JS backend, use `strutils.cmpIgnoreCase
   ## <https://nim-lang.org/docs/strutils.html#cmpIgnoreCase%2Cstring%2Cstring>`_ instead.

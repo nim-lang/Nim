@@ -54,7 +54,7 @@ proc rawGet[T](c: CritBitTree[T], key: string): Node[T] =
       return if it.key == key: it else: nil
 
 proc contains*[T](c: CritBitTree[T], key: string): bool {.inline.} =
-  ## Returns true iff `c` contains the given `key`.
+  ## Returns true if `c` contains the given `key`.
   runnableExamples:
     var c: CritBitTree[void]
     incl(c, "key")
@@ -156,7 +156,7 @@ proc excl*[T](c: var CritBitTree[T], key: string) =
   discard exclImpl(c, key)
 
 proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
-  ## Returns true iff `c` does not contain the given `key`. If the key
+  ## Returns true if `c` does not contain the given `key`. If the key
   ## does exist, c.excl(key) is performed.
   ##
   ## See also:
@@ -178,7 +178,7 @@ proc missingOrExcl*[T](c: var CritBitTree[T], key: string): bool =
   result = c.count == oldCount
 
 proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
-  ## Returns true iff `c` contains the given `key`. If the key does not exist
+  ## Returns true if `c` contains the given `key`. If the key does not exist
   ## ``c[key] = val`` is performed.
   ##
   ## See also:
@@ -204,7 +204,7 @@ proc containsOrIncl*[T](c: var CritBitTree[T], key: string, val: T): bool =
     if not result: n.val = val
 
 proc containsOrIncl*(c: var CritBitTree[void], key: string): bool =
-  ## Returns true iff `c` contains the given `key`. If the key does not exist
+  ## Returns true if `c` contains the given `key`. If the key does not exist
   ## it is inserted into `c`.
   ##
   ## See also:

@@ -134,7 +134,7 @@ proc mgetOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): var B =
     mgetOrPutImpl(enlarge)
 
 proc hasKeyOrPut*[A, B](t: var SharedTable[A, B], key: A, val: B): bool =
-  ## returns true iff `key` is in the table, otherwise inserts `value`.
+  ## returns true if `key` is in the table, otherwise inserts `value`.
   withLock t:
     hasKeyOrPutImpl(enlarge)
 
