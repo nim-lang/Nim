@@ -691,7 +691,9 @@ proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ## Returns the length of a compatible string. This is sometimes
-  ## an O(n) operation.
+  ## an O(n) operation. On the JS backend this may count Unicode
+  ## code points instead of characters, similar to `unicode.runeLen
+  ## <https://nim-lang.org/docs/unicode.html#runeLen%2Cstring>`_
   ##
   ## .. code-block:: Nim
   ##   var str: cstring = "Hello world!"
@@ -2137,16 +2139,12 @@ when notJSnotNims:
 
 when not defined(js):
   proc cmp(x, y: string): int =
-    when defined(nimscript):
+    when nimvm:
       if x < y: result = -1
       elif x > y: result = 1
       else: result = 0
     else:
-      when nimvm:
-        if x < y: result = -1
-        elif x > y: result = 1
-        else: result = 0
-      else:
+      when not defined(nimscript):
         let minlen = min(x.len, y.len)
         result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
         if result == 0:
