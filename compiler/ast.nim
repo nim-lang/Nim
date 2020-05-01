@@ -1931,6 +1931,3 @@ proc toHumanStr*(kind: TSymKind): string =
 proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
-
-when not defined(nimHasSinkInference):
-  {.pragma: nosinks.}

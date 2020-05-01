@@ -527,6 +527,9 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
   else:
     false
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
   var tos = tos

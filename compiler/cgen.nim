@@ -1824,6 +1824,9 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)

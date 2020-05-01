@@ -377,6 +377,9 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
 include hlo, seminst, semcall
 
 when false:
