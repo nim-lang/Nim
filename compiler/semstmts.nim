@@ -12,7 +12,7 @@
 
 const
   errNoSymbolToBorrowFromFound = "no symbol to borrow from found"
-  errDiscardValueX = "value of type '$1' has to be discarded"
+  errDiscardValueX = "value of type '$1' has to be used (or discarded)"
   errInvalidDiscard = "statement returns no value that can be discarded"
   errInvalidControlFlowX = "invalid control flow: $1"
   errSelectorMustBeOfCertainTypes = "selector must be of an ordinal type, float or string"
@@ -144,7 +144,7 @@ proc discardCheck(c: PContext, result: PNode, flags: TExprFlags) =
       var n = result
       while n.kind in skipForDiscardable: n = n.lastSon
       var s = "expression '" & $n & "' is of type '" &
-          result.typ.typeToString & "' and has to be discarded"
+          result.typ.typeToString & "' and has to be used (or discarded)"
       if result.info.line != n.info.line or
           result.info.fileIndex != n.info.fileIndex:
         s.add "; start of expression here: " & c.config$result.info
