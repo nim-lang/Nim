@@ -1,5 +1,5 @@
 discard """
-  errormsg: '''expression 'premultiply(app.gradient[i])' is of type 'Rgba8' and has to be discarded'''
+  errormsg: '''expression 'premultiply(app.gradient[i])' is of type 'Rgba8' and has to be used (or discarded)'''
   line: 22
 """
 
