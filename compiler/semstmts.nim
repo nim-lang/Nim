@@ -998,7 +998,7 @@ proc semCase(c: PContext, n: PNode; flags: TExprFlags): PNode =
       x[0] = semExprBranchScope(c, x[0])
       typ = commonType(typ, x[0])
       if (chckCovered and covered == toCover(c, n[0].typ)) or hasElse:
-        message(c.config, x.info, warnTrailingElse)
+        message(c.config, x.info, warnUnreachableElse)
       hasElse = true
       chckCovered = false
     else:
