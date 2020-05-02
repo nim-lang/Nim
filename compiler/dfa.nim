@@ -639,8 +639,10 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.
+      # bug #14159, we cannot reason about sinkParam[].location as it can
+      # still be shared for tyRef.
       n = n[0]
-      return n.kind == nkSym and n.sym.owner == owner and (isSinkParam(n.sym) or
+      return n.kind == nkSym and n.sym.owner == owner and (
           n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
     else:
       break
