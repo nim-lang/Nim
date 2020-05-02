@@ -12,7 +12,7 @@
 ## by Adam Langley.
 ## (A crit bit tree is a form of `radix tree`:idx: or `patricia trie`:idx:.)
 
-include "system/inclrtl"
+import std/private/since
 
 type
   NodeObj[T] {.acyclic.} = object

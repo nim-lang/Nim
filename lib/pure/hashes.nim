@@ -44,7 +44,7 @@
 ## * `std/sha1 module <sha1.html>`_ for a sha1 encoder and decoder
 ## * `tables module <tables.html>`_ for hash tables
 
-include "system/inclrtl"
+import std/private/since
 
 type
   Hash* = int ## A hash value. Hash tables using these values should

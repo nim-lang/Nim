@@ -1,4 +1,4 @@
-include system/inclrtl
+import std/private/since
 
 proc `$`*(x: int): string {.magic: "IntToStr", noSideEffect.}
   ## The stringify operator for an integer argument. Returns `x`

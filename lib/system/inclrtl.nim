@@ -48,21 +48,3 @@ when defined(nimlocks):
   {.pragma: benign, gcsafe, locks: 0.}
 else:
   {.pragma: benign, gcsafe.}
-
-template isSince(version: (int, int)): bool =
-  (NimMajor, NimMinor) >= version
-template isSince(version: (int, int, int)): bool =
-  (NimMajor, NimMinor, NimPatch) >= version
-
-template since(version, body: untyped) {.dirty, used.} =
-  ## Usage:
-  ##
-  ## .. code-block:: Nim
-  ##   proc fun*() {since: (1, 3).}
-  ##   proc fun*() {since: (1, 3, 1).}
-  ##
-  ## Limitation: can't be used to annotate a template (eg typetraits.get), would
-  ## error: cannot attach a custom pragma.
-  # `dirty` needed because `NimMajor` may not yet be defined in caller.
-  when isSince(version):
-    body
