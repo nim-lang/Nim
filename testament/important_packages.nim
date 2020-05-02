@@ -64,6 +64,10 @@ pkg1 "markdown"
 pkg1 "memo"
 pkg1 "msgpack4nim", false, "nim c -r tests/test_spec.nim"
 
+# these two are special snowflakes
+pkg1 "nimcrypto", false, "nim c -r tests/testall.nim"
+pkg1 "stint", false, "nim c -o:stintt -r stint.nim"
+
 
 # packages N-Z
 pkg2 "nake", false, "nim c nakefile.nim"
@@ -77,7 +81,6 @@ when defined(osx):
   # it currently would fail work if a package is already installed.
   doAssert execShellCmd("brew ls --versions gtk+3 || brew install gtk+3") == 0
 pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
-pkg2 "nimcrypto", false, "nim c -r tests/testall.nim"
 pkg2 "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg2 "nimes", true, "nim c src/nimes.nim"
 pkg2 "nimfp", true, "nim c -o:nfp -r src/fp.nim"
@@ -118,7 +121,6 @@ pkg2 "sdl1", false, "nim c -r src/sdl.nim"
 pkg2 "sdl2_nim", false, "nim c -r sdl2/sdl.nim"
 pkg2 "sigv4", true, "nim c --gc:arc -r sigv4.nim", "https://github.com/disruptek/sigv4"
 pkg2 "snip", false, "nimble test", "https://github.com/genotrance/snip"
-pkg2 "stint", false, "nim c -o:stintt -r stint.nim"
 pkg2 "strslice"
 pkg2 "strunicode", true, "nim c -r src/strunicode.nim"
 pkg2 "synthesis"
