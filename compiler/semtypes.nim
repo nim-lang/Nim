@@ -695,7 +695,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     of nkElse:
       checkSonsLen(b, 1, c.config)
       if chckCovered and covered == toCover(c, a[0].typ):
-        localError(c.config, b.info, "invalid else, all cases are already covered")
+        message(c.config, b.info, warnUnreachableElse)
       chckCovered = false
     else: illFormedAst(n, c.config)
     delSon(b, b.len - 1)
