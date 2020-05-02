@@ -1823,9 +1823,11 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
         if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
           result = isNone
     else:
-      localError(c.c.graph.config, f.n.info, "type expected")
-      result = isNone
-
+      # bug #14136: other types are just like 'tyStatic' here:
+      result = typeRel(c, a, reevaluated.typ)
+      if result != isNone and reevaluated.typ.n != nil:
+        if not exprStructuralEquivalent(aOrig.n, reevaluated.typ.n):
+          result = isNone
   of tyNone:
     if a.kind == tyNone: result = isEqual
   else:
