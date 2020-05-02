@@ -271,6 +271,9 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
     const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(pdf):
       exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
+      let tex = splitFile(d).name & ".tex"
+      removeFile("doc" / tex)
+      moveFile(tex, "doc" / tex)
       # call LaTeX twice to get cross references right:
       exec(pdflatexcmd & changeFileExt(d, "tex"))
       exec(pdflatexcmd & changeFileExt(d, "tex"))
