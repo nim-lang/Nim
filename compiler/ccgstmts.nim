@@ -1267,13 +1267,8 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-<<<<<<< HEAD
-      p.procSec(cpsLocals).add(ropecg(p.module, "NI oldNimErrFin$1_;$n", [lab]))
-      linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = 0;$n", [lab])
-=======
       p.procSec(cpsLocals).add(ropecg(p.module, "NIM_BOOL oldNimErrFin$1_;$n", [lab]))
       linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = NIM_FALSE;$n", [lab])
->>>>>>> 49b28f19978b45e4a8868e68a07b8f28807e4705
       genStmts(p, t[i][0])
       # this is correct for all these cases:
       # 1. finally is run during ordinary control flow
