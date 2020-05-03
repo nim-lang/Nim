@@ -15,8 +15,6 @@ import macros
 import typetraits
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
-  #echo treeRepr(p)
-  #echo treeRepr(b)
   result = newNimNode(nnkProcTy)
   var formalParams = newNimNode(nnkFormalParams)
 
@@ -24,16 +22,23 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
   case p.kind
   of nnkPar, nnkTupleConstr:
+    var untypedBeforeColon = 0
     for i in 0 ..< p.len:
       let ident = p[i]
       var identDefs = newNimNode(nnkIdentDefs)
       case ident.kind
       of nnkExprColonExpr:
+        let t = ident[1]
+        # + 1 here because of return type in params
+        for j in (i - untypedBeforeColon + 1) .. i:
+          formalParams[j][1] = t
+        untypedBeforeColon = 0
         identDefs.add ident[0]
         identDefs.add ident[1]
       else:
         identDefs.add newIdentNode("i" & $i)
         identDefs.add(ident)
+        inc untypedBeforeColon
       identDefs.add newEmptyNode()
       formalParams.add identDefs
   else:
@@ -45,8 +50,6 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
 
   result.add formalParams
   result.add newEmptyNode()
-  #echo(treeRepr(result))
-  #echo(result.toStrLit())
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
@@ -57,57 +60,79 @@ macro `=>`*(p, b: untyped): untyped =
   ##     f(2, 2)
   ##
   ##   passTwoAndTwo((x, y) => x + y) # 4
+  proc checkPragma(ex, prag: var NimNode) =
+    if ex.kind == nnkPragmaExpr:
+      prag = p[1]
+      if ex.kind == nnkPar and ex.len == 1:
+        ex = ex[0]
 
-  #echo treeRepr(p)
-  #echo(treeRepr(b))
-  var params: seq[NimNode] = @[newIdentNode("auto")]
+  var
+    params = @[ident"auto"]
+    name = newEmptyNode()
+    kind = nnkLambda
+    pragma = newEmptyNode()
+    p = p
+
+  checkPragma(p, pragma)
+
+  if p.kind == nnkInfix and p[0].kind == nnkIdent and p[0].eqIdent"->":
+    params[0] = p[2]
+    p = p[1]
+
+  checkPragma(p, pragma) # check again after -> transform
+
+  if p.kind == nnkCall:
+    # foo(x, y) => x + y
+    kind = nnkProcDef
+    name = p[0]
+    let newP = newNimNode(nnkPar)
+    for i in 1..<p.len:
+      newP.add(p[i])
+    p = newP
 
   case p.kind
   of nnkPar, nnkTupleConstr:
-    for c in children(p):
+    var untypedBeforeColon = 0
+    for i, c in p:
       var identDefs = newNimNode(nnkIdentDefs)
       case c.kind
       of nnkExprColonExpr:
+        let t = c[1]
+        # + 1 here because of return type in params
+        for j in (i - untypedBeforeColon + 1) .. i:
+          params[j][1] = t
+        untypedBeforeColon = 0
         identDefs.add(c[0])
-        identDefs.add(c[1])
+        identDefs.add(t)
         identDefs.add(newEmptyNode())
       of nnkIdent:
         identDefs.add(c)
         identDefs.add(newIdentNode("auto"))
         identDefs.add(newEmptyNode())
+        inc untypedBeforeColon
       of nnkInfix:
-        if c[0].kind == nnkIdent and c[0].ident == !"->":
+        if c[0].kind == nnkIdent and c[0].eqIdent"->":
           var procTy = createProcType(c[1], c[2])
           params[0] = procTy[0][0]
           for i in 1 ..< procTy[0].len:
             params.add(procTy[0][i])
         else:
-          error("Expected proc type (->) got (" & $c[0].ident & ").")
+          error("Expected proc type (->) got (" & c[0].strVal & ").", c)
         break
       else:
-        echo treeRepr c
-        error("Incorrect procedure parameter list.")
+        error("Incorrect procedure parameter list.", c)
       params.add(identDefs)
   of nnkIdent:
     var identDefs = newNimNode(nnkIdentDefs)
     identDefs.add(p)
-    identDefs.add(newIdentNode("auto"))
+    identDefs.add(ident"auto")
     identDefs.add(newEmptyNode())
     params.add(identDefs)
-  of nnkInfix:
-    if p[0].kind == nnkIdent and p[0].ident == !"->":
-      var procTy = createProcType(p[1], p[2])
-      params[0] = procTy[0][0]
-      for i in 1 ..< procTy[0].len:
-        params.add(procTy[0][i])
-    else:
-      error("Expected proc type (->) got (" & $p[0].ident & ").")
   else:
-    error("Incorrect procedure parameter list.")
-  result = newProc(params = params, body = b, procType = nnkLambda)
-  #echo(result.treeRepr)
-  #echo(result.toStrLit())
-  #return result # TODO: Bug?
+    error("Incorrect procedure parameter list.", p)
+  result = newProc(body = b, params = params,
+                   pragmas = pragma, name = name,
+                   procType = kind)
 
 macro `->`*(p, b: untyped): untyped =
   ## Syntax sugar for procedure types.

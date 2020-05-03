@@ -61,6 +61,22 @@
 - `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
+- `sugar.=>` and `sugar.->` changes: Previously `(x, y: int)` was transformed
+  into `(x: auto, y: int)`, it now becomes `(x: int, y: int)` in consistency
+  with regular proc definitions (although you cannot use semicolons).
+  
+  Pragmas and using a name are now allowed on the lefthand side of `=>`. Here
+  is an aggregate example of these changes:
+  ```nim
+  import sugar
+
+  foo(x, y: int) {.noSideEffect.} => x + y
+
+  # is transformed into
+
+  proc foo(x, y: int): auto {.noSideEffect.} = x + y
+  ```
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim

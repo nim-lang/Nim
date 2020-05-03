@@ -1295,7 +1295,7 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
       foundFields.add fStr
     else:
       error("Ambiguous enums cannot be parsed, field " & $fStr &
-        " appears multiple times!")
+        " appears multiple times!", f)
     inc fNum
   # finally add else branch to raise or use default
   if default == nil:
