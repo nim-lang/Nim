@@ -281,10 +281,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
             : "r" (newVal), "m" (*ptr), "a" (oldVal)
             : "memory");
 
-    if (ret)
-      return 0;
-    else
-      return 1;
+    return ret;
 }
 """.}
   else:
@@ -301,10 +298,7 @@ static int __tcc_cas(int *ptr, int oldVal, int newVal)
             : "r" (newVal), "m" (*ptr), "a" (oldVal)
             : "memory");
 
-    if (ret)
-      return 0;
-    else
-      return 1;
+    return ret;
 }
 """.}
 
