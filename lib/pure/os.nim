@@ -1079,7 +1079,7 @@ when defined(windows) and not weirdTarget:
     template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
     template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: untyped): untyped = $f.cFileName
+    template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
