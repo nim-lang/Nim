@@ -62,8 +62,10 @@ macro `=>`*(p, b: untyped): untyped =
   ##   passTwoAndTwo((x, y) => x + y) # 4
   proc checkPragma(ex, prag: var NimNode) =
     if ex.kind == nnkPragmaExpr:
-      prag = p[1]
-      if ex.kind == nnkPar and ex.len == 1:
+      prag = ex[1]
+      if ex[0].kind == nnkPar and ex[0].len == 1:
+        ex = ex[0][0]
+      else:
         ex = ex[0]
 
   var
@@ -90,6 +92,7 @@ macro `=>`*(p, b: untyped): untyped =
       newP.add(p[i])
     p = newP
 
+  echo p.treeRepr
   case p.kind
   of nnkPar, nnkTupleConstr:
     var untypedBeforeColon = 0
