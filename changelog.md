@@ -74,7 +74,7 @@
 
   # is transformed into
 
-  proc foo(x, y: int): auto {.noSideEffect.} = x + y
+  proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
   ```
 
 ## Language changes

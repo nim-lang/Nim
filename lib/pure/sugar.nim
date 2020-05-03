@@ -11,34 +11,38 @@
 ## macro system.
 
 import std/private/since
-import macros
-import typetraits
+import macros, typetraits
+
+proc checkPragma(ex, prag: var NimNode) =
+  since (1, 3):
+    if ex.kind == nnkPragmaExpr:
+      prag = ex[1]
+      if ex[0].kind == nnkPar and ex[0].len == 1:
+        ex = ex[0][0]
+      else:
+        ex = ex[0]
 
 proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
   result = newNimNode(nnkProcTy)
-  var formalParams = newNimNode(nnkFormalParams)
+  var
+    formalParams = newNimNode(nnkFormalParams).add(b)
+    p = p
+    prag = newEmptyNode()
 
-  formalParams.add b
+  checkPragma(p, prag)
 
   case p.kind
   of nnkPar, nnkTupleConstr:
-    var untypedBeforeColon = 0
     for i in 0 ..< p.len:
       let ident = p[i]
       var identDefs = newNimNode(nnkIdentDefs)
       case ident.kind
       of nnkExprColonExpr:
-        let t = ident[1]
-        # + 1 here because of return type in params
-        for j in (i - untypedBeforeColon + 1) .. i:
-          formalParams[j][1] = t
-        untypedBeforeColon = 0
         identDefs.add ident[0]
         identDefs.add ident[1]
       else:
         identDefs.add newIdentNode("i" & $i)
         identDefs.add(ident)
-        inc untypedBeforeColon
       identDefs.add newEmptyNode()
       formalParams.add identDefs
   else:
@@ -49,7 +53,7 @@ proc createProcType(p, b: NimNode): NimNode {.compileTime.} =
     formalParams.add identDefs
 
   result.add formalParams
-  result.add newEmptyNode()
+  result.add prag
 
 macro `=>`*(p, b: untyped): untyped =
   ## Syntax sugar for anonymous procedures.
@@ -60,13 +64,6 @@ macro `=>`*(p, b: untyped): untyped =
   ##     f(2, 2)
   ##
   ##   passTwoAndTwo((x, y) => x + y) # 4
-  proc checkPragma(ex, prag: var NimNode) =
-    if ex.kind == nnkPragmaExpr:
-      prag = ex[1]
-      if ex[0].kind == nnkPar and ex[0].len == 1:
-        ex = ex[0][0]
-      else:
-        ex = ex[0]
 
   var
     params = @[ident"auto"]
@@ -83,16 +80,16 @@ macro `=>`*(p, b: untyped): untyped =
 
   checkPragma(p, pragma) # check again after -> transform
 
-  if p.kind == nnkCall:
-    # foo(x, y) => x + y
-    kind = nnkProcDef
-    name = p[0]
-    let newP = newNimNode(nnkPar)
-    for i in 1..<p.len:
-      newP.add(p[i])
-    p = newP
+  since (1, 3):
+    if p.kind == nnkCall:
+      # foo(x, y) => x + y
+      kind = nnkProcDef
+      name = p[0]
+      let newP = newNimNode(nnkPar)
+      for i in 1..<p.len:
+        newP.add(p[i])
+      p = newP
 
-  echo p.treeRepr
   case p.kind
   of nnkPar, nnkTupleConstr:
     var untypedBeforeColon = 0
@@ -101,9 +98,10 @@ macro `=>`*(p, b: untyped): untyped =
       case c.kind
       of nnkExprColonExpr:
         let t = c[1]
-        # + 1 here because of return type in params
-        for j in (i - untypedBeforeColon + 1) .. i:
-          params[j][1] = t
+        since (1, 3):
+          # + 1 here because of return type in params
+          for j in (i - untypedBeforeColon + 1) .. i:
+            params[j][1] = t
         untypedBeforeColon = 0
         identDefs.add(c[0])
         identDefs.add(t)
@@ -218,7 +216,7 @@ macro capture*(locals: varargs[typed], body: untyped): untyped {.since: (1, 1).}
   result.add(newProc(newEmptyNode(), params, body, nnkProcDef))
   for arg in locals: result.add(arg)
 
-when (NimMajor, NimMinor) >= (1, 1):
+since (1, 1):
   import std / private / underscored_calls
 
   macro dup*[T](arg: T, calls: varargs[untyped]): T =
