@@ -48,11 +48,12 @@ runnableExamples:
 ## * `json module<json.html>`_ for table-like structure which allows
 ##   heterogeneous members
 
+import std/private/since
 
 import
   hashes, strutils
 
-when defined(js):
+when defined(js) or defined(nimscript):
   {.pragma: rtlFunc.}
 else:
   {.pragma: rtlFunc, rtl.}
@@ -298,7 +299,7 @@ proc raiseFormatException(s: string) =
 proc getValue(t: StringTableRef, flags: set[FormatFlag], key: string): string =
   if hasKey(t, key): return t.getOrDefault(key)
   # hm difficult: assume safety in taint mode here. XXX This is dangerous!
-  when defined(js):
+  when defined(js) or defined(nimscript):
     result = ""
   else:
     if useEnvironment in flags: result = os.getEnv(key).string

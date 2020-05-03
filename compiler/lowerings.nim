@@ -59,6 +59,13 @@ proc newFastAsgnStmt*(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
+proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode = 
+  result = newNodeI(nkFastAsgn, le.info, 2)
+  result[0] = le
+  result[1] = newNodeIT(nkCall, ri.info, ri.typ)
+  result[1].add newSymNode(getSysMagic(g, ri.info, "move", mMove))
+  result[1].add ri
+
 proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   assert n.kind == nkVarTuple
   let value = n.lastSon
@@ -74,8 +81,9 @@ proc lowerTupleUnpacking*(g: ModuleGraph; n: PNode; owner: PSym): PNode =
   result.add(v)
 
   for i in 0..<n.len-2:
-    if n[i].kind == nkSym: v.addVar(n[i])
-    result.add newAsgnStmt(n[i], newTupleAccess(g, tempAsNode, i))
+    let val = newTupleAccess(g, tempAsNode, i)
+    if n[i].kind == nkSym: v.addVar(n[i], val)
+    else: result.add newAsgnStmt(n[i], val)
 
 proc evalOnce*(g: ModuleGraph; value: PNode; owner: PSym): PNode =
   ## Turns (value) into (let tmp = value; tmp) so that 'value' can be re-used
@@ -311,10 +319,10 @@ proc indirectAccess*(a: PNode, b: PSym, info: TLineInfo): PNode =
 proc indirectAccess*(a, b: PSym, info: TLineInfo): PNode =
   result = indirectAccess(newSymNode(a), b, info)
 
-proc genAddrOf*(n: PNode): PNode =
+proc genAddrOf*(n: PNode, typeKind = tyPtr): PNode =
   result = newNodeI(nkAddr, n.info, 1)
   result[0] = n
-  result.typ = newType(tyPtr, n.typ.owner)
+  result.typ = newType(typeKind, n.typ.owner)
   result.typ.rawAddSon(n.typ)
 
 proc genDeref*(n: PNode; k = nkHiddenDeref): PNode =

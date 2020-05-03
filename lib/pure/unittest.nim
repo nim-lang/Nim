@@ -88,10 +88,12 @@
 ##
 ##     test "out of bounds error is thrown on bad access":
 ##       let v = @[1, 2, 3]  # you can do initialization here
-##       expect(IndexError):
+##       expect(IndexDefect):
 ##         discard v[4]
 ##
 ##     echo "suite teardown: run once after the tests"
+
+import std/private/since
 
 import
   macros, strutils, streams, times, sets, sequtils
@@ -99,7 +101,9 @@ import
 when declared(stdout):
   import os
 
-when not defined(ECMAScript):
+const useTerminal = not defined(js)
+
+when useTerminal:
   import terminal
 
 type
@@ -186,6 +190,9 @@ proc delOutputFormatter*(formatter: OutputFormatter) =
   keepIf(formatters, proc (x: OutputFormatter): bool =
     x != formatter)
 
+proc resetOutputFormatters* {.since: (1, 1).} =
+  formatters = @[]
+
 proc newConsoleOutputFormatter*(outputLevel: OutputLevel = OutputLevel.PRINT_ALL,
                                 colorOutput = true): <//>ConsoleOutputFormatter =
   ConsoleOutputFormatter(
@@ -219,7 +226,7 @@ proc defaultConsoleFormatter*(): <//>ConsoleOutputFormatter =
 
 method suiteStarted*(formatter: ConsoleOutputFormatter, suiteName: string) =
   template rawPrint() = echo("\n[Suite] ", suiteName)
-  when not defined(ECMAScript):
+  when useTerminal:
     if formatter.colorOutput:
       styledEcho styleBright, fgBlue, "\n[Suite] ", resetStyle, suiteName
     else: rawPrint()
@@ -245,8 +252,8 @@ method testEnded*(formatter: ConsoleOutputFormatter, testResult: TestResult) =
     let prefix = if testResult.suiteName.len > 0: "  " else: ""
     template rawPrint() = echo(prefix, "[", $testResult.status, "] ",
         testResult.testName)
-    when not defined(ECMAScript):
-      if formatter.colorOutput and not defined(ECMAScript):
+    when useTerminal:
+      if formatter.colorOutput:
         var color = case testResult.status
           of TestStatus.OK: fgGreen
           of TestStatus.FAILED: fgRed
@@ -510,11 +517,10 @@ template test*(name, body) {.dirty.} =
       body
 
     except:
-      when not defined(js):
-        let e = getCurrentException()
-        let eTypeDesc = "[" & exceptionTypeName(e) & "]"
-        checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
-        var stackTrace {.inject.} = e.getStackTrace()
+      let e = getCurrentException()
+      let eTypeDesc = "[" & exceptionTypeName(e) & "]"
+      checkpoint("Unhandled exception: " & getCurrentExceptionMsg() & " " & eTypeDesc)
+      var stackTrace {.inject.} = e.getStackTrace()
       fail()
 
     finally:
@@ -626,7 +632,7 @@ macro check*(conditions: untyped): untyped =
 
     var counter = 0
 
-    if exp[0].kind == nnkIdent and
+    if exp[0].kind in {nnkIdent, nnkOpenSymChoice, nnkClosedSymChoice, nnkSym} and
         $exp[0] in ["not", "in", "notin", "==", "<=",
                     ">=", "<", ">", "!=", "is", "isnot"]:
 
@@ -712,7 +718,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##    of 3: raise newException(IOError, "I can't do that Dave.")
   ##    else: assert 2 + 2 == 5
   ##
-  ##  expect IOError, OSError, ValueError, AssertionError:
+  ##  expect IOError, OSError, ValueError, AssertionDefect:
   ##    defectiveRobot()
   let exp = callsite()
   template expectBody(errorTypes, lineInfoLit, body): NimNode {.dirty.} =

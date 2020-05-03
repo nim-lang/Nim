@@ -1,18 +1,18 @@
 type
-  int* {.magic: Int.}         ## Default integer type; bitwidth depends on
+  int* {.magic: "Int".}         ## Default integer type; bitwidth depends on
                               ## architecture, but is always the same as a pointer.
-  int8* {.magic: Int8.}       ## Signed 8 bit integer type.
-  int16* {.magic: Int16.}     ## Signed 16 bit integer type.
-  int32* {.magic: Int32.}     ## Signed 32 bit integer type.
-  int64* {.magic: Int64.}     ## Signed 64 bit integer type.
-  uint* {.magic: UInt.}       ## Unsigned default integer type.
-  uint8* {.magic: UInt8.}     ## Unsigned 8 bit integer type.
-  uint16* {.magic: UInt16.}   ## Unsigned 16 bit integer type.
-  uint32* {.magic: UInt32.}   ## Unsigned 32 bit integer type.
-  uint64* {.magic: UInt64.}   ## Unsigned 64 bit integer type.
+  int8* {.magic: "Int8".}       ## Signed 8 bit integer type.
+  int16* {.magic: "Int16".}     ## Signed 16 bit integer type.
+  int32* {.magic: "Int32".}     ## Signed 32 bit integer type.
+  int64* {.magic: "Int64".}     ## Signed 64 bit integer type.
+  uint* {.magic: "UInt".}       ## Unsigned default integer type.
+  uint8* {.magic: "UInt8".}     ## Unsigned 8 bit integer type.
+  uint16* {.magic: "UInt16".}   ## Unsigned 16 bit integer type.
+  uint32* {.magic: "UInt32".}   ## Unsigned 32 bit integer type.
+  uint64* {.magic: "UInt64".}   ## Unsigned 64 bit integer type.
 
 type # we need to start a new type section here, so that ``0`` can have a type
-  bool* {.magic: Bool.} = enum ## Built-in boolean type.
+  bool* {.magic: "Bool".} = enum ## Built-in boolean type.
     false = 0, true = 1
 
 const
@@ -20,10 +20,6 @@ const
   off* = false  ## Alias for ``false``.
 
 type
-  Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
-                                 ## bool, character, and enumeration types
-                                 ## as well as their subtypes.
-
   SomeSignedInt* = int|int8|int16|int32|int64
     ## Type class matching all signed integer types.
 
@@ -35,7 +31,7 @@ type
 
   SomeOrdinal* = int|int8|int16|int32|int64|bool|enum|uint|uint8|uint16|uint32|uint64
     ## Type class matching all ordinal types; however this includes enums with
-    ## holes.
+    ## holes. See also `Ordinal`
 
   BiggestInt* = int64
     ## is an alias for the biggest signed integer type the Nim compiler

@@ -451,7 +451,7 @@ Miscellaneous
   This module implements a simple logger.
 
 * `segfaults <segfaults.html>`_
-  Turns access violations or segfaults into a ``NilAccessError`` exception.
+  Turns access violations or segfaults into a ``NilAccessDefect`` exception.
 
 * `sugar <sugar.html>`_
   This module implements nice syntactic sugar based on Nim's macro system.
@@ -471,6 +471,9 @@ Modules for JS backend
 
 * `dom <dom.html>`_
   Declaration of the Document Object Model for the JS backend.
+
+* `jsconsole <jsconsole.html>`_
+  Wrapper for the ``console`` object.
 
 * `jscore <jscore.html>`_
   Wrapper of core JavaScript functions. For most purposes you should be using

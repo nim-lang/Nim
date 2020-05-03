@@ -13,7 +13,7 @@ when not defined(nimcore):
   {.error: "nimcore MUST be defined for Nim's core tooling".}
 
 import
-  llstream, strutils, ast, lexer, syntaxes, options, msgs,
+  llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
   condsyms, times,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
@@ -66,16 +66,22 @@ when not defined(leanCompiler):
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
+proc setOutDir(conf: ConfigRef) =
+  if conf.outDir.isEmpty:
+    if optUseNimcache in conf.globalOptions:
+      conf.outDir = getNimcacheDir(conf)
+    else:
+      conf.outDir = conf.projectPath
+
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
-
-  if conf.outDir.isEmpty:
-    conf.outDir = conf.projectPath
+  setOutDir(conf)
   if conf.outFile.isEmpty:
+    let base = conf.projectName
     let targetName = if optGenDynLib in conf.globalOptions:
-      platform.OS[conf.target.targetOS].dllFrmt % conf.projectName
+      platform.OS[conf.target.targetOS].dllFrmt % base
     else:
-      conf.projectName & platform.OS[conf.target.targetOS].exeExt
+      base & platform.OS[conf.target.targetOS].exeExt
     conf.outFile = RelativeFile targetName
 
   extccomp.initVars(conf)
@@ -181,25 +187,29 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
-  case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc":
-    # compile means compileToC currently
+  template handleC() =
     conf.cmd = cmdCompileToC
+    if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
+  case conf.command.normalize
+  of "c", "cc", "compile", "compiletoc": handleC() # compile means compileToC currently
   of "cpp", "compiletocpp":
     conf.cmd = cmdCompileToCpp
-    conf.exc = excCpp
+    if conf.exc == excNone: conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":
     conf.cmd = cmdCompileToOC
     defineSymbol(graph.config.symbols, "objc")
     commandCompileToC(graph)
+  of "r": # different from `"run"`!
+    conf.globalOptions.incl {optRun, optUseNimcache}
+    handleC()
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:
-      extccomp.setCC("tcc")
+      extccomp.setCC(conf, "tcc", unknownLineInfo)
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
@@ -224,6 +234,12 @@ proc mainCommand*(graph: ModuleGraph) =
       loadConfigs(DocConfig, cache, conf)
       commandDoc(cache, conf)
   of "doc2", "doc":
+    conf.setNoteDefaults(warnLockLevel, false) # issue #13218
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # issue #13218
+      # because currently generates lots of false positives due to conflation
+      # of labels links in doc comments, eg for random.rand:
+      #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
+      #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -232,6 +248,7 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       commandDoc2(graph, false)
   of "rst2html":
+    conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
     else:
@@ -292,7 +309,9 @@ proc mainCommand*(graph: ModuleGraph) =
       for s in definedSymbolNames(conf.symbols): definedSymbols.elems.add(%s)
 
       var libpaths = newJArray()
+      var lazyPaths = newJArray()
       for dir in conf.searchPaths: libpaths.elems.add(%dir.string)
+      for dir in conf.lazyPaths: lazyPaths.elems.add(%dir.string)
 
       var hints = newJObject() # consider factoring with `listHints`
       for a in hintMin..hintMax:
@@ -305,10 +324,13 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "nimExe", val: %(getAppFilename())),
         (key: "prefixdir", val: %conf.getPrefixDir().string),
+        (key: "libpath", val: %conf.libpath.string),
         (key: "project_path", val: %conf.projectFull.string),
         (key: "defined_symbols", val: definedSymbols),
         (key: "lib_paths", val: %libpaths),
+        (key: "lazyPaths", val: %lazyPaths),
         (key: "outdir", val: %conf.outDir.string),
         (key: "out", val: %conf.outFile.string),
         (key: "nimcache", val: %getNimcacheDir(conf).string),

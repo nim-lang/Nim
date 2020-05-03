@@ -91,8 +91,7 @@ proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
   ## echos the ControlFlowGraph for debugging purposes.
   var buf = ""
   codeListing(c, buf, start, last)
-  when declared(echo):
-    echo buf
+  echo buf
 
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -591,6 +590,8 @@ proc genUse(c: var Con; orig: PNode) =
     of PathKinds1:
       n = n[1]
     else: break
+    if n.kind in nkCallKinds:
+      gen(c, n)
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
     c.code.add Instr(n: orig, kind: use)
 
@@ -609,15 +610,16 @@ proc aliases*(obj, field: PNode): bool =
 
 proc useInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == use
-  sameTrees(ins.n, loc) or
-  ins.n.aliases(loc) or loc.aliases(ins.n) # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  result = sameTrees(ins.n, loc) or
+    ins.n.aliases(loc) or loc.aliases(ins.n)
+  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
   # use x.f;  question: does it affect the full 'x'? No.
   # use x; question does it affect 'x.f'? Yes.
 
 proc defInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == def
-  sameTrees(ins.n, loc) or
-  ins.n.aliases(loc) # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
+  result = sameTrees(ins.n, loc) or ins.n.aliases(loc)
+  # We can come here if loc is 'x.f' and ins.n is 'x' or the other way round.
   # def x.f; question: does it affect the full 'x'? No.
   # def x; question: does it affect the 'x.f'? Yes.
 
@@ -637,8 +639,10 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
     of nkHiddenDeref, nkDerefExpr:
       # We "own" sinkparam[].loc but not ourVar[].location as it is a nasty
       # pointer indirection.
+      # bug #14159, we cannot reason about sinkParam[].location as it can
+      # still be shared for tyRef.
       n = n[0]
-      return n.kind == nkSym and n.sym.owner == owner and (isSinkParam(n.sym) or
+      return n.kind == nkSym and n.sym.owner == owner and (
           n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
     else:
       break
@@ -678,6 +682,10 @@ proc genDef(c: var Con; n: PNode) =
     c.code.add Instr(n: n, kind: def)
   elif isAnalysableFieldAccess(n, c.owner):
     c.code.add Instr(n: n, kind: def)
+  else:
+    # bug #13314: An assignment to t5.w = -5 is a usage of 't5'
+    # we still need to gather the use information:
+    gen(c, n)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])

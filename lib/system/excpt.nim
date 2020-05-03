@@ -17,13 +17,15 @@ var
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
-
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
-
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
@@ -53,6 +55,8 @@ type
     len: int
     prev: ptr GcFrameHeader
 
+when NimStackTraceMsgs:
+  var frameMsgBuf* {.threadvar.}: string
 var
   framePtr {.threadvar.}: PFrame
   excHandler {.threadvar.}: PSafePoint
@@ -60,10 +64,6 @@ var
     # a global variable for the root of all try blocks
   currException {.threadvar.}: ref Exception
   gcFramePtr {.threadvar.}: GcFrame
-
-when defined(cpp) and not defined(noCppExceptions):
-  var
-    raiseCounter {.threadvar.}: uint
 
 type
   FrameState = tuple[gcFramePtr: GcFrame, framePtr: PFrame,
@@ -123,19 +123,7 @@ proc popCurrentException {.compilerRtl, inl.} =
   #showErrorMessage "B"
 
 proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
-  # in cpp backend exceptions can pop-up in the different order they were raised, example #5628
-  if currException.raiseId == id:
-    currException = currException.up
-  else:
-    var cur = currException.up
-    var prev = currException
-    while cur != nil and cur.raiseId != id:
-      prev = cur
-      cur = cur.up
-    if cur == nil:
-      showErrorMessage("popCurrentExceptionEx() exception was not found in the exception stack. Aborting...")
-      quit(1)
-    prev.up = cur.up
+  discard "only for bootstrapping compatbility"
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
   currException = e
@@ -240,10 +228,17 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
     s[last] = StackTraceEntry(procname: it.procname,
                               line: it.line,
                               filename: it.filename)
+    when NimStackTraceMsgs:
+      let first = if it.prev == nil: 0 else: it.prev.frameMsgLen
+      if it.frameMsgLen > first:
+        s[last].frameMsg.setLen(it.frameMsgLen - first)
+        # somehow string slicing not available here
+        for i in first .. it.frameMsgLen-1:
+          s[last].frameMsg[i-first] = frameMsgBuf[i]
     it = it.prev
     dec last
 
-template addFrameEntry(s, f: untyped) =
+template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
   add(s, f.filename)
   if f.line > 0:
@@ -252,6 +247,12 @@ template addFrameEntry(s, f: untyped) =
     add(s, ')')
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
+  when NimStackTraceMsgs:
+    when type(f) is StackTraceEntry:
+      add(s, f.frameMsg)
+    else:
+      var first = if f.prev == nil: 0 else: f.prev.frameMsgLen
+      for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
 proc `$`(s: seq[StackTraceEntry]): string =
@@ -410,7 +411,7 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
     discard()
 
 proc nimLeaveFinally() {.compilerRtl.} =
-  when defined(cpp) and not defined(noCppExceptions):
+  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     {.emit: "throw;".}
   else:
     if excHandler != nil:
@@ -420,16 +421,16 @@ proc nimLeaveFinally() {.compilerRtl.} =
       quit(1)
 
 when gotoBasedExceptions:
-  var nimInErrorMode {.threadvar.}: int
+  var nimInErrorMode {.threadvar.}: bool
 
-  proc nimErrorFlag(): ptr int {.compilerRtl, inl.} =
+  proc nimErrorFlag(): ptr bool {.compilerRtl, inl.} =
     result = addr(nimInErrorMode)
 
   proc nimTestErrorFlag() {.compilerRtl.} =
     ## This proc must be called before ``currException`` is destroyed.
     ## It also must be called at the end of every thread to ensure no
     ## error is swallowed.
-    if currException != nil:
+    if nimInErrorMode and currException != nil:
       reportUnhandledError(currException)
       currException = nil
       quit(1)
@@ -439,16 +440,12 @@ proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
     if not globalRaiseHook(e): return
-  when defined(cpp) and not defined(noCppExceptions):
+  when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
     if e == currException:
       {.emit: "throw;".}
     else:
       pushCurrentException(e)
-      raiseCounter.inc
-      if raiseCounter == 0:
-        raiseCounter.inc # skip zero at overflow
-      e.raiseId = raiseCounter
-      {.emit: "`e`->raise();".}
+      {.emit: "throw e;".}
   elif defined(nimQuirky) or gotoBasedExceptions:
     # XXX This check should likely also be done in the setjmp case below.
     if e != currException:
@@ -486,7 +483,7 @@ proc raiseException(e: sink(ref Exception), ename: cstring) {.compilerRtl.} =
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
-    sysFatal(ReraiseError, "no exception to reraise")
+    sysFatal(ReraiseDefect, "no exception to reraise")
   else:
     when gotoBasedExceptions:
       inc nimInErrorMode
@@ -539,12 +536,17 @@ proc callDepthLimitReached() {.noinline.} =
   quit(1)
 
 proc nimFrame(s: PFrame) {.compilerRtl, inl, raises: [].} =
-  s.calldepth = if framePtr == nil: 0 else: framePtr.calldepth+1
+  if framePtr == nil:
+    s.calldepth = 0
+    when NimStackTraceMsgs: s.frameMsgLen = 0
+  else:
+    s.calldepth = framePtr.calldepth+1
+    when NimStackTraceMsgs: s.frameMsgLen = framePtr.frameMsgLen
   s.prev = framePtr
   framePtr = s
   if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
-when defined(cpp) and appType != "lib" and
+when defined(cpp) and appType != "lib" and not gotoBasedExceptions and
     not defined(js) and not defined(nimscript) and
     hostOS != "standalone" and not defined(noCppExceptions):
 
@@ -562,9 +564,9 @@ when defined(cpp) and appType != "lib" and
 
     var msg = "Unknown error in unexpected exception handler"
     try:
-      {.emit"#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
+      {.emit: "#if !defined(_MSC_VER) || (_MSC_VER >= 1923)".}
       raise
-      {.emit"#endif".}
+      {.emit: "#endif".}
     except Exception:
       msg = currException.getStackTrace() & "Error: unhandled exception: " &
         currException.msg & " [" & $currException.name & "]"
@@ -573,9 +575,9 @@ when defined(cpp) and appType != "lib" and
     except:
       msg = "Error: unhandled unknown cpp exception"
 
-    {.emit"#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
+    {.emit: "#if defined(_MSC_VER) && (_MSC_VER < 1923)".}
     msg = "Error: unhandled unknown cpp exception"
-    {.emit"#endif".}
+    {.emit: "#endif".}
 
     when defined(genode):
       # stderr not available by default, use the LOG session

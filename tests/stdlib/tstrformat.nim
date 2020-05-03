@@ -173,3 +173,34 @@ block:
               y = 234
               z = true
            """
+
+
+# tests from the very own strformat documentation!
+
+let msg = "hello"
+doAssert fmt"{msg}\n" == "hello\\n"
+
+doAssert &"{msg}\n" == "hello\n"
+
+doAssert fmt"{msg}{'\n'}" == "hello\n"
+doAssert fmt("{msg}\n") == "hello\n"
+doAssert "{msg}\n".fmt == "hello\n"
+
+doAssert &"""{"abc":>4}""" == " abc"
+doAssert &"""{"abc":<4}""" == "abc "
+
+doAssert fmt"{-12345:08}" == "-0012345"
+doAssert fmt"{-1:3}" == " -1"
+doAssert fmt"{-1:03}" == "-01"
+doAssert fmt"{16:#X}" == "0x10"
+
+doAssert fmt"{123.456}" == "123.456"
+doAssert fmt"{123.456:>9.3f}" == "  123.456"
+doAssert fmt"{123.456:9.3f}" == "  123.456"
+doAssert fmt"{123.456:9.4f}" == " 123.4560"
+doAssert fmt"{123.456:>9.0f}" == "     123."
+doAssert fmt"{123.456:<9.4f}" == "123.4560 "
+
+doAssert fmt"{123.456:e}" == "1.234560e+02"
+doAssert fmt"{123.456:>13e}" == " 1.234560e+02"
+doAssert fmt"{123.456:13e}" == " 1.234560e+02"

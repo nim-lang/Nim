@@ -10,6 +10,8 @@
 ## This module implements semantic checking for calls.
 # included from sem.nim
 
+from algorithm import sort
+
 proc sameMethodDispatcher(a, b: PSym): bool =
   result = false
   if a.kind == skMethod and b.kind == skMethod:
@@ -126,7 +128,7 @@ proc pickBestCandidate(c: PContext, headSymbol: PNode,
     else:
       break
 
-proc effectProblem(f, a: PType; result: var string) =
+proc effectProblem(f, a: PType; result: var string; c: PContext) =
   if f.kind == tyProc and a.kind == tyProc:
     if tfThread in f.flags and tfThread notin a.flags:
       result.add "\n  This expression is not GC-safe. Annotate the " &
@@ -134,6 +136,25 @@ proc effectProblem(f, a: PType; result: var string) =
     elif tfNoSideEffect in f.flags and tfNoSideEffect notin a.flags:
       result.add "\n  This expression can have side effects. Annotate the " &
           "proc with {.noSideEffect.} to get extended error information."
+    else:
+      case compatibleEffects(f, a)
+      of efCompat: discard
+      of efRaisesDiffer:
+        result.add "\n  The `.raises` requirements differ."
+      of efRaisesUnknown:
+        result.add "\n  The `.raises` requirements differ. Annotate the " &
+            "proc with {.raises: [].} to get extended error information."
+      of efTagsDiffer:
+        result.add "\n  The `.tags` requirements differ."
+      of efTagsUnknown:
+        result.add "\n  The `.tags` requirements differ. Annotate the " &
+            "proc with {.tags: [].} to get extended error information."
+      of efLockLevelsDiffer:
+        result.add "\n  The `.locks` requirements differ. Annotate the " &
+            "proc with {.locks: 0.} to get extended error information."
+      when defined(drnim):
+        if not c.graph.compatibleProps(c.graph, f, a):
+          result.add "\n  The `.requires` or `.ensures` properties are incompatible."
 
 proc renderNotLValue(n: PNode): string =
   result = $n
@@ -178,9 +199,11 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
 
   var maybeWrongSpace = false
 
+  var candidatesAll: seq[string]
   var candidates = ""
   var skipped = 0
   for err in errors:
+    candidates.setLen 0
     if filterOnlyFirst and err.firstMismatch.arg == 1:
       inc skipped
       continue
@@ -217,7 +240,7 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
           var got = nArg.typ
           candidates.add typeToString(got)
           doAssert wanted != nil
-          if got != nil: effectProblem(wanted, got, candidates)
+          if got != nil: effectProblem(wanted, got, candidates, c)
       of kUnknown: discard "do not break 'nim check'"
       candidates.add "\n"
       if err.firstMismatch.arg == 1 and nArg.kind == nkTupleConstr and
@@ -225,6 +248,9 @@ proc presentFailedCandidates(c: PContext, n: PNode, errors: CandidateErrors):
         maybeWrongSpace = true
     for diag in err.diagnostics:
       candidates.add(diag & "\n")
+    candidatesAll.add candidates
+  candidatesAll.sort # fix #13538
+  candidates = join(candidatesAll)
   if skipped > 0:
     candidates.add($skipped & " other mismatching symbols have been " &
         "suppressed; compile with --showAllMismatches:on to see them\n")
@@ -288,10 +314,6 @@ proc getMsgDiagnostic(c: PContext, flags: TExprFlags, n, f: PNode): string =
     var o: TOverloadIter
     var sym = initOverloadIter(o, c, f)
     while sym != nil:
-      proc toHumanStr(kind: TSymKind): string =
-        result = $kind
-        assert result.startsWith "sk"
-        result = result[2..^1].toLowerAscii
       result &= "\n  found '$1' of kind '$2'" % [getSymRepr(c.config, sym), sym.kind.toHumanStr]
       sym = nextOverloadIter(o, c, f)
 
@@ -527,7 +549,7 @@ proc tryDeref(n: PNode): PNode =
   result.add n
 
 proc semOverloadedCall(c: PContext, n, nOrig: PNode,
-                       filter: TSymKinds, flags: TExprFlags): PNode =
+                       filter: TSymKinds, flags: TExprFlags): PNode {.nosinks.} =
   var errors: CandidateErrors = @[] # if efExplain in flags: @[] else: nil
   var r = resolveOverloads(c, n, nOrig, filter, flags, errors, efExplain in flags)
   if r.state == csMatch:
@@ -611,7 +633,7 @@ proc explicitGenericInstantiation(c: PContext, n: PNode, s: PSym): PNode =
     if s.ast[genericParamsPos].safeLen != n.len-1:
       let expected = s.ast[genericParamsPos].safeLen
       localError(c.config, getCallLineInfo(n), errGenerated, "cannot instantiate: '" & renderTree(n) &
-         "'; got " & $(n.len-1) & " type(s) but expected " & $expected)
+         "'; got " & $(n.len-1) & " typeof(s) but expected " & $expected)
       return n
     result = explicitGenericSym(c, n, s)
     if result == nil: result = explicitGenericInstError(c, n)

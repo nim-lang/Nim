@@ -265,11 +265,25 @@ the first is preferred.
 
 
 Best practices
-=============
+==============
 
 Note: these are general guidelines, not hard rules; there are always exceptions.
 Code reviews can just point to a specific section here to save time and
 propagate best practices.
+
+.. _define_needs_prefix:
+New `defined(foo)` symbols need to be prefixed by the nimble package name, or
+by `nim` for symbols in nim sources (e.g. compiler, standard library). This is
+to avoid name conflicts across packages.
+
+.. code-block:: nim
+
+  # if in nim sources
+  when defined(allocStats): discard # bad, can cause conflicts
+  when defined(nimAllocStats): discard # preferred
+  # if in a pacakge `cligen`:
+  when defined(debug): discard # bad, can cause conflicts
+  when defined(cligenDebug): discard # preferred
 
 .. _noimplicitbool:
 Take advantage of no implicit bool conversion
@@ -347,8 +361,10 @@ General commit rules
 
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
-   branch (currently 1.0.x). The commit message should contain ``[backport]``
-   then.
+   branch (currently 1.2.x) and maybe also to the 1.0 branch.
+   The commit message should contain the tag ``[backport]`` for "backport to all
+   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
+   given $VERSION.
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,
@@ -484,8 +500,21 @@ This covers modules like ``os``, ``osproc``, ``strscans``, ``strutils``,
 ``strformat``, etc.
 
 
-New stdlib modules do not start as stdlib modules
--------------------------------------------------
+Syntactic helpers can start as experimental stdlib modules
+----------------------------------------------------------
+
+Reason: Generally speaking as external dependencies they are not exposed
+to enough users so that we can see if the shortcuts provide enough benefit
+or not. Many programmers avoid external dependencies, even moreso for
+"tiny syntactic improvements". However, this is only true for really good
+syntactic improvements that have the potential to clean up other parts of
+the Nim library substantially. If in doubt, new stdlib modules should start
+as external, successful Nimble packages.
+
+
+
+Other new stdlib modules do not start as stdlib modules
+-------------------------------------------------------
 
 As we strive for higher quality everywhere, it's easier to adopt existing,
 battle-tested modules eventually rather than creating modules from scratch.

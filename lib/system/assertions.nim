@@ -15,16 +15,18 @@ proc `$`(info: InstantiationInfo): string =
 
 # ---------------------------------------------------------------------------
 
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
 
-proc raiseAssert*(msg: string) {.noinline, noreturn.} =
-  sysFatal(AssertionError, msg)
+proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
+  sysFatal(AssertionDefect, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
-  # trick the compiler to not list ``AssertionError`` when called
+  # trick the compiler to not list ``AssertionDefect`` when called
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
-  Hide(raiseAssert)(msg)
+  cast[Hide](raiseAssert)(msg)
 
 template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]) =
   when enabled:
@@ -38,19 +40,25 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
         failedAssertImpl(ploc & " `" & expr & "` " & msg)
 
 template assert*(cond: untyped, msg = "") =
-  ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
-  ## that ``AssertionError`` is hidden from the effect system, so it doesn't
-  ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
+  ## Raises ``AssertionDefect`` with `msg` if `cond` is false. Note
+  ## that ``AssertionDefect`` is hidden from the effect system, so it doesn't
+  ## produce ``{.raises: [AssertionDefect].}``. This exception is only supposed
   ## to be caught by unit testing frameworks.
   ##
   ## The compiler may not generate any code at all for ``assert`` if it is
   ## advised to do so through the ``-d:danger`` or ``--assertions:off``
   ## `command line switches <nimc.html#compiler-usage-command-line-switches>`_.
+  ##
+  ## .. code-block:: nim
+  ##   static: assert 1 == 9, "This assertion generates code when not built with -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, compileOption("assertions"))
 
 template doAssert*(cond: untyped, msg = "") =
   ## Similar to ``assert`` but is always turned on regardless of ``--assertions``.
+  ##
+  ## .. code-block:: nim
+  ##   static: doAssert 1 == 9, "This assertion generates code when built with/without -d:danger or --assertions:off"
   const expr = astToStr(cond)
   assertImpl(cond, msg, expr, true)
 
@@ -72,7 +80,7 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     code
 
 template doAssertRaises*(exception: typedesc, code: untyped) =
-  ## Raises ``AssertionError`` if specified ``code`` does not raise the
+  ## Raises ``AssertionDefect`` if specified ``code`` does not raise the
   ## specified exception. Example:
   ##
   ## .. code-block:: nim

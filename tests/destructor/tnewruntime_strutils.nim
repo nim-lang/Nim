@@ -1,14 +1,12 @@
 discard """
   valgrind: true
-  cmd: '''nim c --newruntime -d:useMalloc $file'''
+  cmd: '''nim c -d:nimAllocStats --newruntime -d:useMalloc $file'''
   output: '''
-@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]
-461 461'''
+@[(input: @["KXSC", "BGMC"]), (input: @["PXFX"]), (input: @["WXRQ", "ZSCZD"])]'''
 """
 
 import strutils, os, std / wordwrap
 
-import system / allocators
 import system / ansi_c
 
 # bug #11004
@@ -39,7 +37,7 @@ bug12899()
 
 proc nonStaticTests =
   doAssert formatBiggestFloat(1234.567, ffDecimal, -1) == "1234.567000"
-  doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235" # bugs 8242, 12586
+  doAssert formatBiggestFloat(1234.567, ffDecimal, 0) == "1235." # bugs 8242, 12586
   doAssert formatBiggestFloat(1234.567, ffDecimal, 1) == "1234.6"
   doAssert formatBiggestFloat(0.00000000001, ffDecimal, 11) == "0.00000000001"
   doAssert formatBiggestFloat(0.00000000001, ffScientific, 1, ',') in
@@ -213,6 +211,3 @@ staticTests()
 # bug #12965
 let xaa = @[""].join()
 let xbb = @["", ""].join()
-
-let (a, d) = allocCounters()
-discard cprintf("%ld %ld\n", a, d)

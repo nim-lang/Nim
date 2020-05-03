@@ -2,6 +2,8 @@ discard """
   output: '''BEGIN
 END
 END 2
+cpu.nes false
+cpu step nes is nil? - false
 0'''
   cmd: '''nim c --gc:orc $file'''
 """
@@ -59,6 +61,38 @@ proc main =
   c.run
   echo "END 2"
 
+# bug #14159
+type
+  NES = ref object
+    cpu: CPU
+    apu: APU
+
+  CPU = ref object
+    nes: NES
+
+  APU = object
+    nes: NES
+    cpu: CPU
+
+proc initAPU(nes: sink NES): APU {.nosinks.} =
+  result.nes = nes
+  result.cpu = nes.cpu
+
+proc step(cpu: CPU): int =
+  echo "cpu.nes ", cpu.isNil
+  echo "cpu step nes is nil? - ", cpu.nes.isNil()
+
+proc newNES(): NES =
+  new result
+  result.cpu = CPU(nes: result)
+  result.apu = initAPU(result)
+
+proc bug14159 =
+  var nesConsole = newNES()
+  discard nesConsole.cpu.step()
+
 let mem = getOccupiedMem()
 main()
+bug14159()
+GC_fullCollect()
 echo getOccupiedMem() - mem

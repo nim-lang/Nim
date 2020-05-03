@@ -69,6 +69,7 @@ type
     maxCodeSize*: int
     err*: TResultEnum
     targets*: set[TTarget]
+    matrix*: seq[string]
     nimout*: string
     parseErrors*: string # when the spec definition is invalid, this is not empty.
     unjoinable*: bool
@@ -236,6 +237,12 @@ proc parseSpec*(filename: string): TSpec =
           when defined(freebsd): result.err = reDisabled
         of "arm64":
           when defined(arm64): result.err = reDisabled
+        of "i386":
+          when defined(i386): result.err = reDisabled
+        of "openbsd":
+          when defined(openbsd): result.err = reDisabled
+        of "netbsd":
+          when defined(netbsd): result.err = reDisabled
         else:
           result.parseErrors.addLine "cannot interpret as a bool: ", e.value
       of "cmd":
@@ -265,6 +272,9 @@ proc parseSpec*(filename: string): TSpec =
             result.targets.incl(targetJS)
           else:
             result.parseErrors.addLine "cannot interpret as a target: ", e.value
+      of "matrix":
+        for v in e.value.split(';'):
+          result.matrix.add(v.strip)
       else:
         result.parseErrors.addLine "invalid key for test spec: ", e.key
 

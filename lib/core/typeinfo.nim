@@ -12,15 +12,15 @@
 ## what this module allows you to do.
 ##
 ## Note that even though ``Any`` and its operations hide the nasty low level
-## details from its clients, it remains inherently unsafe! Also, Nim's 
+## details from its clients, it remains inherently unsafe! Also, Nim's
 ## runtime type information will evolve and may eventually be deprecated.
 ## As an alternative approach to programmatically understanding and
 ## manipulating types, consider using the `macros <macros.html>`_ package to
 ## work with the types' AST representation at compile time. See, for example,
-## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative 
+## the `getTypeImpl proc<macros.html#getTypeImpl,NimNode>`_. As an alternative
 ## approach to storing arbitrary types at runtime, consider using generics.
 ##
-## 
+##
 
 {.push hints: off.}
 
@@ -98,7 +98,7 @@ else:
 proc genericAssign(dest, src: pointer, mt: PNimType) {.importCompilerProc.}
 proc genericShallowAssign(dest, src: pointer, mt: PNimType) {.
   importCompilerProc.}
-proc incrSeq(seq: PGenSeq, elemSize: int): PGenSeq {.importCompilerProc.}
+proc incrSeq(seq: PGenSeq, elemSize, elemAlign: int): PGenSeq {.importCompilerProc.}
 proc newObj(typ: PNimType, size: int): pointer {.importCompilerProc.}
 proc newSeq(typ: PNimType, len: int): pointer {.importCompilerProc.}
 proc objectInit(dest: pointer, typ: PNimType) {.importCompilerProc.}
@@ -180,7 +180,7 @@ proc extendSeq*(x: Any) =
   ## performs ``setLen(x, x.len+1)``. `x` needs to represent a ``seq``.
   assert x.rawType.kind == tySequence
   var y = cast[ptr PGenSeq](x.value)[]
-  var z = incrSeq(y, x.rawType.base.size)
+  var z = incrSeq(y, x.rawType.base.size, x.rawType.base.align)
   # 'incrSeq' already freed the memory for us and copied over the RC!
   # So we simply copy the raw pointer into 'x.value':
   cast[ppointer](x.value)[] = z
@@ -195,21 +195,24 @@ proc skipRange(x: PNimType): PNimType {.inline.} =
   result = x
   if result.kind == tyRange: result = result.base
 
+proc align(address, alignment: int): int =
+  result = (address + (alignment - 1)) and not (alignment - 1)
+
 proc `[]`*(x: Any, i: int): Any =
   ## accessor for an any `x` that represents an array or a sequence.
   case x.rawType.kind
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
+      raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
     return newAny(x.value +!! i*bs, x.rawType.base)
   of tySequence:
     var s = cast[ppointer](x.value)[]
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
-    return newAny(s +!! (GenericSeqSize+i*bs), x.rawType.base)
+      raise newException(IndexDefect, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
+    return newAny(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), x.rawType.base)
   else: assert false
 
 proc `[]=`*(x: Any, i: int, y: Any) =
@@ -218,7 +221,7 @@ proc `[]=`*(x: Any, i: int, y: Any) =
   of tyArray:
     var bs = x.rawType.base.size
     if i >=% x.rawType.size div bs:
-      raise newException(IndexError, formatErrorIndexBound(i, x.rawType.size div bs))
+      raise newException(IndexDefect, formatErrorIndexBound(i, x.rawType.size div bs))
     assert y.rawType == x.rawType.base
     genericAssign(x.value +!! i*bs, y.value, y.rawType)
   of tySequence:
@@ -226,9 +229,9 @@ proc `[]=`*(x: Any, i: int, y: Any) =
     if s == nil: raise newException(ValueError, "sequence is nil")
     var bs = x.rawType.base.size
     if i >=% cast[PGenSeq](s).len:
-      raise newException(IndexError, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
+      raise newException(IndexDefect, formatErrorIndexBound(i, cast[PGenSeq](s).len-1))
     assert y.rawType == x.rawType.base
-    genericAssign(s +!! (GenericSeqSize+i*bs), y.value, y.rawType)
+    genericAssign(s +!! (align(GenericSeqSize, x.rawType.base.align)+i*bs), y.value, y.rawType)
   else: assert false
 
 proc len*(x: Any): int =

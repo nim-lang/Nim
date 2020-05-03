@@ -22,58 +22,58 @@ suite "random int":
     var set = initHashSet[int](128)
 
     for i in 1..1000:
-      incl(set, random(high(int)))
+      incl(set, rand(high(int)))
     check len(set) == 1000
   test "single number bounds work":
 
     var rand: int
     for i in 1..1000:
-      rand = random(1000)
+      rand = rand(1000)
       check rand < 1000
       check rand > -1
   test "slice bounds work":
 
     var rand: int
     for i in 1..1000:
-      rand = random(100..1000)
+      rand = rand(100..1000)
       check rand < 1000
       check rand >= 100
   test " again gives new numbers":
 
-    var rand1 = random(1000000)
+    var rand1 = rand(1000000)
     os.sleep(200)
 
-    var rand2 = random(1000000)
+    var rand2 = rand(1000000)
     check rand1 != rand2
 
 
 suite "random float":
   test "there might be some randomness":
-    var set = initSet[float](128)
+    var set = initHashSet[float](128)
 
     for i in 1..100:
-      incl(set, random(1.0))
+      incl(set, rand(1.0))
     check len(set) == 100
   test "single number bounds work":
 
     var rand: float
     for i in 1..1000:
-      rand = random(1000.0)
+      rand = rand(1000.0)
       check rand < 1000.0
       check rand > -1.0
   test "slice bounds work":
 
     var rand: float
     for i in 1..1000:
-      rand = random(100.0..1000.0)
+      rand = rand(100.0..1000.0)
       check rand < 1000.0
       check rand >= 100.0
   test " again gives new numbers":
 
-    var rand1:float = random(1000000.0)
+    var rand1:float = rand(1000000.0)
     os.sleep(200)
 
-    var rand2:float = random(1000000.0)
+    var rand2:float = rand(1000000.0)
     check rand1 != rand2
 
 suite "cumsum":
