@@ -54,6 +54,23 @@ type
 
 include "system/basic_types"
 
+
+proc compileOption*(option: string): bool {.
+  magic: "CompileOption", noSideEffect.}
+  ## Can be used to determine an `on|off` compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("floatchecks"):
+  ##     echo "compiled with floating point NaN and Inf checks"
+
+proc compileOption*(option, arg: string): bool {.
+  magic: "CompileOptionArg", noSideEffect.}
+  ## Can be used to determine an enum compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
+  ##     echo "compiled with optimization for size and uses Boehm's GC"
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
@@ -86,6 +103,18 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##   when not defined(release):
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
+
+when defined(nimHashOrdinalFixed):
+  type
+    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                   ## bool, character, and enumeration types
+                                   ## as well as their subtypes. See also
+                                   ## `SomeOrdinal`.
+else:
+  # bootstrap <= 0.20.0
+  type
+    OrdinalImpl[T] {.magic: Ordinal.}
+    Ordinal* = OrdinalImpl | uint | uint64
 
 when defined(nimHasRunnableExamples):
   proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
@@ -406,7 +435,7 @@ when defined(nimArrIdx):
   proc `[]`*[I: Ordinal;T](a: T; i: I): T {.
     noSideEffect, magic: "ArrGet".}
   proc `[]=`*[I: Ordinal;T,S](a: T; i: I;
-    x: S) {.noSideEffect, magic: "ArrPut".}
+    x: sink S) {.noSideEffect, magic: "ArrPut".}
   proc `=`*[T](dest: var T; src: T) {.noSideEffect, magic: "Asgn".}
 
   proc arrGet[I: Ordinal;T](a: T; i: I): T {.
@@ -427,7 +456,7 @@ type
     b*: U                  ## The upper bound (inclusive).
   Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
 
-proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
   ## Binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive.
   ##
@@ -439,7 +468,7 @@ proc `..`*[T, U](a: T, b: U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDo
   ##   echo a[2 .. 3] # @[30, 40]
   result = HSlice[T, U](a: a, b: b)
 
-proc `..`*[T](b: T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
+proc `..`*[T](b: sink T): HSlice[int, T] {.noSideEffect, inline, magic: "DotDot".} =
   ## Unary `slice`:idx: operator that constructs an interval ``[default(int), b]``.
   ##
   ## .. code-block:: Nim
@@ -485,6 +514,7 @@ when not defined(js) and not defined(nimSeqsV2):
       len, reserved: int
       when defined(gogc):
         elemSize: int
+        elemAlign: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
@@ -838,8 +868,8 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`.
   ##
   ## .. code-block:: Nim
-  ##   assert(FloatingPointError of Exception)
-  ##   assert(DivByZeroError of Exception)
+  ##   assert(FloatingPointDefect of Exception)
+  ##   assert(DivByZeroDefect of Exception)
 
 proc cmp*[T](x, y: T): int {.procvar.} =
   ## Generic compare proc.
@@ -1028,22 +1058,6 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
-  ## Can be used to determine an `on|off` compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
-
-proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
-  ## Can be used to determine an enum compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
-
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
@@ -1109,6 +1123,15 @@ when defined(js) and defined(nodejs) and not defined(nimscript):
 elif hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
+
+import std/private/since
+
+proc align(address, alignment: int): int =
+  if alignment == 0: # Actually, this is illegal. This branch exists to actively
+                     # hide problems.
+    result = address
+  else:
+    result = (address + (alignment - 1)) and not (alignment - 1)
 
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
@@ -1242,7 +1265,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     else:
       defaultImpl()
 
-proc insert*[T](x: var seq[T], item: T, i = 0.Natural) {.noSideEffect.} =
+proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## Inserts `item` into `x` at position `i`.
   ##
   ## .. code-block:: Nim
@@ -1494,8 +1517,20 @@ else:
   {.pragma: nilError.}
 
 proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
+  ## Requires `--nilseqs:on` since 0.19.
+  ##
+  ## Seqs are no longer nil by default, but set and empty.
+  ## Check for zero length instead.
+  ##
+  ## See also:
+  ## * `isNil(string) <#isNil,string>`_
+
 proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
+  ## Requires `--nilseqs:on`.
+  ##
+  ## See also:
+  ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
 
 proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
 proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
@@ -1513,48 +1548,96 @@ proc `@`*[T](a: openArray[T]): seq[T] =
   newSeq(result, a.len)
   for i in 0..a.len-1: result[i] = a[i]
 
-proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
-  ## Concatenates two sequences.
-  ##
-  ## Requires copying of the sequences.
-  ##
-  ## See also:
-  ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
-  ##
-  ## .. code-block:: Nim
-  ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
-  newSeq(result, x.len + y.len)
-  for i in 0..x.len-1:
-    result[i] = x[i]
-  for i in 0..y.len-1:
-    result[i+x.len] = y[i]
 
-proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
-  ## Appends element y to the end of the sequence.
-  ##
-  ## Requires copying of the sequence.
-  ##
-  ## See also:
-  ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
-  ##
-  ## .. code-block:: Nim
-  ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
-  newSeq(result, x.len + 1)
-  for i in 0..x.len-1:
-    result[i] = x[i]
-  result[x.len] = y
+when defined(nimSeqsV2):
 
-proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
-  ## Prepends the element x to the beginning of the sequence.
-  ##
-  ## Requires copying of the sequence.
-  ##
-  ## .. code-block:: Nim
-  ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
-  newSeq(result, y.len + 1)
-  result[0] = x
-  for i in 0..y.len-1:
-    result[i+1] = y[i]
+  proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
+    ## Concatenates two sequences.
+    ##
+    ## Requires copying of the sequences.
+    ##
+    ## See also:
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
+    newSeq(result, x.len + y.len)
+    for i in 0..x.len-1:
+      result[i] = move(x[i])
+    for i in 0..y.len-1:
+      result[i+x.len] = move(y[i])
+
+  proc `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
+    ## Appends element y to the end of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## See also:
+    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
+    newSeq(result, x.len + 1)
+    for i in 0..x.len-1:
+      result[i] = move(x[i])
+    result[x.len] = move(y)
+
+  proc `&`*[T](x: sink T, y: sink seq[T]): seq[T] {.noSideEffect.} =
+    ## Prepends the element x to the beginning of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## .. code-block:: Nim
+    ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
+    newSeq(result, y.len + 1)
+    result[0] = move(x)
+    for i in 0..y.len-1:
+      result[i+1] = move(y[i])
+
+else:
+
+  proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+    ## Concatenates two sequences.
+    ##
+    ## Requires copying of the sequences.
+    ##
+    ## See also:
+    ## * `add(var seq[T], openArray[T]) <#add,seq[T][T],openArray[T]>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3, 4] & @[5, 6] == @[1, 2, 3, 4, 5, 6])
+    newSeq(result, x.len + y.len)
+    for i in 0..x.len-1:
+      result[i] = x[i]
+    for i in 0..y.len-1:
+      result[i+x.len] = y[i]
+
+  proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+    ## Appends element y to the end of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## See also:
+    ## * `add(var seq[T], T) <#add,seq[T][T],T>`_
+    ##
+    ## .. code-block:: Nim
+    ##   assert(@[1, 2, 3] & 4 == @[1, 2, 3, 4])
+    newSeq(result, x.len + 1)
+    for i in 0..x.len-1:
+      result[i] = x[i]
+    result[x.len] = y
+
+  proc `&`*[T](x: T, y: seq[T]): seq[T] {.noSideEffect.} =
+    ## Prepends the element x to the beginning of the sequence.
+    ##
+    ## Requires copying of the sequence.
+    ##
+    ## .. code-block:: Nim
+    ##   assert(1 & @[2, 3, 4] == @[1, 2, 3, 4])
+    newSeq(result, y.len + 1)
+    result[0] = x
+    for i in 0..y.len-1:
+      result[i+1] = y[i]
 
 
 proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
@@ -1592,8 +1675,8 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     result = a[pos]
   ##
   ##   when isMainModule:
-  ##     testException(IndexError, tester(30))
-  ##     testException(IndexError, tester(1))
+  ##     testException(IndexDefect, tester(30))
+  ##     testException(IndexDefect, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
 proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
@@ -1625,6 +1708,7 @@ when not defined(js) and defined(nimV2):
     TNimType {.compilerproc.} = object
       destructor: pointer
       size: int
+      align: int
       name: cstring
       traceImpl: pointer
       disposeImpl: pointer
@@ -1635,7 +1719,6 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/seqs_v2"
 
 {.pop.}
-
 
 when notJSnotNims:
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
@@ -1819,6 +1902,7 @@ var
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
+  # keep in sync with nimbase.h `struct TFrame_`
   TFrame* {.importc, nodecl, final.} = object ## The frame itself.
     prev*: PFrame       ## Previous frame; used for chaining the call stack.
     procname*: cstring  ## Name of the proc that is currently executing.
@@ -1826,6 +1910,8 @@ type
     filename*: cstring  ## Filename of the proc that is currently executing.
     len*: int16         ## Length of the inspectable slots.
     calldepth*: int16   ## Used for max call depth checking.
+    when NimStackTraceMsgs:
+      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -1882,14 +1968,7 @@ template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
   ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
-  when declared(owned):
-    var e: owned(ref exceptn)
-  else:
-    var e: ref exceptn
-  new(e)
-  e.msg = message
-  e.parent = parentException
-  e
+  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -1919,8 +1998,8 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   result = if x < 0: -x else: x
 {.pop.}
 
-
 when not defined(js):
+
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
   proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
@@ -1972,24 +2051,25 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
-
-import system/dollars
-export dollars
-
-when defined(nimV2):
-  import system/repr_v2
-  export repr_v2
-
 const
   NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
+    ## is the major number of Nim's version. Example:
+    ##
+    ## .. code-block:: Nim
+    ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
+    # see also std/private/since
 
-  NimMinor* {.intdefine.}: int = 1
+  NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.
+    ## Odd for devel, even for releases.
 
   NimPatch* {.intdefine.}: int = 1
     ## is the patch number of Nim's version.
 
+import system/dollars
+export dollars
+
+const
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
@@ -2153,7 +2233,10 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include "system/arithm"
+  when defined(nimNewIntegerOps):
+    include "system/integerops"
+  else:
+    include "system/arithm"
   {.pop.}
 
 
@@ -2412,7 +2495,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   if L == b.len:
     for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
-    sysFatal(RangeError, "different lengths for slice assignment")
+    sysFatal(RangeDefect, "different lengths for slice assignment")
 
 proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
@@ -2468,6 +2551,9 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
 proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
+  ##
+  ## The maximum file size limit that ``staticRead`` and ``slurp`` can read is
+  ## near or equal to the *free* memory of the device you are using to compile.
   ##
   ## .. code-block:: Nim
   ##     const myResource = staticRead"mydatafile.bin"
@@ -2571,7 +2657,7 @@ when compileOption("rangechecks"):
     ## Helper for performing user-defined range checks.
     ## Such checks will be performed only when the ``rangechecks``
     ## compile-time option is enabled.
-    if not cond: sysFatal(RangeError, "range check failed")
+    if not cond: sysFatal(RangeDefect, "range check failed")
 else:
   template rangeCheck*(cond) = discard
 
@@ -2608,12 +2694,13 @@ type
     ## Represents a Nim AST node. Macros operate on this type.
 
 when defined(nimV2):
-  proc repr*(x: NimNode): string {.magic: "Repr", noSideEffect.}
+  import system/repr_v2
+  export repr_v2
 
-macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  varargsLenImpl(x)
 
 when false:
   template eval*(blk: typed): typed =

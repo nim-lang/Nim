@@ -726,6 +726,9 @@ proc genBinaryABCD(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp2)
   c.freeTemp(tmp3)
 
+template sizeOfLikeMsg(name): string =
+  "'$1' requires '.importc' types to be '.completeStruct'" % [name]
+
 proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
@@ -973,11 +976,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   case m
   of mAnd: c.genAndOr(n, opcFJmp, dest)
   of mOr:  c.genAndOr(n, opcTJmp, dest)
-  of mUnaryLt:
-    let tmp = c.genx(n[1])
-    if dest < 0: dest = c.getTemp(n.typ)
-    c.gABI(n, opcSubImmInt, dest, tmp, 1)
-    c.freeTemp(tmp)
   of mPred, mSubI:
     c.genAddSubInt(n, dest, opcSubInt)
   of mSucc, mAddI:
@@ -1020,9 +1018,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     c.gABC(n, opcNewStr, dest, tmp)
     c.freeTemp(tmp)
     # XXX buggy
-  of mLengthOpenArray, mLengthArray, mLengthSeq, mXLenSeq:
+  of mLengthOpenArray, mLengthArray, mLengthSeq:
     genUnaryABI(c, n, dest, opcLenSeq)
-  of mLengthStr, mXLenStr:
+  of mLengthStr:
     genUnaryABI(c, n, dest, opcLenStr)
   of mIncl, mExcl:
     unused(c, n, dest)
@@ -1076,9 +1074,9 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mEqF64: genBinaryABC(c, n, dest, opcEqFloat)
   of mLeF64: genBinaryABC(c, n, dest, opcLeFloat)
   of mLtF64: genBinaryABC(c, n, dest, opcLtFloat)
-  of mLePtr, mLeU, mLeU64: genBinaryABC(c, n, dest, opcLeu)
-  of mLtPtr, mLtU, mLtU64: genBinaryABC(c, n, dest, opcLtu)
-  of mEqProc, mEqRef, mEqUntracedRef:
+  of mLePtr, mLeU: genBinaryABC(c, n, dest, opcLeu)
+  of mLtPtr, mLtU: genBinaryABC(c, n, dest, opcLtu)
+  of mEqProc, mEqRef:
     genBinaryABC(c, n, dest, opcEqRef)
   of mXor: genBinaryABC(c, n, dest, opcXor)
   of mNot: genUnaryABC(c, n, dest, opcNot)
@@ -1105,7 +1103,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
   of mMulSet: genBinarySet(c, n, dest, opcMulSet)
   of mPlusSet: genBinarySet(c, n, dest, opcPlusSet)
   of mMinusSet: genBinarySet(c, n, dest, opcMinusSet)
-  of mSymDiffSet: genBinarySet(c, n, dest, opcSymdiffSet)
   of mConStrStr: genVarargsABC(c, n, dest, opcConcatStr)
   of mInSet: genBinarySet(c, n, dest, opcContainsSet)
   of mRepr: genUnaryABC(c, n, dest, opcRepr)
@@ -1126,29 +1123,6 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     unused(c, n, dest)
     c.gen(lowerSwap(c.graph, n, if c.prc == nil: c.module else: c.prc.sym))
   of mIsNil: genUnaryABC(c, n, dest, opcIsNil)
-  of mCopyStr:
-    if dest < 0: dest = c.getTemp(n.typ)
-    var
-      tmp1 = c.genx(n[1])
-      tmp2 = c.genx(n[2])
-      tmp3 = c.getTemp(n[2].typ)
-    c.gABC(n, opcLenStr, tmp3, tmp1)
-    c.gABC(n, opcSubStr, dest, tmp1, tmp2)
-    c.gABC(n, opcSubStr, tmp3)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
-  of mCopyStrLast:
-    if dest < 0: dest = c.getTemp(n.typ)
-    var
-      tmp1 = c.genx(n[1])
-      tmp2 = c.genx(n[2])
-      tmp3 = c.genx(n[3])
-    c.gABC(n, opcSubStr, dest, tmp1, tmp2)
-    c.gABC(n, opcSubStr, tmp3)
-    c.freeTemp(tmp1)
-    c.freeTemp(tmp2)
-    c.freeTemp(tmp3)
   of mParseBiggestFloat:
     if dest < 0: dest = c.getTemp(n.typ)
     var d2: TRegister
@@ -1346,11 +1320,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
   of mSizeOf:
-    globalError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+    globalError(c.config, n.info, sizeOfLikeMsg("sizeof"))
   of mAlignOf:
-    globalError(c.config, n.info, "cannot evaluate 'alignof' because its type is not defined completely")
+    globalError(c.config, n.info, sizeOfLikeMsg("alignof"))
   of mOffsetOf:
-    globalError(c.config, n.info, "cannot evaluate 'offsetof' because its type is not defined completely")
+    globalError(c.config, n.info, sizeOfLikeMsg("offsetof"))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy: discard "ignore calls to the default destructor"
@@ -2094,12 +2068,10 @@ proc gen(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags = {}) =
     genWhile(c, n)
   of nkBlockExpr, nkBlockStmt: genBlock(c, n, dest)
   of nkReturnStmt:
-    unused(c, n, dest)
     genReturn(c, n)
   of nkRaiseStmt:
     genRaise(c, n)
   of nkBreakStmt:
-    unused(c, n, dest)
     genBreak(c, n)
   of nkTryStmt, nkHiddenTryStmt: genTry(c, n, dest)
   of nkStmtList:

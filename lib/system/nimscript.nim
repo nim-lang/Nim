@@ -26,14 +26,11 @@ template builtin = discard
 # We know the effects better than the compiler:
 {.push hint[XDeclaredButNotUsed]: off.}
 
-proc listDirs*(dir: string): seq[string] =
-  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
-  builtin
-proc listFiles*(dir: string): seq[string] =
-  ## Lists all the files (non-recursively) in the directory `dir`.
-  builtin
-
-proc removeDir(dir: string) {.
+proc listDirsImpl(dir: string): seq[string] {.
+  tags: [ReadIOEffect], raises: [OSError].} = builtin
+proc listFilesImpl(dir: string): seq[string] {.
+  tags: [ReadIOEffect], raises: [OSError].} = builtin
+proc removeDir(dir: string, checkDir = true) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
@@ -47,6 +44,7 @@ proc copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
 proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
+
 proc getError: string = builtin
 proc setCurrentDir(dir: string) = builtin
 proc getCurrentDir*(): string =
@@ -57,14 +55,6 @@ proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
 
 proc warningImpl(arg, orig: string) = discard
 proc hintImpl(arg, orig: string) = discard
-
-proc paramStr*(i: int): string =
-  ## Retrieves the ``i``'th command line parameter.
-  builtin
-
-proc paramCount*(): int =
-  ## Retrieves the number of command line parameters.
-  builtin
 
 proc switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
@@ -196,10 +186,20 @@ template log(msg: string, body: untyped) =
   if mode != ScriptMode.WhatIf:
     body
 
-proc rmDir*(dir: string) {.raises: [OSError].} =
+proc listDirs*(dir: string): seq[string] =
+  ## Lists all the subdirectories (non-recursively) in the directory `dir`.
+  result = listDirsImpl(dir)
+  checkOsError()
+
+proc listFiles*(dir: string): seq[string] =
+  ## Lists all the files (non-recursively) in the directory `dir`.
+  result = listFilesImpl(dir)
+  checkOsError()
+
+proc rmDir*(dir: string, checkDir = false) {.raises: [OSError].} =
   ## Removes the directory `dir`.
   log "rmDir: " & dir:
-    removeDir dir
+    removeDir(dir, checkDir = checkDir)
     checkOsError()
 
 proc rmFile*(file: string) {.raises: [OSError].} =
@@ -271,6 +271,9 @@ proc selfExec*(command: string) {.
     if rawExec(c) != 0:
       raise newException(OSError, "FAILED: " & c)
     checkOsError()
+
+from os import paramCount, paramStr
+export paramCount, paramStr
 
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
@@ -376,11 +379,26 @@ when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   template task*(name: untyped; description: string; body: untyped): untyped =
     ## Defines a task. Hidden tasks are supported via an empty description.
+    ##
     ## Example:
     ##
     ## .. code-block:: nim
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
+    ##
+    ## For a task named ``foo``, this template generates a ``proc`` named
+    ## ``fooTask``.  This is useful if you need to call one task in
+    ## another in your Nimscript.
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task foo, "foo":        # > nim foo
+    ##    echo "Running foo"    # Running foo
+    ##
+    ##  task bar, "bar":        # > nim bar
+    ##    echo "Running bar"    # Running bar
+    ##    fooTask()             # Running foo
     proc `name Task`*() =
       setCommand "nop"
       body

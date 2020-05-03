@@ -121,6 +121,11 @@ proc uninstantiate(t: PType): PType =
     of tyCompositeTypeClass: uninstantiate t[1]
     else: t
 
+proc getTypeDescNode(typ: PType, sym: PSym, info: TLineInfo): PNode =
+  var resType = newType(tyTypeDesc, sym)
+  rawAddSon(resType, typ)
+  result = toNode(resType, info)
+
 proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym): PNode =
   const skippedTypes = {tyTypeDesc, tyAlias, tySink}
   let trait = traitCall[0]
@@ -134,8 +139,8 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     newTypeWithSons(context, kind, sons).toNode(traitCall.info)
 
   if operand.kind == tyGenericParam or (traitCall.len > 2 and operand2.kind == tyGenericParam):
-    return traitCall  ## tpo early to evaluate
-    
+    return traitCall  ## too early to evaluate
+
   let s = trait.sym.name.s
   case s
   of "or", "|":
@@ -161,13 +166,16 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
     result.typ = newType(tyInt, context)
     result.info = traitCall.info
   of "genericHead":
-    var res = uninstantiate(operand)
-    if res == operand and res.kind notin tyMagicGenerics:
-      localError(c.config, traitCall.info,
-        "genericHead expects a generic type. The given type was " &
-        typeToString(operand))
-      return newType(tyError, context).toNode(traitCall.info)
-    result = res.base.toNode(traitCall.info)
+    var arg = operand
+    case arg.kind
+    of tyGenericInst:
+      result = getTypeDescNode(arg.base, operand.owner, traitCall.info)
+    # of tySequence: # this doesn't work
+    #   var resType = newType(tySequence, operand.owner)
+    #   result = toNode(resType, traitCall.info) # doesn't work yet
+    else:
+      localError(c.config, traitCall.info, "expected generic type, got: type $2 of kind $1" % [arg.kind.toHumanStr, typeToString(operand)])
+      result = newType(tyError, context).toNode(traitCall.info)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
@@ -176,17 +184,20 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
   of "isNamedTuple":
+    var operand = operand.skipTypes({tyGenericInst})
     let cond = operand.kind == tyTuple and operand.n != nil
     result = newIntNodeT(toInt128(ord(cond)), traitCall, c.graph)
+  of "tupleLen":
+    var operand = operand.skipTypes({tyGenericInst})
+    assert operand.kind == tyTuple, $operand.kind
+    result = newIntNodeT(toInt128(operand.len), traitCall, c.graph)
   of "distinctBase":
     var arg = operand.skipTypes({tyGenericInst})
     if arg.kind == tyDistinct:
       while arg.kind == tyDistinct:
         arg = arg.base
         arg = arg.skipTypes(skippedTypes + {tyGenericInst})
-      var resType = newType(tyTypeDesc, operand.owner)
-      rawAddSon(resType, arg)
-      result = toNode(resType, traitCall.info)
+      result = getTypeDescNode(arg, operand.owner, traitCall.info)
     else:
       localError(c.config, traitCall.info,
         "distinctBase expects a distinct type as argument. The given type was " & typeToString(operand))
@@ -417,6 +428,41 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result.typ = newProcType(result.info, result)
   result.typ.addParam newParam
 
+proc semQuantifier(c: PContext; n: PNode): PNode =
+  checkSonsLen(n, 2, c.config)
+  openScope(c)
+  result = newNodeIT(n.kind, n.info, n.typ)
+  result.add n[0]
+  let args = n[1]
+  assert args.kind == nkArgList
+  for i in 0..args.len-2:
+    let it = args[i]
+    var valid = false
+    if it.kind == nkInfix:
+      let op = considerQuotedIdent(c, it[0])
+      if op.id == ord(wIn):
+        let v = newSymS(skForVar, it[1], c)
+        styleCheckDef(c.config, v)
+        onDef(it[1].info, v)
+        let domain = semExprWithType(c, it[2], {efWantIterator})
+        v.typ = domain.typ
+        valid = true
+        addDecl(c, v)
+        result.add newTree(nkInfix, it[0], newSymNode(v), domain)
+    if not valid:
+      localError(c.config, n.info, "<quantifier> 'in' <range> expected")
+  result.add forceBool(c, semExprWithType(c, args[^1]))
+  closeScope(c)
+
+proc semOld(c: PContext; n: PNode): PNode =
+  if n[1].kind == nkHiddenDeref:
+    n[1] = n[1][0]
+  if n[1].kind != nkSym or n[1].sym.kind != skParam:
+    localError(c.config, n[1].info, "'old' takes a parameter name")
+  elif n[1].sym.owner != getCurrOwner(c):
+    localError(c.config, n[1].info, n[1].sym.name.s & " does not belong to " & getCurrOwner(c).name.s)
+  result = n
+
 proc magicsAfterOverloadResolution(c: PContext, n: PNode,
                                    flags: TExprFlags): PNode =
   ## This is the preferred code point to implement magics.
@@ -468,8 +514,6 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     result.typ = n[1].typ
   of mDotDot:
     result = n
-  of mRoof:
-    localError(c.config, n.info, "builtin roof operator is not supported anymore")
   of mPlugin:
     let plugin = getPlugin(c.cache, n[0].sym)
     if plugin.isNil:
@@ -496,4 +540,23 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       result[0] = newSymNode(t.destructor)
   of mUnown:
     result = semUnown(c, n)
-  else: result = n
+  of mExists, mForall:
+    result = semQuantifier(c, n)
+  of mOld:
+    result = semOld(c, n)
+  of mSetLengthSeq:
+    result = n
+    let seqType = result[1].typ.skipTypes({tyPtr, tyRef, # in case we had auto-dereferencing
+                                           tyVar, tyGenericInst, tyOwned, tySink,
+                                           tyAlias, tyUserTypeClassInst})
+    if seqType.kind == tySequence and seqType.base.requiresInit:
+      message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))
+  of mDefault:
+    result = n
+    c.config.internalAssert result[1].typ.kind == tyTypeDesc
+    let constructed = result[1].typ.base
+    if constructed.requiresInit:
+      message(c.config, n.info, warnUnsafeDefault, typeToString(constructed))
+  else:
+    result = n
+

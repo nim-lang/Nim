@@ -48,7 +48,7 @@ written as:
     a.len = b.len
     a.cap = b.cap
     if b.data != nil:
-      a.data = cast[type(a.data)](alloc(a.cap * sizeof(T)))
+      a.data = cast[typeof(a.data)](alloc(a.cap * sizeof(T)))
       for i in 0..<a.len:
         a.data[i] = b.data[i]
 
@@ -76,7 +76,7 @@ written as:
   proc createSeq*[T](elems: varargs[T]): myseq[T] =
     result.cap = elems.len
     result.len = elems.len
-    result.data = cast[type(result.data)](alloc(result.cap * sizeof(T)))
+    result.data = cast[typeof(result.data)](alloc(result.cap * sizeof(T)))
     for i in 0..<result.len: result.data[i] = elems[i]
 
   proc len*[T](x: myseq[T]): int {.inline.} = x.len
@@ -256,6 +256,23 @@ An implementation is allowed, but not required to implement even more move
 optimizations (and the current implementation does not).
 
 
+Sink parameter inference
+========================
+
+The current implementation does a limited form of sink parameter
+inference. The `.nosinks`:idx: pragma can be used to disable this inference
+for a single routine:
+
+.. code-block:: nim
+
+  proc addX(x: T; child: T) {.nosinks.} =
+    x.s.add child
+
+To disable it for a section of code, one can
+use `{.push sinkInference: off.}`...`{.pop.}`.
+
+The details of the inference algorithm are currently undocumented.
+
 
 Rewrite rules
 =============
@@ -434,6 +451,7 @@ for expressions of type ``lent T`` or of type ``var T``.
     result = Tree(kids: kids)
     # converted into:
     `=sink`(result.kids, kids); wasMoved(kids)
+    `=destroy`(kids)
 
   proc `[]`*(x: Tree; i: int): lent Tree =
     result = x.kids[i]

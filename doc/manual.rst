@@ -105,15 +105,15 @@ identifier meanings, and in some cases expression values. An error detected
 during semantic analysis is called a `static error`:idx:. Errors described in
 this manual are static errors when not otherwise specified.
 
-A `checked runtime error`:idx: is an error that the implementation detects
+A `panic`:idx: is an error that the implementation detects
 and reports at runtime. The method for reporting such errors is via
 *raising exceptions* or *dying with a fatal error*. However, the implementation
 provides a means to disable these `runtime checks`:idx:. See the section
 pragmas_ for details.
 
-Whether a checked runtime error results in an exception or in a fatal error is
+Whether a panic results in an exception or in a fatal error is
 implementation specific. Thus the following program is invalid; even though the
-code purports to catch the `IndexError` from an out-of-bounds array access, the
+code purports to catch the `IndexDefect` from an out-of-bounds array access, the
 compiler may instead choose to allow the program to die with a fatal error.
 
 .. code-block:: nim
@@ -121,8 +121,14 @@ compiler may instead choose to allow the program to die with a fatal error.
   let i = 5
   try:
     a[i] = 'N'
-  except IndexError:
+  except IndexDefect:
     echo "invalid index"
+
+The current implementation allows to switch between these different behaviors
+via ``--panics:on|off``. When panics are turned on, the program dies on a
+panic, if they are turned off the runtime errors are turned into
+exceptions. The benefit of ``--panics:on`` is that it produces smaller binary
+code and the compiler has more freedom to optimize the code.
 
 An `unchecked runtime error`:idx: is an error that is not guaranteed to be
 detected, and can cause the subsequent behavior of the computation to
@@ -559,7 +565,7 @@ following characters::
 defined here.)
 
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot of``.
+``and or not xor shl shr div mod in notin is isnot of as``.
 
 `.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
@@ -632,21 +638,21 @@ has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 
-================  ===============================================  ==================  ===============
-Precedence level    Operators                                      First character     Terminal symbol
-================  ===============================================  ==================  ===============
- 10 (highest)                                                      ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``            ``*  %  \  /``      OP9
-  8               ``+    -``                                       ``+  -  ~  |``      OP8
-  7               ``&``                                            ``&``               OP7
-  6               ``..``                                           ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of``   ``=  <  >  !``      OP5
-  4               ``and``                                                              OP4
-  3               ``or xor``                                                           OP3
-  2                                                                ``@  :  ?``         OP2
-  1               *assignment operator* (like ``+=``, ``*=``)                          OP1
-  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                          OP0
-================  ===============================================  ==================  ===============
+================  ==================================================  ==================  ===============
+Precedence level    Operators                                         First character     Terminal symbol
+================  ==================================================  ==================  ===============
+ 10 (highest)                                                         ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``               ``*  %  \  /``      OP9
+  8               ``+    -``                                          ``+  -  ~  |``      OP8
+  7               ``&``                                               ``&``               OP7
+  6               ``..``                                              ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of as``   ``=  <  >  !``      OP5
+  4               ``and``                                                                 OP4
+  3               ``or xor``                                                              OP3
+  2                                                                   ``@  :  ?``         OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                             OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                             OP0
+================  ==================================================  ==================  ===============
 
 
 Whether an operator is used a prefix operator is also affected by preceding
@@ -869,9 +875,9 @@ Ordinal types have the following characteristics:
   the operation of functions as ``inc``, ``ord``, ``dec`` on ordinal types to
   be defined.
 - Ordinal values have a smallest possible value. Trying to count further
-  down than the smallest value gives a checked runtime or static error.
+  down than the smallest value produces a panic or a static error.
 - Ordinal values have a largest possible value. Trying to count further
-  than the largest value gives a checked runtime or static error.
+  than the largest value produces a panic or a static error.
 
 Integers, bool, characters and enumeration types (and subranges of these
 types) belong to ordinal types. For reasons of simplicity of implementation
@@ -982,7 +988,7 @@ lowest and highest value of the type. For example:
 to 5. ``PositiveFloat`` defines a subrange of all positive floating point values.
 NaN does not belong to any subrange of floating point types.
 Assigning any other value to a variable of type ``Subrange`` is a
-checked runtime error (or static error if it can be determined during
+panic (or a static error if it can be determined during
 semantic analysis). Assignments from the base type to one of its subrange types
 (and vice versa) are allowed.
 
@@ -1027,10 +1033,10 @@ The IEEE standard defines five types of floating-point exceptions:
   precision, for example, 2.0 / 3.0, log(1.1) and 0.1 in input.
 
 The IEEE exceptions are either ignored during execution or mapped to the
-Nim exceptions: `FloatInvalidOpError`:idx:, `FloatDivByZeroError`:idx:,
-`FloatOverflowError`:idx:, `FloatUnderflowError`:idx:,
-and `FloatInexactError`:idx:.
-These exceptions inherit from the `FloatingPointError`:idx: base class.
+Nim exceptions: `FloatInvalidOpDefect`:idx:, `FloatDivByZeroDefect`:idx:,
+`FloatOverflowDefect`:idx:, `FloatUnderflowDefect`:idx:,
+and `FloatInexactDefect`:idx:.
+These exceptions inherit from the `FloatingPointDefect`:idx: base class.
 
 Nim provides the pragmas `nanChecks`:idx: and `infChecks`:idx: to control
 whether the IEEE exceptions are ignored or trap a Nim exception:
@@ -1039,12 +1045,12 @@ whether the IEEE exceptions are ignored or trap a Nim exception:
   {.nanChecks: on, infChecks: on.}
   var a = 1.0
   var b = 0.0
-  echo b / b # raises FloatInvalidOpError
-  echo a / b # raises FloatOverflowError
+  echo b / b # raises FloatInvalidOpDefect
+  echo a / b # raises FloatOverflowDefect
 
-In the current implementation ``FloatDivByZeroError`` and ``FloatInexactError``
-are never raised. ``FloatOverflowError`` is raised instead of
-``FloatDivByZeroError``.
+In the current implementation ``FloatDivByZeroDefect`` and ``FloatInexactDefect``
+are never raised. ``FloatOverflowDefect`` is raised instead of
+``FloatDivByZeroDefect``.
 There is also a `floatChecks`:idx: pragma that is a short-cut for the
 combination of ``nanChecks`` and ``infChecks`` pragmas. ``floatChecks`` are
 turned off as default.
@@ -1476,8 +1482,8 @@ Tuples and object types
 A variable of a tuple or object type is a heterogeneous storage
 container.
 A tuple or object defines various named *fields* of a type. A tuple also
-defines an *order* of the fields. Tuples are meant for heterogeneous storage
-types with no overhead and few abstraction possibilities. The constructor ``()``
+defines a lexicographic *order* of the fields. Tuples are meant to be
+heterogeneous storage types with few abstractions. The ``()`` syntax
 can be used to construct tuples. The order of the fields in the constructor
 must match the order of the tuple's definition. Different tuple-types are
 *equivalent* if they specify the same fields of the same type in the same
@@ -1497,8 +1503,10 @@ of the assignment operator is described `here
   var
     person: Person
   person = (name: "Peter", age: 30)
+  echo person.name
   # the same, but less readable:
   person = ("Peter", 30)
+  echo person[0]
 
 A tuple with one unnamed field can be constructed with the parentheses and a
 trailing comma:
@@ -1522,11 +1530,12 @@ can also be defined with indentation instead of ``[]``:
   type
     Person = tuple   # type representing a person
       name: string   # a person consists of a name
-      age: natural   # and an age
+      age: Natural   # and an age
 
 Objects provide many features that tuples do not. Object provide inheritance and
-information hiding. Objects have access to their type during at runtime, so that
-the ``of`` operator can be used to determine the object's type. The ``of``
+the ability to hide fields from other modules. Objects with inheritance enabled
+have information about their type at runtime, so that the ``of`` operator can be
+used to determine the object's type. The ``of``
 operator is similar to the ``instanceof`` operator in Java.
 
 .. code-block:: nim
@@ -1546,9 +1555,19 @@ operator is similar to the ``instanceof`` operator in Java.
 
 Object fields that should be visible from outside the defining module, have to
 be marked by ``*``. In contrast to tuples, different object types are
-never *equivalent*. Objects that have no ancestor are implicitly ``final``
-and thus have no hidden type field. One can use the ``inheritable`` pragma to
+never *equivalent*, they are nominal types whereas tuples are structural.
+Objects that have no ancestor are implicitly ``final`` and thus have no hidden
+type information. One can use the ``inheritable`` pragma to
 introduce new object roots apart from ``system.RootObj``.
+
+.. code-block:: nim
+  type
+    Person = object # example of a final object
+      name*: string
+      age: int
+
+    Student = ref object of Person # Error: inheritance only works with non-final objects
+      id: int
 
 
 Object construction
@@ -1601,7 +1620,7 @@ An example:
   # accessing n.thenPart is valid because the ``nkIf`` branch is active:
   n.thenPart = Node(kind: nkFloat, floatVal: 2.0)
 
-  # the following statement raises an `FieldError` exception, because
+  # the following statement raises an `FieldDefect` exception, because
   # n.kind's value does not fit and the ``nkString`` branch is not active:
   n.strVal = ""
 
@@ -1715,22 +1734,9 @@ dereferencing operations for reference types:
   n.data = 9
   # no need to write n[].data; in fact n[].data is highly discouraged!
 
-Automatic dereferencing is also performed for the first argument of a routine
-call. But currently this feature has to be only enabled
-via ``{.experimental: "implicitDeref".}``:
-
-.. code-block:: nim
-  {.experimental: "implicitDeref".}
-
-  proc depth(x: NodeObj): int = ...
-
-  var
-    n: Node
-  new(n)
-  echo n.depth
-  # no need to write n[].depth either
-
-
+Automatic dereferencing can be performed for the first argument of a routine
+call, but this is an experimental feature and is described `here
+<manual_experimental.html#type-bound-operations>`_.
 
 In order to simplify structural type checking, recursive tuples are not valid:
 
@@ -1761,12 +1767,15 @@ further information.
 Nil
 ---
 
-If a reference points to *nothing*, it has the value ``nil``. ``nil`` is also
-the default value for all ``ref`` and ``ptr`` types. Dereferencing ``nil``
-is an unrecoverable fatal runtime error. A dereferencing operation ``p[]``
-implies that ``p`` is not nil. This can be exploited by the implementation to
-optimize code like:
+If a reference points to *nothing*, it has the value ``nil``. ``nil`` is the
+default value for all ``ref`` and ``ptr`` types. The ``nil`` value can also be
+used like any other literal value. For example, it can be used in an assignment
+like ``myRef = nil``.
 
+Dereferencing ``nil`` is an unrecoverable fatal runtime error (and not a panic).
+
+A successful dereferencing operation ``p[]`` implies that ``p`` is not nil. This
+can be exploited by the implementation to optimize code like:
 
 .. code-block:: nim
 
@@ -1827,32 +1836,6 @@ binary zero which the string assignment can handle. One needs to know low level
 details like this when mixing garbage collected data with unmanaged memory.
 
 .. XXX finalizers for traced objects
-
-
-Not nil annotation
-------------------
-
-All types for which ``nil`` is a valid value can be annotated to
-exclude ``nil`` as a valid value with the ``not nil`` annotation:
-
-.. code-block:: nim
-  type
-    PObject = ref TObj not nil
-    TProc = (proc (x, y: int)) not nil
-
-  proc p(x: PObject) =
-    echo "not nil"
-
-  # compiler catches this:
-  p(nil)
-
-  # and also this:
-  var x: PObject
-  p(x)
-
-The compiler ensures that every code path initializes variables which contain
-non nilable pointers. The details of this analysis are still to be specified
-here.
 
 
 Procedural type
@@ -2358,7 +2341,7 @@ The convertible relation can be relaxed by a user-defined type
   echo x # => 97
 
 The type conversion ``T(a)`` is an L-value if ``a`` is an L-value and
-``typeEqualsOrDistinct(T, type(a))`` holds.
+``typeEqualsOrDistinct(T, typeof(a))`` holds.
 
 
 Assignment compatibility
@@ -2572,7 +2555,8 @@ Example:
   discard p(3, 4) # discard the return value of `p`
 
 The ``discard`` statement evaluates its expression for side-effects and
-throws the expression's resulting value away.
+throws the expression's resulting value away, and should only be used
+when ignoring this value is known not to cause problems.
 
 Ignoring the return value of a procedure without using a discard statement is
 a static error.
@@ -2842,6 +2826,35 @@ expanded into a list of its elements:
     of 'a'..'z', 'A'..'Z', '\x80'..'\xFF', '_': echo "an identifier"
     of '0'..'9': echo "a number"
     else: echo "other"
+
+The ``case`` statement doesn't produce an l-value, so the following example
+won't work:
+
+.. code-block:: nim
+  type
+    Foo = ref object
+      x: seq[string]
+
+  proc get_x(x: Foo): var seq[string] =
+    # doesn't work
+    case true
+    of true:
+      x.x
+    else:
+      x.x
+
+  var foo = Foo(x: @[])
+  foo.get_x().add("asd")
+
+This can be fixed by explicitly using ``return``:
+
+.. code-block:: nim
+  proc get_x(x: Foo): var seq[string] =
+    case true
+    of true:
+      return x.x
+    else:
+      return x.x
 
 
 When statement
@@ -4038,7 +4051,7 @@ Example:
       var a = readLine(f)
       var b = readLine(f)
       echo "sum: " & $(parseInt(a) + parseInt(b))
-    except OverflowError:
+    except OverflowDefect:
       echo "overflow!"
     except ValueError:
       echo "could not convert string to integer"
@@ -4077,6 +4090,8 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
+  from strutils import parseInt
+
   let x = try: parseInt("133a")
           except: -1
           finally: echo "hi"
@@ -4191,7 +4206,7 @@ Raise statement
 Example:
 
 .. code-block:: nim
-  raise newEOS("operating system failed")
+  raise newException(IOError, "IO failed")
 
 Apart from built-in operations like array indexing, memory allocation, etc.
 the ``raise`` statement is the only way to raise an exception.
@@ -4199,7 +4214,7 @@ the ``raise`` statement is the only way to raise an exception.
 .. XXX document this better!
 
 If no exception name is given, the current exception is `re-raised`:idx:. The
-`ReraiseError`:idx: exception is raised if there is no exception to
+`ReraiseDefect`:idx: exception is raised if there is no exception to
 re-raise. It follows that the ``raise`` statement *always* raises an
 exception.
 
@@ -4211,9 +4226,11 @@ The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
 and are stricly speaking not catchable as they can also be mapped to an operation
-that terminates the whole process. Exceptions that indicate any other runtime
-error that can be caught inherit from ``system.CatchableError``
-(which is a subtype of ``Exception``).
+that terminates the whole process. If panics are turned into exceptions, these
+exceptions inherit from `Defect`.
+
+Exceptions that indicate any other runtime error that can be caught inherit from
+``system.CatchableError`` (which is a subtype of ``Exception``).
 
 
 Imported exceptions
@@ -5311,72 +5328,6 @@ powerful programming construct that still suffices. So the "check list" is:
 (4) Else: Use a macro.
 
 
-Macros as pragmas
------------------
-
-Whole routines (procs, iterators etc.) can also be passed to a template or
-a macro via the pragma notation:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  proc p() {.m.} = discard
-
-This is a simple syntactic transformation into:
-
-.. code-block:: nim
-  template m(s: untyped) = discard
-
-  m:
-    proc p() = discard
-
-
-For Loop Macro
---------------
-
-A macro that takes as its only input parameter an expression of the special
-type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
-
-.. code-block:: nim
-    :test: "nim c $1"
-
-  import macros
-  {.experimental: "forLoopMacros".}
-
-  macro enumerate(x: ForLoopStmt): untyped =
-    expectKind x, nnkForStmt
-    # we strip off the first for loop variable and use
-    # it as an integer counter:
-    result = newStmtList()
-    result.add newVarStmt(x[0], newLit(0))
-    var body = x[^1]
-    if body.kind != nnkStmtList:
-      body = newTree(nnkStmtList, body)
-    body.add newCall(bindSym"inc", x[0])
-    var newFor = newTree(nnkForStmt)
-    for i in 1..x.len-3:
-      newFor.add x[i]
-    # transform enumerate(X) to 'X'
-    newFor.add x[^2][1]
-    newFor.add body
-    result.add newFor
-    # now wrap the whole macro in a block to create a new scope
-    result = quote do:
-      block: `result`
-
-  for a, b in enumerate(items([1, 2, 3])):
-    echo a, " ", b
-
-  # without wrapping the macro in a block, we'd need to choose different
-  # names for `a` and `b` here to avoid redefinition errors
-  for a, b in enumerate([1, 2, 3, 5]):
-    echo a, " ", b
-
-
-Currently for loop macros must be enabled explicitly
-via ``{.experimental: "forLoopMacros".}``.
-
-
 Special Types
 =============
 
@@ -5614,6 +5565,8 @@ It is not checked that the ``except`` list is really exported from the module.
 This feature allows to compile against an older version of the module that
 does not export these identifiers.
 
+The ``import`` statement is only allowed at the top level.
+
 
 Include statement
 ~~~~~~~~~~~~~~~~~
@@ -5624,6 +5577,18 @@ statement is useful to split up a large module into several files:
 .. code-block:: nim
   include fileA, fileB, fileC
 
+The ``include`` statement can be used outside of the top level, as such:
+
+.. code-block:: nim
+  # Module A
+  echo "Hello World!"
+
+.. code-block:: nim
+  # Module B
+  proc main() =
+    include A
+
+  main() # => Hello World!
 
 
 Module names in imports
@@ -5798,111 +5763,6 @@ iterator in which case the overloading resolution takes place:
   var x = 4
   write(stdout, x) # not ambiguous: uses the module C's x
 
-Code reordering
-~~~~~~~~~~~~~~~
-
-**Note**: Code reordering is experimental and must be enabled via the
-``{.experimental.}`` pragma.
-
-The code reordering feature can implicitly rearrange procedure, template, and
-macro definitions along with variable declarations and initializations at the top
-level scope so that, to a large extent, a programmer should not have to worry
-about ordering definitions correctly or be forced to use forward declarations to
-preface definitions inside a module.
-
-..
-   NOTE: The following was documentation for the code reordering precursor,
-   which was {.noForward.}.
-
-   In this mode, procedure definitions may appear out of order and the compiler
-   will postpone their semantic analysis and compilation until it actually needs
-   to generate code using the definitions. In this regard, this mode is similar
-   to the modus operandi of dynamic scripting languages, where the function
-   calls are not resolved until the code is executed. Here is the detailed
-   algorithm taken by the compiler:
-
-   1. When a callable symbol is first encountered, the compiler will only note
-   the symbol callable name and it will add it to the appropriate overload set
-   in the current scope. At this step, it won't try to resolve any of the type
-   expressions used in the signature of the symbol (so they can refer to other
-   not yet defined symbols).
-
-   2. When a top level call is encountered (usually at the very end of the
-   module), the compiler will try to determine the actual types of all of the
-   symbols in the matching overload set. This is a potentially recursive process
-   as the signatures of the symbols may include other call expressions, whose
-   types will be resolved at this point too.
-
-   3. Finally, after the best overload is picked, the compiler will start
-   compiling the body of the respective symbol. This in turn will lead the
-   compiler to discover more call expressions that need to be resolved and steps
-   2 and 3 will be repeated as necessary.
-
-   Please note that if a callable symbol is never used in this scenario, its
-   body will never be compiled. This is the default behavior leading to best
-   compilation times, but if exhaustive compilation of all definitions is
-   required, using ``nim check`` provides this option as well.
-
-Example:
-
-.. code-block:: nim
-
-  {.experimental: "codeReordering".}
-
-  proc foo(x: int) =
-    bar(x)
-
-  proc bar(x: int) =
-    echo(x)
-
-  foo(10)
-
-Variables can also be reordered as well. Variables that are *initialized* (i.e.
-variables that have their declaration and assignment combined in a single
-statement) can have their entire initialization statement reordered. Be wary of
-what code is executed at the top level:
-
-.. code-block:: nim
-  {.experimental: "codeReordering".}
-
-  proc a() =
-    echo(foo)
-
-  var foo = 5
-
-  a() # outputs: "5"
-
-..
-   TODO: Let's table this for now. This is an *experimental feature* and so the
-   specific manner in which ``declared`` operates with it can be decided in
-   eventuality, because right now it works a bit weirdly.
-
-   The values of expressions involving ``declared`` are decided *before* the
-   code reordering process, and not after. As an example, the output of this
-   code is the same as it would be with code reordering disabled.
-
-   .. code-block:: nim
-     {.experimental: "codeReordering".}
-
-     proc x() =
-       echo(declared(foo))
-
-     var foo = 4
-
-     x() # "false"
-
-It is important to note that reordering *only* works for symbols at top level
-scope. Therefore, the following will *fail to compile:*
-
-.. code-block:: nim
-  {.experimental: "codeReordering".}
-
-  proc a() =
-    b()
-    proc b() =
-      echo("Hello!")
-
-  a()
 
 Compiler Messages
 =================
@@ -6351,29 +6211,6 @@ created for each instantiation of the proc. The order of initialization of
 the created global variables within a module is not defined, but all of them
 will be initialized after any top-level variables in their originating module
 and before any variable in a module that imports it.
-
-pragma pragma
--------------
-
-The ``pragma`` pragma can be used to declare user defined pragmas. This is
-useful because Nim's templates and macros do not affect pragmas. User
-defined pragmas are in a different module-wide scope than all other symbols.
-They cannot be imported from a module.
-
-Example:
-
-.. code-block:: nim
-  when appType == "lib":
-    {.pragma: rtl, exportc, dynlib, cdecl.}
-  else:
-    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
-
-  proc p*(a, b: int): int {.rtl.} =
-    result = a+b
-
-In the example a new pragma named ``rtl`` is introduced that either imports
-a symbol from a dynamic library or exports the symbol for dynamic library
-generation.
 
 Disabling certain messages
 --------------------------
@@ -7071,6 +6908,34 @@ used. To see if a value was provided, `defined(FooBar)` can be used.
 
 The syntax `-d:flag` is actually just a shortcut for `-d:flag=true`.
 
+User-defined pragmas
+====================
+
+
+pragma pragma
+-------------
+
+The ``pragma`` pragma can be used to declare user defined pragmas. This is
+useful because Nim's templates and macros do not affect pragmas. User
+defined pragmas are in a different module-wide scope than all other symbols.
+They cannot be imported from a module.
+
+Example:
+
+.. code-block:: nim
+  when appType == "lib":
+    {.pragma: rtl, exportc, dynlib, cdecl.}
+  else:
+    {.pragma: rtl, importc, dynlib: "client.dll", cdecl.}
+
+  proc p*(a, b: int): int {.rtl.} =
+    result = a+b
+
+In the example a new pragma named ``rtl`` is introduced that either imports
+a symbol from a dynamic library or exports the symbol for dynamic library
+generation.
+
+
 Custom annotations
 ------------------
 It is possible to define custom typed pragmas. Custom pragmas do not effect
@@ -7137,6 +7002,51 @@ More examples with custom pragmas:
     alpha {.editRange: [0.0..1.0], animatable.}: float32
 
 
+Macro pragmas
+-------------
+
+All macros and templates can also be used as pragmas. They can be attached
+to routines (procs, iterators, etc), type names or type expressions. The
+compiler will perform the following simple syntactic transformations:
+
+.. code-block:: nim
+  template command(name: string, def: untyped) = discard
+
+  proc p() {.command("print").} = discard
+
+This is translated to:
+
+.. code-block:: nim
+  command("print"):
+    proc p() = discard
+
+------
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = proc (x: Event) {.async.}
+
+This is translated to:
+
+.. code-block:: nim
+  type
+    AsyncEventHandler = async(proc (x: Event))
+
+------
+
+.. code-block:: nim
+  type
+    MyObject {.schema: "schema.protobuf".} = object
+
+This is translated to a call to the ``schema`` macro with a `nnkTypeDef`
+AST node capturing both the left-hand side and right-hand side of the
+definition. The macro can return a potentially modified `nnkTypeDef` tree
+which will replace the original row in the type section.
+
+When multiple macro pragmas are applied to the same definition, the
+compiler will apply them consequently from left to right. Each macro
+will receive as input the output of the previous one.
+
 
 
 Foreign function interface
@@ -7195,6 +7105,9 @@ The string literal passed to ``exportc`` can be a format string:
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
 
+If the symbol should also be exported to a dynamic library, the ``dynlib``
+pragma should be used in addition to the ``exportc`` pragma. See
+`Dynlib pragma for export <#foreign-function-interface-dynlib-pragma-for-export>`_.
 
 
 Extern pragma
@@ -7208,7 +7121,6 @@ mangling. The string literal passed to ``extern`` can be a format string:
 
 In the example the external name of ``p`` is set to ``prefixp``. Only ``$1``
 is available and a literal dollar sign must be written as ``$$``.
-
 
 
 Bycopy pragma
@@ -7253,6 +7165,7 @@ checked.
 
 **Future directions**: GC'ed memory should be allowed in unions and the GC
 should scan unions conservatively.
+
 
 Packed pragma
 -------------
@@ -7334,10 +7247,7 @@ conjunction with the ``exportc`` pragma:
   proc exportme(): int {.cdecl, exportc, dynlib.}
 
 This is only useful if the program is compiled as a dynamic library via the
-``--app:lib`` command line option. This pragma only has an effect for the code
-generation on the Windows target, so when this pragma is forgotten and the dynamic
-library is only tested on Mac and/or Linux, there won't be an error. On Windows
-this pragma adds ``__declspec(dllexport)`` to the function declaration.
+``--app:lib`` command line option.
 
 
 

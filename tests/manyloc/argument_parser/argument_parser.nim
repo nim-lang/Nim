@@ -251,8 +251,8 @@ proc parse_parameter(quit_on_failure: bool, param, value: string,
   case param_kind:
   of PK_INT:
     try: result.int_val = value.parseInt
-    except OverflowError:
-      raise_or_quit(OverflowError, ("parameter $1 requires an " &
+    except OverflowDefect:
+      raise_or_quit(OverflowDefect, ("parameter $1 requires an " &
         "integer, but $2 is too large to fit into one") % [param,
         escape(value)])
     except ValueError:

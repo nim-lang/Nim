@@ -692,11 +692,11 @@ when isMainModule:
   check &"{-123.456:.3f}", "-123.456"
   check &"{123.456:1g}", "123.456"
   check &"{123.456:.1f}", "123.5"
-  check &"{123.456:.0f}", "123"
+  check &"{123.456:.0f}", "123."
   check &"{123.456:>9.3f}", "  123.456"
   check &"{123.456:9.3f}", "  123.456"
   check &"{123.456:>9.4f}", " 123.4560"
-  check &"{123.456:>9.0f}", "      123"
+  check &"{123.456:>9.0f}", "     123."
   check &"{123.456:<9.4f}", "123.4560 "
 
   # Float (scientific) tests
@@ -716,6 +716,9 @@ when isMainModule:
 
   var tm = fromUnix(0)
   discard &"{tm}"
+
+  var noww = now()
+  check &"{noww}", $noww
 
   # Unicode string tests
   check &"""{"αβγ"}""", "αβγ"
@@ -740,8 +743,6 @@ when isMainModule:
   # bug #11092
   check &"{high(int64)}", "9223372036854775807"
   check &"{low(int64)}", "-9223372036854775808"
-
-  import json
 
   doAssert fmt"{'a'} {'b'}" == "a b"
 

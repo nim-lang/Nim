@@ -102,16 +102,23 @@
 ## In addition to reading dynamic data, Nim can also unmarshal JSON directly
 ## into a type with the ``to`` macro.
 ##
+## Note: Use `Option <options.html#Option>`_ for keys sometimes missing in json
+## responses, and backticks around keys with a reserved keyword as name.
+##
 ## .. code-block:: Nim
 ##   import json
+##   import options
 ##
 ##   type
 ##     User = object
 ##       name: string
 ##       age: int
+##       `type`: Option[string]
 ##
 ##   let userJson = parseJson("""{ "name": "Nim", "age": 12 }""")
 ##   let user = to(userJson, User)
+##   if user.`type`.isSome():
+##     assert user.`type`.get() != "robot"
 ##
 ## Creating JSON
 ## =============
@@ -151,7 +158,7 @@ export
 export
   parsejson.JsonEventKind, parsejson.JsonError, JsonParser, JsonKindError,
   open, close, str, getInt, getFloat, kind, getColumn, getLine, getFilename,
-  errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr
+  errorMsg, errorMsgExpected, next, JsonParsingError, raiseParseErr, nimIdentNormalize
 
 type
   JsonNodeKind* = enum ## possible JSON node types
@@ -523,8 +530,10 @@ proc getOrDefault*(node: JsonNode, key: string): JsonNode =
   if not isNil(node) and node.kind == JObject:
     result = node.fields.getOrDefault(key)
 
-template simpleGetOrDefault*{`{}`(node, [key])}(node: JsonNode,
-    key: string): JsonNode = node.getOrDefault(key)
+proc `{}`*(node: JsonNode, key: string): JsonNode =
+  ## Gets a field from a `node`. If `node` is nil or not an object or
+  ## value at `key` does not exist, returns nil
+  node.getOrDefault(key)
 
 proc `{}=`*(node: JsonNode, keys: varargs[string], value: JsonNode) =
   ## Traverses the node and tries to set the value at the given location
@@ -586,7 +595,7 @@ proc escapeJsonUnquoted*(s: string; result: var string) =
     of '\b': result.add("\\b")
     of '\f': result.add("\\f")
     of '\t': result.add("\\t")
-    of '\v': result.add("\\v")
+    of '\v': result.add("\\u000b")
     of '\r': result.add("\\r")
     of '"': result.add("\\\"")
     of '\0'..'\7': result.add("\\u000" & $ord(c))
@@ -739,33 +748,33 @@ proc `$`*(node: JsonNode): string =
 
 iterator items*(node: JsonNode): JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray.
-  assert node.kind == JArray
+  assert node.kind == JArray, ": items() can not iterate a JsonNode of kind " & $node.kind
   for i in items(node.elems):
     yield i
 
 iterator mitems*(node: var JsonNode): var JsonNode =
   ## Iterator for the items of `node`. `node` has to be a JArray. Items can be
   ## modified.
-  assert node.kind == JArray
+  assert node.kind == JArray, ": mitems() can not iterate a JsonNode of kind " & $node.kind
   for i in mitems(node.elems):
     yield i
 
 iterator pairs*(node: JsonNode): tuple[key: string, val: JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
-  assert node.kind == JObject
+  assert node.kind == JObject, ": pairs() can not iterate a JsonNode of kind " & $node.kind
   for key, val in pairs(node.fields):
     yield (key, val)
 
 iterator keys*(node: JsonNode): string =
   ## Iterator for the keys in `node`. `node` has to be a JObject.
-  assert node.kind == JObject
+  assert node.kind == JObject, ": keys() can not iterate a JsonNode of kind " & $node.kind
   for key in node.fields.keys:
     yield key
 
 iterator mpairs*(node: var JsonNode): tuple[key: string, val: var JsonNode] =
   ## Iterator for the child elements of `node`. `node` has to be a JObject.
   ## Values can be modified
-  assert node.kind == JObject
+  assert node.kind == JObject, ": mpairs() can not iterate a JsonNode of kind " & $node.kind
   for key, val in mpairs(node.fields):
     yield (key, val)
 
@@ -1291,18 +1300,18 @@ when isMainModule:
   when compileOption("boundChecks"):
     try:
       let a = testJson["a"][9]
-      doAssert(false, "IndexError not thrown")
-    except IndexError:
+      doAssert(false, "IndexDefect not thrown")
+    except IndexDefect:
       discard
     try:
       let a = testJson["a"][-1]
-      doAssert(false, "IndexError not thrown")
-    except IndexError:
+      doAssert(false, "IndexDefect not thrown")
+    except IndexDefect:
       discard
     try:
       doAssert(testJson["a"][0].num == 1, "Index doesn't correspond to its value")
     except:
-      doAssert(false, "IndexError thrown for valid index")
+      doAssert(false, "IndexDefect thrown for valid index")
 
   doAssert(testJson{"b"}.getStr() == "asd", "Couldn't fetch a singly nested key with {}")
   doAssert(isNil(testJson{"nonexistent"}), "Non-existent keys should return nil")
@@ -1369,7 +1378,7 @@ when isMainModule:
     try:
       discard parsed["key2"][12123]
       doAssert(false)
-    except IndexError: doAssert(true)
+    except IndexDefect: doAssert(true)
 
     var parsed2 = parseFile("tests/testdata/jsontest2.json")
     doAssert(parsed2{"repository", "description"}.str ==

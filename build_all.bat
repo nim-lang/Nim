@@ -12,5 +12,6 @@ if not exist bin\nim.exe (
   cd ..
 )
 bin\nim.exe c --skipUserCfg --skipParentCfg koch
-koch.exe boot -d:release
-koch.exe tools
+koch.exe boot -d:release --skipUserCfg --skipParentCfg
+koch.exe tools --skipUserCfg --skipParentCfg
+

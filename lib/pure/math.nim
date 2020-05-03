@@ -52,7 +52,7 @@
 ##   are on system directly, to name a few ``shr``, ``shl``, ``xor``, ``clamp``, etc.
 
 
-include "system/inclrtl"
+import std/private/since
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
 
@@ -1205,7 +1205,7 @@ when isMainModule:
   block: # fac() tests
     try:
       discard fac(-1)
-    except AssertionError:
+    except AssertionDefect:
       discard
 
     doAssert fac(0) == 1

@@ -22,7 +22,9 @@ type
     preferGenericArg,
     preferTypeName,
     preferResolved, # fully resolved symbols
-    preferMixed, # show symbol + resolved symbols if it differs, eg: seq[cint{int32}, float]
+    preferMixed,
+      # most useful, shows: symbol + resolved symbols if it differs, eg:
+      # tuple[a: MyInt{int}, b: float]
 
 proc typeToString*(typ: PType; prefer: TPreferedDesc = preferName): string
 template `$`*(typ: PType): string = typeToString(typ)
@@ -63,8 +65,7 @@ const
                   tyAlias, tyInferred, tySink, tyLent, tyOwned}
   abstractRange* = {tyGenericInst, tyRange, tyDistinct, tyOrdinal, tyTypeDesc,
                     tyAlias, tyInferred, tySink, tyOwned}
-  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
-                       tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
+  # see also ast.abstractVarRange
   abstractInst* = {tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias,
                    tyInferred, tySink, tyOwned}
   abstractInstOwned* = abstractInst + {tyOwned}
@@ -87,7 +88,11 @@ proc isUnsigned*(t: PType): bool =
   t.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}
 
 proc getOrdValue*(n: PNode; onError = high(Int128)): Int128 =
-  case n.kind
+  var k = n.kind
+  if n.typ != nil and n.typ.skipTypes(abstractInst).kind in {tyChar, tyUInt..tyUInt64}:
+    k = nkUIntLit
+
+  case k
   of nkCharLit, nkUIntLit..nkUInt64Lit:
     # XXX: enable this assert
     #assert n.typ == nil or isUnsigned(n.typ), $n.typ
@@ -118,6 +123,13 @@ proc isIntLit*(t: PType): bool {.inline.} =
 proc isFloatLit*(t: PType): bool {.inline.} =
   result = t.kind == tyFloat and t.n != nil and t.n.kind == nkFloatLit
 
+proc addDeclaredLoc(result: var string, conf: ConfigRef; sym: PSym) =
+  result.add " [declared in " & conf$sym.info & "]"
+
+proc addTypeHeader*(result: var string, conf: ConfigRef; typ: PType; prefer: TPreferedDesc = preferMixed; getDeclarationPath = true) =
+  result.add typeToString(typ, prefer)
+  if getDeclarationPath: result.addDeclaredLoc(conf, typ.sym)
+
 proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferName; getDeclarationPath = true): string =
   assert sym != nil
   # consider using `skipGenericOwner` to avoid fun2.fun2 when fun2 is generic
@@ -137,10 +149,7 @@ proc getProcHeader*(conf: ConfigRef; sym: PSym; prefer: TPreferedDesc = preferNa
     result.add(')')
     if n[0].typ != nil:
       result.add(": " & typeToString(n[0].typ, prefer))
-  if getDeclarationPath:
-    result.add " [declared in "
-    result.add(conf$sym.info)
-    result.add "]"
+  if getDeclarationPath: result.addDeclaredLoc(conf, sym)
 
 proc elemType*(t: PType): PType =
   assert(t != nil)
@@ -158,7 +167,7 @@ proc enumHasHoles*(t: PType): bool =
 proc isOrdinalType*(t: PType, allowEnumWithHoles: bool = false): bool =
   assert(t != nil)
   const
-    baseKinds = {tyChar,tyInt..tyInt64,tyUInt..tyUInt64,tyBool,tyEnum}
+    baseKinds = {tyChar, tyInt..tyInt64, tyUInt..tyUInt64, tyBool, tyEnum}
     parentKinds = {tyRange, tyOrdinal, tyGenericInst, tyAlias, tySink, tyDistinct}
   result = (t.kind in baseKinds and (not t.enumHasHoles or allowEnumWithHoles)) or
     (t.kind in parentKinds and isOrdinalType(t.lastSon, allowEnumWithHoles))
@@ -244,7 +253,7 @@ proc searchTypeForAux(t: PType, predicate: TTypePredicate,
   else:
     discard
 
-proc searchTypeFor(t: PType, predicate: TTypePredicate): bool =
+proc searchTypeFor*(t: PType, predicate: TTypePredicate): bool =
   var marker = initIntSet()
   result = searchTypeForAux(t, predicate, marker)
 
@@ -578,26 +587,43 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
       if t.n == nil:
         result = "unknown"
       else:
-        result = "type(" & renderTree(t.n) & ")"
+        result = "typeof(" & renderTree(t.n) & ")"
     of tyArray:
-      if t[0].kind == tyRange:
-        result = "array[" & rangeToStr(t[0].n) & ", " &
-            typeToString(t[1]) & ']'
-      else:
-        result = "array[" & typeToString(t[0]) & ", " &
-            typeToString(t[1]) & ']'
+      result = "array"
+      if t.len > 0:
+        if t[0].kind == tyRange:
+          result &= "[" & rangeToStr(t[0].n) & ", " &
+              typeToString(t[1]) & ']'
+        else:
+          result &= "[" & typeToString(t[0]) & ", " &
+              typeToString(t[1]) & ']'
     of tyUncheckedArray:
-      result = "UncheckedArray[" & typeToString(t[0]) & ']'
+      result = "UncheckedArray"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tySequence:
-      result = "seq[" & typeToString(t[0]) & ']'
+      if t.sym != nil and prefer != preferResolved:
+        result = t.sym.name.s
+      else:
+        result = "seq"
+        if t.len > 0:
+          result &= "[" & typeToString(t[0]) & ']'
     of tyOpt:
-      result = "opt[" & typeToString(t[0]) & ']'
+      result = "opt"
+      if t.len > 0:
+        result &= "opt[" & typeToString(t[0]) & ']'
     of tyOrdinal:
-      result = "ordinal[" & typeToString(t[0]) & ']'
+      result = "ordinal"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tySet:
-      result = "set[" & typeToString(t[0]) & ']'
+      result = "set"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyOpenArray:
-      result = "openArray[" & typeToString(t[0]) & ']'
+      result = "openArray"
+      if t.len > 0:
+        result &= "[" & typeToString(t[0]) & ']'
     of tyDistinct:
       result = "distinct " & typeToString(t[0],
         if prefer == preferModuleInfo: preferModuleInfo else: preferTypeName)
@@ -612,7 +638,7 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
           if i < t.n.len - 1: result.add(", ")
         result.add(']')
       elif t.len == 0:
-        result = "tuple[]"
+        result = "tuple"
       else:
         if prefer == preferTypeName: result = "("
         else: result = "tuple of ("
@@ -712,7 +738,7 @@ proc firstOrd*(conf: ConfigRef; t: PType): Int128 =
   of tyOrdinal:
     if t.len > 0: result = firstOrd(conf, lastSon(t))
     else: internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
-  of tyUncheckedArray:
+  of tyUncheckedArray, tyCString:
     result = Zero
   else:
     internalError(conf, "invalid kind for firstOrd(" & $t.kind & ')')
@@ -1496,6 +1522,13 @@ proc containsCompileTimeOnly*(t: PType): bool =
       return true
   return false
 
+proc safeSkipTypes*(t: PType, kinds: TTypeKinds): PType =
+  ## same as 'skipTypes' but with a simple cycle detector.
+  result = t
+  var seen = initIntSet()
+  while result.kind in kinds and not containsOrIncl(seen, result.id):
+    result = lastSon(result)
+
 type
   OrdinalType* = enum
     NoneLike, IntLike, FloatLike
@@ -1611,17 +1644,18 @@ proc isTupleRecursive(t: PType, cycleDetector: var IntSet): bool =
     return false
   if cycleDetector.containsOrIncl(t.id):
     return true
-  case t.kind:
-    of tyTuple:
-      var cycleDetectorCopy: IntSet
-      for i in  0..<t.len:
-        assign(cycleDetectorCopy, cycleDetector)
-        if isTupleRecursive(t[i], cycleDetectorCopy):
-          return true
-    of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink, tyArray, tyUncheckedArray, tySequence:
-      return isTupleRecursive(t.lastSon, cycleDetector)
-    else:
-      return false
+  case t.kind
+  of tyTuple:
+    var cycleDetectorCopy: IntSet
+    for i in 0..<t.len:
+      assign(cycleDetectorCopy, cycleDetector)
+      if isTupleRecursive(t[i], cycleDetectorCopy):
+        return true
+  of tyAlias, tyRef, tyPtr, tyGenericInst, tyVar, tyLent, tySink,
+      tyArray, tyUncheckedArray, tySequence, tyDistinct:
+    return isTupleRecursive(t.lastSon, cycleDetector)
+  else:
+    return false
 
 proc isTupleRecursive*(t: PType): bool =
   var cycleDetector = initIntSet()

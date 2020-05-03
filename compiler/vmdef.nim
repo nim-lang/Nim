@@ -23,8 +23,6 @@ const
 
   byteExcess* = 128 # we use excess-K for immediates
 
-  MaxLoopIterations* = 10_000_000 # max iterations of all loops
-
 # Calculate register shifts, masks and ranges
 
 const
@@ -97,7 +95,7 @@ type
     opcEqRef, opcEqNimNode, opcSameNodeType,
     opcXor, opcNot, opcUnaryMinusInt, opcUnaryMinusFloat, opcBitnotInt,
     opcEqStr, opcLeStr, opcLtStr, opcEqSet, opcLeSet, opcLtSet,
-    opcMulSet, opcPlusSet, opcMinusSet, opcSymdiffSet, opcConcatStr,
+    opcMulSet, opcPlusSet, opcMinusSet, opcConcatStr,
     opcContainsSet, opcRepr, opcSetLenStr, opcSetLenSeq,
     opcIsNil, opcOf, opcIs,
     opcSubStr, opcParseFloat, opcConv, opcCast,
@@ -214,6 +212,18 @@ type
     slotTempComplex,  # some complex temporary (s.node field is used)
     slotTempPerm      # slot is temporary but permanent (hack)
 
+  TRegisterKind* = enum
+    rkNone, rkNode, rkInt, rkFloat, rkRegisterAddr, rkNodeAddr
+  TFullReg* = object  # with a custom mark proc, we could use the same
+                      # data representation as LuaJit (tagged NaNs).
+    case kind*: TRegisterKind
+    of rkNone: nil
+    of rkInt: intVal*: BiggestInt
+    of rkFloat: floatVal*: BiggestFloat
+    of rkNode: node*: PNode
+    of rkRegisterAddr: regAddr*: ptr TFullReg
+    of rkNodeAddr: nodeAddr*: ptr PNode
+
   PProc* = ref object
     blocks*: seq[TBlock]    # blocks; temp data structure
     sym*: PSym
@@ -222,7 +232,7 @@ type
 
   VmArgs* = object
     ra*, rb*, rc*: Natural
-    slots*: pointer
+    slots*: ptr UncheckedArray[TFullReg]
     currentException*: PNode
     currentLineInfo*: TLineInfo
   VmCallback* = proc (args: VmArgs) {.closure.}
@@ -259,14 +269,14 @@ type
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
     globals: newNode(nkStmtListExpr), constants: newNode(nkStmtList), types: @[],
-    prc: PProc(blocks: @[]), module: module, loopIterations: MaxLoopIterations,
+    prc: PProc(blocks: @[]), module: module, loopIterations: g.config.maxLoopIterationsVM,
     comesFromHeuristic: unknownLineInfo, callbacks: @[], errorFlag: "",
     cache: cache, config: g.config, graph: g)
 
 proc refresh*(c: PCtx, module: PSym) =
   c.module = module
   c.prc = PProc(blocks: @[])
-  c.loopIterations = MaxLoopIterations
+  c.loopIterations = c.config.maxLoopIterationsVM
 
 proc registerCallback*(c: PCtx; name: string; callback: VmCallback): int {.discardable.} =
   result = c.callbacks.len

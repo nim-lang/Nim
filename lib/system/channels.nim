@@ -20,6 +20,120 @@
 ##
 ## **Note:** Channels cannot be passed between threads. Use globals or pass
 ## them by `ptr`.
+##
+## Example
+## =======
+## The following is a simple example of two different ways to use channels:
+## blocking and non-blocking.
+##
+## .. code-block :: Nim
+##   # Be sure to compile with --threads:on.
+##   # The channels and threads modules are part of system and should not be
+##   # imported.
+##   import os
+##
+##   # Channels can either be:
+##   #  - declared at the module level, or
+##   #  - passed to procedures by ptr (raw pointer) -- see note on safety.
+##   #
+##   # For simplicity, in this example a channel is declared at module scope.
+##   # Channels are generic, and they include support for passing objects between
+##   # threads.
+##   # Note that objects passed through channels will be deeply copied.
+##   var chan: Channel[string]
+##
+##   # This proc will be run in another thread using the threads module.
+##   proc firstWorker() =
+##     chan.send("Hello World!")
+##
+##   # This is another proc to run in a background thread. This proc takes a while
+##   # to send the message since it sleeps for 2 seconds (or 2000 milliseconds).
+##   proc secondWorker() =
+##     sleep(2000)
+##     chan.send("Another message")
+##
+##   # Initialize the channel.
+##   chan.open()
+##
+##   # Launch the worker.
+##   var worker1: Thread[void]
+##   createThread(worker1, firstWorker)
+##
+##   # Block until the message arrives, then print it out.
+##   echo chan.recv() # "Hello World!"
+##
+##   # Wait for the thread to exit before moving on to the next example.
+##   worker1.joinThread()
+##
+##   # Launch the other worker.
+##   var worker2: Thread[void]
+##   createThread(worker2, secondWorker)
+##   # This time, use a non-blocking approach with tryRecv.
+##   # Since the main thread is not blocked, it could be used to perform other
+##   # useful work while it waits for data to arrive on the channel.
+##   while true:
+##     let tried = chan.tryRecv()
+##     if tried.dataAvailable:
+##       echo tried.msg # "Another message"
+##       break
+##
+##     echo "Pretend I'm doing useful work..."
+##     # For this example, sleep in order not to flood stdout with the above
+##     # message.
+##     sleep(400)
+##
+##   # Wait for the second thread to exit before cleaning up the channel.
+##   worker2.joinThread()
+##
+##   # Clean up the channel.
+##   chan.close()
+##
+## Sample output
+## -------------
+## The program should output something similar to this, but keep in mind that
+## exact results may vary in the real world::
+##   Hello World!
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Pretend I'm doing useful work...
+##   Another message
+##
+## Passing Channels Safely
+## ----------------------
+## Note that when passing objects to procedures on another thread by pointer
+## (for example through a thread's argument), objects created using the default
+## allocator will use thread-local, GC-managed memory. Thus it is generally
+## safer to store channel objects in global variables (as in the above example),
+## in which case they will use a process-wide (thread-safe) shared heap.
+##
+## However, it is possible to manually allocate shared memory for channels
+## using e.g. ``system.allocShared0`` and pass these pointers through thread
+## arguments:
+##
+## .. code-block :: Nim
+##   proc worker(channel: ptr Channel[string]) =
+##     let greeting = channel[].recv()
+##     echo greeting
+##
+##   proc localChannelExample() =
+##     # Use allocShared0 to allocate some shared-heap memory and zero it.
+##     # The usual warnings about dealing with raw pointers apply. Exercise caution.
+##     var channel = cast[ptr Channel[string]](
+##       allocShared0(sizeof(Channel[string]))
+##     )
+##     channel[].open()
+##     # Create a thread which will receive the channel as an argument.
+##     var thread: Thread[ptr Channel[string]]
+##     createThread(thread, worker, channel)
+##     channel[].send("Hello from the main thread!")
+##     # Clean up resources.
+##     thread.joinThread()
+##     channel[].close()
+##     deallocShared(channel)
+##
+##   localChannelExample() # "Hello from the main thread!"
 
 when not declared(ThisIsSystem):
   {.error: "You must not import this module explicitly".}
@@ -100,7 +214,7 @@ when not usesDestructors:
           x[] = nil
         else:
           var ss = cast[NimString](s2)
-          var ns = cast[NimString](alloc(t.region, ss.len+1 + GenericSeqSize))
+          var ns = cast[NimString](alloc(t.region, GenericSeqSize + ss.len+1))
           copyMem(ns, ss, ss.len+1 + GenericSeqSize)
           x[] = ns
       else:
@@ -125,7 +239,7 @@ when not usesDestructors:
       else:
         sysAssert(dest != nil, "dest == nil")
         if mode == mStore:
-          x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
+          x[] = alloc0(t.region, align(GenericSeqSize, mt.base.align) +% seq.len *% mt.base.size)
         else:
           unsureAsgnRef(x, newSeq(mt, seq.len))
         var dst = cast[ByteAddress](cast[PPointer](dest)[])
@@ -134,9 +248,9 @@ when not usesDestructors:
         dstseq.reserved = seq.len
         for i in 0..seq.len-1:
           storeAux(
-            cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-            cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                          GenericSeqSize),
+            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i*% mt.base.size),
+            cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +%
+                          i *% mt.base.size),
             mt.base, t, mode)
         if mode != mStore: dealloc(t.region, s2)
     of tyObject:
@@ -233,7 +347,7 @@ template lockChannel(q, action): untyped =
 
 proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool =
   if q.mask == ChannelDeadMask:
-    sysFatal(DeadThreadError, "cannot send message; thread died")
+    sysFatal(DeadThreadDefect, "cannot send message; thread died")
   acquireSys(q.lock)
   if q.maxItems > 0:
     # Wait until count is less than maxItems
@@ -253,7 +367,8 @@ proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool 
 proc send*[TMsg](c: var Channel[TMsg], msg: sink TMsg) {.inline.} =
   ## Sends a message to a thread. `msg` is deeply copied.
   discard sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), false)
-  wasMoved(msg)
+  when defined(gcDestructors):
+    wasMoved(msg)
 
 proc trySend*[TMsg](c: var Channel[TMsg], msg: sink TMsg): bool {.inline.} =
   ## Tries to send a message to a thread.
@@ -263,8 +378,9 @@ proc trySend*[TMsg](c: var Channel[TMsg], msg: sink TMsg): bool {.inline.} =
   ## Returns `false` if the message was not sent because number of pending items
   ## in the channel exceeded `maxItems`.
   result = sendImpl(cast[PRawChannel](addr c), cast[PNimType](getTypeInfo(msg)), unsafeAddr(msg), true)
-  if result:
-    wasMoved(msg)
+  when defined(gcDestructors):
+    if result:
+      wasMoved(msg)
 
 proc llRecv(q: PRawChannel, res: pointer, typ: PNimType) =
   q.ready = true
@@ -332,8 +448,7 @@ proc close*[TMsg](c: var Channel[TMsg]) =
   deinitRawChannel(addr(c))
 
 proc ready*[TMsg](c: var Channel[TMsg]): bool =
-  ## Returns true iff some thread is waiting on the channel `c` for
+  ## Returns true if some thread is waiting on the channel `c` for
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
-

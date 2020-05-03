@@ -9,15 +9,18 @@
 
 
 # import typetraits
-# strs already imported allocators for us.
+# strs already imported allocateds for us.
 
 proc supportsCopyMem(t: typedesc): bool {.magic: "TypeTrait".}
 
 ## Default seq implementation used by Nim's core.
 type
+
+  NimSeqPayloadBase = object
+    cap: int
+
   NimSeqPayload[T] = object
     cap: int
-    allocator: Allocator
     data: UncheckedArray[T]
 
   NimSeqV2*[T] = object
@@ -26,58 +29,45 @@ type
 
 const nimSeqVersion {.core.} = 2
 
-template payloadSize(cap): int = cap * sizeof(T) + sizeof(int) + sizeof(Allocator)
-
 # XXX make code memory safe for overflows in '*'
 
-type
-  PayloadBase = object
-    cap: int
-    allocator: Allocator
-
-proc newSeqPayload(cap, elemSize: int): pointer {.compilerRtl, raises: [].} =
+proc newSeqPayload(cap, elemSize, elemAlign: int): pointer {.compilerRtl, raises: [].} =
   # we have to use type erasure here as Nim does not support generic
   # compilerProcs. Oh well, this will all be inlined anyway.
   if cap > 0:
-    let allocator = getLocalAllocator()
-    var p = cast[ptr PayloadBase](allocator.alloc(allocator, cap * elemSize + sizeof(int) + sizeof(Allocator)))
-    p.allocator = allocator
+    var p = cast[ptr NimSeqPayloadBase](allocShared0(align(sizeof(NimSeqPayloadBase), elemAlign) + cap * elemSize))
     p.cap = cap
     result = p
   else:
     result = nil
 
-proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize: int): pointer {.
+proc prepareSeqAdd(len: int; p: pointer; addlen, elemSize, elemAlign: int): pointer {.
     noSideEffect, raises: [].} =
   {.noSideEffect.}:
     template `+!`(p: pointer, s: int): pointer =
       cast[pointer](cast[int](p) +% s)
 
-    const headerSize = sizeof(int) + sizeof(Allocator)
+    let headerSize = align(sizeof(NimSeqPayloadBase), elemAlign)
     if addlen <= 0:
       result = p
     elif p == nil:
-      result = newSeqPayload(len+addlen, elemSize)
+      result = newSeqPayload(len+addlen, elemSize, elemAlign)
     else:
       # Note: this means we cannot support things that have internal pointers as
       # they get reallocated here. This needs to be documented clearly.
-      var p = cast[ptr PayloadBase](p)
-      let cap = max(resize(p.cap), len+addlen)
-      if p.allocator == nil:
-        let allocator = getLocalAllocator()
-        var q = cast[ptr PayloadBase](allocator.alloc(allocator,
-          headerSize + elemSize * cap))
+      var p = cast[ptr NimSeqPayloadBase](p)
+      let oldCap = p.cap and not strlitFlag
+      let newCap = max(resize(oldCap), len+addlen)
+      if (p.cap and strlitFlag) == strlitFlag:
+        var q = cast[ptr NimSeqPayloadBase](allocShared0(headerSize + elemSize * newCap))
         copyMem(q +! headerSize, p +! headerSize, len * elemSize)
-        q.allocator = allocator
-        q.cap = cap
+        q.cap = newCap
         result = q
       else:
-        let allocator = p.allocator
-        var q = cast[ptr PayloadBase](allocator.realloc(allocator, p,
-          headerSize + elemSize * p.cap,
-          headerSize + elemSize * cap))
-        q.allocator = allocator
-        q.cap = cap
+        let oldSize = headerSize + elemSize * oldCap
+        let newSize = headerSize + elemSize * newCap
+        var q = cast[ptr NimSeqPayloadBase](reallocShared0(p, oldSize, newSize))
+        q.cap = newCap
         result = q
 
 proc shrink*[T](x: var seq[T]; newLen: Natural) =
@@ -85,7 +75,7 @@ proc shrink*[T](x: var seq[T]; newLen: Natural) =
     setLen(x, newLen)
   else:
     mixin `=destroy`
-    sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
+    #sysAssert newLen <= x.len, "invalid newLen parameter for 'shrink'"
     when not supportsCopyMem(T):
       for i in countdown(x.len - 1, newLen):
         `=destroy`(x[i])
@@ -97,12 +87,12 @@ proc grow*[T](x: var seq[T]; newLen: Natural; value: T) =
   if newLen <= oldLen: return
   var xu = cast[ptr NimSeqV2[T]](addr x)
   if xu.p == nil or xu.p.cap < newLen:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T)))
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newLen - oldLen, sizeof(T), alignof(T)))
   xu.len = newLen
   for i in oldLen .. newLen-1:
     xu.p.data[i] = value
 
-proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect.} =
+proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffect, nodestroy.} =
   ## Generic proc for adding a data item `y` to a container `x`.
   ##
   ## For containers that have an order, `add` means *append*. New generic
@@ -112,8 +102,12 @@ proc add*[T](x: var seq[T]; value: sink T) {.magic: "AppendSeqElem", noSideEffec
   let oldLen = x.len
   var xu = cast[ptr NimSeqV2[T]](addr x)
   if xu.p == nil or xu.p.cap < oldLen+1:
-    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T)))
+    xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, 1, sizeof(T), alignof(T)))
   xu.len = oldLen+1
+  # .nodestroy means `xu.p.data[oldLen] = value` is compiled into a
+  # copyMem(). This is fine as know by construction that
+  # in `xu.p.data[oldLen]` there is nothing to destroy.
+  # We also save the `wasMoved + destroy` pair for the sink parameter.
   xu.p.data[oldLen] = value
 
 proc setLen[T](s: var seq[T], newlen: Natural) =
@@ -125,5 +119,5 @@ proc setLen[T](s: var seq[T], newlen: Natural) =
       if newlen <= oldLen: return
       var xu = cast[ptr NimSeqV2[T]](addr s)
       if xu.p == nil or xu.p.cap < newlen:
-        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T)))
+        xu.p = cast[typeof(xu.p)](prepareSeqAdd(oldLen, xu.p, newlen - oldLen, sizeof(T), alignof(T)))
       xu.len = newlen

@@ -12,31 +12,29 @@
 ##
 ## To unpack raw bytes look at the `streams <streams.html>`_ module.
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##
 ##    let logs = @["2019-01-10: OK_", "2019-01-11: FAIL_", "2019-01: aaaa"]
+##    var outp: seq[string]
 ##
 ##    for log in logs:
 ##      var res: string
 ##      if parseUntil(log, res, ':') == 10: # YYYY-MM-DD == 10
-##        echo res & " - " & captureBetween(log, ' ', '_')
-##        # => 2019-01-10 - OK
+##        outp.add(res & " - " & captureBetween(log, ' ', '_'))
+##    doAssert outp == @["2019-01-10 - OK", "2019-01-11 - FAIL"]
 ##
-##
-## .. code-block::
-##    import parseutils
+## .. code-block:: nim
+##    :test:
 ##    from strutils import Digits, parseInt
 ##
-##    let userInput1 = "2019 school start"
-##    let userInput2 = "3 years back"
-##
-##    let startYear = input1[0..skipWhile(input1, Digits)-1] # 2019
-##    let yearsBack = input2[0..skipWhile(input2, Digits)-1] # 3
-##
-##    echo "Examination is in " & $(parseInt(startYear) + parseInt(yearsBack))
-##
+##    let
+##      input1 = "2019 school start"
+##      input2 = "3 years back"
+##      startYear = input1[0 .. skipWhile(input1, Digits)-1] # 2019
+##      yearsBack = input2[0 .. skipWhile(input2, Digits)-1] # 3
+##      examYear = parseInt(startYear) + parseInt(yearsBack)
+##    doAssert "Examination is in " & $examYear == "Examination is in 2022"
 ##
 ## **See also:**
 ## * `strutils module<strutils.html>`_ for combined and identical parsing proc's
@@ -46,9 +44,6 @@
 ## * `parseopt module<parseopt.html>`_ for a command line parser
 ## * `parsexml module<parsexml.html>`_ for a XML / HTML parser
 ## * `other parsers<lib.html#pure-libraries-parsers>`_ for other parsers
-
-
-{.deadCodeElim: on.} # dce option deprecated
 
 {.push debugger: off.} # the user does not want to trace a part
                        # of the standard library!
@@ -356,12 +351,13 @@ proc parseUntil*(s: string, token: var string, until: string,
     doAssert myToken == "Hello "
     doAssert parseUntil("Hello World", myToken, "Wor", 2) == 4
     doAssert myToken == "llo "
-  if until.len == 0:
-    token.setLen(0)
-    return 0
+  when (NimMajor, NimMinor) <= (1, 0):
+    if until.len == 0:
+      token.setLen(0)
+      return 0
   var i = start
   while i < s.len:
-    if s[i] == until[0]:
+    if until.len > 0 and s[i] == until[0]:
       var u = 1
       while i+u < s.len and u < until.len and s[i+u] == until[u]:
         inc u
@@ -397,7 +393,7 @@ proc captureBetween*(s: string, first: char, second = '\0', start = 0): string =
   result = ""
   discard s.parseUntil(result, if second == '\0': first else: second, i)
 
-proc integerOutOfRangeError() {.noinline.} =
+proc integerOutOfRangeDefect() {.noinline.} =
   raise newException(ValueError, "Parsed integer outside of valid range")
 
 # See #6752
@@ -420,11 +416,11 @@ proc rawParseInt(s: string, b: var BiggestInt, start = 0): int =
       if b >= (low(BiggestInt) + c) div 10:
         b = b * 10 - c
       else:
-        integerOutOfRangeError()
+        integerOutOfRangeDefect()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     if sign == -1 and b == low(BiggestInt):
-      integerOutOfRangeError()
+      integerOutOfRangeDefect()
     else:
       b = b * sign
       result = i - start
@@ -463,7 +459,7 @@ proc parseInt*(s: string, number: var int, start = 0): int {.
   result = parseBiggestInt(s, res, start)
   when sizeof(int) <= 4:
     if res < low(int) or res > high(int):
-      integerOutOfRangeError()
+      integerOutOfRangeDefect()
   if result != 0:
     number = int(res)
 
@@ -497,7 +493,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
     prev = 0.BiggestUInt
     i = start
   if i < s.len - 1 and s[i] == '-' and s[i + 1] in {'0'..'9'}:
-    integerOutOfRangeError()
+    integerOutOfRangeDefect()
   if i < s.len and s[i] == '+': inc(i) # Allow
   if i < s.len and s[i] in {'0'..'9'}:
     b = 0
@@ -505,7 +501,7 @@ proc rawParseUInt(s: string, b: var BiggestUInt, start = 0): int =
       prev = res
       res = res * 10 + (ord(s[i]) - ord('0')).BiggestUInt
       if prev > res:
-        integerOutOfRangeError()
+        integerOutOfRangeDefect()
       inc(i)
       while i < s.len and s[i] == '_': inc(i) # underscores are allowed and ignored
     b = res
@@ -544,7 +540,7 @@ proc parseUInt*(s: string, number: var uint, start = 0): int {.
   result = parseBiggestUInt(s, res, start)
   when sizeof(BiggestUInt) > sizeof(uint) and sizeof(uint) <= 4:
     if res > 0xFFFF_FFFF'u64:
-      integerOutOfRangeError()
+      integerOutOfRangeDefect()
   if result != 0:
     number = uint(res)
 
@@ -585,21 +581,17 @@ iterator interpolatedFragments*(s: string): tuple[kind: InterpolatedKind,
   value: string] =
   ## Tokenizes the string `s` into substrings for interpolation purposes.
   ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
-  ##     echo "(", k, ", \"", v, "\")"
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##   (ikString, "  ")
-  ##   (ikExpr, "this")
-  ##   (ikString, " is ")
-  ##   (ikExpr, "an  example")
-  ##   (ikString, "  ")
-  ##   (ikDollar, "$")
+  runnableExamples:
+    var outp: seq[tuple[kind: InterpolatedKind, value: string]]
+    for k, v in interpolatedFragments("  $this is ${an  example}  $$"):
+      outp.add (k, v)
+    doAssert outp == @[(ikStr, "  "),
+                       (ikVar, "this"),
+                       (ikStr, " is "),
+                       (ikExpr, "an  example"),
+                       (ikStr, "  "),
+                       (ikDollar, "$")]
+
   var i = 0
   var kind: InterpolatedKind
   while true:

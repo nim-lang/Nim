@@ -14,6 +14,9 @@
 # "Cyclic reference counting" by Rafael Dueire Lins
 # R.D. Lins / Information Processing Letters 109 (2008) 71–78
 
+type PT = ptr pointer
+include cellseqs_v2
+
 const
   colGreen = 0b000
   colYellow = 0b001
@@ -43,58 +46,11 @@ proc markCyclic*[T](x: ref T) {.inline.} =
   ## Experimental API. Do not use!
   let h = head(cast[pointer](x))
   h.setColor colYellow
-type
-  CellTuple = (Cell, PNimType)
-  CellArray = ptr UncheckedArray[CellTuple]
-  CellSeq = object
-    len, cap: int
-    d: CellArray
 
+type
   GcEnv = object
     traceStack: CellSeq
     jumpStack: CellSeq
-
-# ------------------- cell seq handling --------------------------------------
-
-proc add(s: var CellSeq, c: Cell; t: PNimType) {.inline.} =
-  if s.len >= s.cap:
-    s.cap = s.cap * 3 div 2
-    when defined(useMalloc):
-      var d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
-    else:
-      var d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
-    copyMem(d, s.d, s.len * sizeof(CellTuple))
-    when defined(useMalloc):
-      c_free(s.d)
-    else:
-      dealloc(s.d)
-    s.d = d
-    # XXX: realloc?
-  s.d[s.len] = (c, t)
-  inc(s.len)
-
-proc init(s: var CellSeq, cap: int = 1024) =
-  s.len = 0
-  s.cap = cap
-  when defined(useMalloc):
-    s.d = cast[CellArray](c_malloc(uint(s.cap * sizeof(CellTuple))))
-  else:
-    s.d = cast[CellArray](alloc(s.cap * sizeof(CellTuple)))
-
-proc deinit(s: var CellSeq) =
-  when defined(useMalloc):
-    c_free(s.d)
-  else:
-    dealloc(s.d)
-  s.d = nil
-  s.len = 0
-  s.cap = 0
-
-proc pop(s: var CellSeq): (Cell, PNimType) =
-  result = s.d[s.len-1]
-  dec s.len
-
-# ----------------------------------------------------------------------------
 
 proc trace(s: Cell; desc: PNimType; j: var GcEnv) {.inline.} =
   if desc.traceImpl != nil:
@@ -105,17 +61,33 @@ proc free(s: Cell; desc: PNimType) {.inline.} =
   when traceCollector:
     cprintf("[From ] %p rc %ld color %ld in jumpstack %ld\n", s, s.rc shr rcShift,
             s.color, s.rc and jumpStackFlag)
-  var p = s +! sizeof(RefHeader)
+  let p = s +! sizeof(RefHeader)
   if desc.disposeImpl != nil:
     cast[DisposeProc](desc.disposeImpl)(p)
   nimRawDispose(p)
 
 proc collect(s: Cell; desc: PNimType; j: var GcEnv) =
+  #[ Algorithm from the paper:
+
+    Collect(S) =
+      If (Color(S) == red) then
+        RC(S) = 1;
+        Color(S) = green;
+        for T in Sons(S) do
+          Remove(<S, T>);
+          if (Color(T) == red) then Collect(T);
+      free_list = S;
+
+  (Whatever that really means...)
+  ]#
   if s.color == colRed:
     s.setColor colGreen
     trace(s, desc, j)
     while j.traceStack.len > 0:
-      let (t, desc) = j.traceStack.pop()
+      let (p, desc) = j.traceStack.pop()
+      let t = head(p[])
+      #Remove(<S, T>):
+      p[] = nil
       if t.color == colRed:
         t.setColor colGreen
         trace(t, desc, j)
@@ -128,7 +100,8 @@ proc markRed(s: Cell; desc: PNimType; j: var GcEnv) =
     s.setColor colRed
     trace(s, desc, j)
     while j.traceStack.len > 0:
-      let (t, desc) = j.traceStack.pop()
+      let (p, desc) = j.traceStack.pop()
+      let t = head(p[])
       when traceCollector:
         cprintf("[Cycle dec] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
       dec t.rc, rcIncrement
@@ -136,7 +109,7 @@ proc markRed(s: Cell; desc: PNimType; j: var GcEnv) =
         t.rc = t.rc or jumpStackFlag
         when traceCollector:
           cprintf("[Now in jumpstack] %p %ld color %ld in jumpstack %ld\n", t, t.rc shr rcShift, t.color, t.rc and jumpStackFlag)
-        j.jumpStack.add(t, desc)
+        j.jumpStack.add(p, desc)
       if t.color != colRed:
         t.setColor colRed
         trace(t, desc, j)
@@ -145,7 +118,8 @@ proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
   s.setColor colGreen
   trace(s, desc, j)
   while j.traceStack.len > 0:
-    let (t, desc) = j.traceStack.pop()
+    let (p, desc) = j.traceStack.pop()
+    let t = head(p[])
     if t.color != colGreen:
       t.setColor colGreen
       trace(t, desc, j)
@@ -153,18 +127,17 @@ proc scanGreen(s: Cell; desc: PNimType; j: var GcEnv) =
     when traceCollector:
       cprintf("[Cycle inc] %p %ld color %ld\n", t, t.rc shr rcShift, t.color)
 
-proc nimTraceRef(p: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
-  if p != nil:
-    var t = head(p)
+proc nimTraceRef(q: pointer; desc: PNimType; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
+  if p[] != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(t, desc)
+    j.traceStack.add(p, desc)
 
-proc nimTraceRefDyn(p: pointer; env: pointer) {.compilerRtl.} =
-  if p != nil:
-    let desc = cast[ptr PNimType](p)[]
-    var t = head(p)
+proc nimTraceRefDyn(q: pointer; env: pointer) {.compilerRtl.} =
+  let p = cast[ptr pointer](q)
+  if p[] != nil:
     var j = cast[ptr GcEnv](env)
-    j.traceStack.add(t, desc)
+    j.traceStack.add(p, cast[ptr PNimType](p[])[])
 
 proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
   when traceCollector:
@@ -179,7 +152,8 @@ proc scan(s: Cell; desc: PNimType; j: var GcEnv) =
     # that are still alive; we also need to mark what they
     # refer to as alive:
     while j.jumpStack.len > 0:
-      let (t, desc) = j.jumpStack.pop
+      let (p, desc) = j.jumpStack.pop
+      let t = head(p[])
       # not in jump stack anymore!
       t.rc = t.rc and not jumpStackFlag
       if t.color == colRed and (t.rc and not rcMask) >= 0:
@@ -200,7 +174,8 @@ proc traceCycle(s: Cell; desc: PNimType) {.noinline.} =
   markRed(s, desc, j)
   scan(s, desc, j)
   while j.jumpStack.len > 0:
-    let (t, desc) = j.jumpStack.pop
+    let (p, desc) = j.jumpStack.pop
+    let t = head(p[])
     # not in jump stack anymore!
     t.rc = t.rc and not jumpStackFlag
   deinit j.jumpStack

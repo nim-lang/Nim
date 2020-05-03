@@ -43,10 +43,13 @@ Options:
   --targets:"c c++ js objc" run tests for specified targets (default: all)
   --nim:path                use a particular nim executable (default: $$PATH/nim)
   --directory:dir           Change to directory dir before reading the tests or doing anything else.
-  --colors:on|off           Turn messagescoloring on|off.
+  --colors:on|off           Turn messages coloring on|off.
   --backendLogging:on|off   Disable or enable backend logging. By default turned on.
   --megatest:on|off         Enable or disable megatest. Default is on.
   --skipFrom:file           Read tests to skip from `file` - one test per line, # comments ignored
+
+On Azure Pipelines, testament will also publish test results via Azure Pipelines' Test Management API
+provided that System.AccessToken is made available via the environment variable SYSTEM_ACCESSTOKEN.
 """ % resultsFile
 
 type
@@ -131,15 +134,14 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
   result = "nimcache" / (filename & '_' & hashInput.getMD5)
 
 proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
-                     target: TTarget, extraOptions=""): seq[string] =
-  let options = options & " " & quoteShell("--nimCache:" & nimcache) & extraOptions
+                     target: TTarget, extraOptions = ""): seq[string] =
+  let options = options & " " & quoteShell("--nimCache:" & nimcache) & " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir()])
 
 proc callCompiler(cmdTemplate, filename, options, nimcache: string,
-                  target: TTarget,
-                  extraOptions=""): TSpec =
+                  target: TTarget, extraOptions = ""): TSpec =
   let c = prepareTestArgs(cmdTemplate, filename, options, nimcache, target,
                           extraOptions)
   result.cmd = quoteShellCommand(c)
@@ -258,7 +260,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
                 else: successOrig
 
-  let durationStr = duration.formatFloat(ffDecimal, precision = 8).align(11)
+  let durationStr = duration.formatFloat(ffDecimal, precision = 2).align(5)
   if backendLogging:
     backend.writeTestResult(name = name,
                             category = test.cat.string,
@@ -269,7 +271,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
                             given = given)
   r.data.addf("$#\t$#\t$#\t$#", name, expected, given, $success)
   if success == reSuccess:
-    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " secs)"
+    maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
     maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   elif success == reJoined:
@@ -418,14 +420,16 @@ proc checkDisabled(r: var TResults, test: TTest): bool =
 
 var count = 0
 
-proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarget, nimcache: string) =
+proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
+                    target: TTarget, nimcache: string, extraOptions = "") =
   case expected.action
   of actionCompile:
     var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target,
           extraOptions = " --stdout --hint[Path]:off --hint[Processing]:off")
     compilerOutputTests(test, target, given, expected, r)
   of actionRun:
-    var given = callCompiler(expected.getCmd, test.name, test.options, nimcache, target)
+    var given = callCompiler(expected.getCmd, test.name, test.options,
+                             nimcache, target, extraOptions)
     if given.err != reSuccess:
       r.addResult(test, target, "", "$ " & given.cmd & "\n" & given.nimout, given.err)
     else:
@@ -481,6 +485,18 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec, target: TTarg
                               nimcache, target)
     cmpMsgs(r, expected, given, test, target)
 
+proc targetHelper(r: var TResults, test: TTest, expected: TSpec, extraOptions = "") =
+  for target in expected.targets:
+    inc(r.total)
+    if target notin gTargets:
+      r.addResult(test, target, "", "", reDisabled)
+      inc(r.skipped)
+    elif simulate:
+      inc count
+      echo "testSpec count: ", count, " expected: ", expected
+    else:
+      let nimcache = nimcacheDir(test.name, test.options, target)
+      testSpecHelper(r, test, expected, target, nimcache, extraOptions)
 
 proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   var expected = test.spec
@@ -495,17 +511,11 @@ proc testSpec(r: var TResults, test: TTest, targets: set[TTarget] = {}) =
   # still no target specified at all
   if expected.targets == {}:
     expected.targets = {getTestSpecTarget()}
-  for target in expected.targets:
-    inc(r.total)
-    if target notin gTargets:
-      r.addResult(test, target, "", "", reDisabled)
-      inc(r.skipped)
-    elif simulate:
-      inc count
-      echo "testSpec count: ", count, " expected: ", expected
-    else:
-      let nimcache = nimcacheDir(test.name, test.options, target)
-      testSpecHelper(r, test, expected, target, nimcache)
+  if test.spec.matrix.len > 0:
+    for m in test.spec.matrix:
+      targetHelper(r, test, expected, m)
+  else:
+    targetHelper(r, test, expected)
 
 proc testSpecWithNimcache(r: var TResults, test: TTest; nimcache: string) =
   if not checkDisabled(r, test): return
@@ -606,6 +616,7 @@ proc main() =
   os.putEnv "NIMTEST_COLOR", "never"
   os.putEnv "NIMTEST_OUTPUT_LVL", "PRINT_FAILURES"
 
+  azure.init()
   backend.open()
   var optPrintResults = false
   var optFailing = false
@@ -656,8 +667,6 @@ proc main() =
         quit Usage
     of "skipfrom":
       skipFrom = p.val.string
-    of "azurerunid":
-      runId = p.val.parseInt
     else:
       quit Usage
     p.next()
@@ -670,8 +679,7 @@ proc main() =
   of "all":
     #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
 
-    azure.start()
-    var myself = quoteShell(findExe("testament" / "testament"))
+    var myself = quoteShell(getAppFilename())
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
@@ -679,8 +687,6 @@ proc main() =
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
-    if isAzure:
-      myself &= " " & quoteShell("--azureRunId:" & $runId)
 
     var cats: seq[string]
     let rest = if p.cmdLineRest.string.len > 0: " " & p.cmdLineRest.string else: ""
@@ -706,16 +712,13 @@ proc main() =
         progressStatus(i)
         processCategory(r, Category(cati), p.cmdLineRest.string, testsDir, runJoinableTests = false)
     else:
-      addQuitProc azure.finish
+      addQuitProc azure.finalize
       quit osproc.execProcesses(cmds, {poEchoCmd, poStdErrToStdOut, poUsePath, poParentStreams}, beforeRunEvent = progressStatus)
   of "c", "cat", "category":
-    azure.start()
     skips = loadSkipFrom(skipFrom)
     var cat = Category(p.key)
-    p.next
     processCategory(r, cat, p.cmdLineRest.string, testsDir, runJoinableTests = true)
   of "pcat":
-    azure.start()
     skips = loadSkipFrom(skipFrom)
     # 'pcat' is used for running a category in parallel. Currently the only
     # difference is that we don't want to run joinable tests here as they
@@ -730,12 +733,13 @@ proc main() =
     p.next
     processPattern(r, pattern, p.cmdLineRest.string, simulate)
   of "r", "run":
-    azure.start()
+    var subPath = p.key.string
+    if subPath.isAbsolute: subPath = subPath.relativePath(getCurrentDir())
     # at least one directory is required in the path, to use as a category name
-    let pathParts = split(p.key.string, {DirSep, AltSep})
+    let pathParts = split(subPath, {DirSep, AltSep})
     # "stdlib/nre/captures.nim" -> "stdlib" + "nre/captures.nim"
     let cat = Category(pathParts[0])
-    let subPath = joinPath(pathParts[1..^1])
+    subPath = joinPath(pathParts[1..^1])
     processSingleTest(r, cat, p.cmdLineRest.string, subPath)
   of "html":
     generateHtml(resultsFile, optFailing)
@@ -745,8 +749,8 @@ proc main() =
   if optPrintResults:
     if action == "html": openDefaultBrowser(resultsFile)
     else: echo r, r.data
+  azure.finalize()
   backend.close()
-  if isMainProcess: azure.finish()
   var failed = r.total - r.passed - r.skipped
   if failed != 0:
     echo "FAILURE! total: ", r.total, " passed: ", r.passed, " skipped: ",

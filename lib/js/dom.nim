@@ -9,7 +9,7 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
-
+import std/private/since
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -39,9 +39,12 @@ type
     onselect*: proc (event: Event) {.nimcall.}
     onsubmit*: proc (event: Event) {.nimcall.}
     onunload*: proc (event: Event) {.nimcall.}
+    onloadstart*: proc (event: Event) {.nimcall.}
+    onprogress*: proc (event: Event) {.nimcall.}
+    onloadend*: proc (event: Event) {.nimcall.}
 
-  # https://developer.mozilla.org/en-US/docs/Web/Events
   DomEvent* {.pure.} = enum
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
     Abort = "abort",
     BeforeInput = "beforeinput",
     Blur = "blur",
@@ -103,6 +106,10 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
+  Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+
+  LocalStorage* {.importc.} = ref object
+
   Window* = ref WindowObj
   WindowObj {.importc.} = object of EventTargetObj
     document*: Document
@@ -129,6 +136,7 @@ type
     screen*: Screen
     performance*: Performance
     onpopstate*: proc (event: Event)
+    localStorage*: LocalStorage
 
   Frame* = ref FrameObj
   FrameObj {.importc.} = object of WindowObj
@@ -165,10 +173,13 @@ type
     parentNode*: Node
     previousSibling*: Node
     innerHTML*: cstring
+    innerText*: cstring
+    textContent*: cstring
     style*: Style
 
   Document* = ref DocumentObj
   DocumentObj {.importc.} = object of NodeObj
+    activeElement*: Element
     alinkColor*: cstring
     bgColor*: cstring
     body*: Element
@@ -211,8 +222,7 @@ type
     offsetLeft*: int
     offsetTop*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/ValidityState
-  ValidityState* = ref ValidityStateObj
+  ValidityState* = ref ValidityStateObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/ValidityState>`_
   ValidityStateObj {.importc.} = object
     badInput*: bool
     customError*: bool
@@ -226,20 +236,24 @@ type
     valid*: bool
     valueMissing*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Blob
-  Blob* = ref BlobObj
+  Blob* = ref BlobObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Blob>`_
   BlobObj {.importc.} = object of RootObj
     size*: int
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/File
-  File* = ref FileObj
+  File* = ref FileObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/File>`_
   FileObj {.importc.} = object of Blob
     lastModified*: int
     name*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement
-  InputElement* = ref InputElementObj
+  TextAreaElement* = ref TextAreaElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLTextAreaElement>`_
+  TextAreaElementObj {.importc.} = object of Element
+    value*: cstring
+    selectionStart*, selectionEnd*: int
+    selectionDirection*: cstring
+    rows*, cols*: int
+
+  InputElement* = ref InputElementObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement>`_
   InputElementObj {.importc.} = object of Element
     # Properties related to the parent form
     formAction*: cstring
@@ -321,8 +335,7 @@ type
     text*: cstring
     value*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement
-  FormElement* = ref FormObj
+  FormElement* = ref FormObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement>`_
   FormObj {.importc.} = object of ElementObj
     acceptCharset*: cstring
     action*: cstring
@@ -354,6 +367,7 @@ type
     backgroundImage*: cstring
     backgroundPosition*: cstring
     backgroundRepeat*: cstring
+    backgroundSize*: cstring
     border*: cstring
     borderBottom*: cstring
     borderBottomColor*: cstring
@@ -364,6 +378,7 @@ type
     borderLeftColor*: cstring
     borderLeftStyle*: cstring
     borderLeftWidth*: cstring
+    borderRadius*: cstring
     borderRight*: cstring
     borderRightColor*: cstring
     borderRightStyle*: cstring
@@ -375,6 +390,8 @@ type
     borderTopWidth*: cstring
     borderWidth*: cstring
     bottom*: cstring
+    boxSizing*: cstring
+    boxShadow*: cstring
     captionSide*: cstring
     clear*: cstring
     clip*: cstring
@@ -409,7 +426,10 @@ type
     minHeight*: cstring
     minWidth*: cstring
     opacity*: cstring
+    outline*: cstring
     overflow*: cstring
+    overflowX*: cstring
+    overflowY*: cstring
     padding*: cstring
     paddingBottom*: cstring
     paddingLeft*: cstring
@@ -419,6 +439,7 @@ type
     pageBreakBefore*: cstring
     pointerEvents*: cstring
     position*: cstring
+    resize*: cstring
     right*: cstring
     scrollbar3dLightColor*: cstring
     scrollbarArrowColor*: cstring
@@ -447,8 +468,7 @@ type
     AtTarget,
     BubblingPhase
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/Event
-  Event* = ref EventObj
+  Event* = ref EventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Event>`_
   EventObj {.importc.} = object of RootObj
     bubbles*: bool
     cancelBubble*: bool
@@ -461,14 +481,12 @@ type
     `type`*: cstring
     isTrusted*: bool
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/UIEvent
-  UIEvent* = ref UIEventObj
+  UIEvent* = ref UIEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/UIEvent>`_
   UIEventObj {.importc.} = object of Event
     detail*: int64
     view*: Window
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent
-  KeyboardEvent* = ref KeyboardEventObj
+  KeyboardEvent* = ref KeyboardEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent>`_
   KeyboardEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     code*: cstring
@@ -477,8 +495,7 @@ type
     keyCode*: int
     location*: int
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values
-  KeyboardEventKey* {.pure.} = enum
+  KeyboardEventKey* {.pure.} = enum ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values>`_
     # Modifier keys
     Alt,
     AltGraph,
@@ -832,8 +849,7 @@ type
     FourthButton = 8,
     FifthButton = 16
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent
-  MouseEvent* = ref MouseEventObj
+  MouseEvent* = ref MouseEventObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent>`_
   MouseEventObj {.importc.} = object of UIEvent
     altKey*, ctrlKey*, metaKey*, shiftKey*: bool
     button*: int
@@ -851,14 +867,12 @@ type
     File = "file",
     String = "string"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem
-  DataTransferItem* = ref DataTransferItemObj
+  DataTransferItem* = ref DataTransferItemObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransferItem>`_
   DataTransferItemObj {.importc.} = object of RootObj
     kind*: cstring
     `type`*: cstring
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer
-  DataTransfer* = ref DataTransferObj
+  DataTransfer* = ref DataTransferObj ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer>`_
   DataTransferObj {.importc.} = object of RootObj
     dropEffect*: cstring
     effectAllowed*: cstring
@@ -893,8 +907,8 @@ type
     DragStart = "dragstart",
     Drop = "drop"
 
-  # https://developer.mozilla.org/en-US/docs/Web/API/DragEvent
   DragEvent* {.importc.} = object of MouseEvent
+    ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/DragEvent>`_
     dataTransfer*: DataTransfer
 
   TouchList* {.importc.} = ref object of RootObj
@@ -923,6 +937,7 @@ type
     port*: cstring
     protocol*: cstring
     search*: cstring
+    origin*: cstring
 
   History* = ref HistoryObj
   HistoryObj {.importc.} = object of RootObj
@@ -974,6 +989,40 @@ type
     capture*: bool
     once*: bool
     passive*: bool
+
+since (1, 3):
+  type 
+    DomParser* = ref object
+      ## DOM Parser object (defined on browser only, may not be on NodeJS).
+      ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
+      ##
+      ## .. code-block:: nim
+      ##   let prsr = newDomParser()
+      ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+
+    DomException* = ref DOMExceptionObj
+      ## The DOMException interface represents an abnormal event (called an exception) 
+      ## which occurs as a result of calling a method or accessing a property of a web API. 
+      ## Each exception has a name, which is a short "CamelCase" style string identifying 
+      ## the error or abnormal condition.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
+
+    DOMExceptionObj {.importc.} = object 
+
+    FileReader* = ref FileReaderObj
+      ## The FileReader object lets web applications asynchronously read the contents of files 
+      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify 
+      ## the file or data to read.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+
+    FileReaderObj {.importc.} = object of EventTargetObj
+
+    FileReaderState* = distinct range[0'u16..2'u16]
+
+  const 
+    fileReaderEmpty* = 0.FileReaderState
+    fileReaderLoading* = 1.FileReaderState
+    fileReaderDone* = 2.FileReaderState
 
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
 proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
@@ -1135,7 +1184,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): cstring
+proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
 proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1222,6 +1271,21 @@ proc checkValidity*(e: InputElement): bool
 # Blob "methods"
 proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: cstring = "")
 
+# Performance "methods"
+proc now*(p: Performance): float
+
+# Selection "methods"
+proc removeAllRanges*(s: Selection)
+converter toString*(s: Selection): cstring
+proc `$`*(s: Selection): string = $(s.toString())
+
+# LocalStorage "methods"
+proc getItem*(ls: LocalStorage, key: cstring): cstring
+proc setItem*(ls: LocalStorage, key, value: cstring)
+proc hasItem*(ls: LocalStorage, key: cstring): bool
+proc clear*(ls: LocalStorage)
+proc removeItem*(ls: LocalStorage, key: cstring)
+
 {.pop.}
 
 proc setAttr*(n: Node; key, val: cstring) {.importcpp: "#.setAttribute(@)".}
@@ -1269,6 +1333,7 @@ proc inViewport*(el: Node): bool =
            rect.right <= clientWidth().float
 
 proc scrollTop*(e: Node): int {.importcpp: "#.scrollTop", nodecl.}
+proc `scrollTop=`*(e: Node, value: int) {.importcpp: "#.scrollTop = #", nodecl.}
 proc scrollLeft*(e: Node): int {.importcpp: "#.scrollLeft", nodecl.}
 proc scrollHeight*(e: Node): int {.importcpp: "#.scrollHeight", nodecl.}
 proc scrollWidth*(e: Node): int {.importcpp: "#.scrollWidth", nodecl.}
@@ -1276,3 +1341,33 @@ proc offsetHeight*(e: Node): int {.importcpp: "#.offsetHeight", nodecl.}
 proc offsetWidth*(e: Node): int {.importcpp: "#.offsetWidth", nodecl.}
 proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
+
+since (1, 3):
+  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
+    ## DOM Parser constructor.
+  func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
+    ## Parse from string to `Document`.
+
+  proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
+    ## DOM Exception constructor
+  proc message*(ex: DomException): cstring {.importcpp: "#.message", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/message
+  proc name*(ex: DomException): cstring  {.importcpp: "#.name", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
+
+  proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
+    ## File Reader constructor
+  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
+  proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
+  proc resultAsString*(f: FileReader): cstring {.importcpp: "#.result", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/result
+  proc abort*(f: FileReader) {.importcpp: "#.abort()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/abort
+  proc readAsBinaryString*(f: FileReader, b: Blob) {.importcpp: "#.readAsBinaryString(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
+  proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
+  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText

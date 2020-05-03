@@ -12,9 +12,8 @@
 ##
 ## Unstable API.
 
+import std/private/since
 export system.`$` # for backward compatibility
-
-include "system/inclrtl"
 
 proc name*(t: typedesc): string {.magic: "TypeTrait".}
   ## Returns the name of the given type.
@@ -48,7 +47,7 @@ proc genericHead*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## .. code-block:: nim
   ##   type
   ##     Functor[A] = concept f
-  ##       type MatchedGenericType = genericHead(f.type)
+  ##       type MatchedGenericType = genericHead(typeof(f))
   ##         # `f` will be a value of a type such as `Option[T]`
   ##         # `MatchedGenericType` will become the `Option` type
 
@@ -59,7 +58,7 @@ proc stripGenericParams*(t: typedesc): typedesc {.magic: "TypeTrait".}
   ## them unmodified.
 
 proc supportsCopyMem*(t: typedesc): bool {.magic: "TypeTrait".}
-  ## This trait returns true iff the type ``t`` is safe to use for
+  ## This trait returns true if the type ``t`` is safe to use for
   ## `copyMem`:idx:.
   ##
   ## Other languages name a type like these `blob`:idx:.
@@ -71,27 +70,34 @@ proc distinctBase*(T: typedesc): typedesc {.magic: "TypeTrait".}
   ## Returns base type for distinct types, works only for distinct types.
   ## compile time error otherwise
 
-import std/macros
+since (1, 1):
+  template distinctBase*[T](a: T): untyped =
+    ## overload for values
+    runnableExamples:
+      type MyInt = distinct int
+      doAssert 12.MyInt.distinctBase == 12
+    distinctBase(type(a))(a)
 
-macro lenTuple*(t: tuple): int {.since: (1, 1).} =
-  ## Return number of elements of `t`
-  newLit t.len
+  proc tupleLen*(T: typedesc[tuple]): int {.magic: "TypeTrait".}
+    ## Return number of elements of `T`
 
-macro lenTuple*(t: typedesc[tuple]): int {.since: (1, 1).} =
-  ## Return number of elements of `T`
-  newLit t.len
+  template tupleLen*(t: tuple): int =
+    ## Return number of elements of `t`
+    tupleLen(type(t))
 
-when (NimMajor, NimMinor) >= (1, 1):
   template get*(T: typedesc[tuple], i: static int): untyped =
-    ## Return `i`th element of `T`
+    ## Return `i`\th element of `T`
     # Note: `[]` currently gives: `Error: no generic parameters allowed for ...`
     type(default(T)[i])
 
-macro genericParams*(T: typedesc): untyped {.since: (1, 1).} =
-  ## return tuple of generic params for generic `T`
-  runnableExamples:
-    type Foo[T1, T2]=object
-    doAssert genericParams(Foo[float, string]) is (float, string)
+  type StaticParam*[value: static type] = object
+    ## used to wrap a static value in `genericParams`
+
+# NOTE: See https://github.com/nim-lang/Nim/issues/13758 - `import std/macros` does not work on OpenBSD
+import macros
+
+macro genericParamsImpl(T: typedesc): untyped =
+  # auxiliary macro needed, can't do it directly in `genericParams`
   result = newNimNode(nnkTupleConstr)
   var impl = getTypeImpl(T)
   expectKind(impl, nnkBracketExpr)
@@ -106,10 +112,32 @@ macro genericParams*(T: typedesc): untyped {.since: (1, 1).} =
         continue
       of nnkBracketExpr:
         for i in 1..<impl.len:
-          result.add impl[i]
+          let ai = impl[i]
+          var ret: NimNode
+          case ai.typeKind
+          of ntyTypeDesc:
+            ret = ai
+          of ntyStatic: doAssert false
+          else:
+            since (1, 1):
+              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+          result.add ret
         break
       else:
         error "wrong kind: " & $impl.kind
+
+since (1, 1):
+  template genericParams*(T: typedesc): untyped =
+    ## return tuple of generic params for generic `T`
+    runnableExamples:
+      type Foo[T1, T2]=object
+      doAssert genericParams(Foo[float, string]) is (float, string)
+      type Bar[N: static float, T] = object
+      doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
+      doAssert genericParams(Bar[1.0, string]).get(0).value == 1.0
+
+    type T2 = T
+    genericParamsImpl(T2)
 
 when isMainModule:
   static:

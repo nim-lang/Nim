@@ -228,39 +228,39 @@ when defined(createNimHcr):
 
   {.pragma: nimhcr, compilerProc, exportc, dynlib.}
 
-  when hostCPU in ["i386", "amd64"]:
-    type
-      ShortJumpInstruction {.packed.} = object
-        opcode: byte
-        offset: int32
+  # XXX these types are CPU specific and need ARM etc support
+  type
+    ShortJumpInstruction {.packed.} = object
+      opcode: byte
+      offset: int32
 
-      LongJumpInstruction {.packed.} = object
-        opcode1: byte
-        opcode2: byte
-        offset: int32
-        absoluteAddr: pointer
+    LongJumpInstruction {.packed.} = object
+      opcode1: byte
+      opcode2: byte
+      offset: int32
+      absoluteAddr: pointer
 
-    proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
-      let
-        jumpFrom = jumpTableEntry.shift(sizeof(ShortJumpInstruction))
-        jumpDistance = distance(jumpFrom, targetFn)
+  proc writeJump(jumpTableEntry: ptr LongJumpInstruction, targetFn: pointer) =
+    let
+      jumpFrom = jumpTableEntry.shift(sizeof(ShortJumpInstruction))
+      jumpDistance = distance(jumpFrom, targetFn)
 
-      if abs(jumpDistance) < 0x7fff0000:
-        let shortJump = cast[ptr ShortJumpInstruction](jumpTableEntry)
-        shortJump.opcode = 0xE9 # relative jump
-        shortJump.offset = int32(jumpDistance)
+    if abs(jumpDistance) < 0x7fff0000:
+      let shortJump = cast[ptr ShortJumpInstruction](jumpTableEntry)
+      shortJump.opcode = 0xE9 # relative jump
+      shortJump.offset = int32(jumpDistance)
+    else:
+      jumpTableEntry.opcode1 = 0xff # indirect absolute jump
+      jumpTableEntry.opcode2 = 0x25
+      when hostCPU == "i386":
+        # on x86 we write the absolute address of the following pointer
+        jumpTableEntry.offset = cast[int32](addr jumpTableEntry.absoluteAddr)
       else:
-        jumpTableEntry.opcode1 = 0xff # indirect absolute jump
-        jumpTableEntry.opcode2 = 0x25
-        when hostCPU == "i386":
-          # on x86 we write the absolute address of the following pointer
-          jumpTableEntry.offset = cast[int32](addr jumpTableEntry.absoluteAddr)
-        else:
-          # on x64, we use a relative address for the same location
-          jumpTableEntry.offset = 0
-        jumpTableEntry.absoluteAddr = targetFn
+        # on x64, we use a relative address for the same location
+        jumpTableEntry.offset = 0
+      jumpTableEntry.absoluteAddr = targetFn
 
-  elif hostCPU == "arm":
+  if hostCPU == "arm":
     const jumpSize = 8
   elif hostCPU == "arm64":
     const jumpSize = 16
@@ -556,7 +556,7 @@ when defined(createNimHcr):
     inc(generation)
     trace "HCR RELOADING: ", generation
 
-    var traversedHandlerModules = initSet[string]()
+    var traversedHandlerModules = initHashSet[string]()
 
     proc recursiveExecuteHandlers(isBefore: bool, module: string) =
       # do not process an already traversed module

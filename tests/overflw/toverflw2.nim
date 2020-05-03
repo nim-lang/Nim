@@ -1,5 +1,5 @@
 discard """
-  outputsub: "Error: unhandled exception: over- or underflow [OverflowError]"
+  outputsub: "Error: unhandled exception: over- or underflow [OverflowDefect]"
   exitcode: "1"
 """
 var a : int32 = 2147483647

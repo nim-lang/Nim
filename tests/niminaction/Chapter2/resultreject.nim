@@ -1,5 +1,5 @@
 discard """
-  errormsg: "has to be discarded"
+  errormsg: "has to be used (or discarded)"
   line: 27
 """
 

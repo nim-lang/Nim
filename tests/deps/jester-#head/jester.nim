@@ -684,7 +684,7 @@ template uri*(address = "", absolute = true, addScriptName = true): untyped =
 
 proc daysForward*(days: int): DateTime =
   ## Returns a DateTime object referring to the current time plus ``days``.
-  return getTime().utc + initInterval(days = days)
+  return getTime().utc + initTimeInterval(days = days)
 
 template setCookie*(name, value: string, expires="",
                     sameSite: SameSite=Lax): typed =

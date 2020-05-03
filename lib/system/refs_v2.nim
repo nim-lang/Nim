@@ -34,15 +34,25 @@ hash of ``package & "." & module & "." & name`` to save space.
 
 ]#
 
-const
-  rcIncrement = 0b1000 # so that lowest 3 bits are not touched
-  rcMask = 0b111
+when defined(gcOrc):
+  const
+    rcIncrement = 0b10000 # so that lowest 4 bits are not touched
+    rcMask = 0b1111
+
+else:
+  const
+    rcIncrement = 0b1000 # so that lowest 3 bits are not touched
+    rcMask = 0b111
 
 type
   RefHeader = object
     rc: int # the object header is now a single RC field.
             # we could remove it in non-debug builds for the 'owned ref'
             # design but this seems unwise.
+    when defined(gcOrc):
+      rootIdx: int # thanks to this we can delete potential cycle roots
+                   # in O(1) without doubly linked lists
+
   Cell = ptr RefHeader
 
 template `+!`(p: pointer, s: int): pointer =
@@ -57,8 +67,6 @@ template head(p: pointer): Cell =
 const
   traceCollector = defined(traceArc)
 
-var allocs*: int
-
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
@@ -71,12 +79,27 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
-  when hasThreadSupport:
-    atomicInc allocs
-  else:
-    inc allocs
   when traceCollector:
-    cprintf("[Allocated] %p\n", result -! sizeof(RefHeader))
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
+
+proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
+  # Same as 'newNewObj' but do not initialize the memory to zero.
+  # The codegen proved for us that this is not necessary.
+  let s = size + sizeof(RefHeader)
+  when defined(nimscript):
+    discard
+  elif defined(useMalloc):
+    var orig = cast[ptr RefHeader](c_malloc(cuint s))
+  elif compileOption("threads"):
+    var orig = cast[ptr RefHeader](allocShared(s))
+  else:
+    var orig = cast[ptr RefHeader](alloc(s))
+  orig.rc = 0
+  when defined(gcOrc):
+    orig.rootIdx = 0
+  result = orig +! sizeof(RefHeader)
+  when traceCollector:
+    cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
 proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   dec head(p).rc, rcIncrement
@@ -100,14 +123,6 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       deallocShared(p -! sizeof(RefHeader))
     else:
       dealloc(p -! sizeof(RefHeader))
-    if allocs > 0:
-      when hasThreadSupport:
-        discard atomicDec(allocs)
-      else:
-        dec allocs
-    else:
-      cstderr.rawWrite "[FATAL] unpaired dealloc\n"
-      quit 1
 
 template dispose*[T](x: owned(ref T)) = nimRawDispose(cast[pointer](x))
 #proc dispose*(x: pointer) = nimRawDispose(x)
@@ -125,7 +140,12 @@ proc nimDestroyAndDispose(p: pointer) {.compilerRtl, raises: [].} =
   nimRawDispose(p)
 
 when defined(gcOrc):
-  include cyclicrefs_v2
+  when defined(nimThinout):
+    include cyclebreaker
+  else:
+    include cyclicrefs_bacon
+    #include cyclecollector
+    #include cyclicrefs_v2
 
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
@@ -151,9 +171,10 @@ proc GC_ref*[T](x: ref T) =
   ## New runtime only supports this operation for 'ref T'.
   if x != nil: nimIncRef(cast[pointer](x))
 
-template GC_fullCollect* =
-  ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
-  discard
+when not defined(gcOrc):
+  template GC_fullCollect* =
+    ## Forces a full garbage collection pass. With ``--gc:arc`` a nop.
+    discard
 
 template setupForeignThreadGc* =
   ## With ``--gc:arc`` a nop.
@@ -170,4 +191,4 @@ proc isObj(obj: PNimType, subclass: cstring): bool {.compilerRtl, inl.} =
 
 proc chckObj(obj: PNimType, subclass: cstring) {.compilerRtl.} =
   # checks if obj is of type subclass:
-  if not isObj(obj, subclass): sysFatal(ObjectConversionError, "invalid object conversion")
+  if not isObj(obj, subclass): sysFatal(ObjectConversionDefect, "invalid object conversion")

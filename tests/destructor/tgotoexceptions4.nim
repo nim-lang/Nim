@@ -4,7 +4,9 @@ discard """
 caught in fun
 caughtsome msgMyExcept
 in finally
-caught1'''
+caught1
+123
+123'''
 """
 
 when true:
@@ -38,3 +40,21 @@ when true:
     except CatchableError:
       echo "caught1"
   funB()
+
+# bug #13782
+
+import strutils
+var n = 123
+
+try: n = parseInt("xxx")
+except: discard
+
+echo n
+
+proc sameTestButForLocalVar =
+  var n = 123
+  try: n = parseInt("xxx")
+  except: discard
+  echo n
+
+sameTestButForLocalVar()
