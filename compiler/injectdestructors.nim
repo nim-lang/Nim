@@ -314,7 +314,7 @@ proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy
   # but fields within active case branch might need destruction
 
-  # tmp to support self assignments 
+  # tmp to support self assignments
   let tmp = getTemp(c, n[1].typ, n.info)
   c.addTopVar(tmp)
 
@@ -329,7 +329,7 @@ proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
   if hasDestructor(objType):
     if objType.attachedOps[attachedDestructor] != nil and
         sfOverriden in objType.attachedOps[attachedDestructor].flags:
-      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor. 
+      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
       return
@@ -957,6 +957,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       for i in 0..<n.len:
         result[i] = p(n[i], c, mode)
       inc c.hasUnstructuredCf
+    of nkCast:
+      result = shallowCopy(n)
+      result[0] = n[0]
+      result[1] = p(n[1], c, mode)
     else:
       result = shallowCopy(n)
       for i in 0..<n.len:
