@@ -602,6 +602,10 @@ proc PEM_read_RSAPrivateKey*(fp: pointer; x: ptr PRSA; cb: pem_password_cb, u: p
     dynlib: DLLSSLName, importc.}
 proc PEM_read_RSAPublicKey*(fp: pointer; x: ptr PRSA; cb: pem_password_cb, u: pointer): PRSA {.cdecl,
     dynlib: DLLSSLName, importc.}
+proc PEM_read_bio_RSAPublicKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
+    dynlib: DLLSSLName, importc.}
+proc PEM_read_bio_RSAPrivateKey*(bp: BIO, x: ptr PRSA, cb: pem_password_cb, u: pointer): PRSA {.cdecl,
+    dynlib: DLLSSLName, importc.}
 proc RSA_private_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
     dynlib: DLLSSLName, importc.}
 proc RSA_public_encrypt*(flen: cint, fr: ptr cuchar, to: ptr cuchar, rsa: PRSA, padding: PaddingType): cint {.cdecl,
