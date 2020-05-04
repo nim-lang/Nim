@@ -635,7 +635,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
         if i < s.len and s[j] == '.': inc j
         while j < s.len and s[j] in {'0'..'9'}:
           inc j
-        if i+1 < s.len and s[j] == '.' and s[j+1] in {'0'..'9'}:
+        if j+1 < s.len and s[j] == '.' and s[j+1] in {'0'..'9'}:
           # we found a third version number, chances are high
           # we really parsed the version:
           result = major >= 5
