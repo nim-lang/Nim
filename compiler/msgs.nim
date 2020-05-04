@@ -312,6 +312,8 @@ template styledMsgWriteln*(args: varargs[typed]) =
   else:
     if eStdErr in conf.m.errorOutputs:
       if optUseColors in conf.globalOptions:
+        # conf.options.ansiResetNeeded = true
+        conf.ansiResetNeeded = true
         callStyledWriteLineStderr(args)
       else:
         callIgnoringStyle(writeLine, stderr, args)
@@ -443,7 +445,8 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
 
 proc resetAttributes*(conf: ConfigRef) =
   if {optUseColors, optStdout} * conf.globalOptions == {optUseColors}:
-    terminal.resetAttributes(stderr)
+    if conf.ansiResetNeeded:
+      terminal.resetAttributes(stderr)
 
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
