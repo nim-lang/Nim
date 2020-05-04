@@ -405,5 +405,3 @@ proc mainCommand*(graph: ModuleGraph) =
     echo "  int tries: ", gCacheIntTries
     echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float),
                                        ffDecimal, 3)
-
-  resetAttributes(conf)
