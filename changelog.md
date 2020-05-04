@@ -76,6 +76,7 @@
 
   proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
   ```
+
 - `sequtils.count` with 1 argument has been added. This iterates over its
   argument and counts the number of iterations. Useful for types that don't
   have a `len` proc.
