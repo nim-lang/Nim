@@ -566,7 +566,7 @@ template filterIt*(s, pred: untyped): untyped =
     assert acceptable == @[-2.0, 24.5, 44.31]
     assert notAcceptable == @[-272.15, 99.9, -113.44]
 
-  var result = newSeq[type(s[0])]()
+  var result = newSeq[typeof(s[0])]()
   for it {.inject.} in items(s):
     if pred: result.add(it)
   result
@@ -705,7 +705,7 @@ template anyIt*(s, pred: untyped): bool =
 
 template toSeq1(s: not iterator): untyped =
   # overload for typed but not iterator
-  type OutType = type(items(s))
+  type OutType = typeof(items(s))
   when compiles(s.len):
     block:
       evalOnceAs(s2, s, compiles((let _ = s)))
@@ -726,13 +726,13 @@ template toSeq2(iter: iterator): untyped =
   evalOnceAs(iter2, iter(), false)
   when compiles(iter2.len):
     var i = 0
-    var result = newSeq[type(iter2)](iter2.len)
+    var result = newSeq[typeof(iter2)](iter2.len)
     for x in iter2:
       result[i] = x
       inc i
     result
   else:
-    type OutType = type(iter2())
+    type OutType = typeof(iter2())
     var result: seq[OutType] = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
@@ -752,8 +752,8 @@ template toSeq*(iter: untyped): untyped =
     let
       myRange = 1..5
       mySet: set[int8] = {5'i8, 3, 1}
-    assert type(myRange) is HSlice[system.int, system.int]
-    assert type(mySet) is set[int8]
+    assert typeof(myRange) is HSlice[system.int, system.int]
+    assert typeof(mySet) is set[int8]
 
     let
       mySeq1 = toSeq(myRange)
@@ -770,14 +770,14 @@ template toSeq*(iter: untyped): untyped =
     when compiles(iter.len):
       block:
         evalOnceAs(iter2, iter, true)
-        var result = newSeq[type(iter)](iter2.len)
+        var result = newSeq[typeof(iter)](iter2.len)
         var i = 0
         for x in iter2:
           result[i] = x
           inc i
         result
     else:
-      var result: seq[type(iter)] = @[]
+      var result: seq[typeof(iter)] = @[]
       for x in iter:
         result.add(x)
       result
@@ -815,7 +815,7 @@ template foldl*(sequence, operation: untyped): untyped =
 
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"
-  var result: type(s[0])
+  var result: typeof(s[0])
   result = s[0]
   for i in 1..<s.len:
     let
@@ -843,7 +843,7 @@ template foldl*(sequence, operation, first): untyped =
       digits = foldl(numbers, a & (chr(b + ord('0'))), "")
     assert digits == "0815"
 
-  var result: type(first)
+  var result: typeof(first)
   result = first
   for x in items(sequence):
     let
@@ -885,7 +885,7 @@ template foldr*(sequence, operation: untyped): untyped =
 
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"
-  var result: type(s[0])
+  var result: typeof(s[0])
   result = sequence[s.len - 1]
   for i in countdown(s.len - 2, 0):
     let
@@ -920,9 +920,9 @@ template mapIt*(s: typed, op: untyped): untyped =
         var it{.inject.}: typeof(items(s), typeOfIter);
         op), typeOfProc)
   else:
-    type OutType = type((
+    type OutType = typeof((
       block:
-        var it{.inject.}: type(items(s));
+        var it{.inject.}: typeof(items(s));
         op))
   when OutType is not (proc):
     # Here, we avoid to create closures in loops.
@@ -958,7 +958,7 @@ template mapIt*(s: typed, op: untyped): untyped =
     when defined(nimHasTypeof):
       type InType = typeof(items(s), typeOfIter)
     else:
-      type InType = type(items(s))
+      type InType = typeof(items(s))
     # Use a help proc `f` to create closures for each element in `s`
     let f = proc (x: InType): OutType =
               let it {.inject.} = x
@@ -1004,7 +1004,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import random
     var seqRand = newSeqWith(20, rand(10))
 
-  var result = newSeq[type(init)](len)
+  var result = newSeq[typeof(init)](len)
   for i in 0 ..< len:
     result[i] = init
   result
