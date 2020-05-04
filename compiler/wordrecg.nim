@@ -41,7 +41,7 @@ type
     wImportCpp, wImportObjC,
     wImportCompilerProc,
     wImportc, wImportJs, wExportc, wExportCpp, wExportNims,
-    wIncompleteStruct, # deprecated
+    wIncompleteStruct, # deprecated since 1.3.1 now that we have wCompleteStruct
     wCompleteStruct,
     wRequiresInit,
     wAlign, wNodecl, wPure, wSideEffect, wHeader,

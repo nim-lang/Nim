@@ -14,8 +14,7 @@ const
   hasAioH = false
 
 type
-  DIR* {.importc: "DIR", header: "<dirent.h>",
-          incompleteStruct.} = object
+  DIR* {.importc: "DIR", header: "<dirent.h>".} = object
 
 const SIG_HOLD* = cast[Sighandler](2)
 

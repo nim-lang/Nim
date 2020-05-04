@@ -112,8 +112,7 @@ proc c_signal*(sign: cint, handler: proc (a: cint) {.noconv.}): CSighandlerT {.
   importc: "signal", header: "<signal.h>", discardable.}
 
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
+  CFile {.importc: "FILE", header: "<stdio.h>".} = object
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
 # duplicated between io and ansi_c

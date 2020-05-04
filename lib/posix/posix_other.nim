@@ -24,8 +24,7 @@ when defined(solaris):
   {.passl: "-lresolv".}
 
 type
-  DIR* {.importc: "DIR", header: "<dirent.h>",
-          incompleteStruct.} = object
+  DIR* {.importc: "DIR", header: "<dirent.h>".} = object
     ## A type representing a directory stream.
 
 type

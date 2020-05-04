@@ -868,6 +868,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
+      of wIncompleteStruct: discard
+        # else: incl(sym.typ.flags, tfIncompleteStruct)
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)
@@ -1068,10 +1070,6 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wEffects:
         # is later processed in effect analysis:
         noVal(c, it)
-      of wIncompleteStruct:
-        noVal(c, it)
-        if sym.typ == nil: invalidPragma(c, it)
-        else: incl(sym.typ.flags, tfIncompleteStruct)
       of wCompleteStruct:
         noVal(c, it)
         if sym.typ == nil: invalidPragma(c, it)

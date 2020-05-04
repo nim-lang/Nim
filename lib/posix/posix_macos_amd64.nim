@@ -15,8 +15,7 @@ const
   hasAioH = false
 
 type
-  DIR* {.importc: "DIR", header: "<dirent.h>",
-          incompleteStruct.} = object
+  DIR* {.importc: "DIR", header: "<dirent.h>".} = object
     ## A type representing a directory stream.
 
 type

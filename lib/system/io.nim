@@ -16,8 +16,7 @@ import formatfloat
 
 # ----------------- IO Part ------------------------------------------------
 type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
+  CFile {.importc: "FILE", header: "<stdio.h>".} = object
   File* = ptr CFile ## The type representing a file handle.
 
   FileMode* = enum           ## The file mode when opening a file.
