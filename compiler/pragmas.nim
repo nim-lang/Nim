@@ -765,6 +765,10 @@ proc semCustomPragma(c: PContext, n: PNode): PNode =
 proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
                   validPragmas: TSpecialWords,
                   comesFromPush, isStatement: bool): bool =
+
+  template deprecatedPragma(keyword, msg) =
+    localError(c.config, n.info, warnDeprecated, "pragma '$1' is deprecated: $2" % [keyword.canonPragmaSpelling, msg])
+
   var it = n[i]
   var key = if it.kind in nkPragmaCallKinds and it.len > 1: it[0] else: it
   if key.kind == nkBracketExpr:
@@ -867,9 +871,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wThreadVar:
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
-      of wDeadCodeElimUnused: discard  # deprecated, dead code elim always on
-      of wIncompleteStruct: discard
-        # else: incl(sym.typ.flags, tfIncompleteStruct)
+      of wDeadCodeElimUnused: deprecatedPragma(wDeadCodeElimUnused, "dead code elim always on")
+      of wIncompleteStruct: deprecatedPragma(wIncompleteStruct, "see '$1' instead" % wCompleteStruct.canonPragmaSpelling)
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)

@@ -888,8 +888,6 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
                       else: getTupleDesc(m, t, result, check)
         if not isImportedType(t):
           m.s[cfsTypes].add(recdesc)
-        elif tfIncompleteStruct notin t.flags:
-          discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
     result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType
@@ -1008,14 +1006,9 @@ proc genTypeInfoAuxBase(m: BModule; typ, origType: PType;
 
   let nameHcr = tiNameForHcr(m, name)
 
-  var size: Rope
-  if tfIncompleteStruct in typ.flags:
-    size = rope"void*"
-  else:
-    size = getTypeDesc(m, origType)
   m.s[cfsTypeInit3].addf(
     "$1.size = sizeof($2);$n$1.align = NIM_ALIGNOF($2);$n$1.kind = $3;$n$1.base = $4;$n",
-    [nameHcr, size, rope(nimtypeKind), base]
+    [nameHcr, getTypeDesc(m, origType), rope(nimtypeKind), base]
   )
   # compute type flags for GC optimization
   var flags = 0
