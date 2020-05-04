@@ -6412,26 +6412,27 @@ CompleteStruct pragma
 -----------------------
 By default, `importc` types are considered incomplete: they may be lacking fields
 in their nim declaration because these are unused in nim code or because of ABI
-differences across platforms, in particular for padding fields. Field reordering
+differences across platforms, in particular for padding fields. Field reorderings
 are also allowed. This prevents using `sizeof`, `alignof`, `offsetOf` at compile
 time.
-These can still be used at runtime, deferring to calling ``sizeof`` (+ friends) in the
+These can still be used at runtime, deferring to calling `sizeof` (+ friends) in the
 backend generated code. In this case, they're known at backend compile time,
 but not during nim semantic phase.
 
-This ``completeStruct`` pragma overrides this behavior by telling the compiler
-the type declaration in nim is fully specified, so that `sizeof`, `alignof`, `offsetOf`
-are available at compile time. As a sanity check, `-d:checkAbi` will insert
-cgen static checks to make sure at least sizeof is correct.
+This `completeStruct` pragma overrides this behavior by telling the compiler
+the type declaration in nim is fully specified and in correct order so that
+`sizeof`, `alignof`, `offsetOf` are available at compile time.
+As a sanity check, `-d:checkAbi` will insert backend static checks to make sure
+at least `sizeof` is correct.
 
 .. code-block:: Nim
   type
-    TFoo* {.importc: "Foo", header: "<bar.h>",
-           pure, completeStruct.} = object
-      x*: cint # only 1 field in C declaration
+    TFoo* {.importc: "struct Foo", header: "<bar.h>", completeStruct.} = object
+      s1*: cint
+      x2* {.importc: "_x2"}: pointer # renamed field
 
-See `tests <https://github.com/nim-lang/Nim/blob/devel/tests/misc/msizeof5.nim>`_
-The ``incompleteStruct`` pragma is now deprecated as it was implying the wrong
+See `additional examples <https://github.com/nim-lang/Nim/blob/devel/tests/misc/msizeof5.nim>`_.
+The `incompleteStruct` pragma is now deprecated as it was implying the wrong
 default.
 
 Compile pragma
