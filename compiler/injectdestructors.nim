@@ -910,6 +910,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       for i in 0..<n.len:
         result[i] = p(n[i], c, mode)
       inc c.hasUnstructuredCf
+    of nkCast:
+      result = shallowCopy(n)
+      result[0] = n[0]
+      result[1] = p(n[1], c, mode)
     else:
       result = shallowCopy(n)
       for i in 0..<n.len:

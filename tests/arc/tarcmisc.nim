@@ -1,5 +1,6 @@
 discard """
   output: '''
+123xyzabc
 destroyed: false
 destroyed: false
 closed
@@ -7,6 +8,19 @@ destroying variable
 '''
   cmd: "nim c --gc:arc $file"
 """
+
+proc takeSink(x: sink string): bool = true
+
+proc b(x: sink string): string =
+  if takeSink(x):
+    return x & "abc"
+
+proc bbb(inp: string) =
+  let y = inp & "xyz"
+  echo b(y)
+
+bbb("123")
+
 
 # bug #13691
 type Variable = ref object

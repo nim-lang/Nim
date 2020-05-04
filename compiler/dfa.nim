@@ -541,8 +541,8 @@ template genNoReturn(c: var Con; n: PNode) =
   c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 proc genRaise(c: var Con; n: PNode) =
-  genJoins(c, n)
   gen(c, n[0])
+  genJoins(c, n)
   if c.inTryStmt > 0:
     c.tryStmtFixups.add c.gotoI(n)
   else:
@@ -553,11 +553,11 @@ proc genImplicitReturn(c: var Con) =
     gen(c, c.owner.ast[resultPos])
 
 proc genReturn(c: var Con; n: PNode) =
-  genJoins(c, n)
   if n[0].kind != nkEmpty:
     gen(c, n[0])
   else:
     genImplicitReturn(c)
+  genJoins(c, n)
   genNoReturn(c, n)
 
 const
