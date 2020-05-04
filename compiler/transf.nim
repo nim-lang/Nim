@@ -47,6 +47,7 @@ type
     nestedProcs: int         # > 0 if we are in a nested proc
     contSyms, breakSyms: seq[PSym]  # to transform 'continue' and 'break'
     deferDetected, tooEarly: bool
+    isTopLevel: bool
     graph: ModuleGraph
   PTransf = ref TTransfContext
 
@@ -89,6 +90,8 @@ proc newTemp(c: PTransf, typ: PType, info: TLineInfo): PNode =
   let r = newSym(skTemp, getIdent(c.graph.cache, genPrefix), getCurrOwner(c), info)
   r.typ = typ #skipTypes(typ, {tyGenericInst, tyAlias, tySink})
   incl(r.flags, sfFromGeneric)
+  if c.isTopLevel:
+    r.flags.incl sfGlobal
   let owner = getCurrOwner(c)
   if owner.isIterator and not c.tooEarly:
     result = freshVarForClosureIter(c.graph, r, owner)
@@ -164,6 +167,8 @@ proc freshVar(c: PTransf; v: PSym): PNode =
   else:
     var newVar = copySym(v)
     incl(newVar.flags, sfFromGeneric)
+    if c.isTopLevel:
+      newVar.flags.incl sfGlobal
     newVar.owner = owner
     result = newSymNode(newVar)
 
@@ -1139,6 +1144,7 @@ proc transformStmt*(g: ModuleGraph; module: PSym, n: PNode): PNode =
     result = n
   else:
     var c = openTransf(g, module, "")
+    c.isTopLevel = true
     result = processTransf(c, n, module)
     liftDefer(c, result)
     #result = liftLambdasForTopLevel(module, result)
