@@ -1,7 +1,7 @@
 # test the osproc module
 
 import stdtest/specialpaths
-import "../.." / compiler/unittest_light
+import "$nim" / compiler/unittest_light
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
@@ -119,3 +119,8 @@ else:
 
     var result = startProcessTest("nim r --hints:off -", options = {}, input = "echo 3*4")
     doAssert result == ("12\n", 0)
+
+  block execProcessTest:
+    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    stripLineEnd(result[0])
+    doAssert result == ("12", 0)

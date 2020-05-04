@@ -1438,12 +1438,14 @@ elif not defined(useNimRtl):
 
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
-                poStdErrToStdOut, poUsePath}): tuple[
+                poStdErrToStdOut, poUsePath}, input = ""): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
   ## A convenience proc that runs the `command`, grabs all its output and
-  ## exit code and returns both.
+  ## exit code and returns both. If `input.len > 0`, it is passed as stdin.
+  ## Note: this could block if `input.len` is greater than your OS's maximum
+  ## pipe buffer size.
   ##
   ## See also:
   ## * `execCmd proc <#execCmd,string>`_
@@ -1452,17 +1454,24 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## * `execProcess proc
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
+  runnableExamples:
+    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    import strutils
+    stripLineEnd(result[0])
+    doAssert result == ("12", 0)
 
+  when (NimMajor, NimMinor) < (1, 3):
+    doAssert input.len == 0
   var p = startProcess(command, options = options + {poEvalCommand})
   var outp = outputStream(p)
 
-  # There is no way to provide input for the child process
-  # anymore. Closing it will create EOF on stdin instead of eternal
-  # blocking.
+  if input.len > 0:
+    # There is no way to provide input for the child process
+    # anymore. Closing it will create EOF on stdin instead of eternal
+    # blocking.
+    # Writing in chunks would require a selectors (eg kqueue/epoll) to avoid
+    # blocking on io.
+    inputStream(p).write(input)
   close inputStream(p)
 
   result = (TaintedString"", -1)
