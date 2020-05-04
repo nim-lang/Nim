@@ -126,6 +126,7 @@
   nim r compiler/nim.nim --fullhelp # no recompilation
   nim r --nimcache:/tmp main # binary saved to /tmp/main
   ```
+- `incompleteStruct` is now deprecated, use `completeStruct` instead.
 
 ## Tool changes
 
