@@ -68,26 +68,25 @@ else: # don't run twice the same test
     let inputcmd = "import os; echo commandLineParams()"
     let expected = """@["-firstparam", "-second param"]"""
     block:
-      let p = startProcess(nimcmd, options = {poStdErrToStdOut, poEvalCommand})
+      let p = startProcess(nimcmd, options = {poEvalCommand})
       p.inputStream.write("import os; echo commandLineParams()")
       p.inputStream.close
       var output = p.outputStream.readAll
       let error = p.errorStream.readAll
-      let status = p.waitForExit
-      doAssert status == 0
-      output.stripLineEnd
-      when false:
+      doAssert p.waitForExit == 0
+      when false: # https://github.com/timotheecour/Nim/issues/152
         # bug: `^[[0m` is being inserted somehow with `-` (regarless of --run)
-        # can be seen with: `import compiler/unittest_light` and:
-        assertEquals output, expected
-      doAssert output.endsWith expected
+        doAssert error.len == 0, $(error,)
+      output.stripLineEnd
+      doAssert output == expected
       p.errorStream.close
       p.outputStream.close
 
     block:
       when defined(posix):
         let cmd = fmt"echo 'import os; echo commandLineParams()' | {nimcmd}"
-        var (output, exitCode) = execCmdEx(cmd)
+        # avoid https://github.com/timotheecour/Nim/issues/152 by
+        # making sure `poStdErrToStdOut` isn't passed
+        var (output, exitCode) = execCmdEx(cmd, options = {poEvalCommand})
         output.stripLineEnd
-        when false: assertEquals output, expected  # same bug
-        doAssert output.endsWith expected
+        doAssert output == expected
