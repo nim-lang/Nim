@@ -618,8 +618,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
     result = false # assume an old or crappy GCC
     var exe = getConfigVar(conf, conf.cCompiler, ".exe")
     if exe.len == 0: exe = CC[conf.cCompiler].compilerExe
-
-    let (s, exitCode) = execCmdEx(exe & " --version")
+    let (s, exitCode) = try: execCmdEx(exe & " --version") except: ("", 1)
     if exitCode == 0:
       var i = 0
       var j = 0
