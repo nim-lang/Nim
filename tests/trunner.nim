@@ -74,9 +74,7 @@ else: # don't run twice the same test
       var output = p.outputStream.readAll
       let error = p.errorStream.readAll
       doAssert p.waitForExit == 0
-      when false: # https://github.com/timotheecour/Nim/issues/152
-        # bug: `^[[0m` is being inserted somehow with `-` (regarless of --run)
-        doAssert error.len == 0, $(error,)
+      doAssert error.len == 0, $error
       output.stripLineEnd
       doAssert output == expected
       p.errorStream.close
@@ -85,8 +83,6 @@ else: # don't run twice the same test
     block:
       when defined(posix):
         let cmd = fmt"echo 'import os; echo commandLineParams()' | {nimcmd}"
-        # avoid https://github.com/timotheecour/Nim/issues/152 by
-        # making sure `poStdErrToStdOut` isn't passed
-        var (output, exitCode) = execCmdEx(cmd, options = {poEvalCommand})
+        var (output, exitCode) = execCmdEx(cmd)
         output.stripLineEnd
         doAssert output == expected

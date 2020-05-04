@@ -298,6 +298,9 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
   result.add(bindSym"stderr")
   for arg in children(args[0][1]):
     result.add(arg)
+  when false:
+    # not needed because styledWriteLine already ends with resetAttributes
+    result = newStmtList(result, newCall(bindSym"resetAttributes", bindSym"stderr"))
 
 template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
@@ -440,10 +443,6 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 
 proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
   rawMessage(conf, msg, [arg])
-
-proc resetAttributes*(conf: ConfigRef) =
-  if {optUseColors, optStdout} * conf.globalOptions == {optUseColors}:
-    terminal.resetAttributes(stderr)
 
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
