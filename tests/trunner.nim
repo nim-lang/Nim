@@ -7,9 +7,10 @@ discard """
 
 import std/[strformat,os,osproc,strutils]
 
+const nim = getCurrentCompilerExe()
+
 proc runCmd(file, options = ""): auto =
   let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
-  const nim = getCurrentCompilerExe()
   const testsDir = currentSourcePath().parentDir
   let fileabs = testsDir / file.unixToNativePath
   doAssert fileabs.existsFile, fileabs
@@ -60,3 +61,33 @@ else: # don't run twice the same test
       check "sizeof(Foo5) == 3"
       check "sizeof(struct Foo6) == "
       doAssert exitCode != 0
+
+  import streams
+  block: # stdin input
+    let nimcmd = fmt"{nim} r --hints:off - -firstparam '-second param'"
+    let inputcmd = "import os; echo commandLineParams()"
+    let expected = """@["-firstparam", "-second param"]"""
+    block:
+      let p = startProcess(nimcmd, options = {poStdErrToStdOut, poEvalCommand})
+      p.inputStream.write("import os; echo commandLineParams()")
+      p.inputStream.close
+      var output = p.outputStream.readAll
+      let error = p.errorStream.readAll
+      let status = p.waitForExit
+      doAssert status == 0
+      output.stripLineEnd
+      when false:
+        # bug: `^[[0m` is being inserted somehow with `-` (regarless of --run)
+        # can be seen with: `import compiler/unittest_light` and:
+        assertEquals output, expected
+      doAssert output.endsWith expected
+      p.errorStream.close
+      p.outputStream.close
+
+    block:
+      when defined(posix):
+        let cmd = fmt"echo 'import os; echo commandLineParams()' | {nimcmd}"
+        var (output, exitCode) = execCmdEx(cmd)
+        output.stripLineEnd
+        when false: assertEquals output, expected  # same bug
+        doAssert output.endsWith expected
