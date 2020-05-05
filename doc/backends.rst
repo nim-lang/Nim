@@ -82,7 +82,7 @@ available. This includes:
 * proper 64 bit integer arithmetic
 
 To compensate, the standard library has modules `catered to the JS backend
-<https://nim-lang.org/docs/lib.html#pure-libraries-modules-for-js-backend>`_
+<lib.html#pure-libraries-modules-for-js-backend>`_
 and more support will come in the future (for instance, Node.js bindings
 to get OS info).
 
