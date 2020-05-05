@@ -97,10 +97,20 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 # Platform common stuff (avoids repetition)
 
-type
-  # DIR* {.importc: "DIR*", header: "<dirent.h>".} = ptr object
-  DIR* {.importc: "DIR12", header: "<dirent.h>".} = ptr object
-    ## A type representing a directory stream.
+when defined(nimBackendHasPosixDIR):
+  # This should be auto-detected, like NIM_EmulateOverflowChecks, by
+  # calling preprocessor, see https://github.com/nim-lang/RFCs/issues/205
+  # proposal 5.
+  type
+    DIR* {.importc: "DIR", header: "<dirent.h>".} = object
+      ## on some systems, this is a forward declared type and should only
+      ## be used via pointer, ie via `C_DIR`
+    C_DIR* = ptr DIR
+      ## A ptr type representing a directory stream.
+else:
+  type
+    C_DIR* {.importc: "DIR*", header: "<dirent.h>".} = ptr object
+      ## A ptr type representing a directory stream.
 
 # Platform specific stuff
 
@@ -173,14 +183,14 @@ proc IN6ADDR_ANY_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
 proc IN6ADDR_LOOPBACK_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
 
 # dirent.h
-proc closedir*(a1: DIR): cint  {.importc, header: "<dirent.h>".}
-proc opendir*(a1: cstring): DIR {.importc, header: "<dirent.h>", sideEffect.}
-proc readdir*(a1: DIR): ptr Dirent  {.importc, header: "<dirent.h>", sideEffect.}
-proc readdir_r*(a1: DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
+proc closedir*(a1: C_DIR): cint  {.importc, header: "<dirent.h>".}
+proc opendir*(a1: cstring): C_DIR {.importc, header: "<dirent.h>", sideEffect.}
+proc readdir*(a1: C_DIR): ptr Dirent  {.importc, header: "<dirent.h>", sideEffect.}
+proc readdir_r*(a1: C_DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
                 importc, header: "<dirent.h>", sideEffect.}
-proc rewinddir*(a1: DIR)  {.importc, header: "<dirent.h>".}
-proc seekdir*(a1: DIR, a2: int)  {.importc, header: "<dirent.h>".}
-proc telldir*(a1: DIR): int {.importc, header: "<dirent.h>".}
+proc rewinddir*(a1: C_DIR)  {.importc, header: "<dirent.h>".}
+proc seekdir*(a1: C_DIR, a2: int)  {.importc, header: "<dirent.h>".}
+proc telldir*(a1: C_DIR): int {.importc, header: "<dirent.h>".}
 
 # dlfcn.h
 proc dlclose*(a1: pointer): cint {.importc, header: "<dlfcn.h>", sideEffect.}
