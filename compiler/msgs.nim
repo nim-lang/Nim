@@ -405,7 +405,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
           instantiationFrom
         else:
           instantiationOfFrom.format(context.detail)
-        styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), resetStyle, message)
+        styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
     info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
@@ -484,7 +484,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of warnMin..warnMax: WarningTitle
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
-  conf.toFileLineCol(info) & title & getMessageStr(msg, arg)
+  conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
@@ -519,7 +519,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  let x = conf.toFileLineCol(info)
+  let x = conf.toFileLineCol(info) & " "
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:
