@@ -129,9 +129,9 @@
 - a new pragma `completeStruct` for importc objects indicates the type is fully
   specified in the nim declaration (including field ordering), and allows
   `sizeof, alignof, offsetof` to be used at compile time, see
-  manual.html#implementation-specific-pragmas-completestruct-pragma.
+  [manual](manual.html#implementation-specific-pragmas-completestruct-pragma).
 - `incompleteStruct` is now deprecated, see
-  manual.html#implementation-specific-pragmas-incompletestruct-pragma.
+  [manual](manual.html#implementation-specific-pragmas-incompletestruct-pragma).
 
 ## Tool changes
 
