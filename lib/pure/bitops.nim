@@ -26,7 +26,7 @@
 ## may return undefined and/or platform dependent value if given invalid input.
 
 import macros
-include "system/inclrtl"
+import std/private/since
 
 proc bitnot*[T: SomeInteger](x: T): T {.magic: "BitnotI", noSideEffect.}
   ## Computes the `bitwise complement` of the integer `x`.
