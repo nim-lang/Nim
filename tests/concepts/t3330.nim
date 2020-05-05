@@ -28,11 +28,11 @@ proc add(x: var string; y: string)
   first type mismatch at position: 1
   required type for x: var string
   but expression 'k' is of type: Alias
-proc add[T](x: var seq[T]; y: T)
+proc add[T](x: var seq[T]; y: openArray[T])
   first type mismatch at position: 1
   required type for x: var seq[T]
   but expression 'k' is of type: Alias
-proc add[T](x: var seq[T]; y: openArray[T])
+proc add[T](x: var seq[T]; y: sink T)
   first type mismatch at position: 1
   required type for x: var seq[T]
   but expression 'k' is of type: Alias

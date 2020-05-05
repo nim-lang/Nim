@@ -200,7 +200,7 @@
 ##    let client = newHttpClient(maxRedirects = 0)
 ##
 
-include "system/inclrtl"
+import std/private/since
 
 import net, strutils, uri, parseutils, base64, os, mimetypes, streams,
   math, random, httpcore, times, tables, streams, std/monotimes

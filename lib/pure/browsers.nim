@@ -12,8 +12,9 @@
 ##
 ## Unstable API.
 
+import std/private/since
+
 import strutils
-include "system/inclrtl"
 
 when defined(windows):
   import winlean

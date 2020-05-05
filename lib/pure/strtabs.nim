@@ -48,6 +48,7 @@ runnableExamples:
 ## * `json module<json.html>`_ for table-like structure which allows
 ##   heterogeneous members
 
+import std/private/since
 
 import
   hashes, strutils

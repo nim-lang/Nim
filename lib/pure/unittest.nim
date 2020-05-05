@@ -93,10 +93,10 @@
 ##
 ##     echo "suite teardown: run once after the tests"
 
+import std/private/since
+
 import
   macros, strutils, streams, times, sets, sequtils
-
-include "system/inclrtl"
 
 when declared(stdout):
   import os

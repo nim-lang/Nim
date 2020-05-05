@@ -1043,6 +1043,8 @@ proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffec
 when defined(linux) or defined(bsd):
   proc mkostemp*(tmpl: cstring, oflags: cint): cint {.importc, header: "<stdlib.h>", sideEffect.}
 
+  proc posix_memalign*(memptr: pointer, alignment: csize_t, size: csize_t): cint {.importc, header: "<stdlib.h>".}
+
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>", sideEffect.}
   ## Sets file access and modification times.

@@ -46,7 +46,7 @@ pkg "gnuplot"
 pkg "hts", false, "nim c -o:htss src/hts.nim"
 # pkg "httpauth", true
 pkg "illwill", false, "nimble examples"
-# pkg "inim", true # pending https://github.com/inim-repl/INim/issues/74
+pkg "inim", true
 pkg "itertools", false, "nim doc src/itertools.nim"
 pkg "iterutils"
 pkg "jstin"

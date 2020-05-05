@@ -95,6 +95,9 @@ proc commandCompileToC(graph: ModuleGraph) =
       graph.config.notes = graph.config.mainPackageNotes
       return
 
+  if not extccomp.ccHasSaneOverflow(conf):
+    conf.symbols.defineSymbol("nimEmulateOverflowChecks")
+
   compileProject(graph)
   if graph.config.errorCounter > 0:
     return # issue #9933
@@ -405,5 +408,3 @@ proc mainCommand*(graph: ModuleGraph) =
     echo "  int tries: ", gCacheIntTries
     echo "  efficiency: ", formatFloat(1-(gCacheMisses.float/gCacheTries.float),
                                        ffDecimal, 3)
-
-  resetAttributes(conf)

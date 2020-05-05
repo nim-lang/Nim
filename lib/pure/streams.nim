@@ -94,7 +94,7 @@
 ## * `asyncstreams module <asyncstreams.html>`_
 ## * `io module <io.html>`_ for `FileMode enum <io.html#FileMode>`_
 
-include "system/inclrtl"
+import std/private/since
 
 const taintMode = compileOption("taintmode")
 

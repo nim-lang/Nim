@@ -162,7 +162,7 @@ compiler vcc:
     buildDll: " /LD",
     buildLib: "lib /OUT:$libfile $objfiles",
     linkerExe: "cl",
-    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui /link /nologo $options",
+    linkTmpl: "$builddll$vccplatform /Fe$exefile $objfiles $buildgui /nologo $options",
     includeCmd: " /I",
     linkDirCmd: " /LIBPATH:",
     linkLibCmd: " $1.lib",
@@ -612,6 +612,34 @@ proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): 
     rawMessage(conf, errGenerated,
       "Compiler '$1' doesn't support the requested target" %
       CC[compiler].name)
+
+proc ccHasSaneOverflow*(conf: ConfigRef): bool =
+  if conf.cCompiler == ccGcc:
+    result = false # assume an old or crappy GCC
+    var exe = getConfigVar(conf, conf.cCompiler, ".exe")
+    if exe.len == 0: exe = CC[conf.cCompiler].compilerExe
+    let (s, exitCode) = try: execCmdEx(exe & " --version") except: ("", 1)
+    if exitCode == 0:
+      var i = 0
+      var j = 0
+      # the version is the last part of the first line:
+      while i < s.len and s[i] != '\n':
+        if s[i] in {' ', '\t'}: j = i+1
+        inc i
+      if j > 0:
+        var major = 0
+        while j < s.len and s[j] in {'0'..'9'}:
+          major = major * 10 + (ord(s[j]) - ord('0'))
+          inc j
+        if i < s.len and s[j] == '.': inc j
+        while j < s.len and s[j] in {'0'..'9'}:
+          inc j
+        if j+1 < s.len and s[j] == '.' and s[j+1] in {'0'..'9'}:
+          # we found a third version number, chances are high
+          # we really parsed the version:
+          result = major >= 5
+  else:
+    result = conf.cCompiler == ccCLang
 
 proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe

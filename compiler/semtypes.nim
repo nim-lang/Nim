@@ -695,7 +695,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     of nkElse:
       checkSonsLen(b, 1, c.config)
       if chckCovered and covered == toCover(c, a[0].typ):
-        localError(c.config, b.info, "invalid else, all cases are already covered")
+        message(c.config, b.info, warnUnreachableElse)
       chckCovered = false
     else: illFormedAst(n, c.config)
     delSon(b, b.len - 1)
@@ -723,7 +723,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         checkSonsLen(it, 2, c.config)
         if c.inGenericContext == 0:
           var e = semConstBoolExpr(c, it[0])
-          if e.kind != nkIntLit: internalError(c.config, e.info, "semRecordNodeAux")
+          if e.kind != nkIntLit: discard "don't report followup error"
           elif e.intVal != 0 and branch == nil: branch = it[1]
         else:
           it[0] = forceBool(c, semExprWithType(c, it[0]))

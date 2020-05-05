@@ -51,7 +51,7 @@
 ## * `lists module <lists.html>`_ for singly and doubly linked lists and rings
 ## * `channels module <channels.html>`_ for inter-thread communication
 
-include system/inclrtl
+import std/private/since
 
 import math
 

@@ -11,7 +11,7 @@ import std/[
 
   # Algorithms:
   algorithm, sequtils,
-  
+
   # Collections:
   critbits, deques, heapqueue, intsets, lists, options, sets,
   sharedlist, tables,
@@ -40,7 +40,7 @@ import std/[
   # fails: asyncdispatch, asyncfile, asyncftpclient, asynchttpserver,
   # asyncnet, cgi, cookies, httpclient, nativesockets, net, selectors, smtp
   # works but shouldn't test: asyncstreams, asyncfutures
-  
+
   # Threading:
   # fails: threadpool
 
@@ -72,5 +72,12 @@ import std/[
 
 block:
   doAssert "./foo//./bar/".normalizedPath == "foo/bar".unixToNativePath
+
+when false: # #14142
+  discard existsDir("/usr")
+  discard dirExists("/usr")
+  discard existsFile("/usr/foo")
+  discard fileExists("/usr/foo")
+  discard findExe("nim")
 
 echo "Nimscript imports are successful."
