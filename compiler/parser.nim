@@ -269,7 +269,8 @@ proc isRightAssociative(tok: TToken): bool {.inline.} =
 proc isOperator(tok: TToken): bool =
   ## Determines if the given token is an operator type token.
   tok.tokType in {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
-                  tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
+                  tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd,
+                  tkOr, tkXor}
 
 proc isUnary(p: TParser): bool =
   ## Check if the current parser token is a unary operator
@@ -555,7 +556,7 @@ proc parsePar(p: var TParser): PNode =
   optInd(p, result)
   flexComment(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase,
-                       tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock,
+                       tkTry, tkDefer, tkFinally, tkExcept, tkBlock,
                        tkConst, tkLet, tkWhen, tkVar, tkFor,
                        tkMixin}:
     # XXX 'bind' used to be an expression, so we exclude it here;
