@@ -97,20 +97,17 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
 
 # Platform common stuff (avoids repetition)
 
+type
+  DIR {.importc: "DIR", header: "<dirent.h>".} = object
+    ## on some systems, this is a forward declared type and should only
+    ## be used via pointer, ie via `C_DIR`
+  C_DIR*  = ptr DIR
+    ## A ptr type representing a directory stream.
+
 when defined(nimBackendHasPosixDIR):
   # This should be auto-detected, like NIM_EmulateOverflowChecks, by
-  # calling preprocessor, see https://github.com/nim-lang/RFCs/issues/205
-  # proposal 5.
-  type
-    DIR* {.importc: "DIR", header: "<dirent.h>".} = object
-      ## on some systems, this is a forward declared type and should only
-      ## be used via pointer, ie via `C_DIR`
-    C_DIR* = ptr DIR
-      ## A ptr type representing a directory stream.
-else:
-  type
-    C_DIR* {.importc: "DIR*", header: "<dirent.h>".} = ptr object
-      ## A ptr type representing a directory stream.
+  # calling preprocessor, see https://github.com/nim-lang/RFCs/issues/205 prop 5
+  export DIR
 
 # Platform specific stuff
 
