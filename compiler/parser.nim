@@ -272,13 +272,6 @@ proc isOperator(tok: TToken): bool =
                   tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd,
                   tkOr, tkXor}
 
-proc isUnary(p: TParser): bool =
-  ## Check if the current parser token is a unary operator
-  if p.tok.tokType in {tkOpr, tkDotDot} and
-     p.tok.strongSpaceB == 0 and
-     p.tok.strongSpaceA > 0:
-      result = true
-
 proc checkBinary(p: TParser) {.inline.} =
   ## Check if the current parser token is a binary operator.
   # we don't check '..' here as that's too annoying
@@ -793,14 +786,14 @@ proc primarySuffix(p: var TParser, r: PNode,
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
-       tkOpr, tkDotDot, tkVar, tkStatic, tkType, tkEnum, tkTuple,
+       tkOpr, tkNot, tkDotDot, tkVar, tkStatic, tkType, tkEnum, tkTuple,
        tkObject, tkProc:
       # XXX: In type sections we allow the free application of the
       # command syntax, with the exception of expressions such as
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
       # used as infix operators for the memory regions feature and
       # the current parsing rules don't play well here.
-      if p.inPragma == 0 and (isUnary(p) or p.tok.tokType notin {tkOpr, tkDotDot}):
+      if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot} or p.tok.tokType == tkNot):
         # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
         # solution, but pragmas.nim can't handle that
         result = commandExpr(p, result, mode)
@@ -812,13 +805,13 @@ proc parseOperators(p: var TParser, headNode: PNode,
                     limit: int, mode: TPrimaryMode): PNode =
   result = headNode
   # expand while operators have priorities higher than 'limit'
-  var opPrec = getPrecedence(p.tok, false)
+  var opPrec = getPrecedence(p.tok)
   let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
   # the operator itself must not start on a new line:
   # progress guaranteed
-  while opPrec >= limit and p.tok.indent < 0 and not isUnary(p):
+  while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
     checkBinary(p)
-    var leftAssoc = 1-ord(isRightAssociative(p.tok))
+    let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
@@ -830,7 +823,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
     a.add(result)
     a.add(b)
     result = a
-    opPrec = getPrecedence(p.tok, false)
+    opPrec = getPrecedence(p.tok)
 
 proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
@@ -1253,6 +1246,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   #|         / 'bind' primary
   if isOperator(p.tok):
     let isSigil = isSigilLike(p.tok)
+    let opPrec = getPrecedence(p.tok)
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     result.add(a)
@@ -1265,6 +1259,8 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result = primarySuffix(p, result, baseInd, mode)
     else:
       result.add(primary(p, pmNormal))
+      if getPrecedence(p.tok) >= opPrec:
+        result[^1] = parseOperators(p, result[^1], getPrecedence(p.tok), mode)
     return
 
   case p.tok.tokType

@@ -940,40 +940,43 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
-proc getPrecedence*(tok: TToken, strongSpaces: bool): int =
-  ## Calculates the precedence of the given token.
-  template considerStrongSpaces(x): untyped =
-    x + (if strongSpaces: 100 - tok.strongSpaceA.int*10 else: 0)
+proc isUnary*(tok: TToken): bool =
+  ## Check if the token is a unary operator
+  tok.tokType in {tkOpr, tkDotDot} and
+  tok.strongSpaceB == 0 and
+  tok.strongSpaceA > 0
 
+proc getPrecedence*(tok: TToken): int =
+  ## Calculates the precedence of the given token.
   case tok.tokType
   of tkOpr:
+    if isUnary(tok): return 12
     let relevantChar = tok.ident.s[0]
 
     # arrow like?
     if tok.ident.s.len > 1 and tok.ident.s[^1] == '>' and
-      tok.ident.s[^2] in {'-', '~', '='}: return considerStrongSpaces(1)
+      tok.ident.s[^2] in {'-', '~', '='}: return 1
 
     template considerAsgn(value: untyped) =
       result = if tok.ident.s[^1] == '=': 1 else: value
 
     case relevantChar
-    of '$', '^': considerAsgn(10)
-    of '*', '%', '/', '\\': considerAsgn(9)
-    of '~': result = 8
-    of '+', '-', '|': considerAsgn(8)
-    of '&': considerAsgn(7)
-    of '=', '<', '>', '!': result = 5
-    of '.': considerAsgn(6)
+    of '$', '^': considerAsgn(11)
+    of '*', '%', '/', '\\': considerAsgn(10)
+    of '~': result = 9
+    of '+', '-', '|': considerAsgn(9)
+    of '&': considerAsgn(8)
+    of '=', '<', '>', '!': result = 6
+    of '.': considerAsgn(7)
     of '?': result = 2
     else: considerAsgn(2)
-  of tkDiv, tkMod, tkShl, tkShr: result = 9
-  of tkIn, tkNotin, tkIs, tkIsnot, tkOf, tkAs, tkFrom: result = 5
-  of tkDotDot: result = 6
+  of tkDiv, tkMod, tkShl, tkShr: result = 10
+  of tkDotDot: result = 7
+  of tkIn, tkNotin, tkIs, tkIsnot, tkOf, tkAs, tkFrom: result = 6
+  of tkNot: result = 5
   of tkAnd: result = 4
   of tkOr, tkXor, tkPtr, tkRef: result = 3
   else: return -10
-  result = considerStrongSpaces(result)
-
 
 proc newlineFollows*(L: TLexer): bool =
   var pos = L.bufpos
@@ -1353,4 +1356,4 @@ proc getPrecedence*(ident: PIdent): int =
     if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol)..ord(tokKeywordHigh) - ord(tkSymbol):
       TTokType(tok.ident.id + ord(tkSymbol))
     else: tkOpr
-  getPrecedence(tok, false)
+  getPrecedence(tok)
