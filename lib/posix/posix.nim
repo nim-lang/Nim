@@ -95,6 +95,13 @@ const StatHasNanoseconds* = defined(linux) or defined(freebsd) or
   ## without checking this flag, because this module defines fallback procs
   ## when they are not available.
 
+# Platform common stuff (avoids repetition)
+
+type
+  # DIR* {.importc: "DIR*", header: "<dirent.h>".} = ptr object
+  DIR* {.importc: "DIR12", header: "<dirent.h>".} = ptr object
+    ## A type representing a directory stream.
+
 # Platform specific stuff
 
 when (defined(linux) and not defined(android)) and defined(amd64):
@@ -166,14 +173,14 @@ proc IN6ADDR_ANY_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
 proc IN6ADDR_LOOPBACK_INIT* (): In6Addr {.importc, header: "<netinet/in.h>".}
 
 # dirent.h
-proc closedir*(a1: ptr DIR): cint  {.importc, header: "<dirent.h>".}
-proc opendir*(a1: cstring): ptr DIR {.importc, header: "<dirent.h>", sideEffect.}
-proc readdir*(a1: ptr DIR): ptr Dirent  {.importc, header: "<dirent.h>", sideEffect.}
-proc readdir_r*(a1: ptr DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
+proc closedir*(a1: DIR): cint  {.importc, header: "<dirent.h>".}
+proc opendir*(a1: cstring): DIR {.importc, header: "<dirent.h>", sideEffect.}
+proc readdir*(a1: DIR): ptr Dirent  {.importc, header: "<dirent.h>", sideEffect.}
+proc readdir_r*(a1: DIR, a2: ptr Dirent, a3: ptr ptr Dirent): cint  {.
                 importc, header: "<dirent.h>", sideEffect.}
-proc rewinddir*(a1: ptr DIR)  {.importc, header: "<dirent.h>".}
-proc seekdir*(a1: ptr DIR, a2: int)  {.importc, header: "<dirent.h>".}
-proc telldir*(a1: ptr DIR): int {.importc, header: "<dirent.h>".}
+proc rewinddir*(a1: DIR)  {.importc, header: "<dirent.h>".}
+proc seekdir*(a1: DIR, a2: int)  {.importc, header: "<dirent.h>".}
+proc telldir*(a1: DIR): int {.importc, header: "<dirent.h>".}
 
 # dlfcn.h
 proc dlclose*(a1: pointer): cint {.importc, header: "<dlfcn.h>", sideEffect.}

@@ -27,10 +27,6 @@ when defined(nimHasStyleChecks):
 # Types
 
 type
-  DIR* {.importc: "DIR", header: "<dirent.h>".} = object
-    ## A type representing a directory stream.
-
-type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
 type
