@@ -120,13 +120,18 @@
   avoid recompiling when sources don't change. This is now the preferred way to
   run tests, avoiding the usual pain of clobbering your repo with binaries or
   using tricky gitignore rules on posix. Example:
-  ```nim
+  ```bash
   nim r compiler/nim.nim --help # only compiled the first time
-  echo 'import os; echo getCurrentCompilerExe()' | nim r - # this works too
+  echo "import os; echo getCurrentCompilerExe()" | nim r - # this works too
   nim r compiler/nim.nim --fullhelp # no recompilation
   nim r --nimcache:/tmp main # binary saved to /tmp/main
   ```
-- `incompleteStruct` is now deprecated, use `completeStruct` instead.
+- a new pragma `completeStruct` for importc objects indicates the type is fully
+  specified in the nim declaration (including field ordering), and allows
+  `sizeof, alignof, offsetof` to be used at compile time, see
+  manual.html#implementation-specific-pragmas-completestruct-pragma.
+- `incompleteStruct` is now deprecated, see
+  manual.html#implementation-specific-pragmas-incompletestruct-pragma.
 
 ## Tool changes
 

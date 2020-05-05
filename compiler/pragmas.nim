@@ -872,7 +872,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         noVal(c, it)
         incl(sym.flags, {sfThread, sfGlobal})
       of wDeadCodeElimUnused: deprecatedPragma(wDeadCodeElimUnused, "dead code elim always on")
-      of wIncompleteStruct: deprecatedPragma(wIncompleteStruct, "see '$1' instead" % wCompleteStruct.canonPragmaSpelling)
+      of wIncompleteStruct: deprecatedPragma(wIncompleteStruct, "see https://nim-lang.github.io/Nim/manual.html#implementation-specific-pragmas-incompletestruct-pragma")
       of wNoForward: pragmaNoForward(c, it)
       of wReorder: pragmaNoForward(c, it, flag = sfReorder)
       of wMagic: processMagic(c, it, sym)

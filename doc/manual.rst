@@ -6432,8 +6432,17 @@ at least `sizeof` is correct.
       x2* {.importc: "_x2"}: pointer # renamed field
 
 See `additional examples <https://github.com/nim-lang/Nim/blob/devel/tests/misc/msizeof5.nim>`_.
-The `incompleteStruct` pragma is now deprecated as it was implying the wrong
-default.
+
+
+IncompleteStruct pragma
+-----------------------
+**deprecated**
+This was used for forwarded C declarations such as `DIR` on some platforms,
+but led to incorrect typeinfo (eg with `dumpNumberOfInstances`). Instead we
+simply avoid referring to such type by value on platforms where it's a forwarded
+declaration and only use it via pointer. Any disallowed use-by-value leads to a
+C codegen error, and we avoid silently wrong results for cases where
+use-by-value is allowed.
 
 Compile pragma
 --------------
