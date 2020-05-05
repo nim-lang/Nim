@@ -61,6 +61,10 @@
 - `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
+- Improvements to the `bitops` module, including bitslices, non-mutating versions
+  of the original masking functions, `mask`/`masked`, and varargs support for
+  `bitand`, `bitor`, and `bitxor`.
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
