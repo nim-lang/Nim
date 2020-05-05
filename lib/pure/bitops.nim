@@ -126,7 +126,7 @@ when defined(nimHasalignOf):
       var v = 0b0000_0011'u8
       doAssert v.masked(0b0000_1010'u8) == 0b0000_0010'u8
 
-    bitand(v)
+    bitand(v, mask)
 
   func masked*[T: SomeInteger](v: T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
