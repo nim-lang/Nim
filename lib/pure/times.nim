@@ -278,7 +278,9 @@ type
   MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
-  SecondRange* = range[0..60]
+  SecondRange* = range[0..60] ## \
+    ## Includes the value 60 to allow for a leap second. Note however
+    ## that the `second` of a `DateTime` will never be a leap second.
   YeardayRange* = range[0..365]
   NanosecondRange* = range[0..999_999_999]
 
@@ -292,17 +294,17 @@ type
     ## not ignored, but the ``DateTime``'s returned by procedures in this
     ## module will never have a leap second.
     nanosecond: NanosecondRange
-    second: SecondRange         
-    minute: MinuteRange         
-    hour: HourRange             
-    monthdayZero: int           
-    monthZero: int              
-    year: int                   
-    weekday: WeekDay            
-    yearday: YeardayRange       
-    isDst: bool                 
-    timezone: Timezone          
-    utcOffset: int              
+    second: SecondRange
+    minute: MinuteRange
+    hour: HourRange
+    monthdayZero: int
+    monthZero: int
+    year: int
+    weekday: WeekDay
+    yearday: YeardayRange
+    isDst: bool
+    timezone: Timezone
+    utcOffset: int
 
   Duration* = object ## Represents a fixed duration of time, meaning a duration
                      ## that has constant length independent of the context.
@@ -958,31 +960,31 @@ proc low*(typ: typedesc[Time]): Time =
 template assertDateTimeInitialized(dt: DateTime) =
   assert dt.monthdayZero != 0, "Uninitialized datetime"
 
-proc nanosecond*(dt: DateTime): NanosecondRange =
+proc nanosecond*(dt: DateTime): NanosecondRange {.inline.} =
   ## The number of nanoseconds after the second,
   ## in the range 0 to 999_999_999.
   assertDateTimeInitialized(dt)
   dt.nanosecond
 
-proc second*(dt: DateTime): SecondRange =
+proc second*(dt: DateTime): SecondRange {.inline.} =
   ## The number of seconds after the minute,
   ## in the range 0 to 59.
   assertDateTimeInitialized(dt)
   dt.second
 
-proc minute*(dt: DateTime): MinuteRange =
+proc minute*(dt: DateTime): MinuteRange {.inline.} =
   ## The number of minutes after the hour,
   ## in the range 0 to 59.
   assertDateTimeInitialized(dt)
   dt.minute
-  
-proc hour*(dt: DateTime): HourRange =
+
+proc hour*(dt: DateTime): HourRange {.inline.} =
   ## The number of hours past midnight,
   ## in the range 0 to 23.
   assertDateTimeInitialized(dt)
   dt.hour
 
-proc monthday*(dt: DateTime): MonthdayRange =
+proc monthday*(dt: DateTime): MonthdayRange {.inline.} =
   ## The day of the month, in the range 1 to 31.
   assertDateTimeInitialized(dt)
   # 'cast' to avoid extra range check
@@ -995,38 +997,38 @@ proc month*(dt: DateTime): Month =
   # 'cast' to avoid extra range check
   cast[Month](dt.monthZero)
 
-proc year*(dt: DateTime): int =
+proc year*(dt: DateTime): int {.inline.} =
   ## The year, using astronomical year numbering
   ## (meaning that before year 1 is year 0,
   ## then year -1 and so on).
   assertDateTimeInitialized(dt)
   dt.year
 
-proc weekday*(dt: DateTime): WeekDay =
+proc weekday*(dt: DateTime): WeekDay {.inline.} =
   ## The day of the week as an enum, the ordinal
   ## value is in the range 0 (monday) to 6 (sunday).
   assertDateTimeInitialized(dt)
   dt.weekday
 
-proc yearday*(dt: DateTime): YeardayRange =
+proc yearday*(dt: DateTime): YeardayRange {.inline.} =
   ## The number of days since January 1,
   ## in the range 0 to 365.
   assertDateTimeInitialized(dt)
   dt.yearday
 
-proc isDst*(dt: DateTime): bool =
+proc isDst*(dt: DateTime): bool {.inline.} =
   ## Determines whether DST is in effect.
   ## Always false for the JavaScript backend.
   assertDateTimeInitialized(dt)
   dt.isDst
 
-proc timezone*(dt: DateTime): Timezone =
+proc timezone*(dt: DateTime): Timezone {.inline.} =
   ## The timezone represented as an implementation
   ## of ``Timezone``.
   assertDateTimeInitialized(dt)
   dt.timezone
 
-proc utcOffset*(dt: DateTime): int =
+proc utcOffset*(dt: DateTime): int {.inline.} =
   ## The offset in seconds west of UTC, including
   ## any offset due to DST. Note that the sign of
   ## this number is the opposite of the one in a
@@ -2788,50 +2790,38 @@ proc getGMTime*(time: Time): DateTime
   # Deprecated since v0.18.0
   time.utc
 
-proc `nanosecond=`*(dt: var DateTime, value: NanosecondRange) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `nanosecond=`*(dt: var DateTime, value: NanosecondRange) {.deprecated: "Deprecated since v1.3.1".} =
   dt.nanosecond = value
 
-proc `second=`*(dt: var DateTime, value: SecondRange) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `second=`*(dt: var DateTime, value: SecondRange) {.deprecated: "Deprecated since v1.3.1".} =
   dt.second = value
-  
-proc `minute=`*(dt: var DateTime, value: MinuteRange) {.deprecated.} =
-  # Deprecated since v1.4.0
+
+proc `minute=`*(dt: var DateTime, value: MinuteRange) {.deprecated: "Deprecated since v1.3.1".} =
   dt.minute = value
 
-proc `hour=`*(dt: var DateTime, value: HourRange) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `hour=`*(dt: var DateTime, value: HourRange) {.deprecated: "Deprecated since v1.3.1".} =
   dt.hour = value
 
-proc `monthdayZero=`*(dt: var DateTime, value: int) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `monthdayZero=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
   dt.monthdayZero = value
 
-proc `monthZero=`*(dt: var DateTime, value: int) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `monthZero=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
   dt.monthZero = value
-  
-proc `year=`*(dt: var DateTime, value: int) {.deprecated.} =
-  # Deprecated since v1.4.0
+
+proc `year=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
   dt.year = value
 
-proc `weekday=`*(dt: var DateTime, value: WeekDay) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `weekday=`*(dt: var DateTime, value: WeekDay) {.deprecated: "Deprecated since v1.3.1".} =
   dt.weekday = value
-  
-proc `yearday=`*(dt: var DateTime, value: YeardayRange) {.deprecated.} =
-  # Deprecated since v1.4.0
+
+proc `yearday=`*(dt: var DateTime, value: YeardayRange) {.deprecated: "Deprecated since v1.3.1".} =
   dt.yearday = value
-  
-proc `isDst=`*(dt: var DateTime, value: bool) {.deprecated.} =
-  # Deprecated since v1.4.0
+
+proc `isDst=`*(dt: var DateTime, value: bool) {.deprecated: "Deprecated since v1.3.1".} =
   dt.isDst = value
-  
-proc `timezone=`*(dt: var DateTime, value: Timezone) {.deprecated.} =
-  # Deprecated since v1.4.0
+
+proc `timezone=`*(dt: var DateTime, value: Timezone) {.deprecated: "Deprecated since v1.3.1".} =
   dt.timezone = value
 
-proc `utcOffset=`*(dt: var DateTime, value: int) {.deprecated.} =
-  # Deprecated since v1.4.0
+proc `utcOffset=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
   dt.utcOffset = value
