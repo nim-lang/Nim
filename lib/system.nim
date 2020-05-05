@@ -695,7 +695,8 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ## 
   ## **Note:** On the JS backend this currently counts UTF-16 code points
   ## instead of bytes at runtime (not at compile time). For now, if you
-  ## need the byte length, convert to string with `$` first then call `len`.
+  ## need the byte length of the UTF-8 encoding, convert to string with
+  ## `$` first then call `len`.
   ##
   ## .. code-block:: Nim
   ##   var str: cstring = "Hello world!"
