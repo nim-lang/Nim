@@ -88,34 +88,39 @@ when defined(nimHasalignOf):
     ## A range with all bit positions for type ``T``
 
   func bitsliced*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns an extracted (and shifted) slice of bits from ``v``
+    ## Returns an extracted (and shifted) slice of bits from ``v``.
     runnableExamples:
       doAssert 0b10111.bitsliced(2 .. 4) == 0b101
       doAssert 0b11100.bitsliced(0 .. 2) == 0b100
       doAssert 0b11100.bitsliced(0 ..< 2) == 0b10
+
     let upmost = sizeof(T) * 8 - 1
     (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v`` into an extracted (and shifted) slice of bits from ``v``
+    ## Mutates ``v`` into an extracted (and shifted) slice of bits from ``v``.
     runnableExamples:
       var x = 0b101110
       x.bitslice(2 .. 4)
       doAssert x == 0b011
+
     let upmost = sizeof(T) * 8 - 1
     v = (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Creates a bitmask based on a slice of bits
+    ## Creates a bitmask based on a slice of bits.
     runnableExamples:
       doAssert toMask[int32](1 .. 3) == 0b1110'i32
       doAssert toMask[int32](0 .. 3) == 0b1111'i32
+
     let upmost = sizeof(T) * 8 - 1
     ((not 0.T).toUnsigned shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
   proc masked*[T: SomeInteger](v: T; mask: T) {.inline, since: (1, 3).} =
     ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
-    ## ``v`` set to 1
+    ## ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.masked(0b0000_1010'u8) == 0b0000_0010'u8
@@ -124,7 +129,9 @@ when defined(nimHasalignOf):
 
   func masked*[T: SomeInteger](v: T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
-    ## matching those of ``v`` set to 1
+    ## matching those of ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
     runnableExamples:
       var v = 0b0000_1011'u8
       doAssert v.masked(1 .. 3) == 0b0000_1010'u8
@@ -132,7 +139,10 @@ when defined(nimHasalignOf):
     bitand(v, toMask[T](slice))
 
   proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with only the ``1`` bits from ``mask`` matching those of ``v`` set to 1
+    ## Mutates ``v``, with only the ``1`` bits from ``mask`` matching those of
+    ## ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.mask(0b0000_1010'u8)
@@ -142,7 +152,9 @@ when defined(nimHasalignOf):
 
   proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
-    ## matching those of ``v`` set to 1
+    ## matching those of ``v`` set to 1.
+    ##
+    ## Effectively maps to a `bitand` operation.
     runnableExamples:
       var v = 0b0000_1011'u8
       v.mask(1 .. 3)
@@ -151,21 +163,29 @@ when defined(nimHasalignOf):
     v = bitand(v, toMask[T](slice))
 
   func setMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.setMasked(0b0000_1010'u8) == 0b0000_1011'u8
+
     bitor(v, mask)
 
   func setMasked*[T: SomeInteger](v: var T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 1
+    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.setMasked(2 .. 3) == 0b0000_1111'u8
+
     bitor(v, toMask[T](slice))
 
   proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
-    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 1
+    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setMask(0b0000_1010'u8)
@@ -174,15 +194,20 @@ when defined(nimHasalignOf):
     v = bitor(v, mask)
 
   proc setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 1
+    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
+    ##
+    ## Effectively maps to a `bitor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.setMask(2 .. 3)
       doAssert v == 0b0000_1111'u8
+
     v = bitor(v, toMask[T](slice))
 
   func clearMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.clearMasked(0b0000_1010'u8) == 0b0000_0001'u8
@@ -190,7 +215,9 @@ when defined(nimHasalignOf):
     bitand(v, bitnot(mask))
 
   func clearMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 0
+    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.clearMasked(1 .. 3) == 0b0000_0001'u8
@@ -198,7 +225,9 @@ when defined(nimHasalignOf):
     bitand(v, bitnot(toMask[T](slice)))
 
   proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
-    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 0
+    ## Mutates ``v``, with all the ``1`` bits from ``mask`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
       var v = 0b0000_0011'u8
       v.clearMask(0b0000_1010'u8)
@@ -207,7 +236,9 @@ when defined(nimHasalignOf):
     v = bitand(v, bitnot(mask))
 
   proc clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 0
+    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 0.
+    ##
+    ## Effectively maps to a `bitand` operation with an *inverted mask.*
     runnableExamples:
       var v = 0b0000_0011'u8
       v.clearMask(1 .. 3)
@@ -216,7 +247,9 @@ when defined(nimHasalignOf):
     v = bitand(v, bitnot(toMask[T](slice)))
 
   func flipMasked*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
+    ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.flipMasked(0b0000_1010'u8) == 0b0000_1001'u8
@@ -224,7 +257,9 @@ when defined(nimHasalignOf):
     bitxor(v, mask)
 
   func flipMasked*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` flipped
+    ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       doAssert v.flipMasked(1 .. 3) == 0b0000_1001'u8
@@ -232,7 +267,9 @@ when defined(nimHasalignOf):
     bitxor(v, toMask[T](slice))
 
   proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
-    ## Mutates ``v``, with all the ``1`` bits from ``mask`` flipped
+    ## Mutates ``v``, with all the ``1`` bits from ``mask`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.flipMask(0b0000_1010'u8)
@@ -241,7 +278,9 @@ when defined(nimHasalignOf):
     v = bitxor(v, mask)
 
   proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` flipped
+    ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
+    ##
+    ## Effectively maps to a `bitxor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
       v.flipMask(1 .. 3)
