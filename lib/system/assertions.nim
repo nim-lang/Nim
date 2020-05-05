@@ -2,7 +2,6 @@ when not declared(sysFatal):
   include "system/fatal"
 
 import std/private/miscdollars
-
 # ---------------------------------------------------------------------------
 # helpers
 
