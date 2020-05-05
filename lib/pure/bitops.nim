@@ -117,7 +117,7 @@ when defined(nimHasalignOf):
     let upmost = sizeof(T) * 8 - 1
     ((not 0.T).toUnsigned shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
-  proc masked*[T: SomeInteger](v: T; mask: T) {.inline, since: (1, 3).} =
+  proc masked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
     ## ``v`` set to 1.
     ##
@@ -128,7 +128,7 @@ when defined(nimHasalignOf):
 
     bitand(v, mask)
 
-  func masked*[T: SomeInteger](v: T; slice: Slice[int]) {.inline, since: (1, 3).} =
+  func masked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
     ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
     ## matching those of ``v`` set to 1.
     ##
