@@ -2243,7 +2243,7 @@ proc genProcBody(p: PProc, prc: PSym): Rope =
   if hasFrameInfo(p):
     result = frameCreate(p,
               makeJSString(prc.owner.name.s & '.' & prc.name.s),
-              makeJSString(toFilename(p.config, prc.info)))
+              makeJSString(toFilenameOption(p.config, prc.info.fileIndex, foStacktrace)))
   else:
     result = nil
   if p.beforeRetNeeded:
@@ -2583,7 +2583,7 @@ proc genModule(p: PProc, n: PNode) =
   if optStackTrace in p.options:
     p.body.add(frameCreate(p,
         makeJSString("module " & p.module.module.name.s),
-        makeJSString(toFilename(p.config, p.module.module.info))))
+        makeJSString(toFilenameOption(p.config, p.module.module.info.fileIndex, foStacktrace))))
   var transformedN = transformStmt(p.module.graph, p.module.module, n)
   if sfInjectDestructors in p.module.module.flags:
     transformedN = injectDestructorCalls(p.module.graph, p.module.module, transformedN)

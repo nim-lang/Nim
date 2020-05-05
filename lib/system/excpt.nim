@@ -10,6 +10,8 @@
 # Exception handling code. Carefully coded so that tiny programs which do not
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
+import std/private/miscdollars
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
@@ -240,11 +242,7 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
 
 template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
-  add(s, f.filename)
-  if f.line > 0:
-    add(s, '(')
-    add(s, $f.line)
-    add(s, ')')
+  s.toLocation(f.filename, f.line, 0)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   when NimStackTraceMsgs:

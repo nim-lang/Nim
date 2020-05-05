@@ -1,17 +1,17 @@
 when not declared(sysFatal):
   include "system/fatal"
 
+import std/private/miscdollars
 # ---------------------------------------------------------------------------
 # helpers
 
 type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
 proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
-
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
-  info.filename & "(" & $info.line & ", " & $(info.column+1) & ")"
+  result.toLocation(info.filename, info.line, info.column+1)
 
 # ---------------------------------------------------------------------------
 
