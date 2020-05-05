@@ -118,25 +118,18 @@ when defined(nimHasalignOf):
     ## ``v`` set to 1
     runnableExamples:
       var v = 0b0000_0011'u8
-      v.setMask(0b0000_1010'u8)
-      doAssert v == 0b0000_1011'u8
+      doAssert v.masked(0b0000_1010'u8) == 0b0000_0010'u8
 
     bitand(v)
 
   func masked*[T: SomeInteger](v: T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
     ## matching those of ``v`` set to 1
+    runnableExamples:
+      var v = 0b0000_1011'u8
+      doAssert v.masked(1 .. 3) == 0b0000_1010'u8
+
     bitand(v, toMask[T](slice))
-
-  func masked*[T: SomeInteger](v: T; mask: T) {.inline, since: (1, 3).} =
-    ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
-    ## ``v`` set to 1
-    bitand(v, mask)
-
-  proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
-    ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
-    ## matching those of ``v`` set to 1
-    v = bitand(v, toMask[T](slice))
 
   proc mask*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with only the ``1`` bits from ``mask`` matching those of ``v`` set to 1
@@ -147,6 +140,16 @@ when defined(nimHasalignOf):
 
     v = bitand(v, mask)
 
+  proc mask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+    ## Mutates ``v``, with only the ``1`` bits in the range of ``slice``
+    ## matching those of ``v`` set to 1
+    runnableExamples:
+      var v = 0b0000_1011'u8
+      v.mask(1 .. 3)
+      doAssert v == 0b0000_1010'u8
+
+    v = bitand(v, toMask[T](slice))
+
   func setMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1
     runnableExamples:
@@ -156,6 +159,9 @@ when defined(nimHasalignOf):
 
   func setMasked*[T: SomeInteger](v: var T; slice: Slice[int]): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 1
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.setMasked(2 .. 3) == 0b0000_1111'u8
     bitor(v, toMask[T](slice))
 
   proc setMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
@@ -169,14 +175,26 @@ when defined(nimHasalignOf):
 
   proc setMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 1
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.setMask(2 .. 3)
+      doAssert v == 0b0000_1111'u8
     v = bitor(v, toMask[T](slice))
 
   func clearMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.clearMasked(0b0000_1010'u8) == 0b0000_0001'u8
+
     bitand(v, bitnot(mask))
 
   func clearMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 0
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.clearMasked(1 .. 3) == 0b0000_0001'u8
+
     bitand(v, bitnot(toMask[T](slice)))
 
   proc clearMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
@@ -190,14 +208,27 @@ when defined(nimHasalignOf):
 
   proc clearMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` set to 0
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.clearMask(1 .. 3)
+      doAssert v == 0b0000_0001'u8
+
     v = bitand(v, bitnot(toMask[T](slice)))
 
   func flipMasked*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.flipMasked(0b0000_1010'u8) == 0b0000_1001'u8
+
     bitxor(v, mask)
 
   func flipMasked*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` flipped
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      doAssert v.flipMasked(1 .. 3) == 0b0000_1001'u8
+
     bitxor(v, toMask[T](slice))
 
   proc flipMask*[T: SomeInteger](v: var T; mask: T) {.inline.} =
@@ -211,6 +242,11 @@ when defined(nimHasalignOf):
 
   proc flipMask*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v``, with all the ``1`` bits in the range of ``slice`` flipped
+    runnableExamples:
+      var v = 0b0000_0011'u8
+      v.flipMask(1 .. 3)
+      doAssert v == 0b0000_1001'u8
+
     v = bitxor(v, toMask[T](slice))
 
   proc setBit*[T: SomeInteger](v: var T; bit: BitsRange[T]) {.inline.} =
