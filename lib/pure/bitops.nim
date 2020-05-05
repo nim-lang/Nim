@@ -95,8 +95,10 @@ when defined(nimHasalignOf):
       doAssert 0b11100.bitsliced(0 .. 2) == 0b100
       doAssert 0b11100.bitsliced(0 ..< 2) == 0b10
 
-    let upmost = sizeof(T) * 8 - 1
-    (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
+    let
+      upmost = sizeof(T) * 8 - 1
+      uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
+    (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   proc bitslice*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Mutates ``v`` into an extracted (and shifted) slice of bits from ``v``.
@@ -105,8 +107,10 @@ when defined(nimHasalignOf):
       x.bitslice(2 .. 4)
       doAssert x == 0b011
 
-    let upmost = sizeof(T) * 8 - 1
-    v = (v.toUnsigned shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
+    let
+      upmost = sizeof(T) * 8 - 1
+      uv     = when v is SomeUnsignedInt: v else: v.toUnsigned
+    v = (uv shl (upmost - slice.b) shr (upmost - slice.b + slice.a)).T
 
   func toMask*[T: SomeInteger](slice: Slice[int]): T {.inline, since: (1, 3).} =
     ## Creates a bitmask based on a slice of bits.
