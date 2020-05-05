@@ -238,10 +238,9 @@ proc getSystemConfigPath*(conf: ConfigRef; filename: RelativeFile): AbsoluteFile
     if not fileExists(result): result = p / RelativeDir"etc/nim" / filename
     if not fileExists(result): result = AbsoluteDir"/etc/nim" / filename
 
-proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef): seq[AbsoluteFile] =
+proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
   setDefaultLibpath(conf)
 
-  result = @[]
   var configFiles = newSeq[AbsoluteFile]()
 
   template readConfigFile(path) =
@@ -252,10 +251,10 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef): seq[Ab
   template runNimScriptIfExists(path: AbsoluteFile) =
     let p = path # eval once
     if fileExists(p):
-      configFiles.add(p)
       if optNimscriptInclude in conf.globalOptions:
-        result.add p
+        conf.autoIncludes.add p
       else:
+        configFiles.add(p)
         runNimScript(cache, p, freshDefines = false, conf)
 
   if optSkipSystemConfigFile notin conf.globalOptions:

@@ -297,6 +297,7 @@ type
     structuredErrorHook*: proc (config: ConfigRef; info: TLineInfo; msg: string;
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
+    autoIncludes*: seq[AbsoluteFile]
 
 proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
   template fun(op) =

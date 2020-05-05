@@ -129,6 +129,12 @@ proc wantMainModule*(conf: ConfigRef) =
         "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
+proc autoIncludes(graph: ModuleGraph) =
+  let conf = graph.config
+  for autoIncl in conf.autoIncludes:
+    let fidx = fileInfoIdx(conf, addFileExt(autoIncl, NimExt))
+    discard graph.compileModule(fidx, {})
+
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectCallbacks(graph)
   let conf = graph.config
@@ -138,8 +144,10 @@ proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   graph.importStack.add projectFile
   if projectFile == systemFileIdx:
     discard graph.compileModule(projectFile, {sfMainModule, sfSystemModule})
+    autoIncludes(graph)
   else:
     graph.compileSystemModule()
+    autoIncludes(graph)
     discard graph.compileModule(projectFile, {sfMainModule})
 
 proc makeModule*(graph: ModuleGraph; filename: AbsoluteFile): PSym =
