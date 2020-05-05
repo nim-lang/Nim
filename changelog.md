@@ -77,10 +77,6 @@
   proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
   ```
 
-- `sequtils.count` with 1 argument has been added. This iterates over its
-  argument and counts the number of iterations. Useful for types that don't
-  have a `len` proc.
-
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim

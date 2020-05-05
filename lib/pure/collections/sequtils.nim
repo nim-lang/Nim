@@ -619,23 +619,6 @@ since (1, 1):
       if pred: result += 1
     result
 
-since (1, 3):
-  template count*(s: untyped): int =
-    ## Counts all the items in `s`. Useful for types that don't have a
-    ## `len` proc. Equivalent to ``countIt(s, true)``.
-    ##
-    runnableExamples:
-      import lists
-      var a = initSinglyLinkedList[int]()
-      a.append(1)
-      a.append(2)
-      assert a.count == 2
-
-    var result = 0
-    for it in s:
-      result += 1
-    result
-
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
   ## predicate.

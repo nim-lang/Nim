@@ -693,7 +693,7 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ## Returns the length of a compatible string. This is sometimes
   ## an O(n) operation. On the JS backend this may count Unicode
   ## code points instead of characters, similar to `unicode.runeLen
-  ## <https://nim-lang.org/docs/unicode.html#runeLen%2Cstring>`_
+  ## <unicode.html#runeLen%2Cstring>`_
   ##
   ## .. code-block:: Nim
   ##   var str: cstring = "Hello world!"
