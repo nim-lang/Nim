@@ -93,7 +93,7 @@ when defined(nimHasalignOf):
     runnableExamples:
       doAssert 0b10111.bitsliced(2 .. 4) == 0b101
       doAssert 0b11100.bitsliced(0 .. 2) == 0b100
-      doAssert 0b11100.bitsliced(0 ..< 2) == 0b10
+      doAssert 0b11100.bitsliced(0 ..< 3) == 0b100
 
     let
       upmost = sizeof(T) * 8 - 1
