@@ -118,8 +118,13 @@ when defined(nimHasalignOf):
       doAssert toMask[int32](1 .. 3) == 0b1110'i32
       doAssert toMask[int32](0 .. 3) == 0b1111'i32
 
-    let upmost = sizeof(T) * 8 - 1
-    ((not 0.T).toUnsigned shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
+    let
+      upmost = sizeof(T) * 8 - 1
+      bitmask = when T is SomeUnsignedInt:
+                  bitnot(0.T)
+                else:
+                  bitnot(0.T).toUnsigned
+    (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
   proc masked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
