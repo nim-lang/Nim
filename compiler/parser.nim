@@ -295,7 +295,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #|
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 #|          | 'or' | 'xor' | 'and'
-#|          | 'is' | 'isnot' | 'in' | 'notin' | 'of'
+#|          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
 #|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 #|
 #| prefixOperator = operator
@@ -2194,6 +2194,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
   #|                     | 'proc' routine
   #|                     | 'method' routine
+  #|                     | 'func' routine
   #|                     | 'iterator' routine
   #|                     | 'macro' routine
   #|                     | 'template' routine
