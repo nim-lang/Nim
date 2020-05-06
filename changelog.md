@@ -61,6 +61,10 @@
 - `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
+- Improvements to the `bitops` module, including bitslices, non-mutating versions
+  of the original masking functions, `mask`/`masked`, and varargs support for
+  `bitand`, `bitor`, and `bitxor`.
+
 - `sugar.=>` and `sugar.->` changes: Previously `(x, y: int)` was transformed
   into `(x: auto, y: int)`, it now becomes `(x: int, y: int)` in consistency
   with regular proc definitions (although you cannot use semicolons).
