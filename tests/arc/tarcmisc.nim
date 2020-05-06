@@ -89,3 +89,19 @@ let
 
 assert n.sortedByIt(it) == @["b", "c"], "fine"
 assert q.sortedByIt(it[0]) == @[("b", "1"), ("c", "2")], "fails under arc"
+
+
+#------------------------------------------------------------------------------
+# issue #14236
+
+type
+  MyType = object
+    a: seq[int]
+
+proc re(x: static[string]): static MyType = 
+  MyType()
+
+proc match(inp: string, rg: static MyType) = 
+  doAssert rg.a.len == 0
+
+match("ac", re"a(b|c)")
