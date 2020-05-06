@@ -156,7 +156,7 @@ when defined(nimHasalignOf):
     runnableExamples:
       var v = 0b0000_0011'u8
       v.mask(0b0000_1010'u8)
-      doAssert v == 0b0000_1010'u8
+      doAssert v == 0b0000_0010'u8
 
     v = bitand(v, mask)
 
@@ -272,7 +272,7 @@ when defined(nimHasalignOf):
     ## Effectively maps to a `bitxor` operation.
     runnableExamples:
       var v = 0b0000_0011'u8
-      doAssert v.flipMasked(1 .. 3) == 0b0000_1001'u8
+      doAssert v.flipMasked(1 .. 3) == 0b0000_1101'u8
 
     bitxor(v, toMask[T](slice))
 
@@ -294,7 +294,7 @@ when defined(nimHasalignOf):
     runnableExamples:
       var v = 0b0000_0011'u8
       v.flipMask(1 .. 3)
-      doAssert v == 0b0000_1001'u8
+      doAssert v == 0b0000_1101'u8
 
     v = bitxor(v, toMask[T](slice))
 
