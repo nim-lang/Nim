@@ -138,16 +138,6 @@ compiler clang:
   result.compilerExe = "clang"
   result.cppCompiler = "clang++"
 
-# Zig cc (Clang) C/C++ Compiler
-compiler zig:
-  result = clang() # Uses settings from llvmGcc
-
-  result.name = "zig"
-  result.compilerExe = "zig"
-  result.cppCompiler = "zig"
-  result.compileTmpl = "cc " & result.compileTmpl
-  result.linkTmpl = "cc " & result.linkTmpl
-
 # Microsoft Visual C/C++ Compiler
 compiler vcc:
   result = (
@@ -196,32 +186,6 @@ compiler icc:
   result.compilerExe = "icc"
   result.linkerExe = "icc"
 
-# Local C Compiler
-compiler lcc:
-  result = (
-    name: "lcc",
-    objExt: "obj",
-    optSpeed: " -O -p6 ",
-    optSize: " -O -p6 ",
-    compilerExe: "lcc",
-    cppCompiler: "",
-    compileTmpl: "$options $include -Fo$objfile $file",
-    buildGui: " -subsystem windows",
-    buildDll: " -dll",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "lcclnk",
-    linkTmpl: "$options $buildgui $builddll -O $exefile $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -g5 ",
-    pic: "",
-    asmStmtFrmt: "_asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {})
-
 # Borland C Compiler
 compiler bcc:
   result = (
@@ -249,58 +213,6 @@ compiler bcc:
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
-# Digital Mars C Compiler
-compiler dmc:
-  result = (
-    name: "dmc",
-    objExt: "obj",
-    optSpeed: " -ff -o -6 ",
-    optSize: " -ff -o -6 ",
-    compilerExe: "dmc",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -o$objfile $file",
-    buildGui: " -L/exet:nt/su:windows",
-    buildDll: " -WD",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "dmc",
-    linkTmpl: "$options $buildgui $builddll -o$exefile $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -g ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$3$n$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {hasCpp})
-
-# Watcom C Compiler
-compiler wcc:
-  result = (
-    name: "wcc",
-    objExt: "obj",
-    optSpeed: " -ox -on -6 -d0 -fp6 -zW ",
-    optSize: "",
-    compilerExe: "wcl386",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -fo=$objfile $file",
-    buildGui: " -bw",
-    buildDll: " -bd",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "wcl386",
-    linkTmpl: "$options $buildgui $builddll -fe=$exefile $objfiles ",
-    includeCmd: " -i=",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -d2 ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {hasCpp})
-
 # Tiny C Compiler
 compiler tcc:
   result = (
@@ -326,33 +238,6 @@ compiler tcc:
     produceAsm: gnuAsmListing,
     cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
-
-# Pelles C Compiler
-compiler pcc:
-  # Pelles C
-  result = (
-    name: "pcc",
-    objExt: "obj",
-    optSpeed: " -Ox ",
-    optSize: " -Os ",
-    compilerExe: "cc",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -Fo$objfile $file",
-    buildGui: " -SUBSYSTEM:WINDOWS",
-    buildDll: " -DLL",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "cc",
-    linkTmpl: "$options $buildgui $builddll -OUT:$exefile $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -Zi ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {})
 
 # Your C Compiler
 compiler ucc:
@@ -386,14 +271,9 @@ const
     nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
-    zig(),
-    lcc(),
     bcc(),
-    dmc(),
-    wcc(),
     vcc(),
     tcc(),
-    pcc(),
     ucc(),
     icl(),
     icc(),
