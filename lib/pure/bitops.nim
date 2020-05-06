@@ -126,7 +126,7 @@ when defined(nimHasalignOf):
                   bitnot(0.T).toUnsigned
     (bitmask shl (upmost - slice.b + slice.a) shr (upmost - slice.b)).T
 
-  proc masked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
+  proc masked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with only the ``1`` bits from ``mask`` matching those of
     ## ``v`` set to 1.
     ##
@@ -172,7 +172,7 @@ when defined(nimHasalignOf):
 
     v = bitand(v, toMask[T](slice))
 
-  func setMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
+  func setMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 1.
     ##
     ## Effectively maps to a `bitor` operation.
@@ -214,7 +214,7 @@ when defined(nimHasalignOf):
 
     v = bitor(v, toMask[T](slice))
 
-  func clearMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
+  func clearMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0.
     ##
     ## Effectively maps to a `bitand` operation with an *inverted mask.*
@@ -256,7 +256,7 @@ when defined(nimHasalignOf):
 
     v = bitand(v, bitnot(toMask[T](slice)))
 
-  func flipMasked*[T: SomeInteger](v: T; mask: T): T {.inline, since: (1, 3).} =
+  func flipMasked*[T: SomeInteger](v, mask :T): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
