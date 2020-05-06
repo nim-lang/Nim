@@ -156,7 +156,7 @@ when defined(nimHasalignOf):
     runnableExamples:
       var v = 0b0000_0011'u8
       v.mask(0b0000_1010'u8)
-      doAssert v == 0b0000_1011'u8
+      doAssert v == 0b0000_1010'u8
 
     v = bitand(v, mask)
 
