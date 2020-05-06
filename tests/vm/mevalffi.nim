@@ -42,7 +42,7 @@ proc fun() =
     let num = c_snprintf(buffer2, n, "s1:%s s2:%s age:%d pi:%g", s, s, age, 3.14)
     let numExp = 34 
     doAssert num == numExp
-    c_printf("ret={%s}\n", buffer2)
+    c_printf("ret=[%s]\n", buffer2)
     c_free(buffer2)
 
   block: # c_printf bug
@@ -61,10 +61,11 @@ static:
   fun()
 fun()
 
-import system/ansi_c
-block:
-  proc fun2()=
-    c_fprintf(cstderr, "hello world stderr\n")
-    write(stderr, "hi stderr\n")
-  static: fun2()
-  fun2()
+when not defined nimEvalffiStderrWorkaround:
+  import system/ansi_c
+  block:
+    proc fun2()=
+      c_fprintf(cstderr, "hello world stderr\n")
+      write(stderr, "hi stderr\n")
+    static: fun2()
+    fun2()
