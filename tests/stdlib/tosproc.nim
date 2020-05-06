@@ -120,7 +120,15 @@ else:
     var result = startProcessTest("nim r --hints:off -", options = {}, input = "echo 3*4")
     doAssert result == ("12\n", 0)
 
+  import std/strtabs
   block execProcessTest:
     var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
     stripLineEnd(result[0])
     doAssert result == ("12", 0)
+    doAssert execCmdEx("ls --nonexistant").exitCode != 0
+    when false:
+      # bug: on windows, this raises; on posix, passes
+      doAssert execCmdEx("nonexistant").exitCode != 0
+    when defined(posix):
+      doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
+      doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)

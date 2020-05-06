@@ -1438,12 +1438,14 @@ elif not defined(useNimRtl):
 
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
-                poStdErrToStdOut, poUsePath}, input = ""): tuple[
+                poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
+                workingDir = "", input = ""): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
-  ## A convenience proc that runs the `command`, grabs all its output and
-  ## exit code and returns both. If `input.len > 0`, it is passed as stdin.
+  ## A convenience proc that runs the `command`, and returns its `output` and
+  ## `exitCode`. `env` and `workingDir` params behave as for `startProcess`.
+  ## If `input.len > 0`, it is passed as stdin.
   ## Note: this could block if `input.len` is greater than your OS's maximum
   ## pipe buffer size.
   ##
@@ -1456,13 +1458,21 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ##
   runnableExamples:
     var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
-    import strutils
-    stripLineEnd(result[0])
+    import strutils, strtabs
+    stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
     doAssert result == ("12", 0)
+    doAssert execCmdEx("ls --nonexistant").exitCode != 0
+    when defined(posix):
+      assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
+      assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
 
-  when (NimMajor, NimMinor) < (1, 3):
+  when (NimMajor, NimMinor, NimPatch) < (1, 3, 5):
     doAssert input.len == 0
-  var p = startProcess(command, options = options + {poEvalCommand})
+    doAssert workingDir.len == 0
+    doAssert env == nil
+
+  var p = startProcess(command, options = options + {poEvalCommand},
+    workingDir = workingDir, env = env)
   var outp = outputStream(p)
 
   if input.len > 0:
