@@ -764,11 +764,11 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
-     tyTypeDesc, tyGenericInvocation, tyForward:
+     tyTypeDesc, tyGenericInvocation, tyForward, tyStatic:
     #internalError(c.g.config, c.info, "assignment requested for type: " & typeToString(t))
     discard
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyAlias, tySink:
+     tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
@@ -916,7 +916,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   incl orig.flags, tfCheckedForDestructor
 
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
-  if isEmptyContainer(skipped): return
+  if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
 
   let h = sighashes.hashType(skipped, {CoType, CoConsiderOwned, CoDistinct})
   var canon = g.canonTypes.getOrDefault(h)
