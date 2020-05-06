@@ -9,6 +9,7 @@ B
 begin
 end
 prevented
+(ok: true, value: "ok")
 myobj destroyed
 '''
 """
@@ -193,3 +194,21 @@ proc test_myobject =
 test_myobject()
 
 
+
+
+#------------------------------------------------
+# bug #14244
+
+type
+  RocksDBResult*[T] = object
+    case ok*: bool
+    of true:
+      value*: T
+    else:
+      error*: string
+
+proc init(): RocksDBResult[string] =
+  result.ok = true
+  result.value = "ok"
+
+echo init()
