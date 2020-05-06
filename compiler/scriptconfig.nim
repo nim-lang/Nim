@@ -11,10 +11,16 @@
 ## language.
 
 import
-  ast, modules, idents, passes, condsyms,
+  ast, idents, passes, condsyms,
   options, sem, llstream, vm, vmdef, commands,
   os, times, osproc, wordrecg, strtabs, modulegraphs,
   pathutils
+
+proc fillVM*(module: PSym; cache: IdentCache;
+             scriptName: string; graph: ModuleGraph): int
+proc resetVM*(graph: ModuleGraph; oldLen: int)
+
+import modules
 
 # we support 'cmpIgnoreStyle' natively for efficiency:
 from strutils import cmpIgnoreStyle, contains
@@ -26,12 +32,8 @@ proc listDirs(a: VmArgs, filter: set[PathComponent]) =
     if kind in filter: result.add path
   setResult(a, result)
 
-proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
-              graph: ModuleGraph): PEvalContext =
-  # For Nimble we need to export 'setupVM'.
-  result = newCtx(module, cache, graph)
-  result.mode = emRepl
-  registerAdditionalOps(result)
+proc fillVMAux(ec: PEvalContext; module: PSym; cache: IdentCache;
+               scriptName: string; graph: ModuleGraph) =
   let conf = graph.config
 
   # captured vars:
@@ -39,12 +41,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   var vthisDir = scriptName.splitFile.dir
 
   template cbconf(name, body) {.dirty.} =
-    result.registerCallback "stdlib.system." & astToStr(name),
+    ec.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
         body
 
   template cbexc(name, exc, body) {.dirty.} =
-    result.registerCallback "stdlib.system." & astToStr(name),
+    ec.registerCallback "stdlib.system." & astToStr(name),
       proc (a: VmArgs) =
         errorMsg = ""
         try:
@@ -74,7 +76,7 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
   cbos createDir:
     os.createDir getString(a, 0)
 
-  result.registerCallback "stdlib.system.getError",
+  ec.registerCallback "stdlib.system.getError",
     proc (a: VmArgs) = setResult(a, errorMsg)
 
   cbos setCurrentDir:
@@ -141,10 +143,10 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, options.existsConfigVar(conf, a.getString 0))
   cbconf nimcacheDir:
     setResult(a, options.getNimcacheDir(conf).string)
-  result.registerCallback "stdlib.os." & astToStr(paramStr),
+  ec.registerCallback "stdlib.os." & astToStr(paramStr),
     proc (a: VmArgs) =
       setResult(a, os.paramStr(int a.getInt 0))
-  result.registerCallback "stdlib.os." & astToStr(paramCount),
+  ec.registerCallback "stdlib.os." & astToStr(paramCount),
     proc (a: VmArgs) =
       setResult(a, os.paramCount())
   cbconf cmpIgnoreStyle:
@@ -198,6 +200,23 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     else:
       setResult(a, "")
       setResult(a, stdin.readAll())
+
+proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
+              graph: ModuleGraph): PEvalContext =
+  # For Nimble we need to export 'setupVM'.
+  result = newCtx(module, cache, graph)
+  result.mode = emRepl
+  registerAdditionalOps(result)
+  fillVMAux(result, module, cache, scriptName, graph)
+
+proc fillVM*(module: PSym; cache: IdentCache;
+             scriptName: string; graph: ModuleGraph): int =
+  let ec = PEvalContext(graph.vm)
+  result = ec.callbacks.len
+  fillVMAux(ec, module, cache, scriptName, graph)
+
+proc resetVM*(graph: ModuleGraph; oldLen: int) =
+  PEvalContext(graph.vm).callbacks.setLen oldLen
 
 proc runNimScript*(cache: IdentCache; scriptName: AbsoluteFile;
                    freshDefines=true; conf: ConfigRef) =

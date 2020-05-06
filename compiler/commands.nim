@@ -901,6 +901,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir
     # processOnOffSwitchG(conf, {optSourcemap, opt}, arg, pass, info)
+  of "nimscript2":
+    conf.globalOptions.incl optNimscriptInclude
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:

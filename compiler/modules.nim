@@ -129,11 +129,25 @@ proc wantMainModule*(conf: ConfigRef) =
         "command expects a filename")
   conf.projectMainIdx = fileInfoIdx(conf, addFileExt(conf.projectFull, NimExt))
 
+import condsyms, scriptconfig
 proc autoIncludes(graph: ModuleGraph) =
   let conf = graph.config
+
+  defineSymbol(conf.symbols, "nimscript")
+  defineSymbol(conf.symbols, "nimconfig")
+  defineSymbol(conf.symbols, "nimconfig2")
+  assert graph.systemModule != nil
+
+  let oldCallbacks = fillVM(graph.systemModule, graph.cache, "nimscript.nim", graph)
+
   for autoIncl in conf.autoIncludes:
     let fidx = fileInfoIdx(conf, addFileExt(autoIncl, NimExt))
     discard graph.compileModule(fidx, {})
+
+  undefSymbol(conf.symbols, "nimscript")
+  undefSymbol(conf.symbols, "nimconfig")
+  undefSymbol(conf.symbols, "nimconfig2")
+  resetVM graph, oldCallbacks
 
 proc compileProject*(graph: ModuleGraph; projectFileIdx = InvalidFileIdx) =
   connectCallbacks(graph)

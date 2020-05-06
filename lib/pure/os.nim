@@ -44,6 +44,9 @@
 include "system/inclrtl"
 import std/private/since
 
+when defined(nimconfig2):
+  import "system/nimscript"
+
 import
   strutils, pathnorm
 
