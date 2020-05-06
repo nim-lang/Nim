@@ -1,5 +1,5 @@
 discard """
-  output: '''
+  nimout: '''
 Infix
   Ident "from"
   Ident "a"
