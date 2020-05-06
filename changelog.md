@@ -76,6 +76,11 @@
 
   proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
   ```
+- The fields of `times.DateTime` are now private, and are accessed with getters and deprecated setters.
+
+- The `times` module now handles the default value for `DateTime` more consistently. Most procs raise an assertion error when given
+  an uninitialized `DateTime`, the exceptions are `==` and `$` (which returns `"Uninitialized DateTime"`). The proc `times.isInitialized`
+  has been added which can be used to check if a `DateTime` has been initialized.
 
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
