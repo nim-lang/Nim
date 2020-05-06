@@ -1,43 +1,60 @@
 discard """
+  targets: "c cpp"
   joinable: false
 """
 
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 
-import std/[strformat,os,osproc,strutils]
+import std/[strformat,os,osproc]
 
 const nim = getCurrentCompilerExe()
 
+const mode =
+  when defined(c): "c"
+  elif defined(cpp): "cpp"
+  else: static: doAssert false
+
 proc runCmd(file, options = ""): auto =
-  let mode = if existsEnv("NIM_COMPILE_TO_CPP"): "cpp" else: "c"
   const testsDir = currentSourcePath().parentDir
   let fileabs = testsDir / file.unixToNativePath
   doAssert fileabs.existsFile, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
   result = execCmdEx(cmd)
-  when false: # uncomment if you need to debug
-    echo result[0]
-    echo result[1]
+  when false:  echo result[0] & "\n" & result[1] # for debugging
 
 when defined(nimHasLibFFIEnabled):
   block: # mevalffi
-    let (output, exitCode) = runCmd("vm/mevalffi.nim", "--experimental:compiletimeFFI")
-    let expected = """
+    when defined(openbsd):
+      #[
+      openbsd defines `#define stderr (&__sF[2])` which makes it cumbersome
+      for dlopen'ing inside `importcSymbol`. Instead of adding special rules
+      inside `importcSymbol` to handle this, we disable just the part that's
+      not working and will provide a more general, clean fix in future PR.
+      ]#
+      var opt = "-d:nimEvalffiStderrWorkaround"
+      let prefix = ""
+    else:
+      var opt = ""
+      let prefix = """
 hello world stderr
 hi stderr
-foo
+"""
+    let (output, exitCode) = runCmd("vm/mevalffi.nim", fmt"{opt} --experimental:compiletimeFFI")
+    let expected = fmt"""
+{prefix}foo
 foo:100
 foo:101
 foo:102:103
 foo:102:103:104
 foo:0.03:asdf:103:105
-ret={s1:foobar s2:foobar age:25 pi:3.14}
+ret=[s1:foobar s2:foobar age:25 pi:3.14]
 """
     doAssert output == expected, output
     doAssert exitCode == 0
 
 else: # don't run twice the same test
+  import std/[strutils]
   template check(msg) = doAssert msg in output, output
 
   block: # mstatic_assert
