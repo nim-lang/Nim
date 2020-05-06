@@ -240,15 +240,15 @@ compiler tcc:
     props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
 # Your C Compiler
-compiler ucc:
+compiler envcc:
   result = (
-    name: "ucc",
+    name: "env",
     objExt: "o",
     optSpeed: " -O3 ",
     optSize: " -O1 ",
-    compilerExe: "cc",
+    compilerExe: "",
     cppCompiler: "",
-    compileTmpl: "-c $options $include -o $objfile $file",
+    compileTmpl: "-c $ccenvflags $options $include -o $objfile $file",
     buildGui: "",
     buildDll: " -shared ",
     buildLib: "", # XXX: not supported yet
@@ -263,7 +263,7 @@ compiler ucc:
     structStmtFmt: "$1 $2",
     produceAsm: "",
     cppXsupport: "",
-    props: {})
+    props: {hasGnuAsm})
 
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
@@ -274,7 +274,7 @@ const
     bcc(),
     vcc(),
     tcc(),
-    ucc(),
+    envcc(),
     icl(),
     icc(),
     clangcl()]
@@ -483,11 +483,23 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
 proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
   conf.cmd == cmdCompileToCpp and not cfile.string.endsWith(".c")
 
+proc envFlags(conf: ConfigRef): string =
+  result = if conf.cmd == cmdCompileToCpp:
+            getEnv("CXXFLAGS")
+          else:
+            getEnv("CFLAGS")
+
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): string =
-  result = if useCpp(conf, cfile):
-             CC[compiler].cppCompiler
-           else:
-             CC[compiler].compilerExe
+  if compiler == ccEnv:
+    result = if useCpp(conf, cfile):
+              getEnv("CXX")
+            else:
+              getEnv("CC")
+  else:
+    result = if useCpp(conf, cfile):
+              CC[compiler].cppCompiler
+            else:
+              CC[compiler].compilerExe
   if result.len == 0:
     rawMessage(conf, errGenerated,
       "Compiler '$1' doesn't support the requested target" %
@@ -581,7 +593,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     "dfile", dfile,
     "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
-    "lib", conf.libpath.string])
+    "lib", conf.libpath.string,
+    "ccenvflags", envFlags(conf)])
 
   if optProduceAsm in conf.globalOptions:
     if CC[conf.cCompiler].produceAsm.len > 0:
@@ -601,7 +614,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
     "lib", quoteShell(conf.libpath),
-    "vccplatform", vccplatform(conf)])
+    "vccplatform", vccplatform(conf),
+    "ccenvflags", envFlags(conf)])
 
 proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
