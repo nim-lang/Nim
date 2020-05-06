@@ -182,7 +182,7 @@ when defined(nimHasalignOf):
 
     bitor(v, mask)
 
-  func setMasked*[T: SomeInteger](v: var T; slice: Slice[int]): T {.inline, since: (1, 3).} =
+  func setMasked*[T: SomeInteger](v: T; slice: Slice[int]): T {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` set to 1.
     ##
     ## Effectively maps to a `bitor` operation.
