@@ -256,7 +256,7 @@ when defined(nimHasalignOf):
 
     v = bitand(v, bitnot(toMask[T](slice)))
 
-  func flipMasked*[T: SomeInteger](v: var T; mask: T) {.inline, since: (1, 3).} =
+  func flipMasked*[T: SomeInteger](v: T; mask: T) {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits from ``mask`` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
@@ -266,7 +266,7 @@ when defined(nimHasalignOf):
 
     bitxor(v, mask)
 
-  func flipMasked*[T: SomeInteger](v: var T; slice: Slice[int]) {.inline, since: (1, 3).} =
+  func flipMasked*[T: SomeInteger](v: T; slice: Slice[int]) {.inline, since: (1, 3).} =
     ## Returns ``v``, with all the ``1`` bits in the range of ``slice`` flipped.
     ##
     ## Effectively maps to a `bitxor` operation.
