@@ -120,9 +120,8 @@ const
 proc implicitlyDiscardable(n: PNode): bool =
   var n = n
   while n.kind in skipForDiscardable: n = n.lastSon
-  result = n.kind in nkLastBlockStmts or
-           (isCallExpr(n) and (n[0].kind == nkSym and
-           sfDiscardable in n[0].sym.flags) or tfDiscardable in n[0].typ.flags)
+  result = n.kind in nkLastBlockStmts or isCallExpr(n) and
+           (n[0].kind == nkSym and sfDiscardable in n[0].sym.flags or tfDiscardable in n[0].typ.flags)
 
 proc fixNilType(c: PContext; n: PNode) =
   if isAtom(n):
