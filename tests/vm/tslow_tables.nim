@@ -1,5 +1,5 @@
 discard """
-  timeout: "4"
+  timeout: "7"
   action: "compile"
   nimout: '''create
 search
