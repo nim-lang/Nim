@@ -532,7 +532,16 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             # into an unowned pointer.
             typ = typ.lastSon
     else:
-      if symkind == skLet: localError(c.config, a.info, errLetNeedsInit)
+      if symkind == skLet:
+        # check if the importc pragma is declared, if so we don't
+        # require initialisation, hopefully C has done that.
+        var importc = false
+        if n[i][0].kind == nkPragmaExpr:
+          for pragma in n[i][0][1].sons:
+            if $pragma == "importc":
+              importc = true
+        if not importc:
+          localError(c.config, a.info, errLetNeedsInit)
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
