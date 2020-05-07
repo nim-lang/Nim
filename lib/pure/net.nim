@@ -177,11 +177,16 @@ proc isDisconnectionError*(flags: set[SocketFlag],
   ## if flags contains ``SafeDisconn``.
   when useWinVersion:
     SocketFlag.SafeDisconn in flags and
-      lastError.int32 in {WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
-                          WSAEDISCON, ERROR_NETNAME_DELETED}
+      (lastError.int32 == WSAECONNRESET or
+       lastError.int32 == WSAECONNABORTED or
+       lastError.int32 == WSAENETRESET or
+       lastError.int32 == WSAEDISCON or
+       lastError.int32 == ERROR_NETNAME_DELETED)
   else:
     SocketFlag.SafeDisconn in flags and
-      lastError.int32 in {ECONNRESET, EPIPE, ENETRESET}
+      (lastError.int32 == ECONNRESET or
+       lastError.int32 == EPIPE or
+       lastError.int32 == ENETRESET)
 
 proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
   ## Converts the flags into the underlying OS representation.
