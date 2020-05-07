@@ -416,7 +416,6 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   result = copySym(orig)
   result.info = info
   result.flags.incl sfFromGeneric
-  result.owner = orig
   let origParamType = orig.typ[1]
   let newParamType = makeVarType(result, origParamType.skipTypes(abstractPtrs))
   let oldParam = orig.typ.n[1].sym

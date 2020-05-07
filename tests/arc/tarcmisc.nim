@@ -105,3 +105,17 @@ proc match(inp: string, rg: static MyType) =
   doAssert rg.a.len == 0
 
 match("ac", re"a(b|c)")
+
+#------------------------------------------------------------------------------
+# issue #14243
+
+type
+  Game* = ref object
+
+proc free*(game: Game) =
+  let a = 5
+
+proc newGame*(): Game =
+  new(result, free)
+
+var game*: Game
