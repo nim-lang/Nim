@@ -75,7 +75,7 @@ const
     wIntDefine, wStrDefine, wBoolDefine, wCompilerProc, wCore}
   letPragmas* = varPragmas
   procTypePragmas* = {FirstCallConv..LastCallConv, wVarargs, wNoSideEffect,
-                      wThread, wRaises, wLocks, wTags, wGcSafe,
+                      wThread, wDiscardable, wRaises, wLocks, wTags, wGcSafe,
                       wRequires, wEnsures}
   forVarPragmas* = {wInject, wGensym}
   allRoutinePragmas* = methodPragmas + iteratorPragmas + lambdaPragmas
@@ -1042,7 +1042,9 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
           result = true
       of wDiscardable:
         noVal(c, it)
-        if sym != nil: incl(sym.flags, sfDiscardable)
+        if sym != nil:
+          incl(sym.flags, sfDiscardable)
+          if sym.typ != nil: incl(sym.typ.flags, tfDiscardable)
       of wNoInit:
         noVal(c, it)
         if sym != nil: incl(sym.flags, sfNoInit)

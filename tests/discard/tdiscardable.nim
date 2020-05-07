@@ -65,3 +65,16 @@ proc main2() =
 
 main1()
 main2()
+
+# bug #14260
+
+type
+  Foo = object
+    fp: proc(a: int): bool {.discardable.}
+
+proc a(a: int): bool {.discardable.} =
+  return true
+
+let f = Foo(fp: a)
+
+f.fp(3)

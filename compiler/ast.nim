@@ -556,6 +556,7 @@ type
     tfCompleteStruct
       # (for importc types); type is fully specified, allowing to compute
       # sizeof, alignof, offsetof at CT
+    tfDiscardable     # procedure type is discardable
 
   TTypeFlags* = set[TTypeFlag]
 
