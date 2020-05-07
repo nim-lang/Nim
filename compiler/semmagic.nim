@@ -410,8 +410,8 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
       if n.sym == oldParam:
         result.sym = newParam
       elif n.sym.owner == orig:
-        n.sym = copySym(n.sym)
-        n.sym.owner = procSym
+        result.sym = copySym(n.sym)
+        result.sym.owner = procSym
     for i in 0 ..< safeLen(n):
       result[i] = transform(procSym, n[i], old, fresh, oldParam, newParam)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
