@@ -87,9 +87,7 @@ proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
       if variantA < 0: return -1
       var variantB = isLastRead(location, c, pc + c.g[pc].dest, pc)
       if variantB < 0: return -1
-      elif variantB == high(int):
-        variantB = variantA
-      pc = variantB
+      pc = min(variantA, variantB)
     of InstrKind.join:
       let dest = pc + c.g[pc].dest
       if dest == comesFrom: return pc + 1
@@ -140,9 +138,7 @@ proc isFirstWrite(location: PNode; c: var Con; pc, comesFrom: int; instr: int): 
       if variantA < 0: return -1
       var variantB = isFirstWrite(location, c, pc + c.g[pc].dest, pc, instr + c.g[pc].dest)
       if variantB < 0: return -1
-      elif variantB == high(int):
-        variantB = variantA
-      pc = variantB
+      pc = min(variantA, variantB)
     of InstrKind.join:
       let dest = pc + c.g[pc].dest
       if dest == comesFrom: return pc + 1
