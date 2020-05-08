@@ -4,10 +4,10 @@
 
 Command:
   //compile, c                compile project with default code generator (C)
-  //r                         compile & run $nimcach/projname [arguments] using
-                              backend specified by --backend (default: c)
+  //r                         compile to $nimcache/projname, run with [arguments]
+                              using backend specified by `--backend` (default: c)
   //doc                       generate the documentation for inputfile for
-                              backend specified by --backend (default: c)
+                              backend specified by `--backend` (default: c)
 
 Arguments:
   arguments are passed to the program being run (if --run option is selected)

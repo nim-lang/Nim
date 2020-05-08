@@ -29,6 +29,8 @@ Runtime checks (see -x):
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
+  --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
+                            to after all options have been processed
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages

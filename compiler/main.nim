@@ -189,6 +189,11 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.searchPaths.add(conf.libpath)
   setId(100)
 
+  ## Calling `setOutDir(conf)` unconditionally would fix regression
+  ## https://github.com/nim-lang/Nim/issues/6583#issuecomment-625711125
+  when false: setOutDir(conf)
+  if optUseNimcache in conf.globalOptions: setOutDir(conf)
+
   template handleBackend(backend2: TBackend) =
     conf.backend = backend2
     conf.cmd = cmdCompileToBackend

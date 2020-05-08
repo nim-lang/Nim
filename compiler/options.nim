@@ -539,7 +539,10 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
-  conf.outDir / changeFileExt(filename, ext)
+  # explains regression https://github.com/nim-lang/Nim/issues/6583#issuecomment-625711125
+  # Yet another reason why "" should not mean ".";  `""/something` should raise
+  # instead of implying "" == "." as it's bug prone.
+  result = conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
   if false:
