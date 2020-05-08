@@ -446,16 +446,14 @@ proc testExample(d: PDoc; ex: PNode) =
 proc runAllExamples(d: PDoc) =
   let docCmd = d.conf.docCmd
   let backend = d.conf.backend
+  # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
+  # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
+  # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
   if d.examples.len == 0 or docCmd == "skip": return
   let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
   writeFile(outp, d.examples)
-
-  # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
-  # using `-d:js` cannot work properly and should yield a warning, eg will fail
-  # with compiler code that depends on `cmdCompileToJS` (eg for `importjs`).
-
   let cmd = "$nim $backend --warning:UnusedImport:off --path:$path --nimcache:$nimcache $docCmd $file" % [
     "nim", os.getAppFilename(),
     "backend", d.conf.backend,

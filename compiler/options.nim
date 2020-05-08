@@ -106,18 +106,24 @@ const
 
 type
   TBackend* = enum
-    backendInvalid = ""
+    backendInvalid = "" # for parseEnum
     backendC = "c"
-    backendCpp = "cpp"
-    backendJs = "js"
-    backendObjc = "objc"
+    backendCpp = "cpp"  # was cmdCompileToCpp
+    backendJs = "js" # was cmdCompileToJS
+    backendObjc = "objc" # was cmdCompileToOC
+    # backendNimscript = "nimscript" # this could actually work
+    # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
 
 type
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
-    cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-    cmdCompileToJS,
-    cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
+    cmdNone,
+    cmdCompileToC,            # deadcode
+    cmdCompileToCpp,          # deadcode
+    cmdCompileToOC,           # deadcode
+    cmdCompileToJS,           # deadcode
+    cmdCompileToLLVM,         # deadcode
+    cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
@@ -129,6 +135,7 @@ type
     cmdInteractive,           # start interactive session
     cmdRun,                   # run the project via TCC backend
     cmdJsonScript             # compile a .json build file
+    cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
@@ -624,7 +631,7 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   # XXX projectName should always be without a file extension!
   result = if not conf.nimcacheDir.isEmpty:
              conf.nimcacheDir
-           elif conf.cmd == cmdCompileToJS:
+           elif conf.backend == backendJs:
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &

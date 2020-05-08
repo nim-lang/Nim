@@ -192,7 +192,7 @@ proc mainCommand*(graph: ModuleGraph) =
   setId(100)
   template handleC() =
     conf.backend = backendC
-    conf.cmd = cmdCompileToC
+    conf.cmd = cmdCompileToBackend
     if conf.exc == excNone: conf.exc = excSetjmp
     defineSymbol(graph.config.symbols, "c")
     commandCompileToC(graph)
@@ -200,13 +200,13 @@ proc mainCommand*(graph: ModuleGraph) =
   of "c", "cc", "compile", "compiletoc": handleC() # compile means compileToC currently
   of "cpp", "compiletocpp":
     conf.backend = backendCpp
-    conf.cmd = cmdCompileToCpp
+    conf.cmd = cmdCompileToBackend
     if conf.exc == excNone: conf.exc = excCpp
     defineSymbol(graph.config.symbols, "cpp")
     commandCompileToC(graph)
   of "objc", "compiletooc":
     conf.backend = backendObjc
-    conf.cmd = cmdCompileToOC
+    conf.cmd = cmdCompileToBackend
     defineSymbol(graph.config.symbols, "objc")
     commandCompileToC(graph)
   of "r": # different from `"run"`!
@@ -224,7 +224,7 @@ proc mainCommand*(graph: ModuleGraph) =
       quit "compiler wasn't built with JS code generator"
     else:
       conf.backend = backendJs
-      conf.cmd = cmdCompileToJS
+      conf.cmd = cmdCompileToBackend
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier

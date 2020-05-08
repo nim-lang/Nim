@@ -88,17 +88,19 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
     let output = conf.absOutFile
-    let ex = quoteShell output
     case conf.cmd
-    of cmdCompileToJS:
-      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
+    of cmdCompileToBackend:
+      var runcmd = output.quoteShell & ' ' & conf.arguments
+      case conf.backend
+      of backendC, backendCpp, backendOC: discard
+      of backendJS: runcmd = findNodeJs() & " " & runcmd
+      else: doAssert false, $conf.backend
+      execExternalProgram(conf, runcmd)
     of cmdDoc, cmdRst2html:
       if conf.arguments.len > 0:
         # reserved for future use
         rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
       openDefaultBrowser($output)
-    of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC:
-      execExternalProgram(conf, ex & ' ' & conf.arguments)
     else:
       # support as needed
       rawMessage(conf, errGenerated, "'$1 cannot handle --run" % [$conf.cmd])

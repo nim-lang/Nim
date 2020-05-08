@@ -215,7 +215,7 @@ proc registerAdditionalOps*(c: PCtx) =
 
   proc hashVmImpl(a: VmArgs) =
     var res = hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int)
-    if c.config.cmd == cmdCompileToJS:
+    if c.config.backend == backendJs:
       # emulate JS's terrible integers:
       res = cast[int32](res)
     setResult(a, res)
@@ -232,7 +232,7 @@ proc registerAdditionalOps*(c: PCtx) =
       bytes[i] = byte(arr[i].intVal and 0xff)
 
     var res = hashes.hash(bytes, sPos, ePos)
-    if c.config.cmd == cmdCompileToJS:
+    if c.config.backend == backendJs:
       # emulate JS's terrible integers:
       res = cast[int32](res)
     setResult(a, res)

@@ -279,7 +279,7 @@ proc genProc(m: BModule, prc: PSym)
 proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
-  m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
+  m.config.backend == backendCpp or sfCompileToCpp in m.module.flags
 
 proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
@@ -1066,11 +1066,11 @@ proc genProcAux(m: BModule, prc: PSym) =
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
-           m.config.cmd != cmdCompileToCpp) or (
+           m.config.backend != backendCpp) or (
            sym.flags * {sfInfixCall, sfCompilerProc, sfMangleCpp} == {} and
            sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
-           m.config.cmd == cmdCompileToCpp)
+           m.config.backend == backendCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
@@ -1867,7 +1867,7 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjc in m.module.flags: ".nim.m"
+      elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
   result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
