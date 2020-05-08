@@ -449,7 +449,6 @@ proc runAllExamples(d: PDoc) =
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
   # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
   # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
-  echo0b docCmd, backend
   if d.examples.len == 0 or docCmd == "skip": return
   let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
@@ -463,7 +462,6 @@ proc runAllExamples(d: PDoc) =
     "file", quoteShell(outp),
     "docCmd", docCmd,
   ]
-  echo0b cmd
   if os.execShellCmd(cmd) != 0:
     quit "[runnableExamples] failed: generated file: '$1' cmd: $2" % [outp.string, cmd]
   else:

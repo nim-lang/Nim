@@ -623,8 +623,6 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  # PRTEMP nim doc?
-  echo0b (conf.backend,"D20200507T233616")
   case conf.backend
   of backendInvalid: doAssert false
   of backendJs: return false # pre-existing behavior, but not sure it's good
