@@ -112,7 +112,7 @@ when defined(nimHasInvariant):
     of arguments: result = conf.arguments
     of outFile: result = conf.outFile.string
     of outDir: result = conf.outDir.string
-    of nimcacheDir: result = conf.nimcacheDir.string
+    of nimcacheDir: result = conf.getNimcacheDir().string
     of projectName: result = conf.projectName
     of projectPath: result = conf.projectPath.string
     of projectFull: result = conf.projectFull.string
