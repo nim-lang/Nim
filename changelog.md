@@ -137,6 +137,9 @@
   nim r compiler/nim.nim --fullhelp # no recompilation
   nim r --nimcache:/tmp main # binary saved to /tmp/main
   ```
+- `--hint:processing` is now supported and means `--hint:processing:on`
+  (likewise with other hints and warnings), which is consistent with all other bool flags.
+  (since 1.3.3).
 
 ## Tool changes
 
