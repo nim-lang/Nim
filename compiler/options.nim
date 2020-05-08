@@ -105,6 +105,14 @@ const
                       optUseColors, optStdout}
 
 type
+  TBackend* = enum
+    backendInvalid = ""
+    backendC = "c"
+    backendCpp = "cpp"
+    backendJs = "js"
+    backendObjc = "objc"
+
+type
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
     cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
@@ -274,6 +282,7 @@ type
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
     docRoot*: string ## see nim --fullhelp for --docRoot
+    docCmd*: string ## see nim --fullhelp for --docCmd
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
@@ -402,7 +411,7 @@ proc newConfigRef*(): ConfigRef =
     cIncludes: @[],   # directories to search for included files
     cLibs: @[],       # directories to search for lib files
     cLinkedLibs: @[],  # libraries to link
-
+    backend: backendC,
     externalToLink: @[],
     linkOptionsCmd: "",
     compileOptionsCmd: @[],

@@ -444,21 +444,28 @@ proc testExample(d: PDoc; ex: PNode) =
   d.examples.add "import r\"" & outp.string & "\"\n"
 
 proc runAllExamples(d: PDoc) =
-  if d.examples.len == 0: return
+  let docCmd = d.conf.docCmd
+  let backend = d.conf.backend
+  if d.examples.len == 0 or docCmd == "skip": return
   let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
   writeFile(outp, d.examples)
-  let backend = if isDefined(d.conf, "js"): "js"
-                elif isDefined(d.conf, "cpp"): "cpp"
-                elif isDefined(d.conf, "objc"): "objc"
-                else: "c"
-  if os.execShellCmd(os.getAppFilename() & " " & backend &
-                    " --warning[UnusedImport]:off" &
-                    " --path:" & quoteShell(d.conf.projectPath) &
-                    " --nimcache:" & quoteShell(outputDir) &
-                    " -r " & quoteShell(outp)) != 0:
-    quit "[Examples] failed: see " & outp.string
+
+  # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
+  # using `-d:js` cannot work properly and should yield a warning, eg will fail
+  # with compiler code that depends on `cmdCompileToJS` (eg for `importjs`).
+
+  let cmd = "$nim $backend --warning:UnusedImport:off --path:$path --nimcache:$nimcache $docCmd $file" % [
+    "nim", os.getAppFilename(),
+    "backend", d.conf.backend,
+    "path", quoteShell(d.conf.projectPath),
+    "nimcache", quoteShell(outputDir),
+    "file", quoteShell(outp),
+    "docCmd", docCmd,
+  ]
+  if os.execShellCmd(cmd) != 0:
+    quit "[runnableExamples] failed: generated file: '$1' cmd: $2" % [outp.string, cmd]
   else:
     # keep generated source file `outp` to allow inspection.
     rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
@@ -1118,10 +1125,11 @@ proc genOutFile(d: PDoc): Rope =
   let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
+  let gitUrl = getConfigVar(d.conf, "git.url")
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "url"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg])
+      rope(getClockStr()), code, d.modDeprecationMsg, rope gitUrl])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
