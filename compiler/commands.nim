@@ -176,7 +176,7 @@ proc expectNoArg(conf: ConfigRef; switch, arg: string, pass: TCmdLinePass, info:
 
 proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
                          info: TLineInfo; orig: string; conf: ConfigRef) =
-  var id = ""  # arg = key:val or [key]:val;  with val=on|off
+  var id = ""  # arg = key or [key] or key:val or [key]:val;  with val=on|off
   var i = 0
   var n = hintMin
   var isBracket = false
@@ -190,7 +190,8 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     if i < arg.len and arg[i] == ']': inc(i)
     else: invalidCmdLineOption(conf, pass, orig, info)
 
-  if i < arg.len and (arg[i] in {':', '='}): inc(i)
+  if i == arg.len: discard
+  elif i < arg.len and (arg[i] in {':', '='}): inc(i)
   else: invalidCmdLineOption(conf, pass, orig, info)
   if state == wHint:
     let x = findStr(lineinfos.HintsToStr, id)
@@ -201,7 +202,8 @@ proc processSpecificNote*(arg: string, state: TSpecialWord, pass: TCmdLinePass,
     if x >= 0: n = TNoteKind(x + ord(warnMin))
     else: localError(conf, info, "unknown warning: " & id)
 
-  let val = substr(arg, i).normalize
+  var val = substr(arg, i).normalize
+  if val == "": val = "on"
   if val notin ["on", "off"]:
     localError(conf, info, errOnOrOffExpectedButXFound % arg)
   elif n notin conf.cmdlineNotes or pass == passCmd1:
