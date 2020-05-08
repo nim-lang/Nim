@@ -308,7 +308,7 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # for niminst support
   let fullSuffix =
     case conf.backend
-    of backendC, backendCpp, backendJs, backendObjc: "." & conf.backend & suffix
+    of backendC, backendCpp, backendJs, backendObjc: "." & $conf.backend & suffix
     else:
       # CHECKME
       suffix
@@ -625,8 +625,10 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
   # PRTEMP nim doc?
   echo0b (conf.backend,"D20200507T233616")
-  if conf.backend notin {backendC, backendCpp, backendObjc, backendLlvm}:
-    return false
+  case conf.backend
+  of backendInvalid: doAssert false
+  of backendJs: return false # pre-existing behavior, but not sure it's good
+  else: discard
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
   var currentHash = footprint(conf, cfile)
