@@ -6,7 +6,7 @@ discard """
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 
-import std/[strformat,os,osproc]
+import std/[strformat,os,osproc,unittest]
 
 const nim = getCurrentCompilerExe()
 
@@ -15,8 +15,9 @@ const mode =
   elif defined(cpp): "cpp"
   else: static: doAssert false
 
+const testsDir = currentSourcePath().parentDir
+
 proc runCmd(file, options = ""): auto =
-  const testsDir = currentSourcePath().parentDir
   let fileabs = testsDir / file.unixToNativePath
   doAssert fileabs.existsFile, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
@@ -55,11 +56,11 @@ ret=[s1:foobar s2:foobar age:25 pi:3.14]
 
 else: # don't run twice the same test
   import std/[strutils]
-  template check(msg) = doAssert msg in output, output
+  template checkrunner(msg) = doAssert msg in output, output
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
-    check "sizeof(bool) == 2"
+    checkrunner "sizeof(bool) == 2"
     doAssert exitCode != 0
 
   block: # ABI checks
@@ -72,11 +73,11 @@ else: # don't run twice the same test
       # on platforms that support _StaticAssert natively, errors will show full context, eg:
       # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
       # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
-      check "sizeof(unsigned char) == 8"
-      check "sizeof(struct Foo2) == 1"
-      check "sizeof(Foo5) == 16"
-      check "sizeof(Foo5) == 3"
-      check "sizeof(struct Foo6) == "
+      checkrunner "sizeof(unsigned char) == 8"
+      checkrunner "sizeof(struct Foo2) == 1"
+      checkrunner "sizeof(Foo5) == 16"
+      checkrunner "sizeof(Foo5) == 3"
+      checkrunner "sizeof(struct Foo6) == "
       doAssert exitCode != 0
 
   import streams
@@ -103,3 +104,12 @@ else: # don't run twice the same test
         var (output, exitCode) = execCmdEx(cmd)
         output.stripLineEnd
         doAssert output == expected
+
+  block: # nim doc --docIgnoreParseErrors
+    const buildDir = testsDir.parentDir / "build"
+    let file = testsDir / "nimdoc" / "invalidrst.nim"
+    let cmd = fmt"{nim} doc --docIgnoreParseErrors --hints:off {file}"
+    let (output, exitCode) = execCmdEx(cmd)
+    let expected = &"{file}(2, 4) Error: '***' expected\n{file}(2, 20) Error: '``' expected\n{file}(3, 32) Error: '```' expected\n"
+    checkrunner expected
+    check fileExists("invalidrst.html")
