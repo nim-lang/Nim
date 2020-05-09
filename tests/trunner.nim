@@ -106,10 +106,9 @@ else: # don't run twice the same test
         doAssert output == expected
 
   block: # nim doc --docIgnoreParseErrors
-    const buildDir = testsDir.parentDir / "build"
-    let file = testsDir / "nimdoc" / "invalidrst.nim"
+    let file = testsDir / "nimdoc" / "minvalidrst.nim"
     let cmd = fmt"{nim} doc --docIgnoreParseErrors --hints:off {file}"
     let (output, exitCode) = execCmdEx(cmd)
     let expected = &"{file}(2, 4) Error: '***' expected\n{file}(2, 20) Error: '``' expected\n{file}(3, 32) Error: '```' expected\n"
     checkrunner expected
-    check fileExists("invalidrst.html")
+    check fileExists("minvalidrst.html")
