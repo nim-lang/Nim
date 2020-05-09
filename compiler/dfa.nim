@@ -617,7 +617,8 @@ proc genUse(c: var Con; orig: PNode) =
 proc aliases*(obj, field: PNode): bool =
   var n = field
   var obj = obj
-  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
+  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv,
+                     nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
     obj = obj[0]
   while true:
     if sameTrees(obj, n): return true
