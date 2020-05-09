@@ -90,12 +90,12 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     let output = conf.absOutFile
     case conf.cmd
     of cmdCompileToBackend:
-      var runcmd = output.quoteShell & ' ' & conf.arguments
+      var cmdPrefix = ""
       case conf.backend
-      of backendC, backendCpp, backendOC: discard
-      of backendJS: runcmd = findNodeJs() & " " & runcmd
+      of backendC, backendCpp, backendObjc: discard
+      of backendJs: cmdPrefix = findNodeJs() & " "
       else: doAssert false, $conf.backend
-      execExternalProgram(conf, runcmd)
+      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
     of cmdDoc, cmdRst2html:
       if conf.arguments.len > 0:
         # reserved for future use

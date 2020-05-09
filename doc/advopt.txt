@@ -5,6 +5,7 @@ Advanced commands:
   //js                      compile project to Javascript
   //e                       run a Nimscript file
   //rst2html                convert a reStructuredText file to HTML
+                            use `--docCmd:skip` to skip compiling snippets
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file

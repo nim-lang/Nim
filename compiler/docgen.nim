@@ -22,6 +22,7 @@ import
 const
   exportSection = skField
   htmldocsDir = RelativeDir"htmldocs"
+  docCmdSkip = "skip"
 
 type
   TSections = array[TSymKind, Rope]
@@ -196,6 +197,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      if conf.docCmd == docCmdSkip: return
       inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
@@ -449,7 +451,7 @@ proc runAllExamples(d: PDoc) =
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
   # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
   # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
-  if d.examples.len == 0 or docCmd == "skip": return
+  if d.examples.len == 0 or docCmd == docCmdSkip: return
   let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
