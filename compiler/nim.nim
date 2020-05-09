@@ -24,7 +24,7 @@ import
   idents, lineinfos, cmdlinehelper,
   pathutils
 
-from std/browsers import openDefaultBrowser
+from browsers import openDefaultBrowser
 from nodejs import findNodeJs
 
 when hasTinyCBackend:
@@ -101,7 +101,7 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
       execExternalProgram(conf, ex & ' ' & conf.arguments)
     else:
       # support as needed
-      doAssert false, "'$1 cannot handle --run" % [$conf.cmd]
+      rawMessage(conf, errGenerated, "'$1 cannot handle --run" % [$conf.cmd])
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
