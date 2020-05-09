@@ -2634,6 +2634,18 @@ func findNormalized(x: string, inArray: openArray[string]): int =
               # security hole...
   return -1
 
+func raiseParseError(input: string, index: int, msg = "") {.noinline.} =
+  ## noinline to avoid bloating instruction cache; inline would not benefit
+  ## since this is should be a rare event.
+  var ret = "invalid input at index: " & $index
+  if index < input.len:
+    ret.add " ord: " & $input[index].ord
+    ret.add " char: "
+    ret.addQuoted(input[index])
+  ret.add "\nprefix:{\n" & input[0..<index] & "}\nsuffix:{\n" & input[index..^1] & "}"
+  if msg.len > 0: ret.add "\nmsg: " & msg
+  raise newException(ValueError, ret)
+
 func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
     extern: "nsuAddf".} =
   ## The same as `add(s, formatstr % a)`, but more efficient.
@@ -2641,8 +2653,7 @@ func addf*(s: var string, formatstr: string, a: varargs[string, `$`]) {.rtl,
   var i = 0
   var num = 0
   while i < len(formatstr):
-    template invalidFormatString() =
-      raise newException(ValueError, "invalid format string: i: " & $i & "\nprefix:\n" & formatstr[0..<i] & "\nsuffix:\n" & formatstr[i..^1])
+    template invalidFormatString() = raiseParseError(formatstr, i)
     if formatstr[i] == '$' and i+1 < len(formatstr):
       case formatstr[i+1]
       of '#':
