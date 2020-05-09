@@ -299,7 +299,7 @@ template piRest*(my: XmlParser): string =
   assert(my.kind == xmlPI)
   my.b
 
-proc rawData*(my: var XmlParser): string {.inline.} =
+proc rawData*(my: sink XmlParser): string {.inline.} =
   ## returns the underlying 'data' string by reference.
   ## This is only used for speed hacks.
   when defined(gcDestructors):
@@ -307,7 +307,7 @@ proc rawData*(my: var XmlParser): string {.inline.} =
   else:
     shallowCopy(result, my.a)
 
-proc rawData2*(my: var XmlParser): string {.inline.} =
+proc rawData2*(my: sink XmlParser): string {.inline.} =
   ## returns the underlying second 'data' string by reference.
   ## This is only used for speed hacks.
   when defined(gcDestructors):
