@@ -24,7 +24,8 @@ import
   idents, lineinfos, cmdlinehelper,
   pathutils
 
-include nodejs
+from std/browsers import openDefaultBrowser
+from nodejs import findNodeJs
 
 when hasTinyCBackend:
   import tccgen
@@ -86,11 +87,21 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     if conf.cmd == cmdRun:
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
-    var ex = quoteShell conf.absOutFile
-    if conf.cmd == cmdCompileToJS:
+    let output = conf.absOutFile
+    let ex = quoteShell output
+    case conf.cmd
+    of cmdCompileToJS:
       execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
-    else:
+    of cmdDoc, cmdRst2html:
+      if conf.arguments.len > 0:
+        # reserved for future use
+        rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
+      openDefaultBrowser($output)
+    of cmdCompileToC, cmdCompileToCpp, cmdCompileToOC:
       execExternalProgram(conf, ex & ' ' & conf.arguments)
+    else:
+      # support as needed
+      doAssert false, "'$1 cannot handle --run" % [$conf.cmd]
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000
