@@ -437,6 +437,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.docSeeSrcUrl = arg
   of "docroot":
     conf.docRoot = if arg.len == 0: "@default" else: arg
+  of "docignoreparseerrors":
+    conf.docIgnoreParseErrors = true
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":

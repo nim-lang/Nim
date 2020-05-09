@@ -274,6 +274,7 @@ type
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
     docRoot*: string ## see nim --fullhelp for --docRoot
+    docIgnoreParseErrors*: bool ## continue parsing docs if errors occur
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files

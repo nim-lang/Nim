@@ -146,8 +146,13 @@ proc parseRst(text, filename: string,
               rstOptions: RstParseOptions;
               conf: ConfigRef): PRstNode =
   declareClosures()
+  var msgHandler: MsgHandler
+  if conf.docIgnoreParseErrors:
+    msgHandler = rst.noExceptionMsgHandler
+  else:
+    msgHandler = compilerMsgHandler
   result = rstParse(text, filename, line, column, hasToc, rstOptions,
-                    docgenFindFile, compilerMsgHandler)
+                    docgenFindFile, msgHandler)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
                  ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
@@ -170,9 +175,14 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.module = module
   result.conf = conf
   result.cache = cache
+  var msgHandler: MsgHandler
+  if conf.docIgnoreParseErrors:
+    msgHandler = rst.noExceptionMsgHandler
+  else:
+    msgHandler = defaultMsgHandler
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
-                   docgenFindFile, compilerMsgHandler)
+                   docgenFindFile, msgHandler)
 
   if conf.configVars.hasKey("doc.googleAnalytics"):
     result.analytics = """

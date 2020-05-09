@@ -312,6 +312,14 @@ proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
   if mc == mcError: raise newException(EParseError, message)
   else: writeLine(stdout, message)
 
+proc noExceptionMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
+                      arg: string) {.procvar.} =
+  let mc = msgkind.whichMsgClass
+  let a = messages[msgkind] % arg
+  let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
+  if mc == mcError: writeLine(stderr, message)
+  else: writeLine(stdout, message)
+
 proc defaultFindFile*(filename: string): string {.procvar.} =
   if existsFile(filename): result = filename
   else: result = ""
@@ -755,13 +763,23 @@ proc parseUntil(p: var RstParser, father: PRstNode, postfix: string,
       inc(p.idx)
       if p.tok[p.idx].kind == tkIndent:
         rstMessage(p, meExpected, postfix, line, col)
+        add(father, newLeaf(p))
+        inc(p.idx)
         break
     of tkWhite:
       add(father, newRstNode(rnLeaf, " "))
       inc(p.idx)
-    else: rstMessage(p, meExpected, postfix, line, col)
+    else:
+      rstMessage(p, meExpected, postfix, line, col)
+      add(father, newLeaf(p))
+      inc(p.idx)
+      break
 
 proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
+  let backupIndex = p.idx
+
+  # skip ```
+  inc(p.idx)
   var args = newRstNode(rnDirArg)
   if p.tok[p.idx].kind == tkWord:
     add(args, newLeaf(p))
@@ -773,7 +791,10 @@ proc parseMarkdownCodeblock(p: var RstParser): PRstNode =
     case p.tok[p.idx].kind
     of tkEof:
       rstMessage(p, meExpected, "```")
-      break
+      p.idx = backupIndex
+      result = newLeaf(p)
+      inc(p.idx)
+      return
     of tkPunct:
       if p.tok[p.idx].symbol == "```":
         inc(p.idx)
@@ -817,36 +838,47 @@ proc parseMarkdownLink(p: var RstParser; father: PRstNode): bool =
   result = true
 
 proc parseInline(p: var RstParser, father: PRstNode) =
+  template addOrBackup(endTok) =
+    let prevTok = if (p.idx-1) < len(p.tok): p.tok[p.idx-1].symbol else: ""
+
+    if p.idx >= len(p.tok) - 1 and prevTok != endTok:
+      # we failed, so
+      p.idx = backupIndex
+      add(father, newLeaf(p))
+      inc(p.idx)
+    else:
+      add(father, n)
+
+  let backupIndex = p.idx
   case p.tok[p.idx].kind
   of tkPunct:
     if isInlineMarkupStart(p, "***"):
       var n = newRstNode(rnTripleEmphasis)
       parseUntil(p, n, "***", true)
-      add(father, n)
+      addOrBackup("***")
     elif isInlineMarkupStart(p, "**"):
       var n = newRstNode(rnStrongEmphasis)
       parseUntil(p, n, "**", true)
-      add(father, n)
+      addOrBackup("**")
     elif isInlineMarkupStart(p, "*"):
       var n = newRstNode(rnEmphasis)
       parseUntil(p, n, "*", true)
-      add(father, n)
+      addOrBackup("*")
     elif roSupportMarkdown in p.s.options and p.tok[p.idx].symbol == "```":
-      inc(p.idx)
       add(father, parseMarkdownCodeblock(p))
     elif isInlineMarkupStart(p, "``"):
       var n = newRstNode(rnInlineLiteral)
       parseUntil(p, n, "``", false)
-      add(father, n)
+      addOrBackup("``")
     elif isInlineMarkupStart(p, "`"):
       var n = newRstNode(rnInterpretedText)
       parseUntil(p, n, "`", true)
       n = parsePostfix(p, n)
-      add(father, n)
+      addOrBackup("`")
     elif isInlineMarkupStart(p, "|"):
       var n = newRstNode(rnSubstitutionReferences)
       parseUntil(p, n, "|", false)
-      add(father, n)
+      addOrBackup("|")
     elif roSupportMarkdown in p.s.options and
         p.tok[p.idx].symbol == "[" and p.tok[p.idx+1].symbol != "[" and
         parseMarkdownLink(p, father):
@@ -1773,6 +1805,7 @@ proc parseDotDot(p: var RstParser): PRstNode =
       b = dirImage(p)
     else:
       rstMessage(p, meInvalidDirective, p.tok[p.idx].symbol)
+      inc(p.idx)
     setSub(p, addNodes(a), b)
   elif match(p, p.idx, " ["):
     # footnotes, citations
