@@ -138,3 +138,5 @@
 
 ## Tool changes
 
+- The `nim doc` command now supports ignoring RST errors when parsing
+  by using the `--docIgnoreParseErrors` flag
