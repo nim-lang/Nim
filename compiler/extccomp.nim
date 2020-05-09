@@ -308,10 +308,11 @@ proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # for niminst support
   let fullSuffix =
     case conf.backend
-    of backendC, backendCpp, backendJs, backendObjc: "." & $conf.backend & suffix
+    of backendCpp, backendJs, backendObjc: "." & $conf.backend & suffix
+    of backendC: suffix
     else:
-      # CHECKME
-      suffix
+      doAssert false
+      ""
 
   if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
       optCompileOnly notin conf.globalOptions:
