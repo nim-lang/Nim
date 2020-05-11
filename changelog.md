@@ -50,6 +50,34 @@
 - `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
+- Improvements to the `bitops` module, including bitslices, non-mutating versions
+  of the original masking functions, `mask`/`masked`, and varargs support for
+  `bitand`, `bitor`, and `bitxor`.
+
+- `sugar.=>` and `sugar.->` changes: Previously `(x, y: int)` was transformed
+  into `(x: auto, y: int)`, it now becomes `(x: int, y: int)` in consistency
+  with regular proc definitions (although you cannot use semicolons).
+  
+  Pragmas and using a name are now allowed on the lefthand side of `=>`. Here
+  is an aggregate example of these changes:
+  ```nim
+  import sugar
+
+  foo(x, y: int) {.noSideEffect.} => x + y
+
+  # is transformed into
+
+  proc foo(x: int, y: int): auto {.noSideEffect.} = x + y
+  ```
+- The fields of `times.DateTime` are now private, and are accessed with getters and deprecated setters.
+
+- The `times` module now handles the default value for `DateTime` more consistently. Most procs raise an assertion error when given
+  an uninitialized `DateTime`, the exceptions are `==` and `$` (which returns `"Uninitialized DateTime"`). The proc `times.isInitialized`
+  has been added which can be used to check if a `DateTime` has been initialized.
+
+- Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
+  hangs if a process had both reads from stdin and writes (eg to stdout).
+
 ## Language changes
 
 
