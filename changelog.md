@@ -86,6 +86,9 @@
   an uninitialized `DateTime`, the exceptions are `==` and `$` (which returns `"Uninitialized DateTime"`). The proc `times.isInitialized`
   has been added which can be used to check if a `DateTime` has been initialized.
 
+- Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
+  hangs if a process had both reads from stdin and writes (eg to stdout).
+
 ## Language changes
 - In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
   ```nim
