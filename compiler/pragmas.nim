@@ -179,7 +179,7 @@ proc processImportCpp(c: PContext; s: PSym, extname: string, info: TLineInfo) =
   incl(s.flags, sfImportc)
   incl(s.flags, sfInfixCall)
   excl(s.flags, sfForward)
-  if c.config.cmd == cmdCompileToC:
+  if c.config.backend == backendC:
     let m = s.getModule()
     incl(m.flags, sfCompileToCpp)
   incl c.config.globalOptions, optMixedMode
@@ -797,8 +797,8 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wExportc, wExportCpp:
         makeExternExport(c, sym, getOptionalStr(c, it, "$1"), it.info)
         if k == wExportCpp:
-          if c.config.cmd != cmdCompileToCpp:
-            localError(c.config, it.info, "exportcpp requires `nim cpp`, got " & $c.config.cmd)
+          if c.config.backend != backendCpp:
+            localError(c.config, it.info, "exportcpp requires `cpp` backend, got " & $c.config.backend)
           else:
             incl(sym.flags, sfMangleCpp)
         incl(sym.flags, sfUsed) # avoid wrong hints
@@ -819,7 +819,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wImportCpp:
         processImportCpp(c, sym, getOptionalStr(c, it, "$1"), it.info)
       of wImportJs:
-        if c.config.cmd != cmdCompileToJS:
+        if c.config.backend != backendJs:
           localError(c.config, it.info, "`importjs` pragma requires the JavaScript target")
         let name = getOptionalStr(c, it, "$1")
         incl(sym.flags, sfImportc)

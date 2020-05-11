@@ -105,11 +105,25 @@ const
                       optUseColors, optStdout}
 
 type
+  TBackend* = enum
+    backendInvalid = "" # for parseEnum
+    backendC = "c"
+    backendCpp = "cpp"  # was cmdCompileToCpp
+    backendJs = "js" # was cmdCompileToJS
+    backendObjc = "objc" # was cmdCompileToOC
+    # backendNimscript = "nimscript" # this could actually work
+    # backendLlvm = "llvm" # probably not well supported; was cmdCompileToLLVM
+
+type
   TCommands* = enum           # Nim's commands
                               # **keep binary compatible**
-    cmdNone, cmdCompileToC, cmdCompileToCpp, cmdCompileToOC,
-    cmdCompileToJS,
-    cmdCompileToLLVM, cmdInterpret, cmdPretty, cmdDoc,
+    cmdNone,
+    cmdCompileToC,            # deadcode
+    cmdCompileToCpp,          # deadcode
+    cmdCompileToOC,           # deadcode
+    cmdCompileToJS,           # deadcode
+    cmdCompileToLLVM,         # deadcode
+    cmdInterpret, cmdPretty, cmdDoc,
     cmdGenDepend, cmdDump,
     cmdCheck,                 # semantic checking for whole project
     cmdParse,                 # parse a single file (for debugging)
@@ -121,6 +135,7 @@ type
     cmdInteractive,           # start interactive session
     cmdRun,                   # run the project via TCC backend
     cmdJsonScript             # compile a .json build file
+    cmdCompileToBackend,      # compile to backend in TBackend
   TStringSeq* = seq[string]
   TGCMode* = enum             # the selected GC
     gcUnselected, gcNone, gcBoehm, gcRegions, gcMarkAndSweep, gcArc, gcOrc,
@@ -208,6 +223,7 @@ type
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
+    backend*: TBackend
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
     options*: TOptions    # (+)
@@ -274,6 +290,7 @@ type
     docSeeSrcUrl*: string # if empty, no seeSrc will be generated. \
     # The string uses the formatting variables `path` and `line`.
     docRoot*: string ## see nim --fullhelp for --docRoot
+    docCmd*: string ## see nim --fullhelp for --docCmd
 
      # the used compiler
     cIncludes*: seq[AbsoluteDir]  # directories to search for included files
@@ -402,7 +419,7 @@ proc newConfigRef*(): ConfigRef =
     cIncludes: @[],   # directories to search for included files
     cLibs: @[],       # directories to search for lib files
     cLinkedLibs: @[],  # libraries to link
-
+    backend: backendC,
     externalToLink: @[],
     linkOptionsCmd: "",
     compileOptionsCmd: @[],
@@ -522,7 +539,10 @@ proc setConfigVar*(conf: ConfigRef; key, val: string) =
   conf.configVars[key] = val
 
 proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): AbsoluteFile =
-  conf.outDir / changeFileExt(filename, ext)
+  # explains regression https://github.com/nim-lang/Nim/issues/6583#issuecomment-625711125
+  # Yet another reason why "" should not mean ".";  `""/something` should raise
+  # instead of implying "" == "." as it's bug prone.
+  result = conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
   if false:
@@ -615,7 +635,7 @@ proc getNimcacheDir*(conf: ConfigRef): AbsoluteDir =
   # XXX projectName should always be without a file extension!
   result = if not conf.nimcacheDir.isEmpty:
              conf.nimcacheDir
-           elif conf.cmd == cmdCompileToJS:
+           elif conf.backend == backendJs:
              conf.projectPath / genSubDir
            else:
             AbsoluteDir(getOsCacheDir() / splitFile(conf.projectName).name &

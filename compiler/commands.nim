@@ -434,11 +434,18 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
     conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)
+  of "usenimcache":
+    processOnOffSwitchG(conf, {optUseNimcache}, arg, pass, info)
   of "docseesrcurl":
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
   of "docroot":
     conf.docRoot = if arg.len == 0: "@default" else: arg
+  of "backend", "b":
+    let backend = parseEnum(arg.normalize, TBackend.default)
+    if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
+    conf.backend = backend
+  of "doccmd": conf.docCmd = arg
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
   of "define", "d":
@@ -495,7 +502,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
         defineSymbol(conf.symbols, "gcmarkandsweep")
       of "destructors", "arc":
         conf.selectedGC = gcArc
-        if conf.cmd != cmdCompileToCpp:
+        if conf.backend != backendCpp:
           conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
         defineSymbol(conf.symbols, "gcarc")
@@ -506,7 +513,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
           defineSymbol(conf.symbols, "nimV2")
       of "orc":
         conf.selectedGC = gcOrc
-        if conf.cmd != cmdCompileToCpp:
+        if conf.backend != backendCpp:
           conf.exc = excGoto
         defineSymbol(conf.symbols, "gcdestructors")
         defineSymbol(conf.symbols, "gcorc")
