@@ -1,10 +1,11 @@
 discard """
   cmd: "nim $target $options --stackTrace:on --lineTrace:on $file"
   outputsub: '''
-t7224.aaa, line: 21
-t7224.bbb, line: 18
-t7224.ccc, line: 15
-t7224.ddd, line: 12
+t7224.nim(25) at module t7224
+t7224.nim(22) at t7224.aaa
+t7224.nim(19) at t7224.bbb
+t7224.nim(16) at t7224.ccc
+t7224.nim(13) at t7224.ddd
 '''
 """
 

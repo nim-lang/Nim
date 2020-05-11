@@ -112,7 +112,7 @@ when defined(nimHasInvariant):
     of arguments: result = conf.arguments
     of outFile: result = conf.outFile.string
     of outDir: result = conf.outDir.string
-    of nimcacheDir: result = conf.nimcacheDir.string
+    of nimcacheDir: result = conf.getNimcacheDir().string
     of projectName: result = conf.projectName
     of projectPath: result = conf.projectPath.string
     of projectFull: result = conf.projectFull.string
@@ -121,6 +121,7 @@ when defined(nimHasInvariant):
     of linkOptions: result = conf.linkOptions
     of compileOptions: result = conf.compileOptions
     of ccompilerPath: result = conf.cCompilerPath
+    of backend: result = $conf.backend
 
   proc querySettingSeqImpl(conf: ConfigRef, switch: BiggestInt): seq[string] =
     template copySeq(field: untyped): untyped =
@@ -215,7 +216,7 @@ proc registerAdditionalOps*(c: PCtx) =
 
   proc hashVmImpl(a: VmArgs) =
     var res = hashes.hash(a.getString(0), a.getInt(1).int, a.getInt(2).int)
-    if c.config.cmd == cmdCompileToJS:
+    if c.config.backend == backendJs:
       # emulate JS's terrible integers:
       res = cast[int32](res)
     setResult(a, res)
@@ -232,7 +233,7 @@ proc registerAdditionalOps*(c: PCtx) =
       bytes[i] = byte(arr[i].intVal and 0xff)
 
     var res = hashes.hash(bytes, sPos, ePos)
-    if c.config.cmd == cmdCompileToJS:
+    if c.config.backend == backendJs:
       # emulate JS's terrible integers:
       res = cast[int32](res)
     setResult(a, res)

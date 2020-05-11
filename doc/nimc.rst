@@ -240,6 +240,10 @@ add the ``-f`` flag to force all files to be recompiled.
 The default compiler is defined at the top of ``config\nim.cfg``.
 Changing this setting affects the compiler used by ``koch`` to (re)build Nim.
 
+To use the ``CC`` environment variable, use ``nim c --cc:env myfile.nim``. To use the
+``CXX`` environment variable, use ``nim cpp --cc:env myfile.nim``. ``--cc:env`` is available
+since Nim version 1.4.
+
 
 Cross compilation
 =================

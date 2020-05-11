@@ -252,7 +252,6 @@ type
   Month* = enum ## Represents a month. Note that the enum starts at ``1``,
                 ## so ``ord(month)`` will give the month number in the
                 ## range ``1..12``.
-    # mInvalid = (0, "Invalid") # intentionally left out so `items` works
     mJan = (1, "January")
     mFeb = "February"
     mMar = "March"
@@ -276,11 +275,12 @@ type
     dSun = "Sunday"
 
 type
-  MonthdayRange* = range[0..31]
-    ## 0 represents an invalid day of the month
+  MonthdayRange* = range[1..31]
   HourRange* = range[0..23]
   MinuteRange* = range[0..59]
-  SecondRange* = range[0..60]
+  SecondRange* = range[0..60] ## \
+    ## Includes the value 60 to allow for a leap second. Note however
+    ## that the `second` of a `DateTime` will never be a leap second.
   YeardayRange* = range[0..365]
   NanosecondRange* = range[0..999_999_999]
 
@@ -289,46 +289,22 @@ type
     nanosecond: NanosecondRange
 
   DateTime* = object of RootObj  ## \
-      ## Represents a time in different parts. Although this type can represent
-      ## leap seconds, they are generally not supported in this module. They are
-      ## not ignored, but the ``DateTime``'s returned by procedures in this
-      ## module will never have a leap second.
-      ##
-      ## **Warning**: even though the fields of ``DateTime`` are exported,
-      ## they should never be mutated directly. Doing so is unsafe and will
-      ## result in the ``DateTime`` ending up in an invalid state.
-      ##
-      ## Instead of mutating the fields directly, use the `Duration <#Duration>`_
-      ## and `TimeInterval <#TimeInterval>`_ types for arithmetic and use the
-      ## `initDateTime proc <#initDateTime,MonthdayRange,Month,int,HourRange,MinuteRange,SecondRange,NanosecondRange,Timezone>`_
-      ## for changing a specific field.
-    nanosecond*: NanosecondRange ## The number of nanoseconds after the second,
-                                 ## in the range 0 to 999_999_999.
-    second*: SecondRange         ## The number of seconds after the minute,
-                                 ## normally in the range 0 to 59, but can
-                                 ## be up to 60 to allow for a leap second.
-    minute*: MinuteRange         ## The number of minutes after the hour,
-                                 ## in the range 0 to 59.
-    hour*: HourRange             ## The number of hours past midnight,
-                                 ## in the range 0 to 23.
-    monthday*: MonthdayRange     ## The day of the month, in the range 1 to 31.
-    month*: Month                ## The month.
-    year*: int                   ## The year, using astronomical year numbering
-                                 ## (meaning that before year 1 is year 0,
-                                 ## then year -1 and so on).
-    weekday*: WeekDay            ## The day of the week.
-    yearday*: YeardayRange       ## The number of days since January 1,
-                                 ## in the range 0 to 365.
-    isDst*: bool                 ## Determines whether DST is in effect.
-                                 ## Always false for the JavaScript backend.
-    timezone*: Timezone          ## The timezone represented as an implementation
-                                 ## of ``Timezone``.
-    utcOffset*: int              ## The offset in seconds west of UTC, including
-                                 ## any offset due to DST. Note that the sign of
-                                 ## this number is the opposite of the one in a
-                                 ## formatted offset string like ``+01:00`` (which
-                                 ## would be equivalent to the UTC offset
-                                 ## ``-3600``).
+    ## Represents a time in different parts. Although this type can represent
+    ## leap seconds, they are generally not supported in this module. They are
+    ## not ignored, but the ``DateTime``'s returned by procedures in this
+    ## module will never have a leap second.
+    nanosecond: NanosecondRange
+    second: SecondRange
+    minute: MinuteRange
+    hour: HourRange
+    monthdayZero: int
+    monthZero: int
+    year: int
+    weekday: WeekDay
+    yearday: YeardayRange
+    isDst: bool
+    timezone: Timezone
+    utcOffset: int
 
   Duration* = object ## Represents a fixed duration of time, meaning a duration
                      ## that has constant length independent of the context.
@@ -464,7 +440,7 @@ proc getDaysInMonth*(month: Month, year: int): int =
 
 proc assertValidDate(monthday: MonthdayRange, month: Month, year: int)
     {.inline.} =
-  assert monthday > 0 and monthday <= getDaysInMonth(month, year),
+  assert monthday <= getDaysInMonth(month, year),
     $year & "-" & intToStr(ord(month), 2) & "-" & $monthday &
       " is not a valid date"
 
@@ -981,21 +957,114 @@ proc low*(typ: typedesc[Time]): Time =
 # DateTime & Timezone
 #
 
-proc isLeapDay*(t: DateTime): bool {.since: (1, 1).} =
+template assertDateTimeInitialized(dt: DateTime) =
+  assert dt.monthdayZero != 0, "Uninitialized datetime"
+
+proc nanosecond*(dt: DateTime): NanosecondRange {.inline.} =
+  ## The number of nanoseconds after the second,
+  ## in the range 0 to 999_999_999.
+  assertDateTimeInitialized(dt)
+  dt.nanosecond
+
+proc second*(dt: DateTime): SecondRange {.inline.} =
+  ## The number of seconds after the minute,
+  ## in the range 0 to 59.
+  assertDateTimeInitialized(dt)
+  dt.second
+
+proc minute*(dt: DateTime): MinuteRange {.inline.} =
+  ## The number of minutes after the hour,
+  ## in the range 0 to 59.
+  assertDateTimeInitialized(dt)
+  dt.minute
+
+proc hour*(dt: DateTime): HourRange {.inline.} =
+  ## The number of hours past midnight,
+  ## in the range 0 to 23.
+  assertDateTimeInitialized(dt)
+  dt.hour
+
+proc monthday*(dt: DateTime): MonthdayRange {.inline.} =
+  ## The day of the month, in the range 1 to 31.
+  assertDateTimeInitialized(dt)
+  # 'cast' to avoid extra range check
+  cast[MonthdayRange](dt.monthdayZero)
+
+proc month*(dt: DateTime): Month =
+  ## The month as an enum, the ordinal value
+  ## is in the range 1 to 12.
+  assertDateTimeInitialized(dt)
+  # 'cast' to avoid extra range check
+  cast[Month](dt.monthZero)
+
+proc year*(dt: DateTime): int {.inline.} =
+  ## The year, using astronomical year numbering
+  ## (meaning that before year 1 is year 0,
+  ## then year -1 and so on).
+  assertDateTimeInitialized(dt)
+  dt.year
+
+proc weekday*(dt: DateTime): WeekDay {.inline.} =
+  ## The day of the week as an enum, the ordinal
+  ## value is in the range 0 (monday) to 6 (sunday).
+  assertDateTimeInitialized(dt)
+  dt.weekday
+
+proc yearday*(dt: DateTime): YeardayRange {.inline.} =
+  ## The number of days since January 1,
+  ## in the range 0 to 365.
+  assertDateTimeInitialized(dt)
+  dt.yearday
+
+proc isDst*(dt: DateTime): bool {.inline.} =
+  ## Determines whether DST is in effect.
+  ## Always false for the JavaScript backend.
+  assertDateTimeInitialized(dt)
+  dt.isDst
+
+proc timezone*(dt: DateTime): Timezone {.inline.} =
+  ## The timezone represented as an implementation
+  ## of ``Timezone``.
+  assertDateTimeInitialized(dt)
+  dt.timezone
+
+proc utcOffset*(dt: DateTime): int {.inline.} =
+  ## The offset in seconds west of UTC, including
+  ## any offset due to DST. Note that the sign of
+  ## this number is the opposite of the one in a
+  ## formatted offset string like ``+01:00`` (which
+  ## would be equivalent to the UTC offset
+  ## ``-3600``).
+  assertDateTimeInitialized(dt)
+  dt.utcOffset
+
+proc isInitialized(dt: DateTime): bool =
+  # Returns true if `dt` is not the (invalid) default value for `DateTime`.
+  runnableExamples:
+    doAssert now().isInitialized
+    doAssert not default(DateTime).isInitialized
+  dt.monthZero != 0
+
+since((1, 3)):
+  export isInitialized
+
+proc isLeapDay*(dt: DateTime): bool {.since: (1, 1).} =
   ## returns whether `t` is a leap day, ie, Feb 29 in a leap year. This matters
   ## as it affects time offset calculations.
   runnableExamples:
-    let t = initDateTime(29, mFeb, 2020, 00, 00, 00, utc())
-    doAssert t.isLeapDay
-    doAssert t+1.years-1.years != t
-    let t2 = initDateTime(28, mFeb, 2020, 00, 00, 00, utc())
-    doAssert not t2.isLeapDay
-    doAssert t2+1.years-1.years == t2
+    let dt = initDateTime(29, mFeb, 2020, 00, 00, 00, utc())
+    doAssert dt.isLeapDay
+    doAssert dt+1.years-1.years != dt
+    let dt2 = initDateTime(28, mFeb, 2020, 00, 00, 00, utc())
+    doAssert not dt2.isLeapDay
+    doAssert dt2+1.years-1.years == dt2
     doAssertRaises(Exception): discard initDateTime(29, mFeb, 2021, 00, 00, 00, utc())
-  t.year.isLeapYear and t.month == mFeb and t.monthday == 29
+  assertDateTimeInitialized dt
+  dt.year.isLeapYear and dt.month == mFeb and dt.monthday == 29
 
 proc toTime*(dt: DateTime): Time {.tags: [], raises: [], benign.} =
   ## Converts a ``DateTime`` to a ``Time`` representing the same point in time.
+  assertDateTimeInitialized dt
   let epochDay = toEpochDay(dt.monthday, dt.month, dt.year)
   var seconds = epochDay * secondsInDay
   seconds.inc dt.hour * secondsInHour
@@ -1020,8 +1089,8 @@ proc initDateTime(zt: ZonedTime, zone: Timezone): DateTime =
 
   DateTime(
     year: y,
-    month: m,
-    monthday: d,
+    monthZero: m.int,
+    monthdayZero: d,
     hour: hour,
     minute: minute,
     second: second,
@@ -1091,14 +1160,13 @@ proc `$`*(zone: Timezone): string =
 
 proc `==`*(zone1, zone2: Timezone): bool =
   ## Two ``Timezone``'s are considered equal if their name is equal.
+  runnableExamples:
+    doAssert local() == local()
+    doAssert local() != utc()
   if system.`==`(zone1, zone2):
     return true
   if zone1.isNil or zone2.isNil:
     return false
-
-  runnableExamples:
-    doAssert local() == local()
-    doAssert local() != utc()
   zone1.name == zone2.name
 
 proc inZone*(time: Time, zone: Timezone): DateTime
@@ -1110,6 +1178,7 @@ proc inZone*(dt: DateTime, zone: Timezone): DateTime
     {.tags: [], raises: [], benign.} =
   ## Returns a ``DateTime`` representing the same point in time as ``dt`` but
   ## using ``zone`` as the timezone.
+  assertDateTimeInitialized dt
   dt.toTime.inZone(zone)
 
 proc toAdjTime(dt: DateTime): Time =
@@ -1265,9 +1334,9 @@ proc initDateTime*(monthday: MonthdayRange, month: Month, year: int,
 
   assertValidDate monthday, month, year
   let dt = DateTime(
-    monthday: monthday,
+    monthdayZero: monthday,
     year: year,
-    month: month,
+    monthZero: month.int,
     hour: hour,
     minute: minute,
     second: second,
@@ -1318,13 +1387,10 @@ proc `<=`*(a, b: DateTime): bool =
   ## Returns true if ``a`` happened before or at the same time as ``b``.
   return a.toTime <= b.toTime
 
-proc isDefault[T](a: T): bool =
-  system.`==`(a, default(T))
-
 proc `==`*(a, b: DateTime): bool =
   ## Returns true if ``a`` and ``b`` represent the same point in time.
-  if a.isDefault: b.isDefault
-  elif b.isDefault: false
+  if not a.isInitialized: not b.isInitialized
+  elif not b.isInitialized: false
   else: a.toTime == b.toTime
 
 proc `+=`*(a: var DateTime, b: Duration) =
@@ -1337,13 +1403,15 @@ proc getDateStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].}
   ## Gets the current local date as a string of the format ``YYYY-MM-DD``.
   runnableExamples:
     echo getDateStr(now() - 1.months)
-  result = $dt.year & '-' & intToStr(ord(dt.month), 2) &
+  assertDateTimeInitialized dt
+  result = $dt.year & '-' & intToStr(dt.monthZero, 2) &
     '-' & intToStr(dt.monthday, 2)
 
 proc getClockStr*(dt = now()): string {.rtl, extern: "nt$1", tags: [TimeEffect].} =
   ## Gets the current local clock time as a string of the format ``HH:mm:ss``.
   runnableExamples:
     echo getClockStr(now() - 1.hours)
+  assertDateTimeInitialized dt
   result = intToStr(dt.hour, 2) & ':' & intToStr(dt.minute, 2) &
     ':' & intToStr(dt.second, 2)
 
@@ -1914,18 +1982,13 @@ proc toDateTime(p: ParsedTime, zone: Timezone, f: TimeFormat,
       $year & "-" & ord(month).intToStr(2) &
       "-" & $monthday & " is not a valid date")
 
-  result = DateTime(
-    year: year, month: month, monthday: monthday,
-    hour: hour, minute: minute, second: second, nanosecond: nanosecond
-  )
-
   if p.utcOffset.isNone:
     # No timezone parsed - assume timezone is `zone`
-    result = initDateTime(zone.zonedTimeFromAdjTime(result.toAdjTime), zone)
+    result = initDateTime(monthday, month, year, hour, minute, second, nanosecond, zone)
   else:
     # Otherwise convert to `zone`
-    result.utcOffset = p.utcOffset.get()
-    result = result.toTime.inZone(zone)
+    result = (initDateTime(monthday, month, year, hour, minute, second, nanosecond, utc()).toTime +
+      initDuration(seconds = p.utcOffset.get())).inZone(zone)
 
 proc format*(dt: DateTime, f: TimeFormat,
     loc: DateTimeLocale = DefaultLocale): string {.raises: [].} =
@@ -1934,6 +1997,7 @@ proc format*(dt: DateTime, f: TimeFormat,
     let f = initTimeFormat("yyyy-MM-dd")
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == dt.format(f)
+  assertDateTimeInitialized dt
   var idx = 0
   while idx <= f.patterns.high:
     case f.patterns[idx].FormatPattern
@@ -2082,7 +2146,11 @@ proc `$`*(dt: DateTime): string {.tags: [], raises: [], benign.} =
   runnableExamples:
     let dt = initDateTime(01, mJan, 2000, 12, 00, 00, utc())
     doAssert $dt == "2000-01-01T12:00:00Z"
-  result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
+    doAssert $default(DateTime) == "Uninitialized DateTime"
+  if not dt.isInitialized:
+    result = "Uninitialized DateTime"
+  else:
+    result = format(dt, "yyyy-MM-dd'T'HH:mm:sszzz")
 
 proc `$`*(time: Time): string {.tags: [], raises: [], benign.} =
   ## Converts a `Time` value to a string representation. It will use the local
@@ -2721,3 +2789,39 @@ proc getGMTime*(time: Time): DateTime
   ## expressed in Coordinated Universal Time (UTC).
   # Deprecated since v0.18.0
   time.utc
+
+proc `nanosecond=`*(dt: var DateTime, value: NanosecondRange) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.nanosecond = value
+
+proc `second=`*(dt: var DateTime, value: SecondRange) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.second = value
+
+proc `minute=`*(dt: var DateTime, value: MinuteRange) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.minute = value
+
+proc `hour=`*(dt: var DateTime, value: HourRange) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.hour = value
+
+proc `monthdayZero=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.monthdayZero = value
+
+proc `monthZero=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.monthZero = value
+
+proc `year=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.year = value
+
+proc `weekday=`*(dt: var DateTime, value: WeekDay) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.weekday = value
+
+proc `yearday=`*(dt: var DateTime, value: YeardayRange) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.yearday = value
+
+proc `isDst=`*(dt: var DateTime, value: bool) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.isDst = value
+
+proc `timezone=`*(dt: var DateTime, value: Timezone) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.timezone = value
+
+proc `utcOffset=`*(dt: var DateTime, value: int) {.deprecated: "Deprecated since v1.3.1".} =
+  dt.utcOffset = value

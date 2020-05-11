@@ -8,6 +8,7 @@
 #
 
 include system/indexerrors
+import std/private/miscdollars
 
 proc log*(s: cstring) {.importc: "console.log", varargs, nodecl.}
 
@@ -70,7 +71,7 @@ proc getCurrentExceptionMsg*(): string =
 
 proc auxWriteStackTrace(f: PCallFrame): string =
   type
-    TempFrame = tuple[procname: cstring, line: int]
+    TempFrame = tuple[procname: cstring, line: int, filename: cstring]
   var
     it = f
     i = 0
@@ -79,6 +80,7 @@ proc auxWriteStackTrace(f: PCallFrame): string =
   while it != nil and i <= high(tempFrames):
     tempFrames[i].procname = it.procname
     tempFrames[i].line = it.line
+    tempFrames[i].filename = it.filename
     inc(i)
     inc(total)
     it = it.prev
@@ -92,10 +94,9 @@ proc auxWriteStackTrace(f: PCallFrame): string =
     add(result, $(total-i))
     add(result, " calls omitted) ...\n")
   for j in countdown(i-1, 0):
+    result.toLocation($tempFrames[j].filename, tempFrames[j].line, 0)
+    add(result, " at ")
     add(result, tempFrames[j].procname)
-    if tempFrames[j].line > 0:
-      add(result, ", line: ")
-      add(result, $tempFrames[j].line)
     add(result, "\n")
 
 proc rawWriteStackTrace(): string =

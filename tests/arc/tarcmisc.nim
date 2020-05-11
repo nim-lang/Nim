@@ -1,5 +1,6 @@
 discard """
   output: '''
+123xyzabc
 destroyed: false
 destroyed: false
 closed
@@ -7,6 +8,19 @@ destroying variable
 '''
   cmd: "nim c --gc:arc $file"
 """
+
+proc takeSink(x: sink string): bool = true
+
+proc b(x: sink string): string =
+  if takeSink(x):
+    return x & "abc"
+
+proc bbb(inp: string) =
+  let y = inp & "xyz"
+  echo b(y)
+
+bbb("123")
+
 
 # bug #13691
 type Variable = ref object
@@ -75,3 +89,33 @@ let
 
 assert n.sortedByIt(it) == @["b", "c"], "fine"
 assert q.sortedByIt(it[0]) == @[("b", "1"), ("c", "2")], "fails under arc"
+
+
+#------------------------------------------------------------------------------
+# issue #14236
+
+type
+  MyType = object
+    a: seq[int]
+
+proc re(x: static[string]): static MyType = 
+  MyType()
+
+proc match(inp: string, rg: static MyType) = 
+  doAssert rg.a.len == 0
+
+match("ac", re"a(b|c)")
+
+#------------------------------------------------------------------------------
+# issue #14243
+
+type
+  Game* = ref object
+
+proc free*(game: Game) =
+  let a = 5
+
+proc newGame*(): Game =
+  new(result, free)
+
+var game*: Game

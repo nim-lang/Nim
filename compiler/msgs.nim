@@ -10,6 +10,7 @@
 import
   options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
+import std/private/miscdollars
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -132,7 +133,6 @@ proc suggestQuit*() =
 # this format is understood by many text editors: it is the same that
 # Borland and Freepascal use
 const
-  PosFormat    = "$1($2, $3) "
   KindFormat   = " [$1]"
   KindColor    = fgCyan
   ErrorTitle   = "Error: "
@@ -213,16 +213,38 @@ template toFullPath*(conf: ConfigRef; info: TLineInfo): string =
 template toFullPathConsiderDirty*(conf: ConfigRef; info: TLineInfo): string =
   string toFullPathConsiderDirty(conf, info.fileIndex)
 
+type FilenameOption* = enum
+  foAbs # absolute path, eg: /pathto/bar/foo.nim
+  foRelProject # relative to project path, eg: ../foo.nim
+  foMagicSauce # magic sauce, shortest of (foAbs, foRelProject)
+  foName # lastPathPart, eg: foo.nim
+  foShort # foName without extension, eg: foo
+  foStacktrace # if optExcessiveStackTrace: foAbs else: foName
+
+proc toFilenameOption*(conf: ConfigRef, fileIdx: FileIndex, opt: FilenameOption): string =
+  case opt
+  of foAbs: result = toFullPath(conf, fileIdx)
+  of foRelProject: result = toProjPath(conf, fileIdx)
+  of foMagicSauce:
+    let
+      absPath = toFullPath(conf, fileIdx)
+      relPath = toProjPath(conf, fileIdx)
+    result = if (optListFullPaths in conf.globalOptions) or
+                (relPath.len > absPath.len) or
+                (relPath.count("..") > 2):
+               absPath
+             else:
+               relPath
+  of foName: result = toProjPath(conf, fileIdx).lastPathPart
+  of foShort: result = toFilename(conf, fileIdx)
+  of foStacktrace:
+    if optExcessiveStackTrace in conf.globalOptions:
+      result = toFilenameOption(conf, fileIdx, foAbs)
+    else:
+      result = toFilenameOption(conf, fileIdx, foName)
+
 proc toMsgFilename*(conf: ConfigRef; info: FileIndex): string =
-  let
-    absPath = toFullPath(conf, info)
-    relPath = toProjPath(conf, info)
-  result = if (optListFullPaths in conf.globalOptions) or
-              (relPath.len > absPath.len) or
-              (relPath.count("..") > 2):
-             absPath
-           else:
-             relPath
+  toFilenameOption(conf, info, foMagicSauce)
 
 template toMsgFilename*(conf: ConfigRef; info: TLineInfo): string =
   toMsgFilename(conf, info.fileIndex)
@@ -234,9 +256,7 @@ proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
-  # consider calling `helpers.lineInfoToString` instead
-  result = toMsgFilename(conf, info) & "(" & $info.line & ", " &
-    $(info.col + ColOffset) & ")"
+  result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
 
 proc `$`*(conf: ConfigRef; info: TLineInfo): string = toFileLineCol(conf, info)
 
@@ -298,6 +318,9 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
   result.add(bindSym"stderr")
   for arg in children(args[0][1]):
     result.add(arg)
+  when false:
+    # not needed because styledWriteLine already ends with resetAttributes
+    result = newStmtList(result, newCall(bindSym"resetAttributes", bindSym"stderr"))
 
 template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
@@ -318,10 +341,6 @@ template styledMsgWriteln*(args: varargs[typed]) =
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
         flushFile(stderr)
-
-proc coordToStr(coord: int): string =
-  if coord == -1: result = "???"
-  else: result = $coord
 
 proc msgKindToString*(kind: TMsgKind): string =
   # later versions may provide translated error messages
@@ -386,12 +405,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
           instantiationFrom
         else:
           instantiationOfFrom.format(context.detail)
-        styledMsgWriteln(styleBright,
-                         PosFormat % [toMsgFilename(conf, context.info),
-                                      coordToStr(context.info.line.int),
-                                      coordToStr(context.info.col+ColOffset)],
-                         resetStyle,
-                         message)
+        styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
     info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
@@ -441,10 +455,6 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
   rawMessage(conf, msg, [arg])
 
-proc resetAttributes*(conf: ConfigRef) =
-  if {optUseColors, optStdout} * conf.globalOptions == {optUseColors}:
-    terminal.resetAttributes(stderr)
-
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
 
@@ -474,10 +484,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of warnMin..warnMax: WarningTitle
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
-  result = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                        coordToStr(info.col+ColOffset)] &
-           title &
-           getMessageStr(msg, arg)
+  conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling) =
@@ -512,8 +519,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  let x = PosFormat % [toMsgFilename(conf, info), coordToStr(info.line.int),
-                       coordToStr(info.col+ColOffset)]
+  let x = conf.toFileLineCol(info) & " "
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:

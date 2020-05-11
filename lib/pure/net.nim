@@ -180,11 +180,16 @@ proc isDisconnectionError*(flags: set[SocketFlag],
   ## if flags contains ``SafeDisconn``.
   when useWinVersion:
     SocketFlag.SafeDisconn in flags and
-      lastError.int32 in {WSAECONNRESET, WSAECONNABORTED, WSAENETRESET,
-                          WSAEDISCON, ERROR_NETNAME_DELETED}
+      (lastError.int32 == WSAECONNRESET or
+       lastError.int32 == WSAECONNABORTED or
+       lastError.int32 == WSAENETRESET or
+       lastError.int32 == WSAEDISCON or
+       lastError.int32 == ERROR_NETNAME_DELETED)
   else:
     SocketFlag.SafeDisconn in flags and
-      lastError.int32 in {ECONNRESET, EPIPE, ENETRESET}
+      (lastError.int32 == ECONNRESET or
+       lastError.int32 == EPIPE or
+       lastError.int32 == ENETRESET)
 
 proc toOSFlags*(socketFlags: set[SocketFlag]): cint =
   ## Converts the flags into the underlying OS representation.
@@ -1425,21 +1430,33 @@ proc recvFrom*(socket: Socket, data: var string, length: int,
   ## so when ``socket`` is buffered the non-buffered implementation will be
   ## used. Therefore if ``socket`` contains something in its buffer this
   ## function will make no effort to return it.
+  template adaptRecvFromToDomain(domain: Domain) =
+    var addrLen = sizeof(sockAddress).SockLen
+    result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
+                      cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
+    
+    if result != -1:
+      data.setLen(result)
+      address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
+      when domain == AF_INET6:
+        port = ntohs(sockAddress.sin6_port).Port
+      else:
+        port = ntohs(sockAddress.sin_port).Port
+    else:
+      raiseOSError(osLastError())
 
   assert(socket.protocol != IPPROTO_TCP, "Cannot `recvFrom` on a TCP socket")
   # TODO: Buffered sockets
   data.setLen(length)
-  var sockAddress: Sockaddr_in
-  var addrLen = sizeof(sockAddress).SockLen
-  result = recvfrom(socket.fd, cstring(data), length.cint, flags.cint,
-                    cast[ptr SockAddr](addr(sockAddress)), addr(addrLen))
-
-  if result != -1:
-    data.setLen(result)
-    address = getAddrString(cast[ptr SockAddr](addr(sockAddress)))
-    port = ntohs(sockAddress.sin_port).Port
+  case socket.domain
+  of AF_INET6:
+    var sockAddress: Sockaddr_in6
+    adaptRecvFromToDomain(AF_INET6)
+  of AF_INET:
+    var sockAddress: Sockaddr_in
+    adaptRecvFromToDomain(AF_INET)
   else:
-    raiseOSError(osLastError())
+    raise newException(ValueError, "Unknown socket address family")
 
 proc skip*(socket: Socket, size: int, timeout = -1) =
   ## Skips ``size`` amount of bytes.

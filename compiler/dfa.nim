@@ -45,16 +45,22 @@ type
   ControlFlowGraph* = seq[Instr]
 
   TPosition = distinct int
+
   TBlock = object
-    label: PSym
-    fixups: seq[TPosition]
+    joins: seq[Instr]
+    forks: seq[TPosition]
+    case isTryBlock: bool
+    of false:
+      label: PSym
+      breakFixups: seq[(TPosition, seq[PNode])] #Contains the gotos for the breaks along with their pending finales
+    of true:
+      finale: PNode
+      raiseFixups: seq[TPosition] #Contains the gotos for the raises
 
   Con = object
     code: ControlFlowGraph
     inCall, inTryStmt: int
     blocks: seq[TBlock]
-    tryStmtFixups: seq[TPosition]
-    forks: seq[TPosition]
     owner: PSym
 
 proc debugInfo(info: TLineInfo): string =
@@ -96,7 +102,7 @@ proc echoCfg*(c: ControlFlowGraph; start=0; last = -1) {.deprecated.} =
 proc forkI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
   c.code.add Instr(n: n, kind: fork, dest: 0)
-  c.forks.add result
+  c.blocks[^1].forks.add result
 
 proc gotoI(c: var Con; n: PNode): TPosition =
   result = TPosition(c.code.len)
@@ -271,22 +277,33 @@ proc patch(c: var Con, p: TPosition) =
   doAssert(low(int) div 2 + 1 < diff and diff < high(int) div 2)
   c.code[p].dest = diff
 
+proc gen(c: var Con; n: PNode) # {.noSideEffect.}
+
 proc popBlock(c: var Con; oldLen: int) =
-  for f in c.blocks[oldLen].fixups:
-    c.patch(f)
+  var exits: seq[TPosition]
+  exits.add c.gotoI(newNode(nkEmpty))
+  for f in c.blocks[oldLen].breakFixups:
+    c.patch(f[0])
+    for finale in f[1]:
+      c.gen(finale)
+    exits.add c.gotoI(newNode(nkEmpty))
+  for e in exits:
+    c.patch e
+  for j in c.blocks[oldLen].joins:
+    var patchedJ = j
+    patchedJ.dest -= c.code.len
+    c.code.add patchedJ
   c.blocks.setLen(oldLen)
 
 template withBlock(labl: PSym; body: untyped) {.dirty.} =
   var oldLen {.gensym.} = c.blocks.len
-  c.blocks.add TBlock(label: labl, fixups: @[])
+  c.blocks.add TBlock(isTryBlock: false, label: labl)
   body
   popBlock(c, oldLen)
 
 proc isTrue(n: PNode): bool =
   n.kind == nkSym and n.sym.kind == skEnumField and n.sym.position != 0 or
     n.kind == nkIntLit and n.intVal != 0
-
-proc gen(c: var Con; n: PNode) # {.noSideEffect.}
 
 when true:
   proc genWhile(c: var Con; n: PNode) =
@@ -299,12 +316,13 @@ when true:
 
     Becomes:
 
-    if cond:
-      body
+    block:
       if cond:
         body
         if cond:
           body
+          if cond:
+            body
 
     We still need to ensure 'break' resolves properly, so an AST to AST
     translation is impossible.
@@ -330,22 +348,22 @@ when true:
     if isTrue(n[0]):
       # 'while true' is an idiom in Nim and so we produce
       # better code for it:
-      for i in 0..2:
-        withBlock(nil):
+      withBlock(nil):
+        for i in 0..2:
           c.gen(n[1])
     else:
-      let oldForksLen = c.forks.len
-      var endings: array[3, TPosition]
-      for i in 0..2:
-        withBlock(nil):
+      withBlock(nil):
+        let oldForksLen = c.blocks[^1].forks.len
+        var endings: array[3, TPosition]
+        for i in 0..2:
           c.gen(n[0])
           endings[i] = c.forkI(n)
           c.gen(n[1])
-      for i in countdown(endings.high, 0):
-        let endPos = endings[i]
-        c.patch(endPos)
-        c.joinI(c.forks.pop(), n)
-      doAssert(c.forks.len == oldForksLen)
+        for i in countdown(endings.high, 0):
+          let endPos = endings[i]
+          c.patch(endPos)
+          c.joinI(c.blocks[^1].forks.pop(), n)
+        doAssert(c.blocks[^1].forks.len == oldForksLen)
 
 else:
 
@@ -356,7 +374,7 @@ else:
     #   body
     #   jmp lab1
     # lab2:
-    let oldForksLen = c.forks.len
+    let oldForksLen = c.blocks[^1].forks.len
     let lab1 = c.genLabel
     withBlock(nil):
       if isTrue(n[0]):
@@ -368,35 +386,15 @@ else:
         c.gen(n[1])
         c.jmpBack(n, lab1)
         c.patch(lab2)
-    setLen(c.forks, oldForksLen)
-
-proc genBlock(c: var Con; n: PNode) =
-  withBlock(n[0].sym):
-    c.gen(n[1])
-
-proc genJoins(c: var Con; n: PNode) =
-  for i in countdown(c.forks.high, 0): joinI(c, c.forks[i], n)
-
-proc genBreak(c: var Con; n: PNode) =
-  genJoins(c, n)
-  let lab1 = c.gotoI(n)
-  if n[0].kind == nkSym:
-    #echo cast[int](n[0].sym)
-    for i in countdown(c.blocks.len-1, 0):
-      if c.blocks[i].label == n[0].sym:
-        c.blocks[i].fixups.add lab1
-        return
-    #globalError(n.info, "VM problem: cannot find 'break' target")
-  else:
-    c.blocks[c.blocks.high].fixups.add lab1
+    setLen(c.blocks[^1].forks, oldForksLen)
 
 template forkT(n, body) =
-  let oldLen = c.forks.len
+  let oldLen = c.blocks[^1].forks.len
   let lab1 = c.forkI(n)
   body
   c.patch(lab1)
   c.joinI(lab1, n)
-  setLen(c.forks, oldLen)
+  setLen(c.blocks[^1].forks, oldLen)
 
 proc genIf(c: var Con, n: PNode) =
   #[
@@ -435,7 +433,7 @@ proc genIf(c: var Con, n: PNode) =
     join F1
 
   ]#
-  let oldLen = c.forks.len
+  let oldLen = c.blocks[^1].forks.len
   var endings: seq[TPosition] = @[]
   for i in 0..<n.len:
     var it = n[i]
@@ -448,8 +446,8 @@ proc genIf(c: var Con, n: PNode) =
   for i in countdown(endings.high, 0):
     let endPos = endings[i]
     c.patch(endPos)
-    c.joinI(c.forks.pop(), n)
-  doAssert(c.forks.len == oldLen)
+    c.joinI(c.blocks[^1].forks.pop(), n)
+  doAssert(c.blocks[^1].forks.len == oldLen)
 
 proc genAndOr(c: var Con; n: PNode) =
   #   asgn dest, a
@@ -476,7 +474,7 @@ proc genCase(c: var Con; n: PNode) =
     abstractVarRange-{tyTypeDesc}).kind notin {tyFloat..tyFloat128, tyString}
 
   var endings: seq[TPosition] = @[]
-  let oldLen = c.forks.len
+  let oldLen = c.blocks[^1].forks.len
   c.gen(n[0])
   for i in 1..<n.len:
     let it = n[i]
@@ -493,27 +491,64 @@ proc genCase(c: var Con; n: PNode) =
   for i in countdown(endings.high, 0):
     let endPos = endings[i]
     c.patch(endPos)
-    c.joinI(c.forks.pop(), n)
-  doAssert(c.forks.len == oldLen)
+    c.joinI(c.blocks[^1].forks.pop(), n)
+  doAssert(c.blocks[^1].forks.len == oldLen)
+
+proc genBlock(c: var Con; n: PNode) =
+  withBlock(n[0].sym):
+    c.gen(n[1])
+
+proc genBreakOrRaiseAux(c: var Con, i: int, n: PNode) =
+  let lab1 = c.gotoI(n)
+  if c.blocks[i].isTryBlock:
+    c.blocks[i].raiseFixups.add lab1
+  else:
+    var trailingFinales: seq[PNode]
+    if c.inTryStmt > 0: #Ok, we are in a try, lets see which (if any) try's we break out from:
+      for b in countdown(c.blocks.high, i):
+        if c.blocks[b].isTryBlock:
+          trailingFinales.add c.blocks[b].finale
+
+    c.blocks[i].breakFixups.add (lab1, trailingFinales)
+
+  for b in countdown(c.blocks.high, i):
+    for f in countdown(c.blocks[b].forks.high, 0):
+      c.blocks[i].joins.add Instr(n: n, kind: join, dest: c.blocks[b].forks[f].int)
+
+proc genBreak(c: var Con; n: PNode) =
+  if n[0].kind == nkSym:
+    #echo cast[int](n[0].sym)
+    for i in countdown(c.blocks.high, 0):
+      if not c.blocks[i].isTryBlock and c.blocks[i].label == n[0].sym:
+        genBreakOrRaiseAux(c, i, n)
+        return
+    #globalError(n.info, "VM problem: cannot find 'break' target")
+  else:
+    for i in countdown(c.blocks.high, 0):
+      if not c.blocks[i].isTryBlock:
+        genBreakOrRaiseAux(c, i, n)
+        return
 
 proc genTry(c: var Con; n: PNode) =
-  let oldLen = c.forks.len
+  let oldForksLen = c.blocks[^1].forks.len
   var endings: seq[TPosition] = @[]
-  inc c.inTryStmt
-  let oldFixups = c.tryStmtFixups.len
 
+  let oldLen = c.blocks.len
+  c.blocks.add TBlock(isTryBlock: true, finale: if n[^1].kind == nkFinally: n[^1] else: newNode(nkEmpty))
+
+  inc c.inTryStmt
   #let elsePos = c.forkI(n)
   c.gen(n[0])
   dec c.inTryStmt
-  for i in oldFixups..c.tryStmtFixups.high:
-    let f = c.tryStmtFixups[i]
-    c.patch(f)
-    # we also need to produce join instructions
-    # for the 'fork' that might precede the goto instruction
-    if f.int-1 >= 0 and c.code[f.int-1].kind == fork:
-      c.joinI(TPosition(f.int-1), n)
 
-  setLen(c.tryStmtFixups, oldFixups)
+  for f in c.blocks[oldLen].raiseFixups:
+    c.patch(f)
+  for j in c.blocks[oldLen].joins:
+    var patchedJ = j
+    patchedJ.dest -= c.code.len
+    c.code.add patchedJ
+
+  c.blocks.setLen oldLen
 
   #c.patch(elsePos)
   for i in 1..<n.len:
@@ -526,25 +561,28 @@ proc genTry(c: var Con; n: PNode) =
   for i in countdown(endings.high, 0):
     let endPos = endings[i]
     c.patch(endPos)
-    c.joinI(c.forks.pop(), n)
+    c.joinI(c.blocks[^1].forks.pop(), n)
 
   # join the 'elsePos' forkI instruction:
-  #c.joinI(c.forks.pop(), n)
+  #c.joinI(c.blocks[^1].forks.pop(), n)
 
   let fin = lastSon(n)
   if fin.kind == nkFinally:
     c.gen(fin[0])
-  doAssert(c.forks.len == oldLen)
+  doAssert(c.blocks[^1].forks.len == oldForksLen)
 
 template genNoReturn(c: var Con; n: PNode) =
   # leave the graph
   c.code.add Instr(n: n, kind: goto, dest: high(int) - c.code.len)
 
 proc genRaise(c: var Con; n: PNode) =
-  genJoins(c, n)
   gen(c, n[0])
   if c.inTryStmt > 0:
-    c.tryStmtFixups.add c.gotoI(n)
+    for i in countdown(c.blocks.high, 0):
+      if c.blocks[i].isTryBlock:
+        genBreakOrRaiseAux(c, i, n)
+        return
+    assert false #Unreachable
   else:
     genNoReturn(c, n)
 
@@ -553,12 +591,11 @@ proc genImplicitReturn(c: var Con) =
     gen(c, c.owner.ast[resultPos])
 
 proc genReturn(c: var Con; n: PNode) =
-  genJoins(c, n)
   if n[0].kind != nkEmpty:
     gen(c, n[0])
   else:
     genImplicitReturn(c)
-  genNoReturn(c, n)
+  genBreakOrRaiseAux(c, 0, n)
 
 const
   InterestingSyms = {skVar, skResult, skLet, skParam, skForVar, skTemp}
@@ -598,7 +635,8 @@ proc genUse(c: var Con; orig: PNode) =
 proc aliases*(obj, field: PNode): bool =
   var n = field
   var obj = obj
-  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv}:
+  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv,
+                     nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
     obj = obj[0]
   while true:
     if sameTrees(obj, n): return true
@@ -708,9 +746,12 @@ proc genCall(c: var Con; n: PNode) =
     # lab1:
     # join F1
     let endGoto = c.forkI(n)
-    c.tryStmtFixups.add c.gotoI(n)
+    for i in countdown(c.blocks.high, 0):
+      if c.blocks[i].isTryBlock:
+        genBreakOrRaiseAux(c, i, n)
+        break
     c.patch(endGoto)
-    c.joinI(c.forks.pop(), n)
+    c.joinI(c.blocks[^1].forks.pop(), n)
   dec c.inCall
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
@@ -784,6 +825,7 @@ proc gen(c: var Con; n: PNode) =
 proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   ## constructs a control flow graph for ``body``.
   var c = Con(code: @[], blocks: @[], owner: s)
-  gen(c, body)
-  genImplicitReturn(c)
+  withBlock(s):
+    gen(c, body)
+    genImplicitReturn(c)
   shallowCopy(result, c.code)

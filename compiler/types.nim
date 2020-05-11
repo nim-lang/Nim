@@ -1672,6 +1672,17 @@ proc isException*(t: PType): bool =
     t = skipTypes(t[0], abstractPtrs)
   return false
 
+proc isDefectException*(t: PType): bool =
+  var t = t.skipTypes(abstractPtrs)
+  while t.kind == tyObject:
+    if t.sym != nil and t.sym.owner != nil and
+        sfSystemModule in t.sym.owner.flags and
+        t.sym.name.s == "Defect":
+      return true
+    if t[0] == nil: break
+    t = skipTypes(t[0], abstractPtrs)
+  return false
+
 proc isSinkTypeForParam*(t: PType): bool =
   # a parameter like 'seq[owned T]' must not be used only once, but its
   # elements must, so we detect this case here:

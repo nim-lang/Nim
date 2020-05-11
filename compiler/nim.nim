@@ -24,7 +24,8 @@ import
   idents, lineinfos, cmdlinehelper,
   pathutils
 
-include nodejs
+from browsers import openDefaultBrowser
+from nodejs import findNodeJs
 
 when hasTinyCBackend:
   import tccgen
@@ -52,7 +53,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
         config.commandLine.add ':'
         config.commandLine.add p.val.quoteShell
 
-      if p.key == " ":
+      if p.key == "": # `-` was passed to indicate main project is stdin
         p.key = "-"
         if processArgument(pass, p, argsCount, config): break
       else:
@@ -86,11 +87,23 @@ proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
     if conf.cmd == cmdRun:
       tccgen.run(conf, conf.arguments)
   if optRun in conf.globalOptions:
-    var ex = quoteShell conf.absOutFile
-    if conf.cmd == cmdCompileToJS:
-      execExternalProgram(conf, findNodeJs() & " " & ex & ' ' & conf.arguments)
+    let output = conf.absOutFile
+    case conf.cmd
+    of cmdCompileToBackend:
+      var cmdPrefix = ""
+      case conf.backend
+      of backendC, backendCpp, backendObjc: discard
+      of backendJs: cmdPrefix = findNodeJs() & " "
+      else: doAssert false, $conf.backend
+      execExternalProgram(conf, cmdPrefix & output.quoteShell & ' ' & conf.arguments)
+    of cmdDoc, cmdRst2html:
+      if conf.arguments.len > 0:
+        # reserved for future use
+        rawMessage(conf, errGenerated, "'$1 cannot handle arguments" % [$conf.cmd])
+      openDefaultBrowser($output)
     else:
-      execExternalProgram(conf, ex & ' ' & conf.arguments)
+      # support as needed
+      rawMessage(conf, errGenerated, "'$1 cannot handle --run" % [$conf.cmd])
 
 when declared(GC_setMaxPause):
   GC_setMaxPause 2_000

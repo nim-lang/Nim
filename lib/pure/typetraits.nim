@@ -124,7 +124,7 @@ macro genericParamsImpl(T: typedesc): untyped =
           result.add ret
         break
       else:
-        error "wrong kind: " & $impl.kind
+        error "wrong kind: " & $impl.kind, impl
 
 since (1, 1):
   template genericParams*(T: typedesc): untyped =
