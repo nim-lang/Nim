@@ -65,9 +65,9 @@ template dbg(body) =
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
-proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
+proc isLastRead(location: PNode; c: var Con; pc, until: int): int =
   var pc = pc
-  while pc < c.g.len:
+  while pc < c.g.len and pc < until:
     case c.g[pc].kind
     of def:
       if defInstrTargets(c.g[pc], location):
@@ -80,18 +80,21 @@ proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
         return -1
       inc pc
     of goto:
+      if c.g[pc].dest < 0: assert false, "Wthf"
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
-      let variantA = isLastRead(location, c, pc+1, pc)
-      if variantA < 0: return -1
-      var variantB = isLastRead(location, c, pc + c.g[pc].dest, pc)
-      if variantB < 0: return -1
+      var variantA = pc + 1
+      var variantB = pc + c.g[pc].dest
+      while variantA != variantB:
+        if min(variantA, variantB) < 0: return -1
+        if max(variantA, variantB) > c.g.len:
+          break
+        if variantA < variantB:
+          variantA = isLastRead(location, c, variantA, variantB)
+        else:
+          variantB = isLastRead(location, c, variantB, variantA)
       pc = min(variantA, variantB)
-    of InstrKind.join:
-      let dest = pc + c.g[pc].dest
-      if dest == comesFrom: return pc + 1
-      inc pc
   return pc
 
 proc isLastRead(n: PNode; c: var Con): bool =
@@ -114,12 +117,12 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
 
-  result = isLastRead(n, c, instr+1, -1) >= 0
+  result = isLastRead(n, c, instr+1, int.high) >= 0
   dbg: echo "ugh ", c.otherRead.isNil, " ", result
 
-proc isFirstWrite(location: PNode; c: var Con; pc, comesFrom: int; instr: int): int =
+proc isFirstWrite(location: PNode; c: var Con; pc, until: int): int =
   var pc = pc
-  while pc < instr:
+  while pc < until:
     case c.g[pc].kind
     of def:
       if defInstrTargets(c.g[pc], location):
@@ -134,15 +137,17 @@ proc isFirstWrite(location: PNode; c: var Con; pc, comesFrom: int; instr: int): 
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must not contain a def/use of our location:
-      let variantA = isFirstWrite(location, c, pc+1, pc, instr)
-      if variantA < 0: return -1
-      var variantB = isFirstWrite(location, c, pc + c.g[pc].dest, pc, instr + c.g[pc].dest)
-      if variantB < 0: return -1
+      var variantA = pc + 1
+      var variantB = pc + c.g[pc].dest
+      while variantA != variantB:
+        if min(variantA, variantB) < 0: return -1
+        if max(variantA, variantB) > until:
+          break
+        if variantA < variantB:
+          variantA = isFirstWrite(location, c, variantA, min(variantB, until))
+        else:
+          variantB = isFirstWrite(location, c, variantB, min(variantA, until))
       pc = min(variantA, variantB)
-    of InstrKind.join:
-      let dest = pc + c.g[pc].dest
-      if dest == comesFrom: return pc + 1
-      inc pc
   return pc
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
@@ -161,10 +166,10 @@ proc isFirstWrite(n: PNode; c: var Con): bool =
   # ensure that we don't find another 'def/use X' instruction.
   if instr == 0: return true
 
-  result = isFirstWrite(n, c, 0, -1, instr) >= 0
+  result = isFirstWrite(n, c, 0, instr) >= 0
 
 proc initialized(code: ControlFlowGraph; pc: int,
-                 init, uninit: var IntSet; comesFrom: int): int =
+                 init, uninit: var IntSet; until: int): int =
   ## Computes the set of definitely initialized variables across all code paths
   ## as an IntSet of IDs.
   var pc = pc
@@ -173,20 +178,22 @@ proc initialized(code: ControlFlowGraph; pc: int,
     of goto:
       pc = pc + code[pc].dest
     of fork:
-      let target = pc + code[pc].dest
       var initA = initIntSet()
       var initB = initIntSet()
-      let pcA = initialized(code, pc+1, initA, uninit, pc)
-      discard initialized(code, target, initB, uninit, pc)
+      var variantA = pc + 1
+      var variantB = pc + code[pc].dest
+      while variantA != variantB:
+        if max(variantA, variantB) > until:
+          break
+        if variantA < variantB:
+          variantA = initialized(code, variantA, initA, uninit, min(variantB, until))
+        else:
+          variantB = initialized(code, variantB, initB, uninit, min(variantA, until))
+      pc = min(variantA, variantB)
       # we add vars if they are in both branches:
       for v in initA:
         if v in initB:
           init.incl v
-      pc = pcA+1
-    of InstrKind.join:
-      let target = pc + code[pc].dest
-      if comesFrom == target: return pc
-      inc pc
     of use:
       let v = code[pc].n.sym
       if v.kind != skParam and v.id notin init:
@@ -1040,7 +1047,7 @@ proc computeUninit(c: var Con) =
     c.uninitComputed = true
     c.uninit = initIntSet()
     var init = initIntSet()
-    discard initialized(c.g, pc = 0, init, c.uninit, comesFrom = -1)
+    discard initialized(c.g, pc = 0, init, c.uninit, int.high)
 
 proc injectDefaultCalls(n: PNode, c: var Con) =
   case n.kind
