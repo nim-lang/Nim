@@ -50,7 +50,7 @@ proc initCond*(cond: var Cond) {.inline.} =
   initSysCond(cond)
 
 proc deinitCond*(cond: var Cond) {.inline.} =
-  ## Frees the resources associated with the lock.
+  ## Frees the resources associated with the condition variable.
   deinitSysCond(cond)
 
 proc wait*(cond: var Cond, lock: var Lock) {.inline.} =
