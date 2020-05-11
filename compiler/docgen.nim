@@ -216,7 +216,9 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
-      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+      let c = # rstgen.nim sets the cmd to "nim c -r $1" for ":test:" code blocks.
+              if cmd.startsWith("nim c "): os.getAppFilename() & " " & $conf.backend & cmd.substr(5)
+              elif cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
               else: cmd
       let c2 = c % quoteShell(outp)
       rawMessage(conf, hintExecuting, c2)
