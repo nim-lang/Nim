@@ -448,7 +448,8 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   case c.kind
   of attachedAsgn, attachedDeepCopy:
-    doAssert t.assignment != nil
+    if t.assignment == nil:
+      return # protect from recursion
     body.add newHookCall(c.g, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
