@@ -382,8 +382,9 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc isClosureEnv(n: PNode): bool =
-  n.kind == nkDotExpr and n[0].kind == nkHiddenDeref and n[0][0].typ.kind == tyRef
+proc isCapturedVar(n: PNode): bool =
+  n.kind == nkDotExpr and n[0].kind == nkHiddenDeref and
+      n[0][0].kind == nkSym and n[0][0].sym.name.s[0] == ':'
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
@@ -395,7 +396,7 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
-    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
+    if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
         "if possible, rearrange your program's control flow to prevent it") % $n)
