@@ -440,7 +440,11 @@ when defined(Windows) and not defined(useNimRtl):
       handle: Handle
       atTheEnd: bool
 
-  proc hsClose(s: Stream) = discard # nothing to do here
+  proc hsClose(s: Stream) =
+    # xxx here + elsewhere: check instead of discard; ignoring errors leads to
+    # hard to track bugs
+    discard FileHandleStream(s).handle.closeHandle
+
   proc hsAtEnd(s: Stream): bool = return FileHandleStream(s).atTheEnd
 
   proc hsReadData(s: Stream, buffer: pointer, bufLen: int): int =

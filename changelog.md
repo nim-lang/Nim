@@ -29,6 +29,9 @@
 
 
 
+- Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
+  hangs if a process had both reads from stdin and writes (eg to stdout).
+
 ## Language changes
 
 

@@ -93,3 +93,29 @@ else:
       removeFile(exePath)
     except OSError:
       discard
+
+  import std/streams
+  block: # test for startProcess (more tests needed)
+    # bugfix: windows stdin.close was a noop and led to blocking reads
+    proc startProcessTest(command: string, options: set[ProcessOption] = {
+                    poStdErrToStdOut, poUsePath}, input = ""): tuple[
+                    output: TaintedString,
+                    exitCode: int] {.tags:
+                    [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+      var p = startProcess(command, options = options + {poEvalCommand})
+      var outp = outputStream(p)
+      if input.len > 0: inputStream(p).write(input)
+      close inputStream(p)
+      result = (TaintedString"", -1)
+      var line = newStringOfCap(120).TaintedString
+      while true:
+        if outp.readLine(line):
+          result[0].string.add(line.string)
+          result[0].string.add("\n")
+        else:
+          result[1] = peekExitCode(p)
+          if result[1] != -1: break
+      close(p)
+
+    var result = startProcessTest("nim r --hints:off -", options = {}, input = "echo 3*4")
+    doAssert result == ("12\n", 0)
