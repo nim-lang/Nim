@@ -764,11 +764,11 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyFromExpr, tyProxy, tyBuiltInTypeClass, tyUserTypeClass,
      tyUserTypeClassInst, tyCompositeTypeClass, tyAnd, tyOr, tyNot, tyAnything,
      tyGenericParam, tyGenericBody, tyNil, tyUntyped, tyTyped,
-     tyTypeDesc, tyGenericInvocation, tyForward:
+     tyTypeDesc, tyGenericInvocation, tyForward, tyStatic:
     #internalError(c.g.config, c.info, "assignment requested for type: " & typeToString(t))
     discard
   of tyOrdinal, tyRange, tyInferred,
-     tyGenericInst, tyStatic, tyAlias, tySink:
+     tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
@@ -780,11 +780,11 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
   typ.attachedOps[kind] = baseType.attachedOps[kind]
   result = typ.attachedOps[kind]
 
-proc symPrototype(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
+proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
 
   let procname = getIdent(g.cache, AttachedOpToStr[kind])
-  result = newSym(skProc, procname, typ.owner, info)
+  result = newSym(skProc, procname, owner, info)
   let dest = newSym(skParam, getIdent(g.cache, "dest"), result, info)
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"), result, info)
   dest.typ = makeVarType(typ.owner, typ)
@@ -793,7 +793,7 @@ proc symPrototype(g: ModuleGraph; typ: PType; kind: TTypeAttachedOp;
   else:
     src.typ = typ
 
-  result.typ = newProcType(info, typ.owner)
+  result.typ = newProcType(info, owner)
   result.typ.addParam dest
   if kind notin {attachedDestructor, attachedDispose}:
     result.typ.addParam src
@@ -813,7 +813,7 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
   if typ.kind == tyDistinct:
     return produceSymDistinctType(g, c, typ, kind, info)
 
-  result = symPrototype(g, typ, kind, info)
+  result = symPrototype(g, typ, typ.owner, kind, info)
   var a = TLiftCtx(info: info, g: g, kind: kind, c: c, asgnForType:typ)
   a.fn = result
 
@@ -847,8 +847,8 @@ proc produceSym(g: ModuleGraph; c: PContext; typ: PType; kind: TTypeAttachedOp;
 
 
 proc produceDestructorForDiscriminator*(g: ModuleGraph; typ: PType; field: PSym, info: TLineInfo): PSym =
-  assert(typ.kind == tyObject)
-  result = symPrototype(g, field.typ, attachedDestructor, info)
+  assert(typ.skipTypes({tyAlias, tyGenericInst}).kind == tyObject)
+  result = symPrototype(g, field.typ, typ.owner, attachedDestructor, info)
   var a = TLiftCtx(info: info, g: g, kind: attachedDestructor, asgnForType: typ)
   a.fn = result
   a.asgnForType = typ
@@ -916,7 +916,7 @@ proc createTypeBoundOps(g: ModuleGraph; c: PContext; orig: PType; info: TLineInf
   incl orig.flags, tfCheckedForDestructor
 
   let skipped = orig.skipTypes({tyGenericInst, tyAlias, tySink})
-  if isEmptyContainer(skipped): return
+  if isEmptyContainer(skipped) or skipped.kind == tyStatic: return
 
   let h = sighashes.hashType(skipped, {CoType, CoConsiderOwned, CoDistinct})
   var canon = g.canonTypes.getOrDefault(h)

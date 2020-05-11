@@ -171,7 +171,7 @@ proc main1() =
     doAssert( U64A.rotateRightBits(64) == U64A)
 
   block:
-    # mask operations
+    # basic mask operations (mutating)
     var v: uint8
     v.setMask(0b1100_0000)
     v.setMask(0b0000_1100)
@@ -182,6 +182,75 @@ proc main1() =
     doAssert(v == 0b0001_0001)
     v.clearMask(0b0001_0001)
     doAssert(v == 0b0000_0000)
+    v.setMask(0b0001_1110)
+    doAssert(v == 0b0001_1110)
+    v.mask(0b0101_0100)
+    doAssert(v == 0b0001_0100)
+  block:
+    # basic mask operations (non-mutating)
+    let v = 0b1100_0000'u8
+    doAssert(v.masked(0b0000_1100) == 0b0000_0000)
+    doAssert(v.masked(0b1000_1100) == 0b1000_0000)
+    doAssert(v.setMasked(0b0000_1100) == 0b1100_1100)
+    doAssert(v.setMasked(0b1000_1110) == 0b1100_1110)
+    doAssert(v.flipMasked(0b1100_1000) == 0b0000_1000)
+    doAssert(v.flipMasked(0b0000_1100) == 0b1100_1100)
+    let t = 0b1100_0110'u8
+    doAssert(t.clearMasked(0b0100_1100) == 0b1000_0010)
+    doAssert(t.clearMasked(0b1100_0000) == 0b0000_0110)
+  block:
+    # basic bitslice opeartions
+    let a = 0b1111_1011'u8
+    doAssert(a.bitsliced(0 .. 3) == 0b1011)
+    doAssert(a.bitsliced(2 .. 3) == 0b10)
+    doAssert(a.bitsliced(4 .. 7) == 0b1111)
+
+    # same thing, but with exclusive ranges.
+    doAssert(a.bitsliced(0 ..< 4) == 0b1011)
+    doAssert(a.bitsliced(2 ..< 4) == 0b10)
+    doAssert(a.bitsliced(4 ..< 8) == 0b1111)
+
+    # mutating
+    var b = 0b1111_1011'u8
+    b.bitslice(1 .. 3)
+    doAssert(b == 0b101)
+
+    # loop test:
+    let c = 0b1111_1111'u8
+    for i in 0 .. 7:
+      doAssert(c.bitsliced(i .. 7) == c shr i)
+  block:
+    # bitslice versions of mask operations (mutating)
+    var a = 0b1100_1100'u8
+    let b = toMask[uint8](2 .. 3)
+    a.mask(b)
+    doAssert(a == 0b0000_1100)
+    a.setMask(4 .. 7)
+    doAssert(a == 0b1111_1100)
+    a.flipMask(1 .. 3)
+    doAssert(a == 0b1111_0010)
+    a.flipMask(2 .. 4)
+    doAssert(a == 0b1110_1110)
+    a.clearMask(2 .. 4)
+    doAssert(a == 0b1110_0010)
+    a.mask(0 .. 3)
+    doAssert(a == 0b0000_0010)
+
+    # composition of mask from slices:
+    let c = bitor(toMask[uint8](2 .. 3), toMask[uint8](5 .. 7))
+    doAssert(c == 0b1110_1100'u8)
+  block:
+    # bitslice versions of mask operations (non-mutating)
+    let a = 0b1100_1100'u8
+    doAssert(a.masked(toMask[uint8](2 .. 3)) == 0b0000_1100)
+    doAssert(a.masked(2 .. 3) == 0b0000_1100)
+    doAssert(a.setMasked(0 .. 3) == 0b1100_1111)
+    doAssert(a.setMasked(3 .. 4) == 0b1101_1100)
+    doAssert(a.flipMasked(0 .. 3) == 0b1100_0011)
+    doAssert(a.flipMasked(0 .. 7) == 0b0011_0011)
+    doAssert(a.flipMasked(2 .. 3) == 0b1100_0000)
+    doAssert(a.clearMasked(2 .. 3) == 0b1100_0000)
+    doAssert(a.clearMasked(3 .. 6) == 0b1000_0100)
   block:
     # single bit operations
     var v: uint8

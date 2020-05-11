@@ -692,6 +692,11 @@ proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ## Returns the length of a compatible string. This is sometimes
   ## an O(n) operation.
+  ## 
+  ## **Note:** On the JS backend this currently counts UTF-16 code points
+  ## instead of bytes at runtime (not at compile time). For now, if you
+  ## need the byte length of the UTF-8 encoding, convert to string with
+  ## `$` first then call `len`.
   ##
   ## .. code-block:: Nim
   ##   var str: cstring = "Hello world!"
@@ -1193,7 +1198,7 @@ when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
 when defined(nimscript) or not defined(nimSeqsV2):
-  proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
+  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
     ## For containers that have an order, `add` means *append*. New generic
@@ -2063,7 +2068,7 @@ const
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 1
+  NimPatch* {.intdefine.}: int = 3
     ## is the patch number of Nim's version.
 
 import system/dollars
@@ -2137,16 +2142,12 @@ when notJSnotNims:
 
 when not defined(js):
   proc cmp(x, y: string): int =
-    when defined(nimscript):
+    when nimvm:
       if x < y: result = -1
       elif x > y: result = 1
       else: result = 0
     else:
-      when nimvm:
-        if x < y: result = -1
-        elif x > y: result = 1
-        else: result = 0
-      else:
+      when not defined(nimscript): # avoid semantic checking
         let minlen = min(x.len, y.len)
         result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
         if result == 0:

@@ -78,7 +78,8 @@ proc loadConfigsAndRunMainCommand*(self: NimProg, cache: IdentCache; conf: Confi
   # XXX This is hacky. We need to find a better way.
   case conf.command
   of "cpp", "compiletocpp":
-    conf.cmd = cmdCompileToCpp
+    conf.backend = backendCpp
+    conf.cmd = cmdCompileToBackend
   else:
     discard
 

@@ -617,17 +617,28 @@ suite "ttimes":
   test "default DateTime": # https://github.com/nim-lang/RFCs/issues/211
     var num = 0
     for ai in Month: num.inc
-    doAssert num == 12
+    check num == 12
 
     var a: DateTime
-    doAssert a == DateTime.default
-    doAssert ($a).len > 0 # no crash
-    doAssert a.month.Month.ord == 0
-    doAssert a.month.Month == cast[Month](0)
-    doAssert a.monthday == 0
+    check a == DateTime.default
+    check not a.isInitialized
+    check $a == "Uninitialized DateTime"
 
-    doAssertRaises(AssertionDefect): discard getDayOfWeek(a.monthday, a.month, a.year)
-    doAssertRaises(AssertionDefect): discard a.toTime
+    expect(AssertionDefect): discard getDayOfWeek(a.monthday, a.month, a.year)
+    expect(AssertionDefect): discard a.toTime
+    expect(AssertionDefect): discard a.utc()
+    expect(AssertionDefect): discard a.local()
+    expect(AssertionDefect): discard a.inZone(utc())
+    expect(AssertionDefect): discard a + initDuration(seconds = 1)
+    expect(AssertionDefect): discard a + initTimeInterval(seconds = 1)
+    expect(AssertionDefect): discard a.isLeapDay
+    expect(AssertionDefect): discard a < a
+    expect(AssertionDefect): discard a <= a
+    expect(AssertionDefect): discard getDateStr(a)
+    expect(AssertionDefect): discard getClockStr(a)
+    expect(AssertionDefect): discard a.format "yyyy"
+    expect(AssertionDefect): discard a.format initTimeFormat("yyyy")
+    expect(AssertionDefect): discard between(a, a)
 
   test "inX procs":
     doAssert initDuration(seconds = 1).inSeconds == 1

@@ -106,8 +106,12 @@ proc repr*[T: tuple|object](x: T): string =
 
 proc repr*[T](x: ref T | ptr T): string =
   if isNil(x): return "nil"
-  result = $typeof(x)
-  reprObject(result, x[])
+  when T is object:
+    result = $typeof(x)
+    reprObject(result, x[])
+  else:
+    result = when typeof(x) is ref: "ref " else: "ptr "
+    result.add repr(x[])
 
 proc collectionToRepr[T](x: T, prefix, separator, suffix: string): string =
   result = prefix

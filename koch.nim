@@ -289,11 +289,13 @@ proc findStartNim: string =
 proc thVersion(i: int): string =
   result = ("compiler" / "nim" & $i).exe
 
+template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
+
 proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
-  let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
+  let useCpp = doUseCpp()
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
@@ -524,8 +526,10 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  if getEnv("NIM_TEST_PACKAGES", "false") == "true":
-    execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
+  if getEnv("NIM_TEST_PACKAGES", "0") == "1":
+    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
+  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
+    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
   else:
     buildTools()
 
@@ -542,8 +546,9 @@ proc runCI(cmd: string) =
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "./bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
-        execFold("build with -d:nimHasLibFFI", "nim c -d:release -d:nimHasLibFFI -o:$1 compiler/nim.nim" % [nimFFI])
-        execFold("test with -d:nimHasLibFFI", "$1 c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
+        let backend = if doUseCpp(): "cpp" else: "c"
+        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+        execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/trunner.nim" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")

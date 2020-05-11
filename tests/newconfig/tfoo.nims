@@ -7,7 +7,26 @@ exec "gcc -v"
 --path: "../friends"
 
 warning("uninit", off)
-hint("processing", off)
+
+block: # supported syntaxes for hint,warning,switch
+  --hint:processing
+  hint("processing", on)
+  hint("processing", off)
+  switch("hint", "processing")
+  switch("hint", "processing:on")
+  switch("hint", "processing:off")
+  switch("hint", "[processing]")
+  switch("hint", "[processing]:on")
+  switch("hint", "[processing]:off") # leave it off
+
+  --warning:UnusedImport
+  switch("warning", "UnusedImport:off")
+  switch("warning", "UnusedImport:on")
+  switch("warning", "[UnusedImport]:off")
+  switch("warning", "[UnusedImport]:on")
+  switch("warning", "[UnusedImport]")
+  switch("warning", "UnusedImport") # leave it on
+
 #--verbosity:2
 patchFile("stdlib", "math", "mymath")
 

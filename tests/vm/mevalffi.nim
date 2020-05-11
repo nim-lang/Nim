@@ -8,9 +8,9 @@ proc c_exp(a: float64): float64 {.importc: "exp", header: "<math.h>".}
 proc c_printf(frmt: cstring): cint {.importc: "printf", header: "<stdio.h>", varargs, discardable.}
 
 const snprintfName = when defined(windows): "_snprintf" else: "snprintf"
-proc c_snprintf*(buffer: pointer, buf_size: uint, format: cstring): cint {.importc: snprintfName, header: "<stdio.h>", varargs .}
+proc c_snprintf*(str: cstring, size: csize_t, format: cstring): cint {.importc: snprintfName, header: "<stdio.h>", varargs .}
 
-proc c_malloc(size:uint):pointer {.importc:"malloc", header: "<stdlib.h>".}
+proc c_malloc(size: csize_t): pointer {.importc:"malloc", header: "<stdlib.h>".}
 proc c_free(p: pointer) {.importc:"free", header: "<stdlib.h>".}
 
 proc fun() =
@@ -35,12 +35,15 @@ proc fun() =
 
   block: # c_snprintf, c_malloc, c_free
     let n: uint = 50
-    var buffer2: pointer = c_malloc(n)
+    var buffer2 = cstring(cast[ptr char](c_malloc(n)))
+
     var s: cstring = "foobar"
     var age: cint = 25
-    discard c_snprintf(buffer2, n, "s1:%s s2:%s age:%d pi:%g", s, s, age, 3.14)
-    c_printf("ret={%s}\n", buffer2)
-    c_free(buffer2) # not sure it has an effect
+    let num = c_snprintf(buffer2, n, "s1:%s s2:%s age:%d pi:%g", s, s, age, 3.14)
+    let numExp = 34 
+    doAssert num == numExp
+    c_printf("ret=[%s]\n", buffer2)
+    c_free(buffer2)
 
   block: # c_printf bug
     var a = 123
@@ -58,10 +61,11 @@ static:
   fun()
 fun()
 
-import system/ansi_c
-block:
-  proc fun2()=
-    c_fprintf(cstderr, "hello world stderr\n")
-    write(stderr, "hi stderr\n")
-  static: fun2()
-  fun2()
+when not defined nimEvalffiStderrWorkaround:
+  import system/ansi_c
+  block:
+    proc fun2()=
+      c_fprintf(cstderr, "hello world stderr\n")
+      write(stderr, "hi stderr\n")
+    static: fun2()
+    fun2()

@@ -3,6 +3,22 @@ discard """
   output: '''5
 (w: 5)
 (w: -5)
+c.text = hello
+c.text = hello
+p.text = hello
+p.toks = @["hello"]
+c.text = hello
+c[].text = hello
+pA.text = hello
+pA.toks = @["hello"]
+c.text = hello
+c.text = hello
+pD.text = hello
+pD.toks = @["hello"]
+c.text = hello
+c.text = hello
+pOD.text = hello
+pOD.toks = @["hello"]
 '''
 """
 
@@ -97,3 +113,89 @@ proc procStat() =
     let x = cols[0]
     let (nm, rest) = (cols[0], cols[1])
 procStat()
+
+
+# bug #14269
+
+import sugar, strutils
+
+type
+  Cursor = object
+    text: string
+  Parsed = object
+    text: string
+    toks: seq[string]
+
+proc tokenize(c: var Cursor): seq[string] =
+  dump c.text
+  return c.text.splitWhitespace()
+
+proc parse(): Parsed =
+  var c = Cursor(text: "hello")
+  dump c.text
+  return Parsed(text: c.text, toks: c.tokenize) # note: c.tokenized uses c.text
+
+let p = parse()
+dump p.text
+dump p.toks
+
+
+proc tokenizeA(c: ptr Cursor): seq[string] =
+  dump c[].text
+  return c[].text.splitWhitespace()
+
+proc parseA(): Parsed =
+  var c = Cursor(text: "hello")
+  dump c.text
+  return Parsed(text: c.text, toks: c.addr.tokenizeA) # note: c.tokenized uses c.text
+
+let pA = parseA()
+dump pA.text
+dump pA.toks
+
+
+proc tokenizeD(c: Cursor): seq[string] =
+  dump c.text
+  return c.text.splitWhitespace()
+
+proc parseD(): Parsed =
+  var c = cast[ptr Cursor](alloc0(sizeof(Cursor)))
+  c[] = Cursor(text: "hello")
+  dump c.text
+  return Parsed(text: c.text, toks: c[].tokenizeD) # note: c.tokenized uses c.text
+
+let pD = parseD()
+dump pD.text
+dump pD.toks
+
+# Bug would only pop up with owned refs
+proc tokenizeOD(c: Cursor): seq[string] =
+  dump c.text
+  return c.text.splitWhitespace()
+
+proc parseOD(): Parsed =
+  var c = new Cursor
+  c[] = Cursor(text: "hello")
+  dump c.text
+  return Parsed(text: c.text, toks: c[].tokenizeOD) # note: c.tokenized uses c.text
+
+let pOD = parseOD()
+dump pOD.text
+dump pOD.toks
+
+when false:
+  # Bug would only pop up with owned refs and implicit derefs, but since they don't work together..
+  {.experimental: "implicitDeref".}
+  proc tokenizeOHD(c: Cursor): seq[string] =
+    dump c.text
+    return c.text.splitWhitespace()
+
+  proc parseOHD(): Parsed =
+    var c = new Cursor
+    c[] = Cursor(text: "hello")
+    dump c.text
+    return Parsed(text: c.text, toks: c.tokenizeOHD) # note: c.tokenized uses c.text
+
+  let pOHD = parseOHD()
+  dump pOHD.text
+  dump pOHD.toks

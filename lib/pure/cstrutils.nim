@@ -69,7 +69,7 @@ proc cmpIgnoreStyle*(a, b: cstring): int {.noSideEffect,
   ## | > 0 if a > b
   ## 
   ## Not supported for JS backend, use `strutils.cmpIgnoreStyle
-  ## <https://nim-lang.org/docs/strutils.html#cmpIgnoreStyle%2Cstring%2Cstring>`_ instead.
+  ## <strutils.html#cmpIgnoreStyle%2Cstring%2Cstring>`_ instead.
   var i = 0
   var j = 0
   while true:
@@ -91,7 +91,7 @@ proc cmpIgnoreCase*(a, b: cstring): int {.noSideEffect,
   ## | > 0 if a > b
   ## 
   ## Not supported for JS backend, use `strutils.cmpIgnoreCase
-  ## <https://nim-lang.org/docs/strutils.html#cmpIgnoreCase%2Cstring%2Cstring>`_ instead.
+  ## <strutils.html#cmpIgnoreCase%2Cstring%2Cstring>`_ instead.
   var i = 0
   while true:
     var aa = toLowerAscii(a[i])
