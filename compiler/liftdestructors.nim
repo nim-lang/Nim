@@ -448,7 +448,8 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
   case c.kind
   of attachedAsgn, attachedDeepCopy:
-    doAssert t.assignment != nil
+    if t.assignment == nil:
+      return # protect from recursion
     body.add newHookCall(c.g, t.assignment, x, y)
   of attachedSink:
     # we always inline the move for better performance:
@@ -465,8 +466,12 @@ proc useSeqOrStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
     doAssert t.destructor != nil
     body.add destructorCall(c, t.destructor, x)
   of attachedTrace:
+    if t.attachedOps[c.kind] == nil:
+      return # protect from recursion
     body.add newHookCall(c.g, t.attachedOps[c.kind], x, y)
   of attachedDispose:
+    if t.attachedOps[c.kind] == nil:
+      return # protect from recursion
     body.add newHookCall(c.g, t.attachedOps[c.kind], x, nil)
 
 proc fillStrOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
