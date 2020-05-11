@@ -3128,6 +3128,7 @@ If expression
 -------------
 
 An `if expression` is almost like an if statement, but it is an expression.
+This feature is similar to `ternary operators` in other languages.
 Example:
 
 .. code-block:: nim
