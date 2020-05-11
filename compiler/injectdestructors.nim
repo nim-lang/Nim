@@ -1057,7 +1057,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
 proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
   result = newNodeI(nkStmtList, destroys.info)
   for i in 0..<destroys.len:
-    if destroys[i][1][0].sym.kind == skTemp:
+    if destroys[i][1][0].sym.kind in {skTemp, skForVar}:
       result.add destroys[i]
       destroys[i] = c.emptyNode
 
