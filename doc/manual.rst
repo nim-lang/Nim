@@ -4338,6 +4338,28 @@ Rules 1-2 ensure the following works:
 So in many cases a callback does not cause the compiler to be overly
 conservative in its effect analysis.
 
+Exceptions inheriting from ``system.Defect`` are not tracked with
+the ``.raises: []`` exception tracking mechanism. This is more consistent with the
+built-in operations. The following code is valid::
+
+.. code-block:: nim
+
+  proc mydiv(a, b): int {.raises: [].} =
+    a div b # can raise an DivByZeroDefect
+
+And so is::
+
+.. code-block:: nim
+
+  proc mydiv(a, b): int {.raises: [].} =
+    if b == 0: raise newException(DivByZeroDefect, "division by zero")
+    else: result = a div b
+
+
+The reason for this is that ``DivByZeroDefect`` inherits from ``Defect`` and
+with ``--panics:on`` Defects become unrecoverable errors.
+(Since version 1.4 of the language.)
+
 
 Tag tracking
 ------------
