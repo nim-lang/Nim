@@ -45,8 +45,7 @@ build_nim_csources(){
 [ -f $nim_csources ] || echo_run build_nim_csources $@
 
 # Note: if fails, may need to `cd csources && git pull`
-# --lib:lib needed for bootstrap on some platforms, see https://github.com/nim-lang/Nim/pull/14291
-echo_run bin/nim c --skipUserCfg --skipParentCfg --lib:lib koch
+echo_run bin/nim c --skipUserCfg --skipParentCfg koch
 
 echo_run ./koch boot -d:release --skipUserCfg --skipParentCfg
 echo_run ./koch tools --skipUserCfg --skipParentCfg # Compile Nimble and other tools.
