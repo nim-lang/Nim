@@ -216,7 +216,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
-      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+      let c = if cmd.startsWith("nim <backend> "): os.getAppFilename() & " " & $conf.backend & cmd.substr("nim <backend>".len)
+              elif cmd.startsWith("nim "): os.getAppFilename() & cmd.substr("nim".len)
               else: cmd
       let c2 = c % quoteShell(outp)
       rawMessage(conf, hintExecuting, c2)
