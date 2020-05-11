@@ -31,6 +31,8 @@ type
   ULONG* = int32
   PULONG* = ptr int
   WINBOOL* = int32
+    ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
+    # xxx this should be distinct int32, distinct would make code less error prone
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
