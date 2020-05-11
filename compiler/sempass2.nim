@@ -316,8 +316,9 @@ proc addEffect(a: PEffects, e, comesFrom: PNode) =
     # to safe space and time.
     if sameType(a.graph.excType(aa[i]), a.graph.excType(e)): return
 
-  if optNimV1Emulation in a.config.globalOptions or not isDefectException(e.typ):
-    throws(a.exc, e, comesFrom)
+  if e.typ != nil:
+    if optNimV1Emulation in a.config.globalOptions or not isDefectException(e.typ):
+      throws(a.exc, e, comesFrom)
 
 proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
