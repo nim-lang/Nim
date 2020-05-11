@@ -1002,10 +1002,11 @@ when defined(windows) or defined(nimdoc):
   proc addProcess*(pid: int, cb: Callback) =
     ## Registers callback ``cb`` to be called when process with process ID
     ## ``pid`` exited.
+    const NULL = Handle(0)
     let p = getGlobalDispatcher()
     let procFlags = SYNCHRONIZE
     var hProcess = openProcess(procFlags, 0, pid.DWORD)
-    if hProcess == INVALID_HANDLE_VALUE:
+    if hProcess == NULL:
       raiseOSError(osLastError())
 
     var pcd = cast[PostCallbackDataPtr](allocShared0(sizeof(PostCallbackData)))
