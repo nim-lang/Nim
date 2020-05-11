@@ -382,7 +382,8 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
+proc isClosureEnv(n: PNode): bool =
+  n.kind == nkDotExpr and n[0].kind == nkHiddenDeref and n[0][0].typ.kind == tyRef
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
