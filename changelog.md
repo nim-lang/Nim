@@ -89,6 +89,9 @@
 - Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
   hangs if a process had both reads from stdin and writes (eg to stdout).
 
+- The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
+
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 

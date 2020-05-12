@@ -493,6 +493,14 @@ proc reraiseException() {.compilerRtl.} =
     else:
       raiseExceptionAux(currException)
 
+proc threadTrouble() =
+  # also forward declared, it is 'raises: []' hence the try-except.
+  try:
+    if currException != nil: reportUnhandledError(currException)
+  except:
+    discard
+  quit 1
+
 proc writeStackTrace() =
   when hasSomeStackTrace:
     var s = ""

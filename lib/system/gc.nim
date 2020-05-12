@@ -843,9 +843,10 @@ when not defined(useNimRtl):
   proc GC_disable() =
     inc(gch.recGcLock)
   proc GC_enable() =
-    if gch.recGcLock <= 0:
-      raise newException(AssertionDefect,
-          "API usage error: GC_enable called but GC is already enabled")
+    when defined(nimDoesntTrackDefects):
+      if gch.recGcLock <= 0:
+        raise newException(AssertionDefect,
+            "API usage error: GC_enable called but GC is already enabled")
     dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) =
