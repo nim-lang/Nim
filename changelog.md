@@ -122,11 +122,11 @@
       deallocShared(x.val)
       x.val = nil
   ```
-
 - getImpl() on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
-
+- ``let`` statements can now be used without a value if declared with
+  ``importc``/``importcpp``/``importjs``/``importobjc``.
 - The keyword `from` is now usable as an operator.
 - Exceptions inheriting from `system.Defect` are no longer tracked with
   the `.raises: []` exception tracking mechanism. This is more consistent with the
@@ -151,7 +151,6 @@ proc mydiv(a, b): int {.raises: [].} =
 
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
-
 
 ## Compiler changes
 

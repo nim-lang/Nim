@@ -2679,6 +2679,11 @@ nor can their address be taken. They cannot be assigned new values.
 
 For let variables the same pragmas are available as for ordinary variables.
 
+As ``let`` statements are immutable after creation they need to define a value
+when they are declared. The only exception to this is if the ``{.importc.}``
+pragma (or any of the other ``importX`` pragmas) is applied, in this case the
+value is expected to come from native code, typically a C/C++ ``const``.
+
 
 Tuple unpacking
 ---------------
@@ -7089,6 +7094,16 @@ spelled*:
 
 .. code-block::
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
+
+When ``importc`` is applied to a ``let`` statement it can omit its value which
+will then be expected to come from C. This can be used to import a C ``const``:
+
+.. code-block::
+  {.emit: "const int cconst = 42;".}
+
+  let cconst {.importc, nodecl.}: cint
+
+  assert cconst == 42
 
 Note that this pragma has been abused in the past to also work in the
 js backend for js objects and functions. : Other backends do provide
