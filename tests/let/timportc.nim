@@ -1,10 +1,16 @@
 discard """
-  exitcode: 0
-  output: "42"
+targets: "c cpp js"
 """
 
-{.emit: "const int TEST = 42;".}
+when defined(c) or defined(cpp):
+  {.emit:"""
+  const int TEST = 123;
+  """.}
+
+when defined(js):
+  {.emit:"""
+  const TEST = 123;
+  """.}
 
 let TEST {.importc, nodecl.}: cint
-
-echo TEST
+doAssert TEST == 123
