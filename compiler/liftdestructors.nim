@@ -62,9 +62,18 @@ proc newAsgnStmt(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
+proc genBuiltin(g: ModuleGraph; magic: TMagic; name: string; i: PNode): PNode =
+  result = newNodeI(nkCall, i.info)
+  result.add createMagic(g, name, magic).newSymNode
+  result.add i
+
 proc defaultOp(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   if c.kind in {attachedAsgn, attachedDeepCopy, attachedSink}:
     body.add newAsgnStmt(x, y)
+  elif c.kind == attachedDestructor and c.addMemReset:
+    let call = genBuiltin(c.g, mDefault, "default", x)
+    call.typ = t
+    body.add newAsgnStmt(x, call)
 
 proc genAddr(g: ModuleGraph; x: PNode): PNode =
   if x.kind == nkHiddenDeref:
@@ -73,12 +82,6 @@ proc genAddr(g: ModuleGraph; x: PNode): PNode =
   else:
     result = newNodeIT(nkHiddenAddr, x.info, makeVarType(x.typ.owner, x.typ))
     result.add x
-
-
-proc genBuiltin(g: ModuleGraph; magic: TMagic; name: string; i: PNode): PNode =
-  result = newNodeI(nkCall, i.info)
-  result.add createMagic(g, name, magic).newSymNode
-  result.add i
 
 proc genWhileLoop(c: var TLiftCtx; i, dest: PNode): PNode =
   result = newNodeI(nkWhileStmt, c.info, 2)

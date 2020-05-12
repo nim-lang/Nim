@@ -194,8 +194,6 @@ proc test_myobject =
 test_myobject()
 
 
-
-
 #------------------------------------------------
 # bug #14244
 
@@ -212,3 +210,16 @@ proc init(): RocksDBResult[string] =
   result.value = "ok"
 
 echo init()
+
+
+#------------------------------------------------
+# bug #14312
+
+type MyObj = object
+  case kind: bool
+    of false: x0: int # would work with a type like seq[int]; value would be reset
+    of true: x1: string
+
+var a = MyObj(kind: false, x0: 1234)
+a.kind = true
+doAssert(a.x1 == "")
