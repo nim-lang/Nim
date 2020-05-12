@@ -843,7 +843,7 @@ when not defined(useNimRtl):
   proc GC_disable() =
     inc(gch.recGcLock)
   proc GC_enable() =
-    when (NimMajor, NimMinor) >= (1, 3):
+    when defined(nimDoesntTrackDefects):
       if gch.recGcLock <= 0:
         raise newException(AssertionDefect,
             "API usage error: GC_enable called but GC is already enabled")
