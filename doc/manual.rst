@@ -565,7 +565,7 @@ following characters::
 defined here.)
 
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot of as``.
+``and or not xor shl shr div mod in notin is isnot of as from``.
 
 `.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
@@ -638,21 +638,21 @@ has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 
-================  ==================================================  ==================  ===============
-Precedence level    Operators                                         First character     Terminal symbol
-================  ==================================================  ==================  ===============
- 10 (highest)                                                         ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``               ``*  %  \  /``      OP9
-  8               ``+    -``                                          ``+  -  ~  |``      OP8
-  7               ``&``                                               ``&``               OP7
-  6               ``..``                                              ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of as``   ``=  <  >  !``      OP5
-  4               ``and``                                                                 OP4
-  3               ``or xor``                                                              OP3
-  2                                                                   ``@  :  ?``         OP2
-  1               *assignment operator* (like ``+=``, ``*=``)                             OP1
-  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                             OP0
-================  ==================================================  ==================  ===============
+================  =======================================================  ==================  ===============
+Precedence level    Operators                                              First character     Terminal symbol
+================  =======================================================  ==================  ===============
+ 10 (highest)                                                              ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``                    ``*  %  \  /``      OP9
+  8               ``+    -``                                               ``+  -  ~  |``      OP8
+  7               ``&``                                                    ``&``               OP7
+  6               ``..``                                                   ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of as from``   ``=  <  >  !``      OP5
+  4               ``and``                                                                      OP4
+  3               ``or xor``                                                                   OP3
+  2                                                                        ``@  :  ?``         OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                                  OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                                  OP0
+================  =======================================================  ==================  ===============
 
 
 Whether an operator is used a prefix operator is also affected by preceding
@@ -3133,6 +3133,7 @@ If expression
 -------------
 
 An `if expression` is almost like an if statement, but it is an expression.
+This feature is similar to `ternary operators` in other languages.
 Example:
 
 .. code-block:: nim
@@ -4342,6 +4343,28 @@ Rules 1-2 ensure the following works:
 
 So in many cases a callback does not cause the compiler to be overly
 conservative in its effect analysis.
+
+Exceptions inheriting from ``system.Defect`` are not tracked with
+the ``.raises: []`` exception tracking mechanism. This is more consistent with the
+built-in operations. The following code is valid::
+
+.. code-block:: nim
+
+  proc mydiv(a, b): int {.raises: [].} =
+    a div b # can raise an DivByZeroDefect
+
+And so is::
+
+.. code-block:: nim
+
+  proc mydiv(a, b): int {.raises: [].} =
+    if b == 0: raise newException(DivByZeroDefect, "division by zero")
+    else: result = a div b
+
+
+The reason for this is that ``DivByZeroDefect`` inherits from ``Defect`` and
+with ``--panics:on`` Defects become unrecoverable errors.
+(Since version 1.4 of the language.)
 
 
 Tag tracking

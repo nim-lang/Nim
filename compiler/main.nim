@@ -119,8 +119,7 @@ when not defined(leanCompiler):
     let conf = graph.config
     conf.exc = excCpp
 
-    if conf.outDir.isEmpty:
-      conf.outDir = conf.projectPath
+    setOutDir(conf)
     if conf.outFile.isEmpty:
       conf.outFile = RelativeFile(conf.projectName & ".js")
 
@@ -128,7 +127,6 @@ when not defined(leanCompiler):
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
     defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
-    defineSymbol(graph.config.symbols, "js")
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
@@ -190,25 +188,46 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
-  template handleC() =
-    conf.cmd = cmdCompileToC
-    if conf.exc == excNone: conf.exc = excSetjmp
-    defineSymbol(graph.config.symbols, "c")
-    commandCompileToC(graph)
+
+  ## Calling `setOutDir(conf)` unconditionally would fix regression
+  ## https://github.com/nim-lang/Nim/issues/6583#issuecomment-625711125
+  when false: setOutDir(conf)
+  if optUseNimcache in conf.globalOptions: setOutDir(conf)
+
+  template handleBackend(backend2: TBackend) =
+    conf.backend = backend2
+    conf.cmd = cmdCompileToBackend
+    defineSymbol(graph.config.symbols, $backend2)
+    case backend2
+    of backendC:
+      if conf.exc == excNone: conf.exc = excSetjmp
+      commandCompileToC(graph)
+    of backendCpp:
+      if conf.exc == excNone: conf.exc = excCpp
+      commandCompileToC(graph)
+    of backendObjc:
+      commandCompileToC(graph)
+    of backendJs:
+      when defined(leanCompiler):
+        globalError(conf, unknownLineInfo, "compiler wasn't built with JS code generator")
+      else:
+        if conf.hcrOn:
+          # XXX: At the moment, system.nim cannot be compiled in JS mode
+          # with "-d:useNimRtl". The HCR option has been processed earlier
+          # and it has added this define implictly, so we must undo that here.
+          # A better solution might be to fix system.nim
+          undefSymbol(conf.symbols, "useNimRtl")
+        commandCompileToJS(graph)
+    of backendInvalid: doAssert false
+
   case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc": handleC() # compile means compileToC currently
-  of "cpp", "compiletocpp":
-    conf.cmd = cmdCompileToCpp
-    if conf.exc == excNone: conf.exc = excCpp
-    defineSymbol(graph.config.symbols, "cpp")
-    commandCompileToC(graph)
-  of "objc", "compiletooc":
-    conf.cmd = cmdCompileToOC
-    defineSymbol(graph.config.symbols, "objc")
-    commandCompileToC(graph)
+  of "c", "cc", "compile", "compiletoc": handleBackend(backendC) # compile means compileToC currently
+  of "cpp", "compiletocpp": handleBackend(backendCpp)
+  of "objc", "compiletooc": handleBackend(backendObjc)
+  of "js", "compiletojs": handleBackend(backendJs)
   of "r": # different from `"run"`!
     conf.globalOptions.incl {optRun, optUseNimcache}
-    handleC()
+    handleBackend(conf.backend)
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:
@@ -216,18 +235,6 @@ proc mainCommand*(graph: ModuleGraph) =
       commandCompileToC(graph)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
-  of "js", "compiletojs":
-    when defined(leanCompiler):
-      quit "compiler wasn't built with JS code generator"
-    else:
-      conf.cmd = cmdCompileToJS
-      if conf.hcrOn:
-        # XXX: At the moment, system.nim cannot be compiled in JS mode
-        # with "-d:useNimRtl". The HCR option has been processed earlier
-        # and it has added this define implictly, so we must undo that here.
-        # A better solution might be to fix system.nim
-        undefSymbol(conf.symbols, "useNimRtl")
-      commandCompileToJS(graph)
   of "doc0":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"

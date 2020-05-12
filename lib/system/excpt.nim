@@ -406,7 +406,7 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   when hostOS != "any":
     reportUnhandledErrorAux(e)
   else:
-    discard()
+    discard ()
 
 proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
@@ -434,6 +434,11 @@ when gotoBasedExceptions:
       quit(1)
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
+  when defined(nimPanics):
+    if e of Defect:
+      reportUnhandledError(e)
+      quit(1)
+
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
@@ -487,6 +492,14 @@ proc reraiseException() {.compilerRtl.} =
       inc nimInErrorMode
     else:
       raiseExceptionAux(currException)
+
+proc threadTrouble() =
+  # also forward declared, it is 'raises: []' hence the try-except.
+  try:
+    if currException != nil: reportUnhandledError(currException)
+  except:
+    discard
+  quit 1
 
 proc writeStackTrace() =
   when hasSomeStackTrace:

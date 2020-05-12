@@ -27,8 +27,10 @@ when defined(amd64) and defined(windows) and defined(vcc):
 when defined(i386) and defined(windows) and defined(vcc):
   {.link: "icons/koch-i386-windows-vcc.res".}
 
-import
-  os, strutils, parseopt, osproc
+import std/[os, strutils, parseopt, osproc]
+  # Using `std/os` instead of `os` to fail early if config isn't set up properly.
+  # If this fails with: `Error: cannot open file: std/os`, see
+  # https://github.com/nim-lang/Nim/pull/14291 for explanation + how to fix.
 
 import tools / kochdocs
 import tools / deps
@@ -318,9 +320,13 @@ proc boot(args: string) =
       let ret = execCmdEx(nimStart & " --version")
       doAssert ret.exitCode == 0
       let version = ret.output.splitLines[0]
+      # remove these when csources get updated
+      template addLib() =
+        extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
       if version.startsWith "Nim Compiler Version 0.19.0":
         extraOption.add " -d:nimBoostrapCsources0_19_0"
-        # remove this when csources get updated
+        addLib()
+      elif version.startsWith "Nim Compiler Version 0.20.0": addLib()
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.

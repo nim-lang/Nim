@@ -46,11 +46,11 @@
   used must be castable to `ptr string`, any incompatible pointer type will not
   work. The `lexbase` and `streams` modules used to fail to compile on
   NimScript due to a bug, but this has been fixed.
-  
+
   The following modules now compile on both JS and NimScript: `parsecsv`,
   `parsecfg`, `parsesql`, `xmlparser`, `htmlparser` and `ropes`. Additionally
   supported for JS is `cstrutils.startsWith` and `cstrutils.endsWith`, for
-  NimScript: `json`, `parsejson`, `strtabs` and `unidecode`. 
+  NimScript: `json`, `parsejson`, `strtabs` and `unidecode`.
 
 - Added `streams.readStr` and `streams.peekStr` overloads to
   accept an existing string to modify, which avoids memory
@@ -68,7 +68,7 @@
 - `sugar.=>` and `sugar.->` changes: Previously `(x, y: int)` was transformed
   into `(x: auto, y: int)`, it now becomes `(x: int, y: int)` in consistency
   with regular proc definitions (although you cannot use semicolons).
-  
+
   Pragmas and using a name are now allowed on the lefthand side of `=>`. Here
   is an aggregate example of these changes:
   ```nim
@@ -86,8 +86,15 @@
   an uninitialized `DateTime`, the exceptions are `==` and `$` (which returns `"Uninitialized DateTime"`). The proc `times.isInitialized`
   has been added which can be used to check if a `DateTime` has been initialized.
 
+- Fix a bug where calling `close` on io streams in osproc.startProcess was a noop and led to
+  hangs if a process had both reads from stdin and writes (eg to stdout).
+
+- The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
+
+
 ## Language changes
-- In newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+- In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+
   ```nim
   type
     MyObj = object
@@ -115,13 +122,35 @@
       deallocShared(x.val)
       x.val = nil
   ```
-
 - getImpl() on enum type symbols now returns field syms instead of idents. This helps
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
-
 - ``let`` statements can now be used without a value if declared with
   ``importc``/``importcpp``/``importjs``/``importobjc``.
+- The keyword `from` is now usable as an operator.
+- Exceptions inheriting from `system.Defect` are no longer tracked with
+  the `.raises: []` exception tracking mechanism. This is more consistent with the
+  built-in operations. The following always used to compile (and still does):
+
+```nim
+
+proc mydiv(a, b): int {.raises: [].} =
+  a div b # can raise an DivByZeroDefect
+
+```
+
+  Now also this compiles:
+
+```nim
+
+proc mydiv(a, b): int {.raises: [].} =
+  if b == 0: raise newException(DivByZeroDefect, "division by zero")
+  else: result = a div b
+
+```
+
+  The reason for this is that `DivByZeroDefect` inherits from `Defect` and
+  with `--panics:on` `Defects` become unrecoverable errors.
 
 ## Compiler changes
 
@@ -138,6 +167,10 @@
   nim r compiler/nim.nim --fullhelp # no recompilation
   nim r --nimcache:/tmp main # binary saved to /tmp/main
   ```
+- `--hint:processing` is now supported and means `--hint:processing:on`
+  (likewise with other hints and warnings), which is consistent with all other bool flags.
+  (since 1.3.3).
+- `nim doc -r main` and `nim rst2html -r main` now call openDefaultBrowser
 
 ## Tool changes
 

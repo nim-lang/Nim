@@ -6,7 +6,9 @@ Success
 Hello
 1
 2
-0'''
+0
+List
+'''
   cmd: '''nim c --gc:arc $file'''
 """
 
@@ -145,3 +147,25 @@ proc bug13105 =
 bug13105()
 
 echo getOccupiedMem() - startMem
+
+
+#------------------------------------------------------------------------------
+# issue #14294
+
+import tables
+
+type
+  TagKind = enum
+    List = 0, Compound
+
+  Tag = object
+    case kind: TagKind
+    of List:
+      values: seq[Tag]
+    of Compound: 
+      compound: Table[string, Tag]
+
+var a = Tag(kind: List)
+var b = a
+echo a.kind
+var c = a

@@ -231,7 +231,7 @@ proc createNativeSocket*(domain: Domain = AF_INET,
   ##
   ## `inheritable` decides if the resulting SocketHandle can be inherited
   ## by child processes.
-  createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol))
+  createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol), inheritable)
 
 proc newNativeSocket*(domain: Domain = AF_INET,
                       sockType: SockType = SOCK_STREAM,

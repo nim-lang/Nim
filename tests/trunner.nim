@@ -6,7 +6,7 @@ discard """
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
 
-import std/[strformat,os,osproc]
+import std/[strformat,os,osproc,unittest]
 
 const nim = getCurrentCompilerExe()
 
@@ -15,8 +15,13 @@ const mode =
   elif defined(cpp): "cpp"
   else: static: doAssert false
 
+const testsDir = currentSourcePath().parentDir
+const buildDir = testsDir.parentDir / "build"
+const nimcache = buildDir / "nimcacheTrunner"
+  # `querySetting(nimcacheDir)` would also be possible, but we thus
+  # avoid stomping on other parallel tests
+
 proc runCmd(file, options = ""): auto =
-  const testsDir = currentSourcePath().parentDir
   let fileabs = testsDir / file.unixToNativePath
   doAssert fileabs.existsFile, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
@@ -55,11 +60,11 @@ ret=[s1:foobar s2:foobar age:25 pi:3.14]
 
 else: # don't run twice the same test
   import std/[strutils]
-  template check(msg) = doAssert msg in output, output
+  template check2(msg) = doAssert msg in output, output
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
-    check "sizeof(bool) == 2"
+    check2 "sizeof(bool) == 2"
     doAssert exitCode != 0
 
   block: # ABI checks
@@ -72,11 +77,11 @@ else: # don't run twice the same test
       # on platforms that support _StaticAssert natively, errors will show full context, eg:
       # error: static_assert failed due to requirement 'sizeof(unsigned char) == 8'
       # "backend & Nim disagree on size for: BadImportcType{int64} [declared in mabi_check.nim(1, 6)]"
-      check "sizeof(unsigned char) == 8"
-      check "sizeof(struct Foo2) == 1"
-      check "sizeof(Foo5) == 16"
-      check "sizeof(Foo5) == 3"
-      check "sizeof(struct Foo6) == "
+      check2 "sizeof(unsigned char) == 8"
+      check2 "sizeof(struct Foo2) == 1"
+      check2 "sizeof(Foo5) == 16"
+      check2 "sizeof(Foo5) == 3"
+      check2 "sizeof(struct Foo6) == "
       doAssert exitCode != 0
 
   import streams
@@ -103,3 +108,23 @@ else: # don't run twice the same test
         var (output, exitCode) = execCmdEx(cmd)
         output.stripLineEnd
         doAssert output == expected
+
+  block: # nim doc --backend:$backend --doccmd:$cmd
+    # test for https://github.com/nim-lang/Nim/issues/13129
+    # test for https://github.com/nim-lang/Nim/issues/13891
+    let file = testsDir / "nimdoc/m13129.nim"
+    for backend in fmt"{mode} js".split:
+      let cmd = fmt"{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 --doccmd:'-d:m13129Foo2 --hints:off' --usenimcache --hints:off {file}"
+      check execCmdEx(cmd) == (&"ok1:{backend}\nok2: backend: {backend}\n", 0)
+    # checks that --usenimcache works with `nim doc`
+    check fileExists(nimcache / "m13129.html")
+
+    block: # mak sure --backend works with `nim r`
+      let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
+      check execCmdEx(cmd) == ("ok3\n", 0)
+
+  block: # some importc tests
+    # issue #14314
+    let file = testsDir / "misc/mimportc.nim"
+    let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
+    check execCmdEx(cmd) == ("witness\n", 0)

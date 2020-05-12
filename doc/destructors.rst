@@ -469,9 +469,50 @@ for expressions of type ``lent T`` or of type ``var T``.
     echo t[0] # accessor does not copy the element!
 
 
+The .cursor annotation
+======================
+
+Under the ``--gc:arc|orc`` modes Nim's `ref` type is implemented via the same runtime
+"hooks" and thus via reference counting. This means that cyclic structures cannot be freed
+immediately (``--gc:orc`` ships with a cycle collector). With the ``.cursor`` annotation
+one can break up cycles declaratively:
+
+.. code-block:: nim
+
+  type
+    Node = ref object
+      left: Node # owning ref
+      right {.cursor.}: Node # non-owning ref
+
+But please notice that this is not C++'s weak_ptr, it means the right field is not
+involved in the reference counting, it is a raw pointer without runtime checks.
+
+Automatic reference counting also has the disadvantage that it introduces overhead
+when iterating over linked structures. The ``.cursor`` annotation can also be used
+to avoid this overhead:
+
+.. code-block:: nim
+
+  var it {.cursor.} = listRoot
+  while it != nil:
+    use(it)
+    it = it.next
+
+
+In fact, ``.cursor`` more generally prevents object construction/destruction pairs
+and so can also be useful in other contexts. The alternative solution would be to
+use raw pointers (``ptr``) instead which is more cumbersome and also more dangerous
+for Nim's evolution: Later on the compiler can try to prove ``.cursor`` annotations
+to be safe, but for ``ptr`` the compiler has to remain silent about possible
+problems.
+
 
 Owned refs
 ==========
+
+**Note**: The ``owned`` type constructor is only available with
+the ``--newruntime`` compiler switch and is experimental.
+
 
 Let ``W`` be an ``owned ref`` type. Conceptually its hooks look like:
 
@@ -568,14 +609,14 @@ used to specialize the object traversal in order to avoid deep recursions:
 
   type Node = ref object
     x, y: int32
-    left, right: owned Node
+    left, right: Node
 
   type Tree = object
-    root: owned Node
+    root: Node
 
   proc `=destroy`(t: var Tree) {.nodestroy.} =
     # use an explicit stack so that we do not get stack overflows:
-    var s: seq[owned Node] = @[t.root]
+    var s: seq[Node] = @[t.root]
     while s.len > 0:
       let x = s.pop
       if x.left != nil: s.add(x.left)

@@ -22,6 +22,7 @@ import
 const
   exportSection = skField
   htmldocsDir = RelativeDir"htmldocs"
+  docCmdSkip = "skip"
 
 type
   TSections = array[TSymKind, Rope]
@@ -196,6 +197,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      if conf.docCmd == docCmdSkip: return
       inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
@@ -214,7 +216,8 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
-      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
+      let c = if cmd.startsWith("nim <backend> "): os.getAppFilename() & " " & $conf.backend & cmd.substr("nim <backend>".len)
+              elif cmd.startsWith("nim "): os.getAppFilename() & cmd.substr("nim".len)
               else: cmd
       let c2 = c % quoteShell(outp)
       rawMessage(conf, hintExecuting, c2)
@@ -444,21 +447,26 @@ proc testExample(d: PDoc; ex: PNode) =
   d.examples.add "import r\"" & outp.string & "\"\n"
 
 proc runAllExamples(d: PDoc) =
-  if d.examples.len == 0: return
+  let docCmd = d.conf.docCmd
+  let backend = d.conf.backend
+  # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
+  # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
+  # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
+  if d.examples.len == 0 or docCmd == docCmdSkip: return
   let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples.nim"))
   writeFile(outp, d.examples)
-  let backend = if isDefined(d.conf, "js"): "js"
-                elif isDefined(d.conf, "cpp"): "cpp"
-                elif isDefined(d.conf, "objc"): "objc"
-                else: "c"
-  if os.execShellCmd(os.getAppFilename() & " " & backend &
-                    " --warning[UnusedImport]:off" &
-                    " --path:" & quoteShell(d.conf.projectPath) &
-                    " --nimcache:" & quoteShell(outputDir) &
-                    " -r " & quoteShell(outp)) != 0:
-    quit "[Examples] failed: see " & outp.string
+  let cmd = "$nim $backend -r --warning:UnusedImport:off --path:$path --nimcache:$nimcache $docCmd $file" % [
+    "nim", os.getAppFilename(),
+    "backend", $d.conf.backend,
+    "path", quoteShell(d.conf.projectPath),
+    "nimcache", quoteShell(outputDir),
+    "file", quoteShell(outp),
+    "docCmd", docCmd,
+  ]
+  if os.execShellCmd(cmd) != 0:
+    quit "[runnableExamples] failed: generated file: '$1' cmd: $2" % [outp.string, cmd]
   else:
     # keep generated source file `outp` to allow inspection.
     rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
