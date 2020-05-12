@@ -105,7 +105,7 @@ template afterThreadRuns() =
     threadDestructionHandlers[i]()
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-  proc deallocOsPages() {.rtl.}
+  proc deallocOsPages() {.rtl, raises: [].}
 
 proc threadTrouble() {.raises: [].}
   ## defined in system/excpt.nim
@@ -153,14 +153,13 @@ proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
-    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall, gcsafe.} =
-      threadProcWrapDispatch[TArg]
+    var p {.volatile.}: pointer
     # init the GC for refc/markandsweep
     nimGC_setStackBottom(addr(p))
     initGC()
     when declared(threadType):
       threadType = ThreadType.NimThread
-    p(thrd)
+    threadProcWrapDispatch[TArg](thrd)
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)

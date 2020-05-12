@@ -54,7 +54,7 @@ when hasAlloc and not defined(js) and not usesDestructors:
   proc GC_unref*(x: string) {.magic: "GCunref", benign.}
     ## See the documentation of `GC_ref <#GC_ref,string>`_.
 
-  proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign.}
+  proc nimGC_setStackBottom*(theStackBottom: pointer) {.compilerRtl, noinline, benign, raises: [].}
     ## Expands operating GC stack range to `theStackBottom`. Does nothing
       ## if current stack bottom is already lower than `theStackBottom`.
 
