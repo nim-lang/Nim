@@ -57,8 +57,15 @@ proc createServer(port: Port) {.async.} =
   while true:
     asyncCheck readMessages(await accept(server))
 
-asyncCheck createServer(Port(10335))
-asyncCheck launchSwarm(Port(10335))
+# refs https://github.com/nim-lang/Nim/issues/14320
+# tests/arc/tasyncawait.nim uses 10335 and probably explains
+# `Address already in use` errro so we use a different port. This is
+# just a workaround while waiting for a cleaner fix that would wait
+# (with deadline) for a port to become available.
+# Note that this port is already used in other tests.
+let port = 10335 + 1
+asyncCheck createServer(Port(port))
+asyncCheck launchSwarm(Port(port))
 while true:
   poll()
   if clientCount == swarmSize: break
