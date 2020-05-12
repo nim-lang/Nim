@@ -16,6 +16,10 @@ const mode =
   else: static: doAssert false
 
 const testsDir = currentSourcePath().parentDir
+const buildDir = testsDir.parentDir / "build"
+const nimcache = buildDir / "nimcacheTrunner"
+  # `querySetting(nimcacheDir)` would also be possible, but we thus
+  # avoid stomping on other parallel tests
 
 proc runCmd(file, options = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
@@ -108,10 +112,6 @@ else: # don't run twice the same test
   block: # nim doc --backend:$backend --doccmd:$cmd
     # test for https://github.com/nim-lang/Nim/issues/13129
     # test for https://github.com/nim-lang/Nim/issues/13891
-    const buildDir = testsDir.parentDir / "build"
-    const nimcache = buildDir / "nimcacheTrunner"
-      # `querySetting(nimcacheDir)` would also be possible, but we thus
-      # avoid stomping on other parallel tests
     let file = testsDir / "nimdoc/m13129.nim"
     for backend in fmt"{mode} js".split:
       let cmd = fmt"{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 --doccmd:'-d:m13129Foo2 --hints:off' --usenimcache --hints:off {file}"
@@ -122,3 +122,9 @@ else: # don't run twice the same test
     block: # mak sure --backend works with `nim r`
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
       check execCmdEx(cmd) == ("ok3\n", 0)
+
+  block: # some importc tests
+    # issue #14314
+    let file = testsDir / "misc/mimportc.nim"
+    let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
+    check execCmdEx(cmd) == ("witness\n", 0)

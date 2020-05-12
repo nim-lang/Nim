@@ -1151,12 +1151,17 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.config = g.config
   t.c = c
 
+proc hasRealBody(s: PSym): bool =
+  ## also handles importc procs with runnableExamples, which requires `=`,
+  ## which is not a real implementation, refs #14314
+  result = {sfForward, sfImportc} * s.flags == {}
+
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
   var effects = s.typ.n[0]
   if effects.kind != nkEffectList: return
   # effects already computed?
-  if sfForward in s.flags: return
+  if not s.hasRealBody: return
   if effects.len == effectListLen: return
 
   var t: TEffects
