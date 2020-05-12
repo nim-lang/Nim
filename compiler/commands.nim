@@ -431,6 +431,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     let f = splitFile(processPath(conf, arg, info, notRelativeToProj=true).string)
     conf.outFile = RelativeFile f.name & f.ext
     conf.outDir = toAbsoluteDir f.dir
+    dbg conf.outFile, conf.outDir, f.name, f.ext
   of "outdir":
     expectArg(conf, switch, arg, pass, info)
     conf.outDir = processPath(conf, arg, info, notRelativeToProj=true)
@@ -440,7 +441,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     expectArg(conf, switch, arg, pass, info)
     conf.docSeeSrcUrl = arg
   of "docroot":
-    conf.docRoot = if arg.len == 0: "@default" else: arg
+    conf.docRoot = if arg.len == 0: docRootDefault else: arg
   of "backend", "b":
     let backend = parseEnum(arg.normalize, TBackend.default)
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)

@@ -518,6 +518,8 @@ const
   DefaultConfigNims* = RelativeFile"config.nims"
   DocConfig* = RelativeFile"nimdoc.cfg"
   DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
+  htmldocsDir* = RelativeDir"htmldocs"
+  docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
 
 const oKeepVariableNames* = true
 
@@ -543,6 +545,7 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   # explains regression https://github.com/nim-lang/Nim/issues/6583#issuecomment-625711125
   # Yet another reason why "" should not mean ".";  `""/something` should raise
   # instead of implying "" == "." as it's bug prone.
+  doAssert conf.outDir.string.len > 0
   result = conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =

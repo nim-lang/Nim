@@ -188,6 +188,11 @@ proc mydiv(a, b): int {.raises: [].} =
   and avoids polluting both $pwd and $projectdir. It can be used with any command.
 - `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override how an example is compiled and run,
   for example to change backend or compile only.
+- `nim doc foo/main` now outputs to `foo/main.html`, consistently with other commands. Use
+  `--usenimcache` for example to output instead under $nimcache.
+- `nim doc foo/main` now outputs to `foo/main.html`, as it used to, and consistently
+  with other commands. Use `--outDir:.` to restore previous behaviour or
+ `--usenimcache` to output instead under $nimcache.
 
 ## Tool changes
 

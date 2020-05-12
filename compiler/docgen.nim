@@ -21,7 +21,6 @@ import
 
 const
   exportSection = skField
-  htmldocsDir = RelativeDir"htmldocs"
   docCmdSkip = "skip"
 
 type
@@ -62,7 +61,9 @@ proc nativeToUnix(path: string): string =
   else: result = path
 
 proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
+  # if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
+  result = if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
+  dbg conf.outDir, conf.projectPath, subdir, result
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -72,7 +73,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   proc nimbleDir(): AbsoluteDir =
     getNimbleFile(conf, file2).parentDir.AbsoluteDir
   case conf.docRoot:
-  of "@default": # using `@` instead of `$` to avoid shell quoting complications
+  of docRootDefault:
     result = getRelativePathFromConfigPath(conf, file)
     let dir = nimbleDir()
     if not dir.isEmpty:
@@ -88,9 +89,12 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     result = getRelativePathFromConfigPath(conf, file)
     if result.isEmpty: bail()
   elif conf.docRoot.len > 0:
-    doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
-    doAssert conf.docRoot.existsDir, conf.docRoot
-    result = relativeTo(file, conf.docRoot.AbsoluteDir)
+    # we're (currently) requiring `isAbsolute` to avoid confusion when passing
+    # a relative path (would it be relative wrt $PWD or to projectfile)
+    conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    # needed because `canonicalizePath` called on `file`
+    result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
     bail()
   if isAbsolute(result.string):
@@ -162,6 +166,7 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
     let d = conf.docOutDir(dir)
     createDir(d)
     result = d / changeFileExt(filename, ext)
+    dbg dir, d, filename, ext, result
   elif guessTarget:
     let d = conf.docOutDir
     createDir(d)
@@ -1205,7 +1210,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
         outfile.string)
     elif not d.wroteCss:
       let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-      let cssDest = $dir / nimdocOutCss
+      let cssDest = $d.conf.outDir / nimdocOutCss
       copyFile(cssSource, cssDest)
       d.wroteCss = true
 
@@ -1234,6 +1239,8 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
 proc handleDocOutputOptions*(conf: ConfigRef) =
   if optWholeProject in conf.globalOptions:
     # Backward compatibility with previous versions
+    # xxx this is buggy when user provides `nim doc --project -o:sub/bar.html main`,
+    # it'd write to `sub/bar.html/main.html`
     conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =

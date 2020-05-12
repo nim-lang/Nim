@@ -510,7 +510,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
         if conf.hasHint(hintSource) and info != unknownLineInfo:
           conf.writeSurroundingSrc(info)
-        if conf.hasHint(hintMsgOrigin):
+        if hintMsgOrigin in conf.mainPackageNotes:
           styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % hintMsgOrigin.msgToStr,
@@ -528,6 +528,14 @@ template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   # this fixes bug #7080 so that it is at least obvious 'fatal' was executed.
   conf.m.errorOutputs = {eStdOut, eStdErr}
   liMessage(conf, info, msg, arg, doAbort, instLoc())
+
+template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
+  ## avoids boilerplate
+  if not cond:
+    const info2 = instantiationInfo(-1, fullPaths = true)
+    var arg2 = "'$1' failed" % [astToStr(cond)]
+    if arg.len > 0: arg2.add "; " & astToStr(arg) & ": " & arg
+    liMessage(conf, info, errGenerated, arg2, doRaise, info2)
 
 template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doRaise, instLoc())
