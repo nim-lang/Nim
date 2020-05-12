@@ -531,8 +531,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             # special type inference rule: 'var it = ownedPointer' is turned
             # into an unowned pointer.
             typ = typ.lastSon
-    else:
-      if symkind == skLet: localError(c.config, a.info, errLetNeedsInit)
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
@@ -620,6 +618,8 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           defaultConstructionError(c, v.typ, v.info)
         else:
           checkNilable(c, v)
+        if v.kind == skLet and sfImportc notin v.flags:
+          localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
         x.add result[i]
