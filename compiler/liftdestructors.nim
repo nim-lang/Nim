@@ -154,8 +154,9 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       c.kind = prevKind
       localEnforceDefaultOp = true
 
-    # copy the selector:
-    fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
+    if c.kind != attachedDestructor:
+      # copy the selector before case stmt, but destroy after case stmt
+      fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
 
     let oldfilterDiscriminator = c.filterDiscriminator
     if c.filterDiscriminator == n[0].sym:
@@ -179,6 +180,10 @@ proc fillBodyObj(c: var TLiftCtx; n, body, x, y: PNode; enforceDefaultOp: bool) 
       caseStmt.add(branch)
     if emptyBranches != n.len-1:
       body.add(caseStmt)
+
+    if c.kind == attachedDestructor:
+      # destructor for selector is done after case stmt
+      fillBodyObj(c, n[0], body, x, y, enforceDefaultOp = false)
     c.filterDiscriminator = oldfilterDiscriminator
   of nkRecList:
     for t in items(n): fillBodyObj(c, t, body, x, y, enforceDefaultOp)
