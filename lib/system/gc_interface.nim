@@ -14,7 +14,7 @@ when hasAlloc:
       gcOptimizeSpace    ## optimize for memory footprint
 
 when hasAlloc and not defined(js) and not usesDestructors:
-  proc GC_disable*() {.rtl, inl, benign.}
+  proc GC_disable*() {.rtl, inl, benign, raises: [].}
     ## Disables the GC. If called `n` times, `n` calls to `GC_enable`
     ## are needed to reactivate the GC.
     ##
@@ -22,7 +22,7 @@ when hasAlloc and not defined(js) and not usesDestructors:
     ## the mark and sweep phase with
     ## `GC_disableMarkAndSweep <#GC_disableMarkAndSweep>`_.
 
-  proc GC_enable*() {.rtl, inl, benign.}
+  proc GC_enable*() {.rtl, inl, benign, raises: [].}
     ## Enables the GC again.
 
   proc GC_fullCollect*() {.rtl, benign.}
