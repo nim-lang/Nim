@@ -80,7 +80,6 @@ proc isLastRead(location: PNode; c: var Con; pc, until: int): int =
         return -1
       inc pc
     of goto:
-      if c.g[pc].dest < 0: assert false, "Wthf"
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
