@@ -87,12 +87,12 @@ proc isLastRead(location: PNode; c: var Con; pc, until: int): int =
       var variantB = pc + c.g[pc].dest
       while variantA != variantB:
         if min(variantA, variantB) < 0: return -1
-        if max(variantA, variantB) > c.g.len:
+        if max(variantA, variantB) >= c.g.len or max(variantA, variantB) >= until:
           break
         if variantA < variantB:
-          variantA = isLastRead(location, c, variantA, variantB)
+          variantA = isLastRead(location, c, variantA, min(variantB, until))
         else:
-          variantB = isLastRead(location, c, variantB, variantA)
+          variantB = isLastRead(location, c, variantB, min(variantA, until))
       pc = min(variantA, variantB)
   return pc
 
