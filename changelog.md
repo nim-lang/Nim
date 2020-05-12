@@ -120,6 +120,9 @@
   with writing typed macros. Old behavior for backwards compatiblity can be restored
   with command line switch `--useVersion:1.0`.
 
+- ``let`` statements can now be used without a value if declared with
+  ``importc``/``importcpp``/``importjs``/``importobjc``.
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.

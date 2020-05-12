@@ -531,17 +531,6 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
             # special type inference rule: 'var it = ownedPointer' is turned
             # into an unowned pointer.
             typ = typ.lastSon
-    else:
-      if symkind == skLet:
-        # check if the importc pragma is declared, if so we don't
-        # require initialisation, hopefully C has done that.
-        var importc = false
-        if n[i][0].kind == nkPragmaExpr:
-          for pragma in n[i][0][1].sons:
-            if $pragma == "importc":
-              importc = true
-        if not importc:
-          localError(c.config, a.info, errLetNeedsInit)
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
@@ -629,6 +618,9 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
           defaultConstructionError(c, v.typ, v.info)
         else:
           checkNilable(c, v)
+        # allow let to not be initialised if imported from C:
+        if v.kind == skLet and sfImportc notin v.flags:
+          localError(c.config, a.info, errLetNeedsInit)
       if sfCompileTime in v.flags:
         var x = newNodeI(result.kind, v.info)
         x.add result[i]
