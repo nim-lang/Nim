@@ -92,6 +92,10 @@
 - The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
 
 
+- `osproc.execCmdEx` now takes an optional `input` for stdin.
+- `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
+  parameters.
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 
