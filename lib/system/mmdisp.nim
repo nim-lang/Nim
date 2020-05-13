@@ -83,7 +83,7 @@ else:
 
     when not usesDestructors:
       include "system/cellsets"
-    when not leakDetector and not useCellIds:
+    when not leakDetector and not useCellIds and not defined(nimV2):
       sysAssert(sizeof(Cell) == sizeof(FreeCell), "sizeof FreeCell")
   when compileOption("gc", "v2"):
     include "system/gc2"
