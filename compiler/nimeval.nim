@@ -81,6 +81,9 @@ proc findNimStdLib*(): string =
   ## Returns "" on failure.
   try:
     let nimexe = os.findExe("nim")
+      # this can't work with choosenim shims, refs https://github.com/dom96/choosenim/issues/189
+      # it'd need `nim dump --dump.format:json . | jq -r .libpath`
+      # which we should simplify as `nim dump --key:libpath`
     if nimexe.len == 0: return ""
     result = nimexe.splitPath()[0] /../ "lib"
     if not fileExists(result / "system.nim"):
@@ -93,8 +96,8 @@ proc findNimStdLib*(): string =
 proc findNimStdLibCompileTime*(): string =
   ## Same as ``findNimStdLib`` but uses source files used at compile time,
   ## and asserts on error.
-  const sourcePath = currentSourcePath()
-  result = sourcePath.parentDir.parentDir / "lib"
+  const exe = getCurrentCompilerExe()
+  result = exe.parentDir.parentDir / "lib"
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
