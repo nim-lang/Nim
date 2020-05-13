@@ -49,7 +49,8 @@ proc createServer(server: AsyncFD) {.async.} =
   while true:
     asyncCheck readMessages(await accept(server))
 
-let (server, port) = bindAvailablePort()
+let server = createAsyncNativeSocket()
+let port = bindAvailablePort(server.SocketHandle)
 asyncCheck createServer(server)
 asyncCheck launchSwarm(port)
 while true:
