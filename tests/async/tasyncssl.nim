@@ -1,14 +1,13 @@
 discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
-  output: "500"
-  disabled: "windows"
 """
+# disabled: "windows"
+# seems to fail on linux64, not linux32
 
 import asyncdispatch, asyncnet, net, strutils
 
 when defined(ssl):
   var port0: Port
-
   var msgCount = 0
 
   const
@@ -64,5 +63,4 @@ when defined(ssl):
     poll()
     if clientCount == swarmSize: break
 
-  assert msgCount == swarmSize * messagesToSend
-  echo msgCount
+  assert msgCount == swarmSize * messagesToSend, $msgCount
