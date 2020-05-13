@@ -3,6 +3,7 @@ discard """
 123xyzabc
 destroyed: false
 destroyed: false
+1
 closed
 destroying variable
 '''
@@ -119,3 +120,18 @@ proc newGame*(): Game =
   new(result, free)
 
 var game*: Game
+
+
+#------------------------------------------------------------------------------
+# issue #14333
+
+type  
+  SimpleLoop = object
+  
+  Lsg = object
+    loops: seq[ref SimpleLoop]
+    root: ref SimpleLoop
+
+var lsg: Lsg
+lsg.loops.add lsg.root
+echo lsg.loops.len
