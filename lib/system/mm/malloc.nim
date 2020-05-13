@@ -1,4 +1,6 @@
 
+{.push stackTrace: off.}
+
 proc allocImpl(size: Natural): pointer =
   c_malloc(size.csize_t)
 
@@ -81,3 +83,4 @@ proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
 proc deallocOsPages(r: var MemRegion) = discard
 proc deallocOsPages() = discard
 
+{.pop.}
