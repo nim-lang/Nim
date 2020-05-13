@@ -3,7 +3,8 @@ discard """
   cmd: "nim c --gc:orc $file"
 """
 
-import asyncdispatch, asyncnet, nativesockets, net, strutils, os
+import asyncdispatch, asyncnet, nativesockets, net, strutils
+from stdtest/netutils import bindAvailablePort
 
 var msgCount = 0
 
@@ -44,24 +45,16 @@ proc readMessages(client: AsyncFD) {.async.} =
       else:
         doAssert false
 
-proc createServer(port: Port) {.async.} =
-  var server = createAsyncNativeSocket()
-  block:
-    var name: Sockaddr_in
-    name.sin_family = typeof(name.sin_family)(toInt(AF_INET))
-    name.sin_port = htons(uint16(port))
-    name.sin_addr.s_addr = htonl(INADDR_ANY)
-    if bindAddr(server.SocketHandle, cast[ptr SockAddr](addr(name)),
-                sizeof(name).Socklen) < 0'i32:
-      raiseOSError(osLastError())
-
+proc createServer(server: AsyncFD) {.async.} =
   discard server.SocketHandle.listen()
   while true:
     asyncCheck readMessages(await accept(server))
 
 proc main =
-  asyncCheck createServer(Port(10335))
-  asyncCheck launchSwarm(Port(10335))
+  let server = createAsyncNativeSocket()
+  let port = bindAvailablePort(server.SocketHandle)
+  asyncCheck createServer(server)
+  asyncCheck launchSwarm(port)
   while true:
     poll()
     if clientCount == swarmSize: break
