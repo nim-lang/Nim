@@ -1,6 +1,3 @@
-discard """
-  output: "2000"
-"""
 import asyncdispatch, asyncnet, nativesockets, net, strutils, os
 
 var msgCount = 0
@@ -42,7 +39,7 @@ proc readMessages(client: AsyncFD) {.async.} =
       else:
         doAssert false
 
-proc createServer(port: Port) {.async.} =
+proc bindAvailablePort(port: Port): (AsyncFD, Port) =
   var server = createAsyncNativeSocket()
   block:
     var name: Sockaddr_in
@@ -52,23 +49,20 @@ proc createServer(port: Port) {.async.} =
     if bindAddr(server.SocketHandle, cast[ptr SockAddr](addr(name)),
                 sizeof(name).Socklen) < 0'i32:
       raiseOSError(osLastError())
+  let port = getLocalAddr(server.SocketHandle, AF_INET)[1]
+  result = (server, port)
 
+proc createServer(server: AsyncFD) {.async.} =
   discard server.SocketHandle.listen()
   while true:
     asyncCheck readMessages(await accept(server))
 
-# refs https://github.com/nim-lang/Nim/issues/14320
-# tests/arc/tasyncawait.nim uses 10335 and probably explains
-# `Address already in use` errro so we use a different port. This is
-# just a workaround while waiting for a cleaner fix that would wait
-# (with deadline) for a port to become available.
-# Note that this port is already used in other tests.
-let port = 10335 + 1
-asyncCheck createServer(Port(port))
-asyncCheck launchSwarm(Port(port))
+let (server, port) = bindAvailablePort(0.Port)
+asyncCheck createServer(server)
+asyncCheck launchSwarm(port)
 while true:
   poll()
   if clientCount == swarmSize: break
 
 assert msgCount == swarmSize * messagesToSend
-echo msgCount
+doAssert msgCount == 2000
