@@ -12,6 +12,8 @@ import
   lineinfos, pathutils
 import std/private/miscdollars
 
+type InstantiationInfo = typeof(instantiationInfo())
+
 proc toCChar*(c: char; result: var string) =
   case c
   of '\0'..'\x1F', '\x7F'..'\xFF':
@@ -255,6 +257,9 @@ proc toLinenumber*(info: TLineInfo): int {.inline.} =
 proc toColumn*(info: TLineInfo): int {.inline.} =
   result = info.col
 
+proc toFileLineCol(info: InstantiationInfo): string {.inline.} =
+  result.toLocation(info.filename, info.line, info.column + ColOffset)
+
 proc toFileLineCol*(conf: ConfigRef; info: TLineInfo): string {.inline.} =
   result.toLocation(toMsgFilename(conf, info), info.line.int, info.col.int + ColOffset)
 
@@ -487,7 +492,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling) =
+               eh: TErrorHandling, info2: InstantiationInfo) {.noinline.} =
   var
     title: string
     color: ForegroundColor
@@ -533,36 +538,47 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
       if conf.hasHint(hintSource):
         conf.writeSurroundingSrc(info)
+      if conf.hasHint(hintMsgOrigin):
+        styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle, " compiler msg initiated here", KindColor, KindFormat % HintsToStr[ord(hintMsgOrigin) - ord(hintMin)], resetStyle)
+
   handleError(conf, msg, eh, s)
 
-proc fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   # this fixes bug #7080 so that it is at least obvious 'fatal'
   # was executed.
   conf.m.errorOutputs = {eStdOut, eStdErr}
-  liMessage(conf, info, msg, arg, doAbort)
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, msg, arg, doAbort, info2)
 
-proc globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  liMessage(conf, info, msg, arg, doRaise)
+template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, msg, arg, doRaise, info2)
 
-proc globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
-  liMessage(conf, info, errGenerated, arg, doRaise)
+template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, errGenerated, arg, doRaise, info2)
 
-proc localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  liMessage(conf, info, msg, arg, doNothing)
+template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, msg, arg, doNothing, info2)
 
-proc localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
-  liMessage(conf, info, errGenerated, arg, doNothing)
+template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, errGenerated, arg, doNothing, info2)
 
-proc localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
-  localError(conf, info, format % params)
+template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, errGenerated, format % params, doNothing, info2)
 
-proc message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  liMessage(conf, info, msg, arg, doNothing)
+template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  liMessage(conf, info, msg, arg, doNothing, info2)
 
 proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
+  const info2 = instantiationInfo(-1, fullPaths = true)
   writeContext(conf, info)
-  liMessage(conf, info, errInternal, errMsg, doAbort)
+  liMessage(conf, info, errInternal, errMsg, doAbort, info2)
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
