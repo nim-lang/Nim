@@ -1,7 +1,3 @@
-discard """
-output: "Finished"
-"""
-
 import asyncdispatch, asyncnet
 
 var port: Port
@@ -17,10 +13,12 @@ proc createServer() {.async.} =
 
 asyncCheck createServer()
 
+var done = false
 proc f(): Future[void] {.async.} =
   let s = createAsyncNativeSocket()
   await s.connect("localhost", port)
   await s.send("123")
-  echo "Finished"
+  done = true
 
 waitFor f()
+doAssert done
