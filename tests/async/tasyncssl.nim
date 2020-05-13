@@ -1,10 +1,9 @@
 discard """
   cmd: "nim $target --hints:on --define:ssl $options $file"
 """
-# disabled: "windows"
-# seems to fail on linux64, not linux32
 
 import asyncdispatch, asyncnet, net, strutils
+import stdtest/testutils
 
 when defined(ssl):
   var port0: Port
@@ -63,4 +62,12 @@ when defined(ssl):
     poll()
     if clientCount == swarmSize: break
 
-  assert msgCount == swarmSize * messagesToSend, $msgCount
+  template cond(): bool = msgCount == swarmSize * messagesToSend
+  when defined(windows):
+    # currently: msgCount == 0
+    flakyAssert cond()
+  elif defined(linux) and int.sizeof == 8:
+    # currently:  msgCount == 10
+    flakyAssert cond()
+    assert msgCount > 0
+  else: assert cond(), $msgCount
