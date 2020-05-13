@@ -1,9 +1,6 @@
-discard """
-  output: "5000"
-"""
 when defined(windows):
   import asyncdispatch, nativesockets, net, strutils, os, winlean
-
+  from stdtest/netutils import bindAvailablePort
   var msgCount = 0
 
   const
@@ -243,6 +240,4 @@ when defined(windows):
     if clientCount == swarmSize: break
 
   assert msgCount == swarmSize * messagesToSend
-  echo msgCount
-else:
-  echo(5000)
+  doAssert msgCount == 5000
