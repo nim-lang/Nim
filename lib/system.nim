@@ -3026,5 +3026,5 @@ export widestrs
 import system/io
 export io
 
-when not defined(createNimHcr):
+when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr
