@@ -99,14 +99,16 @@ proc findNimStdLibCompileTime*(): string =
 
 proc createInterpreter*(scriptName: string;
                         searchPaths: openArray[string];
-                        flags: TSandboxFlags = {}): Interpreter =
+                        flags: TSandboxFlags = {},
+                        defines = @[("nimscript", "true")],
+                        registerOps = true): Interpreter =
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
   initDefines(conf.symbols)
-  defineSymbol(conf.symbols, "nimscript")
-  defineSymbol(conf.symbols, "nimconfig")
+  for define in defines:
+    defineSymbol(conf.symbols, define[0], define[1])
   registerPass(graph, semPass)
   registerPass(graph, evalPass)
 
@@ -119,6 +121,8 @@ proc createInterpreter*(scriptName: string;
   var vm = newCtx(m, cache, graph)
   vm.mode = emRepl
   vm.features = flags
+  if registerOps:
+    vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
   result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)
