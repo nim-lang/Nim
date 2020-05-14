@@ -269,8 +269,8 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
-    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
+    testSpec r, makeTest(filename, options, cat), {targetJS}
+    testSpec r, makeTest(filename, options & " -d:release", cat), {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)

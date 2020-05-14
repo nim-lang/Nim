@@ -3016,7 +3016,7 @@ export widestrs
 import system/io
 export io
 
-import quitprocs
+import std/quitprocs
 export addQuitProc
 
 when not defined(createNimHcr) and not defined(nimscript):

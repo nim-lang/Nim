@@ -25,7 +25,7 @@ when defined(js):
       """
     elif defined(js):
       asm """
-      window.onbeforeunload = `quitProc`;
+        window.onbeforeunload = `quitProc`;
       """
 else:
   proc addAtExit(quitProc: proc() {.noconv.}) {.
@@ -43,9 +43,9 @@ template fun() =
     addAtExit(callClosures)
 
 proc addQuitProc*(cl: proc () {.closure.}) =
-  ## Adds/registers a quit procedure. Each call to ``addQuitProc`` registers
+  ## Adds/registers a quit procedure. Each call to `addQuitProc` registers
   ## another quit procedure. They are executed on a last-in, first-out basis.
-  # Support for addQuitProc() is done by Ansi C's facilities here.
+  # Support for `addQuitProc` is done by Ansi C's facilities here.
   # In case of an unhandled exception the exit handlers should
   # not be called explicitly! The user may decide to do this manually though.
   fun()
