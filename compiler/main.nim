@@ -208,6 +208,7 @@ proc mainCommand*(graph: ModuleGraph) =
     handleBackend(conf, backendJs)
     commandCompileToJS(graph)
   of "r": # different from `"run"`!
+    handleBackend(conf, conf.backend)
     conf.globalOptions.incl {optRun, optUseNimcache}
   of "run":
     conf.cmd = cmdRun
