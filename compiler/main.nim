@@ -14,7 +14,7 @@ when not defined(nimcore):
 
 import
   llstream, strutils, os, ast, lexer, syntaxes, options, msgs,
-  condsyms, times,
+  condsyms, times, commands,
   sem, idents, passes, extccomp,
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm, idgen,
@@ -194,40 +194,21 @@ proc mainCommand*(graph: ModuleGraph) =
   when false: setOutDir(conf)
   if optUseNimcache in conf.globalOptions: setOutDir(conf)
 
-  template handleBackend(backend2: TBackend) =
-    conf.backend = backend2
-    conf.cmd = cmdCompileToBackend
-    defineSymbol(graph.config.symbols, $backend2)
-    case backend2
-    of backendC:
-      if conf.exc == excNone: conf.exc = excSetjmp
-      commandCompileToC(graph)
-    of backendCpp:
-      if conf.exc == excNone: conf.exc = excCpp
-      commandCompileToC(graph)
-    of backendObjc:
-      commandCompileToC(graph)
-    of backendJs:
-      when defined(leanCompiler):
-        globalError(conf, unknownLineInfo, "compiler wasn't built with JS code generator")
-      else:
-        if conf.hcrOn:
-          # XXX: At the moment, system.nim cannot be compiled in JS mode
-          # with "-d:useNimRtl". The HCR option has been processed earlier
-          # and it has added this define implictly, so we must undo that here.
-          # A better solution might be to fix system.nim
-          undefSymbol(conf.symbols, "useNimRtl")
-        commandCompileToJS(graph)
-    of backendInvalid: doAssert false
-
   case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc": handleBackend(backendC) # compile means compileToC currently
-  of "cpp", "compiletocpp": handleBackend(backendCpp)
-  of "objc", "compiletooc": handleBackend(backendObjc)
-  of "js", "compiletojs": handleBackend(backendJs)
+  of "c", "cc", "compile", "compiletoc":
+    handleBackend(conf, backendC) # compile means compileToC currently
+    commandCompileToC(graph)
+  of "cpp", "compiletocpp":
+    handleBackend(conf, backendCpp)
+    commandCompileToC(graph)
+  of "objc", "compiletooc":
+    handleBackend(conf, backendObjc)
+    commandCompileToC(graph)
+  of "js", "compiletojs":
+    handleBackend(conf, backendJs)
+    commandCompileToJS(graph)
   of "r": # different from `"run"`!
     conf.globalOptions.incl {optRun, optUseNimcache}
-    handleBackend(conf.backend)
   of "run":
     conf.cmd = cmdRun
     when hasTinyCBackend:

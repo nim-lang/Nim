@@ -393,6 +393,28 @@ proc handleStdinInput*(conf: ConfigRef) =
   if conf.outDir.isEmpty:
     conf.outDir = getNimcacheDir(conf)
 
+proc handleBackend*(conf: ConfigRef, backend: TBackend) =
+  conf.backend = backend
+  conf.cmd = cmdCompileToBackend
+  defineSymbol(conf.symbols, $backend)
+  case backend
+  of backendC:
+    if conf.exc == excNone: conf.exc = excSetjmp
+  of backendCpp:
+    if conf.exc == excNone: conf.exc = excCpp
+  of backendObjc: discard
+  of backendJs:
+    when defined(leanCompiler):
+      globalError(conf, unknownLineInfo, "compiler wasn't built with JS code generator")
+    else:
+      if conf.hcrOn:
+        # XXX: At the moment, system.nim cannot be compiled in JS mode
+        # with "-d:useNimRtl". The HCR option has been processed earlier
+        # and it has added this define implictly, so we must undo that here.
+        # A better solution might be to fix system.nim
+        undefSymbol(conf.symbols, "useNimRtl")
+  of backendInvalid: doAssert false
+
 proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
                     conf: ConfigRef) =
   var
@@ -444,7 +466,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "backend", "b":
     let backend = parseEnum(arg.normalize, TBackend.default)
     if backend == TBackend.default: localError(conf, info, "invalid backend: '$1'" % arg)
-    conf.backend = backend
+    handleBackend(conf, backend)
   of "doccmd": conf.docCmd = arg
   of "mainmodule", "m":
     discard "allow for backwards compatibility, but don't do anything"
