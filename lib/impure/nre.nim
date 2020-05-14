@@ -6,6 +6,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(js):
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE.".}
+
 ## What is NRE?
 ## ============
 ##
