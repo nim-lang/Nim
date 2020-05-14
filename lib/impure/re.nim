@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(js):
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE.".}
+
 ## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
@@ -678,4 +681,3 @@ when isMainModule:
     doAssert replace("bar", re"^", "foo") == "foobar"
     doAssert replace("foo", re"", "-") == "-foo"
     doAssert replace("foo", re"$", "bar") == "foobar"
-
