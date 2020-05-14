@@ -136,7 +136,8 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
 proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions = ""): seq[string] =
   var options = target.defaultOptions & " " & options
-  if nimcache.len > 0: options.add " --nimCache:" & nimcache.quoteShell
+  # improve pending https://github.com/nim-lang/Nim/issues/14343
+  if nimcache.len > 0: options.add " " & ("--nimCache:" & nimcache).quoteShell
   options.add " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
