@@ -34,6 +34,8 @@ fff
 fff
 3
 mmm
+sink me (sink)
+assign me (not sink)
 '''
 """
 
@@ -264,3 +266,39 @@ proc main2 =
         echo "mmm"
 
 main2()
+
+
+
+type ME = object
+  who: string
+
+proc `=`(x: var ME, y: ME) =
+  if x.who.len > 0: echo "assign ",x.who
+
+proc `=sink`(x: var ME, y: ME) =
+  if x.who.len > 0: echo "sink ",x.who
+
+var dump: ME
+template use(x) = dump = x
+template def(x) = x = dump
+
+var c = true
+
+proc shouldSink() =
+  var x = ME(who: "me (sink)")
+  use(x) # we analyse this
+  if c: def(x)
+  else: def(x)
+  use(x) # ok, with the [else] part.
+
+shouldSink()
+
+dump = ME()
+
+proc shouldNotSink() =
+  var x = ME(who: "me (not sink)")
+  use(x) # we analyse this
+  if c: def(x)
+  use(x) # Not ok without the '[else]'
+
+shouldNotSink()
