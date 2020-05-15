@@ -4,13 +4,15 @@ discard """
   matrix: "; -d:nimInheritHandles"
 """
 
-import os, osproc, strutils, nativesockets, net, selectors, memfiles
+import os, osproc, strutils, nativesockets, net, selectors, memfiles,
+       asyncdispatch, asyncnet
 when defined(windows):
   import winlean
 else:
   import posix
 
-proc leakCheck(f: int | FileHandle | SocketHandle, msg: string, expectLeak = defined(nimInheritHandles)) =
+proc leakCheck(f: AsyncFD | int | FileHandle | SocketHandle, msg: string,
+               expectLeak = defined(nimInheritHandles)) =
   discard startProcess(
     getAppFilename(),
     args = @[$f.int, msg, $expectLeak],
@@ -40,14 +42,14 @@ proc main() =
     let sock = createNativeSocket()
     defer: close sock
     leakCheck(sock, "createNativeSocket()")
-    if sock.setInheritable(true):
-      leakCheck(sock, "createNativeSocket()", true)
+    if sock.setInheritable(not defined(nimInheritHandles)):
+      leakCheck(sock, "createNativeSocket()", not defined(nimInheritHandles))
     else:
       raiseOSError osLastError()
 
     let server = newSocket()
     defer: close server
-    server.bindAddr()
+    server.bindAddr(address = "127.0.0.1")
     server.listen()
     let (_, port) = server.getLocalAddr
 
@@ -74,6 +76,30 @@ proc main() =
       leakCheck(mf.mapHandle, "memfiles.open().mapHandle", false)
     else:
       leakCheck(mf.handle, "memfiles.open().handle", false)
+
+    let sockAsync = createAsyncNativeSocket()
+    defer: closeSocket sockAsync
+    leakCheck(sockAsync, "createAsyncNativeSocket()")
+    if sockAsync.setInheritable(not defined(nimInheritHandles)):
+      leakCheck(sockAsync, "createAsyncNativeSocket()", not defined(nimInheritHandles))
+    else:
+      raiseOSError osLastError()
+
+    let serverAsync = newAsyncSocket()
+    defer: close serverAsync
+    serverAsync.bindAddr(address = "127.0.0.1")
+    serverAsync.listen()
+    let (_, portAsync) = serverAsync.getLocalAddr
+
+    leakCheck(serverAsync.getFd, "newAsyncSocket()")
+
+    let clientAsync = newAsyncSocket()
+    defer: close clientAsync
+    waitFor clientAsync.connect("127.0.0.1", portAsync)
+
+    let inputAsync = waitFor serverAsync.accept()
+
+    leakCheck(inputAsync.getFd, "accept() async")
   else:
     let
       fd = parseInt(paramStr 1)
