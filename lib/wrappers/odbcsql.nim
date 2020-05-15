@@ -45,8 +45,8 @@ type
   SqlHDBC* = SqlHandle
   SqlHStmt* = SqlHandle
   SqlHDesc* = SqlHandle
-  TSqlInteger* = int
-  SqlUInteger* = int
+  TSqlInteger* = int32
+  SqlUInteger* = int32
   SqlPointer* = pointer
   TSqlReal* = cfloat
   TSqlDouble* = cdouble
@@ -666,7 +666,7 @@ proc SQLAllocHandle*(HandleType: TSqlSmallInt, InputHandle: SqlHandle,
                      OutputHandlePtr: var SqlHandle): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLSetEnvAttr*(EnvironmentHandle: SqlHEnv, Attribute: TSqlInteger,
-                    Value: TSqlInteger, StringLength: TSqlInteger): TSqlSmallInt{.
+                    Value: SqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLGetEnvAttr*(EnvironmentHandle: SqlHEnv, Attribute: TSqlInteger,
                     Value: SqlPointer, BufferLength: TSqlInteger,
@@ -741,7 +741,7 @@ proc SQLGetInfo*(ConnectionHandle: SqlHDBC, InfoType: SqlUSmallInt,
                  InfoValue: SqlPointer, BufferLength: TSqlSmallInt,
                  StringLength: PSQLSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLBulkOperations*(StatementHandle: SqlHStmt, Operation: TSqlSmallInt): TSqlSmallInt{.
+proc SQLBulkOperations*(StatementHandle: SqlHStmt, Operation: SqlUSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLPutData*(StatementHandle: SqlHStmt, Data: SqlPointer,
                  StrLen_or_Ind: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
