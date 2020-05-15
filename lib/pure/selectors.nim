@@ -34,7 +34,7 @@ const hasThreadSupport = compileOption("threads") and defined(threadsafe)
 const ioselSupportedPlatform* = defined(macosx) or defined(freebsd) or
                                 defined(netbsd) or defined(openbsd) or
                                 defined(dragonfly) or
-                                (defined(linux) and not defined(android))
+                                (defined(linux) and not defined(android) and not defined(emscripten))
   ## This constant is used to determine whether the destination platform is
   ## fully supported by ``ioselectors`` module.
 
@@ -320,7 +320,7 @@ else:
     # Anything higher is the time to wait in milliseconds.
     doAssert(timeout >= -1, "Cannot select with a negative value, got " & $timeout)
 
-  when defined(linux):
+  when defined(linux) and not defined(emscripten):
     include ioselects/ioselectors_epoll
   elif bsdPlatform:
     include ioselects/ioselectors_kqueue
