@@ -19,6 +19,23 @@ c.text = hello
 c.text = hello
 pOD.text = hello
 pOD.toks = @["hello"]
+fff
+fff
+2
+fff
+fff
+2
+fff
+fff
+2
+mmm
+fff
+fff
+fff
+3
+mmm
+sink me (sink)
+assign me (not sink)
 '''
 """
 
@@ -199,3 +216,89 @@ when false:
   let pOHD = parseOHD()
   dump pOHD.text
   dump pOHD.toks
+
+# bug #13456
+
+iterator combinations[T](s: openarray[T], k: int): seq[T] =
+  let n = len(s)
+  assert k >= 0 and k <= n
+  var pos = newSeq[int](k)
+  var current = newSeq[T](k)
+  for i in 0..k-1:
+    pos[k-i-1] = i
+  var done = false
+  while not done:
+    for i in 0..k-1:
+      current[i] = s[pos[k-i-1]]
+    yield current
+    var i = 0
+    while i < k:
+      pos[i] += 1
+      if pos[i] < n-i:
+        for j in 0..i-1:
+          pos[j] = pos[i] + i - j
+        break
+      i += 1
+    if i >= k:
+      break
+
+type
+  UndefEx = object of Exception
+
+proc main2 =
+  var delayedSyms = @[1, 2, 3]
+  var unp: seq[int]
+  block myb:
+    for a in 1 .. 2:
+      if delayedSyms.len > a:
+        unp = delayedSyms
+        for t in unp.combinations(a + 1):
+          try:
+            var h = false
+            for k in t:
+              echo "fff"
+            if h: continue
+            if true:
+              raise newException(UndefEx, "forward declaration")
+            break myb
+          except UndefEx:
+            echo t.len
+        echo "mmm"
+
+main2()
+
+
+
+type ME = object
+  who: string
+
+proc `=`(x: var ME, y: ME) =
+  if x.who.len > 0: echo "assign ",x.who
+
+proc `=sink`(x: var ME, y: ME) =
+  if x.who.len > 0: echo "sink ",x.who
+
+var dump: ME
+template use(x) = dump = x
+template def(x) = x = dump
+
+var c = true
+
+proc shouldSink() =
+  var x = ME(who: "me (sink)")
+  use(x) # we analyse this
+  if c: def(x)
+  else: def(x)
+  use(x) # ok, with the [else] part.
+
+shouldSink()
+
+dump = ME()
+
+proc shouldNotSink() =
+  var x = ME(who: "me (not sink)")
+  use(x) # we analyse this
+  if c: def(x)
+  use(x) # Not ok without the '[else]'
+
+shouldNotSink()
