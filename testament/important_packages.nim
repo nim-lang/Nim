@@ -133,7 +133,7 @@ pkg2 "termstyle"
 pkg2 "timeit"
 pkg2 "timezones"
 pkg2 "tiny_sqlite"
-pkg2 "unicodedb"
+pkg2 "unicodedb", false, "nim c -d:release -r tests/tests.nim"
 pkg2 "unicodeplus", true
 pkg2 "unpack"
 pkg2 "websocket", false, "nim c websocket.nim"
