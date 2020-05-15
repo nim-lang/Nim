@@ -197,18 +197,21 @@ proc mainCommand*(graph: ModuleGraph) =
   case conf.command.normalize
   of "c", "cc", "compile", "compiletoc":
     handleBackend(conf, backendC) # compile means compileToC currently
+    conf.cmd = cmdCompileToBackend
     commandCompileToC(graph)
   of "cpp", "compiletocpp":
     handleBackend(conf, backendCpp)
+    conf.cmd = cmdCompileToBackend
     commandCompileToC(graph)
   of "objc", "compiletooc":
     handleBackend(conf, backendObjc)
+    conf.cmd = cmdCompileToBackend
     commandCompileToC(graph)
   of "js", "compiletojs":
     handleBackend(conf, backendJs)
+    conf.cmd = cmdCompileToBackend
     commandCompileToJS(graph)
   of "r": # different from `"run"`!
-    handleBackend(conf, conf.backend)
     conf.globalOptions.incl {optRun, optUseNimcache}
   of "run":
     conf.cmd = cmdRun

@@ -394,8 +394,9 @@ proc handleStdinInput*(conf: ConfigRef) =
     conf.outDir = getNimcacheDir(conf)
 
 proc handleBackend*(conf: ConfigRef, backend: TBackend) =
+  if conf.backend != backendInvalid:
+    undefSymbol(conf.symbols, $conf.backend)
   conf.backend = backend
-  conf.cmd = cmdCompileToBackend
   defineSymbol(conf.symbols, $backend)
   case backend
   of backendC:
