@@ -322,7 +322,7 @@ o = [Field0 = [a = "",
 b = @[]],
 Field1 = ""],
 p = nil,
-q = ""]
+q = nil]
 """)
   doAssert(repr(cc) == """
 [a = 12,
