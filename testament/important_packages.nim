@@ -21,7 +21,7 @@ pkg1 "bigints"
 pkg1 "binaryheap", false, "nim c -r binaryheap.nim"
 pkg1 "BipBuffer"
 # pkg1 "blscurve", true # pending https://github.com/status-im/nim-blscurve/issues/39
-pkg1 "bncurve", true, "nim c -r tests/tvectors.nim"
+pkg1 "bncurve", true
 pkg1 "brainfuck", true, "nim c -r tests/compile.nim"
 pkg1 "bump", true, "nim c --gc:arc -r tests/tbump.nim", "https://github.com/disruptek/bump"
 pkg1 "c2nim", false, "nim c testsuite/tester.nim"
