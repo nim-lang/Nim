@@ -302,6 +302,9 @@ proc boot(args: string) =
                       hostOS & "_" & hostCPU
 
   let nimStart = findStartNim().quoteShell()
+  # put the old nim into the new tree so it can use the new stdlib
+  # good luck, buddy!
+  copyExe(nimStart, 0.thVersion)
   for i in 0..2:
     # Nim versions < (1, 1) expect Nim's exception type to have a 'raiseId' field for
     # C++ interop. Later Nim versions do this differently and removed the 'raiseId' field.
@@ -311,9 +314,8 @@ proc boot(args: string) =
     let bootOptions = if args.len == 0 or args.startsWith("-"): defaultCommand else: ""
     echo "iteration: ", i+1
     var extraOption = ""
-    var nimi = i.thVersion
+    let nimi = i.thVersion
     if i == 0:
-      nimi = nimStart
       extraOption.add " --skipUserCfg --skipParentCfg"
         # The configs are skipped for bootstrap
         # (1st iteration) to prevent newer flags from breaking bootstrap phase.
