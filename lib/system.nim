@@ -876,7 +876,7 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ##   assert(FloatingPointDefect of Exception)
   ##   assert(DivByZeroDefect of Exception)
 
-proc cmp*[T](x, y: T): int {.procvar.} =
+proc cmp*[T](x, y: T): int =
   ## Generic compare proc.
   ##
   ## Returns:
@@ -894,7 +894,7 @@ proc cmp*[T](x, y: T): int {.procvar.} =
   if x < y: return -1
   return 1
 
-proc cmp*(x, y: string): int {.noSideEffect, procvar.}
+proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
   ## **Note**: The precise result values depend on the used C runtime library and

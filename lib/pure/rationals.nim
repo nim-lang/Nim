@@ -225,7 +225,7 @@ proc `/=`*[T](x: var Rational[T], y: T) =
   x.den *= y
   reduce(x)
 
-proc cmp*(x, y: Rational): int {.procvar.} =
+proc cmp*(x, y: Rational): int =
   ## Compares two rationals.
   (x - y).num
 
