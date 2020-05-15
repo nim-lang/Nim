@@ -242,7 +242,7 @@ proc tryExec*(db: var DbConn, query: SqlQuery, args: varargs[string, `$`]): bool
   try:
     db.prepareFetchDirect(query, args)
     var
-      rCnt = -1
+      rCnt:TSqlLen = -1
     res = SQLRowCount(db.stmt, rCnt)
     properFreeResult(SQL_HANDLE_STMT, db.stmt)
     if res != SQL_SUCCESS: dbError(db)
@@ -461,10 +461,10 @@ proc execAffectedRows*(db: var DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   db.sqlCheck(SQLPrepare(db.stmt, q.PSQLCHAR, q.len.TSqlSmallInt))
   rawExec(db, query, args)
-  var rCnt = -1
+  var rCnt:TSqlLen = -1
   db.sqlCheck(SQLRowCount(db.hDb, rCnt))
   properFreeResult(SQL_HANDLE_STMT, db.stmt)
-  result = rCnt
+  result = rCnt.int64
 
 proc close*(db: var DbConn) {.
       tags: [WriteDbEffect], raises: [].} =
@@ -489,7 +489,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   ## Currently the database parameter is ignored,
   ## but included to match ``open()`` in the other db_xxxxx library modules.
   var
-    val: TSqlInteger = SQL_OV_ODBC3
+    val = SQL_OV_ODBC3
     resLen = 0
   result = (hDb: nil, env: nil, stmt: nil)
   # allocate environment handle
@@ -497,7 +497,7 @@ proc open*(connection, user, password, database: string): DbConn {.
   if res != SQL_SUCCESS: dbError("Error: unable to initialise ODBC environment.")
   res = SQLSetEnvAttr(result.env,
                       SQL_ATTR_ODBC_VERSION.TSqlInteger,
-                      val, resLen.TSqlInteger)
+                      cast[SqlPointer](val.addr), resLen.TSqlInteger)
   if res != SQL_SUCCESS: dbError("Error: unable to set ODBC driver version.")
   # allocate hDb handle
   res = SQLAllocHandle(SQL_HANDLE_DBC, result.env, result.hDb)
