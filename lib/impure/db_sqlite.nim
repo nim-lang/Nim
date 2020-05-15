@@ -124,6 +124,7 @@ type
                       ## converted to an empty string.
   InstantRow* = PStmt ## A handle that can be used to get a row's column
                       ## text on demand.
+  SqlPrepared* = distinct PStmt ## a identifier for the prepared queries
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## Raises a `DbError` exception.
@@ -164,6 +165,11 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
     else:
       add(result, c)
 
+proc prepare*(db: DbConn; q: string): SqlPrepared =
+  if prepare_v2(db, q, q.len.cint,result.PStmt, nil) != SQLITE_OK:
+    discard finalize(result.PStmt)
+    dbError(db)
+
 proc tryExec*(db: DbConn, query: SqlQuery,
               args: varargs[string, `$`]): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
@@ -188,6 +194,16 @@ proc tryExec*(db: DbConn, query: SqlQuery,
       discard finalize(stmt)
       result = false
 
+proc tryExec*(db: DbConn, stmtName: SqlPrepared,
+              args: varargs[string, `$`]): bool {.
+              tags: [ReadDbEffect, WriteDbEffect].} =
+    let x = step(stmtName.PStmt)
+    if x in {SQLITE_DONE, SQLITE_ROW}:
+      result = true
+    else:
+      discard finalize(stmtName.PStmt)
+      result = false
+
 proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   tags: [ReadDbEffect, WriteDbEffect].} =
   ## Executes the query and raises a `DbError` exception if not successful.
@@ -206,6 +222,10 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   ##      db.close()
   if not tryExec(db, query, args): dbError(db)
 
+proc exec*(db: DbConn, stmtName: SqlPrepared,
+          args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect].} =
+    if not tryExec(db, stmtName, args): dbError(db)
+
 proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
@@ -215,6 +235,11 @@ proc setupQuery(db: DbConn, query: SqlQuery,
   assert(not db.isNil, "Database not connected.")
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
+
+proc setupQuery(db: DbConn, stmtName: SqlPrepared,
+                args: varargs[string]): PStmt =
+  assert(not db.isNil, "Database not connected.")
+  if not tryExec(db, stmtName, args): dbError(db)
 
 proc setRow(stmt: PStmt, r: var Row, cols: cint) =
   for col in 0'i32..cols-1:
@@ -264,6 +289,18 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   finally:
     if finalize(stmt) != SQLITE_OK: dbError(db)
 
+iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
+                   args: varargs[string, `$`]): Row {.tags: [ReadDbEffect,WriteDbEffect].} =
+  var stmt = setupQuery(db, stmtName, args)
+  var L = (column_count(stmt))
+  var result = newRow(L)
+  try:
+    while step(stmt) == SQLITE_ROW:
+      setRow(stmt, result, L)
+      yield result
+  except:
+    dbError(db)
+
 iterator instantRows*(db: DbConn, query: SqlQuery,
                       args: varargs[string, `$`]): InstantRow
                       {.tags: [ReadDbEffect].} =
@@ -303,6 +340,16 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
       yield stmt
   finally:
     if finalize(stmt) != SQLITE_OK: dbError(db)
+
+iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
+                      args: varargs[string, `$`]): InstantRow
+                      {.tags: [ReadDbEffect,WriteDbEffect].} =
+  var stmt = setupQuery(db, stmtName, args)
+  try:
+    while step(stmt) == SQLITE_ROW:
+      yield stmt
+  except:
+    dbError(db)
 
 proc toTypeKind(t: var DbType; x: int32) =
   case x
@@ -446,6 +493,12 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   for r in fastRows(db, query, args):
     result.add(r)
 
+proc getAllRows*(db: DbConn, stmtName: SqlPrepared,
+                 args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect,WriteDbEffect].} =
+  result = @[]
+  for r in fastRows(db, stmtName, args):
+    result.add(r)
+
 iterator rows*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): Row {.tags: [ReadDbEffect].} =
   ## Similar to `fastRows iterator <#fastRows.i,DbConn,SqlQuery,varargs[string,]>`_,
@@ -472,6 +525,10 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ##
   ##    db.close()
   for r in fastRows(db, query, args): yield r
+
+iterator rows*(db: DbConn, stmtName: SqlPrepared,
+               args: varargs[string, `$`]): Row {.tags: [ReadDbEffect,WriteDbEffect].} =
+  for r in fastRows(db, stmtName, args): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [ReadDbEffect].} =
@@ -508,6 +565,19 @@ proc getValue*(db: DbConn, query: SqlQuery,
   else:
     result = ""
   if finalize(stmt) != SQLITE_OK: dbError(db)
+
+proc getValue*(db: DbConn,  stmtName: SqlPrepared,
+               args: varargs[string, `$`]): string {.tags: [ReadDbEffect,WriteDbEffect].} =
+  var stmt = setupQuery(db, stmtName, args)
+  if step(stmt) == SQLITE_ROW:
+    let cb = column_bytes(stmt, 0)
+    if cb == 0:
+      result = ""
+    else:
+      result = newStringOfCap(cb)
+      add(result, column_text(stmt, 0))
+  else:
+    result = ""
 
 proc tryInsertID*(db: DbConn, query: SqlQuery,
                   args: varargs[string, `$`]): int64
@@ -590,6 +660,12 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   exec(db, query, args)
   result = changes(db)
 
+proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
+                       args: varargs[string, `$`]): int64 {.
+                       tags: [ReadDbEffect, WriteDbEffect].} =
+  exec(db, stmtName, args)
+  result = changes(db)
+
 proc close*(db: DbConn) {.tags: [DbEffect].} =
   ## Closes the database connection.
   ##
@@ -637,17 +713,42 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   exec(connection, sql"PRAGMA encoding = ?", [encoding])
   result = connection.getValue(sql"PRAGMA encoding") == encoding
 
+proc finalize*(sqlPrepared:SqlPrepared){.discardable.} = 
+  discard finalize(sqlPrepared.PStmt)
+
 when not defined(testing) and isMainModule:
   var db = open("db.sql", "", "", "")
   exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
   exec(db, sql"insert into tbl1 values('hello!',10)", [])
   exec(db, sql"insert into tbl1 values('goodbye', 20)", [])
+  var p1 = db.prepare "create table tbl2(one varchar(10), two smallint)"
+  exec(db, p1, [])
+  finalize(p1)
+  var p2 = db.prepare "insert into tbl2 values('hello!',10)"
+  exec(db, p2, [])
+  finalize(p2)
+  var p3 = db.prepare "insert into tbl2 values('goodbye', 20)"
+  exec(db, p3, [])
+  finalize(p3)
   #db.query("create table tbl1(one varchar(10), two smallint)")
   #db.query("insert into tbl1 values('hello!',10)")
   #db.query("insert into tbl1 values('goodbye', 20)")
   for r in db.rows(sql"select * from tbl1", []):
     echo(r[0], r[1])
   for r in db.instantRows(sql"select * from tbl1", []):
+    echo(r[0], r[1])
+  var p4 =  db.prepare "select * from tbl2"
+  for r in db.rows(p4, []):
+    echo(r[0], r[1])
+  finalize(p4)
+  var p5 =  db.prepare "select * from tbl2"
+  for r in db.instantRows(p5, []):
+    echo(r[0], r[1])
+  finalize(p5)
+
+  for r in db.rows(sql"select * from tbl2", []):
+    echo(r[0], r[1])
+  for r in db.instantRows(sql"select * from tbl2", []):
     echo(r[0], r[1])
 
   db_sqlite.close(db)
