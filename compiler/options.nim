@@ -419,7 +419,7 @@ proc newConfigRef*(): ConfigRef =
     cIncludes: @[],   # directories to search for included files
     cLibs: @[],       # directories to search for lib files
     cLinkedLibs: @[],  # libraries to link
-    backend: backendC,
+    backend: backendInvalid,
     externalToLink: @[],
     linkOptionsCmd: "",
     compileOptionsCmd: @[],

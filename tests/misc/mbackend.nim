@@ -3,11 +3,18 @@ We can't merge this test inside a `when defined(cpp)` because some bug that was
 fixed would not trigger in that case.
 ]#
 
-## bugfix 1: this used to CT error with: Error: unhandled exception: mimportcpp.nim(6, 18) `defined(cpp)`
-static: doAssert defined(cpp)
+import std/compilesettings
+import std/unittest
 
-## checks that `--backend:c` has no side effect (ie, can be overridden by subsequent commands)
-static: doAssert not defined(c)
+static:
+  ## bugfix 1: this used to CT error with: Error: unhandled exception: mimportcpp.nim(6, 18) `defined(cpp)`
+  doAssert defined(cpp)
+  doAssert querySetting(backend) == "cpp"
+
+  ## checks that `--backend:c` has no side effect (ie, can be overridden by subsequent commands)
+  doAssert not defined(c)
+  doAssert not defined(js)
+  doAssert not defined(js)
 
 type
   std_exception {.importcpp: "std::exception", header: "<exception>".} = object

@@ -216,13 +216,21 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
-      let c = if cmd.startsWith("nim <backend> "): os.getAppFilename() & " " & $conf.backend & cmd.substr("nim <backend>".len)
-              elif cmd.startsWith("nim "): os.getAppFilename() & cmd.substr("nim".len)
-              else: cmd
-      let c2 = c % quoteShell(outp)
-      rawMessage(conf, hintExecuting, c2)
-      if execShellCmd(c2) != status:
-        rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
+
+      proc interpSnippetCmd(cmd: string): string =
+        result = cmd
+        # backward compatibility hacks; interpolation commands should explicitly use `$`
+        result = result.replace("nim ", "$nim")
+        result = result.replace("$1", "$options")
+        result = result % [
+          "nim", os.getAppFilename().quoteShell,
+          "backend", $d.conf.backend,
+          "options", outp.quoteShell,
+        ]
+      let cmd = cmd.interpSnippetCmd
+      rawMessage(conf, hintExecuting, cmd)
+      if execShellCmd(cmd) != status:
+        rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, presentationPath(conf, filename),
                                 outExt, htmldocsDir, false)

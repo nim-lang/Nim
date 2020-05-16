@@ -196,11 +196,10 @@ proc mainCommand*(graph: ModuleGraph) =
   when false: setOutDir(conf)
   if optUseNimcache in conf.globalOptions: setOutDir(conf)
 
-  proc customizeForBackend(backend2: TBackend) =
+  proc customizeForBackend() =
     ## sets backend specific options but don't compile to backend yet
-    conf.backend = backend2
-    defineSymbol(graph.config.symbols, $backend2)
-    case backend2
+    defineSymbol(graph.config.symbols, $conf.backend)
+    case conf.backend
     of backendC:
       if conf.exc == excNone: conf.exc = excSetjmp
     of backendCpp:
@@ -221,8 +220,11 @@ proc mainCommand*(graph: ModuleGraph) =
 
   proc compileToBackend(backend: TBackend = conf.backend, cmd = cmdCompileToBackend) =
     commandAlreadyProcessed = true
-    customizeForBackend(backend)
     conf.cmd = cmd
+    if conf.backend == backendInvalid:
+      # only set backend if wasn't already set, to allow override via `nim c -b:cpp`
+      conf.backend = backend
+    customizeForBackend()
     case conf.backend
     of backendC: commandCompileToC(graph)
     of backendCpp: commandCompileToC(graph)
@@ -238,7 +240,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "js", "compiletojs": compileToBackend(backendJs)
   else:
     # this ensures all other commands call this
-    customizeForBackend(conf.backend)
+    customizeForBackend()
 
   ## process all other commands
   case conf.command.normalize
