@@ -160,8 +160,8 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.
 - The `define` and `undef` pragmas have been de-deprecated.
-- New command: `nim r main.nim [args...]` which compiles and runs main.nim, saving
-  the binary to $nimcache/main$exeExt, using the same logic as `nim c -r` to
+- New command: `nim r main.nim [args...]` which compiles and runs main.nim, and implies `--usenimcache`
+  so that output is saved to $nimcache/main$exeExt, using the same logic as `nim c -r` to
   avoid recompiling when sources don't change. This is now the preferred way to
   run tests, avoiding the usual pain of clobbering your repo with binaries or
   using tricky gitignore rules on posix. Example:
@@ -178,6 +178,12 @@ proc mydiv(a, b): int {.raises: [].} =
 - new hint: `--hint:msgOrigin` will show where a compiler msg (hint|warning|error) was generated; this
   helps in particular when it's non obvious where it came from either because multiple locations generate
   the same message, or because the message involves runtime formatting.
+- new flag `--backend:js|c|cpp|objc (or -b:js etc), to change backend; can be used with any command
+  (eg nim r, doc, check etc); safe to re-assign.
+- new flag `--doccmd:cmd` to pass additional flags for runnableExamples, eg: `--doccmd:-d:foo --threads`
+  use `--doccmd:skip` to skip runnableExamples and rst test snippets.
+- new flag `--usenimcache` to output to nimcache (whatever it resolves to after all commands are processed)
+  and avoids polluting both $pwd and $projectdir. It can be used with any command.
 
 ## Tool changes
 

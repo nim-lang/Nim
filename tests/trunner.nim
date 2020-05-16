@@ -123,6 +123,16 @@ else: # don't run twice the same test
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
       check execCmdEx(cmd) == ("ok3\n", 0)
 
+  block: # further issues with `--backend`
+    let file = testsDir / "misc/mbackend.nim"
+    var cmd = fmt"{nim} doc -b:cpp --hints:off --nimcache:{nimcache} {file}"
+    check execCmdEx(cmd) == ("", 0)
+    cmd = fmt"{nim} check -b:c -b:cpp --hints:off --nimcache:{nimcache} {file}"
+    check execCmdEx(cmd) == ("", 0)
+    # issue https://github.com/timotheecour/Nim/issues/175
+    cmd = fmt"{nim} c -b:js -b:cpp --hints:off --nimcache:{nimcache} {file}"
+    check execCmdEx(cmd) == ("", 0)
+
   block: # some importc tests
     # issue #14314
     let file = testsDir / "misc/mimportc.nim"
