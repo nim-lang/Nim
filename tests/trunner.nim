@@ -128,3 +128,10 @@ else: # don't run twice the same test
     let file = testsDir / "misc/mimportc.nim"
     let cmd = fmt"{nim} r -b:cpp --hints:off --nimcache:{nimcache} --warningAsError:ProveInit {file}"
     check execCmdEx(cmd) == ("witness\n", 0)
+
+  block: # further issues with `--backend`
+    let file = testsDir / "misc/mimportcpp.nim"
+    var cmd = fmt"{nim} doc -b:cpp --hints:off --nimcache:{nimcache} {file}"
+    check execCmdEx(cmd) == ("", 0)
+    cmd = fmt"{nim} check -b:c -b:cpp --hints:off --nimcache:{nimcache} {file}"
+    check execCmdEx(cmd) == ("", 0)

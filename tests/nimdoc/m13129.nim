@@ -1,3 +1,5 @@
+# issue #13129
+
 when defined(cpp):
   {.push header: "<vector>".}
   type
