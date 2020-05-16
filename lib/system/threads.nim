@@ -107,7 +107,7 @@ template afterThreadRuns() =
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
   proc deallocOsPages() {.rtl, raises: [].}
 
-proc threadTrouble() {.raises: [].}
+proc threadTrouble() {.raises: [], gcsafe.}
   ## defined in system/excpt.nim
 
 when defined(boehmgc):
