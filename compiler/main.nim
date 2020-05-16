@@ -196,8 +196,13 @@ proc mainCommand*(graph: ModuleGraph) =
   when false: setOutDir(conf)
   if optUseNimcache in conf.globalOptions: setOutDir(conf)
 
-  proc customizeForBackend() =
-    ## sets backend specific options but don't compile to backend yet
+  proc customizeForBackend(backend: TBackend) =
+    ## Sets backend specific options but don't compile to backend yet in
+    ## case command doesn't require it. This must be called by all commands.
+    if conf.backend == backendInvalid:
+      # only set if wasn't already set, to allow override via `nim c -b:cpp`
+      conf.backend = backend
+
     defineSymbol(graph.config.symbols, $conf.backend)
     case conf.backend
     of backendC:
@@ -218,13 +223,10 @@ proc mainCommand*(graph: ModuleGraph) =
 
   var commandAlreadyProcessed = false
 
-  proc compileToBackend(backend: TBackend = conf.backend, cmd = cmdCompileToBackend) =
+  proc compileToBackend(backend: TBackend, cmd = cmdCompileToBackend) =
     commandAlreadyProcessed = true
     conf.cmd = cmd
-    if conf.backend == backendInvalid:
-      # only set backend if wasn't already set, to allow override via `nim c -b:cpp`
-      conf.backend = backend
-    customizeForBackend()
+    customizeForBackend(backend)
     case conf.backend
     of backendC: commandCompileToC(graph)
     of backendCpp: commandCompileToC(graph)
@@ -238,23 +240,21 @@ proc mainCommand*(graph: ModuleGraph) =
   of "cpp", "compiletocpp": compileToBackend(backendCpp)
   of "objc", "compiletooc": compileToBackend(backendObjc)
   of "js", "compiletojs": compileToBackend(backendJs)
-  else:
-    # this ensures all other commands call this
-    customizeForBackend()
-
-  ## process all other commands
-  case conf.command.normalize
   of "r": # different from `"run"`!
     conf.globalOptions.incl {optRun, optUseNimcache}
-    compileToBackend()
+    compileToBackend(backendC)
   of "run":
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
-      if conf.backend != backendC:
+      if conf.backend notin {backendC, backendInvalid}:
         rawMessage(conf, errGenerated, "'run' requires c backend, got: '$1'" % $conf.backend)
-      compileToBackend(cmd = cmdRun)
+      compileToBackend(backendC, cmd = cmdRun)
     else:
       rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
+  else: customizeForBackend(backendC) # fallback for other commands
+
+  ## process all other commands
+  case conf.command.normalize
   of "doc0":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"

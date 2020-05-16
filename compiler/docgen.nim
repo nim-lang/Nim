@@ -218,11 +218,10 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       writeFile(outp, importStmt & content)
 
       proc interpSnippetCmd(cmd: string): string =
-        result = cmd
         # backward compatibility hacks; interpolation commands should explicitly use `$`
-        result = result.replace("nim ", "$nim")
-        result = result.replace("$1", "$options")
-        result = result % [
+        if cmd.startsWith "nim ": result = "$nim " & cmd[4..^1]
+        else: result = cmd
+        result = result.replace("$1", "$options") % [
           "nim", os.getAppFilename().quoteShell,
           "backend", $d.conf.backend,
           "options", outp.quoteShell,

@@ -223,7 +223,7 @@ type
                           ## fields marked with '*' are subject to
                           ## the incremental compilation mechanisms
                           ## (+) means "part of the dependency"
-    backend*: TBackend
+    backend*: TBackend # set via `nim x` or `nim --backend:x`
     target*: Target       # (+)
     linesCompiled*: int   # all lines that have been compiled
     options*: TOptions    # (+)
