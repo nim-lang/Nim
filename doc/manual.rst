@@ -6801,7 +6801,7 @@ Produces:
 ImportJs pragma
 ---------------
 
-Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+Similar to the `importcpp pragma for C++ <#implementation-specific-pragmas-importcpp-pragma>`_,
 the ``importjs`` pragma can be used to import Javascript methods or
 symbols in general. The generated code then uses the Javascript method
 calling syntax: ``obj.method(arg)``.
