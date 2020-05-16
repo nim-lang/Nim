@@ -90,7 +90,7 @@
   hangs if a process had both reads from stdin and writes (eg to stdout).
 
 - The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
-
+- The callback that is assigned to `system.onUnhandledException` must now be `.gcsafe`.
 
 - `osproc.execCmdEx` now takes an optional `input` for stdin.
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`

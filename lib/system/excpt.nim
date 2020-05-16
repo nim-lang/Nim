@@ -345,7 +345,7 @@ else:
   proc stackTraceAvailable*(): bool = result = false
 
 var onUnhandledException*: (proc (errorMsg: string) {.
-  nimcall.}) ## Set this error \
+  nimcall, gcsafe.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
   ##
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
