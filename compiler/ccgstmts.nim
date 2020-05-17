@@ -117,7 +117,7 @@ proc genVarTuple(p: BProc, n: PNode) =
     # insert the registration of the globals for the different parts of the tuple at the
     # start of the current scope (after they have been iterated) and init a boolean to
     # check if any of them is newly introduced and the initializing code has to be ran
-    lineCg(p, cpsLocals, "NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
+    lineCg(p, cpsLocals, "/*var*/NIM_BOOL $1 = NIM_FALSE;$n", [hcrCond])
     for curr in hcrGlobals:
       lineCg(p, cpsLocals, "$1 |= hcrRegisterGlobal($4, \"$2\", sizeof($3), $5, (void**)&$2);$N",
               [hcrCond, curr.loc.r, rdLoc(curr.loc), getModuleDllPath(p.module, n[0].sym), curr.tp])
@@ -943,7 +943,7 @@ proc genRestoreFrameAfterException(p: BProc) =
   if optStackTrace in p.module.config.options:
     if hasCurFramePointer notin p.flags:
       p.flags.incl hasCurFramePointer
-      p.procSec(cpsLocals).add(ropecg(p.module, "\tTFrame* _nimCurFrame;$n", []))
+      p.procSec(cpsLocals).add(ropecg(p.module, "\t/*var*/TFrame* _nimCurFrame;$n", []))
       p.procSec(cpsInit).add(ropecg(p.module, "\t_nimCurFrame = #getFrame();$n", []))
     linefmt(p, cpsStmts, "#setFrame(_nimCurFrame);$n", [])
 
@@ -1267,7 +1267,7 @@ proc genTryGoto(p: BProc; t: PNode; d: var TLoc) =
       genStmts(p, t[i][0])
     else:
       # pretend we did handle the error for the safe execution of the 'finally' section:
-      p.procSec(cpsLocals).add(ropecg(p.module, "NIM_BOOL oldNimErrFin$1_;$n", [lab]))
+      p.procSec(cpsLocals).add(ropecg(p.module, "/*var*/NIM_BOOL oldNimErrFin$1_;$n", [lab]))
       linefmt(p, cpsStmts, "oldNimErrFin$1_ = *nimErr_; *nimErr_ = NIM_FALSE;$n", [lab])
       genStmts(p, t[i][0])
       # this is correct for all these cases:
@@ -1323,7 +1323,7 @@ proc genTrySetjmp(p: BProc, t: PNode, d: var TLoc) =
   var safePoint: Rope
   if not quirkyExceptions:
     safePoint = getTempName(p.module)
-    linefmt(p, cpsLocals, "#TSafePoint $1;$n", [safePoint])
+    linefmt(p, cpsLocals, "/*var*/#TSafePoint $1;$n", [safePoint])
     linefmt(p, cpsStmts, "#pushSafePoint(&$1);$n", [safePoint])
     if isDefined(p.config, "nimStdSetjmp"):
       linefmt(p, cpsStmts, "$1.status = setjmp($1.context);$n", [safePoint])

@@ -19,7 +19,7 @@ proc accessThreadLocalVar(p: BProc, s: PSym) =
   if emulatedThreadVars(p.config) and threadVarAccessed notin p.flags:
     p.flags.incl threadVarAccessed
     incl p.module.flags, usesThreadVars
-    p.procSec(cpsLocals).addf("\tNimThreadVars* NimTV_;$n", [])
+    p.procSec(cpsLocals).addf("\t/*var*/NimThreadVars* NimTV_;$n", [])
     p.procSec(cpsInit).add(
       ropecg(p.module, "\tNimTV_ = (NimThreadVars*) #GetThreadLocalVars();$n", []))
 

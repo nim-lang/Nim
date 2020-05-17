@@ -452,7 +452,7 @@ proc initLocalVar(p: BProc, v: PSym, immediateAsgn: bool) =
 proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "$1 $2;$n", [getTypeDesc(p.module, t), result.r])
+  linefmt(p, cpsLocals, "/*var*/$1 $2;$n", [getTypeDesc(p.module, t), result.r])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -462,7 +462,7 @@ proc getTemp(p: BProc, t: PType, result: var TLoc; needsInit=false) =
 proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsStmts, "$1 $2 = $3;$n", [getTypeDesc(p.module, t), result.r, value])
+  linefmt(p, cpsStmts, "/*var*/$1 $2 = $3;$n", [getTypeDesc(p.module, t), result.r, value])
   result.k = locTemp
   result.lode = lodeTyp t
   result.storage = OnStack
@@ -471,7 +471,7 @@ proc getTempCpp(p: BProc, t: PType, result: var TLoc; value: Rope) =
 proc getIntTemp(p: BProc, result: var TLoc) =
   inc(p.labels)
   result.r = "T" & rope(p.labels) & "_"
-  linefmt(p, cpsLocals, "NI $1;$n", [result.r])
+  linefmt(p, cpsLocals, "/*var*/NI $1;$n", [result.r])
   result.k = locTemp
   result.storage = OnStack
   result.lode = lodeTyp getSysType(p.module.g.graph, unknownLineInfo, tyInt)
@@ -631,7 +631,7 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
 
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   discard cgsym(p.module, "nimFrame")
-  p.blocks[0].sections[cpsLocals].addf("TFrame $1;$n", [frame])
+  p.blocks[0].sections[cpsLocals].addf("/*var*/TFrame $1;$n", [frame])
   result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; " &
                       " $1.line = $4; $1.len = -1; nimFrame(&$1);$n",
                       [frame, procname, filename, line])
@@ -968,7 +968,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
-    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "/*var*/NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc genProcAux(m: BModule, prc: PSym) =

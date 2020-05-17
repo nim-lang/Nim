@@ -145,7 +145,7 @@ proc genTraverseProc(m: BModule, origTyp: PType; sig: SigHash): Rope =
     header = "static N_NIMCALL(void, $1)(void* p, NI op)" % [markerName]
     t = getTypeDesc(m, typ)
 
-  lineF(p, cpsLocals, "$1 a;$n", [t])
+  lineF(p, cpsLocals, "/*var*/$1 a;$n", [t])
   lineF(p, cpsInit, "a = ($1)p;$n", [t])
 
   c.p = p

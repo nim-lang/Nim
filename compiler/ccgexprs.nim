@@ -505,7 +505,7 @@ template binaryArithOverflowRaw(p: BProc, t: PType, a, b: TLoc;
   let storage = if size < p.config.target.intSize: rope("NI")
                 else: getTypeDesc(p.module, t)
   var result = getTempName(p.module)
-  linefmt(p, cpsLocals, "$1 $2;$n", [storage, result])
+  linefmt(p, cpsLocals, "/*var*/$1 $2;$n", [storage, result])
   lineCg(p, cpsStmts, "if (#$2($3, $4, &$1)) { #raiseOverflow(); $5};$n",
       [result, cpname, rdCharLoc(a), rdCharLoc(b), raiseInstr(p)])
   if size < p.config.target.intSize or t.kind in {tyRange, tyEnum}:
@@ -1960,7 +1960,7 @@ proc genCast(p: BProc, e: PNode, d: var TLoc) =
     var lbl = p.labels.rope
     var tmp: TLoc
     tmp.r = "LOC$1.source" % [lbl]
-    linefmt(p, cpsLocals, "union { $1 source; $2 dest; } LOC$3;$n",
+    linefmt(p, cpsLocals, "/*var*/union { $1 source; $2 dest; } LOC$3;$n",
       [getTypeDesc(p.module, e[1].typ), getTypeDesc(p.module, e.typ), lbl])
     tmp.k = locExpr
     tmp.lode = lodeTyp srct
