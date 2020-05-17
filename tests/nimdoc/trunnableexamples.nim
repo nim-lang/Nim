@@ -47,6 +47,25 @@ proc fun*() =
     doAssert declared(isAlphaAscii)
     echo "foo7"
 
+when true: # issue #12746
+  # this proc on its own works fine with `nim doc`
+  proc goodProc*() =
+    runnableExamples:
+      try:
+        discard
+      except:
+        # just the general except will work
+        discard
+
+  # FIXED: this proc fails with `nim doc`
+  proc badProc*() =
+    runnableExamples:
+      try:
+        discard
+      except IOError:
+        # specifying Error is culprit
+        discard
+
 # also check for runnableExamples at module scope
 runnableExamples:
   block:
