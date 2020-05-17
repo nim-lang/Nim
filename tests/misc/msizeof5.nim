@@ -116,7 +116,7 @@ when defined caseBad:
     ensureCgen Foo5
 
   block:
-    type Foo6{.importc, completeStruct.} = object
+    type Foo6{.importc:"struct Foo6", completeStruct.} = object
       a1: cint
       # a2: bool # missing this should trigger assert fail
       a3: cfloat

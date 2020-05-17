@@ -5,6 +5,7 @@ discard """
 
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
+## Note: this test is a bit slow but tests a lot of things; please don't disable.
 
 import std/[strformat,os,osproc,unittest]
 
@@ -15,7 +16,7 @@ const mode =
   elif defined(cpp): "cpp"
   else: static: doAssert false
 
-const testsDir = currentSourcePath().parentDir
+const testsDir = currentSourcePath.parentDir.parentDir
 const buildDir = testsDir.parentDir / "build"
 const nimcache = buildDir / "nimcacheTrunner"
   # `querySetting(nimcacheDir)` would also be possible, but we thus
@@ -28,7 +29,7 @@ proc runCmd(file, options = ""): auto =
   result = execCmdEx(cmd)
   when false:  echo result[0] & "\n" & result[1] # for debugging
 
-when defined(nimHasLibFFIEnabled):
+when defined(nimTrunnerFfi):
   block: # mevalffi
     when defined(openbsd):
       #[
@@ -81,7 +82,7 @@ else: # don't run twice the same test
       check2 "sizeof(struct Foo2) == 1"
       check2 "sizeof(Foo5) == 16"
       check2 "sizeof(Foo5) == 3"
-      # check2 "sizeof(struct Foo6) == " # fails w cpp
+      check2 "sizeof(struct Foo6) == "
       check exitCode != 0
 
   import streams
