@@ -97,7 +97,7 @@ proc findNimStdLibCompileTime*(): string =
   ## Same as ``findNimStdLib`` but uses source files used at compile time,
   ## and asserts on error.
   const exe = getCurrentCompilerExe()
-  result = exe.parentDir.parentDir / "lib"
+  result = exe.splitFile.dir.parentDir / "lib"
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
