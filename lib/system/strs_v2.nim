@@ -107,8 +107,9 @@ proc mnewString(len: int): NimStringV2 {.compilerproc.} =
 
 proc setLengthStrV2(s: var NimStringV2, newLen: int) {.compilerRtl.} =
   if newLen == 0:
-    frees(s)
-    s.p = nil
+    #frees(s)
+    #s.p = nil
+    discard
   else:
     if newLen > s.len or isLiteral(s):
       prepareAdd(s, newLen - s.len)

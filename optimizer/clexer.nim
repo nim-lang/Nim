@@ -10,8 +10,9 @@
 ## This module implements a C scanner for our C optimizer.
 ## Keywords are not handled here, because there is no need.
 
-import ".." / compiler / [options, nimlexbase, llstream, msgs,
-  lineinfos, pathutils]
+import std / memfiles
+
+import ".." / compiler / [options, llstream, msgs, lineinfos, pathutils]
 
 const
   SymChars = {'a'..'z', 'A'..'Z', '0'..'9', '_', '\x80'..'\xFF'}
@@ -85,7 +86,10 @@ type
     kind*: TokenKind          # the type of the token
     s*: string               # parsed symbol, integer, char or string literal
 
-  Lexer* = object of TBaseLexer
+  Lexer* = object
+    f: MemFile
+    buf: cstring
+    bufpos: int
     fileIdx*: FileIndex
     inDirective, debugMode*: bool
     config: ConfigRef
@@ -96,27 +100,35 @@ proc fillToken(L: var Token) =
 
 proc openLexer*(lex: var Lexer, filename: AbsoluteFile, inputstream: PLLStream;
                 config: ConfigRef) =
-  openBaseLexer(lex, inputstream)
+  #openBaseLexer(lex, inputstream, 2*1024*1024)
+  lex.f = memfiles.open(filename.string)
   lex.fileIdx = fileInfoIdx(config, filename)
   lex.config = config
+  lex.bufpos = 0
+  lex.buf = cast[cstring](lex.f.mem)
 
 proc closeLexer*(lex: var Lexer) =
-  closeBaseLexer(lex)
+  close lex.f
+  #closeBaseLexer(lex)
 
-proc getColumn*(L: Lexer): int =
-  result = getColNumber(L, L.bufPos)
+template myadd(a, b): untyped =
+  add(a, b)
 
-proc getLineInfo*(L: Lexer): TLineInfo =
-  result = newLineInfo(L.fileIdx, L.linenumber, getColNumber(L, L.bufpos))
+when false:
+  proc getColumn*(L: Lexer): int =
+    result = getColNumber(L, L.bufPos)
 
-proc lexMessage*(L: Lexer, msg: TMsgKind, arg = "") =
-  if L.debugMode: writeStackTrace()
-  msgs.globalError(L.config, getLineInfo(L), msg, arg)
+  proc getLineInfo*(L: Lexer): TLineInfo =
+    result = newLineInfo(L.fileIdx, L.linenumber, getColNumber(L, L.bufpos))
 
-proc lexMessagePos(L: var Lexer, msg: TMsgKind, pos: int, arg = "") =
-  var info = newLineInfo(L.fileIdx, L.linenumber, pos - L.lineStart)
-  if L.debugMode: writeStackTrace()
-  msgs.globalError(L.config, info, msg, arg)
+  proc lexMessage*(L: Lexer, msg: TMsgKind, arg = "") =
+    if L.debugMode: writeStackTrace()
+    msgs.globalError(L.config, getLineInfo(L), msg, arg)
+
+  proc lexMessagePos(L: var Lexer, msg: TMsgKind, pos: int, arg = "") =
+    var info = newLineInfo(L.fileIdx, L.linenumber, pos - L.lineStart)
+    if L.debugMode: writeStackTrace()
+    msgs.globalError(L.config, info, msg, arg)
 
 proc tokKindToStr*(k: TokenKind): string =
   case k
@@ -204,12 +216,12 @@ proc matchUnderscoreChars(L: var Lexer, tok: var Token, chars: set[char]) =
   var buf = L.buf
   while true:
     if buf[pos] in chars:
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
     else:
       break
     if buf[pos] == '_':
-      add(tok.s, '_')
+      myadd(tok.s, '_')
       inc(pos)
   L.bufPos = pos
 
@@ -219,7 +231,7 @@ when false:
     while true:
       case L.buf[pos]
       of 'A'..'Z', 'a'..'z', '0'..'9', '.', '_':
-        add(tok.s, L.buf[pos])
+        myadd(tok.s, L.buf[pos])
         inc(pos)
       else: break
     L.bufpos = pos
@@ -227,105 +239,109 @@ when false:
 proc getFloating(L: var Lexer, tok: var Token) =
   matchUnderscoreChars(L, tok, {'0'..'9'})
   if L.buf[L.bufpos] in {'e', 'E'}:
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
     if L.buf[L.bufpos] in {'+', '-'}:
-      add(tok.s, L.buf[L.bufpos])
+      myadd(tok.s, L.buf[L.bufpos])
       inc(L.bufpos)
     matchUnderscoreChars(L, tok, {'0'..'9'})
 
 proc getNumber(L: var Lexer, tok: var Token) =
   tok.kind = tkLit
   if L.buf[L.bufpos] == '.':
-    add(tok.s, '.')
+    myadd(tok.s, '.')
     inc(L.bufpos)
     getFloating(L, tok)
   else:
     matchUnderscoreChars(L, tok, {'0'..'9'})
     if L.buf[L.bufpos] in {'.','e','E'}:
       if L.buf[L.bufpos] == '.':
-        add(tok.s, L.buf[L.bufpos])
+        myadd(tok.s, L.buf[L.bufpos])
         inc(L.bufpos)
       getFloating(L, tok)
   # ignore type suffix:
   while L.buf[L.bufpos] in {'A'..'Z', 'a'..'z'}:
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
 
 proc handleCRLF(L: var Lexer, pos: int): int =
-  case L.buf[pos]
-  of CR: result = nimlexbase.handleCR(L, pos)
-  of LF: result = nimlexbase.handleLF(L, pos)
-  else: result = pos
+  result = pos+1
+  if pos >= L.f.size:
+    L.buf = "\0"
+    L.bufpos = 0
+    L.f.size = 0
+    result = 0
 
 proc escape(L: var Lexer, tok: var Token, allowEmpty=false) =
-  add(tok.s, L.buf[L.bufpos])
+  myadd(tok.s, L.buf[L.bufpos])
   inc(L.bufpos) # skip \
   case L.buf[L.bufpos]
   of 'b', 'B', 't', 'T', 'n', 'N', 'f', 'F', 'r', 'R', '\'', '"', '\\':
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
   of '0'..'7':
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
     if L.buf[L.bufpos] in {'0'..'7'}:
-      add(tok.s, L.buf[L.bufpos])
+      myadd(tok.s, L.buf[L.bufpos])
       inc(L.bufpos)
       if L.buf[L.bufpos] in {'0'..'7'}:
-        add(tok.s, L.buf[L.bufpos])
+        myadd(tok.s, L.buf[L.bufpos])
         inc(L.bufpos)
   of 'x':
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
     while true:
       case L.buf[L.bufpos]
       of '0'..'9', 'a'..'f', 'A'..'F':
-        add(tok.s, L.buf[L.bufpos])
+        myadd(tok.s, L.buf[L.bufpos])
         inc(L.bufpos)
       else:
         break
-  elif not allowEmpty:
-    lexMessage(L, errGenerated, "invalid character constant")
+  else: discard
+  #elif not allowEmpty:
+  #  lexMessage(L, errGenerated, "invalid character constant")
 
 proc getCharLit(L: var Lexer, tok: var Token) =
-  add(tok.s, L.buf[L.bufpos])
+  myadd(tok.s, L.buf[L.bufpos])
   inc(L.bufpos)
   if L.buf[L.bufpos] == '\\':
     escape(L, tok)
   else:
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
   if L.buf[L.bufpos] == '\'':
-    add(tok.s, L.buf[L.bufpos])
+    myadd(tok.s, L.buf[L.bufpos])
     inc(L.bufpos)
   else:
-    lexMessage(L, errGenerated, "missing closing single quote")
+    discard
+    #lexMessage(L, errGenerated, "missing closing single quote")
   tok.kind = tkLit
 
 proc getString(L: var Lexer, tok: var Token) =
-  add(tok.s, L.buf[L.bufpos])
+  myadd(tok.s, L.buf[L.bufpos])
   var pos = L.bufPos + 1          # skip "
   var buf = L.buf                 # put `buf` in a register
-  var line = L.linenumber         # save linenumber for better error message
+  #var line = L.linenumber         # save linenumber for better error message
   while true:
     case buf[pos]
     of '\"':
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
       break
-    of CR:
-      add(tok.s, buf[pos])
-      pos = nimlexbase.handleCR(L, pos)
+    of '\10':
+      myadd(tok.s, buf[pos])
+      pos = handleCRLF(L, pos)
       buf = L.buf
-    of LF:
-      add(tok.s, buf[pos])
-      pos = nimlexbase.handleLF(L, pos)
+    of '\13':
+      myadd(tok.s, buf[pos])
+      pos = handleCRLF(L, pos)
       buf = L.buf
-    of nimlexbase.EndOfFile:
-      var line2 = L.linenumber
-      L.lineNumber = line
-      lexMessagePos(L, errGenerated, L.lineStart, "closing \" expected, but end of file reached")
-      L.lineNumber = line2
+    of '\0':
+      #var line2 = L.linenumber
+      #L.lineNumber = line
+      #lexMessagePos(L, errGenerated, L.lineStart, "closing \" expected, but end of file reached")
+      #L.lineNumber = line2
       break
     of '\\':
       # we allow an empty \ for line concatenation, but we don't require it
@@ -334,7 +350,7 @@ proc getString(L: var Lexer, tok: var Token) =
       escape(L, tok, allowEmpty=true)
       pos = L.bufpos
     else:
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
   L.bufpos = pos
   tok.kind = tkLit
@@ -402,7 +418,7 @@ proc getSymbol(L: var Lexer, tok: var Token) =
       inc(pos, 4)
     else:
       if c notin SymChars: break
-      add(tok.s, c)
+      myadd(tok.s, c)
       inc(pos)
   L.bufpos = pos
   tok.kind = tkSymbol
@@ -413,24 +429,22 @@ proc scanLineComment(L: var Lexer, tok: var Token) =
   # a comment ends if the next line does not start with the // on the same
   # column after only whitespace
   tok.kind = tkLineComment
-  var col = getColNumber(L, pos)
+  #var col = getColNumber(L, pos)
   while true:
-    add(tok.s, buf[pos])
-    add(tok.s, buf[pos+1])
+    myadd(tok.s, buf[pos])
+    myadd(tok.s, buf[pos+1])
     inc(pos, 2)               # skip //
-    #add(tok.s, '#')
-    while buf[pos] notin {CR, LF, nimlexbase.EndOfFile}:
-      add(tok.s, buf[pos])
+    #myadd(tok.s, '#')
+    while buf[pos] notin {'\13', '\10'}:
+      myadd(tok.s, buf[pos])
       inc(pos)
-    add(tok.s, buf[pos])
+    myadd(tok.s, buf[pos])
     pos = handleCRLF(L, pos)
     buf = L.buf
-    var indent = 0
     while buf[pos] == ' ':
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
-      inc(indent)
-    if col == indent and buf[pos] == '/' and buf[pos+1] == '/':
+    if buf[pos] == '/' and buf[pos+1] == '/':
       discard
     else:
       break
@@ -444,21 +458,22 @@ proc scanStarComment(L: var Lexer, tok: var Token) =
   tok.kind = tkStarComment
   while true:
     case buf[pos]
-    of CR, LF:
-      add(tok.s, buf[pos])
+    of '\13', '\10':
+      myadd(tok.s, buf[pos])
       pos = handleCRLF(L, pos)
       buf = L.buf
     of '*':
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
       if buf[pos] == '/':
-        add(tok.s, buf[pos])
+        myadd(tok.s, buf[pos])
         inc(pos)
         break
-    of nimlexbase.EndOfFile:
-      lexMessage(L, errGenerated, "expected closing '*/'")
+    of '\0':
+      #lexMessage(L, errGenerated, "expected closing '*/'")
+      break
     else:
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
   # strip trailing whitespace
   #while tok.s.len > 0 and tok.s[^1] in {'\t', ' '}: setLen(tok.s, tok.s.len-1)
@@ -471,21 +486,21 @@ proc skip(L: var Lexer, tok: var Token) =
     case buf[pos]
     of '\\':
       # Ignore \ line continuation characters when not inDirective
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
       if L.inDirective:
         while buf[pos] in {' ', '\t'}:
-          add(tok.s, buf[pos])
+          myadd(tok.s, buf[pos])
           inc(pos)
-        if buf[pos] in {CR, LF}:
-          add(tok.s, buf[pos])
+        if buf[pos] in {'\13', '\10'}:
+          myadd(tok.s, buf[pos])
           pos = handleCRLF(L, pos)
           buf = L.buf
-    of ' ', Tabulator:
-      add(tok.s, buf[pos])
+    of ' ', '\t':
+      myadd(tok.s, buf[pos])
       inc(pos)                # newline is special:
-    of CR, LF:
-      add(tok.s, buf[pos])
+    of '\13', '\10':
+      myadd(tok.s, buf[pos])
       pos = handleCRLF(L, pos)
       buf = L.buf
       if L.inDirective:
@@ -498,13 +513,13 @@ proc skip(L: var Lexer, tok: var Token) =
 proc getDirective(L: var Lexer, tok: var Token) =
   var pos = L.bufpos + 1
   var buf = L.buf
-  add(tok.s, buf[pos-1])
+  myadd(tok.s, buf[pos-1])
   when false:
     while buf[pos] in {' ', '\t'}:
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
     while buf[pos] in SymChars:
-      add(tok.s, buf[pos])
+      myadd(tok.s, buf[pos])
       inc(pos)
   L.bufpos = pos
   tok.kind = tkDirective
@@ -711,10 +726,10 @@ proc getTok*(L: var Lexer, tok: var Token) =
         getDirective(L, tok)
     of '"': getString(L, tok)
     of '\'': getCharLit(L, tok)
-    of nimlexbase.EndOfFile:
+    of '\0':
       tok.kind = tkEof
     else:
       tok.s = $c
       tok.kind = tkInvalid
-      lexMessage(L, errGenerated, "invalid token " & c & " (\\" & $(ord(c)) & ')')
+      #lexMessage(L, errGenerated, "invalid token " & c & " (\\" & $(ord(c)) & ')')
       inc(L.bufpos)
