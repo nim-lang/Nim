@@ -24,12 +24,13 @@ proc testNimDoc(prjDir, docsDir: string; switches: NimSwitches; fixup = false) =
     nimBuildIndexSwitches = switches.buildIndex.join(" ")
 
   putEnv("SOURCE_DATE_EPOCH", "100000")
+  const nimExe = getCurrentCompilerExe() # so that `bin/nim_temp r nimdoc/tester.nim` works
 
   if nimDocSwitches != "":
-    exec("nim doc $1" % [nimDocSwitches])
+    exec("$1 doc $2" % [nimExe, nimDocSwitches])
 
   if nimBuildIndexSwitches != "":
-    exec("nim buildIndex $1" % [nimBuildIndexSwitches])
+    exec("$1 buildIndex $2" % [nimExe, nimBuildIndexSwitches])
 
   for expected in walkDirRec(prjDir / "expected/"):
     let produced = expected.replace('\\', '/').replace("/expected/", "/$1/" % [docsDir])
