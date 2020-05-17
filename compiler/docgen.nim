@@ -370,6 +370,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
   var kind = tkEof
   var tokenPos = 0
   var procTokenPos = 0
+  template escLit(): untyped = rope(esc(d.target, literal))
   while true:
     getNextTok(r, kind, literal)
     inc tokenPos
@@ -378,7 +379,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       break
     of tkComment:
       dispA(d.conf, result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
     of tokKeywordLow..tokKeywordHigh:
       if kind in {tkProc, tkMethod, tkIterator, tkMacro, tkTemplate, tkFunc, tkConverter}:
         procTokenPos = tokenPos
@@ -386,53 +387,53 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
             [rope(literal)])
     of tkOpr:
       dispA(d.conf, result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
     of tkStrLit..tkTripleStrLit:
       dispA(d.conf, result, "<span class=\"StringLit\">$1</span>",
-            "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
+            "\\spanStringLit{$1}", [escLit])
     of tkCharLit:
       dispA(d.conf, result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
     of tkIntLit..tkUInt64Lit:
       dispA(d.conf, result, "<span class=\"DecNumber\">$1</span>",
-            "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
+            "\\spanDecNumber{$1}", [escLit])
     of tkFloatLit..tkFloat128Lit:
       dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>",
-            "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
+            "\\spanFloatNumber{$1}", [escLit])
     of tkSymbol:
       let s = getTokSym(r)
       # -2 because of the whitespace in between:
       if procTokenPos == tokenPos-2 and procLink != nil:
         dispA(d.conf, result, "<a href=\"#$2\"><span class=\"Identifier\">$1</span></a>",
-              "\\spanIdentifier{$1}", [rope(esc(d.target, literal)), procLink])
+              "\\spanIdentifier{$1}", [escLit, procLink])
       elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
            sfExported in s.flags and s.owner != nil and
            belongsToPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [rope changeFileExt(external, "html"), rope literal,
-           rope(esc(d.target, literal))]
+           escLit]
       else:
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
-              "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
+              "\\spanIdentifier{$1}", [escLit])
     of tkSpaces, tkInvalid:
       result.add(literal)
     of tkCurlyDotLe:
-      dispA(d.conf, result, "<span>" & # This span is required for the JS to work properly
+      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
+      if renderRunnableExamples in renderFlags: fun "$1"
+      else: fun: "<span>" & # This span is required for the JS to work properly
         """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
 </span>
 <span class="pragmawrap">
 <span class="Other">$1</span>
-<span class="pragma">""".replace("\n", ""),  # Must remove newlines because wrapped in a <pre>
-                    "\\spanOther{$1}",
-                  [rope(esc(d.target, literal))])
+<span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
     of tkCurlyDotRi:
-      dispA(d.conf, result, """
+      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
+      if renderRunnableExamples in renderFlags: fun "$1"
+      else: fun """
 </span>
 <span class="Other">$1</span>
-</span>""".replace("\n", ""),
-                    "\\spanOther{$1}",
-                  [rope(esc(d.target, literal))])
+</span>""".replace("\n", "")
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
@@ -440,7 +441,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
        tkBracketLeColon:
       dispA(d.conf, result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
 
 proc testExample(d: PDoc; ex: PNode) =
   if d.conf.errorCounter > 0: return
@@ -525,7 +526,7 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
       for b in body:
         if i > 0: dest.add "\n"
         inc i
-        nodeToHighlightedHtml(d, b, dest, {}, nil)
+        nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
   else: discard
   for i in 0..<n.safeLen:
