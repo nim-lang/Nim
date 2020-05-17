@@ -76,7 +76,7 @@ To install SDL2 you can use ``nimble install sdl2``.
     discard renderer.clear()
     discard renderer.setDrawColor(255, 128, 128, 0)
 
-    var rect: Rect = (x: posX - 25, y: posY - 25, w: 50.cint, h: 50.cint)
+    var rect = Rect(x: posX - 25, y: posY - 25, w: 50.cint, h: 50.cint)
     discard renderer.fillRect(rect)
     delay(16)
     renderer.present()
