@@ -71,7 +71,7 @@ else:
 
   import osproc, os, strutils
   from stdtest/specialpaths import buildDir
-  import "../.." / compiler/unittest_light
+  import stdtest/unittest_light
 
   block: # fix #9951
     template runTest(parseoptCustom) =
