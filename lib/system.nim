@@ -117,7 +117,7 @@ else:
     Ordinal* = OrdinalImpl | uint | uint64
 
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
@@ -139,10 +139,15 @@ when defined(nimHasRunnableExamples):
     ##       assert double(5) == 10
     ##       block: ## at block scope
     ##         defer: echo "done"
-    ##
     ##     result = 2 * x
+    ##     runnableExamples "-d:foo -b:cpp":
+    ##       import std/compilesettings
+    ##       doAssert querySetting(backend) == "cpp"
+    ##     runnableExamples "-r:off": ## this one is only compiled
+    ##        import std/browsers
+    ##        openDefaultBrowser "https://forum.nim-lang.org/"
 else:
-  template runnableExamples*(body: untyped) =
+  template runnableExamples*(doccmd = "", body: untyped) =
     discard
 
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}

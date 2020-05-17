@@ -184,6 +184,8 @@ proc mydiv(a, b): int {.raises: [].} =
   use `--doccmd:skip` to skip runnableExamples and rst test snippets.
 - new flag `--usenimcache` to output to nimcache (whatever it resolves to after all commands are processed)
   and avoids polluting both $pwd and $projectdir. It can be used with any command.
+- `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override how an example is compiled and run,
+  for example to change backend or compile only.
 
 ## Tool changes
 
