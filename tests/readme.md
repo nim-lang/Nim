@@ -52,9 +52,6 @@ Each folder under this directory represents a test category, which can be
 tested by running `koch tests pcat <category>` (or `cat` to avoid parallel
 testing, which is slower).
 
-The folder ``rodfiles`` contains special tests that test incremental
-compilation via symbol files.
-
 The folder ``dll`` contains simple DLL tests.
 
 The folder ``realtimeGC`` contains a test for validating that the realtime GC

@@ -32,7 +32,6 @@ const
     "nimble-packages-1",
     "nimble-packages-2",
     "niminaction",
-    "rodfiles",
     "threads",
     "untestable",
     "stdlib",
@@ -671,10 +670,6 @@ proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
   case cat.string.normalize
-  of "rodfiles":
-    when false:
-      compileRodFiles(r, cat, options)
-      runRodFiles(r, cat, options)
   of "ic":
     when false:
       icTests(r, testsDir, cat, options)
