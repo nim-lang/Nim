@@ -4247,7 +4247,7 @@ It is possible to raise/catch imported C++ exceptions. Types imported using
 caught by reference. Example:
 
 .. code-block:: nim
-    :test: "nim r -b:cpp $1"
+    :test: "nim cpp -r $1"
 
   type
     CStdException {.importcpp: "std::exception", header: "<exception>", inheritable.} = object
