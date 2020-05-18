@@ -4258,7 +4258,7 @@ caught by reference. Example:
   except std_exception as ex:
     echo ex.what()
 
-Note: `getCurrentException()` and `getCurrentExceptionMsg()` are not available 
+**Note:** `getCurrentException()` and `getCurrentExceptionMsg()` are not available 
 for imported exceptions. You need to use `except ImportedException as x:` syntax 
 and rely on functionality of `x` object to get exception details.
 
