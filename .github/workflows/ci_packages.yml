@@ -36,7 +36,7 @@ jobs:
               valgrind libc6-dbg libblas-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
-        run: brew install boehmgc make sfml
+        run: brew install boehmgc make sfml gtk+3
       - name: 'Install dependencies (Windows)'
         if: runner.os == 'Windows'
         shell: bash

@@ -1,5 +1,3 @@
-import os
-
 template pkg1(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
   packages1.add((name, cmd, hasDeps, url))
 
@@ -75,11 +73,6 @@ pkg2 "neo", true, "nim c -d:blas=openblas tests/all.nim"
 pkg2 "nesm"
 # pkg2 "nico", true
 pkg2 "nicy", false, "nim c -r src/nicy.nim"
-when defined(osx):
-  # xxx: do this more generally by installing non-nim dependencies automatically
-  # as specified in nimble file and calling `distros.foreignDepInstallCmd`, but
-  # it currently would fail work if a package is already installed.
-  doAssert execShellCmd("brew ls --versions gtk+3 || brew install gtk+3") == 0
 pkg2 "nigui", false, "nim c -o:niguii -r src/nigui.nim"
 pkg2 "NimData", true, "nim c -o:nimdataa src/nimdata.nim"
 pkg2 "nimes", true, "nim c src/nimes.nim"
