@@ -493,6 +493,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
       of "boehm":
         conf.selectedGC = gcBoehm
         defineSymbol(conf.symbols, "boehmgc")
+        incl conf.globalOptions, optTlsEmulation # Boehm GC doesn't scan the real TLS
       of "refc":
         conf.selectedGC = gcRefc
       of "v2":
