@@ -26,16 +26,12 @@ const
 
 type
   TSections = array[TSymKind, Rope]
-  Example = ref object
-    ## a single runnableExamples
-    rdoccmd: string
   ExampleGroup = ref object
     ## a group of runnableExamples with same rdoccmd
     rdoccmd: string ## from 1st arg in `runnableExamples(rdoccmd): body`
     docCmd: string ## from user config, eg --doccmd:-d:foo
     code: string ## contains imports; each import contains `body`
     index: int ## group index
-    examples: seq[Example]
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
     module: PSym
@@ -454,7 +450,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
 
 proc exampleOutputDir(d: PDoc): AbsoluteDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
 
-proc writeExample(d: PDoc; ex: PNode, rdoccmd: string): Example =
+proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
   if d.conf.errorCounter > 0: return
   let outputDir = d.exampleOutputDir
   createDir(outputDir)
@@ -466,9 +462,6 @@ proc writeExample(d: PDoc; ex: PNode, rdoccmd: string): Example =
   renderModule(ex, d.filename, outp.string, conf = d.conf)
   if rdoccmd notin d.exampleGroups: d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
   d.exampleGroups[rdoccmd].code.add "import r\"$1\"\n" % outp.string
-  let example = Example(rdoccmd: rdoccmd)
-  d.exampleGroups[rdoccmd].examples.add example
-  result = example
 
 proc runAllExamples(d: PDoc) =
   let backend = d.conf.backend
@@ -499,7 +492,8 @@ proc runAllExamples(d: PDoc) =
       rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
       # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
 
-proc prepareExample(d: PDoc; n: PNode): Example =
+proc prepareExample(d: PDoc; n: PNode): string =
+  ## returns `rdoccmd` for this runnableExamples
   var rdoccmd = ""
   if n.len < 2 or n.len > 3: globalError(d.conf, n.info, "runnableExamples invalid")
   if n.len == 3:
@@ -518,7 +512,8 @@ proc prepareExample(d: PDoc; n: PNode): Example =
   runnableExamples.info = n.info
 
   for a in n.lastSon: runnableExamples.add a
-  result = writeExample(d, runnableExamples, rdoccmd)
+  writeExample(d, runnableExamples, rdoccmd)
+  result = rdoccmd
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -538,9 +533,9 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
-      let example = prepareExample(d, n)
+      let rdoccmd = prepareExample(d, n)
       var msg = "Example:"
-      if example.rdoccmd.len > 0: msg.add " cmd: " & example.rdoccmd
+      if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
           "\n\\textbf{$1}\n", [msg.rope])
       inc d.listingCounter
