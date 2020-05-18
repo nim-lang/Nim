@@ -87,8 +87,7 @@ else: # don't run twice the same test
 
   import streams
   block: # stdin input
-    let nimcmd = fmt"{nim} r --hints:off - -firstparam '-second param'"
-    let inputcmd = "import os; echo commandLineParams()"
+    let nimcmd = fmt"""{nim} r --hints:off - -firstparam "-second param" """
     let expected = """@["-firstparam", "-second param"]"""
     block:
       let p = startProcess(nimcmd, options = {poEvalCommand})
@@ -104,18 +103,22 @@ else: # don't run twice the same test
       p.outputStream.close
 
     block:
-      when defined(posix):
-        let cmd = fmt"echo 'import os; echo commandLineParams()' | {nimcmd}"
+      when defined posix:
+        # xxx on windows, `poEvalCommand` should imply `/cmd`, (which should
+        # make this work), but currently doesn't
+        let cmd = fmt"""echo "import os; echo commandLineParams()" | {nimcmd}"""
         var (output, exitCode) = execCmdEx(cmd)
         output.stripLineEnd
         check output == expected
+        doAssert exitCode == 0
 
   block: # nim doc --backend:$backend --doccmd:$cmd
     # test for https://github.com/nim-lang/Nim/issues/13129
     # test for https://github.com/nim-lang/Nim/issues/13891
     let file = testsDir / "nimdoc/m13129.nim"
     for backend in fmt"{mode} js".split:
-      let cmd = fmt"{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 --doccmd:'-d:m13129Foo2 --hints:off' --usenimcache --hints:off {file}"
+      # pending #14343 this fails on windows: --doccmd:"-d:m13129Foo2 --hints:off"
+      let cmd = fmt"""{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 "--doccmd:-d:m13129Foo2 --hints:off" --usenimcache --hints:off {file}"""
       check execCmdEx(cmd) == (&"ok1:{backend}\nok2: backend: {backend}\n", 0)
     # checks that --usenimcache works with `nim doc`
     check fileExists(nimcache / "m13129.html")
