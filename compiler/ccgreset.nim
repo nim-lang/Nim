@@ -38,6 +38,7 @@ proc specializeResetN(p: BProc, accessor: Rope, n: PNode;
       specializeResetN(p, accessor, lastSon(branch), typ)
       lineF(p, cpsStmts, "break;$n", [])
     lineF(p, cpsStmts, "} $n", [])
+    specializeResetT(p, "$1.$2" % [accessor, disc.loc.r], disc.loc.t)
   of nkSym:
     let field = n.sym
     if field.typ.kind == tyVoid: return
