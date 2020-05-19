@@ -10,7 +10,7 @@
 ## This module contains the type definitions for the new evaluation engine.
 ## An instruction is 1-3 int32s in memory, it is a register based VM.
 
-import ast, idents, options, modulegraphs, lineinfos
+import ast, idents, options, modulegraphs, lineinfos, tables, hashes
 
 type TInstrType* = uint64
 
@@ -261,10 +261,20 @@ type
     config*: ConfigRef
     graph*: ModuleGraph
     oldErrorCount*: int
+    profile*: Profile
+
+  FileLine* = object
+    fileIndex*: FileIndex
+    line*: uint16
+
+  Profile* = Table[FileLine, float]
 
   TPosition* = distinct int
 
   PEvalContext* = PCtx
+
+proc hash*(f: FileLine): Hash =
+  f.line.int * 32768 + f.fileIndex.int
 
 proc newCtx*(module: PSym; cache: IdentCache; g: ModuleGraph): PCtx =
   PCtx(code: @[], debug: @[],
