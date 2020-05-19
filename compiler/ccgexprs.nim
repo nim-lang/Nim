@@ -1194,9 +1194,11 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
 proc genReset(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n[1], a)
-  linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-          [addrLoc(p.config, a),
-          genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info)])
+  specializeReset(p, a)
+  when false:
+    linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+            [addrLoc(p.config, a),
+            genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info)])
 
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)
@@ -2793,6 +2795,21 @@ proc getDefaultValue(p: BProc; typ: PType; info: TLineInfo): Rope =
   else:
     globalError(p.config, info, "cannot create null element for: " & $t.kind)
 
+proc caseObjDefaultBranch(obj: PNode; branch: Int128): int =
+  for i in 1 ..< obj.len:
+    for j in 0 .. obj[i].len - 2:
+      if obj[i][j].kind == nkRange:
+        let x = getOrdValue(obj[i][j][0])
+        let y = getOrdValue(obj[i][j][1])
+        if branch >= x and branch <= y:
+          return i
+      elif getOrdValue(obj[i][j]) == branch:
+        return i
+    if obj[i].len == 1:
+      # else branch
+      return i
+  assert(false, "unreachable")
+
 proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
                      result: var Rope; count: var int;
                      isConst: bool, info: TLineInfo) =
@@ -2815,31 +2832,14 @@ proc getNullValueAux(p: BProc; t: PType; obj, constOrNil: PNode,
           branch = getOrdValue(constOrNil[i])
           break
 
-    var selectedBranch = -1
-    block branchSelection:
-      for i in 1 ..< obj.len:
-        for j in 0 .. obj[i].len - 2:
-          if obj[i][j].kind == nkRange:
-              let x = getOrdValue(obj[i][j][0])
-              let y = getOrdValue(obj[i][j][1])
-              if branch >= x and branch <= y:
-                selectedBranch = i
-                break branchSelection
-          elif getOrdValue(obj[i][j]) == branch:
-            selectedBranch = i
-            break branchSelection
-        if obj[i].len == 1:
-          # else branch
-          selectedBranch = i
-    assert(selectedBranch >= 1)
-
+    let selectedBranch = caseObjDefaultBranch(obj, branch)
     result.add "{"
     var countB = 0
     let b = lastSon(obj[selectedBranch])
     # designated initilization is the only way to init non first element of unions
     # branches are allowed to have no members (b.len == 0), in this case they don't need initializer
-    if  b.kind == nkRecList and b.len > 0:
-      result.add "._" &  mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
+    if b.kind == nkRecList and b.len > 0:
+      result.add "._" & mangleRecFieldName(p.module, obj[0].sym) & "_" & $selectedBranch & " = {"
       getNullValueAux(p, t,  b, constOrNil, result, countB, isConst, info)
       result.add "}"
     elif b.kind == nkSym:
