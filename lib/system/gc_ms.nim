@@ -104,7 +104,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline, compilerproc.} =
   dest[] = src
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
