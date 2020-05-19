@@ -1,7 +1,6 @@
 # test the osproc module
 
-import stdtest/specialpaths
-import "$nim" / compiler/unittest_light
+import stdtest/[specialpaths, unittest_light]
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow

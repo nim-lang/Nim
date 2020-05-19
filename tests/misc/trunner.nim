@@ -5,6 +5,7 @@ discard """
 
 ## tests that don't quite fit the mold and are easier to handle via `execCmdEx`
 ## A few others could be added to here to simplify code.
+## Note: this test is a bit slow but tests a lot of things; please don't disable.
 
 import std/[strformat,os,osproc,unittest]
 
@@ -15,7 +16,7 @@ const mode =
   elif defined(cpp): "cpp"
   else: static: doAssert false
 
-const testsDir = currentSourcePath().parentDir
+const testsDir = currentSourcePath.parentDir.parentDir
 const buildDir = testsDir.parentDir / "build"
 const nimcache = buildDir / "nimcacheTrunner"
   # `querySetting(nimcacheDir)` would also be possible, but we thus
@@ -28,7 +29,7 @@ proc runCmd(file, options = ""): auto =
   result = execCmdEx(cmd)
   when false:  echo result[0] & "\n" & result[1] # for debugging
 
-when defined(nimHasLibFFIEnabled):
+when defined(nimTrunnerFfi):
   block: # mevalffi
     when defined(openbsd):
       #[
@@ -65,7 +66,7 @@ else: # don't run twice the same test
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
     check2 "sizeof(bool) == 2"
-    doAssert exitCode != 0
+    check exitCode != 0
 
   block: # ABI checks
     let file = "misc/msizeof5.nim"
@@ -82,12 +83,11 @@ else: # don't run twice the same test
       check2 "sizeof(Foo5) == 16"
       check2 "sizeof(Foo5) == 3"
       check2 "sizeof(struct Foo6) == "
-      doAssert exitCode != 0
+      check exitCode != 0
 
   import streams
   block: # stdin input
-    let nimcmd = fmt"{nim} r --hints:off - -firstparam '-second param'"
-    let inputcmd = "import os; echo commandLineParams()"
+    let nimcmd = fmt"""{nim} r --hints:off - -firstparam "-second param" """
     let expected = """@["-firstparam", "-second param"]"""
     block:
       let p = startProcess(nimcmd, options = {poEvalCommand})
@@ -98,23 +98,27 @@ else: # don't run twice the same test
       doAssert p.waitForExit == 0
       doAssert error.len == 0, $error
       output.stripLineEnd
-      doAssert output == expected
+      check output == expected
       p.errorStream.close
       p.outputStream.close
 
     block:
-      when defined(posix):
-        let cmd = fmt"echo 'import os; echo commandLineParams()' | {nimcmd}"
+      when defined posix:
+        # xxx on windows, `poEvalCommand` should imply `/cmd`, (which should
+        # make this work), but currently doesn't
+        let cmd = fmt"""echo "import os; echo commandLineParams()" | {nimcmd}"""
         var (output, exitCode) = execCmdEx(cmd)
         output.stripLineEnd
-        doAssert output == expected
+        check output == expected
+        doAssert exitCode == 0
 
   block: # nim doc --backend:$backend --doccmd:$cmd
     # test for https://github.com/nim-lang/Nim/issues/13129
     # test for https://github.com/nim-lang/Nim/issues/13891
     let file = testsDir / "nimdoc/m13129.nim"
     for backend in fmt"{mode} js".split:
-      let cmd = fmt"{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 --doccmd:'-d:m13129Foo2 --hints:off' --usenimcache --hints:off {file}"
+      # pending #14343 this fails on windows: --doccmd:"-d:m13129Foo2 --hints:off"
+      let cmd = fmt"""{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 "--doccmd:-d:m13129Foo2 --hints:off" --usenimcache --hints:off {file}"""
       check execCmdEx(cmd) == (&"ok1:{backend}\nok2: backend: {backend}\n", 0)
     # checks that --usenimcache works with `nim doc`
     check fileExists(nimcache / "m13129.html")

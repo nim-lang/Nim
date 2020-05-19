@@ -4,7 +4,6 @@ fixed would not trigger in that case.
 ]#
 
 import std/compilesettings
-import std/unittest
 
 static:
   ## bugfix 1: this used to CT error with: Error: unhandled exception: mimportcpp.nim(6, 18) `defined(cpp)`
