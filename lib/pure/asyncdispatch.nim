@@ -235,8 +235,7 @@ template implementSetInheritable() {.dirty.} =
       ## Returns ``true`` on success.
       ##
       ## This procedure is not guaranteed to be available for all platforms.
-      ## Test for availability with
-      ## `declared() <system.html#declared,untyped>`_.
+      ## Test for availability with `declared()`_.
       fd.FileHandle.setInheritable(inheritable)
 
 when defined(windows) or defined(nimdoc):
@@ -1107,8 +1106,9 @@ else:
   import selectors
   from posix import EINTR, EAGAIN, EINPROGRESS, EWOULDBLOCK, MSG_PEEK,
                     MSG_NOSIGNAL
-  when defined(linux) or defined(bsd):
+  when declared(posix.accept4):
     from posix import accept4, SOCK_CLOEXEC
+
   const
     InitCallbackListSize = 4         # initial size of callbacks sequence,
                                      # associated with file/socket descriptor.
@@ -1523,8 +1523,12 @@ else:
                  addr(addrLen))
       when declared(setInheritable) and not declared(accept4):
         if client != osInvalidSocket and not setInheritable(client, inheritable):
+          # Set failure first because close() itself can fail,
+          # altering osLastError().
+          retFuture.fail(newOSError(osLastError()))
           close client
-          client = osInvalidSocket
+          return false
+
       if client == osInvalidSocket:
         let lastError = osLastError()
         assert lastError.int32 != EWOULDBLOCK and lastError.int32 != EAGAIN
@@ -1862,8 +1866,10 @@ proc accept*(socket: AsyncFD,
              inheritable = defined(nimInheritHandles)): owned(Future[AsyncFD]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
+  ##
   ## If ``inheritable`` is false (the default), the resulting client socket
   ## will not be inheritable by child processes.
+  ##
   ## The future will complete when the connection is successfully accepted.
   var retFut = newFuture[AsyncFD]("accept")
   var fut = acceptAddr(socket, flags, inheritable)

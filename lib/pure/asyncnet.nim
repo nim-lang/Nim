@@ -463,8 +463,10 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
       owned(Future[tuple[address: string, client: AsyncSocket]]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
+  ##
   ## If ``inheritable`` is false (the default), the resulting client socket will
   ## not be inheritable by child processes.
+  ##
   ## The future will complete when the connection is successfully accepted.
   var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
   var fut = acceptAddr(socket.fd.AsyncFD, flags, inheritable)
