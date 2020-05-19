@@ -59,16 +59,10 @@ proc specializeResetT(p: BProc, accessor: Rope, typ: PType) =
     let arraySize = lengthOrd(p.config, typ[0])
     var i: TLoc
     getTemp(p, getSysType(p.module.g.graph, unknownLineInfo, tyInt), i)
-    let oldCode = p.s(cpsStmts)
     linefmt(p, cpsStmts, "for ($1 = 0; $1 < $2; $1++) {$n",
             [i.r, arraySize])
-    let oldLen = p.s(cpsStmts).len
     specializeResetT(p, ropecg(p.module, "$1[$2]", [accessor, i.r]), typ[1])
-    if p.s(cpsStmts).len == oldLen:
-      # do not emit dummy long loops for faster debug builds:
-      p.s(cpsStmts) = oldCode
-    else:
-      lineF(p, cpsStmts, "}$n", [])
+    lineF(p, cpsStmts, "}$n", [])
   of tyObject:
     for i in 0..<typ.len:
       var x = typ[i]
