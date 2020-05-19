@@ -22,11 +22,29 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     result = canRaiseConservative(n)
 
 proc preventNrvo(p: BProc; le, ri: PNode): bool =
+  proc locationEscapes(p: BProc; le: PNode): bool =
+    var n = le
+    while true:
+      # do NOT follow nkHiddenDeref here!
+      case n.kind
+      of nkSym:
+        # we don't own the location so it escapes:
+        return n.sym.owner != p.prc
+      of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
+          nkCheckedFieldExpr:
+        n = n[0]
+      of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+        n = n[1]
+      else:
+        # cannot analyse the location; assume the worst
+        return true
+
   if le != nil:
     for i in 1..<ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
-    return canRaiseDisp(p, ri[0])
+    return canRaiseDisp(p, ri[0]) and
+        (p.nestedTryStmts.len > 0 or locationEscapes(p, le))
 
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
