@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "6f2b1ace922e565f7f48a69648e16a002a5d15e3" # master
+  NimbleStableCommit = "63695f490728e3935692c29f3d71944d83bb1e83" # master
 
 when not defined(windows):
   const
