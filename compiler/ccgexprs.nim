@@ -1194,9 +1194,11 @@ proc genSeqElemAppend(p: BProc, e: PNode, d: var TLoc) =
 proc genReset(p: BProc, n: PNode) =
   var a: TLoc
   initLocExpr(p, n[1], a)
-  linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-          [addrLoc(p.config, a),
-          genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info)])
+  specializeReset(p, a)
+  when false:
+    linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+            [addrLoc(p.config, a),
+            genTypeInfo(p.module, skipTypes(a.t, {tyVar}), n.info)])
 
 proc genDefault(p: BProc; n: PNode; d: var TLoc) =
   if d.k == locNone: getTemp(p, n.typ, d, needsInit=true)

@@ -390,6 +390,8 @@ proc isComplexValueType(t: PType): bool {.inline.} =
   result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
+include ccgreset
+
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
@@ -407,8 +409,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       linefmt(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
   else:
     if loc.storage != OnStack and containsGcRef:
-      linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-              [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
+      specializeReset(p, loc)
+      when false:
+        linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+                [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
