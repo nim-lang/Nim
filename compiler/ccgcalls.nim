@@ -21,11 +21,30 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     # we have to be *very* conservative:
     result = canRaiseConservative(n)
 
-proc leftAppearsOnRightSide(le, ri: PNode): bool =
+proc preventNrvo(p: BProc; le, ri: PNode): bool =
+  proc locationEscapes(p: BProc; le: PNode): bool =
+    var n = le
+    while true:
+      # do NOT follow nkHiddenDeref here!
+      case n.kind
+      of nkSym:
+        # we don't own the location so it escapes:
+        return n.sym.owner != p.prc
+      of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
+          nkCheckedFieldExpr:
+        n = n[0]
+      of nkHiddenStdConv, nkHiddenSubConv, nkConv:
+        n = n[1]
+      else:
+        # cannot analyse the location; assume the worst
+        return true
+
   if le != nil:
     for i in 1..<ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
+    return canRaiseDisp(p, ri[0]) and
+        (p.nestedTryStmts.len > 0 or locationEscapes(p, le))
 
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
@@ -51,7 +70,7 @@ proc fixupCall(p: BProc, le, ri: PNode, d: var TLoc,
     if isInvalidReturnType(p.config, typ[0]):
       if params != nil: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
-      if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
+      if d.k in {locTemp, locNone} or not preventNrvo(p, le, ri):
         # Great, we can use 'd':
         if d.k == locNone: getTemp(p, typ[0], d, needsInit=true)
         elif d.k notin {locTemp} and not hasNoInit(ri):
@@ -150,7 +169,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
       result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
     of tyString, tySequence:
       let atyp = skipTypes(a.t, abstractInst)
-      if formalType.skipTypes(abstractInst).kind == tyVar and atyp.kind == tyString and 
+      if formalType.skipTypes(abstractInst).kind == tyVar and atyp.kind == tyString and
           optSeqDestructors in p.config.globalOptions:
         linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
       if atyp.kind == tyVar and not compileToCpp(p.module):
@@ -166,7 +185,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
       result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
-      if formalType.skipTypes(abstractInst).kind == tyVar and ntyp.kind == tyString and 
+      if formalType.skipTypes(abstractInst).kind == tyVar and ntyp.kind == tyString and
           optSeqDestructors in p.config.globalOptions:
         linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
       if ntyp.kind == tyVar and not compileToCpp(p.module):
@@ -292,7 +311,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     if isInvalidReturnType(p.config, typ[0]):
       if ri.len > 1: pl.add(~", ")
       # beware of 'result = p(result)'. We may need to allocate a temporary:
-      if d.k in {locTemp, locNone} or not leftAppearsOnRightSide(le, ri):
+      if d.k in {locTemp, locNone} or not preventNrvo(p, le, ri):
         # Great, we can use 'd':
         if d.k == locNone:
           getTemp(p, typ[0], d, needsInit=true)
