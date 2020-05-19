@@ -94,7 +94,6 @@
 - The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
 - The callback that is assigned to `system.onUnhandledException` must now be `.gcsafe`.
 
-- `osproc.execCmdEx` now takes an optional `input` for stdin.
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
@@ -193,6 +192,9 @@ proc mydiv(a, b): int {.raises: [].} =
 - `nim doc foo/main` now outputs to `foo/main.html`, as it used to, and consistently
   with other commands. Use `--outDir:.` to restore previous behaviour or
  `--usenimcache` to output instead under $nimcache.
+- `nim doc foo/main` now outputs to `htmldocs/main.html` (with or without `--project`), like it used to,
+  which avoids clobbering either `$PWD` or your source files. Use `--outDir:.` to restore previous behaviour
+  or `--usenimcache` to output instead under $nimcache.
 
 ## Tool changes
 
