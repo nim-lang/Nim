@@ -1325,6 +1325,5 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
   # no analytics because context is not available
 
   if not writeRope(code, filename):
-    dbg filename
     rawMessage(conf, errCannotOpenFile, filename.string)
 

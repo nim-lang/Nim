@@ -10,7 +10,7 @@ discard """
 import std/[strformat,os,osproc,unittest]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
-from stdtest/specialpaths import buildDir
+import stdtest/[specialpaths, unittest_light]
 const nim = getCurrentCompilerExe()
 
 const mode =
@@ -64,27 +64,29 @@ else: # don't run twice the same test
   import std/[strutils]
   template check2(msg) = doAssert msg in output, output
 
-  block: # regression test for `nim doc --project`
+  block: # tests with various options `nim doc --project --index --docroot`
+    # regression tests for issues and PRS: #14376 #13223 #6583 ##13647
     let file = testsDir / "nimdoc/sub/mmain.nim"
     let mainFname = "mmain.html"
-    let htmldocsDir = nimcache /  "htmldocs"
-
-    for options in @["", "--docroot"]:
-      var cmd = fmt"{nim} doc --project --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options} {file}"
-      echo cmd
+    let htmldocsDir1 = nimcache /  "htmldocs" # implicit one given we're using `workingDir = nimcache`
+    let htmldocsDir2 = nimcache / "htmldocs2" # explicit one
+    let docroot = testsDir / "nimdoc"
+    let options = ["", "--docroot", "--project:off", fmt"--project:off --outDir:{htmldocsDir2}", fmt"--project:off --docroot:{docroot}"]
+    for i in 0..<options.len:
+      let htmldocsDir = if i == 3: htmldocsDir2 else: htmldocsDir1
+      var cmd = fmt"{nim} doc --project --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
       removeDir(htmldocsDir)
       let (outp, exitCode) = execCmdEx(cmd, workingDir = nimcache)
       check exitCode == 0
-
-      let htmlFile = htmldocsDir/mainFname
-      check htmlFile in outp # sanity check for `hintSuccessX`
-
       proc nativeToUnixPathWorkaround(a: string): string =
         # xxx pending https://github.com/nim-lang/Nim/pull/13265 `nativeToUnixPath`
         a.replace(DirSep, '/')
 
       let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPathWorkaround).sorted.join("\n")
-      assertEquals(ret, """
+      var expected = ""
+      case i
+      of 0:
+        assertEquals ret, """
 @@/imp.html
 @@/imp.idx
 dochack.js
@@ -95,15 +97,33 @@ imp2.idx
 mmain.html
 mmain.idx
 nimdoc.out.css
-theindex.html""")
+theindex.html"""
+        let htmlFile = htmldocsDir/"mmain.html"
+        check htmlFile in outp # sanity check for `hintSuccessX`
 
-      # echo ret
-      # @["@@/imp.html", "@@/imp.idx", "dochack.js", "imp.html", "imp.idx", "imp2.html", "imp2.idx", "mmain.html", "mmain.idx", "nimdoc.out.css", "theindex.html"]
-      # echo files
-      # for file in [docHackJs.lastPathPart, "nimdoc.out.css", mainFname, theindexFname, "@@" / "imp.html", "@@" / "imp.idx"]:
-      #   let file2 = htmldocsDir / file
-      #   check file2.fileExists
-    doAssert false
+      of 1: assertEquals ret, """
+dochack.js
+nimdoc.out.css
+tests/nimdoc/imp.html
+tests/nimdoc/imp.idx
+tests/nimdoc/sub/imp.html
+tests/nimdoc/sub/imp.idx
+tests/nimdoc/sub/imp2.html
+tests/nimdoc/sub/imp2.idx
+tests/nimdoc/sub/mmain.html
+tests/nimdoc/sub/mmain.idx
+theindex.html"""
+      of 2, 3: assertEquals ret, """
+dochack.js
+mmain.html
+mmain.idx
+nimdoc.out.css""", $(i, cmd)
+      of 4: assertEquals ret, """
+dochack.js
+nimdoc.out.css
+sub/mmain.html
+sub/mmain.idx""", $(i, cmd)
+      else: doAssert false
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
@@ -167,6 +187,10 @@ theindex.html""")
 
     block: # mak sure --backend works with `nim r`
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
+      echo cmd
+      let ret = execCmdEx(cmd)
+      echo ret[0]
+      echo ret[1]
       check execCmdEx(cmd) == ("ok3\n", 0)
 
   block: # further issues with `--backend`

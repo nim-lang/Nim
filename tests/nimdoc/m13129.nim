@@ -33,6 +33,6 @@ when isMainModule:
     let cache = querySetting(nimcacheDir)
     doAssert cache.len > 0
     let app = getAppFilename()
-    doAssert app.isRelativeTo(cache)
+    doAssert app.isRelativeTo(cache), $(app, cache)
     doAssert querySetting(projectFull) == currentSourcePath
     echo "ok3"
