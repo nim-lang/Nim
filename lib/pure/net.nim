@@ -247,7 +247,7 @@ proc newSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
     raiseOSError(osLastError())
   result = newSocket(fd, domain, sockType, protocol, buffered)
 
-proc parseIPv4Address(addressStr: string): IpAddress =
+proc parseIPv4Address*(addressStr: string): IpAddress =
   ## Parses IPv4 addresses
   ## Raises ValueError on errors
   var
@@ -281,7 +281,7 @@ proc parseIPv4Address(addressStr: string): IpAddress =
     raise newException(ValueError, "Invalid IP Address")
   result.address_v4[byteCount] = cast[uint8](currentByte)
 
-proc parseIPv6Address(addressStr: string): IpAddress =
+proc parseIPv6Address*(addressStr: string): IpAddress =
   ## Parses IPv6 addresses
   ## Raises ValueError on errors
   result = IpAddress(family: IpAddressFamily.IPv6)
