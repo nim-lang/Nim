@@ -148,7 +148,7 @@ It is mostly accurate to picture semantic analysis proceeding top to bottom and
 left to right in the source code, with compile-time code execution interleaved
 when necessary to compute values that are required for subsequent semantic
 analysis. We will see much later in this document that macro invocation not only
-requires this interleaving, but also creates a situation where semantic analyis
+requires this interleaving, but also creates a situation where semantic analysis
 does not entirely proceed top to bottom and left to right.
 
 
@@ -792,7 +792,7 @@ features supported at compile time (as detailed in the next section below).
 Within such a code block, it is possible to declare variables and then later
 read and update them, or declare variables and pass them to procedures that
 modify them. However, the code in such a block must still adhere to the
-retrictions listed above for referencing values and operations outside the
+restrictions listed above for referencing values and operations outside the
 block.
 
 The ability to access and modify compile-time variables adds flexibility to
@@ -1296,7 +1296,7 @@ A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``. The element type of this array expression is
 inferred from the type of the first element. All other elements need to be
-implicitly convertable to this type.
+implicitly convertible to this type.
 
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
@@ -3837,7 +3837,7 @@ as there are components in the tuple. The i'th iteration variable's type is
 the type of the i'th component. In other words, implicit tuple unpacking in a
 for loop context is supported.
 
-Implict items/pairs invocations
+Implicit items/pairs invocations
 -------------------------------
 
 If the for loop expression ``e`` does not denote an iterator and the for loop
@@ -4231,7 +4231,7 @@ Exception hierarchy
 The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
-and are stricly speaking not catchable as they can also be mapped to an operation
+and are strictly speaking not catchable as they can also be mapped to an operation
 that terminates the whole process. If panics are turned into exceptions, these
 exceptions inherit from `Defect`.
 
@@ -4566,8 +4566,8 @@ more complex type classes:
 
 Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
-constraints to be enforced at type instantations. Type classes are not really
-types in themsleves, but are instead a system of providing generic "checks" that
+constraints to be enforced at type instantiations. Type classes are not really
+types in themselves, but are instead a system of providing generic "checks" that
 ultimately *resolve* to some singular type. Type classes do not allow for
 runtime type dynamism, unlike object variants or methods.
 
@@ -4729,7 +4729,7 @@ instantiation. The following is not allowed:
   # not valid: 'T' is not inferred to be of type 'var int'
   g(v, i)
 
-  # also not allowed: explict instantiation via 'var int'
+  # also not allowed: explicit instantiation via 'var int'
   g[var int](v, i)
 
 
@@ -5219,7 +5219,7 @@ tree (AST) of the code that is passed to it. The macro can then do
 transformations on it and return the transformed AST. This can be used to
 add custom language features and implement `domain specific languages`:idx:.
 
-Macro invocation is a case where semantic analyis does **not** entirely proceed
+Macro invocation is a case where semantic analysis does **not** entirely proceed
 top to bottom and left to right. Instead, semantic analysis happens at least
 twice:
 
@@ -6452,7 +6452,7 @@ and instead the generated code should contain an ``#include``:
     PFile {.importc: "FILE*", header: "<stdio.h>".} = distinct pointer
       # import C's FILE* type; Nim will treat it as a new pointer type
 
-The ``header`` pragma always expects a string constant. The string contant
+The ``header`` pragma always expects a string constant. The string constant
 contains the header file: As usual for C, a system header file is enclosed
 in angle brackets: ``<>``. If no angle brackets are given, Nim
 encloses the header file in ``""`` in the generated C code.
