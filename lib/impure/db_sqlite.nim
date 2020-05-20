@@ -113,7 +113,7 @@
 ## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
 ## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
 
-import sqlite3
+import sqlite3,typeinfo
 
 import db_common
 export db_common
@@ -125,6 +125,8 @@ type
   InstantRow* = PStmt ## A handle that can be used to get a row's column
                       ## text on demand.
   SqlPrepared* = distinct PStmt ## a identifier for the prepared queries
+  SQLite3UnbindCb = Tbind_destructor_func ## called by sqlite3 to release the string/blob ptr
+  RCode* = tuple[vendorcode: int, errStr: string]
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## Raises a `DbError` exception.
@@ -166,6 +168,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
       add(result, c)
 
 proc prepare*(db: DbConn; q: string): SqlPrepared =
+  
   if prepare_v2(db, q, q.len.cint,result.PStmt, nil) != SQLITE_OK:
     discard finalize(result.PStmt)
     dbError(db)
@@ -716,8 +719,64 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
 proc finalize*(sqlPrepared:SqlPrepared){.discardable.} = 
   discard finalize(sqlPrepared.PStmt)
 
+proc bindInt32*( ps : SqlPrepared, paramIdx: int,
+  val: int32 ):int = 
+  ## Binds a int32 float to the specified paramIndex.
+  result = bind_int( ps.PStmt, paramIdx.int32, val )
+
+proc bindInt64*( ps: SqlPrepared, paramIdx: int,
+    val: int64 ):int =   
+  result = bind_int64(ps.PStmt, paramIdx.int32, val)
+
+proc bindFloat64*( ps: SqlPrepared, paramIdx: int,
+                   val: float64) : int {.inline.} =
+  ## Binds a 64bit float to the specified paramIndex.
+  result = bind_double(ps.PStmt, paramIdx.int32, val)
+
+proc bindNull*( ps : SqlPrepared, paramIdx: int) : int {.inline.}  =
+  ## Sets the bindparam at the specified paramIndex to null 
+  ## (default behaviour by sqlite).
+  result = bind_null(ps, paramIdx.int32) 
+
+proc bindString*( ps: SqlPrepared, paramIdx : int,
+                   val: string,) : int =
+  ## Binds a string to the specified paramIndex.
+  result = bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC)
+
+proc bindBlob*( ps: SqlPrepared, paramIdx: int,val: cstring) : int  =
+  ## binds a blob to the specified paramIndex.
+  let len = val.len
+  result = bind_blob(ps.PStmt, paramIdx.int32, val[0].unSafeAddr, len.int32 , SQLITE_STATIC)
+
+proc bindParams*[T](ps: SqlPrepared, params:var T )  = 
+  var idx:int = 1
+  for _,v in params.toAny.fields:
+    case v.kind
+      of akInt:
+        if SQLITE_OK != ps.bindInt32(idx,v.getInt.int32):
+          discard
+      of akInt32:
+        if SQLITE_OK != ps.bindInt32(idx,v.getInt32):
+          discard
+      of akint64:
+        if SQLITE_OK != ps.bindInt64(idx,v.getInt64):
+          discard
+      of akFloat64:
+        if SQLITE_OK != ps.bindFloat64(idx,v.getFloat64):
+          discard
+      of akString:
+        if SQLITE_OK != ps.bindString(idx,v.getString):
+          discard
+      of akCString:
+        if SQLITE_OK != ps.bindBlob(idx,v.getCString):
+          discard
+      else:
+        discard
+    inc idx
+
+
 when not defined(testing) and isMainModule:
-  var db = open("db.sql", "", "", "")
+  var db = open(":memory:", "", "", "")
   exec(db, sql"create table tbl1(one varchar(10), two smallint)", [])
   exec(db, sql"insert into tbl1 values('hello!',10)", [])
   exec(db, sql"insert into tbl1 values('goodbye', 20)", [])
@@ -750,5 +809,29 @@ when not defined(testing) and isMainModule:
     echo(r[0], r[1])
   for r in db.instantRows(sql"select * from tbl2", []):
     echo(r[0], r[1])
+  var p6 = db.prepare "select * from tbl2 where one=?"
+  var params = ("goodbye",)
+  p6.bindParams( params )
+  exec(db, p6, [])
+  for r in db.rows(p6, []):
+    echo(r[0], r[1])
+  finalize(p6)
 
+  var p7 = db.prepare "select * from tbl2 where two=?"
+  var params2 = (20'i32,)
+  p7.bindParams( params2 )
+  exec(db, p7, [])
+  for r in db.rows(p7, []):
+    echo(r[0], r[1])
+  finalize(p7)
+
+  exec(db, sql"CREATE TABLE photos(ID INTEGER PRIMARY KEY AUTOINCREMENT, photo BLOB)")
+  var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
+  var d:cstring = "abcdefghijklmnopqrstuvwxyz".cstring
+  var params3 = (1,d,)
+  p8.bindParams( params3 )
+  exec(db, p8, [])
+  finalize(p8)
+  for r in db.rows(sql"select * from photos where ID = 1", []):
+    assert r[1].len == d.len
   db_sqlite.close(db)
