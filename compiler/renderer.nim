@@ -20,7 +20,7 @@ import
 type
   TRenderFlag* = enum
     renderNone, renderNoBody, renderNoComments, renderDocComments,
-    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms
+    renderNoPragmas, renderIds, renderNoProcDefs, renderSyms, renderRunnableExamples
   TRenderFlags* = set[TRenderFlag]
   TRenderTok* = object
     kind*: TTokType

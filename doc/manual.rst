@@ -148,7 +148,7 @@ It is mostly accurate to picture semantic analysis proceeding top to bottom and
 left to right in the source code, with compile-time code execution interleaved
 when necessary to compute values that are required for subsequent semantic
 analysis. We will see much later in this document that macro invocation not only
-requires this interleaving, but also creates a situation where semantic analyis
+requires this interleaving, but also creates a situation where semantic analysis
 does not entirely proceed top to bottom and left to right.
 
 
@@ -565,7 +565,7 @@ following characters::
 defined here.)
 
 These keywords are also operators:
-``and or not xor shl shr div mod in notin is isnot of as``.
+``and or not xor shl shr div mod in notin is isnot of as from``.
 
 `.`:tok: `=`:tok:, `:`:tok:, `::`:tok: are not available as general operators; they
 are used for other notational purposes.
@@ -638,21 +638,21 @@ has the second lowest precedence.
 
 Otherwise precedence is determined by the first character.
 
-================  ==================================================  ==================  ===============
-Precedence level    Operators                                         First character     Terminal symbol
-================  ==================================================  ==================  ===============
- 10 (highest)                                                         ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``               ``*  %  \  /``      OP9
-  8               ``+    -``                                          ``+  -  ~  |``      OP8
-  7               ``&``                                               ``&``               OP7
-  6               ``..``                                              ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of as``   ``=  <  >  !``      OP5
-  4               ``and``                                                                 OP4
-  3               ``or xor``                                                              OP3
-  2                                                                   ``@  :  ?``         OP2
-  1               *assignment operator* (like ``+=``, ``*=``)                             OP1
-  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                             OP0
-================  ==================================================  ==================  ===============
+================  =======================================================  ==================  ===============
+Precedence level    Operators                                              First character     Terminal symbol
+================  =======================================================  ==================  ===============
+ 10 (highest)                                                              ``$  ^``            OP10
+  9               ``*    /    div   mod   shl  shr  %``                    ``*  %  \  /``      OP9
+  8               ``+    -``                                               ``+  -  ~  |``      OP8
+  7               ``&``                                                    ``&``               OP7
+  6               ``..``                                                   ``.``               OP6
+  5               ``==  <= < >= > !=  in notin is isnot not of as from``   ``=  <  >  !``      OP5
+  4               ``and``                                                                      OP4
+  3               ``or xor``                                                                   OP3
+  2                                                                        ``@  :  ?``         OP2
+  1               *assignment operator* (like ``+=``, ``*=``)                                  OP1
+  0 (lowest)      *arrow like operator* (like ``->``, ``=>``)                                  OP0
+================  =======================================================  ==================  ===============
 
 
 Whether an operator is used a prefix operator is also affected by preceding
@@ -792,7 +792,7 @@ features supported at compile time (as detailed in the next section below).
 Within such a code block, it is possible to declare variables and then later
 read and update them, or declare variables and pass them to procedures that
 modify them. However, the code in such a block must still adhere to the
-retrictions listed above for referencing values and operations outside the
+restrictions listed above for referencing values and operations outside the
 block.
 
 The ability to access and modify compile-time variables adds flexibility to
@@ -1296,7 +1296,7 @@ A parameter ``A`` may be an *open array*, in which case it is indexed by
 integers from 0 to ``len(A)-1``. An array expression may be constructed by the
 array constructor ``[]``. The element type of this array expression is
 inferred from the type of the first element. All other elements need to be
-implicitly convertable to this type.
+implicitly convertible to this type.
 
 Sequences are similar to arrays but of dynamic length which may change
 during runtime (like strings). Sequences are implemented as growable arrays,
@@ -2679,6 +2679,11 @@ nor can their address be taken. They cannot be assigned new values.
 
 For let variables the same pragmas are available as for ordinary variables.
 
+As ``let`` statements are immutable after creation they need to define a value
+when they are declared. The only exception to this is if the ``{.importc.}``
+pragma (or any of the other ``importX`` pragmas) is applied, in this case the
+value is expected to come from native code, typically a C/C++ ``const``.
+
 
 Tuple unpacking
 ---------------
@@ -3128,6 +3133,7 @@ If expression
 -------------
 
 An `if expression` is almost like an if statement, but it is an expression.
+This feature is similar to `ternary operators` in other languages.
 Example:
 
 .. code-block:: nim
@@ -3831,7 +3837,7 @@ as there are components in the tuple. The i'th iteration variable's type is
 the type of the i'th component. In other words, implicit tuple unpacking in a
 for loop context is supported.
 
-Implict items/pairs invocations
+Implicit items/pairs invocations
 -------------------------------
 
 If the for loop expression ``e`` does not denote an iterator and the for loop
@@ -4225,7 +4231,7 @@ Exception hierarchy
 The exception tree is defined in the `system <system.html>`_ module.
 Every exception inherits from ``system.Exception``. Exceptions that indicate
 programming bugs inherit from ``system.Defect`` (which is a subtype of ``Exception``)
-and are stricly speaking not catchable as they can also be mapped to an operation
+and are strictly speaking not catchable as they can also be mapped to an operation
 that terminates the whole process. If panics are turned into exceptions, these
 exceptions inherit from `Defect`.
 
@@ -4241,18 +4247,42 @@ It is possible to raise/catch imported C++ exceptions. Types imported using
 caught by reference. Example:
 
 .. code-block:: nim
+    :test: "nim cpp -r $1"
 
   type
-    std_exception {.importcpp: "std::exception", header: "<exception>".} = object
+    CStdException {.importcpp: "std::exception", header: "<exception>", inheritable.} = object
+      ## does not inherit from `RootObj`, so we use `inheritable` instead
+    CRuntimeError {.requiresInit, importcpp: "std::runtime_error", header: "<stdexcept>".} = object of CStdException
+      ## `CRuntimeError` has no default constructor => `requiresInit`
+  proc what(s: CStdException): cstring {.importcpp: "((char *)#.what())".}
+  proc initRuntimeError(a: cstring): CRuntimeError {.importcpp: "std::runtime_error(@)", constructor.}
+  proc initStdException(): CStdException {.importcpp: "std::exception()", constructor.}
 
-  proc what(s: std_exception): cstring {.importcpp: "((char *)#.what())".}
+  proc fn() =
+    let a = initRuntimeError("foo")
+    doAssert $a.what == "foo"
+    var b: cstring
+    try: raise initRuntimeError("foo2")
+    except CStdException as e:
+      doAssert e is CStdException
+      b = e.what()
+    doAssert $b == "foo2"
 
-  try:
-    raise std_exception()
-  except std_exception as ex:
-    echo ex.what()
+    try: raise initStdException()
+    except CStdException: discard
 
+    try: raise initRuntimeError("foo3")
+    except CRuntimeError as e:
+      b = e.what()
+    except CStdException:
+      doAssert false
+    doAssert $b == "foo3"
 
+  fn()
+
+**Note:** `getCurrentException()` and `getCurrentExceptionMsg()` are not available 
+for imported exceptions. You need to use `except ImportedException as x:` syntax 
+and rely on functionality of `x` object to get exception details.
 
 Effect system
 =============
@@ -4337,6 +4367,28 @@ Rules 1-2 ensure the following works:
 
 So in many cases a callback does not cause the compiler to be overly
 conservative in its effect analysis.
+
+Exceptions inheriting from ``system.Defect`` are not tracked with
+the ``.raises: []`` exception tracking mechanism. This is more consistent with the
+built-in operations. The following code is valid::
+
+.. code-block:: nim
+
+  proc mydiv(a, b): int {.raises: [].} =
+    a div b # can raise an DivByZeroDefect
+
+And so is::
+
+.. code-block:: nim
+
+  proc mydiv(a, b): int {.raises: [].} =
+    if b == 0: raise newException(DivByZeroDefect, "division by zero")
+    else: result = a div b
+
+
+The reason for this is that ``DivByZeroDefect`` inherits from ``Defect`` and
+with ``--panics:on`` Defects become unrecoverable errors.
+(Since version 1.4 of the language.)
 
 
 Tag tracking
@@ -4514,8 +4566,8 @@ more complex type classes:
 
 Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
-constraints to be enforced at type instantations. Type classes are not really
-types in themsleves, but are instead a system of providing generic "checks" that
+constraints to be enforced at type instantiations. Type classes are not really
+types in themselves, but are instead a system of providing generic "checks" that
 ultimately *resolve* to some singular type. Type classes do not allow for
 runtime type dynamism, unlike object variants or methods.
 
@@ -4677,7 +4729,7 @@ instantiation. The following is not allowed:
   # not valid: 'T' is not inferred to be of type 'var int'
   g(v, i)
 
-  # also not allowed: explict instantiation via 'var int'
+  # also not allowed: explicit instantiation via 'var int'
   g[var int](v, i)
 
 
@@ -5167,7 +5219,7 @@ tree (AST) of the code that is passed to it. The macro can then do
 transformations on it and return the transformed AST. This can be used to
 add custom language features and implement `domain specific languages`:idx:.
 
-Macro invocation is a case where semantic analyis does **not** entirely proceed
+Macro invocation is a case where semantic analysis does **not** entirely proceed
 top to bottom and left to right. Instead, semantic analysis happens at least
 twice:
 
@@ -6400,7 +6452,7 @@ and instead the generated code should contain an ``#include``:
     PFile {.importc: "FILE*", header: "<stdio.h>".} = distinct pointer
       # import C's FILE* type; Nim will treat it as a new pointer type
 
-The ``header`` pragma always expects a string constant. The string contant
+The ``header`` pragma always expects a string constant. The string constant
 contains the header file: As usual for C, a system header file is enclosed
 in angle brackets: ``<>``. If no angle brackets are given, Nim
 encloses the header file in ``""`` in the generated C code.
@@ -6773,7 +6825,7 @@ Produces:
 ImportJs pragma
 ---------------
 
-Similar to the `importcpp pragma for C++ <#foreign-function-interface-importc-pragma>`_,
+Similar to the `importcpp pragma for C++ <#implementation-specific-pragmas-importcpp-pragma>`_,
 the ``importjs`` pragma can be used to import Javascript methods or
 symbols in general. The generated code then uses the Javascript method
 calling syntax: ``obj.method(arg)``.
@@ -7066,6 +7118,16 @@ spelled*:
 
 .. code-block::
   proc printf(formatstr: cstring) {.header: "<stdio.h>", importc: "printf", varargs.}
+
+When ``importc`` is applied to a ``let`` statement it can omit its value which
+will then be expected to come from C. This can be used to import a C ``const``:
+
+.. code-block::
+  {.emit: "const int cconst = 42;".}
+
+  let cconst {.importc, nodecl.}: cint
+
+  assert cconst == 42
 
 Note that this pragma has been abused in the past to also work in the
 js backend for js objects and functions. : Other backends do provide

@@ -942,10 +942,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
     else: discard
-    #if result.kind == tyRef and c.config.selectedGC == gcDestructors:
-    #  result.flags.incl tfHasAsgn
-    # XXX Something like this is a good idea but it should be done
-    # in sempass2!
+    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc}:
+      result.flags.incl tfHasAsgn
 
 proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,

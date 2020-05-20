@@ -9,6 +9,7 @@ B
 begin
 end
 prevented
+(ok: true, value: "ok")
 myobj destroyed
 '''
 """
@@ -193,3 +194,32 @@ proc test_myobject =
 test_myobject()
 
 
+#------------------------------------------------
+# bug #14244
+
+type
+  RocksDBResult*[T] = object
+    case ok*: bool
+    of true:
+      value*: T
+    else:
+      error*: string
+
+proc init(): RocksDBResult[string] =
+  result.ok = true
+  result.value = "ok"
+
+echo init()
+
+
+#------------------------------------------------
+# bug #14312
+
+type MyObj = object
+  case kind: bool
+    of false: x0: int # would work with a type like seq[int]; value would be reset
+    of true: x1: string
+
+var a = MyObj(kind: false, x0: 1234)
+a.kind = true
+doAssert(a.x1 == "")

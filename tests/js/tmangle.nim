@@ -62,8 +62,8 @@ block:
     result = result and obj1.`&&`.addr[] == "bar".cstring
     result = result and obj2.`if` == 0
     result = result and obj2.`for` == 0
-    result = result and obj2.`==`.len == 0
-    result = result and obj2.`&&`.len == 0
+    result = result and obj2.`==`.isNil
+    result = result and obj2.`&&`.isNil
   echo test()
 
 # Test codegen for fields with uppercase letters:

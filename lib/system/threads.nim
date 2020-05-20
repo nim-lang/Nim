@@ -89,9 +89,9 @@ type
       data: TArg
 
 var
-  threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe.}]
+  threadDestructionHandlers {.rtlThreadVar.}: seq[proc () {.closure, gcsafe, raises: [].}]
 
-proc onThreadDestruction*(handler: proc () {.closure, gcsafe.}) =
+proc onThreadDestruction*(handler: proc () {.closure, gcsafe, raises: [].}) =
   ## Registers a *thread local* handler that is called at the thread's
   ## destruction.
   ##
@@ -105,7 +105,10 @@ template afterThreadRuns() =
     threadDestructionHandlers[i]()
 
 when not defined(boehmgc) and not hasSharedHeap and not defined(gogc) and not defined(gcRegions):
-  proc deallocOsPages() {.rtl.}
+  proc deallocOsPages() {.rtl, raises: [].}
+
+proc threadTrouble() {.raises: [], gcsafe.}
+  ## defined in system/excpt.nim
 
 when defined(boehmgc):
   type GCStackBaseProc = proc(sb: pointer, t: pointer) {.noconv.}
@@ -116,7 +119,7 @@ when defined(boehmgc):
   proc boehmGC_unregister_my_thread()
     {.importc: "GC_unregister_my_thread", boehmGC.}
 
-  proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv.} =
+  proc threadProcWrapDispatch[TArg](sb: pointer, thrd: pointer) {.noconv, raises: [].} =
     boehmGC_register_my_thread(sb)
     try:
       let thrd = cast[ptr Thread[TArg]](thrd)
@@ -124,11 +127,13 @@ when defined(boehmgc):
         thrd.dataFn()
       else:
         thrd.dataFn(thrd.data)
+    except:
+      threadTrouble()
     finally:
       afterThreadRuns()
     boehmGC_unregister_my_thread()
 else:
-  proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) =
+  proc threadProcWrapDispatch[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
     try:
       when TArg is void:
         thrd.dataFn()
@@ -139,21 +144,22 @@ else:
           var x: TArg
           deepCopy(x, thrd.data)
           thrd.dataFn(x)
+    except:
+      threadTrouble()
     finally:
       afterThreadRuns()
 
-proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) =
+proc threadProcWrapStackFrame[TArg](thrd: ptr Thread[TArg]) {.raises: [].} =
   when defined(boehmgc):
     boehmGC_call_with_stack_base(threadProcWrapDispatch[TArg], thrd)
   elif not defined(nogc) and not defined(gogc) and not defined(gcRegions) and not usesDestructors:
-    var p {.volatile.}: proc(a: ptr Thread[TArg]) {.nimcall, gcsafe.} =
-      threadProcWrapDispatch[TArg]
+    var p {.volatile.}: pointer
     # init the GC for refc/markandsweep
     nimGC_setStackBottom(addr(p))
     initGC()
     when declared(threadType):
       threadType = ThreadType.NimThread
-    p(thrd)
+    threadProcWrapDispatch[TArg](thrd)
     when declared(deallocOsPages): deallocOsPages()
   else:
     threadProcWrapDispatch(thrd)

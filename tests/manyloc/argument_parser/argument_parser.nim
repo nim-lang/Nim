@@ -102,7 +102,7 @@ type
 
 # - Tparam_kind procs
 
-proc `$`*(value: Tparam_kind): string {.procvar.} =
+proc `$`*(value: Tparam_kind): string =
   ## Stringifies the type, used to generate help texts.
   case value:
   of PK_EMPTY: result = ""
@@ -137,7 +137,7 @@ proc new_parameter_specification*(consumes = PK_EMPTY,
 
 # - Tparsed_parameter procs
 
-proc `$`*(data: Tparsed_parameter): string {.procvar.} =
+proc `$`*(data: Tparsed_parameter): string =
   ## Stringifies the value, mostly for debug purposes.
   ##
   ## The proc will display the value followed by non string type in brackets.

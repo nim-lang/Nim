@@ -733,7 +733,7 @@ when declared(stdout):
         releaseSys echoLock
 
 
-when defined(windows) and not defined(nimscript):
+when defined(windows) and not defined(nimscript) and not defined(js):
   # work-around C's sucking abstraction:
   # BUGFIX: stdin and stdout should be binary files!
   proc c_setmode(handle, mode: cint) {.

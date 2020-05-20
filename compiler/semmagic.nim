@@ -402,14 +402,18 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   # Replace nkDerefExpr by nkHiddenDeref
   # nkDeref is for 'ref T':  x[].field
   # nkHiddenDeref is for 'var T': x<hidden deref [] here>.field
-  proc transform(n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
+  proc transform(procSym: PSym; n: PNode; old, fresh: PType; oldParam, newParam: PSym): PNode =
     result = shallowCopy(n)
     if sameTypeOrNil(n.typ, old):
       result.typ = fresh
-    if n.kind == nkSym and n.sym == oldParam:
-      result.sym = newParam
+    if n.kind == nkSym:
+      if n.sym == oldParam:
+        result.sym = newParam
+      elif n.sym.owner == orig:
+        result.sym = copySym(n.sym)
+        result.sym.owner = procSym
     for i in 0 ..< safeLen(n):
-      result[i] = transform(n[i], old, fresh, oldParam, newParam)
+      result[i] = transform(procSym, n[i], old, fresh, oldParam, newParam)
     #if n.kind == nkDerefExpr and sameType(n[0].typ, old):
     #  result =
 
@@ -423,7 +427,7 @@ proc turnFinalizerIntoDestructor(c: PContext; orig: PSym; info: TLineInfo): PSym
   let newParam = newSym(skParam, oldParam.name, result, result.info)
   newParam.typ = newParamType
   # proc body:
-  result.ast = transform(orig.ast, origParamType, newParamType, oldParam, newParam)
+  result.ast = transform(result, orig.ast, origParamType, newParamType, oldParam, newParam)
   # proc signature:
   result.typ = newProcType(result.info, result)
   result.typ.addParam newParam

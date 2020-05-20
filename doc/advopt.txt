@@ -5,6 +5,7 @@ Advanced commands:
   //js                      compile project to Javascript
   //e                       run a Nimscript file
   //rst2html                convert a reStructuredText file to HTML
+                            use `--docCmd:skip` to skip compiling snippets
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
@@ -29,6 +30,8 @@ Runtime checks (see -x):
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
+  --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
+                            to after all options have been processed
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
@@ -69,13 +72,17 @@ Advanced options:
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
   --project                 document the whole project (doc2)
-  --docRoot:path            nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim
+  --docRoot:path            `nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim`
                             generates: docs/sub/main.html
                             if path == @pkg, will use nimble file enclosing dir
-                            if path == @path, will use first matching dir in --path
+                            if path == @path, will use first matching dir in `--path`
                             if path == @default (the default and most useful), will use
                             best match among @pkg,@path.
                             if these are nonexistant, will use project path
+  -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
+  --docCmd:cmd              if `cmd == skip`, skips runnableExamples
+                            else, runs runnableExamples with given options, eg:
+                            `--docCmd:"-d:foo --threads:on"`
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
   --docInternal             also generate documentation for non-exported symbols

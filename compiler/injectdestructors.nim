@@ -26,7 +26,7 @@ import
   strutils, options, dfa, lowerings, tables, modulegraphs, msgs,
   lineinfos, parampatterns, sighashes, liftdestructors
 
-from trees import exprStructuralEquivalent
+from trees import exprStructuralEquivalent, getRoot
 from algorithm import reverse
 
 const
@@ -65,9 +65,9 @@ template dbg(body) =
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
 proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
 
-proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
+proc isLastRead(location: PNode; c: var Con; pc, until: int): int =
   var pc = pc
-  while pc < c.g.len:
+  while pc < c.g.len and pc < until:
     case c.g[pc].kind
     of def:
       if defInstrTargets(c.g[pc], location):
@@ -83,17 +83,17 @@ proc isLastRead(location: PNode; c: var Con; pc, comesFrom: int): int =
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must lead to the last read of the location:
-      let variantA = isLastRead(location, c, pc+1, pc)
-      if variantA < 0: return -1
-      var variantB = isLastRead(location, c, pc + c.g[pc].dest, pc)
-      if variantB < 0: return -1
-      elif variantB == high(int):
-        variantB = variantA
-      pc = variantB
-    of InstrKind.join:
-      let dest = pc + c.g[pc].dest
-      if dest == comesFrom: return pc + 1
-      inc pc
+      var variantA = pc + 1
+      var variantB = pc + c.g[pc].dest
+      while variantA != variantB:
+        if min(variantA, variantB) < 0: return -1
+        if max(variantA, variantB) >= c.g.len or min(variantA, variantB) >= until:
+          break
+        if variantA < variantB:
+          variantA = isLastRead(location, c, variantA, min(variantB, until))
+        else:
+          variantB = isLastRead(location, c, variantB, min(variantA, until))
+      pc = min(variantA, variantB)
   return pc
 
 proc isLastRead(n: PNode; c: var Con): bool =
@@ -116,12 +116,12 @@ proc isLastRead(n: PNode; c: var Con): bool =
   # ensure that we don't find another 'use X' instruction.
   if instr+1 >= c.g.len: return true
 
-  result = isLastRead(n, c, instr+1, -1) >= 0
+  result = isLastRead(n, c, instr+1, int.high) >= 0
   dbg: echo "ugh ", c.otherRead.isNil, " ", result
 
-proc isFirstWrite(location: PNode; c: var Con; pc, comesFrom: int; instr: int): int =
+proc isFirstWrite(location: PNode; c: var Con; pc, until: int): int =
   var pc = pc
-  while pc < instr:
+  while pc < until:
     case c.g[pc].kind
     of def:
       if defInstrTargets(c.g[pc], location):
@@ -136,17 +136,17 @@ proc isFirstWrite(location: PNode; c: var Con; pc, comesFrom: int; instr: int): 
       pc = pc + c.g[pc].dest
     of fork:
       # every branch must not contain a def/use of our location:
-      let variantA = isFirstWrite(location, c, pc+1, pc, instr)
-      if variantA < 0: return -1
-      var variantB = isFirstWrite(location, c, pc + c.g[pc].dest, pc, instr + c.g[pc].dest)
-      if variantB < 0: return -1
-      elif variantB == high(int):
-        variantB = variantA
-      pc = variantB
-    of InstrKind.join:
-      let dest = pc + c.g[pc].dest
-      if dest == comesFrom: return pc + 1
-      inc pc
+      var variantA = pc + 1
+      var variantB = pc + c.g[pc].dest
+      while variantA != variantB:
+        if min(variantA, variantB) < 0: return -1
+        if max(variantA, variantB) > until:
+          break
+        if variantA < variantB:
+          variantA = isFirstWrite(location, c, variantA, min(variantB, until))
+        else:
+          variantB = isFirstWrite(location, c, variantB, min(variantA, until))
+      pc = min(variantA, variantB)
   return pc
 
 proc isFirstWrite(n: PNode; c: var Con): bool =
@@ -165,10 +165,10 @@ proc isFirstWrite(n: PNode; c: var Con): bool =
   # ensure that we don't find another 'def/use X' instruction.
   if instr == 0: return true
 
-  result = isFirstWrite(n, c, 0, -1, instr) >= 0
+  result = isFirstWrite(n, c, 0, instr) >= 0
 
 proc initialized(code: ControlFlowGraph; pc: int,
-                 init, uninit: var IntSet; comesFrom: int): int =
+                 init, uninit: var IntSet; until: int): int =
   ## Computes the set of definitely initialized variables across all code paths
   ## as an IntSet of IDs.
   var pc = pc
@@ -177,20 +177,22 @@ proc initialized(code: ControlFlowGraph; pc: int,
     of goto:
       pc = pc + code[pc].dest
     of fork:
-      let target = pc + code[pc].dest
       var initA = initIntSet()
       var initB = initIntSet()
-      let pcA = initialized(code, pc+1, initA, uninit, pc)
-      discard initialized(code, target, initB, uninit, pc)
+      var variantA = pc + 1
+      var variantB = pc + code[pc].dest
+      while variantA != variantB:
+        if max(variantA, variantB) > until:
+          break
+        if variantA < variantB:
+          variantA = initialized(code, variantA, initA, uninit, min(variantB, until))
+        else:
+          variantB = initialized(code, variantB, initB, uninit, min(variantA, until))
+      pc = min(variantA, variantB)
       # we add vars if they are in both branches:
       for v in initA:
         if v in initB:
           init.incl v
-      pc = pcA+1
-    of InstrKind.join:
-      let target = pc + code[pc].dest
-      if comesFrom == target: return pc
-      inc pc
     of use:
       let v = code[pc].n.sym
       if v.kind != skParam and v.id notin init:
@@ -386,7 +388,9 @@ proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
     localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
         "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
-proc isClosureEnv(n: PNode): bool = n.kind == nkSym and n.sym.name.s[0] == ':'
+proc isCapturedVar(n: PNode): bool =
+  let root = getRoot(n)
+  if root != nil: result = root.name.s[0] == ':'
 
 proc passCopyToSink(n: PNode; c: var Con): PNode =
   result = newNodeIT(nkStmtListExpr, n.info, n.typ)
@@ -398,10 +402,10 @@ proc passCopyToSink(n: PNode; c: var Con): PNode =
     var m = genCopy(c, tmp, n)
     m.add p(n, c, normal)
     result.add m
-    if isLValue(n) and not isClosureEnv(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
+    if isLValue(n) and not isCapturedVar(n) and n.typ.skipTypes(abstractInst).kind != tyRef and c.inSpawn == 0:
       message(c.graph.config, n.info, hintPerformance,
         ("passing '$1' to a sink parameter introduces an implicit copy; " &
-        "use 'move($1)' to prevent it") % $n)
+        "if possible, rearrange your program's control flow to prevent it") % $n)
   else:
     if c.graph.config.selectedGC in {gcArc, gcOrc}:
       assert(not containsGarbageCollectedRef(n.typ))
@@ -1042,7 +1046,7 @@ proc computeUninit(c: var Con) =
     c.uninitComputed = true
     c.uninit = initIntSet()
     var init = initIntSet()
-    discard initialized(c.g, pc = 0, init, c.uninit, comesFrom = -1)
+    discard initialized(c.g, pc = 0, init, c.uninit, int.high)
 
 proc injectDefaultCalls(n: PNode, c: var Con) =
   case n.kind
@@ -1066,7 +1070,7 @@ proc injectDefaultCalls(n: PNode, c: var Con) =
 proc extractDestroysForTemporaries(c: Con, destroys: PNode): PNode =
   result = newNodeI(nkStmtList, destroys.info)
   for i in 0..<destroys.len:
-    if destroys[i][1][0].sym.kind == skTemp:
+    if destroys[i][1][0].sym.kind in {skTemp, skForVar}:
       result.add destroys[i]
       destroys[i] = c.emptyNode
 

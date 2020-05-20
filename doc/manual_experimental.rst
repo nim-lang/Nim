@@ -104,7 +104,7 @@ cannot have the type ``void``.
 Covariance
 ==========
 
-Covariance in Nim can be introduced only though pointer-like types such
+Covariance in Nim can be introduced only through pointer-like types such
 as ``ptr`` and ``ref``. Sequence, Array and OpenArray types, instantiated
 with pointer-like types will be considered covariant if and only if they
 are also immutable. The introduction of a ``var`` modifier or additional

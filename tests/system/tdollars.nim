@@ -70,3 +70,10 @@ block: # `$`(SomeInteger)
     testType uint64
     testType int64
     testType BiggestInt
+
+block: # #14350 for JS
+  var cstr: cstring
+  doAssert cstr == cstring(nil)
+  doAssert cstr == nil
+  doAssert cstr.isNil
+  doAssert cstr != cstring("")

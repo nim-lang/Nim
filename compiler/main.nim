@@ -114,13 +114,14 @@ proc commandJsonScript(graph: ModuleGraph) =
   let proj = changeFileExt(graph.config.projectFull, "")
   extccomp.runJsonBuildInstructions(graph.config, proj)
 
-when not defined(leanCompiler):
-  proc commandCompileToJS(graph: ModuleGraph) =
+proc commandCompileToJS(graph: ModuleGraph) =
+  when defined(leanCompiler):
+    globalError(graph.config, unknownLineInfo, "compiler wasn't built with JS code generator")
+  else:
     let conf = graph.config
     conf.exc = excCpp
 
-    if conf.outDir.isEmpty:
-      conf.outDir = conf.projectPath
+    setOutDir(conf)
     if conf.outFile.isEmpty:
       conf.outFile = RelativeFile(conf.projectName & ".js")
 
@@ -128,7 +129,6 @@ when not defined(leanCompiler):
     setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
     defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
-    defineSymbol(graph.config.symbols, "js")
     semanticPasses(graph)
     registerPass(graph, JSgenPass)
     compileProject(graph)
@@ -190,44 +190,71 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.lastCmdTime = epochTime()
   conf.searchPaths.add(conf.libpath)
   setId(100)
-  template handleC() =
-    conf.cmd = cmdCompileToC
-    if conf.exc == excNone: conf.exc = excSetjmp
-    defineSymbol(graph.config.symbols, "c")
-    commandCompileToC(graph)
-  case conf.command.normalize
-  of "c", "cc", "compile", "compiletoc": handleC() # compile means compileToC currently
-  of "cpp", "compiletocpp":
-    conf.cmd = cmdCompileToCpp
-    if conf.exc == excNone: conf.exc = excCpp
-    defineSymbol(graph.config.symbols, "cpp")
-    commandCompileToC(graph)
-  of "objc", "compiletooc":
-    conf.cmd = cmdCompileToOC
-    defineSymbol(graph.config.symbols, "objc")
-    commandCompileToC(graph)
-  of "r": # different from `"run"`!
-    conf.globalOptions.incl {optRun, optUseNimcache}
-    handleC()
-  of "run":
-    conf.cmd = cmdRun
-    when hasTinyCBackend:
-      extccomp.setCC(conf, "tcc", unknownLineInfo)
-      commandCompileToC(graph)
-    else:
-      rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
-  of "js", "compiletojs":
-    when defined(leanCompiler):
-      quit "compiler wasn't built with JS code generator"
-    else:
-      conf.cmd = cmdCompileToJS
+
+  ## Calling `setOutDir(conf)` unconditionally would fix regression
+  ## https://github.com/nim-lang/Nim/issues/6583#issuecomment-625711125
+  when false: setOutDir(conf)
+  if optUseNimcache in conf.globalOptions: setOutDir(conf)
+
+  proc customizeForBackend(backend: TBackend) =
+    ## Sets backend specific options but don't compile to backend yet in
+    ## case command doesn't require it. This must be called by all commands.
+    if conf.backend == backendInvalid:
+      # only set if wasn't already set, to allow override via `nim c -b:cpp`
+      conf.backend = backend
+
+    defineSymbol(graph.config.symbols, $conf.backend)
+    case conf.backend
+    of backendC:
+      if conf.exc == excNone: conf.exc = excSetjmp
+    of backendCpp:
+      if conf.exc == excNone: conf.exc = excCpp
+    of backendObjc: discard
+    of backendJs:
       if conf.hcrOn:
         # XXX: At the moment, system.nim cannot be compiled in JS mode
         # with "-d:useNimRtl". The HCR option has been processed earlier
         # and it has added this define implictly, so we must undo that here.
         # A better solution might be to fix system.nim
         undefSymbol(conf.symbols, "useNimRtl")
-      commandCompileToJS(graph)
+    of backendInvalid: doAssert false
+    if conf.selectedGC in {gcArc, gcOrc} and conf.backend != backendCpp:
+      conf.exc = excGoto
+
+  var commandAlreadyProcessed = false
+
+  proc compileToBackend(backend: TBackend, cmd = cmdCompileToBackend) =
+    commandAlreadyProcessed = true
+    conf.cmd = cmd
+    customizeForBackend(backend)
+    case conf.backend
+    of backendC: commandCompileToC(graph)
+    of backendCpp: commandCompileToC(graph)
+    of backendObjc: commandCompileToC(graph)
+    of backendJs: commandCompileToJS(graph)
+    of backendInvalid: doAssert false
+
+  ## process all backend commands
+  case conf.command.normalize
+  of "c", "cc", "compile", "compiletoc": compileToBackend(backendC) # compile means compileToC currently
+  of "cpp", "compiletocpp": compileToBackend(backendCpp)
+  of "objc", "compiletooc": compileToBackend(backendObjc)
+  of "js", "compiletojs": compileToBackend(backendJs)
+  of "r": # different from `"run"`!
+    conf.globalOptions.incl {optRun, optUseNimcache}
+    compileToBackend(backendC)
+  of "run":
+    when hasTinyCBackend:
+      extccomp.setCC(conf, "tcc", unknownLineInfo)
+      if conf.backend notin {backendC, backendInvalid}:
+        rawMessage(conf, errGenerated, "'run' requires c backend, got: '$1'" % $conf.backend)
+      compileToBackend(backendC, cmd = cmdRun)
+    else:
+      rawMessage(conf, errGenerated, "'run' command not available; rebuild with -d:tinyc")
+  else: customizeForBackend(backendC) # fallback for other commands
+
+  ## process all other commands
+  case conf.command.normalize
   of "doc0":
     when defined(leanCompiler):
       quit "compiler wasn't built with documentation generator"
@@ -376,6 +403,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "jsonscript":
     conf.cmd = cmdJsonScript
     commandJsonScript(graph)
+  elif commandAlreadyProcessed: discard # already handled
   else:
     rawMessage(conf, errGenerated, "invalid command: " & conf.command)
 

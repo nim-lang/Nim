@@ -865,7 +865,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "nim c -r $1"
+      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
     else:
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":

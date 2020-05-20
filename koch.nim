@@ -10,7 +10,7 @@
 #
 
 const
-  NimbleStableCommit = "6f2b1ace922e565f7f48a69648e16a002a5d15e3" # master
+  NimbleStableCommit = "63695f490728e3935692c29f3d71944d83bb1e83" # master
 
 when not defined(windows):
   const
@@ -27,8 +27,10 @@ when defined(amd64) and defined(windows) and defined(vcc):
 when defined(i386) and defined(windows) and defined(vcc):
   {.link: "icons/koch-i386-windows-vcc.res".}
 
-import
-  os, strutils, parseopt, osproc
+import std/[os, strutils, parseopt, osproc]
+  # Using `std/os` instead of `os` to fail early if config isn't set up properly.
+  # If this fails with: `Error: cannot open file: std/os`, see
+  # https://github.com/nim-lang/Nim/pull/14291 for explanation + how to fix.
 
 import tools / kochdocs
 import tools / deps
@@ -289,11 +291,13 @@ proc findStartNim: string =
 proc thVersion(i: int): string =
   result = ("compiler" / "nim" & $i).exe
 
+template doUseCpp(): bool = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
+
 proc boot(args: string) =
   var output = "compiler" / "nim".exe
   var finalDest = "bin" / "nim".exe
   # default to use the 'c' command:
-  let useCpp = getEnv("NIM_COMPILE_TO_CPP", "false") == "true"
+  let useCpp = doUseCpp()
   let smartNimcache = (if "release" in args or "danger" in args: "nimcache/r_" else: "nimcache/d_") &
                       hostOS & "_" & hostCPU
 
@@ -316,9 +320,13 @@ proc boot(args: string) =
       let ret = execCmdEx(nimStart & " --version")
       doAssert ret.exitCode == 0
       let version = ret.output.splitLines[0]
+      # remove these when csources get updated
+      template addLib() =
+        extraOption.add " --lib:lib" # see https://github.com/nim-lang/Nim/pull/14291
       if version.startsWith "Nim Compiler Version 0.19.0":
         extraOption.add " -d:nimBoostrapCsources0_19_0"
-        # remove this when csources get updated
+        addLib()
+      elif version.startsWith "Nim Compiler Version 0.20.0": addLib()
 
     # in order to use less memory, we split the build into two steps:
     # --compileOnly produces a $project.json file and does not run GCC/Clang.
@@ -524,8 +532,10 @@ proc runCI(cmd: string) =
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 
-  if getEnv("NIM_TEST_PACKAGES", "false") == "true":
-    execFold("Test selected Nimble packages", "nim c -r testament/testament cat nimble-packages")
+  if getEnv("NIM_TEST_PACKAGES", "0") == "1":
+    execFold("Test selected Nimble packages (1)", "nim c -r testament/testament cat nimble-packages-1")
+  elif getEnv("NIM_TEST_PACKAGES", "0") == "2":
+    execFold("Test selected Nimble packages (2)", "nim c -r testament/testament cat nimble-packages-2")
   else:
     buildTools()
 
@@ -542,8 +552,9 @@ proc runCI(cmd: string) =
         execFold("nimble install -y libffi", "nimble install -y libffi")
         const nimFFI = "./bin/nim.ctffi"
         # no need to bootstrap with koch boot (would be slower)
-        execFold("build with -d:nimHasLibFFI", "nim c -d:release -d:nimHasLibFFI -o:$1 compiler/nim.nim" % [nimFFI])
-        execFold("test with -d:nimHasLibFFI", "$1 c -r testament/testament --nim:$1 r tests/vm/tevalffi.nim" % [nimFFI])
+        let backend = if doUseCpp(): "cpp" else: "c"
+        execFold("build with -d:nimHasLibFFI", "nim $1 -d:release -d:nimHasLibFFI -o:$2 compiler/nim.nim" % [backend, nimFFI])
+        execFold("test with -d:nimHasLibFFI", "$1 $2 -r testament/testament --nim:$1 r tests/misc/trunner.nim -d:nimTrunnerFfi" % [nimFFI, backend])
 
     execFold("Run nimdoc tests", "nim c -r nimdoc/tester")
     execFold("Run nimpretty tests", "nim c -r nimpretty/tester.nim")

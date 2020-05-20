@@ -441,7 +441,11 @@ when defined(Windows) and not defined(useNimRtl):
       handle: Handle
       atTheEnd: bool
 
-  proc hsClose(s: Stream) = discard # nothing to do here
+  proc hsClose(s: Stream) =
+    # xxx here + elsewhere: check instead of discard; ignoring errors leads to
+    # hard to track bugs
+    discard FileHandleStream(s).handle.closeHandle
+
   proc hsAtEnd(s: Stream): bool = return FileHandleStream(s).atTheEnd
 
   proc hsReadData(s: Stream, buffer: pointer, bufLen: int): int =
@@ -1434,12 +1438,16 @@ elif not defined(useNimRtl):
 
 
 proc execCmdEx*(command: string, options: set[ProcessOption] = {
-                poStdErrToStdOut, poUsePath}): tuple[
+                poStdErrToStdOut, poUsePath}, env: StringTableRef = nil,
+                workingDir = "", input = ""): tuple[
                 output: TaintedString,
                 exitCode: int] {.tags:
                 [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
-  ## A convenience proc that runs the `command`, grabs all its output and
-  ## exit code and returns both.
+  ## A convenience proc that runs the `command`, and returns its `output` and
+  ## `exitCode`. `env` and `workingDir` params behave as for `startProcess`.
+  ## If `input.len > 0`, it is passed as stdin.
+  ## Note: this could block if `input.len` is greater than your OS's maximum
+  ## pipe buffer size.
   ##
   ## See also:
   ## * `execCmd proc <#execCmd,string>`_
@@ -1448,17 +1456,32 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## * `execProcess proc
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ##
-  ## Example:
-  ##
-  ## .. code-block:: Nim
-  ##  let (outp, errC) = execCmdEx("nim c -r mytestfile.nim")
+  runnableExamples:
+    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    import strutils, strtabs
+    stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
+    doAssert result == ("12", 0)
+    doAssert execCmdEx("ls --nonexistant").exitCode != 0
+    when defined(posix):
+      assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
+      assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
 
-  var p = startProcess(command, options = options + {poEvalCommand})
+  when (NimMajor, NimMinor, NimPatch) < (1, 3, 5):
+    doAssert input.len == 0
+    doAssert workingDir.len == 0
+    doAssert env == nil
+
+  var p = startProcess(command, options = options + {poEvalCommand},
+    workingDir = workingDir, env = env)
   var outp = outputStream(p)
 
-  # There is no way to provide input for the child process
-  # anymore. Closing it will create EOF on stdin instead of eternal
-  # blocking.
+  if input.len > 0:
+    # There is no way to provide input for the child process
+    # anymore. Closing it will create EOF on stdin instead of eternal
+    # blocking.
+    # Writing in chunks would require a selectors (eg kqueue/epoll) to avoid
+    # blocking on io.
+    inputStream(p).write(input)
   close inputStream(p)
 
   result = (TaintedString"", -1)

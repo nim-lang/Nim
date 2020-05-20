@@ -196,7 +196,13 @@ elif defined(posix) and not defined(StandaloneHeapSize):
     PROT_READ  = 1             # page can be read
     PROT_WRITE = 2             # page can be written
 
-  when defined(macosx) or defined(bsd):
+  when defined(netbsd) or defined(openbsd):
+      # OpenBSD security for setjmp/longjmp coroutines
+      var MAP_STACK {.importc: "MAP_STACK", header: "<sys/mman.h>".}: cint
+  else:
+    const MAP_STACK = 0             # avoid sideeffects
+    
+  when defined(macosx) or defined(freebsd):
     const MAP_ANONYMOUS = 0x1000
     const MAP_PRIVATE = 0x02        # Changes are private
   elif defined(solaris):
@@ -210,7 +216,7 @@ elif defined(posix) and not defined(StandaloneHeapSize):
   elif defined(haiku):
     const MAP_ANONYMOUS = 0x08
     const MAP_PRIVATE = 0x02
-  else:
+  else:  # posix including netbsd or openbsd
     var
       MAP_ANONYMOUS {.importc: "MAP_ANONYMOUS", header: "<sys/mman.h>".}: cint
       MAP_PRIVATE {.importc: "MAP_PRIVATE", header: "<sys/mman.h>".}: cint
@@ -222,13 +228,13 @@ elif defined(posix) and not defined(StandaloneHeapSize):
 
   proc osAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, cast[csize_t](size), PROT_READ or PROT_WRITE,
-                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+                             MAP_ANONYMOUS or MAP_PRIVATE or MAP_STACK, -1, 0)
     if result == nil or result == cast[pointer](-1):
       raiseOutOfMem()
 
   proc osTryAllocPages(size: int): pointer {.inline.} =
     result = mmap(nil, cast[csize_t](size), PROT_READ or PROT_WRITE,
-                             MAP_PRIVATE or MAP_ANONYMOUS, -1, 0)
+                             MAP_ANONYMOUS or MAP_PRIVATE or MAP_STACK, -1, 0)
     if result == cast[pointer](-1): result = nil
 
   proc osDeallocPages(p: pointer, size: int) {.inline.} =

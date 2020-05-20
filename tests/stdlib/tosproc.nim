@@ -1,7 +1,6 @@
 # test the osproc module
 
-import stdtest/specialpaths
-import "../.." / compiler/unittest_light
+import stdtest/[specialpaths, unittest_light]
 
 when defined(case_testfile): # compiled test file for child process
   from posix import exitnow
@@ -93,3 +92,42 @@ else:
       removeFile(exePath)
     except OSError:
       discard
+
+  import std/streams
+  block: # test for startProcess (more tests needed)
+    # bugfix: windows stdin.close was a noop and led to blocking reads
+    proc startProcessTest(command: string, options: set[ProcessOption] = {
+                    poStdErrToStdOut, poUsePath}, input = ""): tuple[
+                    output: TaintedString,
+                    exitCode: int] {.tags:
+                    [ExecIOEffect, ReadIOEffect, RootEffect], gcsafe.} =
+      var p = startProcess(command, options = options + {poEvalCommand})
+      var outp = outputStream(p)
+      if input.len > 0: inputStream(p).write(input)
+      close inputStream(p)
+      result = (TaintedString"", -1)
+      var line = newStringOfCap(120).TaintedString
+      while true:
+        if outp.readLine(line):
+          result[0].string.add(line.string)
+          result[0].string.add("\n")
+        else:
+          result[1] = peekExitCode(p)
+          if result[1] != -1: break
+      close(p)
+
+    var result = startProcessTest("nim r --hints:off -", options = {}, input = "echo 3*4")
+    doAssert result == ("12\n", 0)
+
+  import std/strtabs
+  block execProcessTest:
+    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+    stripLineEnd(result[0])
+    doAssert result == ("12", 0)
+    doAssert execCmdEx("ls --nonexistant").exitCode != 0
+    when false:
+      # bug: on windows, this raises; on posix, passes
+      doAssert execCmdEx("nonexistant").exitCode != 0
+    when defined(posix):
+      doAssert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
+      doAssert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)

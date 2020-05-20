@@ -117,7 +117,7 @@ else:
     Ordinal* = OrdinalImpl | uint | uint64
 
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
@@ -139,10 +139,15 @@ when defined(nimHasRunnableExamples):
     ##       assert double(5) == 10
     ##       block: ## at block scope
     ##         defer: echo "done"
-    ##
     ##     result = 2 * x
+    ##     runnableExamples "-d:foo -b:cpp":
+    ##       import std/compilesettings
+    ##       doAssert querySetting(backend) == "cpp"
+    ##     runnableExamples "-r:off": ## this one is only compiled
+    ##        import std/browsers
+    ##        openDefaultBrowser "https://forum.nim-lang.org/"
 else:
-  template runnableExamples*(body: untyped) =
+  template runnableExamples*(doccmd = "", body: untyped) =
     discard
 
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
@@ -692,7 +697,7 @@ proc len*(x: string): int {.magic: "LengthStr", noSideEffect.}
 proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ## Returns the length of a compatible string. This is sometimes
   ## an O(n) operation.
-  ## 
+  ##
   ## **Note:** On the JS backend this currently counts UTF-16 code points
   ## instead of bytes at runtime (not at compile time). For now, if you
   ## need the byte length of the UTF-8 encoding, convert to string with
@@ -876,7 +881,7 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ##   assert(FloatingPointDefect of Exception)
   ##   assert(DivByZeroDefect of Exception)
 
-proc cmp*[T](x, y: T): int {.procvar.} =
+proc cmp*[T](x, y: T): int =
   ## Generic compare proc.
   ##
   ## Returns:
@@ -894,7 +899,7 @@ proc cmp*[T](x, y: T): int {.procvar.} =
   if x < y: return -1
   return 1
 
-proc cmp*(x, y: string): int {.noSideEffect, procvar.}
+proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
   ## **Note**: The precise result values depend on the used C runtime library and
@@ -2068,8 +2073,9 @@ const
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 1
+  NimPatch* {.intdefine.}: int = 5
     ## is the patch number of Nim's version.
+    ## Odd for devel, even for releases.
 
 import system/dollars
 export dollars
@@ -2093,7 +2099,7 @@ when not defined(js):
 
   when hasAlloc:
     when not defined(gcRegions) and not usesDestructors:
-      proc initGC() {.gcsafe.}
+      proc initGC() {.gcsafe, raises: [].}
 
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
@@ -3025,5 +3031,5 @@ export widestrs
 import system/io
 export io
 
-when not defined(createNimHcr):
+when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr

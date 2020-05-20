@@ -53,14 +53,14 @@ when not defined(useNimRtl):
   proc realloc0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     result = boehmRealloc(p, newSize)
     if result == nil: raiseOutOfMem()
-    if newsize > oldsize:
-      zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    if newSize > oldSize:
+      zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
   proc deallocImpl(p: pointer) = boehmDealloc(p)
 
   proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
   proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
-  proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
-  proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+  proc reallocSharedImpl(p: pointer, newSize: Natural): pointer = reallocImpl(p, newSize)
+  proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer = realloc0Impl(p, oldSize, newSize)
   proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
   when hasThreadSupport:

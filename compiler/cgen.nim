@@ -279,7 +279,7 @@ proc genProc(m: BModule, prc: PSym)
 proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
-  m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
+  m.config.backend == backendCpp or sfCompileToCpp in m.module.flags
 
 proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
@@ -390,6 +390,8 @@ proc isComplexValueType(t: PType): bool {.inline.} =
   result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
+include ccgreset
+
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
@@ -407,8 +409,10 @@ proc resetLoc(p: BProc, loc: var TLoc) =
       linefmt(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
   else:
     if loc.storage != OnStack and containsGcRef:
-      linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-              [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
+      specializeReset(p, loc)
+      when false:
+        linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+                [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -1066,11 +1070,11 @@ proc genProcAux(m: BModule, prc: PSym) =
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
-           m.config.cmd != cmdCompileToCpp) or (
+           m.config.backend != backendCpp) or (
            sym.flags * {sfInfixCall, sfCompilerProc, sfMangleCpp} == {} and
            sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
-           m.config.cmd == cmdCompileToCpp)
+           m.config.backend == backendCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
@@ -1867,7 +1871,7 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjc in m.module.flags: ".nim.m"
+      elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
   result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 

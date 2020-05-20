@@ -1690,9 +1690,7 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
       result = putToSeq("null", indirect)
   of tySequence, tyString:
     result = putToSeq("[]", indirect)
-  of tyCString:
-    result = putToSeq("\"\"", indirect)
-  of tyOpt, tyProc:
+  of tyCString, tyOpt, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:

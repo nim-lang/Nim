@@ -1,4 +1,4 @@
-import compiler/unittest_light
+import stdtest/unittest_light
 import compiler/asciitables
 
 import strformat

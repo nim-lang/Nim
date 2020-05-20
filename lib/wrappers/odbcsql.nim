@@ -45,8 +45,10 @@ type
   SqlHDBC* = SqlHandle
   SqlHStmt* = SqlHandle
   SqlHDesc* = SqlHandle
-  TSqlInteger* = int
-  SqlUInteger* = int
+  TSqlInteger* = int32
+  SqlUInteger* = int32
+  TSqlLen* = int64
+  TSqlULen* = uint64
   SqlPointer* = pointer
   TSqlReal* = cfloat
   TSqlDouble* = cdouble
@@ -666,7 +668,7 @@ proc SQLAllocHandle*(HandleType: TSqlSmallInt, InputHandle: SqlHandle,
                      OutputHandlePtr: var SqlHandle): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLSetEnvAttr*(EnvironmentHandle: SqlHEnv, Attribute: TSqlInteger,
-                    Value: TSqlInteger, StringLength: TSqlInteger): TSqlSmallInt{.
+                    Value: SqlPointer, StringLength: TSqlInteger): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLGetEnvAttr*(EnvironmentHandle: SqlHEnv, Attribute: TSqlInteger,
                     Value: SqlPointer, BufferLength: TSqlInteger,
@@ -716,14 +718,14 @@ proc SQLNumResultCols*(StatementHandle: SqlHStmt, ColumnCount: var TSqlSmallInt)
 proc SQLDescribeCol*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                      ColumnName: PSQLCHAR, BufferLength: TSqlSmallInt,
                      NameLength: var TSqlSmallInt, DataType: var TSqlSmallInt,
-                     ColumnSize: var SqlUInteger,
+                     ColumnSize: var TSQLULEN,
                      DecimalDigits: var TSqlSmallInt, Nullable: var TSqlSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLFetchScroll*(StatementHandle: SqlHStmt, FetchOrientation: TSqlSmallInt,
                      FetchOffset: TSqlInteger): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLExtendedFetch*(hstmt: SqlHStmt, fFetchType: SqlUSmallInt,
-                       irow: TSqlInteger, pcrow: PSQLUINTEGER,
+                       irow: TSqlInteger, pcrow: var TSQLULEN,
                        rgfRowStatus: PSQLUSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
 proc SQLGetData*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
@@ -741,13 +743,13 @@ proc SQLGetInfo*(ConnectionHandle: SqlHDBC, InfoType: SqlUSmallInt,
                  InfoValue: SqlPointer, BufferLength: TSqlSmallInt,
                  StringLength: PSQLSMALLINT): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLBulkOperations*(StatementHandle: SqlHStmt, Operation: TSqlSmallInt): TSqlSmallInt{.
+proc SQLBulkOperations*(StatementHandle: SqlHStmt, Operation: SqlUSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLPutData*(StatementHandle: SqlHStmt, Data: SqlPointer,
-                 StrLen_or_Ind: TSqlInteger): TSqlSmallInt{.dynlib: odbclib, importc.}
+                 StrLen_or_Ind: TSQLLEN): TSqlSmallInt{.dynlib: odbclib, importc.}
 proc SQLBindCol*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                  TargetType: TSqlSmallInt, TargetValue: SqlPointer,
-                 BufferLength: TSqlInteger, StrLen_or_Ind: PSQLINTEGER): TSqlSmallInt{.
+                 BufferLength: TSqlLEN, StrLen_or_Ind: PSQLINTEGER): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLSetPos*(hstmt: SqlHStmt, irow: SqlUSmallInt, fOption: SqlUSmallInt,
                 fLock: SqlUSmallInt): TSqlSmallInt{.dynlib: odbclib, importc.}
@@ -770,13 +772,13 @@ proc SQLGetCursorName*(StatementHandle: SqlHStmt, CursorName: PSQLCHAR,
 proc SQLSetCursorName*(StatementHandle: SqlHStmt, CursorName: PSQLCHAR,
                        NameLength: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,
     importc.}
-proc SQLRowCount*(StatementHandle: SqlHStmt, RowCount: var TSqlInteger): TSqlSmallInt{.
+proc SQLRowCount*(StatementHandle: SqlHStmt, RowCount: var TSQLLEN): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLBindParameter*(hstmt: SqlHStmt, ipar: SqlUSmallInt,
                        fParamType: TSqlSmallInt, fCType: TSqlSmallInt,
-                       fSqlType: TSqlSmallInt, cbColDef: SqlUInteger,
+                       fSqlType: TSqlSmallInt, cbColDef: TSQLULEN,
                        ibScale: TSqlSmallInt, rgbValue: SqlPointer,
-                       cbValueMax: TSqlInteger, pcbValue: PSQLINTEGER): TSqlSmallInt{.
+                       cbValueMax: TSQLLEN, pcbValue: var TSQLLEN): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLFreeStmt*(StatementHandle: SqlHStmt, Option: SqlUSmallInt): TSqlSmallInt{.
     dynlib: odbclib, importc.}
@@ -784,7 +786,7 @@ proc SQLColAttribute*(StatementHandle: SqlHStmt, ColumnNumber: SqlUSmallInt,
                       FieldIdentifier: SqlUSmallInt,
                       CharacterAttribute: PSQLCHAR, BufferLength: TSqlSmallInt,
                       StringLength: PSQLSMALLINT,
-                      NumericAttribute: SqlPointer): TSqlSmallInt{.
+                      NumericAttribute: TSQLLEN): TSqlSmallInt{.
     dynlib: odbclib, importc.}
 proc SQLEndTran*(HandleType: TSqlSmallInt, Handle: SqlHandle,
                  CompletionType: TSqlSmallInt): TSqlSmallInt{.dynlib: odbclib,

@@ -322,7 +322,7 @@ proc getFile(ftp: AsyncFtpClient, file: File, total: BiggestInt,
   assertReply(await(ftp.expectReply()), "226")
 
 proc defaultOnProgressChanged*(total, progress: BiggestInt,
-    speed: float): Future[void] {.nimcall, gcsafe, procvar.} =
+    speed: float): Future[void] {.nimcall, gcsafe.} =
   ## Default FTP ``onProgressChanged`` handler. Does nothing.
   result = newFuture[void]()
   #echo(total, " ", progress, " ", speed)
@@ -358,7 +358,7 @@ proc doUpload(ftp: AsyncFtpClient, file: File,
   var countdownFut = sleepAsync(1000)
   var sendFut: Future[void] = nil
   while ftp.dsockConnected:
-    if sendFut == nil or sendFut.finished: 
+    if sendFut == nil or sendFut.finished:
       # TODO: Async file reading.
       let len = file.readBuffer(addr(data[0]), 4000)
       setLen(data, len)

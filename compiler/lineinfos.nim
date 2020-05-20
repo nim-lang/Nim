@@ -23,7 +23,7 @@ type
     errGeneralParseError,
     errNewSectionExpected,
     errInvalidDirectiveX,
-    errProveInit,
+    errProveInit, # deadcode
     errGenerated,
     errUser,
     warnCannotOpenFile,
@@ -53,7 +53,8 @@ type
     hintSource, hintPerformance, hintStackTrace, hintGCStats,
     hintGlobalVar, hintExpandMacro,
     hintUser, hintUserRaw,
-    hintExtendedContext
+    hintExtendedContext,
+    hintMsgOrigin, # since 1.3.5
 
 const
   MsgKindToStr*: array[TMsgKind, string] = [
@@ -66,7 +67,7 @@ const
     errGeneralParseError: "general parse error",
     errNewSectionExpected: "new section expected",
     errInvalidDirectiveX: "invalid directive: '$1'",
-    errProveInit: "Cannot prove that '$1' is initialized.",
+    errProveInit: "Cannot prove that '$1' is initialized.",  # deadcode
     errGenerated: "$1",
     errUser: "$1",
     warnCannotOpenFile: "cannot open '$1'",
@@ -140,6 +141,7 @@ const
     hintUser: "$1",
     hintUserRaw: "$1",
     hintExtendedContext: "$1",
+    hintMsgOrigin: "$1",
   ]
 
 const
@@ -166,7 +168,7 @@ const
     "ExprAlwaysX", "QuitCalled", "Processing", "CodeBegin", "CodeEnd", "Conf",
     "Path", "CondTrue", "CondFalse", "Name", "Pattern", "Exec", "Link", "Dependency",
     "Source", "Performance", "StackTrace", "GCStats", "GlobalVar", "ExpandMacro",
-    "User", "UserRaw", "ExtendedContext",
+    "User", "UserRaw", "ExtendedContext", "MsgOrigin",
   ]
 
 const
@@ -192,7 +194,7 @@ proc computeNotesVerbosity(): array[0..3, TNoteKinds] =
   result[2] = result[3] - {hintStackTrace, warnUninit, hintExtendedContext}
   result[1] = result[2] - {warnProveField, warnProveIndex,
     warnGcUnsafe, hintPath, hintDependency, hintCodeBegin, hintCodeEnd,
-    hintSource, hintGlobalVar, hintGCStats}
+    hintSource, hintGlobalVar, hintGCStats, hintMsgOrigin}
   result[0] = result[1] - {hintSuccessX, hintSuccess, hintConf,
     hintProcessing, hintPattern, hintExecuting, hintLinking, hintCC}
 

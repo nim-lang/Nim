@@ -1,6 +1,6 @@
 discard """
   cmd: "nim c --gc:arc $file"
-  output: '''Foo(field: Dick Laurent, k: ka, x: 0.0)
+  output: '''Foo(field: "Dick Laurent", k: ka, x: 0.0)
 Nobody is dead
 Dick Laurent is dead'''
 """

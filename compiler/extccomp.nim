@@ -138,16 +138,6 @@ compiler clang:
   result.compilerExe = "clang"
   result.cppCompiler = "clang++"
 
-# Zig cc (Clang) C/C++ Compiler
-compiler zig:
-  result = clang() # Uses settings from llvmGcc
-
-  result.name = "zig"
-  result.compilerExe = "zig"
-  result.cppCompiler = "zig"
-  result.compileTmpl = "cc " & result.compileTmpl
-  result.linkTmpl = "cc " & result.linkTmpl
-
 # Microsoft Visual C/C++ Compiler
 compiler vcc:
   result = (
@@ -196,32 +186,6 @@ compiler icc:
   result.compilerExe = "icc"
   result.linkerExe = "icc"
 
-# Local C Compiler
-compiler lcc:
-  result = (
-    name: "lcc",
-    objExt: "obj",
-    optSpeed: " -O -p6 ",
-    optSize: " -O -p6 ",
-    compilerExe: "lcc",
-    cppCompiler: "",
-    compileTmpl: "$options $include -Fo$objfile $file",
-    buildGui: " -subsystem windows",
-    buildDll: " -dll",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "lcclnk",
-    linkTmpl: "$options $buildgui $builddll -O $exefile $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -g5 ",
-    pic: "",
-    asmStmtFrmt: "_asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {})
-
 # Borland C Compiler
 compiler bcc:
   result = (
@@ -249,58 +213,6 @@ compiler bcc:
     props: {hasSwitchRange, hasComputedGoto, hasCpp, hasGcGuard,
             hasAttribute})
 
-# Digital Mars C Compiler
-compiler dmc:
-  result = (
-    name: "dmc",
-    objExt: "obj",
-    optSpeed: " -ff -o -6 ",
-    optSize: " -ff -o -6 ",
-    compilerExe: "dmc",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -o$objfile $file",
-    buildGui: " -L/exet:nt/su:windows",
-    buildDll: " -WD",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "dmc",
-    linkTmpl: "$options $buildgui $builddll -o$exefile $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -g ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$3$n$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {hasCpp})
-
-# Watcom C Compiler
-compiler wcc:
-  result = (
-    name: "wcc",
-    objExt: "obj",
-    optSpeed: " -ox -on -6 -d0 -fp6 -zW ",
-    optSize: "",
-    compilerExe: "wcl386",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -fo=$objfile $file",
-    buildGui: " -bw",
-    buildDll: " -bd",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "wcl386",
-    linkTmpl: "$options $buildgui $builddll -fe=$exefile $objfiles ",
-    includeCmd: " -i=",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -d2 ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {hasCpp})
-
 # Tiny C Compiler
 compiler tcc:
   result = (
@@ -327,43 +239,16 @@ compiler tcc:
     cppXsupport: "",
     props: {hasSwitchRange, hasComputedGoto, hasGnuAsm})
 
-# Pelles C Compiler
-compiler pcc:
-  # Pelles C
-  result = (
-    name: "pcc",
-    objExt: "obj",
-    optSpeed: " -Ox ",
-    optSize: " -Os ",
-    compilerExe: "cc",
-    cppCompiler: "",
-    compileTmpl: "-c $options $include -Fo$objfile $file",
-    buildGui: " -SUBSYSTEM:WINDOWS",
-    buildDll: " -DLL",
-    buildLib: "", # XXX: not supported yet
-    linkerExe: "cc",
-    linkTmpl: "$options $buildgui $builddll -OUT:$exefile $objfiles",
-    includeCmd: " -I",
-    linkDirCmd: "", # XXX: not supported yet
-    linkLibCmd: "", # XXX: not supported yet
-    debug: " -Zi ",
-    pic: "",
-    asmStmtFrmt: "__asm{$n$1$n}$n",
-    structStmtFmt: "$1 $2",
-    produceAsm: "",
-    cppXsupport: "",
-    props: {})
-
 # Your C Compiler
-compiler ucc:
+compiler envcc:
   result = (
-    name: "ucc",
+    name: "env",
     objExt: "o",
     optSpeed: " -O3 ",
     optSize: " -O1 ",
-    compilerExe: "cc",
+    compilerExe: "",
     cppCompiler: "",
-    compileTmpl: "-c $options $include -o $objfile $file",
+    compileTmpl: "-c $ccenvflags $options $include -o $objfile $file",
     buildGui: "",
     buildDll: " -shared ",
     buildLib: "", # XXX: not supported yet
@@ -378,7 +263,7 @@ compiler ucc:
     structStmtFmt: "$1 $2",
     produceAsm: "",
     cppXsupport: "",
-    props: {})
+    props: {hasGnuAsm})
 
 const
   CC*: array[succ(low(TSystemCC))..high(TSystemCC), TInfoCC] = [
@@ -386,15 +271,10 @@ const
     nintendoSwitchGCC(),
     llvmGcc(),
     clang(),
-    zig(),
-    lcc(),
     bcc(),
-    dmc(),
-    wcc(),
     vcc(),
     tcc(),
-    pcc(),
-    ucc(),
+    envcc(),
     icl(),
     icc(),
     clangcl()]
@@ -426,15 +306,14 @@ proc isVSCompatible*(conf: ConfigRef): bool =
 proc getConfigVar(conf: ConfigRef; c: TSystemCC, suffix: string): string =
   # use ``cpu.os.cc`` for cross compilation, unless ``--compileOnly`` is given
   # for niminst support
-  let fullSuffix =
-    if conf.cmd == cmdCompileToCpp:
-      ".cpp" & suffix
-    elif conf.cmd == cmdCompileToOC:
-      ".objc" & suffix
-    elif conf.cmd == cmdCompileToJS:
-      ".js" & suffix
-    else:
-      suffix
+  var fullSuffix = suffix
+  case conf.backend
+  of backendCpp, backendJs, backendObjc: fullSuffix = "." & $conf.backend & suffix
+  of backendC: discard
+  of backendInvalid:
+    # during parsing of cfg files; we don't know the backend yet, no point in
+    # guessing wrong thing
+    return ""
 
   if (conf.target.hostOS != conf.target.targetOS or conf.target.hostCPU != conf.target.targetCPU) and
       optCompileOnly notin conf.globalOptions:
@@ -601,13 +480,25 @@ proc needsExeExt(conf: ConfigRef): bool {.inline.} =
            (conf.target.hostOS == osWindows)
 
 proc useCpp(conf: ConfigRef; cfile: AbsoluteFile): bool =
-  conf.cmd == cmdCompileToCpp and not cfile.string.endsWith(".c")
+  conf.backend == backendCpp and not cfile.string.endsWith(".c")
+
+proc envFlags(conf: ConfigRef): string =
+  result = if conf.backend == backendCpp:
+            getEnv("CXXFLAGS")
+          else:
+            getEnv("CFLAGS")
 
 proc getCompilerExe(conf: ConfigRef; compiler: TSystemCC; cfile: AbsoluteFile): string =
-  result = if useCpp(conf, cfile):
-             CC[compiler].cppCompiler
-           else:
-             CC[compiler].compilerExe
+  if compiler == ccEnv:
+    result = if useCpp(conf, cfile):
+              getEnv("CXX")
+            else:
+              getEnv("CC")
+  else:
+    result = if useCpp(conf, cfile):
+              CC[compiler].cppCompiler
+            else:
+              CC[compiler].compilerExe
   if result.len == 0:
     rawMessage(conf, errGenerated,
       "Compiler '$1' doesn't support the requested target" %
@@ -643,7 +534,7 @@ proc ccHasSaneOverflow*(conf: ConfigRef): bool =
 
 proc getLinkerExe(conf: ConfigRef; compiler: TSystemCC): string =
   result = if CC[compiler].linkerExe.len > 0: CC[compiler].linkerExe
-           elif optMixedMode in conf.globalOptions and conf.cmd != cmdCompileToCpp: CC[compiler].cppCompiler
+           elif optMixedMode in conf.globalOptions and conf.backend != backendCpp: CC[compiler].cppCompiler
            else: getCompilerExe(conf, compiler, AbsoluteFile"")
 
 proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
@@ -701,7 +592,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     "dfile", dfile,
     "file", cfsh, "objfile", quoteShell(objfile), "options", options,
     "include", includeCmd, "nim", getPrefixDir(conf).string,
-    "lib", conf.libpath.string])
+    "lib", conf.libpath.string,
+    "ccenvflags", envFlags(conf)])
 
   if optProduceAsm in conf.globalOptions:
     if CC[conf.cCompiler].produceAsm.len > 0:
@@ -721,7 +613,8 @@ proc getCompileCFileCmd*(conf: ConfigRef; cfile: Cfile,
     "options", options, "include", includeCmd,
     "nim", quoteShell(getPrefixDir(conf)),
     "lib", quoteShell(conf.libpath),
-    "vccplatform", vccplatform(conf)])
+    "vccplatform", vccplatform(conf),
+    "ccenvflags", envFlags(conf)])
 
 proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
   result = secureHash(
@@ -732,8 +625,10 @@ proc footprint(conf: ConfigRef; cfile: Cfile): SecureHash =
     getCompileCFileCmd(conf, cfile))
 
 proc externalFileChanged(conf: ConfigRef; cfile: Cfile): bool =
-  if conf.cmd notin {cmdCompileToC, cmdCompileToCpp, cmdCompileToOC, cmdCompileToLLVM, cmdNone}:
-    return false
+  case conf.backend
+  of backendInvalid: doAssert false
+  of backendJs: return false # pre-existing behavior, but not sure it's good
+  else: discard
 
   var hashFile = toGeneratedFile(conf, conf.withPackageName(cfile.cname), "sha1")
   var currentHash = footprint(conf, cfile)

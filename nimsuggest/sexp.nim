@@ -290,7 +290,7 @@ proc raiseParseErr*(p: SexpParser, msg: string) {.noinline, noreturn.} =
   ## raises an `ESexpParsingError` exception.
   raise newException(SexpParsingError, errorMsgExpected(p, msg))
 
-proc newSString*(s: string): SexpNode {.procvar.}=
+proc newSString*(s: string): SexpNode =
   ## Creates a new `SString SexpNode`.
   result = SexpNode(kind: SString, str: s)
 
@@ -298,27 +298,27 @@ proc newSStringMove(s: string): SexpNode =
   result = SexpNode(kind: SString)
   shallowCopy(result.str, s)
 
-proc newSInt*(n: BiggestInt): SexpNode {.procvar.} =
+proc newSInt*(n: BiggestInt): SexpNode =
   ## Creates a new `SInt SexpNode`.
   result = SexpNode(kind: SInt, num: n)
 
-proc newSFloat*(n: float): SexpNode {.procvar.} =
+proc newSFloat*(n: float): SexpNode =
   ## Creates a new `SFloat SexpNode`.
   result = SexpNode(kind: SFloat, fnum: n)
 
-proc newSNil*(): SexpNode {.procvar.} =
+proc newSNil*(): SexpNode =
   ## Creates a new `SNil SexpNode`.
   result = SexpNode(kind: SNil)
 
-proc newSCons*(car, cdr: SexpNode): SexpNode {.procvar.} =
+proc newSCons*(car, cdr: SexpNode): SexpNode =
   ## Creates a new `SCons SexpNode`
   result = SexpNode(kind: SCons, car: car, cdr: cdr)
 
-proc newSList*(): SexpNode {.procvar.} =
+proc newSList*(): SexpNode =
   ## Creates a new `SList SexpNode`
   result = SexpNode(kind: SList, elems: @[])
 
-proc newSSymbol*(s: string): SexpNode {.procvar.} =
+proc newSSymbol*(s: string): SexpNode =
   result = SexpNode(kind: SSymbol, symbol: s)
 
 proc newSSymbolMove(s: string): SexpNode =

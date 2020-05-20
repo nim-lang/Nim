@@ -104,7 +104,7 @@ proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
 
-proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline.} =
+proc unsureAsgnRef(dest: PPointer, src: pointer) {.inline, compilerproc.} =
   dest[] = src
 
 proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
@@ -495,9 +495,10 @@ when not defined(useNimRtl):
   proc GC_disable() =
     inc(gch.recGcLock)
   proc GC_enable() =
-    if gch.recGcLock <= 0:
-      raise newException(AssertionDefect,
-          "API usage error: GC_enable called but GC is already enabled")
+    when defined(nimDoesntTrackDefects):
+      if gch.recGcLock <= 0:
+        raise newException(AssertionDefect,
+            "API usage error: GC_enable called but GC is already enabled")
     dec(gch.recGcLock)
 
   proc GC_setStrategy(strategy: GC_Strategy) = discard

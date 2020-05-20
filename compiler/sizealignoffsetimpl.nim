@@ -346,7 +346,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           while st.kind in skipPtrs:
             st = st[^1]
           computeSizeAlign(conf, st)
-          if conf.cmd == cmdCompileToCpp:
+          if conf.backend == backendCpp:
             OffsetAccum(
               offset: int(st.size) - int(st.paddingAtEnd),
               maxAlign: st.align

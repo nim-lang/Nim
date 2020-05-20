@@ -453,7 +453,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = cast[BiggestInt](value)
     of tyBool:
       dest.ensureKind(rkInt)
-      dest.intVal = 
+      dest.intVal =
         case skipTypes(srctyp, abstractRange).kind
           of tyFloat..tyFloat64: int(src.floatVal != 0.0)
           else: int(src.intVal != 0)
@@ -668,7 +668,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src[idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdArrAddr:
       # a = addr(b[c])
       decodeBC(rkNodeAddr)
@@ -679,7 +679,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
         regs[ra].nodeAddr = addr src.sons[idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -703,7 +703,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif idx <% arr.len:
         writeField(arr[idx], regs[rc])
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.safeLen-1))
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
