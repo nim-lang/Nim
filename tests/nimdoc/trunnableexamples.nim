@@ -1,5 +1,5 @@
 discard """
-cmd: "nim doc $file"
+cmd: "nim doc --doccmd:-d:testFooExternal --hints:off $file"
 action: "compile"
 nimout: '''
 foo1
@@ -65,6 +65,39 @@ when true: # issue #12746
       except IOError:
         # specifying Error is culprit
         discard
+
+when true: # runnableExamples with rdoccmd
+  runnableExamples "-d:testFoo -d:testBar":
+    doAssert defined(testFoo) and defined(testBar)
+    doAssert defined(testFooExternal)
+  runnableExamples "-d:testFoo2":
+    doAssert defined(testFoo2)
+    doAssert not defined(testFoo) # doesn't get confused by other examples
+
+  ## all these syntaxes work too
+  runnableExamples("-d:testFoo2"): discard
+  runnableExamples(): discard
+  runnableExamples: discard
+  runnableExamples "-r:off": # issue #10731
+    doAssert false ## we compile only (-r:off), so this won't be run
+  runnableExamples "-b:js":
+    import std/compilesettings
+    proc startsWith*(s, prefix: cstring): bool {.noSideEffect, importjs: "#.startsWith(#)".}
+    doAssert querySetting(backend) == "js"
+  runnableExamples "-b:cpp":
+    static: doAssert defined(cpp)
+    type std_exception {.importcpp: "std::exception", header: "<exception>".} = object
+
+  proc fun2*() =
+    runnableExamples "-d:foo": discard # checks that it also works inside procs
+
+  when false: # future work
+    # passing non-string-litterals (for reuse)
+    const a = "-b:cpp"
+    runnableExamples(a): discard
+
+    # passing seq (to run with multiple compilation options)
+    runnableExamples(@["-b:cpp", "-b:js"]): discard
 
 # also check for runnableExamples at module scope
 runnableExamples:
