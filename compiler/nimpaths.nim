@@ -33,8 +33,7 @@ proc interp*(path: string, nimr: string): string =
 
 proc getDocHacksJs*(nimr: string, nim = getCurrentCompilerExe(), forceRebuild = false): string =
   ## return absolute path to dochhack.js, rebuilding if it doesn't exist or if
-  ## `forceRebuild`; `nim` 
-  ## depending on caller (compiler or koch), nim = getAppFilename() may not
+  ## `forceRebuild`.
   let docHackJs2 = docHackJs.interp(nimr = nimr)
   if forceRebuild or not docHackJs2.fileExists:
     let cmd =  "$nim js $file" % ["nim", nim.quoteShell, "file", docHackNim.interp(nimr = nimr).quoteShell]
