@@ -456,7 +456,6 @@ proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
   let outputDir = d.exampleOutputDir
   createDir(outputDir)
   inc d.exampleCounter
-  # PRTEMP
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples" & $d.exampleCounter & ".nim"))
   #let nimcache = outp.changeFileExt"" & "_nimcache"
