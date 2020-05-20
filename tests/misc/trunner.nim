@@ -68,7 +68,7 @@ else: # don't run twice the same test
     # regression tests for issues and PRS: #14376 #13223 #6583 ##13647
     let file = testsDir / "nimdoc/sub/mmain.nim"
     let mainFname = "mmain.html"
-    let htmldocsDir1 = nimcache /  "htmldocs" # implicit one given we're using `workingDir = nimcache`
+    let htmldocsDir1 = nimcache /  "htmldocs" # implicit one
     let htmldocsDir2 = nimcache / "htmldocs2" # explicit one
     let docroot = testsDir / "nimdoc"
     let options = ["", "--docroot", "--project:off", fmt"--project:off --outDir:{htmldocsDir2}", fmt"--project:off --docroot:{docroot}"]
@@ -76,7 +76,7 @@ else: # don't run twice the same test
       let htmldocsDir = if i == 3: htmldocsDir2 else: htmldocsDir1
       var cmd = fmt"{nim} doc --project --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
       removeDir(htmldocsDir)
-      let (outp, exitCode) = execCmdEx(cmd, workingDir = nimcache)
+      let (outp, exitCode) = execCmdEx(cmd)
       check exitCode == 0
       proc nativeToUnixPathWorkaround(a: string): string =
         # xxx pending https://github.com/nim-lang/Nim/pull/13265 `nativeToUnixPath`
@@ -183,14 +183,10 @@ sub/mmain.idx""", $(i, cmd)
       let cmd = fmt"""{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 "--doccmd:-d:m13129Foo2 --hints:off" --usenimcache --hints:off {file}"""
       check execCmdEx(cmd) == (&"ok1:{backend}\nok2: backend: {backend}\n", 0)
     # checks that --usenimcache works with `nim doc`
-    check fileExists(nimcache / "m13129.html")
+    check fileExists(nimcache / "htmldocs/m13129.html")
 
     block: # mak sure --backend works with `nim r`
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
-      echo cmd
-      let ret = execCmdEx(cmd)
-      echo ret[0]
-      echo ret[1]
       check execCmdEx(cmd) == ("ok3\n", 0)
 
   block: # further issues with `--backend`

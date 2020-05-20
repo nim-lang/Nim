@@ -66,20 +66,8 @@ when not defined(leanCompiler):
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
-const cmdUsingHtmlDocs =
-  @["doc0",  "doc2", "doc",
-  "rst2html", "rst2tex",
-  "jsondoc0", "jsondoc2", "jsondoc", "ctags", "buildindex"]
-
-proc setOutDir(conf: ConfigRef) =
-  if conf.outDir.isEmpty:
-    conf.outDir = if optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
-    elif conf.command.normalize in cmdUsingHtmlDocs: htmldocsDir.string.toAbsoluteDir
-    else: conf.projectPath
-
 proc commandCompileToC(graph: ModuleGraph) =
   let conf = graph.config
-  setOutDir(conf)
   if conf.outFile.isEmpty:
     let base = conf.projectName
     let targetName = if optGenDynLib in conf.globalOptions:
@@ -125,7 +113,6 @@ proc commandCompileToJS(graph: ModuleGraph) =
     let conf = graph.config
     conf.exc = excCpp
 
-    setOutDir(conf)
     if conf.outFile.isEmpty:
       conf.outFile = RelativeFile(conf.projectName & ".js")
 
@@ -195,8 +182,6 @@ proc mainCommand*(graph: ModuleGraph) =
   conf.searchPaths.add(conf.libpath)
   setId(100)
 
-  setOutDir(conf)
-
   proc customizeForBackend(backend: TBackend) =
     ## Sets backend specific options but don't compile to backend yet in
     ## case command doesn't require it. This must be called by all commands.
@@ -245,15 +230,28 @@ proc mainCommand*(graph: ModuleGraph) =
       defineSymbol(conf.symbols, "nimdoc")
       body
 
+  block: ## command prepass
+    var useHtmlDocs = false
+    case conf.command.normalize
+    of "r": conf.globalOptions.incl {optRun, optUseNimcache}
+    of "doc0",  "doc2", "doc", "rst2html", "rst2tex", "jsondoc0", "jsondoc2",
+      "jsondoc", "ctags", "buildindex": useHtmlDocs = true
+    else: discard
+
+    if conf.outDir.isEmpty:
+      # doc like commands can generate a lot of files (especially with --project)
+      # so by default should not end up in $PWD nor in $projectPath.
+      conf.outDir = if useHtmlDocs: getNimcacheDir(conf) / htmldocsDir
+      elif optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
+      else: conf.projectPath
+
   ## process all backend commands
   case conf.command.normalize
   of "c", "cc", "compile", "compiletoc": compileToBackend(backendC) # compile means compileToC currently
   of "cpp", "compiletocpp": compileToBackend(backendCpp)
   of "objc", "compiletooc": compileToBackend(backendObjc)
   of "js", "compiletojs": compileToBackend(backendJs)
-  of "r": # different from `"run"`!
-    conf.globalOptions.incl {optRun, optUseNimcache}
-    compileToBackend(backendC)
+  of "r": compileToBackend(backendC) # different from `"run"`!
   of "run":
     when hasTinyCBackend:
       extccomp.setCC(conf, "tcc", unknownLineInfo)
@@ -266,8 +264,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
   ## process all other commands
   case conf.command.normalize # synchronize with `cmdUsingHtmlDocs`
-  of "doc0":
-    docLikeCmd(): commandDoc(cache, conf)
+  of "doc0": docLikeCmd commandDoc(cache, conf)
   of "doc2", "doc":
     docLikeCmd():
       conf.setNoteDefaults(warnLockLevel, false) # issue #13218
@@ -278,7 +275,7 @@ proc mainCommand*(graph: ModuleGraph) =
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
       commandDoc2(graph, false)
       if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
-        commandBuildIndex(conf, conf.outDir.string)
+        commandBuildIndex(conf, $conf.outDir)
   of "rst2html":
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
@@ -294,14 +291,10 @@ proc mainCommand*(graph: ModuleGraph) =
       conf.cmd = cmdRst2tex
       loadConfigs(DocTexConfig, cache, conf)
       commandRst2TeX(cache, conf)
-  of "jsondoc0":
-    docLikeCmd(): commandJson(cache, conf)
-  of "jsondoc2", "jsondoc":
-    docLikeCmd(): commandDoc2(graph, true)
-  of "ctags":
-    docLikeCmd(): commandTags(cache, conf)
-  of "buildindex":
-    docLikeCmd(): commandBuildIndex(conf, conf.projectFull.string, conf.outFile)
+  of "jsondoc0": docLikeCmd commandJson(cache, conf)
+  of "jsondoc2", "jsondoc": docLikeCmd commandDoc2(graph, true)
+  of "ctags": docLikeCmd commandTags(cache, conf)
+  of "buildindex": docLikeCmd commandBuildIndex(conf, $conf.projectFull, conf.outFile)
   of "gendepend":
     conf.cmd = cmdGenDepend
     commandGenDepend(graph)

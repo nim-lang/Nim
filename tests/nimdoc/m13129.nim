@@ -17,11 +17,9 @@ proc main*() =
     doAssert defined(m13129Foo2)
     doAssert not defined(nimdoc)
     echo "ok2: backend: " & querySetting(backend)
-    # echo defined(c), defined(js), 
 
 import std/compilesettings
 when defined nimdoc:
-  # import std/compilesettings
   static:
     doAssert defined(m13129Foo1)
     doAssert not defined(m13129Foo2)

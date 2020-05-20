@@ -61,7 +61,7 @@ proc nativeToUnix(path: string): string =
   else: result = path
 
 proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  result = if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
+  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -1127,8 +1127,8 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
-proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
-  rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
+proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
+  rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
 proc genOutFile(d: PDoc): Rope =
   var
@@ -1159,15 +1159,17 @@ proc genOutFile(d: PDoc): Rope =
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile)])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
-        "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+        "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [cssHref(d.conf.outDir, d.destFile), title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        [relLink(d.conf.outDir, d.destFile, nimdocOutCss.RelativeFile),
+        relLink(d.conf.outDir, d.destFile, docHackJsFname.RelativeFile),
+        title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
@@ -1318,9 +1320,12 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
   let filename = getOutFile(conf, outFile, HtmlExt)
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
-      "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+      "nimdoccss", "dochackjs",
+      "title", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
-      [cssHref(conf.outDir, filename), rope"Index", nil, nil, rope(getDateStr()),
+      [relLink(conf.outDir, filename, nimdocOutCss.RelativeFile),
+      relLink(conf.outDir, filename, docHackJsFname.RelativeFile),
+      rope"Index", nil, nil, rope(getDateStr()),
       rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
 

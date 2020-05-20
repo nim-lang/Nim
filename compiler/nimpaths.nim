@@ -22,6 +22,7 @@ import std/[os,strutils]
 const docCss* = "$nimr/doc/nimdoc.css"
 const docHackNim* = "$nimr/tools/dochack/dochack.nim"
 const docHackJs* = docHackNim.changeFileExt("js")
+const docHackJsFname* = docHackJs.lastPathPart
 const theindexFname* = "theindex.html"
 const nimdocOutCss* = "nimdoc.out.css"
   # `out` to make it easier to use with gitignore in user's repos

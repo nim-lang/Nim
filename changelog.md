@@ -195,6 +195,10 @@ proc mydiv(a, b): int {.raises: [].} =
 - `nim doc foo/main` now outputs to `htmldocs/main.html` (with or without `--project`), like it used to,
   which avoids clobbering either `$PWD` or your source files. Use `--outDir:.` to restore previous behaviour
   or `--usenimcache` to output instead under $nimcache.
+- `nim doc foo/main` now outputs to `$nimcache/htmldocs/main.html` (with or without `--project`),
+- `nim doc foo/main` now outputs to `$nimcache/htmldocs/main.html` instead of $PWD,
+  which avoids clobbering either `$PWD` or your source files. Use `--outDir:.` to restore previous behaviour.
+  It now also generates theindex.html and links the index in the TOC, as well as enables search.
 
 ## Tool changes
 
