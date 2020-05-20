@@ -1,5 +1,6 @@
 #[
 todo: move findNimStdLibCompileTime, findNimStdLib here
+xxx: consider moving this to $nim/compiler/relpaths.nim to get relocatable paths
 ]#
 
 import os

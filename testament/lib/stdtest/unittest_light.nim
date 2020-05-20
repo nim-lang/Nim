@@ -1,5 +1,3 @@
-# note: consider merging tests/assert/testhelper.nim here.
-
 proc mismatch*[T](lhs: T, rhs: T): string =
   ## Simplified version of `unittest.require` that satisfies a common use case,
   ## while avoiding pulling too many dependencies. On failure, diagnostic

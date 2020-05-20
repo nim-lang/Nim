@@ -277,6 +277,8 @@ proc mainCommand*(graph: ModuleGraph) =
         #  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
         #  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
       commandDoc2(graph, false)
+      if optGenIndex in conf.globalOptions and optWholeProject in conf.globalOptions:
+        commandBuildIndex(conf, conf.outDir.string)
   of "rst2html":
     conf.setNoteDefaults(warnRedefinitionOfLabel, false) # similar to issue #13218
     when defined(leanCompiler):
@@ -299,7 +301,7 @@ proc mainCommand*(graph: ModuleGraph) =
   of "ctags":
     docLikeCmd(): commandTags(cache, conf)
   of "buildindex":
-    docLikeCmd(): commandBuildIndex(cache, conf)
+    docLikeCmd(): commandBuildIndex(conf, conf.projectFull.string, conf.outFile)
   of "gendepend":
     conf.cmd = cmdGenDepend
     commandGenDepend(graph)

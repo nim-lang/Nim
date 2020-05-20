@@ -31,7 +31,11 @@ Generate HTML documentation for a whole project:
 ::
   # delete any htmldocs/*.idx file before starting
   nim doc --project --index:on --git.url:<url> --git.commit:<tag> <main_filename>.nim
-  nim buildIndex -o:htmldocs/theindex.html htmldocs
+  # this will generated docs under `htmldocs` by default and an index under
+  # `htmldocs/theindex.html`. See also `--docroot` to specify a relative root.
+  # to get search (dochacks.js) to work locally, you need a server otherwise
+  # CORS will prevent opening file:// urls; this works:
+  python3 -m http.server 7029 --directory htmldocs
 
 
 Documentation Comments

@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables
+  pathutils, trees, tables, nimpaths
 
 const
   exportSection = skField
@@ -61,9 +61,7 @@ proc nativeToUnix(path: string): string =
   else: result = path
 
 proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  # if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
   result = if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
-  dbg conf.outDir, conf.projectPath, subdir, result
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -166,7 +164,6 @@ proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
     let d = conf.docOutDir(dir)
     createDir(d)
     result = d / changeFileExt(filename, ext)
-    dbg dir, d, filename, ext, result
   elif guessTarget:
     let d = conf.docOutDir
     createDir(d)
@@ -1130,9 +1127,6 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
-const nimdocOutCss = "nimdoc.out.css"
-  # `out` to make it easier to use with gitignore in user's repos
-
 proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
   rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
 
@@ -1208,10 +1202,11 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
-    elif not d.wroteCss:
-      let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-      let cssDest = $d.conf.outDir / nimdocOutCss
-      copyFile(cssSource, cssDest)
+    elif not d.wroteCss: # nimdoc.css + dochack.js
+      let nimr = $d.conf.getPrefixDir()
+      copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
+      copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)
       d.wroteCss = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
@@ -1315,12 +1310,11 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename.string)
 
-proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
-  var content = mergeIndexes(conf.projectFull.string).rope
+proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
+  var content = mergeIndexes(dir).rope
 
-  var outFile = RelativeFile"theindex"
-  if conf.outFile != RelativeFile"":
-    outFile = conf.outFile
+  var outFile = outFile
+  if outFile.isEmpty: outFile = theindexFname.RelativeFile.changeFileExt("")
   let filename = getOutFile(conf, outFile, HtmlExt)
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
@@ -1331,4 +1325,6 @@ proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
   # no analytics because context is not available
 
   if not writeRope(code, filename):
+    dbg filename
     rawMessage(conf, errCannotOpenFile, filename.string)
+

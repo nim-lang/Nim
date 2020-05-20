@@ -1,6 +1,7 @@
 ## Part of 'koch' responsible for the documentation generation.
 
 import os, strutils, osproc, sets, pathnorm
+import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
@@ -9,7 +10,6 @@ const
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
-  docHackDir = "tools/dochack"
 
 var nimExe*: string
 
@@ -289,20 +289,18 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(changeFileExt(pdf, "out"))
       removeFile(changeFileExt(d, "tex"))
 
-proc buildJS() =
-  exec(findNim().quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
+proc buildJS(): string =
+  let nim = findNim()
+  exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
-  exec(findNim().quoteShell() & " js " & (docHackDir / "dochack.nim"))
+  result = getDocHacksJs(nimr = getCurrentDir(), nim)
 
 proc buildDocs*(args: string) =
-  const
-    docHackJs = "dochack.js"
   let
     a = nimArgs & " " & args
-    docHackJsSource = docHackDir / docHackJs
-    docHackJsDest = docHtmlOutput / docHackJs
+    docHackJsSource = buildJS()
+    docHackJs = docHackJsSource.lastPathPart
 
-  buildJS()                     # This call generates docHackJsSource
   let docup = webUploadOutput / NimVersion
   createDir(docup)
   buildDocSamples(a, docup)
@@ -313,5 +311,5 @@ proc buildDocs*(args: string) =
   createDir(docHtmlOutput)
   buildDocSamples(nimArgs, docHtmlOutput)
   buildDoc(nimArgs, docHtmlOutput)
-  copyFile(docHackJsSource, docHackJsDest)
+  copyFile(docHackJsSource, docHtmlOutput / docHackJs)
   copyFile(docHackJsSource, docup / docHackJs)

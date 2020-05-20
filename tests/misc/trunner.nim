@@ -8,7 +8,9 @@ discard """
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
 
 import std/[strformat,os,osproc,unittest]
-
+from std/sequtils import toSeq,mapIt
+from std/algorithm import sorted
+from stdtest/specialpaths import buildDir
 const nim = getCurrentCompilerExe()
 
 const mode =
@@ -17,7 +19,6 @@ const mode =
   else: static: doAssert false
 
 const testsDir = currentSourcePath.parentDir.parentDir
-const buildDir = testsDir.parentDir / "build"
 const nimcache = buildDir / "nimcacheTrunner"
   # `querySetting(nimcacheDir)` would also be possible, but we thus
   # avoid stomping on other parallel tests
@@ -62,6 +63,47 @@ ret=[s1:foobar s2:foobar age:25 pi:3.14]
 else: # don't run twice the same test
   import std/[strutils]
   template check2(msg) = doAssert msg in output, output
+
+  block: # regression test for `nim doc --project`
+    let file = testsDir / "nimdoc/sub/mmain.nim"
+    let mainFname = "mmain.html"
+    let htmldocsDir = nimcache /  "htmldocs"
+
+    for options in @["", "--docroot"]:
+      var cmd = fmt"{nim} doc --project --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options} {file}"
+      echo cmd
+      removeDir(htmldocsDir)
+      let (outp, exitCode) = execCmdEx(cmd, workingDir = nimcache)
+      check exitCode == 0
+
+      let htmlFile = htmldocsDir/mainFname
+      check htmlFile in outp # sanity check for `hintSuccessX`
+
+      proc nativeToUnixPathWorkaround(a: string): string =
+        # xxx pending https://github.com/nim-lang/Nim/pull/13265 `nativeToUnixPath`
+        a.replace(DirSep, '/')
+
+      let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPathWorkaround).sorted.join("\n")
+      assertEquals(ret, """
+@@/imp.html
+@@/imp.idx
+dochack.js
+imp.html
+imp.idx
+imp2.html
+imp2.idx
+mmain.html
+mmain.idx
+nimdoc.out.css
+theindex.html""")
+
+      # echo ret
+      # @["@@/imp.html", "@@/imp.idx", "dochack.js", "imp.html", "imp.idx", "imp2.html", "imp2.idx", "mmain.html", "mmain.idx", "nimdoc.out.css", "theindex.html"]
+      # echo files
+      # for file in [docHackJs.lastPathPart, "nimdoc.out.css", mainFname, theindexFname, "@@" / "imp.html", "@@" / "imp.idx"]:
+      #   let file2 = htmldocsDir / file
+      #   check file2.fileExists
+    doAssert false
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
