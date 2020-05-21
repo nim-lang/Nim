@@ -602,11 +602,14 @@ template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   const info2 = instantiationInfo(-1, fullPaths = true)
   liMessage(conf, info, msg, arg, doNothing, info2)
 
-proc internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
+proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
-  const info2 = instantiationInfo(-1, fullPaths = true)
   writeContext(conf, info)
   liMessage(conf, info, errInternal, errMsg, doAbort, info2)
+
+template internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  internalErrorImpl(conf, info, errMsg, info2)
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
