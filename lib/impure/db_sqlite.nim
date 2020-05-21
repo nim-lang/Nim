@@ -125,8 +125,6 @@ type
   InstantRow* = PStmt ## A handle that can be used to get a row's column
                       ## text on demand.
   SqlPrepared* = distinct PStmt ## a identifier for the prepared queries
-  SQLite3UnbindCb = Tbind_destructor_func ## called by sqlite3 to release the string/blob ptr
-  RCode* = tuple[vendorcode: int, errStr: string]
 
 proc dbError*(db: DbConn) {.noreturn.} =
   ## Raises a `DbError` exception.
