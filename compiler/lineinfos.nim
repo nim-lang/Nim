@@ -112,7 +112,7 @@ const
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
-    hintSuccessX: "$loc LOC; $sec sec; $mem; $build build; proj: $project; out: $output",
+    hintSuccessX: "${loc} lines; ${sec}s; $mem; $build build; proj: $project; out: $output",
     hintCC: "CC: $1",
     hintLineTooLong: "line too long",
     hintXDeclaredButNotUsed: "'$1' is declared but not used",

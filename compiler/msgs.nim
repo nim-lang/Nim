@@ -330,6 +330,9 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
 template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
 
+template stdWhatever(conf: ConfigRef): File =
+  (if optStdout in conf.globalOptions and eStdOut in conf.m.errorOutputs: stdout else: stderr)
+
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
@@ -450,7 +453,10 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
       s & (if kind.len > 0: KindFormat % kind else: ""), sev)
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
-    if kind.len > 0:
+    if msg == hintProcessing:
+      write(stdWhatever(conf), '.')
+      flushFile(stdWhatever(conf))
+    elif kind.len > 0:
       styledMsgWriteln(color, title, resetStyle, s,
                        KindColor, `%`(KindFormat, kind))
     else:
