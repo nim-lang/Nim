@@ -277,6 +277,11 @@ type
     msgSkipHook    ## skip message hook even if it is present
   MsgFlags* = set[MsgFlag]
 
+template flushDot(stdorr) =
+  if conf.lastMsgWasDot:
+    write(stdorr, "\n")
+    conf.lastMsgWasDot = false
+
 proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## Writes given message string to stderr by default.
   ## If ``--stdout`` option is given, writes to stdout instead. If message hook
@@ -286,15 +291,16 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## This is used for 'nim dump' etc. where we don't have nimsuggest
   ## support.
   #if conf.cmd == cmdIdeTools and optCDebug notin gGlobalOptions: return
-
   if not isNil(conf.writelnHook) and msgSkipHook notin flags:
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
+      flushDot(stdout)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
+      flushDot(stderr)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -345,10 +351,12 @@ template styledMsgWriteln*(args: varargs[typed]) =
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
+      flushDot(stdout)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
+      flushDot(stderr)
       if optUseColors in conf.globalOptions:
         callStyledWriteLineStderr(args)
       else:
@@ -548,9 +556,6 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & (if kind.len > 0: KindFormat % kind else: ""), sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if conf.lastMsgWasDot and conf.m.errorOutputs != {}:
-        msgWrite(conf, "\n")
-        conf.lastMsgWasDot = false
       if kind.len > 0:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
                          KindColor, `%`(KindFormat, kind))
@@ -559,7 +564,10 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
       if conf.hasHint(hintSource):
         conf.writeSurroundingSrc(info)
       if conf.hasHint(hintMsgOrigin):
-        styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle, " compiler msg initiated here", KindColor, KindFormat % HintsToStr[ord(hintMsgOrigin) - ord(hintMin)], resetStyle)
+        styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
+          " compiler msg initiated here", KindColor,
+          KindFormat % HintsToStr[ord(hintMsgOrigin) - ord(hintMin)],
+          resetStyle)
 
   handleError(conf, msg, eh, s)
 
