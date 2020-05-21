@@ -736,7 +736,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) =
   if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val.int32):
     dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: int64) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int64) =
   ## Binds a int64  to the specified paramIndex.
   if SQLITE_OK != bind_int64(ps.PStmt, paramIdx.int32, val):
     dbBindParamError(paramIdx,val)
