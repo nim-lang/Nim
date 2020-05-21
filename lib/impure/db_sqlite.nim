@@ -756,7 +756,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) =
   if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC):
     dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: openArray[byte]) =
   ## binds a blob to the specified paramIndex.
   let len = val.len
   if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32 , SQLITE_STATIC):
