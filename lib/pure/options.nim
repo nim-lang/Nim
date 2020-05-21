@@ -77,6 +77,8 @@ type
   UnpackDefect* = object of Defect
   UnpackError* {.deprecated: "See corresponding Defect".} = UnpackDefect
 
+{.push inline.}
+
 proc option*[T](val: T): Option[T] =
   ## Can be used to convert a pointer type (`ptr` or `ref` or `proc`) to an option type.
   ## It converts `nil` to `None`.
@@ -140,7 +142,7 @@ proc none*[T]: Option[T] =
   ## Alias for `none(T) proc <#none,typedesc>`_.
   none(T)
 
-proc isSome*[T](self: Option[T]): bool {.inline.} =
+proc isSome*[T](self: Option[T]): bool =
   ## Checks if an `Option` contains a value.
   runnableExamples:
     var
@@ -154,7 +156,7 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
   else:
     self.has
 
-proc isNone*[T](self: Option[T]): bool {.inline.} =
+proc isNone*[T](self: Option[T]): bool =
   ## Checks if an `Option` is empty.
   runnableExamples:
     var
@@ -372,6 +374,7 @@ proc unsafeGet*[T](self: Option[T]): T =
   assert self.isSome
   self.val
 
+{.pop.}
 
 when isMainModule:
   import unittest, sequtils
@@ -513,4 +516,3 @@ when isMainModule:
     test "Ref type with overloaded `==`":
       let p = some(RefPerson.new())
       check p.isSome
-
