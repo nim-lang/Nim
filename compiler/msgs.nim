@@ -497,8 +497,8 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     title = HintTitle
     color = HintColor
     inc(conf.hintCounter)
-  let s = getMessageStr(msg, arg)
 
+  let s = if isRaw: arg else: getMessageStr(msg, arg)
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     var kindmsg = if kind.len > 0: KindFormat % kind else: ""
@@ -531,8 +531,7 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 
 proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
   const info2 = instantiationInfo(-1, fullPaths = true)
-  let arg = msgKindToString(msg) % arg
-  liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, info2, isRaw = true)
+  liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, info2)
 
 template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   # this fixes bug #7080 so that it is at least obvious 'fatal'
@@ -574,16 +573,16 @@ template internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
   const info2 = instantiationInfo(-1, fullPaths = true)
   internalErrorImpl(conf, info, errMsg, info2)
 
-proc internalError*(conf: ConfigRef; errMsg: string) =
-  # xxx refactor with `internalError` overload
-  if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
-  writeContext(conf, unknownLineInfo)
-  rawMessage(conf, errInternal, errMsg)
+template internalError*(conf: ConfigRef; errMsg: string) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  internalErrorImpl(conf, unknownLineInfo, errMsg, info2)
 
+# PRTEMP
 template assertNotNil*(conf: ConfigRef; e): untyped =
   if e == nil: internalError(conf, $instantiationInfo())
   e
 
+# PRTEMP
 template internalAssert*(conf: ConfigRef, e: bool) =
   if not e: internalError(conf, $instantiationInfo())
 
@@ -611,6 +610,7 @@ proc listHints*(conf: ConfigRef) =
       lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
     ])
 
+# PRTEMP
 proc lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
   let m = "'$2' should be: '$1'" % [beau, got]
   if optStyleError in conf.globalOptions:
