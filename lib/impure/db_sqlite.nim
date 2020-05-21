@@ -757,10 +757,10 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) =
   if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC):
     dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: cstring) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) =
   ## binds a blob to the specified paramIndex.
   let len = val.len
-  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val, len.int32 , SQLITE_STATIC):
+  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32 , SQLITE_STATIC):
     dbBindParamError(paramIdx,val)
 
 macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped =
@@ -824,10 +824,11 @@ when not defined(testing) and isMainModule:
 
   exec(db, sql"CREATE TABLE photos(ID INTEGER PRIMARY KEY AUTOINCREMENT, photo BLOB)")
   var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
-  var d:cstring = "abcdefghijklmnopqrstuvwxyz".cstring
-  p8.bindParams(1,d)
+  var d = "abcdefghijklmnopqrstuvwxyz"
+  p8.bindParams(1,"abcdefghijklmnopqrstuvwxyz")
   exec(db, p8, [])
   finalize(p8)
   for r in db.rows(sql"select * from photos where ID = 1", []):
     assert r[1].len == d.len
+    assert r[1] == d
   db_sqlite.close(db)
