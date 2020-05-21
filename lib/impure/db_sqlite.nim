@@ -719,56 +719,60 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
 proc finalize*(sqlPrepared:SqlPrepared){.discardable.} = 
   discard finalize(sqlPrepared.PStmt)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32):int =
+template dbBindParamError*(paramIdx: int,val:untyped) =
+  ## Raises a `DbError` exception.
+  var e: ref DbError
+  new(e)
+  e.msg = "error binding param in position " & $paramIdx 
+  raise e
+
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) =
   ## Binds a int32  to the specified paramIndex.
-  result = bind_int(ps.PStmt, paramIdx.int32, val)
+  if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val):
+    dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: int64):int =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) =
+  ## Binds a int32  to the specified paramIndex.
+  if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val.int32):
+    dbBindParamError(paramIdx,val)
+
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: int64) =
   ## Binds a int64  to the specified paramIndex.
-  result = bind_int64(ps.PStmt, paramIdx.int32, val)
+  if SQLITE_OK != bind_int64(ps.PStmt, paramIdx.int32, val):
+    dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64):int =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64) =
   ## Binds a 64bit float to the specified paramIndex.
-  result = bind_double(ps.PStmt, paramIdx.int32, val)
+  if SQLITE_OK != bind_double(ps.PStmt, paramIdx.int32, val):
+    dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int):int =
+proc bindNull*(ps: SqlPrepared, paramIdx: int) =
   ## Sets the bindparam at the specified paramIndex to null 
   ## (default behaviour by sqlite).
-  result = bind_null(ps.PStmt, paramIdx.int32) 
+  if SQLITE_OK != bind_null(ps.PStmt, paramIdx.int32):
+    dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: string): int =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: string) =
   ## Binds a string to the specified paramIndex.
-  result = bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC)
+  if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC):
+    dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: cstring): int =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: cstring) =
   ## binds a blob to the specified paramIndex.
   let len = val.len
-  result = bind_blob(ps.PStmt, paramIdx.int32, val[0].unSafeAddr, len.int32 , SQLITE_STATIC)
+  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unSafeAddr, len.int32 , SQLITE_STATIC):
+    dbBindParamError(paramIdx,val)
 
-proc bindParams*[T](ps: SqlPrepared, params:var T) = 
+template bindParams*(ps: SqlPrepared, params:untyped) = 
   var idx:int = 1
-  for v in params.fields:
-    when v is int:
-      if SQLITE_OK != ps.bindParam(idx,v.int32):
-        discard
-    elif v is int32:
-        if SQLITE_OK != ps.bindParam(idx,v):
-          discard
-    elif v is int64:
-        if SQLITE_OK != ps.bindParam(idx,v):
-          discard
-    elif v is float64:
-        if SQLITE_OK != ps.bindParam(idx,v):
-          discard
-    elif v is string:
-        if SQLITE_OK != ps.bindParam(idx,v):
-          discard
-    elif v is cString:
-        if SQLITE_OK != ps.bindParam(idx,v):
-          discard
-    else:
-      discard
-    inc idx
+  when params is tuple or params is object:
+    for v in params.fields:
+      ps.bindParam(idx,v)
+      inc idx
+  else:
+    for v in params:
+      ps.bindParam(idx,v)
+      inc idx
 
 
 when not defined(testing) and isMainModule:
@@ -816,6 +820,7 @@ when not defined(testing) and isMainModule:
   var p7 = db.prepare "select * from tbl2 where two=?"
   var params2 = (20'i32,)
   p7.bindParams(params2)
+  p7.bindParams([20])
   exec(db, p7, [])
   for r in db.rows(p7, []):
     echo(r[0], r[1])
