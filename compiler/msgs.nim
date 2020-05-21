@@ -354,16 +354,15 @@ template styledMsgWriteln*(args: varargs[typed]) =
       flushDot(stdout)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
-  else:
-    if eStdErr in conf.m.errorOutputs:
-      flushDot(stderr)
-      if optUseColors in conf.globalOptions:
-        callStyledWriteLineStderr(args)
-      else:
-        callIgnoringStyle(writeLine, stderr, args)
-      # On Windows stderr is fully-buffered when piped, regardless of C std.
-      when defined(windows):
-        flushFile(stderr)
+  elif eStdErr in conf.m.errorOutputs:
+    flushDot(stderr)
+    if optUseColors in conf.globalOptions:
+      callStyledWriteLineStderr(args)
+    else:
+      callIgnoringStyle(writeLine, stderr, args)
+    # On Windows stderr is fully-buffered when piped, regardless of C std.
+    when defined(windows):
+      flushFile(stderr)
 
 proc msgKindToString*(kind: TMsgKind): string =
   # later versions may provide translated error messages
@@ -434,57 +433,6 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
   msg >= errGenerated and conf.cmd == cmdIdeTools and optIdeDebug notin conf.globalOptions
 
-proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
-  var
-    title: string
-    color: ForegroundColor
-    kind: string
-    sev: Severity
-  case msg
-  of errMin..errMax:
-    sev = Severity.Error
-    writeContext(conf, unknownLineInfo)
-    title = ErrorTitle
-    color = ErrorColor
-  of warnMin..warnMax:
-    sev = Severity.Warning
-    if not conf.hasWarn(msg): return
-    writeContext(conf, unknownLineInfo)
-    title = if msg in conf.warningAsErrors: ErrorTitle else: WarningTitle
-    color = WarningColor
-    kind = WarningsToStr[ord(msg) - ord(warnMin)]
-    inc(conf.warnCounter)
-  of hintMin..hintMax:
-    sev = Severity.Hint
-    if not conf.hasHint(msg): return
-    title = HintTitle
-    color = HintColor
-    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
-    inc(conf.hintCounter)
-  let s = msgKindToString(msg) % args
-
-  if conf.structuredErrorHook != nil:
-    conf.structuredErrorHook(conf, unknownLineInfo,
-      s & (if kind.len > 0: KindFormat % kind else: ""), sev)
-
-  if not ignoreMsgBecauseOfIdeTools(conf, msg):
-    if msg == hintProcessing:
-      msgWrite(conf, ".")
-      conf.lastMsgWasDot = true
-    else:
-      if conf.lastMsgWasDot:
-        msgWrite(conf, "\n")
-        conf.lastMsgWasDot = false
-      if kind.len > 0:
-        styledMsgWriteln(color, title, resetStyle, s,
-                        KindColor, `%`(KindFormat, kind))
-      else:
-        styledMsgWriteln(color, title, resetStyle, s)
-  handleError(conf, msg, doAbort, s)
-
-proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
-  rawMessage(conf, msg, [arg])
-
 proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
 
@@ -517,59 +465,74 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
 proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
-               eh: TErrorHandling, info2: InstantiationInfo) {.noinline.} =
+               eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
   var
     title: string
     color: ForegroundColor
-    kind:  string
     ignoreMsg = false
     sev: Severity
+  let kind = if msg != hintUserRaw: msg.msgToStr else: "" # xxx not sure why hintUserRaw is special
   case msg
   of errMin..errMax:
     sev = Severity.Error
     writeContext(conf, info)
     title = ErrorTitle
     color = ErrorColor
-    # we try to filter error messages so that not two error message
-    # in the same file and line are produced:
-    #ignoreMsg = lastError == info and eh != doAbort
-    conf.m.lastError = info
+    when false:
+      # we try to filter error messages so that not two error message
+      # in the same file and line are produced:
+      # xxx `lastError` is only used in this disabled code; but could be useful to revive
+      ignoreMsg = conf.m.lastError == info and info != unknownLineInfo and eh != doAbort
+    if info != unknownLineInfo: conf.m.lastError = info
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
     if not ignoreMsg: writeContext(conf, info)
     title = if msg in conf.warningAsErrors: ErrorTitle else: WarningTitle
     color = WarningColor
-    kind = WarningsToStr[ord(msg) - ord(warnMin)]
     inc(conf.warnCounter)
   of hintMin..hintMax:
     sev = Severity.Hint
     ignoreMsg = not conf.hasHint(msg)
     title = HintTitle
     color = HintColor
-    if msg != hintUserRaw: kind = HintsToStr[ord(msg) - ord(hintMin)]
     inc(conf.hintCounter)
-  let x = conf.toFileLineCol(info) & " "
   let s = getMessageStr(msg, arg)
 
   if not ignoreMsg:
+    let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
+    var kindmsg = if kind.len > 0: KindFormat % kind else: ""
     if conf.structuredErrorHook != nil:
-      conf.structuredErrorHook(conf, info, s & (if kind.len > 0: KindFormat % kind else: ""), sev)
+      conf.structuredErrorHook(conf, info, s & kindmsg, sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if kind.len > 0:
-        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
-                         KindColor, `%`(KindFormat, kind))
+      if msg == hintProcessing:
+        msgWrite(conf, ".")
+        conf.lastMsgWasDot = true
       else:
-        styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s)
-      if conf.hasHint(hintSource):
-        conf.writeSurroundingSrc(info)
-      if conf.hasHint(hintMsgOrigin):
-        styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
-          " compiler msg initiated here", KindColor,
-          KindFormat % HintsToStr[ord(hintMsgOrigin) - ord(hintMin)],
-          resetStyle)
+        if conf.lastMsgWasDot:
+          msgWrite(conf, "\n")
+          conf.lastMsgWasDot = false
+        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
+        if conf.hasHint(hintSource) and info != unknownLineInfo:
+          conf.writeSurroundingSrc(info)
+        if conf.hasHint(hintMsgOrigin):
+          styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
+            " compiler msg initiated here", KindColor,
+            KindFormat % hintMsgOrigin.msgToStr,
+            resetStyle)
 
   handleError(conf, msg, eh, s)
+
+proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
+  # xxx deprecated this overload
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  let arg = msgKindToString(msg) % args
+  liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, info2, isRaw = true)
+
+proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  let arg = msgKindToString(msg) % arg
+  liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, info2, isRaw = true)
 
 template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   # this fixes bug #7080 so that it is at least obvious 'fatal'
