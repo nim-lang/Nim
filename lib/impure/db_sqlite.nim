@@ -118,6 +118,8 @@ import sqlite3
 import db_common
 export db_common
 
+include "system/inclrtl"
+
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
   Row* = seq[string]  ## A row of a dataset. `NULL` database values will be
@@ -638,11 +640,11 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
                   args: varargs[string, `$`]): int64
-                  {.tags: [WriteDbEffect], raises: [].} =
+                  {.tags: [WriteDbEffect], raises: [], since:(1, 4).} =
   tryInsertID(db, query, args)
 
 proc insert*(db: DbConn, query: SqlQuery, pkName: string,
-               args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
+               args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect], since:(1, 4).} =
   result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 

@@ -68,6 +68,8 @@ import strutils, postgres
 import db_common
 export db_common
 
+include "system/inclrtl"
+
 type
   DbConn* = PPGconn    ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
@@ -487,7 +489,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
                   args: varargs[string, `$`]): int64 {.
-                  tags: [WriteDbEffect].}=
+                  tags: [WriteDbEffect], since:(1, 4).}=
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error. 
   var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING " & pkName),
@@ -499,7 +501,7 @@ proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
 
 proc insert*(db: DbConn, query: SqlQuery, pkName: string,
                args: varargs[string, `$`]): int64 {.
-               tags: [WriteDbEffect].} =
+               tags: [WriteDbEffect], since:(1, 4).} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID 
   result = tryInsertID(db, query, args)

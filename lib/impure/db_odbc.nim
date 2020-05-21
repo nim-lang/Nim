@@ -92,6 +92,8 @@ import strutils, odbcsql
 import db_common
 export db_common
 
+include "system/inclrtl"
+
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
   DbConn* = OdbcConnTyp    ## encapsulates a database connection
@@ -453,11 +455,11 @@ proc insertId*(db: var DbConn, query: SqlQuery,
 
 proc tryInsert*(db: var DbConn, query: SqlQuery,pkName: string,
                   args: varargs[string, `$`]): int64
-                  {.tags: [ReadDbEffect, WriteDbEffect], raises: [].} =
+                  {.tags: [ReadDbEffect, WriteDbEffect], raises: [], since:(1, 4).} =
   tryInsertID(db, query, args)
 
 proc insert*(db: var DbConn, query: SqlQuery, pkName: string,
-               args: varargs[string, `$`]): int64 {.tags: [ReadDbEffect, WriteDbEffect].} =
+               args: varargs[string, `$`]): int64 {.tags: [ReadDbEffect, WriteDbEffect], since:(1, 4).} =
   result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
