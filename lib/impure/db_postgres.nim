@@ -489,7 +489,7 @@ proc insertID*(db: DbConn, query: SqlQuery,
 
 proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
                   args: varargs[string, `$`]): int64 {.
-                  tags: [WriteDbEffect], since:(1, 4).}=
+                  tags: [WriteDbEffect], since:(1, 3).}=
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row or -1 in case of an error. 
   var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING " & pkName),
@@ -501,7 +501,7 @@ proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
 
 proc insert*(db: DbConn, query: SqlQuery, pkName: string,
                args: varargs[string, `$`]): int64 {.
-               tags: [WriteDbEffect], since:(1, 4).} =
+               tags: [WriteDbEffect], since:(1, 3).} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID 
   result = tryInsertID(db, query, args)
