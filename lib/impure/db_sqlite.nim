@@ -728,44 +728,44 @@ template dbBindParamError*(paramIdx: int, val: untyped) =
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) {.since: (1, 3).} =
   ## Binds a int32  to the specified paramIndex.
-  if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val):
+  if bind_int(ps.PStmt, paramIdx.int32, val) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) {.since: (1, 3).} =
   ## Binds a int  to the specified paramIndex.
   when sizeof(int) == 8:
-    if SQLITE_OK != bind_int64(ps.PStmt, paramIdx.int32, val.int64):
+    if bind_int64(ps.PStmt, paramIdx.int32, val.int64) != SQLITE_OK:
       dbBindParamError(paramIdx, val)
   else:
-    if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val.int32):
+    if bind_int(ps.PStmt, paramIdx.int32, val.int32) != SQLITE_OK:
       dbBindParamError(paramIdx, val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int64) {.since: (1, 3).} =
   ## Binds a int64  to the specified paramIndex.
-  if SQLITE_OK != bind_int64(ps.PStmt, paramIdx.int32, val):
+  if bind_int64(ps.PStmt, paramIdx.int32, val) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64) {.since: (1, 3).} =
   ## Binds a 64bit float to the specified paramIndex.
-  if SQLITE_OK != bind_double(ps.PStmt, paramIdx.int32, val):
+  if bind_double(ps.PStmt, paramIdx.int32, val) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 proc bindNull*(ps: SqlPrepared, paramIdx: int) {.since: (1, 3).} =
   ## Sets the bindparam at the specified paramIndex to null 
   ## (default behaviour by sqlite).
-  if SQLITE_OK != bind_null(ps.PStmt, paramIdx.int32):
+  if bind_null(ps.PStmt, paramIdx.int32) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) {.since: (1, 3).} =
   ## Binds a string to the specified paramIndex.
-  if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32, val.cstring, -1.int32, SQLITE_STATIC):
+  if bind_text(ps.PStmt, paramIdx.int32, val.cstring, -1.int32, SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) {.since: (1, 3).} =
   ## binds a blob to the specified paramIndex.
   let len = val.len
-  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, SQLITE_STATIC):
+  if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped =
