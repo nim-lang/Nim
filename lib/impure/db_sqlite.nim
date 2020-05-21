@@ -118,6 +118,8 @@ import sqlite3, macros
 import db_common
 export db_common
 
+include "system/inclrtl"
+
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
   Row* = seq[string]  ## A row of a dataset. `NULL` database values will be
@@ -717,50 +719,54 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
 proc finalize*(sqlPrepared:SqlPrepared){.discardable.} = 
   discard finalize(sqlPrepared.PStmt)
 
-template dbBindParamError*(paramIdx: int,val:untyped) =
+template dbBindParamError*(paramIdx: int, val: untyped) =
   ## Raises a `DbError` exception.
   var e: ref DbError
   new(e)
   e.msg = "error binding param in position " & $paramIdx 
   raise e
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) {.since: (1, 3).} =
   ## Binds a int32  to the specified paramIndex.
   if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val):
-    dbBindParamError(paramIdx,val)
+    dbBindParamError(paramIdx, val)
 
-when sizeof(int) == 4:
-  proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) =
-    ## Binds a int32  to the specified paramIndex.
+
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) {.since: (1, 3).} =
+  ## Binds a int  to the specified paramIndex.
+  when sizeof(int) == 8:
+    if SQLITE_OK != bind_int64(ps.PStmt, paramIdx.int32, val.int64):
+      dbBindParamError(paramIdx, val)
+  else:
     if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val.int32):
-      dbBindParamError(paramIdx,val)
+      dbBindParamError(paramIdx, val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int64) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int64) {.since: (1, 3).} =
   ## Binds a int64  to the specified paramIndex.
   if SQLITE_OK != bind_int64(ps.PStmt, paramIdx.int32, val):
-    dbBindParamError(paramIdx,val)
+    dbBindParamError(paramIdx, val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64) {.since: (1, 3).} =
   ## Binds a 64bit float to the specified paramIndex.
   if SQLITE_OK != bind_double(ps.PStmt, paramIdx.int32, val):
-    dbBindParamError(paramIdx,val)
+    dbBindParamError(paramIdx, val)
 
-proc bindNull*(ps: SqlPrepared, paramIdx: int) =
+proc bindNull*(ps: SqlPrepared, paramIdx: int) {.since: (1, 3).} =
   ## Sets the bindparam at the specified paramIndex to null 
   ## (default behaviour by sqlite).
   if SQLITE_OK != bind_null(ps.PStmt, paramIdx.int32):
-    dbBindParamError(paramIdx,val)
+    dbBindParamError(paramIdx, val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) {.since: (1, 3).} =
   ## Binds a string to the specified paramIndex.
-  if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC):
-    dbBindParamError(paramIdx,val)
+  if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32, val.cstring, -1.int32, SQLITE_STATIC):
+    dbBindParamError(paramIdx, val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) {.since: (1, 3).} =
   ## binds a blob to the specified paramIndex.
   let len = val.len
-  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32 , SQLITE_STATIC):
-    dbBindParamError(paramIdx,val)
+  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, SQLITE_STATIC):
+    dbBindParamError(paramIdx, val)
 
 macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped =
   let bindParam = bindSym("bindParam", brOpen)
@@ -825,7 +831,7 @@ when not defined(testing) and isMainModule:
   exec(db, sql"CREATE TABLE photos(ID INTEGER PRIMARY KEY AUTOINCREMENT, photo BLOB)")
   var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
   var d = "abcdefghijklmnopqrstuvwxyz"
-  p8.bindParams(1'i32,"abcdefghijklmnopqrstuvwxyz")
+  p8.bindParams(1'i32, "abcdefghijklmnopqrstuvwxyz")
   exec(db, p8, [])
   finalize(p8)
   for r in db.rows(sql"select * from photos where ID = 1", []):
