@@ -760,7 +760,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: string) =
 proc bindParam*(ps: SqlPrepared, paramIdx: int,val: cstring) =
   ## binds a blob to the specified paramIndex.
   let len = val.len
-  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unSafeAddr, len.int32 , SQLITE_STATIC):
+  if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val, len.int32 , SQLITE_STATIC):
     dbBindParamError(paramIdx,val)
 
 template bindParams*(ps: SqlPrepared, params:untyped) = 
