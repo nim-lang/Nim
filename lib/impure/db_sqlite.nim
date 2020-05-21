@@ -113,7 +113,7 @@
 ## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
 ## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
 
-import sqlite3
+import sqlite3, macros
 
 import db_common
 export db_common
@@ -763,16 +763,14 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: cstring) =
   if SQLITE_OK != bind_blob(ps.PStmt, paramIdx.int32, val[0].unSafeAddr, len.int32 , SQLITE_STATIC):
     dbBindParamError(paramIdx,val)
 
-template bindParams*(ps: SqlPrepared, params:untyped) = 
-  var idx:int = 1
-  when params is tuple or params is object:
-    for v in params.fields:
-      ps.bindParam(idx,v)
-      inc idx
-  else:
-    for v in params:
-      ps.bindParam(idx,v)
-      inc idx
+macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped =
+  let bindParam = bindSym("bindParam", brOpen)
+  let preparedStatement = genSym()
+  result = newStmtList()
+  # Store `ps` in a temporary variable. This prevents `ps` from being evaluated every call.
+  result.add newNimNode(nnkLetSection).add(newIdentDefs(preparedStatement, newEmptyNode(), ps))
+  for idx, param in params:
+    result.add newCall(bindParam, preparedStatement, newIntLitNode idx + 1, param)
 
 
 when not defined(testing) and isMainModule:
@@ -810,17 +808,15 @@ when not defined(testing) and isMainModule:
   for r in db.instantRows(sql"select * from tbl2", []):
     echo(r[0], r[1])
   var p6 = db.prepare "select * from tbl2 where one=?"
-  var params = ("goodbye",)
-  p6.bindParams(params)
+  p6.bindParams("goodbye")
   exec(db, p6, [])
   for r in db.rows(p6, []):
     echo(r[0], r[1])
   finalize(p6)
 
   var p7 = db.prepare "select * from tbl2 where two=?"
-  var params2 = (20'i32,)
-  p7.bindParams(params2)
-  p7.bindParams([20])
+  p7.bindParams(20'i32)
+  p7.bindParams(20)
   exec(db, p7, [])
   for r in db.rows(p7, []):
     echo(r[0], r[1])
@@ -829,8 +825,7 @@ when not defined(testing) and isMainModule:
   exec(db, sql"CREATE TABLE photos(ID INTEGER PRIMARY KEY AUTOINCREMENT, photo BLOB)")
   var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
   var d:cstring = "abcdefghijklmnopqrstuvwxyz".cstring
-  var params3 = (1,d,)
-  p8.bindParams(params3)
+  p8.bindParams(1,d)
   exec(db, p8, [])
   finalize(p8)
   for r in db.rows(sql"select * from photos where ID = 1", []):
