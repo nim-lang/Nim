@@ -843,8 +843,7 @@ template foldl*(sequence, operation, first): untyped =
       digits = foldl(numbers, a & (chr(b + ord('0'))), "")
     assert digits == "0815"
 
-  var result: typeof(first)
-  result = first
+  var result: typeof(first) = first
   for x in items(sequence):
     let
       a {.inject.} = result
@@ -883,11 +882,11 @@ template foldr*(sequence, operation: untyped): untyped =
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  let s = sequence
-  assert s.len > 0, "Can't fold empty sequences"
-  var result: typeof(s[0])
-  result = sequence[s.len - 1]
-  for i in countdown(s.len - 2, 0):
+  let s = sequence # xxx inefficient, use {.evalonce.} pending #13750
+  let n = s.len
+  assert n > 0, "Can't fold empty sequences"
+  var result = s[n - 1]
+  for i in countdown(n - 2, 0):
     let
       a {.inject.} = s[i]
       b {.inject.} = result
@@ -1436,6 +1435,7 @@ when isMainModule:
     assert subtraction == 7, "Subtraction is (5-(9-(11)))"
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
+    doAssert toSeq(1..3).foldr(a + b) == 6 # issue #14404
 
   block: # mapIt + applyIt test
     counter = 0
