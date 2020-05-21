@@ -118,7 +118,7 @@ import sqlite3, macros
 import db_common
 export db_common
 
-include "system/inclrtl"
+import std/private/since
 
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
