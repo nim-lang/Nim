@@ -728,7 +728,6 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: int64):int =
   result = bind_int64(ps.PStmt, paramIdx.int32, val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64):int =
-                  
   ## Binds a 64bit float to the specified paramIndex.
   result = bind_double(ps.PStmt, paramIdx.int32, val)
 
