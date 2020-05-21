@@ -752,7 +752,7 @@ proc bindNull*(ps: SqlPrepared, paramIdx: int) =
   if SQLITE_OK != bind_null(ps.PStmt, paramIdx.int32):
     dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: string) =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) =
   ## Binds a string to the specified paramIndex.
   if SQLITE_OK != bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC):
     dbBindParamError(paramIdx,val)
