@@ -729,10 +729,11 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) =
   if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val):
     dbBindParamError(paramIdx,val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) =
-  ## Binds a int32  to the specified paramIndex.
-  if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val.int32):
-    dbBindParamError(paramIdx,val)
+when sizeof(int) == 4:
+  proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) =
+    ## Binds a int32  to the specified paramIndex.
+    if SQLITE_OK != bind_int(ps.PStmt, paramIdx.int32, val.int32):
+      dbBindParamError(paramIdx,val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int64) =
   ## Binds a int64  to the specified paramIndex.
@@ -814,7 +815,8 @@ when not defined(testing) and isMainModule:
 
   var p7 = db.prepare "select * from tbl2 where two=?"
   p7.bindParams(20'i32)
-  p7.bindParams(20)
+  when sizeof(int) == 4:
+    p7.bindParams(20)
   exec(db, p7, [])
   for r in db.rows(p7, []):
     echo(r[0], r[1])
@@ -823,7 +825,7 @@ when not defined(testing) and isMainModule:
   exec(db, sql"CREATE TABLE photos(ID INTEGER PRIMARY KEY AUTOINCREMENT, photo BLOB)")
   var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
   var d = "abcdefghijklmnopqrstuvwxyz"
-  p8.bindParams(1,"abcdefghijklmnopqrstuvwxyz")
+  p8.bindParams(1'i32,"abcdefghijklmnopqrstuvwxyz")
   exec(db, p8, [])
   finalize(p8)
   for r in db.rows(sql"select * from photos where ID = 1", []):
