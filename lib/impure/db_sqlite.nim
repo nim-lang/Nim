@@ -113,7 +113,7 @@
 ## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
 ## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
 
-import sqlite3,typeinfo
+import sqlite3
 
 import db_common
 export db_common
@@ -168,7 +168,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
       add(result, c)
 
 proc prepare*(db: DbConn; q: string): SqlPrepared =
-  
+  ## Creates a new ``SqlPrepared`` statement.
   if prepare_v2(db, q, q.len.cint,result.PStmt, nil) != SQLITE_OK:
     discard finalize(result.PStmt)
     dbError(db)
@@ -719,59 +719,56 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
 proc finalize*(sqlPrepared:SqlPrepared){.discardable.} = 
   discard finalize(sqlPrepared.PStmt)
 
-proc bindInt32*( ps : SqlPrepared, paramIdx: int,
-  val: int32 ):int = 
-  ## Binds a int32 float to the specified paramIndex.
-  result = bind_int( ps.PStmt, paramIdx.int32, val )
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32):int =
+  ## Binds a int32  to the specified paramIndex.
+  result = bind_int(ps.PStmt, paramIdx.int32, val)
 
-proc bindInt64*( ps: SqlPrepared, paramIdx: int,
-    val: int64 ):int =   
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: int64):int =
+  ## Binds a int64  to the specified paramIndex.
   result = bind_int64(ps.PStmt, paramIdx.int32, val)
 
-proc bindFloat64*( ps: SqlPrepared, paramIdx: int,
-                   val: float64) : int {.inline.} =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64):int =
+                  
   ## Binds a 64bit float to the specified paramIndex.
   result = bind_double(ps.PStmt, paramIdx.int32, val)
 
-proc bindNull*( ps : SqlPrepared, paramIdx: int) : int {.inline.}  =
+proc bindParam*(ps: SqlPrepared, paramIdx: int):int =
   ## Sets the bindparam at the specified paramIndex to null 
   ## (default behaviour by sqlite).
-  result = bind_null(ps, paramIdx.int32) 
+  result = bind_null(ps.PStmt, paramIdx.int32) 
 
-proc bindString*( ps: SqlPrepared, paramIdx : int,
-                   val: string,) : int =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: string): int =
   ## Binds a string to the specified paramIndex.
   result = bind_text(ps.PStmt, paramIdx.int32,val.cstring,-1.int32 , SQLITE_STATIC)
 
-proc bindBlob*( ps: SqlPrepared, paramIdx: int,val: cstring) : int  =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: cstring): int =
   ## binds a blob to the specified paramIndex.
   let len = val.len
   result = bind_blob(ps.PStmt, paramIdx.int32, val[0].unSafeAddr, len.int32 , SQLITE_STATIC)
 
-proc bindParams*[T](ps: SqlPrepared, params:var T )  = 
+proc bindParams*[T](ps: SqlPrepared, params:var T) = 
   var idx:int = 1
-  for _,v in params.toAny.fields:
-    case v.kind
-      of akInt:
-        if SQLITE_OK != ps.bindInt32(idx,v.getInt.int32):
-          discard
-      of akInt32:
-        if SQLITE_OK != ps.bindInt32(idx,v.getInt32):
-          discard
-      of akint64:
-        if SQLITE_OK != ps.bindInt64(idx,v.getInt64):
-          discard
-      of akFloat64:
-        if SQLITE_OK != ps.bindFloat64(idx,v.getFloat64):
-          discard
-      of akString:
-        if SQLITE_OK != ps.bindString(idx,v.getString):
-          discard
-      of akCString:
-        if SQLITE_OK != ps.bindBlob(idx,v.getCString):
-          discard
-      else:
+  for v in params.fields:
+    when v is int:
+      if SQLITE_OK != ps.bindParam(idx,v.int32):
         discard
+    elif v is int32:
+        if SQLITE_OK != ps.bindParam(idx,v):
+          discard
+    elif v is int64:
+        if SQLITE_OK != ps.bindParam(idx,v):
+          discard
+    elif v is float64:
+        if SQLITE_OK != ps.bindParam(idx,v):
+          discard
+    elif v is string:
+        if SQLITE_OK != ps.bindParam(idx,v):
+          discard
+    elif v is cString:
+        if SQLITE_OK != ps.bindParam(idx,v):
+          discard
+    else:
+      discard
     inc idx
 
 
@@ -811,7 +808,7 @@ when not defined(testing) and isMainModule:
     echo(r[0], r[1])
   var p6 = db.prepare "select * from tbl2 where one=?"
   var params = ("goodbye",)
-  p6.bindParams( params )
+  p6.bindParams(params)
   exec(db, p6, [])
   for r in db.rows(p6, []):
     echo(r[0], r[1])
@@ -819,7 +816,7 @@ when not defined(testing) and isMainModule:
 
   var p7 = db.prepare "select * from tbl2 where two=?"
   var params2 = (20'i32,)
-  p7.bindParams( params2 )
+  p7.bindParams(params2)
   exec(db, p7, [])
   for r in db.rows(p7, []):
     echo(r[0], r[1])
@@ -829,7 +826,7 @@ when not defined(testing) and isMainModule:
   var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
   var d:cstring = "abcdefghijklmnopqrstuvwxyz".cstring
   var params3 = (1,d,)
-  p8.bindParams( params3 )
+  p8.bindParams(params3)
   exec(db, p8, [])
   finalize(p8)
   for r in db.rows(sql"select * from photos where ID = 1", []):
