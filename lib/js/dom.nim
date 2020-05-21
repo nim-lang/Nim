@@ -19,29 +19,29 @@ const
 type
   EventTarget* = ref EventTargetObj
   EventTargetObj {.importc.} = object of RootObj
-    onabort*: proc (event: Event) {.nimcall.}
-    onblur*: proc (event: Event) {.nimcall.}
-    onchange*: proc (event: Event) {.nimcall.}
-    onclick*: proc (event: Event) {.nimcall.}
-    ondblclick*: proc (event: Event) {.nimcall.}
-    onerror*: proc (event: Event) {.nimcall.}
-    onfocus*: proc (event: Event) {.nimcall.}
-    onkeydown*: proc (event: Event) {.nimcall.}
-    onkeypress*: proc (event: Event) {.nimcall.}
-    onkeyup*: proc (event: Event) {.nimcall.}
-    onload*: proc (event: Event) {.nimcall.}
-    onmousedown*: proc (event: Event) {.nimcall.}
-    onmousemove*: proc (event: Event) {.nimcall.}
-    onmouseout*: proc (event: Event) {.nimcall.}
-    onmouseover*: proc (event: Event) {.nimcall.}
-    onmouseup*: proc (event: Event) {.nimcall.}
-    onreset*: proc (event: Event) {.nimcall.}
-    onselect*: proc (event: Event) {.nimcall.}
-    onsubmit*: proc (event: Event) {.nimcall.}
-    onunload*: proc (event: Event) {.nimcall.}
-    onloadstart*: proc (event: Event) {.nimcall.}
-    onprogress*: proc (event: Event) {.nimcall.}
-    onloadend*: proc (event: Event) {.nimcall.}
+    onabort*: proc (event: Event) {.closure.}
+    onblur*: proc (event: Event) {.closure.}
+    onchange*: proc (event: Event) {.closure.}
+    onclick*: proc (event: Event) {.closure.}
+    ondblclick*: proc (event: Event) {.closure.}
+    onerror*: proc (event: Event) {.closure.}
+    onfocus*: proc (event: Event) {.closure.}
+    onkeydown*: proc (event: Event) {.closure.}
+    onkeypress*: proc (event: Event) {.closure.}
+    onkeyup*: proc (event: Event) {.closure.}
+    onload*: proc (event: Event) {.closure.}
+    onmousedown*: proc (event: Event) {.closure.}
+    onmousemove*: proc (event: Event) {.closure.}
+    onmouseout*: proc (event: Event) {.closure.}
+    onmouseover*: proc (event: Event) {.closure.}
+    onmouseup*: proc (event: Event) {.closure.}
+    onreset*: proc (event: Event) {.closure.}
+    onselect*: proc (event: Event) {.closure.}
+    onsubmit*: proc (event: Event) {.closure.}
+    onunload*: proc (event: Event) {.closure.}
+    onloadstart*: proc (event: Event) {.closure.}
+    onprogress*: proc (event: Event) {.closure.}
+    onloadend*: proc (event: Event) {.closure.}
 
   DomEvent* {.pure.} = enum
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
@@ -991,7 +991,7 @@ type
     passive*: bool
 
 since (1, 3):
-  type 
+  type
     DomParser* = ref object
       ## DOM Parser object (defined on browser only, may not be on NodeJS).
       ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
@@ -1001,17 +1001,17 @@ since (1, 3):
       ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
 
     DomException* = ref DOMExceptionObj
-      ## The DOMException interface represents an abnormal event (called an exception) 
-      ## which occurs as a result of calling a method or accessing a property of a web API. 
-      ## Each exception has a name, which is a short "CamelCase" style string identifying 
+      ## The DOMException interface represents an abnormal event (called an exception)
+      ## which occurs as a result of calling a method or accessing a property of a web API.
+      ## Each exception has a name, which is a short "CamelCase" style string identifying
       ## the error or abnormal condition.
       ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
 
-    DOMExceptionObj {.importc.} = object 
+    DOMExceptionObj {.importc.} = object
 
     FileReader* = ref FileReaderObj
-      ## The FileReader object lets web applications asynchronously read the contents of files 
-      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify 
+      ## The FileReader object lets web applications asynchronously read the contents of files
+      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify
       ## the file or data to read.
       ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
 
@@ -1019,7 +1019,7 @@ since (1, 3):
 
     FileReaderState* = distinct range[0'u16..2'u16]
 
-  const 
+  const
     fileReaderEmpty* = 0.FileReaderState
     fileReaderLoading* = 1.FileReaderState
     fileReaderDone* = 2.FileReaderState
