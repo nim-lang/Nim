@@ -485,6 +485,26 @@ proc insertID*(db: DbConn, query: SqlQuery,
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
+proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
+                  args: varargs[string, `$`]): int64 {.
+                  tags: [WriteDbEffect].}=
+  ## executes the query (typically "INSERT") and returns the
+  ## generated ID for the row or -1 in case of an error. 
+  var x = pqgetvalue(setupQuery(db, SqlQuery(string(query) & " RETURNING " & pkName),
+    args), 0, 0)
+  if not isNil(x):
+    result = parseBiggestInt($x)
+  else:
+    result = -1
+
+proc insert*(db: DbConn, query: SqlQuery, pkName: string,
+               args: varargs[string, `$`]): int64 {.
+               tags: [WriteDbEffect].} =
+  ## executes the query (typically "INSERT") and returns the
+  ## generated ID 
+  result = tryInsertID(db, query, args)
+  if result < 0: dbError(db)
+
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.tags: [
                        ReadDbEffect, WriteDbEffect].} =

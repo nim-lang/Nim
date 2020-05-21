@@ -451,6 +451,16 @@ proc insertId*(db: var DbConn, query: SqlQuery,
   result = tryInsertID(db, query, args)
   if result < 0: dbError(db)
 
+proc tryInsert*(db: var DbConn, query: SqlQuery,pkName: string,
+                  args: varargs[string, `$`]): int64
+                  {.tags: [WriteDbEffect], raises: [].} =
+  tryInsertID(db, query, args)
+
+proc insert*(db: var DbConn, query: SqlQuery, pkName: string,
+               args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect].} =
+  result = tryInsert(db, query,pkName, args)
+  if result < 0: dbError(db)
+
 proc execAffectedRows*(db: var DbConn, query: SqlQuery,
                        args: varargs[string, `$`]): int64 {.
              tags: [ReadDbEffect, WriteDbEffect], raises: [DbError].} =
