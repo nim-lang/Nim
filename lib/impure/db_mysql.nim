@@ -88,7 +88,7 @@ import strutils, mysql
 import db_common
 export db_common
 
-include "system/inclrtl"
+import std/private/since
 
 type
   DbConn* = distinct PMySQL ## encapsulates a database connection

@@ -68,7 +68,7 @@ import strutils, postgres
 import db_common
 export db_common
 
-include "system/inclrtl"
+import std/private/since
 
 type
   DbConn* = PPGconn    ## encapsulates a database connection

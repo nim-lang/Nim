@@ -92,7 +92,7 @@ import strutils, odbcsql
 import db_common
 export db_common
 
-include "system/inclrtl"
+import std/private/since
 
 type
   OdbcConnTyp = tuple[hDb: SqlHDBC, env: SqlHEnv, stmt: SqlHStmt]
