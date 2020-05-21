@@ -330,8 +330,15 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
 template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
 
-template stdWhatever(conf: ConfigRef): File =
-  (if optStdout in conf.globalOptions and eStdOut in conf.m.errorOutputs: stdout else: stderr)
+proc msgWrite(conf: ConfigRef; s: string) =
+  if conf.m.errorOutputs != {}:
+    let stdOrr =
+      if optStdout in conf.globalOptions:
+        stdout
+      else:
+        stderr
+    write(stdOrr, s)
+    flushFile(stdOrr)
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
@@ -454,13 +461,17 @@ proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
 
   if not ignoreMsgBecauseOfIdeTools(conf, msg):
     if msg == hintProcessing:
-      write(stdWhatever(conf), '.')
-      flushFile(stdWhatever(conf))
-    elif kind.len > 0:
-      styledMsgWriteln(color, title, resetStyle, s,
-                       KindColor, `%`(KindFormat, kind))
+      msgWrite(conf, ".")
+      conf.lastMsgWasDot = true
     else:
-      styledMsgWriteln(color, title, resetStyle, s)
+      if conf.lastMsgWasDot:
+        msgWrite(conf, "\n")
+        conf.lastMsgWasDot = false
+      if kind.len > 0:
+        styledMsgWriteln(color, title, resetStyle, s,
+                        KindColor, `%`(KindFormat, kind))
+      else:
+        styledMsgWriteln(color, title, resetStyle, s)
   handleError(conf, msg, doAbort, s)
 
 proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
@@ -537,6 +548,9 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & (if kind.len > 0: KindFormat % kind else: ""), sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
+      if conf.lastMsgWasDot and conf.m.errorOutputs != {}:
+        msgWrite(conf, "\n")
+        conf.lastMsgWasDot = false
       if kind.len > 0:
         styledMsgWriteln(styleBright, x, resetStyle, color, title, resetStyle, s,
                          KindColor, `%`(KindFormat, kind))
