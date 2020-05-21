@@ -612,6 +612,7 @@ template internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
   internalErrorImpl(conf, info, errMsg, info2)
 
 proc internalError*(conf: ConfigRef; errMsg: string) =
+  # xxx refactor with `internalError` overload
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
   writeContext(conf, unknownLineInfo)
   rawMessage(conf, errInternal, errMsg)
