@@ -735,20 +735,17 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) {.since: (1, 3).} =
   if bind_int(ps.PStmt, paramIdx.int32, val) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
-
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) {.since: (1, 3).} =
-  ## Binds a int  to the specified paramIndex.
-  when sizeof(int) == 8:
-    if bind_int64(ps.PStmt, paramIdx.int32, val.int64) != SQLITE_OK:
-      dbBindParamError(paramIdx, val)
-  else:
-    if bind_int(ps.PStmt, paramIdx.int32, val.int32) != SQLITE_OK:
-      dbBindParamError(paramIdx, val)
-
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int64) {.since: (1, 3).} =
   ## Binds a int64  to the specified paramIndex.
   if bind_int64(ps.PStmt, paramIdx.int32, val) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
+
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int) {.since: (1, 3).} =
+  ## Binds a int  to the specified paramIndex.
+  when sizeof(int) == 8:
+    bindParam(ps, paramIdx, val.int64)
+  else:
+    bindParam(ps, paramIdx, val.int32)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: float64) {.since: (1, 3).} =
   ## Binds a 64bit float to the specified paramIndex.
