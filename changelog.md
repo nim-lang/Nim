@@ -3,6 +3,7 @@
 
 
 ## Standard library additions and changes
+- Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
