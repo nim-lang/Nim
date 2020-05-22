@@ -577,14 +577,18 @@ template internalError*(conf: ConfigRef; errMsg: string) =
   const info2 = instantiationInfo(-1, fullPaths = true)
   internalErrorImpl(conf, unknownLineInfo, errMsg, info2)
 
-# PRTEMP
-template assertNotNil*(conf: ConfigRef; e): untyped =
-  if e == nil: internalError(conf, $instantiationInfo())
-  e
-
-# PRTEMP
 template internalAssert*(conf: ConfigRef, e: bool) =
-  if not e: internalError(conf, $instantiationInfo())
+  # xxx merge with globalAssert from PR #14324
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  if not e:
+    let arg = info2.toFileLineCol
+    internalErrorImpl(conf, unknownLineInfo, arg, info2)
+
+template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
+  const info2 = instantiationInfo(-1, fullPaths = true)
+  let m = "'$2' should be: '$1'" % [beau, got]
+  let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
+  liMessage(conf, info, msg, m, doNothing, info2)
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
   if i.fileIndex.int32 < 0:
@@ -609,11 +613,3 @@ proc listHints*(conf: ConfigRef) =
       if hint in conf.notes: "x" else: " ",
       lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
     ])
-
-# PRTEMP
-proc lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
-  let m = "'$2' should be: '$1'" % [beau, got]
-  if optStyleError in conf.globalOptions:
-    localError(conf, info, m)
-  else:
-    message(conf, info, hintName, m)
