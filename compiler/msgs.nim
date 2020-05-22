@@ -15,6 +15,12 @@ import std/private/miscdollars
 type InstantiationInfo = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
+template flushDot(conf, stdorr) =
+  ## safe to call multiple times
+  if conf.lastMsgWasDot:
+    conf.lastMsgWasDot = false
+    write(stdorr, "\n")
+
 proc toCChar*(c: char; result: var string) =
   case c
   of '\0'..'\x1F', '\x7F'..'\xFF':
@@ -37,7 +43,6 @@ proc makeCString*(s: string): Rope =
     toCChar(s[i], res)
   res.add('\"')
   result.add(rope(res))
-
 
 proc newFileInfo(fullPath: AbsoluteFile, projPath: RelativeFile): TFileInfo =
   result.fullPath = fullPath
@@ -112,7 +117,6 @@ proc newLineInfo*(fileInfoIdx: FileIndex, line, col: int): TLineInfo =
 proc newLineInfo*(conf: ConfigRef; filename: AbsoluteFile, line, col: int): TLineInfo {.inline.} =
   result = newLineInfo(fileInfoIdx(conf, filename), line, col)
 
-
 proc concat(strings: openArray[string]): string =
   var totalLen = 0
   for s in strings: totalLen += s.len
@@ -148,6 +152,7 @@ const
   # but column numbers start with 0, however most editors expect
   # first column to be 1, so we need to +1 here
   ColOffset*   = 1
+  commandLineDesc* = "command line"
 
 proc getInfoContextLen*(conf: ConfigRef): int = return conf.m.msgContext.len
 proc setInfoContextLen*(conf: ConfigRef; L: int) = setLen(conf.m.msgContext, L)
@@ -162,9 +167,6 @@ proc getInfoContext*(conf: ConfigRef; index: int): TLineInfo =
   let i = if index < 0: conf.m.msgContext.len + index else: index
   if i >=% conf.m.msgContext.len: result = unknownLineInfo
   else: result = conf.m.msgContext[i].info
-
-const
-  commandLineDesc = "command line"
 
 template toFilename*(conf: ConfigRef; fileIdx: FileIndex): string =
   if fileIdx.int32 < 0 or conf == nil:
@@ -278,11 +280,6 @@ type
     msgSkipHook    ## skip message hook even if it is present
   MsgFlags* = set[MsgFlag]
 
-template flushDot(stdorr) =
-  if conf.lastMsgWasDot:
-    write(stdorr, "\n")
-    conf.lastMsgWasDot = false
-
 proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
   ## Writes given message string to stderr by default.
   ## If ``--stdout`` option is given, writes to stdout instead. If message hook
@@ -296,12 +293,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(stdout)
+      flushDot(conf, stdout)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(stderr)
+      flushDot(conf, stderr)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -346,17 +343,18 @@ proc msgWrite(conf: ConfigRef; s: string) =
         stderr
     write(stdOrr, s)
     flushFile(stdOrr)
+    conf.lastMsgWasDot = true # subsequent writes need `flushDot`
 
 template styledMsgWriteln*(args: varargs[typed]) =
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(stdout)
+      flushDot(conf, stdout)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(stderr)
+    flushDot(conf, stderr)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:
@@ -508,11 +506,7 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
       if msg == hintProcessing:
         msgWrite(conf, ".")
-        conf.lastMsgWasDot = true
       else:
-        if conf.lastMsgWasDot:
-          msgWrite(conf, "\n")
-          conf.lastMsgWasDot = false
         styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
         if conf.hasHint(hintSource) and info != unknownLineInfo:
           conf.writeSurroundingSrc(info)
@@ -528,12 +522,10 @@ template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   liMessage(conf, unknownLineInfo, msg, arg, eh = doAbort, instLoc(), isRaw = true)
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
-  # liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, instLoc())
   liMessage(conf, unknownLineInfo, msg, arg, eh = doAbort, instLoc())
 
 template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  # this fixes bug #7080 so that it is at least obvious 'fatal'
-  # was executed.
+  # this fixes bug #7080 so that it is at least obvious 'fatal' was executed.
   conf.m.errorOutputs = {eStdOut, eStdErr}
   liMessage(conf, info, msg, arg, doAbort, instLoc())
 
@@ -588,7 +580,7 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
 
 template listMsg(title, r) =
   msgWriteln(conf, title)
-  for a in r:
-    msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", a.msgToStr])
+  for a in r: msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", a.msgToStr])
+
 proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
 proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
