@@ -461,7 +461,7 @@ proc tryInsert*(db: var DbConn, query: SqlQuery,pkName: string,
 
 proc insert*(db: var DbConn, query: SqlQuery, pkName: string,
              args: varargs[string, `$`]): int64 
-            {.tags: [ReadDbEffect, WriteDbEffect], since:(1, 3).} =
+            {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
   ## same as insertId
   result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
