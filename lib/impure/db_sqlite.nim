@@ -167,7 +167,7 @@ proc dbFormat(formatstr: SqlQuery, args: varargs[string]): string =
     else:
       add(result, c)
 
-proc prepare*(db: DbConn; q: string): SqlPrepared =
+proc prepare*(db: DbConn; q: string): SqlPrepared {.since: (1, 3).} =
   ## Creates a new ``SqlPrepared`` statement.
   if prepare_v2(db, q, q.len.cint,result.PStmt, nil) != SQLITE_OK:
     discard finalize(result.PStmt)
@@ -226,7 +226,7 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   if not tryExec(db, query, args): dbError(db)
 
 proc exec*(db: DbConn, stmtName: SqlPrepared,
-          args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect].} =
+          args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
     if not tryExec(db, stmtName, args): dbError(db)
 
 proc newRow(L: int): Row =
@@ -240,7 +240,7 @@ proc setupQuery(db: DbConn, query: SqlQuery,
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
 proc setupQuery(db: DbConn, stmtName: SqlPrepared,
-                args: varargs[string]): PStmt =
+                args: varargs[string]): PStmt {.since: (1, 3).} =
   assert(not db.isNil, "Database not connected.")
   if not tryExec(db, stmtName, args): dbError(db)
 
@@ -293,7 +293,8 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
     if finalize(stmt) != SQLITE_OK: dbError(db)
 
 iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
-                   args: varargs[string, `$`]): Row {.tags: [ReadDbEffect,WriteDbEffect].} =
+                   args: varargs[string, `$`]): Row 
+                  {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   var stmt = setupQuery(db, stmtName, args)
   var L = (column_count(stmt))
   var result = newRow(L)
@@ -346,7 +347,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
 
 iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
                       args: varargs[string, `$`]): InstantRow
-                      {.tags: [ReadDbEffect,WriteDbEffect].} =
+                      {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   var stmt = setupQuery(db, stmtName, args)
   try:
     while step(stmt) == SQLITE_ROW:
@@ -497,7 +498,8 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
     result.add(r)
 
 proc getAllRows*(db: DbConn, stmtName: SqlPrepared,
-                 args: varargs[string, `$`]): seq[Row] {.tags: [ReadDbEffect,WriteDbEffect].} =
+                 args: varargs[string, `$`]): seq[Row] 
+                {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   result = @[]
   for r in fastRows(db, stmtName, args):
     result.add(r)
@@ -530,7 +532,8 @@ iterator rows*(db: DbConn, query: SqlQuery,
   for r in fastRows(db, query, args): yield r
 
 iterator rows*(db: DbConn, stmtName: SqlPrepared,
-               args: varargs[string, `$`]): Row {.tags: [ReadDbEffect,WriteDbEffect].} =
+               args: varargs[string, `$`]): Row 
+              {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   for r in fastRows(db, stmtName, args): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
@@ -570,7 +573,8 @@ proc getValue*(db: DbConn, query: SqlQuery,
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
 proc getValue*(db: DbConn,  stmtName: SqlPrepared,
-               args: varargs[string, `$`]): string {.tags: [ReadDbEffect,WriteDbEffect].} =
+               args: varargs[string, `$`]): string 
+              {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   var stmt = setupQuery(db, stmtName, args)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
@@ -664,8 +668,8 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   result = changes(db)
 
 proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
-                       args: varargs[string, `$`]): int64 {.
-                       tags: [ReadDbEffect, WriteDbEffect].} =
+                       args: varargs[string, `$`]): int64 
+                      {.tags: [ReadDbEffect, WriteDbEffect],since: (1, 3).} =
   exec(db, stmtName, args)
   result = changes(db)
 
@@ -716,7 +720,7 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
   exec(connection, sql"PRAGMA encoding = ?", [encoding])
   result = connection.getValue(sql"PRAGMA encoding") == encoding
 
-proc finalize*(sqlPrepared:SqlPrepared){.discardable.} = 
+proc finalize*(sqlPrepared:SqlPrepared) {.discardable, since: (1, 3).} = 
   discard finalize(sqlPrepared.PStmt)
 
 template dbBindParamError*(paramIdx: int, val: untyped) =
@@ -768,7 +772,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) {.since: (1
   if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
-macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped =
+macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
   let bindParam = bindSym("bindParam", brOpen)
   let preparedStatement = genSym()
   result = newStmtList()

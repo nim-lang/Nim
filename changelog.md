@@ -3,7 +3,7 @@
 
 
 ## Standard library additions and changes
-- Add `bindParams`,`bindParam` to `db_sqlite`.
+- Add `bindParams`,`bindParam` to `db_sqlite`,call `prepare` get `SqlPrepared` then `bindParams` or `bindParam` to it then `exec` then `finalize` the `SqlPrepared`.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
