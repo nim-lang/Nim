@@ -113,6 +113,8 @@
 ## * `db_mysql module <db_mysql.html>`_ for MySQL database wrapper
 ## * `db_postgres module <db_postgres.html>`_ for PostgreSQL database wrapper
 
+{.experimental: "codeReordering".}
+
 import sqlite3, macros
 
 import db_common
@@ -197,8 +199,7 @@ proc tryExec*(db: DbConn, query: SqlQuery,
       discard finalize(stmt)
       result = false
 
-proc tryExec*(db: DbConn, stmtName: SqlPrepared,
-              args: varargs[string, `$`]): bool {.
+proc tryExec*(db: DbConn, stmtName: SqlPrepared): bool {.
               tags: [ReadDbEffect, WriteDbEffect].} =
     let x = step(stmtName.PStmt)
     if x in {SQLITE_DONE, SQLITE_ROW}:
@@ -225,9 +226,9 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   ##      db.close()
   if not tryExec(db, query, args): dbError(db)
 
-proc exec*(db: DbConn, stmtName: SqlPrepared,
-          args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
-    if not tryExec(db, stmtName, args): dbError(db)
+# proc exec*(db: DbConn, stmtName: SqlPrepared,
+#           args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
+#     if not tryExec(db, stmtName, args): dbError(db)
 
 proc newRow(L: int): Row =
   newSeq(result, L)
@@ -239,10 +240,9 @@ proc setupQuery(db: DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
-proc setupQuery(db: DbConn, stmtName: SqlPrepared,
-                args: varargs[string]): PStmt {.since: (1, 3).} =
+proc setupQuery(db: DbConn, stmtName: SqlPrepared): PStmt {.since: (1, 3).} =
   assert(not db.isNil, "Database not connected.")
-  if not tryExec(db, stmtName, args): dbError(db)
+  if not tryExec(db, stmtName): dbError(db)
 
 proc setRow(stmt: PStmt, r: var Row, cols: cint) =
   for col in 0'i32..cols-1:
@@ -292,10 +292,9 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
   finally:
     if finalize(stmt) != SQLITE_OK: dbError(db)
 
-iterator fastRows*(db: DbConn, stmtName: SqlPrepared,
-                   args: varargs[string, `$`]): Row 
+iterator fastRows*(db: DbConn, stmtName: SqlPrepared): Row 
                   {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  var stmt = setupQuery(db, stmtName, args)
+  var stmt = setupQuery(db, stmtName)
   var L = (column_count(stmt))
   var result = newRow(L)
   try:
@@ -345,10 +344,9 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
   finally:
     if finalize(stmt) != SQLITE_OK: dbError(db)
 
-iterator instantRows*(db: DbConn, stmtName: SqlPrepared,
-                      args: varargs[string, `$`]): InstantRow
+iterator instantRows*(db: DbConn, stmtName: SqlPrepared): InstantRow
                       {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  var stmt = setupQuery(db, stmtName, args)
+  var stmt = setupQuery(db, stmtName)
   try:
     while step(stmt) == SQLITE_ROW:
       yield stmt
@@ -531,10 +529,9 @@ iterator rows*(db: DbConn, query: SqlQuery,
   ##    db.close()
   for r in fastRows(db, query, args): yield r
 
-iterator rows*(db: DbConn, stmtName: SqlPrepared,
-               args: varargs[string, `$`]): Row 
+iterator rows*(db: DbConn, stmtName: SqlPrepared): Row 
               {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  for r in fastRows(db, stmtName, args): yield r
+  for r in fastRows(db, stmtName): yield r
 
 proc getValue*(db: DbConn, query: SqlQuery,
                args: varargs[string, `$`]): string {.tags: [ReadDbEffect].} =
@@ -667,10 +664,9 @@ proc execAffectedRows*(db: DbConn, query: SqlQuery,
   exec(db, query, args)
   result = changes(db)
 
-proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared,
-                       args: varargs[string, `$`]): int64 
+proc execAffectedRows*(db: DbConn, stmtName: SqlPrepared): int64 
                       {.tags: [ReadDbEffect, WriteDbEffect],since: (1, 3).} =
-  exec(db, stmtName, args)
+  exec(db, stmtName)
   result = changes(db)
 
 proc close*(db: DbConn) {.tags: [DbEffect].} =
@@ -771,6 +767,9 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte], copy = true
   if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, if copy: SQLITE_TRANSIENT else: SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
+proc unExpectKind(n: NimNode, k: NimNodeKind) {.compileTime.} =
+  if n.kind == k: error("UnExpected a node of kind " & $k ,n)
+
 macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
   let bindParam = bindSym("bindParam", brOpen)
   let preparedStatement = genSym()
@@ -778,8 +777,15 @@ macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1
   # Store `ps` in a temporary variable. This prevents `ps` from being evaluated every call.
   result.add newNimNode(nnkLetSection).add(newIdentDefs(preparedStatement, newEmptyNode(), ps))
   for idx, param in params:
+    unExpectKind param, nnkBracket
     result.add newCall(bindParam, preparedStatement, newIntLitNode idx + 1, param)
 
+template exec*(db: DbConn, stmtName: SqlPrepared,
+          args: varargs[untyped]): untyped =
+  if args.len > 0:
+    discard clear_bindings(stmtName.PStmt)
+    stmtName.bindParams(args)
+  if not tryExec(db, stmtName): dbError(db)
 
 when not defined(testing) and isMainModule:
   var db = open(":memory:", "", "", "")
@@ -787,13 +793,13 @@ when not defined(testing) and isMainModule:
   exec(db, sql"insert into tbl1 values('hello!',10)", [])
   exec(db, sql"insert into tbl1 values('goodbye', 20)", [])
   var p1 = db.prepare "create table tbl2(one varchar(10), two smallint)"
-  exec(db, p1, [])
+  exec(db, p1)
   finalize(p1)
   var p2 = db.prepare "insert into tbl2 values('hello!',10)"
-  exec(db, p2, [])
+  exec(db, p2)
   finalize(p2)
   var p3 = db.prepare "insert into tbl2 values('goodbye', 20)"
-  exec(db, p3, [])
+  exec(db, p3)
   finalize(p3)
   #db.query("create table tbl1(one varchar(10), two smallint)")
   #db.query("insert into tbl1 values('hello!',10)")
@@ -803,11 +809,11 @@ when not defined(testing) and isMainModule:
   for r in db.instantRows(sql"select * from tbl1", []):
     echo(r[0], r[1])
   var p4 =  db.prepare "select * from tbl2"
-  for r in db.rows(p4, []):
+  for r in db.rows(p4):
     echo(r[0], r[1])
   finalize(p4)
   var p5 =  db.prepare "select * from tbl2"
-  for r in db.instantRows(p5, []):
+  for r in db.instantRows(p5):
     echo(r[0], r[1])
   finalize(p5)
 
@@ -817,8 +823,8 @@ when not defined(testing) and isMainModule:
     echo(r[0], r[1])
   var p6 = db.prepare "select * from tbl2 where one=?"
   p6.bindParams("goodbye")
-  exec(db, p6, [])
-  for r in db.rows(p6, []):
+  exec(db, p6)
+  for r in db.rows(p6):
     echo(r[0], r[1])
   finalize(p6)
 
@@ -826,8 +832,8 @@ when not defined(testing) and isMainModule:
   p7.bindParams(20'i32)
   when sizeof(int) == 4:
     p7.bindParams(20)
-  exec(db, p7, [])
-  for r in db.rows(p7, []):
+  exec(db, p7)
+  for r in db.rows(p7):
     echo(r[0], r[1])
   finalize(p7)
 
@@ -835,7 +841,7 @@ when not defined(testing) and isMainModule:
   var p8 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
   var d = "abcdefghijklmnopqrstuvwxyz"
   p8.bindParams(1'i32, "abcdefghijklmnopqrstuvwxyz")
-  exec(db, p8, [])
+  exec(db, p8)
   finalize(p8)
   for r in db.rows(sql"select * from photos where ID = 1", []):
     assert r[1].len == d.len
