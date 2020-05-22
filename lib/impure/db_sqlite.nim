@@ -639,12 +639,15 @@ proc insertID*(db: DbConn, query: SqlQuery,
   if result < 0: dbError(db)
 
 proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
-                  args: varargs[string, `$`]): int64
-                  {.tags: [WriteDbEffect], raises: [], since:(1, 3).} =
+                args: varargs[string, `$`]): int64
+               {.tags: [WriteDbEffect], raises: [], since:(1, 3).} =
+  ## same as tryInsertID
   tryInsertID(db, query, args)
 
 proc insert*(db: DbConn, query: SqlQuery, pkName: string,
-               args: varargs[string, `$`]): int64 {.tags: [WriteDbEffect], since:(1, 3).} =
+             args: varargs[string, `$`]): int64
+            {.tags: [WriteDbEffect], since:(1, 3).} =
+  ## same as insertId
   result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
