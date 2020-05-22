@@ -3,7 +3,7 @@
 
 
 ## Standard library additions and changes
-- Add `bindParams`,`bindParam` to `db_sqlite`,call `prepare` get `SqlPrepared` then `bindParams` or `bindParam` to it then `exec` then `finalize` the `SqlPrepared`.
+- Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
 - Add [DOM Parser](https://developer.mozilla.org/en-US/docs/Web/API/DOMParser)
@@ -190,4 +190,3 @@ proc mydiv(a, b): int {.raises: [].} =
   for example to change backend or compile only.
 
 ## Tool changes
-
