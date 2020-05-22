@@ -13,6 +13,7 @@ import
 import std/private/miscdollars
 
 type InstantiationInfo = typeof(instantiationInfo())
+template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -520,49 +521,39 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
             " compiler msg initiated here", KindColor,
             KindFormat % hintMsgOrigin.msgToStr,
             resetStyle)
-
   handleError(conf, msg, eh, s)
 
-proc rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
-  # xxx deprecated this overload
-  const info2 = instantiationInfo(-1, fullPaths = true)
+template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
   let arg = msgKindToString(msg) % args
-  liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, info2, isRaw = true)
+  liMessage(conf, unknownLineInfo, msg, arg, eh = doAbort, instLoc(), isRaw = true)
 
-proc rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, info2)
+template rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
+  # liMessage(conf, unknownLineInfo, msg, arg = arg, eh = doAbort, instLoc())
+  liMessage(conf, unknownLineInfo, msg, arg, eh = doAbort, instLoc())
 
 template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   # this fixes bug #7080 so that it is at least obvious 'fatal'
   # was executed.
   conf.m.errorOutputs = {eStdOut, eStdErr}
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, msg, arg, doAbort, info2)
+  liMessage(conf, info, msg, arg, doAbort, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, msg, arg, doRaise, info2)
+  liMessage(conf, info, msg, arg, doRaise, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, errGenerated, arg, doRaise, info2)
+  liMessage(conf, info, errGenerated, arg, doRaise, instLoc())
 
 template localError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, msg, arg, doNothing, info2)
+  liMessage(conf, info, msg, arg, doNothing, instLoc())
 
 template localError*(conf: ConfigRef; info: TLineInfo, arg: string) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, errGenerated, arg, doNothing, info2)
+  liMessage(conf, info, errGenerated, arg, doNothing, instLoc())
 
 template localError*(conf: ConfigRef; info: TLineInfo, format: string, params: openArray[string]) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, errGenerated, format % params, doNothing, info2)
+  liMessage(conf, info, errGenerated, format % params, doNothing, instLoc())
 
 template message*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  liMessage(conf, info, msg, arg, doNothing, info2)
+  liMessage(conf, info, msg, arg, doNothing, instLoc())
 
 proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: InstantiationInfo) =
   if conf.cmd == cmdIdeTools and conf.structuredErrorHook.isNil: return
@@ -570,25 +561,22 @@ proc internalErrorImpl(conf: ConfigRef; info: TLineInfo, errMsg: string, info2: 
   liMessage(conf, info, errInternal, errMsg, doAbort, info2)
 
 template internalError*(conf: ConfigRef; info: TLineInfo, errMsg: string) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  internalErrorImpl(conf, info, errMsg, info2)
+  internalErrorImpl(conf, info, errMsg, instLoc())
 
 template internalError*(conf: ConfigRef; errMsg: string) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
-  internalErrorImpl(conf, unknownLineInfo, errMsg, info2)
+  internalErrorImpl(conf, unknownLineInfo, errMsg, instLoc())
 
 template internalAssert*(conf: ConfigRef, e: bool) =
   # xxx merge with globalAssert from PR #14324
-  const info2 = instantiationInfo(-1, fullPaths = true)
   if not e:
+    const info2 = instLoc()
     let arg = info2.toFileLineCol
     internalErrorImpl(conf, unknownLineInfo, arg, info2)
 
 template lintReport*(conf: ConfigRef; info: TLineInfo, beau, got: string) =
-  const info2 = instantiationInfo(-1, fullPaths = true)
   let m = "'$2' should be: '$1'" % [beau, got]
   let msg = if optStyleError in conf.globalOptions: errGenerated else: hintName
-  liMessage(conf, info, msg, m, doNothing, info2)
+  liMessage(conf, info, msg, m, doNothing, instLoc())
 
 proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
   if i.fileIndex.int32 < 0:
