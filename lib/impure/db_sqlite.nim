@@ -758,15 +758,17 @@ proc bindNull*(ps: SqlPrepared, paramIdx: int) {.since: (1, 3).} =
   if bind_null(ps.PStmt, paramIdx.int32) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) {.since: (1, 3).} =
+proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string, copy = true) {.since: (1, 3).} =
   ## Binds a string to the specified paramIndex.
-  if bind_text(ps.PStmt, paramIdx.int32, val.cstring, val.len.int32, SQLITE_STATIC) != SQLITE_OK:
+  ## if copy is true then SQLite makes its own private copy of the data immediately
+  if bind_text(ps.PStmt, paramIdx.int32, val.cstring, val.len.int32, if copy: SQLITE_TRANSIENT else: SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
-proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) {.since: (1, 3).} =
+proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte], copy = true) {.since: (1, 3).} =
   ## binds a blob to the specified paramIndex.
+  ## if copy is true then SQLite makes its own private copy of the data immediately
   let len = val.len
-  if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, SQLITE_STATIC) != SQLITE_OK:
+  if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, if copy: SQLITE_TRANSIENT else: SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
