@@ -181,6 +181,12 @@ const
   hintMin* = hintSuccess
   hintMax* = high(TMsgKind)
 
+proc msgToStr*(msg: TMsgKind): string =
+  case msg
+  of warnMin..warnMax: WarningsToStr[ord(msg) - ord(warnMin)]
+  of hintMin..hintMax: HintsToStr[ord(msg) - ord(hintMin)]
+  else: "" # we could at least do $msg - prefix `err`
+
 static:
   doAssert HintsToStr.len == ord(hintMax) - ord(hintMin) + 1
   doAssert WarningsToStr.len == ord(warnMax) - ord(warnMin) + 1
