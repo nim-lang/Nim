@@ -500,8 +500,8 @@ proc tryInsert*(db: DbConn, query: SqlQuery,pkName: string,
     result = -1
 
 proc insert*(db: DbConn, query: SqlQuery, pkName: string,
-               args: varargs[string, `$`]): int64 {.
-               tags: [WriteDbEffect], since:(1, 3).} =
+             args: varargs[string, `$`]): int64
+            {.tags: [WriteDbEffect], since: (1, 3).} =
   ## executes the query (typically "INSERT") and returns the
   ## generated ID 
   result = tryInsertID(db, query, args)
