@@ -118,6 +118,8 @@ import sqlite3
 import db_common
 export db_common
 
+import std/private/since
+
 type
   DbConn* = PSqlite3  ## Encapsulates a database connection.
   Row* = seq[string]  ## A row of a dataset. `NULL` database values will be
@@ -634,6 +636,19 @@ proc insertID*(db: DbConn, query: SqlQuery,
   ##
   ##    db.close()
   result = tryInsertID(db, query, args)
+  if result < 0: dbError(db)
+
+proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
+                args: varargs[string, `$`]): int64
+               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+  ## same as tryInsertID
+  tryInsertID(db, query, args)
+
+proc insert*(db: DbConn, query: SqlQuery, pkName: string,
+             args: varargs[string, `$`]): int64
+            {.tags: [WriteDbEffect], since: (1, 3).} =
+  ## same as insertId
+  result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
