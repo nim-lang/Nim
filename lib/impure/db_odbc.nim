@@ -455,7 +455,7 @@ proc insertId*(db: var DbConn, query: SqlQuery,
 
 proc tryInsert*(db: var DbConn, query: SqlQuery,pkName: string,
                 args: varargs[string, `$`]): int64
-               {.tags: [ReadDbEffect, WriteDbEffect], raises: [], since:(1, 3).} =
+               {.tags: [ReadDbEffect, WriteDbEffect], raises: [], since: (1, 3).} =
   ## same as tryInsertID
   tryInsertID(db, query, args)
 
