@@ -88,6 +88,8 @@ import strutils, mysql
 import db_common
 export db_common
 
+import std/private/since
+
 type
   DbConn* = distinct PMySQL ## encapsulates a database connection
   Row* = seq[string]   ## a row of a dataset. NULL database values will be
@@ -357,6 +359,19 @@ proc insertId*(db: DbConn, query: SqlQuery,
   ## executes the query (typically "INSERT") and returns the
   ## generated ID for the row.
   result = tryInsertID(db, query, args)
+  if result < 0: dbError(db)
+
+proc tryInsert*(db: DbConn, query: SqlQuery, pkName: string,
+                args: varargs[string, `$`]): int64
+               {.tags: [WriteDbEffect], raises: [], since: (1, 3).} =
+  ## same as tryInsertID
+  tryInsertID(db, query, args)
+
+proc insert*(db: DbConn, query: SqlQuery, pkName: string,
+             args: varargs[string, `$`]): int64
+            {.tags: [WriteDbEffect], since: (1, 3).} =
+  ## same as insertId
+  result = tryInsert(db, query,pkName, args)
   if result < 0: dbError(db)
 
 proc execAffectedRows*(db: DbConn, query: SqlQuery,
