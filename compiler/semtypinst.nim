@@ -68,13 +68,13 @@ proc cacheTypeInst*(inst: PType) =
   gt.sym.typeInstCache.add(inst)
 
 type
-  LayeredIdTable* = object
+  LayeredIdTable* = ref object
     topLayer*: TIdTable
-    nextLayer*: ptr LayeredIdTable
+    nextLayer*: LayeredIdTable
 
   TReplTypeVars* = object
     c*: PContext
-    typeMap*: ptr LayeredIdTable # map PType to PType
+    typeMap*: LayeredIdTable  # map PType to PType
     symMap*: TIdTable         # map PSym to PSym
     localCache*: TIdTable     # local cache for remembering already replaced
                               # types during instantiation of meta types
@@ -92,20 +92,22 @@ proc replaceTypeVarsS(cl: var TReplTypeVars, s: PSym): PSym
 proc replaceTypeVarsN*(cl: var TReplTypeVars, n: PNode; start=0): PNode
 
 proc initLayeredTypeMap*(pt: TIdTable): LayeredIdTable =
+  result = LayeredIdTable()
   copyIdTable(result.topLayer, pt)
 
 proc newTypeMapLayer*(cl: var TReplTypeVars): LayeredIdTable =
+  result = LayeredIdTable()
   result.nextLayer = cl.typeMap
   initIdTable(result.topLayer)
 
-proc lookup(typeMap: ptr LayeredIdTable, key: PType): PType =
+proc lookup(typeMap: LayeredIdTable, key: PType): PType =
   var tm = typeMap
   while tm != nil:
     result = PType(idTableGet(tm.topLayer, key))
     if result != nil: return
     tm = tm.nextLayer
 
-template put(typeMap: ptr LayeredIdTable, key, value: PType) =
+template put(typeMap: LayeredIdTable, key, value: PType) =
   idTablePut(typeMap.topLayer, key, value)
 
 template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
@@ -369,8 +371,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
   let oldSkipTypedesc = cl.skipTypedesc
   cl.skipTypedesc = true
 
-  var typeMapLayer = newTypeMapLayer(cl)
-  cl.typeMap = addr(typeMapLayer)
+  cl.typeMap = newTypeMapLayer(cl)
 
   for i in 1..<t.len:
     var x = replaceTypeVarsT(cl, t[i])
@@ -652,7 +653,7 @@ proc instAllTypeBoundOp*(c: PContext, info: TLineInfo) =
     inc i
   setLen(c.typesWithOps, 0)
 
-proc initTypeVars*(p: PContext, typeMap: ptr LayeredIdTable, info: TLineInfo;
+proc initTypeVars*(p: PContext, typeMap: LayeredIdTable, info: TLineInfo;
                    owner: PSym): TReplTypeVars =
   initIdTable(result.symMap)
   initIdTable(result.localCache)
@@ -664,7 +665,7 @@ proc initTypeVars*(p: PContext, typeMap: ptr LayeredIdTable, info: TLineInfo;
 proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
                          owner: PSym, allowMetaTypes = false): PNode =
   var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(p, addr(typeMap), n.info, owner)
+  var cl = initTypeVars(p, typeMap, n.info, owner)
   cl.allowMetaTypes = allowMetaTypes
   pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n)
@@ -673,7 +674,7 @@ proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
 proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
                             original, new: PSym): PNode =
   var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(p, addr(typeMap), n.info, original)
+  var cl = initTypeVars(p, typeMap, n.info, original)
   idTablePut(cl.symMap, original, new)
   pushInfoContext(p.config, n.info)
   result = replaceTypeVarsN(cl, n)
@@ -702,7 +703,7 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
   # Desired result: Foo[int]
   # proc (x: T = 0); T -> int ---->  proc (x: int = 0)
   var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(p, addr(typeMap), info, nil)
+  var cl = initTypeVars(p, typeMap, info, nil)
   pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
   popInfoContext(p.config)
@@ -714,7 +715,7 @@ proc generateTypeInstance*(p: PContext, pt: TIdTable, info: TLineInfo,
 proc prepareMetatypeForSigmatch*(p: PContext, pt: TIdTable, info: TLineInfo,
                                  t: PType): PType =
   var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(p, addr(typeMap), info, nil)
+  var cl = initTypeVars(p, typeMap, info, nil)
   cl.allowMetaTypes = true
   pushInfoContext(p.config, info)
   result = replaceTypeVarsT(cl, t)
