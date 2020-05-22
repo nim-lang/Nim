@@ -586,18 +586,9 @@ proc quotedFilename*(conf: ConfigRef; i: TLineInfo): Rope =
   else:
     result = conf.m.fileInfos[i.fileIndex.int32].quotedName
 
-proc listWarnings*(conf: ConfigRef) =
-  msgWriteln(conf, "Warnings:")
-  for warn in warnMin..warnMax:
-    msgWriteln(conf, "  [$1] $2" % [
-      if warn in conf.notes: "x" else: " ",
-      lineinfos.WarningsToStr[ord(warn) - ord(warnMin)]
-    ])
-
-proc listHints*(conf: ConfigRef) =
-  msgWriteln(conf, "Hints:")
-  for hint in hintMin..hintMax:
-    msgWriteln(conf, "  [$1] $2" % [
-      if hint in conf.notes: "x" else: " ",
-      lineinfos.HintsToStr[ord(hint) - ord(hintMin)]
-    ])
+template listMsg(title, r) =
+  msgWriteln(conf, title)
+  for a in r:
+    msgWriteln(conf, "  [$1] $2" % [if a in conf.notes: "x" else: " ", a.msgToStr])
+proc listWarnings*(conf: ConfigRef) = listMsg("Warnings:", warnMin..warnMax)
+proc listHints*(conf: ConfigRef) = listMsg("Hints:", hintMin..hintMax)
