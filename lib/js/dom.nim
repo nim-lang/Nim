@@ -171,8 +171,11 @@ type
     nodeType*: NodeType
     nodeValue*: cstring
     parentNode*: Node
+    content*: Node
     previousSibling*: Node
+    ownerDocument*: Document
     innerHTML*: cstring
+    outerHTML*: cstring
     innerText*: cstring
     textContent*: cstring
     style*: Style
@@ -1042,6 +1045,7 @@ when defined(nodejs):
     result = cast[Element](x.childNodes[idx])
 
   var document* = Document(nodeType: DocumentNode)
+  document.ownerDocument = document
 
   proc getElem(x: Element; id: cstring): Element =
     if x.id == id: return x
@@ -1055,6 +1059,7 @@ when defined(nodejs):
 
   proc appendChild*(parent, n: Node) =
     n.parentNode = parent
+    n.ownerDocument = parent.ownerDocument
     parent.childNodes.add n
 
   proc replaceChild*(parent, newNode, oldNode: Node) =
@@ -1101,6 +1106,12 @@ when defined(nodejs):
     result.nodeValue = identifier
     result.nodeType = NodeType.TextNode
 
+  proc createComment*(d: Document, data: cstring): Node =
+    new(result)
+    result.nodeName = "#comment"
+    result.nodeValue = data
+    result.nodeType = NodeType.CommentNode
+
 else:
   proc len*(x: Node): int {.importcpp: "#.childNodes.length".}
   proc `[]`*(x: Node; idx: int): Element {.importcpp: "#.childNodes[#]".}
@@ -1112,6 +1123,7 @@ else:
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
+  proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
 proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
 proc clearTimeout*(t: Timeout) {.importc, nodecl.}
@@ -1177,6 +1189,8 @@ proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
+proc querySelector*(n: Node, selectors: cstring): Element
+proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
 
 # Document "methods"
 proc captureEvents*(d: Document, eventMask: int) {.deprecated.}
