@@ -763,7 +763,7 @@ proc bindNull*(ps: SqlPrepared, paramIdx: int) {.since: (1, 3).} =
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string) {.since: (1, 3).} =
   ## Binds a string to the specified paramIndex.
-  if bind_text(ps.PStmt, paramIdx.int32, val.cstring, -1.int32, SQLITE_STATIC) != SQLITE_OK:
+  if bind_text(ps.PStmt, paramIdx.int32, val.cstring, val.len.int32, SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte]) {.since: (1, 3).} =
