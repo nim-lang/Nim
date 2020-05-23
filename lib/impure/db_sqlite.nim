@@ -495,11 +495,10 @@ proc getAllRows*(db: DbConn, query: SqlQuery,
   for r in fastRows(db, query, args):
     result.add(r)
 
-proc getAllRows*(db: DbConn, stmtName: SqlPrepared,
-                 args: varargs[string, `$`]): seq[Row] 
+proc getAllRows*(db: DbConn, stmtName: SqlPrepared): seq[Row] 
                 {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
   result = @[]
-  for r in fastRows(db, stmtName, args):
+  for r in fastRows(db, stmtName):
     result.add(r)
 
 iterator rows*(db: DbConn, query: SqlQuery,
@@ -569,10 +568,9 @@ proc getValue*(db: DbConn, query: SqlQuery,
     result = ""
   if finalize(stmt) != SQLITE_OK: dbError(db)
 
-proc getValue*(db: DbConn,  stmtName: SqlPrepared,
-               args: varargs[string, `$`]): string 
+proc getValue*(db: DbConn,  stmtName: SqlPrepared): string 
               {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  var stmt = setupQuery(db, stmtName, args)
+  var stmt = setupQuery(db, stmtName)
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
     if cb == 0:
@@ -770,7 +768,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte], copy = true
 proc unExpectKind(n: NimNode, k: NimNodeKind) {.compileTime.} =
   if n.kind == k: error("UnExpected a node of kind " & $k ,n)
 
-macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
+macro bindParams*(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
   let bindParam = bindSym("bindParam", brOpen)
   let preparedStatement = genSym()
   result = newStmtList()
@@ -780,9 +778,12 @@ macro bindParams(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1
     unExpectKind param, nnkBracket
     result.add newCall(bindParam, preparedStatement, newIntLitNode idx + 1, param)
 
+macro untypedLen(args: varargs[untyped]): int =
+  newLit(args.len)
+
 template exec*(db: DbConn, stmtName: SqlPrepared,
           args: varargs[untyped]): untyped =
-  if args.len > 0:
+  when args.untypedLen > 0:
     discard clear_bindings(stmtName.PStmt)
     stmtName.bindParams(args)
   if not tryExec(db, stmtName): dbError(db)
