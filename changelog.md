@@ -187,18 +187,9 @@ proc mydiv(a, b): int {.raises: [].} =
   and avoids polluting both $pwd and $projectdir. It can be used with any command.
 - `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override how an example is compiled and run,
   for example to change backend or compile only.
-- `nim doc foo/main` now outputs to `foo/main.html`, consistently with other commands. Use
-  `--usenimcache` for example to output instead under $nimcache.
-- `nim doc foo/main` now outputs to `foo/main.html`, as it used to, and consistently
-  with other commands. Use `--outDir:.` to restore previous behaviour or
- `--usenimcache` to output instead under $nimcache.
-- `nim doc foo/main` now outputs to `htmldocs/main.html` (with or without `--project`), like it used to,
-  which avoids clobbering either `$PWD` or your source files. Use `--outDir:.` to restore previous behaviour
-  or `--usenimcache` to output instead under $nimcache.
-- `nim doc foo/main` now outputs to `$nimcache/htmldocs/main.html` (with or without `--project`),
-- `nim doc foo/main` now outputs to `$nimcache/htmldocs/main.html` instead of $PWD,
-  which avoids clobbering either `$PWD` or your source files. Use `--outDir:.` to restore previous behaviour.
-  It now also generates theindex.html and links the index in the TOC, as well as enables search.
+- `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
+  passing `--project` now automatically generates an index and enables search.
+  See [docgen](docgen.html#introduction-quick-start) for details.
 
 ## Tool changes
 

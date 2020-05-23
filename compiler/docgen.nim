@@ -50,7 +50,7 @@ type
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
-    wroteCss*: bool
+    wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -1204,12 +1204,13 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
-    elif not d.wroteCss: # nimdoc.css + dochack.js
+    elif not d.wroteSupportFiles: # nimdoc.css + dochack.js
       let nimr = $d.conf.getPrefixDir()
       copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
-      let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
-      copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)
-      d.wroteCss = true
+      if optGenIndex in d.conf.globalOptions:
+        let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
+        copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)
+      d.wroteSupportFiles = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)

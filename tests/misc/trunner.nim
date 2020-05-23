@@ -71,12 +71,14 @@ else: # don't run twice the same test
     let htmldocsDirCustom = nimcache / "htmldocsCustom"
     let docroot = testsDir / "nimdoc"
     let options = [
-      0: "",
-      1: "--docroot",
-      2: "--project:off",
-      3: fmt"--project:off --outDir:{htmldocsDirCustom}",
-      4: fmt"--project:off --docroot:{docroot}",
-      5: "--useNimcache"]
+      0: "--project",
+      1: "--project --docroot",
+      2: "",
+      3: fmt"--outDir:{htmldocsDirCustom}",
+      4: fmt"--docroot:{docroot}",
+      5: "--project --useNimcache",
+      6: "--index:off",
+    ]
 
     for i in 0..<options.len:
       let htmldocsDir = case i
@@ -84,7 +86,7 @@ else: # don't run twice the same test
       of 5: nimcache / htmldocsDirname
       else: file.parentDir / htmldocsDirname
 
-      var cmd = fmt"{nim} doc --project --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
+      var cmd = fmt"{nim} doc --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
       removeDir(htmldocsDir)
       let (outp, exitCode) = execCmdEx(cmd)
       check exitCode == 0
@@ -93,9 +95,12 @@ else: # don't run twice the same test
         a.replace(DirSep, '/')
 
       let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPathWorkaround).sorted.join("\n")
+      let context = $(i, ret, cmd)
       var expected = ""
       case i
       of 0,5:
+        let htmlFile = htmldocsDir/"mmain.html"
+        check htmlFile in outp # sanity check for `hintSuccessX`
         assertEquals ret, """
 @@/imp.html
 @@/imp.idx
@@ -107,10 +112,7 @@ imp2.idx
 mmain.html
 mmain.idx
 nimdoc.out.css
-theindex.html"""
-        let htmlFile = htmldocsDir/"mmain.html"
-        check htmlFile in outp # sanity check for `hintSuccessX`
-
+theindex.html""", context
       of 1: assertEquals ret, """
 dochack.js
 nimdoc.out.css
@@ -127,13 +129,16 @@ theindex.html"""
 dochack.js
 mmain.html
 mmain.idx
-nimdoc.out.css""", $(i, cmd)
+nimdoc.out.css""", context
       of 4: assertEquals ret, """
 dochack.js
 nimdoc.out.css
 sub/mmain.html
-sub/mmain.idx""", $(i, cmd)
-      else: doAssert false, ret
+sub/mmain.idx""", context
+      of 6: assertEquals ret, """
+mmain.html
+nimdoc.out.css""", context
+      else: doAssert false
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")

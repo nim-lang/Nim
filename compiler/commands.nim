@@ -485,7 +485,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
   of "forcebuild", "f":
     processOnOffSwitchG(conf, {optForceFullMake}, arg, pass, info)
   of "project":
-    processOnOffSwitchG(conf, {optWholeProject}, arg, pass, info)
+    processOnOffSwitchG(conf, {optWholeProject, optGenIndex}, arg, pass, info)
   of "gc":
     expectArg(conf, switch, arg, pass, info)
     if pass in {passCmd2, passPP}:

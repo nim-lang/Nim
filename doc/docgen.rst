@@ -36,8 +36,10 @@ Generate HTML documentation for a whole project:
   # to get search (dochacks.js) to work locally, you need a server otherwise
   # CORS will prevent opening file:// urls; this works:
   python3 -m http.server 7029 --directory htmldocs
-  # When --outdir is omitted is defaults to $nimcache/htmldocs. You can also do:
-  `nim doc -r --project --index main` to open in a browser directyl.
+  # When --outdir is omitted it defaults to $projectPath/htmldocs,
+  or `$nimcache/htmldocs` with `--usenimcache` which avoids clobbering your sources;
+  and likewise without `--project`.
+  Adding `-r` will open in a browser directly.
 
 
 Documentation Comments
