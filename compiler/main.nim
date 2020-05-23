@@ -231,19 +231,29 @@ proc mainCommand*(graph: ModuleGraph) =
       body
 
   block: ## command prepass
-    var useHtmlDocs = false
+    var docLikeCmd2 = false # includes what calls `docLikeCmd` + some more
     case conf.command.normalize
     of "r": conf.globalOptions.incl {optRun, optUseNimcache}
     of "doc0",  "doc2", "doc", "rst2html", "rst2tex", "jsondoc0", "jsondoc2",
-      "jsondoc", "ctags", "buildindex": useHtmlDocs = true
+      "jsondoc", "ctags", "buildindex": docLikeCmd2 = true
     else: discard
 
     if conf.outDir.isEmpty:
       # doc like commands can generate a lot of files (especially with --project)
       # so by default should not end up in $PWD nor in $projectPath.
-      conf.outDir = if useHtmlDocs: getNimcacheDir(conf) / htmldocsDir
-      elif optUseNimcache in conf.globalOptions: getNimcacheDir(conf)
-      else: conf.projectPath
+      conf.outDir = block:
+        var ret = AbsoluteDir""
+        if optUseNimcache in conf.globalOptions:
+          ret = getNimcacheDir(conf)
+          if docLikeCmd2: ret = ret / htmldocsDir
+            # even without `optWholeProject` is intentional; makes it easy to move/remove
+            # generated docs from $nimcache
+        else:
+          ret = conf.projectPath
+          doAssert ret.string.isAbsolute # `AbsoluteDir` is not a real guarantee
+          if docLikeCmd2 and optWholeProject in conf.globalOptions:
+            ret = ret / htmldocsDir
+        ret
 
   ## process all backend commands
   case conf.command.normalize
