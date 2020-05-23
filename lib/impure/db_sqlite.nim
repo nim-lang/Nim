@@ -226,10 +226,6 @@ proc exec*(db: DbConn, query: SqlQuery, args: varargs[string, `$`])  {.
   ##      db.close()
   if not tryExec(db, query, args): dbError(db)
 
-# proc exec*(db: DbConn, stmtName: SqlPrepared,
-#           args: varargs[string]) {.tags: [ReadDbEffect, WriteDbEffect], since: (1, 3).} =
-#     if not tryExec(db, stmtName, args): dbError(db)
-
 proc newRow(L: int): Row =
   newSeq(result, L)
   for i in 0..L-1: result[i] = ""
