@@ -16,16 +16,17 @@ interpolation variables:
 Unstable API
 ]##
 
-import std/strutils
-
 import std/[os,strutils]
-const docCss* = "$nimr/doc/nimdoc.css"
-const docHackNim* = "$nimr/tools/dochack/dochack.nim"
-const docHackJs* = docHackNim.changeFileExt("js")
-const docHackJsFname* = docHackJs.lastPathPart
-const theindexFname* = "theindex.html"
-const nimdocOutCss* = "nimdoc.out.css"
-  # `out` to make it easier to use with gitignore in user's repos
+
+const
+  docCss* = "$nimr/doc/nimdoc.css"
+  docHackNim* = "$nimr/tools/dochack/dochack.nim"
+  docHackJs* = docHackNim.changeFileExt("js")
+  docHackJsFname* = docHackJs.lastPathPart
+  theindexFname* = "theindex.html"
+  nimdocOutCss* = "nimdoc.out.css"
+    # `out` to make it easier to use with gitignore in user's repos
+  htmldocsDirname* = "htmldocs"
 
 proc interp*(path: string, nimr: string): string =
   result = path % ["nimr", nimr]

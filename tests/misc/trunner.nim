@@ -11,17 +11,17 @@ import std/[strformat,os,osproc,unittest]
 from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
-const nim = getCurrentCompilerExe()
 
-const mode =
-  when defined(c): "c"
-  elif defined(cpp): "cpp"
-  else: static: doAssert false
+import "$nim/compiler/nimpaths"
 
-const testsDir = currentSourcePath.parentDir.parentDir
-const nimcache = buildDir / "nimcacheTrunner"
-  # `querySetting(nimcacheDir)` would also be possible, but we thus
-  # avoid stomping on other parallel tests
+const
+  nim = getCurrentCompilerExe()
+  mode =
+    when defined(c): "c"
+    elif defined(cpp): "cpp"
+    else: static: doAssert false
+  nimcache = buildDir / "nimcacheTrunner"
+    # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
 
 proc runCmd(file, options = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
@@ -68,12 +68,22 @@ else: # don't run twice the same test
     # regression tests for issues and PRS: #14376 #13223 #6583 ##13647
     let file = testsDir / "nimdoc/sub/mmain.nim"
     let mainFname = "mmain.html"
-    let htmldocsDir1 = nimcache /  "htmldocs" # implicit one
-    let htmldocsDir2 = nimcache / "htmldocs2" # explicit one
+    let htmldocsDirCustom = nimcache / "htmldocsCustom"
     let docroot = testsDir / "nimdoc"
-    let options = ["", "--docroot", "--project:off", fmt"--project:off --outDir:{htmldocsDir2}", fmt"--project:off --docroot:{docroot}"]
+    let options = [
+      0: "",
+      1: "--docroot",
+      2: "--project:off",
+      3: fmt"--project:off --outDir:{htmldocsDirCustom}",
+      4: fmt"--project:off --docroot:{docroot}",
+      5: "--useNimcache"]
+
     for i in 0..<options.len:
-      let htmldocsDir = if i == 3: htmldocsDir2 else: htmldocsDir1
+      let htmldocsDir = case i
+      of 3: htmldocsDirCustom
+      of 5: nimcache / htmldocsDirname
+      else: file.parentDir / htmldocsDirname
+
       var cmd = fmt"{nim} doc --project --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
       removeDir(htmldocsDir)
       let (outp, exitCode) = execCmdEx(cmd)
@@ -85,7 +95,7 @@ else: # don't run twice the same test
       let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPathWorkaround).sorted.join("\n")
       var expected = ""
       case i
-      of 0:
+      of 0,5:
         assertEquals ret, """
 @@/imp.html
 @@/imp.idx
@@ -123,7 +133,7 @@ dochack.js
 nimdoc.out.css
 sub/mmain.html
 sub/mmain.idx""", $(i, cmd)
-      else: doAssert false
+      else: doAssert false, ret
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")

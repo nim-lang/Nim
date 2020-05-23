@@ -9,7 +9,7 @@
 
 import
   os, strutils, strtabs, sets, lineinfos, platform,
-  prefixmatches, pathutils
+  prefixmatches, pathutils, nimpaths
 
 from terminal import isatty
 from times import utc, fromUnix, local, getTime, format, DateTime
@@ -518,10 +518,9 @@ const
   DefaultConfigNims* = RelativeFile"config.nims"
   DocConfig* = RelativeFile"nimdoc.cfg"
   DocTexConfig* = RelativeFile"nimdoc.tex.cfg"
-  htmldocsDir* = RelativeDir"htmldocs"
+  htmldocsDir* = htmldocsDirname.RelativeDir
   docRootDefault* = "@default" # using `@` instead of `$` to avoid shell quoting complications
-
-const oKeepVariableNames* = true
+  oKeepVariableNames* = true
 
 proc mainCommandArg*(conf: ConfigRef): string =
   ## This is intended for commands like check or parse
