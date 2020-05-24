@@ -1568,7 +1568,7 @@ proc getCustomPragmaNodeFromVarLetSym(sym: NimNode, name: string): NimNode =
     if pragmaExpr.kind == nnkPragmaExpr:
       result = getPragmaByName(pragmaExpr[1], name)
 
-proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode {.since: (1, 3).} =
+proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
   case sym.symKind
   of nskField:
