@@ -1802,7 +1802,7 @@ Mixing GC'ed memory with ``ptr``
 
 Special care has to be taken if an untraced object contains traced objects like
 traced references, strings or sequences: in order to free everything properly,
-the built-in procedure ``GCunref`` has to be called before freeing the untraced
+the built-in procedure ``reset`` has to be called before freeing the untraced
 memory manually:
 
 .. code-block:: nim
@@ -1816,12 +1816,12 @@ memory manually:
   d.s = "abc"
 
   # tell the GC that the string is not needed anymore:
-  GCunref(d.s)
+  reset(d.s)
 
   # free the memory:
   dealloc(d)
 
-Without the ``GCunref`` call the memory allocated for the ``d.s`` string would
+Without the ``reset`` call the memory allocated for the ``d.s`` string would
 never be freed. The example also demonstrates two important features for low
 level programming: the ``sizeof`` proc returns the size of a type or value
 in bytes. The ``cast`` operator can circumvent the type system: the compiler
@@ -2336,7 +2336,7 @@ The convertible relation can be relaxed by a user-defined type
   # implicit conversion magic happens here
   x = chr
   echo x # => 97
-  # you can use the explicit form too
+  # one can use the explicit form too
   x = chr.toInt
   echo x # => 97
 
@@ -4280,9 +4280,10 @@ caught by reference. Example:
 
   fn()
 
-**Note:** `getCurrentException()` and `getCurrentExceptionMsg()` are not available 
-for imported exceptions. You need to use `except ImportedException as x:` syntax 
-and rely on functionality of `x` object to get exception details.
+**Note:** `getCurrentException()` and `getCurrentExceptionMsg()` are not available
+for imported exceptions. One needs to use the `except ImportedException as x:` syntax
+and rely on functionality of the `x` object to get exception details.
+
 
 Effect system
 =============
@@ -4885,7 +4886,7 @@ compiler. Explicit immediate templates are now deprecated.
 Passing a code block to a template
 ----------------------------------
 
-You can pass a block of statements as the last argument to a template
+One can pass a block of statements as the last argument to a template
 following the special ``:`` syntax:
 
 .. code-block:: nim
@@ -5425,7 +5426,7 @@ generic type ``static[T]``. The type param can be omitted to obtain the type
 class of all constant expressions. A more specific type class can be created by
 instantiating ``static`` with another type class.
 
-You can force an expression to be evaluated at compile time as a constant
+One can force an expression to be evaluated at compile time as a constant
 expression by coercing it to a corresponding ``static`` type:
 
 .. code-block:: nim
@@ -5439,14 +5440,14 @@ possible type mismatch error.
 typedesc[T]
 -----------
 
-In many contexts, Nim allows you to treat the names of types as regular
+In many contexts, Nim allows to treat the names of types as regular
 values. These values exists only during the compilation phase, but since
 all values must have a type, ``typedesc`` is considered their special type.
 
 ``typedesc`` acts like a generic type. For instance, the type of the symbol
 ``int`` is ``typedesc[int]``. Just like with regular generic types, when the
 generic param is omitted, ``typedesc`` denotes the type class of all types.
-As a syntactic convenience, you can also use ``typedesc`` as a modifier.
+As a syntactic convenience, one can also use ``typedesc`` as a modifier.
 
 Procs featuring ``typedesc`` params are considered implicitly generic.
 They will be instantiated for each unique combination of supplied types
@@ -5524,7 +5525,7 @@ typeof operator
 **Note**: ``typeof(x)`` can for historical reasons also be written as
 ``type(x)`` but ``type(x)`` is discouraged.
 
-You can obtain the type of a given expression by constructing a ``typeof``
+One can obtain the type of a given expression by constructing a ``typeof``
 value from it (in many other languages this is known as the `typeof`:idx:
 operator):
 
@@ -5751,9 +5752,9 @@ modules don't need to import a module's dependencies:
   echo $x
 
 When the exported symbol is another module, all of its definitions will
-be forwarded. You can use an ``except`` list to exclude some of the symbols.
+be forwarded. One can use an ``except`` list to exclude some of the symbols.
 
-Notice that when exporting, you need to specify only the module name:
+Notice that when exporting, one needs to specify only the module name:
 
 .. code-block:: nim
   import foo/bar/baz
@@ -6480,7 +6481,7 @@ with the project:
   {.compile: "myfile.cpp".}
 
 **Note**: Nim computes a SHA1 checksum and only recompiles the file if it
-has changed. You can use the ``-f`` command line option to force recompilation
+has changed. One can use the ``-f`` command line option to force recompilation
 of the file.
 
 
@@ -6495,12 +6496,12 @@ The ``link`` pragma can be used to link an additional file with the project:
 PassC pragma
 ------------
 The ``passc`` pragma can be used to pass additional parameters to the C
-compiler like you would using the commandline switch ``--passc``:
+compiler like one would using the commandline switch ``--passc``:
 
 .. code-block:: Nim
   {.passc: "-Wall -Werror".}
 
-Note that you can use ``gorge`` from the `system module <system.html>`_ to
+Note that one can use ``gorge`` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
@@ -6523,12 +6524,12 @@ the pragma resides in:
 PassL pragma
 ------------
 The ``passL`` pragma can be used to pass additional parameters to the linker
-like you would using the commandline switch ``--passL``:
+like one would using the commandline switch ``--passL``:
 
 .. code-block:: Nim
   {.passL: "-lSDLmain -lSDL".}
 
-Note that you can use ``gorge`` from the `system module <system.html>`_ to
+Note that one can use ``gorge`` from the `system module <system.html>`_ to
 embed parameters from an external command that will be executed
 during semantic analysis:
 
@@ -6783,7 +6784,7 @@ Importcpp for objects
 ~~~~~~~~~~~~~~~~~~~~~
 
 Generic ``importcpp``'ed objects are mapped to C++ templates. This means that
-you can import C++'s templates rather easily without the need for a pattern
+one can import C++'s templates rather easily without the need for a pattern
 language for object types:
 
 .. code-block:: nim
@@ -7032,9 +7033,9 @@ specified. It is possible to annotate procs, templates, type and variable
 definitions, statements, etc.
 
 Macros module includes helpers which can be used to simplify custom pragma
-access `hasCustomPragma`, `getCustomPragmaVal`. Please consult macros module
-documentation for details. These macros are no magic, they don't do anything
-you cannot do yourself by walking AST object representation.
+access `hasCustomPragma`, `getCustomPragmaVal`. Please consult the macros module
+documentation for details. These macros are not magic, everything they do can
+also be achieved by walking the AST of the object representation.
 
 More examples with custom pragmas:
 
