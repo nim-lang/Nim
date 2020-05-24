@@ -538,16 +538,16 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previous
     ## d2
 
     ## d3 # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
-  
+
   It also works with:
   proc fn* =
     ## d0
     runnableExamples: discard
     ## d1
-    
+
     etc
   ]##
-  # xxx: checkme: owner check instead? this fails with the $nim_prs_D/nimdoc/tester.nim test
+  # xxx: checkme: owner check instead? this fails with the $nim/nimdoc/tester.nim test
   # now that we're calling `genRecComment` only from here (to maintain correct order wrt runnableExample)
   # if n.info.fileIndex != orig.info.fileIndex: return
   case n.kind
@@ -763,15 +763,12 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var literal, plainName = ""
   var kind = tkEof
   var comm: Rope = nil
-  # if n.kind notin routineKinds:
-  # if n.kind notin declarativeDefs:
-  #   comm.add genRecComment(d, n)
+  # skipping this (and doing it inside getAllRunnableExamples) would fix order in
+  # case of a runnableExample appearing before a doccomment, but would cause other
+  # issues
   comm.add genRecComment(d, n)
-  dbg n.kind, n.renderTree, comm
-  # if n.kind notin declarativeDefs:
   if n.kind in declarativeDefs:
     getAllRunnableExamples(d, n, comm)
-  dbg comm
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
