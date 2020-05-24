@@ -1568,7 +1568,7 @@ proc getCustomPragmaNodeFromVarLetSym(sym: NimNode, name: string): NimNode =
     if pragmaExpr.kind == nnkPragmaExpr:
       result = getPragmaByName(pragmaExpr[1], name)
 
-proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode =
+proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode {.since: (1.3).} =
   sym.expectKind nnkSym
   case sym.symKind
   of nskField:
@@ -1578,11 +1578,9 @@ proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode =
   of nskType:
     result = getCustomPragmaNodeFromTypeSym(sym, name)
   of nskParam:
-    # Warning: shitty typedesc handling workarounds ahead. I hate `typedesc` so much.
-    # When a typedesc parameter is passed to the macro, it will be of nskParam. , not of
+    # When a typedesc parameter is passed to the macro, it will be of nskParam.
     let typeInst = getTypeInst(sym)
     if typeInst.kind == nnkBracketExpr and eqIdent(typeInst[0], "typeDesc"):
-      warning("Pleased don't pass shitty typedesc values to this macro. Please use real type expressions, symbols of kind nskType. Thank you.", sym)
       result = getCustomPragmaNodeFromTypeSym(typeInst[1], name)
     else:
       error("illegal sym kind for argument: " & $sym.symKind, sym)
@@ -1627,7 +1625,6 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
     result = newLit(hasCustomPragma(n,$cp))
   of nnkTypeOfExpr:
     var typeSym = n.getTypeInst
-    # dealing with shitty typedesc that sneasks into everything
     while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
       typeSym = typeSym[1]
     case typeSym.kind:
@@ -1670,7 +1667,6 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
       getCustomPragmaNode(n, $cp)
     else:
       var typeSym = n.getTypeInst
-      # dealing with shitty typedesc that sneasks into everything
       while typeSym.kind == nnkBracketExpr and typeSym[0].eqIdent "typeDesc":
         typeSym = typeSym[1]
       case typeSym.kind:
