@@ -32,7 +32,7 @@ proc repr*(x: char): string {.noSideEffect.} =
   ## converted to a string.
   ##
   ## .. code-block:: Nim
-  ##   assert repr('c') == "c"
+  ##   assert repr('c') == "'c'"
   '\'' & $x & '\''
 
 proc repr*(x: cstring): string {.noSideEffect.} =
