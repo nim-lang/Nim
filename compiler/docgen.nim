@@ -547,7 +547,9 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previous
     
     etc
   ]##
-  if n.info.fileIndex != orig.info.fileIndex: return
+  # xxx: checkme: owner check instead? this fails with the $nim_prs_D/nimdoc/tester.nim test
+  # now that we're calling `genRecComment` only from here (to maintain correct order wrt runnableExample)
+  # if n.info.fileIndex != orig.info.fileIndex: return
   case n.kind
   of nkCommentStmt:
     if previousIsRunnable:
@@ -761,7 +763,15 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var literal, plainName = ""
   var kind = tkEof
   var comm: Rope = nil
-  getAllRunnableExamples(d, n, comm)
+  # if n.kind notin routineKinds:
+  # if n.kind notin declarativeDefs:
+  #   comm.add genRecComment(d, n)
+  comm.add genRecComment(d, n)
+  dbg n.kind, n.renderTree, comm
+  # if n.kind notin declarativeDefs:
+  if n.kind in declarativeDefs:
+    getAllRunnableExamples(d, n, comm)
+  dbg comm
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
