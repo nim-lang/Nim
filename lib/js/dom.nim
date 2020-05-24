@@ -398,6 +398,7 @@ type
     captionSide*: cstring
     clear*: cstring
     clip*: cstring
+    clipPath*: cstring
     color*: cstring
     cursor*: cstring
     direction*: cstring
