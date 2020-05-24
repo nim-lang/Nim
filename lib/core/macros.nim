@@ -1474,7 +1474,7 @@ macro expandMacros*(body: typed): untyped =
   echo body.toStrLit
   result = body
 
-proc findPragmaExprForFieldSym(arg: NimNode, fieldSym: NimNode): NimNode =
+proc findPragmaExprForFieldSym(arg, fieldSym: NimNode): NimNode =
   case arg.kind
   of nnkRecList, nnkRecCase:
     for it in arg.children:
@@ -1512,11 +1512,9 @@ proc getPragmaByName(pragmaExpr: NimNode, name: string): NimNode =
         if eqIdent(it, name):
           return it
 
-
 proc getCustomPragmaNodeFromProcSym(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
-  if sym.symKind != nskProc:
-    error("expected proc sym", sym)
+  if sym.symKind != nskProc: error("expected proc sym", sym)
 
   let impl = sym.getImpl
   expectKind(impl, nnkProcDef)
@@ -1524,49 +1522,42 @@ proc getCustomPragmaNodeFromProcSym(sym: NimNode, name: string): NimNode =
 
 proc getCustomPragmaNodeFromObjFieldSym(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
-  if sym.symKind != nskField:
-    error("expected field sym", sym)
+  if sym.symKind != nskField: error("expected field sym", sym)
 
   # note this is not ``getTypeImpl``, because the result of
   # ``getTypeImpl`` is cleaned up of any pragma expressions.
   let impl = sym.owner.getImpl
   impl.expectKind nnkTypeDef
 
-  var objectTy = impl[2]
-  if objectTy.kind == nnkRefTy:
-    objectTy = objectTy[0]
+  let objectTy = if impl[2].kind == nnkRefTy: impl[2][0]
+                 else: impl[2]
 
   # only works on object types
   objectTy.expectKind nnkObjectTy
 
   let recList = objectTy[2]
   recList.expectKind nnkRecList
-  let pragmaExpr = findPragmaExprForFieldSym(recList, sym)
-  getPragmaByName(pragmaExpr, name)
+  result = getPragmaByName(findPragmaExprForFieldSym(recList, sym), name)
 
 proc getCustomPragmaNodeFromTypeSym(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
-  if sym.symKind != nskType:
-    error("expected type sym", sym)
+  if sym.symKind != nskType: error("expected type sym", sym)
   let impl = sym.getImpl
   if impl.len > 0:
-    assert impl.kind == nnkTypeDef
+    impl.expectKind nnkTypeDef
     let pragmaExpr = impl[0]
     if pragmaExpr.kind == nnkPragmaExpr:
       result = getPragmaByName(pragmaExpr[1], name)
 
 proc getCustomPragmaNodeFromVarLetSym(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
-  if sym.symKind notin {nskVar, nskLet}:
-    error("expected var/let sym", sym)
-
+  if sym.symKind notin {nskVar, nskLet}: error("expected var/let sym", sym)
   let impl = sym.getImpl
-  assert impl.kind == nnkIdentDefs
-  assert impl.len == 3
-  if impl.len > 0:
-    let pragmaExpr = impl[0]
-    if pragmaExpr.kind == nnkPragmaExpr:
-      result = getPragmaByName(pragmaExpr[1], name)
+  impl.expectKind nnkIdentDefs
+  impl.expectLen 3
+  let pragmaExpr = impl[0]
+  if pragmaExpr.kind == nnkPragmaExpr:
+    result = getPragmaByName(pragmaExpr[1], name)
 
 proc getCustomPragmaNode*(sym: NimNode, name: string): NimNode =
   sym.expectKind nnkSym
@@ -1684,7 +1675,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
 
   case pragmaNode.kind
   of nnkPragmaCallKinds:
-    assert(pragmaNode[0] == cp)
+    assert pragmaNode[0] == cp
     if pragmaNode.len == 2:
       result = pragmaNode[1]
     else:
@@ -1698,7 +1689,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   of nnkSym:
     error("The named pragma " & cp.repr & " in " & n.repr & " has no arguments and therefore no value.")
   else:
-    error(n.repr & " doesn't have a pragma named " & cp.repr(), n)
+    error(n.repr & " doesn't have a pragma named " & cp.repr, n)
 
 macro unpackVarargs*(callee: untyped; args: varargs[untyped]): untyped =
   result = newCall(callee)
