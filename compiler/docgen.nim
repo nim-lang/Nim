@@ -527,12 +527,36 @@ proc prepareExample(d: PDoc; n: PNode): string =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
-proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
+proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope, previousIsRunnable: var bool) =
+  ##[
+  previousIsRunnable: keep track of whether previous sibling was a runnableExample (true if 1st sibling though).
+  This is to ensure this works:
+  proc fn* =
+    runnableExamples: discard
+    ## d1
+    runnableExamples: discard
+    ## d2
+
+    ## d3 # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
+  
+  It also works with:
+  proc fn* =
+    ## d0
+    runnableExamples: discard
+    ## d1
+    
+    etc
+  ]##
   if n.info.fileIndex != orig.info.fileIndex: return
   case n.kind
+  of nkCommentStmt:
+    if previousIsRunnable:
+      dest.add genRecComment(d, n)
+    previousIsRunnable = false
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
         n.len >= 2 and n.lastSon.kind == nkStmtList:
+      previousIsRunnable = true
       let rdoccmd = prepareExample(d, n)
       var msg = "Example:"
       if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
@@ -553,12 +577,15 @@ proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
         inc i
         nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
-  else: discard
+  else: previousIsRunnable = false
+
+  var previousIsRunnable2 = true
   for i in 0..<n.safeLen:
-    getAllRunnableExamplesRec(d, n[i], orig, dest)
+    getAllRunnableExamplesRec(d, n[i], orig, dest, previousIsRunnable2)
 
 proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
-  getAllRunnableExamplesRec(d, n, n, dest)
+  var previousIsRunnable = true
+  getAllRunnableExamplesRec(d, n, n, dest, previousIsRunnable)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -733,7 +760,7 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var result: Rope = nil
   var literal, plainName = ""
   var kind = tkEof
-  var comm = genRecComment(d, n)  # call this here for the side-effect!
+  var comm: Rope = nil
   getAllRunnableExamples(d, n, comm)
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
