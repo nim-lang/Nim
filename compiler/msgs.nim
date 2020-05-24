@@ -11,15 +11,14 @@ import
   options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
 import std/private/miscdollars
+import termutils
 
 type InstantiationInfo = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
-template flushDot(conf, stdorr) =
-  ## safe to call multiple times
-  if conf.lastMsgWasDot:
-    conf.lastMsgWasDot = false
-    write(stdorr, "\n")
+proc getMsgFile(conf: ConfigRef): File =
+    if conf.m.errorOutputs != {}:
+      if optStdout in conf.globalOptions: result = stdout else: result = stderr
 
 proc toCChar*(c: char; result: var string) =
   case c
@@ -293,12 +292,12 @@ proc msgWriteln*(conf: ConfigRef; s: string, flags: MsgFlags = {}) =
     conf.writelnHook(s)
   elif optStdout in conf.globalOptions or msgStdout in flags:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushErasable(stdout)
       writeLine(stdout, s)
       flushFile(stdout)
   else:
     if eStdErr in conf.m.errorOutputs:
-      flushDot(conf, stderr)
+      flushErasable(stderr)
       writeLine(stderr, s)
       # On Windows stderr is fully-buffered when piped, regardless of C std.
       when defined(windows):
@@ -334,27 +333,17 @@ macro callStyledWriteLineStderr(args: varargs[typed]): untyped =
 template callWritelnHook(args: varargs[string, `$`]) =
   conf.writelnHook concat(args)
 
-proc msgWrite(conf: ConfigRef; s: string) =
-  if conf.m.errorOutputs != {}:
-    let stdOrr =
-      if optStdout in conf.globalOptions:
-        stdout
-      else:
-        stderr
-    write(stdOrr, s)
-    flushFile(stdOrr)
-    conf.lastMsgWasDot = true # subsequent writes need `flushDot`
-
-template styledMsgWriteln*(args: varargs[typed]) =
+template styledMsgWriteln*(erasable: bool, args: varargs[typed]) =
+  ## improve pending https://github.com/nim-lang/Nim/issues/14436
   if not isNil(conf.writelnHook):
     callIgnoringStyle(callWritelnHook, nil, args)
   elif optStdout in conf.globalOptions:
     if eStdOut in conf.m.errorOutputs:
-      flushDot(conf, stdout)
+      flushErasable(stdout, erase = erasable)
       callIgnoringStyle(writeLine, stdout, args)
       flushFile(stdout)
   elif eStdErr in conf.m.errorOutputs:
-    flushDot(conf, stderr)
+    flushErasable(stderr, erase = erasable)
     if optUseColors in conf.globalOptions:
       callStyledWriteLineStderr(args)
     else:
@@ -385,7 +374,7 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
       else:
-        styledMsgWriteln(fgRed, "No stack traceback available\n" &
+        styledMsgWriteln(erasable=false, fgRed, "No stack traceback available\n" &
             "To create a stacktrace, rerun compilation with ./koch temp " &
             conf.command & " <file>")
   quit 1
@@ -426,7 +415,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
           instantiationFrom
         else:
           instantiationOfFrom.format(context.detail)
-        styledMsgWriteln(styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
+        styledMsgWriteln(erasable=false, styleBright, conf.toFileLineCol(context.info), " ", resetStyle, message)
     info = context.info
 
 proc ignoreMsgBecauseOfIdeTools(conf: ConfigRef; msg: TMsgKind): bool =
@@ -504,14 +493,18 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     if conf.structuredErrorHook != nil:
       conf.structuredErrorHook(conf, info, s & kindmsg, sev)
     if not ignoreMsgBecauseOfIdeTools(conf, msg):
-      if msg == hintProcessing:
-        msgWrite(conf, ".")
+      if msg in {hintProcessing, hintCC}:
+        when enableErasableLines:
+          updateErasableLinesFromStrs([loc, title, s, kindmsg, "\n"])
+          styledMsgWriteln(erasable=true, styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
+        else:
+          writeErasable(conf.getMsgFile, ".")
       else:
-        styledMsgWriteln(styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
+        styledMsgWriteln(erasable=false, styleBright, loc, resetStyle, color, title, resetStyle, s, KindColor, kindmsg)
         if conf.hasHint(hintSource) and info != unknownLineInfo:
           conf.writeSurroundingSrc(info)
         if conf.hasHint(hintMsgOrigin):
-          styledMsgWriteln(styleBright, toFileLineCol(info2), resetStyle,
+          styledMsgWriteln(erasable=false, styleBright, toFileLineCol(info2), resetStyle,
             " compiler msg initiated here", KindColor,
             KindFormat % hintMsgOrigin.msgToStr,
             resetStyle)

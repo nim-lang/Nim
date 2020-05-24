@@ -20,8 +20,10 @@ type
 
 proc verboseOpen(graph: ModuleGraph; s: PSym): PPassContext =
   #MessageOut('compiling ' + s.name.s);
+  let flag = if optListFullPaths in graph.config.globalOptions: foAbs else: foShort
+  let fname = graph.config.toFilenameOption(s.position.FileIndex, flag)
   result = VerboseRef(config: graph.config)
-  rawMessage(graph.config, hintProcessing, s.name.s)
+  rawMessage(graph.config, hintProcessing, fname)
 
 proc verboseProcess(context: PPassContext, n: PNode): PNode =
   result = n

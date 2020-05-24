@@ -840,12 +840,14 @@ proc hcrLinkTargetName(conf: ConfigRef, objFile: string, isMain = false): Absolu
                    else: platform.OS[conf.target.targetOS].dllFrmt % basename
   result = conf.getNimcacheDir / RelativeFile(targetName)
 
+proc hintCCImpl(conf: ConfigRef, msg: string) =
+  if msg.len > 0: rawMessage(conf, hintCC, msg)
+
 proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
   if conf.hasHint(hintCC):
-    if optListCmd in conf.globalOptions or conf.verbosity > 1:
-      result = MsgKindToStr[hintCC] % (demanglePackageName(path.splitFile.name) & ": " & compileCmd)
-    else:
-      result = MsgKindToStr[hintCC] % demanglePackageName(path.splitFile.name)
+    var suffix = ""
+    if optListCmd in conf.globalOptions or conf.verbosity > 1: suffix = ": " & compileCmd
+    result = demanglePackageName(path.splitFile.name) & suffix
 
 proc callCCompiler*(conf: ConfigRef) =
   var
@@ -857,9 +859,7 @@ proc callCCompiler*(conf: ConfigRef) =
   var script: Rope = nil
   var cmds: TStringSeq
   var prettyCmds: TStringSeq
-  let prettyCb = proc (idx: int) =
-    if prettyCmds[idx].len > 0: echo prettyCmds[idx]
-
+  let prettyCb = proc (idx: int) = hintCCImpl(conf, prettyCmds[idx])
   for idx, it in conf.toCompile:
     # call the C compiler for the .c file:
     if CfileFlag.Cached in it.flags: continue
@@ -1078,8 +1078,7 @@ proc runJsonBuildInstructions*(conf: ConfigRef; projectfile: AbsoluteFile) =
     doAssert toCompile.kind == JArray
     var cmds: TStringSeq
     var prettyCmds: TStringSeq
-    let prettyCb = proc (idx: int) =
-      if prettyCmds[idx].len > 0: echo prettyCmds[idx]
+    let prettyCb = proc (idx: int) = hintCCImpl(conf, prettyCmds[idx])
 
     for c in toCompile:
       doAssert c.kind == JArray
