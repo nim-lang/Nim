@@ -236,9 +236,9 @@ proc setupQuery(db: DbConn, query: SqlQuery,
   var q = dbFormat(query, args)
   if prepare_v2(db, q, q.len.cint, result, nil) != SQLITE_OK: dbError(db)
 
-proc setupQuery(db: DbConn, stmtName: SqlPrepared): PStmt {.since: (1, 3).} =
+proc setupQuery(db: DbConn, stmtName: SqlPrepared): SqlPrepared {.since: (1, 3).} =
   assert(not db.isNil, "Database not connected.")
-  if not tryExec(db, stmtName): dbError(db)
+  result = stmtName
 
 proc setRow(stmt: PStmt, r: var Row, cols: cint) =
   for col in 0'i32..cols-1:
@@ -290,12 +290,12 @@ iterator fastRows*(db: DbConn, query: SqlQuery,
 
 iterator fastRows*(db: DbConn, stmtName: SqlPrepared): Row 
                   {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  var stmt = setupQuery(db, stmtName)
-  var L = (column_count(stmt))
+  discard setupQuery(db, stmtName)
+  var L = (column_count(stmtName.PStmt))
   var result = newRow(L)
   try:
-    while step(stmt) == SQLITE_ROW:
-      setRow(stmt, result, L)
+    while step(stmtName.PStmt) == SQLITE_ROW:
+      setRow(stmtName.PStmt, result, L)
       yield result
   except:
     dbError(db)
@@ -342,7 +342,7 @@ iterator instantRows*(db: DbConn, query: SqlQuery,
 
 iterator instantRows*(db: DbConn, stmtName: SqlPrepared): InstantRow
                       {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  var stmt = setupQuery(db, stmtName)
+  var stmt = setupQuery(db, stmtName).PStmt
   try:
     while step(stmt) == SQLITE_ROW:
       yield stmt
@@ -566,7 +566,7 @@ proc getValue*(db: DbConn, query: SqlQuery,
 
 proc getValue*(db: DbConn,  stmtName: SqlPrepared): string 
               {.tags: [ReadDbEffect,WriteDbEffect], since: (1, 3).} =
-  var stmt = setupQuery(db, stmtName)
+  var stmt = setupQuery(db, stmtName).PStmt
   if step(stmt) == SQLITE_ROW:
     let cb = column_bytes(stmt, 0)
     if cb == 0:
@@ -726,11 +726,11 @@ proc setEncoding*(connection: DbConn, encoding: string): bool {.
 proc finalize*(sqlPrepared:SqlPrepared) {.discardable, since: (1, 3).} = 
   discard finalize(sqlPrepared.PStmt)
 
-template dbBindParamError*(paramIdx: int, val: untyped) =
+template dbBindParamError*(paramIdx: int, val: varargs[untyped]) =
   ## Raises a `DbError` exception.
   var e: ref DbError
   new(e)
-  e.msg = "error binding param in position " & $paramIdx 
+  e.msg = "error binding param in position " & $paramIdx
   raise e
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: int32) {.since: (1, 3).} =
@@ -759,7 +759,7 @@ proc bindNull*(ps: SqlPrepared, paramIdx: int) {.since: (1, 3).} =
   ## Sets the bindparam at the specified paramIndex to null 
   ## (default behaviour by sqlite).
   if bind_null(ps.PStmt, paramIdx.int32) != SQLITE_OK:
-    dbBindParamError(paramIdx, val)
+    dbBindParamError(paramIdx)
 
 proc bindParam*(ps: SqlPrepared, paramIdx: int, val: string, copy = true) {.since: (1, 3).} =
   ## Binds a string to the specified paramIndex.
@@ -774,26 +774,29 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte], copy = true
   if bind_blob(ps.PStmt, paramIdx.int32, val[0].unsafeAddr, len.int32, if copy: SQLITE_TRANSIENT else: SQLITE_STATIC) != SQLITE_OK:
     dbBindParamError(paramIdx, val)
 
-proc unExpectKind(n: NimNode, k: NimNodeKind) {.compileTime.} =
-  if n.kind == k: error("UnExpected a node of kind " & $k ,n)
-
 macro bindParams*(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
   let bindParam = bindSym("bindParam", brOpen)
+  let bindNull = bindSym("bindNull")
   let preparedStatement = genSym()
   result = newStmtList()
   # Store `ps` in a temporary variable. This prevents `ps` from being evaluated every call.
   result.add newNimNode(nnkLetSection).add(newIdentDefs(preparedStatement, newEmptyNode(), ps))
   for idx, param in params:
-    unExpectKind param, nnkBracket
-    result.add newCall(bindParam, preparedStatement, newIntLitNode idx + 1, param)
+    if param.kind != nnkNilLit:
+      result.add newCall(bindParam, preparedStatement, newIntLitNode idx + 1, param)
+    else:
+      result.add newCall(bindNull, preparedStatement, newIntLitNode idx + 1)
 
 macro untypedLen(args: varargs[untyped]): int =
   newLit(args.len)
 
 template exec*(db: DbConn, stmtName: SqlPrepared,
-          args: varargs[untyped]): untyped =
+          args: varargs[typed]): untyped =
   when args.untypedLen > 0:
-    discard clear_bindings(stmtName.PStmt)
+    if reset(stmtName.PStmt) != SQLITE_OK:
+      dbError(db)
+    if clear_bindings(stmtName.PStmt) != SQLITE_OK:
+      dbError(db)
     stmtName.bindParams(args)
   if not tryExec(db, stmtName): dbError(db)
 
@@ -822,29 +825,36 @@ when not defined(testing) and isMainModule:
   for r in db.rows(p4):
     echo(r[0], r[1])
   finalize(p4)
+  var i5 = 0
   var p5 =  db.prepare "select * from tbl2"
   for r in db.instantRows(p5):
+    inc i5
     echo(r[0], r[1])
+  assert i5 == 2
   finalize(p5)
 
   for r in db.rows(sql"select * from tbl2", []):
     echo(r[0], r[1])
   for r in db.instantRows(sql"select * from tbl2", []):
     echo(r[0], r[1])
-  var p6 = db.prepare "select * from tbl2 where one=?"
+  var p6 = db.prepare "select * from tbl2 where one = ? "
   p6.bindParams("goodbye")
-  exec(db, p6)
+  var rowsP3 = 0
   for r in db.rows(p6):
+    rowsP3 = 1
     echo(r[0], r[1])
+  assert rowsP3 == 1
   finalize(p6)
 
   var p7 = db.prepare "select * from tbl2 where two=?"
   p7.bindParams(20'i32)
   when sizeof(int) == 4:
     p7.bindParams(20)
-  exec(db, p7)
+  var rowsP = 0
   for r in db.rows(p7):
+    rowsP = 1
     echo(r[0], r[1])
+  assert rowsP == 1
   finalize(p7)
 
   exec(db, sql"CREATE TABLE photos(ID INTEGER PRIMARY KEY AUTOINCREMENT, photo BLOB)")
@@ -853,7 +863,25 @@ when not defined(testing) and isMainModule:
   p8.bindParams(1'i32, "abcdefghijklmnopqrstuvwxyz")
   exec(db, p8)
   finalize(p8)
+  var p10 = db.prepare "INSERT INTO photos (ID,PHOTO) VALUES (?,?)"
+  p10.bindParams(2'i32,nil)
+  exec(db, p10)
+  exec( db, p10, 3, nil)
+  finalize(p10)
   for r in db.rows(sql"select * from photos where ID = 1", []):
     assert r[1].len == d.len
     assert r[1] == d
+  var i6 = 0
+  for r in db.rows(sql"select * from photos where ID = 3", []):
+    i6 = 1
+  assert i6 == 1
+  var p9 = db.prepare("select * from photos where PHOTO is ?")
+  p9.bindParams(nil)
+  var rowsP2 = 0
+  for r in db.rows(p9):
+    rowsP2 = 1
+    echo(r[0], repr r[1])
+  assert rowsP2 == 1
+  finalize(p9)
+
   db_sqlite.close(db)
