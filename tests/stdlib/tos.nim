@@ -665,3 +665,10 @@ block: # isAdmin
   if isAzure and defined(windows): doAssert isAdmin()
   # In Azure on POSIX tests run as a normal user
   if isAzure and defined(posix): doAssert not isAdmin()
+
+block: # absolutePrefix
+  when defined(posix):
+    doAssert absolutePrefix("//foo") == "//"
+    doAssert absolutePrefix("foo") == ""
+  when defined(windows):
+    doAssert absolutePrefix(r"C:\\\bar") == r"C:\\\"
