@@ -94,7 +94,6 @@
 - The callback that is passed to `system.onThreadDestruction` must now be `.raises: []`.
 - The callback that is assigned to `system.onUnhandledException` must now be `.gcsafe`.
 
-- `osproc.execCmdEx` now takes an optional `input` for stdin.
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
@@ -188,6 +187,9 @@ proc mydiv(a, b): int {.raises: [].} =
   and avoids polluting both $pwd and $projectdir. It can be used with any command.
 - `runnableExamples "-b:cpp -r:off": code` is now supported, allowing to override how an example is compiled and run,
   for example to change backend or compile only.
+- `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
+  passing `--project` now automatically generates an index and enables search.
+  See [docgen](docgen.html#introduction-quick-start) for details.
 
 ## Tool changes
 

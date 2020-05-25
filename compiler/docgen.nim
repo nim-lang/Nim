@@ -17,11 +17,10 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables
+  pathutils, trees, tables, nimpaths
 
 const
   exportSection = skField
-  htmldocsDir = RelativeDir"htmldocs"
   docCmdSkip = "skip"
 
 type
@@ -51,7 +50,7 @@ type
     destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
-    wroteCss*: bool
+    wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
@@ -72,7 +71,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   proc nimbleDir(): AbsoluteDir =
     getNimbleFile(conf, file2).parentDir.AbsoluteDir
   case conf.docRoot:
-  of "@default": # using `@` instead of `$` to avoid shell quoting complications
+  of docRootDefault:
     result = getRelativePathFromConfigPath(conf, file)
     let dir = nimbleDir()
     if not dir.isEmpty:
@@ -88,9 +87,12 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     result = getRelativePathFromConfigPath(conf, file)
     if result.isEmpty: bail()
   elif conf.docRoot.len > 0:
-    doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
-    doAssert conf.docRoot.existsDir, conf.docRoot
-    result = relativeTo(file, conf.docRoot.AbsoluteDir)
+    # we're (currently) requiring `isAbsolute` to avoid confusion when passing
+    # a relative path (would it be relative wrt $PWD or to projectfile)
+    conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    # needed because `canonicalizePath` called on `file`
+    result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
     bail()
   if isAbsolute(result.string):
@@ -1125,11 +1127,8 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
-const nimdocOutCss = "nimdoc.out.css"
-  # `out` to make it easier to use with gitignore in user's repos
-
-proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
-  rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
+proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
+  rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
 proc genOutFile(d: PDoc): Rope =
   var
@@ -1160,15 +1159,17 @@ proc genOutFile(d: PDoc): Rope =
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile)])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
-        "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+        "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [cssHref(d.conf.outDir, d.destFile), title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        [relLink(d.conf.outDir, d.destFile, nimdocOutCss.RelativeFile),
+        relLink(d.conf.outDir, d.destFile, docHackJsFname.RelativeFile),
+        title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
@@ -1203,11 +1204,13 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
-    elif not d.wroteCss:
-      let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-      let cssDest = $dir / nimdocOutCss
-      copyFile(cssSource, cssDest)
-      d.wroteCss = true
+    elif not d.wroteSupportFiles: # nimdoc.css + dochack.js
+      let nimr = $d.conf.getPrefixDir()
+      copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      if optGenIndex in d.conf.globalOptions:
+        let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
+        copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)
+      d.wroteSupportFiles = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1234,6 +1237,8 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
 proc handleDocOutputOptions*(conf: ConfigRef) =
   if optWholeProject in conf.globalOptions:
     # Backward compatibility with previous versions
+    # xxx this is buggy when user provides `nim doc --project -o:sub/bar.html main`,
+    # it'd write to `sub/bar.html/main.html`
     conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
@@ -1308,20 +1313,23 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename.string)
 
-proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
-  var content = mergeIndexes(conf.projectFull.string).rope
+proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
+  var content = mergeIndexes(dir).rope
 
-  var outFile = RelativeFile"theindex"
-  if conf.outFile != RelativeFile"":
-    outFile = conf.outFile
+  var outFile = outFile
+  if outFile.isEmpty: outFile = theindexFname.RelativeFile.changeFileExt("")
   let filename = getOutFile(conf, outFile, HtmlExt)
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
-      "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+      "nimdoccss", "dochackjs",
+      "title", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
-      [cssHref(conf.outDir, filename), rope"Index", nil, nil, rope(getDateStr()),
+      [relLink(conf.outDir, filename, nimdocOutCss.RelativeFile),
+      relLink(conf.outDir, filename, docHackJsFname.RelativeFile),
+      rope"Index", nil, nil, rope(getDateStr()),
       rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
 
   if not writeRope(code, filename):
     rawMessage(conf, errCannotOpenFile, filename.string)
+

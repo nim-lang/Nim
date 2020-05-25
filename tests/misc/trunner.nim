@@ -8,19 +8,20 @@ discard """
 ## Note: this test is a bit slow but tests a lot of things; please don't disable.
 
 import std/[strformat,os,osproc,unittest]
+from std/sequtils import toSeq,mapIt
+from std/algorithm import sorted
+import stdtest/[specialpaths, unittest_light]
 
-const nim = getCurrentCompilerExe()
+import "$nim/compiler/nimpaths"
 
-const mode =
-  when defined(c): "c"
-  elif defined(cpp): "cpp"
-  else: static: doAssert false
-
-const testsDir = currentSourcePath.parentDir.parentDir
-const buildDir = testsDir.parentDir / "build"
-const nimcache = buildDir / "nimcacheTrunner"
-  # `querySetting(nimcacheDir)` would also be possible, but we thus
-  # avoid stomping on other parallel tests
+const
+  nim = getCurrentCompilerExe()
+  mode =
+    when defined(c): "c"
+    elif defined(cpp): "cpp"
+    else: static: doAssert false
+  nimcache = buildDir / "nimcacheTrunner"
+    # instead of `querySetting(nimcacheDir)`, avoids stomping on other parallel tests
 
 proc runCmd(file, options = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
@@ -62,6 +63,82 @@ ret=[s1:foobar s2:foobar age:25 pi:3.14]
 else: # don't run twice the same test
   import std/[strutils]
   template check2(msg) = doAssert msg in output, output
+
+  block: # tests with various options `nim doc --project --index --docroot`
+    # regression tests for issues and PRS: #14376 #13223 #6583 ##13647
+    let file = testsDir / "nimdoc/sub/mmain.nim"
+    let mainFname = "mmain.html"
+    let htmldocsDirCustom = nimcache / "htmldocsCustom"
+    let docroot = testsDir / "nimdoc"
+    let options = [
+      0: "--project",
+      1: "--project --docroot",
+      2: "",
+      3: fmt"--outDir:{htmldocsDirCustom}",
+      4: fmt"--docroot:{docroot}",
+      5: "--project --useNimcache",
+      6: "--index:off",
+    ]
+
+    for i in 0..<options.len:
+      let htmldocsDir = case i
+      of 3: htmldocsDirCustom
+      of 5: nimcache / htmldocsDirname
+      else: file.parentDir / htmldocsDirname
+
+      var cmd = fmt"{nim} doc --index:on --listFullPaths --hint:successX:on --nimcache:{nimcache} {options[i]} {file}"
+      removeDir(htmldocsDir)
+      let (outp, exitCode) = execCmdEx(cmd)
+      check exitCode == 0
+      proc nativeToUnixPathWorkaround(a: string): string =
+        # xxx pending https://github.com/nim-lang/Nim/pull/13265 `nativeToUnixPath`
+        a.replace(DirSep, '/')
+
+      let ret = toSeq(walkDirRec(htmldocsDir, relative=true)).mapIt(it.nativeToUnixPathWorkaround).sorted.join("\n")
+      let context = $(i, ret, cmd)
+      var expected = ""
+      case i
+      of 0,5:
+        let htmlFile = htmldocsDir/"mmain.html"
+        check htmlFile in outp # sanity check for `hintSuccessX`
+        assertEquals ret, """
+@@/imp.html
+@@/imp.idx
+dochack.js
+imp.html
+imp.idx
+imp2.html
+imp2.idx
+mmain.html
+mmain.idx
+nimdoc.out.css
+theindex.html""", context
+      of 1: assertEquals ret, """
+dochack.js
+nimdoc.out.css
+tests/nimdoc/imp.html
+tests/nimdoc/imp.idx
+tests/nimdoc/sub/imp.html
+tests/nimdoc/sub/imp.idx
+tests/nimdoc/sub/imp2.html
+tests/nimdoc/sub/imp2.idx
+tests/nimdoc/sub/mmain.html
+tests/nimdoc/sub/mmain.idx
+theindex.html"""
+      of 2, 3: assertEquals ret, """
+dochack.js
+mmain.html
+mmain.idx
+nimdoc.out.css""", context
+      of 4: assertEquals ret, """
+dochack.js
+nimdoc.out.css
+sub/mmain.html
+sub/mmain.idx""", context
+      of 6: assertEquals ret, """
+mmain.html
+nimdoc.out.css""", context
+      else: doAssert false
 
   block: # mstatic_assert
     let (output, exitCode) = runCmd("ccgbugs/mstatic_assert.nim", "-d:caseBad")
@@ -121,7 +198,7 @@ else: # don't run twice the same test
       let cmd = fmt"""{nim} doc -b:{backend} --nimcache:{nimcache} -d:m13129Foo1 "--doccmd:-d:m13129Foo2 --hints:off" --usenimcache --hints:off {file}"""
       check execCmdEx(cmd) == (&"ok1:{backend}\nok2: backend: {backend}\n", 0)
     # checks that --usenimcache works with `nim doc`
-    check fileExists(nimcache / "m13129.html")
+    check fileExists(nimcache / "htmldocs/m13129.html")
 
     block: # mak sure --backend works with `nim r`
       let cmd = fmt"{nim} r --backend:{mode} --hints:off --nimcache:{nimcache} {file}"
