@@ -167,7 +167,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
   else:
     not self.has
 
-proc get*[T](self: Option[T]): T {.inline.} =
+proc get*[T](self: Option[T]): lent T {.inline.} =
   ## Returns contents of an `Option`. If it is `None`, then an exception is
   ## thrown.
   ##
@@ -183,7 +183,7 @@ proc get*[T](self: Option[T]): T {.inline.} =
 
   if self.isNone:
     raise newException(UnpackError, "Can't obtain a value from a `none`")
-  self.val
+  result = self.val
 
 proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
   ## Returns the contents of the `Option` or an `otherwise` value if
