@@ -25,7 +25,7 @@ Raises
 """
 # test os path creation, iteration, and deletion
 
-import os, strutils, pathnorm
+import std/[os, strutils, pathnorm, unittest]
 from stdtest/specialpaths import buildDir
 
 block fileOperations:
@@ -670,5 +670,18 @@ block: # absolutePrefix
   when defined(posix):
     doAssert absolutePrefix("//foo") == "//"
     doAssert absolutePrefix("foo") == ""
+
+block nativeToUnixPath:
+  check:
+    nativeToUnixPath("") == ""
+    nativeToUnixPath("foo") == "foo"
+    nativeToUnixPath("foo/bar") == "foo/bar"
+    nativeToUnixPath("/") == "/"
+    nativeToUnixPath(".") == "."
+
   when defined(windows):
-    doAssert absolutePrefix(r"C:\\\bar") == r"C:\\\"
+    check:
+      nativeToUnixPath(r"C:\foo\bar") == "/foo/bar"
+      nativeToUnixPath(r"\foo\bar") == "/foo/bar"
+      # tricky case
+      nativeToUnixPath(r"C:foo\bar") == "foo/bar"

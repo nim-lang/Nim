@@ -76,7 +76,6 @@
 
 - `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
-- Added `os.absolutePrefix` to return the root path component for absolute paths
 - Added `os.nativeToUnixPath` to convert a native path to a UNIX path.
 
 - Improvements to the `bitops` module, including bitslices, non-mutating versions
