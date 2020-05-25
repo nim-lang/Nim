@@ -1491,7 +1491,7 @@ proc findPragmaExprForFieldSym(arg, fieldSym: NimNode): NimNode =
       result = findPragmaExprForFieldSym(child, fieldSym)
       if result != nil:
         return
-  of nnkIdent, nnkSym, nnkPostfix:
+  of nnkAccQuoted, nnkIdent, nnkSym, nnkPostfix:
     return nil
   of nnkPragmaExpr:
     var ident = arg[0]
@@ -1628,6 +1628,8 @@ macro hasCustomPragma*(n: typed, cp: typed{nkSym}): bool =
       result = newLit(getPragmaByName(pragmaExpr, $cp) != nil)
     else:
       typeSym.expectKind nnkSym
+  of nnkBracketExpr:
+    result = newLit(false)
   else:
     n.expectKind({nnkDotExpr, nnkCheckedFieldExpr, nnkSym, nnkTypeOfExpr})
 
