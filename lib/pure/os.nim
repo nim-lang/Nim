@@ -284,6 +284,35 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
+proc absolutePrefix*(path: string): string {.since: (1, 3, 7).} =
+  ## returns the root path component for absolute paths, empty for relative paths.
+  ## See also `isAbsolute`.
+  runnableExamples:
+    when defined(posix):
+      doAssert absolutePrefix("//foo") == "//"
+      doAssert absolutePrefix("foo") == ""
+    when defined(windows):
+      doAssert absolutePrefix(r"C:\\\bar") == r"C:\\\"
+  var i = 0
+  let len = len(path)
+  when doslikeFileSystem:
+    while i < len:
+      if path[i] in {DirSep, AltSep}: i.inc
+      elif i == 0 and path[0] in {'a'..'z', 'A'..'Z'} and len > 1 and path[1] == ':': i.inc
+      else: break
+  elif defined(macos):
+    # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
+    while i < len:
+      if path[i] != ':': i.inc
+      else: break
+  elif defined(RISCOS):
+    if len > 0 and path[0] == '$': i = 1
+  elif defined(posix):
+    while i < len:
+      if path[i] == '/': i.inc
+      else: break
+  result = path[0 ..< i]
+
 proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
   ## Checks whether a given `path` is absolute.
   ##
@@ -826,7 +855,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
     else:
       result = cmpIgnoreCase(a, b)
 
-proc nativeToUnixPath*(path: string, keepDrive = false): string {.noSideEffect, since: (1, 3, 5).} =
+proc nativeToUnixPath*(path: string, keepDrive = false): string {.noSideEffect, since: (1, 3, 7).} =
   ## Converts a native path to a UNIX path; on windows, the drive is converted to
   ## `/`.
   ## See also `unixToNativePath`.

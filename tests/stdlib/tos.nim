@@ -667,11 +667,17 @@ block: # isAdmin
   if isAzure and defined(posix): doAssert not isAdmin()
 
 block: # absolutePrefix
-  when defined(posix):
-    doAssert absolutePrefix("//foo") == "//"
-    doAssert absolutePrefix("foo") == ""
+  check:
+    absolutePrefix("//foo") == "//"
+    absolutePrefix("foo") == ""
+  when defined(windows):
+    check:
+      nativeToUnixPath(r"C:\foo\bar") == "/foo/bar"
+      nativeToUnixPath(r"\foo\bar") == "/foo/bar"
+      # tricky case
+      nativeToUnixPath(r"C:foo\bar") == "foo/bar"
 
-block nativeToUnixPath:
+block: # nativeToUnixPath
   check:
     nativeToUnixPath("") == ""
     nativeToUnixPath("foo") == "foo"
