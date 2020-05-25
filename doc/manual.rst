@@ -3707,6 +3707,71 @@ location is derived from the second parameter (called
 ``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
 
 
+NRVO
+----
+
+The return value is represented inside the body of a routine as the special
+`result`:idx: variable. This allows for a mechanism much like C++'s
+"named return value optimization" (`NRVO`:idx:). NRVO means that the stores
+to ``result`` inside ``p`` directly affect the destination ``dest``
+in ``let/var dest = p(args)`` (definition of ``dest``) and also in ``dest = p(args)``
+(assignment to ``dest``). This is achieved by rewriting ``dest = p(args)``
+to ``p'(args, dest)`` where ``p'`` is a variation of ``p`` that returns ``void`` and
+receives a hidden mutable parameter representing ``result``.
+
+Informally:
+
+.. code-block:: nim
+  proc p(): BigT = ...
+
+  var x = p()
+  x = p()
+
+  # is roughly turned into:
+
+  proc p(result: var BigT) = ...
+
+  var x; p(x)
+  p(x)
+
+
+Let ``T``'s be ``p``'s return type. NRVO applies for ``T``
+if ``sizeof(T) >= N`` (where ``N`` is implementation dependent),
+in other words, it applies for "big" structures.
+
+If ``p`` can raise an exception, NRVO applies regardless. This can produce
+observable differences in behavior:
+
+.. code-block:: nim
+
+  type
+    BigT = array[16, int]
+
+  proc p(raiseAt: int): BigT =
+    for i in 0..high(result):
+      if i == raiseAt: raise newException(ValueError, "interception")
+      result[i] = i
+
+  proc main =
+    var x: BigT
+    try:
+      x = p(8)
+    except ValueError:
+      doAssert x == [0, 1, 2, 3, 4, 5, 6, 7, 0, 0, 0, 0, 0, 0, 0, 0]
+
+  main()
+
+
+However, the current implementation produces a warning in these cases.
+There are different ways to deal with this warning:
+
+1. Disable the warning via ``{.push warning[ObservableStores]: off.}`` ... ``{.pop.}``.
+   Then one may need to ensure that ``p`` only raises *before* any stores to ``result``
+   happen.
+
+2. One can use a temporary helper variable, for example instead of ``x = p(8)``
+   use ``let tmp = p(8); x = tmp``.
+
 
 Overloading of the subscript operator
 -------------------------------------
