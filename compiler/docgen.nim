@@ -100,7 +100,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   if isTitle:
     result = result.string.nativeToUnix.RelativeFile
   else:
-    result = result.string.replace("..", "@@").RelativeFile ## refs #13223
+    result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
   doAssert not isAbsolute(result.string)
 
@@ -926,7 +926,7 @@ proc traceDeps(d: PDoc, it: PNode) =
     if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
-          "$1", [rope esc(d.target, changeFileExt(external, "")),
+          "$1", [rope esc(d.target, external.prettyLink),
           rope changeFileExt(external, "html")])
 
 proc exportSym(d: PDoc; s: PSym) =
@@ -936,7 +936,7 @@ proc exportSym(d: PDoc; s: PSym) =
     if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
-          "$1", [rope esc(d.target, changeFileExt(external, "")),
+          "$1", [rope esc(d.target, external.prettyLink),
           rope changeFileExt(external, "html")])
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)

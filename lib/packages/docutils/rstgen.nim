@@ -78,6 +78,11 @@ type
     testCmd: string
     status: int
 
+const dotdotMangle* = "@@"  ## refs #13223
+
+proc prettyLink*(file: string): string =
+  changeFileExt(file, "").replace(dotdotMangle, "..")
+
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
   p.startLine = 1
@@ -574,7 +579,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   var chunks: seq[string] = @[]
   for name in modules:
-    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+    chunks.add("<a href=\"$1.html\">$2</a>" % [name, name.prettyLink])
 
   result.add(chunks.join(", ") & ".<br/>")
 
