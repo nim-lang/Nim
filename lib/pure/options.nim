@@ -40,7 +40,7 @@
 ##    assert found.isSome and found.get() == 2
 ##
 ## The `get` operation demonstrated above returns the underlying value, or
-## raises `UnpackError` if there is no value. Note that `UnpackError`
+## raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
 ## inherits from `system.Defect`, and should therefore never be caught.
 ## Instead, rely on checking if the option contains a value with
 ## `isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
@@ -178,11 +178,11 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
       a = some(42)
       b = none(string)
     assert a.get == 42
-    doAssertRaises(UnpackError):
+    doAssertRaises(UnpackDefect):
       echo b.get
 
   if self.isNone:
-    raise newException(UnpackError, "Can't obtain a value from a `none`")
+    raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   result = self.val
 
 proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
@@ -208,11 +208,11 @@ proc get*[T](self: var Option[T]): var T {.inline.} =
       a = some(42)
       b = none(string)
     assert a.get == 42
-    doAssertRaises(UnpackError):
+    doAssertRaises(UnpackDefect):
       echo b.get
 
   if self.isNone:
-    raise newException(UnpackError, "Can't obtain a value from a `none`")
+    raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   return self.val
 
 proc map*[T](self: Option[T], callback: proc (input: T)) {.inline.} =
@@ -411,7 +411,7 @@ when isMainModule:
       check some("a").isSome
 
     test "none":
-      expect UnpackError:
+      expect UnpackDefect:
         discard none(int).get()
       check(none(int).isNone)
       check(not none(string).isSome)

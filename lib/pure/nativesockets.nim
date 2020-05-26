@@ -447,7 +447,7 @@ proc getSockDomain*(socket: SocketHandle): Domain =
     raiseOSError(osLastError())
   try:
     result = toKnownDomain(name.sin6_family.cint).get()
-  except UnpackError:
+  except UnpackDefect:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
