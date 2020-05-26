@@ -15,8 +15,14 @@ iterator myParentDirs(p: string): string =
     if current.len == 0: break
     yield current
 
-proc getNimbleFile*(conf: ConfigRef; path: string): string =
+iterator walkFiles2(patterns: seq[string]): string =
+  for p in patterns:
+    for file in walkFiles(p):
+      yield file
+
+proc getNimbleBabelFile*(conf: ConfigRef; path: string): string =
   ## returns absolute path to nimble file, eg: /pathto/cligen.nimble
+  ## Note: could also return a .babel file, see below
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
@@ -24,9 +30,25 @@ proc getNimbleFile*(conf: ConfigRef; path: string): string =
         #echo "from cache ", d, " |", packageCache[d], "|", path.splitFile.name
         return conf.packageCache[d]
       inc parents
-      for file in walkFiles(d / "*.nimble"):
+      for file in walkFiles2(@[d / "*.nimble", d / "*.babel"]):
         result = file
         break packageSearch
+      #[
+      see #14453
+      cairo doesn't contain a cairo.nimble file, instead it has a cairo.babel file
+      which is deprecated but we must honor it otherwise you get hit by #14453.
+      Note: we can't rely on whether `nimblemeta.json` exists even if nimble
+      always creates one for both `install` and `develop`, because for `nimble develop`,
+      it's under ~/.nimble/pkgs/cairo-#head/nimblemeta.json yet `d` is wherever
+      you've cloned the repo.
+      It's not clear how to entirely purge old babel logic because old dependencies
+      from pacakges (eg `import ggplotnim` caused that see #14453).
+      Repro:
+      git clone https://github.com/nim-lang/cairo && cd cairo
+      git checkout aee593dd189a1e65b91ada4c098a49757a26fbe1
+      nimble develop => no `nimblemeta.json`, no cairo.nimble, only cairo.babel
+      ditto for ~/.nimble/pkgs/cairo--1.0/ instealled by `import ggplotnim`
+      ]#
   # we also store if we didn't find anything:
   when not defined(nimNoNilSeqs):
     if result.isNil: result = ""
@@ -36,9 +58,12 @@ proc getNimbleFile*(conf: ConfigRef; path: string): string =
     dec parents
     if parents <= 0: break
 
+proc getPackageDir*(conf: ConfigRef, path: string): string =
+  getNimbleBabelFile(conf, path).parentDir
+
 proc getPackageName*(conf: ConfigRef; path: string): string =
   ## returns nimble package name, eg: `cligen`
-  let path = getNimbleFile(conf, path)
+  let path = getNimbleBabelFile(conf, path)
   result = path.splitFile.name
 
 proc fakePackageName*(conf: ConfigRef; path: AbsoluteFile): string =

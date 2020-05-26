@@ -68,8 +68,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   let file2 = $file
   template bail() =
     result = relativeTo(file, conf.projectPath)
-  proc nimbleDir(): AbsoluteDir =
-    getNimbleFile(conf, file2).parentDir.AbsoluteDir
+  proc nimbleDir(): AbsoluteDir = conf.getPackageDir(file2).AbsoluteDir
   case conf.docRoot:
   of docRootDefault:
     result = getRelativePathFromConfigPath(conf, file)
@@ -80,6 +79,9 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
         result = result2
     if result.isEmpty: bail()
   of "@pkg":
+    # xxx: the better semantic would be the `src` attribute in the nimble package
+    # if we can retrieve it; unfortunately `nimblemeta.json` doesn't show it,
+    # we'd need to parse teh nimble file or call `nimble dump $pkg`
     let dir = nimbleDir()
     if dir.isEmpty: bail()
     else: result = relativeTo(file, dir)
