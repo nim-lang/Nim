@@ -700,10 +700,8 @@ RunProgram="tools\downloader.exe"
           if execShellCmd("tar cf $1.tar $1" % proj) != 0:
             echo("External program failed")
 
-        if execShellCmd("xz -T0 -9f $1.tar" % proj) != 0:
-          # Maybe the xz version is too old and doesn't support threading
-          if execShellCmd("xz -9f $1.tar" % proj) != 0:
-            echo("External program failed")
+        if execShellCmd("xz -9f $1.tar" % proj) != 0:
+          echo("External program failed")
     finally:
       setCurrentDir(oldDir)
 
