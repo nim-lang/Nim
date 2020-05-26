@@ -1,6 +1,15 @@
 #[
 todo: move findNimStdLibCompileTime, findNimStdLib here
 xxx: consider moving this to $nim/compiler/relpaths.nim to get relocatable paths
+
+## note: $lib vs $nim
+note: these can resolve to 3 different paths if running via `nim c --lib:lib foo`,
+eg if compiler was installed via nimble (or is in nim path), and nim is external
+(ie not in `$lib/../bin/` dir)
+
+import "$lib/../compiler/nimpaths" # <- most robust if you want to favor --lib:lib
+import "$nim/compiler/nimpaths"
+import compiler/nimpaths
 ]#
 
 import os
