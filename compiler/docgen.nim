@@ -81,7 +81,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   of "@pkg":
     # xxx: the better semantic would be the `src` attribute in the nimble package
     # if we can retrieve it; unfortunately `nimblemeta.json` doesn't show it,
-    # we'd need to parse teh nimble file or call `nimble dump $pkg`
+    # we'd need to parse the nimble file or call `nimble dump $pkg`
     let dir = nimbleDir()
     if dir.isEmpty: bail()
     else: result = relativeTo(file, dir)

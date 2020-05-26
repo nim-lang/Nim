@@ -22,7 +22,8 @@ iterator walkFiles2(patterns: seq[string]): string =
 
 proc getNimbleBabelFile*(conf: ConfigRef; path: string): string =
   ## returns absolute path to nimble file, eg: /pathto/cligen.nimble
-  ## Note: could also return a .babel file, see below
+  ## Note: could also return a .babel file if an old version of a package is
+  ## required as a dependency, see below
   var parents = 0
   block packageSearch:
     for d in myParentDirs(path):
@@ -35,15 +36,16 @@ proc getNimbleBabelFile*(conf: ConfigRef; path: string): string =
         break packageSearch
       #[
       see #14453
-      cairo doesn't contain a cairo.nimble file, instead it has a cairo.babel file
+      `cairo` doesn't contain a cairo.nimble file, instead it has a cairo.babel file
       which is deprecated but we must honor it otherwise you get hit by #14453.
       Note: we can't rely on whether `nimblemeta.json` exists even if nimble
       always creates one for both `install` and `develop`, because for `nimble develop`,
       it's under ~/.nimble/pkgs/cairo-#head/nimblemeta.json yet `d` is wherever
-      you've cloned the repo.
+      you've cloned the repo see below.
       It's not clear how to entirely purge old babel logic because old dependencies
       from pacakges (eg `import ggplotnim` caused that see #14453).
-      Repro:
+      
+      this shows `nimblemeta.json` isn't enough:
       git clone https://github.com/nim-lang/cairo && cd cairo
       git checkout aee593dd189a1e65b91ada4c098a49757a26fbe1
       nimble develop => no `nimblemeta.json`, no cairo.nimble, only cairo.babel
