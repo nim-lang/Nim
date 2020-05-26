@@ -28,6 +28,8 @@
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
 
+import "$lib/../compiler/nimpaths"
+
 const
   HtmlExt = "html"
   IndexExt* = ".idx"
@@ -77,8 +79,6 @@ type
     filename: string
     testCmd: string
     status: int
-
-const dotdotMangle* = "@@"  ## refs #13223
 
 proc prettyLink*(file: string): string =
   changeFileExt(file, "").replace(dotdotMangle, "..")

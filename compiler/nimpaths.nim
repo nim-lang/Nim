@@ -27,6 +27,9 @@ const
   nimdocOutCss* = "nimdoc.out.css"
     # `out` to make it easier to use with gitignore in user's repos
   htmldocsDirname* = "htmldocs"
+  dotdotMangle* = "_._"  ## refs #13223
+    # if this changes, make sure it's consistent with `esc` and `escapeLink`
+    # lots of other obvious options won't work, see #14454; `_` could work too
 
 proc interp*(path: string, nimr: string): string =
   result = path % ["nimr", nimr]

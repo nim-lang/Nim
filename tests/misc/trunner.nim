@@ -12,7 +12,7 @@ from std/sequtils import toSeq,mapIt
 from std/algorithm import sorted
 import stdtest/[specialpaths, unittest_light]
 
-import "$nim/compiler/nimpaths"
+import "$lib/../compiler/nimpaths"
 
 const
   nim = getCurrentCompilerExe()
@@ -101,21 +101,21 @@ else: # don't run twice the same test
       of 0,5:
         let htmlFile = htmldocsDir/"mmain.html"
         check htmlFile in outp # sanity check for `hintSuccessX`
-        assertEquals ret, """
-@@/imp.html
-@@/imp.idx
-dochack.js
+        assertEquals ret, fmt"""
+{dotdotMangle}/imp.html
+{dotdotMangle}/imp.idx
+{docHackJsFname}
 imp.html
 imp.idx
 imp2.html
 imp2.idx
 mmain.html
 mmain.idx
-nimdoc.out.css
-theindex.html""", context
-      of 1: assertEquals ret, """
-dochack.js
-nimdoc.out.css
+{nimdocOutCss}
+{theindexFname}""", context
+      of 1: assertEquals ret, fmt"""
+{docHackJsFname}
+{nimdocOutCss}
 tests/nimdoc/imp.html
 tests/nimdoc/imp.idx
 tests/nimdoc/sub/imp.html
@@ -124,20 +124,20 @@ tests/nimdoc/sub/imp2.html
 tests/nimdoc/sub/imp2.idx
 tests/nimdoc/sub/mmain.html
 tests/nimdoc/sub/mmain.idx
-theindex.html"""
-      of 2, 3: assertEquals ret, """
-dochack.js
+{theindexFname}"""
+      of 2, 3: assertEquals ret, fmt"""
+{docHackJsFname}
 mmain.html
 mmain.idx
-nimdoc.out.css""", context
-      of 4: assertEquals ret, """
-dochack.js
-nimdoc.out.css
+{nimdocOutCss}""", context
+      of 4: assertEquals ret, fmt"""
+{docHackJsFname}
+{nimdocOutCss}
 sub/mmain.html
 sub/mmain.idx""", context
-      of 6: assertEquals ret, """
+      of 6: assertEquals ret, fmt"""
 mmain.html
-nimdoc.out.css""", context
+{nimdocOutCss}""", context
       else: doAssert false
 
   block: # mstatic_assert
