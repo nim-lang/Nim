@@ -1291,7 +1291,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     r = semTypeNode(c, n[0], nil)
 
   if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
-    # XXX: To implement the propesed change in the warning, just
+    # XXX: To implement the proposed change in the warning, just
     # delete this entire if block. The rest is (at least at time of
     # writing this comment) already implemented.
     let info = n[0].info
