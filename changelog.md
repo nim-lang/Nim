@@ -3,6 +3,8 @@
 
 
 ## Standard library additions and changes
+
+- Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
 - Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
 - `uri` adds Data URI Base64, implements RFC-2397.
@@ -192,4 +194,3 @@ proc mydiv(a, b): int {.raises: [].} =
   See [docgen](docgen.html#introduction-quick-start) for details.
 
 ## Tool changes
-
