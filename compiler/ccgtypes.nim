@@ -238,7 +238,7 @@ const
     "N_STDCALL", "N_CDECL", "N_SAFECALL",
     "N_SYSCALL", # this is probably not correct for all platforms,
                  # but one can #define it to what one wants
-    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_CLOSURE", "N_NOCONV"]
+    "N_INLINE", "N_NOINLINE", "N_FASTCALL", "N_THISCALL", "N_CLOSURE", "N_NOCONV"]
 
 proc cacheGetType(tab: TypeCache; sig: SigHash): Rope =
   # returns nil if we need to declare this type

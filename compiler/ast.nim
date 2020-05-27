@@ -25,12 +25,13 @@ type
     ccInline,                 # proc should be inlined
     ccNoInline,               # proc should not be inlined
     ccFastCall,               # fastcall (pass parameters in registers)
+    ccThisCall,               # thiscall (parameters are pushed right-to-left)
     ccClosure,                # proc has a closure
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const
   CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall",
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
     "closure", "noconv"]
 
 type
