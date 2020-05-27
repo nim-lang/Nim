@@ -445,9 +445,10 @@ proc getSockDomain*(socket: SocketHandle): Domain =
   if getsockname(socket, cast[ptr SockAddr](addr(name)),
                  addr(namelen)) == -1'i32:
     raiseOSError(osLastError())
-  try:
-    result = toKnownDomain(name.sin6_family.cint).get()
-  except UnpackError:
+  let knownDomain = toKnownDomain(name.sin6_family.cint)
+  if knownDomain.isSome:
+    result = knownDomain.get()
+  else:
     raise newException(IOError, "Unknown socket family in getSockDomain")
 
 proc getAddrString*(sockAddr: ptr SockAddr): string =
