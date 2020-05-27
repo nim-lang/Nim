@@ -45,7 +45,11 @@ const
   Usage = """
 drnim [options] [projectfile]
 
-Options: Same options that the Nim compiler supports.
+Options: Same options that the Nim compiler supports. Plus:
+
+--assumeUnique   Assume unique `ref` pointers. This makes the analysis unsound
+                 but more useful for wild Nim code such as the Nim compiler
+                 itself.
 """
 
 proc getCommandLineDesc(conf: ConfigRef): string =
@@ -256,6 +260,16 @@ proc notImplemented(msg: string) {.noinline.} =
     echo msg
   raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & msg)
 
+proc notImplemented(n: PNode) {.noinline.} =
+  when defined(debug):
+    writeStackTrace()
+  raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & $n)
+
+proc notImplemented(t: PType) {.noinline.} =
+  when defined(debug):
+    writeStackTrace()
+  raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & typeToString t)
+
 proc translateEnsures(e, x: PNode): PNode =
   if e.kind == nkSym and e.sym.kind == skResult:
     result = x
@@ -277,7 +291,7 @@ proc typeToZ3(c: DrCon; t: PType): Z3_sort =
     result = Z3_mk_bv_sort(ctx, 64)
     #cuint(getSize(c.graph.config, t) * 8))
   else:
-    notImplemented(typeToString(t))
+    notImplemented(t)
 
 template binary(op, a, b): untyped =
   var arr = [a, b]
@@ -295,7 +309,7 @@ proc nodeToDomain(c: var DrCon; n, q: PNode; opAnd: PSym): PNode =
     let opLt = createMagic(c.graph, "<", mLtI)
     result = buildCall(opAnd, buildCall(opLe, n[1], q), buildCall(opLt, q, n[2]))
   else:
-    notImplemented($n)
+    notImplemented(n)
 
 template quantorToZ3(fn) {.dirty.} =
   template ctx: untyped = c.up.z3
@@ -359,8 +373,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     result = Z3_mk_fpa_numeral_double(ctx, n.floatVal, Z3_mk_fpa_sort_double(ctx))
   of nkCallKinds:
     assert n.len > 0
-    assert n[0].kind == nkSym
-    let operator = n[0].sym.magic
+    let operator = getMagic(n)
     case operator
     of mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
         mEqStr, mEqSet, mEqCString:
@@ -380,7 +393,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
           c.mapping[key] = result
           vars.add n
       else:
-        notImplemented(renderTree(n))
+        notImplemented(n)
     of mHigh:
       let addOpr = createMagic(c.graph, "+", mAddI)
       let lenOpr = createMagic(c.graph, "len", mLengthOpenArray)
@@ -486,7 +499,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
             vars.add n
 
       if pointer(result) == nil:
-        notImplemented(renderTree(n))
+        notImplemented(n)
   of nkStmtListExpr, nkPar:
     var isTrivial = true
     for i in 0..n.len-2:
@@ -494,7 +507,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     if isTrivial:
       result = rec n[^1]
     else:
-      notImplemented(renderTree(n))
+      notImplemented(n)
   of nkHiddenDeref:
     result = rec n[0]
   else:
@@ -507,7 +520,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
         c.mapping[key] = result
         vars.add n
     else:
-      notImplemented(renderTree(n))
+      notImplemented(n)
 
 proc addRangeInfo(c: var DrCon, n: PNode; scope: VersionScope, res: var seq[Z3_ast]) =
   var cmpOp = mLeI
@@ -748,7 +761,7 @@ template config(c: typed): untyped = c.graph.config
 
 proc addFact(c: DrnimContext; n: PNode) =
   let v = c.currentScope
-  if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
+  if n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
     c.addFact(n[1])
   c.facts.add((n, v))
 
@@ -1051,7 +1064,9 @@ proc traverse(c: DrnimContext; n: PNode) =
         let arg = n[1]
         freshVersion(c, arg)
         traverse(c, arg)
-        addAsgnFact(c, arg, newNodeIT(nkObjConstr, arg.info, arg.typ))
+        let x = newNodeIT(nkObjConstr, arg.info, arg.typ)
+        x.add arg
+        addAsgnFact(c, arg, x)
       of mArrGet, mArrPut:
         #if optStaticBoundsCheck in c.currOptions: checkBounds(c, n[1], n[2])
         discard
@@ -1244,6 +1259,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+  incl conf.options, optStaticBoundsCheck
   let self = NimProg(
     supportsStdinFile: true,
     processCmdLine: processCmdLine,
