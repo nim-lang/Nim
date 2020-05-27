@@ -38,11 +38,13 @@ when defined(gcOrc):
   const
     rcIncrement = 0b10000 # so that lowest 4 bits are not touched
     rcMask = 0b1111
+    rcShift = 4      # shift by rcShift to get the reference counter
 
 else:
   const
     rcIncrement = 0b1000 # so that lowest 3 bits are not touched
     rcMask = 0b111
+    rcShift = 3      # shift by rcShift to get the reference counter
 
 type
   RefHeader = object
@@ -71,6 +73,8 @@ const
 
 when defined(nimArcDebug):
   include cellsets
+
+  const traceId = -1 # 1037
 
   var gRefId: int
   var freedCells: CellSet
@@ -119,6 +123,11 @@ proc nimDecWeakRef(p: pointer) {.compilerRtl, inl.} =
   dec head(p).rc, rcIncrement
 
 proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
+  when defined(nimArcDebug):
+    if head(p).refId == traceId:
+      writeStackTrace()
+      cfprintf(cstderr, "[IncRef] %ld\n", head(p).rc shr rcShift)
+
   inc head(p).rc, rcIncrement
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
@@ -129,9 +138,9 @@ when not defined(nimscript) and defined(nimArcDebug):
     ## is a memory corruption check. Returns 0 if there is no error.
     let c = head(p)
     if freedCells.data != nil and freedCells.contains(c):
-      result = 0
-    else:
       result = c.refId
+    else:
+      result = 0
 
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
@@ -178,6 +187,12 @@ when defined(gcOrc):
 proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
   if p != nil:
     var cell = head(p)
+
+    when defined(nimArcDebug):
+      if cell.refId == traceId:
+        writeStackTrace()
+        cfprintf(cstderr, "[DecRef] %ld\n", cell.rc shr rcShift)
+
     if (cell.rc and not rcMask) == 0:
       result = true
       when traceCollector:
