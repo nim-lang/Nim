@@ -52,6 +52,8 @@ type
     when defined(gcOrc):
       rootIdx: int # thanks to this we can delete potential cycle roots
                    # in O(1) without doubly linked lists
+    when defined(nimArcDebug):
+      refId: int
 
   Cell = ptr RefHeader
 
@@ -67,6 +69,12 @@ template head(p: pointer): Cell =
 const
   traceCollector = defined(traceArc)
 
+when defined(nimArcDebug):
+  include cellsets
+
+  var gRefId: int
+  var freedCells: CellSet
+
 proc nimNewObj(size: int): pointer {.compilerRtl.} =
   let s = size + sizeof(RefHeader)
   when defined(nimscript):
@@ -79,6 +87,9 @@ proc nimNewObj(size: int): pointer {.compilerRtl.} =
     result = allocShared0(s) +! sizeof(RefHeader)
   else:
     result = alloc0(s) +! sizeof(RefHeader)
+  when defined(nimArcDebug):
+    head(result).refId = gRefId
+    atomicInc gRefId
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
@@ -98,6 +109,9 @@ proc nimNewObjUninit(size: int): pointer {.compilerRtl.} =
   when defined(gcOrc):
     orig.rootIdx = 0
   result = orig +! sizeof(RefHeader)
+  when defined(nimArcDebug):
+    head(result).refId = gRefId
+    atomicInc gRefId
   when traceCollector:
     cprintf("[Allocated] %p result: %p\n", result -! sizeof(RefHeader), result)
 
@@ -109,6 +123,16 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when traceCollector:
     cprintf("[INCREF] %p\n", head(p))
 
+when not defined(nimscript) and defined(nimArcDebug):
+  proc deallocatedRefId*(p: pointer): int =
+    ## Returns the ref's ID if the ref was already deallocated. This
+    ## is a memory corruption check. Returns 0 if there is no error.
+    let c = head(p)
+    if freedCells.data != nil and freedCells.contains(c):
+      result = 0
+    else:
+      result = c.refId
+
 proc nimRawDispose(p: pointer) {.compilerRtl.} =
   when not defined(nimscript):
     when traceCollector:
@@ -117,7 +141,11 @@ proc nimRawDispose(p: pointer) {.compilerRtl.} =
       if head(p).rc >= rcIncrement:
         cstderr.rawWrite "[FATAL] dangling references exist\n"
         quit 1
-    when defined(useMalloc):
+    when defined(nimArcDebug):
+      # we do NOT really free the memory here in order to reliably detect use-after-frees
+      if freedCells.data == nil: init(freedCells)
+      freedCells.incl head(p)
+    elif defined(useMalloc):
       c_free(p -! sizeof(RefHeader))
     elif compileOption("threads"):
       deallocShared(p -! sizeof(RefHeader))
