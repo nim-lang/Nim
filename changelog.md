@@ -159,6 +159,8 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
+- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+
 ## Compiler changes
 
 - Specific warnings can now be turned into errors via `--warningAsError[X]:on|off`.

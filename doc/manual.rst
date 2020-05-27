@@ -1917,6 +1917,10 @@ Nim supports these `calling conventions`:idx:\:
     Fastcall means different things to different C compilers. One gets whatever
     the C ``__fastcall`` means.
 
+`thiscall`:idx:
+    This is thiscall calling convention as specified by Microsoft, used on C++
+    class member functions on the x86 architecture
+
 `syscall`:idx:
     The syscall convention is the same as ``__syscall`` in C. It is used for
     interrupts.
