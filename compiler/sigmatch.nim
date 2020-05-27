@@ -993,9 +993,10 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   result = isNone
   assert(f != nil)
 
-  let corrupt = deallocatedRefId(cast[pointer](f))
-  if corrupt != 0:
-    quit "it's corrupt " & $corrupt
+  when declared(deallocatedRefId):
+    let corrupt = deallocatedRefId(cast[pointer](f))
+    if corrupt != 0:
+      quit "it's corrupt " & $corrupt
 
   if f.kind == tyUntyped:
     if aOrig != nil: put(c, f, aOrig)
@@ -1413,7 +1414,6 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     let roota = a.skipGenericAlias
     let rootf = f.skipGenericAlias
 
-    var m = c
     if a.kind == tyGenericInst:
       if roota.base == rootf.base:
         let nextFlags = flags + {trNoCovariance}
