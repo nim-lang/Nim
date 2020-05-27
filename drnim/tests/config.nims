@@ -5,3 +5,6 @@ switch("path", "$nim/testament/lib") # so we can `import stdtest/foo` in this di
 switch("colors", "off")
 switch("listFullPaths", "off")
 switch("excessiveStackTrace", "off")
+
+# we only want to check the marked parts in the tests:
+switch("staticBoundChecks", "off")
