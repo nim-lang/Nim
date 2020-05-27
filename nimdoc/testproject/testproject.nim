@@ -9,32 +9,21 @@ runnableExamples:
   # bug #11078
   for x in "xx": discard
 
-template myfn*() =
+when true:
+  ## top2
   runnableExamples:
-    import std/strutils
-    ## line doc comment
-    # bar
-    doAssert "'foo" == "'foo"
-    ##[
-    foo
-    bar
-    ]##
-    doAssert: not "foo".startsWith "ba"
-    block:
-      discard 0xff # elu par cette crapule
-    # should be in
-  # should be out
+    discard "in top2"
+  ## top2 after
+
+runnableExamples:
+  discard "in top3"
+## top3 after
 
 const
   C_A* = 0x7FF0000000000000'f64
   C_B* = 0o377'i8
   C_C* = 0o277'i8
   C_D* = 0o177777'i16
-
-template foo*(a, b: SomeType) =
-  ## This does nothing
-  ##
-  discard
 
 proc bar*[T](a, b: T): T =
   result = a + b
@@ -49,9 +38,6 @@ proc buzz*[T](a, b: T): T {.deprecated: "since v0.20".} =
 
 import std/macros
 
-macro bar*(): untyped =
-  result = newStmtList()
-
 var aVariable*: array[1, int]
 
 aEnum()
@@ -59,3 +45,170 @@ bEnum()
 
 # bug #9432
 proc isValid*[T](x: T): bool = x.len > 0
+
+when true:
+  # these cases appear redundant but they're actually (almost) all different at
+  # AST level and needed to ensure docgen keeps working, eg because of issues
+  # like D20200526T163511
+  type
+    Foo* = enum
+      enumValueA2
+
+  proc z1*(): Foo =
+    ## cz1
+    Foo.default
+
+  proc z2*() =
+    ## cz2
+    runnableExamples:
+      discard "in cz2"
+
+  proc z3*() =
+    ## cz3
+
+  proc z4*() =
+    ## cz4
+    discard
+
+when true:
+  # tests for D20200526T163511
+  proc z5*(): int =
+    ## cz5
+    return 1
+
+  proc z6*(): int =
+    ## cz6
+    1
+
+  template z6t*(): int =
+    ## cz6t
+    1
+
+  proc z7*(): int =
+    ## cz7
+    result = 1
+
+  proc z8*(): int =
+    ## cz8
+    block:
+      discard
+      1+1
+
+when true:
+  # interleaving 0 or more runnableExamples and doc comments, issue #9227
+  proc z9*() =
+    runnableExamples: doAssert 1 + 1 == 2
+
+  proc z10*() =
+    runnableExamples "-d:foobar":
+      discard 1
+    ## cz10
+
+  proc z11*() =
+    runnableExamples:
+      discard 1
+    discard
+
+  proc z12*(): int =
+    runnableExamples:
+      discard 1
+    12
+
+  proc z13*() =
+    ## cz13
+    runnableExamples:
+      discard
+
+  proc baz*() = discard
+
+  proc bazNonExported() =
+    ## out (not exported)
+    runnableExamples:
+      # BUG: this currently this won't be run since not exported
+      # but probably should
+      doAssert false
+
+  proc z17*() =
+    # BUG: a comment before 1st doc comment currently doesn't prevent
+    # doc comment from being docgen'd; probably should be fixed
+    ## cz17
+    ## rest
+    runnableExamples:
+      discard 1
+    ## rest
+    # this comment separates docgen'd doc comments
+    ## out
+
+when true: # (most) macros
+  macro bar*(): untyped =
+    result = newStmtList()
+
+  macro z16*() =
+    runnableExamples: discard 1
+    ## cz16
+    ## after
+    runnableExamples:
+      doAssert 2 == 1 + 1
+    # BUG: we should probably render `cz16\nafter` by keeping newline instead or
+    # what it currently renders as: `cz16 after`
+
+  macro z18*(): int =
+    ## cz18
+    newLit 0
+
+when true: # (most) templates
+  template foo*(a, b: SomeType) =
+    ## This does nothing
+    ##
+    discard
+
+  template myfn*() =
+    runnableExamples:
+      import std/strutils
+      ## issue #8871 preserve formatting
+      ## line doc comment
+      # bar
+      doAssert "'foo" == "'foo"
+      ##[
+      foo
+      bar
+      ]##
+
+      doAssert: not "foo".startsWith "ba"
+      block:
+        discard 0xff # elu par cette crapule
+      # should be in
+    ## should be still in
+
+    # out
+    ## out
+
+  template z14*() =
+    ## cz14
+    runnableExamples:
+      discard
+
+  template z15*() =
+    ## cz15
+    runnableExamples:
+      discard
+    runnableExamples: discard 3
+    runnableExamples: discard 4
+    ## ok5
+    ## ok5b
+    runnableExamples: assert true
+
+    ## in or out?
+    # this is an edge case; a newline separate last runnableExamples from 
+    # next doc comment but AST isnt' aware of it; this could change in future
+    discard 8
+    ## out
+    runnableExamples: discard 1
+
+when true:
+  template testNimDocTrailingExample*() =
+    # this must be last entry in this file, it checks against a bug (that got fixed)
+    # where runnableExamples would not show if there was not at least 2 "\n" after
+    # the last character of runnableExamples
+    runnableExamples:
+      discard 2

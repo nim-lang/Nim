@@ -437,6 +437,8 @@ proc addSourceLine(conf: ConfigRef; fileIdx: FileIndex, line: string) =
   conf.m.fileInfos[fileIdx.int32].lines.add line
 
 proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
+  ## xxx there's an off by 1 error that should be fixed; if a file ends with "foo" or "foo\n"
+  ## it will return same number of lines (ie, a trailing empty line is discounted)
   result = conf.m.fileInfos[fileIdx.int32].lines.len
   if result == 0:
     try:
@@ -447,6 +449,8 @@ proc numLines*(conf: ConfigRef, fileIdx: FileIndex): int =
     result = conf.m.fileInfos[fileIdx.int32].lines.len
 
 proc sourceLine*(conf: ConfigRef; i: TLineInfo): string =
+  ## 1-based index (matches editor line numbers); 1st line is for i.line = 1
+  ## last valid line is `numLines` inclusive
   if i.fileIndex.int32 < 0: return ""
   let num = numLines(conf, i.fileIndex)
   # can happen if the error points to EOF:

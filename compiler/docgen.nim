@@ -315,7 +315,11 @@ proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
   if n.comment.len > 0:
-    renderRstToOut(d[], parseRst(n.comment, toFullPath(d.conf, n.info),
+    var comment2 = n.comment
+    when false:
+      # RFC: to preseve newlines in comments, this would work:
+      comment2 = comment2.replace("\n", "\n\n")
+    renderRstToOut(d[], parseRst(comment2, toFullPath(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
@@ -550,7 +554,7 @@ type RunnableState = enum
   rsRunnable
   rsDone
 
-proc getAllRunnableExamplesImpl(d: PDoc; n, orig: PNode; dest: var Rope, state: RunnableState): RunnableState =
+proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState): RunnableState =
   ##[
   Simple state machine to tell whether we render runnableExamples and doc comments.
   This is to ensure that we can interleave runnableExamples and doc comments freely;
@@ -566,11 +570,6 @@ proc getAllRunnableExamplesImpl(d: PDoc; n, orig: PNode; dest: var Rope, state: 
     ## internal explanation  # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
     discard # some code
   ]##
-
-  # xxx: orig is deadcode
-  # owner check instead? this fails with the $nim/nimdoc/tester.nim test
-  # now that we're calling `genRecComment` only from here (to maintain correct order wrt runnableExample)
-  # if n.info.fileIndex != orig.info.fileIndex: return
 
   case n.kind
   of nkCommentStmt:
@@ -620,10 +619,9 @@ proc getRoutineBody(n: PNode): PNode =
 
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n
-  let orig = n
   var state = rsStart
   template fn(n2) =
-    state = getAllRunnableExamplesImpl(d, n2, orig, dest, state)
+    state = getAllRunnableExamplesImpl(d, n2, dest, state)
   case n.kind
   of routineDefs:
     n = n.getRoutineBody
