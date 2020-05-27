@@ -74,7 +74,7 @@ const
 when defined(nimArcDebug):
   include cellsets
 
-  const traceId = -1 # 1037
+  const traceId = 7739 # 1037
 
   var gRefId: int
   var freedCells: CellSet
@@ -126,7 +126,7 @@ proc nimIncRef(p: pointer) {.compilerRtl, inl.} =
   when defined(nimArcDebug):
     if head(p).refId == traceId:
       writeStackTrace()
-      cfprintf(cstderr, "[IncRef] %ld\n", head(p).rc shr rcShift)
+      cfprintf(cstderr, "[IncRef] %p %ld\n", p, head(p).rc shr rcShift)
 
   inc head(p).rc, rcIncrement
   when traceCollector:
@@ -191,7 +191,7 @@ proc nimDecRefIsLast(p: pointer): bool {.compilerRtl, inl.} =
     when defined(nimArcDebug):
       if cell.refId == traceId:
         writeStackTrace()
-        cfprintf(cstderr, "[DecRef] %ld\n", cell.rc shr rcShift)
+        cfprintf(cstderr, "[DecRef] %p %ld\n", p, cell.rc shr rcShift)
 
     if (cell.rc and not rcMask) == 0:
       result = true
