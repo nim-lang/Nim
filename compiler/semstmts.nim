@@ -36,8 +36,6 @@ const
   errRecursiveDependencyX = "recursive dependency: '$1'"
   errRecursiveDependencyIteratorX = "recursion is not supported in iterators: '$1'"
   errPragmaOnlyInHeaderOfProcX = "pragmas are only allowed in the header of a proc; redefinition of $1"
-  errCannotAssignMacroSymbol = "cannot assign $1 '$2' to '$3'. Did you mean to call the $1 with '()'?"
-  errInvalidTypeDescAssign = "'typedesc' metatype is not valid here; typed '=' instead of ':'?"
 
 proc semDiscard(c: PContext, n: PNode): PNode =
   result = n
@@ -491,19 +489,16 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
 
+    var typFlags: TTypeAllowedFlags
+
     var def: PNode = c.graph.emptyNode
     if a[^1].kind != nkEmpty:
       def = semExprWithType(c, a[^1], {efAllowDestructor})
-      if def.typ.kind == tyProc and def.kind == nkSym:
-        if def.sym.kind in {skMacro, skTemplate}:
-          localError(c.config, def.info, errCannotAssignMacroSymbol % [
-                          if def.sym.kind == skMacro: "macro" else: "template",
-                          def.sym.name.s, a[0].ident.s])
-          def.typ = errorType(c)
+
+      if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+        typFlags.incl taIsTemplateOrMacro
       elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
-        # prevent the all too common 'var x = int' bug:
-        localError(c.config, def.info, errInvalidTypeDescAssign)
-        def.typ = errorType(c)
+        typFlags.incl taProcContextIsNotMacro
 
       if typ != nil:
         if typ.isMetaType:
@@ -534,7 +529,11 @@ proc semVarOrLet(c: PContext, n: PNode, symkind: TSymKind): PNode =
 
     # this can only happen for errornous var statements:
     if typ == nil: continue
-    typeAllowedCheck(c.config, a.info, typ, symkind, if c.matchedConcept != nil: {taConcept} else: {})
+
+    if c.matchedConcept != nil:
+      typFlags.incl taConcept
+    typeAllowedCheck(c.config, a.info, typ, symkind, typFlags)
+
     when false: liftTypeBoundOps(c, typ, a.info)
     instAllTypeBoundOp(c, a.info)
     var tup = skipTypes(typ, {tyGenericInst, tyAlias, tySink})
@@ -642,18 +641,15 @@ proc semConst(c: PContext, n: PNode): PNode =
     if a[^2].kind != nkEmpty:
       typ = semTypeNode(c, a[^2], nil)
 
+    var typFlags: TTypeAllowedFlags
+
     # don't evaluate here since the type compatibility check below may add a converter
     var def = semExprWithType(c, a[^1])
-    if def.typ.kind == tyProc and def.kind == nkSym:
-      if def.sym.kind in {skMacro, skTemplate}:
-        localError(c.config, def.info, errCannotAssignMacroSymbol % [
-          if def.sym.kind == skMacro: "macro" else: "template",
-          def.sym.name.s, a[0].ident.s])
-        def.typ = errorType(c)
+
+    if def.kind == nkSym and def.sym.kind in {skTemplate, skMacro}:
+      typFlags.incl taIsTemplateOrMacro
     elif def.typ.kind == tyTypeDesc and c.p.owner.kind != skMacro:
-      # prevent the all too common 'const x = int' bug:
-      localError(c.config, def.info, errInvalidTypeDescAssign)
-      def.typ = errorType(c)
+      typFlags.incl taProcContextIsNotMacro
 
     # check type compatibility between def.typ and typ:
     if typ != nil:
@@ -670,9 +666,10 @@ proc semConst(c: PContext, n: PNode): PNode =
     if def == nil:
       localError(c.config, a[^1].info, errConstExprExpected)
       continue
-    if typeAllowed(typ, skConst) != nil and def.kind != nkNilLit:
-      localError(c.config, a.info, "invalid type for const: " & typeToString(typ))
-      continue
+    if def.kind != nkNilLit:
+      if c.matchedConcept != nil:
+        typFlags.incl taConcept
+      typeAllowedCheck(c.config, a.info, typ, skConst, typFlags)
 
     var b: PNode
     if a.kind == nkVarTuple:
