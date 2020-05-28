@@ -13,7 +13,17 @@
 import ropes, tables, pathutils
 
 const
-  explanationsBaseUrl* = "https://nim-lang.org/docs"
+  explanationsBaseUrl* = "https://nim-lang.github.io/Nim"
+    # was: "https://nim-lang.org/docs" but we're now usually showing devel docs
+    # instead of latest release docs.
+
+proc createDocLink*(urlSuffix: string): string =
+  # os.`/` is not appropriate for urls.
+  result = explanationsBaseUrl
+  if urlSuffix.len > 0 and urlSuffix[0] == '/':
+    result.add urlSuffix
+  else:
+    result.add "/" & urlSuffix
 
 type
   TMsgKind* = enum
