@@ -49,3 +49,9 @@ when isMainModule:
   with(f, setColor(2, 3, 4), setPosition(0.0, 1.0))
   echo f
 
+  f = Foo()
+  with f:
+    col = $(2, 3, 4)
+    pos = $(0.0, 1.0)
+  echo f
+

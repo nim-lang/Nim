@@ -26,6 +26,8 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     for i in 1..u-1: result.add n[i]
     result.add arg0
     for i in u+1..n.len-1: result.add n[i]
+  elif n.kind == nnkAsgn:
+    result = newDotExpr(arg0, n[0]).newAssignment n[1]
   else:
     # handle e.g. 'x.dup(sort)'
     result = newNimNode(nnkCall, n)
