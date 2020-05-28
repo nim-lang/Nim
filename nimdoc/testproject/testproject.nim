@@ -40,10 +40,11 @@ import std/macros
 
 var aVariable*: array[1, int]
 
+# bug #9432
 aEnum()
 bEnum()
+fromUtilsGen()
 
-# bug #9432
 proc isValid*[T](x: T): bool = x.len > 0
 
 when true:
