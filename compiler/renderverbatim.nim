@@ -4,6 +4,9 @@ from xmltree import addEscaped
 import ast, options, msgs
 import packages/docutils/highlite
 
+# import compiler/renderer
+import renderer
+
 proc lastNodeRec(n: PNode): PNode =
   result = n
   while result.safeLen > 0: result = result[^1]
@@ -23,7 +26,21 @@ proc isInIndentationBlock(src: string, indent: int): bool =
 proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   ## TLineInfo.offsetA,offsetB would be cleaner but it's only enabled for nimpretty,
   ## we'd need to check performance impact to enable it for nimdoc.
-  let first = n.lastSon.info
+  var first = n.lastSon.info
+  if first.line == n[0].info.line:
+    #[
+    runnableExamples: assert true
+    ]#
+    discard
+  else:
+    #[
+    runnableExamples:
+      # non-doc comment that we want to capture even though `first` points to `assert true`
+      assert true
+    ]#
+    first.line = n[0].info.line + 1
+    # first.col = n[0].info.col + 1 # anything with `col > n[0].col` is part of runnableExamples
+
   let last = n.lastNodeRec.info
   var info = first
   var indent = info.col

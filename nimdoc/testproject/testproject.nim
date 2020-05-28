@@ -139,6 +139,27 @@ when true:
     # this comment separates docgen'd doc comments
     ## out
 
+when true: # capture non-doc comments correctly even before 1st token
+  proc p1*() =
+    ## cp1
+    runnableExamples: doAssert 1 == 1 # regular comments work here
+    ## c4
+    runnableExamples:
+      # c5 regular comments before 1st token work
+      # regular comment
+      #[
+      nested regular comment
+      ]#
+      doAssert 2 == 2 # c8
+      ## this is a non-nested doc comment
+
+      ##[
+      this is a nested doc comment
+      ]##
+      discard "c9"
+      # also work after
+    # this should be out
+
 when true: # (most) macros
   macro bar*(): untyped =
     result = newStmtList()
