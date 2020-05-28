@@ -1313,7 +1313,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     else:
       if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
-        # only closure iterators my be assigned to anything.
+        # only closure iterators may be assigned to anything.
         result = t
       let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
       for i in 1..<t.len:
