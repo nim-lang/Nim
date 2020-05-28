@@ -601,8 +601,28 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
     # and runnableExamples that occur after some code in routine
 
 proc getRoutineBody(n: PNode): PNode =
-  ## works around a transf bug D20200526T163511 where `result` messes AST
-  # TODO: try w templates and macro, see if they're affected
+  ##[
+  nim transforms these quite differently:
+
+  proc someType*(): int =
+    ## foo
+    result = 3
+=>
+  result =
+    ## foo
+    3;
+
+  proc someType*(): int =
+    ## foo
+    3
+=>
+  ## foo
+  result = 3;
+
+  so we normalize the results to get to the statement list containing the
+  (0 or more) doc comments and runnableExamples.
+  (even if using `result = n[bodyPos]`, you'd still to apply similar logic).
+  ]##
   result = n[^1]
   case result.kind
   of nkSym:
