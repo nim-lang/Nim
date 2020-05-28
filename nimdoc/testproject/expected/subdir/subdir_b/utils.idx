@@ -10,3 +10,4 @@ SomeType	subdir/subdir_b/utils.html#SomeType	utils: SomeType
 someType	subdir/subdir_b/utils.html#someType_2	utils: someType(): SomeType	
 aEnum	subdir/subdir_b/utils.html#aEnum.t	utils: aEnum(): untyped	
 bEnum	subdir/subdir_b/utils.html#bEnum.t	utils: bEnum(): untyped	
+fromUtilsGen	subdir/subdir_b/utils.html#fromUtilsGen.t	utils: fromUtilsGen(): untyped	
