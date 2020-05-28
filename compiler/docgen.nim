@@ -47,7 +47,6 @@ type
     exampleCounter: int
     emitted: IntSet # we need to track which symbols have been emitted
                     # already. See bug #3655
-    destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
     exampleGroups: OrderedTable[string, ExampleGroup]
     wroteSupportFiles*: bool
@@ -179,6 +178,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.module = module
   result.conf = conf
   result.cache = cache
+  result.outDir = conf.outDir
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
@@ -1366,4 +1366,3 @@ proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") 
 
   if not writeRope(code, filename):
     rawMessage(conf, errCannotOpenFile, filename.string)
-
