@@ -27,8 +27,8 @@
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
-
 import "$lib/../compiler/nimpaths"
+import "$lib/../compiler/pathutils"
 
 const
   HtmlExt = "html"
@@ -57,7 +57,9 @@ type
     options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
-    filename*: string
+    outDir*: AbsoluteDir      ## output directory, initialized by docgen.nim
+    destFile*: AbsoluteFile   ## output (HTML) file, initialized by docgen.nim
+    filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
@@ -755,7 +757,15 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), refname, tmp.stripTocHtml,
+  let
+    htmlFileRelPath = if d.outDir.isEmpty():
+                        # /foo/bar/zoo.nim -> zoo.html
+                        changeFileExt(extractFilename(d.filename), HtmlExt)
+                      else: # d is initialized in docgen.nim
+                        # outDir   = /foo              -\
+                        # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
+                        d.destFile.relativeTo(d.outDir, '/').string
+  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =

@@ -1,0 +1,14 @@
+C_A	testproject.html#C_A	testproject: C_A	
+C_B	testproject.html#C_B	testproject: C_B	
+C_C	testproject.html#C_C	testproject: C_C	
+C_D	testproject.html#C_D	testproject: C_D	
+foo	testproject.html#foo.t,SomeType,SomeType	testproject: foo(a, b: SomeType)	
+bar	testproject.html#bar,T,T	testproject: bar[T](a, b: T): T	
+baz	testproject.html#baz,T,T	testproject: baz[T](a, b: T): T	
+buzz	testproject.html#buzz,T,T	testproject: buzz[T](a, b: T): T	
+bar	testproject.html#bar.m	testproject: bar(): untyped	
+aVariable	testproject.html#aVariable	testproject: aVariable	
+A	testproject.html#A	testproject: A	
+B	testproject.html#B	testproject: B	
+someFunc	testproject.html#someFunc	testproject: someFunc()	
+isValid	testproject.html#isValid,T	testproject: isValid[T](x: T): bool	
