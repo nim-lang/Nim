@@ -116,7 +116,7 @@ Look at the file ``lib/system/hti.nim`` for more information.
 Rebuilding the compiler
 ========================
 
-After an initial build via `sh build_all.sh` on posix or `build.all.bat` on windows,
+After an initial build via `sh build_all.sh` on posix or `build_all.bat` on windows,
 you can rebuild the compiler as follows:
 * `nim c koch` if you need to rebuild koch
 * `./koch boot -d:release` this ensures the compiler can rebuild itself
