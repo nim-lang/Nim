@@ -385,9 +385,10 @@ proc quit(conf: ConfigRef; msg: TMsgKind) {.gcsafe.} =
       if stackTraceAvailable() and isNil(conf.writelnHook):
         writeStackTrace()
       else:
-        styledMsgWriteln(fgRed, "No stack traceback available\n" &
-            "To create a stacktrace, rerun compilation with ./koch temp " &
-            conf.command & " <file>")
+        styledMsgWriteln(fgRed, """
+No stack traceback available
+To create a stacktrace, rerun compilation with './koch temp $1 <file>', see $2 for details""" %
+          [conf.command, "intern.html#debugging-the-compiler".createDocLink])
   quit 1
 
 proc handleError(conf: ConfigRef; msg: TMsgKind, eh: TErrorHandling, s: string) =

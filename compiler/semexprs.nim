@@ -1572,12 +1572,13 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
   # return a view into the first argument (if there is one):
   let root = exprRoot(n)
   if root != nil and root.owner == c.p.owner:
+    template url: string = "var_t_return.html".createDocLink
     if root.kind in {skLet, skVar, skTemp} and sfGlobal notin root.flags:
-      localError(c.config, n.info, "'$1' escapes its stack frame; context: '$2'; see $3/var_t_return.html" % [
-        root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
+      localError(c.config, n.info, "'$1' escapes its stack frame; context: '$2'; see $3" % [
+        root.name.s, renderTree(n, {renderNoComments}), url])
     elif root.kind == skParam and root.position != 0:
-      localError(c.config, n.info, "'$1' is not the first parameter; context: '$2'; see $3/var_t_return.html" % [
-        root.name.s, renderTree(n, {renderNoComments}), explanationsBaseUrl])
+      localError(c.config, n.info, "'$1' is not the first parameter; context: '$2'; see $3" % [
+        root.name.s, renderTree(n, {renderNoComments}), url])
   case n.kind
   of nkHiddenAddr, nkAddr: return n
   of nkDerefExpr: return n[0]

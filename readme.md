@@ -79,6 +79,8 @@ Next run the appropriate build shell script for your platform:
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
 should add the ``bin`` directory to your PATH.
 
+See also [rebuilding the compiler](intern.html#rebuilding-the-compiler).
+
 ## Koch
 
 ``koch`` is the build tool used to build various parts of Nim and to generate

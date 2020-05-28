@@ -113,6 +113,25 @@ We already know the type information as a graph in the compiler.
 Thus we need to serialize this graph as RTTI for C code generation.
 Look at the file ``lib/system/hti.nim`` for more information.
 
+Rebuilding the compiler
+========================
+
+After an initial build via `sh build_all.sh` on posix or `build_all.bat` on windows,
+you can rebuild the compiler as follows:
+* `nim c koch` if you need to rebuild koch
+* `./koch boot -d:release` this ensures the compiler can rebuild itself
+  (use `koch` instead of `./koch` on windows), which builds the compiler 3 times.
+
+A faster approach if you don't need to run the full bootstrapping implied by `koch boot`,
+is the following:
+* `pathto/nim c --lib:lib -d:release -o:bin/nim_temp compiler/nim.nim`
+Where `pathto/nim` is any nim binary sufficiently recent (eg `bin/nim_cources`
+built during bootstrap or `$HOME/.nimble/bin/nim` installed by `choosenim 1.2.0`)
+
+You can pass any additional options such as `-d:leanCompiler` if you don't need
+certain features or `-d:debug --stacktrace:on --excessiveStackTrace --stackTraceMsgs`
+for debugging the compiler. See also
+[Debugging the compiler](intern.html#debugging-the-compiler).
 
 Debugging the compiler
 ======================
@@ -146,7 +165,12 @@ To create a new compiler for each run, use ``koch temp``::
   ./koch temp c /tmp/test.nim
 
 ``koch temp`` creates a debug build of the compiler, which is useful
-to create stacktraces for compiler debugging.
+to create stacktraces for compiler debugging. See also
+[Rebuilding the compiler](intern.html#rebuilding-the-compiler) if you need
+more control.
+
+Bisecting for regressions
+=========================
 
 ``koch temp`` returns 125 as the exit code in case the compiler
 compilation fails. This exit code tells ``git bisect`` to skip the
@@ -154,6 +178,11 @@ current commit.::
 
   git bisect start bad-commit good-commit
   git bisect run ./koch temp -r c test-source.nim
+
+You can also bisect using custom options to build the compiler, for example if
+you don't need a debug version of the compiler (which runs slower), you can replace
+`./koch temp` by explicit compilation command, see
+[Rebuilding the compiler](intern.html#rebuilding-the-compiler).
 
 The compiler's architecture
 ===========================
