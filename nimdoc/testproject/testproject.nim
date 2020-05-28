@@ -161,6 +161,22 @@ when true: # capture non-doc comments correctly even before 1st token
       # also work after
     # this should be out
 
+when true: # issue #14485
+  proc addfBug14485*() =
+    ## Some proc
+    runnableExamples:
+      discard "foo() = " & $[1]
+      #[
+      0: let's also add some broken html to make sure this won't break in future
+      1: </span>
+      2: </span>
+      3: </span
+      4: </script>
+      5: </script
+      6: </script
+      7: end of broken html
+      ]#
+
 when true: # (most) macros
   macro bar*(): untyped =
     result = newStmtList()

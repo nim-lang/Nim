@@ -188,6 +188,8 @@ function main() {
     title="z17()"><wbr />z17<span class="attachedType"></span></a></li>
   <li><a class="reference" href="#p1"
     title="p1()"><wbr />p1<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#addfBug14485"
+    title="addfBug14485()"><wbr />addf<wbr />Bug14485<span class="attachedType"></span></a></li>
 
   </ul>
 </li>
@@ -524,6 +526,25 @@ this is a nested doc comment
 ]##</span><span class="Whitespace">
 </span><span class="Keyword">discard</span><span class="Whitespace"> </span><span class="StringLit">&quot;c9&quot;</span><span class="Whitespace">
 </span><span class="Comment"># also work after</span></pre>
+
+</dd>
+<a id="addfBug14485"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#addfBug14485"><span class="Identifier">addfBug14485</span></a><span class="Other">(</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+Some proc
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span><span class="Whitespace"> </span><span class="StringLit">&quot;foo() = &quot;</span><span class="Whitespace"> </span><span class="Operator">&amp;</span><span class="Whitespace"> </span><span class="Operator">$</span><span class="Punctuation">[</span><span class="DecNumber">1</span><span class="Punctuation">]</span><span class="Whitespace">
+</span><span class="LongComment">#[
+0: let&apos;s also add some broken html to make sure this won&apos;t break in future
+1: &lt;/span&gt;
+2: &lt;/span&gt;
+3: &lt;/span
+4: &lt;/script&gt;
+5: &lt;/script
+6: &lt;/script
+7: end of broken html
+]#</span></pre>
 
 </dd>
 
