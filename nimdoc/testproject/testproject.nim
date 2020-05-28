@@ -205,6 +205,14 @@ when true: # (most) templates
     ## out
     runnableExamples: discard 1
 
+when true: # issue #14473
+  import std/[sequtils]
+  template doit(): untyped =
+    ## doit
+    ## return output only
+    toSeq([1,2])
+  echo doit() # using doAssert or similar to avoid echo would "hide" the original bug
+
 when true:
   template testNimDocTrailingExample*() =
     # this must be last entry in this file, it checks against a bug (that got fixed)
