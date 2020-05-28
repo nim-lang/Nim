@@ -1,4 +1,4 @@
-when defined(nimHasLentIterators):
+when defined(nimHasLentIterators) and not defined(nimWorkaround14447):
   template lent2(T): untyped =
     # xxx this should actually depend on T.sizeof >= thresLentSizeof
     # with for example `thresLentSizeof ~= int.sizeof`:
