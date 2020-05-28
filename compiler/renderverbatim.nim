@@ -17,8 +17,7 @@ proc isInIndentationBlock(src: string, indent: int): bool =
   ]#
   for j in 0..<indent:
     if src.len <= j: return true
-    if src[j] == ' ': continue
-    return false
+    if src[j] != ' ': return false
   return true
 
 proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
@@ -26,7 +25,6 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   ## we'd need to check performance impact to enable it for nimdoc.
   let first = n.lastSon.info
   let last = n.lastNodeRec.info
-  var ret = ""
   var info = first
   var indent = info.col
   let numLines = numLines(conf, info.fileIndex).uint16
@@ -36,12 +34,11 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
     let src = sourceLine(conf, info)
     if line > last.line and not isInIndentationBlock(src, indent):
       break
-    if line > first.line: ret.add "\n"
+    if line > first.line: result.add "\n"
     if src.len > indent:
-      ret.add src[indent..^1]
-      lastNonemptyPos = ret.len
-  ret = ret[0..<lastNonemptyPos]
-  return ret
+      result.add src[indent..^1]
+      lastNonemptyPos = result.len
+  result.setLen lastNonemptyPos
 
 proc renderNimCode*(result: var string, code: string, isLatex = false) =
   var toknizr: GeneralTokenizer
