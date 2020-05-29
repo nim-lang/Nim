@@ -257,8 +257,7 @@ proc buildDoc(nimArgs, destPath: string) =
     i.inc
   for d in items(doc):
     var nimArgs2 = nimArgs
-    if d.isRelativeTo("compiler"):
-      nimArgs2.add " --docroot"
+    if d.isRelativeTo("compiler"): doAssert false
     commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
       [nimArgs2, gitUrl, destPath, d]
     i.inc
@@ -270,8 +269,11 @@ proc buildDoc(nimArgs, destPath: string) =
 
   mexec(commands)
   exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
-
-  buildDocPackages(nimArgs, destPath)
+    # caveat: this works so long it's called before `buildDocPackages` which
+    # populates `compiler/` with unrelated idx files that shouldn't be in index,
+    # so should work in CI but you may need to remove your generated html files
+    # locally after calling `./koch docs`. The clean fix would be for `idx` files
+    # to be transient with `--project` (eg all in memory).
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
   createDir(destPath)
@@ -313,6 +315,7 @@ proc buildDocs*(args: string) =
     createDir(dir2)
     buildDocSamples(args2, dir2)
     buildDoc(args2, dir2)
+    buildDocPackages(args2, dir2)
     copyFile(docHackJsSource, dir2 / docHackJsSource.lastPathPart)
 
   fn(nimArgs & " " & args, webUploadOutput / NimVersion)
