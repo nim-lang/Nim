@@ -66,10 +66,9 @@ proc renderNimCode*(result: var string, code: string, isLatex = false) =
     buf.addEscaped(val)
     let class = tokenClassToStr[kind]
     if isLatex:
-      result.addf "\\span$1{$2}" % [class, buf]
+      result.addf "\\span$1{$2}", [class, buf]
     else:
-      result.addf  "<span class=\"$1\">$2</span>" % [class, buf]
-
+      result.addf  "<span class=\"$1\">$2</span>", [class, buf]
   while true:
     getNextToken(toknizr, langNim)
     case toknizr.kind
