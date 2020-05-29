@@ -1246,6 +1246,8 @@ type
     taConcept,
     taIsOpenArray,
     taNoUntyped
+    taIsTemplateOrMacro
+    taProcContextIsNotMacro
 
   TTypeAllowedFlags* = set[TTypeAllowedFlag]
 
@@ -1307,18 +1309,24 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
         if kind notin {skParam, skResult}: result = t
         else: result = typeAllowedAux(marker, t2, kind, flags)
   of tyProc:
-    if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
-      # only closure iterators my be assigned to anything.
+    if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
       result = t
-    let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
-    for i in 1..<t.len:
-      if result != nil: break
-      result = typeAllowedAux(marker, t[i], skParam, f-{taIsOpenArray})
-    if result.isNil and t[0] != nil:
-      result = typeAllowedAux(marker, t[0], skResult, flags)
+    else:
+      if isInlineIterator(typ) and kind in {skVar, skLet, skConst, skParam, skResult}:
+        # only closure iterators may be assigned to anything.
+        result = t
+      let f = if kind in {skProc, skFunc}: flags+{taNoUntyped} else: flags
+      for i in 1..<t.len:
+        if result != nil: break
+        result = typeAllowedAux(marker, t[i], skParam, f-{taIsOpenArray})
+      if result.isNil and t[0] != nil:
+        result = typeAllowedAux(marker, t[0], skResult, flags)
   of tyTypeDesc:
-    # XXX: This is still a horrible idea...
-    result = nil
+    if kind in {skVar, skLet, skConst} and taProcContextIsNotMacro in flags:
+      result = t
+    else:
+      # XXX: This is still a horrible idea...
+      result = nil
   of tyUntyped, tyTyped:
     if kind notin {skParam, skResult} or taNoUntyped in flags: result = t
   of tyStatic:
@@ -1363,7 +1371,9 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
     elif kind in {skVar, skLet}:
       result = t[0]
   of tyArray:
-    if t[1].kind != tyEmpty:
+    if t[1].kind == tyTypeDesc:
+      result = t[1]
+    elif t[1].kind != tyEmpty:
       result = typeAllowedAux(marker, t[1], kind, flags)
     elif kind in {skVar, skLet}:
       result = t[1]

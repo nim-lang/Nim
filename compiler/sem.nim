@@ -233,13 +233,15 @@ proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKi
                       flags: TTypeAllowedFlags = {}) =
   let t = typeAllowed(typ, kind, flags)
   if t != nil:
+    var err: string
     if t == typ:
-      localError(conf, info, "invalid type: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' for $2" % [typeToString(typ), toHumanStr(kind)]
+      if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
+        err &= ". Did you mean to call the $1 with '()'?" % [toHumanStr(typ.owner.kind)]
     else:
-      localError(conf, info, "invalid type: '" & typeToString(t) &
-        "' in this context: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
+              typeToString(typ), toHumanStr(kind)]
+    localError(conf, info, err)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c.config, typ.n.info, typ, skProc)
