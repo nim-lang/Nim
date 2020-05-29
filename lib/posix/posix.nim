@@ -962,9 +962,15 @@ proc IN6_IS_ADDR_LINKLOCAL* (a1: ptr In6Addr): cint {.
 proc IN6_IS_ADDR_SITELOCAL* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## Unicast site-local address.
-proc IN6_IS_ADDR_V4MAPPED* (a1: ptr In6Addr): cint {.
-  importc, header: "<netinet/in.h>".}
-  ## IPv4 mapped address.
+when defined(lwip):
+  proc IN6_IS_ADDR_V4MAPPED*(ipv6_address: ptr In6Addr): cint =
+    var bits32: ptr array[4, uint32] = cast[ptr array[4, uint32]](ipv6_address)
+    return (bits32[1] == 0'u32 and bits32[2] == htonl(0x0000FFFF)).cint
+else:
+  proc IN6_IS_ADDR_V4MAPPED* (a1: ptr In6Addr): cint {.
+    importc, header: "<netinet/in.h>".}
+    ## IPv4 mapped address.
+
 proc IN6_IS_ADDR_V4COMPAT* (a1: ptr In6Addr): cint {.
   importc, header: "<netinet/in.h>".}
   ## IPv4-compatible address.
@@ -1026,8 +1032,9 @@ proc setnetent*(a1: cint) {.importc, header: "<netdb.h>".}
 proc setprotoent*(a1: cint) {.importc, header: "<netdb.h>".}
 proc setservent*(a1: cint) {.importc, header: "<netdb.h>".}
 
-proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
-  importc, header: "<poll.h>", sideEffect.}
+when not defined(lwip):
+  proc poll*(a1: ptr TPollfd, a2: Tnfds, a3: int): cint {.
+    importc, header: "<poll.h>", sideEffect.}
 
 proc realpath*(name, resolved: cstring): cstring {.
   importc: "realpath", header: "<stdlib.h>".}

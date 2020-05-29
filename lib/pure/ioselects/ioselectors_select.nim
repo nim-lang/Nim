@@ -312,7 +312,7 @@ proc selectInto*[T](s: Selector[T], timeout: int,
   verifySelectParams(timeout)
 
   if timeout != -1:
-    when defined(genode):
+    when defined(genode) or defined(freertos):
       tv.tv_sec = Time(timeout div 1_000)
     else:
       tv.tv_sec = timeout.int32 div 1_000
