@@ -198,6 +198,8 @@ function main() {
     title="low[T: Ordinal | enum | range](x: T): T"><wbr />low<span class="attachedType"></span></a></li>
   <li><a class="reference" href="#low2%2CT"
     title="low2[T: Ordinal | enum | range](x: T): T"><wbr />low2<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#tripleStrLitTest"
+    title="tripleStrLitTest()"><wbr />triple<wbr />Str<wbr />Lit<wbr />Test<span class="attachedType"></span></a></li>
 
   </ul>
 </li>
@@ -593,6 +595,49 @@ the c printf. etc.
 <pre class="listing"><span class="Identifier">low2</span><span class="Punctuation">(</span><span class="DecNumber">2</span><span class="Punctuation">)</span> <span class="Comment"># =&gt; -9223372036854775808</span></pre>
 <p><strong class="examples_text">Example:</strong></p>
 <pre class="listing"><span class="Keyword">discard</span><span class="Whitespace"> </span><span class="StringLit">&quot;in low2&quot;</span></pre>
+
+</dd>
+<a id="tripleStrLitTest"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#tripleStrLitTest"><span class="Identifier">tripleStrLitTest</span></a><span class="Other">(</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Comment">## mullitline string litterals are tricky as their indentation can span</span><span class="Whitespace">
+</span><span class="Comment">## below that of the runnableExamples</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s1a</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;
+should appear at indent 0
+  at indent 2
+at indent 0
+&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Comment"># make sure this works too</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s1b</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;start at same line
+  at indent 2
+at indent 0
+&quot;&quot;&quot;</span><span class="Whitespace"> </span><span class="Comment"># comment after</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s2</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;sandwich &quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s3</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">when</span><span class="Whitespace"> </span><span class="Identifier">false</span><span class="Punctuation">:</span><span class="Whitespace">
+  </span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s5</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;
+        in s5 &quot;&quot;&quot;</span><span class="Whitespace">
+
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s3b</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="Punctuation">[</span><span class="LongStringLit">&quot;&quot;&quot;
+%!? #[...] # inside a multiline ...
+&quot;&quot;&quot;</span><span class="Punctuation">,</span><span class="Whitespace"> </span><span class="StringLit">&quot;foo&quot;</span><span class="Punctuation">]</span><span class="Whitespace">
+
+</span><span class="Comment">## make sure handles trailing spaces</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s4</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot; 
+&quot;&quot;&quot;</span><span class="Whitespace">
+
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s5</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot; x
+&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s6</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot; &quot;&quot;
+&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s7</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s8</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="Punctuation">[</span><span class="LongStringLit">&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;</span><span class="Punctuation">,</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;
+  &quot;&quot;&quot;</span><span class="Whitespace"> </span><span class="Punctuation">]</span><span class="Whitespace">
+</span><span class="Keyword">discard</span><span class="Whitespace">
+</span><span class="Comment"># should be in</span></pre>
 
 </dd>
 

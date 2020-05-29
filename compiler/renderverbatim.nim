@@ -4,8 +4,10 @@ from xmltree import addEscaped
 import ast, options, msgs
 import packages/docutils/highlite
 
-# import compiler/renderer
-import renderer
+const isDebug = false
+when isDebug:
+  import renderer
+  import astalgo
 
 proc lastNodeRec(n: PNode): PNode =
   result = n
@@ -23,6 +25,62 @@ proc isInIndentationBlock(src: string, indent: int): bool =
     if src[j] != ' ': return false
   return true
 
+type LineData = object
+  ## this avoids having to use a HashSet (but we could...)
+  lineFirst: int
+  conf: ConfigRef
+  lines: seq[bool]
+
+proc tripleStrLitStartsAtNextLine(conf: ConfigRef, n: PNode): bool =
+  # enabling TLineInfo.offsetA,offsetB would probably make this easier
+  const tripleQuote = "\"\"\""
+  let src = sourceLine(conf, n.info)
+  let col = n.info.col
+  doAssert src.continuesWith(tripleQuote, col) # sanity check
+  var i = col + 3
+  var onlySpace = true
+  while true:
+    if src.len <= i:
+      doAssert src.len == i
+      return onlySpace
+    elif src.continuesWith(tripleQuote, i) and (src.len == i+3 or src[i+3] != '\"'):
+      return false # triple lit is in 1 line
+    elif src[i] != ' ': onlySpace = false
+    i.inc
+
+proc visitMultilineStrings(data: var LineData, n: PNode) =
+  var cline = data.lineFirst
+
+  template setLine() =
+    let line2 = cline - data.lineFirst
+    if data.lines.len <= line2:
+      data.lines.setLen line2+1
+      data.lines[line2] = true
+
+  case n.kind
+  of nkTripleStrLit:
+    # same logic should be applied for any multiline token
+    # we could also consider nkCommentStmt but right now we just assume doc comments,
+    # unlike triple string litterals, don't de-indent from runnableExamples.
+    cline = n.info.line.int
+    if tripleStrLitStartsAtNextLine(data.conf, n):
+      cline.inc
+      setLine()
+    for ai in n.strVal:
+      case ai
+      of '\n':
+        cline.inc
+        setLine()
+      else: discard
+  else:
+    for i in 0..<n.safeLen:
+      visitMultilineStrings(data, n[i])
+
+proc startOfLineInsideTriple(data: LineData, line: int): bool =
+  let line2 = line - data.lineFirst
+  if line2 >= data.lines.len: false
+  else: data.lines[line2]
+
 proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   ## TLineInfo.offsetA,offsetB would be cleaner but it's only enabled for nimpretty,
   ## we'd need to check performance impact to enable it for nimdoc.
@@ -39,20 +97,31 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
       assert true
     ]#
     first.line = n[0].info.line + 1
-    # first.col = n[0].info.col + 1 # anything with `col > n[0].col` is part of runnableExamples
 
   let last = n.lastNodeRec.info
   var info = first
   var indent = info.col
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
+
+  var data = LineData(lineFirst: first.line.int, conf: conf)
+  visitMultilineStrings(data, n[^1])
+  when isDebug:
+    debug(n)
+    for i in 0..<data.lines.len:
+      echo (i+data.lineFirst, data.lines[i])
+
   for line in first.line..numLines: # bugfix, see `testNimDocTrailingExample`
     info.line = line
     let src = sourceLine(conf, info)
-    if line > last.line and not isInIndentationBlock(src, indent):
+    let special = startOfLineInsideTriple(data, line.int)
+    if line > last.line and not special and not isInIndentationBlock(src, indent):
       break
     if line > first.line: result.add "\n"
-    if src.len > indent:
+    if special:
+      result.add src
+      lastNonemptyPos = result.len
+    elif src.len > indent:
       result.add src[indent..^1]
       lastNonemptyPos = result.len
   result.setLen lastNonemptyPos
