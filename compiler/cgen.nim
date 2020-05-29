@@ -2067,7 +2067,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       let disp = generateMethodDispatchers(graph)
       for x in disp: genProcAux(m, x.sym)
 
-  m.g.modulesClosed.add m
+  let mm = m
+  m.g.modulesClosed.add mm
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given
