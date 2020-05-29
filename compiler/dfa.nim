@@ -809,4 +809,7 @@ proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
   withBlock(s):
     gen(c, body)
     genImplicitReturn(c)
-  shallowCopy(result, c.code)
+  when defined(gcArc) or defined(gcOrc):
+    result = c.code # will move
+  else:
+    shallowCopy(result, c.code)
