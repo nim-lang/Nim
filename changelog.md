@@ -99,6 +99,21 @@
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
+- `std/with` now support object field assignment expression:
+  ```nim
+  import std/with
+
+  type Foo = object
+    x, y: int
+
+  var foo = Foo()
+  with foo:
+    x = 10
+    y = 20
+
+  echo foo
+  ```
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 
