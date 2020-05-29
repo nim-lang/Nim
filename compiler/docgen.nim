@@ -642,6 +642,7 @@ proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var state = rsStart
   template fn(n2) =
     state = getAllRunnableExamplesImpl(d, n2, dest, state)
+  dest.add genComment(d, n).rope
   case n.kind
   of routineDefs:
     n = n.getRoutineBody

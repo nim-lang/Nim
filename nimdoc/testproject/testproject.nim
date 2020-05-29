@@ -177,6 +177,36 @@ when true: # issue #14485
       7: end of broken html
       ]#
 
+when true: # procs without `=` (using comment field)
+  proc c_printf*(frmt: cstring): cint {.importc: "printf", header: "<stdio.h>", varargs, discardable.}
+    ## the c printf.
+    ## etc.
+
+  proc c_nonexistant*(frmt: cstring): cint {.importc: "nonexistant", header: "<stdio.h>", varargs, discardable.}
+
+when true: # tests RST inside comments
+  proc low*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.}
+    ## Returns the lowest possible value of an ordinal value `x`. As a special
+    ## semantic rule, `x` may also be a type identifier.
+    ##
+    ## See also:
+    ## * `low2(T) <#low2,T>`_
+    ##
+    ## .. code-block:: Nim
+    ##  low(2) # => -9223372036854775808
+
+  proc low2*[T: Ordinal|enum|range](x: T): T {.magic: "Low", noSideEffect.} =
+    ## Returns the lowest possible value of an ordinal value `x`. As a special
+    ## semantic rule, `x` may also be a type identifier.
+    ##
+    ## See also:
+    ## * `low(T) <#low,T>`_
+    ##
+    ## .. code-block:: Nim
+    ##  low2(2) # => -9223372036854775808
+    runnableExamples:
+      discard "in low2"
+
 when true: # (most) macros
   macro bar*(): untyped =
     result = newStmtList()
