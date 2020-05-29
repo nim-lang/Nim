@@ -65,27 +65,10 @@ proc renderNimCode*(result: var string, code: string, isLatex = false) =
     buf.setLen 0
     buf.addEscaped(val)
     let class = tokenClassToStr[kind]
-
-    #[
-    xxx bug in strutils.addf: this crashes:
-    var ret: string
-    ret.addf "foo $1 bar" % ["$"]
-    ]#
-    when false:
-      if isLatex:
-        result.addf "\\span$1{$2}" % [class, buf]
-      else:
-        result.addf  "<span class=\"$1\">$2</span>" % [class, buf]
-
     if isLatex:
-      result.addf "\\span$1{" % [class]
-      result.add buf
-      result.add "}"
+      result.addf "\\span$1{$2}", [class, buf]
     else:
-      result.addf  "<span class=\"$1\">" % [class]
-      result.add buf
-      result.add "</span>"
-
+      result.addf  "<span class=\"$1\">$2</span>", [class, buf]
   while true:
     getNextToken(toknizr, langNim)
     case toknizr.kind
