@@ -26,10 +26,15 @@ proc isInIndentationBlock(src: string, indent: int): bool =
   return true
 
 type LineData = object
-  ## this avoids having to use a HashSet (but we could...)
-  lineFirst: int
+  ## keep track of which lines are starting inside a multiline doc comment.
+  ## We purposefully avoid re-doing parsing which is already done (we get a PNode)
+  ## so we don't worry about whether we're inside (nested) doc comments etc.
+  ## But we sill need some logic to disambiguate different multiline styles.
   conf: ConfigRef
+  lineFirst: int
   lines: seq[bool]
+    ## lines[index] is true if line `lineFirst+index` starts inside a multiline string
+    ## Using a HashSet (extra dependency) would simplify but not by much.
 
 proc tripleStrLitStartsAtNextLine(conf: ConfigRef, n: PNode): bool =
   # enabling TLineInfo.offsetA,offsetB would probably make this easier
@@ -48,14 +53,13 @@ proc tripleStrLitStartsAtNextLine(conf: ConfigRef, n: PNode): bool =
     elif src[i] != ' ': onlySpace = false
     i.inc
 
-proc visitMultilineStrings(data: var LineData, n: PNode) =
-  var cline = data.lineFirst
+proc visitMultilineStrings(ldata: var LineData, n: PNode) =
+  var cline = ldata.lineFirst
 
   template setLine() =
-    let line2 = cline - data.lineFirst
-    if data.lines.len <= line2:
-      data.lines.setLen line2+1
-      data.lines[line2] = true
+    let index = cline - ldata.lineFirst
+    if ldata.lines.len < index+1: ldata.lines.setLen index+1
+    ldata.lines[index] = true
 
   case n.kind
   of nkTripleStrLit:
@@ -63,7 +67,7 @@ proc visitMultilineStrings(data: var LineData, n: PNode) =
     # we could also consider nkCommentStmt but right now we just assume doc comments,
     # unlike triple string litterals, don't de-indent from runnableExamples.
     cline = n.info.line.int
-    if tripleStrLitStartsAtNextLine(data.conf, n):
+    if tripleStrLitStartsAtNextLine(ldata.conf, n):
       cline.inc
       setLine()
     for ai in n.strVal:
@@ -74,12 +78,12 @@ proc visitMultilineStrings(data: var LineData, n: PNode) =
       else: discard
   else:
     for i in 0..<n.safeLen:
-      visitMultilineStrings(data, n[i])
+      visitMultilineStrings(ldata, n[i])
 
-proc startOfLineInsideTriple(data: LineData, line: int): bool =
-  let line2 = line - data.lineFirst
-  if line2 >= data.lines.len: false
-  else: data.lines[line2]
+proc startOfLineInsideTriple(ldata: LineData, line: int): bool =
+  let index = line - ldata.lineFirst
+  if index >= ldata.lines.len: false
+  else: ldata.lines[index]
 
 proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   ## TLineInfo.offsetA,offsetB would be cleaner but it's only enabled for nimpretty,
@@ -104,17 +108,17 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
 
-  var data = LineData(lineFirst: first.line.int, conf: conf)
-  visitMultilineStrings(data, n[^1])
+  var ldata = LineData(lineFirst: first.line.int, conf: conf)
+  visitMultilineStrings(ldata, n[^1])
   when isDebug:
     debug(n)
-    for i in 0..<data.lines.len:
-      echo (i+data.lineFirst, data.lines[i])
+    for i in 0..<ldata.lines.len:
+      echo (i+ldata.lineFirst, ldata.lines[i])
 
   for line in first.line..numLines: # bugfix, see `testNimDocTrailingExample`
     info.line = line
     let src = sourceLine(conf, info)
-    let special = startOfLineInsideTriple(data, line.int)
+    let special = startOfLineInsideTriple(ldata, line.int)
     if line > last.line and not special and not isInIndentationBlock(src, indent):
       break
     if line > first.line: result.add "\n"
