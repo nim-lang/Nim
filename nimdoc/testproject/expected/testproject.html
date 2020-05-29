@@ -190,6 +190,14 @@ function main() {
     title="p1()"><wbr />p1<span class="attachedType"></span></a></li>
   <li><a class="reference" href="#addfBug14485"
     title="addfBug14485()"><wbr />addf<wbr />Bug14485<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#c_printf%2Ccstring"
+    title="c_printf(frmt: cstring): cint"><wbr />c_<wbr />printf<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#c_nonexistant%2Ccstring"
+    title="c_nonexistant(frmt: cstring): cint"><wbr />c_<wbr />nonexistant<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#low%2CT"
+    title="low[T: Ordinal | enum | range](x: T): T"><wbr />low<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#low2%2CT"
+    title="low2[T: Ordinal | enum | range](x: T): T"><wbr />low2<span class="attachedType"></span></a></li>
 
   </ul>
 </li>
@@ -545,6 +553,46 @@ Some proc
 6: &lt;/script
 7: end of broken html
 ]#</span></pre>
+
+</dd>
+<a id="c_printf,cstring"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#c_printf%2Ccstring"><span class="Identifier">c_printf</span></a><span class="Other">(</span><span class="Identifier">frmt</span><span class="Other">:</span> <span class="Identifier">cstring</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">cint</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">importc</span><span class="Other">:</span> <span class="StringLit">&quot;printf&quot;</span><span class="Other">,</span> <span class="Identifier">header</span><span class="Other">:</span> <span class="StringLit">&quot;&lt;stdio.h&gt;&quot;</span><span class="Other">,</span> <span class="Identifier">varargs</span><span class="Other">,</span>
+                                 <span class="Identifier">discardable</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+the c printf. etc.
+
+</dd>
+<a id="c_nonexistant,cstring"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#c_nonexistant%2Ccstring"><span class="Identifier">c_nonexistant</span></a><span class="Other">(</span><span class="Identifier">frmt</span><span class="Other">:</span> <span class="Identifier">cstring</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">cint</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">importc</span><span class="Other">:</span> <span class="StringLit">&quot;nonexistant&quot;</span><span class="Other">,</span> <span class="Identifier">header</span><span class="Other">:</span> <span class="StringLit">&quot;&lt;stdio.h&gt;&quot;</span><span class="Other">,</span>
+                                      <span class="Identifier">varargs</span><span class="Other">,</span> <span class="Identifier">discardable</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+
+
+</dd>
+<a id="low,T"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#low%2CT"><span class="Identifier">low</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">:</span> <span class="Identifier">Ordinal</span> <span class="Operator">|</span> <span class="Keyword">enum</span> <span class="Operator">|</span> <span class="Identifier">range</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">magic</span><span class="Other">:</span> <span class="StringLit">&quot;Low&quot;</span><span class="Other">,</span> <span class="Identifier">noSideEffect</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+<p>Returns the lowest possible value of an ordinal value <tt class="docutils literal"><span class="pre">x</span></tt>. As a special semantic rule, <tt class="docutils literal"><span class="pre">x</span></tt> may also be a type identifier.</p>
+<p>See also:</p>
+<ul class="simple"><li><a class="reference external" href="#low2,T">low2(T)</a></li>
+</ul>
+<pre class="listing"><span class="Identifier">low</span><span class="Punctuation">(</span><span class="DecNumber">2</span><span class="Punctuation">)</span> <span class="Comment"># =&gt; -9223372036854775808</span></pre>
+
+</dd>
+<a id="low2,T"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#low2%2CT"><span class="Identifier">low2</span></a><span class="Other">[</span><span class="Identifier">T</span><span class="Other">:</span> <span class="Identifier">Ordinal</span> <span class="Operator">|</span> <span class="Keyword">enum</span> <span class="Operator">|</span> <span class="Identifier">range</span><span class="Other">]</span><span class="Other">(</span><span class="Identifier">x</span><span class="Other">:</span> <span class="Identifier">T</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">T</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">magic</span><span class="Other">:</span> <span class="StringLit">&quot;Low&quot;</span><span class="Other">,</span> <span class="Identifier">noSideEffect</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+<p>Returns the lowest possible value of an ordinal value <tt class="docutils literal"><span class="pre">x</span></tt>. As a special semantic rule, <tt class="docutils literal"><span class="pre">x</span></tt> may also be a type identifier.</p>
+<p>See also:</p>
+<ul class="simple"><li><a class="reference external" href="#low,T">low(T)</a></li>
+</ul>
+<pre class="listing"><span class="Identifier">low2</span><span class="Punctuation">(</span><span class="DecNumber">2</span><span class="Punctuation">)</span> <span class="Comment"># =&gt; -9223372036854775808</span></pre>
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span><span class="Whitespace"> </span><span class="StringLit">&quot;in low2&quot;</span></pre>
 
 </dd>
 

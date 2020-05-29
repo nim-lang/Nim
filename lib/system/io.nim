@@ -501,11 +501,6 @@ proc readAll*(file: File): TaintedString {.tags: [ReadIOEffect], benign.} =
   else:
     result = readAllBuffer(file).TaintedString
 
-proc writeLn[Ty](f: File, x: varargs[Ty, `$`]) =
-  for i in items(x):
-    write(f, i)
-  write(f, "\n")
-
 proc writeLine*[Ty](f: File, x: varargs[Ty, `$`]) {.inline,
                           tags: [WriteIOEffect], benign.} =
   ## writes the values `x` to `f` and then writes "\\n".
