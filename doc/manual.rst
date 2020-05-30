@@ -3714,6 +3714,10 @@ location is derived from the second parameter (called
 NRVO
 ----
 
+**Note**: This section describes the current implementation. This part
+of the language specification will be changed.
+See https://github.com/nim-lang/RFCs/issues/230 for more information.
+
 The return value is represented inside the body of a routine as the special
 `result`:idx: variable. This allows for a mechanism much like C++'s
 "named return value optimization" (`NRVO`:idx:). NRVO means that the stores
