@@ -176,6 +176,7 @@ type
     arLocalLValue,            # is an l-value, but local var; must not escape
                               # its stack frame!
     arDiscriminant,           # is a discriminant
+    arLentValue,              # lent value
     arStrange                 # it is a strange beast like 'typedesc[var T]'
 
 proc exprRoot*(n: PNode): PSym =
@@ -260,9 +261,14 @@ proc isAssignable*(owner: PSym, n: PNode; isUnsafeAddr=false): TAssignableResult
       # types that are equal modulo distinction preserve l-value:
       result = isAssignable(owner, n[1], isUnsafeAddr)
   of nkHiddenDeref:
-    if isUnsafeAddr and n[0].typ.kind == tyLent: result = arLValue
-    elif n[0].typ.kind == tyLent: result = arDiscriminant
-    else: result = arLValue
+    let n0 = n[0]
+    if n0.typ.kind == tyLent:
+      if isUnsafeAddr or (n0.kind == nkSym and n0.sym.kind == skResult):
+        result = arLValue
+      else:
+        result = arLentValue
+    else:
+      result = arLValue
   of nkDerefExpr, nkHiddenAddr:
     result = arLValue
   of nkObjUpConv, nkObjDownConv, nkCheckedFieldExpr:
