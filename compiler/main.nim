@@ -19,7 +19,7 @@ import
   cgen, json, nversion,
   platform, nimconf, passaux, depends, vm,
   modules,
-  modulegraphs, tables, lineinfos, pathutils, vmprofiler
+  modulegraphs, tables, lineinfos, pathutils, vmprofiler, std/private/gitutils
 
 import ic / cbackend
 from ic / ic import rodViewer
@@ -307,6 +307,7 @@ proc mainCommand*(graph: ModuleGraph) =
 
       var dumpdata = %[
         (key: "version", val: %VersionAsString),
+        (key: "githash", val: %getGitHashHuman()),
         (key: "nimExe", val: %(getAppFilename())),
         (key: "prefixdir", val: %conf.getPrefixDir().string),
         (key: "libpath", val: %conf.libpath.string),

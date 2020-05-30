@@ -28,7 +28,7 @@ bootSwitch(usedNoGC, defined(nogc), "--gc:none")
 import
   os, msgs, options, nversion, condsyms, strutils, extccomp, platform,
   wordrecg, parseutils, nimblecmd, parseopt, sequtils, lineinfos,
-  pathutils, strtabs
+  pathutils, strtabs, std/private/gitutils
 
 from ast import eqTypeFlags, tfGcSafe, tfNoSideEffect
 
@@ -95,9 +95,9 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                                  CPU[conf.target.hostCPU].name, CompileDate]),
                {msgStdout})
 
-    const gitHash {.strdefine.} = gorge("git log -n 1 --format=%H").strip
-      # xxx move this logic to std/private/gitutils
-    when gitHash.len == 40:
+    # xxx {.strdefine.}?
+    const gitHash = getGitHashHuman()
+    when gitHash.len > 0:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
     msgWriteln(conf, "active boot switches:" & usedRelease & usedDanger &
