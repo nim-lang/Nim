@@ -51,7 +51,7 @@ proc commandGenDepend(graph: ModuleGraph) =
       ' ' & changeFileExt(project, "dot").string)
 
 proc commandCheck(graph: ModuleGraph) =
-  graph.config.errorMax = high(int)  # do not stop after first error
+  graph.config.setErrorMaxHighMaybe
   defineSymbol(graph.config.symbols, "nimcheck")
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
@@ -59,7 +59,7 @@ proc commandCheck(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =
     handleDocOutputOptions graph.config
-    graph.config.errorMax = high(int)  # do not stop after first error
+    graph.config.setErrorMaxHighMaybe
     semanticPasses(graph)
     if json: registerPass(graph, docgen2JsonPass)
     else: registerPass(graph, docgen2Pass)
@@ -136,7 +136,7 @@ proc interactivePasses(graph: ModuleGraph) =
   registerPass(graph, evalPass)
 
 proc commandInteractive(graph: ModuleGraph) =
-  graph.config.errorMax = high(int)  # do not stop after first error
+  graph.config.setErrorMaxHighMaybe
   interactivePasses(graph)
   compileSystemModule(graph)
   if graph.config.commandArgs.len > 0:

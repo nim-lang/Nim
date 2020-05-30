@@ -2074,8 +2074,7 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   if c.compilesContextId == 0:
     inc c.compilesContextIdGenerator
     c.compilesContextId = c.compilesContextIdGenerator
-  # do not halt after first error:
-  c.config.errorMax = high(int)
+  c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   # open a scope for temporary symbol inclusions:
   let oldScope = c.currentScope

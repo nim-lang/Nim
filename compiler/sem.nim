@@ -325,7 +325,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   let oldErrorOutputs = c.config.m.errorOutputs
 
   c.config.m.errorOutputs = {}
-  c.config.errorMax = high(int)
+  c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   try:
     result = evalConstExpr(c.module, c.graph, e)
