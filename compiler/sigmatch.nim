@@ -2271,7 +2271,7 @@ proc prepareOperand(c: PContext; formal: PType; a: PNode): PNode =
                 #else: {efDetermineType}
     result = c.semOperand(c, a, flags)
   else:
-    result = a
+    result = c.semOperand(c, a, {efDetermineType})
     considerGenSyms(c, result)
 
 proc prepareOperand(c: PContext; a: PNode): PNode =
