@@ -35,7 +35,7 @@ options:
   By default a debug version is created, passing this option will
   force a release build, which is much faster and should be preferred
   unless you are debugging the compiler.
--d:useLinenoise
+-d:nimUseLinenoise
   Use the linenoise library for interactive mode (not needed on Windows).
 
 After compilation is finished you will hopefully end up with the nim

@@ -235,7 +235,7 @@ template isIterator*(owner: PSym): bool =
 proc liftingHarmful(conf: ConfigRef; owner: PSym): bool {.inline.} =
   ## lambda lifting can be harmful for JS-like code generators.
   let isCompileTime = sfCompileTime in owner.flags or owner.kind == skMacro
-  result = conf.cmd == cmdCompileToJS and not isCompileTime
+  result = conf.backend == backendJs and not isCompileTime
 
 proc createTypeBoundOpsLL(g: ModuleGraph; refType: PType; info: TLineInfo; owner: PSym) =
   createTypeBoundOps(g, nil, refType.lastSon, info)
@@ -291,7 +291,8 @@ proc markAsClosure(g: ModuleGraph; owner: PSym; n: PNode) =
   if illegalCapture(s):
     localError(g.config, n.info,
       ("'$1' is of type <$2> which cannot be captured as it would violate memory" &
-       " safety, declared here: $3") % [s.name.s, typeToString(s.typ), g.config$s.info])
+       " safety, declared here: $3; using '-d:nimWorkaround14447' helps in some cases") %
+      [s.name.s, typeToString(s.typ), g.config$s.info])
   elif owner.typ.callConv notin {ccClosure, ccDefault}:
     localError(g.config, n.info, "illegal capture '$1' because '$2' has the calling convention: <$3>" %
       [s.name.s, owner.name.s, CallingConvToStr[owner.typ.callConv]])
@@ -846,14 +847,14 @@ proc liftIterToProc*(g: ModuleGraph; fn: PSym; body: PNode; ptrType: PType): PNo
   fn.typ.callConv = oldCC
 
 proc liftLambdas*(g: ModuleGraph; fn: PSym, body: PNode; tooEarly: var bool): PNode =
-  # XXX gCmd == cmdCompileToJS does not suffice! The compiletime stuff needs
+  # XXX backend == backendJs does not suffice! The compiletime stuff needs
   # the transformation even when compiling to JS ...
 
   # However we can do lifting for the stuff which is *only* compiletime.
   let isCompileTime = sfCompileTime in fn.flags or fn.kind == skMacro
 
   if body.kind == nkEmpty or (
-      g.config.cmd == cmdCompileToJS and not isCompileTime) or
+      g.config.backend == backendJs and not isCompileTime) or
       fn.skipGenericOwner.kind != skModule:
 
     # ignore forward declaration:

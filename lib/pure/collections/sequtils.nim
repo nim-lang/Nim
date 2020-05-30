@@ -73,7 +73,7 @@
 ##   heterogeneous members
 
 
-include "system/inclrtl"
+import std/private/since
 
 import macros
 
@@ -566,7 +566,7 @@ template filterIt*(s, pred: untyped): untyped =
     assert acceptable == @[-2.0, 24.5, 44.31]
     assert notAcceptable == @[-272.15, 99.9, -113.44]
 
-  var result = newSeq[type(s[0])]()
+  var result = newSeq[typeof(s[0])]()
   for it {.inject.} in items(s):
     if pred: result.add(it)
   result
@@ -599,6 +599,25 @@ template keepItIf*(varSeq: seq, pred: untyped) =
           shallowCopy(varSeq[pos], varSeq[i])
       inc(pos)
   setLen(varSeq, pos)
+
+since (1, 1):
+  template countIt*(s, pred: untyped): int =
+    ## Returns a count of all the items that fulfilled the predicate.
+    ##
+    ## The predicate needs to be an expression using
+    ## the ``it`` variable for testing, like: ``countIt(@[1, 2, 3], it > 2)``.
+    ##
+    runnableExamples:
+      let numbers = @[-3, -2, -1, 0, 1, 2, 3, 4, 5, 6]
+      iterator iota(n: int): int =
+        for i in 0..<n: yield i
+      assert numbers.countIt(it < 0) == 3
+      assert countIt(iota(10), it < 2) == 2
+
+    var result = 0
+    for it {.inject.} in s:
+      if pred: result += 1
+    result
 
 proc all*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool =
   ## Iterates through a container and checks if every item fulfills the
@@ -686,7 +705,7 @@ template anyIt*(s, pred: untyped): bool =
 
 template toSeq1(s: not iterator): untyped =
   # overload for typed but not iterator
-  type OutType = type(items(s))
+  type OutType = typeof(items(s))
   when compiles(s.len):
     block:
       evalOnceAs(s2, s, compiles((let _ = s)))
@@ -707,13 +726,13 @@ template toSeq2(iter: iterator): untyped =
   evalOnceAs(iter2, iter(), false)
   when compiles(iter2.len):
     var i = 0
-    var result = newSeq[type(iter2)](iter2.len)
+    var result = newSeq[typeof(iter2)](iter2.len)
     for x in iter2:
       result[i] = x
       inc i
     result
   else:
-    type OutType = type(iter2())
+    type OutType = typeof(iter2())
     var result: seq[OutType] = @[]
     when compiles(iter2()):
       evalOnceAs(iter4, iter, false)
@@ -733,8 +752,8 @@ template toSeq*(iter: untyped): untyped =
     let
       myRange = 1..5
       mySet: set[int8] = {5'i8, 3, 1}
-    assert type(myRange) is HSlice[system.int, system.int]
-    assert type(mySet) is set[int8]
+    assert typeof(myRange) is HSlice[system.int, system.int]
+    assert typeof(mySet) is set[int8]
 
     let
       mySeq1 = toSeq(myRange)
@@ -751,14 +770,14 @@ template toSeq*(iter: untyped): untyped =
     when compiles(iter.len):
       block:
         evalOnceAs(iter2, iter, true)
-        var result = newSeq[type(iter)](iter2.len)
+        var result = newSeq[typeof(iter)](iter2.len)
         var i = 0
         for x in iter2:
           result[i] = x
           inc i
         result
     else:
-      var result: seq[type(iter)] = @[]
+      var result: seq[typeof(iter)] = @[]
       for x in iter:
         result.add(x)
       result
@@ -796,7 +815,7 @@ template foldl*(sequence, operation: untyped): untyped =
 
   let s = sequence
   assert s.len > 0, "Can't fold empty sequences"
-  var result: type(s[0])
+  var result: typeof(s[0])
   result = s[0]
   for i in 1..<s.len:
     let
@@ -824,8 +843,7 @@ template foldl*(sequence, operation, first): untyped =
       digits = foldl(numbers, a & (chr(b + ord('0'))), "")
     assert digits == "0815"
 
-  var result: type(first)
-  result = first
+  var result: typeof(first) = first
   for x in items(sequence):
     let
       a {.inject.} = result
@@ -864,11 +882,11 @@ template foldr*(sequence, operation: untyped): untyped =
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
 
-  let s = sequence
-  assert s.len > 0, "Can't fold empty sequences"
-  var result: type(s[0])
-  result = sequence[s.len - 1]
-  for i in countdown(s.len - 2, 0):
+  let s = sequence # xxx inefficient, use {.evalonce.} pending #13750
+  let n = s.len
+  assert n > 0, "Can't fold empty sequences"
+  var result = s[n - 1]
+  for i in countdown(n - 2, 0):
     let
       a {.inject.} = s[i]
       b {.inject.} = result
@@ -901,28 +919,50 @@ template mapIt*(s: typed, op: untyped): untyped =
         var it{.inject.}: typeof(items(s), typeOfIter);
         op), typeOfProc)
   else:
-    type OutType = type((
+    type OutType = typeof((
       block:
-        var it{.inject.}: type(items(s));
+        var it{.inject.}: typeof(items(s));
         op))
-  when compiles(s.len):
-    block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
+  when OutType is not (proc):
+    # Here, we avoid to create closures in loops.
+    # This avoids https://github.com/nim-lang/Nim/issues/12625
+    when compiles(s.len):
+      block: # using a block avoids https://github.com/nim-lang/Nim/issues/8580
 
-      # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
-      # (`error: use of undeclared identifier`) instead of Nim compile errors
-      evalOnceAs(s2, s, compiles((let _ = s)))
+        # BUG: `evalOnceAs(s2, s, false)` would lead to C compile errors
+        # (`error: use of undeclared identifier`) instead of Nim compile errors
+        evalOnceAs(s2, s, compiles((let _ = s)))
 
-      var i = 0
-      var result = newSeq[OutType](s2.len)
-      for it {.inject.} in s2:
-        result[i] = op
-        i += 1
+        var i = 0
+        var result = newSeq[OutType](s2.len)
+        for it {.inject.} in s2:
+          result[i] = op
+          i += 1
+        result
+    else:
+      var result: seq[OutType] = @[]
+      # use `items` to avoid https://github.com/nim-lang/Nim/issues/12639
+      for it {.inject.} in items(s):
+        result.add(op)
       result
   else:
-    var result: seq[OutType] = @[]
-    for it {.inject.} in s:
-      result.add(op)
-    result
+    # `op` is going to create closures in loops, let's fallback to `map`.
+    # NOTE: Without this fallback, developers have to define a helper function and
+    # call `map`:
+    #   [1, 2].map((it) => ((x: int) => it + x))
+    # With this fallback, above code can be simplified to:
+    #   [1, 2].mapIt((x: int) => it + x)
+    # In this case, `mapIt` is just syntax sugar for `map`.
+
+    when defined(nimHasTypeof):
+      type InType = typeof(items(s), typeOfIter)
+    else:
+      type InType = typeof(items(s))
+    # Use a help proc `f` to create closures for each element in `s`
+    let f = proc (x: InType): OutType =
+              let it {.inject.} = x
+              op
+    map(s, f)
 
 template applyIt*(varSeq, op: untyped) =
   ## Convenience template around the mutable ``apply`` proc to reduce typing.
@@ -963,7 +1003,7 @@ template newSeqWith*(len: int, init: untyped): untyped =
     import random
     var seqRand = newSeqWith(20, rand(10))
 
-  var result = newSeq[type(init)](len)
+  var result = newSeq[typeof(init)](len)
   for i in 0 ..< len:
     result[i] = init
   result
@@ -1395,6 +1435,7 @@ when isMainModule:
     assert subtraction == 7, "Subtraction is (5-(9-(11)))"
     assert multiplication == 495, "Multiplication is (5*(9*(11)))"
     assert concatenation == "nimiscool"
+    doAssert toSeq(1..3).foldr(a + b) == 6 # issue #14404
 
   block: # mapIt + applyIt test
     counter = 0

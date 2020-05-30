@@ -276,9 +276,10 @@ proc postStmtActions(p: BProc) {.inline.} =
 proc accessThreadLocalVar(p: BProc, s: PSym)
 proc emulatedThreadVars(conf: ConfigRef): bool {.inline.}
 proc genProc(m: BModule, prc: PSym)
+proc raiseInstr(p: BProc): Rope
 
 template compileToCpp(m: BModule): untyped =
-  m.config.cmd == cmdCompileToCpp or sfCompileToCpp in m.module.flags
+  m.config.backend == backendCpp or sfCompileToCpp in m.module.flags
 
 proc getTempName(m: BModule): Rope =
   result = m.tmpBase & rope(m.labels)
@@ -342,11 +343,6 @@ type
 
 proc genObjectInit(p: BProc, section: TCProcSection, t: PType, a: var TLoc,
                    mode: ObjConstrMode) =
-  if p.module.compileToCpp and t.isException and p.config.exc == excCpp:
-    # init vtable in Exception object for polymorphic exceptions
-    includeHeader(p.module, "<new>")
-    linefmt(p, section, "new ($1) $2;$n", [rdLoc(a), getTypeDesc(p.module, t)])
-
   #if optNimV2 in p.config.globalOptions: return
   case analyseObjectWithTypeField(t)
   of frNone:
@@ -394,6 +390,8 @@ proc isComplexValueType(t: PType): bool {.inline.} =
   result = t.kind in {tyArray, tySet, tyTuple, tyObject} or
     (t.kind == tyProc and t.callConv == ccClosure)
 
+include ccgreset
+
 proc resetLoc(p: BProc, loc: var TLoc) =
   let containsGcRef = optSeqDestructors notin p.config.globalOptions and containsGarbageCollectedRef(loc.t)
   let typ = skipTypes(loc.t, abstractVarRange)
@@ -410,11 +408,11 @@ proc resetLoc(p: BProc, loc: var TLoc) =
     else:
       linefmt(p, cpsStmts, "$1 = 0;$n", [rdLoc(loc)])
   else:
-    if optNilCheck in p.options:
-      linefmt(p, cpsStmts, "#chckNil((void*)$1);$n", [addrLoc(p.config, loc)])
     if loc.storage != OnStack and containsGcRef:
-      linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
-              [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
+      specializeReset(p, loc)
+      when false:
+        linefmt(p, cpsStmts, "#genericReset((void*)$1, $2);$n",
+                [addrLoc(p.config, loc), genTypeInfo(p.module, loc.t, loc.lode.info)])
       # XXX: generated reset procs should not touch the m_type
       # field, so disabling this should be safe:
       genObjectInit(p, cpsStmts, loc.t, loc, constructObj)
@@ -429,7 +427,7 @@ proc resetLoc(p: BProc, loc: var TLoc) =
 
 proc constructLoc(p: BProc, loc: var TLoc, isTemp = false) =
   let typ = loc.t
-  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst).kind in {tyString, tySequence}:
+  if optSeqDestructors in p.config.globalOptions and skipTypes(typ, abstractInst + {tyStatic}).kind in {tyString, tySequence}:
     linefmt(p, cpsStmts, "$1.len = 0; $1.p = NIM_NIL;$n", [rdLoc(loc)])
   elif not isComplexValueType(typ):
     linefmt(p, cpsStmts, "$1 = ($2)0;$n", [rdLoc(loc),
@@ -974,7 +972,7 @@ proc genProcBody(p: BProc; procBody: PNode) =
   genStmts(p, procBody) # modifies p.locals, p.init, etc.
   if {nimErrorFlagAccessed, nimErrorFlagDeclared} * p.flags == {nimErrorFlagAccessed}:
     p.flags.incl nimErrorFlagDeclared
-    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NI* nimErr_;$n", []))
+    p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
 proc genProcAux(m: BModule, prc: PSym) =
@@ -1072,11 +1070,11 @@ proc genProcAux(m: BModule, prc: PSym) =
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
            sfCompileToCpp notin sym.getModule().flags and
-           m.config.cmd != cmdCompileToCpp) or (
+           m.config.backend != backendCpp) or (
            sym.flags * {sfInfixCall, sfCompilerProc, sfMangleCpp} == {} and
            sym.flags * {sfImportc, sfExportc} != {} and
            sym.magic == mNone and
-           m.config.cmd == cmdCompileToCpp)
+           m.config.backend == backendCpp)
 
 proc genProcPrototype(m: BModule, sym: PSym) =
   useHeader(m, sym)
@@ -1172,21 +1170,43 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   useHeader(m, sym)
   if sym.loc.k == locNone:
     fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+  if m.hcrOn: incl(sym.loc.flags, lfIndirect)
+
   if lfNoDecl in sym.loc.flags: return
   # declare implementation:
   var q = findPendingModule(m, sym)
   if q != nil and not containsOrIncl(q.declaredThings, sym.id):
     assert q.initProc.module == q
+    # add a suffix for hcr - will later init the global pointer with this data
+    let actualConstName = if m.hcrOn: sym.loc.r & "_const" else: sym.loc.r
     q.s[cfsData].addf("N_LIB_PRIVATE NIM_CONST $1 $2 = $3;$n",
-        [getTypeDesc(q, sym.typ), sym.loc.r, genBracedInit(q.initProc, sym.ast, isConst = true)])
+        [getTypeDesc(q, sym.typ), actualConstName, genBracedInit(q.initProc, sym.ast, isConst = true)])
+    if m.hcrOn:
+      # generate the global pointer with the real name
+      q.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t), sym.loc.r])
+      # register it (but ignore the boolean result of hcrRegisterGlobal)
+      q.initProc.procSec(cpsLocals).addf(
+        "\thcrRegisterGlobal($1, \"$2\", sizeof($3), NULL, (void**)&$2);$n",
+        [getModuleDllPath(q, sym), sym.loc.r, rdLoc(sym.loc)])
+      # always copy over the contents of the actual constant with the _const
+      # suffix ==> this means that the constant is reloadable & updatable!
+      q.initProc.procSec(cpsLocals).add(ropecg(q,
+        "\t#nimCopyMem((void*)$1, (NIM_CONST void*)&$2, sizeof($3));$n",
+        [sym.loc.r, actualConstName, rdLoc(sym.loc)]))
   # declare header:
   if q != m and not containsOrIncl(m.declaredThings, sym.id):
     assert(sym.loc.r != nil)
-    let headerDecl = "extern NIM_CONST $1 $2;$n" %
-        [getTypeDesc(m, sym.loc.t), sym.loc.r]
-    m.s[cfsData].add(headerDecl)
-    if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
-      p.module.g.generatedHeader.s[cfsData].add(headerDecl)
+    if m.hcrOn:
+      m.s[cfsVars].addf("static $1* $2;$n", [getTypeDesc(m, sym.loc.t), sym.loc.r]);
+      m.initProc.procSec(cpsLocals).addf(
+        "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
+        getTypeDesc(m, sym.loc.t), getModuleDllPath(q, sym)])
+    else:
+      let headerDecl = "extern NIM_CONST $1 $2;$n" %
+          [getTypeDesc(m, sym.loc.t), sym.loc.r]
+      m.s[cfsData].add(headerDecl)
+      if sfExportc in sym.flags and p.module.g.generatedHeader != nil:
+        p.module.g.generatedHeader.s[cfsData].add(headerDecl)
 
 proc isActivated(prc: PSym): bool = prc.typ != nil
 
@@ -1233,13 +1253,15 @@ proc genVarPrototype(m: BModule, n: PNode) =
         "\t$1 = ($2*)hcrGetGlobal($3, \"$1\");$n", [sym.loc.r,
         getTypeDesc(m, sym.loc.t), getModuleDllPath(m, sym)])
 
-proc addIntTypes(result: var Rope; conf: ConfigRef) {.inline.} =
+proc addNimDefines(result: var Rope; conf: ConfigRef) {.inline.} =
   result.addf("#define NIM_INTBITS $1\L", [
     platform.CPU[conf.target.targetCPU].intSize.rope])
   if conf.cppCustomNamespace.len > 0:
     result.add("#define USE_NIM_NAMESPACE ")
     result.add(conf.cppCustomNamespace)
     result.add("\L")
+  if conf.isDefined("nimEmulateOverflowChecks"):
+    result.add("#define NIM_EmulateOverflowChecks\L")
 
 proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
   if optCompileOnly in conf.globalOptions:
@@ -1262,7 +1284,7 @@ proc getCopyright(conf: ConfigRef; cfile: Cfile): Rope =
 proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   result = getCopyright(conf, cfile)
   if conf.hcrOn: result.add("#define NIM_HOT_CODE_RELOADING\L")
-  addIntTypes(result, conf)
+  addNimDefines(result, conf)
 
 proc getSomeNameForModule(m: PSym): Rope =
   assert m.kind == skModule
@@ -1663,6 +1685,11 @@ proc genInitCode(m: BModule) =
 
     if beforeRetNeeded in m.initProc.flags:
       prc.add(~"\tBeforeRet_: ;$n")
+
+    if sfMainModule in m.module.flags and m.config.exc == excGoto:
+      if getCompilerProc(m.g.graph, "nimTestErrorFlag") != nil:
+        m.appcg(prc, "\t#nimTestErrorFlag();$n", [])
+
     if optStackTrace in m.initProc.options and preventStackTrace notin m.flags:
       prc.add(deinitFrame(m.initProc))
 
@@ -1801,7 +1828,10 @@ template injectG() {.dirty.} =
     graph.backend = newModuleList(graph)
   let g = BModuleList(graph.backend)
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
+
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   injectG()
   result = newModule(g, module, graph.config)
   if optGenIndex in graph.config.globalOptions and g.generatedHeader == nil:
@@ -1819,7 +1849,7 @@ proc writeHeader(m: BModule) =
 
   var guard = "__$1__" % [m.filename.splitFile.name.rope]
   result.addf("#ifndef $1$n#define $1$n", [guard])
-  addIntTypes(result, m.config)
+  addNimDefines(result, m.config)
   generateHeaders(m)
 
   generateThreadLocalStorage(m)
@@ -1841,7 +1871,7 @@ proc writeHeader(m: BModule) =
 proc getCFile(m: BModule): AbsoluteFile =
   let ext =
       if m.compileToCpp: ".nim.cpp"
-      elif m.config.cmd == cmdCompileToOC or sfCompileToObjc in m.module.flags: ".nim.m"
+      elif m.config.backend == backendObjc or sfCompileToObjc in m.module.flags: ".nim.m"
       else: ".nim.c"
   result = changeFileExt(completeCfilePath(m.config, withPackageName(m.config, m.cfilename)), ext)
 
@@ -1921,8 +1951,8 @@ proc shouldRecompile(m: BModule; code: Rope, cfile: Cfile): bool =
 # it would generate multiple 'main' procs, for instance.
 
 proc writeModule(m: BModule, pending: bool) =
+  template onExit() = close(m.ndi, m.config)
   let cfile = getCFile(m)
-
   if true or optForceFullMake in m.config.globalOptions:
     if moduleHasChanged(m.g.graph, m.module):
       genInitCode(m)
@@ -1938,8 +1968,9 @@ proc writeModule(m: BModule, pending: bool) =
     var code = genModule(m, cf)
     if code != nil or m.config.symbolFiles != disabledSf:
       when hasTinyCBackend:
-        if conf.cmd == cmdRun:
-          tccgen.compileCCode($code)
+        if m.config.cmd == cmdRun:
+          tccgen.compileCCode($code, m.config)
+          onExit()
           return
 
       if not shouldRecompile(m, code, cf): cf.flags = {CfileFlag.Cached}
@@ -1963,7 +1994,7 @@ proc writeModule(m: BModule, pending: bool) =
                    obj: completeCfilePath(m.config, toObjFile(m.config, cfile)), flags: {})
     if not fileExists(cf.obj): cf.flags = {CfileFlag.Cached}
     addFileToCompile(m.config, cf)
-  close(m.ndi)
+  onExit()
 
 proc updateCachedModule(m: BModule) =
   let cfile = getCFile(m)
@@ -1990,12 +2021,14 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
   if b == nil: return
   var m = BModule(b)
   if sfMainModule in m.module.flags:
-    let testForError = getCompilerProc(graph, "nimTestErrorFlag")
-    if testForError != nil and graph.config.exc == excGoto:
-      n.add newTree(nkCall, testForError.newSymNode)
+    # phase ordering problem here: We need to announce this
+    # dependency to 'nimTestErrorFlag' before system.c has been written to disk.
+    if m.config.exc == excGoto and getCompilerProc(graph, "nimTestErrorFlag") != nil:
+      discard cgsym(m, "nimTestErrorFlag")
 
-    for i in countdown(high(graph.globalDestructors), 0):
-      n.add graph.globalDestructors[i]
+    if {optGenStaticLib, optGenDynLib} * m.config.globalOptions == {}:
+      for i in countdown(high(graph.globalDestructors), 0):
+        n.add graph.globalDestructors[i]
   if passes.skipCodegen(m.config, n): return
   if moduleHasChanged(graph, m.module):
     # if the module is cached, we don't regenerate the main proc
@@ -2034,7 +2067,8 @@ proc myClose(graph: ModuleGraph; b: PPassContext, n: PNode): PNode =
       let disp = generateMethodDispatchers(graph)
       for x in disp: genProcAux(m, x.sym)
 
-  m.g.modulesClosed.add m
+  let mm = m
+  m.g.modulesClosed.add mm
 
 proc genForwardedProcs(g: BModuleList) =
   # Forward declared proc:s lack bodies when first encountered, so they're given

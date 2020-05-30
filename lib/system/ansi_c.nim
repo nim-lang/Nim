@@ -117,7 +117,7 @@ type
   CFilePtr* = ptr CFile ## The type representing a file handle.
 
 # duplicated between io and ansi_c
-const stdioUsesMacros = (defined(osx) or defined(bsd)) and not defined(emscripten)
+const stdioUsesMacros = (defined(osx) or defined(freebsd) or defined(dragonfly)) and not defined(emscripten)
 const stderrName = when stdioUsesMacros: "__stderrp" else: "stderr"
 const stdoutName = when stdioUsesMacros: "__stdoutp" else: "stdout"
 const stdinName = when stdioUsesMacros: "__stdinp" else: "stdin"

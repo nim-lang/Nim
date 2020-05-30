@@ -20,9 +20,6 @@
 ## * `unidecode module <unidecode.html>`_
 ## * `encodings module <encodings.html>`_
 
-
-{.deadCodeElim: on.} # dce option deprecated
-
 include "system/inclrtl"
 
 type
@@ -31,6 +28,7 @@ type
     ## Type that can hold a single Unicode code point.
     ##
     ## A Rune may be composed with other Runes to a character on the screen.
+    ## `RuneImpl` is the underlying type used to store Runes, currently `int32`.
 
 template ones(n: untyped): untyped = ((1 shl n)-1)
 
@@ -472,7 +470,7 @@ proc binarySearch(c: RuneImpl, tab: openArray[int], len, stride: int): int =
     return t
   return -1
 
-proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1".} =
   ## Converts ``c`` into lower case. This works for any rune.
   ##
   ## If possible, prefer ``toLower`` over ``toUpper``.
@@ -490,7 +488,7 @@ proc toLower*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toLowerSinglets[p+1] - 500)
   return Rune(c)
 
-proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1".} =
   ## Converts ``c`` into upper case. This works for any rune.
   ##
   ## If possible, prefer ``toLower`` over ``toUpper``.
@@ -508,7 +506,7 @@ proc toUpper*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toUpperSinglets[p+1] - 500)
   return Rune(c)
 
-proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
+proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1".} =
   ## Converts ``c`` to title case.
   ##
   ## See also:
@@ -521,7 +519,7 @@ proc toTitle*(c: Rune): Rune {.rtl, extern: "nuc$1", procvar.} =
     return Rune(c + toTitleSinglets[p+1] - 500)
   return Rune(c)
 
-proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a lower case rune.
   ##
   ## If possible, prefer ``isLower`` over ``isUpper``.
@@ -539,7 +537,7 @@ proc isLower*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == toUpperSinglets[p]:
     return true
 
-proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a upper case rune.
   ##
   ## If possible, prefer ``isLower`` over ``isUpper``.
@@ -559,7 +557,7 @@ proc isUpper*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == toLowerSinglets[p]:
     return true
 
-proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is an *alpha* rune (i.e., a letter).
   ##
   ## See also:
@@ -578,7 +576,7 @@ proc isAlpha*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c == alphaSinglets[p]:
     return true
 
-proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a Unicode titlecase code point.
   ##
   ## See also:
@@ -589,7 +587,7 @@ proc isTitle*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   ## * `isWhiteSpace proc <#isWhiteSpace,Rune>`_
   return isUpper(c) and isLower(c)
 
-proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a Unicode whitespace code point.
   ##
   ## See also:
@@ -602,7 +600,7 @@ proc isWhiteSpace*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
   if p >= 0 and c >= spaceRanges[p] and c <= spaceRanges[p+1]:
     return true
 
-proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1", procvar.} =
+proc isCombining*(c: Rune): bool {.rtl, extern: "nuc$1".} =
   ## Returns true if ``c`` is a Unicode combining code unit.
   ##
   ## See also:
@@ -629,7 +627,7 @@ template runeCheck(s, runeProc) =
     fastRuneAt(s, i, rune, doInc = true)
     result = runeProc(rune) and result
 
-proc isAlpha*(s: string): bool {.noSideEffect, procvar,
+proc isAlpha*(s: string): bool {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all alphabetic runes.
   runnableExamples:
@@ -637,7 +635,7 @@ proc isAlpha*(s: string): bool {.noSideEffect, procvar,
     doAssert a.isAlpha
   runeCheck(s, isAlpha)
 
-proc isSpace*(s: string): bool {.noSideEffect, procvar,
+proc isSpace*(s: string): bool {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Returns true if ``s`` contains all whitespace runes.
   runnableExamples:
@@ -658,21 +656,21 @@ template convertRune(s, runeProc) =
     rune = runeProc(rune)
     fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
-proc toUpper*(s: string): string {.noSideEffect, procvar,
+proc toUpper*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into upper-case runes.
   runnableExamples:
     doAssert toUpper("abγ") == "ABΓ"
   convertRune(s, toUpper)
 
-proc toLower*(s: string): string {.noSideEffect, procvar,
+proc toLower*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1Str".} =
   ## Converts ``s`` into lower-case runes.
   runnableExamples:
     doAssert toLower("ABΓ") == "abγ"
   convertRune(s, toLower)
 
-proc swapCase*(s: string): string {.noSideEffect, procvar,
+proc swapCase*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Swaps the case of runes in ``s``.
   ##
@@ -694,14 +692,14 @@ proc swapCase*(s: string): string {.noSideEffect, procvar,
       rune = rune.toUpper()
     fastToUTF8Copy(rune, result, resultIndex, doInc = true)
 
-proc capitalize*(s: string): string {.noSideEffect, procvar,
+proc capitalize*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Converts the first character of ``s`` into an upper-case rune.
   runnableExamples:
     doAssert capitalize("βeta") == "Βeta"
 
   if len(s) == 0:
-    return s
+    return ""
   var
     rune: Rune
     i = 0
@@ -761,7 +759,7 @@ proc translate*(s: string, replacements: proc(key: string): string): string {.
     let word = s[wordStart .. ^1]
     result.add(replacements(word))
 
-proc title*(s: string): string {.noSideEffect, procvar,
+proc title*(s: string): string {.noSideEffect,
   rtl, extern: "nuc$1".} =
   ## Converts ``s`` to a unicode title.
   ##
@@ -823,7 +821,7 @@ proc toRunes*(s: string): seq[Rune] =
   for r in s.runes:
     result.add(r)
 
-proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1", procvar.} =
+proc cmpRunesIgnoreCase*(a, b: string): int {.rtl, extern: "nuc$1".} =
   ## Compares two UTF-8 strings and ignores the case. Returns:
   ##
   ## | 0 if a == b
@@ -933,27 +931,23 @@ proc stringHasSep(s: string, index: int, sep: Rune): bool =
   fastRuneAt(s, index, rune, false)
   return sep == rune
 
-template splitCommon(s, sep, maxsplit: untyped, sepLen: int = -1) =
+template splitCommon(s, sep, maxsplit: untyped) =
   ## Common code for split procedures.
+  let
+    sLen = len(s)
   var
     last = 0
     splits = maxsplit
-  if len(s) > 0:
-    while last <= len(s):
+  if sLen > 0:
+    while last <= sLen:
       var first = last
-      while last < len(s) and not stringHasSep(s, last, sep):
-        when sep is Rune:
-          inc(last, sepLen)
-        else:
-          inc(last, runeLenAt(s, last))
-      if splits == 0: last = len(s)
+      while last < sLen and not stringHasSep(s, last, sep):
+        inc(last, runeLenAt(s, last))
+      if splits == 0: last = sLen
       yield s[first .. (last - 1)]
       if splits == 0: break
       dec(splits)
-      when sep is Rune:
-        inc(last, sepLen)
-      else:
-        inc(last, if last < len(s): runeLenAt(s, last) else: 1)
+      inc(last, if last < sLen: runeLenAt(s, last) else: 1)
 
 iterator split*(s: string, seps: openArray[Rune] = unicodeSpaces,
   maxsplit: int = -1): string =
@@ -1037,7 +1031,7 @@ iterator split*(s: string, sep: Rune, maxsplit: int = -1): string =
   ##   ""
   ##   ""
   ##
-  splitCommon(s, sep, maxsplit, sep.size)
+  splitCommon(s, sep, maxsplit)
 
 proc split*(s: string, seps: openArray[Rune] = unicodeSpaces, maxsplit: int = -1):
     seq[string] {.noSideEffect, rtl, extern: "nucSplitRunes".} =
@@ -1232,7 +1226,7 @@ proc isUpper*(s: string, skipNonAlpha: bool): bool {.
   ## an empty string.
   runeCaseCheck(s, isUpper, skipNonAlpha)
 
-proc isTitle*(s: string): bool {.noSideEffect, procvar, rtl, extern: "nuc$1Str",
+proc isTitle*(s: string): bool {.noSideEffect, rtl, extern: "nuc$1Str",
     deprecated: "Deprecated since version 0.20 since its semantics are unclear".} =
   ## **Deprecated since version 0.20 since its semantics are unclear**
   ##
@@ -1424,6 +1418,7 @@ when isMainModule:
         "an", "example", "", ""]
     doAssert s.split(maxsplit = 4) == @["", "this", "is", "an", "example  "]
     doAssert s.split(' '.Rune, maxsplit = 1) == @["", "this is an example  "]
+    doAssert s3.split("×".runeAt(0)) == @[":this", "is", "an:example", "", ""]
 
   block stripTests:
     doAssert(strip("") == "")

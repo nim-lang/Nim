@@ -743,13 +743,19 @@ Overloaded procedures
 Nim provides the ability to overload procedures similar to C++:
 
 .. code-block:: nim
-  proc toString(x: int): string = ...
-  proc toString(x: bool): string =
-    if x: result = "true"
-    else: result = "false"
+  proc toString(x: int): string =
+    result =
+      if x < 0: "negative"
+      elif x > 0: "positive"
+      else: "zero"
 
-  echo toString(13)   # calls the toString(x: int) proc
-  echo toString(true) # calls the toString(x: bool) proc
+  proc toString(x: bool): string =
+    result =
+      if x: "yep"
+      else: "nope"
+
+  assert toString(13) == "positive" # calls the toString(x: int) proc
+  assert toString(true) == "yep"    # calls the toString(x: bool) proc
 
 (Note that ``toString`` is usually the `$ <dollars.html>`_ operator in
 Nim.) The compiler chooses the most appropriate proc for the ``toString``

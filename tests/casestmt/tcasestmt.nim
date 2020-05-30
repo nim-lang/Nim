@@ -250,3 +250,40 @@ proc negativeOrNot(num: int): string =
 doAssert negativeOrNot(-1) == "negative"
 doAssert negativeOrNot(10000000) == "zero or positive"
 doAssert negativeOrNot(0) == "zero or positive"
+
+########################################################
+# issue #13490
+import strutils
+func foo(input: string): int =
+  try:
+    parseInt(input)
+  except:
+    return
+
+func foo2(b, input: string): int =
+  case b:
+    of "Y":
+      for c in input:
+        result =  if c in '0'..'9': parseInt($c)
+                  else: break
+    of "N":
+      for c in input:
+        result =  if c in '0'..'9': parseInt($c)
+                  else: continue
+    else: return
+
+
+static:
+  doAssert(foo("3") == 3)
+  doAssert(foo("a") == 0)
+  doAssert(foo2("Y", "a2") == 0)
+  doAssert(foo2("Y", "2a") == 2)
+  doAssert(foo2("N", "a3") == 3)
+  doAssert(foo2("z", "2") == 0)
+
+doAssert(foo("3") == 3)
+doAssert(foo("a") == 0)
+doAssert(foo2("Y", "a2") == 0)
+doAssert(foo2("Y", "2a") == 2)
+doAssert(foo2("N", "a3") == 3)
+doAssert(foo2("z", "2") == 0)

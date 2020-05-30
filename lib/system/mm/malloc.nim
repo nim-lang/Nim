@@ -1,17 +1,19 @@
 
+{.push stackTrace: off.}
+
 proc allocImpl(size: Natural): pointer =
   c_malloc(size.csize_t)
 
 proc alloc0Impl(size: Natural): pointer =
   c_calloc(size.csize_t, 1)
 
-proc reallocImpl(p: pointer, newsize: Natural): pointer =
+proc reallocImpl(p: pointer, newSize: Natural): pointer =
   c_realloc(p, newSize.csize_t)
 
-proc realloc0Impl(p: pointer, oldsize, newsize: Natural): pointer =
-  result = realloc(p, newsize.csize_t)
-  if newsize > oldsize:
-    zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+proc realloc0Impl(p: pointer, oldsize, newSize: Natural): pointer =
+  result = realloc(p, newSize.csize_t)
+  if newSize > oldSize:
+    zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
 
 proc deallocImpl(p: pointer) =
   c_free(p)
@@ -25,11 +27,11 @@ proc allocSharedImpl(size: Natural): pointer =
 proc allocShared0Impl(size: Natural): pointer =
   alloc0Impl(size)
 
-proc reallocSharedImpl(p: pointer, newsize: Natural): pointer =
-  reallocImpl(p, newsize)
+proc reallocSharedImpl(p: pointer, newSize: Natural): pointer =
+  reallocImpl(p, newSize)
 
-proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer =
-  realloc0Impl(p, oldsize, newsize)
+proc reallocShared0Impl(p: pointer, oldsize, newSize: Natural): pointer =
+  realloc0Impl(p, oldSize, newSize)
 
 proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
@@ -38,10 +40,13 @@ proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
 proc GC_disable() = discard
 proc GC_enable() = discard
-proc GC_fullCollect() = discard
+
+when not defined(gcOrc):
+  proc GC_fullCollect() = discard
+  proc GC_enableMarkAndSweep() = discard
+  proc GC_disableMarkAndSweep() = discard
+
 proc GC_setStrategy(strategy: GC_Strategy) = discard
-proc GC_enableMarkAndSweep() = discard
-proc GC_disableMarkAndSweep() = discard
 
 proc getOccupiedMem(): int = discard
 proc getFreeMem(): int = discard
@@ -75,6 +80,7 @@ proc alloc(r: var MemRegion, size: int): pointer =
 proc alloc0Impl(r: var MemRegion, size: int): pointer =
   result = alloc0Impl(size)
 proc dealloc(r: var MemRegion, p: pointer) = dealloc(p)
-proc deallocOsPages(r: var MemRegion) {.inline.} = discard
-proc deallocOsPages() {.inline.} = discard
+proc deallocOsPages(r: var MemRegion) = discard
+proc deallocOsPages() = discard
 
+{.pop.}

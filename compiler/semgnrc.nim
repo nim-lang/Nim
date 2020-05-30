@@ -226,7 +226,7 @@ proc semGenericStmt(c: PContext, n: PNode,
     var mixinContext = false
     if s != nil:
       incl(s.flags, sfUsed)
-      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles}
+      mixinContext = s.magic in {mDefined, mDefinedInScope, mCompiles, mAstToStr}
       let sc = symChoice(c, fn, s, if s.isMixedIn: scForceOpen else: scOpen)
       case s.kind
       of skMacro:

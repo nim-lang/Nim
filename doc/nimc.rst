@@ -160,7 +160,7 @@ passed as a command line argument to the compiler.
 The ``nim`` executable processes configuration files in the following
 directories (in this order; later files overwrite previous settings):
 
-1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``<Nim's installation director>\config\nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
+1) ``$nim/config/nim.cfg``, ``/etc/nim/nim.cfg`` (UNIX) or ``<Nim's installation directory>\config\nim.cfg`` (Windows). This file can be skipped with the ``--skipCfg`` command line option.
 2) If environment variable ``XDG_CONFIG_HOME`` is defined, ``$XDG_CONFIG_HOME/nim/nim.cfg`` or ``~/.config/nim/nim.cfg`` (POSIX) or ``%APPDATA%/nim/nim.cfg`` (Windows). This file can be skipped with the ``--skipUserCfg`` command line option.
 3) ``$parentDir/nim.cfg`` where ``$parentDir`` stands for any parent  directory of the project file's path. These files can be skipped with the ``--skipParentCfg`` command line option.
 4) ``$projectDir/nim.cfg`` where ``$projectDir`` stands for the project  file's path. This file can be skipped with the ``--skipProjCfg`` command line option.
@@ -239,6 +239,10 @@ add the ``-f`` flag to force all files to be recompiled.
 
 The default compiler is defined at the top of ``config\nim.cfg``.
 Changing this setting affects the compiler used by ``koch`` to (re)build Nim.
+
+To use the ``CC`` environment variable, use ``nim c --cc:env myfile.nim``. To use the
+``CXX`` environment variable, use ``nim cpp --cc:env myfile.nim``. ``--cc:env`` is available
+since Nim version 1.4.
 
 
 Cross compilation
@@ -438,9 +442,8 @@ Define                   Effect
 ``memProfiler``          Enables memory profiling for the native GC.
 ``uClibc``               Use uClibc instead of libc. (Relevant for Unix-like OSes)
 ``checkAbi``             When using types from C headers, add checks that compare
-                         what's in the Nim file with what's in the C header
-                         (requires a C compiler with _Static_assert support, like
-                         any C11 compiler)
+                         what's in the Nim file with what's in the C header.
+                         This may become enabled by default in the future.
 ``tempDir``              This symbol takes a string as its value, like
                          ``--define:tempDir:/some/temp/path`` to override the
                          temporary directory returned by ``os.getTempDir()``.
@@ -528,7 +531,7 @@ for further information.
 
   The Nim compiler supports an interactive mode. This is also known as
   a `REPL`:idx: (*read eval print loop*). If Nim has been built with the
-  ``-d:useGnuReadline`` switch, it uses the GNU readline library for terminal
+  ``-d:nimUseLinenoise`` switch, it uses the GNU readline library for terminal
   input management. To start Nim in interactive mode use the command
   ``nim secret``. To quit use the ``quit()`` command. To determine whether an input
   line is an incomplete statement to be continued these rules are used:

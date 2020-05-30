@@ -46,7 +46,7 @@ proc generateThreadLocalStorage(m: BModule) =
 
 proc generateThreadVarsSize(m: BModule) =
   if m.g.nimtv != nil:
-    let externc = if m.config.cmd == cmdCompileToCpp or
+    let externc = if m.config.backend == backendCpp or
                        sfCompileToCpp in m.module.flags: "extern \"C\" "
                   else: ""
     m.s[cfsProcs].addf(

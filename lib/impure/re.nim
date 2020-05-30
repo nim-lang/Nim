@@ -7,6 +7,9 @@
 #    distribution, for details about the copyright.
 #
 
+when defined(js):
+  {.error: "This library needs to be compiled with a c-like backend, and depends on PCRE.".}
+
 ## Regular expression support for Nim.
 ##
 ## This module is implemented by providing a wrapper around the
@@ -18,6 +21,15 @@
 ##
 ## .. include:: ../../doc/regexprs.txt
 ##
+
+runnableExamples:
+  ## Unless specified otherwise, `start` parameter in each proc indicates
+  ## where the scan starts, but outputs are relative to the start of the input
+  ## string, not to `start`:
+  doAssert find("uxabc", re"(?<=x|y)ab", start = 1) == 2 # lookbehind assertion
+  doAssert find("uxabc", re"ab", start = 3) == -1 # we're past `start` => not found
+  doAssert not match("xabc", re"^abc$", start = 1)
+    # can't match start of string since we're starting at 1
 
 import
   pcre, strutils, rtarrays
@@ -206,11 +218,8 @@ proc findBounds*(s: string, pattern: Regex,
   ## If it does not match, ``(-1,0)`` is returned.
   ##
   ## Note: there is a speed improvement if the matches do not need to be captured.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   assert findBounds("01234abc89", re"abc") == (5,7)
+  runnableExamples:
+    assert findBounds("01234abc89", re"abc") == (5,7)
   result = findBounds(cstring(s), pattern, start, s.len)
 
 proc matchOrFind(buf: cstring, pattern: Regex, start, bufSize: int, flags: cint): cint =
@@ -241,12 +250,10 @@ proc matchLen*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## if there is no match, ``-1`` is returned. Note that a match length
   ## of zero can happen.
   ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   echo matchLen("abcdefg", re"cde", 2)  # =>  3
-  ##   echo matchLen("abcdefg", re"abcde")   # =>  5
-  ##   echo matchLen("abcdefg", re"cde")     # => -1
+  runnableExamples:
+    doAssert matchLen("abcdefg", re"cde", 2) == 3
+    doAssert matchLen("abcdefg", re"abcde") == 5
+    doAssert matchLen("abcdefg", re"cde") == -1
   result = matchOrFind(cstring(s), pattern, start.cint, s.len.cint, pcre.ANCHORED)
 
 proc matchLen*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int {.inline.} =
@@ -266,13 +273,11 @@ proc match*(s: string, pattern: Regex, matches: var openArray[string],
   ## match, nothing is written into ``matches`` and ``false`` is
   ## returned.
   ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   var matches: array[2, string]
-  ##   if match("abcdefg", re"c(d)ef(g)", matches, 2):
-  ##     for s in matches:
-  ##       echo s       # => d g
+  runnableExamples:
+    import sequtils
+    var matches: array[2, string]
+    if match("abcdefg", re"c(d)ef(g)", matches, 2):
+      doAssert toSeq(matches) == @["d", "g"]
   result = matchLen(cstring(s), pattern, matches, start, s.len) != -1
 
 proc match*(buf: cstring, pattern: Regex, matches: var openArray[string],
@@ -324,14 +329,15 @@ proc find*(buf: cstring, pattern: Regex, start = 0, bufSize: int): int =
 
 proc find*(s: string, pattern: Regex, start = 0): int {.inline.} =
   ## returns the starting position of ``pattern`` in ``s``. If it does not
-  ## match, ``-1`` is returned.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##  echo find("abcdefg", re"cde")  # => 2
-  ##  echo find("abcdefg", re"abc")  # => 0
-  ##  echo find("abcdefg", re"zz")  # => -1
+  ## match, ``-1`` is returned. We start the scan at `start`.
+  runnableExamples:
+    doAssert find("abcdefg", re"cde") == 2
+    doAssert find("abcdefg", re"abc") == 0
+    doAssert find("abcdefg", re"zz") == -1 # not found
+    doAssert find("abcdefg", re"cde", start = 2) == 2 # still 2
+    doAssert find("abcdefg", re"cde", start = 3) == -1 # we're past the start position
+    doAssert find("xabc", re"(?<=x|y)abc", start = 1) == 1
+      # lookbehind assertion `(?<=x|y)` can look behind `start`
   result = find(cstring(s), pattern, start, s.len)
 
 iterator findAll*(s: string, pattern: Regex, start = 0): string =
@@ -386,21 +392,17 @@ when not defined(nimhygiene):
 template `=~` *(s: string, pattern: Regex): untyped =
   ## This calls ``match`` with an implicit declared ``matches`` array that
   ## can be used in the scope of the ``=~`` call:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   if line =~ re"\s*(\w+)\s*\=\s*(\w+)":
-  ##     # matches a key=value pair:
-  ##     echo("Key: ", matches[0])
-  ##     echo("Value: ", matches[1])
-  ##   elif line =~ re"\s*(\#.*)":
-  ##     # matches a comment
-  ##     # note that the implicit ``matches`` array is different from the
-  ##     # ``matches`` array of the first branch
-  ##     echo("comment: ", matches[0])
-  ##   else:
-  ##     echo("syntax error")
-  ##
+  runnableExamples:
+    proc parse(line: string): string =
+      if line =~ re"\s*(\w+)\s*\=\s*(\w+)": # matches a key=value pair:
+        result = $(matches[0], matches[1])
+      elif line =~ re"\s*(\#.*)": # matches a comment
+        # note that the implicit ``matches`` array is different from 1st branch
+        result = $(matches[0],)
+      else: doAssert false
+      doAssert not declared(matches)
+    doAssert parse("NAME = LENA") == """("NAME", "LENA")"""
+    doAssert parse("   # comment ... ") == """("# comment ... ",)"""
   bind MaxSubpatterns
   when not declaredInScope(matches):
     var matches {.inject.}: array[MaxSubpatterns, string]
@@ -429,17 +431,9 @@ proc endsWith*(s: string, suffix: Regex): bool {.inline.} =
 proc replace*(s: string, sub: Regex, by = ""): string =
   ## Replaces ``sub`` in ``s`` by the string ``by``. Captures cannot be
   ## accessed in ``by``.
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   "var1=key; var2=key2".replace(re"(\w+)=(\w+)")
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##
-  ##   "; "
+  runnableExamples:
+    doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)") == "; "
+    doAssert "var1=key; var2=key2".replace(re"(\w+)=(\w+)", "?") == "?; ?"
   result = ""
   var prev = 0
   while prev < s.len:
@@ -454,17 +448,9 @@ proc replace*(s: string, sub: Regex, by = ""): string =
 proc replacef*(s: string, sub: Regex, by: string): string =
   ## Replaces ``sub`` in ``s`` by the string ``by``. Captures can be accessed in ``by``
   ## with the notation ``$i`` and ``$#`` (see strutils.\`%\`).
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2")
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##
-  ## "var1<-keykey; var2<-key2key2"
+  runnableExamples:
+    doAssert "var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
+      "var1<-keykey; var2<-key2key2"
   result = ""
   var caps: array[MaxSubpatterns, string]
   var prev = 0
@@ -517,23 +503,10 @@ iterator split*(s: string, sep: Regex; maxsplit = -1): string =
   ##
   ## Substrings are separated by the regular expression ``sep``
   ## (and the portion matched by ``sep`` is not returned).
-  ##
-  ## Example:
-  ##
-  ## .. code-block:: nim
-  ##   for word in split("00232this02939is39an22example111", re"\d+"):
-  ##     writeLine(stdout, word)
-  ##
-  ## Results in:
-  ##
-  ## .. code-block:: nim
-  ##   ""
-  ##   "this"
-  ##   "is"
-  ##   "an"
-  ##   "example"
-  ##   ""
-  ##
+  runnableExamples:
+    import sequtils
+    doAssert toSeq(split("00232this02939is39an22example111", re"\d+")) ==
+      @["", "this", "is", "an", "example", ""]
   var last = 0
   var splits = maxsplit
   var x: int
@@ -573,109 +546,3 @@ proc escapeRe*(s: string): string =
     else:
       result.add("\\x")
       result.add(toHex(ord(c), 2))
-
-when isMainModule:
-  doAssert match("(a b c)", rex"\( .* \)")
-  doAssert match("WHiLe", re("while", {reIgnoreCase}))
-
-  doAssert "0158787".match(re"\d+")
-  doAssert "ABC 0232".match(re"\w+\s+\d+")
-  doAssert "ABC".match(rex"\d+ | \w+")
-
-  {.push warnings:off.}
-  doAssert matchLen("key", re"\b[a-zA-Z_]+[a-zA-Z_0-9]*\b") == 3
-  {.pop.}
-
-  var pattern = re"[a-z0-9]+\s*=\s*[a-z0-9]+"
-  doAssert matchLen("key1=  cal9", pattern) == 11
-
-  doAssert find("_____abc_______", re"abc") == 5
-  doAssert findBounds("_____abc_______", re"abc") == (5,7)
-
-  var matches: array[6, string]
-  if match("abcdefg", re"c(d)ef(g)", matches, 2):
-    doAssert matches[0] == "d"
-    doAssert matches[1] == "g"
-  else:
-    doAssert false
-
-  if "abc" =~ re"(a)bcxyz|(\w+)":
-    doAssert matches[1] == "abc"
-  else:
-    doAssert false
-
-  if "abc" =~ re"(cba)?.*":
-    doAssert matches[0] == ""
-  else: doAssert false
-
-  if "abc" =~ re"().*":
-    doAssert matches[0] == ""
-  else: doAssert false
-
-  doAssert "var1=key; var2=key2".endsWith(re"\w+=\w+")
-  doAssert("var1=key; var2=key2".replacef(re"(\w+)=(\w+)", "$1<-$2$2") ==
-         "var1<-keykey; var2<-key2key2")
-  doAssert("var1=key; var2=key2".replace(re"(\w+)=(\w+)", "$1<-$2$2") ==
-         "$1<-$2$2; $1<-$2$2")
-
-  var accum: seq[string] = @[]
-  for word in split("00232this02939is39an22example111", re"\d+"):
-    accum.add(word)
-  doAssert(accum == @["", "this", "is", "an", "example", ""])
-
-  accum = @[]
-  for word in split("00232this02939is39an22example111", re"\d+", maxsplit=2):
-    accum.add(word)
-  doAssert(accum == @["", "this", "is39an22example111"])
-
-  accum = @[]
-  for word in split("AAA :   : BBB", re"\s*:\s*"):
-    accum.add(word)
-  doAssert(accum == @["AAA", "", "BBB"])
-
-  doAssert(split("abc", re"") == @["a", "b", "c"])
-  doAssert(split("", re"") == @[])
-
-  doAssert(split("a;b;c", re";") == @["a", "b", "c"])
-  doAssert(split(";a;b;c", re";") == @["", "a", "b", "c"])
-  doAssert(split(";a;b;c;", re";") == @["", "a", "b", "c", ""])
-  doAssert(split("a;b;c;", re";") == @["a", "b", "c", ""])
-  doAssert(split("00232this02939is39an22example111", re"\d+", maxsplit=2) == @["", "this", "is39an22example111"])
-
-
-  for x in findAll("abcdef", re"^{.}", 3):
-    doAssert x == "d"
-  accum = @[]
-  for x in findAll("abcdef", re".", 3):
-    accum.add(x)
-  doAssert(accum == @["d", "e", "f"])
-
-  doAssert("XYZ".find(re"^\d*") == 0)
-  doAssert("XYZ".match(re"^\d*") == true)
-
-  block:
-    var matches: array[16, string]
-    if match("abcdefghijklmnop", re"(a)(b)(c)(d)(e)(f)(g)(h)(i)(j)(k)(l)(m)(n)(o)(p)", matches):
-      for i in 0..matches.high:
-        doAssert matches[i] == $chr(i + 'a'.ord)
-    else:
-      doAssert false
-
-  block:   # Buffer based RE
-    var cs: cstring = "_____abc_______"
-    doAssert(cs.find(re"abc", bufSize=15) == 5)
-    doAssert(cs.matchLen(re"_*abc", bufSize=15) == 8)
-    doAssert(cs.matchLen(re"abc", start=5, bufSize=15) == 3)
-    doAssert(cs.matchLen(re"abc", start=5, bufSize=7) == -1)
-    doAssert(cs.matchLen(re"abc_*", start=5, bufSize=10) == 5)
-    var accum: seq[string] = @[]
-    for x in cs.findAll(re"[a-z]", start=3, bufSize=15):
-      accum.add($x)
-    doAssert(accum == @["a","b","c"])
-
-  block:
-    # bug #9306
-    doAssert replace("bar", re"^", "foo") == "foobar"
-    doAssert replace("foo", re"", "-") == "-foo"
-    doAssert replace("foo", re"$", "bar") == "foobar"
-

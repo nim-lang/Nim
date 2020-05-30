@@ -513,7 +513,8 @@ template gatherFiles(fun, libpath, outDir) =
       fun(src, dst)
 
     for f in walkFiles(libpath / "lib/*.h"): copySrc(f)
-    copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
+    # commenting out for now, see discussion in https://github.com/nim-lang/Nim/pull/13413
+    # copySrc(libpath / "lib/wrappers/linenoise/linenoise.h")
 
 proc srcdist(c: var ConfigData) =
   let cCodeDir = getOutputDir(c) / "c_code"

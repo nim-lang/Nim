@@ -10,8 +10,6 @@
 ## This module implements a small wrapper for some needed Win API procedures,
 ## so that the Nim compiler does not depend on the huge Windows module.
 
-{.deadCodeElim: on.}  # dce option deprecated
-
 import dynlib
 
 when defined(nimHasStyleChecks):
@@ -33,6 +31,8 @@ type
   ULONG* = int32
   PULONG* = ptr int
   WINBOOL* = int32
+    ## `WINBOOL` uses opposite convention as posix, !=0 meaning success.
+    # xxx this should be distinct int32, distinct would make code less error prone
   DWORD* = int32
   PDWORD* = ptr DWORD
   LPINT* = ptr int32
@@ -128,12 +128,12 @@ const
 
   CREATE_NO_WINDOW* = 0x08000000'i32
 
-when useWinUnicode:
-  proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
-else:
-  proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
-      stdcall, dynlib: "kernel32", importc: "GetVersionExA", sideEffect.}
+  HANDLE_FLAG_INHERIT* = 0x00000001'i32
+
+proc getVersionExW*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetVersionExW", sideEffect.}
+proc getVersionExA*(lpVersionInfo: ptr OSVERSIONINFO): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetVersionExA", sideEffect.}
 
 proc getVersion*(): DWORD {.stdcall, dynlib: "kernel32", importc: "GetVersion", sideEffect.}
 
@@ -712,6 +712,9 @@ proc duplicateHandle*(hSourceProcessHandle: Handle, hSourceHandle: Handle,
                       dwOptions: DWORD): WINBOOL{.stdcall, dynlib: "kernel32",
     importc: "DuplicateHandle".}
 
+proc getHandleInformation*(hObject: Handle, lpdwFlags: ptr DWORD): WINBOOL {.
+    stdcall, dynlib: "kernel32", importc: "GetHandleInformation".}
+
 proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
                            dwFlags: DWORD): WINBOOL {.stdcall,
     dynlib: "kernel32", importc: "SetHandleInformation".}
@@ -719,22 +722,20 @@ proc setHandleInformation*(hObject: Handle, dwMask: DWORD,
 proc getCurrentProcess*(): Handle{.stdcall, dynlib: "kernel32",
                                    importc: "GetCurrentProcess".}
 
-when useWinUnicode:
-  proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
-                    lpSecurityAttributes: pointer,
-                    dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: Handle): Handle {.
-      stdcall, dynlib: "kernel32", importc: "CreateFileW".}
-  proc deleteFileW*(pathName: WideCString): int32 {.
-    importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
-else:
-  proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
-                    lpSecurityAttributes: pointer,
-                    dwCreationDisposition, dwFlagsAndAttributes: DWORD,
-                    hTemplateFile: Handle): Handle {.
-      stdcall, dynlib: "kernel32", importc: "CreateFileA".}
-  proc deleteFileA*(pathName: cstring): int32 {.
-    importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
+proc createFileW*(lpFileName: WideCString, dwDesiredAccess, dwShareMode: DWORD,
+                  lpSecurityAttributes: pointer,
+                  dwCreationDisposition, dwFlagsAndAttributes: DWORD,
+                  hTemplateFile: Handle): Handle {.
+    stdcall, dynlib: "kernel32", importc: "CreateFileW".}
+proc deleteFileW*(pathName: WideCString): int32 {.
+  importc: "DeleteFileW", dynlib: "kernel32", stdcall.}
+proc createFileA*(lpFileName: cstring, dwDesiredAccess, dwShareMode: DWORD,
+                  lpSecurityAttributes: pointer,
+                  dwCreationDisposition, dwFlagsAndAttributes: DWORD,
+                  hTemplateFile: Handle): Handle {.
+    stdcall, dynlib: "kernel32", importc: "CreateFileA".}
+proc deleteFileA*(pathName: cstring): int32 {.
+  importc: "DeleteFileA", dynlib: "kernel32", stdcall.}
 
 proc setEndOfFile*(hFile: Handle): WINBOOL {.stdcall, dynlib: "kernel32",
     importc: "SetEndOfFile".}
@@ -963,13 +964,13 @@ type
                             dwRemoteAddressLength: DWORD,
                             lpdwBytesReceived: ptr DWORD,
                             lpOverlapped: POVERLAPPED): bool {.
-                            stdcall,gcsafe.}
+                            stdcall, gcsafe, raises: [].}
 
   WSAPROC_CONNECTEX* = proc (s: SocketHandle, name: ptr SockAddr, namelen: cint,
                              lpSendBuffer: pointer, dwSendDataLength: DWORD,
                              lpdwBytesSent: ptr DWORD,
                              lpOverlapped: POVERLAPPED): bool {.
-                             stdcall,gcsafe.}
+                             stdcall, gcsafe, raises: [].}
 
   WSAPROC_GETACCEPTEXSOCKADDRS* = proc(lpOutputBuffer: pointer,
                                        dwReceiveDataLength: DWORD,
@@ -979,7 +980,7 @@ type
                                        LocalSockaddrLength: ptr cint,
                                        RemoteSockaddr: ptr PSockAddr,
                                        RemoteSockaddrLength: ptr cint) {.
-                                       stdcall,gcsafe.}
+                                       stdcall, gcsafe, raises: [].}
 
 const
   WT_EXECUTEDEFAULT* = 0x00000000'i32

@@ -269,7 +269,8 @@ proc isRightAssociative(tok: TToken): bool {.inline.} =
 proc isOperator(tok: TToken): bool =
   ## Determines if the given token is an operator type token.
   tok.tokType in {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
-                  tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
+                  tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd,
+                  tkOr, tkXor}
 
 proc isUnary(p: TParser): bool =
   ## Check if the current parser token is a unary operator
@@ -294,7 +295,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #|
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 #|          | 'or' | 'xor' | 'and'
-#|          | 'is' | 'isnot' | 'in' | 'notin' | 'of'
+#|          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
 #|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 #|
 #| prefixOperator = operator
@@ -555,7 +556,7 @@ proc parsePar(p: var TParser): PNode =
   optInd(p, result)
   flexComment(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase,
-                       tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock,
+                       tkTry, tkDefer, tkFinally, tkExcept, tkBlock,
                        tkConst, tkLet, tkWhen, tkVar, tkFor,
                        tkMixin}:
     # XXX 'bind' used to be an expression, so we exclude it here;
@@ -2193,6 +2194,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
   #|                     | 'proc' routine
   #|                     | 'method' routine
+  #|                     | 'func' routine
   #|                     | 'iterator' routine
   #|                     | 'macro' routine
   #|                     | 'template' routine

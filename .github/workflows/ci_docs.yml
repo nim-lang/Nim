@@ -1,0 +1,133 @@
+name: Nim Docs CI
+on:
+  push:
+    # Run only on changes on these files
+    paths:
+      - 'lib/**.nim'
+      - 'doc/**.rst'
+      - 'doc/nimdoc.css'
+      - '.github/workflows/ci_docs.yml'
+
+  pull_request:
+    # Run only on changes on these files
+    paths:
+      - 'lib/**.nim'
+      - 'doc/**.rst'
+      - '.github/workflows/ci_docs.yml'
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [linux, windows, osx]
+        include:
+          - target: linux
+            os: ubuntu-18.04
+          - target: windows
+            os: windows-2019
+          - target: osx
+            os: macos-10.15
+
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v2
+
+      - name: 'Install build dependencies (macOS)'
+        if: runner.os == 'macOS'
+        run: brew install make
+
+      - name: 'Install build dependencies (Windows)'
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir dist
+          curl -L https://nim-lang.org/download/mingw64.7z -o dist/mingw64.7z
+          curl -L https://nim-lang.org/download/dlls.zip -o dist/dlls.zip
+          7z x dist/mingw64.7z -odist
+          7z x dist/dlls.zip -obin
+          echo "::add-path::${{ github.workspace }}/dist/mingw64/bin"
+
+      - name: 'Add build binaries to PATH'
+        shell: bash
+        run: echo "::add-path::${{ github.workspace }}/bin"
+
+      - name: 'Get current csources version'
+        id: csources-version
+        shell: bash
+        run: |
+          sha=$(git ls-remote https://github.com/nim-lang/csources master | cut -f 1)
+          echo "::set-output name=sha::$sha"
+
+      - name: 'Get prebuilt csources from cache'
+        id: csources-cache
+        uses: actions/cache@v1
+        with:
+          path: bin
+          key: '${{ matrix.os }}-${{ steps.csources-version.outputs.sha }}'
+
+      - name: 'Checkout csources'
+        if: steps.csources-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v2
+        with:
+          repository: nim-lang/csources
+          path: csources
+
+      - name: 'Build 1-stage compiler from csources'
+        shell: bash
+        run: |
+          ext=
+          [[ '${{ runner.os }}' == 'Windows' ]] && ext=.exe
+          if [[ ! -x bin/nim-csources$ext ]]; then
+            ncpu=
+            case '${{ runner.os }}' in
+            'Linux')
+              ncpu=$(nproc)
+              ;;
+            'macOS')
+              ncpu=$(sysctl -n hw.ncpu)
+              ;;
+            'Windows')
+              ncpu=$NUMBER_OF_PROCESSORS
+              ;;
+            esac
+            [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
+
+            make -C csources -j $ncpu CC=gcc
+            cp bin/nim{,-csources}$ext
+          else
+            echo 'Cache hit, using prebuilt csources'
+            cp bin/nim{-csources,}$ext
+          fi
+
+      - name: 'Build koch'
+        shell: bash
+        run: nim c koch
+
+      - name: 'Build the real compiler'
+        shell: bash
+        run: ./koch boot -d:release
+
+      - name: 'Build documentation'
+        shell: bash
+        run: ./koch doc --git.commit:devel
+
+      - name: 'Prepare documentation for deployment'
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
+          matrix.target == 'linux'
+        shell: bash
+        run: cp -f doc/html/{overview,index}.html
+
+      - name: 'Publish documentation to Github Pages'
+        if: |
+          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
+          matrix.target == 'linux'
+        uses: crazy-max/ghaction-github-pages@v1
+        with:
+          build_dir: doc/html
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

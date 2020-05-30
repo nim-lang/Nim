@@ -72,10 +72,14 @@ function main() {
 <div class="document" id="documentId">
   <div class="container">
     <h1 class="title">Index</h1>
-    Modules: <a href="testproject.html">testproject</a>, <a href="utils.html">utils</a>.<br/><p /><h2>API symbols</h2>
+    Modules: <a href="subdir/subdir_b/utils.html">subdir/subdir_b/utils</a>, <a href="testproject.html">testproject</a>.<br/><p /><h2>API symbols</h2>
 <dl><dt><a name="A" href="#A"><span>A:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="testproject: A" href="testproject.html#A">testproject: A</a></li>
+          </ul></dd>
+<dt><a name="addfBug14485" href="#addfBug14485"><span>addfBug14485:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: addfBug14485()" href="testproject.html#addfBug14485">testproject: addfBug14485()</a></li>
           </ul></dd>
 <dt><a name="aEnum" href="#aEnum"><span>aEnum:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -97,6 +101,8 @@ function main() {
           </ul></dd>
 <dt><a name="baz" href="#baz"><span>baz:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
+          data-doc-search-tag="testproject: baz()" href="testproject.html#baz">testproject: baz()</a></li>
+          <li><a class="reference external"
           data-doc-search-tag="testproject: baz[T](a, b: T): T" href="testproject.html#baz%2CT%2CT">testproject: baz[T](a, b: T): T</a></li>
           </ul></dd>
 <dt><a name="bEnum" href="#bEnum"><span>bEnum:</span></a></dt><dd><ul class="simple">
@@ -123,9 +129,21 @@ function main() {
 <li><a class="reference external"
           data-doc-search-tag="testproject: C_D" href="testproject.html#C_D">testproject: C_D</a></li>
           </ul></dd>
+<dt><a name="c_nonexistant" href="#c_nonexistant"><span>c_nonexistant:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: c_nonexistant(frmt: cstring): cint" href="testproject.html#c_nonexistant%2Ccstring">testproject: c_nonexistant(frmt: cstring): cint</a></li>
+          </ul></dd>
+<dt><a name="c_printf" href="#c_printf"><span>c_printf:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: c_printf(frmt: cstring): cint" href="testproject.html#c_printf%2Ccstring">testproject: c_printf(frmt: cstring): cint</a></li>
+          </ul></dd>
 <dt><a name="enumValueA" href="#enumValueA"><span>enumValueA:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="SomeType.enumValueA" href="subdir/subdir_b/utils.html#enumValueA">SomeType.enumValueA</a></li>
+          </ul></dd>
+<dt><a name="enumValueA2" href="#enumValueA2"><span>enumValueA2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="Foo.enumValueA2" href="testproject.html#enumValueA2">Foo.enumValueA2</a></li>
           </ul></dd>
 <dt><a name="enumValueB" href="#enumValueB"><span>enumValueB:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -135,13 +153,49 @@ function main() {
 <li><a class="reference external"
           data-doc-search-tag="SomeType.enumValueC" href="subdir/subdir_b/utils.html#enumValueC">SomeType.enumValueC</a></li>
           </ul></dd>
+<dt><a name="Foo" href="#Foo"><span>Foo:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: Foo" href="testproject.html#Foo">testproject: Foo</a></li>
+          </ul></dd>
 <dt><a name="foo" href="#foo"><span>foo:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="testproject: foo(a, b: SomeType)" href="testproject.html#foo.t%2CSomeType%2CSomeType">testproject: foo(a, b: SomeType)</a></li>
           </ul></dd>
+<dt><a name="fromUtils1" href="#fromUtils1"><span>fromUtils1:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: fromUtils1(): int" href="testproject.html#fromUtils1.i">testproject: fromUtils1(): int</a></li>
+          </ul></dd>
+<dt><a name="fromUtils2" href="#fromUtils2"><span>fromUtils2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: fromUtils2()" href="testproject.html#fromUtils2.t">testproject: fromUtils2()</a></li>
+          </ul></dd>
+<dt><a name="fromUtils3" href="#fromUtils3"><span>fromUtils3:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: fromUtils3()" href="testproject.html#fromUtils3">testproject: fromUtils3()</a></li>
+          </ul></dd>
+<dt><a name="fromUtilsGen" href="#fromUtilsGen"><span>fromUtilsGen:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="utils: fromUtilsGen(): untyped" href="subdir/subdir_b/utils.html#fromUtilsGen.t">utils: fromUtilsGen(): untyped</a></li>
+          </ul></dd>
 <dt><a name="isValid" href="#isValid"><span>isValid:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="testproject: isValid[T](x: T): bool" href="testproject.html#isValid%2CT">testproject: isValid[T](x: T): bool</a></li>
+          </ul></dd>
+<dt><a name="low" href="#low"><span>low:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: low[T: Ordinal | enum | range](x: T): T" href="testproject.html#low%2CT">testproject: low[T: Ordinal | enum | range](x: T): T</a></li>
+          </ul></dd>
+<dt><a name="low2" href="#low2"><span>low2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: low2[T: Ordinal | enum | range](x: T): T" href="testproject.html#low2%2CT">testproject: low2[T: Ordinal | enum | range](x: T): T</a></li>
+          </ul></dd>
+<dt><a name="myfn" href="#myfn"><span>myfn:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: myfn()" href="testproject.html#myfn.t">testproject: myfn()</a></li>
+          </ul></dd>
+<dt><a name="p1" href="#p1"><span>p1:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: p1()" href="testproject.html#p1">testproject: p1()</a></li>
           </ul></dd>
 <dt><a name="someFunc" href="#someFunc"><span>someFunc:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
@@ -154,6 +208,86 @@ function main() {
 <dt><a name="someType" href="#someType"><span>someType:</span></a></dt><dd><ul class="simple">
 <li><a class="reference external"
           data-doc-search-tag="utils: someType(): SomeType" href="subdir/subdir_b/utils.html#someType_2">utils: someType(): SomeType</a></li>
+          </ul></dd>
+<dt><a name="testNimDocTrailingExample" href="#testNimDocTrailingExample"><span>testNimDocTrailingExample:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: testNimDocTrailingExample()" href="testproject.html#testNimDocTrailingExample.t">testproject: testNimDocTrailingExample()</a></li>
+          </ul></dd>
+<dt><a name="z1" href="#z1"><span>z1:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z1(): Foo" href="testproject.html#z1">testproject: z1(): Foo</a></li>
+          </ul></dd>
+<dt><a name="z10" href="#z10"><span>z10:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z10()" href="testproject.html#z10">testproject: z10()</a></li>
+          </ul></dd>
+<dt><a name="z11" href="#z11"><span>z11:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z11()" href="testproject.html#z11">testproject: z11()</a></li>
+          </ul></dd>
+<dt><a name="z12" href="#z12"><span>z12:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z12(): int" href="testproject.html#z12">testproject: z12(): int</a></li>
+          </ul></dd>
+<dt><a name="z13" href="#z13"><span>z13:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z13()" href="testproject.html#z13">testproject: z13()</a></li>
+          </ul></dd>
+<dt><a name="z14" href="#z14"><span>z14:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z14()" href="testproject.html#z14.t">testproject: z14()</a></li>
+          </ul></dd>
+<dt><a name="z15" href="#z15"><span>z15:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z15()" href="testproject.html#z15.t">testproject: z15()</a></li>
+          </ul></dd>
+<dt><a name="z16" href="#z16"><span>z16:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z16()" href="testproject.html#z16.m">testproject: z16()</a></li>
+          </ul></dd>
+<dt><a name="z17" href="#z17"><span>z17:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z17()" href="testproject.html#z17">testproject: z17()</a></li>
+          </ul></dd>
+<dt><a name="z18" href="#z18"><span>z18:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z18(): int" href="testproject.html#z18.m">testproject: z18(): int</a></li>
+          </ul></dd>
+<dt><a name="z2" href="#z2"><span>z2:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z2()" href="testproject.html#z2">testproject: z2()</a></li>
+          </ul></dd>
+<dt><a name="z3" href="#z3"><span>z3:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z3()" href="testproject.html#z3">testproject: z3()</a></li>
+          </ul></dd>
+<dt><a name="z4" href="#z4"><span>z4:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z4()" href="testproject.html#z4">testproject: z4()</a></li>
+          </ul></dd>
+<dt><a name="z5" href="#z5"><span>z5:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z5(): int" href="testproject.html#z5">testproject: z5(): int</a></li>
+          </ul></dd>
+<dt><a name="z6" href="#z6"><span>z6:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z6(): int" href="testproject.html#z6">testproject: z6(): int</a></li>
+          </ul></dd>
+<dt><a name="z6t" href="#z6t"><span>z6t:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z6t(): int" href="testproject.html#z6t.t">testproject: z6t(): int</a></li>
+          </ul></dd>
+<dt><a name="z7" href="#z7"><span>z7:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z7(): int" href="testproject.html#z7">testproject: z7(): int</a></li>
+          </ul></dd>
+<dt><a name="z8" href="#z8"><span>z8:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z8(): int" href="testproject.html#z8">testproject: z8(): int</a></li>
+          </ul></dd>
+<dt><a name="z9" href="#z9"><span>z9:</span></a></dt><dd><ul class="simple">
+<li><a class="reference external"
+          data-doc-search-tag="testproject: z9()" href="testproject.html#z9">testproject: z9()</a></li>
           </ul></dd>
 </dl>
     <div class="row">

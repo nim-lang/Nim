@@ -265,7 +265,7 @@ the first is preferred.
 
 
 Best practices
-=============
+==============
 
 Note: these are general guidelines, not hard rules; there are always exceptions.
 Code reviews can just point to a specific section here to save time and
@@ -361,8 +361,10 @@ General commit rules
 
 1. Important, critical bugfixes that have a tiny chance of breaking
    somebody's code should be backported to the latest stable release
-   branch (currently 1.0.x). The commit message should contain ``[backport]``
-   then.
+   branch (currently 1.2.x) and maybe also to the 1.0 branch.
+   The commit message should contain the tag ``[backport]`` for "backport to all
+   stable releases" and the tag ``[backport:$VERSION]`` for backporting to the
+   given $VERSION.
 
 2. If you introduce changes which affect backwards compatibility,
    make breaking changes, or have PR which is tagged as ``[feature]``,

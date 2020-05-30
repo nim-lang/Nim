@@ -22,7 +22,7 @@
 ##  var document {.importc, nodecl.}: JsObject
 ##  var console {.importc, nodecl.}: JsObject
 ##  # import the "$" function
-##  proc jq(selector: JsObject): JsObject {.importcpp: "$(#)".}
+##  proc jq(selector: JsObject): JsObject {.importcpp: "$$(#)".}
 ##
 ##  # Use jQuery to make the following code run, after the document is ready.
 ##  # This uses an experimental ``.()`` operator for ``JsObject``, to emit
@@ -83,7 +83,7 @@ proc toJsKey*[T: SomeFloat](text: cstring, t: type T): T {.importcpp: "parseFloa
 
 type
   JsKey* = concept a, type T
-    cstring.toJsKey(T) is type(a)
+    cstring.toJsKey(T) is T
 
   JsObject* = ref object of JsRoot
     ## Dynamically typed wrapper around a JavaScript object.

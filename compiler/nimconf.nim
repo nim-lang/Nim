@@ -11,7 +11,7 @@
 
 import
   llstream, commands, os, strutils, msgs, lexer,
-  options, idents, wordrecg, strtabs, lineinfos, pathutils
+  options, idents, wordrecg, strtabs, lineinfos, pathutils, scriptconfig
 
 # ---------------- configuration file parser -----------------------------
 # we use Nim's scanner here to save space and work
@@ -248,16 +248,31 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
     if readConfigFile(configPath, cache, conf):
       configFiles.add(configPath)
 
+  template runNimScriptIfExists(path: AbsoluteFile) =
+    let p = path # eval once
+    if fileExists(p):
+      configFiles.add(p)
+      runNimScript(cache, p, freshDefines = false, conf)
+
   if optSkipSystemConfigFile notin conf.globalOptions:
     readConfigFile(getSystemConfigPath(conf, cfg))
 
+    if cfg == DefaultConfig:
+      runNimScriptIfExists(getSystemConfigPath(conf, DefaultConfigNims))
+
   if optSkipUserConfigFile notin conf.globalOptions:
     readConfigFile(getUserConfigPath(cfg))
+
+    if cfg == DefaultConfig:
+      runNimScriptIfExists(getUserConfigPath(DefaultConfigNims))
 
   let pd = if not conf.projectPath.isEmpty: conf.projectPath else: AbsoluteDir(getCurrentDir())
   if optSkipParentConfigFiles notin conf.globalOptions:
     for dir in parentDirs(pd.string, fromRoot=true, inclusive=false):
       readConfigFile(AbsoluteDir(dir) / cfg)
+
+      if cfg == DefaultConfig:
+        runNimScriptIfExists(AbsoluteDir(dir) / DefaultConfigNims)
 
   if optSkipProjConfigFile notin conf.globalOptions:
     readConfigFile(pd / cfg)
@@ -269,6 +284,20 @@ proc loadConfigs*(cfg: RelativeFile; cache: IdentCache; conf: ConfigRef) =
         projectConfig = changeFileExt(conf.projectFull, "nim.cfg")
       readConfigFile(projectConfig)
 
+    if cfg == DefaultConfig:
+      runNimScriptIfExists(pd / DefaultConfigNims)
+
   for filename in configFiles:
     # delayed to here so that `hintConf` is honored
     rawMessage(conf, hintConf, filename.string)
+
+  block:
+    let scriptFile = conf.projectFull.changeFileExt("nims")
+    if conf.command != "nimsuggest":
+      runNimScriptIfExists(scriptFile)
+    else:
+      if scriptFile != conf.projectFull:
+        runNimScriptIfExists(scriptFile)
+      else:
+        # 'nimsuggest foo.nims' means to just auto-complete the NimScript file
+        discard

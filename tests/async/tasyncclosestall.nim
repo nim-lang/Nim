@@ -99,4 +99,3 @@ proc server() {.async.} =
 
 when isMainModule:
   waitFor server()
-

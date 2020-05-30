@@ -14,18 +14,17 @@ import ast, astalgo, msgs, magicsys, nimsets, trees, types, renderer, idents,
 
 const
   someEq = {mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
-    mEqUntracedRef, mEqStr, mEqSet, mEqCString}
+    mEqStr, mEqSet, mEqCString}
 
   # set excluded here as the semantics are vastly different:
-  someLe = {mLeI, mLeF64, mLeU, mLeU64, mLeEnum,
+  someLe = {mLeI, mLeF64, mLeU, mLeEnum,
             mLeCh, mLeB, mLePtr, mLeStr}
-  someLt = {mLtI, mLtF64, mLtU, mLtU64, mLtEnum,
+  someLt = {mLtI, mLtF64, mLtU, mLtEnum,
             mLtCh, mLtB, mLtPtr, mLtStr}
 
-  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq,
-             mXLenStr, mXLenSeq}
+  someLen = {mLengthOpenArray, mLengthStr, mLengthArray, mLengthSeq}
 
-  someIn = {mInRange, mInSet}
+  someIn = {mInSet}
 
   someHigh = {mHigh}
   # we don't list unsigned here because wrap around semantics suck for
@@ -85,8 +84,8 @@ proc interestingCaseExpr*(m: PNode): bool = isLetLocation(m, true)
 
 type
   Operators* = object
-    opNot, opContains, opLe, opLt, opAnd, opOr, opIsNil, opEq: PSym
-    opAdd, opSub, opMul, opDiv, opLen: PSym
+    opNot*, opContains*, opLe*, opLt*, opAnd*, opOr*, opIsNil*, opEq*: PSym
+    opAdd*, opSub*, opMul*, opDiv*, opLen*: PSym
 
 proc initOperators*(g: ModuleGraph): Operators =
   result.opLe = createMagic(g, "<=", mLeI)
@@ -157,12 +156,12 @@ proc neg(n: PNode; o: Operators): PNode =
     result[0] = newSymNode(o.opNot)
     result[1] = n
 
-proc buildCall(op: PSym; a: PNode): PNode =
+proc buildCall*(op: PSym; a: PNode): PNode =
   result = newNodeI(nkCall, a.info, 2)
   result[0] = newSymNode(op)
   result[1] = a
 
-proc buildCall(op: PSym; a, b: PNode): PNode =
+proc buildCall*(op: PSym; a, b: PNode): PNode =
   result = newNodeI(nkInfix, a.info, 3)
   result[0] = newSymNode(op)
   result[1] = a
@@ -250,15 +249,17 @@ proc pred(n: PNode): PNode =
   else:
     result = n
 
+proc buildLe*(o: Operators; a, b: PNode): PNode =
+  result = o.opLe.buildCall(a, b)
+
 proc canon*(n: PNode; o: Operators): PNode =
-  # XXX for now only the new code in 'semparallel' uses this
   if n.safeLen >= 1:
     result = shallowCopy(n)
     for i in 0..<n.len:
       result[i] = canon(n[i], o)
   elif n.kind == nkSym and n.sym.kind == skLet and
       n.sym.astdef.getMagic in (someEq + someAdd + someMul + someMin +
-      someMax + someHigh + {mUnaryLt} + someSub + someLen + someDiv):
+      someMax + someHigh + someSub + someLen + someDiv):
     result = n.sym.astdef.copyTree
   else:
     result = n
@@ -271,14 +272,12 @@ proc canon*(n: PNode; o: Operators): PNode =
   of someHigh:
     # high == len+(-1)
     result = o.opAdd.buildCall(o.opLen.buildCall(result[1]), minusOne())
-  of mUnaryLt:
-    result = buildCall(o.opAdd, result[1], minusOne())
   of someSub:
     # x - 4  -->  x + (-4)
     result = negate(result[1], result[2], result, o)
   of someLen:
     result[0] = o.opLen.newSymNode
-  of someLt:
+  of someLt - {mLtF64}:
     # x < y  same as x <= y-1:
     let y = n[2].canon(o)
     let p = pred(y)
@@ -318,12 +317,12 @@ proc canon*(n: PNode; o: Operators): PNode =
         if plus != nil and not isLetLocation(x, true):
           result = buildCall(result[0].sym, plus, y[1])
       else: discard
-    elif x.isValue and y.getMagic in someAdd and y[2].isValue:
+    elif x.isValue and y.getMagic in someAdd and y[2].kind == x.kind:
       # 0 <= a.len + 3
       # -3 <= a.len
       result[1] = x |-| y[2]
       result[2] = y[1]
-    elif x.isValue and y.getMagic in someSub and y[2].isValue:
+    elif x.isValue and y.getMagic in someSub and y[2].kind == x.kind:
       # 0 <= a.len - 3
       # 3 <= a.len
       result[1] = x |+| y[2]
@@ -342,6 +341,8 @@ proc usefulFact(n: PNode; o: Operators): PNode =
     else:
       if isLetLocation(n[1], true) or isLetLocation(n[2], true):
         # XXX algebraic simplifications!  'i-1 < a.len' --> 'i < a.len+1'
+        result = n
+      elif n[1].getMagic in someLen or n[2].getMagic in someLen:
         result = n
   of someLe+someLt:
     if isLetLocation(n[1], true) or isLetLocation(n[2], true):
@@ -404,10 +405,20 @@ type
   TModel* = object
     s*: seq[PNode] # the "knowledge base"
     o*: Operators
+    beSmart*: bool
 
 proc addFact*(m: var TModel, nn: PNode) =
   let n = usefulFact(nn, m.o)
-  if n != nil: m.s.add n
+  if n != nil:
+    if not m.beSmart:
+      m.s.add n
+    else:
+      let c = canon(n, m.o)
+      if c.getMagic == mAnd:
+        addFact(m, c[1])
+        addFact(m, c[2])
+      else:
+        m.s.add c
 
 proc addFactNeg*(m: var TModel, n: PNode) =
   let n = n.neg(m.o)
@@ -453,7 +464,7 @@ proc hasSubTree(n, x: PNode): bool =
     for i in 0..n.safeLen-1:
       if hasSubTree(n[i], x): return true
 
-proc invalidateFacts*(m: var TModel, n: PNode) =
+proc invalidateFacts*(s: var seq[PNode], n: PNode) =
   # We are able to guard local vars (as opposed to 'let' variables)!
   # 'while p != nil: f(p); p = p.next'
   # This is actually quite easy to do:
@@ -471,8 +482,11 @@ proc invalidateFacts*(m: var TModel, n: PNode) =
   # The same mechanism could be used for more complex data stored on the heap;
   # procs that 'write: []' cannot invalidate 'n.kind' for instance. In fact, we
   # could CSE these expressions then and help C's optimizer.
-  for i in 0..high(m.s):
-    if m.s[i] != nil and m.s[i].hasSubTree(n): m.s[i] = nil
+  for i in 0..high(s):
+    if s[i] != nil and s[i].hasSubTree(n): s[i] = nil
+
+proc invalidateFacts*(m: var TModel, n: PNode) =
+  invalidateFacts(m.s, n)
 
 proc valuesUnequal(a, b: PNode): bool =
   if a.isValue and b.isValue:
@@ -617,6 +631,9 @@ proc impliesGe(fact, x, c: PNode): TImplication =
 
 proc impliesLe(fact, x, c: PNode): TImplication =
   if not isLocation(x):
+    if c.isValue:
+      if leValue(x, x): return impYes
+      else: return impNo
     return impliesGe(fact, c, x)
   case fact[0].sym.magic
   of someEq:
@@ -802,7 +819,7 @@ proc ple(m: TModel; a, b: PNode): TImplication =
     if lastOrd(nil, a.typ) <= b.intVal: return impYes
   # 3 <= x   iff  low(x) <= 3
   if a.isValue and b.typ != nil and b.typ.isOrdinalType:
-    if firstOrd(nil, b.typ) <= a.intVal: return impYes
+    if a.intVal <= firstOrd(nil, b.typ): return impYes
 
   # x <= x
   if sameTree(a, b): return impYes
@@ -813,7 +830,11 @@ proc ple(m: TModel; a, b: PNode): TImplication =
 
   #   x <= y+c  if 0 <= c and x <= y
   #   x <= y+(-c)  if c <= 0  and y >= x
-  if b.getMagic in someAdd and zero() <=? b[2] and a <=? b[1]: return impYes
+  if b.getMagic in someAdd:
+    if zero() <=? b[2] and a <=? b[1]: return impYes
+    # x <= y-c  if x+c <= y
+    if b[2] <=? zero() and (canon(m.o.opSub.buildCall(a, b[2]), m.o) <=? b[1]):
+      return impYes
 
   #   x+c <= y  if c <= 0 and x <= y
   if a.getMagic in someAdd and a[2] <=? zero() and a[1] <=? b: return impYes
@@ -902,10 +923,13 @@ proc pleViaModelRec(m: var TModel; a, b: PNode): TImplication =
       # --> true  if  (len-100) <= (len-1)
       let x = fact[1]
       let y = fact[2]
-      if sameTree(x, a) and y.getMagic in someAdd and b.getMagic in someAdd and
-         sameTree(y[1], b[1]):
-        if ple(m, b[2], y[2]) == impYes:
-          return impYes
+      # x <= y.
+      # Question: x <= b? True iff y <= b.
+      if sameTree(x, a):
+        if ple(m, y, b) == impYes: return impYes
+        if y.getMagic in someAdd and b.getMagic in someAdd and sameTree(y[1], b[1]):
+          if ple(m, b[2], y[2]) == impYes:
+            return impYes
 
       # x <= y implies a <= b  if  a <= x and y <= b
       if ple(m, a, x) == impYes:
@@ -963,6 +987,10 @@ proc proveLe*(m: TModel; a, b: PNode): TImplication =
 
 proc addFactLe*(m: var TModel; a, b: PNode) =
   m.s.add canon(m.o.opLe.buildCall(a, b), m.o)
+
+proc addFactLt*(m: var TModel; a, b: PNode) =
+  let bb = m.o.opAdd.buildCall(b, minusOne())
+  addFactLe(m, a, bb)
 
 proc settype(n: PNode): PType =
   result = newType(tySet, n.typ.owner)

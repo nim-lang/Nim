@@ -11,17 +11,6 @@
 
 import macros, strutils, asyncfutures
 
-proc skipUntilStmtList(node: NimNode): NimNode {.compileTime.} =
-  # Skips a nest of StmtList's.
-  result = node
-  if node[0].kind == nnkStmtList:
-    result = skipUntilStmtList(node[0])
-
-proc skipStmtList(node: NimNode): NimNode {.compileTime.} =
-  result = node
-  if node[0].kind == nnkStmtList:
-    result = node[0]
-
 template createCb(retFutureSym, iteratorNameSym,
                   strName, identName, futureVarCompletions: untyped) =
   bind finished
@@ -42,11 +31,11 @@ template createCb(retFutureSym, iteratorNameSym,
           if not retFutUnown.finished:
             let msg = "Async procedure ($1) yielded `nil`, are you await'ing a " &
                     "`nil` Future?"
-            raise newException(AssertionError, msg % strName)
+            raise newException(AssertionDefect, msg % strName)
         else:
           {.gcsafe.}:
             {.push hint[ConvFromXtoItselfNotNeeded]: off.}
-            next.callback = (proc() {.closure, gcsafe.})(identName)
+            next.addCallback cast[proc() {.closure, gcsafe.}](identName)
             {.pop.}
     except:
       futureVarCompletions
@@ -57,31 +46,6 @@ template createCb(retFutureSym, iteratorNameSym,
       else:
         retFutUnown.fail(getCurrentException())
   identName()
-
-template useVar(result: var NimNode, futureVarNode: NimNode, valueReceiver,
-                rootReceiver: untyped, fromNode: NimNode) =
-  ## Params:
-  ##    futureVarNode: The NimNode which is a symbol identifying the Future[T]
-  ##                   variable to yield.
-  ##    fromNode: Used for better debug information (to give context).
-  ##    valueReceiver: The node which defines an expression that retrieves the
-  ##                   future's value.
-  ##
-  ##    rootReceiver: ??? TODO
-  # -> yield future<x>
-  result.add newNimNode(nnkYieldStmt, fromNode).add(futureVarNode)
-  # -> future<x>.read
-  valueReceiver = newDotExpr(futureVarNode, newIdentNode("read"))
-  result.add rootReceiver
-
-template createVar(result: var NimNode, futSymName: string,
-                   asyncProc: NimNode,
-                   valueReceiver, rootReceiver: untyped,
-                   fromNode: NimNode) =
-  result = newNimNode(nnkStmtList, fromNode)
-  var futSym = genSym(nskVar, "future")
-  result.add newVarStmt(futSym, asyncProc) # -> var future<x> = y
-  useVar(result, futSym, valueReceiver, rootReceiver, fromNode)
 
 proc createFutureVarCompletions(futureVarIdents: seq[NimNode],
     fromNode: NimNode): NimNode {.compileTime.} =
@@ -128,51 +92,6 @@ proc processBody(node, retFutureSym: NimNode,
 
     result.add newNimNode(nnkReturnStmt, node).add(newNilLit())
     return # Don't process the children of this return stmt
-  of nnkCommand, nnkCall:
-    if node[0].eqIdent("await"):
-      case node[1].kind
-      of nnkIdent, nnkInfix, nnkDotExpr, nnkCall, nnkCommand:
-        # await x
-        # await x or y
-        # await foo(p, x)
-        # await foo p, x
-        var futureValue: NimNode
-        result.createVar("future" & $node[1][0].toStrLit, node[1], futureValue,
-                  futureValue, node)
-      else:
-        error("Invalid node kind in 'await', got: " & $node[1].kind)
-    elif node.len > 1 and node[1].kind == nnkCommand and
-         node[1][0].eqIdent("await"):
-      # foo await x
-      var newCommand = node
-      result.createVar("future" & $node[0].toStrLit, node[1][1], newCommand[1],
-                newCommand, node)
-
-  of nnkVarSection, nnkLetSection:
-    case node[0][^1].kind
-    of nnkCommand:
-      if node[0][^1][0].eqIdent("await"):
-        # var x = await y
-        var newVarSection = node # TODO: Should this use copyNimNode?
-        result.createVar("future" & node[0][0].strVal, node[0][^1][1],
-          newVarSection[0][^1], newVarSection, node)
-    else: discard
-  of nnkAsgn:
-    case node[1].kind
-    of nnkCommand:
-      if node[1][0].eqIdent("await"):
-        # x = await y
-        var newAsgn = node
-        result.createVar("future" & $node[0].toStrLit, node[1][1], newAsgn[1],
-            newAsgn, node)
-    else: discard
-  of nnkDiscardStmt:
-    # discard await x
-    if node[0].kind == nnkCommand and
-          node[0][0].eqIdent("await"):
-      var newDiscard = node
-      result.createVar("futureDiscard_" & $toStrLit(node[0][1]), node[0][1],
-                newDiscard[0], newDiscard, node)
   of RoutineNodes-{nnkTemplateDef}:
     # skip all the nested procedure definitions
     return
@@ -181,6 +100,8 @@ proc processBody(node, retFutureSym: NimNode,
   for i in 0 ..< result.len:
     result[i] = processBody(result[i], retFutureSym, subTypeIsVoid,
                             futureVarIdents)
+
+  # echo result.repr
 
 proc getName(node: NimNode): string {.compileTime.} =
   case node.kind
@@ -191,7 +112,7 @@ proc getName(node: NimNode): string {.compileTime.} =
   of nnkEmpty:
     return "anonymous"
   else:
-    error("Unknown name.")
+    error("Unknown name.", node)
 
 proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
   result = @[]
@@ -204,17 +125,29 @@ proc getFutureVarIdents(params: NimNode): seq[NimNode] {.compileTime.} =
 proc isInvalidReturnType(typeName: string): bool =
   return typeName notin ["Future"] #, "FutureStream"]
 
-proc verifyReturnType(typeName: string) {.compileTime.} =
+proc verifyReturnType(typeName: string, node: NimNode = nil) {.compileTime.} =
   if typeName.isInvalidReturnType:
     error("Expected return type of 'Future' got '$1'" %
-          typeName)
+          typeName, node)
 
 proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   ## This macro transforms a single procedure into a closure iterator.
   ## The ``async`` macro supports a stmtList holding multiple async procedures.
+  if prc.kind == nnkProcTy:
+    result = prc
+    if prc[0][0].kind == nnkEmpty:
+      result[0][0] = parseExpr("Future[void]")
+    return result
+
   if prc.kind notin {nnkProcDef, nnkLambda, nnkMethodDef, nnkDo}:
     error("Cannot transform this node kind into an async proc." &
-          " proc/method definition or lambda node expected.")
+          " proc/method definition or lambda node expected.", prc)
+
+  if prc[4].kind != nnkEmpty:
+    for prag in prc[4]:
+      if prag.eqIdent("discardable"):
+        error("Cannot make async proc discardable. Futures have to be " &
+          "checked with `asyncCheck` instead of discarded", prag)
 
   let prcName = prc.name.getName
 
@@ -226,16 +159,16 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # Verify that the return type is a Future[T]
   if returnType.kind == nnkBracketExpr:
     let fut = repr(returnType[0])
-    verifyReturnType(fut)
+    verifyReturnType(fut, returnType[0])
     baseType = returnType[1]
   elif returnType.kind in nnkCallKinds and returnType[0].eqIdent("[]"):
     let fut = repr(returnType[1])
-    verifyReturnType(fut)
+    verifyReturnType(fut, returnType[0])
     baseType = returnType[2]
   elif returnType.kind == nnkEmpty:
     baseType = returnType
   else:
-    verifyReturnType(repr(returnType))
+    verifyReturnType(repr(returnType), returntype)
 
   let subtypeIsVoid = returnType.kind == nnkEmpty or
         (baseType.kind == nnkIdent and returnType[1].eqIdent("void"))
@@ -326,8 +259,24 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
     if returnType.kind == nnkEmpty:
       # Add Future[void]
       result.params[0] = parseExpr("owned(Future[void])")
+
+  # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
+  # however here the overloads are placed inside each expanded async
+  var awaitDefinition = quote:
+    template await(f: typed): untyped =
+      static:
+        error "await expects Future[T], got " & $typeof(f)
+
+    template await[T](f: Future[T]): auto =
+      var internalTmpFuture: FutureBase = f
+      yield internalTmpFuture
+      (cast[type(f)](internalTmpFuture)).read()
+
   if procBody.kind != nnkEmpty:
-    result.body = outerProcBody
+    result.body = quote:
+      `awaitDefinition`
+      `outerProcBody`
+
   #echo(treeRepr(result))
   #if prcName == "recvLineInto":
   #  echo(toStrLit(result))
@@ -343,50 +292,6 @@ macro async*(prc: untyped): untyped =
     result = asyncSingleProc(prc)
   when defined(nimDumpAsync):
     echo repr result
-
-
-# Multisync
-proc emptyNoop[T](x: T): T =
-  # The ``await``s are replaced by a call to this for simplicity.
-  when T isnot void:
-    return x
-
-proc stripAwait(node: NimNode): NimNode =
-  ## Strips out all ``await`` commands from a procedure body, replaces them
-  ## with ``emptyNoop`` for simplicity.
-  result = node
-
-  let emptyNoopSym = bindSym("emptyNoop")
-
-  case node.kind
-  of nnkCommand, nnkCall:
-    if node[0].eqIdent("await"):
-      node[0] = emptyNoopSym
-    elif node.len > 1 and node[1].kind == nnkCommand and node[1][0].eqIdent("await"):
-      # foo await x
-      node[1][0] = emptyNoopSym
-  of nnkVarSection, nnkLetSection:
-    case node[0][^1].kind
-    of nnkCommand:
-      if node[0][^1][0].eqIdent("await"):
-        # var x = await y
-        node[0][^1][0] = emptyNoopSym
-    else: discard
-  of nnkAsgn:
-    case node[1].kind
-    of nnkCommand:
-      if node[1][0].eqIdent("await"):
-        # x = await y
-        node[1][0] = emptyNoopSym
-    else: discard
-  of nnkDiscardStmt:
-    # discard await x
-    if node[0].kind == nnkCommand and node[0][0].eqIdent("await"):
-      node[0][0] = emptyNoopSym
-  else: discard
-
-  for i in 0 ..< result.len:
-    result[i] = stripAwait(result[i])
 
 proc splitParamType(paramType: NimNode, async: bool): NimNode =
   result = paramType
@@ -404,7 +309,7 @@ proc stripReturnType(returnType: NimNode): NimNode =
   result = returnType
   if returnType.kind == nnkBracketExpr:
     let fut = repr(returnType[0])
-    verifyReturnType(fut)
+    verifyReturnType(fut, returnType)
     result = returnType[1]
 
 proc splitProc(prc: NimNode): (NimNode, NimNode) =
@@ -420,8 +325,12 @@ proc splitProc(prc: NimNode): (NimNode, NimNode) =
   for i in 1 ..< result[0][3].len:
     # Sync proc (0) -> FormalParams (3) -> IdentDefs, the parameter (i) ->
     # parameter type (1).
-    result[0][3][i][1] = splitParamType(result[0][3][i][1], async = false)
-  result[0][6] = stripAwait(result[0][6])
+    result[0][3][i][1] = splitParamType(result[0][3][i][1], async=false)
+  var multisyncAwait = quote:
+    template await(value: typed): untyped =
+      value
+
+  result[0][^1] = nnkStmtList.newTree(multisyncAwait, result[0][^1])
 
   result[1] = prc.copyNimTree()
   if result[1][3][0].kind == nnkBracketExpr:
@@ -441,8 +350,9 @@ macro multisync*(prc: untyped): untyped =
   result = newStmtList()
   result.add(asyncSingleProc(asyncPrc))
   result.add(sync)
+  # echo result.repr
 
-proc await*[T](x: T) =
-  ## The 'await' keyword is also defined here for technical
-  ## reasons. (Generic symbol lookup prepass.)
-  {.error: "Await only available within .async".}
+# overload for await as a fallback handler, based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
+# template await*(f: typed): untyped =
+  # static:
+    # error "await only available within {.async.}"

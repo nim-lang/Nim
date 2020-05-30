@@ -177,3 +177,28 @@ proc getNimScriptSymbol*(g: ModuleGraph; name: string): PSym =
   strTableGet(g.exposed, getIdent(g.cache, name))
 
 proc resetNimScriptSymbols*(g: ModuleGraph) = initStrTable(g.exposed)
+
+proc getMagicEqSymForType*(g: ModuleGraph; t: PType; info: TLineInfo): PSym =
+  case t.kind
+  of tyInt,  tyInt8, tyInt16, tyInt32, tyInt64,
+     tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64: 
+    result = getSysMagic(g, info, "==", mEqI)
+  of tyEnum: 
+    result = getSysMagic(g, info, "==", mEqEnum)
+  of tyBool: 
+    result = getSysMagic(g, info, "==", mEqB)
+  of tyRef, tyPtr, tyPointer: 
+    result = getSysMagic(g, info, "==", mEqRef)
+  of tyString:
+    result = getSysMagic(g, info, "==", mEqStr)
+  of tyChar:
+    result = getSysMagic(g, info, "==", mEqCh)
+  of tySet:
+    result = getSysMagic(g, info, "==", mEqSet)
+  of tyProc:
+    result = getSysMagic(g, info, "==", mEqProc)
+  else:
+    globalError(g.config, info,
+      "can't find magic equals operator for type kind " & $t.kind)
+
+

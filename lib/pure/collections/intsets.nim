@@ -46,20 +46,16 @@ type
   IntSet* = object       ## An efficient set of `int` implemented as a sparse bit set.
     elems: int           # only valid for small numbers
     counter, max: int
-    countDeleted: int
     head: PTrunk
     data: TrunkSeq
     a: array[0..33, int] # profiling shows that 34 elements are enough
 
 proc mustRehash[T](t: T): bool {.inline.} =
-  # FACTOR between hashcommon.mustRehash, intsets.mustRehash
-  let counter2 = t.counter + t.countDeleted
   let length = t.max + 1
-  assert length > counter2
-  result = (length * 2 < counter2 * 3) or (length - counter2 < 4)
+  assert length > t.counter
+  result = (length * 2 < t.counter * 3) or (length - t.counter < 4)
 
 proc nextTry(h, maxHash: Hash, perturb: var Hash): Hash {.inline.} =
-  # FACTOR between hashcommon.nextTry, intsets.nextTry
   const PERTURB_SHIFT = 5
   var perturb2 = cast[uint](perturb) shr PERTURB_SHIFT
   perturb = cast[Hash](perturb2)
@@ -330,6 +326,15 @@ proc excl*(s: var IntSet, other: IntSet) =
 
   for item in other: excl(s, item)
 
+proc len*(s: IntSet): int {.inline.} =
+  ## Returns the number of elements in `s`.
+  if s.elems < s.a.len:
+    result = s.elems
+  else:
+    result = 0
+    for _ in s:
+      inc(result)
+
 proc missingOrExcl*(s: var IntSet, key: int): bool =
   ## Excludes `key` in the set `s` and tells if `key` was already missing from `s`.
   ##
@@ -348,9 +353,9 @@ proc missingOrExcl*(s: var IntSet, key: int): bool =
     assert a.missingOrExcl(5) == false
     assert a.missingOrExcl(5) == true
 
-  var count = s.elems
+  var count = s.len
   exclImpl(s, key)
-  result = count == s.elems
+  result = count == s.len
 
 proc clear*(result: var IntSet) =
   ## Clears the IntSet back to an empty state.
@@ -513,15 +518,6 @@ proc disjoint*(s1, s2: IntSet): bool =
     if contains(s2, item):
       return false
   return true
-
-proc len*(s: IntSet): int {.inline.} =
-  ## Returns the number of elements in `s`.
-  if s.elems < s.a.len:
-    result = s.elems
-  else:
-    result = 0
-    for _ in s:
-      inc(result)
 
 proc card*(s: IntSet): int {.inline.} =
   ## Alias for `len() <#len,IntSet>`_.

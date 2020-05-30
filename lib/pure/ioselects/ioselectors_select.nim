@@ -113,8 +113,8 @@ proc close*[T](s: Selector[T]) =
 
 when defined(windows):
   proc newSelectEvent*(): SelectEvent =
-    var ssock = newNativeSocket()
-    var wsock = newNativeSocket()
+    var ssock = createNativeSocket()
+    var wsock = createNativeSocket()
     var rsock: SocketHandle = INVALID_SOCKET
     var saddr = Sockaddr_in()
 

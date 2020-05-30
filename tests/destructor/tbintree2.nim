@@ -1,7 +1,7 @@
 discard """
   cmd: '''nim c -d:nimAllocStats --newruntime $file'''
   output: '''0
-(allocCount: 6, deallocCount: 6)'''
+(allocCount: 5, deallocCount: 5)'''
 """
 
 import system / ansi_c

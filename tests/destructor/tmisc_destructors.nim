@@ -22,7 +22,7 @@ proc `=`(dest: var Foo, src: Foo) =
   assign_counter.inc
 
 proc test(): auto =
-  var a,b : Foo
+  var a, b: Foo
   return (a, b, Foo(boo: 5))
 
 var (a, b, _) = test()

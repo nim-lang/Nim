@@ -66,17 +66,16 @@ proc genericAssignAux(dest, src: pointer, mt: PNimType, shallow: bool) =
       cast[PGenericSeq](ss).len = seq.len
       unsureAsgnRef(x, ss)
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
-      copyMem(cast[pointer](dst +% GenericSeqSize),
-              cast[pointer](cast[ByteAddress](s2) +% GenericSeqSize),
-              seq.len * mt.base.size)
+      copyMem(cast[pointer](dst +% align(GenericSeqSize, mt.base.align)),
+              cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align)),
+              seq.len *% mt.base.size)
     else:
       unsureAsgnRef(x, newSeq(mt, seq.len))
       var dst = cast[ByteAddress](cast[PPointer](dest)[])
       for i in 0..seq.len-1:
         genericAssignAux(
-          cast[pointer](dst +% i *% mt.base.size +% GenericSeqSize),
-          cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                      GenericSeqSize),
+          cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size ),
+          cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +% i *% mt.base.size ),
           mt.base, shallow)
   of tyObject:
     var it = mt.base
@@ -234,10 +233,10 @@ proc FieldDiscriminantCheck(oldDiscVal, newDiscVal: int,
   let newBranch = selectBranch(newDiscVal, L, a)
   when defined(nimOldCaseObjects):
     if newBranch != oldBranch and oldDiscVal != 0:
-      sysFatal(FieldError, "assignment to discriminant changes object branch")
+      sysFatal(FieldDefect, "assignment to discriminant changes object branch")
   else:
     if newBranch != oldBranch:
       if oldDiscVal != 0:
-        sysFatal(FieldError, "assignment to discriminant changes object branch")
+        sysFatal(FieldDefect, "assignment to discriminant changes object branch")
       else:
-        sysFatal(FieldError, "assignment to discriminant changes object branch; compile with -d:nimOldCaseObjects for a transition period")
+        sysFatal(FieldDefect, "assignment to discriminant changes object branch; compile with -d:nimOldCaseObjects for a transition period")

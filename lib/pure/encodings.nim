@@ -10,7 +10,7 @@
 ## Converts between different character encodings. On UNIX, this uses
 ## the `iconv`:idx: library, on Windows the Windows API.
 
-import os, parseutils, strutils
+import os
 
 when not defined(windows):
   type
@@ -28,6 +28,7 @@ type
                                         ## for encoding errors
 
 when defined(windows):
+  import parseutils, strutils
   proc eqEncodingNames(a, b: string): bool =
     var i = 0
     var j = 0

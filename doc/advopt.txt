@@ -5,6 +5,7 @@ Advanced commands:
   //js                      compile project to Javascript
   //e                       run a Nimscript file
   //rst2html                convert a reStructuredText file to HTML
+                            use `--docCmd:skip` to skip compiling snippets
   //rst2tex                 convert a reStructuredText file to TeX
   //jsondoc                 extract the documentation to a json file
   //ctags                   create a tags file
@@ -24,12 +25,13 @@ Runtime checks (see -x):
   --floatChecks:on|off      turn all floating point (NaN/Inf) checks on|off
   --nanChecks:on|off        turn NaN checks on|off
   --infChecks:on|off        turn Inf checks on|off
-  --nilChecks:on|off        turn nil checks on|off
   --refChecks:on|off        turn ref checks on|off (only for --newruntime)
 
 Advanced options:
   -o:FILE, --out:FILE       set the output filename
   --outdir:DIR              set the path where the output file will be written
+  --usenimcache             will use `outdir=$$nimcache`, whichever it resolves
+                            to after all options have been processed
   --stdout:on|off           output to stdout
   --colors:on|off           turn compiler messages coloring on|off
   --listFullPaths:on|off    list full paths in messages
@@ -38,6 +40,8 @@ Advanced options:
   --warning[X]:on|off       turn specific warning X on|off
   --hints:on|off|list       turn all hints on|off or list all available
   --hint[X]:on|off          turn specific hint X on|off
+  --warningAsError[X]:on|off
+                            turn specific warning X into an error on|off
   --styleCheck:off|hint|error
                             produce hints or errors for Nim identifiers that
                             do not adhere to Nim's official style guide
@@ -49,6 +53,7 @@ Advanced options:
   --import:PATH             add an automatically imported module
   --include:PATH            add an automatically included module
   --nimcache:PATH           set the path used for generated files
+                            see also https://nim-lang.org/docs/nimc.html#compiler-usage-generated-c-code-directory
   -c, --compileOnly:on|off  compile Nim files only; do not assemble or link
   --noLinking:on|off        compile Nim and generated files but do not link
   --noMain:on|off           do not generate a main procedure
@@ -67,13 +72,17 @@ Advanced options:
   --clib:LIBNAME            link an additional C library
                             (you should omit platform-specific extensions)
   --project                 document the whole project (doc2)
-  --docRoot:path            nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim
+  --docRoot:path            `nim doc --docRoot:/foo --project --outdir:docs /foo/sub/main.nim`
                             generates: docs/sub/main.html
                             if path == @pkg, will use nimble file enclosing dir
-                            if path == @path, will use first matching dir in --path
+                            if path == @path, will use first matching dir in `--path`
                             if path == @default (the default and most useful), will use
                             best match among @pkg,@path.
                             if these are nonexistant, will use project path
+  -b, --backend:c|cpp|js|objc sets backend to use with commands like `nim doc` or `nim r`
+  --docCmd:cmd              if `cmd == skip`, skips runnableExamples
+                            else, runs runnableExamples with given options, eg:
+                            `--docCmd:"-d:foo --threads:on"`
   --docSeeSrcUrl:url        activate 'see source' for doc and doc2 commands
                             (see doc.item.seesrc in config/nimdoc.cfg)
   --docInternal             also generate documentation for non-exported symbols
@@ -91,6 +100,7 @@ Advanced options:
                             turn support for hot code reloading on|off
   --excessiveStackTrace:on|off
                             stack traces use full file paths
+  --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
   --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --laxStrings:on|off       when turned on, accessing the zero terminator in
                             strings is allowed; only for backwards compatibility
@@ -124,8 +134,8 @@ Advanced options:
                             dynlib: "liblua.so.3"
   --dynlibOverrideAll
                             disables the effects of the dynlib pragma
-  --listCmd                 list the compilation commands; can be combined with:
-                            --hint:exec:on and --hint:link:on
+  --listCmd                 list the compilation commands; can be combined with
+                            `--hint:exec:on` and `--hint:link:on`
   --asm                     produce assembler code
   --parallelBuild:0|1|...   perform a parallel build
                             value = number of processors (0 for auto-detect)
@@ -144,3 +154,5 @@ Advanced options:
                             works better with `--stackTrace:on`
                             see also https://nim-lang.github.io/Nim/estp.html
   --benchmarkVM:on|off      enable benchmarking of VM code with cpuTime()
+  --sinkInference:on|off    en-/disable sink parameter inference (default: on)
+  --panics:on|off           turn panics into process terminations (default: off)

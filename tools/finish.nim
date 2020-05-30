@@ -123,12 +123,11 @@ when defined(windows):
 
   proc addToPathEnv*(e: string) =
     var p = tryGetUnicodeValue(r"Environment", "Path", HKEY_CURRENT_USER)
-    let x = if e.contains(Whitespace): "\"" & e & "\"" else: e
     if p.len > 0:
       p.add ";"
-      p.add x
+      p.add e
     else:
-      p = x
+      p = e
     setUnicodeValue(r"Environment", "Path", p, HKEY_CURRENT_USER)
 
   proc createShortcut(src, dest: string; icon = "") =

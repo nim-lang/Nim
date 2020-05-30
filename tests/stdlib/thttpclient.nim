@@ -14,7 +14,7 @@ const manualTests = false
 
 proc makeIPv6HttpServer(hostname: string, port: Port,
     message: string): AsyncFD =
-  let fd = newNativeSocket(AF_INET6)
+  let fd = createNativeSocket(AF_INET6)
   setSockOptInt(fd, SOL_SOCKET, SO_REUSEADDR, 1)
   var aiList = getAddrInfo(hostname, port, AF_INET6)
   if bindAddr(fd, aiList.ai_addr, aiList.ai_addrlen.Socklen) < 0'i32:

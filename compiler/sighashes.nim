@@ -35,6 +35,7 @@ type
     CoIgnoreRange
     CoConsiderOwned
     CoDistinct
+    CoHashTypeInsideNode
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag])
 
@@ -61,7 +62,7 @@ proc hashTypeSym(c: var MD5Context, s: PSym) =
       c &= "."
       it = it.owner
 
-proc hashTree(c: var MD5Context, n: PNode) =
+proc hashTree(c: var MD5Context, n: PNode; flags: set[ConsiderFlag]) =
   if n == nil:
     c &= "\255"
     return
@@ -75,6 +76,8 @@ proc hashTree(c: var MD5Context, n: PNode) =
     c &= n.ident.s
   of nkSym:
     hashSym(c, n.sym)
+    if CoHashTypeInsideNode in flags and n.sym.typ != nil:
+      hashType(c, n.sym.typ, flags)
   of nkCharLit..nkUInt64Lit:
     let v = n.intVal
     lowlevel v
@@ -84,7 +87,7 @@ proc hashTree(c: var MD5Context, n: PNode) =
   of nkStrLit..nkTripleStrLit:
     c &= n.strVal
   else:
-    for i in 0..<n.len: hashTree(c, n[i])
+    for i in 0..<n.len: hashTree(c, n[i], flags)
 
 proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   if t == nil:
@@ -155,11 +158,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
           let oldFlags = t.sym.flags
           # Mild hack to prevent endless recursion.
           t.sym.flags = t.sym.flags - {sfAnon, sfGenSym}
-          for n in t.n:
-            assert(n.kind == nkSym)
-            let s = n.sym
-            c.hashSym s
-            c.hashType s.typ, flags
+          hashTree(c, t.n, flags + {CoHashTypeInsideNode})
           t.sym.flags = oldFlags
         else:
           # The object has no fields: we _must_ add something here in order to
@@ -176,7 +175,7 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
     if tfVarIsPtr in t.flags: c &= ".varisptr"
   of tyFromExpr:
     c &= char(t.kind)
-    c.hashTree(t.n)
+    c.hashTree(t.n, {})
   of tyTuple:
     c &= char(t.kind)
     if t.n != nil and CoType notin flags:
@@ -192,11 +191,11 @@ proc hashType(c: var MD5Context, t: PType; flags: set[ConsiderFlag]) =
   of tyRange:
     if CoIgnoreRange notin flags:
       c &= char(t.kind)
-      c.hashTree(t.n)
+      c.hashTree(t.n, {})
     c.hashType(t[0], flags)
   of tyStatic:
     c &= char(t.kind)
-    c.hashTree(t.n)
+    c.hashTree(t.n, {})
     c.hashType(t[0], flags)
   of tyProc:
     c &= char(t.kind)

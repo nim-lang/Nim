@@ -30,3 +30,12 @@ const
   }.toTable
 
 #map["test"]()
+
+#-------------------------------------------------------------------
+# bug
+const val = 10
+ 
+type 
+  t = object
+    when val >= 10:
+      a: int

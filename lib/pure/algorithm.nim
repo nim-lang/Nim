@@ -75,14 +75,14 @@ template fillImpl[T](a: var openArray[T], first, last: int, value: T) =
 proc fill*[T](a: var openArray[T], first, last: Natural, value: T) =
   ## Fills the slice ``a[first..last]`` with ``value``.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   runnableExamples:
     var a: array[6, int]
     a.fill(1, 3, 9)
     assert a == [0, 9, 9, 9, 0, 0]
     a.fill(3, 5, 7)
     assert a == [0, 9, 9, 7, 7, 7]
-    doAssertRaises(IndexError, a.fill(1, 7, 9))
+    doAssertRaises(IndexDefect, a.fill(1, 7, 9))
   fillImpl(a, first, last, value)
 
 proc fill*[T](a: var openArray[T], value: T) =
@@ -99,7 +99,7 @@ proc fill*[T](a: var openArray[T], value: T) =
 proc reverse*[T](a: var openArray[T], first, last: Natural) =
   ## Reverses the slice ``a[first..last]``.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## **See also:**
   ## * `reversed proc<#reversed,openArray[T],Natural,int>`_ reverse a slice and returns a ``seq[T]``
@@ -110,7 +110,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     assert a == [1, 4, 3, 2, 5, 6]
     a.reverse(1, 3)
     assert a == [1, 2, 3, 4, 5, 6]
-    doAssertRaises(IndexError, a.reverse(1, 7))
+    doAssertRaises(IndexDefect, a.reverse(1, 7))
   var x = first
   var y = last
   while x < y:
@@ -135,7 +135,7 @@ proc reverse*[T](a: var openArray[T]) =
 proc reversed*[T](a: openArray[T], first: Natural, last: int): seq[T] =
   ## Returns the reverse of the slice ``a[first..last]``.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## **See also:**
   ## * `reverse proc<#reverse,openArray[T],Natural,Natural>`_ reverse a slice
@@ -238,7 +238,7 @@ proc lowerBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
   ## ``insert(thing, elm, lowerBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## The version uses ``cmp`` to compare the elements.
   ## The expected return values are the same as that of ``system.cmp``.
@@ -286,7 +286,7 @@ proc upperBound*[T, K](a: openArray[T], key: K, cmp: proc(x: T, k: K): int {.
   ## ``insert(thing, elm, upperBound(thing, elm))``
   ## the sequence will still be sorted.
   ##
-  ## If an invalid range is passed, it raises IndexError.
+  ## If an invalid range is passed, it raises IndexDefect.
   ##
   ## The version uses ``cmp`` to compare the elements. The expected
   ## return values are the same as that of ``system.cmp``.
@@ -504,7 +504,7 @@ template sortedByIt*(seq1, op: untyped): untyped =
     # Nested sort
     assert people.sortedByIt((it.age, it.name)) == @[(name: "p2", age: 20),
        (name: "p3", age: 30), (name: "p4", age: 30), (name: "p1", age: 60)]
-  var result = sorted(seq1, proc(x, y: type(seq1[0])): int =
+  var result = sorted(seq1, proc(x, y: typeof(seq1[0])): int =
     var it {.inject.} = x
     let a = op
     it = y
@@ -763,7 +763,7 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
   ##
   ## Elements outside of ``slice`` will be left unchanged.
   ## The time complexity is linear to ``slice.b - slice.a + 1``.
-  ## If an invalid range (``HSlice``) is passed, it raises IndexError.
+  ## If an invalid range (``HSlice``) is passed, it raises IndexDefect.
   ##
   ## ``slice``
   ##   The indices of the element range that should be rotated.
@@ -783,7 +783,7 @@ proc rotateLeft*[T](arg: var openArray[T]; slice: HSlice[int, int];
     assert a == [0, 3, 4, 1, 2, 5]
     a.rotateLeft(1 .. 4, -3)
     assert a == [0, 4, 1, 2, 3, 5]
-    doAssertRaises(IndexError, a.rotateLeft(1 .. 7, 2))
+    doAssertRaises(IndexDefect, a.rotateLeft(1 .. 7, 2))
   let sliceLen = slice.b + 1 - slice.a
   let distLeft = ((dist mod sliceLen) + sliceLen) mod sliceLen
   arg.rotateInternal(slice.a, slice.a+distLeft, slice.b + 1)
@@ -813,7 +813,7 @@ proc rotatedLeft*[T](arg: openArray[T]; slice: HSlice[int, int],
   ## not modify the argument. It creates a new ``seq`` instead.
   ##
   ## Elements outside of ``slice`` will be left unchanged.
-  ## If an invalid range (``HSlice``) is passed, it raises IndexError.
+  ## If an invalid range (``HSlice``) is passed, it raises IndexDefect.
   ##
   ## ``slice``
   ##   The indices of the element range that should be rotated.

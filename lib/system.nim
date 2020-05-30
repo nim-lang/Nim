@@ -54,6 +54,23 @@ type
 
 include "system/basic_types"
 
+
+proc compileOption*(option: string): bool {.
+  magic: "CompileOption", noSideEffect.}
+  ## Can be used to determine an `on|off` compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("floatchecks"):
+  ##     echo "compiled with floating point NaN and Inf checks"
+
+proc compileOption*(option, arg: string): bool {.
+  magic: "CompileOptionArg", noSideEffect.}
+  ## Can be used to determine an enum compile-time option. Example:
+  ##
+  ## .. code-block:: Nim
+  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
+  ##     echo "compiled with optimization for size and uses Boehm's GC"
+
 {.push warning[GcMem]: off, warning[Uninit]: off.}
 {.push hints: off.}
 
@@ -87,8 +104,20 @@ proc defined*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
   ##     # Do here programmer friendly expensive sanity checks.
   ##   # Put here the normal code
 
+when defined(nimHashOrdinalFixed):
+  type
+    Ordinal*[T] {.magic: Ordinal.} ## Generic ordinal type. Includes integer,
+                                   ## bool, character, and enumeration types
+                                   ## as well as their subtypes. See also
+                                   ## `SomeOrdinal`.
+else:
+  # bootstrap <= 0.20.0
+  type
+    OrdinalImpl[T] {.magic: Ordinal.}
+    Ordinal* = OrdinalImpl | uint | uint64
+
 when defined(nimHasRunnableExamples):
-  proc runnableExamples*(body: untyped) {.magic: "RunnableExamples".}
+  proc runnableExamples*(rdoccmd = "", body: untyped) {.magic: "RunnableExamples".}
     ## A section you should use to mark `runnable example`:idx: code with.
     ##
     ## - In normal debug and release builds code within
@@ -110,10 +139,15 @@ when defined(nimHasRunnableExamples):
     ##       assert double(5) == 10
     ##       block: ## at block scope
     ##         defer: echo "done"
-    ##
     ##     result = 2 * x
+    ##     runnableExamples "-d:foo -b:cpp":
+    ##       import std/compilesettings
+    ##       doAssert querySetting(backend) == "cpp"
+    ##     runnableExamples "-r:off": ## this one is only compiled
+    ##        import std/browsers
+    ##        openDefaultBrowser "https://forum.nim-lang.org/"
 else:
-  template runnableExamples*(body: untyped) =
+  template runnableExamples*(doccmd = "", body: untyped) =
     discard
 
 proc declared*(x: untyped): bool {.magic: "Defined", noSideEffect, compileTime.}
@@ -485,6 +519,7 @@ when not defined(js) and not defined(nimSeqsV2):
       len, reserved: int
       when defined(gogc):
         elemSize: int
+        elemAlign: int
     PGenericSeq {.exportc.} = ptr TGenericSeq
     # len and space without counting the terminating zero:
     NimStringDesc {.compilerproc, final.} = object of TGenericSeq
@@ -663,6 +698,11 @@ proc len*(x: cstring): int {.magic: "LengthStr", noSideEffect.}
   ## Returns the length of a compatible string. This is sometimes
   ## an O(n) operation.
   ##
+  ## **Note:** On the JS backend this currently counts UTF-16 code points
+  ## instead of bytes at runtime (not at compile time). For now, if you
+  ## need the byte length of the UTF-8 encoding, convert to string with
+  ## `$` first then call `len`.
+  ##
   ## .. code-block:: Nim
   ##   var str: cstring = "Hello world!"
   ##   len(str) # => 12
@@ -838,10 +878,10 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ## Checks if `x` has a type of `y`.
   ##
   ## .. code-block:: Nim
-  ##   assert(FloatingPointError of Exception)
-  ##   assert(DivByZeroError of Exception)
+  ##   assert(FloatingPointDefect of Exception)
+  ##   assert(DivByZeroDefect of Exception)
 
-proc cmp*[T](x, y: T): int {.procvar.} =
+proc cmp*[T](x, y: T): int =
   ## Generic compare proc.
   ##
   ## Returns:
@@ -859,7 +899,7 @@ proc cmp*[T](x, y: T): int {.procvar.} =
   if x < y: return -1
   return 1
 
-proc cmp*(x, y: string): int {.noSideEffect, procvar.}
+proc cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
   ## **Note**: The precise result values depend on the used C runtime library and
@@ -1028,22 +1068,6 @@ const
   # emit this flag
   # for string literals, it allows for some optimizations.
 
-proc compileOption*(option: string): bool {.
-  magic: "CompileOption", noSideEffect.}
-  ## Can be used to determine an `on|off` compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("floatchecks"):
-  ##     echo "compiled with floating point NaN and Inf checks"
-
-proc compileOption*(option, arg: string): bool {.
-  magic: "CompileOptionArg", noSideEffect.}
-  ## Can be used to determine an enum compile-time option. Example:
-  ##
-  ## .. code-block:: Nim
-  ##   when compileOption("opt", "size") and compileOption("gc", "boehm"):
-  ##     echo "compiled with optimization for size and uses Boehm's GC"
-
 const
   hasThreadSupport = compileOption("threads") and not defined(nimscript)
   hasSharedHeap = defined(boehmgc) or defined(gogc) # don't share heaps; every thread has its own
@@ -1110,6 +1134,15 @@ elif hostOS != "standalone":
   var programResult* {.compilerproc, exportc: "nim_program_result".}: int
     ## deprecated, prefer ``quit``
 
+import std/private/since
+
+proc align(address, alignment: int): int =
+  if alignment == 0: # Actually, this is illegal. This branch exists to actively
+                     # hide problems.
+    result = address
+  else:
+    result = (address + (alignment - 1)) and not (alignment - 1)
+
 when defined(nimdoc):
   proc quit*(errorcode: int = QuitSuccess) {.magic: "Exit", noreturn.}
     ## Stops the program immediately with an exit code.
@@ -1170,7 +1203,7 @@ when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
 when defined(nimscript) or not defined(nimSeqsV2):
-  proc add*[T](x: var seq[T], y: T) {.magic: "AppendSeqElem", noSideEffect.}
+  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
     ## For containers that have an order, `add` means *append*. New generic
@@ -1652,8 +1685,8 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     result = a[pos]
   ##
   ##   when isMainModule:
-  ##     testException(IndexError, tester(30))
-  ##     testException(IndexError, tester(1))
+  ##     testException(IndexDefect, tester(30))
+  ##     testException(IndexDefect, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
 proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
@@ -1685,6 +1718,7 @@ when not defined(js) and defined(nimV2):
     TNimType {.compilerproc.} = object
       destructor: pointer
       size: int
+      align: int
       name: cstring
       traceImpl: pointer
       disposeImpl: pointer
@@ -1695,7 +1729,6 @@ when notJSnotNims and defined(nimSeqsV2):
   include "system/seqs_v2"
 
 {.pop.}
-
 
 when notJSnotNims:
   proc writeStackTrace*() {.tags: [], gcsafe, raises: [].}
@@ -1879,6 +1912,7 @@ var
 type
   PFrame* = ptr TFrame  ## Represents a runtime frame of the call stack;
                         ## part of the debugger API.
+  # keep in sync with nimbase.h `struct TFrame_`
   TFrame* {.importc, nodecl, final.} = object ## The frame itself.
     prev*: PFrame       ## Previous frame; used for chaining the call stack.
     procname*: cstring  ## Name of the proc that is currently executing.
@@ -1886,6 +1920,8 @@ type
     filename*: cstring  ## Filename of the proc that is currently executing.
     len*: int16         ## Length of the inspectable slots.
     calldepth*: int16   ## Used for max call depth checking.
+    when NimStackTraceMsgs:
+      frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js):
   proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
@@ -1942,14 +1978,7 @@ template newException*(exceptn: typedesc, message: string;
                        parentException: ref Exception = nil): untyped =
   ## Creates an exception object of type ``exceptn`` and sets its ``msg`` field
   ## to `message`. Returns the new exception object.
-  when declared(owned):
-    var e: owned(ref exceptn)
-  else:
-    var e: ref exceptn
-  new(e)
-  e.msg = message
-  e.parent = parentException
-  e
+  (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
   proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
@@ -1979,8 +2008,8 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   result = if x < 0: -x else: x
 {.pop.}
 
-
 when not defined(js):
+
   proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
   proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
@@ -2032,20 +2061,26 @@ template unlikely*(val: bool): bool =
     else:
       unlikelyProc(val)
 
+const
+  NimMajor* {.intdefine.}: int = 1
+    ## is the major number of Nim's version. Example:
+    ##
+    ## .. code-block:: Nim
+    ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
+    # see also std/private/since
+
+  NimMinor* {.intdefine.}: int = 3
+    ## is the minor number of Nim's version.
+    ## Odd for devel, even for releases.
+
+  NimPatch* {.intdefine.}: int = 5
+    ## is the patch number of Nim's version.
+    ## Odd for devel, even for releases.
 
 import system/dollars
 export dollars
 
 const
-  NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version.
-
-  NimMinor* {.intdefine.}: int = 1
-    ## is the minor number of Nim's version.
-
-  NimPatch* {.intdefine.}: int = 1
-    ## is the patch number of Nim's version.
-
   NimVersion*: string = $NimMajor & "." & $NimMinor & "." & $NimPatch
     ## is the version of Nim as a string.
 
@@ -2064,7 +2099,7 @@ when not defined(js):
 
   when hasAlloc:
     when not defined(gcRegions) and not usesDestructors:
-      proc initGC() {.gcsafe.}
+      proc initGC() {.gcsafe, raises: [].}
 
     proc initStackBottom() {.inline, compilerproc.} =
       # WARNING: This is very fragile! An array size of 8 does not work on my
@@ -2113,16 +2148,12 @@ when notJSnotNims:
 
 when not defined(js):
   proc cmp(x, y: string): int =
-    when defined(nimscript):
+    when nimvm:
       if x < y: result = -1
       elif x > y: result = 1
       else: result = 0
     else:
-      when nimvm:
-        if x < y: result = -1
-        elif x > y: result = 1
-        else: result = 0
-      else:
+      when not defined(nimscript): # avoid semantic checking
         let minlen = min(x.len, y.len)
         result = int(nimCmpMem(x.cstring, y.cstring, cast[csize_t](minlen)))
         if result == 0:
@@ -2209,7 +2240,10 @@ when notJSnotNims:
 
   # we cannot compile this with stack tracing on
   # as it would recurse endlessly!
-  include "system/arithm"
+  when defined(nimNewIntegerOps):
+    include "system/integerops"
+  else:
+    include "system/arithm"
   {.pop.}
 
 
@@ -2468,7 +2502,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   if L == b.len:
     for i in 0..<L: a[Idx(i + xa)] = b[i]
   else:
-    sysFatal(RangeError, "different lengths for slice assignment")
+    sysFatal(RangeDefect, "different lengths for slice assignment")
 
 proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
@@ -2524,6 +2558,9 @@ proc slurp*(filename: string): string {.magic: "Slurp".}
 proc staticRead*(filename: string): string {.magic: "Slurp".}
   ## Compile-time `readFile <io.html#readFile,string>`_ proc for easy
   ## `resource`:idx: embedding:
+  ##
+  ## The maximum file size limit that ``staticRead`` and ``slurp`` can read is
+  ## near or equal to the *free* memory of the device you are using to compile.
   ##
   ## .. code-block:: Nim
   ##     const myResource = staticRead"mydatafile.bin"
@@ -2627,7 +2664,7 @@ when compileOption("rangechecks"):
     ## Helper for performing user-defined range checks.
     ## Such checks will be performed only when the ``rangechecks``
     ## compile-time option is enabled.
-    if not cond: sysFatal(RangeError, "range check failed")
+    if not cond: sysFatal(RangeDefect, "range check failed")
 else:
   template rangeCheck*(cond) = discard
 
@@ -2667,10 +2704,10 @@ when defined(nimV2):
   import system/repr_v2
   export repr_v2
 
-macro lenVarargs*(x: varargs[untyped]): int {.since: (1, 1).} =
+macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc lenVarargsImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
-  lenVarargsImpl(x)
+  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  varargsLenImpl(x)
 
 when false:
   template eval*(blk: typed): typed =
@@ -2994,5 +3031,5 @@ export widestrs
 import system/io
 export io
 
-when not defined(createNimHcr):
+when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr

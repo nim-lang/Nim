@@ -10,7 +10,7 @@
 ## Include for the tester that contains test suites that test special features
 ## of the compiler.
 
-# included from tester.nim
+# included from testament.nim
 
 import important_packages
 
@@ -29,9 +29,9 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble-packages",
+    "nimble-packages-1",
+    "nimble-packages-2",
     "niminaction",
-    "rodfiles",
     "threads",
     "untestable",
     "stdlib",
@@ -169,16 +169,8 @@ proc dllTests(r: var TResults, cat: Category, options: string) =
 # ------------------------------ GC tests -------------------------------------
 
 proc gcTests(r: var TResults, cat: Category, options: string) =
-  template testWithNone(filename: untyped) =
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " --gc:none", cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release --gc:none", cat)
-
   template testWithoutMs(filename: untyped) =
     testSpec r, makeTest("tests/gc" / filename, options, cat)
-    testSpec r, makeTest("tests/gc" / filename, options &
-                  " -d:release", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release -d:useRealtimeGC", cat)
     when filename != "gctest":
@@ -193,6 +185,7 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
                   " --gc:markAndSweep", cat)
     testSpec r, makeTest("tests/gc" / filename, options &
                   " -d:release --gc:markAndSweep", cat)
+
   template test(filename: untyped) =
     testWithoutBoehm filename
     when not defined(windows) and not defined(android):
@@ -210,7 +203,6 @@ proc gcTests(r: var TResults, cat: Category, options: string) =
   test "gcleak"
   test "gcleak2"
   testWithoutBoehm "gctest"
-  testWithNone "gctest"
   test "gcleak3"
   test "gcleak4"
   # Disabled because it works and takes too long to run:
@@ -268,9 +260,10 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
-  t.spec.action = actionCompile
-  testSpec r, t
+  if fileExists("tools/nimgrep.nim"):
+    var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
+    t.spec.action = actionCompile
+    testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 
@@ -455,11 +448,18 @@ let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
 
-iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
-  let defaultCmd = "nimble test"
+type
+  PkgPart = enum
+    ppOne
+    ppTwo
+
+iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool] =
   let packageList = parseFile(packageIndex)
-  for n, cmd, hasDeps, url in important_packages.packages.items:
-    let cmd = if cmd.len == 0: defaultCmd else: cmd
+  let importantList =
+    case part
+    of ppOne: important_packages.packages1
+    of ppTwo: important_packages.packages2
+  for n, cmd, hasDeps, url in importantList.items:
     if url.len != 0:
       yield (n, url, cmd, hasDeps)
     else:
@@ -480,7 +480,7 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults, cat: Category) =
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -492,7 +492,9 @@ proc testNimblePackages(r: var TResults, cat: Category) =
   let packagesDir = "pkgstemp"
   var errors = 0
   try:
-    for name, url, cmd, hasDep in listPackages():
+    for name, url, cmd, hasDep in listPackages(part):
+      if packageFilter notin name:
+        continue
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
@@ -552,7 +554,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   if existsFile(test):
     testSpec r, makeTest(test, options, cat), {target}
   else:
-    echo "[Warning] - ", test, " test does not exist"
+    doAssert false, test & " test does not exist"
 
 proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
@@ -668,10 +670,6 @@ proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
   case cat.string.normalize
-  of "rodfiles":
-    when false:
-      compileRodFiles(r, cat, options)
-      runRodFiles(r, cat, options)
   of "ic":
     when false:
       icTests(r, testsDir, cat, options)
@@ -707,8 +705,10 @@ proc processCategory(r: var TResults, cat: Category,
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-packages":
-    testNimblePackages(r, cat)
+  of "nimble-packages-1":
+    testNimblePackages(r, cat, options, ppOne)
+  of "nimble-packages-2":
+    testNimblePackages(r, cat, options, ppTwo)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":
@@ -736,12 +736,22 @@ proc processCategory(r: var TResults, cat: Category,
 
 proc processPattern(r: var TResults, pattern, options: string; simulate: bool) =
   var testsRun = 0
-  for name in walkPattern(pattern):
-    if simulate:
-      echo "Detected test: ", name
-    else:
-      var test = makeTest(name, options, Category"pattern")
-      testSpec r, test
-    inc testsRun
+  if dirExists(pattern):
+    for k, name in walkDir(pattern):
+      if k in {pcFile, pcLinkToFile} and name.endsWith(".nim"):
+        if simulate:
+          echo "Detected test: ", name
+        else:
+          var test = makeTest(name, options, Category"pattern")
+          testSpec r, test
+        inc testsRun
+  else:
+    for name in walkPattern(pattern):
+      if simulate:
+        echo "Detected test: ", name
+      else:
+        var test = makeTest(name, options, Category"pattern")
+        testSpec r, test
+      inc testsRun
   if testsRun == 0:
     echo "no tests were found for pattern: ", pattern

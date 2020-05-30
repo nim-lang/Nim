@@ -95,10 +95,8 @@
 ##   runForever()
 ##
 
-import asyncdispatch
-import nativesockets
-import net
-import os
+import std/private/since
+import asyncdispatch, nativesockets, net, os
 
 export SOBool
 
@@ -131,11 +129,16 @@ type
   AsyncSocket* = ref AsyncSocketDesc
 
 proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
-    sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(AsyncSocket) =
+                     sockType: SockType = SOCK_STREAM,
+                     protocol: Protocol = IPPROTO_TCP,
+                     buffered = true,
+                     inheritable = defined(nimInheritHandles)): owned(AsyncSocket) =
   ## Creates a new ``AsyncSocket`` based on the supplied params.
   ##
   ## The supplied ``fd``'s non-blocking state will be enabled implicitly.
+  ##
+  ## If ``inheritable`` is false (the default), the supplied ``fd`` will not
+  ## be inheritable by child processes.
   ##
   ## **Note**: This procedure will **NOT** register ``fd`` with the global
   ## async dispatcher. You need to do this manually. If you have used
@@ -144,6 +147,8 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
   new(result)
   result.fd = fd.SocketHandle
   fd.SocketHandle.setBlocking(false)
+  if not fd.SocketHandle.setInheritable(inheritable):
+    raiseOSError(osLastError())
   result.isBuffered = buffered
   result.domain = domain
   result.sockType = sockType
@@ -152,15 +157,19 @@ proc newAsyncSocket*(fd: AsyncFD, domain: Domain = AF_INET,
     result.currPos = 0
 
 proc newAsyncSocket*(domain: Domain = AF_INET, sockType: SockType = SOCK_STREAM,
-    protocol: Protocol = IPPROTO_TCP, buffered = true): owned(AsyncSocket) =
+                     protocol: Protocol = IPPROTO_TCP, buffered = true,
+                     inheritable = defined(nimInheritHandles)): owned(AsyncSocket) =
   ## Creates a new asynchronous socket.
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  let fd = createAsyncNativeSocket(domain, sockType, protocol)
+  ##
+  ## If ``inheritable`` is false (the default), the new file descriptor will not
+  ## be inheritable by child processes.
+  let fd = createAsyncNativeSocket(domain, sockType, protocol, inheritable)
   if fd.SocketHandle == osInvalidSocket:
     raiseOSError(osLastError())
-  result = newAsyncSocket(fd, domain, sockType, protocol, buffered)
+  result = newAsyncSocket(fd, domain, sockType, protocol, buffered, inheritable)
 
 proc getLocalAddr*(socket: AsyncSocket): (string, Port) =
   ## Get the socket's local address and port number.
@@ -175,16 +184,20 @@ proc getPeerAddr*(socket: AsyncSocket): (string, Port) =
   getPeerAddr(socket.fd, socket.domain)
 
 proc newAsyncSocket*(domain, sockType, protocol: cint,
-    buffered = true): owned(AsyncSocket) =
+                     buffered = true,
+                     inheritable = defined(nimInheritHandles)): owned(AsyncSocket) =
   ## Creates a new asynchronous socket.
   ##
   ## This procedure will also create a brand new file descriptor for
   ## this socket.
-  let fd = createAsyncNativeSocket(domain, sockType, protocol)
+  ##
+  ## If ``inheritable`` is false (the default), the new file descriptor will not
+  ## be inheritable by child processes.
+  let fd = createAsyncNativeSocket(domain, sockType, protocol, inheritable)
   if fd.SocketHandle == osInvalidSocket:
     raiseOSError(osLastError())
   result = newAsyncSocket(fd, Domain(domain), SockType(sockType),
-                          Protocol(protocol), buffered)
+                          Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
   proc getSslError(handle: SslPtr, err: cint): cint =
@@ -445,13 +458,18 @@ proc send*(socket: AsyncSocket, data: string,
   else:
     await send(socket.fd.AsyncFD, data, flags)
 
-proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
+proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn},
+                 inheritable = defined(nimInheritHandles)):
       owned(Future[tuple[address: string, client: AsyncSocket]]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection and the remote address of the client.
+  ##
+  ## If ``inheritable`` is false (the default), the resulting client socket will
+  ## not be inheritable by child processes.
+  ##
   ## The future will complete when the connection is successfully accepted.
   var retFuture = newFuture[tuple[address: string, client: AsyncSocket]]("asyncnet.acceptAddr")
-  var fut = acceptAddr(socket.fd.AsyncFD, flags)
+  var fut = acceptAddr(socket.fd.AsyncFD, flags, inheritable)
   fut.callback =
     proc (future: Future[tuple[address: string, client: AsyncFD]]) =
       assert future.finished
@@ -460,7 +478,7 @@ proc acceptAddr*(socket: AsyncSocket, flags = {SocketFlag.SafeDisconn}):
       else:
         let resultTup = (future.read.address,
                          newAsyncSocket(future.read.client, socket.domain,
-                         socket.sockType, socket.protocol, socket.isBuffered))
+                         socket.sockType, socket.protocol, socket.isBuffered, inheritable))
         retFuture.complete(resultTup)
   return retFuture
 
@@ -468,6 +486,8 @@ proc accept*(socket: AsyncSocket,
     flags = {SocketFlag.SafeDisconn}): owned(Future[AsyncSocket]) =
   ## Accepts a new connection. Returns a future containing the client socket
   ## corresponding to that connection.
+  ## If ``inheritable`` is false (the default), the resulting client socket will
+  ## not be inheritable by child processes.
   ## The future will complete when the connection is successfully accepted.
   var retFut = newFuture[AsyncSocket]("asyncnet.accept")
   var fut = acceptAddr(socket, flags)
@@ -743,6 +763,17 @@ when defineSsl:
     of handshakeAsServer:
       sslSetAcceptState(socket.sslHandle)
 
+  proc getPeerCertificates*(socket: AsyncSocket): seq[Certificate] {.since: (1, 1).} =
+    ## Returns the certificate chain received by the peer we are connected to
+    ## through the given socket.
+    ## The handshake must have been completed and the certificate chain must
+    ## have been verified successfully or else an empty sequence is returned.
+    ## The chain is ordered from leaf certificate to root certificate.
+    if not socket.isSsl:
+      result = newSeq[Certificate]()
+    else:
+      result = getPeerCertificates(socket.sslHandle)
+
 proc getSockOpt*(socket: AsyncSocket, opt: SOBool, level = SOL_SOCKET): bool {.
   tags: [ReadIOEffect].} =
   ## Retrieves option ``opt`` as a boolean value.
@@ -766,6 +797,97 @@ proc getFd*(socket: AsyncSocket): SocketHandle =
 proc isClosed*(socket: AsyncSocket): bool =
   ## Determines whether the socket has been closed.
   return socket.closed
+
+proc sendTo*(socket: AsyncSocket, address: string, port: Port, data: string,
+             flags = {SocketFlag.SafeDisconn}): owned(Future[void])
+            {.async, since: (1, 3).} =
+  ## This proc sends ``data`` to the specified ``address``, which may be an IP
+  ## address or a hostname. If a hostname is specified this function will try
+  ## each IP of that hostname. The returned future will complete once all data
+  ## has been sent.
+  ## 
+  ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `sendTo` on a TCP socket. Use `send` instead")
+  assert(not socket.closed, "Cannot `sendTo` on a closed socket")
+
+  let aiList = getAddrInfo(address, port, socket.domain, socket.sockType,
+                           socket.protocol)
+
+  var
+    it = aiList
+    success = false
+    lastException: ref Exception
+  
+  while it != nil:
+    let fut = sendTo(socket.fd.AsyncFD, cstring(data), len(data), it.ai_addr,
+                     it.ai_addrlen.SockLen, flags)
+    
+    yield fut
+
+    if not fut.failed:
+      success = true
+
+      break
+    
+    lastException = fut.readError()
+
+    it = it.ai_next
+  
+  freeaddrinfo(aiList)
+
+  if not success:
+    if lastException != nil:
+      raise lastException
+    else:
+      raise newException(IOError, "Couldn't resolve address: " & address)
+
+proc recvFrom*(socket: AsyncSocket, size: int,
+               flags = {SocketFlag.SafeDisconn}):
+              owned(Future[tuple[data: string, address: string, port: Port]])
+              {.async, since: (1, 3).} =
+  ## Receives a datagram data from ``socket``, which must be at least of size
+  ## ``size``. Returned future will complete once one datagram has been received
+  ## and will return tuple with: data of packet received; and address and port
+  ## of datagram's sender.
+  ## 
+  ## If an error occurs an OSError exception will be raised.
+  ## 
+  ## This proc is normally used with connectionless sockets (UDP sockets).
+  template adaptRecvFromToDomain(domain: Domain) =
+    var lAddr = sizeof(sAddr).SockLen
+    
+    let fut = await recvFromInto(AsyncFD(getFd(socket)), cstring(data), size,
+                                 cast[ptr SockAddr](addr sAddr), addr lAddr,
+                                 flags)
+    
+    data.setLen(fut)
+    
+    result.data = data
+    result.address = getAddrString(cast[ptr SockAddr](addr sAddr))
+
+    when domain == AF_INET6:
+      result.port = ntohs(sAddr.sin6_port).Port
+    else:
+      result.port = ntohs(sAddr.sin_port).Port
+
+  assert(socket.protocol != IPPROTO_TCP,
+         "Cannot `recvFrom` on a TCP socket. Use `recv` or `recvInto` instead")
+  assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
+
+  var data = newString(size)
+  
+  case socket.domain
+  of AF_INET6:
+    var sAddr: Sockaddr_in6
+    adaptRecvFromToDomain(AF_INET6)
+  of AF_INET:
+    var sAddr: Sockaddr_in
+    adaptRecvFromToDomain(AF_INET)
+  else:
+    raise newException(ValueError, "Unknown socket address family")
 
 when not defined(testing) and isMainModule:
   type

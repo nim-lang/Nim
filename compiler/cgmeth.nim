@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements code generation for multi methods.
+## This module implements code generation for methods.
 
 import
   intsets, options, ast, msgs, idents, renderer, types, magicsys,

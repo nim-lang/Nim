@@ -95,3 +95,8 @@ proc countProcessors*(): int {.rtl, extern: "ncpi$1".} =
   else:
     result = sysconf(SC_NPROCESSORS_ONLN)
   if result <= 0: result = 0
+
+
+runnableExamples:
+  block:
+    doAssert countProcessors() > 0

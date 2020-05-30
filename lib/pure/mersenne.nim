@@ -39,6 +39,14 @@ proc getNum*(m: var MersenneTwister): uint32 =
   result = result xor ((result shl 15'u32) and 0xefc60000'u32)
   result = result xor (result shr 18'u32)
 
+
+runnableExamples:
+  static:
+    block:
+      var rando: MersenneTwister = newMersenneTwister(uint32.high)  ## Must be "var".
+      doAssert rando.getNum() != rando.getNum()  ## Pseudo random number. Works at compile-time.
+
+
 # Test
 when not defined(testing) and isMainModule:
   var mt = newMersenneTwister(2525)

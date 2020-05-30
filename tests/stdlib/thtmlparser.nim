@@ -1,6 +1,6 @@
 discard """
+  targets: "c js"
   output: '''
-@[]
 true
 https://example.com/test?format=jpg&name=orig##
 https://example.com/test?format=jpg&name=orig##text
@@ -40,7 +40,7 @@ block t2813:
     """
   var errors: seq[string] = @[]
   let tree = parseHtml(newStringStream(html), "test.html", errors)
-  echo errors # Errors: </thead> expected,...
+  doAssert errors.len == 0 # Errors: </thead> expected,...
 
   var len = tree.findAll("tr").len # len = 6
   var rows: seq[XmlNode] = @[]

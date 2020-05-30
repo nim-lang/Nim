@@ -64,7 +64,7 @@ template `[]`*[I](a: Wrapnil, i: I): untyped =
   ## See top-level example.
   let a1 = a # to avoid double evaluations
   if a1.validImpl:
-    # correctly will raise IndexError if a is valid but wraps an empty container
+    # correctly will raise IndexDefect if a is valid but wraps an empty container
     wrapnil(a1.valueImpl[i])
   else:
     default(Wrapnil[type(a1.valueImpl[i])])

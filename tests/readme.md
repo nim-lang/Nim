@@ -2,9 +2,8 @@ This directory contains the test cases.
 
 Each test must have a filename of the form: ``t*.nim``
 
-**Note:** Tests are only compiled by default. In order to get the tester to
-execute the compiled binary, you need to specify a spec with an ``action`` key
-(see below for details).
+**Note:** Testament is only aware of tests under a directory (eg `tests/foo/`) and will ignore
+top-level tests like `tests/tbar.nim`.
 
 # Specs
 
@@ -16,7 +15,7 @@ Each test can contain a spec in a ``discard """ ... """`` block.
 
 Specifies what action this test should take.
 
-**Default: compile**
+**Default: run**
 
 Options:
 
@@ -50,10 +49,8 @@ discard """
 # Categories
 
 Each folder under this directory represents a test category, which can be
-tested by running `koch tests cat <category>`.
-
-The folder ``rodfiles`` contains special tests that test incremental
-compilation via symbol files.
+tested by running `koch tests pcat <category>` (or `cat` to avoid parallel
+testing, which is slower).
 
 The folder ``dll`` contains simple DLL tests.
 

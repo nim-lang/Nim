@@ -23,7 +23,7 @@ const
   szUncomputedSize* = -1
   szTooBigSize* = -4
 
-type IllegalTypeRecursionError = object of Exception
+type IllegalTypeRecursionError = object of ValueError
 
 proc raiseIllegalTypeRecursion() =
   raise newException(IllegalTypeRecursionError, "illegal type recursion")
@@ -346,7 +346,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           while st.kind in skipPtrs:
             st = st[^1]
           computeSizeAlign(conf, st)
-          if conf.cmd == cmdCompileToCpp:
+          if conf.backend == backendCpp:
             OffsetAccum(
               offset: int(st.size) - int(st.paddingAtEnd),
               maxAlign: st.align
@@ -382,7 +382,8 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         computeObjectOffsetsFoldFunction(conf, typ.n, false, accum)
       let paddingAtEnd = int16(accum.finish())
       if typ.sym != nil and
-         typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc}:
+         typ.sym.flags * {sfCompilerProc, sfImportc} == {sfImportc} and
+         tfCompleteStruct notin typ.flags:
         typ.size = szUnknownSize
         typ.align = szUnknownSize
         typ.paddingAtEnd = szUnknownSize

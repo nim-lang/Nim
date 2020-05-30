@@ -81,6 +81,9 @@ proc findNimStdLib*(): string =
   ## Returns "" on failure.
   try:
     let nimexe = os.findExe("nim")
+      # this can't work with choosenim shims, refs https://github.com/dom96/choosenim/issues/189
+      # it'd need `nim dump --dump.format:json . | jq -r .libpath`
+      # which we should simplify as `nim dump --key:libpath`
     if nimexe.len == 0: return ""
     result = nimexe.splitPath()[0] /../ "lib"
     if not fileExists(result / "system.nim"):
@@ -93,20 +96,22 @@ proc findNimStdLib*(): string =
 proc findNimStdLibCompileTime*(): string =
   ## Same as ``findNimStdLib`` but uses source files used at compile time,
   ## and asserts on error.
-  const sourcePath = currentSourcePath()
-  result = sourcePath.parentDir.parentDir / "lib"
+  const exe = getCurrentCompilerExe()
+  result = exe.splitFile.dir.parentDir / "lib"
   doAssert fileExists(result / "system.nim"), "result:" & result
 
 proc createInterpreter*(scriptName: string;
                         searchPaths: openArray[string];
-                        flags: TSandboxFlags = {}): Interpreter =
+                        flags: TSandboxFlags = {},
+                        defines = @[("nimscript", "true")],
+                        registerOps = true): Interpreter =
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
   connectCallbacks(graph)
   initDefines(conf.symbols)
-  defineSymbol(conf.symbols, "nimscript")
-  defineSymbol(conf.symbols, "nimconfig")
+  for define in defines:
+    defineSymbol(conf.symbols, define[0], define[1])
   registerPass(graph, semPass)
   registerPass(graph, evalPass)
 
@@ -119,6 +124,8 @@ proc createInterpreter*(scriptName: string;
   var vm = newCtx(m, cache, graph)
   vm.mode = emRepl
   vm.features = flags
+  if registerOps:
+    vm.registerAdditionalOps() # Required to register parts of stdlib modules
   graph.vm = vm
   graph.compileSystemModule()
   result = Interpreter(mainModule: m, graph: graph, scriptName: scriptName)

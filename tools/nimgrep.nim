@@ -44,7 +44,7 @@ Options:
   --color[:always]    force color even if output is redirected
   --colorTheme:THEME  select color THEME from 'simple' (default),
                       'bnw' (black and white) ,'ack', or 'gnu' (GNU grep)
-  --afterContext:N,   
+  --afterContext:N,
                -a:N   print N lines of trailing context after every match
   --beforeContext:N,
                -b:N   print N lines of leading context before every match
@@ -412,6 +412,8 @@ proc processFile(pattern; filename: string; counter: var int, errors: var int) =
       else:
         printContextBetween(si, prevMi, curMi)
       printMatch(si.fileName, curMi)
+      if t.last == buffer.len - 1:
+        stdout.write("\n")
       stdout.flushFile()
     else:
       let r = replace(curMi.match, pattern, replacement % matches)
@@ -649,7 +651,8 @@ else:
     if optIgnoreStyle in options:
       pattern = styleInsensitive(pattern)
     if optWord in options:
-      pattern = r"\b(:?" & pattern & r")\b"
+      # see https://github.com/nim-lang/Nim/issues/13528#issuecomment-592786443
+      pattern = r"(^|\W)(:?" & pattern & r")($|\W)"
     if {optIgnoreCase, optIgnoreStyle} * options != {}:
       reflags.incl reIgnoreCase
     let rep = if optRex in options: rex(pattern, reflags)
@@ -658,8 +661,6 @@ else:
       walker(rep, f, counter, errors)
   if errors != 0:
     printError $errors & " errors"
-  if counter == 1:
-    stdout.write("\n")
   stdout.write($counter & " matches\n")
   if errors != 0:
     quit(1)

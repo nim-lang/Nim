@@ -17,7 +17,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
   # awful to semcheck before macro invocation, so we don't and treat
   # templates and macros as immediate in this context.
   var rule: string
-  if optHints in c.config.options and hintPattern in c.config.notes:
+  if c.config.hasHint(hintPattern):
     rule = renderTree(n, {renderNoComments})
   let s = n[0].sym
   case s.kind
@@ -27,7 +27,7 @@ proc evalPattern(c: PContext, n, orig: PNode): PNode =
     result = semTemplateExpr(c, n, s, {efFromHlo})
   else:
     result = semDirectOp(c, n, {})
-  if optHints in c.config.options and hintPattern in c.config.notes:
+  if c.config.hasHint(hintPattern):
     message(c.config, orig.info, hintPattern, rule & " --> '" &
       renderTree(result, {renderNoComments}) & "'")
 

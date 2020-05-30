@@ -9,7 +9,7 @@
 
 #  This module implements BSD kqueue().
 
-import posix, times, kqueue
+import posix, times, kqueue, nativesockets
 
 const
   # Maximum number of events that can be returned.
@@ -76,7 +76,7 @@ type
 
 proc getUnique[T](s: Selector[T]): int {.inline.} =
   # we create duplicated handles to get unique indexes for our `fds` array.
-  result = posix.fcntl(s.sock, F_DUPFD, s.sock)
+  result = posix.fcntl(s.sock, F_DUPFD_CLOEXEC, s.sock)
   if result == -1:
     raiseIOSelectorsError(osLastError())
 
@@ -96,8 +96,8 @@ proc newSelector*[T](): owned(Selector[T]) =
   # we allocating empty socket to duplicate it handle in future, to get unique
   # indexes for `fds` array. This is needed to properly identify
   # {Event.Timer, Event.Signal, Event.Process} events.
-  let usock = posix.socket(posix.AF_INET, posix.SOCK_STREAM,
-                             posix.IPPROTO_TCP).cint
+  let usock = createNativeSocket(posix.AF_INET, posix.SOCK_STREAM,
+                                 posix.IPPROTO_TCP).cint
   if usock == -1:
     let err = osLastError()
     discard posix.close(kqFD)

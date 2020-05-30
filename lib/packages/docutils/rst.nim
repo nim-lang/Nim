@@ -305,14 +305,14 @@ proc whichMsgClass*(k: MsgKind): MsgClass =
   else: assert false, "msgkind does not fit naming scheme"
 
 proc defaultMsgHandler*(filename: string, line, col: int, msgkind: MsgKind,
-                        arg: string) {.procvar.} =
+                        arg: string) =
   let mc = msgkind.whichMsgClass
   let a = messages[msgkind] % arg
   let message = "$1($2, $3) $4: $5" % [filename, $line, $col, $mc, a]
   if mc == mcError: raise newException(EParseError, message)
   else: writeLine(stdout, message)
 
-proc defaultFindFile*(filename: string): string {.procvar.} =
+proc defaultFindFile*(filename: string): string =
   if existsFile(filename): result = filename
   else: result = ""
 
