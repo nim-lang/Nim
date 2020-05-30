@@ -42,7 +42,9 @@ type
     warnProveInit, warnProveField, warnProveIndex,
     warnStaticIndexCheck, warnGcUnsafe, warnGcUnsafe2,
     warnUninit, warnGcMem, warnDestructor, warnLockLevel, warnResultShadowed,
-    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated, warnUser,
+    warnInconsistentSpacing, warnCaseTransition, warnCycleCreated,
+    warnObservableStores,
+    warnUser,
     hintSuccess, hintSuccessX, hintCC,
     hintLineTooLong, hintXDeclaredButNotUsed,
     hintConvToBaseNotNeeded,
@@ -107,6 +109,7 @@ const
     warnInconsistentSpacing: "Number of spaces around '$#' is not consistent",
     warnCaseTransition: "Potential object case transition, instantiate new object instead",
     warnCycleCreated: "$1",
+    warnObservableStores: "observable stores to '$1'",
     warnUser: "$1",
     hintSuccess: "operation successful: $#",
     # keep in sync with `testament.isSuccess`
@@ -156,7 +159,8 @@ const
     "ProveInit", "ProveField", "ProveIndex",
     "IndexCheck", "GcUnsafe", "GcUnsafe2", "Uninit",
     "GcMem", "Destructor", "LockLevel", "ResultShadowed",
-    "Spacing", "CaseTransition", "CycleCreated", "User"]
+    "Spacing", "CaseTransition", "CycleCreated",
+    "ObservableStores", "User"]
 
   HintsToStr* = [
     "Success", "SuccessX", "CC", "LineTooLong",

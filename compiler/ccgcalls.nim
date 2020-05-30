@@ -43,8 +43,9 @@ proc preventNrvo(p: BProc; le, ri: PNode): bool =
     for i in 1..<ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
-    return canRaiseDisp(p, ri[0]) and
-        (p.nestedTryStmts.len > 0 or locationEscapes(p, le))
+    if canRaiseDisp(p, ri[0]) and
+        (p.nestedTryStmts.len > 0 or locationEscapes(p, le)):
+      message(p.config, le.info, warnObservableStores, $le)
 
 proc hasNoInit(call: PNode): bool {.inline.} =
   result = call[0].kind == nkSym and sfNoInit in call[0].sym.flags
