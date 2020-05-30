@@ -231,13 +231,24 @@ proc buildDocSamples(nimArgs, destPath: string) =
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
 proc buildDocPackages(nimArgs, destPath: string) =
-  # compiler docs, and later, other packages (perhaps tools, testament etc)
+  # compiler docs; later, other packages (perhaps tools, testament etc)
   let nim = findNim().quoteShell()
-  let extra = "-u:boot"
     # to avoid broken links to manual from compiler dir, but a multi-package
     # structure could be supported later
-  exec("$1 doc --project --outdir:$2/compiler $3 --git.url:$4 $5 compiler/nim.nim" %
-    [nim, destPath, nimArgs, gitUrl, extra])
+
+  proc docProject(outdir, options, mainproj: string) =
+    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $options $mainproj" % [
+      "nim", nim,
+      "outdir", outdir,
+      "nimArgs", nimArgs,
+      "gitUrl", gitUrl,
+      "options", options,
+      "mainproj", mainproj,
+      ])
+  let extra = "-u:boot"
+  # xxx keep in sync with what's in $nim_prs_D/config/nimdoc.cfg, or, rather,
+  # start using nims instead of nimdoc.cfg
+  docProject(destPath/"compiler", extra, "compiler/index.nim")
 
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
@@ -314,9 +325,9 @@ proc buildDocs*(args: string) =
     let args2 = args
     createDir(dir2)
     buildDocSamples(args2, dir2)
-    buildDoc(args2, dir2)
+    # buildDoc(args2, dir2) # slow part
     buildDocPackages(args2, dir2)
     copyFile(docHackJsSource, dir2 / docHackJsSource.lastPathPart)
 
-  fn(nimArgs & " " & args, webUploadOutput / NimVersion)
+  # fn(nimArgs & " " & args, webUploadOutput / NimVersion)
   fn(nimArgs, docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!
