@@ -111,3 +111,29 @@ else:
   proc bigEndian64*(outp, inp: pointer) {.inline.} = swapEndian64(outp, inp)
   proc bigEndian32*(outp, inp: pointer) {.inline.} = swapEndian32(outp, inp)
   proc bigEndian16*(outp, inp: pointer) {.inline.} = swapEndian16(outp, inp)
+
+proc getLittleEndian*[T](val: T): T {.noSideEffect, inline.} =
+  var src = val
+  when sizeof(T) == 1:
+    result = src
+  elif sizeof(T) == 2:
+    littleEndian16(addr result, addr src)
+  elif sizeof(T) == 4:
+    littleEndian32(addr result, addr src)
+  elif sizeof(T) == 8:
+    littleEndian64(addr result, addr src)
+  else:
+    {.error: "Types that are larger than 64 bits are not supported.".}
+
+proc getBigEndian*[T](val: T): T {.noSideEffect, inline.} =
+  var src = val
+  when sizeof(T) == 1:
+    result = src
+  elif sizeof(T) == 2:
+    bigEndian16(addr result, addr src)
+  elif sizeof(T) == 4:
+    bigEndian32(addr result, addr src)
+  elif sizeof(T) == 8:
+    bigEndian64(addr result, addr src)
+  else:
+    {.error: "Types that are larger than 64 bits are not supported.".}
