@@ -47,7 +47,11 @@ import std/private/since
 import
   strutils, pathnorm
 
-const weirdTarget = defined(nimscript) or defined(js)
+const weirdTarget = defined(nimscript) or (defined(js) and not defined(nodejs))
+
+when defined(nodejs):
+  import jsffi
+  let fs = require("fs")
 
 since (1, 1):
   const
@@ -878,21 +882,24 @@ include "includes/oserr"
 when not defined(nimscript):
   include "includes/osenv"
 
-proc getHomeDir*(): string {.rtl, extern: "nos$1",
-  tags: [ReadEnvEffect, ReadIOEffect].} =
-  ## Returns the home directory of the current user.
-  ##
-  ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
-  ## for the convenience of processing paths coming from user configuration files.
-  ##
-  ## See also:
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `expandTilde proc <#expandTilde,string>`_
-  ## * `getCurrentDir proc <#getCurrentDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
-  runnableExamples:
-    assert getHomeDir() == expandTilde("~")
+when not defined(nodejs):
+  proc getHomeDir*(): string {.rtl, extern: "nos$1",
+    tags: [ReadEnvEffect, ReadIOEffect].} =
+    ## Returns the home directory of the current user.
+    ##
+    ## This proc is wrapped by the `expandTilde proc <#expandTilde,string>`_
+    ## for the convenience of processing paths coming from user configuration files.
+    ##
+    ## See also:
+    ## * `getConfigDir proc <#getConfigDir>`_
+    ## * `getTempDir proc <#getTempDir>`_
+    ## * `expandTilde proc <#expandTilde,string>`_
+    ## * `getCurrentDir proc <#getCurrentDir>`_
+    ## * `setCurrentDir proc <#setCurrentDir,string>`_
+    runnableExamples:
+      assert getHomeDir() == expandTilde("~")
+    else:
+      proc getHomeDir*(): string {.inline.} = require("os").homedir()
 
   when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
   else: return string(getEnv("HOME")) & "/"
@@ -1087,80 +1094,92 @@ when defined(windows) and not weirdTarget:
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
-proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
-                                          tags: [ReadDirEffect], noNimScript.} =
-  ## Returns true if `filename` exists and is a regular file or symlink.
-  ##
-  ## Directories, device files, named pipes and sockets return false.
-  ##
-  ## See also:
-  ## * `existsDir proc <#existsDir,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, filename)
+when not defined(nodejs):
+  proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
+                                            tags: [ReadDirEffect], noNimScript.} =
+    ## Returns true if `filename` exists and is a regular file or symlink.
+    ##
+    ## Directories, device files, named pipes and sockets return false.
+    ##
+    ## See also:
+    ## * `existsDir proc <#existsDir,string>`_
+    ## * `symlinkExists proc <#symlinkExists,string>`_
+    when defined(windows):
+      when useWinUnicode:
+        wrapUnary(a, getFileAttributesW, filename)
+      else:
+        var a = getFileAttributesA(filename)
+      if a != -1'i32:
+        result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
     else:
-      var a = getFileAttributesA(filename)
-    if a != -1'i32:
-      result = (a and FILE_ATTRIBUTE_DIRECTORY) == 0'i32
-  else:
-    var res: Stat
-    return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
+      var res: Stat
+      return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
-proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
-                                     noNimScript.} =
-  ## Returns true if the directory `dir` exists. If `dir` is a file, false
-  ## is returned. Follows symlinks.
-  ##
-  ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, dir)
+  proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
+                                      noNimScript.} =
+    ## Returns true if the directory `dir` exists. If `dir` is a file, false
+    ## is returned. Follows symlinks.
+    ##
+    ## See also:
+    ## * `existsFile proc <#existsFile,string>`_
+    ## * `symlinkExists proc <#symlinkExists,string>`_
+    when defined(windows):
+      when useWinUnicode:
+        wrapUnary(a, getFileAttributesW, dir)
+      else:
+        var a = getFileAttributesA(dir)
+      if a != -1'i32:
+        result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
     else:
-      var a = getFileAttributesA(dir)
-    if a != -1'i32:
-      result = (a and FILE_ATTRIBUTE_DIRECTORY) != 0'i32
-  else:
-    var res: Stat
-    return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
+      var res: Stat
+      return stat(dir, res) >= 0'i32 and S_ISDIR(res.st_mode)
 
-proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
-                                          tags: [ReadDirEffect],
-                                          noNimScript.} =
-  ## Returns true if the symlink `link` exists. Will return true
-  ## regardless of whether the link points to a directory or file.
-  ##
-  ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
-  ## * `existsDir proc <#existsDir,string>`_
-  when defined(windows):
-    when useWinUnicode:
-      wrapUnary(a, getFileAttributesW, link)
+  proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
+                                            tags: [ReadDirEffect],
+                                            noNimScript.} =
+    ## Returns true if the symlink `link` exists. Will return true
+    ## regardless of whether the link points to a directory or file.
+    ##
+    ## See also:
+    ## * `existsFile proc <#existsFile,string>`_
+    ## * `existsDir proc <#existsDir,string>`_
+    when defined(windows):
+      when useWinUnicode:
+        wrapUnary(a, getFileAttributesW, link)
+      else:
+        var a = getFileAttributesA(link)
+      if a != -1'i32:
+        result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
     else:
-      var a = getFileAttributesA(link)
-    if a != -1'i32:
-      result = (a and FILE_ATTRIBUTE_REPARSE_POINT) != 0'i32
-  else:
-    var res: Stat
-    return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
+      var res: Stat
+      return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
-proc fileExists*(filename: string): bool {.inline, noNimScript.} =
-  ## Alias for `existsFile proc <#existsFile,string>`_.
-  ##
-  ## See also:
-  ## * `existsDir proc <#existsDir,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  existsFile(filename)
+  proc fileExists*(filename: string): bool {.inline, noNimScript.} =
+    ## Alias for `existsFile proc <#existsFile,string>`_.
+    ##
+    ## See also:
+    ## * `existsDir proc <#existsDir,string>`_
+    ## * `symlinkExists proc <#symlinkExists,string>`_
+    existsFile(filename)
 
-proc dirExists*(dir: string): bool {.inline, noNimScript.} =
-  ## Alias for `existsDir proc <#existsDir,string>`_.
-  ##
-  ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  existsDir(dir)
+  proc dirExists*(dir: string): bool {.inline, noNimScript.} =
+    ## Alias for `existsDir proc <#existsDir,string>`_.
+    ##
+    ## See also:
+    ## * `existsFile proc <#existsFile,string>`_
+    ## * `symlinkExists proc <#symlinkExists,string>`_
+    existsDir(dir)
+else:
+  proc existsFile*(filename: string): bool {.inline.} = 
+    fs.statSync(filename.cstring).isFile()
+  proc existsDir*(dir: string): bool {.inline.} =
+    fs.statSync(filename.cstring).isDirectory()
+  proc symlinkExists*(link: string): bool {.inline.} =
+    fs.statSync(filename.cstring).isSymbolicLink()
+  proc fileExists*(filename: string): bool {.inline.} =
+    existsFile(filename)
+  proc dirExists*(dir: string): bool {.inline.} =
+    existsDir(dir)
 
 when not defined(windows) and not weirdTarget:
   proc checkSymlink(path: string): bool =
@@ -1665,63 +1684,67 @@ proc setFilePermissions*(filename: string, permissions: set[FilePermission]) {.
       var res2 = setFileAttributesA(filename, res)
     if res2 == - 1'i32: raiseOSError(osLastError(), $(filename, permissions))
 
-proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect], noNimScript.} =
-  ## Copies a file from `source` to `dest`.
-  ##
-  ## If this fails, `OSError` is raised.
-  ##
-  ## On the Windows platform this proc will
-  ## copy the source file's attributes into dest.
-  ##
-  ## On other platforms you need
-  ## to use `getFilePermissions <#getFilePermissions,string>`_ and
-  ## `setFilePermissions <#setFilePermissions,string,set[FilePermission]>`_ procs
-  ## to copy them by hand (or use the convenience `copyFileWithPermissions
-  ## proc <#copyFileWithPermissions,string,string>`_),
-  ## otherwise `dest` will inherit the default permissions of a newly
-  ## created file for the user.
-  ##
-  ## If `dest` already exists, the file attributes
-  ## will be preserved and the content overwritten.
-  ##
-  ## See also:
-  ## * `copyDir proc <#copyDir,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `moveFile proc <#moveFile,string,string>`_
+when not defined(nodejs):
+  proc copyFile*(source, dest: string) {.rtl, extern: "nos$1",
+    tags: [ReadIOEffect, WriteIOEffect], noNimScript.} =
+    ## Copies a file from `source` to `dest`.
+    ##
+    ## If this fails, `OSError` is raised.
+    ##
+    ## On the Windows platform this proc will
+    ## copy the source file's attributes into dest.
+    ##
+    ## On other platforms you need
+    ## to use `getFilePermissions <#getFilePermissions,string>`_ and
+    ## `setFilePermissions <#setFilePermissions,string,set[FilePermission]>`_ procs
+    ## to copy them by hand (or use the convenience `copyFileWithPermissions
+    ## proc <#copyFileWithPermissions,string,string>`_),
+    ## otherwise `dest` will inherit the default permissions of a newly
+    ## created file for the user.
+    ##
+    ## If `dest` already exists, the file attributes
+    ## will be preserved and the content overwritten.
+    ##
+    ## See also:
+    ## * `copyDir proc <#copyDir,string,string>`_
+    ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
+    ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
+    ## * `removeFile proc <#removeFile,string>`_
+    ## * `moveFile proc <#moveFile,string,string>`_
 
-  when defined(Windows):
-    when useWinUnicode:
-      let s = newWideCString(source)
-      let d = newWideCString(dest)
-      if copyFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+    when defined(Windows):
+      when useWinUnicode:
+        let s = newWideCString(source)
+        let d = newWideCString(dest)
+        if copyFileW(s, d, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      else:
+        if copyFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
     else:
-      if copyFileA(source, dest, 0'i32) == 0'i32: raiseOSError(osLastError(), $(source, dest))
-  else:
-    # generic version of copyFile which works for any platform:
-    const bufSize = 8000 # better for memory manager
-    var d, s: File
-    if not open(s, source): raiseOSError(osLastError(), source)
-    if not open(d, dest, fmWrite):
+      # generic version of copyFile which works for any platform:
+      const bufSize = 8000 # better for memory manager
+      var d, s: File
+      if not open(s, source): raiseOSError(osLastError(), source)
+      if not open(d, dest, fmWrite):
+        close(s)
+        raiseOSError(osLastError(), dest)
+      var buf = alloc(bufSize)
+      while true:
+        var bytesread = readBuffer(s, buf, bufSize)
+        if bytesread > 0:
+          var byteswritten = writeBuffer(d, buf, bytesread)
+          if bytesread != byteswritten:
+            dealloc(buf)
+            close(s)
+            close(d)
+            raiseOSError(osLastError(), dest)
+        if bytesread != bufSize: break
+      dealloc(buf)
       close(s)
-      raiseOSError(osLastError(), dest)
-    var buf = alloc(bufSize)
-    while true:
-      var bytesread = readBuffer(s, buf, bufSize)
-      if bytesread > 0:
-        var byteswritten = writeBuffer(d, buf, bytesread)
-        if bytesread != byteswritten:
-          dealloc(buf)
-          close(s)
-          close(d)
-          raiseOSError(osLastError(), dest)
-      if bytesread != bufSize: break
-    dealloc(buf)
-    close(s)
-    flushFile(d)
-    close(d)
+      flushFile(d)
+      close(d)
+else:
+  proc copyFile*(source, dest: string) {.inline.} =
+    fs.createReadStream(source.cstring).pipe(fs.createWriteStream(dest.cstring))
 
 when not declared(ENOENT) and not defined(Windows):
   when NoFakeVars:
@@ -1774,22 +1797,25 @@ proc tryRemoveFile*(file: string): bool {.rtl, extern: "nos$1", tags: [WriteDirE
     if unlink(file) != 0'i32 and errno != ENOENT:
       result = false
 
-proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], noNimScript.} =
-  ## Removes the `file`.
-  ##
-  ## If this fails, `OSError` is raised. This does not fail
-  ## if the file never existed in the first place.
-  ##
-  ## On Windows, ignores the read-only attribute.
-  ##
-  ## See also:
-  ## * `removeDir proc <#removeDir,string>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
-  ## * `moveFile proc <#moveFile,string,string>`_
-  if not tryRemoveFile(file):
-    raiseOSError(osLastError(), file)
+when not defined(nodejs):
+  proc removeFile*(file: string) {.rtl, extern: "nos$1", tags: [WriteDirEffect], noNimScript.} =
+    ## Removes the `file`.
+    ##
+    ## If this fails, `OSError` is raised. This does not fail
+    ## if the file never existed in the first place.
+    ##
+    ## On Windows, ignores the read-only attribute.
+    ##
+    ## See also:
+    ## * `removeDir proc <#removeDir,string>`_
+    ## * `copyFile proc <#copyFile,string,string>`_
+    ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
+    ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
+    ## * `moveFile proc <#moveFile,string,string>`_
+    if not tryRemoveFile(file):
+      raiseOSError(osLastError(), file)
+else:
+  proc removeFile*(file: string) {.inline.} = fs.unlinkSync(file.cstring)
 
 proc tryMoveFSObject(source, dest: string): bool {.noNimScript.} =
   ## Moves a file or directory from `source` to `dest`.
@@ -1814,31 +1840,35 @@ proc tryMoveFSObject(source, dest: string): bool {.noNimScript.} =
         raiseOSError(err, $(source, dest, strerror(errno)))
   return true
 
-proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
-  tags: [ReadIOEffect, WriteIOEffect], noNimScript.} =
-  ## Moves a file from `source` to `dest`.
-  ##
-  ## If this fails, `OSError` is raised.
-  ## If `dest` already exists, it will be overwritten.
-  ##
-  ## Can be used to `rename files`:idx:.
-  ##
-  ## See also:
-  ## * `moveDir proc <#moveDir,string,string>`_
-  ## * `copyFile proc <#copyFile,string,string>`_
-  ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
-  ## * `removeFile proc <#removeFile,string>`_
-  ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
+when not defined(nodejs):
+  proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
+    tags: [ReadIOEffect, WriteIOEffect], noNimScript.} =
+    ## Moves a file from `source` to `dest`.
+    ##
+    ## If this fails, `OSError` is raised.
+    ## If `dest` already exists, it will be overwritten.
+    ##
+    ## Can be used to `rename files`:idx:.
+    ##
+    ## See also:
+    ## * `moveDir proc <#moveDir,string,string>`_
+    ## * `copyFile proc <#copyFile,string,string>`_
+    ## * `copyFileWithPermissions proc <#copyFileWithPermissions,string,string>`_
+    ## * `removeFile proc <#removeFile,string>`_
+    ## * `tryRemoveFile proc <#tryRemoveFile,string>`_
 
-  if not tryMoveFSObject(source, dest):
-    when not defined(windows):
-      # Fallback to copy & del
-      copyFile(source, dest)
-      try:
-        removeFile(source)
-      except:
-        discard tryRemoveFile(dest)
-        raise
+    if not tryMoveFSObject(source, dest):
+      when not defined(windows):
+        # Fallback to copy & del
+        copyFile(source, dest)
+        try:
+          removeFile(source)
+        except:
+          discard tryRemoveFile(dest)
+          raise
+  else:
+    proc moveFile*(source, dest: string) {.inline.} =
+      fs.renameSync(source.cstring, dest.cstring)
 
 proc exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.
@@ -1968,55 +1998,59 @@ iterator walkDirs*(pattern: string): string {.tags: [ReadDirEffect], noNimScript
   ## * `walkDirRec iterator <#walkDirRec.i,string>`_
   walkCommon(pattern, isDir)
 
-proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
-  tags: [ReadDirEffect], noNimScript.} =
-  ## Returns the full (`absolute`:idx:) path of an existing file `filename`.
-  ##
-  ## Raises `OSError` in case of an error. Follows symlinks.
-  when defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var unused: WideCString = nil
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
+when not defined(nodejs):
+  proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
+    tags: [ReadDirEffect], noNimScript.} =
+    ## Returns the full (`absolute`:idx:) path of an existing file `filename`.
+    ##
+    ## Raises `OSError` in case of an error. Follows symlinks.
+    when defined(windows):
+      var bufsize = MAX_PATH.int32
+      when useWinUnicode:
+        var unused: WideCString = nil
+        var res = newWideCString("", bufsize)
+        while true:
+          var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+          if L == 0'i32:
+            raiseOSError(osLastError(), filename)
+          elif L > bufsize:
+            res = newWideCString("", L)
+            bufsize = L
+          else:
+            result = res$L
+            break
+      else:
+        var unused: cstring = nil
+        result = newString(bufsize)
+        while true:
+          var L = getFullPathNameA(filename, bufsize, result, unused)
+          if L == 0'i32:
+            raiseOSError(osLastError(), filename)
+          elif L > bufsize:
+            result = newString(L)
+            bufsize = L
+          else:
+            setLen(result, L)
+            break
+      # getFullPathName doesn't do case corrections, so we have to use this convoluted
+      # way of retrieving the true filename
+      for x in walkFiles(result):
+        result = x
+      if not existsFile(result) and not existsDir(result):
+        # consider using: `raiseOSError(osLastError(), result)`
+        raise newException(OSError, "file '" & result & "' does not exist")
     else:
-      var unused: cstring = nil
-      result = newString(bufsize)
-      while true:
-        var L = getFullPathNameA(filename, bufsize, result, unused)
-        if L == 0'i32:
-          raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
-          break
-    # getFullPathName doesn't do case corrections, so we have to use this convoluted
-    # way of retrieving the true filename
-    for x in walkFiles(result):
-      result = x
-    if not existsFile(result) and not existsDir(result):
-      # consider using: `raiseOSError(osLastError(), result)`
-      raise newException(OSError, "file '" & result & "' does not exist")
+      # according to Posix we don't need to allocate space for result pathname.
+      # But we need to free return value with free(3).
+      var r = realpath(filename, nil)
+      if r.isNil:
+        raiseOSError(osLastError(), filename)
+      else:
+        result = $r
+        c_free(cast[pointer](r))
   else:
-    # according to Posix we don't need to allocate space for result pathname.
-    # But we need to free return value with free(3).
-    var r = realpath(filename, nil)
-    if r.isNil:
-      raiseOSError(osLastError(), filename)
-    else:
-      result = $r
-      c_free(cast[pointer](r))
+    proc expandFilename*(filename: string): string {.inline.} =
+      fs.realpathSync(filename.cstring)
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
@@ -2530,24 +2564,27 @@ proc exclFilePermissions*(filename: string,
   ##   setFilePermissions(filename, getFilePermissions(filename)-permissions)
   setFilePermissions(filename, getFilePermissions(filename)-permissions)
 
-proc expandSymlink*(symlinkPath: string): string {.noNimScript.} =
-  ## Returns a string representing the path to which the symbolic link points.
-  ##
-  ## On Windows this is a noop, ``symlinkPath`` is simply returned.
-  ##
-  ## See also:
-  ## * `createSymlink proc <#createSymlink,string,string>`_
-  when defined(windows):
-    result = symlinkPath
+when not defined(nodejs):
+  proc expandSymlink*(symlinkPath: string): string {.noNimScript.} =
+    ## Returns a string representing the path to which the symbolic link points.
+    ##
+    ## On Windows this is a noop, ``symlinkPath`` is simply returned.
+    ##
+    ## See also:
+    ## * `createSymlink proc <#createSymlink,string,string>`_
+    when defined(windows):
+      result = symlinkPath
+    else:
+      result = newString(256)
+      var len = readlink(symlinkPath, result, 256)
+      if len < 0:
+        raiseOSError(osLastError(), symlinkPath)
+      if len > 256:
+        result = newString(len+1)
+        len = readlink(symlinkPath, result, len)
+      setLen(result, len)
   else:
-    result = newString(256)
-    var len = readlink(symlinkPath, result, 256)
-    if len < 0:
-      raiseOSError(osLastError(), symlinkPath)
-    if len > 256:
-      result = newString(len+1)
-      len = readlink(symlinkPath, result, len)
-    setLen(result, len)
+    proc expandSymlink*(symlinkPath: string): string {.inline.} = fs.readlinkSync(symlinkPath.cstring)
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
