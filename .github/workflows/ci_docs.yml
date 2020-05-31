@@ -114,13 +114,6 @@ jobs:
         shell: bash
         run: ./koch doc --git.commit:devel
 
-      - name: 'Prepare documentation for deployment'
-        if: |
-          github.event_name == 'push' && github.ref == 'refs/heads/devel' &&
-          matrix.target == 'linux'
-        shell: bash
-        run: cp -f doc/html/{overview,index}.html
-
       - name: 'Publish documentation to Github Pages'
         if: |
           github.event_name == 'push' && github.ref == 'refs/heads/devel' &&

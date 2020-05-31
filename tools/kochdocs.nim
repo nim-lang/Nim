@@ -1,6 +1,7 @@
 ## Part of 'koch' responsible for the documentation generation.
 
 import os, strutils, osproc, sets, pathnorm
+from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
 const
@@ -185,7 +186,7 @@ proc getDocList(): seq[string] =
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
 
-  # don't ignore these even though in lib/system
+  # don't ignore these even though in lib/system (not include files)
   const goodSystem = """
 lib/system/io.nim
 lib/system/nimscript.nim
@@ -194,14 +195,14 @@ lib/system/iterators.nim
 lib/system/dollars.nim
 lib/system/widestrs.nim
 """.splitWhitespace()
-
-  for a in walkDirRec("lib"):
-    if a.splitFile.ext != ".nim" or
-       a.isRelativeTo("lib/pure/includes") or
-       a.isRelativeTo("lib/genode") or
-       a.isRelativeTo("lib/deprecated") or
-       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
-       a.replace('\\', '/') in docIgnore:
+  
+  proc follow(a: PathEntry): bool =
+    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+  for entry in walkDirRecFilter("lib", follow = follow):
+    let a = entry.path
+    if entry.kind != pcFile or a.splitFile.ext != ".nim" or
+       (a.isRelativeTo("lib/system") and a.nativeToUnixPath notin goodSystem) or
+       a.nativeToUnixPath in docIgnore:
          continue
     result.add a
   result.add normalizePath("nimsuggest/sexp.nim")
@@ -325,9 +326,10 @@ proc buildDocs*(args: string) =
     let args2 = args
     createDir(dir2)
     buildDocSamples(args2, dir2)
-    # buildDoc(args2, dir2) # slow part
+    buildDoc(args2, dir2) # slow part
+    copyFile(dir2 / "overview.html", dir2 / "index.html")
     buildDocPackages(args2, dir2)
     copyFile(docHackJsSource, dir2 / docHackJsSource.lastPathPart)
 
-  # fn(nimArgs & " " & args, webUploadOutput / NimVersion)
-  fn(nimArgs, docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!
+  fn(nimArgs & " " & args, webUploadOutput / NimVersion)
+  # fn(nimArgs, docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!

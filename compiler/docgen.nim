@@ -19,6 +19,8 @@ import
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim
 
+from std/private/globs import nativeToUnixPath
+
 const
   exportSection = skField
   docCmdSkip = "skip"
@@ -52,12 +54,6 @@ type
     wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
-
-proc nativeToUnix(path: string): string =
-  doAssert not path.isAbsolute # absolute files need more care for the drive
-  when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
 
 proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
   if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
@@ -97,7 +93,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
   if isTitle:
-    result = result.string.nativeToUnix.RelativeFile
+    result = result.string.nativeToUnixPath.RelativeFile
   else:
     result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
@@ -1244,7 +1240,7 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
