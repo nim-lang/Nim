@@ -54,7 +54,7 @@ proc semOperand(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
     # XXX tyGenericInst here?
     if result.typ.kind == tyProc and tfUnresolved in result.typ.flags:
       localError(c.config, n.info, errProcHasNoConcreteType % n.renderTree)
-    if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
+    if result.typ.kind in {tyVar, tyOut, tyLent}: result = newDeref(result)
   elif {efWantStmt, efAllowStmt} * flags != {}:
     result.typ = newTypeS(tyVoid, c)
   else:
@@ -79,7 +79,7 @@ proc semExprWithType(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
                 renderTree(result, {renderNoComments}))
     result.typ = errorType(c)
   else:
-    if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
+    if result.typ.kind in {tyVar, tyOut, tyLent}: result = newDeref(result)
 
 proc semExprNoDeref(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   result = semExprCheck(c, n, flags)
@@ -551,7 +551,7 @@ proc arrayConstrType(c: PContext, n: PNode): PType =
   if n.len == 0:
     rawAddSon(typ, newTypeS(tyEmpty, c)) # needs an empty basetype!
   else:
-    var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+    var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyOut, tyLent, tyOrdinal, tyAlias, tySink})
     addSonSkipIntLit(typ, t)
   typ[0] = makeRangeType(c, 0, n.len - 1, n.info)
   result = typ
@@ -584,7 +584,7 @@ proc semArrayConstr(c: PContext, n: PNode, flags: TExprFlags): PNode =
     let yy = semExprWithType(c, x)
     var typ = yy.typ
     result.add yy
-    #var typ = skipTypes(result[0].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal})
+    #var typ = skipTypes(result[0].typ, {tyGenericInst, tyVar, tyOut, tyLent, tyOrdinal})
     for i in 1..<n.len:
       if lastIndex == lastValidIndex:
         let validIndex = makeRangeType(c, toInt64(firstIndex), toInt64(lastValidIndex), n.info,
@@ -676,7 +676,7 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
   of nkSym:
     # n.sym.typ can be nil in 'check' mode ...
     if n.sym.typ != nil and
-        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+        skipTypes(n.sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyOut, tyLent}:
       incl(n.sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkDotExpr:
@@ -684,12 +684,12 @@ proc analyseIfAddressTaken(c: PContext, n: PNode): PNode =
     if n[1].kind != nkSym:
       internalError(c.config, n.info, "analyseIfAddressTaken")
       return
-    if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+    if skipTypes(n[1].sym.typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyOut, tyLent}:
       incl(n[1].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   of nkBracketExpr:
     checkMinSonsLen(n, 1, c.config)
-    if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyLent}:
+    if skipTypes(n[0].typ, abstractInst-{tyTypeDesc}).kind notin {tyVar, tyOut, tyLent}:
       if n[0].kind == nkSym: incl(n[0].sym.flags, sfAddrTaken)
       result = newHiddenAddrTaken(c, n)
   else:
@@ -712,7 +712,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
     for i in 1..<n.len:
       if i < t.len and t[i] != nil and
-          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar, tyOut}:
         let it = n[i]
         if isAssignable(c, it) notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
@@ -722,7 +722,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       var arg = n[1] #.skipAddr
       if arg.kind == nkHiddenDeref: arg = arg[0]
       if arg.kind == nkSym and arg.sym.kind == skResult and
-          arg.typ.skipTypes(abstractInst).kind in {tyVar, tyLent}:
+          arg.typ.skipTypes(abstractInst).kind in {tyVar, tyOut, tyLent}:
         localError(c.config, n.info, errXStackEscape % renderTree(n[1], {renderNoComments}))
 
     return
@@ -733,7 +733,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       # calls and then they wouldn't be analysed otherwise
       analyseIfAddressTakenInCall(c, n[i])
     if i < t.len and
-        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar, tyOut}:
       if n[i].kind != nkHiddenAddr:
         n[i] = analyseIfAddressTaken(c, n[i])
 
@@ -921,7 +921,7 @@ proc semIndirectOp(c: PContext, n: PNode, flags: TExprFlags): PNode =
   else:
     n[0] = semExpr(c, n[0], {efInCall})
     let t = n[0].typ
-    if t != nil and t.kind in {tyVar, tyLent}:
+    if t != nil and t.kind in {tyVar, tyOut, tyLent}:
       n[0] = newDeref(n[0])
     elif n[0].kind == nkBracketExpr:
       let s = bracketedMacro(n[0])
@@ -1085,7 +1085,7 @@ proc lookupInRecordAndBuildCheck(c: PContext, n, r: PNode, field: PIdent,
 
 const
   tyTypeParamsHolders = {tyGenericInst, tyCompositeTypeClass}
-  tyDotOpTransparent = {tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
+  tyDotOpTransparent = {tyVar, tyOut, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink}
 
 proc readTypeParameter(c: PContext, typ: PType,
                        paramName: PIdent, info: TLineInfo): PNode =
@@ -1237,7 +1237,7 @@ proc semSym(c: PContext, n: PNode, sym: PSym, flags: TExprFlags): PNode =
     while p != nil and p.selfSym == nil:
       p = p.next
     if p != nil and p.selfSym != nil:
-      var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef,
+      var ty = skipTypes(p.selfSym.typ, {tyGenericInst, tyVar, tyOut, tyLent, tyPtr, tyRef,
                                          tyAlias, tySink, tyOwned})
       while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
       var check: PNode = nil
@@ -1367,7 +1367,7 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
 
   if ty.kind in tyUserTypeClasses and ty.isResolvedUserTypeClass:
     ty = ty.lastSon
-  ty = skipTypes(ty, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
+  ty = skipTypes(ty, {tyGenericInst, tyVar, tyOut, tyLent, tyPtr, tyRef, tyOwned, tyAlias, tySink})
   while tfBorrowDot in ty.flags: ty = ty.skipTypes({tyDistinct})
   var check: PNode = nil
   if ty.kind == tyObject:
@@ -1438,7 +1438,7 @@ proc semDeref(c: PContext, n: PNode): PNode =
   checkSonsLen(n, 1, c.config)
   n[0] = semExprWithType(c, n[0])
   result = n
-  var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyLent, tyAlias, tySink, tyOwned})
+  var t = skipTypes(n[0].typ, {tyGenericInst, tyVar, tyOut, tyLent, tyAlias, tySink, tyOwned})
   case t.kind
   of tyRef, tyPtr: n.typ = t.lastSon
   else: result = nil
@@ -1458,7 +1458,7 @@ proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode =
   n[0] = semExprWithType(c, n[0],
                               {efNoEvaluateGeneric})
   var arr = skipTypes(n[0].typ, {tyGenericInst, tyUserTypeClassInst, tyOwned,
-                                      tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink})
+                                      tyVar, tyOut, tyLent, tyPtr, tyRef, tyAlias, tySink})
   if arr.kind == tyStatic:
     if arr.base.kind == tyNone:
       result = n
@@ -1601,7 +1601,7 @@ proc takeImplicitAddr(c: PContext, n: PNode; isLent: bool): PNode =
 proc asgnToResultVar(c: PContext, n, le, ri: PNode) {.inline.} =
   if le.kind == nkHiddenDeref:
     var x = le[0]
-    if x.typ.kind in {tyVar, tyLent} and x.kind == nkSym and x.sym.kind == skResult:
+    if x.typ.kind in {tyVar, tyOut, tyLent} and x.kind == nkSym and x.sym.kind == skResult:
       n[0] = x # 'result[]' --> 'result'
       n[1] = takeImplicitAddr(c, ri, x.typ.kind == tyLent)
       x.typ.flags.incl tfVarIsPtr
@@ -1711,7 +1711,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   var le = a.typ
   if le == nil:
     localError(c.config, a.info, "expression has no type")
-  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
+  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar, tyOut} and
         isAssignable(c, a) in {arNone, arLentValue}) or
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!
@@ -1808,7 +1808,7 @@ proc semProcBody(c: PContext, n: PNode): PNode =
 proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   var t = skipTypes(restype, {tyGenericInst, tyAlias, tySink})
   case t.kind
-  of tyVar, tyLent:
+  of tyVar, tyOut, tyLent:
     t.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
     if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}:
       n[0] = n[0][1]
@@ -1816,7 +1816,7 @@ proc semYieldVarResult(c: PContext, n: PNode, restype: PType) =
   of tyTuple:
     for i in 0..<t.len:
       let e = skipTypes(t[i], {tyGenericInst, tyAlias, tySink})
-      if e.kind in {tyVar, tyLent}:
+      if e.kind in {tyVar, tyOut, tyLent}:
         e.flags.incl tfVarIsPtr # bugfix for #4048, #4910, #6892
         let tupleConstr = if n[0].kind in {nkHiddenStdConv, nkHiddenSubConv}: n[0][1] else: n[0]
         if tupleConstr.kind in {nkPar, nkTupleConstr}:
@@ -2354,17 +2354,17 @@ proc semSetConstr(c: PContext, n: PNode): PNode =
         n[i][2] = semExprWithType(c, n[i][2])
         if typ == nil:
           typ = skipTypes(n[i][1].typ,
-                          {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+                          {tyGenericInst, tyVar, tyOut, tyLent, tyOrdinal, tyAlias, tySink})
         n[i].typ = n[i][2].typ # range node needs type too
       elif n[i].kind == nkRange:
         # already semchecked
         if typ == nil:
           typ = skipTypes(n[i][0].typ,
-                          {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+                          {tyGenericInst, tyVar, tyOut, tyLent, tyOrdinal, tyAlias, tySink})
       else:
         n[i] = semExprWithType(c, n[i])
         if typ == nil:
-          typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyLent, tyOrdinal, tyAlias, tySink})
+          typ = skipTypes(n[i].typ, {tyGenericInst, tyVar, tyOut, tyLent, tyOrdinal, tyAlias, tySink})
     if not isOrdinalType(typ, allowEnumWithHoles=true):
       localError(c.config, n.info, errOrdinalTypeExpected)
       typ = makeRangeType(c, 0, MaxSetElements-1, n.info)

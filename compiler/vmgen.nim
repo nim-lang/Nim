@@ -967,7 +967,7 @@ proc whichAsgnOpc(n: PNode; requiresCopy = true): TOpcode =
     opcAsgnInt
   of tyFloat..tyFloat128:
     opcAsgnFloat
-  of tyRef, tyNil, tyVar, tyLent, tyPtr:
+  of tyRef, tyNil, tyVar, tyOut, tyLent, tyPtr:
     opcAsgnRef
   else:
     (if requiresCopy: opcAsgnComplex else: opcFastAsgnComplex)
@@ -1654,7 +1654,7 @@ proc genRdVar(c: PCtx; n: PNode; dest: var TDest; flags: TGenFlags) =
 
 template needsRegLoad(): untyped =
   {gfNode, gfNodeAddr} * flags == {} and
-    fitsRegister(n.typ.skipTypes({tyVar, tyLent, tyStatic}))
+    fitsRegister(n.typ.skipTypes({tyVar, tyOut, tyLent, tyStatic}))
 
 proc genArrAccessOpcode(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode;
                         flags: TGenFlags) =
@@ -1794,7 +1794,7 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
   of tyCString, tyString:
     result = newNodeIT(nkStrLit, info, t)
     result.strVal = ""
-  of tyVar, tyLent, tyPointer, tyPtr, tyUntyped,
+  of tyVar, tyOut, tyLent, tyPointer, tyPtr, tyUntyped,
      tyTyped, tyTypeDesc, tyRef, tyNil:
     result = newNodeIT(nkNilLit, info, t)
   of tyProc:
@@ -1820,8 +1820,6 @@ proc getNullValue(typ: PType, info: TLineInfo; conf: ConfigRef): PNode =
       result.add getNullValue(t[i], info, conf)
   of tySet:
     result = newNodeIT(nkCurly, info, t)
-  of tyOpt:
-    result = newNodeIT(nkNilLit, info, t)
   of tySequence:
     result = newNodeIT(nkBracket, info, t)
   else:

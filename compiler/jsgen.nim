@@ -179,7 +179,7 @@ const
 proc mapType(typ: PType): TJSTypeKind =
   let t = skipTypes(typ, abstractInst)
   case t.kind
-  of tyVar, tyRef, tyPtr, tyLent:
+  of tyVar, tyOut, tyRef, tyPtr, tyLent:
     if skipTypes(t.lastSon, abstractInst).kind in MappedToObject:
       result = etyObject
     else:
@@ -193,7 +193,7 @@ proc mapType(typ: PType): TJSTypeKind =
   of tyBool: result = etyBool
   of tyFloat..tyFloat128: result = etyFloat
   of tySet: result = etyObject # map a set to a table
-  of tyString, tySequence, tyOpt: result = etySeq
+  of tyString, tySequence: result = etySeq
   of tyObject, tyArray, tyTuple, tyOpenArray, tyVarargs, tyUncheckedArray:
     result = etyObject
   of tyNil: result = etyNull
@@ -1029,7 +1029,7 @@ proc needsNoCopy(p: PProc; y: PNode): bool =
   return y.kind in nodeKindsNeedNoCopy or
         ((mapType(y.typ) != etyBaseIndex or (y.kind == nkSym and y.sym.kind == skParam)) and
           (skipTypes(y.typ, abstractInst).kind in
-            {tyRef, tyPtr, tyLent, tyVar, tyCString, tyProc, tyOwned} + IntegralTypes))
+            {tyRef, tyPtr, tyLent, tyVar, tyOut, tyCString, tyProc, tyOwned} + IntegralTypes))
 
 proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
   var a, b: TCompRes
@@ -1041,7 +1041,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
 
   # we don't care if it's an etyBaseIndex (global) of a string, it's
   # still a string that needs to be copied properly:
-  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyOpt, tyString}:
+  if x.typ.skipTypes(abstractInst).kind in {tySequence, tyString}:
     xtyp = etySeq
   case xtyp
   of etySeq:
@@ -1052,7 +1052,7 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
       lineF(p, "$1 = nimCopy(null, $2, $3);$n",
                [a.rdLoc, b.res, genTypeInfo(p, y.typ)])
   of etyObject:
-    if x.typ.kind == tyVar or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
+    if x.typ.kind in {tyVar, tyOut} or (needsNoCopy(p, y) and needsNoCopy(p, x)) or noCopyNeeded:
       lineF(p, "$1 = $2;$n", [a.rdLoc, b.rdLoc])
     else:
       useMagic(p, "nimCopy")
@@ -1083,7 +1083,7 @@ proc genFastAsgn(p: PProc, n: PNode) =
   # See bug #5933. So we try to be more compatible with the C backend semantics
   # here for 'shallowCopy'. This is an educated guess and might require further
   # changes later:
-  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyOpt, tyString}
+  let noCopy = n[0].typ.skipTypes(abstractInst).kind in {tySequence, tyString}
   genAsgnAux(p, n[0], n[1], noCopyNeeded=noCopy)
 
 proc genSwap(p: PProc, n: PNode) =
@@ -1443,7 +1443,7 @@ proc genArg(p: PProc, n: PNode, param: PSym, r: var TCompRes; emitted: ptr int =
     r.res.add(", ")
     r.res.add(a.res)
     if emitted != nil: inc emitted[]
-  elif n.typ.kind in {tyVar, tyPtr, tyRef, tyLent, tyOwned} and
+  elif n.typ.kind in {tyVar, tyOut, tyPtr, tyRef, tyLent, tyOwned} and
       n.kind in nkCallKinds and mapType(param.typ) == etyBaseIndex:
     # this fixes bug #5608:
     let tmp = getTemp(p)
@@ -1683,14 +1683,14 @@ proc createVar(p: PProc, typ: PType, indirect: bool): Rope =
     createObjInitList(p, t, initIntSet(), initList)
     result = ("{$1}") % [initList]
     if indirect: result = "[$1]" % [result]
-  of tyVar, tyPtr, tyLent, tyRef, tyPointer:
+  of tyVar, tyOut, tyPtr, tyLent, tyRef, tyPointer:
     if mapType(p, t) == etyBaseIndex:
       result = putToSeq("[null, 0]", indirect)
     else:
       result = putToSeq("null", indirect)
   of tySequence, tyString:
     result = putToSeq("[]", indirect)
-  of tyCString, tyOpt, tyProc:
+  of tyCString, tyProc:
     result = putToSeq("null", indirect)
   of tyStatic:
     if t.n != nil:
@@ -1728,7 +1728,7 @@ proc genVarInit(p: PProc, v: PSym, n: PNode) =
 
   if n.kind == nkEmpty:
     if not isIndirect(v) and
-      v.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and mapType(p, v.typ) == etyBaseIndex:
+      v.typ.kind in {tyVar, tyOut, tyPtr, tyLent, tyRef, tyOwned} and mapType(p, v.typ) == etyBaseIndex:
       lineF(p, "var $1 = null;$n", [varName])
       lineF(p, "var $1_Idx = 0;$n", [varName])
     else:
@@ -2278,7 +2278,7 @@ proc genProc(oldProc: PProc, prc: PSym): Rope =
     resultSym = prc.ast[resultPos].sym
     let mname = mangleName(p.module, resultSym)
     if not isIndirect(resultSym) and
-      resultSym.typ.kind in {tyVar, tyPtr, tyLent, tyRef, tyOwned} and
+      resultSym.typ.kind in {tyVar, tyOut, tyPtr, tyLent, tyRef, tyOwned} and
         mapType(p, resultSym.typ) == etyBaseIndex:
       resultAsgn = p.indentLine(("var $# = null;$n") % [mname])
       resultAsgn.add p.indentLine("var $#_Idx = 0;$n" % [mname])

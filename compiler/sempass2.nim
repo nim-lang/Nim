@@ -568,10 +568,11 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
-  if paramType != nil and paramType.kind == tyVar:
+  if paramType != nil and paramType.kind in {tyVar, tyOut}:
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
+      if paramType.kind == tyOut: initVar(tracked, n, false)
   if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
     let argtype = skipTypes(a.typ, abstractInst)
     # XXX figure out why this can be a non tyProc here. See httpclient.nim for an
@@ -825,7 +826,7 @@ proc track(tracked: PEffects, n: PNode) =
       let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
       if opKind != -1:
         # rebind type bounds operations after createTypeBoundOps call
-        let t = n[1].typ.skipTypes({tyAlias, tyVar})
+        let t = n[1].typ.skipTypes({tyAlias, tyVar, tyOut})
         if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
           createTypeBoundOps(tracked, t, n.info)
           let op = t.attachedOps[TTypeAttachedOp(opKind)]

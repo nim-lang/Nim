@@ -714,12 +714,9 @@ proc genCall(c: var Con; n: PNode) =
   inc c.inCall
   for i in 1..<n.len:
     gen(c, n[i])
-    when false:
-      if t != nil and i < t.len and t[i].kind == tyVar:
-        # This is wrong! Pass by var is a 'might def', not a 'must def'
-        # like the other defs we emit. This is not good enough for a move
-        # optimizer.
-        genDef(c, n[i])
+    if t != nil and i < t.len and t[i].kind == tyOut:
+      # Pass by 'out' is a 'must def'. Good enough for a move optimizer.
+      genDef(c, n[i])
   # every call can potentially raise:
   if c.inTryStmt > 0 and canRaiseConservative(n[0]):
     # we generate the instruction sequence:

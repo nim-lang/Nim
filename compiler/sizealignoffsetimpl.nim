@@ -240,7 +240,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
     else:
       typ.size = conf.target.ptrSize
     typ.align = int16(conf.target.ptrSize)
-  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyLent, tyOpenArray:
+  of tyCString, tySequence, tyPtr, tyRef, tyVar, tyOut, tyLent, tyOpenArray:
     let base = typ.lastSon
     if base == typ:
       # this is not the correct location to detect ``type A = ptr A``

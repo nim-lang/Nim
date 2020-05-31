@@ -433,8 +433,9 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOpt
-      # Builtin optional type
+    tyOut
+      # 'out' parameter. Comparable to a 'var' parameter but every
+      # path must assign a value to it before it can be read from.
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -458,7 +459,7 @@ const
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
   tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
   # consider renaming as `tyAbstractVarRange`
-  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyOut, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
 
 type
@@ -657,7 +658,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
     mDefault, mUnown, mAccessEnv, mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mOut, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
@@ -983,13 +984,13 @@ const
     tyGenericParam}
 
   StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
-    tySet, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc, tyOpenArray,
+    tySet, tyRange, tyPtr, tyRef, tyVar, tyOut, tyLent, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject,
-    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
+    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyOut, tyLent, tySequence, tyProc,
     tyPointer,
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
@@ -1491,7 +1492,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
-  const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
+  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
@@ -1504,7 +1505,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
+                   tySequence, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl mask
       owner.flags.incl mask
 
@@ -1801,12 +1802,12 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType): PType =
+proc toVar*(typ: PType; kind: TTypeKind): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
-  if typ.kind != tyVar:
-    result = newType(tyVar, typ.owner)
+  if typ.kind != kind:
+    result = newType(kind, typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType): PType =

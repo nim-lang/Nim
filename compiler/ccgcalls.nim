@@ -170,10 +170,10 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
       result = "($4*)($1)+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dest]
     of tyString, tySequence:
       let atyp = skipTypes(a.t, abstractInst)
-      if formalType.skipTypes(abstractInst).kind == tyVar and atyp.kind == tyString and
+      if formalType.skipTypes(abstractInst).kind in {tyVar, tyOut} and atyp.kind == tyString and
           optSeqDestructors in p.config.globalOptions:
         linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-      if atyp.kind == tyVar and not compileToCpp(p.module):
+      if atyp.kind in {tyVar, tyOut} and not compileToCpp(p.module):
         result = "($5*)(*$1)$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
       else:
         result = "($5*)$1$4+($2), ($3)-($2)+1" % [rdLoc(a), rdLoc(b), rdLoc(c), dataField(p), dest]
@@ -186,10 +186,10 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
       result = "$1, $1Len_0" % [rdLoc(a)]
     of tyString, tySequence:
       let ntyp = skipTypes(n.typ, abstractInst)
-      if formalType.skipTypes(abstractInst).kind == tyVar and ntyp.kind == tyString and
+      if formalType.skipTypes(abstractInst).kind in {tyVar, tyOut} and ntyp.kind == tyString and
           optSeqDestructors in p.config.globalOptions:
         linefmt(p, cpsStmts, "#nimPrepareStrMutationV2($1);$n", [byRefLoc(p, a)])
-      if ntyp.kind == tyVar and not compileToCpp(p.module):
+      if ntyp.kind in {tyVar, tyOut} and not compileToCpp(p.module):
         var t: TLoc
         t.r = "(*$1)" % [a.rdLoc]
         result = "(*$1)$3, $2" % [a.rdLoc, lenExpr(p, t), dataField(p)]
@@ -224,7 +224,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
     result = addrLoc(p.config, a)
-  elif p.module.compileToCpp and param.typ.kind == tyVar and
+  elif p.module.compileToCpp and param.typ.kind in {tyVar, tyOut} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)
     # if the proc is 'importc'ed but not 'importcpp'ed then 'var T' still
@@ -364,7 +364,7 @@ proc genOtherArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
     assert(paramType.kind == nkSym)
     if paramType.typ.isCompileTimeOnly:
       result = nil
-    elif typ[i].kind == tyVar and ri[i].kind == nkHiddenAddr:
+    elif typ[i].kind in {tyVar, tyOut} and ri[i].kind == nkHiddenAddr:
       result = genArgNoParam(p, ri[i][0])
     else:
       result = genArgNoParam(p, ri[i]) #, typ.n[i].sym)
@@ -441,7 +441,7 @@ proc genThisArg(p: BProc; ri: PNode; i: int; typ: PType): Rope =
   var ri = ri[i]
   while ri.kind == nkObjDownConv: ri = ri[0]
   let t = typ[i].skipTypes({tyGenericInst, tyAlias, tySink})
-  if t.kind == tyVar:
+  if t.kind in {tyVar, tyOut}:
     let x = if ri.kind == nkHiddenAddr: ri[0] else: ri
     if x.typ.kind == tyPtr:
       result = genArgNoParam(p, x)

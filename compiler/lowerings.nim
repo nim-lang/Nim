@@ -21,8 +21,8 @@ proc newDeref*(n: PNode): PNode {.inline.} =
 
 proc newTupleAccess*(g: ModuleGraph; tup: PNode, i: int): PNode =
   if tup.kind == nkHiddenAddr:
-    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar, tyLent}))
-    result.add newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar, tyLent})[i])
+    result = newNodeIT(nkHiddenAddr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar, tyOut, tyLent}))
+    result.add newNodeIT(nkBracketExpr, tup.info, tup.typ.skipTypes(abstractInst+{tyPtr, tyVar, tyOut, tyLent})[i])
     result[0].add tup[0]
     var lit = newNodeIT(nkIntLit, tup.info, getSysType(g, tup.info, tyInt))
     lit.intVal = i
@@ -59,7 +59,7 @@ proc newFastAsgnStmt*(le, ri: PNode): PNode =
   result[0] = le
   result[1] = ri
 
-proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode = 
+proc newFastMoveStmt*(g: ModuleGraph, le, ri: PNode): PNode =
   result = newNodeI(nkFastAsgn, le.info, 2)
   result[0] = le
   result[1] = newNodeIT(nkCall, ri.info, ri.typ)

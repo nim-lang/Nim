@@ -288,9 +288,9 @@ proc makePtrType*(c: PContext, baseType: PType): PType =
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
                            baseType: PType): PType =
-  assert modifier in {tyVar, tyLent, tyPtr, tyRef, tyStatic, tyTypeDesc}
+  assert modifier in {tyVar, tyOut, tyLent, tyPtr, tyRef, tyStatic, tyTypeDesc}
 
-  if modifier in {tyVar, tyLent, tyTypeDesc} and baseType.kind == modifier:
+  if modifier in {tyVar, tyOut, tyLent, tyTypeDesc} and baseType.kind == modifier:
     result = baseType
   else:
     result = newTypeS(modifier, c)

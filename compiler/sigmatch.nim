@@ -219,7 +219,7 @@ proc sumGeneric(t: PType): int =
         if branchSum > maxBranch: maxBranch = branchSum
       inc result, maxBranch
       break
-    of tyVar:
+    of tyVar, tyOut:
       t = t[0]
       inc result
       inc isvar
@@ -549,7 +549,7 @@ proc allowsNilDeprecated(c: TCandidate, f: PType): TTypeRelation =
 
 proc inconsistentVarTypes(f, a: PType): bool {.inline.} =
   result = f.kind != a.kind and
-    (f.kind in {tyVar, tyLent, tySink} or a.kind in {tyVar, tyLent, tySink})
+    (f.kind in {tyVar, tyOut, tyLent, tySink} or a.kind in {tyVar, tyOut, tyLent, tySink})
 
 proc procParamTypeRel(c: var TCandidate, f, a: PType): TTypeRelation =
   ## For example we have:
@@ -926,7 +926,7 @@ proc inferStaticsInRange(c: var TCandidate,
 
 template subtypeCheck() =
   if result <= isSubrange and f.lastSon.skipTypes(abstractInst).kind in {
-      tyRef, tyPtr, tyVar, tyLent, tyOwned}:
+      tyRef, tyPtr, tyVar, tyOut, tyLent, tyOwned}:
     result = isNone
 
 proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
@@ -934,7 +934,7 @@ proc isCovariantPtr(c: var TCandidate, f, a: PType): bool =
   assert f.kind == a.kind
 
   template baseTypesCheck(lhs, rhs: PType): bool =
-    lhs.kind notin {tyPtr, tyRef, tyVar, tyLent, tyOwned} and
+    lhs.kind notin {tyPtr, tyRef, tyVar, tyOut, tyLent, tyOwned} and
       typeRel(c, lhs, rhs, {trNoCovariance}) == isSubtype
 
   case f.kind
@@ -1050,7 +1050,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   template doBind: bool = trDontBind notin flags
 
   # var, sink and static arguments match regular modifier-free types
-  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyLent, tySink}), c.calleeSym)
+  var a = maybeSkipDistinct(c, aOrig.skipTypes({tyStatic, tyVar, tyOut, tyLent, tySink}), c.calleeSym)
   # XXX: Theoretically, maybeSkipDistinct could be called before we even
   # start the param matching process. This could be done in `prepareOperand`
   # for example, but unfortunately `prepareOperand` is not called in certain
@@ -1060,7 +1060,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
     return typeRel(c, f, lastSon(aOrig))
 
   if a.kind == tyGenericInst and
-      skipTypes(f, {tyVar, tyLent, tySink}).kind notin {
+      skipTypes(f, {tyVar, tyOut, tyLent, tySink}).kind notin {
         tyGenericBody, tyGenericInvocation,
         tyGenericInst, tyGenericParam} + tyTypeClasses:
     return typeRel(c, f, lastSon(a))
@@ -1173,7 +1173,7 @@ proc typeRel(c: var TCandidate, f, aOrig: PType,
   of tyFloat32:  result = handleFloatRange(f, a)
   of tyFloat64:  result = handleFloatRange(f, a)
   of tyFloat128: result = handleFloatRange(f, a)
-  of tyVar, tyLent:
+  of tyVar, tyOut, tyLent:
     if aOrig.kind == f.kind: result = typeRel(c, f.base, aOrig.base)
     else: result = typeRel(c, f.base, aOrig, flags + {trNoCovariance})
     subtypeCheck()
@@ -1895,14 +1895,14 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     let constraint = c.converters[i].typ.n[1].sym.constraint
     if not constraint.isNil and not matchNodeKinds(constraint, arg):
       continue
-    if src.kind in {tyVar, tyLent} and not arg.isLValue:
+    if src.kind in {tyVar, tyOut, tyLent} and not arg.isLValue:
       continue
 
     let destIsGeneric = containsGenericType(dest)
     if destIsGeneric:
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
-    if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind == tyVar):
+    if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar, tyOut}):
       markUsed(c, arg.info, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
@@ -1915,7 +1915,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       var param: PNode = nil
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
-      elif src.kind == tyVar:
+      elif src.kind in {tyVar, tyOut}:
         # Analyse the converter return type
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
@@ -1923,7 +1923,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
         param = copyTree(arg)
       result.add param
 
-      if dest.kind in {tyVar, tyLent}:
+      if dest.kind in {tyVar, tyOut, tyLent}:
         dest.flags.incl tfVarIsPtr
         result = newDeref(result)
 
@@ -2082,7 +2082,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
     inc(m.subtypeMatches)
-    if f.kind == tyVar:
+    if f.kind in {tyVar, tyOut}:
       result = arg
     else:
       result = implicitConv(nkHiddenStdConv, f, arg, m, c)
@@ -2290,7 +2290,7 @@ proc arrayConstr(c: PContext, n: PNode): PType =
   result = newTypeS(tyArray, c)
   rawAddSon(result, makeRangeType(c, 0, 0, n.info))
   addSonSkipIntLit(result, skipTypes(n.typ,
-      {tyGenericInst, tyVar, tyLent, tyOrdinal}))
+      {tyGenericInst, tyVar, tyOut, tyLent, tyOrdinal}))
 
 proc arrayConstr(c: PContext, info: TLineInfo): PType =
   result = newTypeS(tyArray, c)
@@ -2327,10 +2327,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         noMatch()
         return
 
-    if formal.typ.kind == tyVar:
+    if formal.typ.kind in {tyVar, tyOut}:
       let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
       if argConverter.kind == nkHiddenCallConv:
-        if argConverter.typ.kind != tyVar:
+        if argConverter.typ.kind notin {tyVar, tyOut}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
           return
@@ -2604,7 +2604,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   if op == attachedDeepCopy:
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
-    if f.kind == tyVar: f = f.lastSon
+    if f.kind in {tyVar, tyOut}: f = f.lastSon
   if typeRel(m, f, t) == isNone:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:

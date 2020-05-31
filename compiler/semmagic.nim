@@ -179,7 +179,7 @@ proc evalTypeTrait(c: PContext; traitCall: PNode, operand: PType, context: PSym)
   of "stripGenericParams":
     result = uninstantiate(operand).toNode(traitCall.info)
   of "supportsCopyMem":
-    let t = operand.skipTypes({tyVar, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
+    let t = operand.skipTypes({tyVar, tyOut, tyLent, tyGenericInst, tyAlias, tySink, tyInferred})
     let complexObj = containsGarbageCollectedRef(t) or
                      hasDestructor(t)
     result = newIntNodeT(toInt128(ord(not complexObj)), traitCall, c.graph)
@@ -380,7 +380,7 @@ proc semUnown(c: PContext; n: PNode): PNode =
       else:
         result = t
     of tyOwned: result = t[0]
-    of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyLent,
+    of tySequence, tyOpenArray, tyArray, tyVarargs, tyVar, tyOut, tyLent,
        tyGenericInst, tyAlias:
       let b = unownedType(c, t[^1])
       if b != t[^1]:
@@ -551,7 +551,7 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
   of mSetLengthSeq:
     result = n
     let seqType = result[1].typ.skipTypes({tyPtr, tyRef, # in case we had auto-dereferencing
-                                           tyVar, tyGenericInst, tyOwned, tySink,
+                                           tyVar, tyOut, tyGenericInst, tyOwned, tySink,
                                            tyAlias, tyUserTypeClassInst})
     if seqType.kind == tySequence and seqType.base.requiresInit:
       message(c.config, n.info, warnUnsafeSetLen, typeToString(seqType.base))

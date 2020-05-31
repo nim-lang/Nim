@@ -260,7 +260,7 @@ proc suggestField(c: PContext, s: PSym; f: PNode; info: TLineInfo; outputs: var 
 
 proc getQuality(s: PSym): range[0..100] =
   if s.typ != nil and s.typ.len > 1:
-    var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+    var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyOut, tyLent, tyAlias, tySink})
     if exp.kind == tyVarargs: exp = elemType(exp)
     if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return 50
   return 100
@@ -331,7 +331,7 @@ proc typeFits(c: PContext, s: PSym, firstArg: PType): bool {.inline.} =
     let m = s.getModule()
     if m != nil and sfSystemModule in m.flags:
       if s.kind == skType: return
-      var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyLent, tyAlias, tySink})
+      var exp = s.typ[1].skipTypes({tyGenericInst, tyVar, tyOut, tyLent, tyAlias, tySink})
       if exp.kind == tyVarargs: exp = elemType(exp)
       if exp.kind in {tyUntyped, tyTyped, tyGenericParam, tyAnything}: return
     result = sigmatch.argtypeMatches(c, s.typ[1], firstArg)
@@ -401,7 +401,7 @@ proc suggestFieldAccess(c: PContext, n, field: PNode, outputs: var Suggestions) 
     suggestOperations(c, n, field, typ, outputs)
   else:
     let orig = typ # skipTypes(typ, {tyGenericInst, tyAlias, tySink})
-    typ = skipTypes(typ, {tyGenericInst, tyVar, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
+    typ = skipTypes(typ, {tyGenericInst, tyVar, tyOut, tyLent, tyPtr, tyRef, tyAlias, tySink, tyOwned})
     if typ.kind == tyObject:
       var t = typ
       while true:

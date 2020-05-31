@@ -197,7 +197,7 @@ proc semVarType(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 1:
     result = newOrPrevType(tyVar, prev, c)
     var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
-    if base.kind == tyVar:
+    if base.kind in {tyVar, tyOut}:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
     addSonSkipIntLit(result, base)
@@ -1058,7 +1058,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
-     tyVar, tyLent, tyPtr, tyRef, tyProc:
+     tyVar, tyOut, tyLent, tyPtr, tyRef, tyProc:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, tyNone).
     # This also seems to be true when creating aliases
@@ -1814,7 +1814,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
         incl result.flags, tfHasAsgn
-    of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
+    of mOut: result = semContainer(c, n, tyOut, "out", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mType, mTypeOf:
       result = makeTypeDesc(c, semTypeNode(c, n[1], nil))
@@ -1833,7 +1833,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mVar:
       result = newOrPrevType(tyVar, prev, c)
       var base = semTypeNode(c, n[1], nil)
-      if base.kind in {tyVar, tyLent}:
+      if base.kind in {tyVar, tyOut, tyLent}:
         localError(c.config, n.info, "type 'var var' is not allowed")
         base = base[0]
       addSonSkipIntLit(result, base)
