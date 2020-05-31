@@ -246,6 +246,18 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
   var cycleCheck = initIntSet()
   listGcUnsafety(s, onlyWarning, cycleCheck, conf)
 
+proc useVarNoInitCheck(a: PEffects; n: PNode; s: PSym) =
+  if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
+      s.magic != mNimvm:
+    if s.guard != nil: guardGlobal(a, n, s.guard)
+    if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
+        (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
+      #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
+      markGcUnsafe(a, s)
+      markSideEffect(a, s)
+    else:
+      markSideEffect(a, s)
+
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
   if isLocalVar(a, s):
@@ -259,16 +271,7 @@ proc useVar(a: PEffects, n: PNode) =
         message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
-  if {sfGlobal, sfThread} * s.flags != {} and s.kind in {skVar, skLet} and
-      s.magic != mNimvm:
-    if s.guard != nil: guardGlobal(a, n, s.guard)
-    if {sfGlobal, sfThread} * s.flags == {sfGlobal} and
-        (tfHasGCedMem in s.typ.flags or s.typ.isGCedMem):
-      #if a.config.hasWarn(warnGcUnsafe): warnAboutGcUnsafe(n)
-      markGcUnsafe(a, s)
-      markSideEffect(a, s)
-    else:
-      markSideEffect(a, s)
+  useVarNoInitCheck(a, n, s)
 
 
 type
@@ -534,7 +537,7 @@ proc isNoEffectList(n: PNode): bool {.inline.} =
 proc isTrival(caller: PNode): bool {.inline.} =
   result = caller.kind == nkSym and caller.sym.magic in {mEqProc, mIsNil, mMove, mWasMoved}
 
-proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
+proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) =
   let a = skipConvAndClosure(n)
   let op = a.typ
   # assume indirect calls are taken here:
@@ -572,7 +575,6 @@ proc trackOperand(tracked: PEffects, n: PNode, paramType: PType; caller: PNode) 
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
-      if paramType.kind == tyOut: initVar(tracked, n, false)
   if paramType != nil and paramType.kind == tyProc and tfGcSafe in paramType.flags:
     let argtype = skipTypes(a.typ, abstractInst)
     # XXX figure out why this can be a non tyProc here. See httpclient.nim for an
@@ -729,7 +731,7 @@ proc createTypeBoundOps(tracked: PEffects, typ: PType; info: TLineInfo) =
       optSeqDestructors in tracked.config.globalOptions:
     tracked.owner.flags.incl sfInjectDestructors
 
-proc track(tracked: PEffects, n: PNode) =
+proc trackCall(tracked: PEffects; n: PNode) =
   template gcsafeAndSideeffectCheck() =
     if notGcSafe(op) and not importedFromC(a):
       # and it's not a recursive call:
@@ -741,11 +743,105 @@ proc track(tracked: PEffects, n: PNode) =
       if not (a.kind == nkSym and a.sym == tracked.owner):
         markSideEffect(tracked, a)
 
+  # p's effects are ours too:
+  var a = n[0]
+  #if canRaise(a):
+  #  echo "this can raise ", tracked.config $ n.info
+  let op = a.typ
+  if n.typ != nil:
+    if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
+      createTypeBoundOps(tracked, n.typ, n.info)
+  if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
+    return
+  if a.kind == nkCast and a[1].typ.kind == tyProc:
+    a = a[1]
+  # XXX: in rare situations, templates and macros will reach here after
+  # calling getAst(templateOrMacro()). Currently, templates and macros
+  # are indistinguishable from normal procs (both have tyProc type) and
+  # we can detect them only by checking for attached nkEffectList.
+  if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
+    if a.kind == nkSym:
+      if a.sym == tracked.owner: tracked.isRecursive = true
+      # even for recursive calls we need to check the lock levels (!):
+      mergeLockLevels(tracked, n, a.sym.getLockLevel)
+      if sfSideEffect in a.sym.flags: markSideEffect(tracked, a)
+    else:
+      mergeLockLevels(tracked, n, op.lockLevel)
+    var effectList = op.n[0]
+    if a.kind == nkSym and a.sym.kind == skMethod:
+      propagateEffects(tracked, n, a.sym)
+    elif isNoEffectList(effectList):
+      if isForwardedProc(a):
+        propagateEffects(tracked, n, a.sym)
+      elif isIndirectCall(a, tracked.owner):
+        assumeTheWorst(tracked, n, op)
+        gcsafeAndSideeffectCheck()
+    else:
+      mergeEffects(tracked, effectList[exceptionEffects], n)
+      mergeTags(tracked, effectList[tagEffects], n)
+      gcsafeAndSideeffectCheck()
+  if a.kind != nkSym or a.sym.magic != mNBindSym:
+    for i in 1..<n.len: trackOperandForIndirectCall(tracked, n[i], paramType(op, i), a)
+  if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
+    # may not look like an assignment, but it is:
+    let arg = n[1]
+    initVarViaNew(tracked, arg)
+    if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
+      if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
+          n[2].intVal == 0:
+        # var s: seq[notnil];  newSeq(s, 0)  is a special case!
+        discard
+      else:
+        message(tracked.config, arg.info, warnProveInit, $arg)
+
+    # check required for 'nim check':
+    if n[1].typ.len > 0:
+      createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
+      createTypeBoundOps(tracked, n[1].typ, n.info)
+      # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
+
+  elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
+      optStaticBoundsCheck in tracked.currOptions:
+    checkBounds(tracked, n[1], n[2])
+
+  if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
+        tracked.owner.kind != skMacro:
+    let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
+    if opKind != -1:
+      # rebind type bounds operations after createTypeBoundOps call
+      let t = n[1].typ.skipTypes({tyAlias, tyVar, tyOut})
+      if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
+        createTypeBoundOps(tracked, t, n.info)
+        let op = t.attachedOps[TTypeAttachedOp(opKind)]
+        if op != nil:
+          n[0].sym = op
+
+  if a.kind != nkSym or a.sym.magic != mRunnableExamples:
+    for i in 0..<n.safeLen:
+      track(tracked, n[i])
+  if op != nil and op.kind == tyProc:
+    for i in 1..<min(n.safeLen, op.len):
+      case op[i].kind
+      of tySink:
+        checkForSink(tracked.config, tracked.owner, n[i])
+      of tyOut:
+        # consider this case: p(out x, x); we want to remark that 'x' is not
+        # initialized until after the call. Since we do this after we analysed the
+        # call, this is fine.
+        initVar(tracked, n[i].skipAddr, false)
+      else: discard
+
+proc track(tracked: PEffects, n: PNode) =
   case n.kind
   of nkSym:
     useVar(tracked, n)
     if n.sym.typ != nil and tfHasAsgn in n.sym.typ.flags:
       tracked.owner.flags.incl sfInjectDestructors
+  of nkHiddenAddr, nkAddr:
+    if n[0].kind == nkSym and isLocalVar(tracked, n[0].sym):
+      useVarNoInitCheck(tracked, n[0], n[0].sym)
+    else:
+      track(tracked, n[0])
   of nkRaiseStmt:
     if n[0].kind != nkEmpty:
       n[0].info = n.info
@@ -760,86 +856,7 @@ proc track(tracked: PEffects, n: PNode) =
       # Here we add a `Exception` tag in order to cover both the cases.
       addEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
-    # p's effects are ours too:
-    var a = n[0]
-    #if canRaise(a):
-    #  echo "this can raise ", tracked.config $ n.info
-    let op = a.typ
-    if n.typ != nil:
-      if tracked.owner.kind != skMacro and n.typ.skipTypes(abstractVar).kind != tyOpenArray:
-        createTypeBoundOps(tracked, n.typ, n.info)
-    if getConstExpr(tracked.ownerModule, n, tracked.graph) != nil:
-      return
-    if a.kind == nkCast and a[1].typ.kind == tyProc:
-      a = a[1]
-    # XXX: in rare situations, templates and macros will reach here after
-    # calling getAst(templateOrMacro()). Currently, templates and macros
-    # are indistinguishable from normal procs (both have tyProc type) and
-    # we can detect them only by checking for attached nkEffectList.
-    if op != nil and op.kind == tyProc and op.n[0].kind == nkEffectList:
-      if a.kind == nkSym:
-        if a.sym == tracked.owner: tracked.isRecursive = true
-        # even for recursive calls we need to check the lock levels (!):
-        mergeLockLevels(tracked, n, a.sym.getLockLevel)
-        if sfSideEffect in a.sym.flags: markSideEffect(tracked, a)
-      else:
-        mergeLockLevels(tracked, n, op.lockLevel)
-      var effectList = op.n[0]
-      if a.kind == nkSym and a.sym.kind == skMethod:
-        propagateEffects(tracked, n, a.sym)
-      elif isNoEffectList(effectList):
-        if isForwardedProc(a):
-          propagateEffects(tracked, n, a.sym)
-        elif isIndirectCall(a, tracked.owner):
-          assumeTheWorst(tracked, n, op)
-          gcsafeAndSideeffectCheck()
-      else:
-        mergeEffects(tracked, effectList[exceptionEffects], n)
-        mergeTags(tracked, effectList[tagEffects], n)
-        gcsafeAndSideeffectCheck()
-    if a.kind != nkSym or a.sym.magic != mNBindSym:
-      for i in 1..<n.len: trackOperand(tracked, n[i], paramType(op, i), a)
-    if a.kind == nkSym and a.sym.magic in {mNew, mNewFinalize, mNewSeq}:
-      # may not look like an assignment, but it is:
-      let arg = n[1]
-      initVarViaNew(tracked, arg)
-      if arg.typ.len != 0 and {tfRequiresInit} * arg.typ.lastSon.flags != {}:
-        if a.sym.magic == mNewSeq and n[2].kind in {nkCharLit..nkUInt64Lit} and
-            n[2].intVal == 0:
-          # var s: seq[notnil];  newSeq(s, 0)  is a special case!
-          discard
-        else:
-          message(tracked.config, arg.info, warnProveInit, $arg)
-
-      # check required for 'nim check':
-      if n[1].typ.len > 0:
-        createTypeBoundOps(tracked, n[1].typ.lastSon, n.info)
-        createTypeBoundOps(tracked, n[1].typ, n.info)
-        # new(x, finalizer): Problem: how to move finalizer into 'createTypeBoundOps'?
-
-    elif a.kind == nkSym and a.sym.magic in {mArrGet, mArrPut} and
-        optStaticBoundsCheck in tracked.currOptions:
-      checkBounds(tracked, n[1], n[2])
-
-    if a.kind == nkSym and a.sym.name.s.len > 0 and a.sym.name.s[0] == '=' and
-          tracked.owner.kind != skMacro:
-      let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
-      if opKind != -1:
-        # rebind type bounds operations after createTypeBoundOps call
-        let t = n[1].typ.skipTypes({tyAlias, tyVar, tyOut})
-        if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
-          createTypeBoundOps(tracked, t, n.info)
-          let op = t.attachedOps[TTypeAttachedOp(opKind)]
-          if op != nil:
-            n[0].sym = op
-
-    if a.kind != nkSym or a.sym.magic != mRunnableExamples:
-      for i in 0..<n.safeLen:
-        track(tracked, n[i])
-    if op != nil and op.kind == tyProc:
-      for i in 1..<min(n.safeLen, op.len):
-        if op[i].kind == tySink:
-          checkForSink(tracked.config, tracked.owner, n[i])
+    trackCall(tracked, n)
   of nkDotExpr:
     guardDotAccess(tracked, n)
     for i in 0..<n.len: track(tracked, n[i])
