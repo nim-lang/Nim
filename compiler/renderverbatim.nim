@@ -46,6 +46,7 @@ proc extractRunnableExamplesSource*(conf: ConfigRef; n: PNode): string =
   var indent = info.col
   let numLines = numLines(conf, info.fileIndex).uint16
   var lastNonemptyPos = 0
+  result = ""
   for line in first.line..numLines: # bugfix, see `testNimDocTrailingExample`
     info.line = line
     let src = sourceLine(conf, info)

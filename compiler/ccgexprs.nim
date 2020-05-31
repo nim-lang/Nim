@@ -126,9 +126,8 @@ proc genRawSetData(cs: TBitSet, size: int): Rope =
     result = intLiteral(cast[BiggestInt](bitSetToWord(cs, size)))
 
 proc genSetNode(p: BProc, n: PNode): Rope =
-  var cs: TBitSet
   var size = int(getSize(p.config, n.typ))
-  toBitSet(p.config, n, cs)
+  let cs = toBitSet(p.config, n)
   if size > 8:
     let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
     result = p.module.tmpBase & rope(id)
@@ -2959,8 +2958,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool): Rope =
       ty = skipTypes(n.typ, abstractInstOwned + {tyStatic}).kind
     case ty
     of tySet:
-      var cs: TBitSet
-      toBitSet(p.config, n, cs)
+      let cs = toBitSet(p.config, n)
       result = genRawSetData(cs, int(getSize(p.config, n.typ)))
     of tySequence:
       if optSeqDestructors in p.config.globalOptions:

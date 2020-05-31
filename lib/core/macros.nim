@@ -71,7 +71,7 @@ type
     nnkTupleTy, nnkTupleClassTy, nnkTypeClassTy, nnkStaticTy,
     nnkRecList, nnkRecCase, nnkRecWhen,
     nnkRefTy, nnkPtrTy, nnkVarTy,
-    nnkConstTy, nnkOutTy,
+    nnkConstTy, nnkMutableTy,
     nnkDistinctTy,
     nnkProcTy,
     nnkIteratorTy,         # iterator type
