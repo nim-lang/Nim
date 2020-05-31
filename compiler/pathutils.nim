@@ -11,7 +11,13 @@
 ## to avoid the never ending time sink in getting path handling right.
 
 import os, pathnorm
-
+when defined(nodejs):
+    import jsffi
+    let fs = require("fs")
+    proc existsSync(fs: JsObject,file:cstring): bool =
+      fs.existsSync(file)
+    fs.existsSync = bindMethod existsSync
+    
 type
   AbsoluteFile* = distinct string
   AbsoluteDir* = distinct string
@@ -22,9 +28,15 @@ type
 proc isEmpty*(x: AnyPath): bool {.inline.} = x.string.len == 0
 
 proc copyFile*(source, dest: AbsoluteFile) =
-  os.copyFile(source.string, dest.string)
+  when defined(nodejs):
+    fs.createReadStream(source.cstring).pipe(fs.createWriteStream(dest.cstring));
+  else:
+    os.copyFile(source.string, dest.string)
 
-proc removeFile*(x: AbsoluteFile) {.borrow.}
+when defined(nodejs):
+  proc removeFile*(x: AbsoluteFile) = fs.unlinkSync(x.cstring)
+else:
+  proc removeFile*(x: AbsoluteFile) {.borrow.}
 
 proc splitFile*(x: AbsoluteFile): tuple[dir: AbsoluteDir, name, ext: string] =
   let (a, b, c) = splitFile(x.string)
@@ -32,15 +44,23 @@ proc splitFile*(x: AbsoluteFile): tuple[dir: AbsoluteDir, name, ext: string] =
 
 proc extractFilename*(x: AbsoluteFile): string {.borrow.}
 
-proc fileExists*(x: AbsoluteFile): bool {.borrow.}
-proc dirExists*(x: AbsoluteDir): bool {.borrow.}
+when defined(nodejs):
+  proc fileExists*(x: AbsoluteFile): bool = fs.existsSync(x.cstring)
+  proc dirExists*(x: AbsoluteDir): bool = fs.existsSync(x.cstring)
+else:
+  proc fileExists*(x: AbsoluteFile): bool {.borrow.}
+  proc dirExists*(x: AbsoluteDir): bool {.borrow.}
 
-proc quoteShell*(x: AbsoluteFile): string {.borrow.}
-proc quoteShell*(x: AbsoluteDir): string {.borrow.}
+when not defined(js):
+  proc quoteShell*(x: AbsoluteFile): string {.borrow.}
+  proc quoteShell*(x: AbsoluteDir): string {.borrow.}
 
 proc cmpPaths*(x, y: AbsoluteDir): int {.borrow.}
 
-proc createDir*(x: AbsoluteDir) {.borrow.}
+when defined(nodejs):
+  proc createDir*(x: AbsoluteDir) = fs.mkdirSync(x.cstring)
+else:
+  proc createDir*(x: AbsoluteDir) {.borrow.}
 
 proc toAbsoluteDir*(path: string): AbsoluteDir =
   result = if path.isAbsolute: AbsoluteDir(path)
@@ -70,16 +90,18 @@ when true:
     assert(not isAbsolute(f.string), f.string)
     result = AbsoluteFile newStringOfCap(base.string.len + f.string.len)
     var state = 0
-    addNormalizePath(base.string, result.string, state)
-    addNormalizePath(f.string, result.string, state)
+    when not defined(js):
+      addNormalizePath(base.string, result.string, state)
+      addNormalizePath(f.string, result.string, state)
 
   proc `/`*(base: AbsoluteDir; f: RelativeDir): AbsoluteDir =
     let base = postProcessBase(base)
     assert(not isAbsolute(f.string))
     result = AbsoluteDir newStringOfCap(base.string.len + f.string.len)
     var state = 0
-    addNormalizePath(base.string, result.string, state)
-    addNormalizePath(f.string, result.string, state)
+    when not defined(js):
+      addNormalizePath(base.string, result.string, state)
+      addNormalizePath(f.string, result.string, state)
 
   proc relativeTo*(fullPath: AbsoluteFile, baseFilename: AbsoluteDir;
                    sep = DirSep): RelativeFile =
