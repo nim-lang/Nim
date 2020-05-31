@@ -60,7 +60,7 @@
   accept an existing string to modify, which avoids memory
   allocations, similar to `streams.readLine` (#13857).
 
-- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
+- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom` UDP functionality.
 
 - `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
@@ -100,7 +100,11 @@
   parameters.
 
 ## Language changes
-- In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+- In the newruntime it is now allowed to assign to the discriminator field
+  without restrictions as long as case object doesn't have custom destructor.
+  The discriminator value doesn't have to be a constant either. If you have a
+  custom destructor for a case object and you do want to freely assign discriminator
+  fields, it is recommended to refactor object into 2 objects like this:
 
   ```nim
   type
@@ -159,7 +163,12 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
-- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Added the `thiscall` calling convention as specified by Microsoft.
+
+- Added a new parameter mode, `out T` in order to strengthen the language's
+  "definite assignment checking". Definite assignment checking is now turned
+  on by default.
+
 
 ## Compiler changes
 
