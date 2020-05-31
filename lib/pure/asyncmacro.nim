@@ -263,11 +263,11 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
   # based on the yglukhov's patch to chronos: https://github.com/status-im/nim-chronos/pull/47
   # however here the overloads are placed inside each expanded async
   var awaitDefinition = quote:
-    template await(f: typed): untyped =
+    template await(f: typed): untyped {.used.} =
       static:
         error "await expects Future[T], got " & $typeof(f)
 
-    template await[T](f: Future[T]): auto =
+    template await[T](f: Future[T]): auto {.used.} =
       var internalTmpFuture: FutureBase = f
       yield internalTmpFuture
       (cast[type(f)](internalTmpFuture)).read()
