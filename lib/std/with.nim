@@ -38,9 +38,12 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
   underscoredCalls(result, calls, arg)
 
 when isMainModule:
+  import sugar
+
   type
     Foo = object
       col, pos: string
+      name: string
 
   proc setColor(f: var Foo; r, g, b: int) = f.col = $(r, g, b)
   proc setPosition(f: var Foo; x, y: float) = f.pos = $(x, y)
@@ -53,5 +56,10 @@ when isMainModule:
   with f:
     col = $(2, 3, 4)
     pos = $(0.0, 1.0)
+    name = "bar"
   echo f
+
+  let f2 = f.dup(setPosition(2.0, 3.0)).with:
+    col = $(3, 4, 5)
+  echo f2
 
