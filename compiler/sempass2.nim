@@ -66,7 +66,7 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
-    bottom, inTryStmt: int
+    bottom, inTryStmt, leftPartOfAsgn: int
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
@@ -255,7 +255,7 @@ proc useVar(a: PEffects, n: PNode) =
     elif s.id notin a.init:
       if s.typ.requiresInit:
         message(a.config, n.info, warnProveInit, s.name.s)
-      else:
+      elif a.leftPartOfAsgn <= 0:
         message(a.config, n.info, warnUninit, s.name.s)
       # prevent superfluous warnings about the same variable:
       a.init.add s.id
@@ -852,7 +852,9 @@ proc track(tracked: PEffects, n: PNode) =
     track(tracked, n[1])
     initVar(tracked, n[0], volatileCheck=true)
     invalidateFacts(tracked.guards, n[0])
+    inc tracked.leftPartOfAsgn
     track(tracked, n[0])
+    dec tracked.leftPartOfAsgn
     addAsgnFact(tracked.guards, n[0], n[1])
     notNilCheck(tracked, n[1], n[0].typ)
     when false: cstringCheck(tracked, n)
@@ -1038,7 +1040,10 @@ proc track(tracked: PEffects, n: PNode) =
     if optStaticBoundsCheck in tracked.currOptions and n.len == 2:
       if n[0].typ != nil and skipTypes(n[0].typ, abstractVar).kind != tyTuple:
         checkBounds(tracked, n[0], n[1])
-    for i in 0 ..< n.len: track(tracked, n[i])
+    track(tracked, n[0])
+    dec tracked.leftPartOfAsgn
+    for i in 1 ..< n.len: track(tracked, n[i])
+    inc tracked.leftPartOfAsgn
   else:
     for i in 0..<n.safeLen: track(tracked, n[i])
 
