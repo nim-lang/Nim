@@ -90,9 +90,11 @@ proc getRst2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
-        ["docs.rst","docstyle.rst", "nimfix.rst"]: # xxxx is exclusion intentional?
+        ["docs.rst", "nimfix.rst"]:
+          # maybe we should still show nimfix, could help reviving it
+          # `docs` is redundant with `overview`, might as well remove that file?
       result.add path
-  doAssert "doc/manual/var_t_return.rst" in result # sanity check
+  doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
 
 const
   pdf = """
