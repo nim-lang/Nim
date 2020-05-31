@@ -90,8 +90,8 @@ proc getRst2html(): seq[string] =
   for a in walkDirRecFilter("doc"):
     let path = a.path
     if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
-        ["docs.rst","docstyle.rst", "nimfix.rst"] # xxxx is exclusion intentional?
-      result.add a.path
+        ["docs.rst","docstyle.rst", "nimfix.rst"]: # xxxx is exclusion intentional?
+      result.add path
   doAssert "doc/manual/var_t_return.rst" in result # sanity check
 
 const
@@ -293,19 +293,19 @@ proc buildJS(): string =
   let nim = findNim()
   exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
+      # xxx deadcode? and why is it only for webUploadOutput, not for local docs?
   result = getDocHacksJs(nimr = getCurrentDir(), nim)
 
-proc buildDocs*(args: string) =
+proc buildDocsDir*(args: string, dir: string) =
+  let args = nimArgs & " " & args
   let docHackJsSource = buildJS()
-  template fn(args, dir) =
-    let dir2 = dir
-    let args2 = args
-    createDir(dir2)
-    buildDocSamples(args2, dir2)
-    buildDoc(args2, dir2) # slow part
-    copyFile(dir2 / "overview.html", dir2 / "index.html")
-    buildDocPackages(args2, dir2)
-    copyFile(docHackJsSource, dir2 / docHackJsSource.lastPathPart)
+  createDir(dir)
+  buildDocSamples(args, dir)
+  buildDoc(args, dir) # bottleneck
+  copyFile(dir / "overview.html", dir / "index.html")
+  buildDocPackages(args, dir)
+  copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
-  fn(nimArgs & " " & args, webUploadOutput / NimVersion)
-  # fn(nimArgs, docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!
+proc buildDocs*(args: string) =
+  buildDocsDir(args, webUploadOutput / NimVersion)
+  buildDocsDir("", docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!
