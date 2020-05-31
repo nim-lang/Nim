@@ -1,6 +1,16 @@
 name: Nim Docs CI
 on:
   push:
+    paths:
+      - 'compiler/docgen.nim'
+      - 'compiler/renderverbatim.nim'
+      - 'doc/**.rst'
+      - 'doc/nimdoc.css'
+      - 'lib/**.nim'
+      - 'nimdoc/testproject/expected/testproject.html'
+      - 'tools/dochack/dochack.nim'
+      - 'tools/kochdocs.nim'
+      - '.github/workflows/ci_docs.yml'
   pull_request:
     # Run only on changes on these files
     paths:
