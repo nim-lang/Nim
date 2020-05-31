@@ -2544,6 +2544,7 @@ proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
   system.`[]`(s, s.len - int(i))
 proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
+proc `[]`*(s: var string; i: BackwardsIndex): var char {.inline.} = s[s.len - int(i)]
 
 proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
   system.`[]=`(s, s.len - int(i), x)
