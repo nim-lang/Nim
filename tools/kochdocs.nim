@@ -86,6 +86,14 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
+proc getRst2html(): seq[string] =
+  for a in walkDirRecFilter("doc"):
+    let path = a.path
+    if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
+        ["docs.rst","docstyle.rst", "nimfix.rst"] # xxxx is exclusion intentional?
+      result.add a.path
+  doAssert "doc/manual/var_t_return.rst" in result # sanity check
+
 const
   pdf = """
 doc/manual.rst
@@ -96,39 +104,6 @@ doc/tut3.rst
 doc/nimc.rst
 doc/niminst.rst
 doc/gc.rst
-""".splitWhitespace()
-
-  rst2html = """
-doc/intern.rst
-doc/apis.rst
-doc/lib.rst
-doc/manual.rst
-doc/manual_experimental.rst
-doc/destructors.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
-doc/nimc.rst
-doc/hcr.rst
-doc/drnim.rst
-doc/overview.rst
-doc/filters.rst
-doc/tools.rst
-doc/niminst.rst
-doc/nimgrep.rst
-doc/gc.rst
-doc/estp.rst
-doc/idetools.rst
-doc/docgen.rst
-doc/koch.rst
-doc/backends.rst
-doc/nimsuggest.rst
-doc/nep1.rst
-doc/nims.rst
-doc/contributing.rst
-doc/codeowners.rst
-doc/packaging.rst
-doc/manual/var_t_return.rst
 """.splitWhitespace()
 
   doc0 = """
@@ -253,6 +228,7 @@ proc buildDocPackages(nimArgs, destPath: string) =
 
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
+  let rst2html = getRst2html()
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
     i = 0
