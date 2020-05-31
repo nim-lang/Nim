@@ -2533,17 +2533,18 @@ proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   else:
     spliceImpl(s, a, L, b)
 
-template `[]`*[T](s: openArray[T]; i: BackwardsIndex): T =
+proc `[]`*[T](s: openArray[T]; i: BackwardsIndex): T {.inline.} =
   system.`[]`(s, s.len - int(i))
 
-template `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T =
+proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
-template `[]`*(s: string; i: BackwardsIndex): char = s[s.len - int(i)]
+proc `[]`*(s: string; i: BackwardsIndex): char {.inline.} = s[s.len - int(i)]
 
-template `[]`*[T](s: var openArray[T]; i: BackwardsIndex): T =
+proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
   system.`[]`(s, s.len - int(i))
-template `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): T =
+proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
+proc `[]`*(s: var string; i: BackwardsIndex): var char {.inline.} = s[s.len - int(i)]
 
 proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
   system.`[]=`(s, s.len - int(i), x)
