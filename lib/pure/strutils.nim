@@ -1103,6 +1103,7 @@ proc parseInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid integer, `ValueError` is raised.
   runnableExamples:
     doAssert parseInt("-0042") == -42
+  result = 0
   let L = parseutils.parseInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
@@ -1112,6 +1113,7 @@ proc parseBiggestInt*(s: string): BiggestInt {.noSideEffect,
   ## Parses a decimal integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = BiggestInt(0)
   let L = parseutils.parseBiggestInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid integer: " & s)
@@ -1121,6 +1123,7 @@ proc parseUInt*(s: string): uint {.noSideEffect,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = uint(0)
   let L = parseutils.parseUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
@@ -1130,6 +1133,7 @@ proc parseBiggestUInt*(s: string): BiggestUInt {.noSideEffect,
   ## Parses a decimal unsigned integer value contained in `s`.
   ##
   ## If `s` is not a valid integer, `ValueError` is raised.
+  result = BiggestUInt(0)
   let L = parseutils.parseBiggestUInt(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid unsigned integer: " & s)
@@ -1143,6 +1147,7 @@ proc parseFloat*(s: string): float {.noSideEffect,
   runnableExamples:
     doAssert parseFloat("3.14") == 3.14
     doAssert parseFloat("inf") == 1.0/0
+  result = 0.0
   let L = parseutils.parseFloat(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid float: " & s)
@@ -1161,6 +1166,7 @@ proc parseBinInt*(s: string): int {.noSideEffect,
     doAssert a.parseBinInt() == 53
     doAssert b.parseBinInt() == 7
 
+  result = 0
   let L = parseutils.parseBin(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid binary integer: " & s)
@@ -1172,6 +1178,7 @@ proc parseOctInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid oct integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0o``, ``0O``.  Underscores within
   ## `s` are ignored.
+  result = 0
   let L = parseutils.parseOct(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid oct integer: " & s)
@@ -1183,6 +1190,7 @@ proc parseHexInt*(s: string): int {.noSideEffect,
   ## If `s` is not a valid hex integer, `ValueError` is raised. `s` can have one
   ## of the following optional prefixes: ``0x``, ``0X``, ``#``.  Underscores
   ## within `s` are ignored.
+  result = 0
   let L = parseutils.parseHex(s, result, 0)
   if L != s.len or L == 0:
     raise newException(ValueError, "invalid hex integer: " & s)

@@ -39,6 +39,7 @@ proc runeLen*(s: string): int {.rtl, extern: "nuc$1".} =
     doAssert a.runeLen == 6
     ## note: a.len == 8
 
+  result = 0
   var i = 0
   while i < len(s):
     if uint(s[i]) <= 127: inc(i)

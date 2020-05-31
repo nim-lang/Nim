@@ -1768,6 +1768,7 @@ export iterators
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
   ## appropriate `items` and `==` operations to work.
+  result = 0
   for i in items(a):
     if i == item: return
     inc(result)

@@ -533,9 +533,7 @@ proc copyLineInfo*(arg: NimNode, info: NimNode) {.magic: "NLineInfo", noSideEffe
 
 proc lineInfoObj*(n: NimNode): LineInfo {.compileTime.} =
   ## Returns ``LineInfo`` of ``n``, using absolute path for ``filename``.
-  result.filename = n.getFile
-  result.line = n.getLine
-  result.column = n.getColumn
+  result = LineInfo(filename: n.getFile, line: n.getLine, column: n.getColumn)
 
 proc lineInfo*(arg: NimNode): string {.compileTime.} =
   ## Return line info in the form `filepath(line, column)`.
@@ -863,12 +861,14 @@ proc treeRepr*(n: NimNode): string {.compileTime, benign.} =
   ## Convert the AST `n` to a human-readable tree-like string.
   ##
   ## See also `repr`, `lispRepr`, and `astGenRepr`.
+  result = ""
   n.treeTraverse(result, isLisp = false, indented = true)
 
 proc lispRepr*(n: NimNode; indented = false): string {.compileTime, benign.} =
   ## Convert the AST ``n`` to a human-readable lisp-like string.
   ##
   ## See also ``repr``, ``treeRepr``, and ``astGenRepr``.
+  result = ""
   n.treeTraverse(result, isLisp = true, indented = indented)
 
 proc astGenRepr*(n: NimNode): string {.compileTime, benign.} =
@@ -1605,6 +1605,7 @@ macro getCustomPragmaVal*(n: typed, cp: typed{nkSym}): untyped =
   ##   assert(o.myField.getCustomPragmaVal(serializationKey) == "mf")
   ##   assert(o.getCustomPragmaVal(serializationKey) == "mo")
   ##   assert(MyObj.getCustomPragmaVal(serializationKey) == "mo")
+  result = nil
   let pragmaNode = customPragmaNode(n)
   for p in pragmaNode:
     if p.kind in nnkPragmaCallKinds and p.len > 0 and p[0].kind == nnkSym and p[0] == cp:
