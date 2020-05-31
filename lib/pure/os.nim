@@ -898,11 +898,11 @@ when not defined(nodejs):
     ## * `setCurrentDir proc <#setCurrentDir,string>`_
     runnableExamples:
       assert getHomeDir() == expandTilde("~")
-    else:
-      proc getHomeDir*(): string {.inline.} = require("os").homedir()
 
-  when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
-  else: return string(getEnv("HOME")) & "/"
+    when defined(windows): return string(getEnv("USERPROFILE")) & "\\" 
+    else: return string(getEnv("HOME")) & "/"
+else:
+  proc getHomeDir*(): string {.inline.} = require("os").homedir()
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -1866,9 +1866,9 @@ when not defined(nodejs):
         except:
           discard tryRemoveFile(dest)
           raise
-  else:
-    proc moveFile*(source, dest: string) {.inline.} =
-      fs.renameSync(source.cstring, dest.cstring)
+else:
+  proc moveFile*(source, dest: string) {.inline.} =
+    fs.renameSync(source.cstring, dest.cstring)
 
 proc exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.
@@ -2048,9 +2048,9 @@ when not defined(nodejs):
       else:
         result = $r
         c_free(cast[pointer](r))
-  else:
-    proc expandFilename*(filename: string): string {.inline.} =
-      fs.realpathSync(filename.cstring)
+else:
+  proc expandFilename*(filename: string): string {.inline.} =
+    fs.realpathSync(filename.cstring)
 
 type
   PathComponent* = enum   ## Enumeration specifying a path component.
@@ -2583,8 +2583,8 @@ when not defined(nodejs):
         result = newString(len+1)
         len = readlink(symlinkPath, result, len)
       setLen(result, len)
-  else:
-    proc expandSymlink*(symlinkPath: string): string {.inline.} = fs.readlinkSync(symlinkPath.cstring)
+else:
+  proc expandSymlink*(symlinkPath: string): string {.inline.} = fs.readlinkSync(symlinkPath.cstring)
 
 proc parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
