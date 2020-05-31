@@ -895,16 +895,16 @@ proc getTime*(): Time {.tags: [TimeEffect], benign.} =
       millis mod convert(Seconds, Milliseconds, 1).int)
     result = initTime(seconds, nanos)
   elif defined(macosx):
-    var a: Timeval
+    var a {.noinit.}: Timeval
     gettimeofday(a)
     result = initTime(a.tv_sec.int64,
                       convert(Microseconds, Nanoseconds, a.tv_usec.int))
   elif defined(posix):
-    var ts: Timespec
+    var ts {.noinit.}: Timespec
     discard clock_gettime(CLOCK_REALTIME, ts)
     result = initTime(ts.tv_sec.int64, ts.tv_nsec.int)
   elif defined(windows):
-    var f: FILETIME
+    var f {.noinit.}: FILETIME
     getSystemTimeAsFileTime(f)
     result = fromWinTime(rdFileTime(f))
 
@@ -1765,7 +1765,7 @@ proc formatPattern(dt: DateTime, pattern: FormatPattern, result: var string,
 proc parsePattern(input: string, pattern: FormatPattern, i: var int,
                   parsed: var ParsedTime, loc: DateTimeLocale): bool =
   template takeInt(allowedWidth: Slice[int], allowSign = false): int =
-    var sv: int
+    var sv = 0
     var pd = parseInt(input, sv, i, allowedWidth.b, allowSign)
     if pd < allowedWidth.a:
       return false
@@ -1998,6 +1998,7 @@ proc format*(dt: DateTime, f: TimeFormat,
     let dt = initDateTime(01, mJan, 2000, 00, 00, 00, utc())
     doAssert "2000-01-01" == dt.format(f)
   assertDateTimeInitialized dt
+  result = ""
   var idx = 0
   while idx <= f.patterns.high:
     case f.patterns[idx].FormatPattern
@@ -2295,7 +2296,7 @@ proc between*(startDt, endDt: DateTime): TimeInterval =
       endDate.monthday.dec
 
   # Years
-  result.years.inc endDate.year - startDate.year - 1
+  result.years = endDate.year - startDate.year - 1
   if (startDate.month, startDate.monthday) <= (endDate.month, endDate.monthday):
     result.years.inc
   startDate.year.inc result.years
@@ -2452,6 +2453,7 @@ proc evaluateInterval(dt: DateTime, interval: TimeInterval):
   var months = interval.years * 12 + interval.months
   var curYear = dt.year
   var curMonth = dt.month
+  result = default(tuple[adjDur, absDur: Duration])
   # Subtracting
   if months < 0:
     for mth in countdown(-1 * months, 1):
@@ -2573,17 +2575,17 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ##
   ## ``getTime`` should generally be preferred over this proc.
   when defined(macosx):
-    var a: Timeval
+    var a {.noinit.}: Timeval
     gettimeofday(a)
     result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
         a.tv_usec)*0.00_0001
   elif defined(posix):
-    var ts: Timespec
+    var ts {.noinit.}: Timespec
     discard clock_gettime(CLOCK_REALTIME, ts)
     result = toBiggestFloat(ts.tv_sec.int64) +
       toBiggestFloat(ts.tv_nsec.int64) / 1_000_000_000
   elif defined(windows):
-    var f: winlean.FILETIME
+    var f {.noinit.}: winlean.FILETIME
     getSystemTimeAsFileTime(f)
     var i64 = rdFileTime(f) - epochDiff
     var secs = i64 div rateDiff

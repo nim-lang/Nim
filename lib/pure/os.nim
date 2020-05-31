@@ -409,7 +409,8 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
       if not sameRoot(path, base):
         return path
 
-  var f, b: PathIter
+  var f = default PathIter
+  var b = default PathIter
   var ff = (0, -1)
   var bb = (0, -1) # (int, int)
   result = newStringOfCap(path.len)
@@ -2976,7 +2977,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noN
           setLen(result, L)
           break
   elif defined(macosx):
-    var size: cuint32
+    var size = cuint32(0)
     getExecPath1(nil, size)
     result = newString(int(size))
     if getExecPath2(result, size):

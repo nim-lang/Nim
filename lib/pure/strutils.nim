@@ -1278,9 +1278,9 @@ macro genEnumStmt(typ: typedesc, argSym: typed, default: typed): untyped =
   result = nnkCaseStmt.newTree(nnkDotExpr.newTree(argSym,
                                                   bindSym"nimIdentNormalize"))
   # stores all processed field strings to give error msg for ambiguous enums
-  var foundFields: seq[string]
-  var fStr: string # string of current field
-  var fNum: BiggestInt # int value of current field
+  var foundFields: seq[string] = @[]
+  var fStr = "" # string of current field
+  var fNum = BiggestInt(0) # int value of current field
   for f in impl:
     case f.kind
     of nnkEmpty: continue # skip first node of `enumTy`
@@ -2036,6 +2036,7 @@ proc rfind*(s, sub: string, start: Natural = 0, last = -1): int {.noSideEffect,
   if sub.len == 0:
     return -1
   let last = if last == -1: s.high else: last
+  result = 0
   for i in countdown(last - sub.len + 1, start):
     for j in 0..sub.len-1:
       result = i
@@ -2052,6 +2053,7 @@ proc count*(s: string, sub: char): int {.noSideEffect,
   ##
   ## See also:
   ## * `countLines proc<#countLines,string>`_
+  result = 0
   for c in s:
     if c == sub: inc result
 
@@ -2062,6 +2064,7 @@ proc count*(s: string, subs: set[char]): int {.noSideEffect,
   ## See also:
   ## * `countLines proc<#countLines,string>`_
   doAssert card(subs) > 0
+  result = 0
   for c in s:
     if c in subs: inc result
 
@@ -2074,6 +2077,7 @@ proc count*(s: string, sub: string, overlapping: bool = false): int {.
   ## See also:
   ## * `countLines proc<#countLines,string>`_
   doAssert sub.len > 0
+  result = 0
   var i = 0
   while true:
     i = s.find(sub, i)
@@ -2321,7 +2325,7 @@ proc unescape*(s: string, prefix = "\"", suffix = "\""): string {.noSideEffect,
       case s[i+1]:
       of 'x':
         inc i, 2
-        var c: int
+        var c = 0
         i += parseutils.parseHex(s, c, i, maxLen = 2)
         result.add(chr(c))
         dec i, 2
@@ -2522,7 +2526,7 @@ proc formatSize*(bytes: int64,
     xb: int64 = bytes
     fbytes: float
     lastXb: int64 = bytes
-    matchedIndex: int
+    matchedIndex = 0
     prefixes: array[9, string]
   if prefix == bpColloquial:
     prefixes = collPrefixes
