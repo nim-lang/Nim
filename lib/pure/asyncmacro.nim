@@ -267,7 +267,7 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
       static:
         error "await expects Future[T], got " & $typeof(f)
 
-    template await[T](f: Future[T]): auto =
+    template await[T](f: Future[T]): auto {.used.} =
       var internalTmpFuture: FutureBase = f
       yield internalTmpFuture
       (cast[type(f)](internalTmpFuture)).read()
