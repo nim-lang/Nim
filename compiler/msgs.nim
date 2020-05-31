@@ -421,7 +421,7 @@ proc writeContext(conf: ConfigRef; lastinfo: TLineInfo) =
     if context.info != lastinfo and context.info != info:
       if conf.structuredErrorHook != nil:
         conf.structuredErrorHook(conf, context.info, instantiationFrom,
-                                 Severity.Error)
+                                 Severity.Hint)
       else:
         let message = if context.detail == "":
           instantiationFrom
