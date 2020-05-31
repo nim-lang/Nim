@@ -49,7 +49,7 @@ import
 
 const weirdTarget = defined(nimscript) or (defined(js) and not defined(nodejs))
 
-when defined(nodejs):
+when defined(js) and defined(nodejs):
   import jsffi
   let fs = require("fs")
 
