@@ -494,8 +494,12 @@ proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   of warnMin..warnMax:
     sev = Severity.Warning
     ignoreMsg = not conf.hasWarn(msg)
+    if msg in conf.warningAsErrors:
+      ignoreMsg = false
+      title = ErrorTitle
+    else:
+      title = WarningTitle
     if not ignoreMsg: writeContext(conf, info)
-    title = if msg in conf.warningAsErrors: ErrorTitle else: WarningTitle
     color = WarningColor
     inc(conf.warnCounter)
   of hintMin..hintMax:

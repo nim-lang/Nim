@@ -424,12 +424,12 @@ proc write*(f: File, b: bool) {.tags: [WriteIOEffect], benign.} =
   else: write(f, "false")
 
 proc write*(f: File, r: float32) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[65, char]
+  var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
 proc write*(f: File, r: BiggestFloat) {.tags: [WriteIOEffect], benign.} =
-  var buffer: array[65, char]
+  var buffer {.noinit.}: array[65, char]
   discard writeFloatToBuffer(buffer, r)
   if c_fprintf(f, "%s", buffer[0].addr) < 0: checkErr(f)
 
@@ -591,7 +591,7 @@ when defined(posix) and not defined(nimscript):
 
 proc open*(f: var File, filename: string,
           mode: FileMode = fmRead,
-          bufSize: int = -1): bool  {.tags: [], raises: [], benign.} =
+          bufSize: int = -1): bool {.tags: [], raises: [], benign.} =
   ## Opens a file named `filename` with given `mode`.
   ##
   ## Default mode is readonly. Returns true if the file could be opened.
@@ -605,7 +605,7 @@ proc open*(f: var File, filename: string,
       # How `fopen` handles opening a directory is not specified in ISO C and
       # POSIX. We do not want to handle directories as regular files that can
       # be opened.
-      var res: Stat
+      var res {.noinit.}: Stat
       if c_fstat(getFileHandle(f2), res) >= 0'i32 and modeIsDir(res.st_mode):
         close(f2)
         return false
@@ -759,7 +759,7 @@ proc readFile*(filename: string): TaintedString {.tags: [ReadIOEffect], benign.}
   ## Raises an IO exception in case of an error. If you need to call
   ## this inside a compile time macro you can use `staticRead
   ## <system.html#staticRead,string>`_.
-  var f: File
+  var f: File = nil
   if open(f, filename):
     try:
       result = readAll(f)
@@ -772,7 +772,7 @@ proc writeFile*(filename, content: string) {.tags: [WriteIOEffect], benign.} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
-  var f: File
+  var f: File = nil
   if open(f, filename, fmWrite):
     try:
       f.write(content)
@@ -785,7 +785,7 @@ proc writeFile*(filename: string, content: openArray[byte]) {.since: (1, 1).} =
   ## Opens a file named `filename` for writing. Then writes the
   ## `content` completely to the file and closes the file afterwards.
   ## Raises an IO exception in case of an error.
-  var f: File
+  var f: File = nil
   if open(f, filename, fmWrite):
     try:
       f.writeBuffer(unsafeAddr content[0], content.len)
@@ -799,7 +799,7 @@ proc readLines*(filename: string, n: Natural): seq[TaintedString] =
   ## in case of an error. Raises EOF if file does not contain at least `n` lines.
   ## Available at compile time. A line of text may be delimited by ``LF`` or ``CRLF``.
   ## The newline character(s) are not part of the returned strings.
-  var f: File
+  var f: File = nil
   if open(f, filename):
     try:
       result = newSeq[TaintedString](n)

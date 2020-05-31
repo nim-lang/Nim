@@ -1046,6 +1046,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
         assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
 
     # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
+    result = ""
     for i in 0..<args.len:
       if i > 0: result.add " "
       result.add quoteShell(args[i])
