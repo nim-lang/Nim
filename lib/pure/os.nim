@@ -52,6 +52,7 @@ const weirdTarget = defined(nimscript) or (defined(js) and not defined(nodejs))
 when defined(js) and defined(nodejs):
   import jsffi
   let fs = require("fs")
+  let jsos = require("os")
 
 since (1, 1):
   const
@@ -902,7 +903,7 @@ when not defined(nodejs):
     when defined(windows): return string(getEnv("USERPROFILE")) & "\\" 
     else: return string(getEnv("HOME")) & "/"
 else:
-  proc getHomeDir*(): string {.inline.} = require("os").homedir()
+  proc getHomeDir*(): string {.inline.} = jsos.homedir()
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
