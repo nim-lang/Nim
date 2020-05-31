@@ -482,6 +482,7 @@ proc lsub(g: TSrcGen; n: PNode): int =
   of nkRefTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("ref")
   of nkPtrTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("ptr")
   of nkVarTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("var")
+  of nkOutTy: result = (if n.len > 0: lsub(g, n[0])+1 else: 0) + len("out")
   of nkDistinctTy:
     result = len("distinct") + (if n.len > 0: lsub(g, n[0])+1 else: 0)
     if n.len > 1:
@@ -1225,6 +1226,12 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
       gsub(g, n[0])
     else:
       put(g, tkVar, "var")
+  of nkOutTy:
+    if n.len > 0:
+      putWithSpace(g, tkOut, "out")
+      gsub(g, n[0])
+    else:
+      put(g, tkOut, "out")
   of nkDistinctTy:
     if n.len > 0:
       putWithSpace(g, tkDistinct, "distinct")

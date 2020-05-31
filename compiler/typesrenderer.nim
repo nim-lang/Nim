@@ -40,6 +40,11 @@ proc renderType(n: PNode): string =
       result = renderType(n[0])
     else:
       result = "var"
+  of nkOutTy:
+    if n.len == 1:
+      result = renderType(n[0])
+    else:
+      result = "out"
   of nkRefTy:
     if n.len == 1:
       result = "ref." & renderType(n[0])

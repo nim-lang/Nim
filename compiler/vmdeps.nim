@@ -221,10 +221,15 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       result.add mapTypeToAst(t[0], info)
     else:
       result = mapTypeToBracket("var", mVar, t, info)
+  of tyOut:
+    if inst:
+      result = newNodeX(nkOutTy)
+      result.add mapTypeToAst(t[0], info)
+    else:
+      result = mapTypeToBracket("out", mOut, t, info)
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
   of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
-  of tyOut: result = mapTypeToBracket("out", mOut, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)

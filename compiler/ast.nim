@@ -209,7 +209,7 @@ type
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``
     nkConstTy,            # ``const T``
-    nkMutableTy,          # ``mutable T``
+    nkOutTy,              # ``out T``
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
     nkIteratorTy,         # iterator type

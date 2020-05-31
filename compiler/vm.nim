@@ -1100,7 +1100,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     of opcGetImpl:
       decodeB(rkNode)
       var a = regs[rb].node
-      if a.kind == nkVarTy: a = a[0]
+      if a.kind in {nkVarTy, nkOutTy}: a = a[0]
       if a.kind == nkSym:
         regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
                         else: copyTree(a.sym.ast)

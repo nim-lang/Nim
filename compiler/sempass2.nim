@@ -87,8 +87,8 @@ proc `==`(a, b: TLockLevel): bool {.borrow.}
 proc max(a, b: TLockLevel): TLockLevel {.borrow.}
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
-  s.kind in {skVar, skResult} and sfGlobal notin s.flags and
-    s.owner == a.owner and s.typ != nil
+  s.kind in {skVar, skResult, skParam} and sfGlobal notin s.flags and
+    s.owner == a.owner and s.typ != nil and (s.kind != skParam or s.typ.kind == tyOut)
 
 proc getLockLevel(t: PType): TLockLevel =
   var t = t
@@ -1182,6 +1182,8 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       if isSinkTypeForParam(typ) or
           (t.config.selectedGC in {gcArc, gcOrc} and isClosure(typ.skipTypes(abstractInst))):
         createTypeBoundOps(t, typ, param.info)
+      if typ.kind == tyOut and param.id notin t.init:
+        message(g.config, param.info, warnProveInit, param.name.s)
 
   if not isEmptyType(s.typ[0]) and
      (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar) and
