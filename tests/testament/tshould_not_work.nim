@@ -31,3 +31,5 @@ FAIL: tests/shouldfail/ttimeout.nim C
 Failure: reTimeout
 '''
 """
+
+# xxx `--nim:../compiler/nim`, doesn't seem correct (and should also honor `testament --nim`)

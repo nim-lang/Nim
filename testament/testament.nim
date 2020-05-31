@@ -701,7 +701,7 @@ proc main() =
       cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
-      echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
+      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
 
     if simulate:
       skips = loadSkipFrom(skipFrom)
