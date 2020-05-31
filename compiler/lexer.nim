@@ -366,6 +366,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
     xi: BiggestInt
     isBase10 = true
     numDigits = 0
+    uint64Compatible = true
   const
     # 'c', 'C' is deprecated
     baseCodeChars = {'X', 'x', 'o', 'b', 'B', 'c', 'C'}
@@ -447,6 +448,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
       inc(postPos)
       result.tokType = tkFloat64Lit
     of 'i', 'I':
+      uint64Compatible = false
       inc(postPos)
       if (L.buf[postPos] == '6') and (L.buf[postPos + 1] == '4'):
         result.tokType = tkInt64Lit
@@ -560,8 +562,14 @@ proc getNumber(L: var TLexer, result: var TToken) =
         if outOfRange:
           #echo "out of range num: ", result.iNumber, " vs ", xi
           lexMessageLitNum(L, "number out of range: '$1'", startpos)
+      if result.tokType == tkIntLit and uint64Compatible and result.iNumber < 0:
+        result.tokType = tkUInt64Lit
 
     else:
+      template checkLen(len) =
+        if len != result.literal.len:
+          raise newException(ValueError, "invalid integer: " & $result.literal)
+
       case result.tokType
       of floatTypes:
         result.fNumber = parseFloat(result.literal)
@@ -572,18 +580,28 @@ proc getNumber(L: var TLexer, result: var TToken) =
           len = parseBiggestUInt(result.literal, iNumber)
         except ValueError:
           raise newException(OverflowDefect, "number out of range: " & $result.literal)
-        if len != result.literal.len:
-          raise newException(ValueError, "invalid integer: " & $result.literal)
+        checkLen(len)
         result.iNumber = cast[int64](iNumber)
       else:
         var iNumber: int64
         var len: int
+        var ok = false
         try:
           len = parseBiggestInt(result.literal, iNumber)
-        except ValueError:
+          ok = true
+        except ValueError: discard
+        if uint64Compatible and not ok:
+          try:
+            var iNumber2: uint64
+            len = parseBiggestUInt(result.literal, iNumber2)
+            iNumber = cast[int64](iNumber2)
+            ok = true
+            result.tokType = tkUInt64Lit
+            dbg iNumber, iNumber2, result.tokType
+          except ValueError: discard
+        if not ok:
           raise newException(OverflowDefect, "number out of range: " & $result.literal)
-        if len != result.literal.len:
-          raise newException(ValueError, "invalid integer: " & $result.literal)
+        checkLen(len)
         result.iNumber = iNumber
 
       # Explicit bounds checks. Only T.high needs to be considered
@@ -606,9 +624,11 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.tokType = tkInt64Lit
 
   except ValueError:
-    lexMessageLitNum(L, "invalid number: '$1'", startpos)
+    raise
+    # if false: lexMessageLitNum(L, "invalid number: '$1'", startpos)
   except OverflowDefect, RangeDefect:
-    lexMessageLitNum(L, "number out of range: '$1'", startpos)
+    raise
+    # lexMessageLitNum(L, "number out of range: '$1'", startpos)
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
