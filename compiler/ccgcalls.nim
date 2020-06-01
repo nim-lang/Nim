@@ -43,7 +43,9 @@ proc preventNrvo(p: BProc; le, ri: PNode): bool =
     for i in 1..<ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
-    if canRaiseDisp(p, ri[0]) and
+    # we use the weaker 'canRaise' here in order to prevent too many
+    # annoying warnings, see #14514
+    if canRaise(ri[0]) and
         (p.nestedTryStmts.len > 0 or locationEscapes(p, le)):
       message(p.config, le.info, warnObservableStores, $le)
 
