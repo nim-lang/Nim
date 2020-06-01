@@ -5305,8 +5305,7 @@ twice:
   this process iterates.
 
 While macros enable advanced compile-time code transformations, they
-cannot change Nim's syntax. However, this is no real restriction because
-Nim's syntax is flexible enough anyway.
+cannot change Nim's syntax.
 
 Debug Example
 -------------
