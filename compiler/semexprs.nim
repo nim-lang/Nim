@@ -155,12 +155,8 @@ proc checkConvertible(c: PContext, targetTyp: PType, src: PNode): TConvStatus =
     if targetTyp.kind == tyBool:
       discard "convOk"
     elif targetTyp.isOrdinalType:
-      # if src.kind == nkUInt64Lit and
-      #     cast[uint64](src.getInt) notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
-      #   result = convNotInRange
       if src.kind in nkCharLit..nkUInt64Lit and
           src.getInt notin firstOrd(c.config, targetTyp)..lastOrd(c.config, targetTyp):
-        dbg targetTyp.isOrdinalType, src.kind, targetTyp, src.getInt, firstOrd(c.config, targetTyp), lastOrd(c.config, targetTyp), src.typ
         result = convNotInRange
       elif src.kind in nkFloatLit..nkFloat64Lit and
           (classify(src.floatVal) in {fcNan, fcNegInf, fcInf} or
@@ -322,9 +318,6 @@ proc semConv(c: PContext, n: PNode): PNode =
         if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
         # if op.kind in {nkCharLit..nkUInt64Lit}: $toInt128(op.intVal) else: $op.getFloat
         # if op.kind in {nkCharLit..nkUInt64Lit}: $op.toInt128 else: $op.getFloat
-      dbg op.kind, n.renderTree, op.intVal, op.intVal.toInt128
-      debug(n)
-      dbg result.typ.typeToString
       localError(c.config, n.info, errGenerated, value & " can't be converted to " &
         result.typ.typeToString)
   else:

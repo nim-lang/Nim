@@ -597,7 +597,6 @@ proc getNumber(L: var TLexer, result: var TToken) =
             iNumber = cast[int64](iNumber2)
             ok = true
             result.tokType = tkUInt64Lit
-            dbg iNumber, iNumber2, result.tokType
           except ValueError: discard
         if not ok:
           raise newException(OverflowDefect, "number out of range: " & $result.literal)
