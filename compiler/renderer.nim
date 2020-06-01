@@ -903,11 +903,11 @@ proc skipHiddenNodes(n: PNode): PNode =
     else: break
 
 proc accentedName(g: var TSrcGen, n: PNode) =
-  const backticsNeeded = OpChars + {'[', '{'}
+  const backticksNeeded = OpChars + {'[', '{'}
   if n == nil: return
   let isOperator =
-    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticsNeeded: true
-    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in backticsNeeded: true
+    if n.kind == nkIdent and n.ident.s.len > 0 and n.ident.s[0] in backticksNeeded: true
+    elif n.kind == nkSym and n.sym.name.s.len > 0 and n.sym.name.s[0] in backticksNeeded: true
     else: false
 
   if isOperator:
