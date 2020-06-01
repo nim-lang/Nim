@@ -13,6 +13,8 @@
   "yes, I'm the creator" -- Araq, 2013-07-26 19:28:32.
   </p></blockquote>
 
+Note: this is mostly outdated, see instead `nimsuggest <nimsuggest.html>`_
+
 Nim differs from many other compilers in that it is really fast,
 and being so fast makes it suited to provide external queries for
 text editors about the source code being written. Through the

@@ -19,6 +19,8 @@ import
   typesrenderer, astalgo, lineinfos, intsets,
   pathutils, trees, tables, nimpaths, renderverbatim
 
+from std/private/globs import nativeToUnixPath
+
 const
   exportSection = skField
   docCmdSkip = "skip"
@@ -52,12 +54,6 @@ type
     wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
-
-proc nativeToUnix(path: string): string =
-  doAssert not path.isAbsolute # absolute files need more care for the drive
-  when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
 
 proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
   if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
@@ -97,7 +93,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
   if isTitle:
-    result = result.string.nativeToUnix.RelativeFile
+    result = result.string.nativeToUnixPath.RelativeFile
   else:
     result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
@@ -1244,20 +1240,23 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
-  let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
+  var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
+  let bodyname = if d.hasToc and not d.isPureRst:
+                   groupsection.setLen 0
+                   "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile)])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile), groupsection.rope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [

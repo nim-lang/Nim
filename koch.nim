@@ -651,6 +651,13 @@ when isMainModule:
       of "latest": latest = true
       of "stable": latest = false
       of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
+      of "docslocal":
+        # undocumented for now, allows to rebuild local docs in < 40s as follows:
+        # `./koch --nim:$nimb --docslocal:htmldocs2 --doccmd:skip --warnings:off --hints:off`
+        # whereas `./koch docs` takes 190s; useful for development.
+        doAssert op.val.len > 0
+        buildDocsDir(op.cmdLineRest, op.val)
+        break
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
