@@ -79,6 +79,9 @@ import stdtest/testutils
 doAssertParserRaises(ValueError): "18374686479671623680'i64"
 doAssertParserRaises(ValueError): "183746864796716236804" # too big to fit uint64
 
+let z = 0xFF000000_00000000'i64
+# doAssertParserRaises(ValueError): "0xFF000000_00000000'i64"
+
 block: # issue #14529
   # BUG: `0xFF000000_0000000000000` should be an error, see https://github.com/nim-lang/Nim/issues/14529
   # doAssertParserRaises(ValueError): "0xFF000000_0000000000" # too big to fit uint64
