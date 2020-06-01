@@ -740,10 +740,6 @@ proc commandParam(p: var TParser, isFirstParam: var bool; mode: TPrimaryMode): P
     result.add(parseExpr(p))
   isFirstParam = false
 
-const
-  tkTypeClasses = {tkRef, tkPtr, tkVar, tkStatic, tkType,
-                   tkEnum, tkTuple, tkObject, tkProc}
-
 proc commandExpr(p: var TParser; r: PNode; mode: TPrimaryMode): PNode =
   result = newNodeP(nkCommand, p)
   result.add(r)
@@ -797,7 +793,8 @@ proc primarySuffix(p: var TParser, r: PNode,
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
-       tkOpr, tkDotDot, tkTypeClasses - {tkRef, tkPtr}:
+       tkOpr, tkDotDot, tkVar, tkStatic, tkType, tkEnum, tkTuple,
+       tkObject, tkProc:
       # XXX: In type sections we allow the free application of the
       # command syntax, with the exception of expressions such as
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
@@ -1270,7 +1267,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result.add(primary(p, pmNormal))
     return
 
-  case p.tok.tokType:
+  case p.tok.tokType
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
   of tkFunc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
@@ -1392,7 +1389,7 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
         getTok(p)
         nextBlock = parseDoBlock(p, info)
       else:
-        case nextToken:
+        case nextToken
         of tkOf:
           nextBlock = newNodeP(nkOfBranch, p)
           exprList(p, tkColon, nextBlock)
@@ -1990,8 +1987,8 @@ proc parseObject(p: var TParser): PNode =
   # an initial IND{>} HAS to follow:
   if not realInd(p):
     result.add(p.emptyNode)
-    return
-  result.add(parseObjectPart(p))
+  else:
+    result.add(parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
   let modifier = case p.tok.tokType
