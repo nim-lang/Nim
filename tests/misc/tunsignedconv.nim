@@ -77,6 +77,8 @@ block: # issue #14522
   block:
     let a = 18374686479671623680
     doAssert a is uint64
+    let a2 = 9223372036854775808 # high(int64) + 1
+    doAssert a2 == cast[uint64](high(int64))+1
 
 import stdtest/testutils
 

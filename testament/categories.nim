@@ -611,7 +611,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   #[
   TODO(minor):
   get from Nim cmd
-  put outputGotten.txt, outputGotten.txt, megatest.nim there too
+  put outputExceptedFile, outputGottenFile, megatest.nim there too
   delete upon completion, maybe
   ]#
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
@@ -626,11 +626,12 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     writeFile(file2, code)
     megatest.add "import " & quoted(file2) & "\n"
     megatest.add "import " & quoted(file) & "\n"
-
-  writeFile("megatest.nim", megatest)
+  let megatestFile = testsDir / "megatest.nim"
+    # so it picks up testsDir / "config.nims"
+  writeFile(megatestFile, megatest)
 
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
-              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
+              "--listFullPaths:off", "--excessiveStackTrace:off", megatestFile]
 
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
@@ -638,13 +639,15 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     echo buf.string
     quit("megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx("./megatest")
+  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt "")
   if exitCode != 0:
     echo buf.string
     quit("megatest execution failed")
 
   norm buf.string
-  writeFile("outputGotten.txt", buf.string)
+  let outputExceptedFile = "outputExpected.txt"
+  let outputGottenFile = "outputGotten.txt"
+  writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -653,15 +656,15 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   norm outputExpected
 
   if buf.string != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
+    writeFile(outputExceptedFile, outputExpected)
+    discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
     echo "output different!"
-    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
+    # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:
     echo "output OK"
-    removeFile("outputGotten.txt")
-    removeFile("megatest.nim")
+    removeFile(outputGottenFile)
+    removeFile(megatestFile)
   #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------
