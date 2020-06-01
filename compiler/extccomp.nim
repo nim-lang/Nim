@@ -767,18 +767,15 @@ template tryExceptOSErrorMessage(conf: ConfigRef; errorPrefix: string = "", body
         (ose.msg & " " & $ose.errorCode))
     raise
 
+proc getExtraCmds(conf: ConfigRef; output: AbsoluteFile): seq[string] =
+  when defined(macosx):
+    if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
+      # if needed, add an option to skip or override location
+      result.add "dsymutil " & $(output).quoteShell
+
 proc execLinkCmd(conf: ConfigRef; linkCmd: string) =
   tryExceptOSErrorMessage(conf, "invocation of external linker program failed."):
     execExternalProgram(conf, linkCmd, hintLinking)
-
-proc maybeRunDsymutil(conf: ConfigRef; exe: AbsoluteFile) =
-  when defined(osx):
-    if optCDebug in conf.globalOptions and optGenStaticLib notin conf.globalOptions:
-      # if needed, add an option to skip or override location
-      let cmd = "dsymutil " & $(exe).quoteShell
-      conf.extraCmds.add cmd
-      tryExceptOSErrorMessage(conf, "invocation of dsymutil failed."):
-        execExternalProgram(conf, cmd, hintExecuting)
 
 proc execCmdsInParallel(conf: ConfigRef; cmds: seq[string]; prettyCb: proc (idx: int)) =
   let runCb = proc (idx: int, p: Process) =
@@ -850,6 +847,7 @@ proc displayProgressCC(conf: ConfigRef, path, compileCmd: string): string =
 proc callCCompiler*(conf: ConfigRef) =
   var
     linkCmd: string
+    extraCmds: seq[string]
   if conf.globalOptions * {optCompileOnly, optGenScript} == {optCompileOnly}:
     return # speed up that call if only compiling and no script shall be
            # generated
@@ -920,6 +918,7 @@ proc callCCompiler*(conf: ConfigRef) =
       let mainOutput = if optGenScript notin conf.globalOptions: conf.prepareToWriteOutput
                        else: AbsoluteFile(conf.projectName)
       linkCmd = getLinkCmd(conf, mainOutput, objfiles)
+      extraCmds = getExtraCmds(conf, mainOutput)
       if optCompileOnly notin conf.globalOptions:
         const MaxCmdLen = when defined(windows): 8_000 else: 32_000
         if linkCmd.len > MaxCmdLen:
@@ -929,7 +928,8 @@ proc callCCompiler*(conf: ConfigRef) =
           linkViaResponseFile(conf, linkCmd)
         else:
           execLinkCmd(conf, linkCmd)
-        maybeRunDsymutil(conf, mainOutput)
+        for cmd in extraCmds:
+          execExternalProgram(conf, cmd, hintExecuting)
   else:
     linkCmd = ""
   if optGenScript in conf.globalOptions:
@@ -1017,7 +1017,7 @@ proc writeJsonBuildInstructions*(conf: ConfigRef) =
     str getLinkCmd(conf, conf.absOutFile, objfiles)
 
     lit ",\L\"extraCmds\": "
-    lit $(%* conf.extraCmds)
+    lit $(%* getExtraCmds(conf, conf.absOutFile))
 
     lit ",\L\"stdinInput\": "
     lit $(%* conf.projectIsStdin)
