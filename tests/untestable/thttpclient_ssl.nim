@@ -106,7 +106,7 @@ template evaluate(exception_msg: string, category: Category, desc: string) =
         exception_msg == "SSL Certificate check failed." or
         exception_msg.contains("certificate verify failed") or
         exception_msg.contains("key too small") or
-        exception_msg.contains "shutdown while in init", exception_msg
+        exception_msg.contains "alert handshake failure", exception_msg
 
   else:
     # this is unexpected
