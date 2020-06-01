@@ -474,8 +474,15 @@ proc getNewLocation(lastURL: string, headers: HttpHeaders): string =
     parsed.anchor = r.anchor
     result = $parsed
 
+proc toTitleCase(s: string): string =
+  result = newString(len(s))
+  var upper = true
+  for i in 0..len(s) - 1:
+    result[i] = if upper: toUpperAscii(s[i]) else: toLowerAscii(s[i])
+    upper = s[i] == '-'
+
 proc generateHeaders(requestUrl: Uri, httpMethod: string, headers: HttpHeaders,
-                     proxy: Proxy): string =
+                     proxy: Proxy, titleCaseHeaders: bool): string =
   # GET
   let upperMethod = httpMethod.toUpperAscii()
   result = upperMethod
@@ -513,7 +520,10 @@ proc generateHeaders(requestUrl: Uri, httpMethod: string, headers: HttpHeaders,
     add(result, "Proxy-Authorization: basic " & auth & httpNewLine)
 
   for key, val in headers:
-    add(result, key & ": " & val & httpNewLine)
+    if titleCaseHeaders:
+      add(result, toTitleCase(key) & ": " & val & httpNewLine)
+    else:
+      add(result, key & ": " & val & httpNewLine)
 
   add(result, httpNewLine)
 
@@ -548,13 +558,14 @@ type
     else:
       bodyStream: Stream
     getBody: bool         ## When `false`, the body is never read in requestAux.
-
+    titleCaseHeaders: bool
 type
   HttpClient* = HttpClientBase[Socket]
 
 proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                     sslContext = getDefaultSSL(), proxy: Proxy = nil,
-                    timeout = -1, headers = newHttpHeaders()): HttpClient =
+                    timeout = -1, headers = newHttpHeaders(),
+                    titleCaseHeaders = false): HttpClient =
   ## Creates a new HttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -573,6 +584,9 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## ``TimeoutError`` is raised.
   ##
   ## ``headers`` specifies the HTTP Headers.
+  ##
+  ## ``titleCaseHeaders`` specifies if HTTP headers should be sent in title 
+  ## case e.g. ``Content-Length``
   runnableExamples:
     import asyncdispatch, httpclient, strutils
 
@@ -593,6 +607,7 @@ proc newHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   result.onProgressChanged = nil
   result.bodyStream = newStringStream()
   result.getBody = true
+  result.titleCaseHeaders = titleCaseHeaders
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -601,7 +616,8 @@ type
 
 proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
                          sslContext = getDefaultSSL(), proxy: Proxy = nil,
-                         headers = newHttpHeaders()): AsyncHttpClient =
+                         headers = newHttpHeaders(),
+                         titleCaseHeaders = false): AsyncHttpClient =
   ## Creates a new AsyncHttpClient instance.
   ##
   ## ``userAgent`` specifies the user agent that will be used when making
@@ -616,6 +632,9 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   ## connections.
   ##
   ## ``headers`` specifies the HTTP Headers.
+  ##
+  ## ``titleCaseHeaders`` specifies if HTTP headers should be sent in title 
+  ## case e.g. ``Content-Length``
   new result
   result.headers = headers
   result.userAgent = userAgent
@@ -625,6 +644,7 @@ proc newAsyncHttpClient*(userAgent = defUserAgent, maxRedirects = 5,
   result.onProgressChanged = nil
   result.bodyStream = newFutureStream[string]("newAsyncHttpClient")
   result.getBody = true
+  result.titleCaseHeaders = titleCaseHeaders
   when defined(ssl):
     result.sslContext = sslContext
 
@@ -898,7 +918,7 @@ proc newConnection(client: HttpClient | AsyncHttpClient,
         connectUrl.port = if url.port != "": url.port else: "443"
 
         let proxyHeaderString = generateHeaders(connectUrl, $HttpConnect,
-            newHttpHeaders(), client.proxy)
+            newHttpHeaders(), client.proxy, client.titleCaseHeaders)
         await client.socket.send(proxyHeaderString)
         let proxyResp = await parseResponse(client, false)
 
@@ -995,7 +1015,7 @@ proc requestAux(client: HttpClient | AsyncHttpClient, url, httpMethod: string,
     newHeaders["User-Agent"] = client.userAgent
 
   let headerString = generateHeaders(requestUrl, httpMethod, newHeaders,
-                                     client.proxy)
+                                     client.proxy, client.titleCaseHeaders)
   await client.socket.send(headerString)
 
   if data.len > 0:
@@ -1188,3 +1208,7 @@ proc downloadFile*(client: AsyncHttpClient, url: string,
     result.addCallback(
       proc () = client.getBody = true
     )
+
+when isMainModule:
+  block: # test title case
+    doAssert toTitleCase("content-length") == "Content-Length"
