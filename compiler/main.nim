@@ -117,7 +117,8 @@ proc commandCompileToJS(graph: ModuleGraph) =
       conf.outFile = RelativeFile(conf.projectName & ".js")
 
     #incl(gGlobalOptions, optSafeCode)
-    setTarget(graph.config.target, osJS, cpuJS)
+    if not isDefined(graph.config, "nodejs"):
+      setTarget(graph.config.target, osJS, cpuJS)
     #initDefines()
     defineSymbol(graph.config.symbols, "ecmascript") # For backward compatibility
     semanticPasses(graph)

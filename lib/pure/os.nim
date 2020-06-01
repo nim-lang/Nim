@@ -47,7 +47,32 @@ import std/private/since
 import
   strutils, pathnorm
 
-const weirdTarget = defined(nimscript) or defined(js)
+const
+  isNodejs = defined(js) and defined(nodejs)
+  weirdTarget = defined(nimscript) or defined(js)
+  nimsOrPureJs = defined(nimscript) or (defined(js) and not defined(nodejs))
+
+proc notAvailable() =
+  ## factorizes in 1 place so we can customize behavior to either be a runtime
+  ## or static error; as well as provide more helpful messages.
+  var msg = ""
+  when nimvm:
+    # xxx show doc urls or make `idx` work seamlessly
+    msg = "not available with nimvm, maybe use --experimental:vmopsDanger or --experimental:compiletimeFFI"
+  else:
+    when defined(js) and not defined(nodejs):
+      msg = "not available, maybe use -d:nodejs ?"
+    else:
+      msg = "not available"
+  # we could also show caller location using `instantiationInfo`+`toLocation`
+  # but stacktrace would show that
+  doAssert false, msg
+
+when defined(js) and defined(nodejs):
+  import jsffi
+  let jsfs = require("fs")
+  let jsos = require("os")
+  let jsprocess = require("process")
 
 since (1, 1):
   const
@@ -63,7 +88,7 @@ since (1, 1):
     ## You can check if your filename match these and rename it for safety
     ## (Currently all invalid filenames are from Windows only).
 
-when weirdTarget:
+when nimsOrPureJs:
   discard
 elif defined(windows):
   import winlean, times
@@ -76,9 +101,15 @@ else:
   {.error: "OS module not ported to your operating system!".}
 
 when weirdTarget and defined(nimErrorProcCanHaveBody):
-  {.pragma: noNimScript, error: "this proc is not available on the NimScript target".}
+  # xxx rename to noNimsOrJs
+  {.pragma: noNimScript, error: "this proc is not available on the nimscript target".}
 else:
   {.pragma: noNimScript.}
+
+when nimsOrPureJs and defined(nimErrorProcCanHaveBody):
+  {.pragma: noNimsOrPureJs, error: "this proc is not available on the nimscript or pure js target".}
+else:
+  {.pragma: noNimsOrPureJs.}
 
 proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
@@ -298,14 +329,9 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
   elif defined(macos):
     # according to https://perldoc.perl.org/File/Spec/Mac.html `:a` is a relative path
     result = path[0] != ':'
-  elif defined(RISCOS):
-    result = path[0] == '$'
-  elif defined(posix) or defined(js):
-    # `or defined(js)` wouldn't be needed pending https://github.com/nim-lang/Nim/issues/13469
-    # This works around the problem for posix, but windows is still broken with nim js -d:nodejs
-    result = path[0] == '/'
-  else:
-    doAssert false # if ever hits here, adapt as needed
+  elif defined(RISCOS): result = path[0] == '$'
+  elif defined(posix): result = path[0] == '/'
+  else: notAvailable()
 
 when FileSystemCaseSensitive:
   template `!=?`(a, b: char): bool = a != b
@@ -893,9 +919,18 @@ proc getHomeDir*(): string {.rtl, extern: "nos$1",
   ## * `setCurrentDir proc <#setCurrentDir,string>`_
   runnableExamples:
     assert getHomeDir() == expandTilde("~")
-
-  when defined(windows): return string(getEnv("USERPROFILE")) & "\\"
-  else: return string(getEnv("HOME")) & "/"
+  template fn() =
+    # this pattern is likely to be reused in os.nim; ideally nimvm improves
+    # to make this easier
+    # --experimental:compiletimeFFI
+    when defined(windows): result = getEnv("USERPROFILE").string
+    else: result = getEnv("HOME").string
+  when nimvm: fn()
+  else:
+    when isNodejs: result = $jsos.homedir().to(cstring)
+    elif defined(js): notAvailable()
+    else: fn()
+  normalizePathEnd(result, trailingSep=true)
 
 proc getConfigDir*(): string {.rtl, extern: "nos$1",
   tags: [ReadEnvEffect, ReadIOEffect].} =
@@ -1227,7 +1262,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
         return x
   result = ""
 
-when weirdTarget:
+when nimsOrPureJs:
   const times = "fake const"
   template Time(x: untyped): untyped = string
 
@@ -1320,53 +1355,55 @@ when not defined(nimscript):
     ## * `setCurrentDir proc <#setCurrentDir,string>`_
     ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
     ## * `getProjectPath proc <macros.html#getProjectPath>`_
-    when defined(nodejs):
-      var ret: cstring
-      {.emit: "`ret` = process.cwd();".}
-      return $ret
-    elif defined(js):
-      doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
-    elif defined(windows):
-      var bufsize = MAX_PATH.int32
-      when useWinUnicode:
-        var res = newWideCString("", bufsize)
-        while true:
-          var L = getCurrentDirectoryW(bufsize, res)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            res = newWideCString("", L)
-            bufsize = L
-          else:
-            result = res$L
-            break
+    template fn() =
+      when defined(windows):
+        var bufsize = MAX_PATH.int32
+        when useWinUnicode:
+          var res = newWideCString("", bufsize)
+          while true:
+            var L = getCurrentDirectoryW(bufsize, res)
+            if L == 0'i32:
+              raiseOSError(osLastError())
+            elif L > bufsize:
+              res = newWideCString("", L)
+              bufsize = L
+            else:
+              result = res$L
+              break
+        else:
+          result = newString(bufsize)
+          while true:
+            var L = getCurrentDirectoryA(bufsize, result)
+            if L == 0'i32:
+              raiseOSError(osLastError())
+            elif L > bufsize:
+              result = newString(L)
+              bufsize = L
+            else:
+              setLen(result, L)
+              break
       else:
+        var bufsize = 1024 # should be enough
         result = newString(bufsize)
         while true:
-          var L = getCurrentDirectoryA(bufsize, result)
-          if L == 0'i32:
-            raiseOSError(osLastError())
-          elif L > bufsize:
-            result = newString(L)
-            bufsize = L
-          else:
-            setLen(result, L)
+          if getcwd(result, bufsize) != nil:
+            setLen(result, c_strlen(result))
             break
-    else:
-      var bufsize = 1024 # should be enough
-      result = newString(bufsize)
-      while true:
-        if getcwd(result, bufsize) != nil:
-          setLen(result, c_strlen(result))
-          break
-        else:
-          let err = osLastError()
-          if err.int32 == ERANGE:
-            bufsize = bufsize shl 1
-            doAssert(bufsize >= 0)
-            result = newString(bufsize)
           else:
-            raiseOSError(osLastError())
+            let err = osLastError()
+            if err.int32 == ERANGE:
+              bufsize = bufsize shl 1
+              doAssert(bufsize >= 0)
+              result = newString(bufsize)
+            else:
+              raiseOSError(osLastError())
+
+    when nimvm:
+      notAvailable()
+    else:
+      when isNodejs: result = $jsprocess.cwd().to(cstring)
+      elif defined(js): notAvailable()
+      else: fn()
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   ## Sets the `current working directory`:idx:; `OSError`

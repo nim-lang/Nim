@@ -2,7 +2,7 @@ static: doAssert defined(nodejs)
 
 import os
 
-block:
+template fn() =
   doAssert "./foo//./bar/".normalizedPath == "foo/bar"
   doAssert relativePath(".//foo/bar", "foo") == "bar"
   doAssert "/".isAbsolute
@@ -11,11 +11,12 @@ block:
   doAssert not "foo".isAbsolute
   doAssert relativePath("", "bar") == ""
   doAssert normalizedPath(".///foo//./") == "foo"
-  let cwd = getCurrentDir()
-
-  let isWindows = '\\' in cwd
-  # defined(windows) doesn't work with -d:nodejs but should
-  # these actually break because of that (see https://github.com/nim-lang/Nim/issues/13469)
-  if not isWindows:
+  doAssert getHomeDir() == getHomeDir().static
+  doAssert relativePath("foo/bar", "baz") == "../foo/bar".unixToNativePath
+  when nimvm: discard
+  else:
+    let cwd = getCurrentDir()
     doAssert cwd.isAbsolute
-    doAssert relativePath(getCurrentDir() / "foo", "bar") == "../foo"
+    doAssert relativePath(cwd / "foo", "bar") == ".." / "foo"
+static: fn()
+fn()

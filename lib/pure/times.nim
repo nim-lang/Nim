@@ -2572,7 +2572,10 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
   ## on the hardware/OS).
   ##
   ## ``getTime`` should generally be preferred over this proc.
-  when defined(macosx):
+  when false: discard
+  elif defined(js):
+    result = newDate().getTime() / 1000
+  elif defined(macosx):
     var a: Timeval
     gettimeofday(a)
     result = toBiggestFloat(a.tv_sec.int64) + toBiggestFloat(
@@ -2589,8 +2592,6 @@ proc epochTime*(): float {.tags: [TimeEffect].} =
     var secs = i64 div rateDiff
     var subsecs = i64 mod rateDiff
     result = toFloat(int(secs)) + toFloat(int(subsecs)) * 0.0000001
-  elif defined(js):
-    result = newDate().getTime() / 1000
   else:
     {.error: "unknown OS".}
 
