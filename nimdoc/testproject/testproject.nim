@@ -207,6 +207,46 @@ when true: # tests RST inside comments
     runnableExamples:
       discard "in low2"
 
+when true: # multiline string litterals
+  proc tripleStrLitTest*() =
+    runnableExamples:
+      ## mullitline string litterals are tricky as their indentation can span
+      ## below that of the runnableExamples
+      let s1a = """
+should appear at indent 0
+  at indent 2
+at indent 0
+"""
+      # make sure this works too
+      let s1b = """start at same line
+  at indent 2
+at indent 0
+""" # comment after
+      let s2 = """sandwich """
+      let s3 = """"""
+      when false:
+        let s5 = """
+        in s5 """
+
+      let s3b = ["""
+%!? #[...] # inside a multiline ...
+""", "foo"]
+
+      ## make sure handles trailing spaces
+      let s4 = """ 
+"""
+
+      let s5 = """ x
+"""
+      let s6 = """ ""
+"""
+      let s7 = """"""""""
+      let s8 = ["""""""""", """
+  """ ]
+      discard
+      # should be in
+    # should be out
+
 when true: # (most) macros
   macro bar*(): untyped =
     result = newStmtList()
