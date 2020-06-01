@@ -836,7 +836,9 @@ proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
   ## 
   ## This proc is normally used with connectionless sockets (UDP sockets).
   ## 
-  ## **Note**: ``data`` must be initialized to the length of ``size``.
+  ## **Notes**
+  ## * ``data`` must be initialized to the length of ``size``.
+  ## * ``address`` must be initialized to 39 in length.
   template adaptRecvFromToDomain(domain: Domain) =
     var lAddr = sizeof(sAddr).SockLen
     
@@ -846,9 +848,8 @@ proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
     
     data.mget().setLen(result)
     data.complete()
-
-    address.mget.add(getAddrString(cast[ptr SockAddr](addr sAddr)))
-    address.complete()
+    
+    address.complete(getAddrString(cast[ptr SockAddr](addr sAddr)))
 
     when domain == AF_INET6:
       port.complete(ntohs(sAddr.sin6_port).Port)
@@ -860,6 +861,8 @@ proc recvFrom*(socket: AsyncSocket, data: FutureVar[string], size: int,
   assert(not socket.closed, "Cannot `recvFrom` on a closed socket")
   assert(size == len(data.mget()),
          "`date` was not initialized correctly. `size` != `len(data.mget())`")
+  assert(39 == len(address.mget()),
+         "`address` was not initialized correctly. 39 != `len(address.mget())`")
   
   case socket.domain
   of AF_INET6:
@@ -889,6 +892,7 @@ proc recvFrom*(socket: AsyncSocket, size: int,
     port = newFutureVar[Port]()
   
   data.mget().setLen(size)
+  address.mget().setLen(39)
   
   let read = await recvFrom(socket, data, size, address, port, flags)
 
