@@ -316,8 +316,6 @@ proc semConv(c: PContext, n: PNode): PNode =
     of convNotInRange:
       let value =
         if op.kind in {nkCharLit..nkUInt64Lit}: $op.getInt else: $op.getFloat
-        # if op.kind in {nkCharLit..nkUInt64Lit}: $toInt128(op.intVal) else: $op.getFloat
-        # if op.kind in {nkCharLit..nkUInt64Lit}: $op.toInt128 else: $op.getFloat
       localError(c.config, n.info, errGenerated, value & " can't be converted to " &
         result.typ.typeToString)
   else:
