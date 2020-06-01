@@ -2062,6 +2062,10 @@ proc semQuoteAst(c: PContext, n: PNode): PNode =
 
 proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   # watch out, hacks ahead:
+  when defined(nimsuggest):
+    # Remove the error hook so nimsuggest doesn't report errors there
+    let tempHook = c.graph.config.structuredErrorHook
+    c.graph.config.structuredErrorHook = nil
   let oldErrorCount = c.config.errorCounter
   let oldErrorMax = c.config.errorMax
   let oldCompilesId = c.compilesContextId
@@ -2111,6 +2115,9 @@ proc tryExpr(c: PContext, n: PNode, flags: TExprFlags = {}): PNode =
   c.config.m.errorOutputs = oldErrorOutputs
   c.config.errorCounter = oldErrorCount
   c.config.errorMax = oldErrorMax
+  when defined(nimsuggest):
+    # Restore the error hook
+    c.graph.config.structuredErrorHook = tempHook
 
 proc semCompiles(c: PContext, n: PNode, flags: TExprFlags): PNode =
   # we replace this node by a 'true' or 'false' node:
