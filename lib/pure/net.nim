@@ -1007,15 +1007,19 @@ proc close*(socket: Socket) =
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
         ErrClearError()
-        # As we are closing the underlying socket immediately afterwards,
-        # it is valid, under the TLS standard, to perform a unidirectional
-        # shutdown i.e not wait for the peers "close notify" alert with a second
-        # call to SSL_shutdown
-        let res = SSL_shutdown(socket.sslHandle)
-        if res == 0:
-          discard
-        elif res != 1:
-          socketError(socket, res)
+        # Don't call SSL_shutdown if the connection has not been fully
+        # established, see:
+        # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
+        if SSL_in_init(socket.sslHandle) == 0:
+          # As we are closing the underlying socket immediately afterwards,
+          # it is valid, under the TLS standard, to perform a unidirectional
+          # shutdown i.e not wait for the peers "close notify" alert with a second
+          # call to SSL_shutdown
+          let res = SSL_shutdown(socket.sslHandle)
+          if res == 0:
+            discard
+          elif res != 1:
+            socketError(socket, res)
   finally:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
