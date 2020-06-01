@@ -1,10 +1,4 @@
-discard """
-  output: '''uint
-1'''
-"""
-
 # Tests unsigned literals and implicit conversion between uints and ints
-# Passes if it compiles
 
 var h8:uint8 = 128
 var h16:uint16 = 32768
@@ -53,7 +47,7 @@ block t4176:
 proc fun(): uint = cast[uint](-1)
 const x0 = fun()
 
-echo typeof(x0)
+doAssert typeof(x0) is uint
 
 discard $x0
 
@@ -62,6 +56,30 @@ discard $x0
 const x1 = cast[uint](-1)
 discard $(x1,)
 
-# bug 13698
-let n: csize = 1
-echo n.int32
+# bug #13698
+let n: csize = 1 # xxx should that be csize_t or is that essential here?
+doAssert $n.int32 == "1"
+
+
+block: # issue #14522
+  block:
+    let a = 0xFF000000_00000000.uint64
+    doAssert a is uint64
+  block:
+    let a = 0xFF000000_00000000
+    doAssert a is uint64
+    let a2 = 0xFF000000_0000000 # shorter than cutoff => int64
+    doAssert a2 is int64 # IMO this should be uint64 because of 0x prefix
+  block:
+    let a = 18374686479671623680
+    doAssert a is uint64
+
+import stdtest/testutils
+
+doAssertParserRaises(ValueError): "18374686479671623680'i64"
+doAssertParserRaises(ValueError): "183746864796716236804" # too big to fit uint64
+
+block: # issue #14529
+  # BUG: `0xFF000000_0000000000000` should be an error, see https://github.com/nim-lang/Nim/issues/14529
+  # doAssertParserRaises(ValueError): "0xFF000000_0000000000" # too big to fit uint64
+  discard

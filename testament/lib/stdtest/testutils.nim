@@ -23,3 +23,14 @@ template flakyAssert*(cond: untyped, msg = "", notifySuccess = true) =
       msg2.add " FLAKY_FAILURE "
     msg2.add $expr & " " & msg
     echo msg2
+
+import macros
+
+template doAssertParserRaises*(exception: typedesc, s: static string) =
+  # xxx not sure if there's a simpler way to pass a type (not as NimNode) to a macro
+  # but this works. Note: generic macros would solve this and other issues
+  # cleanly.
+  block:
+    macro doAssertParserRaises2(s2: static string): void =
+      doAssertRaises(exception): discard parseExpr(s2)
+    doAssertParserRaises2(s)

@@ -624,11 +624,9 @@ proc getNumber(L: var TLexer, result: var TToken) =
         result.tokType = tkInt64Lit
 
   except ValueError:
-    raise
-    # if false: lexMessageLitNum(L, "invalid number: '$1'", startpos)
+    lexMessageLitNum(L, "invalid number: '$1'", startpos)
   except OverflowDefect, RangeDefect:
-    raise
-    # lexMessageLitNum(L, "number out of range: '$1'", startpos)
+    lexMessageLitNum(L, "number out of range: '$1'", startpos)
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
