@@ -62,7 +62,7 @@ pkg "nimquery"
 pkg "nimsl", true
 pkg "nimsvg"
 # pkg "nimterop", true
-pkg "nimx", true, "nim c --threads:on test/main.nim"
+# pkg "nimx", true, "nim c --threads:on test/main.nim"
 pkg "norm", true, "nim c -r tests/tsqlite.nim"
 pkg "npeg"
 pkg "ormin", true, "nim c -o:orminn ormin.nim"
