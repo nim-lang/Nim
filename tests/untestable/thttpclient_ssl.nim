@@ -107,6 +107,7 @@ template evaluate(exception_msg: string, category: Category, desc: string) =
         exception_msg.contains("certificate verify failed") or
         exception_msg.contains("key too small") or
         exception_msg.contains("alert handshake failure") or
+        exception_msg.contains("bad dh p length") or
         # TODO: This one should only triggers for 10000-sans
         exception_msg.contains("excessive message size"), exception_msg
 
