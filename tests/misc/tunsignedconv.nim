@@ -65,6 +65,10 @@ block: # issue #14522
   block:
     let a = 0xFF000000_00000000.uint64
     doAssert a is uint64
+    let a2 = 0xFF000000_00000000'i64
+    doAssert a2 is int64
+    doAssert cast[uint64](a2) == a
+    doAssert cast[int64](a2) == a2
   block:
     let a = 0xFF000000_00000000
     doAssert a is uint64
@@ -78,9 +82,6 @@ import stdtest/testutils
 
 doAssertParserRaises(ValueError): "18374686479671623680'i64"
 doAssertParserRaises(ValueError): "183746864796716236804" # too big to fit uint64
-
-let z = 0xFF000000_00000000'i64
-# doAssertParserRaises(ValueError): "0xFF000000_00000000'i64"
 
 block: # issue #14529
   # BUG: `0xFF000000_0000000000000` should be an error, see https://github.com/nim-lang/Nim/issues/14529
