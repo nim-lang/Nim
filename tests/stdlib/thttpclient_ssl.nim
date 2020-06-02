@@ -125,7 +125,6 @@ when not defined(windows):
         log "client: exception: " & msg
         # SSL_shutdown:shutdown while in init
         if not (msg.contains("alert number 48") or
-          msg.contains("routines:CONNECT_CR_CERT:certificate verify failed") or
-          msg.contains("routines:tls_process_server_certificate:certificate verify failed")):
+          msg.contains("certificate verify failed")):
           echo "CVerifyPeer exception: " & msg
           check(false)
