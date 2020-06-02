@@ -38,8 +38,6 @@ macro with*(arg: typed; calls: varargs[untyped]): untyped =
   underscoredCalls(result, calls, arg)
 
 when isMainModule:
-  import sugar
-
   type
     Foo = object
       col, pos: string
@@ -56,10 +54,5 @@ when isMainModule:
   with f:
     col = $(2, 3, 4)
     pos = $(0.0, 1.0)
-    name = "bar"
+    _.name = "bar"
   echo f
-
-  let f2 = f.dup(setPosition(2.0, 3.0)).with:
-    col = $(3, 4, 5)
-  echo f2
-

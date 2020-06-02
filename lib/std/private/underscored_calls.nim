@@ -39,30 +39,10 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
     result.add arg0
 
 proc underscoredCalls*(result, calls, arg0: NimNode) =
-  proc handleStmtList(result, n, arg0: NimNode) =
-    for a in n:
-      if a.kind in {nnkStmtList, nnkStmtListExpr}:
-        handleStmtList(result, a, arg0)
-      else:
-        result.add underscoredCall(a, arg0)
+  expectKind calls, {nnkArgList, nnkStmtList, nnkStmtListExpr}
 
-  expectKind calls, nnkArgList
-
-  # handle the case when arg0 is x.dup
-  var obj = arg0
-  let isDup = arg0.kind == nnkStmtListExpr and arg0[^1].kind == nnkSym
-  if isDup:
-    for i in 0..<arg0.len-1:
-      result.add arg0[i]
-    obj = arg0[^1]
-
-  if calls.len == 1 and calls[0].kind in {nnkStmtList, nnkStmtListExpr}:
-    # the 'macro: body' syntax is used:
-    handleStmtList(result, calls[0], obj)
-  else:
-    for call in calls:
-      result.add underscoredCall(call, obj)
-
-  if isDup:
-    # need to add the duplicated object back
-    result.add obj
+  for call in calls:
+    if call.kind in {nnkStmtList, nnkStmtListExpr}:
+      underscoredCalls(result, call, arg0)
+    else:
+      result.add underscoredCall(call, arg0)

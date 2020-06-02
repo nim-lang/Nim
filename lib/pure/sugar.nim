@@ -337,6 +337,24 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
 
 when isMainModule:
   since (1, 1):
+    block dup_with_field:
+      type
+        Foo = object
+          col, pos: int
+          name: string
+
+      proc inc_col(foo: var Foo) = inc(foo.col)
+      proc inc_pos(foo: var Foo) = inc(foo.pos)
+      proc name_append(foo: var Foo, s: string) = foo.name &= s
+
+      let a = Foo(col: 1, pos: 2, name: "foo")
+      let b = a.dup(inc_col, inc_pos):
+        _.pos = 3
+        name_append("bar")
+        inc_pos
+
+      doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
+
     import algorithm
 
     var a = @[1, 2, 3, 4, 5, 6, 7, 8, 9]
