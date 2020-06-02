@@ -543,7 +543,7 @@ const
     # Platform specific flag for creating a File without inheritance.
     when not defined(nimInheritHandles):
       when defined(windows):
-        "N"
+        "N" # probably not completely correct
       elif defined(linux) or defined(bsd):
         "e"
       else:

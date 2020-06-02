@@ -529,6 +529,18 @@ proc runCI(cmd: string) =
   # boot without -d:nimHasLibFFI to make sure this still works
   kochExecFold("Boot in release mode", "boot -d:release")
 
+  when false:
+    #[
+    if debugging a tricky issue that's hard to investigate locally, you can
+    edit this as needed and update these to only run on the problematic OS:
+    azure-pipelines.yml
+    .github/workflows/ci_docs.yml
+    .github/workflows/ci_ssl.yml
+    .github/workflows/ci_packages.yml
+    ]#
+    execFold("Run custom test for debugging", "nim c -r tests/stdlib/mfdleakIssue14090.nim")
+    doAssert false, "remember to turn off via `when false`"
+
   ## build nimble early on to enable remainder to depend on it if needed
   kochExecFold("Build Nimble", "nimble")
 

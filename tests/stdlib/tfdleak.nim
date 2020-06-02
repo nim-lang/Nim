@@ -13,6 +13,7 @@ else:
 
 proc leakCheck(f: AsyncFD | int | FileHandle | SocketHandle, msg: string,
                expectLeak = defined(nimInheritHandles)) =
+  echo ("leakCheck", getAppFilename(), expectLeak)
   discard startProcess(
     getAppFilename(),
     args = @[$f.int, msg, $expectLeak],
@@ -20,9 +21,31 @@ proc leakCheck(f: AsyncFD | int | FileHandle | SocketHandle, msg: string,
   ).waitForExit -1
 
 proc isValidHandle(f: int): bool =
-  ## Check if a handle is valid. Requires OS-native handles.
+  ## Check if a handle is valid. Requires OS-native handles; buggy on windows.
   when defined(windows):
+    #[
+    bug:
+    this has false positives, see `mfdleakIssue14090`.
+    It seems the handle gets reused in the child but that doesn't mean the file
+    is opened in the child; indeed modifying the code and trying to use the file to
+    read some open file would fail.
+
+    The best resource2 on this topic I found is:
+    * https://docs.microsoft.com/en-us/windows/win32/procthread/inheritance
+    * https://wiki.sei.cmu.edu/confluence/display/c/WIN03-C.+Understand+HANDLE+inheritance
+    Handle inheritance involves specifying whether a handle is inheritable (via BOOL
+    or SECURITY_DESCRIPTOR parameter), and then specifying in `CreateProcess`
+    whether the spawned process will inherit handles previously flagged as inheritable.
+
+    `system` seems different also, and a windows specific "N" flag given to `fopen`
+    controls inheritence.
+    
+    The article also mentions instead using `GetFileInformationByHandle`
+
+    * see also: https://github.com/python/cpython/blob/master/Python/fileutils.c
+    ]#
     var flags: DWORD
+    # maybe `GetFileInformationByHandle` is more suitable
     result = getHandleInformation(f.Handle, addr flags) != 0
   else:
     result = fcntl(f.cint, F_GETFD) != -1
@@ -105,7 +128,13 @@ proc main() =
       fd = parseInt(paramStr 1)
       expectLeak = parseBool(paramStr 3)
       msg = (if expectLeak: "not " else: "") & "leaked " & paramStr 2
-    if expectLeak xor fd.isValidHandle:
-      echo msg
+    template fn() =
+      if expectLeak xor fd.isValidHandle:
+        echo (msg, fd, expectLeak, defined(nimInheritHandles))
+
+    when defined windows:
+      # `isValidHandle` has false positives on windows
+      if expectLeak: fn()
+    else: fn()
 
 when isMainModule: main()
