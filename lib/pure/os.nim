@@ -1361,26 +1361,26 @@ when not defined(nimscript):
         when useWinUnicode:
           var res = newWideCString("", bufsize)
           while true:
-            var L = getCurrentDirectoryW(bufsize, res)
-            if L == 0'i32:
+            var num = getCurrentDirectoryW(bufsize, res)
+            if num == 0'i32:
               raiseOSError(osLastError())
-            elif L > bufsize:
-              res = newWideCString("", L)
-              bufsize = L
+            elif num > bufsize:
+              res = newWideCString("", num)
+              bufsize = num
             else:
-              result = res$L
+              result = res$num
               break
         else:
           result = newString(bufsize)
           while true:
-            var L = getCurrentDirectoryA(bufsize, result)
-            if L == 0'i32:
+            var num = getCurrentDirectoryA(bufsize, result)
+            if num == 0'i32:
               raiseOSError(osLastError())
-            elif L > bufsize:
-              result = newString(L)
-              bufsize = L
+            elif num > bufsize:
+              result = newString(num)
+              bufsize = num
             else:
-              setLen(result, L)
+              setLen(result, num)
               break
       else:
         var bufsize = 1024 # should be enough
@@ -2016,27 +2016,27 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
       var unused: WideCString = nil
       var res = newWideCString("", bufsize)
       while true:
-        var L = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
-        if L == 0'i32:
+        var num = getFullPathNameW(newWideCString(filename), bufsize, res, unused)
+        if num == 0'i32:
           raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
+        elif num > bufsize:
+          res = newWideCString("", num)
+          bufsize = num
         else:
-          result = res$L
+          result = res$num
           break
     else:
       var unused: cstring = nil
       result = newString(bufsize)
       while true:
-        var L = getFullPathNameA(filename, bufsize, result, unused)
-        if L == 0'i32:
+        var num = getFullPathNameA(filename, bufsize, result, unused)
+        if num == 0'i32:
           raiseOSError(osLastError(), filename)
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
+        elif num > bufsize:
+          result = newString(num)
+          bufsize = num
         else:
-          setLen(result, L)
+          setLen(result, num)
           break
     # getFullPathName doesn't do case corrections, so we have to use this convoluted
     # way of retrieving the true filename
@@ -2989,28 +2989,28 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noN
     when useWinUnicode:
       var buf = newWideCString("", bufsize)
       while true:
-        var L = getModuleFileNameW(0, buf, bufsize)
-        if L == 0'i32:
+        var num = getModuleFileNameW(0, buf, bufsize)
+        if num == 0'i32:
           result = "" # error!
           break
-        elif L > bufsize:
-          buf = newWideCString("", L)
-          bufsize = L
+        elif num > bufsize:
+          buf = newWideCString("", num)
+          bufsize = num
         else:
-          result = buf$L
+          result = buf$num
           break
     else:
       result = newString(bufsize)
       while true:
-        var L = getModuleFileNameA(0, result, bufsize)
-        if L == 0'i32:
+        var num = getModuleFileNameA(0, result, bufsize)
+        if num == 0'i32:
           result = "" # error!
           break
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
+        elif num > bufsize:
+          result = newString(num)
+          bufsize = num
         else:
-          setLen(result, L)
+          setLen(result, num)
           break
   elif defined(macosx):
     var size: cuint32
