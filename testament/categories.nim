@@ -13,6 +13,7 @@
 # included from testament.nim
 
 import important_packages
+import std/private/nimbleutils
 
 const
   specialCategories = [
@@ -501,9 +502,9 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       if not existsDir(buildPath):
         if hasDep:
           let installName = if url.len != 0: url else: name
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
-          if nimbleStatus != QuitSuccess:
-            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+          var message: string
+          if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
+            (proc(): bool = nimbleInstall(installName, message))):
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
