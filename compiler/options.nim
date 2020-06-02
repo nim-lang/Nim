@@ -315,6 +315,14 @@ type
                                 severity: Severity) {.closure, gcsafe.}
     cppCustomNamespace*: string
 
+proc assignIfDefault*[T](result: var T, val: T, def = default(T)) =
+  ## if `result` was already assigned to a value (that wasn't `def`), this is a noop.
+  if result == def: result = val
+
+template setErrorMaxHighMaybe*(conf: ConfigRef) =
+  ## do not stop after first error (but honor --errorMax if provided)
+  assignIfDefault(conf.errorMax, high(int))
+
 proc setNoteDefaults*(conf: ConfigRef, note: TNoteKind, enabled = true) =
   template fun(op) =
     conf.notes.op note

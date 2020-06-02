@@ -169,8 +169,7 @@ proc mainCommand(graph: ModuleGraph) =
     if not fileExists(conf.projectFull):
       quit "cannot find file: " & conf.projectFull.string
     add(conf.searchPaths, conf.libpath)
-    # do not stop after the first error:
-    conf.errorMax = high(int)
+    conf.setErrorMaxHighMaybe
     try:
       compileProject(graph)
     finally:
