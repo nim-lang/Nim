@@ -13,7 +13,6 @@ else:
 
 proc leakCheck(f: AsyncFD | int | FileHandle | SocketHandle, msg: string,
                expectLeak = defined(nimInheritHandles)) =
-  echo ("leakCheck", getAppFilename(), expectLeak)
   discard startProcess(
     getAppFilename(),
     args = @[$f.int, msg, $expectLeak],
