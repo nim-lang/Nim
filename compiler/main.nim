@@ -389,10 +389,15 @@ proc mainCommand*(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    var output = if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonScript:
-      $conf.jsonBuildFile
+
+    var output: string
+    if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonScript:
+      output = $conf.jsonBuildFile
+    elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonScript, cmdCompileToBackend, cmdDoc}:
+      # for some cmd we expect a valid absOutFile
+      output = "unknownOutput"
     else:
-      $conf.absOutFile
+      output = $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,
