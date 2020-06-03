@@ -13,14 +13,6 @@ const
   ConfigSource = "https://ssl-config.mozilla.org/guidelines/latest.json"
   OutputFile = "ssl_config.nim"
 
-func appendToList(list, str: string): string =
-  if list.len == 0:
-    result = str
-  elif str.len == 0:
-    result = list
-  else:
-    result = list & ':' & str
-
 proc main() =
   let
     client = newHttpClient(sslContext = newContext(verifyMode = CVerifyPeer))
@@ -46,17 +38,27 @@ proc main() =
   for name, config in configs["configurations"]:
     let
       constantName = "Ciphers" & name[0].toUpperAscii & name[1..^1]
-      ciphers = config["ciphersuites"].foldl(a.appendToList b.getStr, "").appendToList(
-        config["ciphers"]["openssl"].foldl(a.appendToList b.getStr, "")
-      )
-      oldestClients = config["oldest_clients"].foldl(a & "\n  ## * " & b.getStr, "")
 
-    output.writeLine(&"""
+    var ciphers: string
+    for c in config["ciphersuites"].getElems & config["ciphers"]["openssl"].getElems:
+      if ciphers.len == 0:
+        ciphers.add c.getStr
+      else:
+        ciphers.add ':'
+        ciphers.add c.getStr
+
+    var constant = &"""
 const {constantName}* = "{ciphers}"
   ## An OpenSSL-compatible list of secure ciphers for ``{name}`` compatibility
   ## per Mozilla's recommendations.
   ##
-  ## Oldest clients supported by this list:{oldestClients}
-""")
+  ## Oldest clients supported by this list:
+"""
+
+    for c in config["oldest_clients"]:
+      constant.add "  ## * " & c.getStr
+      constant.add '\n'
+
+    output.writeLine constant
 
 when isMainModule: main()
