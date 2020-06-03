@@ -479,8 +479,6 @@ when defineSsl:
     let err = ERR_peek_last_error()
     if err == 0:
       raise newException(SslError, "No error reported.")
-    if err == -1:
-      raiseOSError(osLastError())
     var errStr = $ERR_error_string(err, nil)
     case err
     of 336032814, 336032784:

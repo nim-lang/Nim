@@ -478,10 +478,10 @@ proc BIO_free*(b: BIO): cint{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc ERR_print_errors_fp*(fp: File){.cdecl, dynlib: DLLSSLName, importc.}
 
-proc ERR_error_string*(e: cint, buf: cstring): cstring{.cdecl,
+proc ERR_error_string*(e: culong, buf: cstring): cstring{.cdecl,
     dynlib: DLLUtilName, importc.}
-proc ERR_get_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
-proc ERR_peek_last_error*(): cint{.cdecl, dynlib: DLLUtilName, importc.}
+proc ERR_get_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
+proc ERR_peek_last_error*(): culong{.cdecl, dynlib: DLLUtilName, importc.}
 
 proc OPENSSL_config*(configName: cstring){.cdecl, dynlib: DLLSSLName, importc.}
 
