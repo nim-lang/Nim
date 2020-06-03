@@ -752,12 +752,14 @@ when defineSsl:
         # Discard result in case OpenSSL version doesn't support SNI, or we're
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
+      ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation) and not defined(windows):
         if hostname.len > 0 and not isIpAddress(hostname):
           socket.checkCertName(hostname)
     of handshakeAsServer:
+      ErrClearError()
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
 
@@ -926,6 +928,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
         # We must wrap the client sock in a ssl context.
 
         server.sslContext.wrapSocket(client)
+        ErrClearError()
         let ret = SSL_accept(client.sslHandle)
         socketError(client, ret, false)
 
@@ -955,6 +958,7 @@ when false: #defineSsl:
 
           if not client.isSsl or client.sslHandle == nil:
             server.sslContext.wrapSocket(client)
+          ErrClearError()
           let ret = SSL_accept(client.sslHandle)
           while ret <= 0:
             let err = SSL_get_error(client.sslHandle, ret)
@@ -1135,6 +1139,7 @@ proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
   assert(not socket.isClosed, "Cannot `recv` on a closed socket")
   when defineSsl:
     if socket.isSsl:
+      ErrClearError()
       return SSL_read(socket.sslHandle, buffer, size)
 
   return recv(socket.fd, buffer, size, flags)
@@ -1484,6 +1489,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   assert(not socket.isClosed, "Cannot `send` on a closed socket")
   when defineSsl:
     if socket.isSsl:
+      ErrClearError()
       return SSL_write(socket.sslHandle, cast[cstring](data), size)
 
   when useWinVersion or defined(macosx):
@@ -1768,6 +1774,7 @@ proc connect*(socket: Socket, address: string,
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
 
+      ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation) and not defined(windows):
