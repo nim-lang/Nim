@@ -348,12 +348,20 @@ when isMainModule:
       proc name_append(foo: var Foo, s: string) = foo.name &= s
 
       let a = Foo(col: 1, pos: 2, name: "foo")
-      let b = a.dup(inc_col, inc_pos):
-        _.pos = 3
-        name_append("bar")
-        inc_pos
+      block:
+        let b = a.dup(inc_col, inc_pos):
+          _.pos = 3
+          name_append("bar")
+          inc_pos
 
-      doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
+        doAssert(b == Foo(col: 2, pos: 4, name: "foobar"))
+
+      block:
+        let b = a.dup(inc_col, pos = 3, name: "bar"):
+          name_append("bar")
+          inc_pos
+
+        doAssert(b == Foo(col: 2, pos: 4, name: "barbar"))
 
     import algorithm
 
