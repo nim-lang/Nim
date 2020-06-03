@@ -41,7 +41,7 @@ const certificate_tests: array[0..55, CertTest] = [
   ("https://pinning-test.badssl.com/", bad_broken, "pinning-test"),
   ("https://no-common-name.badssl.com/", dubious_broken, "no-common-name"),
   ("https://no-subject.badssl.com/", dubious_broken, "no-subject"),
-  ("https://incomplete-chain.badssl.com/", dubious, "incomplete-chain"),
+  ("https://incomplete-chain.badssl.com/", dubious_broken, "incomplete-chain"),
   ("https://sha1-intermediate.badssl.com/", bad_broken, "sha1-intermediate"),
   ("https://sha256.badssl.com/", good, "sha256"),
   ("https://sha384.badssl.com/", good, "sha384"),
