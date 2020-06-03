@@ -102,7 +102,7 @@
 - Add `ssl_config` module containing lists of secure ciphers as recommended by
   [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
 
-- `net.newContext` now uses the list of ciphers targeting
+- `net.newContext` now defaults to the list of ciphers targeting
   ["Intermediate compatibility"](https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29)
   per Mozilla's recommendation instead of `ALL`. This change should protect
   users from the use of weak and insecure ciphers while still provides
