@@ -1006,6 +1006,7 @@ proc close*(socket: Socket) =
   try:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
+        ErrClearError()
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
