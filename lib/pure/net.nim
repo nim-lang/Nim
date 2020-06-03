@@ -68,6 +68,7 @@ import std/private/since
 
 import nativesockets, os, strutils, times, sets, options, std/monotimes
 from ssl_certs import scanSSLCertificates
+import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
@@ -533,7 +534,7 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = "", cipherList = "ALL",
+                   certFile = "", keyFile = "", cipherList = CiphersIntermediate,
                    caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##

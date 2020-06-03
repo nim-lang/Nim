@@ -99,6 +99,15 @@
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
+- Add `ssl_config` module containing lists of secure ciphers as recommended by
+  [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
+
+- `net.newContext` now uses the list of ciphers targeting
+  ["Intermediate compatibility"](https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29)
+  per Mozilla's recommendation instead of `ALL`. This change should protect
+  users from the use of weak and insecure ciphers while still provides
+  adequate compatiblity with the majority of the Internet.
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 
