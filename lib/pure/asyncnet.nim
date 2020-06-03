@@ -718,6 +718,7 @@ proc close*(socket: AsyncSocket) =
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
         if SSL_in_init(socket.sslHandle) == 0:
+          ErrClearError()
           SSL_shutdown(socket.sslHandle)
         else:
           0

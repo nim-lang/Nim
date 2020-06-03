@@ -61,6 +61,7 @@ when not defined(windows):
     var ssl: SslPtr = SSL_new(ctx.context)
     discard SSL_set_fd(ssl, client.getFd())
     log "server: accepting connection"
+    ErrClearError()
     if SSL_accept(ssl) <= 0:
       ERR_print_errors_fp(stderr)
     else:
