@@ -32,6 +32,8 @@ proc underscoredCall(n, arg0: NimNode): NimNode =
       # handle _.field = ...
       field = n[0][1]
     result = newDotExpr(arg0, field).newAssignment n[1]
+  elif n.kind in {nnkExprEqExpr, nnkExprColonExpr}:
+    result = newDotExpr(arg0, n[0]).newAssignment n[1]
   else:
     # handle e.g. 'x.dup(sort)'
     result = newNimNode(nnkCall, n)

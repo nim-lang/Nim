@@ -99,7 +99,7 @@
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
 
-- `std/with` now support object field assignment expression:
+- `std/with`, `sugar/dup` now support object field assignment expression:
   ```nim
   import std/with
 
