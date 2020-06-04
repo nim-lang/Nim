@@ -253,6 +253,7 @@ when defineSsl:
                    op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
+      ErrClearError()
       # Call the desired operation.
       opResult = op
       # Bit hackish here.
