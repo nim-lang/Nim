@@ -296,6 +296,7 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
       SSl_state(ssl) and SSL_ST_INIT
   else:
     proc SSL_in_init*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
 
   template OpenSSL_add_all_algorithms*() = discard
 
@@ -422,6 +423,10 @@ else:
       sslState(ssl) and SSL_ST_INIT
     else:
       raiseInvalidLibrary MainProc
+
+  proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint =
+    let theProc {.global.} = cast[proc(ctx: SslCtx, str: cstring) {.cdecl, gcsafe.}](sslSymThrows("SSL_CTX_set_ciphersuites"))
+    theProc(ctx, str)
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
