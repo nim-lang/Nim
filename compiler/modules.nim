@@ -107,7 +107,6 @@ proc compileModule*(graph: ModuleGraph; fileIdx: FileIndex; flags: TSymFlags): P
 proc importModule*(graph: ModuleGraph; s: PSym, fileIdx: FileIndex): PSym =
   # this is called by the semantic checking phase
   assert graph.config != nil
-  # dbg result.name.s, result.flags
   result = compileModule(graph, fileIdx, {})
   graph.addDep(s, fileIdx)
   # keep track of import relationships
