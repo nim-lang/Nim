@@ -585,7 +585,7 @@ when defineSsl:
     #
     # From OpenSSL >= 1.1.0, this setting is set by default and can't be
     # overriden.
-    if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
+    if getOpenSSLVersion() >= 0x10002000 and newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
       raiseSSLError()
 
     when defined(nimDisableCertificateValidation) or defined(windows):

@@ -264,12 +264,10 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLeay(): culong {.cdecl, dynlib: DLLSSLName, importc.}
 
     proc getOpenSSLVersion*(): culong =
-      ## This interface is not supported for OpenSSL < 1.1.0 and will
-      ## always return 0. The interface is provided to aid code
-      ## supporting multiple OpenSSL versions.
-      0
+      SSLeay()
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
@@ -394,7 +392,7 @@ else:
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num"))
+    let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num", "SSLeay"))
     {.gcsafe.}:
       result =
         if theProc.isNil: 0.culong
