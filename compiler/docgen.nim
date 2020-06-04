@@ -55,9 +55,6 @@ type
 
   PDoc* = ref TDocumentor ## Alias to type less.
 
-proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
-
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
   let file2 = $file
@@ -154,13 +151,9 @@ proc parseRst(text, filename: string,
                     docgenFindFile, compilerMsgHandler)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
-                 ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
-  if optWholeProject in conf.globalOptions:
-    let d = conf.docOutDir(dir)
-    createDir(d)
-    result = d / changeFileExt(filename, ext)
-  elif guessTarget:
-    let d = conf.docOutDir
+                 ext: string, guessTarget: bool): AbsoluteFile =
+  if optWholeProject in conf.globalOptions or guessTarget:
+    let d = conf.outDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif not conf.outFile.isEmpty:
@@ -235,8 +228,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       if execShellCmd(cmd) != status:
         rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
-                                outExt, htmldocsDir, false)
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -364,8 +356,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
-                          htmldocsDir, sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -1272,14 +1263,13 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = d.conf.docOutDir(htmldocsDir)
+    let dir = d.conf.outDir
     createDir(dir)
     let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
     if d.conf.outFile.isEmpty:
       d.conf.outFile = outfile.relativeTo(d.conf.outDir)
       if isAbsolute(d.conf.outFile.string):
@@ -1292,7 +1282,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     writeRope(stdout, content)
   else:
     template outfile: untyped = d.destFile
-    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt)
     let dir = outfile.splitFile.dir
     createDir(dir)
     updateOutfile(d, outfile)
