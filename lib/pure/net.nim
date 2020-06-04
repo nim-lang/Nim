@@ -580,6 +580,13 @@ when defineSsl:
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
+    # Automatically the best ECDH curve for client exchange. Without this, ECDH
+    # ciphers will be ignored by the server.
+    #
+    # From OpenSSL >= 1.1.0, this setting is set by default and can't be
+    # overriden.
+    if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
+      raiseSSLError()
 
     when defined(nimDisableCertificateValidation) or defined(windows):
       newCTX.SSL_CTX_set_verify(SSL_VERIFY_NONE, nil)

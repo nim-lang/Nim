@@ -181,6 +181,7 @@ const
   SSL_CTRL_SET_TLSEXT_SERVERNAME_CB = 53
   SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG = 54
   SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
+  SSL_CTRL_SET_ECDH_AUTO* = 94
   TLSEXT_NAMETYPE_host_name* = 0
   SSL_TLSEXT_ERR_OK* = 0
   SSL_TLSEXT_ERR_ALERT_WARNING* = 1
@@ -263,6 +264,12 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
+
+    proc getOpenSSLVersion*(): culong =
+      ## This interface is not supported for OpenSSL < 1.1.0 and will
+      ## always return 0. The interface is provided to aid code
+      ## supporting multiple OpenSSL versions.
+      0
   else:
     proc OPENSSL_init_ssl*(opts: uint64, settings: uint8): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_library_init*(): cint {.discardable.} =
@@ -587,6 +594,15 @@ proc SSL_CTX_use_psk_identity_hint*(ctx: SslCtx; hint: cstring): cint {.cdecl, d
 
 proc SSL_get_psk_identity*(ssl: SslPtr): cstring {.cdecl, dynlib: DLLSSLName, importc.}
   ## Get PSK identity.
+
+proc SSL_CTX_set_ecdh_auto*(ctx: SslCtx, onoff: cint): cint {.inline.} =
+  ## Set automatic curve selection.
+  ##
+  ## On OpenSSL >= 1.1.0 this is on by default and cannot be disabled.
+  if getOpenSSLVersion() < 0x010100000:
+    result = cint SSL_CTX_ctrl(ctx, SSL_CTRL_SET_ECDH_AUTO, onoff, nil)
+  else:
+    result = 1
 
 proc bioNew*(b: PBIO_METHOD): BIO{.cdecl, dynlib: DLLUtilName, importc: "BIO_new".}
 proc bioFreeAll*(b: BIO){.cdecl, dynlib: DLLUtilName, importc: "BIO_free_all".}
