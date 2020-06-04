@@ -403,29 +403,25 @@ else:
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl.}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
-    {.gcsafe.}:
-      result =
-        if theProc.isNil: 0.culong
-        else: theProc()
+    let theProc = cast[proc(): culong {.cdecl, gcsafe.}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
+    result =
+      if theProc.isNil: 0.culong
+      else: theProc()
 
   proc SSL_in_init*(ssl: SslPtr): cint =
     # A compatibility wrapper for `SSL_in_init()` for OpenSSL 1.0, 1.1 and LibreSSL
     const MainProc = "SSL_in_init"
     let
-      theProc {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl.}](sslSymNullable(MainProc))
+      theProc {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable(MainProc))
       # Fallback
-      sslState {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl.}](sslSymNullable("SSL_state"))
+      sslState {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable("SSL_state"))
 
-    # FIXME: This shouldn't be needed, but the compiler is complaining about
-    #        `sslState` being GC-ed memory???
-    {.gcsafe.}:
-      if not theProc.isNil:
-        theProc(ssl)
-      elif not sslState.isNil:
-        sslState(ssl) and SSL_ST_INIT
-      else:
-        raiseInvalidLibrary MainProc
+    if not theProc.isNil:
+      theProc(ssl)
+    elif not sslState.isNil:
+      sslState(ssl) and SSL_ST_INIT
+    else:
+      raiseInvalidLibrary MainProc
 
 proc ERR_load_BIO_strings*(){.cdecl, dynlib: DLLUtilName, importc.}
 
