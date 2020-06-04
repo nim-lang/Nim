@@ -264,7 +264,7 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSL_library_init*(): cint {.cdecl, dynlib: DLLSSLName, importc, discardable.}
     proc SSL_load_error_strings*() {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSLv23_method*(): PSSL_METHOD {.cdecl, dynlib: DLLSSLName, importc.}
-    proc SSLeay(): culong {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSLeay(): culong {.cdecl, dynlib: DLLUtilName, importc.}
 
     proc getOpenSSLVersion*(): culong =
       SSLeay()
@@ -278,7 +278,7 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSLv23_method*(): PSSL_METHOD =
       TLS_method()
 
-    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLSSLName, importc.}
+    proc OpenSSL_version_num(): culong {.cdecl, dynlib: DLLUtilName, importc.}
 
     proc getOpenSSLVersion*(): culong =
       ## Return OpenSSL version as unsigned long
@@ -318,13 +318,18 @@ else:
 
     result = sslMod
 
-  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+  proc utilModule(): LibHandle {.inline.} =
+    var utilMod {.global.}: LibHandle
+    if utilMod.isNil: utilMod = loadLibPattern(DLLUtilName)
+
+    result = utilMod
+
+  proc symNullable(dll: LibHandle, name: string, alternativeName = ""): pointer =
     # Load from DLL.
-    var sslDynlib = sslModule()
-    if not sslDynlib.isNil:
-      result = symAddr(sslDynlib, name)
+    if not dll.isNil:
+      result = symAddr(dll, name)
       if result.isNil and alternativeName.len > 0:
-        result = symAddr(sslDynlib, alternativeName)
+        result = symAddr(dll, alternativeName)
 
     # Attempt to load from current exe.
     if result.isNil:
@@ -332,11 +337,17 @@ else:
       if thisDynlib.isNil: return nil
       result = symAddr(thisDynlib, name)
       if result.isNil and alternativeName.len > 0:
-        result = symAddr(sslDynlib, alternativeName)
+        result = symAddr(thisDynlib, alternativeName)
+
+  proc sslSymNullable(name: string, alternativeName = ""): pointer =
+    sslModule().symNullable(name, alternativeName)
 
   proc sslSymThrows(name: string, alternativeName = ""): pointer =
     result = sslSymNullable(name, alternativeName)
     if result.isNil: raiseInvalidLibrary(name)
+
+  proc utilSymNullable(name: string, alternativeName = ""): pointer =
+    utilModule().symNullable(name, alternativeName)
 
   proc loadPSSLMethod(method1, method2: string): PSSL_METHOD =
     ## Load <method1> from OpenSSL if available, otherwise <method2>
@@ -392,7 +403,7 @@ else:
 
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
-    let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num", "SSLeay"))
+    let theProc = cast[proc(): culong {.cdecl.}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
     {.gcsafe.}:
       result =
         if theProc.isNil: 0.culong
