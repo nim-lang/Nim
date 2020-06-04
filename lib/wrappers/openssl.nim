@@ -609,7 +609,7 @@ proc SSL_CTX_set_ecdh_auto*(ctx: SslCtx, onoff: cint): cint {.inline.} =
   ## Set automatic curve selection.
   ##
   ## On OpenSSL >= 1.1.0 this is on by default and cannot be disabled.
-  if getOpenSSLVersion() < 0x010100000:
+  if getOpenSSLVersion() < 0x010100000 or getOpenSSLVersion() == 0x020000000:
     result = cint SSL_CTX_ctrl(ctx, SSL_CTRL_SET_ECDH_AUTO, onoff, nil)
   else:
     result = 1
