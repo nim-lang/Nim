@@ -12,7 +12,7 @@ on:
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
   pull_request:
-    # Run only on changes on these files
+    # Run only on changes on these files.
     paths:
       - 'compiler/docgen.nim'
       - 'compiler/renderverbatim.nim'

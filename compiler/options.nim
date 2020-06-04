@@ -273,6 +273,7 @@ type
     lazyPaths*: seq[AbsoluteDir]
     outFile*: RelativeFile
     outDir*: AbsoluteDir
+    jsonBuildFile*: AbsoluteFile
     prefixDir*, libpath*, nimcacheDir*: AbsoluteDir
     dllOverrides, moduleOverrides*, cfileSpecificOptions*: StringTableRef
     projectName*: string # holds a name like 'nim'
@@ -281,6 +282,7 @@ type
     projectIsStdin*: bool # whether we're compiling from stdin
     lastMsgWasDot*: bool # the last compiler message was a single '.'
     projectMainIdx*: FileIndex # the canonical path id of the main module
+    projectMainIdx2*: FileIndex # consider merging with projectMainIdx
     command*: string # the main command (e.g. cc, check, scan, etc)
     commandArgs*: seq[string] # any arguments after the main command
     commandLine*: string
@@ -336,7 +338,10 @@ proc setNote*(conf: ConfigRef, note: TNoteKind, enabled = true) =
     if enabled: incl(conf.notes, note) else: excl(conf.notes, note)
 
 proc hasHint*(conf: ConfigRef, note: TNoteKind): bool =
-  optHints in conf.options and note in conf.notes
+  if optHints notin conf.options: false
+  elif note in {hintConf}: # could add here other special notes like hintSource
+    note in conf.mainPackageNotes
+  else: note in conf.notes
 
 proc hasWarn*(conf: ConfigRef, note: TNoteKind): bool =
   optWarns in conf.options and note in conf.notes
@@ -556,11 +561,8 @@ proc getOutFile*(conf: ConfigRef; filename: RelativeFile, ext: string): Absolute
   result = conf.outDir / changeFileExt(filename, ext)
 
 proc absOutFile*(conf: ConfigRef): AbsoluteFile =
-  if false:
-    doAssert not conf.outDir.isEmpty
-    doAssert not conf.outFile.isEmpty
-    # xxx: fix this pre-existing bug causing `SuccessX` error messages to lie
-    # for `jsonscript`
+  doAssert not conf.outDir.isEmpty
+  doAssert not conf.outFile.isEmpty
   result = conf.outDir / conf.outFile
   when defined(posix):
     if dirExists(result.string): result.string.add ".out"
