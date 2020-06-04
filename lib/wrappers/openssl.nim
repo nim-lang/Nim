@@ -546,7 +546,7 @@ proc SSL_CTX_callback_ctrl(ctx: SslCtx, typ: cint, fp: PFunction): int{.
   cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSLCTXSetMode*(ctx: SslCtx, mode: int): int =
-  result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, mode, nil)
+  result = SSL_CTX_ctrl(ctx, SSL_CTRL_MODE, clong mode, nil)
 
 proc SSL_ctrl*(ssl: SslPtr, cmd: cint, larg: int, parg: pointer): int{.
   cdecl, dynlib: DLLSSLName, importc.}
