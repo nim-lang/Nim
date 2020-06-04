@@ -395,9 +395,10 @@ else:
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
     let theProc = cast[proc(): culong {.cdecl.}](sslSymNullable("OpenSSL_version_num"))
-    result =
-      if theProc.isNil: 0.culong
-      else: theProc()
+    {.gcsafe.}:
+      result =
+        if theProc.isNil: 0.culong
+        else: theProc()
 
   proc SSL_in_init*(ssl: SslPtr): cint =
     # A compatibility wrapper for `SSL_in_init()` for OpenSSL 1.0, 1.1 and LibreSSL
