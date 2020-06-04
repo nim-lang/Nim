@@ -534,7 +534,10 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = "", cipherList = CiphersIntermediate,
+                   certFile = "", keyFile = "",
+                   # XXX: update the OpenSSL that we ship with Windows for the
+                   #      next release.
+                   cipherList = when not defined(windows): CiphersIntermediate else: CiphersOld,
                    caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##
