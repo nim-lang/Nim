@@ -175,6 +175,7 @@ const
   SSL_CTRL_GET_SESS_CACHE_SIZE* = 43
   SSL_CTRL_SET_SESS_CACHE_MODE* = 44
   SSL_CTRL_GET_SESS_CACHE_MODE* = 45
+  SSL_CTRL_CLEAR_OPTIONS* = 47
   SSL_CTRL_GET_MAX_CERT_LIST* = 50
   SSL_CTRL_SET_MAX_CERT_LIST* = 51 #* Allow SSL_write(..., n) to return r with 0 < r < n (i.e. report success
                                    # * when just a single record has been written): *
@@ -182,6 +183,7 @@ const
   SSL_CTRL_SET_TLSEXT_SERVERNAME_ARG = 54
   SSL_CTRL_SET_TLSEXT_HOSTNAME = 55
   SSL_CTRL_SET_ECDH_AUTO* = 94
+  SSL_CTRL_SET_MIN_PROTO_VERSION* = 123
   TLSEXT_NAMETYPE_host_name* = 0
   SSL_TLSEXT_ERR_OK* = 0
   SSL_TLSEXT_ERR_ALERT_WARNING* = 1
@@ -198,8 +200,17 @@ const
   SSL_OP_NO_SSLv2* = 0x01000000
   SSL_OP_NO_SSLv3* = 0x02000000
   SSL_OP_NO_TLSv1* = 0x04000000
-  SSL_OP_NO_TLSv1_1* = 0x08000000
+  SSL_OP_NO_TLSv1_1* = 0x10000000
+  SSL_OP_NO_TLSv1_2* = 0x08000000
+  SSL_OP_NO_SSL_MASK* = SSL_OP_NO_SSLv2 or SSL_OP_NO_SSLv3 or SSL_OP_NO_TLSv1 or
+                        SSL_OP_NO_TLSv1_1 or SSL_OP_NO_TLSv1_2
   SSL_OP_ALL* = 0x000FFFFF
+  SSL2_VERSION* = 0x0002
+  SSL3_VERSION* = 0x0300
+  TLS1_VERSION* = 0x0301
+  TLS1_1_VERSION* = 0x0302
+  TLS1_2_VERSION* = 0x0303
+  TLS1_3_VERSION* = 0x0304
   SSL_VERIFY_NONE* = 0x00000000
   SSL_VERIFY_PEER* = 0x00000001
   SSL_ST_CONNECT* = 0x1000
@@ -257,6 +268,9 @@ proc TLSv1_method*(): PSSL_METHOD{.cdecl, dynlib: DLLSSLName, importc.}
 # and support SSLv3, TLSv1, TLSv1.1 and TLSv1.2
 # SSLv23_method(), SSLv23_server_method(), SSLv23_client_method() are removed in 1.1.0
 
+proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: clong, parg: pointer): clong{.
+  cdecl, dynlib: DLLSSLName, importc.}
+
 when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
   # Static linking
 
@@ -294,9 +308,23 @@ when compileOption("dynlibOverride", "ssl") or defined(noOpenSSLHacks):
     proc SSL_state(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_in_init*(ssl: SslPtr): cint {.inline.} =
       SSl_state(ssl) and SSL_ST_INIT
+
+    proc SSL_CTX_set_options*(ctx: SslCtx, op: clong): clong {.inline.} =
+      SSL_CTX_ctrl(ctx, SSL_CTRL_OPTIONS, op, nil)
+
+    proc SSL_CTX_clear_options*(ctx: SslCtx, op: clong): clong {.inline.} =
+      SSL_CTX_ctrl(ctx, SSL_CTRL_OPTIONS, op, nil)
+
+    when defined(libressl):
+      proc SSL_CTX_set_min_proto_version*(ctx: SslCtx, version: cint): cint {.cdecl, dynlib: DLLSSLName, importc.}
   else:
     proc SSL_in_init*(ssl: SslPtr): cint {.cdecl, dynlib: DLLSSLName, importc.}
     proc SSL_CTX_set_ciphersuites*(ctx: SslCtx, str: cstring): cint {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSL_CTX_set_options*(ctx: SslCtx, op: clong): clong {.cdecl, dynlib: DLLSSLName, importc.}
+    proc SSL_CTX_clear_options*(ctx: SslCtx, op: clong): clong {.cdecl, dynlib: DLLSSLName, importc.}
+
+    proc SSL_CTX_set_min_proto_version*(ctx: SslCtx, version: cint): cint =
+      cint SSL_CTX_ctrl(ctx, SSL_CTRL_SET_MIN_PROTO_VERSION, clong version, nil)
 
   template OpenSSL_add_all_algorithms*() = discard
 
@@ -402,12 +430,39 @@ else:
     let theProc = cast[proc() {.cdecl.}](sslSymNullable("OPENSSL_add_all_algorithms_conf"))
     if not theProc.isNil: theProc()
 
+  proc SSL_CTX_set_options*(ctx: SslCtx, op: clong): clong =
+    let theProc {.global.} = cast[proc(ctx: SslCtx, op: clong): clong {.cdecl, gcsafe.}](sslSymNullable("SSL_CTX_set_options"))
+    if not theProc.isNil:
+      theProc(ctx, op)
+    else:
+      SSL_CTX_ctrl(ctx, SSL_CTRL_OPTIONS, op, nil)
+
+  proc SSL_CTX_clear_options*(ctx: SslCtx, op: clong): clong =
+    let theProc {.global.} = cast[proc(ctx: SslCtx, op: clong): clong {.cdecl, gcsafe.}](sslSymNullable("SSL_CTX_clear_options"))
+    if not theProc.isNil:
+      theProc(ctx, op)
+    else:
+      SSL_CTX_ctrl(ctx, SSL_CTRL_CLEAR_OPTIONS, op, nil)
+
   proc getOpenSSLVersion*(): culong =
     ## Return OpenSSL version as unsigned long or 0 if not available
     let theProc = cast[proc(): culong {.cdecl, gcsafe.}](utilSymNullable("OpenSSL_version_num", "SSLeay"))
     result =
       if theProc.isNil: 0.culong
       else: theProc()
+
+  proc SSL_CTX_set_min_proto_version*(ctx: SslCtx, version: cint): cint =
+    ## Set the minimum supported protocol version.
+    const MainProc = "SSL_CTX_set_min_proto_version"
+    let theProc {.global.} = cast[proc(ctx: SslCtx, version: cint): cint {.cdecl, gcsafe.}](sslSymNullable(MainProc))
+    if not theProc.isNil:
+      theProc(ctx, version)
+    elif getOpenSSLVersion() == 0x020000000:
+      # For LibreSSL this is provided as a function, throw if it couldn't be
+      # found.
+      raiseInvalidLibrary(MainProc)
+    else:
+      cint SSL_CTX_ctrl(ctx, SSL_CTRL_SET_MIN_PROTO_VERSION, clong version, nil)
 
   proc SSL_in_init*(ssl: SslPtr): cint =
     # A compatibility wrapper for `SSL_in_init()` for OpenSSL 1.0, 1.1 and LibreSSL
@@ -551,9 +606,6 @@ when not useWinVersion and not defined(macosx) and not defined(android) and not 
 proc CRYPTO_malloc_init*() =
   when not useWinVersion and not defined(macosx) and not defined(android) and not defined(nimNoAllocForSSL):
     CRYPTO_set_mem_functions(allocWrapper, reallocWrapper, deallocWrapper)
-
-proc SSL_CTX_ctrl*(ctx: SslCtx, cmd: cint, larg: clong, parg: pointer): clong{.
-  cdecl, dynlib: DLLSSLName, importc.}
 
 proc SSL_CTX_callback_ctrl(ctx: SslCtx, typ: cint, fp: PFunction): int{.
   cdecl, dynlib: DLLSSLName, importc.}

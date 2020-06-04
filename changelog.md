@@ -279,6 +279,20 @@
 - Added `genasts.genAst` that avoids the problems inherent with `quote do` and can
   be used as a replacement.
 
+- `net.newContext` drops support for setting the _exact_ version of SSL/TLS.
+  This has been replaced by the ability to set the _minimum_ supported version.
+
+  The **default** minimum supported version is now `protTLS`. Details about
+  this constant can be found below.
+
+- `net.SslProtVersion` now specify the minimum version to use with `newContext`.
+  `protSSLv2`, `protSSLv3` and `protSSLv23` has now been deprecated in favor of
+  explicit TLS versions.
+
+  A new constant `protTLS` is provided, which tracks the latest recommended TLS
+  version with reasonable security and compatibility with the Internet. This
+  constant is the replacement for the old `protSSLv23`.
+
 ## Language changes
 
 - `nimscript` now handles `except Exception as e`.

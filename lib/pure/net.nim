@@ -100,6 +100,7 @@ when useWinVersion:
 
 when defineSsl:
   import openssl
+  import dynlib
   when not defined(nimDisableCertificateValidation):
     from ssl_certs import scanSSLCertificates
 
@@ -115,7 +116,14 @@ when defineSsl:
       CVerifyNone, CVerifyPeer, CVerifyPeerUseEnvVars
 
     SslProtVersion* = enum
-      protSSLv2, protSSLv3, protTLSv1, protSSLv23
+      ## Minimum supported SSL/TLS versions
+      protSSLv2 {.deprecated.},   ## **Deprecated:** SSLv2
+      protSSLv3 {.deprecated.},   ## **Deprecated:** SSLv3
+      protSSLv23 {.deprecated.},  ## **Deprecated:** Any SSL/TLS version, same as protTLSv1
+      protTLSv1,                  ## TLSv1
+      protTLSv1_1,                ## TLSv1.1
+      protTLSv1_2,                ## TLSv1.2
+      protTLSv1_3                 ## TLSv1.3
 
     SslContext* = ref object
       context*: SslCtx
@@ -135,6 +143,10 @@ when defineSsl:
     SslContextExtraInternal = ref object of RootRef
       serverGetPskFunc: SslServerGetPskFunc
       clientGetPskFunc: SslClientGetPskFunc
+
+  const protTLS* = protTLSv1_2
+    ## The recommended minimum TLS version with adequate security and
+    ## compatibility with the Internet.
 
 else:
   type
@@ -501,7 +513,7 @@ when defineSsl:
   ERR_load_BIO_strings()
   OpenSSL_add_all_algorithms()
 
-  proc raiseSSLError*(s = "") =
+  proc raiseSSLError*(s = "") {.noreturn.} =
     ## Raises a new SSL error.
     if s != "":
       raise newException(SslError, s)
@@ -561,14 +573,13 @@ when defineSsl:
       if SSL_CTX_check_private_key(ctx) != 1:
         raiseSSLError("Verification of private key file failed.")
 
-  proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
+  proc newContext*(minProtVersion = protTLS, verifyMode = CVerifyPeer,
                    certFile = "", keyFile = "", cipherList = CiphersIntermediate,
                    caDir = "", caFile = ""): SslContext =
-    ## Creates an SSL context.
+    ## Creates an SSL/TLS context.
     ##
-    ## Protocol version specifies the protocol to use. SSLv2, SSLv3, TLSv1
-    ## are available with the addition of `protSSLv23` which allows for
-    ## compatibility with all of them.
+    ## The minimum supported SSL/TLS version can be specified with
+    ## `minProtVersion`. See `SslProtVersion <#SslProtVersion>`_.
     ##
     ## There are three options for verify mode:
     ## `CVerifyNone`: certificates are not verified;
@@ -595,16 +606,48 @@ when defineSsl:
     ## or using ECDSA:
     ## - `openssl ecparam -out mykey.pem -name secp256k1 -genkey`
     ## - `openssl req -new -key mykey.pem -x509 -nodes -days 365 -out mycert.pem`
-    var newCTX: SslCtx
-    case protVersion
-    of protSSLv23:
-      newCTX = SSL_CTX_new(SSLv23_method()) # SSlv2,3 and TLS1 support.
-    of protSSLv2:
-      raiseSSLError("SSLv2 is no longer secure and has been deprecated, use protSSLv23")
-    of protSSLv3:
-      raiseSSLError("SSLv3 is no longer secure and has been deprecated, use protSSLv23")
-    of protTLSv1:
-      newCTX = SSL_CTX_new(TLSv1_method())
+    if minProtVersion in {protSSLv2, protSSLv3}:
+      raiseSSLError("SSLv2/3 is no longer secure and has been deprecated, use protTLS")
+
+    var newCTX = SSL_CTX_new(SSLv23_method())
+    let minVersion: cint =
+      case minProtVersion
+      of protTLSv1, protSSLv23:
+        TLS1_VERSION
+      of protTLSv1_1:
+        TLS1_1_VERSION
+      of protTLSv1_2:
+        TLS1_2_VERSION
+      of protTLSv1_3:
+        TLS1_3_VERSION
+      of protSSLv2, protSSLv3:
+        doAssert false, "unreachable!"
+        high(cint) # XXX: required since doAssert doesn't satisfy the noreturn check.
+
+    let useFallback: bool =
+      when not defined(openssl10) or defined(libressl):
+        try:
+          if getOpenSSLVersion() < 0x010100000:
+            true
+          elif newCTX.SSL_CTX_set_min_proto_version(minVersion) != 1:
+            raiseSSLError()
+          else:
+            false
+        except LibraryError:
+          # We are dealing with a super old LibreSSL
+          true
+      else:
+        true
+
+    if useFallback:
+      var flags: clong = SSL_OP_NO_SSLv2 or SSL_OP_NO_SSLv3
+      if minProtVersion > protTLSv1:
+        flags = flags or SSL_OP_NO_TLSv1
+      if minProtVersion > protTLSv1_1:
+        flags = flags or SSL_OP_NO_TLSv1_1
+      if minProtVersion > protTLSv1_2:
+        flags = flags or SSL_OP_NO_TLSv1_2
+      discard SSL_CTX_set_options(newCTX, flags)
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
       raiseSSLError()
