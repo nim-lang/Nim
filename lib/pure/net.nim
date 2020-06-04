@@ -534,10 +534,7 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = "",
-                   # XXX: update the OpenSSL that we ship with Windows for the
-                   #      next release.
-                   cipherList = when not defined(windows): CiphersIntermediate else: CiphersOld,
+                   certFile = "", keyFile = "", cipherList = CiphersIntermediate,
                    caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##
@@ -588,7 +585,7 @@ when defineSsl:
     #
     # From OpenSSL >= 1.1.0, this setting is set by default and can't be
     # overriden.
-    if getOpenSSLVersion() >= 0x10002000 and newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
+    if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
       raiseSSLError()
 
     when defined(nimDisableCertificateValidation) or defined(windows):
