@@ -1287,3 +1287,18 @@ when false:
 
 # { "json": 5 }
 # To get that we shall use, obj["json"]
+
+proc toJson2*[T](a: T): JsonNode =
+  ## allows custom serialization
+  when compiles(serialize(a)):
+    var ret = newJObject()
+    proc dump(key: string, val: string) =
+      ret[key] = %val
+    serialize(a, dump)
+    result = ret
+  elif T is object:
+    result = newJObject()
+    for k,v in fieldPairs(a):
+      result[k] = toJson2(v)
+  else:
+    result = %a

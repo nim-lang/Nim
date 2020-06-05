@@ -633,8 +633,13 @@ proc testJson() =
     except KeyError:
       doAssert getCurrentExceptionMsg().contains ".member.list[2].value"
 
-
-
 testJson()
 static:
   testJson()
+
+import strtabs
+proc testCustom()=
+  var t = {"name": "John", "city": "Monaco"}.newStringTable
+  let s = toJson2(t)
+  doAssert $s == """{"mode":"modeCaseSensitive","city":"Monaco","name":"John"}"""
+testCustom()
