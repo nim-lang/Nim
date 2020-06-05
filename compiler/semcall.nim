@@ -527,7 +527,10 @@ proc semResolvedCall(c: PContext, x: TCandidate,
       for s in instantiateGenericParamList(c, gp, x.bindings):
         case s.kind
         of skConst:
-          x.call.add s.ast
+          if not s.ast.isNil:
+            x.call.add s.ast
+          else:
+            x.call.add c.graph.emptyNode
         of skType:
           x.call.add newSymNode(s, n.info)
         else:
