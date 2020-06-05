@@ -1291,11 +1291,10 @@ when false:
 proc toJson2*[T](a: T): JsonNode =
   ## allows custom serialization
   when compiles(serialize(a)):
-    var ret = newJObject()
-    proc dump(key: string, val: string) =
-      ret[key] = %val
-    serialize(a, dump)
-    result = ret
+    proc funAdd(t: JsonNode, key: string, val: string) = t[key] = %val
+    proc funAdd2(t: JsonNode, key: string, val: JsonNode) = t[key] = val
+    proc funObj(): JsonNode = newJObject()
+    result = serialize(a, funObj, funAdd, funAdd2)
   elif T is object:
     result = newJObject()
     for k,v in fieldPairs(a):

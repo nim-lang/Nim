@@ -420,18 +420,13 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
       inc(i)
 
 proc serialize*(a: StringTableRef) = discard
-proc serialize*[Fun](a: StringTableRef, fun: Fun) =
+proc serialize*[T1, T2, T3](a: StringTableRef, funObj: T1, funAdd: T2, funAdd2: T3): auto =
   ## allows a custom serializer (eg json) to serialize this as we want.
-  #[
-  another option is to nest, but this is more compact. eg:
-  fun("mode", $a.mode)
-  fun("table") # open scope
-  for k,v in a:
-    fun(k, v)
-  fun() # close scope
-  ]#
-  fun("mode", $a.mode)
-  for k,v in a: fun(k, v)
+  result = funObj()
+  funAdd(result, "mode", $a.mode)
+  let t = funObj()
+  for k,v in a: funAdd(t, k, v)
+  funAdd2(result, "table", t)
 
 when isMainModule:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable

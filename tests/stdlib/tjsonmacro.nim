@@ -641,5 +641,5 @@ import strtabs
 proc testCustom()=
   var t = {"name": "John", "city": "Monaco"}.newStringTable
   let s = toJson2(t)
-  doAssert $s == """{"mode":"modeCaseSensitive","city":"Monaco","name":"John"}"""
+  doAssert $s == """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
 testCustom()
