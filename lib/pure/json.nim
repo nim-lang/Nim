@@ -378,20 +378,20 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-proc toJson(x: NimNode): NimNode {.compileTime.} =
+proc toJsonImpl(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 ..< x.len:
-      result.add(toJson(x[i]))
+      result.add(toJsonImpl(x[i]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkTableConstr: # object
     if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+      result.add newTree(nnkExprColonExpr, x[i][0], toJsonImpl(x[i][1]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkCurly: # empty object
     x.expectLen(0)
@@ -399,7 +399,7 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
   of nnkPar:
-    if x.len == 1: result = toJson(x[0])
+    if x.len == 1: result = toJsonImpl(x[0])
     else: result = newCall(bindSym("%", brOpen), x)
   else:
     result = newCall(bindSym("%", brOpen), x)
@@ -407,7 +407,7 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
-  result = toJson(x)
+  result = toJsonImpl(x)
 
 proc `==`*(a, b: JsonNode): bool =
   ## Check two nodes for equality
@@ -1288,16 +1288,37 @@ when false:
 # { "json": 5 }
 # To get that we shall use, obj["json"]
 
-proc toJson2*[T](a: T): JsonNode =
-  ## allows custom serialization
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+
+proc toJson*[T](a: T): JsonNode =
+  ## like `%` but allows custom serialization hook if `serialize(a: T)` is in scope
   when compiles(serialize(a)):
     proc funAdd(t: JsonNode, key: string, val: string) = t[key] = %val
     proc funAdd2(t: JsonNode, key: string, val: JsonNode) = t[key] = val
     proc funObj(): JsonNode = newJObject()
     result = serialize(a, funObj, funAdd, funAdd2)
-  elif T is object:
-    result = newJObject()
-    for k,v in fieldPairs(a):
-      result[k] = toJson2(v)
+  elif T is object | tuple:
+    const isNamed = T is object or isNamedTuple(T)
+    when isNamed:
+      result = newJObject()
+      for k, v in a.fieldPairs: result[k] = toJson(v)
+    else:
+      result = newJArray()
+      for v in a.fields: result.add toJson(v)
+  elif T is ref | ptr:
+    if a == nil: result = newJNull()
+    else: result = toJson(a[])
+  elif T is array | seq:
+    result = newJArray()
+    for ai in a:
+      result.add toJson(ai)
+  elif T is pointer:
+    result = toJson(cast[int](a))
+  elif T is distinct:
+    result = toJson(a.distinctBase)
+  elif T is bool:
+    result = %(a)
+  elif T is Ordinal:
+    result = %(cast[int](a))
   else:
     result = %a

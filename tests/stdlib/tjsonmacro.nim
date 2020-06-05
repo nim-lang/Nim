@@ -638,8 +638,19 @@ static:
   testJson()
 
 import strtabs
+
 proc testCustom()=
   var t = {"name": "John", "city": "Monaco"}.newStringTable
-  let s = toJson2(t)
+  let s = toJson(t)
   doAssert $s == """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
+
+proc testToJson() =
+  var t = {"z": "Z", "y": "Y"}.newStringTable
+  type A = ref object
+    a1: string
+  let a = (1.1, "fo", 'x', @[10,11], [true, false], [t,newStringTable()], (foo: 0.5'f32, bar: A(a1: "abc"), bar2: A.default))
+  let j = a.toJson
+  doAssert $j == """[1.1,"fo",120,[10,11],[true,false],[{"mode":"modeCaseSensitive","table":{"y":"Y","z":"Z"}},{"mode":"modeCaseSensitive","table":{}}],{"foo":0.5,"bar":{"a1":"abc"},"bar2":null}]"""
+
 testCustom()
+testToJson()
