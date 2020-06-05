@@ -151,6 +151,7 @@ runnableExamples:
 import
   hashes, tables, strtabs, strutils, lexbase, streams, macros, parsejson,
   options
+import std/private/since
 
 export
   tables.`$`
@@ -1290,7 +1291,7 @@ when false:
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 
-proc toJson*[T](a: T): JsonNode =
+proc toJson*[T](a: T): JsonNode {.since: (1,3,5).} =
   ## like `%` but allows custom serialization hook if `serialize(a: T)` is in scope
   when compiles(serialize(a)):
     proc funAdd(t: JsonNode, key: string, val: string) = t[key] = %val
