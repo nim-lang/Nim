@@ -642,7 +642,7 @@ import strtabs
 proc testCustom()=
   var t = {"name": "John", "city": "Monaco"}.newStringTable
   let s = toJson(t)
-  doAssert $s == """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}"""
+  doAssert $s == """{"mode":"modeCaseSensitive","table":{"city":"Monaco","name":"John"}}""", $s
 
 proc testToJson() =
   var t = {"z": "Z", "y": "Y"}.newStringTable

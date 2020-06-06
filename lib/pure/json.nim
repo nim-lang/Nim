@@ -1270,11 +1270,8 @@ proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
 
 proc toJson*[T](a: T): JsonNode {.since: (1,3,5).} =
   ## like `%` but allows custom serialization hook if `serialize(a: T)` is in scope
-  when compiles(serialize(a)):
-    proc funAdd(t: JsonNode, key: string, val: string) = t[key] = %val
-    proc funAdd2(t: JsonNode, key: string, val: JsonNode) = t[key] = val
-    proc funObj(): JsonNode = newJObject()
-    result = serialize(a, funObj, funAdd, funAdd2)
+  when compiles(toJsonHook(a)):
+    result = toJsonHook(a)
   elif T is object | tuple:
     const isNamed = T is object or isNamedTuple(T)
     when isNamed:

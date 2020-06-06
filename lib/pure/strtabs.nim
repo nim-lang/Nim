@@ -419,14 +419,16 @@ proc `%`*(f: string, t: StringTableRef, flags: set[FormatFlag] = {}): string {.
       add(result, f[i])
       inc(i)
 
-proc serialize*(a: StringTableRef) = discard
-proc serialize*[T1, T2, T3](a: StringTableRef, funObj: T1, funAdd: T2, funAdd2: T3): auto =
+proc toJsonHook*[](a: StringTableRef): auto =
   ## allows a custom serializer (eg json) to serialize this as we want.
-  result = funObj()
-  funAdd(result, "mode", $a.mode)
-  let t = funObj()
-  for k,v in a: funAdd(t, k, v)
-  funAdd2(result, "table", t)
+  mixin newJObject
+  mixin toJson
+  result = newJObject()
+  result["mode"] = toJson($a.mode)
+  let t = newJObject()
+  for k,v in a:
+    t[k] = toJson(v)
+  result["table"] = t
 
 when isMainModule:
   var x = {"k": "v", "11": "22", "565": "67"}.newStringTable
