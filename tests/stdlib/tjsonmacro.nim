@@ -639,7 +639,6 @@ static:
 
 import strtabs
 
-# xxx move to `tjson` pending https://github.com/nim-lang/Nim/pull/14572
 proc testRoundtrip[T](t: T, expected: string) =
   let j = t.toJson
   doAssert $j == expected, $j

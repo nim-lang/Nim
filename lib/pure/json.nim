@@ -1286,8 +1286,7 @@ proc fromJson*[T](a: var T, b: JsonNode) {.since: (1,3,5).} =
   adding "json path" leading to `b` can be added in future work.
   ]#
   checkJson b != nil, $($T, b)
-  when false: discard
-  elif compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
+  when compiles(fromJsonHook(a, b)): fromJsonHook(a, b)
   elif T is bool: a = to(b,T)
   elif T is Table | OrderedTable:
     a.clear
@@ -1344,9 +1343,9 @@ proc jsonTo*(b: JsonNode, T: typedesc): T  {.since: (1,3,5).} =
   fromJson(result, b)
 
 proc toJson*[T](a: T): JsonNode {.since: (1,3,5).} =
-  ## like `%` but allows custom serialization hook if `serialize(a: T)` is in scope
-  when false: discard
-  elif compiles(toJsonHook(a)): result = toJsonHook(a)
+  ## serializes `a` to json; uses `toJsonHook(a: T)` if it's in scope to
+  ## customize serialization, see strtabs.toJsonHook for an example.
+  when compiles(toJsonHook(a)): result = toJsonHook(a)
   elif T is Table | OrderedTable:
     result = newJObject()
     for k, v in pairs(a): result[k] = toJson(v)
