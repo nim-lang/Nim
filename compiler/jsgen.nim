@@ -1065,8 +1065,11 @@ proc genAsgnAux(p: PProc, x, y: PNode, noCopyNeeded: bool) =
         lineF(p, "var $1 = $4; $2 = $1[0]; $3 = $1[1];$n", [tmp, a.address, a.res, b.rdLoc])
       elif b.typ == etyBaseIndex:
         lineF(p, "$# = [$#, $#];$n", [a.res, b.address, b.res])
+      elif b.typ == etyNone:
+        internalAssert p.config, b.address == nil
+        lineF(p, "$# = [$#, 0];$n", [a.address, b.res])
       else:
-        internalError(p.config, x.info, "genAsgn")
+        internalError(p.config, x.info, $("genAsgn", b.typ, a.typ))
     else:
       lineF(p, "$1 = $2; $3 = $4;$n", [a.address, b.address, a.res, b.res])
   else:
@@ -1266,6 +1269,10 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
     let s = n[0].sym
     if s.loc.r == nil: internalError(p.config, n.info, "genAddr: 3")
     case s.kind
+    of skParam:
+      r.res = s.loc.r
+      r.address = nil
+      r.typ = etyNone
     of skVar, skLet, skResult:
       r.kind = resExpr
       let jsType = mapType(p, n.typ)
@@ -1287,7 +1294,7 @@ proc genAddr(p: PProc, n: PNode, r: var TCompRes) =
         # 'var openArray' for instance produces an 'addr' but this is harmless:
         gen(p, n[0], r)
         #internalError(p.config, n.info, "genAddr: 4 " & renderTree(n))
-    else: internalError(p.config, n.info, "genAddr: 2")
+    else: internalError(p.config, n.info, $("genAddr: 2", s.kind))
   of nkCheckedFieldExpr:
     genCheckedFieldOp(p, n[0], n.typ, r)
   of nkDotExpr:
