@@ -33,7 +33,7 @@ jobs:
           DEBIAN_FRONTEND='noninteractive' \
             sudo apt-fast install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
-              valgrind libc6-dbg libblas-dev xorg-dev
+              valgrind libc6-dbg libblas-dev xorg-dev libssl1.1
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: brew install boehmgc make sfml gtk+3
@@ -61,3 +61,19 @@ jobs:
       - name: 'koch, Run CI'
         shell: bash
         run: . ci/funs.sh && nimInternalBuildKochAndRunCI
+
+      - name: 'Run SSL server tests'
+        # Not supported on Windows due to old openssl version
+        # Use testssl.sh from buster-backports to run up-to-date tests
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          echo 'deb [trusted=yes] http://deb.debian.org/debian buster-backports main' | sudo tee -a /etc/apt/sources.list
+          sudo apt-fast update -qq
+          DEBIAN_FRONTEND='noninteractive' \
+            sudo apt-fast install --no-install-recommends -qy -t buster-backports testssl.sh
+          nim c -d:ssl -p:. -p:lib/pure -d:sync -d:danger tests/untestable/tssl_server.nim
+          tests/untestable/tssl_server &
+          testssl --ip=127.0.0.1 --nodns=none --csvfile testssl.tmp.csv --severity LOW https://127.0.0.1:8333 || true
+          sort testssl.tmp.csv > testssl.csv
+          diff testssl.csv tests/untestable/testssl_expected.csv

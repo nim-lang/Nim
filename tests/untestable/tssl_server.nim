@@ -37,15 +37,20 @@ when not defined(windows) and defined(sync):
     net,
     openssl
 
+  from ssl_config import CiphersIntermediate
+
   when defined(multithread):
     import threadpool
 
   when not defined(multithread):
-    var ctx = newContext(certFile = certFile, keyFile = keyFile)
+    var ctx = newContext(protVersion = protSSLv23, verifyMode = CVerifyPeer,
+                 certFile = certFile, keyFile = keyFile, cipherList = CiphersIntermediate)
 
   proc handleClient(client: Socket) =
     when defined(multithread):
-      var ctx = newContext(certFile = certFile, keyFile = keyFile)
+      var ctx = newContext(protVersion = protSSLv23, verifyMode = CVerifyPeer,
+                   certFile = certFile, keyFile = keyFile, cipherList = CiphersIntermediate)
+
     var ssl: SslPtr = SSL_new(ctx.context)
     doAssert SSL_set_fd(ssl, client.getFd()) == 1
     if SSL_accept(ssl) <= 0:
