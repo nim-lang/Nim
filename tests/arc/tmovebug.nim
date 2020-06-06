@@ -36,6 +36,7 @@ fff
 mmm
 sink me (sink)
 assign me (not sink)
+sink me (not sink)
 sinked and not optimized to a bitcopy
 sinked and not optimized to a bitcopy
 sinked and not optimized to a bitcopy
@@ -276,10 +277,10 @@ type ME = object
   who: string
 
 proc `=`(x: var ME, y: ME) =
-  if x.who.len > 0: echo "assign ",x.who
+  if y.who.len > 0: echo "assign ",y.who
 
 proc `=sink`(x: var ME, y: ME) =
-  if x.who.len > 0: echo "sink ",x.who
+  if y.who.len > 0: echo "sink ",y.who
 
 var dump: ME
 template use(x) = dump = x
