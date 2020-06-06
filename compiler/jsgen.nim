@@ -1822,7 +1822,7 @@ proc genNewSeq(p: PProc, n: PNode) =
     x.rdLoc, y.rdLoc, createVar(p, t, false)])
 
 proc genOrd(p: PProc, n: PNode, r: var TCompRes) =
-  case skipTypes(n[1].typ, abstractVar).kind
+  case skipTypes(n[1].typ, abstractVar + abstractRange).kind
   of tyEnum, tyInt..tyUInt64, tyChar: gen(p, n[1], r)
   of tyBool: unaryExpr(p, n, r, "", "($1 ? 1:0)")
   else: internalError(p.config, n.info, "genOrd")
