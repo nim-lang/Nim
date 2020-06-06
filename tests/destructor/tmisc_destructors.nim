@@ -25,7 +25,10 @@ proc test(): auto =
   var a, b: Foo
   return (a, b, Foo(boo: 5))
 
-var (a, b, _) = test()
+proc local =
+  var (a, b, _) = test()
+
+local()
 
 doAssert assign_counter == 0
 doAssert sink_counter == 0
