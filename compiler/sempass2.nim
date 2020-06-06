@@ -66,7 +66,7 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
-    bottom, inTryStmt: int
+    bottom, inTryStmt, inExceptOrFinallyStmt: int
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
@@ -248,6 +248,8 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
+  if a.inExceptOrFinallyStmt > 0:
+    incl s.flags, sfUsedInFinallyOrExcept
   if isLocalVar(a, s):
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
@@ -382,6 +384,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
 
   var branches = 1
   var hasFinally = false
+  inc tracked.inExceptOrFinallyStmt
 
   # Collect the exceptions caught by the except branches
   for i in 1..<n.len:
@@ -414,6 +417,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
       hasFinally = true
 
   tracked.bottom = oldBottom
+  dec tracked.inExceptOrFinallyStmt
   if not hasFinally:
     setLen(tracked.init, oldState)
   for id, count in items(inter):

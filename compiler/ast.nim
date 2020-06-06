@@ -293,6 +293,7 @@ type
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
 
   TSymFlags* = set[TSymFlag]
 
