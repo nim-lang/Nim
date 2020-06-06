@@ -108,6 +108,8 @@
   users from the use of weak and insecure ciphers while still provides
   adequate compatiblity with the majority of the Internet.
 
+- added `json.jsonTo,toJson` for json serialization/deserialization from custom types.
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 
