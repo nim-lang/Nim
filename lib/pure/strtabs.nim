@@ -71,7 +71,7 @@ type
   StringTableObj* = object of RootObj
     counter: int
     data: KeyValuePairSeq
-    mode*: StringTableMode
+    mode: StringTableMode
 
   StringTableRef* = ref StringTableObj
 

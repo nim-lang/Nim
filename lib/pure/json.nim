@@ -149,7 +149,7 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strtabs, strutils, lexbase, streams, macros, parsejson,
+  hashes, tables, strutils, lexbase, streams, macros, parsejson,
   options
 import std/private/since
 
@@ -353,14 +353,6 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   ## Sets a field from a `JObject`.
   assert(obj.kind == JObject)
   obj.fields[key] = val
-
-proc `%`*(table: StringTableRef): JsonNode =
-  ## Generic constructor for JSON data. Creates a new ``JObject JsonNode``.
-  result = newJObject()
-  result["mode"] = %($table.mode)
-  var data = newJObject()
-  for k, v in table: data[k] = %v
-  result["data"] = data
 
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
@@ -991,12 +983,11 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson(dst: var StringTableRef; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 
   # initFromJson definitions
@@ -1054,7 +1045,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(dst[i], jsonNode[i], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string) =
     dst = initTable[string, T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1064,7 +1055,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string) =
     dst = initOrderedTable[string,T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1072,20 +1063,6 @@ when defined(nimFixedForwardGeneric):
       jsonPath.add '.'
       jsonPath.add key
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
-      jsonPath.setLen originalJsonPathLen
-
-  proc mgetOrPut(tab: var StringTableRef, key: string): var string =
-    if not tab.hasKey(key): tab[key] = ""
-    result = tab[key]
-
-  proc initFromJson(dst: var StringTableRef; jsonNode: JsonNode; jsonPath: var string) =
-    dst = newStringTable(parseEnum[StringTableMode](jsonNode["mode"].getStr))
-    verifyJsonKind(jsonNode, {JObject}, jsonPath)
-    let originalJsonPathLen = jsonPath.len
-    for key in keys(jsonNode["data"].fields):
-      jsonPath.add '.'
-      jsonPath.add key
-      initFromJson(mgetOrPut(dst, key), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string) =
