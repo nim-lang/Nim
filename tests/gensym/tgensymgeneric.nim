@@ -40,8 +40,8 @@ doAssert y.x == "abc"
 import macros
 
 static:
-  let sym1 = genSym()
-  let sym2 = genSym()
+  let sym1 = genSym(nskLet, "sym1")
+  let sym2 = genSym(nskLet, "sym2")
   let sym3 = sym1
   let nimsym = sym1.symbol
   doAssert sym1 == sym1

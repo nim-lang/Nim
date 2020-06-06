@@ -47,7 +47,7 @@ macro myquote*(args: varargs[untyped]): untyped =
       sym, ident"untyped", newEmptyNode()
     )
 
-  let templateSym = genSym(nskTemplate)
+  let templateSym = genSym(nskTemplate, "template")
   let templateDef = nnkTemplateDef.newTree(
     templateSym,
     newEmptyNode(),
@@ -143,7 +143,7 @@ static:
 
 # this should be just `block` but it doesn't work that way anymore because of VM.
 macro scope(arg: untyped): untyped =
-  let procSym = genSym(nskProc)
+  let procSym = genSym(nskProc, "proc")
   result = quote do:
     proc `procSym`() {.compileTime.} =
       `arg`

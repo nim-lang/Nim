@@ -777,7 +777,7 @@ proc bindParam*(ps: SqlPrepared, paramIdx: int,val: openArray[byte], copy = true
 macro bindParams*(ps: SqlPrepared, params: varargs[untyped]): untyped {.since: (1, 3).} =
   let bindParam = bindSym("bindParam", brOpen)
   let bindNull = bindSym("bindNull")
-  let preparedStatement = genSym()
+  let preparedStatement = genSym(nskLet, "prepared")
   result = newStmtList()
   # Store `ps` in a temporary variable. This prevents `ps` from being evaluated every call.
   result.add newNimNode(nnkLetSection).add(newIdentDefs(preparedStatement, newEmptyNode(), ps))

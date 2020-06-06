@@ -96,7 +96,7 @@ macro evalOnceAs(expAlias, exp: untyped,
   # If `exp` is not a symbol we evaluate it once here and then use the temporary
   # symbol as alias
   if exp.kind != nnkSym and letAssigneable:
-    val = genSym()
+    val = genSym(nskLet, "val")
     result.add(newLetStmt(val, exp))
 
   result.add(
