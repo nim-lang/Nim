@@ -1,5 +1,8 @@
 ##[
 This module implements a hookable (de)serialization for arbitrary types.
+Design goal: avoid importing modules where a custom serialization is needed;
+see strtabs.fromJsonHook,toJsonHook for an example.
+
 ]##
 
 import std/[json,tables,strutils]
@@ -8,6 +11,11 @@ import std/[json,tables,strutils]
 xxx
 use toJsonHook,fromJsonHook for Table|OrderedTable
 add Options support also using toJsonHook,fromJsonHook and remove `json=>options` dependency
+
+future direction:
+add a way to customize serialization, for eg allowing missing
+or extra fields in JsonNode, field renaming, and a way to handle cyclic references
+using a cache of already visited addresses.
 ]#
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
