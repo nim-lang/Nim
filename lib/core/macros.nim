@@ -496,7 +496,7 @@ proc bindSym*(ident: string | NimNode, rule: BindSymRule = brClosed): NimNode {.
   ## If called from macros / compile time procs / static blocks,
   ## `ident` and `rule` can be VM computed value.
 
-proc genSym*(kind: NimSymKind = nskLet; ident = ""): NimNode {.
+proc genSym*(kind: NimSymKind; ident: string): NimNode {.
   magic: "NGenSym", noSideEffect.}
   ## Generates a fresh symbol that is guaranteed to be unique. The symbol
   ## needs to occur in a declaration context.
