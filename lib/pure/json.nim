@@ -1367,5 +1367,5 @@ proc toJson*[T](a: T): JsonNode {.since: (1,3,5).} =
   elif T is pointer: result = toJson(cast[int](a))
   elif T is distinct: result = toJson(a.distinctBase)
   elif T is bool: result = %(a)
-  elif T is Ordinal: result = %(cast[int](a))
+  elif T is Ordinal: result = %(a.ord)
   else: result = %a
