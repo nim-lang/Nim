@@ -36,6 +36,9 @@ fff
 mmm
 sink me (sink)
 assign me (not sink)
+sinked and not optimized to a bitcopy
+sinked and not optimized to a bitcopy
+sinked and not optimized to a bitcopy
 '''
 """
 
@@ -302,3 +305,22 @@ proc shouldNotSink() =
   use(x) # Not ok without the '[else]'
 
 shouldNotSink()
+
+# bug #14568
+import os
+
+type O2 = object
+  s: seq[int]
+
+proc `=sink`(dest: var O2, src: O2) =
+  echo "sinked and not optimized to a bitcopy"
+
+var testSeq: O2
+
+proc Update(): void =
+  # testSeq.add(0) # uncommenting this line fixes the leak
+  testSeq = O2(s: @[])
+  testSeq.s.add(0)
+
+for i in 1..3:
+  Update()
