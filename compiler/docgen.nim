@@ -17,7 +17,7 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths, renderverbatim
+  pathutils, trees, tables, nimpaths, renderverbatim, osproc
 
 from std/private/globs import nativeToUnixPath
 
@@ -225,8 +225,9 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         ]
       let cmd = cmd.interpSnippetCmd
       rawMessage(conf, hintExecuting, cmd)
-      if execShellCmd(cmd) != status:
-        rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
+      let (output, gotten) = execCmdEx(cmd)
+      if gotten != status:
+        rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
   result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
   result.thisDir = result.destFile.splitFile.dir
