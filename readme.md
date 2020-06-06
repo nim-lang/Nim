@@ -79,7 +79,7 @@ Next run the appropriate build shell script for your platform:
 Finally, once you have finished the build steps (on Windows, Mac or Linux) you
 should add the ``bin`` directory to your PATH.
 
-See also [rebuilding the compiler](intern.html#rebuilding-the-compiler).
+See also [rebuilding the compiler](doc/intern.rst#rebuilding-the-compiler).
 
 ## Koch
 
