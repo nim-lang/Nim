@@ -53,7 +53,7 @@ pkg1 "illwill", false, "nimble examples"
 pkg1 "inim", true # pending https://github.com/inim-repl/INim/issues/74
 pkg1 "itertools", false, "nim doc src/itertools.nim"
 pkg1 "iterutils"
-# pkg1 "jstin" # toJson clashes, jstin needs to be patched (eg: import except toJson)
+pkg1 "jstin"
 pkg1 "karax", false, "nim c -r tests/tester.nim"
 pkg1 "kdtree", false, "nimble test", "https://github.com/jblindsay/kdtree"
 pkg1 "loopfusion"
