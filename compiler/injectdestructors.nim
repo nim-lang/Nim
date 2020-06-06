@@ -281,7 +281,7 @@ proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
 
 proc genSink(c: var Con; dest, ri: PNode): PNode =
-  if isUnpackedTuple(dest) or isFirstWrite(dest, c) or isNoInit(dest):
+  if isUnpackedTuple(dest) or (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or isNoInit(dest):
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
