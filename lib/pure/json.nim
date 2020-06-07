@@ -987,11 +987,11 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[T: enum](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var seq[T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson[T: distinct](dst: var T;jsonNode: JsonNode; jsonPath: var string)
+  proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: object|tuple](dst: var T; jsonNode: JsonNode; jsonPath: var string)
 
   # initFromJson definitions
@@ -1049,7 +1049,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(dst[i], jsonNode[i], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var Table[string,T];jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string) =
     dst = initTable[string, T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len
@@ -1059,7 +1059,7 @@ when defined(nimFixedForwardGeneric):
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
-  proc initFromJson[T](dst: var OrderedTable[string,T];jsonNode: JsonNode; jsonPath: var string) =
+  proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string) =
     dst = initOrderedTable[string,T]()
     verifyJsonKind(jsonNode, {JObject}, jsonPath)
     let originalJsonPathLen = jsonPath.len

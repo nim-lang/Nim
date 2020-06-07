@@ -108,7 +108,6 @@
   users from the use of weak and insecure ciphers while still provides
   adequate compatiblity with the majority of the Internet.
 
-- added `json.jsonTo,toJson` for json serialization/deserialization from custom types.
 - new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json serialization/deserialization of custom types.
 
 ## Language changes

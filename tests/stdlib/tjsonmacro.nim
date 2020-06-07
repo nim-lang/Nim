@@ -633,6 +633,8 @@ proc testJson() =
     except KeyError:
       doAssert getCurrentExceptionMsg().contains ".member.list[2].value"
 
+
+
 testJson()
 static:
   testJson()
