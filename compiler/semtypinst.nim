@@ -390,7 +390,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   let bbody = lastSon body
   var newbody = replaceTypeVarsT(cl, bbody)
-  let bodyIsNew = newbody != bbody
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
@@ -412,7 +411,7 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       # generics *when the type is constructed*:
       newbody.attachedOps[attachedDeepCopy] = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
                                                                    attachedDeepCopy, 1)
-    if bodyIsNew and newbody.typeInst == nil:
+    if newbody.typeInst == nil:
       #doassert newbody.typeInst == nil
       newbody.typeInst = result
       if tfRefsAnonObj in newbody.flags and newbody.kind != tyGenericInst:
