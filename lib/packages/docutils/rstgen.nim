@@ -458,9 +458,9 @@ proc generateSymbolIndex(symbols: seq[IndexEntry]): string =
   while i < symbols.len:
     let keyword = symbols[i].keyword
     let cleanedKeyword = keyword.escapeLink
-    let prefix = "-" # allows restricting search to match beginning of word, eg: `-split`
-    result.addf("<dt><a name=\"$3\" href=\"#$3\"><span>$1$2:</span></a></dt><dd><ul class=\"simple\">\n",
-                [prefix,keyword, cleanedKeyword])
+    # the `-` prefix allows restricting search to match beginning of word, eg: `-split`
+    result.addf("<dt><a name=\"$2\" href=\"#$2\"><span>-$1:</span></a></dt><dd><ul class=\"simple\">\n",
+                [keyword, cleanedKeyword])
     var j = i
     while j < symbols.len and keyword == symbols[j].keyword:
       let
