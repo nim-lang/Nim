@@ -10,7 +10,7 @@
 import
   options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
-import std/private/miscdollars
+import std/private/[miscdollars,strutils2]
 
 type InstantiationInfo = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
@@ -66,11 +66,11 @@ when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
-proc canonicalCase(path: string): string =
+proc canonicalCase(path: var string) =
   ## the idea is to only use this for checking whether a path is already in
   ## the table but otherwise keep the original case
-  when FileSystemCaseSensitive: path
-  else: toLower(path)
+  when FileSystemCaseSensitive: discard
+  else: toLowerAscii(path)
 
 proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   var
@@ -79,7 +79,8 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
     canon = canonicalizePath(conf, filename)
   except OSError:
     canon = filename
-  result = conf.m.filenameToIndexTbl.hasKey(canon.string.canonicalCase)
+  canon.string.canonicalCase
+  result = conf.m.filenameToIndexTbl.hasKey(canon.string)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
   var
@@ -95,7 +96,10 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  let canon2 = canon.string.canonicalCase
+  var canon2: string
+  forceCopy(canon2, canon.string) # because `canon` may be shallow
+  canon2.canonicalCase
+
   if conf.m.filenameToIndexTbl.hasKey(canon2):
     isKnownFile = true
     result = conf.m.filenameToIndexTbl[canon2]
