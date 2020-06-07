@@ -277,8 +277,11 @@ proc canBeMoved(c: Con; t: PType): bool {.inline.} =
   else:
     result = t.attachedOps[attachedSink] != nil
 
+proc isNoInit(dest: PNode): bool {.inline.} =
+  result = dest.kind == nkSym and sfNoInit in dest.sym.flags
+
 proc genSink(c: var Con; dest, ri: PNode): PNode =
-  if isUnpackedTuple(dest) or isFirstWrite(dest, c):
+  if isUnpackedTuple(dest) or isFirstWrite(dest, c) or isNoInit(dest):
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
