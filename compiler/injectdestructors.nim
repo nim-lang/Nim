@@ -63,7 +63,7 @@ template dbg(body) =
       body
 
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode
-proc moveOrCopy(dest, ri: PNode; c: var Con): PNode
+proc moveOrCopy(dest, ri: PNode; c: var Con, isDecl = false): PNode
 
 proc isLastRead(location: PNode; c: var Con; pc, until: int): int =
   var pc = pc
@@ -280,8 +280,8 @@ proc canBeMoved(c: Con; t: PType): bool {.inline.} =
 proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
 
-proc genSink(c: var Con; dest, ri: PNode): PNode =
-  if isUnpackedTuple(dest) or (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or isNoInit(dest):
+proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
+  if isUnpackedTuple(dest) or (isDecl and c.inLoop <= 0) or (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or isNoInit(dest):
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
@@ -578,7 +578,7 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
     let tmp = getTemp(c, arg.typ, arg.info)
     when not scopeBasedDestruction:
       c.addTopVar(tmp)
-      result.add genSink(c, tmp, arg)
+      result.add genSink(c, tmp, arg, isDecl = true)
       result.add tmp
       c.destroys.add genDestroy(c, tmp)
     else:
@@ -652,9 +652,9 @@ proc pVarTopLevel(v: PNode; c: var Con; ri, res: PNode) =
     else:
       c.destroys.add genDestroy(c, v)
   if ri.kind == nkEmpty and c.inLoop > 0:
-    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c)
+    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, isDecl = true)
   elif ri.kind != nkEmpty:
-    res.add moveOrCopy(v, ri, c)
+    res.add moveOrCopy(v, ri, c, isDecl = true)
 
 proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
   if not containsOrIncl(c.declaredVars, v.sym.id):
@@ -675,9 +675,9 @@ proc pVarScoped(v: PNode; c: var Con; ri, res: PNode) =
     #if c.inDangerousBranch == 0: v.sym.flags.incl sfNoInit
     c.scopeDestroys.add genDestroy(c, v)
   if ri.kind == nkEmpty and c.inLoop > 0:
-    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c)
+    res.add moveOrCopy(v, genDefaultCall(v.typ, c, v.info), c, isDecl = true)
   elif ri.kind != nkEmpty:
-    res.add moveOrCopy(v, ri, c)
+    res.add moveOrCopy(v, ri, c, isDecl = true)
 
 template handleNestedTempl(n: untyped, processCall: untyped) =
   case n.kind
@@ -901,7 +901,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
               if ri.kind == nkEmpty and c.inLoop > 0:
                 ri = genDefaultCall(v.typ, c, v.info)
               if ri.kind != nkEmpty:
-                result.add moveOrCopy(v, ri, c)
+                result.add moveOrCopy(v, ri, c, isDecl = true)
         else: # keep the var but transform 'ri':
           var v = copyNode(n)
           var itCopy = copyNode(it)
@@ -975,18 +975,18 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       for i in 0..<n.len:
         result[i] = p(n[i], c, mode)
 
-proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
+proc moveOrCopy(dest, ri: PNode; c: var Con, isDecl = false): PNode =
   case ri.kind
   of nkCallKinds:
-    result = genSink(c, dest, p(ri, c, consumed))
+    result = genSink(c, dest, p(ri, c, consumed), isDecl)
   of nkBracketExpr:
     if isUnpackedTuple(ri[0]):
       # unpacking of tuple: take over the elements
-      result = genSink(c, dest, p(ri, c, consumed))
+      result = genSink(c, dest, p(ri, c, consumed), isDecl)
     elif isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         not aliases(dest, ri):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      var snk = genSink(c, dest, ri)
+      var snk = genSink(c, dest, ri, isDecl)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
@@ -997,50 +997,50 @@ proc moveOrCopy(dest, ri: PNode; c: var Con): PNode =
       result = genCopy(c, dest, ri)
       result.add p(ri, c, consumed)
     else:
-      result = genSink(c, dest, p(ri, c, consumed))
+      result = genSink(c, dest, p(ri, c, consumed), isDecl)
   of nkObjConstr, nkTupleConstr, nkClosure, nkCharLit..nkNilLit:
-    result = genSink(c, dest, p(ri, c, consumed))
+    result = genSink(c, dest, p(ri, c, consumed), isDecl)
   of nkSym:
     if isSinkParam(ri.sym) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
       #sinkParamIsLastReadCheck(c, ri)
-      let snk = genSink(c, dest, ri)
+      let snk = genSink(c, dest, ri, isDecl)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
         isLastRead(ri, c) and canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = genSink(c, dest, ri)
+      let snk = genSink(c, dest, ri, isDecl)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
       result.add p(ri, c, consumed)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv:
     when false:
-      result = moveOrCopy(dest, ri[1], c)
+      result = moveOrCopy(dest, ri[1], c, isDecl)
       if not sameType(ri.typ, ri[1].typ):
         let copyRi = copyTree(ri)
         copyRi[1] = result[^1]
         result[^1] = copyRi
     else:
-      result = genSink(c, dest, p(ri, c, sinkArg))
+      result = genSink(c, dest, p(ri, c, sinkArg), isDecl)
   of nkObjDownConv, nkObjUpConv:
     when false:
-      result = moveOrCopy(dest, ri[0], c)
+      result = moveOrCopy(dest, ri[0], c, isDecl)
       let copyRi = copyTree(ri)
       copyRi[0] = result[^1]
       result[^1] = copyRi
     else:
-      result = genSink(c, dest, p(ri, c, sinkArg))
+      result = genSink(c, dest, p(ri, c, sinkArg), isDecl)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     when scopeBasedDestruction:
       result = handleNested(ri, dest, c, normal)
     else:
-      handleNestedTempl(ri): moveOrCopy(dest, node, c)
+      handleNestedTempl(ri): moveOrCopy(dest, node, c, isDecl)
   else:
     if isAnalysableFieldAccess(ri, c.owner) and isLastRead(ri, c) and
         canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      let snk = genSink(c, dest, ri)
+      let snk = genSink(c, dest, ri, isDecl)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     else:
       result = genCopy(c, dest, ri)
