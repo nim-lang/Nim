@@ -1,3 +1,7 @@
+discard """
+  targets: "c cpp js"
+"""
+
 import std/jsonutils
 import std/json
 
