@@ -66,6 +66,12 @@ when defined(nimpretty):
   proc fileSection*(conf: ConfigRef; fid: FileIndex; a, b: int): string =
     substr(conf.m.fileInfos[fid.int].fullContent, a, b)
 
+proc canonicalCase(path: string): string =
+  ## the idea is to only use this for checking whether a path is already in
+  ## the table but otherwise keep the original case
+  when FileSystemCaseSensitive: path
+  else: toLower(path)
+
 proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
   var
     canon: AbsoluteFile
@@ -73,7 +79,7 @@ proc fileInfoKnown*(conf: ConfigRef; filename: AbsoluteFile): bool =
     canon = canonicalizePath(conf, filename)
   except OSError:
     canon = filename
-  result = conf.m.filenameToIndexTbl.hasKey(canon.string)
+  result = conf.m.filenameToIndexTbl.hasKey(canon.string.canonicalCase)
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool): FileIndex =
   var
@@ -89,15 +95,16 @@ proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile; isKnownFile: var bool
     # This flag indicates that we are working with such a path here
     pseudoPath = true
 
-  if conf.m.filenameToIndexTbl.hasKey(canon.string):
+  let canon2 = canon.string.canonicalCase
+  if conf.m.filenameToIndexTbl.hasKey(canon2):
     isKnownFile = true
-    result = conf.m.filenameToIndexTbl[canon.string]
+    result = conf.m.filenameToIndexTbl[canon2]
   else:
     isKnownFile = false
     result = conf.m.fileInfos.len.FileIndex
     conf.m.fileInfos.add(newFileInfo(canon, if pseudoPath: RelativeFile filename
                                             else: relativeTo(canon, conf.projectPath)))
-    conf.m.filenameToIndexTbl[canon.string] = result
+    conf.m.filenameToIndexTbl[canon2] = result
 
 proc fileInfoIdx*(conf: ConfigRef; filename: AbsoluteFile): FileIndex =
   var dummy: bool
