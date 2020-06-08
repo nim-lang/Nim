@@ -90,7 +90,8 @@ pkg2 "nimsvg"
 # pkg2 "nimterop", true
 pkg2 "nimwc", true, "nim c nimwc.nim"
 # pkg2 "nimx", true, "nim c --threads:on test/main.nim"
-pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
+# pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
+  # pending https://github.com/timotheecour/Nim/issues/167 or new git tag for nitter
 pkg2 "norm", true, "nim c -r tests/tsqlite.nim"
 pkg2 "npeg", false, "nimble testarc"
 pkg2 "numericalnim", true, "nim c -r tests/test_integrate.nim"
