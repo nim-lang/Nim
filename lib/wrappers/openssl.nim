@@ -418,9 +418,9 @@ else:
       sslState {.global.} = cast[proc(ssl: SslPtr): cint {.cdecl, gcsafe.}](sslSymNullable("SSL_state"))
 
     if not theProc.isNil:
-      theProc(ssl)
+      result = theProc(ssl)
     elif not sslState.isNil:
-      sslState(ssl) and SSL_ST_INIT
+      result = sslState(ssl) and SSL_ST_INIT
     else:
       raiseInvalidLibrary MainProc
 
