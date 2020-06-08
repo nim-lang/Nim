@@ -200,7 +200,7 @@ proc exprRoot*(n: PNode): PSym =
       if it.len > 0 and it.typ != nil: it = it.lastSon
       else: break
     of nkCallKinds:
-      if it.typ != nil and it.typ.kind == tyVar and it.len > 1:
+      if it.typ != nil and it.typ.kind in {tyVar, tyLent} and it.len > 1:
         # See RFC #7373, calls returning 'var T' are assumed to
         # return a view into the first argument (if there is one):
         it = it[1]
