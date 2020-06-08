@@ -90,6 +90,7 @@ case $uos in
     ;;
   *openbsd* )
     myos="openbsd"
+    CC="clang"
     LINK_FLAGS="$LINK_FLAGS -lm"
     ;;
   *netbsd* )
