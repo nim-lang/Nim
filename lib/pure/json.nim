@@ -140,6 +140,9 @@
 ##   var j2 = %* {"name": "Isaac", "books": ["Robot Dreams"]}
 ##   j2["details"] = %* {"age":35, "pi":3.1415}
 ##   echo j2
+##
+## See also: std/jsonutils for hookable json serialization/deserialization
+## of arbitrary types.
 
 runnableExamples:
   ## Note: for JObject, key ordering is preserved, unlike in some languages,
@@ -149,8 +152,10 @@ runnableExamples:
   doAssert $(%* Foo()) == """{"a1":0,"a2":0,"a0":0,"a3":0,"a4":0}"""
 
 import
-  hashes, tables, strtabs, strutils, lexbase, streams, macros, parsejson,
-  options
+  hashes, tables, strutils, lexbase, streams, macros, parsejson
+
+import options # xxx remove this dependency using same approach as https://github.com/nim-lang/Nim/pull/14563
+import std/private/since
 
 export
   tables.`$`
@@ -353,14 +358,6 @@ proc `[]=`*(obj: JsonNode, key: string, val: JsonNode) {.inline.} =
   assert(obj.kind == JObject)
   obj.fields[key] = val
 
-proc `%`*(table: StringTableRef): JsonNode =
-  ## Generic constructor for JSON data. Creates a new ``JObject JsonNode``.
-  result = newJObject()
-  result["mode"] = %($table.mode)
-  var data = newJObject()
-  for k, v in table: data[k] = %v
-  result["data"] = data
-
 proc `%`*[T: object](o: T): JsonNode =
   ## Construct JsonNode from tuples and objects.
   result = newJObject()
@@ -378,20 +375,20 @@ proc `%`*(o: enum): JsonNode =
   ## string. Creates a new ``JString JsonNode``.
   result = %($o)
 
-proc toJson(x: NimNode): NimNode {.compileTime.} =
+proc toJsonImpl(x: NimNode): NimNode {.compileTime.} =
   case x.kind
   of nnkBracket: # array
     if x.len == 0: return newCall(bindSym"newJArray")
     result = newNimNode(nnkBracket)
     for i in 0 ..< x.len:
-      result.add(toJson(x[i]))
+      result.add(toJsonImpl(x[i]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkTableConstr: # object
     if x.len == 0: return newCall(bindSym"newJObject")
     result = newNimNode(nnkTableConstr)
     for i in 0 ..< x.len:
       x[i].expectKind nnkExprColonExpr
-      result.add newTree(nnkExprColonExpr, x[i][0], toJson(x[i][1]))
+      result.add newTree(nnkExprColonExpr, x[i][0], toJsonImpl(x[i][1]))
     result = newCall(bindSym("%", brOpen), result)
   of nnkCurly: # empty object
     x.expectLen(0)
@@ -399,7 +396,7 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
   of nnkNilLit:
     result = newCall(bindSym"newJNull")
   of nnkPar:
-    if x.len == 1: result = toJson(x[0])
+    if x.len == 1: result = toJsonImpl(x[0])
     else: result = newCall(bindSym("%", brOpen), x)
   else:
     result = newCall(bindSym("%", brOpen), x)
@@ -407,7 +404,7 @@ proc toJson(x: NimNode): NimNode {.compileTime.} =
 macro `%*`*(x: untyped): untyped =
   ## Convert an expression to a JsonNode directly, without having to specify
   ## `%` for every element.
-  result = toJson(x)
+  result = toJsonImpl(x)
 
 proc `==`*(a, b: JsonNode): bool =
   ## Check two nodes for equality
@@ -992,7 +989,6 @@ when defined(nimFixedForwardGeneric):
   proc initFromJson[S,T](dst: var array[S,T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Table[string,T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var OrderedTable[string,T]; jsonNode: JsonNode; jsonPath: var string)
-  proc initFromJson(dst: var StringTableRef; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T](dst: var Option[T]; jsonNode: JsonNode; jsonPath: var string)
   proc initFromJson[T: distinct](dst: var T; jsonNode: JsonNode; jsonPath: var string)
@@ -1071,20 +1067,6 @@ when defined(nimFixedForwardGeneric):
       jsonPath.add '.'
       jsonPath.add key
       initFromJson(mgetOrPut(dst, key, default(T)), jsonNode[key], jsonPath)
-      jsonPath.setLen originalJsonPathLen
-
-  proc mgetOrPut(tab: var StringTableRef, key: string): var string =
-    if not tab.hasKey(key): tab[key] = ""
-    result = tab[key]
-
-  proc initFromJson(dst: var StringTableRef; jsonNode: JsonNode; jsonPath: var string) =
-    dst = newStringTable(parseEnum[StringTableMode](jsonNode["mode"].getStr))
-    verifyJsonKind(jsonNode, {JObject}, jsonPath)
-    let originalJsonPathLen = jsonPath.len
-    for key in keys(jsonNode["data"].fields):
-      jsonPath.add '.'
-      jsonPath.add key
-      initFromJson(mgetOrPut(dst, key), jsonNode[key], jsonPath)
       jsonPath.setLen originalJsonPathLen
 
   proc initFromJson[T](dst: var ref T; jsonNode: JsonNode; jsonPath: var string) =
