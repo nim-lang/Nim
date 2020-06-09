@@ -113,7 +113,6 @@ tnaetdriaoenvlcyfglwckßqfgvwkßqgfvlwkßqfgvlwckßqvlwkgfUIαοιαοιαχολ
 This string is wrapped to 60 characters. If we call
 wrapwords on it it will be re-wrapped to 80 characters.
 """
-  const input60Res = """
-This string is wrapped to 60 characters. If we call wrapwords on it it will be
-re-wrapped to 80 characters.""".strip()
+  const input60Res = """This string is wrapped to 60 characters. If we call wrapwords on it it will be
+re-wrapped to 80 characters."""
   doAssert wrapWords(input60) == input60Res
