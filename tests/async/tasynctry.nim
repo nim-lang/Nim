@@ -5,6 +5,7 @@ Specific except
 Multiple idents in except
 Multiple except branches
 Multiple except branches 2
+success
 '''
 targets: "c"
 """
@@ -101,3 +102,17 @@ assert y.waitFor() == 2
 
 y = test4()
 assert y.waitFor() == 2
+
+# bug #14279
+
+proc expandValue: Future[int] {.async.} =
+  return 0
+
+proc a(b: int): Future[void] {.async.} =
+  return
+
+proc b: Future[void] {.async.} =
+  await a(await expandValue())
+  echo "success"
+
+waitFor(b())
