@@ -1,4 +1,4 @@
-import std/private/strutils2
+import "$lib/.." / compiler/strutils2
 
 block: # setLen
   var a = "abc"

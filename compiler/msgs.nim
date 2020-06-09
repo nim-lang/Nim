@@ -10,7 +10,8 @@
 import
   options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
-import std/private/[miscdollars,strutils2]
+import std/private/miscdollars
+import strutils2
 
 type InstantiationInfo = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
