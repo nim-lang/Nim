@@ -13,7 +13,7 @@ import
 import std/private/miscdollars
 import std/private/debugutils
 
-type InstantiationInfo = typeof(instantiationInfo())
+type InstantiationInfo* = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
 
 template flushDot(conf, stdorr) =
@@ -374,7 +374,7 @@ proc getMessageStr(msg: TMsgKind, arg: string): string =
   result = msgKindToString(msg) % [arg]
 
 type
-  TErrorHandling = enum doNothing, doAbort, doRaise
+  TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
   var f: File
@@ -474,7 +474,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               else: ErrorTitle
   conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
 
-proc liMessage(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
+proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
   var
     title: string
@@ -594,7 +594,7 @@ template internalError*(conf: ConfigRef; errMsg: string) =
   internalErrorImpl(conf, unknownLineInfo, errMsg, instLoc())
 
 template internalAssert*(conf: ConfigRef, e: bool) =
-  # xxx merge with globalAssert from PR #14324
+  # xxx merge with `globalAssert`
   if not e:
     const info2 = instLoc()
     let arg = info2.toFileLineCol

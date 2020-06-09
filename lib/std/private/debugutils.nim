@@ -54,15 +54,24 @@ macro conditionToStr*(cond: untyped, msg = ""): string =
     # whether `lhs` is printable
     result.add quote do:
       `ret`.add `cond2`
-  let msg2 = msg.repr
+
+  echo msg.kind
+  if msg.kind in nnkStrLit..nnkTripleStrLit:
+    let msg2 = msg.strVal
+    if msg2.len > 0:
+      result.add quote do:
+        `ret`.add "; " & `msg2`
+  else:
+    let msg2 = msg.repr
+    result.add quote do:
+      `ret`.add "; " & `msg2` & ": " & `msg`
   result.add quote do:
-    if `msg`.len > 0: `ret`.add "; " & `msg2` & ": " & `msg`
     `ret`
 
 when isMainModule:
   template chk(cond: untyped, msg = "") =
     if not cond:
-      let ret = conditionToStr(ret, cond, msg)
+      let ret = conditionToStr(cond, msg)
       # doAssert false, ret
       echo ret
 
@@ -76,4 +85,9 @@ when isMainModule:
       chk c in ["foo1", "foo2", c2]
       chk c != "foo"
       chk c == "bar"
+      chk c == "bar", "gook1"
+      var msg = "gook2"
+      chk c == "bar", msg
+      var x = [12,13]
+      chk c == "bar", $x
   main()

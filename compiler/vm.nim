@@ -20,6 +20,7 @@ import
 
 from semfold import leValueConv, ordinalValToString
 from evaltempl import evalTemplate
+import std/private/debugutils
 
 const
   traceCode = defined(nimVMDebug)
@@ -71,21 +72,19 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       s.add(x.prc.name.s)
     msgWriteln(c.config, s)
 
-proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
-                msg: string, lineInfo: TLineInfo) =
+proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int, msg: string, info: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
+  # noinline to avoid code bloat
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
-  # XXX test if we want 'globalError' for every mode
-  if c.mode == emRepl: globalError(c.config, lineInfo, msg)
-  else: localError(c.config, lineInfo, msg)
+  let action = if c.mode == emRepl: doRaise else: doNothing
+    # XXX test if we want 'globalError' for every mode
+  var info = info
+  if info == TLineInfo.default: info = c.debug[pc]
+  liMessage(c.config, info, errGenerated, msg, action, infoOrigin)
 
 template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                    msg: string, lineInfo: TLineInfo) =
-  stackTraceImpl(c, tos, pc, msg, lineInfo)
-  return
-
-template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
-  stackTraceImpl(c, tos, pc, msg, c.debug[pc])
+                    msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+  stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
   return
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
@@ -539,6 +538,12 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
+
+  template vmAssert(cond: untyped, msg = "", info = c.debug[pc]) =
+    if not cond:
+      let errMsg = conditionToStr(cond, msg)
+      stackTraceImpl(c, tos, pc, errMsg, info, instantiationInfo(-2, fullPaths = true))
+
   while true:
     #{.computedGoto.}
     let instr = c.code[pc]
@@ -1101,12 +1106,10 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkNode)
       var a = regs[rb].node
       if a.kind == nkVarTy: a = a[0]
-      if a.kind == nkSym:
-        regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
-                        else: copyTree(a.sym.ast)
-        regs[ra].node.flags.incl nfIsRef
-      else:
-        stackTrace(c, tos, pc, "node is not a symbol")
+      vmAssert a.kind == nkSym, "node is not a symbol"
+      regs[ra].node = if a.sym.ast.isNil: newNode(nkNilLit)
+                      else: copyTree(a.sym.ast)
+      regs[ra].node.flags.incl nfIsRef
     of opcGetImplTransf:
       decodeB(rkNode)
       let a = regs[rb].node
