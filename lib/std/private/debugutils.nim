@@ -26,7 +26,6 @@ macro conditionToStr*(cond: untyped, msg = ""): string =
   let cond2 = cond.repr
   let ret = genSym(nskVar, "ret")
   result.add quote do:
-    # `ret`.add "expected: '$1'" % [`cond2`]
     var `ret`: string
     `ret`.add "expected: "
   case cond.kind
@@ -36,26 +35,15 @@ macro conditionToStr*(cond: untyped, msg = ""): string =
     let lhsLit = lhs.repr
     let rhs = cond[2]
     result.add quote do:
+      # we would also branch on `isPureLit`
       `ret`.add "'$#' ($#) $# $#" % [`lhsLit`, $`lhs`, `infix`,  $`rhs`]
-    # let lhsInfo = lhs.info
-    # let lhsInfo = lhs.lineInfo
-    
-    # if not lhs.isPureLit:
-    #   result.add quote do:
-    #     # `ret`.add " lhs: '$1' defined at $2" % [$`lhs`, ]
-    #     `ret`.add " lhs: '$1'" % [$`lhs`, ]
-    # if not rhs.isPureLit:
-    #   result.add quote do:
-    #     `ret`.add " rhs: '$1' " % [$`rhs`]
   else:
-    # eg: nnkDotExpr for foo.bar.isAbsolute
-    let cond2 = cond.repr
-    # we could also provide context info here, eg for `nnkDotExpr`, check
-    # whether `lhs` is printable
+    let cond2 = cond.repr # for example: `nnkDotExpr` for foo.bar.isAbsolute
+    # we could also provide context info here, for example for `nnkDotExpr`, 
+    # we could show `$lhs` if it compiles.
     result.add quote do:
       `ret`.add `cond2`
 
-  echo msg.kind
   if msg.kind in nnkStrLit..nnkTripleStrLit:
     let msg2 = msg.strVal
     if msg2.len > 0:
@@ -72,7 +60,7 @@ when isMainModule:
   template chk(cond: untyped, msg = "") =
     if not cond:
       let ret = conditionToStr(cond, msg)
-      # doAssert false, ret
+      # in a real application, you might use something like `doAssert false, ret`
       echo ret
 
   proc main() =

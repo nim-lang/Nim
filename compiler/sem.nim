@@ -201,7 +201,10 @@ proc newSymG*(kind: TSymKind, n: PNode, c: PContext): PSym =
   if n.kind == nkSym:
     # and sfGenSym in n.sym.flags:
     result = n.sym
-    localAssert c.config, result.kind in {kind, skTemp}, n.info
+    if result.kind notin {kind, skTemp}:
+      localError(c.config, n.info, "cannot use symbol of kind '$1' as a '$2'" %
+        [result.kind.toHumanStr, kind.toHumanStr])
+    # xxx or simply: `localAssert c.config, result.kind in {kind, skTemp}, n.info`
     when false:
       if sfGenSym in result.flags and result.kind notin {skTemplate, skMacro, skParam}:
         # declarative context, so produce a fresh gensym:

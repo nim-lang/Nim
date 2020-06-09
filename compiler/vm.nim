@@ -72,15 +72,15 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
       s.add(x.prc.name.s)
     msgWriteln(c.config, s)
 
-proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int, msg: string, info: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
+proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
+  msg: string, lineInfo: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
   # noinline to avoid code bloat
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
   let action = if c.mode == emRepl: doRaise else: doNothing
     # XXX test if we want 'globalError' for every mode
-  var info = info
-  if info == TLineInfo.default: info = c.debug[pc]
-  liMessage(c.config, info, errGenerated, msg, action, infoOrigin)
+  let lineInfo = if lineInfo == TLineInfo.default: c.debug[pc] else: lineInfo
+  liMessage(c.config, lineInfo, errGenerated, msg, action, infoOrigin)
 
 template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
                     msg: string, lineInfo: TLineInfo = TLineInfo.default) =
