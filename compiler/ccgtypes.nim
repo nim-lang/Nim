@@ -268,19 +268,18 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
       result = true
     elif (optByRef in s.options) or (getSize(conf, pt) > conf.target.floatSize * 3):
       result = true           # requested anyway
-    elif retType != nil and retType.kind == tyLent:
-      result = true
     elif (tfFinal in pt.flags) and (pt[0] == nil):
       result = false          # no need, because no subtyping possible
     else:
       result = true           # ordinary objects are always passed by reference,
                               # otherwise casting doesn't work
   of tyTuple:
-    if retType != nil and retType.kind == tyLent:
-      result = true
-    else:
-      result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
-  else: result = false
+    result = (getSize(conf, pt) > conf.target.floatSize*3) or (optByRef in s.options)
+  else:
+    result = false
+  # first parameter and return type is 'lent T'? --> use pass by pointer
+  if s.position == 0 and retType != nil and retType.kind == tyLent:
+    result = true
 
 proc fillResult(conf: ConfigRef; param: PNode) =
   fillLoc(param.sym.loc, locParam, param, ~"Result",
