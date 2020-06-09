@@ -41,8 +41,8 @@ Options:
   --includeFile:PAT   include only files whose names match the given regex PAT
   --excludeFile:PAT   skip files whose names match the given regex pattern PAT
   --excludeDir:PAT    skip directories whose names match the given regex PAT
-  --bin:yes|no|only   process binary files? (detected by first 1024 bytes)
-  --text, -t          process only text, the same as --bin:no
+  --bin:yes|no|only   process binary files? (detected by \0 in first 1K bytes)
+  --text, -t          process only text files, the same as --bin:no
   --count             just count number of matches
   --nocolor           output will be given without any colours
   --color[:always]    force color even if output is redirected
@@ -95,6 +95,22 @@ type
       firstLine: int       # = last lineNo of last match
     of FileContents:
       buffer: string
+  Trequest = (int, string)
+  Tresult = tuple[finished: bool, fileNo: int,
+                  filename: string, fileResult: seq[Output]]
+  WalkOpt = tuple
+    extensions: seq[string]
+    skipExtensions: seq[string]
+    excludeFile: seq[string]
+    includeFile: seq[string]
+    excludeDir : seq[string]
+  WalkOptPat = tuple
+    excludeFileP: seq[Peg]
+    includeFileP: seq[Peg]
+    excludeDirP : seq[Peg]
+    excludeFileR: seq[Regex]
+    includeFileR: seq[Regex]
+    excludeDirR : seq[Regex]
 
 using pattern: Pattern
 
@@ -102,12 +118,8 @@ var
   paths: seq[string] = @[]
   pattern = ""
   replacement = ""
-  extensions: seq[string] = @[]
   options: TOptions = {optRegex}
-  skipExtensions: seq[string] = @[]
-  excludeFile: seq[Regex]
-  includeFile: seq[Regex]
-  excludeDir: seq[Regex]
+  opt {.threadvar.}: WalkOpt
   checkBin = biYes
   justCount = false
   sortTime = false
@@ -117,13 +129,13 @@ var
   linesBefore = 0
   linesAfter = 0
   linesContext = 0
-  colorTheme = "simple"
   newLine = false
   gVar = (matches: 0, errors: 0, reallyReplace: false)
     # gVar - variables that can change during search/replace
   nWorkers = 0  # run in single thread by default
-  requests: Channel[(int, string)]
-  results: Channel[tuple[fileNo: int, result: seq[Output]]]
+  searchRequestsChan: Channel[Trequest]
+  resultsChan: Channel[Tresult]
+  colorTheme: string = "simple"
 
 proc ask(msg: string): string =
   stdout.write(msg)
@@ -254,7 +266,7 @@ proc writeArrow(s: string) =
 proc blockHeader(filename: string, line: int|string, replMode=false) =
   if replMode:
     writeArrow("     ->\n")
-  elif newLine:
+  elif newLine and optFilenames notin options:
     if oneline:
       printBlockFile(filename)
       printBlockLineN(":" & $line & ":")
@@ -266,7 +278,7 @@ proc lineHeader(filename: string, line: int|string, isMatch: bool) =
   let lineSym =
     if isMatch: $line & ":"
     else: $line & " "
-  if not newLine:
+  if not newLine and optFilenames notin options:
     if oneline:
       printFile(filename)
       printLineN(":" & lineSym, isMatch)
@@ -387,29 +399,29 @@ proc replace1match(si: SearchInfo, mi: MatchInfo, i: int, r: string;
     inc(curLine, countLineBreaks(mi.match, 0, mi.match.len-1))
 
 template updateCounters(output: Output) =
-    case output.kind
-    of GroupFirstMatch, GroupNextMatch: inc(gVar.matches)
-    of JustCount: inc(gVar.matches, output.matches)
-    of OpenError: inc(gVar.errors)
-    of Rejected, GroupEnd, FileContents: discard
+  case output.kind
+  of GroupFirstMatch, GroupNextMatch: inc(gVar.matches)
+  of JustCount: inc(gVar.matches, output.matches)
+  of OpenError: inc(gVar.errors)
+  of Rejected, GroupEnd, FileContents: discard
 
 proc printOutput(filename: string, output: Output) =
-    case output.kind
-    of OpenError:
-      printError("can not open file " & filename)
-    of Rejected: discard
-    of JustCount:
-      echo " (" & $output.matches & " matches)"
-    of FileContents: discard # impossible
-    of GroupFirstMatch:
-      printLinesBefore(filename, output.pre, output.match.lineBeg)
-      printMatch(filename, output.match)
-      #flush: TODO
-    of GroupNextMatch:
-      printBetweenMatches(filename, output.pre, output.match.lineBeg)
-      printMatch(filename, output.match)
-    of GroupEnd:
-      printLinesAfter(filename, output.groupEnding, output.firstLine)
+  case output.kind
+  of OpenError:
+    printError("can not open path " & filename & " " & output.msg)
+  of Rejected: discard
+  of JustCount:
+    echo " (" & $output.matches & " matches)"
+  of FileContents: discard # impossible
+  of GroupFirstMatch:
+    printLinesBefore(filename, output.pre, output.match.lineBeg)
+    printMatch(filename, output.match)
+    #flush: TODO
+  of GroupNextMatch:
+    printBetweenMatches(filename, output.pre, output.match.lineBeg)
+    printMatch(filename, output.match)
+  of GroupEnd:
+    printLinesAfter(filename, output.groupEnding, output.firstLine)
 
 iterator searchFile(pattern; filename: string; buffer: string): Output =
   let si: SearchInfo = (buf: buffer, filename: filename)
@@ -418,7 +430,7 @@ iterator searchFile(pattern; filename: string; buffer: string): Output =
   var i = 0
   var matches: array[0..re.MaxSubpatterns-1, string]
   for j in 0..high(matches): matches[j] = ""
-  while i < buffer.len:
+  while true:
     let t = findBounds(buffer, pattern, matches, i)
     if t.first < 0 or t.last < t.first:
       if prevMi.lineBeg != 0: # finalize last match
@@ -433,7 +445,7 @@ iterator searchFile(pattern; filename: string; buffer: string): Output =
              lineBeg: lineBeg,
              lineEnd: lineBeg + countLineBreaks(buffer, t.first, t.last),
              match: buffer.substr(t.first, t.last))
-    if prevMi.lineBeg == 0: # no previous match, so no previous block to finalize
+    if prevMi.lineBeg == 0: # no prev. match, so no prev. block to finalize
       yield Output(kind: GroupFirstMatch,
                    pre: getLinesBefore(si, curMi),
                    match: curMi)
@@ -450,9 +462,6 @@ iterator searchFile(pattern; filename: string; buffer: string): Output =
         yield Output(kind: GroupFirstMatch,
                      pre: getLinesBefore(si, curMi),
                      match: curMi)
-      #if t.last == buffer.len - 1:  # TODO
-      #  stdout.write("\n")
-      #stdout.flushFile()
 
     i = t.last+1
     prevMi = curMi
@@ -470,8 +479,8 @@ iterator processFile(pattern; filename: string, yieldContents=false): Output =
   else:
     try:
       buffer = system.readFile(filename)
-    except IOError:
-      yield Output(kind: OpenError)
+    except IOError as e:
+      yield Output(kind: OpenError, msg: e.msg)
 
   var reject = false
   if checkBin in {biNo, biOnly}:
@@ -498,33 +507,38 @@ iterator processFile(pattern; filename: string, yieldContents=false): Output =
     if yieldContents and found and not justCount:
       yield Output(kind: FileContents, buffer: buffer)
 
-proc hasRightFileName(path: string): bool =
+proc hasRightFileName(path: string, wopt: WalkOptPat): bool =
   let filename = path.lastPathPart
   let ex = filename.splitFile.ext.substr(1) # skip leading '.'
-  if extensions.len != 0:
+  if opt.extensions.len != 0:
     var matched = false
-    for x in items(extensions):
+    for x in opt.extensions:
       if os.cmpPaths(x, ex) == 0:
         matched = true
         break
     if not matched: return false
-  for x in items(skipExtensions):
+  for x in opt.skipExtensions:
     if os.cmpPaths(x, ex) == 0: return false
-  if includeFile.len != 0:
-    var matched = false
-    for x in items(includeFile):
-      if filename.match(x):
-        matched = true
-        break
-    if not matched: return false
-  for x in items(excludeFile):
-    if filename.match(x): return false
+  template checkFileName(patInclude: untyped, patExclude: untyped) =
+    if patInclude.len != 0:
+      var matched = false
+      for pat in patInclude:
+        if filename.match(pat):
+          matched = true
+          break
+      if not matched: return false
+    for pat in patExclude:
+      if filename.match(pat): return false
+  checkFileName(wopt.includeFileR, wopt.excludeFileR)
+  checkFileName(wopt.includeFileP, wopt.excludeFileP)
   result = true
 
-proc hasRightDirectory(path: string): bool =
+proc hasRightDirectory(path: string, wopt: WalkOptPat): bool =
   let dirname = path.lastPathPart
-  for x in items(excludeDir):
-    if dirname.match(x): return false
+  for pat in wopt.excludeDirR:
+    if dirname.match(pat): return false
+  for pat in wopt.excludeDirP:
+    if dirname.match(pat): return false
   result = true
 
 proc styleInsensitive(s: string): string =
@@ -561,30 +575,7 @@ proc styleInsensitive(s: string): string =
         addx()
     else: addx()
 
-proc walker(dir: string; files: var seq[string]) =
-  if dirExists(dir):
-    for kind, path in walkDir(dir):
-      case kind
-      of pcFile:
-        if path.hasRightFileName:
-          files.add(path)
-      of pcLinkToFile:
-        if optFollow in options and path.hasRightFileName:
-          files.add(path)
-      of pcDir:
-        if optRecursive in options and path.hasRightDirectory:
-          walker(path, files)
-      of pcLinkToDir:
-        if optFollow in options and optRecursive in options and
-           path.hasRightDirectory:
-          walker(path, files)
-  elif fileExists(dir):
-    files.add(dir)
-  else:
-    printError "Error: no such file or directory: " & dir
-    inc(gVar.errors)
-
-iterator walkDirBasic(dir: string): string =
+iterator walkDirBasic(dir: string, wopt: WalkOptPat): string =
   var dirStack = @[dir]  # stack of directories
   var timeFiles = newSeq[(times.Time, string)]()
   while dirStack.len > 0:
@@ -594,22 +585,22 @@ iterator walkDirBasic(dir: string): string =
     for kind, path in walkDir(d):
       case kind
       of pcFile:
-        if path.hasRightFileName:
+        if path.hasRightFileName(wopt):
           files.add(path)
       of pcLinkToFile:
-        if optFollow in options and path.hasRightFileName:
+        if optFollow in options and path.hasRightFileName(wopt):
           files.add(path)
       of pcDir:
-        if optRecursive in options and path.hasRightDirectory:
+        if optRecursive in options and path.hasRightDirectory(wopt):
           dirs.add path
       of pcLinkToDir:
         if optFollow in options and optRecursive in options and
-           path.hasRightDirectory:
+           path.hasRightDirectory(wopt):
           dirs.add path
-    if sortTime:
+    if sortTime:  # sort by time - collect files before yielding
       for file in files:
         timeFiles.add((getLastModificationTime(file), file))
-    else:  # alphanumeric sort
+    else:  # alphanumeric sort, yield immediately after sorting
       files.sort()
       for file in files:
         yield file
@@ -621,16 +612,59 @@ iterator walkDirBasic(dir: string): string =
     for (_, file) in timeFiles:
       yield file
 
-iterator walkRec(paths: seq[string]): string =
+template withPattern2(initPattern: string,
+                      finalPattern: untyped, # either Peg or Regex
+                      body1: untyped,          # the Peg block
+                      body2: untyped) =        # the Regex block
+  var pattern = initPattern
+  if optRegex notin options:
+    if optWord in options:
+      pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
+    if optIgnoreStyle in options:
+      pattern = "\\y " & pattern
+    elif optIgnoreCase in options:
+      pattern = "\\i " & pattern
+    var finalPattern = peg(pattern)
+    body1
+  else:
+    var reflags = {reStudy}
+    if optIgnoreStyle in options:
+      pattern = styleInsensitive(pattern)
+    if optWord in options:
+      # see https://github.com/nim-lang/Nim/issues/13528#issuecomment-592786443
+      pattern = r"(^|\W)(:?" & pattern & r")($|\W)"
+    if {optIgnoreCase, optIgnoreStyle} * options != {}:
+      reflags.incl reIgnoreCase
+    var finalPattern = if optRex in options: rex(pattern, reflags)
+                         else: re(pattern, reflags)
+    body2
+
+template withPattern(initPattern: string, finalPattern: untyped, body) =
+  # use the same body for Peg and Regex
+  withPattern2(initPattern, finalPattern, body, body)
+
+iterator walkRec(paths: seq[string]): (string, string) =
+  var wopt: WalkOptPat
+  for pat in opt.excludeFile:
+    withPattern2(pat, finalPattern,
+      wopt.excludeFileP.add finalPattern,
+      wopt.excludeFileR.add finalPattern)
+  for pat in opt.includeFile:
+    withPattern2(pat, finalPattern,
+      wopt.includeFileP.add finalPattern,
+      wopt.includeFileR.add finalPattern)
+  for pat in opt.excludeDir:
+    withPattern2(pat, finalPattern,
+      wopt.excludeDirP.add finalPattern,
+      wopt.excludeDirR.add finalPattern)
   for path in paths:
-    if existsDir(path):
-      for p in walkDirBasic(path):
-        yield p
-    elif existsFile(path):
-      yield path
+    if dirExists(path):
+      for p in walkDirBasic(path, wopt):
+        yield ("", p)
+    elif fileExists(path):
+      yield ("", path)
     else:
-      printError "Error: no such file or directory: " & path
-      inc(gVar.errors)
+      yield ("Error: no such file or directory: ", path)
 
 template printResult(filename: string, body: untyped) =
   var filenameShown = false
@@ -650,14 +684,6 @@ template printResult(filename: string, body: untyped) =
       printFile(filename & ":")
     printOutput(filename, output)
   
-proc worker(pattern: Pattern) {.thread.} =
-  while true:
-    let (fileNo, filename) = requests.recv()
-    var rslt = newSeq[Output]();
-    for output in processFile(pattern, filename, yieldContents=(optReplace in options)):
-      rslt.add(output)
-    results.send((fileNo, move(rslt)))
-    
 proc replaceMatches(filename: string, buffer: string, outpSeq: seq[Output]) =
       var newBuf = newStringOfCap(buffer.len)
 
@@ -683,73 +709,95 @@ proc replaceMatches(filename: string, buffer: string, outpSeq: seq[Output]) =
           printError "cannot open file for overwriting: " & filename
           inc(gVar.errors)
 
-proc runMultiThread(pattern) =
-    stdout.flushFile()
-    var
-      workers = newSeq[Thread[Pattern]](nWorkers)
-    open(requests)
-    open(results)
-    for n in 0 ..< nWorkers:
-      createThread(workers[n], worker, pattern)
-    var
-      inWork = 0
-      nextFile = 0
-      firstFile = 0
-      storage = newTable[int, seq[Output]]() # file number -> accumulated result
-      files = newTable[int, string]()
-    template proc1result(fileNo, newOutpSeq) =
-        storage[fileNo] = newOutpSeq
-        var outpSeq: seq[Output]
-        while storage.haskey(firstFile):
-          outpSeq = storage[firstFile]
-          let filename = files[firstFile]
-          if optReplace notin options:
-            printResult(filename, outpSeq)
-          else:
-            var buffer = ""
+proc run1Thread(initPattern: string) =
+  withPattern(initPattern, finalPattern):
+    for (err, filename) in walkRec(paths):
+      if err != "":
+        inc(gVar.errors)
+        printError (err & filename)
+        continue
+      if optReplace notin options:
+          printResult(filename, processFile(finalPattern, filename))
+      else:
+        var matches = newSeq[Output]()
+        var buffer = ""
 
-            var matches = newSeq[Output]()
-            for output in outpSeq:
-              updateCounters(output)
-              case output.kind
-              of Rejected, OpenError, JustCount: discard
-              of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
-              of FileContents: buffer = output.buffer
-            if matches.len > 0:
-              replaceMatches(filename, buffer, matches)
-          firstFile += 1
-    for filename in walkRec(paths):
-      requests.send((nextFile,filename))
-      files[nextFile] = filename
-      nextFile += 1
-      inWork += 1
-      let (available, msg) = results.tryRecv()
-      if available:
-        proc1result(msg.fileNo, msg.result)
-        inWork -= 1
-    while inWork > 0:
-      let (fileNo, newOutpSeq) = results.recv()
-      proc1result(fileNo, newOutpSeq)
-      inWork -= 1
+        for output in processFile(finalPattern, filename, yieldContents=true):
+          updateCounters(output)
+          case output.kind
+          of Rejected, OpenError, JustCount: discard
+          of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
+          of FileContents: buffer = output.buffer
+        if matches.len > 0:
+          replaceMatches(filename, buffer, matches)
 
-proc run1Thread(pattern) =
-  for filename in walkRec(paths):
-    if optReplace notin options:
-      printResult(filename, processFile(pattern, filename))
+proc worker(initPattern: string) {.thread.} =
+  withPattern(initPattern, finalPattern):
+    while true:
+      let (fileNo, filename) = searchRequestsChan.recv()
+      var fileResult = newSeq[Output]();
+      for output in processFile(finalPattern, filename, yieldContents=(optReplace in options)):
+        fileResult.add(output)
+      resultsChan.send((false, fileNo, filename, move(fileResult)))
+
+proc pathProducer(arg: (seq[string], WalkOpt)) {.thread.} =
+  let paths = arg[0]
+  opt = arg[1]  # init thread-local copy of opt
+  var
+    nextFileN = 0
+  for (err, filename) in walkRec(paths):
+    if err == "":
+      searchRequestsChan.send((nextFileN,filename))
     else:
-      var matches = newSeq[Output]()
-      var buffer = ""
+      resultsChan.send((false, nextFileN,
+                        filename, @[Output(kind: OpenError, msg: err)]))
+    nextFileN += 1
+  resultsChan.send((true, nextFileN, "", @[]))
 
-      for output in processFile(pattern, filename, yieldContents=true):
-        updateCounters(output)
-        case output.kind
-        of Rejected, OpenError, JustCount: discard
-        of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
-        of FileContents: buffer = output.buffer
-      if matches.len > 0:
-        replaceMatches(filename, buffer, matches)
+proc runMultiThread(pattern: string) =
+  var
+    workers = newSeq[Thread[string]](nWorkers)
+    storage = newTable[int, (string, seq[Output]) ]()
+      # file number -> accumulated result
+    firstUnprocessedFile = 0
+  open(searchRequestsChan)
+  open(resultsChan)
+  for n in 0 ..< nWorkers:
+    createThread(workers[n], worker, pattern)
+  var producerThread: Thread[(seq[string], WalkOpt)]
+  createThread(producerThread, pathProducer, (paths, opt))
+  template process1result(fileNo: int, fname: string, fileResult: seq[Output]) =
+      storage[fileNo] = (fname, fileResult)
+      var outpSeq: seq[Output]
+      while storage.haskey(firstUnprocessedFile):
+        outpSeq = storage[firstUnprocessedFile][1]
+        let filename = storage[firstUnprocessedFile][0]
+        if optReplace notin options:
+          printResult(filename, outpSeq)
+        else:
+          var buffer = ""
 
-proc run(pattern) =
+          var matches = newSeq[Output]()
+          for output in outpSeq:
+            updateCounters(output)
+            case output.kind
+            of Rejected, OpenError, JustCount: discard
+            # printError error
+            of GroupFirstMatch, GroupNextMatch, GroupEnd: matches.add(output)
+            of FileContents: buffer = output.buffer
+          if matches.len > 0:
+            replaceMatches(filename, buffer, matches)
+        storage.del(firstUnprocessedFile)
+        firstUnprocessedFile += 1
+  var totalFiles = -1  # will be known when pathProducer finishes
+  while totalFiles == -1 or firstUnprocessedFile < totalFiles:
+    let msg = resultsChan.recv()
+    if msg.finished:
+      totalFiles = msg.fileNo
+    else:
+      process1result(msg.fileNo, msg.filename, msg.fileResult)
+
+proc run(pattern: string) =
   if nWorkers == 0:
     run1Thread(pattern)
   else:
@@ -814,11 +862,11 @@ for kind, key, val in getopt():
         nWorkers = countProcessors()
       else:
         nWorkers = parseInt(val)
-    of "ext": extensions.add val.split('|')
-    of "noext": skipExtensions.add val.split('|')
-    of "excludedir", "exclude-dir": excludeDir.add rex(val)
-    of "includefile", "include-file": includeFile.add rex(val)
-    of "excludefile", "exclude-file": excludeFile.add rex(val)
+    of "ext": opt.extensions.add val.split('|')
+    of "noext": opt.skipExtensions.add val.split('|')
+    of "excludedir", "exclude-dir": opt.excludeDir.add val
+    of "includefile", "include-file": opt.includeFile.add val
+    of "excludefile", "exclude-file": opt.excludeFile.add val
     of "bin":
       case val
       of "no": checkBin = biNo
@@ -892,27 +940,7 @@ if pattern.len == 0:
 else:
   if paths.len == 0:
     paths.add(os.getCurrentDir())
-  if optRegex notin options:
-    if optWord in options:
-      pattern = r"(^ / !\letter)(" & pattern & r") !\letter"
-    if optIgnoreStyle in options:
-      pattern = "\\y " & pattern
-    elif optIgnoreCase in options:
-      pattern = "\\i " & pattern
-    let pegp = peg(pattern)
-    run(pegp)
-  else:
-    var reflags = {reStudy}
-    if optIgnoreStyle in options:
-      pattern = styleInsensitive(pattern)
-    if optWord in options:
-      # see https://github.com/nim-lang/Nim/issues/13528#issuecomment-592786443
-      pattern = r"(^|\W)(:?" & pattern & r")($|\W)"
-    if {optIgnoreCase, optIgnoreStyle} * options != {}:
-      reflags.incl reIgnoreCase
-    let rep = if optRex in options: rex(pattern, reflags)
-              else: re(pattern, reflags)
-    run(rep)
+  run(pattern)
   if gVar.errors != 0:
     printError $gVar.errors & " errors"
   stdout.write($gVar.matches & " matches\n")
