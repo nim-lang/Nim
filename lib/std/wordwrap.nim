@@ -110,9 +110,9 @@ tnaetdriaoenvlcyfglwckßqfgvwkßqgfvlwkßqfgvlwckßqvlwkgfUIαοιαοιαχολ
 
   # bug #14579
   const input60 = """
-This is a long string. It is manually wrapped to 60
-characters. I would not expect it to be changed by
-wordwrap if wordwrap is set to wrap at 80 characters"""
-  const input60Res = """This is a long string. It is manually wrapped to 60 characters. I would not
-expect it to be changed by wordwrap if wordwrap is set to wrap at 80 characters"""
+This string is wrapped to 60 characters. If we call
+wrapwords on it it will be re-wrapped to 80 characters.
+"""
+  const input60Res = """This string is wrapped to 60 characters. If we call wrapwords on it it will be
+re-wrapped to 80 characters."""
   doAssert wrapWords(input60) == input60Res
