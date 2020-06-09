@@ -11,6 +11,7 @@ import
   options, strutils, os, tables, ropes, terminal, macros,
   lineinfos, pathutils
 import std/private/miscdollars
+import std/private/debugutils
 
 type InstantiationInfo = typeof(instantiationInfo())
 template instLoc(): InstantiationInfo = instantiationInfo(-2, fullPaths = true)
@@ -543,13 +544,25 @@ template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   conf.m.errorOutputs = {eStdOut, eStdErr}
   liMessage(conf, info, msg, arg, doAbort, instLoc())
 
-template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
-  ## avoids boilerplate
+template localAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "", body: untyped) =
+  ## avoids boilerplate.
+  ## local means compilation keeps going until errorMax is reached (via `doNothing`),
+  ## global means it stops.
   if not cond:
-    const info2 = instantiationInfo(-1, fullPaths = true)
-    var arg2 = "'$1' failed" % [astToStr(cond)]
-    if arg.len > 0: arg2.add "; " & astToStr(arg) & ": " & arg
-    liMessage(conf, info, errGenerated, arg2, doRaise, info2)
+    let errMsg = conditionToStr(cond, arg)
+    liMessage(conf, info, errGenerated, errMsg, doNothing, instLoc())
+    body
+
+template localAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
+  if not cond:
+    let errMsg = conditionToStr(cond, arg)
+    liMessage(conf, info, errGenerated, errMsg, doNothing, instLoc())
+
+template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
+  ## see `localAssert`
+  if not cond:
+    let errMsg = conditionToStr(cond, arg)
+    liMessage(conf, info, errGenerated, errMsg, doRaise, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
   liMessage(conf, info, msg, arg, doRaise, instLoc())

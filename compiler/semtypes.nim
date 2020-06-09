@@ -904,9 +904,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
               semTypeNode(c, body, nil)
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
       t = t.base
-    if t.kind == tyVoid:
-      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
-      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
+    localAssert(c.config, t.kind != tyVoid, n.info)
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     var wrapperKind = tyNone
@@ -1400,7 +1398,7 @@ proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
-                       [s.name.s, ($s.kind).substr(2).toLowerAscii])
+               [s.name.s, s.kind.toHumanStr])
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
@@ -1490,28 +1488,25 @@ proc fixupTypeOf(c: PContext, prev: PType, typExpr: PNode) =
 
 proc semTypeExpr(c: PContext, n: PNode; prev: PType): PType =
   var n = semExprWithType(c, n, {efDetermineType})
-  if n.typ.kind == tyTypeDesc:
-    result = n.typ.base
-    # fix types constructed by macros/template:
-    if prev != nil and prev.sym != nil:
-      if result.sym.isNil:
-        # Behold! you're witnessing enormous power yielded
-        # by macros. Only macros can summon unnamed types
-        # and cast spell upon AST. Here we need to give
-        # it a name taken from left hand side's node
-        result.sym = prev.sym
-        result.sym.typ = result
-      else:
-        # Less powerful routine like template do not have
-        # the ability to produce unnamed types. But still
-        # it has wild power to push a type a bit too far.
-        # So we need to hold it back using alias and prevent
-        # unnecessary new type creation
-        let alias = maybeAliasType(c, result, prev)
-        if alias != nil: result = alias
-  else:
-    localError(c.config, n.info, "expected type, but got: " & n.renderTree)
-    result = errorType(c)
+  localAssert c.config, n.typ.kind == tyTypeDesc, n.info, body = block: return errorType(c)
+  result = n.typ.base
+  # fix types constructed by macros/template:
+  if prev != nil and prev.sym != nil:
+    if result.sym.isNil:
+      # Behold! you're witnessing enormous power yielded
+      # by macros. Only macros can summon unnamed types
+      # and cast spell upon AST. Here we need to give
+      # it a name taken from left hand side's node
+      result.sym = prev.sym
+      result.sym.typ = result
+    else:
+      # Less powerful routine like template do not have
+      # the ability to produce unnamed types. But still
+      # it has wild power to push a type a bit too far.
+      # So we need to hold it back using alias and prevent
+      # unnecessary new type creation
+      let alias = maybeAliasType(c, result, prev)
+      if alias != nil: result = alias
 
 proc freshType(res, prev: PType): PType {.inline.} =
   if prev.isNil:
