@@ -42,7 +42,9 @@ proc forceCopy*(result: var string, a: string) =
   result.setLen n, isInit = false
   copyMem(result.dataPointer, a.dataPointer, n)
 
-import std/strutils
+proc isUpperAscii(c: char): bool {.inline.} =
+  # avoids import strutils.isUpperAscii
+  c in {'A'..'Z'}
 
 proc toLowerAscii*(a: var string) =
   ## optimized and inplace overload of strutils.toLowerAscii
