@@ -24,7 +24,7 @@ The documentation consists of several documents:
 
 - | `GC <gc.html>`_
   | Additional documentation about Nim's multi-paradigm memory management strategies
-  | and how to operate it in a realtime setting.
+  | and how to operate them in a realtime setting.
 
 - | `Source code filters <filters.html>`_
   | The Nim compiler supports source code filters as a simple yet powerful
@@ -36,4 +36,3 @@ The documentation consists of several documents:
 
 - | `Index <theindex.html>`_
   | The generated index. **Index + (Ctrl+F) == Joy**
-
