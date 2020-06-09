@@ -543,6 +543,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
     if not cond:
       let errMsg = conditionToStr(cond, msg)
       stackTraceImpl(c, tos, pc, errMsg, info, instantiationInfo(-2, fullPaths = true))
+      return
+
+  template stackTrace(msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+    stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
+    return
 
   while true:
     #{.computedGoto.}
@@ -764,10 +769,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       regs[ra].regAddr = addr(regs[rb])
     of opcAddrNode:
       decodeB(rkNodeAddr)
-      if regs[rb].kind == rkNode:
-        regs[ra].nodeAddr = addr(regs[rb].node)
-      else:
-        stackTrace(c, tos, pc, "limited VM support for 'addr'")
+      vmAssert regs[rb].kind == rkNode, "limited VM support for 'addr'"
+      regs[ra].nodeAddr = addr(regs[rb].node)
     of opcLdDeref:
       # a = b[]
       let ra = instr.regA
@@ -1037,10 +1040,8 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       decodeB(rkInt)
       assert regs[rb].kind == rkInt
       let val = regs[rb].intVal
-      if val != int64.low:
-        regs[ra].intVal = -val
-      else:
-        stackTrace(c, tos, pc, errOverOrUnderflow)
+      vmAssert val != int64.low, errOverOrUnderflow
+      regs[ra].intVal = -val
     of opcUnaryMinusFloat:
       decodeB(rkFloat)
       assert regs[rb].kind == rkFloat
