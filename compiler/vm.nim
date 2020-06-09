@@ -72,20 +72,18 @@ proc stackTraceAux(c: PCtx; x: PStackFrame; pc: int; recursionLimit=100) =
     msgWriteln(c.config, s)
 
 proc stackTraceImpl(c: PCtx, tos: PStackFrame, pc: int,
-                msg: string, lineInfo: TLineInfo) =
+  msg: string, lineInfo: TLineInfo, infoOrigin: InstantiationInfo) {.noinline.} =
+  # noinline to avoid code bloat
   msgWriteln(c.config, "stack trace: (most recent call last)")
   stackTraceAux(c, tos, pc)
-  # XXX test if we want 'globalError' for every mode
-  if c.mode == emRepl: globalError(c.config, lineInfo, msg)
-  else: localError(c.config, lineInfo, msg)
+  let action = if c.mode == emRepl: doRaise else: doNothing
+    # XXX test if we want 'globalError' for every mode
+  let lineInfo = if lineInfo == TLineInfo.default: c.debug[pc] else: lineInfo
+  liMessage(c.config, lineInfo, errGenerated, msg, action, infoOrigin)
 
 template stackTrace(c: PCtx, tos: PStackFrame, pc: int,
-                    msg: string, lineInfo: TLineInfo) =
-  stackTraceImpl(c, tos, pc, msg, lineInfo)
-  return
-
-template stackTrace(c: PCtx, tos: PStackFrame, pc: int, msg: string) =
-  stackTraceImpl(c, tos, pc, msg, c.debug[pc])
+                    msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+  stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
   return
 
 proc bailOut(c: PCtx; tos: PStackFrame) =
@@ -539,6 +537,11 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
+
+  template stackTrace(msg: string, lineInfo: TLineInfo = TLineInfo.default) =
+    stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
+    return
+
   while true:
     #{.computedGoto.}
     let instr = c.code[pc]
@@ -762,7 +765,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].kind == rkNode:
         regs[ra].nodeAddr = addr(regs[rb].node)
       else:
-        stackTrace(c, tos, pc, "limited VM support for 'addr'")
+        stackTrace "limited VM support for 'addr'"
     of opcLdDeref:
       # a = b[]
       let ra = instr.regA
@@ -1035,7 +1038,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if val != int64.low:
         regs[ra].intVal = -val
       else:
-        stackTrace(c, tos, pc, errOverOrUnderflow)
+        stackTrace errOverOrUnderflow
     of opcUnaryMinusFloat:
       decodeB(rkFloat)
       assert regs[rb].kind == rkFloat
@@ -1106,7 +1109,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
       else:
-        stackTrace(c, tos, pc, "node is not a symbol")
+        stackTrace "node is not a symbol"
     of opcGetImplTransf:
       decodeB(rkNode)
       let a = regs[rb].node
