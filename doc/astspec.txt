@@ -1014,7 +1014,7 @@ AST:
   )
 
 Note that not all ``nnkTypeDef`` utilize ``nnkIdent`` as their
-their parameter. One of the most common uses of type declarations
+parameter. One of the most common uses of type declarations
 is to work with objects.
 
 Concrete syntax:
