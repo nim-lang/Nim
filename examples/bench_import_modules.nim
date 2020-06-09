@@ -25,7 +25,7 @@ opt: caseWithStdModules force:    t: 0.5402710437774658
 ]##
 
 import std/[strformat,os,times,strutils]
-import compiler/asciitables
+import std/private/asciitables
 
 proc quoted(a: string): string = result.addQuoted(a)
 
