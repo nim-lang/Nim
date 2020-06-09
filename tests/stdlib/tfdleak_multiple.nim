@@ -1,6 +1,7 @@
 import os, osproc, strutils
 
-const Iterations = 200
+const Iterations = when defined(windows) or defined(netbsd): 200 else: 1
+  # tfdleak was only flaky for windows and netbsd.
 
 proc testFdLeak() =
   var count = 0
