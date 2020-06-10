@@ -45,11 +45,15 @@ proc genStringLiteralV1(m: BModule; n: PNode): Rope =
   if s.isNil:
     result = ropecg(m, "((#NimStringDesc*) NIM_NIL)", [])
   else:
-    var pureLit: Rope
-    if getTempName(m, n, pureLit):
+    # i'm telling you, it's super subtle
+    # (or maybe not, but i got bit twice)
+    if hasTempName(m, n):
+      var name = getTempName(m, n)
+      result = ropecg(m, "((#NimStringDesc*) &$1)", [name])
+    else:
       # string literal not found in the cache:
-      genStringLiteralDataOnlyV1(m, n.strVal, pureLit)
-    result = ropecg(m, "((#NimStringDesc*) &$1)", [pureLit])
+      result = ropecg(m, "((#NimStringDesc*) &$1)",
+                      [genStringLiteralDataOnlyV1(m, n.strVal)])
 
 # ------ Version 2: destructor based strings and seqs -----------------------
 
@@ -63,24 +67,27 @@ proc genStringLiteralDataOnlyV2(m: BModule, s: string; pureLit: Rope;
 proc genStringLiteralV2(m: BModule; n: PNode; isConst: bool): Rope =
   const codef = "static $4 NimStringV2 $1 = {$2, (NimStrPayload*)&$3};$n"
   var pureLit: Rope
-  # this is a little subtle due to ..DataOnly.. side-effects
-  if getTempName(m, n, pureLit):
-    # setup the literal if it's new
+  # another very subtle one...  watch out!
+  if hasTempName(m, n):
+    pureLit = getTempName(m, n)
+  else:
+    pureLit = getTempName(m)
     genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
-
-  # setup the result
   result = getTempName(m)
   m.s[cfsData].addf(codef, [result, rope(n.strVal.len), pureLit,
                             rope(if isConst: "const" else: "")])
 
 proc genStringLiteralV2Const(m: BModule; n: PNode; isConst: bool): Rope =
   var pureLit: Rope
-  if getTempName(m, n, pureLit):
+  # and yet another creepy case...
+  if hasTempName(m, n):
+    pureLit = getTempName(m, n)
+  else:
+    pureLit = getTempName(m)
     discard cgsym(m, "NimStrPayload")
     discard cgsym(m, "NimStringV2")
-    # setup the literal if it's new
     genStringLiteralDataOnlyV2(m, n.strVal, pureLit, isConst)
   result = "{$1, (NimStrPayload*)&$2}" % [rope(n.strVal.len), pureLit]
 

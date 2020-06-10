@@ -72,7 +72,7 @@ proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
     # start counting at zero so we can omit an initial append
     result = getOrDefault(conflicts, name, 0)
     if result == 0:
-      # set the value for the name indicate the NEXT available counter
+      # set the value for the name to indicate the NEXT available counter
       conflicts[name] = 1
     # cache the result
     conflicts[key] = result
@@ -282,6 +282,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
       # we can use the IC cache to determine the right name and counter
       # for this symbol, but only for module-level manglings
       setConflictFromCache(m, s, name, create = create)
+      # FIXME: add a compiler pass to warm up the conflicts cache
 
   counter = getOrSet(p.sigConflicts, name, conflictKey(s))
   if counter == 0:
@@ -290,19 +291,22 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
       debug s
       assert false, "cannot find existing name for: " & name
   result = (name: name, counter: counter)
-  # FIXME: add a compiler pass to warm up the conflicts cache
 
 proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   ## produce a unique identity-or-signature for the given module and symbol
   let conflict = getSetConflict(m, s, create = true)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
+  when m is BModule:
+    echo "module >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result ]
+  else:
+    echo "  proc >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result ]
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
   m.tmpBase & $label & "_"
 
-proc hasTempName(m: BModule; n: PNode): bool =
+proc hasTempName*(m: BModule; n: PNode): bool =
   ## true if the module/proc has a temporary cached for the given node
   result = nodeTableGet(m.dataCache, n) != low(int)
 
