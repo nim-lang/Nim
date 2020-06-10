@@ -143,6 +143,8 @@
 - Removed deprecated symbols from `macros` module, deprecated as far back as `0.15`.
 
 
+- new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
+
 ## Language changes
 - The `=destroy` hook no longer has to reset its target, as the compiler now automatically inserts
   `wasMoved` calls where needed.
