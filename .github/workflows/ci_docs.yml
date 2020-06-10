@@ -24,6 +24,7 @@ on:
       - 'tools/kochdocs.nim'
       - '.github/workflows/ci_docs.yml'
 
+
 jobs:
   build:
     strategy:
