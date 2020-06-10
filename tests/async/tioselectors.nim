@@ -145,14 +145,23 @@ when not defined(windows):
     proc timer_notification_test(): bool =
       var selector = newSelector[int]()
       var timer = selector.registerTimer(100, false, 0)
-      var rc1 = selector.select(140)
-      var rc2 = selector.select(140)
+      let t = 190
+        # 140 is not enough and causes the test to be flaky in CI on OSX+freebsd
+        # When running locally, t=98 will succeed some of the time which indicates
+        # there is some lag involved. Note that the higher `t` is, the less times
+        # the test fails.
+      var rc1 = selector.select(t)
+      var rc2 = selector.select(t)
       assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
       selector.registerTimer(100, true, 0)
-      var rc4 = selector.select(120)
-      var rc5 = selector.select(120)
+      let t2 = 180
+        # likewise, 120 would result in flaky test on at least freebsd, and
+        # using small values close to 100 (eg 102) would reliably fail locally
+        # on OSX
+      var rc4 = selector.select(t2)
+      var rc5 = selector.select(t2)
       assert len(rc4) == 1 and len(rc5) == 0, $(len(rc4), len(rc5))
       assert(selector.isEmpty())
       selector.close()
