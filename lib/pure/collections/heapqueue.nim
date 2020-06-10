@@ -50,6 +50,7 @@
 
     assert jobs[0].priority == 1
 ]##
+import std/private/since
 
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
