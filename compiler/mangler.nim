@@ -252,7 +252,7 @@ else:
     let id = db.getValue(query, key)
     if id == "":
       if not create:
-        assert false, "missing id for " & result & " and no create option"
+        assert false, "missing id for " & name & " and no create option"
       # set the counter to the row id, not the symbol id or the actual count
       counter = db.insertID(insert, key, name).int
     else:
