@@ -56,7 +56,7 @@ proc defectiveRobot() =
   of 3: raise newException(IOError, "I can't do that Dave.")
   else: assert 2 + 2 == 5
 test "unittest expect":
-  expect IOError, OSError, ValueError, AssertionError:
+  expect IOError, OSError, ValueError, AssertionDefect:
     defectiveRobot()
 
 var

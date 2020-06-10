@@ -42,6 +42,7 @@
 ## * `streams module <streams.html>`_
 
 include "system/inclrtl"
+import std/private/since
 
 import
   strutils, pathnorm
@@ -97,6 +98,8 @@ type
   OSErrorCode* = distinct int32 ## Specifies an OS Error Code.
 
 include "includes/osseps"
+
+proc absolutePathInternal(path: string): string {.gcsafe.}
 
 proc normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
@@ -297,8 +300,12 @@ proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raise
     result = path[0] != ':'
   elif defined(RISCOS):
     result = path[0] == '$'
-  elif defined(posix):
+  elif defined(posix) or defined(js):
+    # `or defined(js)` wouldn't be needed pending https://github.com/nim-lang/Nim/issues/13469
+    # This works around the problem for posix, but windows is still broken with nim js -d:nodejs
     result = path[0] == '/'
+  else:
+    doAssert false # if ever hits here, adapt as needed
 
 when FileSystemCaseSensitive:
   template `!=?`(a, b: char): bool = a != b
@@ -360,8 +367,8 @@ when doslikeFileSystem:
         else:
           return false
 
-proc relativePath*(path, base: string; sep = DirSep): string {.
-  noSideEffect, rtl, extern: "nos$1", raises: [].} =
+proc relativePath*(path, base: string, sep = DirSep): string {.
+  rtl, extern: "nos$1".} =
   ## Converts `path` to a path relative to `base`.
   ##
   ## The `sep` (default: `DirSep <#DirSep>`_) is used for the path normalizations,
@@ -390,6 +397,12 @@ proc relativePath*(path, base: string; sep = DirSep): string {.
   var path = path
   path.normalizePathAux
   base.normalizePathAux
+  let a1 = isAbsolute(path)
+  let a2 = isAbsolute(base)
+  if a1 and not a2:
+    base = absolutePathInternal(base)
+  elif a2 and not a1:
+    path = absolutePathInternal(path)
 
   when doslikeFileSystem:
     if isAbsolute(path) and isAbsolute(base):
@@ -785,9 +798,9 @@ proc cmpPaths*(pathA, pathB: string): int {.
   ## On a case-sensitive filesystem this is done
   ## case-sensitively otherwise case-insensitively. Returns:
   ##
-  ## | 0 iff pathA == pathB
-  ## | < 0 iff pathA < pathB
-  ## | > 0 iff pathA > pathB
+  ## | 0 if pathA == pathB
+  ## | < 0 if pathA < pathB
+  ## | > 0 if pathA > pathB
   runnableExamples:
     when defined(macosx):
       assert cmpPaths("foo", "Foo") == 0
@@ -1066,7 +1079,7 @@ when defined(windows) and not weirdTarget:
     template findNextFile(a, b: untyped): untyped = findNextFileA(a, b)
     template getCommandLine(): untyped = getCommandLineA()
 
-    template getFilename(f: untyped): untyped = $f.cFileName
+    template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
 
   proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
@@ -1096,7 +1109,7 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimScript.} =
-  ## Returns true iff the directory `dir` exists. If `dir` is a file, false
+  ## Returns true if the directory `dir` exists. If `dir` is a file, false
   ## is returned. Follows symlinks.
   ##
   ## See also:
@@ -1116,7 +1129,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
 proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect],
                                           noNimScript.} =
-  ## Returns true iff the symlink `link` exists. Will return true
+  ## Returns true if the symlink `link` exists. Will return true
   ## regardless of whether the link points to a directory or file.
   ##
   ## See also:
@@ -1293,60 +1306,67 @@ proc fileNewer*(a, b: string): bool {.rtl, extern: "nos$1", noNimScript.} =
   else:
     result = getLastModificationTime(a) > getLastModificationTime(b)
 
-proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [], noNimScript.} =
-  ## Returns the `current working directory`:idx: i.e. where the built
-  ## binary is run.
-  ##
-  ## So the path returned by this proc is determined at run time.
-  ##
-  ## See also:
-  ## * `getHomeDir proc <#getHomeDir>`_
-  ## * `getConfigDir proc <#getConfigDir>`_
-  ## * `getTempDir proc <#getTempDir>`_
-  ## * `setCurrentDir proc <#setCurrentDir,string>`_
-  ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
-  ## * `getProjectPath proc <macros.html#getProjectPath>`_
-  when defined(windows):
-    var bufsize = MAX_PATH.int32
-    when useWinUnicode:
-      var res = newWideCString("", bufsize)
-      while true:
-        var L = getCurrentDirectoryW(bufsize, res)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          res = newWideCString("", L)
-          bufsize = L
-        else:
-          result = res$L
-          break
+when not defined(nimscript):
+  proc getCurrentDir*(): string {.rtl, extern: "nos$1", tags: [].} =
+    ## Returns the `current working directory`:idx: i.e. where the built
+    ## binary is run.
+    ##
+    ## So the path returned by this proc is determined at run time.
+    ##
+    ## See also:
+    ## * `getHomeDir proc <#getHomeDir>`_
+    ## * `getConfigDir proc <#getConfigDir>`_
+    ## * `getTempDir proc <#getTempDir>`_
+    ## * `setCurrentDir proc <#setCurrentDir,string>`_
+    ## * `currentSourcePath template <system.html#currentSourcePath.t>`_
+    ## * `getProjectPath proc <macros.html#getProjectPath>`_
+    when defined(nodejs):
+      var ret: cstring
+      {.emit: "`ret` = process.cwd();".}
+      return $ret
+    elif defined(js):
+      doAssert false, "use -d:nodejs to have `getCurrentDir` defined"
+    elif defined(windows):
+      var bufsize = MAX_PATH.int32
+      when useWinUnicode:
+        var res = newWideCString("", bufsize)
+        while true:
+          var L = getCurrentDirectoryW(bufsize, res)
+          if L == 0'i32:
+            raiseOSError(osLastError())
+          elif L > bufsize:
+            res = newWideCString("", L)
+            bufsize = L
+          else:
+            result = res$L
+            break
+      else:
+        result = newString(bufsize)
+        while true:
+          var L = getCurrentDirectoryA(bufsize, result)
+          if L == 0'i32:
+            raiseOSError(osLastError())
+          elif L > bufsize:
+            result = newString(L)
+            bufsize = L
+          else:
+            setLen(result, L)
+            break
     else:
+      var bufsize = 1024 # should be enough
       result = newString(bufsize)
       while true:
-        var L = getCurrentDirectoryA(bufsize, result)
-        if L == 0'i32:
-          raiseOSError(osLastError())
-        elif L > bufsize:
-          result = newString(L)
-          bufsize = L
-        else:
-          setLen(result, L)
+        if getcwd(result, bufsize) != nil:
+          setLen(result, c_strlen(result))
           break
-  else:
-    var bufsize = 1024 # should be enough
-    result = newString(bufsize)
-    while true:
-      if getcwd(result, bufsize) != nil:
-        setLen(result, c_strlen(result))
-        break
-      else:
-        let err = osLastError()
-        if err.int32 == ERANGE:
-          bufsize = bufsize shl 1
-          doAssert(bufsize >= 0)
-          result = newString(bufsize)
         else:
-          raiseOSError(osLastError())
+          let err = osLastError()
+          if err.int32 == ERANGE:
+            bufsize = bufsize shl 1
+            doAssert(bufsize >= 0)
+            result = newString(bufsize)
+          else:
+            raiseOSError(osLastError())
 
 proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   ## Sets the `current working directory`:idx:; `OSError`
@@ -1366,23 +1386,26 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noNimScript.} =
   else:
     if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
 
-when not weirdTarget:
-  proc absolutePath*(path: string, root = getCurrentDir()): string {.noNimScript.} =
-    ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
-    ## default: current directory).
-    ## If `path` is absolute, return it, ignoring `root`.
-    ##
-    ## See also:
-    ## * `normalizedPath proc <#normalizedPath,string>`_
-    ## * `normalizePath proc <#normalizePath,string>`_
-    runnableExamples:
-      assert absolutePath("a") == getCurrentDir() / "a"
 
-    if isAbsolute(path): path
-    else:
-      if not root.isAbsolute:
-        raise newException(ValueError, "The specified root is not absolute: " & root)
-      joinPath(root, path)
+proc absolutePath*(path: string, root = getCurrentDir()): string =
+  ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
+  ## default: current directory).
+  ## If `path` is absolute, return it, ignoring `root`.
+  ##
+  ## See also:
+  ## * `normalizedPath proc <#normalizedPath,string>`_
+  ## * `normalizePath proc <#normalizePath,string>`_
+  runnableExamples:
+    assert absolutePath("a") == getCurrentDir() / "a"
+
+  if isAbsolute(path): path
+  else:
+    if not root.isAbsolute:
+      raise newException(ValueError, "The specified root is not absolute: " & root)
+    joinPath(root, path)
+
+proc absolutePathInternal(path: string): string =
+  absolutePath(path, getCurrentDir())
 
 proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.
@@ -1778,9 +1801,9 @@ proc tryMoveFSObject(source, dest: string): bool {.noNimScript.} =
     when useWinUnicode:
       let s = newWideCString(source)
       let d = newWideCString(dest)
-      if moveFileExW(s, d, MOVEFILE_COPY_ALLOWED) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      if moveFileExW(s, d, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) == 0'i32: raiseOSError(osLastError(), $(source, dest))
     else:
-      if moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED) == 0'i32: raiseOSError(osLastError(), $(source, dest))
+      if moveFileExA(source, dest, MOVEFILE_COPY_ALLOWED or MOVEFILE_REPLACE_EXISTING) == 0'i32: raiseOSError(osLastError(), $(source, dest))
   else:
     if c_rename(source, dest) != 0'i32:
       let err = osLastError()
@@ -2656,7 +2679,7 @@ when defined(nimdoc):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     ## Returns the `i`-th `command line argument`:idx: given to the application.
     ##
-    ## `i` should be in the range `1..paramCount()`, the `IndexError`
+    ## `i` should be in the range `1..paramCount()`, the `IndexDefect`
     ## exception will be raised for invalid values.  Instead of iterating over
     ## `paramCount() <#paramCount>`_ with this proc you can call the
     ## convenience `commandLineParams() <#commandLineParams>`_.
@@ -2685,7 +2708,23 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
-elif defined(nintendoswitch) or weirdTarget:
+elif defined(nimscript):
+  proc paramStr*(i: int): string =
+    ## Retrieves the ``i``'th command line parameter.
+    discard
+
+  proc paramCount*(): int =
+    ## Retrieves the number of command line parameters.
+    discard
+
+elif defined(js):
+  proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramStr is not implemented on JavaScript")
+
+  proc paramCount*(): int {.tags: [ReadIOEffect].} =
+    raise newException(OSError, "paramCount is not implemented on JavaScript")
+
+elif defined(nintendoswitch):
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
 
@@ -2716,7 +2755,7 @@ elif defined(windows):
       ownArgv = parseCmdLine($getCommandLine())
       ownParsedArgv = true
     if i < ownArgv.len and i >= 0: return TaintedString(ownArgv[i])
-    raise newException(IndexError, formatErrorIndexBound(i, ownArgv.len-1))
+    raise newException(IndexDefect, formatErrorIndexBound(i, ownArgv.len-1))
 
 elif defined(genode):
   proc paramStr*(i: int): TaintedString =
@@ -2735,7 +2774,7 @@ elif not defined(createNimRtl) and
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
     if i < cmdCount and i >= 0: return TaintedString($cmdLine[i])
-    raise newException(IndexError, formatErrorIndexBound(i, cmdCount-1))
+    raise newException(IndexDefect, formatErrorIndexBound(i, cmdCount-1))
 
   proc paramCount*(): int {.tags: [ReadIOEffect].} =
     # Docstring in nimdoc block.
@@ -2818,11 +2857,7 @@ when not weirdTarget and (defined(linux) or defined(solaris) or defined(bsd) or 
       len = readlink(procPath, result, len)
     setLen(result, len)
 
-when defined(openbsd):
-  proc isExecutable(path: string): bool =
-    let p = getFilePermissions(path)
-    result = fpUserExec in p and fpGroupExec in p and fpOthersExec in p
-
+when not weirdTarget and defined(openbsd):
   proc getApplOpenBsd(): string =
     # similar to getApplHeuristic, but checks current working directory
     when declared(paramStr):
@@ -2846,15 +2881,12 @@ when defined(openbsd):
             break
 
       if len(result) > 0:
-        if isExecutable(result):
-          return expandFilename(result)
-
-        return ""
+        return expandFilename(result)
 
       # search in path
       for p in split(string(getEnv("PATH")), {PathSep}):
         var x = joinPath(p, exePath)
-        if existsFile(x) and isExecutable(x):
+        if existsFile(x):
           return expandFilename(x)
     else:
       result = ""
@@ -3088,7 +3120,7 @@ template rawToFormalFileInfo(rawInfo, path, formalInfo): untyped =
       assert(path != "") # symlinks can't occur for file handles
       formalInfo.kind = getSymlinkFileKind(path)
 
-when defined(js):
+when defined(js) or defined(nimscript):
   when not declared(FileHandle):
     type FileHandle = distinct int32
   when not declared(File):
@@ -3252,66 +3284,3 @@ func isValidFilename*(filename: string, maxLen = 259.Positive): bool {.since: (1
     find(f.name, invalidFilenameChars) != -1): return false
   for invalid in invalidFilenames:
     if cmpIgnoreCase(f.name, invalid) == 0: return false
-
-
-when isMainModule:
-  assert quoteShellWindows("aaa") == "aaa"
-  assert quoteShellWindows("aaa\"") == "aaa\\\""
-  assert quoteShellWindows("") == "\"\""
-
-  assert quoteShellPosix("aaa") == "aaa"
-  assert quoteShellPosix("aaa a") == "'aaa a'"
-  assert quoteShellPosix("") == "''"
-  assert quoteShellPosix("a'a") == "'a'\"'\"'a'"
-
-  when defined(posix):
-    assert quoteShell("") == "''"
-
-  block normalizePathEndTest:
-    # handle edge cases correctly: shouldn't affect whether path is
-    # absolute/relative
-    doAssert "".normalizePathEnd(true) == ""
-    doAssert "".normalizePathEnd(false) == ""
-    doAssert "/".normalizePathEnd(true) == $DirSep
-    doAssert "/".normalizePathEnd(false) == $DirSep
-
-    when defined(posix):
-      doAssert "//".normalizePathEnd(false) == "/"
-      doAssert "foo.bar//".normalizePathEnd == "foo.bar"
-      doAssert "bar//".normalizePathEnd(trailingSep = true) == "bar/"
-    when defined(Windows):
-      doAssert r"C:\foo\\".normalizePathEnd == r"C:\foo"
-      doAssert r"C:\foo".normalizePathEnd(trailingSep = true) == r"C:\foo\"
-      # this one is controversial: we could argue for returning `D:\` instead,
-      # but this is simplest.
-      doAssert r"D:\".normalizePathEnd == r"D:"
-      doAssert r"E:/".normalizePathEnd(trailingSep = true) == r"E:\"
-      doAssert "/".normalizePathEnd == r"\"
-
-
-  block isValidFilenameTest:
-    # Negative Tests.
-    doAssert not isValidFilename("abcd", maxLen = 2)
-    doAssert not isValidFilename("0123456789", maxLen = 8)
-    doAssert not isValidFilename("con")
-    doAssert not isValidFilename("aux")
-    doAssert not isValidFilename("prn")
-    doAssert not isValidFilename("OwO|UwU")
-    doAssert not isValidFilename(" foo")
-    doAssert not isValidFilename("foo ")
-    doAssert not isValidFilename("foo.")
-    doAssert not isValidFilename("con.txt")
-    doAssert not isValidFilename("aux.bat")
-    doAssert not isValidFilename("prn.exe")
-    doAssert not isValidFilename("nim>.nim")
-    doAssert not isValidFilename(" foo.log")
-    # Positive Tests.
-    doAssert isValidFilename("abcd", maxLen = 42.Positive)
-    doAssert isValidFilename("c0n")
-    doAssert isValidFilename("foo.aux")
-    doAssert isValidFilename("bar.prn")
-    doAssert isValidFilename("OwO_UwU")
-    doAssert isValidFilename("cron")
-    doAssert isValidFilename("ux.bat")
-    doAssert isValidFilename("nim.nim")
-    doAssert isValidFilename("foo.log")

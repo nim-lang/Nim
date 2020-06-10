@@ -532,6 +532,8 @@ when defined(nimdoc):
 else:
   var SO_REUSEPORT* {.importc, header: "<sys/socket.h>".}: cint
 
+var SOCK_CLOEXEC* {.importc, header: "<sys/socket.h>".}: cint
+
 var MSG_NOSIGNAL* {.importc, header: "<sys/socket.h>".}: cint
 
 when hasSpawnH:
@@ -541,11 +543,11 @@ when hasSpawnH:
 
 # <sys/wait.h>
 proc WEXITSTATUS*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Exit code, iff WIFEXITED(s)
+  ## Exit code, if WIFEXITED(s)
 proc WTERMSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Termination signal, iff WIFSIGNALED(s)
+  ## Termination signal, if WIFSIGNALED(s)
 proc WSTOPSIG*(s: cint): cint {.importc, header: "<sys/wait.h>".}
-  ## Stop signal, iff WIFSTOPPED(s)
+  ## Stop signal, if WIFSTOPPED(s)
 proc WIFEXITED*(s: cint): bool {.importc, header: "<sys/wait.h>".}
   ## True if child exited normally.
 proc WIFSIGNALED*(s: cint): bool {.importc, header: "<sys/wait.h>".}

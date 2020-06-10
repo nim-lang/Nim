@@ -214,7 +214,7 @@ when not usesDestructors:
           x[] = nil
         else:
           var ss = cast[NimString](s2)
-          var ns = cast[NimString](alloc(t.region, ss.len+1 + GenericSeqSize))
+          var ns = cast[NimString](alloc(t.region, GenericSeqSize + ss.len+1))
           copyMem(ns, ss, ss.len+1 + GenericSeqSize)
           x[] = ns
       else:
@@ -239,7 +239,7 @@ when not usesDestructors:
       else:
         sysAssert(dest != nil, "dest == nil")
         if mode == mStore:
-          x[] = alloc0(t.region, seq.len *% mt.base.size +% GenericSeqSize)
+          x[] = alloc0(t.region, align(GenericSeqSize, mt.base.align) +% seq.len *% mt.base.size)
         else:
           unsureAsgnRef(x, newSeq(mt, seq.len))
         var dst = cast[ByteAddress](cast[PPointer](dest)[])
@@ -248,9 +248,9 @@ when not usesDestructors:
         dstseq.reserved = seq.len
         for i in 0..seq.len-1:
           storeAux(
-            cast[pointer](dst +% i*% mt.base.size +% GenericSeqSize),
-            cast[pointer](cast[ByteAddress](s2) +% i *% mt.base.size +%
-                          GenericSeqSize),
+            cast[pointer](dst +% align(GenericSeqSize, mt.base.align) +% i*% mt.base.size),
+            cast[pointer](cast[ByteAddress](s2) +% align(GenericSeqSize, mt.base.align) +%
+                          i *% mt.base.size),
             mt.base, t, mode)
         if mode != mStore: dealloc(t.region, s2)
     of tyObject:
@@ -347,7 +347,7 @@ template lockChannel(q, action): untyped =
 
 proc sendImpl(q: PRawChannel, typ: PNimType, msg: pointer, noBlock: bool): bool =
   if q.mask == ChannelDeadMask:
-    sysFatal(DeadThreadError, "cannot send message; thread died")
+    sysFatal(DeadThreadDefect, "cannot send message; thread died")
   acquireSys(q.lock)
   if q.maxItems > 0:
     # Wait until count is less than maxItems
@@ -448,8 +448,7 @@ proc close*[TMsg](c: var Channel[TMsg]) =
   deinitRawChannel(addr(c))
 
 proc ready*[TMsg](c: var Channel[TMsg]): bool =
-  ## Returns true iff some thread is waiting on the channel `c` for
+  ## Returns true if some thread is waiting on the channel `c` for
   ## new messages.
   var q = cast[PRawChannel](addr(c))
   result = q.ready
-

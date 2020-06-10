@@ -19,18 +19,34 @@ const
 
 proc nimLoadLibraryError(path: string) =
   # carefully written to avoid memory allocation:
-  cstderr.rawWrite("could not load: ")
+  const prefix = "could not load: "
+  cstderr.rawWrite(prefix)
   cstderr.rawWrite(path)
-  cstderr.rawWrite("\n")
   when not defined(nimDebugDlOpen) and not defined(windows):
-    cstderr.rawWrite("compile with -d:nimDebugDlOpen for more information\n")
-  when defined(windows) and defined(guiapp):
-    # Because console output is not shown in GUI apps, display error as message box:
-    const prefix = "could not load: "
-    var msg: array[1000, char]
-    copyMem(msg[0].addr, prefix.cstring, prefix.len)
-    copyMem(msg[prefix.len].addr, path.cstring, min(path.len + 1, 1000 - prefix.len))
-    discard MessageBoxA(nil, msg[0].addr, nil, 0)
+    cstderr.rawWrite("\n(compile with -d:nimDebugDlOpen for more information)")
+  when defined(windows):
+    const badExe = "\n(bad format; library may be wrong architecture)"
+    let loadError = GetLastError()
+    if loadError == ERROR_BAD_EXE_FORMAT:
+      cstderr.rawWrite(badExe)
+    when defined(guiapp):
+      # Because console output is not shown in GUI apps, display the error as a
+      # message box instead:
+      var
+        msg: array[1000, char]
+        msgLeft = msg.len - 1 # leave (at least) one for nullchar
+        msgIdx = 0
+      copyMem(msg[msgIdx].addr, prefix.cstring, prefix.len)
+      msgLeft -= prefix.len
+      msgIdx += prefix.len
+      let pathLen = min(path.len, msgLeft)
+      copyMem(msg[msgIdx].addr, path.cstring, pathLen)
+      msgLeft -= pathLen
+      msgIdx += pathLen
+      if loadError == ERROR_BAD_EXE_FORMAT and msgLeft >= badExe.len:
+        copyMem(msg[msgIdx].addr, badExe.cstring, badExe.len)
+      discard MessageBoxA(nil, msg[0].addr, nil, 0)
+  cstderr.rawWrite("\n")
   quit(1)
 
 proc procAddrError(name: cstring) {.compilerproc, nonReloadable, hcrInline.} =

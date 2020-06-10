@@ -17,3 +17,4 @@ static:
 
 doAssert "myNimCache" in nc
 doAssert "myNimblePath" in np[0]
+doAssert querySetting(backend) == "c"

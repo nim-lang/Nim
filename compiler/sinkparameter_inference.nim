@@ -48,8 +48,7 @@ proc checkForSink*(config: ConfigRef; owner: PSym; arg: PNode) =
         # we only report every potential 'sink' parameter only once:
         incl arg.sym.flags, sfWasForwarded
         message(config, arg.info, hintPerformance,
-          ("could not turn '$1' to a sink parameter " &
-          "because '$2' was forward declared") % [arg.sym.name.s, owner.name.s])
+          "could not turn '$1' to a sink parameter" % [arg.sym.name.s])
       #echo config $ arg.info, " candidate for a sink parameter here"
   of nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr:
     if not isEmptyType(arg.typ):

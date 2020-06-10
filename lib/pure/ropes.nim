@@ -287,46 +287,47 @@ proc addf*(c: var Rope, frmt: string, args: openArray[Rope]) {.
   ## shortcut for ``add(c, frmt % args)``.
   add(c, frmt % args)
 
-const
-  bufSize = 1024 # 1 KB is reasonable
+when not defined(js) and not defined(nimscript):
+  const
+    bufSize = 1024 # 1 KB is reasonable
 
-proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
-  ## returns true if the contents of the file `f` equal `r`.
-  var
-    buf: array[bufSize, char]
-    bpos = buf.len
-    blen = buf.len
+  proc equalsFile*(r: Rope, f: File): bool {.rtl, extern: "nro$1File".} =
+    ## returns true if the contents of the file `f` equal `r`.
+    var
+      buf: array[bufSize, char]
+      bpos = buf.len
+      blen = buf.len
 
-  for s in leaves(r):
-    var spos = 0
-    let slen = s.len
-    while spos < slen:
-      if bpos == blen:
-        # Read more data
-        bpos = 0
-        blen = readBuffer(f, addr(buf[0]), buf.len)
-        if blen == 0: # no more data in file
+    for s in leaves(r):
+      var spos = 0
+      let slen = s.len
+      while spos < slen:
+        if bpos == blen:
+          # Read more data
+          bpos = 0
+          blen = readBuffer(f, addr(buf[0]), buf.len)
+          if blen == 0: # no more data in file
+            result = false
+            return
+        let n = min(blen - bpos, slen - spos)
+        # TODO There's gotta be a better way of comparing here...
+        if not equalMem(addr(buf[bpos]),
+                        cast[pointer](cast[int](cstring(s))+spos), n):
           result = false
           return
-      let n = min(blen - bpos, slen - spos)
-      # TODO There's gotta be a better way of comparing here...
-      if not equalMem(addr(buf[bpos]),
-                      cast[pointer](cast[int](cstring(s))+spos), n):
-        result = false
-        return
-      spos += n
-      bpos += n
+        spos += n
+        bpos += n
 
-  result = readBuffer(f, addr(buf[0]), 1) == 0 # check that we've read all
+    result = readBuffer(f, addr(buf[0]), 1) == 0 # check that we've read all
 
-proc equalsFile*(r: Rope, filename: string): bool {.rtl, extern: "nro$1Str".} =
-  ## returns true if the contents of the file `f` equal `r`. If `f` does not
-  ## exist, false is returned.
-  var f: File
-  result = open(f, filename)
-  if result:
-    result = equalsFile(r, f)
-    close(f)
+  proc equalsFile*(r: Rope, filename: string): bool {.rtl, extern: "nro$1Str".} =
+    ## returns true if the contents of the file `f` equal `r`. If `f` does not
+    ## exist, false is returned.
+    var f: File
+    result = open(f, filename)
+    if result:
+      result = equalsFile(r, f)
+      close(f)
 
 new(N) # init dummy node for splay algorithm
 

@@ -1,15 +1,17 @@
 ## Part of 'koch' responsible for the documentation generation.
 
 import os, strutils, osproc, sets, pathnorm
+from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
+import "../compiler/nimpaths"
 
 const
   gaCode* = " --doc.googleAnalytics:UA-48159761-1"
-  # --warning[LockLevel]:off pending #13218
-  nimArgs = "--warning[LockLevel]:off --hint[Conf]:off --hint[Path]:off --hint[Processing]:off -d:boot --putenv:nimversion=$#" % system.NimVersion
+  # errormax: subsequent errors are probably consequences of 1st one; a simple
+  # bug could cause unlimited number of errors otherwise, hard to debug in CI.
+  nimArgs = "--errormax:3 --hint:Conf:off --hint:Path:off --hint:Processing:off -d:boot --putenv:nimversion=$#" % system.NimVersion
   gitUrl = "https://github.com/nim-lang/Nim"
   docHtmlOutput = "doc/html"
   webUploadOutput = "web/upload"
-  docHackDir = "tools/dochack"
 
 var nimExe*: string
 
@@ -86,6 +88,16 @@ proc nimCompileFold*(desc, input: string, outputDir = "bin", mode = "c", options
   let cmd = findNim().quoteShell() & " " & mode & " -o:" & output & " " & options & " " & input
   execFold(desc, cmd)
 
+proc getRst2html(): seq[string] =
+  for a in walkDirRecFilter("doc"):
+    let path = a.path
+    if a.kind == pcFile and path.splitFile.ext == ".rst" and path.lastPathPart notin
+        ["docs.rst", "nimfix.rst"]:
+          # maybe we should still show nimfix, could help reviving it
+          # `docs` is redundant with `overview`, might as well remove that file?
+      result.add path
+  doAssert "doc/manual/var_t_return.rst".unixToNativePath in result # sanity check
+
 const
   pdf = """
 doc/manual.rst
@@ -96,39 +108,6 @@ doc/tut3.rst
 doc/nimc.rst
 doc/niminst.rst
 doc/gc.rst
-""".splitWhitespace()
-
-  rst2html = """
-doc/intern.rst
-doc/apis.rst
-doc/lib.rst
-doc/manual.rst
-doc/manual_experimental.rst
-doc/destructors.rst
-doc/tut1.rst
-doc/tut2.rst
-doc/tut3.rst
-doc/nimc.rst
-doc/hcr.rst
-doc/drnim.rst
-doc/overview.rst
-doc/filters.rst
-doc/tools.rst
-doc/niminst.rst
-doc/nimgrep.rst
-doc/gc.rst
-doc/estp.rst
-doc/idetools.rst
-doc/docgen.rst
-doc/koch.rst
-doc/backends.rst
-doc/nimsuggest.rst
-doc/nep1.rst
-doc/nims.rst
-doc/contributing.rst
-doc/codeowners.rst
-doc/packaging.rst
-doc/manual/var_t_return.rst
 """.splitWhitespace()
 
   doc0 = """
@@ -186,7 +165,7 @@ proc getDocList(): seq[string] =
   for a in withoutIndex: docIgnore.incl a
   for a in ignoredModules: docIgnore.incl a
 
-  # don't ignore these even though in lib/system
+  # don't ignore these even though in lib/system (not include files)
   const goodSystem = """
 lib/system/io.nim
 lib/system/nimscript.nim
@@ -195,14 +174,14 @@ lib/system/iterators.nim
 lib/system/dollars.nim
 lib/system/widestrs.nim
 """.splitWhitespace()
-
-  for a in walkDirRec("lib"):
-    if a.splitFile.ext != ".nim" or
-       a.isRelativeTo("lib/pure/includes") or
-       a.isRelativeTo("lib/genode") or
-       a.isRelativeTo("lib/deprecated") or
-       (a.isRelativeTo("lib/system") and a.replace('\\', '/') notin goodSystem) or
-       a.replace('\\', '/') in docIgnore:
+  
+  proc follow(a: PathEntry): bool =
+    a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
+  for entry in walkDirRecFilter("lib", follow = follow):
+    let a = entry.path
+    if entry.kind != pcFile or a.splitFile.ext != ".nim" or
+       (a.isRelativeTo("lib/system") and a.nativeToUnixPath notin goodSystem) or
+       a.nativeToUnixPath in docIgnore:
          continue
     result.add a
   result.add normalizePath("nimsuggest/sexp.nim")
@@ -231,8 +210,29 @@ proc buildDocSamples(nimArgs, destPath: string) =
   exec(findNim().quoteShell() & " doc $# -o:$# $#" %
     [nimArgs, destPath / "docgen_sample.html", "doc" / "docgen_sample.nim"])
 
+proc buildDocPackages(nimArgs, destPath: string) =
+  # compiler docs; later, other packages (perhaps tools, testament etc)
+  let nim = findNim().quoteShell()
+    # to avoid broken links to manual from compiler dir, but a multi-package
+    # structure could be supported later
+
+  proc docProject(outdir, options, mainproj: string) =
+    exec("$nim doc --project --outdir:$outdir $nimArgs --git.url:$gitUrl $options $mainproj" % [
+      "nim", nim,
+      "outdir", outdir,
+      "nimArgs", nimArgs,
+      "gitUrl", gitUrl,
+      "options", options,
+      "mainproj", mainproj,
+      ])
+  let extra = "-u:boot"
+  # xxx keep in sync with what's in $nim_prs_D/config/nimdoc.cfg, or, rather,
+  # start using nims instead of nimdoc.cfg
+  docProject(destPath/"compiler", extra, "compiler/index.nim")
+
 proc buildDoc(nimArgs, destPath: string) =
   # call nim for the documentation:
+  let rst2html = getRst2html()
   var
     commands = newSeq[string](rst2html.len + len(doc0) + len(doc) + withoutIndex.len)
     i = 0
@@ -249,8 +249,7 @@ proc buildDoc(nimArgs, destPath: string) =
     i.inc
   for d in items(doc):
     var nimArgs2 = nimArgs
-    if d.isRelativeTo("compiler"):
-      nimArgs2.add " --docroot"
+    if d.isRelativeTo("compiler"): doAssert false
     commands[i] = nim & " doc $# --git.url:$# --outdir:$# --index:on $#" %
       [nimArgs2, gitUrl, destPath, d]
     i.inc
@@ -262,6 +261,11 @@ proc buildDoc(nimArgs, destPath: string) =
 
   mexec(commands)
   exec(nim & " buildIndex -o:$1/theindex.html $1" % [destPath])
+    # caveat: this works so long it's called before `buildDocPackages` which
+    # populates `compiler/` with unrelated idx files that shouldn't be in index,
+    # so should work in CI but you may need to remove your generated html files
+    # locally after calling `./koch docs`. The clean fix would be for `idx` files
+    # to be transient with `--project` (eg all in memory).
 
 proc buildPdfDoc*(nimArgs, destPath: string) =
   createDir(destPath)
@@ -271,6 +275,9 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
     const pdflatexcmd = "pdflatex -interaction=nonstopmode "
     for d in items(pdf):
       exec(findNim().quoteShell() & " rst2tex $# $#" % [nimArgs, d])
+      let tex = splitFile(d).name & ".tex"
+      removeFile("doc" / tex)
+      moveFile(tex, "doc" / tex)
       # call LaTeX twice to get cross references right:
       exec(pdflatexcmd & changeFileExt(d, "tex"))
       exec(pdflatexcmd & changeFileExt(d, "tex"))
@@ -286,29 +293,23 @@ proc buildPdfDoc*(nimArgs, destPath: string) =
       removeFile(changeFileExt(pdf, "out"))
       removeFile(changeFileExt(d, "tex"))
 
-proc buildJS() =
-  exec(findNim().quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
+proc buildJS(): string =
+  let nim = findNim()
+  exec(nim.quoteShell() & " js -d:release --out:$1 tools/nimblepkglist.nim" %
       [webUploadOutput / "nimblepkglist.js"])
-  exec(findNim().quoteShell() & " js " & (docHackDir / "dochack.nim"))
+      # xxx deadcode? and why is it only for webUploadOutput, not for local docs?
+  result = getDocHacksJs(nimr = getCurrentDir(), nim)
+
+proc buildDocsDir*(args: string, dir: string) =
+  let args = nimArgs & " " & args
+  let docHackJsSource = buildJS()
+  createDir(dir)
+  buildDocSamples(args, dir)
+  buildDoc(args, dir) # bottleneck
+  copyFile(dir / "overview.html", dir / "index.html")
+  buildDocPackages(args, dir)
+  copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
 proc buildDocs*(args: string) =
-  const
-    docHackJs = "dochack.js"
-  let
-    a = nimArgs & " " & args
-    docHackJsSource = docHackDir / docHackJs
-    docHackJsDest = docHtmlOutput / docHackJs
-
-  buildJS()                     # This call generates docHackJsSource
-  let docup = webUploadOutput / NimVersion
-  createDir(docup)
-  buildDocSamples(a, docup)
-  buildDoc(a, docup)
-
-  # 'nimArgs' instead of 'a' is correct here because we don't want
-  # that the offline docs contain the 'gaCode'!
-  createDir(docHtmlOutput)
-  buildDocSamples(nimArgs, docHtmlOutput)
-  buildDoc(nimArgs, docHtmlOutput)
-  copyFile(docHackJsSource, docHackJsDest)
-  copyFile(docHackJsSource, docup / docHackJs)
+  buildDocsDir(args, webUploadOutput / NimVersion)
+  buildDocsDir("", docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!

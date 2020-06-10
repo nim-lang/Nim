@@ -66,7 +66,7 @@ type
   TEffects = object
     exc: PNode  # stack of exceptions
     tags: PNode # list of tags
-    bottom, inTryStmt: int
+    bottom, inTryStmt, inExceptOrFinallyStmt: int
     owner: PSym
     ownerModule: PSym
     init: seq[int] # list of initialized variables
@@ -248,6 +248,8 @@ proc listGcUnsafety(s: PSym; onlyWarning: bool; conf: ConfigRef) =
 
 proc useVar(a: PEffects, n: PNode) =
   let s = n.sym
+  if a.inExceptOrFinallyStmt > 0:
+    incl s.flags, sfUsedInFinallyOrExcept
   if isLocalVar(a, s):
     if sfNoInit in s.flags:
       # If the variable is explicitly marked as .noinit. do not emit any error
@@ -315,7 +317,10 @@ proc addEffect(a: PEffects, e, comesFrom: PNode) =
     # we only track the first node that can have the effect E in order
     # to safe space and time.
     if sameType(a.graph.excType(aa[i]), a.graph.excType(e)): return
-  throws(a.exc, e, comesFrom)
+
+  if e.typ != nil:
+    if optNimV1Emulation in a.config.globalOptions or not isDefectException(e.typ):
+      throws(a.exc, e, comesFrom)
 
 proc addTag(a: PEffects, e, comesFrom: PNode) =
   var aa = a.tags
@@ -379,6 +384,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
 
   var branches = 1
   var hasFinally = false
+  inc tracked.inExceptOrFinallyStmt
 
   # Collect the exceptions caught by the except branches
   for i in 1..<n.len:
@@ -411,6 +417,7 @@ proc trackTryStmt(tracked: PEffects, n: PNode) =
       hasFinally = true
 
   tracked.bottom = oldBottom
+  dec tracked.inExceptOrFinallyStmt
   if not hasFinally:
     setLen(tracked.init, oldState)
   for id, count in items(inter):
@@ -752,7 +759,7 @@ proc track(tracked: PEffects, n: PNode) =
       createTypeBoundOps(tracked, n[0].typ, n.info)
     else:
       # A `raise` with no arguments means we're going to re-raise the exception
-      # being handled or, if outside of an `except` block, a `ReraiseError`.
+      # being handled or, if outside of an `except` block, a `ReraiseDefect`.
       # Here we add a `Exception` tag in order to cover both the cases.
       addEffect(tracked, createRaise(tracked.graph, n), nil)
   of nkCallKinds:
@@ -829,8 +836,9 @@ proc track(tracked: PEffects, n: PNode) =
           if op != nil:
             n[0].sym = op
 
-    for i in 0..<n.safeLen:
-      track(tracked, n[i])
+    if a.kind != nkSym or a.sym.magic != mRunnableExamples:
+      for i in 0..<n.safeLen:
+        track(tracked, n[i])
     if op != nil and op.kind == tyProc:
       for i in 1..<min(n.safeLen, op.len):
         if op[i].kind == tySink:
@@ -854,7 +862,8 @@ proc track(tracked: PEffects, n: PNode) =
     when false: cstringCheck(tracked, n)
     if tracked.owner.kind != skMacro:
       createTypeBoundOps(tracked, n[0].typ, n.info)
-    checkForSink(tracked.config, tracked.owner, n[1])
+    if n[0].kind != nkSym or not isLocalVar(tracked, n[0].sym):
+      checkForSink(tracked.config, tracked.owner, n[1])
   of nkVarSection, nkLetSection:
     for child in n:
       let last = lastSon(child)
@@ -1146,12 +1155,17 @@ proc initEffects(g: ModuleGraph; effects: PNode; s: PSym; t: var TEffects; c: PC
   t.config = g.config
   t.c = c
 
+proc hasRealBody(s: PSym): bool =
+  ## also handles importc procs with runnableExamples, which requires `=`,
+  ## which is not a real implementation, refs #14314
+  result = {sfForward, sfImportc} * s.flags == {}
+
 proc trackProc*(c: PContext; s: PSym, body: PNode) =
   let g = c.graph
   var effects = s.typ.n[0]
   if effects.kind != nkEffectList: return
   # effects already computed?
-  if sfForward in s.flags: return
+  if not s.hasRealBody: return
   if effects.len == effectListLen: return
 
   var t: TEffects

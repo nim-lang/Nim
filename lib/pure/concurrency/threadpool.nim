@@ -137,7 +137,7 @@ type
 
 const threadpoolWaitMs {.intdefine.}: int = 100
 
-proc blockUntil*(fv: FlowVarBase) =
+proc blockUntil*(fv: var FlowVarBaseObj) =
   ## Waits until the value for the ``fv`` arrives.
   ##
   ## Usually it is not necessary to call this explicitly.
@@ -185,7 +185,7 @@ proc attach(fv: FlowVarBase; i: int): bool =
     result = false
   release(fv.cv.L)
 
-proc finished(fv: FlowVarBase) =
+proc finished(fv: var FlowVarBaseObj) =
   doAssert fv.ai.isNil, "flowVar is still attached to an 'blockUntilAny'"
   # we have to protect against the rare cases where the owner of the flowVar
   # simply disregards the flowVar and yet the "flowVar" has not yet written
@@ -208,10 +208,12 @@ proc finished(fv: FlowVarBase) =
   # the worker thread waits for "data" to be set to nil before shutting down
   owner.data = nil
 
-proc fvFinalizer[T](fv: FlowVar[T]) = finished(fv)
+proc `=destroy`[T](fv: var FlowVarObj[T]) = 
+  finished(fv)
+  `=destroy`(fv.blob)
 
 proc nimCreateFlowVar[T](): FlowVar[T] {.compilerProc.} =
-  new(result, fvFinalizer)
+  new(result)
 
 proc nimFlowVarCreateSemaphore(fv: FlowVarBase) {.compilerProc.} =
   fv.cv.initSemaphore()
@@ -234,43 +236,34 @@ proc awaitAndThen*[T](fv: FlowVar[T]; action: proc (x: T) {.closure.}) =
   ## Note that due to Nim's parameter passing semantics this
   ## means that ``T`` doesn't need to be copied so ``awaitAndThen`` can
   ## sometimes be more efficient than `^ proc <#^,FlowVar[T]>`_.
-  blockUntil(fv)
-  when T is string or T is seq:
+  blockUntil(fv[])
+  when defined(nimV2):
+    action(fv.blob)
+  elif T is string or T is seq:
     action(cast[T](fv.data))
   elif T is ref:
     {.error: "'awaitAndThen' not available for FlowVar[ref]".}
   else:
     action(fv.blob)
-  finished(fv)
+  finished(fv[])
 
 proc unsafeRead*[T](fv: FlowVar[ref T]): ptr T =
   ## Blocks until the value is available and then returns this value.
-  blockUntil(fv)
-  result = cast[ptr T](fv.data)
-  finished(fv)
-
-proc `^`*[T](fv: FlowVar[ref T]): ref T =
-  ## Blocks until the value is available and then returns this value.
-  blockUntil(fv)
-  let src = cast[ref T](fv.data)
+  blockUntil(fv[])
   when defined(nimV2):
-    result = src
+    result = cast[ptr T](fv.blob)
   else:
-    deepCopy result, src
-  finished(fv)
+    result = cast[ptr T](fv.data)
+  finished(fv[])
 
 proc `^`*[T](fv: FlowVar[T]): T =
   ## Blocks until the value is available and then returns this value.
-  blockUntil(fv)
-  when T is string or T is seq:
-    let src = cast[T](fv.data)
-    when defined(nimV2):
-      result = src
-    else:
-      deepCopy result, src
+  blockUntil(fv[])
+  when not defined(nimV2) and (T is string or T is seq or T is ref):
+    deepCopy result, cast[T](fv.data)
   else:
     result = fv.blob
-  finished(fv)
+  finished(fv[])
 
 proc blockUntilAny*(flowVars: openArray[FlowVarBase]): int =
   ## Awaits any of the given ``flowVars``. Returns the index of one ``flowVar``
@@ -457,14 +450,14 @@ proc preferSpawn*(): bool =
   ## <#spawnX.t>`_ instead.
   result = gSomeReady.counter > 0
 
-proc spawn*(call: typed): void {.magic: "Spawn".}
+proc spawn*(call: sink typed): void {.magic: "Spawn".}
   ## Always spawns a new task, so that the ``call`` is never executed on
   ## the calling thread.
   ##
   ## ``call`` has to be proc call ``p(...)`` where ``p`` is gcsafe and has a
   ## return type that is either ``void`` or compatible with ``FlowVar[T]``.
 
-proc pinnedSpawn*(id: ThreadId; call: typed): void {.magic: "Spawn".}
+proc pinnedSpawn*(id: ThreadId; call: sink typed): void {.magic: "Spawn".}
   ## Always spawns a new task on the worker thread with ``id``, so that
   ## the ``call`` is **always** executed on the thread.
   ##

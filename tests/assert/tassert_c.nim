@@ -33,7 +33,7 @@ try:
   proc foo() =
     assert(false)
   foo()
-except AssertionError:
+except AssertionDefect:
   let e = getCurrentException()
   let trace = e.getStackTrace
   if tmatch(trace, expected): echo true else: echo "wrong trace:\n" & trace

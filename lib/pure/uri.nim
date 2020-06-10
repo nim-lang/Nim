@@ -44,7 +44,7 @@
 ##    doAssert getDataUri("Hello World", "text/plain") == "data:text/plain;charset=utf-8;base64,SGVsbG8gV29ybGQ="
 ##    doAssert getDataUri("Nim", "text/plain") == "data:text/plain;charset=utf-8;base64,Tmlt"
 
-include "system/inclrtl"
+import std/private/since
 
 import strutils, parseutils, base64
 type

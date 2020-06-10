@@ -62,6 +62,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     counter, x: BiggestInt
     e: PSym
     base: PType
+    identToReplace: ptr PNode
   counter = 0
   base = nil
   result = newOrPrevType(tyEnum, prev, c)
@@ -83,9 +84,11 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
     of nkEnumFieldDef:
       if n[i][0].kind == nkPragmaExpr:
         e = newSymS(skEnumField, n[i][0][0], c)
+        identToReplace = addr n[i][0][0]
         pragma(c, e, n[i][0][1], enumFieldPragmas)
       else:
         e = newSymS(skEnumField, n[i][0], c)
+        identToReplace = addr n[i][0]
       var v = semConstExpr(c, n[i][1])
       var strVal: PNode = nil
       case skipTypes(v.typ, abstractInst-{tyTypeDesc}).kind
@@ -96,6 +99,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
             if not isOrdinalType(v[0].typ, allowEnumWithHoles=true):
               localError(c.config, v[0].info, errOrdinalTypeExpected & "; given: " & typeToString(v[0].typ, preferDesc))
             x = toInt64(getOrdValue(v[0])) # first tuple part is the ordinal
+            n[i][1][0] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
           else:
             localError(c.config, strVal.info, errStringLiteralExpected)
         else:
@@ -107,6 +111,7 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
         if not isOrdinalType(v.typ, allowEnumWithHoles=true):
           localError(c.config, v.info, errOrdinalTypeExpected & "; given: " & typeToString(v.typ, preferDesc))
         x = toInt64(getOrdValue(v))
+        n[i][1] = newIntTypeNode(x, getSysType(c.graph, unknownLineInfo, tyInt))
       if i != 1:
         if x != counter: incl(result.flags, tfEnumHasHoles)
         if x < counter:
@@ -118,19 +123,24 @@ proc semEnum(c: PContext, n: PNode, prev: PType): PType =
       e = n[i].sym
     of nkIdent, nkAccQuoted:
       e = newSymS(skEnumField, n[i], c)
+      identToReplace = addr n[i]
     of nkPragmaExpr:
       e = newSymS(skEnumField, n[i][0], c)
       pragma(c, e, n[i][1], enumFieldPragmas)
+      identToReplace = addr n[i][0]
     else:
       illFormedAst(n[i], c.config)
     e.typ = result
     e.position = int(counter)
+    let symNode = newSymNode(e)
+    if optNimV1Emulation notin c.config.globalOptions and identToReplace != nil:
+      identToReplace[] = symNode
     if e.position == 0: hasNull = true
     if result.sym != nil and sfExported in result.sym.flags:
       incl(e.flags, sfUsed)
       incl(e.flags, sfExported)
       if not isPure: strTableAdd(c.module.tab, e)
-    result.n.add newSymNode(e)
+    result.n.add symNode
     styleCheckDef(c.config, e)
     onDef(e.info, e)
     if sfGenSym notin e.flags:
@@ -685,7 +695,7 @@ proc semRecordCase(c: PContext, n: PNode, check: var IntSet, pos: var int,
     of nkElse:
       checkSonsLen(b, 1, c.config)
       if chckCovered and covered == toCover(c, a[0].typ):
-        localError(c.config, b.info, "invalid else, all cases are already covered")
+        message(c.config, b.info, warnUnreachableElse)
       chckCovered = false
     else: illFormedAst(n, c.config)
     delSon(b, b.len - 1)
@@ -713,7 +723,7 @@ proc semRecordNodeAux(c: PContext, n: PNode, check: var IntSet, pos: var int,
         checkSonsLen(it, 2, c.config)
         if c.inGenericContext == 0:
           var e = semConstBoolExpr(c, it[0])
-          if e.kind != nkIntLit: internalError(c.config, e.info, "semRecordNodeAux")
+          if e.kind != nkIntLit: discard "don't report followup error"
           elif e.intVal != 0 and branch == nil: branch = it[1]
         else:
           it[0] = forceBool(c, semExprWithType(c, it[0]))
@@ -932,10 +942,8 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
       t.rawAddSonNoPropagationOfTypeFlags result
       result = t
     else: discard
-    #if result.kind == tyRef and c.config.selectedGC == gcDestructors:
-    #  result.flags.incl tfHasAsgn
-    # XXX Something like this is a good idea but it should be done
-    # in sempass2!
+    if result.kind == tyRef and c.config.selectedGC in {gcArc, gcOrc}:
+      result.flags.incl tfHasAsgn
 
 proc findEnforcedStaticType(t: PType): PType =
   # This handles types such as `static[T] and Foo`,
@@ -1283,7 +1291,7 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
     r = semTypeNode(c, n[0], nil)
 
   if r != nil and kind in {skMacro, skTemplate} and r.kind == tyTyped:
-    # XXX: To implement the propesed change in the warning, just
+    # XXX: To implement the proposed change in the warning, just
     # delete this entire if block. The rest is (at least at time of
     # writing this comment) already implemented.
     let info = n[0].info
@@ -1582,7 +1590,7 @@ proc applyTypeSectionPragmas(c: PContext; pragmas, operand: PNode): PNode =
         discard "User-defined pragma"
       else:
         let sym = searchInScopes(c, ident)
-        if sym != nil and sfCustomPragma in sym.flags: 
+        if sym != nil and sfCustomPragma in sym.flags:
           discard "Custom user pragma"
         else:
           # we transform ``(arg1, arg2: T) {.m, rest.}`` into ``m((arg1, arg2: T) {.rest.})`` and

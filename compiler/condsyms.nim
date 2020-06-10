@@ -102,6 +102,7 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimnomagic64")
   defineSymbol("nimNewShiftOps")
   defineSymbol("nimHasCursor")
+  defineSymbol("nimAlignPragma")
   defineSymbol("nimHasExceptionsQuery")
   defineSymbol("nimHasIsNamedTuple")
   defineSymbol("nimHashOrdinalFixed")
@@ -116,3 +117,5 @@ proc initDefines*(symbols: StringTableRef) =
   defineSymbol("nimNewIntegerOps")
   defineSymbol("nimHasInvariant")
   defineSymbol("nimHasStacktraceMsgs")
+  defineSymbol("nimDoesntTrackDefects")
+  defineSymbol("nimHasLentIterators")

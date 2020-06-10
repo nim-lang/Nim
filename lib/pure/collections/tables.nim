@@ -217,9 +217,9 @@
 ## * `hashes module<hashes.html>`_ for helper functions for hashing
 
 
-import hashes, math, algorithm
+import std/private/since
 
-include "system/inclrtl"
+import hashes, math, algorithm
 
 type
   KeyValuePair[A, B] = tuple[hcode: Hash, key: A, val: B]

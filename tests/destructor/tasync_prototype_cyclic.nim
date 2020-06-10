@@ -51,4 +51,5 @@ proc main =
   discard serve(PAsyncHttpServer(value: "asdas"))
 
 main()
+GC_fullCollect()
 echo "MEMORY ", getOccupiedMem() - mem

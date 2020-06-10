@@ -453,7 +453,7 @@ proc opConv(c: PCtx; dest: var TFullReg, src: TFullReg, desttyp, srctyp: PType):
         dest.intVal = cast[BiggestInt](value)
     of tyBool:
       dest.ensureKind(rkInt)
-      dest.intVal = 
+      dest.intVal =
         case skipTypes(srctyp, abstractRange).kind
           of tyFloat..tyFloat64: int(src.floatVal != 0.0)
           else: int(src.intVal != 0)
@@ -526,6 +526,9 @@ template maybeHandlePtr(node2: PNode, reg: TFullReg, isAssign2: bool): bool =
     true
   else:
     false
+
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
 
 proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var pc = start
@@ -665,7 +668,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif src.kind notin {nkEmpty..nkFloat128Lit} and idx <% src.len:
         regs[ra].node = src[idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdArrAddr:
       # a = addr(b[c])
       decodeBC(rkNodeAddr)
@@ -676,7 +679,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if src.kind notin {nkEmpty..nkTripleStrLit} and idx <% src.len:
         regs[ra].nodeAddr = addr src.sons[idx]
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, src.safeLen-1))
     of opcLdStrIdx:
       decodeBC(rkInt)
       let idx = regs[rc].intVal.int
@@ -700,7 +703,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       elif idx <% arr.len:
         writeField(arr[idx], regs[rc])
       else:
-        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.len-1))
+        stackTrace(c, tos, pc, formatErrorIndexBound(idx, arr.safeLen-1))
     of opcLdObj:
       # a = b.c
       decodeBC(rkNode)
@@ -1722,7 +1725,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -1737,7 +1740,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       var error: string
       let ast = parseString(regs[rb].node.strVal, c.cache, c.config,
                             toFullPath(c.config, c.debug[pc]), c.debug[pc].line.int,
-                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) =
+                            proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string) {.nosinks.} =
                               if error.len == 0 and msg <= errMax:
                                 error = formatMsg(conf, info, msg, arg))
       if error.len > 0:
@@ -2137,7 +2140,7 @@ proc setupGlobalCtx*(module: PSym; graph: ModuleGraph) =
   else:
     refresh(PCtx graph.vm, module)
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   #var c = newEvalContext(module, emRepl)
   #c.features = {allowCast, allowInfiniteLoops}
   #pushStackFrame(c, newStackFrame())

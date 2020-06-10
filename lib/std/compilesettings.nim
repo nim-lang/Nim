@@ -29,6 +29,8 @@ type
     linkOptions,      ## additional options passed to the linker
     compileOptions,   ## additional options passed to the C/C++ compiler
     ccompilerPath     ## the path to the C/C++ compiler
+    backend           ## the backend (eg: c|cpp|objc|js); both `nim doc --backend:js`
+                      ## and `nim js` would imply backend=js
 
   MultipleValueSetting* {.pure.} = enum ## \
                       ## settings resulting in a seq of string values

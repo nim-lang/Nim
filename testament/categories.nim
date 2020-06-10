@@ -13,6 +13,7 @@
 # included from testament.nim
 
 import important_packages
+import std/private/nimbleutils
 
 const
   specialCategories = [
@@ -29,9 +30,9 @@ const
     "lib",
     "longgc",
     "manyloc",
-    "nimble-packages",
+    "nimble-packages-1",
+    "nimble-packages-2",
     "niminaction",
-    "rodfiles",
     "threads",
     "untestable",
     "stdlib",
@@ -260,9 +261,10 @@ proc asyncTests(r: var TResults, cat: Category, options: string) =
 # ------------------------- debugger tests ------------------------------------
 
 proc debuggerTests(r: var TResults, cat: Category, options: string) =
-  var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
-  t.spec.action = actionCompile
-  testSpec r, t
+  if fileExists("tools/nimgrep.nim"):
+    var t = makeTest("tools/nimgrep", options & " --debugger:on", cat)
+    t.spec.action = actionCompile
+    testSpec r, t
 
 # ------------------------- JS tests ------------------------------------------
 
@@ -447,9 +449,18 @@ let
   nimbleExe = findExe("nimble")
   packageIndex = nimbleDir / "packages_official.json"
 
-iterator listPackages(): tuple[name, url, cmd: string, hasDeps: bool] =
+type
+  PkgPart = enum
+    ppOne
+    ppTwo
+
+iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool] =
   let packageList = parseFile(packageIndex)
-  for n, cmd, hasDeps, url in important_packages.packages.items:
+  let importantList =
+    case part
+    of ppOne: important_packages.packages1
+    of ppTwo: important_packages.packages2
+  for n, cmd, hasDeps, url in importantList.items:
     if url.len != 0:
       yield (n, url, cmd, hasDeps)
     else:
@@ -470,7 +481,7 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
-proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
+proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
     return
@@ -482,7 +493,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
   let packagesDir = "pkgstemp"
   var errors = 0
   try:
-    for name, url, cmd, hasDep in listPackages():
+    for name, url, cmd, hasDep in listPackages(part):
       if packageFilter notin name:
         continue
       inc r.total
@@ -491,9 +502,9 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string) =
       if not existsDir(buildPath):
         if hasDep:
           let installName = if url.len != 0: url else: name
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
-          if nimbleStatus != QuitSuccess:
-            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+          var message: string
+          if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
+            (proc(): bool = nimbleInstall(installName, message))):
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
@@ -544,7 +555,7 @@ proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   if existsFile(test):
     testSpec r, makeTest(test, options, cat), {target}
   else:
-    echo "[Warning] - ", test, " test does not exist"
+    doAssert false, test & " test does not exist"
 
 proc isJoinableSpec(spec: TSpec): bool =
   result = not spec.sortoutput and
@@ -660,10 +671,6 @@ proc processCategory(r: var TResults, cat: Category,
                      options, testsDir: string,
                      runJoinableTests: bool) =
   case cat.string.normalize
-  of "rodfiles":
-    when false:
-      compileRodFiles(r, cat, options)
-      runRodFiles(r, cat, options)
   of "ic":
     when false:
       icTests(r, testsDir, cat, options)
@@ -699,8 +706,10 @@ proc processCategory(r: var TResults, cat: Category,
     compileExample(r, "examples/*.nim", options, cat)
     compileExample(r, "examples/gtk/*.nim", options, cat)
     compileExample(r, "examples/talk/*.nim", options, cat)
-  of "nimble-packages":
-    testNimblePackages(r, cat, options)
+  of "nimble-packages-1":
+    testNimblePackages(r, cat, options, ppOne)
+  of "nimble-packages-2":
+    testNimblePackages(r, cat, options, ppTwo)
   of "niminaction":
     testNimInAction(r, cat, options)
   of "untestable":

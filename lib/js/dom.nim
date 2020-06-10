@@ -9,7 +9,7 @@
 
 ## Declaration of the Document Object Model for the `JavaScript backend
 ## <backends.html#backends-the-javascript-target>`_.
-include "system/inclrtl"
+import std/private/since
 when not defined(js) and not defined(Nimdoc):
   {.error: "This module only works on the JavaScript platform".}
 
@@ -19,26 +19,29 @@ const
 type
   EventTarget* = ref EventTargetObj
   EventTargetObj {.importc.} = object of RootObj
-    onabort*: proc (event: Event) {.nimcall.}
-    onblur*: proc (event: Event) {.nimcall.}
-    onchange*: proc (event: Event) {.nimcall.}
-    onclick*: proc (event: Event) {.nimcall.}
-    ondblclick*: proc (event: Event) {.nimcall.}
-    onerror*: proc (event: Event) {.nimcall.}
-    onfocus*: proc (event: Event) {.nimcall.}
-    onkeydown*: proc (event: Event) {.nimcall.}
-    onkeypress*: proc (event: Event) {.nimcall.}
-    onkeyup*: proc (event: Event) {.nimcall.}
-    onload*: proc (event: Event) {.nimcall.}
-    onmousedown*: proc (event: Event) {.nimcall.}
-    onmousemove*: proc (event: Event) {.nimcall.}
-    onmouseout*: proc (event: Event) {.nimcall.}
-    onmouseover*: proc (event: Event) {.nimcall.}
-    onmouseup*: proc (event: Event) {.nimcall.}
-    onreset*: proc (event: Event) {.nimcall.}
-    onselect*: proc (event: Event) {.nimcall.}
-    onsubmit*: proc (event: Event) {.nimcall.}
-    onunload*: proc (event: Event) {.nimcall.}
+    onabort*: proc (event: Event) {.closure.}
+    onblur*: proc (event: Event) {.closure.}
+    onchange*: proc (event: Event) {.closure.}
+    onclick*: proc (event: Event) {.closure.}
+    ondblclick*: proc (event: Event) {.closure.}
+    onerror*: proc (event: Event) {.closure.}
+    onfocus*: proc (event: Event) {.closure.}
+    onkeydown*: proc (event: Event) {.closure.}
+    onkeypress*: proc (event: Event) {.closure.}
+    onkeyup*: proc (event: Event) {.closure.}
+    onload*: proc (event: Event) {.closure.}
+    onmousedown*: proc (event: Event) {.closure.}
+    onmousemove*: proc (event: Event) {.closure.}
+    onmouseout*: proc (event: Event) {.closure.}
+    onmouseover*: proc (event: Event) {.closure.}
+    onmouseup*: proc (event: Event) {.closure.}
+    onreset*: proc (event: Event) {.closure.}
+    onselect*: proc (event: Event) {.closure.}
+    onsubmit*: proc (event: Event) {.closure.}
+    onunload*: proc (event: Event) {.closure.}
+    onloadstart*: proc (event: Event) {.closure.}
+    onprogress*: proc (event: Event) {.closure.}
+    onloadend*: proc (event: Event) {.closure.}
 
   DomEvent* {.pure.} = enum
     ## see `docs<https://developer.mozilla.org/en-US/docs/Web/Events>`_
@@ -103,6 +106,8 @@ type
     memory*: PerformanceMemory
     timing*: PerformanceTiming
 
+  Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+
   LocalStorage* {.importc.} = ref object
 
   Window* = ref WindowObj
@@ -166,8 +171,11 @@ type
     nodeType*: NodeType
     nodeValue*: cstring
     parentNode*: Node
+    content*: Node
     previousSibling*: Node
+    ownerDocument*: Document
     innerHTML*: cstring
+    outerHTML*: cstring
     innerText*: cstring
     textContent*: cstring
     style*: Style
@@ -390,6 +398,7 @@ type
     captionSide*: cstring
     clear*: cstring
     clip*: cstring
+    clipPath*: cstring
     color*: cstring
     cursor*: cstring
     direction*: cstring
@@ -986,14 +995,38 @@ type
     passive*: bool
 
 since (1, 3):
-  type DomParser* = ref object  ## \
-    ## DOM Parser object (defined on browser only, may not be on NodeJS).
-    ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
-    ##
-    ## .. code-block:: nim
-    ##   let prsr = newDomParser()
-    ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
+  type
+    DomParser* = ref object
+      ## DOM Parser object (defined on browser only, may not be on NodeJS).
+      ## * https://developer.mozilla.org/en-US/docs/Web/API/DOMParser
+      ##
+      ## .. code-block:: nim
+      ##   let prsr = newDomParser()
+      ##   discard prsr.parseFromString("<html><marquee>Hello World</marquee></html>".cstring, "text/html".cstring)
 
+    DomException* = ref DOMExceptionObj
+      ## The DOMException interface represents an abnormal event (called an exception)
+      ## which occurs as a result of calling a method or accessing a property of a web API.
+      ## Each exception has a name, which is a short "CamelCase" style string identifying
+      ## the error or abnormal condition.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException
+
+    DOMExceptionObj {.importc.} = object
+
+    FileReader* = ref FileReaderObj
+      ## The FileReader object lets web applications asynchronously read the contents of files
+      ## (or raw data buffers) stored on the user's computer, using File or Blob objects to specify
+      ## the file or data to read.
+      ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader
+
+    FileReaderObj {.importc.} = object of EventTargetObj
+
+    FileReaderState* = distinct range[0'u16..2'u16]
+
+  const
+    fileReaderEmpty* = 0.FileReaderState
+    fileReaderLoading* = 1.FileReaderState
+    fileReaderDone* = 2.FileReaderState
 
 proc id*(n: Node): cstring {.importcpp: "#.id", nodecl.}
 proc `id=`*(n: Node; x: cstring) {.importcpp: "#.id = #", nodecl.}
@@ -1013,6 +1046,7 @@ when defined(nodejs):
     result = cast[Element](x.childNodes[idx])
 
   var document* = Document(nodeType: DocumentNode)
+  document.ownerDocument = document
 
   proc getElem(x: Element; id: cstring): Element =
     if x.id == id: return x
@@ -1026,6 +1060,7 @@ when defined(nodejs):
 
   proc appendChild*(parent, n: Node) =
     n.parentNode = parent
+    n.ownerDocument = parent.ownerDocument
     parent.childNodes.add n
 
   proc replaceChild*(parent, newNode, oldNode: Node) =
@@ -1072,6 +1107,12 @@ when defined(nodejs):
     result.nodeValue = identifier
     result.nodeType = NodeType.TextNode
 
+  proc createComment*(d: Document, data: cstring): Node =
+    new(result)
+    result.nodeName = "#comment"
+    result.nodeValue = data
+    result.nodeType = NodeType.CommentNode
+
 else:
   proc len*(x: Node): int {.importcpp: "#.childNodes.length".}
   proc `[]`*(x: Node; idx: int): Element {.importcpp: "#.childNodes[#]".}
@@ -1083,6 +1124,7 @@ else:
   proc getElementById*(d: Document, id: cstring): Element {.importcpp.}
   proc createElement*(d: Document, identifier: cstring): Element {.importcpp.}
   proc createTextNode*(d: Document, identifier: cstring): Node {.importcpp.}
+  proc createComment*(d: Document, data: cstring): Node {.importcpp.}
 
 proc setTimeout*(action: proc(); ms: int): Timeout {.importc, nodecl.}
 proc clearTimeout*(t: Timeout) {.importc, nodecl.}
@@ -1148,6 +1190,8 @@ proc replaceData*(n: Node, start, len: int, text: cstring)
 proc scrollIntoView*(n: Node)
 proc setAttribute*(n: Node, name, value: cstring)
 proc setAttributeNode*(n: Node, attr: Node)
+proc querySelector*(n: Node, selectors: cstring): Element
+proc querySelectorAll*(n: Node, selectors: cstring): seq[Element]
 
 # Document "methods"
 proc captureEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1155,7 +1199,7 @@ proc createAttribute*(d: Document, identifier: cstring): Node
 proc getElementsByName*(d: Document, name: cstring): seq[Element]
 proc getElementsByTagName*(d: Document, name: cstring): seq[Element]
 proc getElementsByClassName*(d: Document, name: cstring): seq[Element]
-proc getSelection*(d: Document): cstring
+proc getSelection*(d: Document): Selection
 proc handleEvent*(d: Document, event: Event)
 proc open*(d: Document)
 proc releaseEvents*(d: Document, eventMask: int) {.deprecated.}
@@ -1245,6 +1289,11 @@ proc slice*(e: Blob, startindex: int = 0, endindex: int = e.size, contentType: c
 # Performance "methods"
 proc now*(p: Performance): float
 
+# Selection "methods"
+proc removeAllRanges*(s: Selection)
+converter toString*(s: Selection): cstring
+proc `$`*(s: Selection): string = $(s.toString())
+
 # LocalStorage "methods"
 proc getItem*(ls: LocalStorage, key: cstring): cstring
 proc setItem*(ls: LocalStorage, key, value: cstring)
@@ -1309,8 +1358,31 @@ proc offsetTop*(e: Node): int {.importcpp: "#.offsetTop", nodecl.}
 proc offsetLeft*(e: Node): int {.importcpp: "#.offsetLeft", nodecl.}
 
 since (1, 3):
-  func newDomParser*(): DOMParser {.importcpp: "(new DOMParser()​​)".}
+  func newDomParser*(): DOMParser {.importcpp: "new DOMParser()".}
     ## DOM Parser constructor.
-
   func parseFromString*(this: DOMParser; str: cstring; mimeType: cstring): Document {.importcpp.}
     ## Parse from string to `Document`.
+
+  proc newDomException*(): DomException {.importcpp: "new DomException()", constructor.}
+    ## DOM Exception constructor
+  proc message*(ex: DomException): cstring {.importcpp: "#.message", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/message
+  proc name*(ex: DomException): cstring  {.importcpp: "#.name", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/DOMException/name
+
+  proc newFileReader*(): FileReader {.importcpp: "new FileReader()", constructor.}
+    ## File Reader constructor
+  proc error*(f: FileReader): DOMException {.importcpp: "#.error", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/error
+  proc readyState*(f: FileReader): FileReaderState {.importcpp: "#.readyState", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readyState
+  proc resultAsString*(f: FileReader): cstring {.importcpp: "#.result", nodecl.}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/result
+  proc abort*(f: FileReader) {.importcpp: "#.abort()".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/abort
+  proc readAsBinaryString*(f: FileReader, b: Blob) {.importcpp: "#.readAsBinaryString(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsBinaryString
+  proc readAsDataURL*(f: FileReader, b: Blob) {.importcpp: "#.readAsDataURL(#)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsDataURL
+  proc readAsText*(f: FileReader, b: Blob, encoding = cstring"UTF-8") {.importcpp: "#.readAsText(#, #)".}
+    ## https://developer.mozilla.org/en-US/docs/Web/API/FileReader/readAsText

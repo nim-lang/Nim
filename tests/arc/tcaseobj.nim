@@ -8,6 +8,8 @@ A
 B
 begin
 end
+prevented
+(ok: true, value: "ok")
 myobj destroyed
 '''
 """
@@ -144,3 +146,80 @@ when true:
     let x = sequence([charSet({'a'..'z', 'A'..'Z', '_'})])
     echo "end"
   testSubObjAssignment()
+
+
+#------------------------------------------------
+
+type
+  MyObject = object
+    x1: string
+    case kind1: bool
+      of false: y1: string
+      of true:
+          y2: seq[string]
+          case kind2: bool
+              of true: z1: string
+              of false:
+                z2: seq[string]
+                flag: bool
+    x2: string
+
+proc test_myobject =
+  var x: MyObject
+  x.x1 = "x1"
+  x.x2 = "x2"
+  x.y1 = "ljhkjhkjh"
+  x.kind1 = true
+  x.y2 = @["1", "2"]
+  x.kind2 = true
+  x.z1 = "yes"
+  x.kind2 = false
+  x.z2 = @["1", "2"]
+  x.kind2 = true
+  x.z1 = "yes"
+  x.kind2 = true # should be no effect
+  doAssert(x.z1 == "yes")
+  x.kind2 = false
+  x.kind1 = x.kind2 # support self assignment with effect
+
+  try:
+    x.kind1 = x.flag # flag is not accesible
+  except FieldDefect:
+    echo "prevented"
+
+  doAssert(x.x1 == "x1")
+  doAssert(x.x2 == "x2")
+
+
+test_myobject()
+
+
+#------------------------------------------------
+# bug #14244
+
+type
+  RocksDBResult*[T] = object
+    case ok*: bool
+    of true:
+      value*: T
+    else:
+      error*: string
+
+proc init(): RocksDBResult[string] =
+  result.ok = true
+  result.value = "ok"
+
+echo init()
+
+
+#------------------------------------------------
+# bug #14312
+
+type MyObj = object
+  case kind: bool
+    of false: x0: int # would work with a type like seq[int]; value would be reset
+    of true: x1: string
+
+var a = MyObj(kind: false, x0: 1234)
+a.kind = true
+doAssert(a.x1 == "")

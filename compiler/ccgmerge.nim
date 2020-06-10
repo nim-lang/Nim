@@ -48,6 +48,10 @@ const
   NimMergeEndMark = "/*\tNIM_merge_END:*/"
 
 proc genSectionStart*(fs: TCFileSection; conf: ConfigRef): Rope =
+  # useful for debugging and only adds at most a few lines in each file
+  result.add("\n/* section: ")
+  result.add(CFileSectionNames[fs])
+  result.add(" */\n")
   if compilationCachePresent(conf):
     result = nil
     result.add("\n/*\t")

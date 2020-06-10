@@ -1,17 +1,17 @@
 when not declared(sysFatal):
   include "system/fatal"
 
+import std/private/miscdollars
 # ---------------------------------------------------------------------------
 # helpers
 
 type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
 proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
-
 proc `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
-  info.filename & "(" & $info.line & ", " & $(info.column+1) & ")"
+  result.toLocation(info.filename, info.line, info.column+1)
 
 # ---------------------------------------------------------------------------
 
@@ -19,10 +19,10 @@ when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
 proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
-  sysFatal(AssertionError, msg)
+  sysFatal(AssertionDefect, msg)
 
 proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
-  # trick the compiler to not list ``AssertionError`` when called
+  # trick the compiler to not list ``AssertionDefect`` when called
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,
                                     tags: [].}
@@ -40,9 +40,9 @@ template assertImpl(cond: bool, msg: string, expr: string, enabled: static[bool]
         failedAssertImpl(ploc & " `" & expr & "` " & msg)
 
 template assert*(cond: untyped, msg = "") =
-  ## Raises ``AssertionError`` with `msg` if `cond` is false. Note
-  ## that ``AssertionError`` is hidden from the effect system, so it doesn't
-  ## produce ``{.raises: [AssertionError].}``. This exception is only supposed
+  ## Raises ``AssertionDefect`` with `msg` if `cond` is false. Note
+  ## that ``AssertionDefect`` is hidden from the effect system, so it doesn't
+  ## produce ``{.raises: [AssertionDefect].}``. This exception is only supposed
   ## to be caught by unit testing frameworks.
   ##
   ## The compiler may not generate any code at all for ``assert`` if it is
@@ -80,7 +80,7 @@ template onFailedAssert*(msg, code: untyped): untyped {.dirty.} =
     code
 
 template doAssertRaises*(exception: typedesc, code: untyped) =
-  ## Raises ``AssertionError`` if specified ``code`` does not raise the
+  ## Raises ``AssertionDefect`` if specified ``code`` does not raise the
   ## specified exception. Example:
   ##
   ## .. code-block:: nim

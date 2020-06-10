@@ -1,4 +1,6 @@
 
+
+
 proc boehmGCinit {.importc: "GC_init", boehmGC.}
 proc boehmGC_disable {.importc: "GC_disable", boehmGC.}
 proc boehmGC_enable {.importc: "GC_enable", boehmGC.}
@@ -51,14 +53,14 @@ when not defined(useNimRtl):
   proc realloc0Impl(p: pointer, oldSize, newSize: Natural): pointer =
     result = boehmRealloc(p, newSize)
     if result == nil: raiseOutOfMem()
-    if newsize > oldsize:
-      zeroMem(cast[pointer](cast[int](result) + oldsize), newsize - oldsize)
+    if newSize > oldSize:
+      zeroMem(cast[pointer](cast[int](result) + oldSize), newSize - oldSize)
   proc deallocImpl(p: pointer) = boehmDealloc(p)
 
   proc allocSharedImpl(size: Natural): pointer = allocImpl(size)
   proc allocShared0Impl(size: Natural): pointer = alloc0Impl(size)
-  proc reallocSharedImpl(p: pointer, newsize: Natural): pointer = reallocImpl(p, newsize)
-  proc reallocShared0Impl(p: pointer, oldsize, newsize: Natural): pointer = realloc0Impl(p, oldsize, newsize)
+  proc reallocSharedImpl(p: pointer, newSize: Natural): pointer = reallocImpl(p, newSize)
+  proc reallocShared0Impl(p: pointer, oldSize, newSize: Natural): pointer = realloc0Impl(p, oldSize, newSize)
   proc deallocSharedImpl(p: pointer) = deallocImpl(p)
 
   when hasThreadSupport:
@@ -96,6 +98,7 @@ proc initGC() =
 proc boehmgc_finalizer(obj: pointer, typedFinalizer: (proc(x: pointer) {.cdecl.})) =
   typedFinalizer(obj)
 
+
 proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
   if ntfNoRefs in typ.flags: result = allocAtomic(size)
   else: result = alloc(size)
@@ -103,7 +106,7 @@ proc newObj(typ: PNimType, size: int): pointer {.compilerproc.} =
     boehmRegisterFinalizer(result, boehmgc_finalizer, typ.finalizer, nil, nil)
 {.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-  result = newObj(typ, len * typ.base.size + GenericSeqSize)
+  result = newObj(typ, align(GenericSeqSize, typ.base.align) + len * typ.base.size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 {.pop.}
@@ -135,4 +138,3 @@ proc deallocOsPages(r: var MemRegion) {.inline.} = discard
 proc deallocOsPages() {.inline.} = discard
 
 include "system/cellsets"
-

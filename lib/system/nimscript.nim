@@ -56,14 +56,6 @@ proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
 proc warningImpl(arg, orig: string) = discard
 proc hintImpl(arg, orig: string) = discard
 
-proc paramStr*(i: int): string =
-  ## Retrieves the ``i``'th command line parameter.
-  builtin
-
-proc paramCount*(): int =
-  ## Retrieves the number of command line parameters.
-  builtin
-
 proc switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
   ## example ``switch("checks", "on")``.
@@ -280,6 +272,9 @@ proc selfExec*(command: string) {.
       raise newException(OSError, "FAILED: " & c)
     checkOsError()
 
+from os import paramCount, paramStr
+export paramCount, paramStr
+
 proc put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
   builtin
@@ -384,11 +379,26 @@ when not defined(nimble):
   template `==?`(a, b: string): bool = cmpIgnoreStyle(a, b) == 0
   template task*(name: untyped; description: string; body: untyped): untyped =
     ## Defines a task. Hidden tasks are supported via an empty description.
+    ##
     ## Example:
     ##
     ## .. code-block:: nim
     ##  task build, "default build is via the C backend":
     ##    setCommand "c"
+    ##
+    ## For a task named ``foo``, this template generates a ``proc`` named
+    ## ``fooTask``.  This is useful if you need to call one task in
+    ## another in your Nimscript.
+    ##
+    ## Example:
+    ##
+    ## .. code-block:: nim
+    ##  task foo, "foo":        # > nim foo
+    ##    echo "Running foo"    # Running foo
+    ##
+    ##  task bar, "bar":        # > nim bar
+    ##    echo "Running bar"    # Running bar
+    ##    fooTask()             # Running foo
     proc `name Task`*() =
       setCommand "nop"
       body

@@ -1,6 +1,7 @@
 discard """
   output: '''success'''
   joinable: false
+  disabled: "openbsd"
 """
 
 # bug #4818

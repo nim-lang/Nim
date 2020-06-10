@@ -40,7 +40,10 @@ type
     wImmediate, wConstructor, wDestructor, wDelegator, wOverride,
     wImportCpp, wImportObjC,
     wImportCompilerProc,
-    wImportc, wImportJs, wExportc, wExportCpp, wExportNims, wIncompleteStruct, wRequiresInit,
+    wImportc, wImportJs, wExportc, wExportCpp, wExportNims,
+    wIncompleteStruct, # deprecated
+    wCompleteStruct,
+    wRequiresInit,
     wAlign, wNodecl, wPure, wSideEffect, wHeader,
     wNoSideEffect, wGcSafe, wNoreturn, wNosinks, wMerge, wLib, wDynlib,
     wCompilerProc, wCore, wProcVar, wBase, wUsed,
@@ -48,7 +51,7 @@ type
     wLineDir, wStackTrace, wLineTrace, wLink, wCompile,
     wLinksys, wDeprecated, wVarargs, wCallconv, wDebugger,
     wNimcall, wStdcall, wCdecl, wSafecall, wSyscall, wInline, wNoInline,
-    wFastcall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
+    wFastcall, wThiscall, wClosure, wNoconv, wOn, wOff, wChecks, wRangeChecks,
     wBoundChecks, wOverflowChecks, wNilChecks,
     wFloatChecks, wNanChecks, wInfChecks, wStyleChecks, wStaticBoundchecks,
     wNonReloadable, wExecuteOnReload,
@@ -128,6 +131,7 @@ const
     "importcpp", "importobjc",
     "importcompilerproc", "importc", "importjs", "exportc", "exportcpp", "exportnims",
     "incompletestruct",
+    "completestruct",
     "requiresinit", "align", "nodecl", "pure", "sideeffect",
     "header", "nosideeffect", "gcsafe", "noreturn", "nosinks", "merge", "lib", "dynlib",
     "compilerproc", "core", "procvar", "base", "used",
@@ -135,7 +139,7 @@ const
     "push", "pop", "define", "undef", "linedir", "stacktrace", "linetrace",
     "link", "compile", "linksys", "deprecated", "varargs",
     "callconv", "debugger", "nimcall", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "closure",
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall", "closure",
     "noconv", "on", "off", "checks", "rangechecks", "boundchecks",
     "overflowchecks", "nilchecks",
     "floatchecks", "nanchecks", "infchecks", "stylechecks", "staticboundchecks",
@@ -186,6 +190,7 @@ proc canonPragmaSpelling*(w: TSpecialWord): string =
   of wNoSideEffect: "noSideEffect"
   of wImportCompilerProc: "importCompilerProc"
   of wIncompleteStruct: "incompleteStruct"
+  of wCompleteStruct: "completeStruct"
   of wRequiresInit: "requiresInit"
   of wSideEffect: "sideEffect"
   of wLineDir: "lineDir"

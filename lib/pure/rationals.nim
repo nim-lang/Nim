@@ -93,7 +93,7 @@ proc reduce*[T: SomeInteger](x: var Rational[T]) =
     x.num = -x.num div common
     x.den = -x.den div common
   else:
-    raise newException(DivByZeroError, "division by zero")
+    raise newException(DivByZeroDefect, "division by zero")
 
 proc `+` *[T](x, y: Rational[T]): Rational[T] =
   ## Add two rational numbers.
@@ -194,7 +194,7 @@ proc reciprocal*[T](x: Rational[T]): Rational[T] =
     result.num = -x.den
     result.den = -x.num
   else:
-    raise newException(DivByZeroError, "division by zero")
+    raise newException(DivByZeroDefect, "division by zero")
 
 proc `/`*[T](x, y: Rational[T]): Rational[T] =
   ## Divide rationals `x` by `y`.
@@ -225,7 +225,7 @@ proc `/=`*[T](x: var Rational[T], y: T) =
   x.den *= y
   reduce(x)
 
-proc cmp*(x, y: Rational): int {.procvar.} =
+proc cmp*(x, y: Rational): int =
   ## Compares two rationals.
   (x - y).num
 

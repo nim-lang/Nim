@@ -916,6 +916,8 @@ proc loadNode*(g: ModuleGraph; module: PSym): PNode =
   replay(g, module, result)
 
 proc setupModuleCache*(g: ModuleGraph) =
+  # historical note: there used to be a `rodfiles` dir with special tests
+  # for incremental compilation via symbol files. This was likely replaced by ic.
   if g.config.symbolFiles == disabledSf: return
   g.recordStmt = recordStmt
   let dbfile = getNimcacheDir(g.config) / RelativeFile"rodfiles.db"

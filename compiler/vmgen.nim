@@ -726,6 +726,9 @@ proc genBinaryABCD(c: PCtx; n: PNode; dest: var TDest; opc: TOpcode) =
   c.freeTemp(tmp2)
   c.freeTemp(tmp3)
 
+template sizeOfLikeMsg(name): string =
+  "'$1' requires '.importc' types to be '.completeStruct'" % [name]
+
 proc genNarrow(c: PCtx; n: PNode; dest: TDest) =
   let t = skipTypes(n.typ, abstractVar-{tyTypeDesc})
   # uint is uint64 in the VM, we we only need to mask the result for
@@ -1317,11 +1320,11 @@ proc genMagic(c: PCtx; n: PNode; dest: var TDest; m: TMagic) =
     else:
       globalError(c.config, n.info, "expandToAst requires a call expression")
   of mSizeOf:
-    globalError(c.config, n.info, "cannot evaluate 'sizeof' because its type is not defined completely")
+    globalError(c.config, n.info, sizeOfLikeMsg("sizeof"))
   of mAlignOf:
-    globalError(c.config, n.info, "cannot evaluate 'alignof' because its type is not defined completely")
+    globalError(c.config, n.info, sizeOfLikeMsg("alignof"))
   of mOffsetOf:
-    globalError(c.config, n.info, "cannot evaluate 'offsetof' because its type is not defined completely")
+    globalError(c.config, n.info, sizeOfLikeMsg("offsetof"))
   of mRunnableExamples:
     discard "just ignore any call to runnableExamples"
   of mDestroy: discard "ignore calls to the default destructor"

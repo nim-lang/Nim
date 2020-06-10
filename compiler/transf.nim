@@ -411,7 +411,7 @@ proc transformYield(c: PTransf, n: PNode): PNode =
 
 proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
   result = transformSons(c, n)
-  if c.graph.config.cmd == cmdCompileToCpp or sfCompileToCpp in c.module.flags: return
+  if c.graph.config.backend == backendCpp or sfCompileToCpp in c.module.flags: return
   var n = result
   case n[0].kind
   of nkObjUpConv, nkObjDownConv, nkChckRange, nkChckRangeF, nkChckRange64:
@@ -447,7 +447,7 @@ proc generateThunk(c: PTransf; prc: PNode, dest: PType): PNode =
 
   # we cannot generate a proper thunk here for GC-safety reasons
   # (see internal documentation):
-  if c.graph.config.cmd == cmdCompileToJS: return prc
+  if c.graph.config.backend == backendJs: return prc
   result = newNodeIT(nkClosure, prc.info, dest)
   var conv = newNodeIT(nkHiddenSubConv, prc.info, dest)
   conv.add(newNodeI(nkEmpty, prc.info))

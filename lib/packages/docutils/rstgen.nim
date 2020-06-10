@@ -27,6 +27,8 @@
 
 import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
+import "$lib/../compiler/nimpaths"
+import "$lib/../compiler/pathutils"
 
 const
   HtmlExt = "html"
@@ -55,7 +57,9 @@ type
     options*: RstParseOptions
     findFile*: FindFileHandler
     msgHandler*: MsgHandler
-    filename*: string
+    outDir*: AbsoluteDir      ## output directory, initialized by docgen.nim
+    destFile*: AbsoluteFile   ## output (HTML) file, initialized by docgen.nim
+    filename*: string         ## source Nim or Rst file
     meta*: array[MetaEnum, string]
     currentSection: string ## \
     ## Stores the empty string or the last headline/overline found in the rst
@@ -77,6 +81,9 @@ type
     filename: string
     testCmd: string
     status: int
+
+proc prettyLink*(file: string): string =
+  changeFileExt(file, "").replace(dotdotMangle, "..")
 
 proc init(p: var CodeBlockParams) =
   ## Default initialisation of CodeBlockParams to sane values.
@@ -574,7 +581,7 @@ proc generateModuleJumps(modules: seq[string]): string =
 
   var chunks: seq[string] = @[]
   for name in modules:
-    chunks.add("<a href=\"" & name & ".html\">" & name & "</a>")
+    chunks.add("<a href=\"$1.html\">$2</a>" % [name, name.prettyLink])
 
   result.add(chunks.join(", ") & ".<br/>")
 
@@ -750,7 +757,15 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
 
   # Generate index entry using spaces to indicate TOC level for the output HTML.
   assert n.level >= 0
-  setIndexTerm(d, changeFileExt(extractFilename(d.filename), HtmlExt), refname, tmp.stripTocHtml,
+  let
+    htmlFileRelPath = if d.outDir.isEmpty():
+                        # /foo/bar/zoo.nim -> zoo.html
+                        changeFileExt(extractFilename(d.filename), HtmlExt)
+                      else: # d is initialized in docgen.nim
+                        # outDir   = /foo              -\
+                        # destFile = /foo/bar/zoo.html -|-> bar/zoo.html
+                        d.destFile.relativeTo(d.outDir, '/').string
+  setIndexTerm(d, htmlFileRelPath, refname, tmp.stripTocHtml,
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
@@ -865,7 +880,7 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "nim c -r $1"
+      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
     else:
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":

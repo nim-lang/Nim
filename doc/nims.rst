@@ -52,8 +52,6 @@ NimScript is subject to some limitations caused by the implementation of the VM
 
 * ``random.randomize()`` requires an ``int64`` explicitly passed as argument, you *must* pass a Seed integer.
 
-* ``unicode`` can be imported, but not ``unidecode``.
-
 
 Standard library modules
 ========================

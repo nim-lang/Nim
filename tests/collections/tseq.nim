@@ -204,3 +204,6 @@ block ttoseq:
   var y: type("a b c".split)
   y = "xzy"
   stdout.write("\n")
+
+block tseqmapitchain:
+  doAssert @[101, 102] == [1, 2].mapIt(func (x: int): int = it + x).mapIt(it(100))

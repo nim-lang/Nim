@@ -9,6 +9,7 @@
 
 #[
 
+- introduce Phi nodes to complete the SSA representation
 - the analysis has to take 'break', 'continue' and 'raises' into account
 - We need to map arrays to Z3 and test for something like 'forall(i, (i in 3..4) -> (a[i] > 3))'
 - We need teach DrNim what 'inc', 'dec' and 'swap' mean, for example
@@ -44,7 +45,11 @@ const
   Usage = """
 drnim [options] [projectfile]
 
-Options: Same options that the Nim compiler supports.
+Options: Same options that the Nim compiler supports. Plus:
+
+--assumeUnique   Assume unique `ref` pointers. This makes the analysis unsound
+                 but more useful for wild Nim code such as the Nim compiler
+                 itself.
 """
 
 proc getCommandLineDesc(conf: ConfigRef): string =
@@ -65,11 +70,13 @@ type
     graph: ModuleGraph
     facts: seq[(PNode, VersionScope)]
     varVersions: seq[int] # this maps variable IDs to their current version.
+    varSyms: seq[PSym] # mirrors 'varVersions'
     o: Operators
     hasUnstructedCf: int
     currOptions: TOptions
     owner: PSym
     mangler: seq[PSym]
+    opImplies: PSym
 
   DrCon = object
     graph: ModuleGraph
@@ -126,8 +133,17 @@ proc isLoc(m: PNode; assumeUniqueness: bool): bool =
     else:
       discard
 
-proc varVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
+proc currentVarVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
+  # we need to take into account both en- and disabled var bindings here,
+  # hence the 'abs' call:
   result = 0
+  for i in countdown(int(begin)-1, 0):
+    if abs(c.varVersions[i]) == s.id: inc result
+
+proc previousVarVersion(c: DrnimContext; s: PSym; begin: VersionScope): int =
+  # we need to ignore currently disabled var bindings here,
+  # hence no 'abs' call here.
+  result = -1
   for i in countdown(int(begin)-1, 0):
     if c.varVersions[i] == s.id: inc result
 
@@ -156,15 +172,30 @@ proc stableName(result: var string; c: DrnimContext; n: PNode; version: VersionS
       if d != 0:
         result.add "`scope="
         result.addInt d
-      let v = c.varVersion(n.sym, version) - ord(isOld)
-      assert v >= 0
+      let v = if isOld: c.previousVarVersion(n.sym, version)
+              else: c.currentVarVersion(n.sym, version)
       if v > 0:
         result.add '`'
         result.addInt v
     else:
       result.add "`magic="
       result.addInt ord(n.sym.magic)
-
+  of nkBindStmt:
+    # we use 'bind x 3' to use the 3rd version of variable 'x'. This
+    # is easier than using 'old' which is position relative.
+    assert n.len == 2
+    assert n[0].kind == nkSym
+    assert n[1].kind == nkIntLit
+    let s = n[0].sym
+    let v = int(n[1].intVal)
+    result.add s.name.s
+    let d = disamb(c, s)
+    if d != 0:
+      result.add "`scope="
+      result.addInt d
+    if v > 0:
+      result.add '`'
+      result.addInt v
   of nkCharLit..nkUInt64Lit:
     result.addInt n.intVal
   of nkFloatLit..nkFloat64Lit:
@@ -229,6 +260,16 @@ proc notImplemented(msg: string) {.noinline.} =
     echo msg
   raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & msg)
 
+proc notImplemented(n: PNode) {.noinline.} =
+  when defined(debug):
+    writeStackTrace()
+  raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & $n)
+
+proc notImplemented(t: PType) {.noinline.} =
+  when defined(debug):
+    writeStackTrace()
+  raise newException(CannotMapToZ3Error, "; cannot map to Z3: " & typeToString t)
+
 proc translateEnsures(e, x: PNode): PNode =
   if e.kind == nkSym and e.sym.kind == skResult:
     result = x
@@ -250,7 +291,7 @@ proc typeToZ3(c: DrCon; t: PType): Z3_sort =
     result = Z3_mk_bv_sort(ctx, 64)
     #cuint(getSize(c.graph.config, t) * 8))
   else:
-    notImplemented(typeToString(t))
+    notImplemented(t)
 
 template binary(op, a, b): untyped =
   var arr = [a, b]
@@ -268,7 +309,7 @@ proc nodeToDomain(c: var DrCon; n, q: PNode; opAnd: PSym): PNode =
     let opLt = createMagic(c.graph, "<", mLtI)
     result = buildCall(opAnd, buildCall(opLe, n[1], q), buildCall(opLt, q, n[2]))
   else:
-    notImplemented($n)
+    notImplemented(n)
 
 template quantorToZ3(fn) {.dirty.} =
   template ctx: untyped = c.up.z3
@@ -332,8 +373,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     result = Z3_mk_fpa_numeral_double(ctx, n.floatVal, Z3_mk_fpa_sort_double(ctx))
   of nkCallKinds:
     assert n.len > 0
-    assert n[0].kind == nkSym
-    let operator = n[0].sym.magic
+    let operator = getMagic(n)
     case operator
     of mEqI, mEqF64, mEqEnum, mEqCh, mEqB, mEqRef, mEqProc,
         mEqStr, mEqSet, mEqCString:
@@ -353,7 +393,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
           c.mapping[key] = result
           vars.add n
       else:
-        notImplemented(renderTree(n))
+        notImplemented(n)
     of mHigh:
       let addOpr = createMagic(c.graph, "+", mAddI)
       let lenOpr = createMagic(c.graph, "len", mLengthOpenArray)
@@ -459,7 +499,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
             vars.add n
 
       if pointer(result) == nil:
-        notImplemented(renderTree(n))
+        notImplemented(n)
   of nkStmtListExpr, nkPar:
     var isTrivial = true
     for i in 0..n.len-2:
@@ -467,7 +507,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
     if isTrivial:
       result = rec n[^1]
     else:
-      notImplemented(renderTree(n))
+      notImplemented(n)
   of nkHiddenDeref:
     result = rec n[0]
   else:
@@ -480,7 +520,7 @@ proc nodeToZ3(c: var DrCon; n: PNode; scope: VersionScope; vars: var seq[PNode])
         c.mapping[key] = result
         vars.add n
     else:
-      notImplemented(renderTree(n))
+      notImplemented(n)
 
 proc addRangeInfo(c: var DrCon, n: PNode; scope: VersionScope, res: var seq[Z3_ast]) =
   var cmpOp = mLeI
@@ -700,7 +740,8 @@ proc compatibleProps(graph: ModuleGraph; formal, actual: PType): bool {.nimcall.
       c.graph = graph
       c.canonParameterNames = true
       try:
-        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil)
+        c.up = DrnimContext(z3: setupZ3(), o: initOperators(graph), graph: graph, owner: nil,
+          opImplies: createMagic(graph, "->", mImplies))
         template zero: untyped = VersionScope(0)
         if not frequires.isEmpty:
           result = not arequires.isEmpty and proofEngineAux(c, @[(frequires, zero)], (arequires, zero))[0]
@@ -720,15 +761,23 @@ template config(c: typed): untyped = c.graph.config
 
 proc addFact(c: DrnimContext; n: PNode) =
   let v = c.currentScope
-  if n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
-    c.facts.add((n[1], v))
+  if n.kind in nkCallKinds and n[0].kind == nkSym and n[0].sym.magic in {mOr, mAnd}:
+    c.addFact(n[1])
   c.facts.add((n, v))
 
+proc neg(c: DrnimContext; n: PNode): PNode =
+  result = newNodeI(nkCall, n.info, 2)
+  result[0] = newSymNode(c.o.opNot)
+  result[1] = n
+
 proc addFactNeg(c: DrnimContext; n: PNode) =
-  var neg = newNodeI(nkCall, n.info, 2)
-  neg[0] = newSymNode(c.o.opNot)
-  neg[1] = n
-  addFact(c, neg)
+  addFact(c, neg(c, n))
+
+proc combineFacts(c: DrnimContext; a, b: PNode): PNode =
+  if a == nil:
+    result = b
+  else:
+    result = buildCall(c.o.opAnd, a, b)
 
 proc prove(c: DrnimContext; prop: PNode): bool =
   let (success, m) = proofEngine(c, c.facts, (prop, c.currentScope))
@@ -745,6 +794,8 @@ proc traversePragmaStmt(c: DrnimContext, n: PNode) =
       elif pragma == wInvariant or pragma == wAssert:
         if prove(c, it[1]):
           addFact(c, it[1])
+        else:
+          echoFacts(c)
 
 proc requiresCheck(c: DrnimContext, call: PNode; op: PType) =
   assert op.n[0].kind == nkEffectList
@@ -761,6 +812,7 @@ proc freshVersion(c: DrnimContext; arg: PNode) =
   let v = getRoot(arg)
   if v != nil:
     c.varVersions.add v.id
+    c.varSyms.add v
 
 proc translateEnsuresFromCall(c: DrnimContext, e, call: PNode): PNode =
   if e.kind in nkCallKinds and e[0].kind == nkSym and e[0].sym.magic == mOld:
@@ -837,23 +889,118 @@ proc traverseCase(c: DrnimContext; n: PNode) =
   # XXX make this as smart as 'if elif'
   setLen(c.facts, oldFacts)
 
+proc disableVarVersions(c: DrnimContext; until: int) =
+  for i in until..<c.varVersions.len:
+    c.varVersions[i] = - abs(c.varVersions[i])
+
+proc varOfVersion(c: DrnimContext; x: PSym; scope: int): PNode =
+  let version = currentVarVersion(c, x, VersionScope(scope))
+  result = newTree(nkBindStmt, newSymNode(x), newIntNode(nkIntLit, version))
+
 proc traverseIf(c: DrnimContext; n: PNode) =
-  traverse(c, n[0][0])
+  #[ Consider this example::
+
+    var x = y   # x'0
+    if a:
+      inc x     # x'1 == x'0 + 1
+    elif b:
+      inc x, 2  # x'2 == x'0 + 2
+
+  afterwards we know this is fact::
+
+    x'3 = Phi(x'0, x'1, x'2)
+
+  So a Phi node from SSA representation is an 'or' formula like::
+
+    x'3 == x'1 or x'3 == x'2 or x'3 == x'0
+
+  However, this loses some information. The formula that doesn't
+  lose information is::
+
+    (a -> (x'3 == x'1)) and
+    ((not a and b) -> (x'3 == x'2)) and
+    ((not a and not b) -> (x'3 == x'0))
+
+  (Where ``->`` is the logical implication.)
+
+  In addition to the Phi information we also know the 'facts'
+  computed by the branches, for example::
+
+    if a:
+      factA
+    elif b:
+      factB
+    else:
+      factC
+
+    (a -> factA) and
+    ((not a and b) -> factB) and
+    ((not a and not b) -> factC)
+
+  We can combine these two aspects by producing the following facts
+  after each branch::
+
+    var x = y   # x'0
+    if a:
+      inc x     # x'1 == x'0 + 1
+      # also:     x'1 == x'final
+    elif b:
+      inc x, 2  # x'2 == x'0 + 2
+      # also:     x'2 == x'final
+    else:
+      # also:     x'0 == x'final
+
+  ]#
   let oldFacts = c.facts.len
-  addFact(c, n[0][0])
+  let oldVars = c.varVersions.len
+  var newFacts: seq[PNode]
+  var branches = newSeq[(PNode, int)](n.len) # (cond, newVars) pairs
+  template condVersion(): untyped = VersionScope(oldVars)
 
-  traverse(c, n[0][1])
-
-  for i in 1..<n.len:
+  for i in 0..<n.len:
     let branch = n[i]
     setLen(c.facts, oldFacts)
+
+    var cond = PNode(nil)
     for j in 0..i-1:
       addFactNeg(c, n[j][0])
+      cond = combineFacts(c, cond, neg(c, n[j][0]))
     if branch.len > 1:
       addFact(c, branch[0])
+      cond = combineFacts(c, cond, branch[0])
+
     for i in 0..<branch.len:
       traverse(c, branch[i])
+
+    assert cond != nil
+    branches[i] = (cond, c.varVersions.len)
+
+    var newInfo = PNode(nil)
+    for f in oldFacts..<c.facts.len:
+      newInfo = combineFacts(c, newInfo, c.facts[f][0])
+    if newInfo != nil:
+      newFacts.add buildCall(c.opImplies, cond, newInfo)
+
+    disableVarVersions(c, oldVars)
+
   setLen(c.facts, oldFacts)
+  for f in newFacts: c.facts.add((f, condVersion))
+  # build the 'Phi' information:
+  let varsWithoutFinals = c.varVersions.len
+  var mutatedVars = initIntSet()
+  for i in oldVars ..< varsWithoutFinals:
+    let vv = c.varVersions[i]
+    if not mutatedVars.containsOrIncl(vv):
+      c.varVersions.add vv
+      c.varSyms.add c.varSyms[i]
+
+  var prevIdx = oldVars
+  for i in 0 ..< branches.len:
+    for v in prevIdx .. branches[i][1] - 1:
+      c.facts.add((buildCall(c.opImplies, branches[i][0],
+        buildCall(c.o.opEq, varOfVersion(c, c.varSyms[v], branches[i][1]), newSymNode(c.varSyms[v]))),
+        condVersion))
+    prevIdx = branches[i][1]
 
 proc traverseBlock(c: DrnimContext; n: PNode) =
   traverse(c, n)
@@ -917,7 +1064,9 @@ proc traverse(c: DrnimContext; n: PNode) =
         let arg = n[1]
         freshVersion(c, arg)
         traverse(c, arg)
-        addAsgnFact(c, arg, newNodeIT(nkObjConstr, arg.info, arg.typ))
+        let x = newNodeIT(nkObjConstr, arg.info, arg.typ)
+        x.add arg
+        addAsgnFact(c, arg, x)
       of mArrGet, mArrPut:
         #if optStaticBoundsCheck in c.currOptions: checkBounds(c, n[1], n[2])
         discard
@@ -1028,6 +1177,7 @@ proc strongSemCheck(graph: ModuleGraph; owner: PSym; n: PNode) =
     c.o = initOperators(graph)
     c.graph = graph
     c.owner = owner
+    c.opImplies = createMagic(c.graph, "->", mImplies)
     try:
       traverse(c, n)
       ensuresCheck(c, owner)
@@ -1042,7 +1192,7 @@ proc mainCommand(graph: ModuleGraph) =
   graph.strongSemCheck = strongSemCheck
   graph.compatibleProps = compatibleProps
 
-  graph.config.errorMax = high(int)  # do not stop after first error
+  graph.config.setErrorMaxHighMaybe
   defineSymbol(graph.config.symbols, "nimcheck")
   defineSymbol(graph.config.symbols, "nimDrNim")
 
@@ -1109,6 +1259,7 @@ proc processCmdLine(pass: TCmdLinePass, cmd: string; config: ConfigRef) =
       rawMessage(config, errGenerated, errArgsNeedRunOption)
 
 proc handleCmdLine(cache: IdentCache; conf: ConfigRef) =
+  incl conf.options, optStaticBoundsCheck
   let self = NimProg(
     supportsStdinFile: true,
     processCmdLine: processCmdLine,

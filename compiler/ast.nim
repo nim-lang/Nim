@@ -25,12 +25,13 @@ type
     ccInline,                 # proc should be inlined
     ccNoInline,               # proc should not be inlined
     ccFastCall,               # fastcall (pass parameters in registers)
+    ccThisCall,               # thiscall (parameters are pushed right-to-left)
     ccClosure,                # proc has a closure
     ccNoConvention            # needed for generating proper C procs sometimes
 
 const
   CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall",
+    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
     "closure", "noconv"]
 
 type
@@ -290,8 +291,9 @@ type
     sfTemplateParam   # symbol is a template parameter
     sfCursor          # variable/field is a cursor, see RFC 177 for details
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
-    sfNeverRaises     # proc can never raise an exception, not even OverflowError
+    sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
 
   TSymFlags* = set[TSymFlag]
 
@@ -553,6 +555,9 @@ type
                            # If it has one, t.destructor is not nil.
     tfAcyclic # object type was annotated as .acyclic
     tfIncompleteStruct # treat this type as if it had sizeof(pointer)
+    tfCompleteStruct
+      # (for importc types); type is fully specified, allowing to compute
+      # sizeof, alignof, offsetof at CT
 
   TTypeFlags* = set[TTypeFlag]
 
@@ -1026,6 +1031,7 @@ const
   nkFloatLiterals* = {nkFloatLit..nkFloat128Lit}
   nkLambdaKinds* = {nkLambda, nkDo}
   declarativeDefs* = {nkProcDef, nkFuncDef, nkMethodDef, nkIteratorDef, nkConverterDef}
+  routineDefs* = declarativeDefs + {nkMacroDef, nkTemplateDef}
   procDefs* = nkLambdaKinds + declarativeDefs
 
   nkSymChoices* = {nkClosedSymChoice, nkOpenSymChoice}

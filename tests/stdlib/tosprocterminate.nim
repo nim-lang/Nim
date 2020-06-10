@@ -8,6 +8,8 @@ import os, osproc, times, std / monotimes
 
 when defined(Windows):
   const ProgramWhichDoesNotEnd = "notepad"
+elif defined(openbsd):
+  const ProgramWhichDoesNotEnd = "/bin/cat"
 else:
   const ProgramWhichDoesNotEnd = "/bin/sh"
 

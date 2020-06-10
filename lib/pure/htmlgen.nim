@@ -64,7 +64,7 @@ proc getIdent(e: NimNode): string {.compileTime.} =
     result = getIdent(e[0])
     for i in 1 .. e.len-1:
       result.add getIdent(e[i])
-  else: error("cannot extract identifier from node: " & toStrLit(e).strVal)
+  else: error("cannot extract identifier from node: " & toStrLit(e).strVal, e)
 
 proc delete[T](s: var seq[T], attr: T): bool =
   var idx = find(s, attr)
@@ -96,14 +96,14 @@ proc xmlCheckedTag*(argsList: NimNode, tag: string, optAttr = "", reqAttr = "",
         result.add(argsList[i][1])
         result.add(newStrLitNode("\""))
       else:
-        error("invalid attribute for '" & tag & "' element: " & name)
+        error("invalid attribute for '" & tag & "' element: " & name, argsList[i])
   # check each required attribute exists:
   if req.len > 0:
-    error(req[0] & " attribute for '" & tag & "' element expected")
+    error(req[0] & " attribute for '" & tag & "' element expected", argsList)
   if isLeaf:
     for i in 0 ..< argsList.len:
       if argsList[i].kind != nnkExprEqExpr:
-        error("element " & tag & " cannot be nested")
+        error("element " & tag & " cannot be nested", argsList[i])
     result.add(newStrLitNode(" />"))
   else:
     result.add(newStrLitNode(">"))

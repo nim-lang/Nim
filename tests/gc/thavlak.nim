@@ -394,7 +394,7 @@ proc run(self: var LoopTesterApp) =
   echo "Constructing CFG..."
   var n = 2
 
-  when not defined(gcOrc):
+  when true: # not defined(gcOrc):
     # currently cycle detection is so slow that we disable this part
     for parlooptrees in 1..10:
       discard self.cfg.createNode(n + 1)
@@ -437,4 +437,5 @@ proc main =
 let mem = getOccupiedMem()
 main()
 when defined(gcOrc):
+  GC_fullCollect()
   doAssert getOccupiedMem() == mem

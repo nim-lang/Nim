@@ -141,10 +141,12 @@ proc setupVM*(module: PSym; cache: IdentCache; scriptName: string;
     setResult(a, options.existsConfigVar(conf, a.getString 0))
   cbconf nimcacheDir:
     setResult(a, options.getNimcacheDir(conf).string)
-  cbconf paramStr:
-    setResult(a, os.paramStr(int a.getInt 0))
-  cbconf paramCount:
-    setResult(a, os.paramCount())
+  result.registerCallback "stdlib.os." & astToStr(paramStr),
+    proc (a: VmArgs) =
+      setResult(a, os.paramStr(int a.getInt 0))
+  result.registerCallback "stdlib.os." & astToStr(paramCount),
+    proc (a: VmArgs) =
+      setResult(a, os.paramCount())
   cbconf cmpIgnoreStyle:
     setResult(a, strutils.cmpIgnoreStyle(a.getString 0, a.getString 1))
   cbconf cmpIgnoreCase:

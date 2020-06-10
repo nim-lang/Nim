@@ -21,7 +21,7 @@ proc newObjNoInit(typ: PNimType, size: int): pointer =
 
 {.push overflowChecks: on.}
 proc newSeq(typ: PNimType, len: int): pointer {.compilerproc.} =
-  result = newObj(typ, len * typ.base.size + GenericSeqSize)
+  result = newObj(typ, align(GenericSeqSize, typ.align) + len * typ.base.size)
   cast[PGenericSeq](result).len = len
   cast[PGenericSeq](result).reserved = len
 {.pop.}

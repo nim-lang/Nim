@@ -233,13 +233,15 @@ proc typeAllowedCheck(conf: ConfigRef; info: TLineInfo; typ: PType; kind: TSymKi
                       flags: TTypeAllowedFlags = {}) =
   let t = typeAllowed(typ, kind, flags)
   if t != nil:
+    var err: string
     if t == typ:
-      localError(conf, info, "invalid type: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' for $2" % [typeToString(typ), toHumanStr(kind)]
+      if kind in {skVar, skLet, skConst} and taIsTemplateOrMacro in flags:
+        err &= ". Did you mean to call the $1 with '()'?" % [toHumanStr(typ.owner.kind)]
     else:
-      localError(conf, info, "invalid type: '" & typeToString(t) &
-        "' in this context: '" & typeToString(typ) &
-        "' for " & substr($kind, 2).toLowerAscii)
+      err = "invalid type: '$1' in this context: '$2' for $3" % [typeToString(t),
+              typeToString(typ), toHumanStr(kind)]
+    localError(conf, info, err)
 
 proc paramsTypeCheck(c: PContext, typ: PType) {.inline.} =
   typeAllowedCheck(c.config, typ.n.info, typ, skProc)
@@ -323,7 +325,7 @@ proc tryConstExpr(c: PContext, n: PNode): PNode =
   let oldErrorOutputs = c.config.m.errorOutputs
 
   c.config.m.errorOutputs = {}
-  c.config.errorMax = high(int)
+  c.config.errorMax = high(int) # `setErrorMaxHighMaybe` not appropriate here
 
   try:
     result = evalConstExpr(c.module, c.graph, e)
@@ -376,6 +378,9 @@ proc semExprFlagDispatched(c: PContext, n: PNode, flags: TExprFlags): PNode =
       if evaluated != nil: return evaluated
       evaluated = evalAtCompileTime(c, result)
       if evaluated != nil: return evaluated
+
+when not defined(nimHasSinkInference):
+  {.pragma: nosinks.}
 
 include hlo, seminst, semcall
 
@@ -481,15 +486,10 @@ proc forceBool(c: PContext, n: PNode): PNode =
   if result == nil: result = n
 
 proc semConstBoolExpr(c: PContext, n: PNode): PNode =
-  let nn = semExprWithType(c, n)
-  result = fitNode(c, getSysType(c.graph, n.info, tyBool), nn, nn.info)
-  if result == nil:
+  result = forceBool(c, semConstExpr(c, n))
+  if result.kind != nkIntLit:
     localError(c.config, n.info, errConstExprExpected)
-    return nn
-  result = getConstExpr(c.module, result, c.graph)
-  if result == nil:
-    localError(c.config, n.info, errConstExprExpected)
-    result = nn
+
 
 proc semGenericStmt(c: PContext, n: PNode): PNode
 proc semConceptBody(c: PContext, n: PNode): PNode
@@ -506,7 +506,7 @@ proc addCodeForGenerics(c: PContext, n: PNode) =
         n.add prc.ast
   c.lastGenericIdx = c.generics.len
 
-proc myOpen(graph: ModuleGraph; module: PSym): PPassContext =
+proc myOpen(graph: ModuleGraph; module: PSym): PPassContext {.nosinks.} =
   var c = newContext(graph, module)
   if c.p != nil: internalError(graph.config, module.info, "sem.myOpen")
   c.semConstExpr = semConstExpr
@@ -597,7 +597,7 @@ proc recoverContext(c: PContext) =
   while getCurrOwner(c).kind != skModule: popOwner(c)
   while c.p != nil and c.p.owner.kind != skModule: c.p = c.p.next
 
-proc myProcess(context: PPassContext, n: PNode): PNode =
+proc myProcess(context: PPassContext, n: PNode): PNode {.nosinks.} =
   var c = PContext(context)
   # no need for an expensive 'try' if we stop after the first error anyway:
   if c.config.errorMax <= 1:

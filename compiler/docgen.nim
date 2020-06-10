@@ -17,14 +17,22 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees
+  pathutils, trees, tables, nimpaths, renderverbatim, osproc
+
+from std/private/globs import nativeToUnixPath
 
 const
   exportSection = skField
-  htmldocsDir = RelativeDir"htmldocs"
+  docCmdSkip = "skip"
 
 type
   TSections = array[TSymKind, Rope]
+  ExampleGroup = ref object
+    ## a group of runnableExamples with same rdoccmd
+    rdoccmd: string ## from 1st arg in `runnableExamples(rdoccmd): body`
+    docCmd: string ## from user config, eg --doccmd:-d:foo
+    code: string ## contains imports; each import contains `body`
+    index: int ## group index
   TDocumentor = object of rstgen.RstGenerator
     modDesc: Rope       # module description
     module: PSym
@@ -41,21 +49,11 @@ type
     exampleCounter: int
     emitted: IntSet # we need to track which symbols have been emitted
                     # already. See bug #3655
-    destFile*: AbsoluteFile
     thisDir*: AbsoluteDir
-    examples: string
-    wroteCss*: bool
+    exampleGroups: OrderedTable[string, ExampleGroup]
+    wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
-
-proc nativeToUnix(path: string): string =
-  doAssert not path.isAbsolute # absolute files need more care for the drive
-  when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
-
-proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -65,7 +63,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   proc nimbleDir(): AbsoluteDir =
     getNimbleFile(conf, file2).parentDir.AbsoluteDir
   case conf.docRoot:
-  of "@default": # using `@` instead of `$` to avoid shell quoting complications
+  of docRootDefault:
     result = getRelativePathFromConfigPath(conf, file)
     let dir = nimbleDir()
     if not dir.isEmpty:
@@ -81,16 +79,22 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
     result = getRelativePathFromConfigPath(conf, file)
     if result.isEmpty: bail()
   elif conf.docRoot.len > 0:
-    doAssert conf.docRoot.isAbsolute, conf.docRoot # or globalError
-    doAssert conf.docRoot.existsDir, conf.docRoot
-    result = relativeTo(file, conf.docRoot.AbsoluteDir)
+    # we're (currently) requiring `isAbsolute` to avoid confusion when passing
+    # a relative path (would it be relative wrt $PWD or to projectfile)
+    conf.globalAssert conf.docRoot.isAbsolute, arg=conf.docRoot
+    conf.globalAssert conf.docRoot.existsDir, arg=conf.docRoot
+    # needed because `canonicalizePath` called on `file`
+    result = file.relativeTo conf.docRoot.expandFilename.AbsoluteDir
   else:
     bail()
+  if isAbsolute(result.string):
+    result = file.string.splitPath()[1].RelativeFile
   if isTitle:
-    result = result.string.nativeToUnix.RelativeFile
+    result = result.string.nativeToUnixPath.RelativeFile
   else:
-    result = result.string.replace("..", "@@").RelativeFile ## refs #13223
+    result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
+  doAssert not isAbsolute(result.string)
 
 proc whichType(d: PDoc; n: PNode): PSym =
   if n.kind == nkSym:
@@ -147,13 +151,9 @@ proc parseRst(text, filename: string,
                     docgenFindFile, compilerMsgHandler)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
-                 ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
-  if optWholeProject in conf.globalOptions:
-    let d = conf.docOutDir(dir)
-    createDir(d)
-    result = d / changeFileExt(filename, ext)
-  elif guessTarget:
-    let d = conf.docOutDir
+                 ext: string, guessTarget: bool): AbsoluteFile =
+  if optWholeProject in conf.globalOptions or guessTarget:
+    let d = conf.outDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif not conf.outFile.isEmpty:
@@ -167,6 +167,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   result.module = module
   result.conf = conf
   result.cache = cache
+  result.outDir = conf.outDir
   initRstGenerator(result[], (if conf.cmd != cmdRst2tex: outHtml else: outLatex),
                    conf.configVars, filename.string, {roSupportRawDirective, roSupportMarkdown},
                    docgenFindFile, compilerMsgHandler)
@@ -193,6 +194,7 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
   initStrTable result.types
   result.onTestSnippet =
     proc (gen: var RstGenerator; filename, cmd: string; status: int; content: string) =
+      if conf.docCmd == docCmdSkip: return
       inc(gen.id)
       var d = TDocumentor(gen)
       var outp: AbsoluteFile
@@ -211,15 +213,23 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
       # Include the current file if we're parsing a nim file
       let importStmt = if d.isPureRst: "" else: "import \"$1\"\n" % [d.filename.replace("\\", "/")]
       writeFile(outp, importStmt & content)
-      let c = if cmd.startsWith("nim "): os.getAppFilename() & cmd.substr(3)
-              else: cmd
-      let c2 = c % quoteShell(outp)
-      rawMessage(conf, hintExecuting, c2)
-      if execShellCmd(c2) != status:
-        rawMessage(conf, errGenerated, "executing of external program failed: " & c2)
+
+      proc interpSnippetCmd(cmd: string): string =
+        # backward compatibility hacks; interpolation commands should explicitly use `$`
+        if cmd.startsWith "nim ": result = "$nim " & cmd[4..^1]
+        else: result = cmd
+        result = result.replace("$1", "$options") % [
+          "nim", os.getAppFilename().quoteShell,
+          "backend", $d.conf.backend,
+          "options", outp.quoteShell,
+        ]
+      let cmd = cmd.interpSnippetCmd
+      rawMessage(conf, hintExecuting, cmd)
+      let (output, gotten) = execCmdEx(cmd)
+      if gotten != status:
+        rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
-                                outExt, htmldocsDir, false)
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -294,7 +304,11 @@ proc genComment(d: PDoc, n: PNode): string =
   result = ""
   var dummyHasToc: bool
   if n.comment.len > 0:
-    renderRstToOut(d[], parseRst(n.comment, toFullPath(d.conf, n.info),
+    var comment2 = n.comment
+    when false:
+      # RFC: to preseve newlines in comments, this would work:
+      comment2 = comment2.replace("\n", "\n\n")
+    renderRstToOut(d[], parseRst(comment2, toFullPath(d.conf, n.info),
                                toLinenumber(n.info), toColumn(n.info),
                                dummyHasToc, d.options, d.conf), result)
 
@@ -343,8 +357,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
-                          htmldocsDir, sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -357,6 +370,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
   var kind = tkEof
   var tokenPos = 0
   var procTokenPos = 0
+  template escLit(): untyped = rope(esc(d.target, literal))
   while true:
     getNextTok(r, kind, literal)
     inc tokenPos
@@ -365,7 +379,7 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
       break
     of tkComment:
       dispA(d.conf, result, "<span class=\"Comment\">$1</span>", "\\spanComment{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
     of tokKeywordLow..tokKeywordHigh:
       if kind in {tkProc, tkMethod, tkIterator, tkMacro, tkTemplate, tkFunc, tkConverter}:
         procTokenPos = tokenPos
@@ -373,53 +387,53 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
             [rope(literal)])
     of tkOpr:
       dispA(d.conf, result, "<span class=\"Operator\">$1</span>", "\\spanOperator{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
     of tkStrLit..tkTripleStrLit:
       dispA(d.conf, result, "<span class=\"StringLit\">$1</span>",
-            "\\spanStringLit{$1}", [rope(esc(d.target, literal))])
+            "\\spanStringLit{$1}", [escLit])
     of tkCharLit:
       dispA(d.conf, result, "<span class=\"CharLit\">$1</span>", "\\spanCharLit{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
     of tkIntLit..tkUInt64Lit:
       dispA(d.conf, result, "<span class=\"DecNumber\">$1</span>",
-            "\\spanDecNumber{$1}", [rope(esc(d.target, literal))])
+            "\\spanDecNumber{$1}", [escLit])
     of tkFloatLit..tkFloat128Lit:
       dispA(d.conf, result, "<span class=\"FloatNumber\">$1</span>",
-            "\\spanFloatNumber{$1}", [rope(esc(d.target, literal))])
+            "\\spanFloatNumber{$1}", [escLit])
     of tkSymbol:
       let s = getTokSym(r)
       # -2 because of the whitespace in between:
       if procTokenPos == tokenPos-2 and procLink != nil:
         dispA(d.conf, result, "<a href=\"#$2\"><span class=\"Identifier\">$1</span></a>",
-              "\\spanIdentifier{$1}", [rope(esc(d.target, literal)), procLink])
+              "\\spanIdentifier{$1}", [escLit, procLink])
       elif s != nil and s.kind in {skType, skVar, skLet, skConst} and
            sfExported in s.flags and s.owner != nil and
            belongsToPackage(d.conf, s.owner) and d.target == outHtml:
         let external = externalDep(d, s.owner)
         result.addf "<a href=\"$1#$2\"><span class=\"Identifier\">$3</span></a>",
           [rope changeFileExt(external, "html"), rope literal,
-           rope(esc(d.target, literal))]
+           escLit]
       else:
         dispA(d.conf, result, "<span class=\"Identifier\">$1</span>",
-              "\\spanIdentifier{$1}", [rope(esc(d.target, literal))])
+              "\\spanIdentifier{$1}", [escLit])
     of tkSpaces, tkInvalid:
       result.add(literal)
     of tkCurlyDotLe:
-      dispA(d.conf, result, "<span>" & # This span is required for the JS to work properly
+      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
+      if renderRunnableExamples in renderFlags: fun "$1"
+      else: fun: "<span>" & # This span is required for the JS to work properly
         """<span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span>
 </span>
 <span class="pragmawrap">
 <span class="Other">$1</span>
-<span class="pragma">""".replace("\n", ""),  # Must remove newlines because wrapped in a <pre>
-                    "\\spanOther{$1}",
-                  [rope(esc(d.target, literal))])
+<span class="pragma">""".replace("\n", "")  # Must remove newlines because wrapped in a <pre>
     of tkCurlyDotRi:
-      dispA(d.conf, result, """
+      template fun(s) = dispA(d.conf, result, s, "\\spanOther{$1}", [escLit])
+      if renderRunnableExamples in renderFlags: fun "$1"
+      else: fun """
 </span>
 <span class="Other">$1</span>
-</span>""".replace("\n", ""),
-                    "\\spanOther{$1}",
-                  [rope(esc(d.target, literal))])
+</span>""".replace("\n", "")
     of tkParLe, tkParRi, tkBracketLe, tkBracketRi, tkCurlyLe, tkCurlyRi,
        tkBracketDotLe, tkBracketDotRi, tkParDotLe,
        tkParDotRi, tkComma, tkSemiColon, tkColon, tkEquals, tkDot, tkDotDot,
@@ -427,51 +441,74 @@ proc nodeToHighlightedHtml(d: PDoc; n: PNode; result: var Rope; renderFlags: TRe
        tkGStrLit, tkGTripleStrLit, tkInfixOpr, tkPrefixOpr, tkPostfixOpr,
        tkBracketLeColon:
       dispA(d.conf, result, "<span class=\"Other\">$1</span>", "\\spanOther{$1}",
-            [rope(esc(d.target, literal))])
+            [escLit])
 
-proc testExample(d: PDoc; ex: PNode) =
+proc exampleOutputDir(d: PDoc): AbsoluteDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
+
+proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
   if d.conf.errorCounter > 0: return
-  let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
+  let outputDir = d.exampleOutputDir
   createDir(outputDir)
   inc d.exampleCounter
   let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
       "_examples" & $d.exampleCounter & ".nim"))
   #let nimcache = outp.changeFileExt"" & "_nimcache"
   renderModule(ex, d.filename, outp.string, conf = d.conf)
-  d.examples.add "import r\"" & outp.string & "\"\n"
+  if rdoccmd notin d.exampleGroups: d.exampleGroups[rdoccmd] = ExampleGroup(rdoccmd: rdoccmd, docCmd: d.conf.docCmd, index: d.exampleGroups.len)
+  d.exampleGroups[rdoccmd].code.add "import r\"$1\"\n" % outp.string
 
 proc runAllExamples(d: PDoc) =
-  if d.examples.len == 0: return
-  let outputDir = d.conf.getNimcacheDir / RelativeDir"runnableExamples"
-  let outp = outputDir / RelativeFile(extractFilename(d.filename.changeFileExt"" &
-      "_examples.nim"))
-  writeFile(outp, d.examples)
-  let backend = if isDefined(d.conf, "js"): "js"
-                elif isDefined(d.conf, "cpp"): "cpp"
-                elif isDefined(d.conf, "objc"): "objc"
-                else: "c"
-  if os.execShellCmd(os.getAppFilename() & " " & backend &
-                    " --warning[UnusedImport]:off" &
-                    " --path:" & quoteShell(d.conf.projectPath) &
-                    " --nimcache:" & quoteShell(outputDir) &
-                    " -r " & quoteShell(outp)) != 0:
-    quit "[Examples] failed: see " & outp.string
-  else:
-    # keep generated source file `outp` to allow inspection.
-    rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
-    removeFile(outp.changeFileExt(ExeExt))
+  let backend = d.conf.backend
+  # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
+  # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
+  # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
+  let outputDir = d.exampleOutputDir
+  for _, group in d.exampleGroups:
+    if group.docCmd == docCmdSkip: continue
+    let outp = outputDir / RelativeFile("$1_group$2_examples.nim" % [d.filename.splitFile.name, $group.index])
+    group.code = "# autogenerated by docgen\n# source: $1\n# rdoccmd: $2\n$3" % [d.filename, group.rdoccmd, group.code]
+    writeFile(outp, group.code)
+    # most useful semantics is that `docCmd` comes after `rdoccmd`, so that we can (temporarily) override
+    # via command line
+    let cmd = "$nim $backend -r --warning:UnusedImport:off --path:$path --nimcache:$nimcache $rdoccmd $docCmd $file" % [
+      "nim", os.getAppFilename(),
+      "backend", $d.conf.backend,
+      "path", quoteShell(d.conf.projectPath),
+      "nimcache", quoteShell(outputDir),
+      "file", quoteShell(outp),
+      "rdoccmd", group.rdoccmd,
+      "docCmd", group.docCmd,
+    ]
+    if os.execShellCmd(cmd) != 0:
+      quit "[runnableExamples] failed: generated file: '$1' group: '$2' cmd: $3" % [outp.string, $group[], cmd]
+    else:
+      # keep generated source file `outp` to allow inspection.
+      rawMessage(d.conf, hintSuccess, ["runnableExamples: " & outp.string])
+      # removeFile(outp.changeFileExt(ExeExt)) # it's in nimcache, no need to remove
 
+proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
+  ## returns `rdoccmd` and source code for this runnableExamples
+  var rdoccmd = ""
+  if n.len < 2 or n.len > 3: globalError(d.conf, n.info, "runnableExamples invalid")
+  if n.len == 3:
+    let n1 = n[1]
+    # xxx this should be evaluated during sempass
+    if n1.kind notin nkStrKinds: globalError(d.conf, n1.info, "string litteral expected")
+    rdoccmd = n1.strVal
 
-proc prepareExamples(d: PDoc; n: PNode) =
   var docComment = newTree(nkCommentStmt)
   let loc = d.conf.toFileLineCol(n.info)
-  docComment.comment = "autogenerated by docgen from " & loc
+
+  docComment.comment = "autogenerated by docgen\nloc: $1\nrdoccmd: $2" % [loc, rdoccmd]
   var runnableExamples = newTree(nkStmtList,
       docComment,
       newTree(nkImportStmt, newStrNode(nkStrLit, d.filename)))
   runnableExamples.info = n.info
+  let ret = extractRunnableExamplesSource(d.conf, n)
   for a in n.lastSon: runnableExamples.add a
-  testExample(d, runnableExamples)
+  # we could also use `ret` instead here, to keep sources verbatim
+  writeExample(d, runnableExamples, rdoccmd)
+  result = (rdoccmd, ret)
   when false:
     proc extractImports(n: PNode; result: PNode) =
       if n.kind in {nkImportStmt, nkImportExceptStmt, nkFromStmt}:
@@ -485,36 +522,125 @@ proc prepareExamples(d: PDoc; n: PNode) =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
-proc getAllRunnableExamplesRec(d: PDoc; n, orig: PNode; dest: var Rope) =
-  if n.info.fileIndex != orig.info.fileIndex: return
+proc renderNimCodeOld(d: PDoc, n: PNode, dest: var Rope) =
+  ## this is a rather hacky way to get rid of the initial indentation
+  ## that the renderer currently produces:
+  # deadcode
+  var i = 0
+  var body = n.lastSon
+  if body.len == 1 and body.kind == nkStmtList and
+      body.lastSon.kind == nkStmtList:
+    body = body.lastSon
+  for b in body:
+    if i > 0: dest.add "\n"
+    inc i
+    nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
+
+type RunnableState = enum
+  rsStart
+  rsComment
+  rsRunnable
+  rsDone
+
+proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: RunnableState): RunnableState =
+  ##[
+  Simple state machine to tell whether we render runnableExamples and doc comments.
+  This is to ensure that we can interleave runnableExamples and doc comments freely;
+  the logic is easy to change but currently a doc comment following another doc comment
+  will not render, to avoid rendering in following case:
+
+  proc fn* =
+    runnableExamples: discard
+    ## d1
+    runnableExamples: discard
+    ## d2
+
+    ## internal explanation  # <- this one should be out; it's part of rest of function body and would likey not make sense in doc comment
+    discard # some code
+  ]##
+
   case n.kind
+  of nkCommentStmt:
+    if state in {rsStart, rsRunnable}:
+      dest.add genRecComment(d, n)
+      return rsComment
   of nkCallKinds:
     if isRunnableExamples(n[0]) and
-        n.len >= 2 and n.lastSon.kind == nkStmtList:
-      prepareExamples(d, n)
+        n.len >= 2 and n.lastSon.kind == nkStmtList and state in {rsStart, rsComment, rsRunnable}:
+      let (rdoccmd, code) = prepareExample(d, n)
+      var msg = "Example:"
+      if rdoccmd.len > 0: msg.add " cmd: " & rdoccmd
       dispA(d.conf, dest, "\n<p><strong class=\"examples_text\">$1</strong></p>\n",
-          "\n\\textbf{$1}\n", [rope"Examples:"])
+          "\n\\textbf{$1}\n", [msg.rope])
       inc d.listingCounter
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
-      # this is a rather hacky way to get rid of the initial indentation
-      # that the renderer currently produces:
-      var i = 0
-      var body = n.lastSon
-      if body.len == 1 and body.kind == nkStmtList and
-          body.lastSon.kind == nkStmtList:
-        body = body.lastSon
-      for b in body:
-        if i > 0: dest.add "\n"
-        inc i
-        nodeToHighlightedHtml(d, b, dest, {}, nil)
+      when true:
+        var dest2 = ""
+        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+        dest.add dest2
+      else:
+        renderNimCodeOld(d, n, dest)
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
+      return rsRunnable
   else: discard
-  for i in 0..<n.safeLen:
-    getAllRunnableExamplesRec(d, n[i], orig, dest)
+  return rsDone
+    # change this to `rsStart` if you want to keep generating doc comments
+    # and runnableExamples that occur after some code in routine
 
-proc getAllRunnableExamples(d: PDoc; n: PNode; dest: var Rope) =
-  getAllRunnableExamplesRec(d, n, n, dest)
+proc getRoutineBody(n: PNode): PNode =
+  ##[
+  nim transforms these quite differently:
+
+  proc someType*(): int =
+    ## foo
+    result = 3
+=>
+  result =
+    ## foo
+    3;
+
+  proc someType*(): int =
+    ## foo
+    3
+=>
+  ## foo
+  result = 3;
+
+  so we normalize the results to get to the statement list containing the
+  (0 or more) doc comments and runnableExamples.
+  (even if using `result = n[bodyPos]`, you'd still to apply similar logic).
+  ]##
+  result = n[^1]
+  case result.kind
+  of nkSym:
+    result = n[^2]
+    case result.kind
+      of nkAsgn:
+        doAssert result[0].kind == nkSym
+        doAssert result.len == 2
+        result = result[1]
+      else: # eg: nkStmtList
+        discard
+  else:
+    discard
+
+proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
+  var n = n
+  var state = rsStart
+  template fn(n2) =
+    state = getAllRunnableExamplesImpl(d, n2, dest, state)
+  dest.add genComment(d, n).rope
+  case n.kind
+  of routineDefs:
+    n = n.getRoutineBody
+    case n.kind
+    of nkCommentStmt, nkCallKinds: fn(n)
+    else:
+      for i in 0..<n.safeLen:
+        fn(n[i])
+        if state == rsDone: return
+  else: fn(n)
 
 proc isVisible(d: PDoc; n: PNode): bool =
   result = false
@@ -689,8 +815,12 @@ proc genItem(d: PDoc, n, nameNode: PNode, k: TSymKind, docFlags: DocFlags) =
   var result: Rope = nil
   var literal, plainName = ""
   var kind = tkEof
-  var comm = genRecComment(d, n)  # call this here for the side-effect!
-  getAllRunnableExamples(d, n, comm)
+  var comm: Rope = nil
+  if n.kind in routineDefs:
+    getAllRunnableExamples(d, n, comm)
+  else:
+    comm.add genRecComment(d, n)
+
   var r: TSrcGen
   # Obtain the plain rendered string for hyperlink titles.
   initTokRender(r, n, {renderNoBody, renderNoComments, renderDocComments,
@@ -846,7 +976,7 @@ proc traceDeps(d: PDoc, it: PNode) =
     if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
-          "$1", [rope esc(d.target, changeFileExt(external, "")),
+          "$1", [rope esc(d.target, external.prettyLink),
           rope changeFileExt(external, "html")])
 
 proc exportSym(d: PDoc; s: PSym) =
@@ -856,7 +986,7 @@ proc exportSym(d: PDoc; s: PSym) =
     if d.section[k] != nil: d.section[k].add(", ")
     dispA(d.conf, d.section[k],
           "<a class=\"reference external\" href=\"$2\">$1</a>",
-          "$1", [rope esc(d.target, changeFileExt(external, "")),
+          "$1", [rope esc(d.target, external.prettyLink),
           rope changeFileExt(external, "html")])
   elif s.kind != skModule and s.owner != nil:
     let module = originatingModule(s)
@@ -1081,11 +1211,8 @@ proc genSection(d: PDoc, kind: TSymKind) =
       "sectionid", "sectionTitle", "sectionTitleID", "content"], [
       ord(kind).rope, title, rope(ord(kind) + 50), d.toc[kind]])
 
-const nimdocOutCss = "nimdoc.out.css"
-  # `out` to make it easier to use with gitignore in user's repos
-
-proc cssHref(outDir: AbsoluteDir, destFile: AbsoluteFile): Rope =
-  rope($relativeTo(outDir / nimdocOutCss.RelativeFile, destFile.splitFile().dir, '/'))
+proc relLink(outDir: AbsoluteDir, destFile: AbsoluteFile, linkto: RelativeFile): Rope =
+  rope($relativeTo(outDir / linkto, destFile.splitFile().dir, '/'))
 
 proc genOutFile(d: PDoc): Rope =
   var
@@ -1105,26 +1232,31 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
-  let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
+  var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
+  let bodyname = if d.hasToc and not d.isPureRst:
+                   groupsection.setLen 0
+                   "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile), groupsection.rope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
-        "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+        "nimdoccss", "dochackjs",  "title", "tableofcontents", "moduledesc", "date", "time",
         "content", "author", "version", "analytics", "deprecationMsg"],
-        [cssHref(d.conf.outDir, d.destFile), title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
+        [relLink(d.conf.outDir, d.destFile, nimdocOutCss.RelativeFile),
+        relLink(d.conf.outDir, d.destFile, docHackJsFname.RelativeFile),
+        title.rope, toc, d.modDesc, rope(getDateStr()), rope(getClockStr()),
         content, d.meta[metaAuthor].rope, d.meta[metaVersion].rope, d.analytics.rope, d.modDeprecationMsg])
   else:
     code = content
@@ -1132,15 +1264,17 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = d.conf.docOutDir(htmldocsDir)
+    let dir = d.conf.outDir
     createDir(dir)
     let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
-    if d.conf.outFile.isEmpty: d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+    if d.conf.outFile.isEmpty:
+      d.conf.outFile = outfile.relativeTo(d.conf.outDir)
+      if isAbsolute(d.conf.outFile.string):
+        d.conf.outFile = splitPath(d.conf.outFile.string)[1].RelativeFile
 
 proc writeOutput*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1149,18 +1283,20 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     writeRope(stdout, content)
   else:
     template outfile: untyped = d.destFile
-    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt)
     let dir = outfile.splitFile.dir
     createDir(dir)
     updateOutfile(d, outfile)
     if not writeRope(content, outfile):
       rawMessage(d.conf, if useWarning: warnCannotOpenFile else: errCannotOpenFile,
         outfile.string)
-    elif not d.wroteCss:
-      let cssSource = $d.conf.getPrefixDir() / "doc" / "nimdoc.css"
-      let cssDest = $dir / nimdocOutCss
-      copyFile(cssSource, cssDest)
-      d.wroteCss = true
+    elif not d.wroteSupportFiles: # nimdoc.css + dochack.js
+      let nimr = $d.conf.getPrefixDir()
+      copyFile(docCss.interp(nimr = nimr), $d.conf.outDir / nimdocOutCss)
+      if optGenIndex in d.conf.globalOptions:
+        let docHackJs2 = getDocHacksJs(nimr, nim = getAppFilename())
+        copyFile(docHackJs2, $d.conf.outDir / docHackJs2.lastPathPart)
+      d.wroteSupportFiles = true
 
 proc writeOutputJson*(d: PDoc, useWarning = false) =
   runAllExamples(d)
@@ -1187,6 +1323,8 @@ proc writeOutputJson*(d: PDoc, useWarning = false) =
 proc handleDocOutputOptions*(conf: ConfigRef) =
   if optWholeProject in conf.globalOptions:
     # Backward compatibility with previous versions
+    # xxx this is buggy when user provides `nim doc --project -o:sub/bar.html main`,
+    # it'd write to `sub/bar.html/main.html`
     conf.outDir = AbsoluteDir(conf.outDir / conf.outFile)
 
 proc commandDoc*(cache: IdentCache, conf: ConfigRef) =
@@ -1261,18 +1399,20 @@ proc commandTags*(cache: IdentCache, conf: ConfigRef) =
     if not writeRope(content, filename):
       rawMessage(conf, errCannotOpenFile, filename.string)
 
-proc commandBuildIndex*(cache: IdentCache, conf: ConfigRef) =
-  var content = mergeIndexes(conf.projectFull.string).rope
+proc commandBuildIndex*(conf: ConfigRef, dir: string, outFile = RelativeFile"") =
+  var content = mergeIndexes(dir).rope
 
-  var outFile = RelativeFile"theindex"
-  if conf.outFile != RelativeFile"":
-    outFile = conf.outFile
+  var outFile = outFile
+  if outFile.isEmpty: outFile = theindexFname.RelativeFile.changeFileExt("")
   let filename = getOutFile(conf, outFile, HtmlExt)
 
   let code = ropeFormatNamedVars(conf, getConfigVar(conf, "doc.file"), [
-      "nimdoccss", "title", "tableofcontents", "moduledesc", "date", "time",
+      "nimdoccss", "dochackjs",
+      "title", "tableofcontents", "moduledesc", "date", "time",
       "content", "author", "version", "analytics"],
-      [cssHref(conf.outDir, filename), rope"Index", nil, nil, rope(getDateStr()),
+      [relLink(conf.outDir, filename, nimdocOutCss.RelativeFile),
+      relLink(conf.outDir, filename, docHackJsFname.RelativeFile),
+      rope"Index", nil, nil, rope(getDateStr()),
       rope(getClockStr()), content, nil, nil, nil])
   # no analytics because context is not available
 

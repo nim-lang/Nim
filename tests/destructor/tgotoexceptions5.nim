@@ -13,7 +13,7 @@ proc main() =
   try:
     echo "before"
     raise newException(CatchableError, "foo")
-  except AssertionError:
+  except AssertionDefect:
     echo "caught"
   echo "after"
 
@@ -27,7 +27,7 @@ proc mainB() =
     echo "before"
     raise newException(CatchableError, "foo")
   # except CatchableError: # would work
-  except AssertionError:
+  except AssertionDefect:
     echo "caught"
   except:
     raise

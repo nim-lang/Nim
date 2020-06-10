@@ -1,7 +1,32 @@
-iterator items*[T](a: openArray[T]): T {.inline.} =
+when defined(nimHasLentIterators) and not defined(nimWorkaround14447):
+  template lent2(T): untyped =
+    # xxx this should actually depend on T.sizeof >= thresLentSizeof
+    # with for example `thresLentSizeof ~= int.sizeof`:
+    # it may be faster to return by value for small sizes compared to
+    # forcing a deref; this could be adjusted using profiling.
+    # However, `simply using `when T.sizeof >= thresLentSizeof: lent T else: T`
+    # does not work, for a few reasons (eg importc types would cause CT error
+    # and we can't filter them out without compiles() or some magic.
+    lent T
+else:
+  template lent2(T): untyped = T
+
+iterator items*[T: not char](a: openArray[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a`.
   var i = 0
-  while i < len(a):
+  let n = len(a)
+  while i < n:
+    yield a[i]
+    inc(i)
+
+iterator items*[T: char](a: openArray[T]): T {.inline.} =
+  ## Iterates over each item of `a`.
+  # a VM bug currently prevents taking address of openArray[char]
+  # elements converted from a string (would fail in `tests/misc/thallo.nim`)
+  # in any case there's no performance advantage of returning char by address.
+  var i = 0
+  let n = len(a)
+  while i < n:
     yield a[i]
     inc(i)
 
@@ -179,7 +204,7 @@ iterator mpairs*(a: var cstring): tuple[key: int, val: var char] {.inline.} =
       yield (i, a[i])
       inc(i)
 
-iterator items*[T](a: seq[T]): T {.inline.} =
+iterator items*[T](a: seq[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a`.
   var i = 0
   let L = len(a)

@@ -269,7 +269,8 @@ proc isRightAssociative(tok: TToken): bool {.inline.} =
 proc isOperator(tok: TToken): bool =
   ## Determines if the given token is an operator type token.
   tok.tokType in {tkOpr, tkDiv, tkMod, tkShl, tkShr, tkIn, tkNotin, tkIs,
-                  tkIsnot, tkNot, tkOf, tkAs, tkDotDot, tkAnd, tkOr, tkXor}
+                  tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd,
+                  tkOr, tkXor}
 
 proc isUnary(p: TParser): bool =
   ## Check if the current parser token is a unary operator
@@ -294,7 +295,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #|
 #| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
 #|          | 'or' | 'xor' | 'and'
-#|          | 'is' | 'isnot' | 'in' | 'notin' | 'of'
+#|          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
 #|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
 #|
 #| prefixOperator = operator
@@ -555,7 +556,7 @@ proc parsePar(p: var TParser): PNode =
   optInd(p, result)
   flexComment(p, result)
   if p.tok.tokType in {tkDiscard, tkInclude, tkIf, tkWhile, tkCase,
-                       tkTry, tkDefer, tkFinally, tkExcept, tkFor, tkBlock,
+                       tkTry, tkDefer, tkFinally, tkExcept, tkBlock,
                        tkConst, tkLet, tkWhen, tkVar, tkFor,
                        tkMixin}:
     # XXX 'bind' used to be an expression, so we exclude it here;
@@ -739,10 +740,6 @@ proc commandParam(p: var TParser, isFirstParam: var bool; mode: TPrimaryMode): P
     result.add(parseExpr(p))
   isFirstParam = false
 
-const
-  tkTypeClasses = {tkRef, tkPtr, tkVar, tkStatic, tkType,
-                   tkEnum, tkTuple, tkObject, tkProc}
-
 proc commandExpr(p: var TParser; r: PNode; mode: TPrimaryMode): PNode =
   result = newNodeP(nkCommand, p)
   result.add(r)
@@ -796,7 +793,8 @@ proc primarySuffix(p: var TParser, r: PNode,
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
-       tkOpr, tkDotDot, tkTypeClasses - {tkRef, tkPtr}:
+       tkOpr, tkDotDot, tkVar, tkStatic, tkType, tkEnum, tkTuple,
+       tkObject, tkProc:
       # XXX: In type sections we allow the free application of the
       # command syntax, with the exception of expressions such as
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
@@ -1269,7 +1267,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result.add(primary(p, pmNormal))
     return
 
-  case p.tok.tokType:
+  case p.tok.tokType
   of tkTuple: result = parseTuple(p, mode == pmTypeDef)
   of tkProc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkLambda)
   of tkFunc: result = parseProcExpr(p, mode notin {pmTypeDesc, pmTypeDef}, nkFuncDef)
@@ -1391,7 +1389,7 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
         getTok(p)
         nextBlock = parseDoBlock(p, info)
       else:
-        case nextToken:
+        case nextToken
         of tkOf:
           nextBlock = newNodeP(nkOfBranch, p)
           exprList(p, tkColon, nextBlock)
@@ -1989,8 +1987,8 @@ proc parseObject(p: var TParser): PNode =
   # an initial IND{>} HAS to follow:
   if not realInd(p):
     result.add(p.emptyNode)
-    return
-  result.add(parseObjectPart(p))
+  else:
+    result.add(parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
   let modifier = case p.tok.tokType
@@ -2193,6 +2191,7 @@ proc complexOrSimpleStmt(p: var TParser): PNode =
   #|                     | blockStmt | staticStmt | deferStmt | asmStmt
   #|                     | 'proc' routine
   #|                     | 'method' routine
+  #|                     | 'func' routine
   #|                     | 'iterator' routine
   #|                     | 'macro' routine
   #|                     | 'template' routine

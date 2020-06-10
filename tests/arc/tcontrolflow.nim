@@ -10,6 +10,7 @@ end false
 begin true
 if
 end true
+7
 '''
   cmd: "nim c --gc:arc -d:danger $file"
   disabled: "true"
@@ -53,3 +54,26 @@ proc orIsHard(cond: bool) =
 
 orIsHard(false)
 orIsHard(true)
+
+type
+  Control = ref object
+    x: int
+
+  MouseEvent = ref object
+    control: Control
+    button: int
+
+proc run(data: Control) =
+  var evt = MouseEvent(button: 1)
+  evt.control = data
+  if evt.button == 1:
+    discard
+  else: 
+    return
+  
+  echo data.x
+
+var c = Control(x: 7)
+
+run(c)
+

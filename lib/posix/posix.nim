@@ -896,6 +896,10 @@ proc `==`*(x, y: SocketHandle): bool {.borrow.}
 proc accept*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen): SocketHandle {.
   importc, header: "<sys/socket.h>", sideEffect.}
 
+when defined(linux) or defined(bsd):
+  proc accept4*(a1: SocketHandle, a2: ptr SockAddr, a3: ptr SockLen,
+                flags: cint): SocketHandle {.importc, header: "<sys/socket.h>".}
+
 proc bindSocket*(a1: SocketHandle, a2: ptr SockAddr, a3: SockLen): cint {.
   importc: "bind", header: "<sys/socket.h>".}
   ## is Posix's ``bind``, because ``bind`` is a reserved word
@@ -1032,9 +1036,23 @@ proc mkstemp*(tmpl: cstring): cint {.importc, header: "<stdlib.h>", sideEffect.}
   ## Creates a unique temporary file.
   ##
   ## **Warning**: The `tmpl` argument is written to by `mkstemp` and thus
-  ## can't be a string literal. If in doubt copy the string before passing it.
+  ## can't be a string literal. If in doubt make a copy of the cstring before
+  ## passing it in.
+
+proc mkstemps*(tmpl: cstring, suffixlen: int): cint {.importc, header: "<stdlib.h>", sideEffect.}
+  ## Creates a unique temporary file.
+  ##
+  ## **Warning**: The `tmpl` argument is written to by `mkstemps` and thus
+  ## can't be a string literal. If in doubt make a copy of the cstring before
+  ## passing it in.
 
 proc mkdtemp*(tmpl: cstring): pointer {.importc, header: "<stdlib.h>", sideEffect.}
+
+when defined(linux) or defined(bsd) or defined(osx):
+  proc mkostemp*(tmpl: cstring, oflags: cint): cint {.importc, header: "<stdlib.h>", sideEffect.}
+  proc mkostemps*(tmpl: cstring, suffixlen: cint, oflags: cint): cint {.importc, header: "<stdlib.h>", sideEffect.}
+
+  proc posix_memalign*(memptr: pointer, alignment: csize_t, size: csize_t): cint {.importc, header: "<stdlib.h>".}
 
 proc utimes*(path: cstring, times: ptr array[2, Timeval]): int {.
   importc: "utimes", header: "<sys/time.h>", sideEffect.}

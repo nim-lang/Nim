@@ -10,6 +10,8 @@
 # Exception handling code. Carefully coded so that tiny programs which do not
 # use the heap (and nor exceptions) do not include the GC or memory allocator.
 
+import std/private/miscdollars
+
 var
   errorMessageWriter*: (proc(msg: string) {.tags: [WriteIOEffect], benign,
                                             nimcall.})
@@ -17,13 +19,15 @@ var
     ## instead of `stdmsg.write` when printing stacktrace.
     ## Unstable API.
 
+when defined(windows):
+  proc GetLastError(): int32 {.header: "<windows.h>", nodecl.}
+  const ERROR_BAD_EXE_FORMAT = 193
+
 when not defined(windows) or not defined(guiapp):
   proc writeToStdErr(msg: cstring) = rawWrite(cstderr, msg)
-
 else:
   proc MessageBoxA(hWnd: pointer, lpText, lpCaption: cstring, uType: int): int32 {.
     header: "<windows.h>", nodecl.}
-
   proc writeToStdErr(msg: cstring) =
     discard MessageBoxA(nil, msg, nil, 0)
 
@@ -238,11 +242,7 @@ proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
 
 template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
   var oldLen = s.len
-  add(s, f.filename)
-  if f.line > 0:
-    add(s, '(')
-    add(s, $f.line)
-    add(s, ')')
+  s.toLocation(f.filename, f.line, 0)
   for k in 1..max(1, 25-(s.len-oldLen)): add(s, ' ')
   add(s, f.procname)
   when NimStackTraceMsgs:
@@ -345,7 +345,7 @@ else:
   proc stackTraceAvailable*(): bool = result = false
 
 var onUnhandledException*: (proc (errorMsg: string) {.
-  nimcall.}) ## Set this error \
+  nimcall, gcsafe.}) ## Set this error \
   ## handler to override the existing behaviour on an unhandled exception.
   ##
   ## The default is to write a stacktrace to ``stderr`` and then call ``quit(1)``.
@@ -406,7 +406,7 @@ proc reportUnhandledError(e: ref Exception) {.nodestroy.} =
   when hostOS != "any":
     reportUnhandledErrorAux(e)
   else:
-    discard()
+    discard ()
 
 proc nimLeaveFinally() {.compilerRtl.} =
   when defined(cpp) and not defined(noCppExceptions) and not gotoBasedExceptions:
@@ -434,6 +434,11 @@ when gotoBasedExceptions:
       quit(1)
 
 proc raiseExceptionAux(e: sink(ref Exception)) {.nodestroy.} =
+  when defined(nimPanics):
+    if e of Defect:
+      reportUnhandledError(e)
+      quit(1)
+
   if localRaiseHook != nil:
     if not localRaiseHook(e): return
   if globalRaiseHook != nil:
@@ -481,12 +486,20 @@ proc raiseException(e: sink(ref Exception), ename: cstring) {.compilerRtl.} =
 
 proc reraiseException() {.compilerRtl.} =
   if currException == nil:
-    sysFatal(ReraiseError, "no exception to reraise")
+    sysFatal(ReraiseDefect, "no exception to reraise")
   else:
     when gotoBasedExceptions:
       inc nimInErrorMode
     else:
       raiseExceptionAux(currException)
+
+proc threadTrouble() =
+  # also forward declared, it is 'raises: []' hence the try-except.
+  try:
+    if currException != nil: reportUnhandledError(currException)
+  except:
+    discard
+  quit 1
 
 proc writeStackTrace() =
   when hasSomeStackTrace:

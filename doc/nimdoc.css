@@ -644,7 +644,7 @@ div.topic {
   margin: 2em; }
 
 div.search_results {
-  background-color: antiquewhite;
+  background-color: var(--third-background);
   margin: 3em;
   padding: 1em;
   border: 1px solid #4d4d4d;

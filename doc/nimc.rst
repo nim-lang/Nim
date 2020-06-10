@@ -240,6 +240,10 @@ add the ``-f`` flag to force all files to be recompiled.
 The default compiler is defined at the top of ``config\nim.cfg``.
 Changing this setting affects the compiler used by ``koch`` to (re)build Nim.
 
+To use the ``CC`` environment variable, use ``nim c --cc:env myfile.nim``. To use the
+``CXX`` environment variable, use ``nim cpp --cc:env myfile.nim``. ``--cc:env`` is available
+since Nim version 1.4.
+
 
 Cross compilation
 =================
@@ -438,9 +442,8 @@ Define                   Effect
 ``memProfiler``          Enables memory profiling for the native GC.
 ``uClibc``               Use uClibc instead of libc. (Relevant for Unix-like OSes)
 ``checkAbi``             When using types from C headers, add checks that compare
-                         what's in the Nim file with what's in the C header
-                         (requires a C compiler with _Static_assert support, like
-                         any C11 compiler)
+                         what's in the Nim file with what's in the C header.
+                         This may become enabled by default in the future.
 ``tempDir``              This symbol takes a string as its value, like
                          ``--define:tempDir:/some/temp/path`` to override the
                          temporary directory returned by ``os.getTempDir()``.

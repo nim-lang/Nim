@@ -113,10 +113,8 @@ const
     nkExportStmt, nkExportExceptStmt, nkFromStmt, nkImportStmt, nkImportExceptStmt}
 
 proc prepareConfigNotes(graph: ModuleGraph; module: PSym) =
-  if sfMainModule in module.flags:
-    graph.config.mainPackageId = module.owner.id
   # don't be verbose unless the module belongs to the main package:
-  if module.owner.id == graph.config.mainPackageId:
+  if module.getnimblePkgId == graph.config.mainPackageId:
     graph.config.notes = graph.config.mainPackageNotes
   else:
     if graph.config.mainPackageNotes == {}: graph.config.mainPackageNotes = graph.config.notes

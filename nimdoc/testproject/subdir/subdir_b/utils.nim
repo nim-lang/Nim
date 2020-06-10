@@ -21,6 +21,8 @@ More text.
 
 ]##
 
+# BUG: module link in theindex.html is wrong, see #14434
+
 type
   SomeType* = enum
     enumValueA,
@@ -48,3 +50,23 @@ template bEnum*(): untyped =
     ## Stuff in `quotes` here.
     ## [Some link](https://nim-lang.org)
     discard
+
+template fromUtilsGen*(): untyped =
+  ## this should be shown in utils.html
+  runnableExamples:
+    assert 3*2 == 6
+  ## ditto
+
+  iterator fromUtils1*(): int =
+    runnableExamples:
+      # ok1
+      assert 1 == 1
+      # ok2
+    yield 15
+
+  template fromUtils2*() =
+    ## ok3
+
+  proc fromUtils3*() =
+    ## came form utils but should be shown where `fromUtilsGen` is called
+    runnableExamples: discard 1

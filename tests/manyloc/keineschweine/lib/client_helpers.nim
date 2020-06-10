@@ -69,7 +69,7 @@ proc updateFileProgress*() =
   downloadProgress.setString($currentFileTransfer.pos & '/' & $currentFileTransfer.fullLen)
 
 ## HFileTransfer
-proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) {.procvar.} =
+proc handleFilePartRecv*(serv: PServer; buffer: PBuffer) =
   var
     f = readScFileTransfer(buffer)
   updateFileProgress()
@@ -110,7 +110,7 @@ proc saveCurrentFile() =
   echo "Write file"
 
 ## HChallengeResult
-proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) {.procvar.} =
+proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) =
   var res = readScChallengeResult(buffer).status
   echo "got challnege result: ", res
   if res and currentFileTransfer.readyToSave:
@@ -122,7 +122,7 @@ proc handleFileChallengeResult*(serv: PServer; buffer: PBuffer) {.procvar.} =
     echo "REsetting current file"
 
 ## HFileCHallenge
-proc handleFileChallenge*(serv: PServer; buffer: PBuffer) {.procvar.} =
+proc handleFileChallenge*(serv: PServer; buffer: PBuffer) =
   var
     challenge = readScFileChallenge(buffer)
     path = expandPath(challenge)

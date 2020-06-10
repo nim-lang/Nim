@@ -679,7 +679,7 @@ proc main() =
   of "all":
     #processCategory(r, Category"megatest", p.cmdLineRest.string, testsDir, runJoinableTests = false)
 
-    var myself = quoteShell(findExe("testament" / "testament"))
+    var myself = quoteShell(getAppFilename())
     if targetsStr.len > 0:
       myself &= " " & quoteShell("--targets:" & targetsStr)
 

@@ -278,9 +278,12 @@ proc addToLib*(lib: PLib, sym: PSym) =
 proc newTypeS*(kind: TTypeKind, c: PContext): PType =
   result = newType(kind, getCurrOwner(c))
 
-proc makePtrType*(c: PContext, baseType: PType): PType =
-  result = newTypeS(tyPtr, c)
+proc makePtrType*(owner: PSym, baseType: PType): PType =
+  result = newType(tyPtr, owner)
   addSonSkipIntLit(result, baseType)
+
+proc makePtrType*(c: PContext, baseType: PType): PType =
+  makePtrType(getCurrOwner(c), baseType)
 
 proc makeTypeWithModifier*(c: PContext,
                            modifier: TTypeKind,
@@ -318,7 +321,8 @@ proc makeTypeDesc*(c: PContext, typ: PType): PType =
 proc makeTypeSymNode*(c: PContext, typ: PType, info: TLineInfo): PNode =
   let typedesc = newTypeS(tyTypeDesc, c)
   incl typedesc.flags, tfCheckedForDestructor
-  typedesc.addSonSkipIntLit(assertNotNil(c.config, typ))
+  internalAssert(c.config, typ != nil)
+  typedesc.addSonSkipIntLit(typ)
   let sym = newSym(skType, c.cache.idAnon, getCurrOwner(c), info,
                    c.config.options).linkTo(typedesc)
   return newSymNode(sym, info)

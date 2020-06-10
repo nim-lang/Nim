@@ -45,7 +45,6 @@ type
     data: TrunkBuckets
 
 type
-  AlignType = BiggestFloat
   FreeCell {.final, pure.} = object
     next: ptr FreeCell  # next free cell in chunk (overlaid with refcount)
     when not defined(gcDestructors):
@@ -68,16 +67,20 @@ type
     freeList: ptr FreeCell
     free: int            # how many bytes remain
     acc: int             # accumulator for small object allocation
-    when defined(cpu32):
-      align: int
-    data: AlignType      # start of usable memory
+    when defined(nimAlignPragma):
+      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
+    else:
+      data: UncheckedArray[byte]
 
   BigChunk = object of BaseChunk # not necessarily > PageSize!
     next, prev: PBigChunk    # chunks of the same (or bigger) size
-    data: AlignType      # start of usable memory
+    when defined(nimAlignPragma):
+      data {.align: MemAlign.}: UncheckedArray[byte]      # start of usable memory
+    else:
+      data: UncheckedArray[byte]
 
-template smallChunkOverhead(): untyped = sizeof(SmallChunk)-sizeof(AlignType)
-template bigChunkOverhead(): untyped = sizeof(BigChunk)-sizeof(AlignType)
+template smallChunkOverhead(): untyped = sizeof(SmallChunk)
+template bigChunkOverhead(): untyped = sizeof(BigChunk)
 
 # ------------- chunk table ---------------------------------------------------
 # We use a PtrSet of chunk starts and a table[Page, chunksize] for chunk
