@@ -10,9 +10,7 @@ template processTest(t, x: untyped) =
   #stdout.flushFile()
   if not x: echo(t & " FAILED\r\n")
 
-when defined(macosx):
-  echo "All tests passed!"
-elif not defined(windows):
+when not defined(windows):
   import os, posix, nativesockets
 
   when ioselSupportedPlatform:
@@ -149,13 +147,13 @@ elif not defined(windows):
       var timer = selector.registerTimer(100, false, 0)
       var rc1 = selector.select(140)
       var rc2 = selector.select(140)
-      assert(len(rc1) == 1 and len(rc2) == 1)
+      assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
       selector.registerTimer(100, true, 0)
       var rc4 = selector.select(120)
       var rc5 = selector.select(120)
-      assert(len(rc4) == 1 and len(rc5) == 0)
+      assert len(rc4) == 1 and len(rc5) == 0, $(len(rc4), len(rc5))
       assert(selector.isEmpty())
       selector.close()
       result = true
