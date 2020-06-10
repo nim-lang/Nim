@@ -125,6 +125,12 @@ proc pop*[T](heap: var HeapQueue[T]): T =
   else:
     result = lastelt
 
+proc find*[T](hq: HeapQueue[T], x: T): int =
+  ## Linear scan to find index of item ``x`` or -1 if not found.
+  result = -1
+  for i in 0 ..< hq.len:
+    if hq[i] == x: return i
+
 proc del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
   swap(heap.data[^1], heap.data[index])
@@ -207,17 +213,19 @@ when isMainModule:
     heap.del(0)
     doAssert(heap[0] == 1)
 
-    heap.del(heap.data.find(7))
+    heap.del(heap.find(7))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 5, 6, 8, 9])
 
-    heap.del(heap.data.find(5))
+    heap.del(heap.find(5))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 6, 8, 9])
 
-    heap.del(heap.data.find(6))
+    heap.del(heap.find(6))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 8, 9])
 
-    heap.del(heap.data.find(2))
+    heap.del(heap.find(2))
     doAssert(heap.toSortedSeq == @[1, 3, 4, 8, 9])
+
+    doAssert(heap.find(2) == -1)
 
   block: # Test del last
     var heap = initHeapQueue[int]()
