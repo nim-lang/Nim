@@ -185,6 +185,15 @@ when nimIncremental:
     db.exec sql"create index StaticsByModuleIdx on toplevelstmts(module);"
     db.exec sql"insert into controlblock(idgen) values (0)"
 
+    # the conflicts table holds name-mangling collisions
+    db.exec(sql"""
+      create table if not exists conflicts (
+        id integer primary key,
+        nimid int not null,
+        name text not null,
+        signature text not null
+      );
+    """)
 
 else:
   type
