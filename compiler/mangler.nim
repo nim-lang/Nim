@@ -136,7 +136,7 @@ proc typeName(m: ModuleOrProc; typ: PType; shorten = false): string =
     result = typeName(m, typ.lastSon, shorten = shorten)
   else:
     if typ.sym == nil: # or typ.kind notin {tyObject, tyEnum}:
-      result = shortKind(typ.kind) & "_" & $typ.uniqueId
+      result = shortKind(typ.kind) & "_" & $conflictKey(typ)
     elif shorten:
       result = mangle(typ.sym.name.s)
     else:
@@ -190,7 +190,7 @@ proc getTypeName(m: BModule; typ: PType): Rope =
     result.maybeAppendCounter counter
 
 proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope
-  {.deprecated: "remove SigHash argument".} =
+  {.error: "remove SigHash argument".} =
   result = getTypeName(m, typ)
 
 proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
@@ -214,7 +214,7 @@ proc mangle*(m: ModuleOrProc; s: PSym): string =
     discard maybeAppendProcArgument(m, s, result)
 
   # add the module name if necessary, or if it helps avoid a clash
-  if s.shouldAppendModuleName or s.name.isNimOrCKeyword:
+  if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
     let parent = getModule(s)
     if parent != nil:
       result.add "_"
@@ -223,7 +223,7 @@ proc mangle*(m: ModuleOrProc; s: PSym): string =
   # something like `default` might need this check
   if (unlikely) result in m.config.cppDefines:
     result.add "_"
-    result.add $s.id
+    result.add $conflictKey(s)
 
   #if getModule(s).id.abs != m.module.id.abs:
   # XXX: we don't do anything special with regard to m.hcrOn (Hot Code Reload)
@@ -294,15 +294,15 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
 
 proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   ## produce a unique identity-or-signature for the given module and symbol
-  let conflict = m.getSetConflict(s, create = true)
+  let conflict = getSetConflict(m, s, create = true)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
 
-template tempNameForLabel*(m: BModule; label: int): string =
+template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
   m.tmpBase & $label & "_"
 
-proc hasTempName*(m: BModule; n: PNode): bool =
+proc hasTempName(m: BModule; n: PNode): bool =
   ## true if the module/proc has a temporary cached for the given node
   result = nodeTableGet(m.dataCache, n) != low(int)
 
@@ -313,7 +313,7 @@ proc getTempNameImpl(m: BModule; id: int): string =
   inc m.labels
   # get the appropriate name
   result = tempNameForLabel(m, id)
-  # FIXME: bug?  foo_1 == result but that could collide with foo -> 1
+  # (result ends in _)
   # make sure it's not in the conflicts table
   assert result notin m.sigConflicts
   # put it in the conflicts table with the NEXT available counter
@@ -326,13 +326,16 @@ proc getTempName*(m: BModule; n: PNode; r: var Rope): bool =
   let id = nodeTableTestOrSet(m.dataCache, n, m.labels)
   var name: string
   if id == m.labels:
-    name = m.getTempNameImpl(id)
+    name = getTempNameImpl(m, id)
     result = true
   else:
-    name = m.tempNameForLabel(id)
+    name = tempNameForLabel(m, id)
     # make sure it's not in the conflicts table under a different id
-    assert m.sigConflicts.getOrDefault(name, 1) == 1
+    assert getOrDefault(m.sigConflicts, name, 1) == 1
     # make sure it's in the conflicts table with the NEXT available counter
+    if m.sigConflicts[name] != 1:
+      writeStackTrace()
+      quit(1)
     m.sigConflicts[name] = 1
 
   # add or append it to the result
@@ -343,9 +346,9 @@ proc getTempName*(m: BModule; n: PNode; r: var Rope): bool =
 
 proc getTempName*(m: BModule; n: PNode): Rope =
   ## a simpler getTempName that doesn't care where the name comes from
-  discard m.getTempName(n, result)
+  discard getTempName(m, n, result)
 
 proc getTempName*(m: BModule): Rope =
   ## a factory for making temporary names for use in the backend; this mutates
   ## the module from which the name originates; this always creates a new name
-  result = m.getTempNameImpl(m.labels).rope
+  result = getTempNameImpl(m, m.labels).rope
