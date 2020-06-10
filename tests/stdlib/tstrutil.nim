@@ -1,6 +1,3 @@
-discard """
-  output: "ha/home/a1xyz/usr/bin"
-"""
 # test the new strutils module
 
 import
@@ -15,7 +12,7 @@ template rejectParse(e) =
   except ValueError: discard
 
 proc testStrip() =
-  write(stdout, strip("  ha  "))
+  doAssert strip("  ha  ") == "ha"
 
 proc testRemoveSuffix =
   var s = "hello\n\r"
@@ -143,8 +140,9 @@ proc main() =
   testStrip()
   testRemoveSuffix()
   testRemovePrefix()
-  for p in split("/home/a1:xyz:/usr/bin", {':'}):
-    write(stdout, p)
+  var ret: seq[string] # or use `toSeq`
+  for p in split("/home/a1:xyz:/usr/bin", {':'}): ret.add p
+  doAssert ret == @["/home/a1", "xyz", "/usr/bin"]
 
 proc testDelete =
   var s = "0123456789ABCDEFGH"
