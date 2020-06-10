@@ -374,32 +374,3 @@ proc symBodyDigest*(graph: ModuleGraph, sym: PSym): SigHash =
     hashBodyTree(graph, c, sym.ast[bodyPos])
     c.md5Final(result.MD5Digest)
     graph.symBodyHashes[sym.id] = result
-
-proc idOrSig*(s: PSym, currentModule: string,
-              sigCollisions: var CountTable[SigHash]): Rope =
-  if s.kind in routineKinds and s.typ != nil:
-    # signatures for exported routines are reliable enough to
-    # produce a unique name and this means produced C++ is more stable wrt
-    # Nim changes:
-    let sig = hashProc(s)
-    result = rope($sig)
-    #let m = if s.typ.callConv != ccInline: findPendingModule(m, s) else: m
-    let counter = sigCollisions.getOrDefault(sig)
-    #if sigs == "_jckmNePK3i2MFnWwZlp6Lg" and s.name.s == "contains":
-    #  echo "counter ", counter, " ", s.id
-    if counter != 0:
-      result.add "_" & rope(counter+1)
-    # this minor hack is necessary to make tests/collections/thashes compile.
-    # The inlined hash function's original module is ambiguous so we end up
-    # generating duplicate names otherwise:
-    if s.typ.callConv == ccInline:
-      result.add rope(currentModule)
-    sigCollisions.inc(sig)
-  else:
-    let sig = hashNonProc(s)
-    result = rope($sig)
-    let counter = sigCollisions.getOrDefault(sig)
-    if counter != 0:
-      result.add "_" & rope(counter+1)
-    sigCollisions.inc(sig)
-

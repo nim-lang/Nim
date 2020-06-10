@@ -11,19 +11,10 @@
 
 # ------------------------- Name Mangling --------------------------------
 
-import sighashes, modulegraphs
+import sighashes, modulegraphs, mangler
 from lowerings import createObj
 
 proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
-
-proc isKeyword(w: PIdent): bool =
-  # Nim and C++ share some keywords
-  # it's more efficient to test the whole Nim keywords range
-  case w.id
-  of ccgKeywordsLow..ccgKeywordsHigh,
-     nimKeywordsLow..nimKeywordsHigh,
-     ord(wInline): return true
-  else: return false
 
 proc mangleField(m: BModule; name: PIdent): string =
   result = mangle(name.s)
@@ -33,7 +24,7 @@ proc mangleField(m: BModule; name: PIdent): string =
   # meaning we produce inconsistent field names (see bug #5404).
   # Hence we do not check for ``m.g.config.cppDefines.contains(result)`` here
   # anymore:
-  if isKeyword(name):
+  if isNimOrCKeyword(name):
     result.add "_0"
 
 when false:
@@ -47,66 +38,68 @@ when false:
 proc mangleName(m: BModule; s: PSym): Rope =
   result = s.loc.r
   if result == nil:
-    result = s.name.s.mangle.rope
-    result.add(idOrSig(s, m.module.name.s.mangle, m.sigConflicts))
+    result = idOrSig(m, s)
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
+
+proc mangleLocalName(p: BProc or BModule; s: PSym): Rope =
+  ## mangle a symbol name local to a particular proc or its params;
+  ## it's a local variable or a temporary we created
+  assert s.kind in skLocalVars + {skTemp, skParam}
+  result = s.loc.r
+  if result == nil:
+    s.loc.r = idOrSig(p, s)
+    result = s.loc.r
+    when p is BProc:
+      if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc mangleParamName(m: BModule; s: PSym): Rope =
   ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
   ## Fortunately C's scoping rules are sane enough so that that doesn't
   ## cause any trouble.
+  assert s.kind == skParam
   result = s.loc.r
   if result == nil:
     var res = s.name.s.mangle
-    # Take into account if HCR is on because of the following scenario:
-    #   if a module gets imported and it has some more importc symbols in it,
-    # some param names might receive the "_0" suffix to distinguish from what
-    # is newly available. That might lead to changes in the C code in nimcache
-    # that contain only a parameter name change, but that is enough to mandate
-    # recompilation of that source file and thus a new shared object will be
-    # relinked. That may lead to a module getting reloaded which wasn't intended
-    # and that may be fatal when parts of the current active callstack when
-    # performCodeReload() was called are from the module being reloaded
-    # unintentionally - example (3 modules which import one another):
-    #   main => proxy => reloadable
-    # we call performCodeReload() in proxy to reload only changes in reloadable
-    # but there is a new import which introduces an importc symbol `socket`
-    # and a function called in main or proxy uses `socket` as a parameter name.
-    # That would lead to either needing to reload `proxy` or to overwrite the
-    # executable file for the main module, which is running (or both!) -> error.
+    #[
+
+     Take into account if HCR is on because of the following scenario:
+
+     if a module gets imported and it has some more importc symbols in it,
+     some param names might receive the "_0" suffix to distinguish from
+     what is newly available. That might lead to changes in the C code
+     in nimcache that contain only a parameter name change, but that is
+     enough to mandate recompilation of that source file and thus a new
+     shared object will be relinked. That may lead to a module getting
+     reloaded which wasn't intended and that may be fatal when parts of
+     the current active callstack when performCodeReload() was called are
+     from the module being reloaded unintentionally - example (3 modules
+     which import one another):
+
+       main => proxy => reloadable
+
+     we call performCodeReload() in proxy to reload only changes in
+     reloadable but there is a new import which introduces an importc
+     symbol `socket` and a function called in main or proxy uses `socket`
+     as a parameter name. That would lead to either needing to reload
+     `proxy` or to overwrite the executable file for the main module,
+     which is running (or both!) -> error.
+
+    ]#
+
+    purgeConflict(m, s)
+    result = mangleLocalName(m, s)
     if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
-      res.add "_0"
-    result = res.rope
+      result.add "_0"
     s.loc.r = result
     writeMangledName(m.ndi, s, m.config)
-
-proc mangleLocalName(p: BProc; s: PSym): Rope =
-  assert s.kind in skLocalVars+{skTemp}
-  #assert sfGlobal notin s.flags
-  result = s.loc.r
-  if result == nil:
-    var key = s.name.s.mangle
-    shallow(key)
-    let counter = p.sigConflicts.getOrDefault(key)
-    result = key.rope
-    if s.kind == skTemp:
-      # speed up conflict search for temps (these are quite common):
-      if counter != 0: result.add "_" & rope(counter+1)
-    elif counter != 0 or isKeyword(s.name) or p.module.g.config.cppDefines.contains(key):
-      result.add "_" & rope(counter+1)
-    p.sigConflicts.inc(key)
-    s.loc.r = result
-    if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
   ## parameter generation only takes BModule, not a BProc, so we have to
   ## remember these parameter names are already in scope to be able to
   ## generate unique identifiers reliably (consider that ``var a = a`` is
   ## even an idiom in Nim).
-  var key = param.name.s.mangle
-  shallow(key)
-  p.sigConflicts.inc(key)
+  discard mangleLocalName(p, param)
 
 const
   irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,

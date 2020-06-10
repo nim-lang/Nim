@@ -29,7 +29,7 @@ implements the required case distinction.
 
 
 import
-  ast, strutils, trees, magicsys, options,
+  ast, strutils, trees, magicsys, options, mangler,
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
@@ -256,13 +256,7 @@ proc mangleName(m: BModule, s: PSym): Rope =
       result = rope(x)
     # From ES5 on reserved words can be used as object field names
     if s.kind != skField:
-      if m.config.hcrOn:
-        # When hot reloading is enabled, we must ensure that the names
-        # of functions and types will be preserved across rebuilds:
-        result.add(idOrSig(s, m.module.name.s, m.sigConflicts))
-      else:
-        result.add("_")
-        result.add(rope(s.id))
+      result.add(idOrSig(m, s))
     s.loc.r = result
 
 proc escapeJSString(s: string): string =
@@ -2613,7 +2607,7 @@ proc genModule(p: PProc, n: PNode) =
   if p.config.hcrOn and n.kind == nkStmtList:
     let moduleSym = p.module.module
     var moduleLoadedVar = rope(moduleSym.name.s) & "_loaded" &
-                          idOrSig(moduleSym, moduleSym.name.s, p.module.sigConflicts)
+                          idOrSig(p.module, moduleSym)
     lineF(p, "var $1;$n", [moduleLoadedVar])
     var inGuardedBlock = false
 

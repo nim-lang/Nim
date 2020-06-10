@@ -14,6 +14,8 @@ import
   tables, ndi, lineinfos, pathutils, modulegraphs, sets
 
 type
+  ConflictsTable* = Table[string, int]
+
   TLabel* = Rope              # for the C generator a label is just a rope
   TCFileSection* = enum       # the sections a generated C file consists of
     cfsMergeInfo,             # section containing merge information
@@ -98,7 +100,7 @@ type
                               # (yes, C++ is weird like that)
     withinTryWithExcept*: int # required for goto based exception handling
     withinBlockLeaveActions*: int # complex to explain
-    sigConflicts*: CountTable[string]
+    sigConflicts*: ConflictsTable
 
   TTypeSeq* = seq[PType]
   TypeCache* = Table[SigHash, Rope]
@@ -145,7 +147,7 @@ type
     filename*: AbsoluteFile
     cfilename*: AbsoluteFile  # filename of the module (including path,
                               # without extension)
-    tmpBase*: Rope            # base for temp identifier generation
+    tmpBase*: string          # base for temp identifier generation
     typeCache*: TypeCache     # cache the generated types
     typeABICache*: HashSet[SigHash] # cache for ABI checks; reusing typeCache
                               # would be ideal but for some reason enums
@@ -169,7 +171,7 @@ type
     extensionLoaders*: array['0'..'9', Rope] # special procs for the
                                              # OpenGL wrapper
     injectStmt*: Rope
-    sigConflicts*: CountTable[SigHash]
+    sigConflicts*: ConflictsTable
     g*: BModuleList
     ndi*: NdiFile
 
@@ -197,7 +199,7 @@ proc newProc*(prc: PSym, module: BModule): BProc =
   newSeq(result.blocks, 1)
   result.nestedTryStmts = @[]
   result.finallySafePoints = @[]
-  result.sigConflicts = initCountTable[string]()
+  result.sigConflicts = initTable[string, int]()
 
 proc newModuleList*(g: ModuleGraph): BModuleList =
   BModuleList(typeInfoMarker: initTable[SigHash, tuple[str: Rope, owner: PSym]](),

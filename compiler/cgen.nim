@@ -1796,7 +1796,7 @@ proc initProcOptions(m: BModule): TOptions =
 proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
   new(result)
   result.g = g
-  result.tmpBase = rope("TM" & $hashOwner(module) & "_")
+  result.tmpBase = "TM" & $hashOwner(module) & "_"
   result.headerFiles = @[]
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()
@@ -1806,7 +1806,7 @@ proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule
   result.forwTypeCache = initTable[SigHash, Rope]()
   result.module = module
   result.typeInfoMarker = initTable[SigHash, Rope]()
-  result.sigConflicts = initCountTable[SigHash]()
+  result.sigConflicts = initTable[string, int]()
   result.initProc = newProc(nil, result)
   result.initProc.options = initProcOptions(result)
   result.preInitProc = newProc(nil, result)
