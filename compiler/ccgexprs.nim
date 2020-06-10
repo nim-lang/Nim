@@ -63,11 +63,8 @@ proc genLiteral(p: BProc, n: PNode, ty: PType): Rope =
   of nkNilLit:
     let k = if ty == nil: tyPointer else: skipTypes(ty, abstractVarRange).kind
     if k == tyProc and skipTypes(ty, abstractVarRange).callConv == ccClosure:
-      let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-      result = p.module.tmpBase & rope(id)
-      if id == p.module.labels:
+      if getTempName(p.module, n, result):
         # not found in cache:
-        inc(p.module.labels)
         p.module.s[cfsData].addf(
              "static NIM_CONST $1 $2 = {NIM_NIL,NIM_NIL};$n",
              [getTypeDesc(p.module, ty), result])
@@ -129,11 +126,8 @@ proc genSetNode(p: BProc, n: PNode): Rope =
   var size = int(getSize(p.config, n.typ))
   let cs = toBitSet(p.config, n)
   if size > 8:
-    let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-    result = p.module.tmpBase & rope(id)
-    if id == p.module.labels:
+    if getTempName(p.module, n, result):
       # not found in cache:
-      inc(p.module.labels)
       p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
            [getTypeDesc(p.module, n.typ), result, genRawSetData(cs, size)])
   else:
@@ -1394,13 +1388,19 @@ proc genNewSeqOfCap(p: BProc; e: PNode; d: var TLoc) =
 proc rawConstExpr(p: BProc, n: PNode; d: var TLoc) =
   let t = n.typ
   discard getTypeDesc(p.module, t) # so that any fields are initialized
-  let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-  fillLoc(d, locData, n, p.module.tmpBase & rope(id), OnStatic)
-  if id == p.module.labels:
+  var name: Rope
+  if getTempName(p.module, n, name):
+    # duplication, but we cannot know if it's unnecessary
+    fillLoc(d, locData, n, name, OnStatic)
     # expression not found in the cache:
-    inc(p.module.labels)
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
+<<<<<<< HEAD
           [getTypeDesc(p.module, t), d.r, genBracedInit(p, n, isConst = true, t)])
+=======
+                             [getTypeDesc(p.module, t), name,
+                              genBracedInit(p, n, isConst = true)])
+  fillLoc(d, locData, n, name, OnStatic)
+>>>>>>> e4d39c9cf... more literals
 
 proc handleConstExpr(p: BProc, n: PNode, d: var TLoc): bool =
   if d.k == locNone and n.len > ord(n.kind == nkObjConstr) and n.isDeepConstExpr:
@@ -2625,19 +2625,17 @@ proc downConv(p: BProc, n: PNode, d: var TLoc) =
 proc exprComplexConst(p: BProc, n: PNode, d: var TLoc) =
   let t = n.typ
   discard getTypeDesc(p.module, t) # so that any fields are initialized
-  let id = nodeTableTestOrSet(p.module.dataCache, n, p.module.labels)
-  let tmp = p.module.tmpBase & rope(id)
-
-  if id == p.module.labels:
+  var name: Rope
+  if getTempName(p.module, n, name):
     # expression not found in the cache:
-    inc(p.module.labels)
     p.module.s[cfsData].addf("static NIM_CONST $1 $2 = $3;$n",
-         [getTypeDesc(p.module, t, skConst), tmp, genBracedInit(p, n, isConst = true, t)])
+                             [getTypeDesc(p.module, t, skConst), name,
+                              genBracedInit(p, n, isConst = true, t)])
 
   if d.k == locNone:
-    fillLoc(d, locData, n, tmp, OnStatic)
+    fillLoc(d, locData, n, name, OnStatic)
   else:
-    putDataIntoDest(p, d, n, tmp)
+    putDataIntoDest(p, d, n, name)
     # This fixes bug #4551, but we really need better dataflow
     # analysis to make this 100% safe.
     if t.kind notin {tySequence, tyString}:
