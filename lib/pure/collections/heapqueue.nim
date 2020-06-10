@@ -125,11 +125,11 @@ proc pop*[T](heap: var HeapQueue[T]): T =
   else:
     result = lastelt
 
-proc find*[T](hq: HeapQueue[T], x: T): int =
+proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
   ## Linear scan to find index of item ``x`` or -1 if not found.
   result = -1
-  for i in 0 ..< hq.len:
-    if hq[i] == x: return i
+  for i in 0 ..< heap.len:
+    if heap[i] == x: return i
 
 proc del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
