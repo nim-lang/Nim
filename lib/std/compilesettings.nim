@@ -54,3 +54,55 @@ proc querySettingSeq*(setting: MultipleValueSetting): seq[string] {.
   ##
   ## .. code-block:: Nim
   ##   const nimblePaths = compileSettingSeq(MultipleValueSetting.nimblePaths)
+
+type NimVersionType* = object
+  major*, minor*, patch*: int
+  # `NimVersion` is already taken by `system.NimVersion`.
+  # More type-safe than (int,int,int) since procs based on tuples would apply to
+  # unrelated tuples, eg `proc `$`(a: (int,int,int))` would not be a great idea.
+
+proc nimVersionCTImpl(): (int,int,int) {.compileTime.} = discard
+
+const ver = nimVersionCTImpl()
+
+const nimVersionCT* = NimVersionType(major: ver[0], minor: ver[1], patch: ver[2])
+  ## return the stdlib version nim was compiled with.
+
+const nimVersion* = NimVersionType(major: NimMajor, minor: NimMinor, patch: NimPatch)
+  ## return the stdlib version.
+
+template toTuple*(a: NimVersionType): untyped =
+  (major: a.major, minor: a.minor, patch: a.patch)
+
+#[
+A bit hacky but allows using this before most of system.nim is defined
+the only dependency is on NimMajor, NimMinor, NimPatch, `int`
+]#
+
+proc `<`(x, y: int): bool {.magic: "LtI", noSideEffect.}
+
+proc `>=`(a, b: tuple[major: int, minor: int, patch: int]): bool =
+  if b.major < a.major: return true
+  if a.major < b.major: return false
+
+  if b.minor < a.minor: return true
+  if a.minor < b.minor: return false
+
+  if b.patch < a.patch: return true
+  if a.patch < b.patch: return false
+  return true
+
+proc `>=`*(a: NimVersionType, b: tuple[major: int, minor: int, patch: int]): bool =
+  ## specialization so it can be used before `<=*[T: tuple]`
+  ## is defined in system.nim, for low level modules (eg: iterators.nim).
+  ## For other comparisons, use `a.toTuple` after `include system/comparisons`.
+  runnableExamples:
+    when nimVersionCT >= (1,3,5): discard
+    doAssert nimVersionCT >= (1,3,5)
+    doAssert nimVersionCT.toTuple < (99, 0, 0)
+    doAssert nimVersionCT.toTuple != (99, 0, 0)
+  a.toTuple >= b
+
+template `$`*(a: NimVersionType): string =
+  ## returns `major.minor.patch`
+  $a.major & "." & $a.minor & "." & $a.patch

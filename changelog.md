@@ -114,6 +114,9 @@
 - Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
 
 
+- Add `compilesettings.nimVersionCT` to get the stdlib version nim was compiled at; this is the same as the one reported
+  by `nim dump --dump.format:json . | jq .version` or in `nim -v`, unlike the one in `system.NimVersion`.
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 

@@ -2063,17 +2063,19 @@ template unlikely*(val: bool): bool =
 
 const
   NimMajor* {.intdefine.}: int = 1
-    ## is the major number of Nim's version. Example:
+    ## is the major number of Nim's version.
+    ## See also `compilesettings.nimVersion,nimVersionCT`.
+    ## Example:
     ##
     ## .. code-block:: Nim
     ##   when (NimMajor, NimMinor, NimPatch) >= (1, 3, 1): discard
-    # see also std/private/since
+    # See also `std/private/since`
 
   NimMinor* {.intdefine.}: int = 3
     ## is the minor number of Nim's version.
     ## Odd for devel, even for releases.
 
-  NimPatch* {.intdefine.}: int = 5
+  NimPatch* {.intdefine.}: int = 7
     ## is the patch number of Nim's version.
     ## Odd for devel, even for releases.
 

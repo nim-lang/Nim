@@ -190,6 +190,8 @@ proc registerAdditionalOps*(c: PCtx) =
         setResult(a, querySettingImpl(c.config, getInt(a, 0)))
       registerCallback c, "stdlib.compilesettings.querySettingSeq", proc (a: VmArgs) {.nimcall.} =
         setResult(a, querySettingSeqImpl(c.config, getInt(a, 0)))
+      registerCallback c, "stdlib.compilesettings.nimVersionCTImpl", proc (a: VmArgs) {.nimcall.} =
+        a.setResult (NimMajor, NimMinor, NimPatch).toLit
 
     if defined(nimsuggest) or c.config.cmd == cmdCheck:
       discard "don't run staticExec for 'nim suggest'"
