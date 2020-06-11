@@ -785,6 +785,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
+  of tyOptDeprecated: doAssert false
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo): PSym =
