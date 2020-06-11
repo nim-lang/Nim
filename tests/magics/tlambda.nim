@@ -116,16 +116,26 @@ proc testAliasTuple() =
     doAssert funa(3) == tfun(3)
     doAssert funb() == tfun2()
 
+proc testAliasGeneric() =
+  type A[Fun1: aliassym, Fun2] = object
+    x: int
+  proc initA(fun1: aliassym, fun2: aliassym, x: int): A[fun1,fun2] = typeof(result)(x: x)
+  var a = initA(a~>a*10, a~>a*2, 7)
+  doAssert a.Fun1(3) == 3*10
+  doAssert a.Fun2(3) == 3*2
+
 proc testAliasFields() =
   # this could be improved, by supporting:   `type B = object: fun1: aliassym fun2: aliassym`
-  type A[T1, T2] = object
+  type A[T1, T2, T3] = object
     fun1: T1
-    fun2: T2
-  proc initA[T1, T2](fun1: T1, fun2: T2): A[T1, T2] =
-    A[T1, T2](fun1: alias2 fun1, fun2: alias2 fun2)
-  const a = initA(a~>a*10, a~>a*20)
-  doAssert a.fun1(3) == 30
-  doAssert a.fun2(3) == 60
+    myconst: T2
+  proc initA[T1, T2, T3](a1: T1, a2: T2, a3: T3): A[T1, T2, T3] =
+    typeof(result)(fun1: alias2 a1, myconst: alias2 a2)
+  const z = 123
+  const a = initA(a~>a*10, alias2 z, (a,b)~>a*b)
+  static: doAssert a.myconst == 123
+  doAssert a.fun1(3) == 3*10
+  doAssert a.T3(3,4) == 3*4
 
 proc testLambdaIt() =
   const fun = lambdaIt (it, it)
@@ -339,6 +349,7 @@ proc testAll*() =
   testAlias()
   testAliasReturn()
   testAliasTuple()
+  testAliasGeneric()
   testAliasFields()
   testLambdaIt()
   testArrow()

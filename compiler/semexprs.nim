@@ -1412,6 +1412,9 @@ proc builtinFieldAccess(c: PContext, n: PNode, flags: TExprFlags): PNode =
   if result == nil:
     let t = n[0].typ.skipTypes(tyDotOpTransparent)
     result = tryReadingGenericParam(c, n, i, t)
+    # xxx simplify this
+    if result!=nil and result.kind == nkSym and result.sym.kind == skType and result.sym.typ.base.kind == tyAliasSym:
+      result = resolveAliasSym(result.sym.typ.base.n, forceResolve = true)
 
 proc dotTransformation(c: PContext, n: PNode): PNode =
   if isSymChoice(n[1]):

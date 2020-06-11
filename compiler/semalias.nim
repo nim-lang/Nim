@@ -9,7 +9,8 @@ proc isMacroRealGeneric*(s: PSym): bool {.exportc.} =
   for ai in n[genericParamsPos]:
     if ai.typ.kind == tyAliasSym:
       return true
-proc resolveAliasSym*(n: PNode): PNode =
+
+proc resolveAliasSym*(n: PNode, forceResolve = false): PNode =
   #[
   `fun(arg)` where return type is tyAliasSym
   if it returns a template `bar()` where bar is an iterator, it'd have no type if expanded
@@ -17,7 +18,7 @@ proc resolveAliasSym*(n: PNode): PNode =
   result = n
   if result!=nil and result.typ != nil and result.typ.kind == tyAliasSym:
     case result.kind
-    of {nkStmtListExpr,nkBlockExpr}:
+    of {nkStmtListExpr, nkBlockExpr}:
       # allows defining things like lambdaIter, lambdaIt, a~>a*2 sugar
       let typ = result.typ
       result = newSymNode(typ.n.sym)
@@ -25,7 +26,7 @@ proc resolveAliasSym*(n: PNode): PNode =
       result.typ = typ
     of nkSym:
       if result.sym.kind == skAliasGroup:
-        discard
+        if forceResolve: result = result.sym.nodeAliasGroup
       elif result.sym.kind == skResult:
         discard
     else: # the alias is resolved
