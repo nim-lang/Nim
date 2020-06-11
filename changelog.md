@@ -109,7 +109,7 @@
   adequate compatiblity with the majority of the Internet.
 
 - new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json serialization/deserialization of custom types.
-
+- Add `sequtils.one`, iterates a container to find one specific item.
 - new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
 
 ## Language changes
