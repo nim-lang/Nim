@@ -1,14 +1,12 @@
-import # compiler imports
-
-    ast, cgendata, sighashes, options, modulegraphs, ropes, pathutils,
-    ccgutils, extccomp, ndi, msgs, btrees, nversion, condsyms, lineinfos,
-    incremental, idgen, idents, magicsys, astalgo, options, treetab,
-    wordrecg
-
-import # stdlib imports
-
-  std / [ macros, strutils, intsets, tables, sets, sequtils ]
-
+#
+#
+#           The Nim Compiler
+#        (c) Copyright 2017 Andreas Rumpf
+#
+#    See the file "copying.txt", included in this
+#    distribution, for details about the copyright.
+#
+# ------------------------- Name Mangling --------------------------------
 ##[
 
 cgendata defines ConflictsTable as Table[string, int]
@@ -36,8 +34,16 @@ idOrSig(BModule or BProc, PSym): string -> yield the mangled symbol name
 
 ]##
 
-type
-  ModuleOrProc = BModule or BProc
+
+import # compiler imports
+
+    ast, cgendata, options, modulegraphs, ropes, pathutils, ccgutils,
+    ndi, msgs, btrees, lineinfos, incremental, idents, options, wordrecg,
+    astalgo, treetab
+
+import # stdlib imports
+
+  std / [ macros, strutils, intsets, tables, sets ]
 
 template config(): ConfigRef = cache.modules.config
 
@@ -195,10 +201,6 @@ proc getTypeName*(m: BModule; typ: PType): Rope =
     let counter = getOrSet(m.sigConflicts, $result, conflictKey(typ))
     result.maybeAppendCounter counter
 
-proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope
-  {.error: "remove SigHash argument".} =
-  result = getTypeName(m, typ)
-
 proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
   ## should we add the first argument's type to the mangle?
   assert s.kind in routineKinds
@@ -306,7 +308,6 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
   if counter == 0:
     # it's the first instance using this name
     if not create:
-      debug s
       assert false, "cannot find existing name for: " & name
   result = (name: name, counter: counter)
 
@@ -316,10 +317,18 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
   # leaving this here just to irritate the god of minimal debugging output
-  when m is BModule:
-    echo "module $4 >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
-  else:
-    echo "  proc $4 >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result, $conflictKey(m.prc) ]
+  if conflict.counter > 0 and s.kind == skParam:
+    result = rope("/*" & $conflictKey(s) & "*/") & result
+    when m is BModule:
+      echo "module $4 >> $1 .. $2 -> $3" %
+        [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
+    else:
+      echo "  proc $4 >> $1 .. $2 -> $3" %
+        [ $conflictKey(s), s.name.s, $result,
+         if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
+    if conflictKey(s) == 11073416:
+      debug s
+      writeStackTrace()
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
@@ -372,3 +381,75 @@ proc getTempName*(m: BModule): Rope =
   ## a factory for making temporary names for use in the backend; this mutates
   ## the module from which the name originates; this always creates a new name
   result = getTempNameImpl(m, m.labels).rope
+
+proc mangleName*(m: ModuleOrProc; s: PSym): Rope =
+  result = s.loc.r
+  if result == nil:
+    when m is BModule:
+      # skParam is valid for global object fields with proc types
+      #assert s.kind notin {skParam, skResult}
+      assert s.kind notin {skResult}
+    when m is BProc:
+      assert s.kind notin {skModule, skPackage}
+    s.loc.r = idOrSig(m, s)
+    result = s.loc.r
+
+    #[
+
+     2020-06-11: leaving this here because it explains a real scenario,
+                 but it remains to be seen if we'll still have this problem
+                 after the new mangling processes the symbols; ie. why is
+                 HCR special?
+
+     Take into account if HCR is on because of the following scenario:
+
+     if a module gets imported and it has some more importc symbols in it,
+     some param names might receive the "_0" suffix to distinguish from
+     what is newly available. That might lead to changes in the C code
+     in nimcache that contain only a parameter name change, but that is
+     enough to mandate recompilation of that source file and thus a new
+     shared object will be relinked. That may lead to a module getting
+     reloaded which wasn't intended and that may be fatal when parts of
+     the current active callstack when performCodeReload() was called are
+     from the module being reloaded unintentionally - example (3 modules
+     which import one another):
+
+       main => proxy => reloadable
+
+     we call performCodeReload() in proxy to reload only changes in
+     reloadable but there is a new import which introduces an importc
+     symbol `socket` and a function called in main or proxy uses `socket`
+     as a parameter name. That would lead to either needing to reload
+     `proxy` or to overwrite the executable file for the main module,
+     which is running (or both!) -> error.
+
+    ]#
+
+proc mangleField*(m: BModule; name: PIdent): string =
+  result = mangle(name.s)
+  #[
+   Fields are tricky to get right and thanks to generic types producing
+   duplicates we can end up mangling the same field multiple times.
+   However if we do so, the 'cppDefines' table might be modified in the
+   meantime meaning we produce inconsistent field names (see bug #5404).
+   Hence we do not check for ``m.g.config.cppDefines.contains(result)``
+   here anymore:
+  ]#
+  if isNimOrCKeyword(name):
+    result.add "_0"
+
+proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
+  if {sfImportc, sfExportc} * field.flags != {}:
+    result = field.loc.r
+  else:
+    result = rope(mangleField(m, field.name))
+  if result == nil: internalError(m.config, field.info, "mangleRecFieldName")
+
+proc assignParam*(p: BProc, s: PSym, retType: PType) =
+  ## Push the mangled name into the proc's sigConflicts so that we can
+  ## make new local identifiers of the same name without colliding with it.
+  ## Currently ignores return type.
+  purgeConflict(p.module, s)   # discard any existing counter for this symbol
+  s.loc.r = nil                # from the parent module as we move it local
+  s.loc.r = mangleName(p, s)   # and force the new location like a punk
+  # XXX: currently does not rewrite the prototype

@@ -175,6 +175,8 @@ type
     g*: BModuleList
     ndi*: NdiFile
 
+  ModuleOrProc* = BModule or BProc
+
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 

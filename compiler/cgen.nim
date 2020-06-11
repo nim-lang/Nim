@@ -10,12 +10,12 @@
 ## This module implements the C code generator.
 
 import
-  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options, intsets,
-  nversion, nimsets, msgs, bitsets, idents, types, mangler,
-  ccgutils, os, ropes, math, passes, wordrecg, treetab, cgmeth,
-  rodutils, renderer, cgendata, ccgmerge, aliases,
-  lowerings, tables, sets, ndi, lineinfos, pathutils, transf, enumtostr,
-  injectdestructors
+
+  ast, astalgo, hashes, trees, platform, magicsys, extccomp, options,
+  intsets, nversion, nimsets, msgs, bitsets, idents, types, mangler,
+  ccgutils, os, ropes, math, passes, wordrecg, cgmeth, rodutils, renderer,
+  cgendata, ccgmerge, aliases, lowerings, tables, sets, ndi, lineinfos,
+  pathutils, transf, enumtostr, injectdestructors
 
 when not defined(leanCompiler):
   import spawn, semparallel
@@ -281,10 +281,6 @@ proc raiseInstr(p: BProc): Rope
 template compileToCpp(m: BModule): untyped =
   m.config.backend == backendCpp or sfCompileToCpp in m.module.flags
 
-proc getTempName(m: BModule): Rope =
-  result = m.tmpBase & rope(m.labels)
-  inc m.labels
-
 proc rdLoc(a: TLoc): Rope =
   # 'read' location (deref if indirect)
   result = a.r
@@ -493,7 +489,7 @@ proc getIntTemp(p: BProc, result: var TLoc) =
 proc localVarDecl(p: BProc; n: PNode): Rope =
   let s = n.sym
   if s.loc.k == locNone:
-    fillLoc(s.loc, locLocalVar, n, mangleLocalName(p, s), OnStack)
+    fillLoc(s.loc, locLocalVar, n, mangleName(p, s), OnStack)
     if s.kind == skLet: incl(s.loc.flags, lfNoDeepCopy)
   if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
     result.addf("NIM_ALIGN($1) ", [rope(s.alignment)])
@@ -528,6 +524,7 @@ proc treatGlobalDifferentlyForHCR(m: BModule, s: PSym): bool =
       # and s.loc.k == locGlobalVar  # loc isn't always initialized when this proc is used
 
 proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
+  assert p.prc == nil, "attempt to add global to `local` proc"
   let s = n.sym
   if s.loc.k == locNone:
     fillLoc(s.loc, locGlobalVar, n, mangleName(p.module, s), OnHeap)
@@ -551,7 +548,7 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
         internalError(p.config, n.info, ".threadvar variables cannot have a value")
     else:
       var decl: Rope = nil
-      var td = getTypeDesc(p.module, s.loc.t, skVar)
+      var td = getTypeDesc(p, s.loc.t, skVar)
       if s.constraint.isNil:
         if s.kind in {skLet, skVar, skField, skForVar} and s.alignment > 0:
           decl.addf "NIM_ALIGN($1) ", [rope(s.alignment)]
@@ -578,10 +575,6 @@ proc assignGlobalVar(p: BProc, n: PNode; value: Rope) =
   if p.withinLoop > 0 and value == nil:
     # fixes tests/run/tzeroarray:
     resetLoc(p, s.loc)
-
-proc assignParam(p: BProc, s: PSym, retType: PType) =
-  assert(s.loc.r != nil)
-  scopeMangledParam(p, s)
 
 proc fillProcLoc(m: BModule; n: PNode) =
   let sym = n.sym
@@ -972,12 +965,17 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
     for i in 0..<n.safeLen:
       allPathsInBranch(n[i])
 
-proc getProcTypeCast(m: BModule, prc: PSym): Rope =
-  result = getTypeDesc(m, prc.loc.t)
+proc getProcTypeCast(p: ModuleOrProc, prc: PSym): Rope =
+  template m(): BModule =
+    when p is BProc:
+      p.module
+    else:
+      p
+  result = getTypeDesc(p, prc.loc.t)
   if prc.typ.callConv == ccClosure:
     var rettype, params: Rope
     var check = initIntSet()
-    genProcParams(m, prc.typ, rettype, params, check)
+    genProcParams(p, prc.typ, rettype, params, check)
     result = "$1(*)$2" % [rettype, params]
 
 proc genProcBody(p: BProc; procBody: PNode) =
@@ -992,7 +990,7 @@ proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
 
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
-  var header = genProcHeader(m, prc)
+  var header = genProcHeader(p, prc)
   var returnStmt: Rope = nil
   assert(prc.ast != nil)
 
@@ -1025,8 +1023,8 @@ proc genProcAux(m: BModule, prc: PSym) =
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
       # the 'unsureAsgn' is a nop. If it points to a global variable the
-      # global is either 'nil' or points to valid memory and so the RC operation
-      # succeeds without touching not-initialized memory.
+      # global is either 'nil' or points to valid memory and so the RC
+      # operation succeeds without touching not-initialized memory.
       if sfNoInit in prc.flags: discard
       elif allPathsAsgnResult(procBody) == InitSkippable: discard
       else:
@@ -1054,9 +1052,15 @@ proc genProcAux(m: BModule, prc: PSym) =
                          [header, p.s(cpsLocals), p.s(cpsInit), p.s(cpsStmts)])
   else:
     if m.hcrOn and isReloadable(m, prc):
-      # Add forward declaration for "_actual"-suffixed functions defined in the same module (or inline).
-      # This fixes the use of methods and also the case when 2 functions within the same module
-      # call each other using directly the "_actual" versions (an optimization) - see issue #11608
+      #[
+
+       Add forward declaration for "_actual"-suffixed functions defined in
+       the same module (or inline). This fixes the use of methods and also
+       the case when 2 functions within the same module call each other
+       using directly the "_actual" versions (an optimization) - see issue
+       #11608
+
+      ]#
       m.s[cfsProcHeaders].addf("$1;\n", [header])
     generatedProc.add ropecg(p.module, "$1 {$n", [header])
     if optStackTrace in prc.options:
@@ -1080,7 +1084,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   m.s[cfsProcs].add(generatedProc)
   if isReloadable(m, prc):
     m.s[cfsDynLibInit].addf("\t$1 = ($3) hcrRegisterProc($4, \"$1\", (void*)$2);$n",
-         [prc.loc.r, prc.loc.r & "_actual", getProcTypeCast(m, prc), getModuleDllPath(m, prc)])
+         [prc.loc.r, prc.loc.r & "_actual", getProcTypeCast(p, prc), getModuleDllPath(m, prc)])
 
 proc requiresExternC(m: BModule; sym: PSym): bool {.inline.} =
   result = (sfCompileToCpp in m.module.flags and
@@ -1184,7 +1188,7 @@ proc requestConstImpl(p: BProc, sym: PSym) =
   var m = p.module
   useHeader(m, sym)
   if sym.loc.k == locNone:
-    fillLoc(sym.loc, locData, sym.ast, mangleName(p.module, sym), OnStatic)
+    fillLoc(sym.loc, locData, sym.ast, mangleName(p, sym), OnStatic)
   if m.hcrOn: incl(sym.loc.flags, lfIndirect)
 
   if lfNoDecl in sym.loc.flags: return

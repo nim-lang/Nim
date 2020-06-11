@@ -9,23 +9,16 @@
 
 # included from cgen.nim
 
-# ------------------------- Name Mangling --------------------------------
-
 import sighashes, modulegraphs, mangler
 from lowerings import createObj
 
-proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope
+proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope
 
-proc mangleField(m: BModule; name: PIdent): string =
-  result = mangle(name.s)
-  # fields are tricky to get right and thanks to generic types producing
-  # duplicates we can end up mangling the same field multiple times. However
-  # if we do so, the 'cppDefines' table might be modified in the meantime
-  # meaning we produce inconsistent field names (see bug #5404).
-  # Hence we do not check for ``m.g.config.cppDefines.contains(result)`` here
-  # anymore:
-  if isNimOrCKeyword(name):
-    result.add "_0"
+template createm() =
+  when p is BProc:
+    p.module
+  else:
+    p
 
 when false:
   proc hashOwner(s: PSym): SigHash =
@@ -34,68 +27,6 @@ when false:
     let p = m.owner
     assert p.kind == skPackage
     result = gDebugInfo.register(p.name.s, m.name.s)
-
-proc mangleName(m: BModule; s: PSym): Rope =
-  result = s.loc.r
-  if result == nil:
-    result = idOrSig(m, s)
-    s.loc.r = result
-
-proc mangleLocalName(p: BProc | BModule; s: PSym): Rope =
-  ## mangle a symbol name local to a particular proc or its params;
-  ## it's a local variable or a temporary we created
-  assert s.kind in skLocalVars + {skTemp, skParam}
-  result = s.loc.r
-  if result == nil:
-    s.loc.r = idOrSig(p, s)
-    result = s.loc.r
-
-proc mangleParamName(m: BModule; s: PSym): Rope =
-  assert s.kind == skParam
-  result = s.loc.r
-  if result == nil:
-    #[
-
-     2020-06-11: leaving this here because it explains a real scenario,
-                 but it remains to be seen if we'll still have this problem
-                 after the new mangling processes the symbols; ie. why is
-                 HCR special?
-
-     Take into account if HCR is on because of the following scenario:
-
-     if a module gets imported and it has some more importc symbols in it,
-     some param names might receive the "_0" suffix to distinguish from
-     what is newly available. That might lead to changes in the C code
-     in nimcache that contain only a parameter name change, but that is
-     enough to mandate recompilation of that source file and thus a new
-     shared object will be relinked. That may lead to a module getting
-     reloaded which wasn't intended and that may be fatal when parts of
-     the current active callstack when performCodeReload() was called are
-     from the module being reloaded unintentionally - example (3 modules
-     which import one another):
-
-       main => proxy => reloadable
-
-     we call performCodeReload() in proxy to reload only changes in
-     reloadable but there is a new import which introduces an importc
-     symbol `socket` and a function called in main or proxy uses `socket`
-     as a parameter name. That would lead to either needing to reload
-     `proxy` or to overwrite the executable file for the main module,
-     which is running (or both!) -> error.
-
-    ]#
-
-    # XXX: why purge here?
-    # purgeConflict(m, s)
-    result = mangleLocalName(m, s)
-    s.loc.r = result
-
-proc scopeMangledParam(p: BProc; param: PSym) =
-  ## parameter generation only takes BModule, not a BProc, so we have to
-  ## remember these parameter names are already in scope to be able to
-  ## generate unique identifiers reliably (consider that ``var a = a`` is
-  ## even an idiom in Nim).
-  discard mangleLocalName(p, param)
 
 proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
   case int(getSize(conf, typ))
@@ -168,7 +99,7 @@ proc isImportedCppType(t: PType): bool =
   result = (t.sym != nil and sfInfixCall in t.sym.flags) or
            (x.sym != nil and sfInfixCall in x.sym.flags)
 
-proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope
+proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TSymKind): Rope
 
 proc isObjLackingTypeField(typ: PType): bool {.inline.} =
   result = (typ.kind == tyObject) and ((tfFinal in typ.flags) and
@@ -405,20 +336,21 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
   else:
     result = OnUnknown
 
-proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
+proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
+  let m = createm()
   params = nil
   if t[0] == nil or isInvalidReturnType(m.config, t[0]):
     rettype = ~"void"
   else:
-    rettype = getTypeDescAux(m, t[0], check, skResult)
+    rettype = getTypeDescAux(p, t[0], check, skResult)
   for i in 1..<t.n.len:
     if t.n[i].kind != nkSym: internalError(m.config, t.n.info, "genProcParams")
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: params.add(~", ")
-    fillLoc(param.loc, locParam, t.n[i], mangleParamName(m, param),
+    fillLoc(param.loc, locParam, t.n[i], mangleName(p, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
@@ -428,7 +360,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     elif weakDep:
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
     else:
-      params.add(getTypeDescAux(m, param.typ, check, skParam))
+      params.add(getTypeDescAux(p, param.typ, check, skParam))
     params.add(~" ")
     if sfNoalias in param.flags:
       params.add(~"NIM_NOALIAS ")
@@ -451,7 +383,7 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
       params.add(getTypeDescWeak(m, arr, check, skResult))
       params.add("*")
     else:
-      params.add(getTypeDescAux(m, arr, check, skResult))
+      params.add(getTypeDescAux(p, arr, check, skResult))
     params.addf(" Result", [])
   if t.callConv == ccClosure and declareEnvironment:
     if params != nil: params.add(", ")
@@ -462,13 +394,6 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
   if params == nil: params.add("void)")
   else: params.add(")")
   params = "(" & params
-
-proc mangleRecFieldName(m: BModule; field: PSym): Rope =
-  if {sfImportc, sfExportc} * field.flags != {}:
-    result = field.loc.r
-  else:
-    result = rope(mangleField(m, field.name))
-  if result == nil: internalError(m.config, field.info, "mangleRecFieldName")
 
 proc genRecordFieldsAux(m: BModule, n: PNode,
                         rectype: PType,
@@ -656,9 +581,9 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
       m.s[cfsTypes].addf("typedef struct {$n$2* Field0;$nNI Field1;$n} $1;$n",
                          [result, elemType])
 
-proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
+proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
   # returns only the type's name
-
+  let m = createm()
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
@@ -694,7 +619,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     case etB.kind
     of tyObject, tyTuple:
       if isImportedCppType(etB) and et.kind == tyGenericInst:
-        result = getTypeDescAux(m, et, check, kind) & star
+        result = getTypeDescAux(p, et, check, kind) & star
       else:
         # no restriction! We have a forward declaration for structs
         let name = getTypeForward(m, et, hashType et)
@@ -712,7 +637,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
         pushType(m, et)
     else:
       # else we have a strong dependency  :-(
-      result = getTypeDescAux(m, et, check, kind) & star
+      result = getTypeDescAux(p, et, check, kind) & star
       m.typeCache[sig] = result
   of tyOpenArray, tyVarargs:
     result = getOpenArrayDesc(m, t, check, kind)
@@ -749,7 +674,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     result = getTypeName(m, origTyp)
     m.typeCache[sig] = result
     var rettype, desc: Rope
-    genProcParams(m, t, rettype, desc, check, true, true)
+    genProcParams(p, t, rettype, desc, check, true, true)
     if not isImportedType(t):
       if t.callConv != ccClosure: # procedure vars may need a closure!
         m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
@@ -782,11 +707,11 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           if m.compileToCpp:
             appcg(m, m.s[cfsSeqTypes],
                 cppSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
-                "};$n", [getTypeDescAux(m, t[0], check, kind), result])
+                "};$n", [getTypeDescAux(p, t[0], check, kind), result])
           else:
             appcg(m, m.s[cfsSeqTypes],
                 cSeq & "  $1 data[SEQ_DECL_SIZE];$n" &
-                "};$n", [getTypeDescAux(m, t[0], check, kind), result])
+                "};$n", [getTypeDescAux(p, t[0], check, kind), result])
         else:
           result = rope("TGenericSeq")
       result.add(seqStar(m))
@@ -794,7 +719,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     result = getTypeName(m, origTyp)
     m.typeCache[sig] = result
     if not isImportedType(t):
-      let foo = getTypeDescAux(m, t[0], check, kind)
+      let foo = getTypeDescAux(p, t[0], check, kind)
       m.s[cfsTypes].addf("typedef $1 $2[1];$n", [foo, result])
   of tyArray:
     var n: BiggestInt = toInt64(lengthOrd(m.config, t))
@@ -802,7 +727,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     result = getTypeName(m, origTyp)
     m.typeCache[sig] = result
     if not isImportedType(t):
-      let foo = getTypeDescAux(m, t[1], check, kind)
+      let foo = getTypeDescAux(p, t[1], check, kind)
       m.s[cfsTypes].addf("typedef $1 $2[$3];$n",
            [foo, result, rope(n)])
   of tyObject, tyTuple:
@@ -818,7 +743,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           internalAssert m.config, ty.n != nil
           result.add ty.n.renderTree
         else:
-          result.add getTypeDescAux(m, ty, check, kind)
+          result.add getTypeDescAux(p, ty, check, kind)
 
       while i < cppName.data.len:
         if cppName.data[i] == '\'':
@@ -879,16 +804,16 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
              [result, rope(getSize(m.config, t))])
   of tyGenericInst, tyDistinct, tyOrdinal, tyTypeDesc, tyAlias, tySink, tyOwned,
      tyUserTypeClass, tyUserTypeClassInst, tyInferred:
-    result = getTypeDescAux(m, lastSon(t), check, kind)
+    result = getTypeDescAux(p, lastSon(t), check, kind)
   else:
     internalError(m.config, "getTypeDescAux(" & $t.kind & ')')
     result = nil
   # fixes bug #145:
   excl(check, t.id)
 
-proc getTypeDesc(m: BModule, typ: PType; kind = skParam): Rope =
+proc getTypeDesc(p: ModuleOrProc, typ: PType; kind = skParam): Rope =
   var check = initIntSet()
-  result = getTypeDescAux(m, typ, check, kind)
+  result = getTypeDescAux(p, typ, check, kind)
 
 type
   TClosureTypeKind = enum ## In C closures are mapped to 3 different things.
@@ -896,12 +821,13 @@ type
     clHalfWithEnv,    ## fn(args, void* env) type with trailing 'void* env' parameter
     clFull            ## struct {fn(args, void* env), env}
 
-proc getClosureType(m: BModule, t: PType, kind: TClosureTypeKind): Rope =
+proc getClosureType(p: ModuleOrProc, t: PType, kind: TClosureTypeKind): Rope =
+  let m = createm()
   assert t.kind == tyProc
   var check = initIntSet()
   result = getTempName(m)
   var rettype, desc: Rope
-  genProcParams(m, t, rettype, desc, check, declareEnvironment=kind != clHalf)
+  genProcParams(p, t, rettype, desc, check, declareEnvironment=kind != clHalf)
   if not isImportedType(t):
     if t.callConv != ccClosure or kind != clFull:
       m.s[cfsTypes].addf("typedef $1_PTR($2, $3) $4;$n",
@@ -933,7 +859,8 @@ proc isReloadable(m: BModule, prc: PSym): bool =
 proc isNonReloadable(m: BModule, prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
-proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
+proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
+  let m = createm()
   var
     rettype, params: Rope
   # using static is needed for inline procs
@@ -948,7 +875,7 @@ proc genProcHeader(m: BModule, prc: PSym, asPtr: bool = false): Rope =
     result.add "N_LIB_PRIVATE "
   var check = initIntSet()
   fillLoc(prc.loc, locProc, prc.ast[namePos], mangleName(m, prc), OnUnknown)
-  genProcParams(m, prc.typ, rettype, params, check)
+  genProcParams(p, prc.typ, rettype, params, check)
   # handle the 2 options for hotcodereloading codegen - function pointer
   # (instead of forward declaration) or header for function body with "_actual" postfix
   let asPtrStr = rope(if asPtr: "_PTR" else: "")

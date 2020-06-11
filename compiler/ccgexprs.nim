@@ -2010,7 +2010,7 @@ proc genSomeCast(p: BProc, e: PNode, d: var TLoc) =
         [getTypeDesc(p.module, e.typ), addrLoc(p.config, a)], a.storage)
   elif etyp.kind == tyProc and etyp.callConv == ccClosure and srcTyp.callConv != ccClosure:
     putIntoDest(p, d, e, "(($1) ($2))" %
-        [getClosureType(p.module, etyp, clHalfWithEnv), rdCharLoc(a)], a.storage)
+        [getClosureType(p, etyp, clHalfWithEnv), rdCharLoc(a)], a.storage)
   else:
     # C++ does not like direct casts from pointer to shorter integral types
     if srcTyp.kind in {tyPtr, tyPointer} and etyp.kind in IntegralTypes:
@@ -3098,7 +3098,7 @@ proc genBracedInit(p: BProc, n: PNode; isConst: bool; optionalType: PType): Rope
         else:
           var d: TLoc
           initLocExpr(p, n[0], d)
-          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p.module, typ, clHalfWithEnv), rdLoc(d)]
+          result = "{(($1) $2),NIM_NIL}" % [getClosureType(p, n.typ, clHalfWithEnv), rdLoc(d)]
       else:
         var d: TLoc
         initLocExpr(p, n, d)

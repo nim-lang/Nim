@@ -1051,7 +1051,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
           startBlock(p, "if ($1) {$n", [orExpr])
           hasIf = true
         if exvar != nil:
-          fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnStack)
+          fillLoc(exvar.sym.loc, locTemp, exvar, mangleName(p, exvar.sym), OnStack)
           linefmt(p, cpsStmts, "$1 $2 = T$3_;$n", [getTypeDesc(p.module, exvar.sym.typ),
             rdLoc(exvar.sym.loc), rope(etmp+1)])
         # we handled the error:
@@ -1092,7 +1092,7 @@ proc genTryCpp(p: BProc, t: PNode, d: var TLoc) =
             typeNode = t[i][j][1]
             if isImportedException(typeNode.typ, p.config):
               let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
-              fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnStack)
+              fillLoc(exvar.sym.loc, locTemp, exvar, mangleName(p, exvar.sym), OnStack)
               startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, typeNode.typ), rdLoc(exvar.sym.loc))
               genExceptBranchBody(t[i][^1])  # exception handler body will duplicated for every type
               endBlock(p)
@@ -1171,7 +1171,7 @@ proc genTryCppOld(p: BProc, t: PNode, d: var TLoc) =
       for j in 0..<t[i].len-1:
         if t[i][j].isInfixAs():
           let exvar = t[i][j][2] # ex1 in `except ExceptType as ex1:`
-          fillLoc(exvar.sym.loc, locTemp, exvar, mangleLocalName(p, exvar.sym), OnUnknown)
+          fillLoc(exvar.sym.loc, locTemp, exvar, mangleName(p, exvar.sym), OnUnknown)
           startBlock(p, "catch ($1& $2) {$n", getTypeDesc(p.module, t[i][j][1].typ), rdLoc(exvar.sym.loc))
         else:
           startBlock(p, "catch ($1&) {$n", getTypeDesc(p.module, t[i][j].typ))
