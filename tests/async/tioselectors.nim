@@ -144,22 +144,20 @@ when not defined(windows):
   when ioselSupportedPlatform:
     proc timer_notification_test(): bool =
       var selector = newSelector[int]()
-      var timer = selector.registerTimer(100, false, 0)
-      when defined(osx):
-        let t = 500
-      else:
-        let t = 200
-        # 140 is not enough and causes the test to be flaky in CI on OSX+freebsd
-        # When running locally, t=98 will succeed some of the time which indicates
-        # there is some lag involved. Note that the higher `t` is, the less times
+      let t0 = 20
+      var timer = selector.registerTimer(t0, false, 0)
+      let t = 100
+        # values too close to `t0` cause the test to be flaky in CI on OSX+freebsd
+        # When running locally, t0=100, t=98 will succeed some of the time which indicates
+        # there is some lag involved. Note that the higher `t-t0` is, the less times
         # the test fails.
       var rc1 = selector.select(t)
       var rc2 = selector.select(t)
       assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
-      selector.registerTimer(100, true, 0)
-      let t2 = 180
+      selector.registerTimer(t0, true, 0)
+      let t2 = 100
         # likewise, 120 would result in flaky test on at least freebsd, and
         # using small values close to 100 (eg 102) would reliably fail locally
         # on OSX
