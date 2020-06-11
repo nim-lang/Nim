@@ -224,7 +224,6 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
   of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
-  of tyOpt: result = mapTypeToBracket("opt", mOpt, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)
