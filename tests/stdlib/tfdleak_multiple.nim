@@ -20,4 +20,7 @@ proc testFdLeak() =
         count.inc
     doAssert count == 0, "Leaked " & $count & " times"
 
-when isMainModule: testFdLeak()
+when defined(windows):
+  # tfdleak was only flaky for windows (and for netbsd, there is still a bug)
+  # note that this test is quite slow, 87 sec on windows.
+  testFdLeak()
