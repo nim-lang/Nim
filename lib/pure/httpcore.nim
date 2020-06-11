@@ -66,7 +66,7 @@ const
   Http304* = HttpCode(304)
   Http305* = HttpCode(305)
   Http307* = HttpCode(307)
-  Http308* = HttpCore(308)
+  Http308* = HttpCode(308)
   Http400* = HttpCode(400)
   Http401* = HttpCode(401)
   Http403* = HttpCode(403)
