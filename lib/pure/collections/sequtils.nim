@@ -1065,3 +1065,29 @@ iterator items*[T](xs: iterator: T): T =
   ## templates.
   for x in xs():
     yield x
+
+
+proc one*[T](s: openArray[T], pred: proc(x: T): bool {.closure.}): bool {.since: (1, 3).} =
+  ## Iterates through a container and checks if **one** item fulfills the predicate.
+  ## * If the iterable has more than one item that evaluates to `true`, return `false`.
+  ## * If there is no item that fulfills such condition, return `false`.
+  ## * If you want *everything but one* just negate the conditional.
+  ## Not `all()` nor `any()` but something in-between,
+  ## just to quickly discriminate one item from an iterable.
+  runnableExamples:
+    static:
+      ## One item evaluates to true
+      assert one([true, false, false], proc (x: bool): bool = return x)
+      assert one([-5, -1, 0, 1, 5, 10], proc (x: int): bool = return x > 9)
+      ## No item evaluates to true
+      assert not one([false, false, false], proc (x: bool): bool = return x)
+      assert not one([-5, -1, 0, 1, 5, 9], proc (x: int): bool = return x > 9)
+      ## More than one item evaluates to true
+      assert not one([true, false, true], proc (x: bool): bool = return x)
+      assert not one([0, 1, 99, 1, 5, 10], proc (x: int): bool = return x > 9)
+
+  for i in s:
+    if pred(i):
+      if result:
+        return false
+      result = true
