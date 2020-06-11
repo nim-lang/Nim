@@ -299,7 +299,8 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
       # FIXME: add a compiler pass to warm up the conflicts cache
 
   # we're kinda cheating here; this caches the symbol for write at file close
-  writeMangledName(m.ndi, s, m.config)
+  if s.kind != skTemp:
+    writeMangledName(m.ndi, s, m.config)
 
   counter = getOrSet(p.sigConflicts, name, conflictKey(s))
   if counter == 0:
