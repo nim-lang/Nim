@@ -457,7 +457,7 @@ proc sendFile(socket: Socket | AsyncSocket,
   file.close()
 
 proc redirection(status: string): bool =
-  const redirectionNRs = ["301", "302", "303", "307"]
+  const redirectionNRs = ["301", "302", "303", "307", "308"]
   for i in items(redirectionNRs):
     if status.startsWith(i):
       return true
