@@ -142,30 +142,40 @@ when not defined(windows):
     result = true
 
   when ioselSupportedPlatform:
-    proc timer_notification_test(): bool =
+    type TestData = object
+      s1, s2, s3: int
+    proc timer_notification_test_impl(data: var TestData) =
       var selector = newSelector[int]()
       let t0 = 20
       var timer = selector.registerTimer(t0, false, 0)
-      let t = 100
+      let t = 500
         # values too close to `t0` cause the test to be flaky in CI on OSX+freebsd
         # When running locally, t0=100, t=98 will succeed some of the time which indicates
         # there is some lag involved. Note that the higher `t-t0` is, the less times
         # the test fails.
       var rc1 = selector.select(t)
       var rc2 = selector.select(t)
-      assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
+      assert len(rc1) <= 1 and len(rc2) <= 1
+      data.s1 += ord(len(rc1) == 1)
+      data.s2 += ord(len(rc2) == 1)
       selector.unregister(timer)
       discard selector.select(0)
       selector.registerTimer(t0, true, 0)
       let t2 = 100
-        # likewise, 120 would result in flaky test on at least freebsd, and
-        # using small values close to 100 (eg 102) would reliably fail locally
-        # on OSX
+        # same comment as above
       var rc4 = selector.select(t2)
       var rc5 = selector.select(t2)
-      assert len(rc4) == 1 and len(rc5) == 0, $(len(rc4), len(rc5))
+      assert len(rc4) + len(rc5) <= 1
+      data.s3 += ord(len(rc4) + len(rc5) == 1)
       assert(selector.isEmpty())
       selector.close()
+
+    proc timer_notification_test(): bool =
+      var data: TestData
+      let n = 20
+      for i in 0..<n:
+        timer_notification_test_impl(data)
+      doAssert data.s1 == n and data.s2 == n and data.s3 == n, $data
       result = true
 
     proc process_notification_test(): bool =
@@ -471,8 +481,7 @@ when not defined(windows):
     processTest("Multithreaded user event notification test...",
                 mt_event_test())
   when ioselSupportedPlatform:
-    for i in 0..<20:
-      processTest("Timer notification test...", timer_notification_test())
+    processTest("Timer notification test...", timer_notification_test())
     processTest("Process notification test...", process_notification_test())
     processTest("Signal notification test...", signal_notification_test())
   when defined(macosx) or defined(freebsd) or defined(openbsd) or
