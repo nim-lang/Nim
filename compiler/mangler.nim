@@ -61,6 +61,10 @@ proc isNimOrCKeyword*(w: PIdent): bool =
 template conflictKey(s: PSym): int = s.id
 template conflictKey(s: PType): int = s.uniqueId
 
+# useful for debugging
+template conflictKey(s: BModule): int = conflictKey(s.module)
+template conflictKey(s: BProc): int = conflictKey(s.prc)
+
 proc mangle*(m: ModuleOrProc; s: PSym): string
 
 proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
@@ -74,6 +78,9 @@ proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
     if result == 0:
       # set the value for the name to indicate the NEXT available counter
       conflicts[name] = 1
+    else:
+      # this is kinda important; only an idiot would omit it on his first try
+      inc conflicts[name]
     # cache the result
     conflicts[key] = result
 
@@ -297,10 +304,11 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s, create = true)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
+  # leaving this here just to irritate the god of minimal debugging output
   when m is BModule:
-    echo "module >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result ]
+    echo "module $4 >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
   else:
-    echo "  proc >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result ]
+    echo "  proc $4 >> $1 .. $2 -> $3" % [ $conflictKey(s), s.name.s, $result, $conflictKey(m.prc) ]
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
