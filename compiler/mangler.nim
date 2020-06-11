@@ -7,7 +7,7 @@ import # compiler imports
 
 import # stdlib imports
 
-  std / [ db_sqlite, macros, strutils, intsets, tables, sets, sequtils ]
+  std / [ macros, strutils, intsets, tables, sets, sequtils ]
 
 ##[
 
@@ -131,30 +131,29 @@ proc shortKind(k: TTypeKind): string =
   result = $k
   result = result[2 .. min(4, result.high)].toLowerAscii
 
-proc typeName(m: ModuleOrProc; typ: PType; shorten = false): string =
+proc typeName*(m: ModuleOrProc; typ: PType; shorten = false): string =
   var typ = typ.skipTypes(irrelevantForBackend)
-  case typ.kind
+  result = case typ.kind
   of tySet, tySequence, tyTypeDesc, tyArray:
-    result = shortKind(typ.kind)
-    result.add "_"
-    result.add typeName(m, typ.lastSon, shorten = shorten)
+    shortKind(typ.kind) & "_" & typeName(m, typ.lastSon, shorten = shorten)
   of tyVar, tyRef, tyPtr:
     # omit this verbosity for now
-    result = typeName(m, typ.lastSon, shorten = shorten)
+    typeName(m, typ.lastSon, shorten = shorten)
   else:
     if typ.sym == nil: # or typ.kind notin {tyObject, tyEnum}:
-      result = shortKind(typ.kind) & "_" & $conflictKey(typ)
+      shortKind(typ.kind) & "_" & $conflictKey(typ)
     elif shorten:
-      result = mangle(typ.sym.name.s)
+      mangle(typ.sym.name.s)
     else:
-      result = mangle(m, typ.sym)
+      mangle(m, typ.sym)
 
 template maybeAppendCounter(result: typed; count: int) =
   if count > 0:
     result.add "_"
     result.add $count
 
-proc getTypeName(m: BModule; typ: PType): Rope =
+proc getTypeName*(m: BModule; typ: PType): Rope =
+  ## produce a useful name for the given type, obvs
   block found:
     # XXX: is this safe (enough)?
     #if typ.loc.r != nil:
@@ -232,13 +231,16 @@ proc mangle*(m: ModuleOrProc; s: PSym): string =
     result.add "_"
     result.add $conflictKey(s)
 
+  assert result.len > 0
+
   #if getModule(s).id.abs != m.module.id.abs:
   # XXX: we don't do anything special with regard to m.hcrOn (Hot Code Reload)
-  assert result.len > 0
 
 when not nimIncremental:
   proc setConflictFromCache(m: BModule; s: PSym; name: string; create = true) = discard
 else:
+  import std/db_sqlite
+
   proc setConflictFromCache(m: BModule; s: PSym; name: string; create = true) =
     template g(): ModuleGraph = m.g.graph
     template db(): DbConn = g.incr.db
@@ -282,7 +284,12 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
       p.module
   template g(): ModuleGraph = m.g.graph
   var counter: int
+
+  # we always mangle it anew, which is kinda sad
   var name = mangle(p, s)
+  let key = $conflictKey(s)
+  if key in p.sigConflicts:
+    return (name: name, counter: p.sigConflicts[key])
 
   when p is BModule:
     if g.config.symbolFiles != disabledSf:
@@ -290,6 +297,9 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
       # for this symbol, but only for module-level manglings
       setConflictFromCache(m, s, name, create = create)
       # FIXME: add a compiler pass to warm up the conflicts cache
+
+  # we're kinda cheating here; this caches the symbol for write at file close
+  writeMangledName(m.ndi, s, m.config)
 
   counter = getOrSet(p.sigConflicts, name, conflictKey(s))
   if counter == 0:
@@ -345,9 +355,6 @@ proc getTempName*(m: BModule; n: PNode; r: var Rope): bool =
     # make sure it's not in the conflicts table under a different id
     assert getOrDefault(m.sigConflicts, name, 1) == 1
     # make sure it's in the conflicts table with the NEXT available counter
-    if m.sigConflicts[name] != 1:
-      writeStackTrace()
-      quit(1)
     m.sigConflicts[name] = 1
 
   # add or append it to the result

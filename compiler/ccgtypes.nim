@@ -40,9 +40,8 @@ proc mangleName(m: BModule; s: PSym): Rope =
   if result == nil:
     result = idOrSig(m, s)
     s.loc.r = result
-    writeMangledName(m.ndi, s, m.config)
 
-proc mangleLocalName(p: BProc or BModule; s: PSym): Rope =
+proc mangleLocalName(p: BProc | BModule; s: PSym): Rope =
   ## mangle a symbol name local to a particular proc or its params;
   ## it's a local variable or a temporary we created
   assert s.kind in skLocalVars + {skTemp, skParam}
@@ -50,18 +49,17 @@ proc mangleLocalName(p: BProc or BModule; s: PSym): Rope =
   if result == nil:
     s.loc.r = idOrSig(p, s)
     result = s.loc.r
-    when p is BProc:
-      if s.kind != skTemp: writeMangledName(p.module.ndi, s, p.config)
 
 proc mangleParamName(m: BModule; s: PSym): Rope =
-  ## we cannot use 'sigConflicts' here since we have a BModule, not a BProc.
-  ## Fortunately C's scoping rules are sane enough so that that doesn't
-  ## cause any trouble.
   assert s.kind == skParam
   result = s.loc.r
   if result == nil:
-    var res = s.name.s.mangle
     #[
+
+     2020-06-11: leaving this here because it explains a real scenario,
+                 but it remains to be seen if we'll still have this problem
+                 after the new mangling processes the symbols; ie. why is
+                 HCR special?
 
      Take into account if HCR is on because of the following scenario:
 
@@ -87,12 +85,10 @@ proc mangleParamName(m: BModule; s: PSym): Rope =
 
     ]#
 
-    purgeConflict(m, s)
+    # XXX: why purge here?
+    # purgeConflict(m, s)
     result = mangleLocalName(m, s)
-    if m.hcrOn or isKeyword(s.name) or m.g.config.cppDefines.contains(res):
-      result.add "_0"
     s.loc.r = result
-    writeMangledName(m.ndi, s, m.config)
 
 proc scopeMangledParam(p: BProc; param: PSym) =
   ## parameter generation only takes BModule, not a BProc, so we have to
@@ -100,39 +96,6 @@ proc scopeMangledParam(p: BProc; param: PSym) =
   ## generate unique identifiers reliably (consider that ``var a = a`` is
   ## even an idiom in Nim).
   discard mangleLocalName(p, param)
-
-const
-  irrelevantForBackend = {tyGenericBody, tyGenericInst, tyGenericInvocation,
-                          tyDistinct, tyRange, tyStatic, tyAlias, tySink,
-                          tyInferred, tyOwned}
-
-proc typeName(typ: PType): Rope =
-  let typ = typ.skipTypes(irrelevantForBackend)
-  result =
-    if typ.sym != nil and typ.kind in {tyObject, tyEnum}:
-      rope($typ.kind & '_' & typ.sym.name.s.mangle)
-    else:
-      rope($typ.kind)
-
-proc getTypeName(m: BModule; typ: PType; sig: SigHash): Rope =
-  var t = typ
-  while true:
-    if t.sym != nil and {sfImportc, sfExportc} * t.sym.flags != {}:
-      return t.sym.loc.r
-
-    if t.kind in irrelevantForBackend:
-      t = t.lastSon
-    else:
-      break
-  let typ = if typ.kind in {tyAlias, tySink, tyOwned}: typ.lastSon else: typ
-  if typ.loc.r == nil:
-    typ.loc.r = typ.typeName & $sig
-  else:
-    when defined(debugSigHashes):
-      # check consistency:
-      assert($typ.loc.r == $(typ.typeName & $sig))
-  result = typ.loc.r
-  if result == nil: internalError(m.config, "getTypeName: " & $typ.kind)
 
 proc mapSetType(conf: ConfigRef; typ: PType): TCTypeKind =
   case int(getSize(conf, typ))
@@ -366,7 +329,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
   let concrete = typ.skipTypes(abstractInst)
   case concrete.kind
   of tySequence, tyTuple, tyObject:
-    result = getTypeName(m, typ, sig)
+    result = getTypeName(m, typ)
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
       addForwardStructFormat(m, structOrUnion(typ), result)
@@ -395,7 +358,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): R
 
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        result = getTypeName(m, t, sig)
+        result = getTypeName(m, t)
         if not isImportedType(t):
           m.forwTypeCache[sig] = result
           addForwardStructFormat(m, rope"struct", result)
@@ -756,7 +719,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
   of tyEnum:
     result = cacheGetType(m.typeCache, sig)
     if result == nil:
-      result = getTypeName(m, origTyp, sig)
+      result = getTypeName(m, origTyp)
       if not (isImportedCppType(t) or
           (sfImportc in t.sym.flags and t.sym.magic == mNone)):
         m.typeCache[sig] = result
@@ -783,7 +746,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
             gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
               name: t.sym.name.s, values: vals))
   of tyProc:
-    result = getTypeName(m, origTyp, sig)
+    result = getTypeName(m, origTyp)
     m.typeCache[sig] = result
     var rettype, desc: Rope
     genProcParams(m, t, rettype, desc, check, true, true)
@@ -804,7 +767,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
       # with the name of the struct, not with the pointer to the struct:
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        result = getTypeName(m, origTyp, sig)
+        result = getTypeName(m, origTyp)
         if not isImportedType(t):
           addForwardStructFormat(m, structOrUnion(t), result)
         m.forwTypeCache[sig] = result
@@ -828,7 +791,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           result = rope("TGenericSeq")
       result.add(seqStar(m))
   of tyUncheckedArray:
-    result = getTypeName(m, origTyp, sig)
+    result = getTypeName(m, origTyp)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let foo = getTypeDescAux(m, t[0], check, kind)
@@ -836,7 +799,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
   of tyArray:
     var n: BiggestInt = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
-    result = getTypeName(m, origTyp, sig)
+    result = getTypeName(m, origTyp)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let foo = getTypeDescAux(m, t[1], check, kind)
@@ -844,7 +807,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
            [foo, result, rope(n)])
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
-      let cppName = getTypeName(m, t, sig)
+      let cppName = getTypeName(m, t)
       var i = 0
       var chunkStart = 0
 
@@ -891,7 +854,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
     else:
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        result = getTypeName(m, origTyp, sig)
+        result = getTypeName(m, origTyp)
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
           addForwardStructFormat(m, structOrUnion(t), result)
@@ -906,7 +869,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet; kind: TSymKin
           discard # addAbiCheck(m, t, result) # already handled elsewhere
   of tySet:
     # Don't use the imported name as it may be scoped: 'Foo::SomeKind'
-    result = $t.kind & '_' & t.lastSon.typeName & $t.lastSon.hashType
+    result = typeName(m, t).rope
     m.typeCache[sig] = result
     if not isImportedType(t):
       let s = int(getSize(m.config, t))
