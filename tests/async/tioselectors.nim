@@ -145,7 +145,10 @@ when not defined(windows):
     proc timer_notification_test(): bool =
       var selector = newSelector[int]()
       var timer = selector.registerTimer(100, false, 0)
-      let t = 190
+      when defined(osx):
+        let t = 500
+      else:
+        let t = 200
         # 140 is not enough and causes the test to be flaky in CI on OSX+freebsd
         # When running locally, t=98 will succeed some of the time which indicates
         # there is some lag involved. Note that the higher `t` is, the less times
@@ -470,7 +473,8 @@ when not defined(windows):
     processTest("Multithreaded user event notification test...",
                 mt_event_test())
   when ioselSupportedPlatform:
-    processTest("Timer notification test...", timer_notification_test())
+    for i in 0..<20:
+      processTest("Timer notification test...", timer_notification_test())
     processTest("Process notification test...", process_notification_test())
     processTest("Signal notification test...", signal_notification_test())
   when defined(macosx) or defined(freebsd) or defined(openbsd) or
