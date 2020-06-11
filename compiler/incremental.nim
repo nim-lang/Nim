@@ -190,8 +190,7 @@ when nimIncremental:
       create table if not exists conflicts (
         id integer primary key,
         nimid int not null,
-        name text not null,
-        signature text not null
+        name text not null
       );
     """)
 

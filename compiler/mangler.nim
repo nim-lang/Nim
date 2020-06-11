@@ -254,7 +254,7 @@ else:
       """
       insert = sql"""
         insert into conflicts (nimid, name)
-        values (?, ?, ?)
+        values (?, ?)
       """
     let id = db.getValue(query, key)
     if id == "":
