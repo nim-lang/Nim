@@ -112,6 +112,10 @@
 
 - new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
 
+- Add `browsers.findInstalledBrowsers` to find *all* installed web browsers, not just the default one.
+- Add `browsers.openBrowsers` to open an `url` with one or more web browsers with arbitrary `params`.
+
+
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
 
