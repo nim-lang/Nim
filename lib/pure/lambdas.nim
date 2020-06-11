@@ -74,6 +74,12 @@ macro `~>`*(lhs, rhs: untyped): untyped =
   result.add newCall(bindSym"alias2", name)
   # echo result.repr
 
+template lambdaStatic*(a: untyped): untyped =
+  block:
+    const a2 = a
+    template lambdaStaticImpl(): untyped = a2
+    alias2(lambdaStaticImpl)
+
 macro elementType2*(a: untyped): untyped =
   ## FACTOR D20190814T001035 elementType
   template fun(b): untyped =

@@ -137,6 +137,16 @@ proc testAliasFields() =
   doAssert a.fun1(3) == 3*10
   doAssert a.T3(3,4) == 3*4
 
+proc testStatic() =
+  # aliassym can replace `static[T]`
+  proc fn(a, b: aliassym, c: int): string =
+    const a2 = a # sanity check to make sure it's static
+    const b2 = b
+    doAssert a is int
+    doAssert b is seq[string]
+    $(a, a2, b, b2, $type(a), $type(b), c)
+  doAssert fn(lambdaStatic 12, lambdaStatic @["foo", "bar"], 13) == """(12, 12, @["foo", "bar"], @["foo", "bar"], "int", "seq[string]", 13)"""
+
 proc testLambdaIt() =
   const fun = lambdaIt (it, it)
   doAssert fun(3) == (3, 3)
