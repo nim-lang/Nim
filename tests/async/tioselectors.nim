@@ -142,42 +142,20 @@ when not defined(windows):
     result = true
 
   when ioselSupportedPlatform:
-    type TestData = object
-      s1, s2, s3: int
-    proc timer_notification_test_impl(data: var TestData) =
+    proc timer_notification_test(): bool =
       var selector = newSelector[int]()
-      let t0 = 5
-      var timer = selector.registerTimer(t0, false, 0)
-      let t = 2000
-        # values too close to `t0` cause the test to be flaky in CI on OSX+freebsd
-        # When running locally, t0=100, t=98 will succeed some of the time which indicates
-        # there is some lag involved. Note that the higher `t-t0` is, the less times
-        # the test fails.
-      var rc1 = selector.select(t)
-      var rc2 = selector.select(t)
-      assert len(rc1) <= 1 and len(rc2) <= 1
-      data.s1 += ord(len(rc1) == 1)
-      data.s2 += ord(len(rc2) == 1)
+      var timer = selector.registerTimer(100, false, 0)
+      var rc1 = selector.select(10000)
+      var rc2 = selector.select(10000)
+      assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
-      selector.registerTimer(t0, true, 0)
-        # same comment as above
-      var rc4 = selector.select(t)
-      let t2 = 100
-        # this can't be too large as it'll actually wait that long:
-        # timer_notification_test.n * t2
-      var rc5 = selector.select(t2)
-      assert len(rc4) + len(rc5) <= 1
-      data.s3 += ord(len(rc4) + len(rc5) == 1)
+      selector.registerTimer(100, true, 0)
+      var rc4 = selector.select(10000)
+      var rc5 = selector.select(1000) # this will be an actual wait, keep it small
+      assert len(rc4) == 1 and len(rc5) == 0, $(len(rc4), len(rc5))
       assert(selector.isEmpty())
       selector.close()
-
-    proc timer_notification_test(): bool =
-      var data: TestData
-      let n = 10
-      for i in 0..<n:
-        timer_notification_test_impl(data)
-      doAssert data.s1 == n and data.s2 == n and data.s3 == n, $data
       result = true
 
     proc process_notification_test(): bool =
