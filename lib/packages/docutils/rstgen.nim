@@ -29,6 +29,7 @@ import strutils, os, hashes, strtabs, rstast, rst, highlite, tables, sequtils,
   algorithm, parseutils
 import "$lib/../compiler/nimpaths"
 import "$lib/../compiler/pathutils"
+import ../../std/private/since
 
 const
   HtmlExt = "html"
@@ -1342,6 +1343,16 @@ proc rstToHtml*(s: string, options: RstParseOptions,
   var rst = rstParse(s, filen, 0, 1, dummyHasToc, options)
   result = ""
   renderRstToOut(d, rst, result)
+
+
+proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
+  ## Convenience proc for `renderRstToOut` and `initRstGenerator`.
+  runnableExamples: doAssert rstToLatex("*Hello* **world**", {}) == """\emph{Hello} \textbf{world}"""
+  if rstSource.len == 0: return
+  var option: bool
+  var rstGenera: RstGenerator
+  rstGenera.initRstGenerator(outLatex, defaultConfig(), "input", options)
+  rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
 
 
 when isMainModule:

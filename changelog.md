@@ -111,6 +111,8 @@
 - new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json serialization/deserialization of custom types.
 
 - new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
+- Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
+
 
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
