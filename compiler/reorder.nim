@@ -290,13 +290,13 @@ proc hasAccQuoted(n: PNode): bool =
     if hasAccQuoted(a):
       return true
 
-const extandedProcDefs = procDefs + {nkMacroDef, nkTemplateDef}
+const extendedProcDefs = procDefs + {nkMacroDef, nkTemplateDef}
 
 proc hasAccQuotedDef(n: PNode): bool =
   # Checks if the node is a function, macro, template ...
   # with a quoted name or if it contains one
   case n.kind
-  of extandedProcDefs:
+  of extendedProcDefs:
     result = n[0].hasAccQuoted
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
@@ -316,7 +316,7 @@ proc hasBody(n: PNode): bool =
   case n.kind
   of nkCommand, nkCall:
     result = true
-  of extandedProcDefs:
+  of extendedProcDefs:
     result = n[^1].kind == nkStmtList
   of nkStmtList, nkStmtListExpr, nkWhenStmt, nkElifBranch, nkElse, nkStaticStmt:
     for a in n:
