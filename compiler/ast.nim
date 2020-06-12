@@ -434,8 +434,8 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOpt
-      # Builtin optional type
+    tyOptDeprecated
+      # deadcode: was `tyOpt`, Builtin optional type
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -658,7 +658,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
     mDefault, mUnown, mAccessEnv, mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mOpt, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
@@ -1492,7 +1492,7 @@ proc isGCedMem*(t: PType): bool {.inline.} =
            t.kind == tyProc and t.callConv == ccClosure
 
 proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
-  const HaveTheirOwnEmpty = {tySequence, tyOpt, tySet, tyPtr, tyRef, tyProc}
+  const HaveTheirOwnEmpty = {tySequence, tySet, tyPtr, tyRef, tyProc}
   owner.flags = owner.flags + (elem.flags * {tfHasMeta, tfTriggersCompileTime})
   if tfNotNil in elem.flags:
     if owner.kind in {tyGenericInst, tyGenericBody, tyGenericInvocation}:
@@ -1505,7 +1505,7 @@ proc propagateToOwner*(owner, elem: PType; propagateHasAsgn = true) =
   if mask != {} and propagateHasAsgn:
     let o2 = owner.skipTypes({tyGenericInst, tyAlias, tySink})
     if o2.kind in {tyTuple, tyObject, tyArray,
-                   tySequence, tyOpt, tySet, tyDistinct, tyOpenArray, tyVarargs}:
+                   tySequence, tySet, tyDistinct, tyOpenArray, tyVarargs}:
       o2.flags.incl mask
       owner.flags.incl mask
 
