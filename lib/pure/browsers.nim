@@ -126,19 +126,22 @@ proc findInstalledBrowsers*(limit = 3.Positive, followSymlinks = true): set[WebB
       inc i
       incl result, x
 
-proc openBrowser*(url: string, browser: WebBrowsers, params: seq[string]) {.since: (1, 3).} =
+proc openBrowser*(url: string, browser: WebBrowsers, params: varargs[string]) {.since: (1, 3).} =
   ## Open an `url` with given web browser with arbitrary `params`.
   ## This does not block. The URL must not be empty string.
   ## To check for installed web browsers see `findInstalledBrowsers()`.
   ##
   ## .. code-block:: nim
+  ##   openBrowser("https://nim-lang.org", wbFirefox)
   ##   openBrowser("https://nim-lang.org", wbFirefox, "-new-tab")
   ##   openBrowser("https://nim-lang.org", wbChromium, "--new-window")
   ##   openBrowser("http://localhost/karax-spa/index.html", wbFirefox, "--devtools")
   doAssert url.len > 0, "URL must not be empty string"
   when defined(windows):
-    var o = newWideCString($browser & " " & params.join(" "))
+    let cmd = if params.len > 0: $browser & " " & params.join(" ") else: $browser
+    var o = newWideCString(cmd)
     var u = newWideCString(url)
     discard shellExecuteW(0'i32, o, u, nil, nil, SW_SHOWNORMAL)
   else:
-    discard execShellCmd($browser & " " & quoteShell(params.join(" ")) & " " & quoteShell(url))
+    let cmd = if params.len > 0: $browser & " " & quoteShell(params.join(" ")) else: $browser & " "
+    discard execShellCmd(cmd & " " & quoteShell(url))
