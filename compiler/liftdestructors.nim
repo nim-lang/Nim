@@ -703,7 +703,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   case t.kind
   of tyNone, tyEmpty, tyVoid: discard
   of tyPointer, tySet, tyBool, tyChar, tyEnum, tyInt..tyUInt64, tyCString,
-      tyPtr, tyOpt, tyUncheckedArray, tyVar, tyLent:
+      tyPtr, tyUncheckedArray, tyVar, tyLent:
     defaultOp(c, t, body, x, y)
   of tyRef:
     if c.g.config.selectedGC in {gcArc, gcOrc}:
@@ -785,6 +785,7 @@ proc fillBody(c: var TLiftCtx; t: PType; body, x, y: PNode) =
   of tyOrdinal, tyRange, tyInferred,
      tyGenericInst, tyAlias, tySink:
     fillBody(c, lastSon(t), body, x, y)
+  of tyOptDeprecated: doAssert false
 
 proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
                             kind: TTypeAttachedOp; info: TLineInfo): PSym =

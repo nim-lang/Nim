@@ -608,10 +608,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
         result = "seq"
         if t.len > 0:
           result &= "[" & typeToString(t[0]) & ']'
-    of tyOpt:
-      result = "opt"
-      if t.len > 0:
-        result &= "opt[" & typeToString(t[0]) & ']'
     of tyOrdinal:
       result = "ordinal"
       if t.len > 0:
@@ -1150,7 +1146,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
   of tyGenericInvocation, tyGenericBody, tySequence, tyOpenArray, tySet, tyRef,
      tyPtr, tyVar, tyLent, tySink, tyUncheckedArray, tyArray, tyProc, tyVarargs,
      tyOrdinal, tyCompositeTypeClass, tyUserTypeClass, tyUserTypeClassInst,
-     tyAnd, tyOr, tyNot, tyAnything, tyOpt, tyOwned:
+     tyAnd, tyOr, tyNot, tyAnything, tyOwned:
     cycleCheck()
     if a.kind == tyUserTypeClass and a.n != nil: return a.n == b.n
     result = sameChildrenAux(a, b, c)
@@ -1173,6 +1169,7 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
+  of tyOptDeprecated: doAssert false
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
@@ -1365,7 +1362,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = t
     else:
       result = typeAllowedAux(marker, lastSon(t), kind, flags-{taHeap})
-  of tySequence, tyOpt:
+  of tySequence:
     if t[0].kind != tyEmpty:
       result = typeAllowedAux(marker, t[0], kind, flags+{taHeap})
     elif kind in {skVar, skLet}:
@@ -1408,6 +1405,7 @@ proc typeAllowedAux(marker: var IntSet, typ: PType, kind: TSymKind,
       result = typeAllowedAux(marker, t.lastSon, kind, flags+{taHeap})
     else:
       result = t
+  of tyOptDeprecated: doAssert false
 
 proc typeAllowed*(t: PType, kind: TSymKind; flags: TTypeAllowedFlags = {}): PType =
   # returns 'nil' on success and otherwise the part of the type that is

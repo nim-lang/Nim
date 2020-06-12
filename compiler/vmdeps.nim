@@ -224,7 +224,6 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
   of tyLent: result = mapTypeToBracket("lent", mBuiltinType, t, info)
   of tySink: result = mapTypeToBracket("sink", mBuiltinType, t, info)
   of tySequence: result = mapTypeToBracket("seq", mSeq, t, info)
-  of tyOpt: result = mapTypeToBracket("opt", mOpt, t, info)
   of tyProc:
     if inst:
       result = newNodeX(nkProcTy)
@@ -298,6 +297,7 @@ proc mapTypeToAstX(cache: IdentCache; t: PType; info: TLineInfo;
       if t.n != nil:
         result.add t.n.copyTree
   of tyOwned: result = mapTypeToBracket("owned", mBuiltinType, t, info)
+  of tyOptDeprecated: doAssert false
 
 proc opMapTypeToAst*(cache: IdentCache; t: PType; info: TLineInfo): PNode =
   result = mapTypeToAstX(cache, t, info, inst=false, allowRecursionX=true)

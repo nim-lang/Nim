@@ -1814,7 +1814,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
         incl result.flags, tfHasAsgn
-    of mOpt: result = semContainer(c, n, tyOpt, "opt", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mType, mTypeOf:
       result = makeTypeDesc(c, semTypeNode(c, n[1], nil))

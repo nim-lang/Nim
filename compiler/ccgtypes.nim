@@ -367,7 +367,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
   if result != nil: return
   result = getTypePre(m, typ, sig)
   if result != nil: return
-  let concrete = typ.skipTypes(abstractInst + {tyOpt})
+  let concrete = typ.skipTypes(abstractInst)
   case concrete.kind
   of tySequence, tyTuple, tyObject:
     result = getTypeName(m, typ, sig)
