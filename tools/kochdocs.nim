@@ -49,14 +49,22 @@ proc exec*(cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
 template inFold*(desc, body) =
   if existsEnv("TRAVIS"):
     echo "travis_fold:start:" & desc.replace(" ", "_")
+  elif existsEnv("GITHUB_ACTIONS"):
+    echo "::group::" & desc
+  elif existsEnv("TF_BUILD"):
+    echo "##[group]" & desc
 
   body
 
   if existsEnv("TRAVIS"):
     echo "travis_fold:end:" & desc.replace(" ", "_")
+  elif existsEnv("GITHUB_ACTIONS"):
+    echo "::endgroup::"
+  elif existsEnv("TF_BUILD"):
+    echo "##[endgroup]"
 
 proc execFold*(desc, cmd: string, errorcode: int = QuitFailure, additionalPath = "") =
-  ## Execute shell command. Add log folding on Travis CI.
+  ## Execute shell command. Add log folding for various CI services.
   # https://github.com/travis-ci/travis-ci/issues/2285#issuecomment-42724719
   inFold(desc):
     exec(cmd, errorcode, additionalPath)
