@@ -146,9 +146,9 @@ when not defined(windows):
       s1, s2, s3: int
     proc timer_notification_test_impl(data: var TestData) =
       var selector = newSelector[int]()
-      let t0 = 20
+      let t0 = 5
       var timer = selector.registerTimer(t0, false, 0)
-      let t = 500
+      let t = 2000
         # values too close to `t0` cause the test to be flaky in CI on OSX+freebsd
         # When running locally, t0=100, t=98 will succeed some of the time which indicates
         # there is some lag involved. Note that the higher `t-t0` is, the less times
@@ -161,9 +161,11 @@ when not defined(windows):
       selector.unregister(timer)
       discard selector.select(0)
       selector.registerTimer(t0, true, 0)
-      let t2 = 100
         # same comment as above
-      var rc4 = selector.select(t2)
+      var rc4 = selector.select(t)
+      let t2 = 100
+        # this can't be too large as it'll actually wait that long:
+        # timer_notification_test.n * t2
       var rc5 = selector.select(t2)
       assert len(rc4) + len(rc5) <= 1
       data.s3 += ord(len(rc4) + len(rc5) == 1)
@@ -172,7 +174,7 @@ when not defined(windows):
 
     proc timer_notification_test(): bool =
       var data: TestData
-      let n = 20
+      let n = 10
       for i in 0..<n:
         timer_notification_test_impl(data)
       doAssert data.s1 == n and data.s2 == n and data.s3 == n, $data
