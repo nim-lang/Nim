@@ -80,6 +80,13 @@ template lambdaStatic*(a: untyped): untyped =
     template lambdaStaticImpl(): untyped = a2
     alias2(lambdaStaticImpl)
 
+template lambdaType*(t: typedesc): untyped =
+  type T = typeof(block: (var a: t; a))
+  # type T = t
+  #   # this would work but would create a visible abstraction, eg:
+  #   # $ would render as: "T`gensym37245237"
+  alias2(T)
+
 macro elementType2*(a: untyped): untyped =
   ## FACTOR D20190814T001035 elementType
   template fun(b): untyped =

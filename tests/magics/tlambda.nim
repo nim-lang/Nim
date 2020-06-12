@@ -147,6 +147,19 @@ proc testStatic() =
     $(a, a2, b, b2, $type(a), $type(b), c)
   doAssert fn(lambdaStatic 12, lambdaStatic @["foo", "bar"], 13) == """(12, 12, @["foo", "bar"], @["foo", "bar"], "int", "seq[string]", 13)"""
 
+proc testTypedesc() =
+  # aliassym can replace `typedesc[T]`
+  proc fn(t1, t2, t3: aliassym): string =
+    var a1: t1
+    doAssert a1 is float32
+    doAssert t1 is float32
+    doAssert float32 is t1
+    var a2: t2
+    doAssert t2 is uint8
+    result = $($t1, t1.default, $t2, $t3)
+  type Foo[T] = object
+  doAssert fn(lambdaType float32, lambdaType type(1u8+2u8), lambdaType Foo[int]) == """("float32", 0.0, "uint8", "Foo[system.int]")"""
+
 proc testLambdaIt() =
   const fun = lambdaIt (it, it)
   doAssert fun(3) == (3, 3)
@@ -361,6 +374,8 @@ proc testAll*() =
   testAliasTuple()
   testAliasGeneric()
   testAliasFields()
+  testStatic()
+  testTypedesc()
   testLambdaIt()
   testArrow()
   testProc()
