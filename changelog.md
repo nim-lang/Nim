@@ -113,7 +113,7 @@
 - new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
 
 - Add `browsers.findInstalledBrowsers` to find *all* installed web browsers, not just the default one.
-- Add `browsers.openBrowsers` to open an `url` with one or more web browsers with arbitrary `params`.
+- Add `browsers.openBrowser` to open an `url` with given web browser with arbitrary `params`.
 
 
 ## Language changes
