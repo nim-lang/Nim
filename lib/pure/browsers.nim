@@ -130,6 +130,7 @@ proc openBrowser*(url: string, browser: WebBrowsers, params: varargs[string]) {.
   ## Open an `url` with given web browser with arbitrary `params`.
   ## This does not block. The URL must not be empty string.
   ## To check for installed web browsers see `findInstalledBrowsers()`.
+  ## The web browser must be within `PATH`.
   ##
   ## .. code-block:: nim
   ##   openBrowser("https://nim-lang.org", wbFirefox)
