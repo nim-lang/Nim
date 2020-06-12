@@ -50,6 +50,24 @@ template config(): ConfigRef = cache.modules.config
 using
   g: ModuleGraph
 
+# get a unique id from a psym or ptype; these are keys in ConflictsTable
+template conflictKey(s: PSym): int = s.id
+template conflictKey(s: PType): int = s.uniqueId
+
+# useful for debugging
+template conflictKey(s: BModule): int = conflictKey(s.module)
+template conflictKey(s: BProc): int = conflictKey(s.prc)
+
+proc mangle*(m: ModuleOrProc; s: PSym): string
+
+proc getSomeNameForModule*(m: PSym): string =
+  assert m.kind == skModule
+  assert m.owner.kind == skPackage
+  if {sfSystemModule, sfMainModule} * m.flags == {}:
+    result = mangle(m.owner.name.s)
+    result.add "_"
+  result.add mangle(m.name.s)
+
 proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords
   # it's more efficient to test the whole Nim keywords range
@@ -62,16 +80,6 @@ proc isNimOrCKeyword*(w: PIdent): bool =
     true
   else:
     false
-
-# get a unique id from a psym or ptype; these are keys in ConflictsTable
-template conflictKey(s: PSym): int = s.id
-template conflictKey(s: PType): int = s.uniqueId
-
-# useful for debugging
-template conflictKey(s: BModule): int = conflictKey(s.module)
-template conflictKey(s: BProc): int = conflictKey(s.prc)
-
-proc mangle*(m: ModuleOrProc; s: PSym): string
 
 proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
   ## add/get a mangled name from the conflicts table and return the number
@@ -226,7 +234,7 @@ proc mangle*(m: ModuleOrProc; s: PSym): string =
     let parent = getModule(s)
     if parent != nil:
       result.add "_"
-      result.add mangle(parent.name.s)
+      result.add getSomeNameForModule(parent)
 
   # something like `default` might need this check
   if (unlikely) result in m.config.cppDefines:

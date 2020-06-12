@@ -1298,17 +1298,9 @@ proc getFileHeader(conf: ConfigRef; cfile: Cfile): Rope =
   if conf.hcrOn: result.add("#define NIM_HOT_CODE_RELOADING\L")
   addNimDefines(result, conf)
 
-proc getSomeNameForModule(m: PSym): Rope =
-  assert m.kind == skModule
-  assert m.owner.kind == skPackage
-  if {sfSystemModule, sfMainModule} * m.flags == {}:
-    result = m.owner.name.s.mangle.rope
-    result.add "_"
-  result.add m.name.s.mangle
-
 proc getSomeInitName(m: BModule, suffix: string): Rope =
   if not m.hcrOn:
-    result = getSomeNameForModule(m.module)
+    result = getSomeNameForModule(m.module).rope
   result.add suffix
 
 proc getInitName(m: BModule): Rope =
