@@ -66,6 +66,7 @@ const
   Http304* = HttpCode(304)
   Http305* = HttpCode(305)
   Http307* = HttpCode(307)
+  Http308* = HttpCode(308)
   Http400* = HttpCode(400)
   Http401* = HttpCode(401)
   Http403* = HttpCode(403)
@@ -272,6 +273,7 @@ proc `$`*(code: HttpCode): string =
   of 304: "304 Not Modified"
   of 305: "305 Use Proxy"
   of 307: "307 Temporary Redirect"
+  of 308: "308 Permanent Redirect"
   of 400: "400 Bad Request"
   of 401: "401 Unauthorized"
   of 403: "403 Forbidden"
