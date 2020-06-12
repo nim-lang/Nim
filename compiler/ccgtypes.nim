@@ -350,7 +350,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
     var param = t.n[i].sym
     if isCompileTimeOnly(param.typ): continue
     if params != nil: params.add(~", ")
-    fillLoc(param.loc, locParam, t.n[i], mangleName(p, param),
+    fillLoc(param.loc, locParam, t.n[i], mangleParamName(p, param),
             param.paramStorageLoc)
     if ccgIntroducedPtr(m.config, param, t[0]):
       params.add(getTypeDescWeak(m, param.typ, check, skParam))
@@ -821,8 +821,8 @@ type
     clHalfWithEnv,    ## fn(args, void* env) type with trailing 'void* env' parameter
     clFull            ## struct {fn(args, void* env), env}
 
-proc getClosureType(p: ModuleOrProc, t: PType, kind: TClosureTypeKind): Rope =
-  let m = createm()
+proc getClosureType(p: BProc, t: PType, kind: TClosureTypeKind): Rope =
+  let m = p.module
   assert t.kind == tyProc
   var check = initIntSet()
   result = getTempName(m)

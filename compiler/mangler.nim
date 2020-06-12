@@ -316,9 +316,7 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   let conflict = getSetConflict(m, s, create = true)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
-  # leaving this here just to irritate the god of minimal debugging output
-  if conflict.counter > 0 and s.kind == skParam:
-    result = rope("/*" & $conflictKey(s) & "*/") & result
+  when false: # just to irritate the god of minimal debugging output
     when m is BModule:
       echo "module $4 >> $1 .. $2 -> $3" %
         [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
@@ -326,9 +324,6 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
       echo "  proc $4 >> $1 .. $2 -> $3" %
         [ $conflictKey(s), s.name.s, $result,
          if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
-    if conflictKey(s) == 11073416:
-      debug s
-      writeStackTrace()
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
@@ -383,8 +378,7 @@ proc getTempName*(m: BModule): Rope =
   result = getTempNameImpl(m, m.labels).rope
 
 proc mangleName*(m: ModuleOrProc; s: PSym): Rope =
-  result = s.loc.r
-  if result == nil:
+  if s.loc.r == nil:
     when m is BModule:
       # skParam is valid for global object fields with proc types
       #assert s.kind notin {skParam, skResult}
@@ -392,7 +386,7 @@ proc mangleName*(m: ModuleOrProc; s: PSym): Rope =
     when m is BProc:
       assert s.kind notin {skModule, skPackage}
     s.loc.r = idOrSig(m, s)
-    result = s.loc.r
+  result = s.loc.r
 
     #[
 
@@ -445,11 +439,19 @@ proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
     result = rope(mangleField(m, field.name))
   if result == nil: internalError(m.config, field.info, "mangleRecFieldName")
 
-proc assignParam*(p: BProc, s: PSym, retType: PType) =
+proc assignParam*(p: BProc, s: PSym) =
   ## Push the mangled name into the proc's sigConflicts so that we can
   ## make new local identifiers of the same name without colliding with it.
   ## Currently ignores return type.
-  purgeConflict(p.module, s)   # discard any existing counter for this symbol
-  s.loc.r = nil                # from the parent module as we move it local
-  s.loc.r = mangleName(p, s)   # and force the new location like a punk
-  # XXX: currently does not rewrite the prototype
+  # it's very possible that the symbol is already in the module scope!
+  if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
+    purgeConflict(p.module, s)   # discard any existing counter for this sym
+    s.loc.r = nil                # from the parent module as we move it local
+    s.loc.r = mangleName(p, s)   # and force the new location like a punk
+
+proc mangleParamName*(p: ModuleOrProc; s: PSym): Rope =
+  ## we should be okay with just a simple mangle here for prototype
+  ## purposes; the real meat happens in assignParam later...
+  if s.loc.r == nil:
+    s.loc.r = mangle(p, s).rope
+  result = s.loc.r
