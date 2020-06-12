@@ -113,7 +113,7 @@ proc openDefaultBrowser*() {.since: (1, 1).} =
   openDefaultBrowserImpl("http:about:blank")  # See IETF RFC-6694 Section 3.
 
 proc findInstalledBrowsers*(limit = 3.Positive, followSymlinks = true): set[WebBrowsers] {.inline, since: (1, 3).} =
-  ## Try to find *all* installed web browsers, not just the default one.
+  ## Try to find *all* installed web browsers within `PATH`, not just the default one.
   ## * if `followSymlinks` is `true` it will follow symbolic links when searching for web browsers.
   ## * `limit` is the maximum limit of *installed* web browsers to return.
   ##
