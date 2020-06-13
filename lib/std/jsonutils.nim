@@ -2,8 +2,16 @@
 This module implements a hookable (de)serialization for arbitrary types.
 Design goal: avoid importing modules where a custom serialization is needed;
 see strtabs.fromJsonHook,toJsonHook for an example.
-
 ]##
+
+runnableExamples:
+  import std/[strtabs,json]
+  type Foo = ref object
+    t: bool
+    z1: int8
+  let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
+  let j = a.toJson
+  doAssert j.jsonTo(type(a)).toJson == j
 
 import std/[json,tables,strutils]
 
@@ -114,12 +122,14 @@ proc toJson*[T](a: T): JsonNode =
       result = newJArray()
       for v in a.fields: result.add toJson(v)
   elif T is ref | ptr:
-    if a == nil: result = newJNull()
+    if system.`==`(a, nil): result = newJNull()
     else: result = toJson(a[])
   elif T is array | seq:
     result = newJArray()
     for ai in a: result.add toJson(ai)
   elif T is pointer: result = toJson(cast[int](a))
+    # edge case: `a == nil` could've also led to `newJNull()`, but this results
+    # in simpler code for `toJson` and `fromJson`.
   elif T is distinct: result = toJson(a.distinctBase)
   elif T is bool: result = %(a)
   elif T is Ordinal: result = %(a.ord)
