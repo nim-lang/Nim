@@ -145,14 +145,15 @@ when not defined(windows):
     proc timer_notification_test(): bool =
       var selector = newSelector[int]()
       var timer = selector.registerTimer(100, false, 0)
-      var rc1 = selector.select(140)
-      var rc2 = selector.select(140)
+      var rc1 = selector.select(10000)
+      var rc2 = selector.select(10000)
+      # if this flakes, see tests/m14634.nim
       assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
       selector.registerTimer(100, true, 0)
-      var rc4 = selector.select(120)
-      var rc5 = selector.select(120)
+      var rc4 = selector.select(10000)
+      var rc5 = selector.select(1000) # this will be an actual wait, keep it small
       assert len(rc4) == 1 and len(rc5) == 0, $(len(rc4), len(rc5))
       assert(selector.isEmpty())
       selector.close()
