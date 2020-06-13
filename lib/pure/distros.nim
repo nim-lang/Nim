@@ -27,7 +27,7 @@
 ##
 ## See `packaging <packaging.html>`_ for hints on distributing Nim using OS packages.
 
-from strutils import contains, toLowerAscii, replace, strip
+from strutils import contains, toLowerAscii, replace, strip, split
 
 when not defined(nimscript):
   from osproc import execProcess
