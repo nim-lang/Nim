@@ -4354,7 +4354,7 @@ caught by reference. Example:
   fn()
 
 **Note:** `getCurrentException()` and `getCurrentExceptionMsg()` are not available
-for imported exceptions. One needs to use the `except ImportedException as x:` syntax
+for imported exceptions from C++. One needs to use the `except ImportedException as x:` syntax
 and rely on functionality of the `x` object to get exception details.
 
 
