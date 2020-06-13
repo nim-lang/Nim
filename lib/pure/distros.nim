@@ -152,6 +152,8 @@ template osReleaseID(): untyped = cmdRelease("cat /etc/os-release | grep ^ID=", 
 template osReleaseVersion(): untyped = cmdRelease("cat /etc/os-release | grep ^VERSION_ID=", osReleaseVersionRes)
 template lsbRelease(): untyped = cmdRelease("lsb_release -d", lsbReleaseRes)
 template hostnamectl(): untyped = cmdRelease("hostnamectl", hostnamectlRes)
+template windowsReleaseVersion(): untyped = cmdRelease("wmic os get Version", osReleaseVersionRes)
+template macReleaseVersion(): untyped = cmdRelease("sw_vers -productVersion", osReleaseVersionRes)
 
 proc detectOsWithAllCmd(d: Distribution): bool =
   let dd = toLowerAscii($d)
@@ -280,8 +282,7 @@ proc getOSVersion*(): string =
     result = ""
 
     when defined(windows):
-        result = cmdRelease("wmic os get Version")
-        result = result.strip().split("\n")[^1].strip()
+        result = windowsReleaseVersion().strip().split("\n")[^1].strip()
     elif defined(bsd):
       if detectOs(FreeBSD) or detectOs(OpenBSD):
         result = unameVersion()
@@ -293,7 +294,7 @@ proc getOSVersion*(): string =
       elif detectOs(Gentoo) or detectOs(OpenSUSE) or detectOs(GoboLinux) or detectOs(Solaris):
         result = unameVersion()
     elif defined(macosx):
-        result = cmdRelease("sw_vers -productVersion").strip()
+        result = macReleaseVersion().strip()
 
 when false:
   foreignDep("libblas-dev")
