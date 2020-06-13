@@ -207,6 +207,23 @@ block normalizedPath:
     doAssert normalizedPath("/a///b") == unixToNativePath"/a/b"
     doAssert normalizedPath("/a/b/c/..") == unixToNativePath"/a/b"
     doAssert normalizedPath("/a/b/c/../") == unixToNativePath"/a/b"
+    doAssert normalizedPath("//a//.") == unixToNativePath"/a"
+
+  block exe:
+    doAssert normalizedPath("", exe = true) == ""
+    when defined(posix):
+      doAssert normalizedPath("foo", exe = true) == "./foo"
+      doAssert normalizedPath(".foo.bar", exe = true) == "./.foo.bar"
+    when defined(windows):
+      doAssert normalizedPath("foo", exe = true) == "foo"
+    doAssert normalizedPath("foo/bar", exe = true) == unixToNativePath"foo/bar"
+    doAssert normalizedPath("//abc//.", exe = true) == unixToNativePath"/abc"
+
+    # edge cases
+    when defined(posix):
+      doAssert normalizedPath("foo/", exe = true) == "./foo"
+    doAssert normalizedPath("..", exe = true) == ".."
+    doAssert normalizedPath(".", exe = true) == "."
 
 block isHidden:
   when defined(posix):

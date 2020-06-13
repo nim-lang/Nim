@@ -1407,8 +1407,9 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 proc absolutePathInternal(path: string): string =
   absolutePath(path, getCurrentDir())
 
-proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
-  ## Normalize a path.
+proc normalizePath*(path: var string, exe = false) {.rtl, extern: "nos$1", tags: [].} =
+  ## Normalize a path. If `exe == true`, on posix, `./` is prepended if `path`
+  ## doesn't contain `/` and is not `"", ".", ".."`.
   ##
   ## Consecutive directory separators are collapsed, including an initial double slash.
   ##
@@ -1420,15 +1421,22 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ##
   ## See also:
   ## * `absolutePath proc <#absolutePath,string>`_
-  ## * `normalizedPath proc <#normalizedPath,string>`_ for a version which returns
-  ##   a new string
+  ## * `normalizedPath proc <#normalizedPath,string>`_ for outplace version.
   runnableExamples:
     when defined(posix):
       var a = "a///b//..//c///d"
       a.normalizePath()
       assert a == "a/c/d"
+      assert normalizedPath("//a//./") == "/a"
+      assert normalizedPath("koch", exe = true) == "./koch" # difference with exe=false
+      assert normalizedPath("bin/nim", exe = true) == "bin/nim"
+    assert normalizedPath("", exe = true) == ""
 
   path = pathnorm.normalizePath(path)
+  when defined(posix):
+    if exe and path.len > 0 and DirSep notin path and path != "." and path != "..":
+      path = "./" & path
+
   when false:
     let isAbs = isAbsolute(path)
     var stack: seq[string] = @[]
@@ -1458,16 +1466,13 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
 
 proc normalizePathAux(path: var string) = normalizePath(path)
 
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
-  ## Returns a normalized path for the current OS.
-  ##
-  ## See also:
-  ## * `absolutePath proc <#absolutePath,string>`_
-  ## * `normalizePath proc <#normalizePath,string>`_ for the in-place version
-  runnableExamples:
-    when defined(posix):
-      assert normalizedPath("a///b//..//c///d") == "a/c/d"
-  result = pathnorm.normalizePath(path)
+proc normalizedPath*(path: string, exe = false): string {.rtl, extern: "nos$1", tags: [].} =
+  ## In-place version of `normalizePath proc <#normalizePath,string>`_
+  if exe:
+    result = path
+    normalizePath(result, exe = exe)
+  else: # avoid 1 extra copy
+    result = pathnorm.normalizePath(path)
 
 when defined(Windows) and not weirdTarget:
   proc openHandle(path: string, followSymlink=true, writeAccess=false): Handle =

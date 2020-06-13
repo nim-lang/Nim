@@ -450,12 +450,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
             exeCmd = nodejs
             args = concat(@[exeFile], args)
           else:
-            if defined(posix) and not exeFile.contains('/'):
-              # "security" in Posix is actually just a euphemism
-              # for "unproductive arbitrary shit"
-              exeCmd = "./" & exeFile
-            else:
-              exeCmd = exeFile
+            exeCmd = exeFile.normalizedPath(exe = true)
             if expected.useValgrind:
               args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"
