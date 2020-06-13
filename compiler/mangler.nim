@@ -51,7 +51,7 @@ template conflictKey(s: BProc): int =
   else:
     conflictKey(s.prc)
 
-proc mangle*(m: ModuleOrProc; s: PSym): string
+proc mangle*(p: ModuleOrProc; s: PSym): string
 
 proc getSomeNameForModule*(m: PSym): string =
   assert m.kind == skModule
@@ -61,6 +61,10 @@ proc getSomeNameForModule*(m: PSym): string =
     result.add "_"
     assert m.name.s.len > 0
   result.add mangle(m.name.s)
+
+proc findPendingModule*(m: BModule, s: PSym): BModule =
+  var ms = getModule(s)
+  result = m.g.modules[ms.position]
 
 proc isNimOrCKeyword*(w: PIdent): bool =
   # Nim and C++ share some keywords
@@ -169,10 +173,10 @@ proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
         nom.add "_"
         nom.add typeName(m, s.typ.sons[1], shorten = true)
 
-proc mangle*(m: ModuleOrProc; s: PSym): string =
+proc mangle*(p: ModuleOrProc; s: PSym): string =
   # TODO: until we have a new backend ast, all mangles have to be done
   # identically
-
+  let m = getem()
   block:
     case s.kind
     of skProc:
@@ -217,10 +221,10 @@ proc mangle*(m: ModuleOrProc; s: PSym): string =
 
     # add the module name if necessary, or if it helps avoid a clash
     if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
-      let parent = getModule(s)
+      let parent = findPendingModule(m, s)
       if parent != nil:
         result.add "_"
-        result.add getSomeNameForModule(parent)
+        result.add getSomeNameForModule(parent.module)
 
     # something like `default` might need this check
     if (unlikely) result in m.config.cppDefines:
@@ -232,16 +236,13 @@ proc mangle*(m: ModuleOrProc; s: PSym): string =
   assert result.len > 0
 
 when not nimIncremental:
-  proc setConflictFromCache(m: BModule; s: PSym; name: string; create = true) = discard
+  proc getConflictFromCache(g: ModuleGraph; s: PSym): int =
+    discard
 else:
   import std/db_sqlite
 
-  proc setConflictFromCache(m: BModule; s: PSym; name: string; create = true) =
-    template g(): ModuleGraph = m.g.graph
+  proc getConflictFromCache(g: ModuleGraph; s: PSym): int =
     template db(): DbConn = g.incr.db
-    var counter: int
-    let key = $conflictKey(s)
-
     const
       query = sql"""
         select id from conflicts
@@ -250,63 +251,80 @@ else:
         limit 1
       """
       insert = sql"""
-        insert into conflicts (nimid, name)
-        values (?, ?)
+        insert into conflicts (nimid)
+        values (?)
       """
-    let id = db.getValue(query, key)
+    let id = db.getValue(query, s.id)
     if id == "":
-      if not create:
-        assert false, "missing id for " & name & " and no create option"
       # set the counter to the row id, not the symbol id or the actual count
-      counter = db.insertID(insert, key, name).int
+      result = db.insertID(insert, s.id).int
     else:
-      counter = id.parseInt
-    assert counter > 0
+      result = id.parseInt
+    assert result > 0
 
-    # cache the counter associated with the key; the counter we used
-    assert key notin m.sigConflicts
-    m.sigConflicts[key] = counter
-
-proc getSetConflict(p: ModuleOrProc; s: PSym;
-                    create = true): tuple[name: string; counter: int] =
+proc getSetConflict(p: ModuleOrProc; s: PSym): tuple[name: string; counter: int] =
   ## take a backend module or a procedure being generated and produce an
   ## appropriate name and the instances of its occurence, which may be
   ## incremented for this instance
   let m = getem()
   template g(): ModuleGraph = m.g.graph
-  var counter: int
+  var counter = -1         # the current counter for this name
+  var next = 1             # the next counter for this name
 
   # we always mangle it anew, which is kinda sad
   var name = mangle(p, s)
   let key = $conflictKey(s)
-  if key in p.sigConflicts:
-    return (name: name, counter: p.sigConflicts[key])
 
-  when p is BModule:
-    if g.config.symbolFiles != disabledSf:
-      # we can use the IC cache to determine the right name and counter
-      # for this symbol, but only for module-level manglings
-      setConflictFromCache(m, s, name, create = create)
-      # FIXME: add a compiler pass to warm up the conflicts cache
+  block:
+    when p is BModule:
+      if g.config.symbolFiles != disabledSf:
+        # we can use the IC cache to determine the right name and counter
+        # for this symbol, but only for module-level manglings
+        counter = getConflictFromCache(g, s)
+        # FIXME: add a compiler pass to warm up the conflicts cache
+        break
+
+    # critically, we must check for conflicts at the source module
+    # in the event a global symbol is actually foreign to `p`
+    if sfGlobal in s.flags:
+      var parent = findPendingModule(m, s)
+      # is it foreign?  terribly expensive, i know.
+      if parent.cfilename.string != m.cfilename.string:
+        # use or set the existing foreign counter for the key
+        (name, counter) = getSetConflict(parent, s)
+        # use or set the existing foreign counter for the name
+        next = mgetOrPut(parent.sigConflicts, name, counter + 1)
+        break
 
   # we're kinda cheating here; this caches the symbol for write at file close
   if s.kind != skTemp:
     writeMangledName(m.ndi, s, m.config)
 
-  counter = getOrSet(p.sigConflicts, name, conflictKey(s))
-  if counter == 0:
-    # it's the first instance using this name
-    if not create:
-      assert false, "cannot find existing name for: " & name
+  # if the counter hasn't been set from a foreign or cached symbol,
+  if counter == -1:
+    # set it using the local conflicts table
+    counter = getOrSet(p.sigConflicts, name, conflictKey(s))
+  else:
+    # else, stuff it into the local table with the discovered counter
+    p.sigConflicts[key] = counter
+
+    # set the next value to the larger of the local and remote values
+    let existing = getOrDefault(p.sigConflicts, name, 1)
+    while next <= counter or next < existing:
+      inc next
+
+    # now we can set the next value locally
+    p.sigConflicts[name] = next
+
   result = (name: name, counter: counter)
 
 proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   ## produce a unique identity-or-signature for the given module and symbol
-  let conflict = getSetConflict(m, s, create = true)
+  let conflict = getSetConflict(m, s)
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
-  when false: # just to irritate the god of minimal debugging output
-    if false:
+  when true: # just to irritate the god of minimal debugging output
+    if startsWith(conflict.name, "fubar"):
       debug s
       when m is BModule:
         echo "module $4 >> $1 .. $2 -> $3" %

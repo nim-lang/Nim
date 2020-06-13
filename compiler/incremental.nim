@@ -189,8 +189,7 @@ when nimIncremental:
     db.exec(sql"""
       create table if not exists conflicts (
         id integer primary key,
-        nimid int not null,
-        name text not null
+        nimid int not null
       );
     """)
 

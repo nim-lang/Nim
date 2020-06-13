@@ -49,10 +49,6 @@ proc hcrOn(p: BProc): bool = p.module.config.hcrOn
 proc addForwardedProc(m: BModule, prc: PSym) =
   m.g.forwardedProcs.add(prc)
 
-proc findPendingModule(m: BModule, s: PSym): BModule =
-  var ms = getModule(s)
-  result = m.g.modules[ms.position]
-
 proc initLoc(result: var TLoc, k: TLocKind, lode: PNode, s: TStorageLoc) =
   result.k = k
   result.storage = s
