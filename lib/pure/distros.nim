@@ -280,7 +280,7 @@ proc getOSVersion*(): string =
     result = ""
 
     when defined(windows):
-        result = command("wmic os get Version")
+        result = cmdRelease("wmic os get Version")
         result = result.strip().split("\n")[^1].strip()
     elif defined(bsd):
       if detectOs(FreeBSD) or detectOs(OpenBSD):
@@ -293,7 +293,7 @@ proc getOSVersion*(): string =
       elif detectOs(Gentoo) or detectOs(OpenSUSE) or detectOs(GoboLinux) or detectOs(Solaris):
         result = unameVersion()
     elif defined(macosx):
-        result = command("sw_vers -productVersion").strip()
+        result = cmdRelease("sw_vers -productVersion").strip()
 
 when false:
   foreignDep("libblas-dev")
