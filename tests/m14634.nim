@@ -1,6 +1,6 @@
 #[
 Tool to investigate underlying reasons for https://github.com/nim-lang/Nim/pull/14634
-nim r --threads:on -d:threadsafe examples/t14634.nim
+nim r --threads:on -d:threadsafe tests/m14634.nim
 ]#
 
 when not defined(windows):

@@ -147,6 +147,7 @@ when not defined(windows):
       var timer = selector.registerTimer(100, false, 0)
       var rc1 = selector.select(10000)
       var rc2 = selector.select(10000)
+      # if this flakes, see tests/m14634.nim
       assert len(rc1) == 1 and len(rc2) == 1, $(len(rc1), len(rc2))
       selector.unregister(timer)
       discard selector.select(0)
