@@ -278,27 +278,23 @@ proc echoForeignDeps*() =
 proc getOSVersion*(): string =
     ## Get OS version.
     ## Return empty string if not found.
+    result = ""
+
     when defined(windows):
         result = command("wmic os get Version")
         result = result.strip().split("\n")[^1].strip()
     elif defined(bsd):
       if detectOs(FreeBSD) or detectOs(OpenBSD):
         result = unameVersion()
-      else:
-        result = ""
     elif defined(linux):
       if detectOs(Elementary) or detectOs(Ubuntu) or detectOs(Debian) or detectOs(Fedora) or
         detectOs(OpenMandriva) or detectOs(CentOS) or detectOs(Alpine) or
         detectOs(Mageia) or detectOs(Zorin) or detectOs(RedHat) or detectOs(ArchLinux):
-        result = osReleaseVersion().replace(result, "\"").replace("VERSION_ID=")
+        result = osReleaseVersion().replace("VERSION_ID=").replace("\"")
       elif detectOs(Gentoo) or detectOs(OpenSUSE) or detectOs(GoboLinux) or detectOs(Solaris):
         result = unameVersion()
-      else:
-        result = ""
     elif defined(macosx):
         result = command("sw_vers -productVersion").strip()
-    else:
-        result = ""
 
 when false:
   foreignDep("libblas-dev")
