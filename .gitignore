@@ -95,8 +95,5 @@ megatest.nim
 # for `nim c -r nimdoc/tester` etc; this can be in multiple places
 htmldocs
 
-# in case test crashes; but should be in build/ instead
-tests/vm/tfile_rw.txt
-
 ## these are not needed anymore unless checkout old older versions
 nimdoc.out.css
