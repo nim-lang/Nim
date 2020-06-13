@@ -59,5 +59,12 @@ template fn() =
     # https://github.com/nim-lang/nimble/blob/63695f490728e3935692c29f3d71944d83bb1e83/src/nimblepkg/version.nim#L105
     testRoundtrip(@[Foo(id: 10), nil]): """[{"id":10},null]"""
 
+  block:
+    type Foo = enum f1, f2, f3, f4, f5
+    type Bar = enum b1, b2, b3, b4
+    let a = [f2: b2, f3: b3, f4: b4]
+    doAssert b2.ord == 1 # explains the `1`
+    testRoundtrip(a): """[1,2,3]"""
+
 static: fn()
 fn()

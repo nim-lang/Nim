@@ -20,10 +20,14 @@ xxx
 use toJsonHook,fromJsonHook for Table|OrderedTable
 add Options support also using toJsonHook,fromJsonHook and remove `json=>options` dependency
 
-future direction:
-add a way to customize serialization, for eg allowing missing
-or extra fields in JsonNode, field renaming, and a way to handle cyclic references
-using a cache of already visited addresses.
+Future directions:
+add a way to customize serialization, for eg:
+* allowing missing or extra fields in JsonNode
+* field renaming
+* allow serializing `enum` and `char` as `string` instead of `int`
+  (enum is more compact/efficient, and robust to enum renamings, but string
+  is more human readable)
+* handle cyclic references, using a cache of already visited addresses
 ]#
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
@@ -73,8 +77,10 @@ proc fromJson*[T](a: var T, b: JsonNode) =
       fromJson(a[], b)
   elif T is array:
     checkJson a.len == b.len, $(a.len, b.len, $T)
-    for i, val in b.getElems:
-      fromJson(a[i], val)
+    var i = 0
+    for ai in mitems(a):
+      fromJson(ai, b[i])
+      i.inc
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
