@@ -202,7 +202,6 @@ proc detectOsImpl(d: Distribution): bool =
     else:
       result = false
 
-# TODO: add var to store result for the next time
 template detectOs*(d: untyped): bool =
   ## Distro/OS detection. For convenience the
   ## required ``Distribution.`` qualifier is added to the
