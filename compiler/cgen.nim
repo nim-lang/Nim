@@ -966,7 +966,7 @@ proc allPathsAsgnResult(n: PNode): InitResultEnum =
       allPathsInBranch(n[i])
 
 proc getProcTypeCast(p: ModuleOrProc, prc: PSym): Rope =
-  let m = createm()
+  let m = getem()
   result = getTypeDesc(p, prc.loc.t)
   if prc.typ.callConv == ccClosure:
     var rettype, params: Rope
@@ -1014,7 +1014,7 @@ proc genProcAux(m: BModule, prc: PSym) =
       returnStmt = ropecg(p.module, "\treturn $1;$n", [rdLoc(res.loc)])
     else:
       fillResult(p.config, resNode)
-      assignParam(p, res)
+      assignParam(p, res, prc.typ[0])
       # We simplify 'unsureAsgn(result, nil); unsureAsgn(result, x)'
       # to 'unsureAsgn(result, x)'
       # Sketch why this is correct: If 'result' points to a stack location
@@ -1032,7 +1032,7 @@ proc genProcAux(m: BModule, prc: PSym) =
   for i in 1..<prc.typ.n.len:
     let param = prc.typ.n[i].sym
     if param.typ.isCompileTimeOnly: continue
-    assignParam(p, param)
+    assignParam(p, param, prc.typ[0])
   closureSetup(p, prc)
   genProcBody(p, procBody)
 
@@ -1788,7 +1788,7 @@ proc initProcOptions(m: BModule): TOptions =
 proc rawNewModule(g: BModuleList; module: PSym, filename: AbsoluteFile): BModule =
   new(result)
   result.g = g
-  result.tmpBase = "TM" & $hashOwner(module) & "_"
+  result.tmpBase = "TM" & "_" & getSomeNameForModule(module) & "_"
   result.headerFiles = @[]
   result.declaredThings = initIntSet()
   result.declaredProtos = initIntSet()

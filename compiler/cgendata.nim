@@ -177,6 +177,13 @@ type
 
   ModuleOrProc* = BModule or BProc
 
+template getem*() =
+  # get a BModule when we might only have a BProc
+  when p is BProc:
+    p.module
+  else:
+    p
+
 template config*(m: BModule): ConfigRef = m.g.config
 template config*(p: BProc): ConfigRef = p.module.g.config
 

@@ -22,28 +22,17 @@ The values have different meanings depending upon the form of the key:
 The counter is used to keep track of the order of symbol additions to the
 conflict table; they are increasing but not guaranteed to be sequential.
 
-API:
-
-sigConflicts[PSym]: int -> yield the counter for the symbol; raise
-KeyError if it hasn't been mangled yet
-
-sigConflicts[PType]: int -> yield the counter for the type; raise KeyError
-if it hasn't been mangled yet
-
-idOrSig(BModule or BProc, PSym): string -> yield the mangled symbol name
-
 ]##
 
 
 import # compiler imports
 
-    ast, cgendata, options, modulegraphs, ropes, pathutils, ccgutils,
-    ndi, msgs, btrees, lineinfos, incremental, idents, options, wordrecg,
-    astalgo, treetab
+    ast, cgendata, modulegraphs, ropes, ccgutils, ndi, msgs, incremental,
+    idents, options, wordrecg, astalgo, treetab, sighashes
 
 import # stdlib imports
 
-  std / [ macros, strutils, intsets, tables, sets ]
+  std / [ strutils, tables, sets ]
 
 template config(): ConfigRef = cache.modules.config
 
@@ -56,7 +45,11 @@ template conflictKey(s: PType): int = s.uniqueId
 
 # useful for debugging
 template conflictKey(s: BModule): int = conflictKey(s.module)
-template conflictKey(s: BProc): int = conflictKey(s.prc)
+template conflictKey(s: BProc): int =
+  if s.prc == nil:
+    0
+  else:
+    conflictKey(s.prc)
 
 proc mangle*(m: ModuleOrProc; s: PSym): string
 
@@ -66,6 +59,7 @@ proc getSomeNameForModule*(m: PSym): string =
   if {sfSystemModule, sfMainModule} * m.flags == {}:
     result = mangle(m.owner.name.s)
     result.add "_"
+    assert m.name.s.len > 0
   result.add mangle(m.name.s)
 
 proc isNimOrCKeyword*(w: PIdent): bool =
@@ -98,27 +92,26 @@ proc getOrSet(conflicts: var ConflictsTable; name: string; key: int): int =
     # cache the result
     conflicts[key] = result
 
-proc `[]`*(conflicts: ConflictsTable; s: PSym or PType): int =
-  ## returns the number of collisions at the time the symbol|type was added to
-  ## the conflicts table
-  result = conflicts[conflictKey(s)]
-
 proc purgeConflict*(m: ModuleOrProc; s: PSym) =
   del m.sigConflicts, $conflictKey(s)
 
+proc hasImmutableName(s: PSym): bool =
+  ## True if the symbol uses a name that must not change.
+  const immut = {sfSystemModule, sfCompilerProc, sfImportc, sfExportc}
+  if s != nil:
+    result = immut * s.flags != {}
+  # XXX: maybe sfGenSym means we can always mutate it?
+  # XXX: is it immutable if we've already assigned it in sigConflicts?
+
 proc shouldAppendModuleName(s: PSym): bool =
   ## are we going to apply top-level mangling semantics?
-  const
-    never = {sfSystemModule, sfCompilerProc, sfImportc, sfExportc}
-  # FIXME: put sfExported into never?
+  if s.hasImmutableName:
+    return false
   case s.kind
-  of skLocalVars + {skModule, skPackage, skTemp, skParam}:
+  of skLocalVars + {skModule, skPackage, skTemp}:
     result = false
   else:
-    if never * s.flags != {}:
-      # the symbol uses a name that must not change
-      return
-    elif s.owner == nil or s.owner.kind in {skModule, skPackage}:
+    if s.owner == nil or s.owner.kind in {skModule, skPackage}:
       # the symbol is top-level; add the module name
       result = true
     elif s.kind in routineKinds:
@@ -145,106 +138,98 @@ proc shortKind(k: TTypeKind): string =
   result = $k
   result = result[2 .. min(4, result.high)].toLowerAscii
 
-proc typeName*(m: ModuleOrProc; typ: PType; shorten = false): string =
+proc typeName*(p: ModuleOrProc; typ: PType; shorten = false): string =
+  let m = getem()
   var typ = typ.skipTypes(irrelevantForBackend)
   result = case typ.kind
   of tySet, tySequence, tyTypeDesc, tyArray:
-    shortKind(typ.kind) & "_" & typeName(m, typ.lastSon, shorten = shorten)
+    shortKind(typ.kind) & "_" & typeName(p, typ.lastSon, shorten = shorten)
   of tyVar, tyRef, tyPtr:
     # omit this verbosity for now
-    typeName(m, typ.lastSon, shorten = shorten)
+    typeName(p, typ.lastSon, shorten = shorten)
   else:
     if typ.sym == nil: # or typ.kind notin {tyObject, tyEnum}:
       shortKind(typ.kind) & "_" & $conflictKey(typ)
     elif shorten:
       mangle(typ.sym.name.s)
     else:
-      mangle(m, typ.sym)
+      mangle(p, typ.sym)
 
 template maybeAppendCounter(result: typed; count: int) =
   if count > 0:
     result.add "_"
     result.add $count
 
-proc getTypeName*(m: BModule; typ: PType): Rope =
-  ## produce a useful name for the given type, obvs
-  block found:
-    # XXX: is this safe (enough)?
-    #if typ.loc.r != nil:
-    #  break
-
-    # try to find the actual type
-    var t = typ
-    while t != nil:
-      # settle for a symbol if we can find one
-      if t.sym != nil:
-        if {sfImportc, sfExportc} * t.sym.flags != {}:
-          result =
-            if t.sym.loc.r != nil:
-              # use an existing name if previously mangled
-              t.sym.loc.r
-            else:
-              # else mangle up a new name
-              mangle(m, t.sym).rope
-          break found
-      if t.kind notin irrelevantForBackend:
-        # this looks like a good place to stop
-        break
-      # continue into more precise types
-      t = t.lastSon
-
-    assert t != nil
-    result =
-      if t.loc.r == nil:
-        # create one using the closest type
-        typeName(m, t).rope
-      else:
-        # use the closest type which already has a name
-        t.loc.r
-
-  if result == nil:
-    internalError(m.config, "getTypeName: " & $typ.kind)
-  else:
-    typ.loc.r = result
-    let counter = getOrSet(m.sigConflicts, $result, conflictKey(typ))
-    result.maybeAppendCounter counter
-
 proc maybeAppendProcArgument(m: ModuleOrProc; s: PSym; nom: var string): bool =
   ## should we add the first argument's type to the mangle?
-  assert s.kind in routineKinds
-  assert s.typ != nil
-  if s.typ.sons.len > 1:
-    nom.add "_"
-    nom.add typeName(m, s.typ.sons[1], shorten = true)
-    result = true
+  if s.kind in routineKinds:
+    if s.typ != nil:
+      result = s.typ.sons.len > 1
+      if result:
+        nom.add "_"
+        nom.add typeName(m, s.typ.sons[1], shorten = true)
 
 proc mangle*(m: ModuleOrProc; s: PSym): string =
   # TODO: until we have a new backend ast, all mangles have to be done
   # identically
 
-  # start off by using a name that doesn't suck
-  result = mangle(s.name.s)
+  block:
+    case s.kind
+    of skProc:
+      # anonymous closures are special for... reasons
+      if s.name.s == ":anonymous":
+        result = "anon_proc_"
+        result.add $conflictKey(s)
+        break
+      # closures are great for link collisions
+      elif sfAddrTaken in s.flags:
+        result = mangle(s.name.s)
+        result.add "_"
+        result.add $conflictKey(s)
+        assert not s.hasImmutableName
+        break
+    of skIterator:
+      # iterators need a special treatment for linking reasons
+      result = mangle(s.name.s)
+      result.add "_"
+      result.add $conflictKey(s)
+      assert not s.hasImmutableName
+      break
+    else:
+      discard
 
-  # add the first argument to procs if possible
-  if s.kind in routineKinds and s.typ != nil:
+    # otherwise, start off by using a name that doesn't suck
+    result = mangle(s.name.s)
+
+    # a gensym is a good sign that we can encounter a link collision
+    if {sfGenSym} * s.flags != {}:
+      assert not s.hasImmutableName
+      result.add "_"
+      result.add $conflictKey(s)
+      # let's just get out of here rather than making this any worse
+      return
+
+  # some symbols have flags that preclude further mangling
+  if not s.hasImmutableName:
+
+    # add the first argument to procs if possible
     discard maybeAppendProcArgument(m, s, result)
 
-  # add the module name if necessary, or if it helps avoid a clash
-  if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
-    let parent = getModule(s)
-    if parent != nil:
+    # add the module name if necessary, or if it helps avoid a clash
+    if shouldAppendModuleName(s) or isNimOrCKeyword(s.name):
+      let parent = getModule(s)
+      if parent != nil:
+        result.add "_"
+        result.add getSomeNameForModule(parent)
+
+    # something like `default` might need this check
+    if (unlikely) result in m.config.cppDefines:
       result.add "_"
-      result.add getSomeNameForModule(parent)
+      result.add $conflictKey(s)
 
-  # something like `default` might need this check
-  if (unlikely) result in m.config.cppDefines:
-    result.add "_"
-    result.add $conflictKey(s)
-
+  #if getModule(s).id.abs != m.module.id.abs: ...creepy for IC...
+  # XXX: we don't do anything special with regard to m.hcrOn
   assert result.len > 0
-
-  #if getModule(s).id.abs != m.module.id.abs:
-  # XXX: we don't do anything special with regard to m.hcrOn (Hot Code Reload)
 
 when not nimIncremental:
   proc setConflictFromCache(m: BModule; s: PSym; name: string; create = true) = discard
@@ -287,11 +272,7 @@ proc getSetConflict(p: ModuleOrProc; s: PSym;
   ## take a backend module or a procedure being generated and produce an
   ## appropriate name and the instances of its occurence, which may be
   ## incremented for this instance
-  template m(): BModule =
-    when p is BModule:
-      p
-    else:
-      p.module
+  let m = getem()
   template g(): ModuleGraph = m.g.graph
   var counter: int
 
@@ -325,13 +306,45 @@ proc idOrSig*(m: ModuleOrProc; s: PSym): Rope =
   result = conflict.name.rope
   result.maybeAppendCounter conflict.counter
   when false: # just to irritate the god of minimal debugging output
-    when m is BModule:
-      echo "module $4 >> $1 .. $2 -> $3" %
-        [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
-    else:
-      echo "  proc $4 >> $1 .. $2 -> $3" %
-        [ $conflictKey(s), s.name.s, $result,
-         if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
+    if false:
+      debug s
+      when m is BModule:
+        echo "module $4 >> $1 .. $2 -> $3" %
+          [ $conflictKey(s), s.name.s, $result, $conflictKey(m.module) ]
+      else:
+        #result = "/*" & $conflictKey(s) & "*/" & result
+        echo "  proc $4 >> $1 .. $2 -> $3" %
+          [ $conflictKey(s), s.name.s, $result,
+           if m.prc != nil: $conflictKey(m.prc) else: "(nil)" ]
+
+proc getTypeName*(m: BModule; typ: PType; sig: SigHash): Rope =
+  ## produce a useful name for the given type, obvs
+  var key = $conflictKey(typ)
+  block found:
+    # try to find the actual type
+    var t = typ
+    while true:
+      # use an immutable symbol name if we find one
+      if t.sym.hasImmutableName:
+        assert t.sym.loc.r != nil
+        result = t.sym.loc.r
+        m.sigConflicts[key] = conflictKey(t.sym)
+        #echo "immutable ", key, " is ", conflictKey(t.sym), " ", result
+        break found
+      elif t.kind in irrelevantForBackend:
+        t = t.lastSon    # continue into more precise types
+      else:
+        break            # this looks like a good place to stop
+
+    assert t != nil
+    result = typeName(m, t).rope
+    #echo "otherwise ", key, " is ", conflictKey(t), " ", result
+    let counter = getOrSet(m.sigConflicts, $result, conflictKey(t))
+    result.maybeAppendCounter counter
+    #result.add "/*" & $key & "*/"
+
+  if result == nil:
+    internalError(m.config, "getTypeName: " & $typ.kind)
 
 template tempNameForLabel(m: BModule; label: int): string =
   ## create an appropriate temporary name for the given label
@@ -386,6 +399,8 @@ proc getTempName*(m: BModule): Rope =
   result = getTempNameImpl(m, m.labels).rope
 
 proc mangleName*(m: ModuleOrProc; s: PSym): Rope =
+  ## Mangle the symbol name and set a new location rope for it, returning
+  ## same.  Has no effect if the symbol already has a location rope.
   if s.loc.r == nil:
     when m is BModule:
       # skParam is valid for global object fields with proc types
@@ -428,6 +443,7 @@ proc mangleName*(m: ModuleOrProc; s: PSym): Rope =
     ]#
 
 proc mangleField*(m: BModule; name: PIdent): string =
+  ## Mangle a field to ensure it is a valid name in the backend.
   result = mangle(name.s)
   #[
    Fields are tricky to get right and thanks to generic types producing
@@ -441,21 +457,27 @@ proc mangleField*(m: BModule; name: PIdent): string =
     result.add "_0"
 
 proc mangleRecFieldName*(m: BModule; field: PSym): Rope =
+  ## Mangle an object field to ensure it is a valid name in the backend.
   if {sfImportc, sfExportc} * field.flags != {}:
     result = field.loc.r
   else:
-    result = rope(mangleField(m, field.name))
-  if result == nil: internalError(m.config, field.info, "mangleRecFieldName")
+    result = mangleField(m, field.name).rope
+  if result == nil:
+    internalError(m.config, field.info, "mangleRecFieldName")
 
-proc assignParam*(p: BProc, s: PSym) =
+proc assignParam*(p: BProc, s: PSym; ret: PType) =
   ## Push the mangled name into the proc's sigConflicts so that we can
   ## make new local identifiers of the same name without colliding with it.
-  ## Currently ignores return type.
-  # it's very possible that the symbol is already in the module scope!
+  # It's very possible that the symbol is already in the module scope!
   if s.loc.r == nil or $conflictKey(s) notin p.sigConflicts:
     purgeConflict(p.module, s)   # discard any existing counter for this sym
-    s.loc.r = nil                # from the parent module as we move it local
-    s.loc.r = mangleName(p, s)   # and force the new location like a punk
+    if s.kind == skResult:
+      s.loc.r = ~"result"
+    else:
+      s.loc.r = nil              # from the parent module as we move it local
+      s.loc.r = mangleName(p, s) # and force the new location like a punk
+  if s.loc.r == nil:
+    internalError(p.config, s.info, "assignParam")
 
 proc mangleParamName*(p: ModuleOrProc; s: PSym): Rope =
   ## we should be okay with just a simple mangle here for prototype
@@ -463,3 +485,5 @@ proc mangleParamName*(p: ModuleOrProc; s: PSym): Rope =
   if s.loc.r == nil:
     s.loc.r = mangle(p, s).rope
   result = s.loc.r
+  if result == nil:
+    internalError(p.config, s.info, "mangleParamName")

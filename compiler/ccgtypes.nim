@@ -14,12 +14,6 @@ from lowerings import createObj
 
 proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope
 
-template createm() =
-  when p is BProc:
-    p.module
-  else:
-    p
-
 when false:
   proc hashOwner(s: PSym): SigHash =
     var m = s
@@ -172,8 +166,7 @@ proc ccgIntroducedPtr(conf: ConfigRef; s: PSym, retType: PType): bool =
     result = pt.kind != tyVar
 
 proc fillResult(conf: ConfigRef; param: PNode) =
-  fillLoc(param.sym.loc, locParam, param, ~"Result",
-          OnStack)
+  fillLoc(param.sym.loc, locParam, param, ~"result", OnStack)
   let t = param.sym.typ
   if mapReturnType(conf, t) != ctArray and isInvalidReturnType(conf, t):
     incl(param.sym.loc.flags, lfIndirect)
@@ -260,7 +253,7 @@ proc getTypeForward(m: BModule, typ: PType; sig: SigHash): Rope =
   let concrete = typ.skipTypes(abstractInst)
   case concrete.kind
   of tySequence, tyTuple, tyObject:
-    result = getTypeName(m, typ)
+    result = getTypeName(m, typ, sig)
     m.forwTypeCache[sig] = result
     if not isImportedType(concrete):
       addForwardStructFormat(m, structOrUnion(typ), result)
@@ -289,7 +282,7 @@ proc getTypeDescWeak(m: BModule; t: PType; check: var IntSet; kind: TSymKind): R
 
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        result = getTypeName(m, t)
+        result = getTypeName(m, t, sig)
         if not isImportedType(t):
           m.forwTypeCache[sig] = result
           addForwardStructFormat(m, rope"struct", result)
@@ -339,7 +332,7 @@ proc paramStorageLoc(param: PSym): TStorageLoc =
 proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
                    check: var IntSet, declareEnvironment=true;
                    weakDep=false) =
-  let m = createm()
+  let m = getem()
   params = nil
   if t[0] == nil or isInvalidReturnType(m.config, t[0]):
     rettype = ~"void"
@@ -384,7 +377,7 @@ proc genProcParams(p: ModuleOrProc, t: PType, rettype, params: var Rope,
       params.add("*")
     else:
       params.add(getTypeDescAux(p, arr, check, skResult))
-    params.addf(" Result", [])
+    params.addf(" result", [])
   if t.callConv == ccClosure and declareEnvironment:
     if params != nil: params.add(", ")
     params.add("void* ClE_0")
@@ -583,7 +576,7 @@ proc getOpenArrayDesc(m: BModule, t: PType, check: var IntSet; kind: TSymKind): 
 
 proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TSymKind): Rope =
   # returns only the type's name
-  let m = createm()
+  let m = getem()
   var t = origTyp.skipTypes(irrelevantForBackend-{tyOwned})
   if containsOrIncl(check, t.id):
     if not (isImportedCppType(origTyp) or isImportedCppType(t)):
@@ -644,7 +637,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
   of tyEnum:
     result = cacheGetType(m.typeCache, sig)
     if result == nil:
-      result = getTypeName(m, origTyp)
+      result = getTypeName(m, origTyp, sig)
       if not (isImportedCppType(t) or
           (sfImportc in t.sym.flags and t.sym.magic == mNone)):
         m.typeCache[sig] = result
@@ -671,7 +664,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
             gDebugInfo.registerEnum(EnumDesc(size: size, owner: owner, id: t.sym.id,
               name: t.sym.name.s, values: vals))
   of tyProc:
-    result = getTypeName(m, origTyp)
+    result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
     var rettype, desc: Rope
     genProcParams(p, t, rettype, desc, check, true, true)
@@ -692,7 +685,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
       # with the name of the struct, not with the pointer to the struct:
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        result = getTypeName(m, origTyp)
+        result = getTypeName(m, origTyp, sig)
         if not isImportedType(t):
           addForwardStructFormat(m, structOrUnion(t), result)
         m.forwTypeCache[sig] = result
@@ -716,7 +709,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
           result = rope("TGenericSeq")
       result.add(seqStar(m))
   of tyUncheckedArray:
-    result = getTypeName(m, origTyp)
+    result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let foo = getTypeDescAux(p, t[0], check, kind)
@@ -724,7 +717,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
   of tyArray:
     var n: BiggestInt = toInt64(lengthOrd(m.config, t))
     if n <= 0: n = 1   # make an array of at least one element
-    result = getTypeName(m, origTyp)
+    result = getTypeName(m, origTyp, sig)
     m.typeCache[sig] = result
     if not isImportedType(t):
       let foo = getTypeDescAux(p, t[1], check, kind)
@@ -732,7 +725,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
            [foo, result, rope(n)])
   of tyObject, tyTuple:
     if isImportedCppType(t) and origTyp.kind == tyGenericInst:
-      let cppName = getTypeName(m, t)
+      let cppName = getTypeName(m, t, sig)
       var i = 0
       var chunkStart = 0
 
@@ -779,7 +772,7 @@ proc getTypeDescAux(p: ModuleOrProc, origTyp: PType, check: var IntSet; kind: TS
     else:
       result = cacheGetType(m.forwTypeCache, sig)
       if result == nil:
-        result = getTypeName(m, origTyp)
+        result = getTypeName(m, origTyp, sig)
         m.forwTypeCache[sig] = result
         if not isImportedType(t):
           addForwardStructFormat(m, structOrUnion(t), result)
@@ -860,7 +853,7 @@ proc isNonReloadable(m: BModule, prc: PSym): bool =
   return m.hcrOn and sfNonReloadable in prc.flags
 
 proc genProcHeader(p: ModuleOrProc, prc: PSym, asPtr: bool = false): Rope =
-  let m = createm()
+  let m = getem()
   var
     rettype, params: Rope
   # using static is needed for inline procs
