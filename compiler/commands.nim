@@ -98,7 +98,7 @@ proc writeVersionInfo(conf: ConfigRef; pass: TCmdLinePass) =
                                  CPU[conf.target.hostCPU].name, CompileDate]),
                {msgStdout})
 
-    const gitHash = gorge("git log -n 1 --format=%H").strip
+    const gitHash {.strdefine.} = gorge("git log -n 1 --format=%H").strip
     when gitHash.len == 40:
       msgWriteln(conf, "git hash: " & gitHash, {msgStdout})
 
