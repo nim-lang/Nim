@@ -45,9 +45,9 @@ const
   IUP_NAME* = "IUP - Portable User Interface"
   IUP_COPYRIGHT* = "Copyright (C) 1994-2009 Tecgraf, PUC-Rio."
   IUP_DESCRIPTION* = "Portable toolkit for building graphical user interfaces."
-  constIUP_VERSION* = "3.0"
-  constIUP_VERSION_NUMBER* = 300000
-  constIUP_VERSION_DATE* = "2009/07/18"
+  IUP_VERSION* = "3.0"
+  IUP_VERSION_NUMBER* = 300000
+  IUP_VERSION_DATE* = "2009/07/18"
 
 type
   Ihandle = object
