@@ -793,6 +793,10 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
   result = nnkCurly.newTree
   for x in s:
     result.add newLit(x)
+   if result.len == 0:
+    # add type cast for empty set
+    var typ = getTypeInst(typeof(s))[1]
+    result = newCall(typ,result)
 
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
