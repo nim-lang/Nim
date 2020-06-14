@@ -7449,9 +7449,9 @@ be used:
       deepCopy(perThread, someGlobal)
 
 
-Future directions:
+See also:
 
-- A shared GC'ed heap might be provided.
+- `Shared heap memory management. <gc.html>`_.
 
 
 Threadvar pragma
