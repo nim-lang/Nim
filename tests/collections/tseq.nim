@@ -207,3 +207,10 @@ block ttoseq:
 
 block tseqmapitchain:
   doAssert @[101, 102] == [1, 2].mapIt(func (x: int): int = it + x).mapIt(it(100))
+
+
+for i in 0..100:
+  # fix #14655
+  var test = newSeqOfCap[uint32](1)
+  test.setLen(1)
+  doAssert test[0] == 0, $(test[0], i)

@@ -363,6 +363,7 @@ proc setLengthSeqV2(s: PGenericSeq, typ: PNimType, newLen: int): PGenericSeq {.
         zeroMem(dataPointer(result, elemAlign, elemSize, newLen), (result.len-%newLen) *% elemSize)
       else:
         result = s
+        zeroMem(dataPointer(result, elemAlign, elemSize, result.len), (newLen-%result.len) *% elemSize)
       result.len = newLen
     else:
       result = setLengthSeq(s, typ.base.size, newLen)
