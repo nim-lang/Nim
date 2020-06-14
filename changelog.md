@@ -62,7 +62,6 @@
 
 - Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
 
-- `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
 - Improvements to the `bitops` module, including bitslices, non-mutating versions
