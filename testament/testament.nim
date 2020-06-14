@@ -450,7 +450,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
             exeCmd = nodejs
             args = concat(@[exeFile], args)
           else:
-            exeCmd = exeFile.normalizedPath(exe = true)
+            exeCmd = exeFile.normalizedPath(isExe = true)
             if expected.useValgrind:
               args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"

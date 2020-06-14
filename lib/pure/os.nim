@@ -1407,9 +1407,11 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 proc absolutePathInternal(path: string): string =
   absolutePath(path, getCurrentDir())
 
-proc normalizePath*(path: var string, exe = false) {.rtl, extern: "nos$1", tags: [].} =
-  ## Normalize a path. If `exe == true`, on posix, `./` is prepended if `path`
-  ## doesn't contain `/` and is not `"", ".", ".."`.
+proc normalizePath*(path: var string, isExe = false) {.rtl, extern: "nos$1", tags: [].} =
+  ## Normalize a path.
+  ##
+  ## If `isExe == true`, on posix, `./` is prepended if `path` doesn't contain
+  ## `/` and is not `"", ".", ".."`.
   ##
   ## Consecutive directory separators are collapsed, including an initial double slash.
   ##
@@ -1428,13 +1430,13 @@ proc normalizePath*(path: var string, exe = false) {.rtl, extern: "nos$1", tags:
       a.normalizePath()
       assert a == "a/c/d"
       assert normalizedPath("//a//./") == "/a"
-      assert normalizedPath("koch", exe = true) == "./koch" # difference with exe=false
-      assert normalizedPath("bin/nim", exe = true) == "bin/nim"
-    assert normalizedPath("", exe = true) == ""
+      assert normalizedPath("koch", isExe = true) == "./koch"
+      assert normalizedPath("bin/nim", isExe = true) == "bin/nim"
+    assert normalizedPath("", isExe = true) == ""
 
   path = pathnorm.normalizePath(path)
   when defined(posix):
-    if exe and path.len > 0 and DirSep notin path and path != "." and path != "..":
+    if isExe and path.len > 0 and DirSep notin path and path != "." and path != "..":
       path = "./" & path
 
   when false:
@@ -1466,11 +1468,11 @@ proc normalizePath*(path: var string, exe = false) {.rtl, extern: "nos$1", tags:
 
 proc normalizePathAux(path: var string) = normalizePath(path)
 
-proc normalizedPath*(path: string, exe = false): string {.rtl, extern: "nos$1", tags: [].} =
-  ## In-place version of `normalizePath proc <#normalizePath,string>`_
-  if exe:
+proc normalizedPath*(path: string, isExe = false): string {.rtl, extern: "nos$1", tags: [].} =
+  ## outplace version of `normalizePath proc <#normalizePath,string>`_
+  if isExe:
     result = path
-    normalizePath(result, exe = exe)
+    normalizePath(result, isExe = true)
   else: # avoid 1 extra copy
     result = pathnorm.normalizePath(path)
 
