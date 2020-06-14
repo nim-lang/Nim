@@ -2720,6 +2720,7 @@ when defined(nimdoc):
     ##   else:
     ##     # Do something else!
 
+elif defined(nimscript): discard
 elif defined(nintendoswitch) or weirdTarget:
   proc paramStr*(i: int): TaintedString {.tags: [ReadIOEffect].} =
     raise newException(OSError, "paramStr is not implemented on Nintendo Switch")
