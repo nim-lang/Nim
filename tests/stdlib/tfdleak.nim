@@ -2,6 +2,7 @@ discard """
   exitcode: 0
   output: ""
   matrix: "; -d:nimInheritHandles"
+  joinable: false
 """
 
 import os, osproc, strutils, nativesockets, net, selectors, memfiles,

@@ -1,3 +1,7 @@
+discard """
+joinable: false
+"""
+
 import os, osproc, strutils
 
 const Iterations = 200
