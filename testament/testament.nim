@@ -13,8 +13,8 @@ import
   strutils, pegs, os, osproc, streams, json,
   backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, times, md5, sequtils, azure
-
-include compiler/nodejs
+from std/sugar import dup
+import compiler/nodejs
 
 var useColors = true
 var backendLogging = true
@@ -450,12 +450,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
             exeCmd = nodejs
             args = concat(@[exeFile], args)
           else:
-            if defined(posix) and not exeFile.contains('/'):
-              # "security" in Posix is actually just a euphemism
-              # for "unproductive arbitrary shit"
-              exeCmd = "./" & exeFile
-            else:
-              exeCmd = exeFile
+            exeCmd = exeFile.dup(normalizeExe)
             if expected.useValgrind:
               args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"
