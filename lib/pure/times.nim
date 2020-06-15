@@ -2619,6 +2619,8 @@ when not defined(js):
         fib.add(fib[^1] + fib[^2])
       echo "CPU time [s] ", cpuTime() - t0
       echo "Fib is [s] ", fib
+    ## When the flag `--benchmarkVM` is passed to the compiler, this proc is
+    ## also available at compile time
     when defined(posix) and not defined(osx) and declared(CLOCK_THREAD_CPUTIME_ID):
       # 'clocksPerSec' is a compile-time constant, possibly a
       # rather awful one, so use clock_gettime instead
