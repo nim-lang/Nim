@@ -229,7 +229,7 @@ proc addLocalDecl(c: var TemplCtx, n: var PNode, k: TSymKind) =
       if s != nil and s.owner == c.owner and sfGenSym in s.flags:
         onUse(n.info, s)
         replaceIdentBySym(c.c, n, newSymNode(s, n.info))
-      elif not (n.kind == nkSym and sfGenSym in n.sym.flags):
+      elif n.kind != nkSym:
         let local = newGenSym(k, ident, c)
         addPrelimDecl(c.c, local)
         styleCheckDef(c.c.config, n.info, local)
