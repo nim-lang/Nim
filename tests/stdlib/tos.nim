@@ -510,3 +510,13 @@ block: # isValidFilename
   doAssert isValidFilename("ux.bat")
   doAssert isValidFilename("nim.nim")
   doAssert isValidFilename("foo.log")
+
+import sugar
+
+block: # normalizeExe
+  doAssert "".dup(normalizeExe) == ""
+  when defined(posix):
+    doAssert "foo".dup(normalizeExe) == "./foo"
+    doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+  when defined(windows):
+    doAssert "foo".dup(normalizeExe) == "foo"
