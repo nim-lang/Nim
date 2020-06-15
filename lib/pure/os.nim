@@ -1407,6 +1407,18 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 proc absolutePathInternal(path: string): string =
   absolutePath(path, getCurrentDir())
 
+proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
+  ## on posix, prepends `./` if `file` doesn't contain `/` and is not `"", ".", ".."`.
+  runnableExamples:
+    import sugar
+    when defined(posix):
+      doAssert "foo".dup(normalizeExe) == "./foo"
+      doAssert "foo/../bar".dup(normalizeExe) == "foo/../bar"
+    doAssert "".dup(normalizeExe) == ""
+  when defined(posix):
+    if file.len > 0 and DirSep notin file and file != "." and file != "..":
+      file = "./" & file
+
 proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.
   ##
@@ -1420,8 +1432,8 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ##
   ## See also:
   ## * `absolutePath proc <#absolutePath,string>`_
-  ## * `normalizedPath proc <#normalizedPath,string>`_ for a version which returns
-  ##   a new string
+  ## * `normalizedPath proc <#normalizedPath,string>`_ for outplace version
+  ## * `normalizeExe proc <#normalizeExe,string>`_
   runnableExamples:
     when defined(posix):
       var a = "a///b//..//c///d"
