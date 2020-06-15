@@ -2,8 +2,16 @@
 This module implements a hookable (de)serialization for arbitrary types.
 Design goal: avoid importing modules where a custom serialization is needed;
 see strtabs.fromJsonHook,toJsonHook for an example.
-
 ]##
+
+runnableExamples:
+  import std/[strtabs,json]
+  type Foo = ref object
+    t: bool
+    z1: int8
+  let a = (1.5'f32, (b: "b2", a: "a2"), 'x', @[Foo(t: true, z1: -3), nil], [{"name": "John"}.newStringTable])
+  let j = a.toJson
+  doAssert j.jsonTo(type(a)).toJson == j
 
 import std/[json,tables,strutils]
 
@@ -12,10 +20,14 @@ xxx
 use toJsonHook,fromJsonHook for Table|OrderedTable
 add Options support also using toJsonHook,fromJsonHook and remove `json=>options` dependency
 
-future direction:
-add a way to customize serialization, for eg allowing missing
-or extra fields in JsonNode, field renaming, and a way to handle cyclic references
-using a cache of already visited addresses.
+Future directions:
+add a way to customize serialization, for eg:
+* allowing missing or extra fields in JsonNode
+* field renaming
+* allow serializing `enum` and `char` as `string` instead of `int`
+  (enum is more compact/efficient, and robust to enum renamings, but string
+  is more human readable)
+* handle cyclic references, using a cache of already visited addresses
 ]#
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
@@ -65,8 +77,10 @@ proc fromJson*[T](a: var T, b: JsonNode) =
       fromJson(a[], b)
   elif T is array:
     checkJson a.len == b.len, $(a.len, b.len, $T)
-    for i, val in b.getElems:
-      fromJson(a[i], val)
+    var i = 0
+    for ai in mitems(a):
+      fromJson(ai, b[i])
+      i.inc
   elif T is seq:
     a.setLen b.len
     for i, val in b.getElems:
@@ -114,12 +128,14 @@ proc toJson*[T](a: T): JsonNode =
       result = newJArray()
       for v in a.fields: result.add toJson(v)
   elif T is ref | ptr:
-    if a == nil: result = newJNull()
+    if system.`==`(a, nil): result = newJNull()
     else: result = toJson(a[])
   elif T is array | seq:
     result = newJArray()
     for ai in a: result.add toJson(ai)
   elif T is pointer: result = toJson(cast[int](a))
+    # edge case: `a == nil` could've also led to `newJNull()`, but this results
+    # in simpler code for `toJson` and `fromJson`.
   elif T is distinct: result = toJson(a.distinctBase)
   elif T is bool: result = %(a)
   elif T is Ordinal: result = %(a.ord)
