@@ -202,7 +202,7 @@ block tupleNewLitTests:
   proc emptyT() : EmptyT =
     discard
   macro t0() : untyped =
-    result = newLit(emptyT())
+    result = newLit(())
   doAssert t0 == emptyT()
   macro t1() : untyped =
     result = newLit((5,))
@@ -229,6 +229,6 @@ block tupleNewLitTests:
     result = newLit(@[(a:5,b:"5")])
   doAssert t8 == @[(a:5,b:"5")]
   macro t9() : untyped =
-    result = newLit(@[(a:(5,6),b:emptyT())])
+    result = newLit(@[(a:(5,6),b:())])
   doAssert t9 == @[(a:(5,6),b:emptyT())]
   echo "tupleNewLitTests ok"
