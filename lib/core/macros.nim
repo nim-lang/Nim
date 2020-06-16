@@ -802,7 +802,7 @@ proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
   ## Return true for named tuples, false for any other type.
 
 proc newLit*[T:tuple](arg: T): NimNode {.compileTime.} =
-  if isNamedTuple(T):
+  when isNamedTuple(T):
     result = nnkTupleConstr.newTree
     for a,b in arg.fieldPairs:
       result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
