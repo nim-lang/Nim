@@ -199,36 +199,36 @@ block tupleNewLitTests:
   echo "tupleNewLitTests"
   type
     EmptyT = tuple
-  proc emptyT() : EmptyT =
+  proc emptyT(): EmptyT =
     discard
-  macro t0() : untyped =
+  macro t0(): untyped =
     result = newLit(())
   doAssert t0 == emptyT()
-  macro t1() : untyped =
+  macro t1(): untyped =
     result = newLit((5,))
   doAssert t1 == (5,)
-  macro t2() : untyped =
+  macro t2(): untyped =
     result = newLit((a:5))
   doAssert t2 == (a:5)
-  macro t3() : untyped =
+  macro t3(): untyped =
     result = newLit((5,"5"))
   doAssert t3 == (5,"5")
-  macro t4() : untyped =
+  macro t4(): untyped =
     result = newLit((a:5,b:"5"))
   doAssert t4 == (a:5,b:"5")
-  macro t5() : untyped =
+  macro t5(): untyped =
     result = newLit(@[(5,)])
   doAssert t5 == @[(5,)]
-  macro t6() : untyped =
+  macro t6(): untyped =
     result = newLit(@[(a:5)])
   doAssert t6 == @[(a:5)]
-  macro t7() : untyped =
+  macro t7(): untyped =
     result = newLit(@[(5,"5")])
   doAssert t7 == @[(5,"5")]
-  macro t8() : untyped =
+  macro t8(): untyped =
     result = newLit(@[(a:5,b:"5")])
   doAssert t8 == @[(a:5,b:"5")]
-  macro t9() : untyped =
+  macro t9(): untyped =
     result = newLit(@[(a:(5,6),b:())])
   doAssert t9 == @[(a:(5,6),b:emptyT())]
   echo "tupleNewLitTests ok"
