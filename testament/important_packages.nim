@@ -35,7 +35,7 @@ pkg1 "combparser"
 pkg1 "compactdict"
 pkg1 "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
 pkg1 "dashing", false, "nim c tests/functional.nim"
-pkg1 "delaunay"
+# pkg1 "delaunay" # pending https://github.com/Nycto/DelaunayNim/issues/3
 pkg1 "docopt"
 pkg1 "easygl", true, "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg1 "elvis"
