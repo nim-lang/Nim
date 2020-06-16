@@ -758,7 +758,7 @@ proc newLit*(arg: enum): NimNode {.compileTime.} =
 proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.}
 proc newLit*[T](arg: seq[T]): NimNode {.compileTime.}
 proc newLit*[T](s: set[T]): NimNode {.compileTime.}
-proc newLit*[T:tuple](arg: T): NimNode {.compileTime.}
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.}
 
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
