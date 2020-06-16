@@ -19,4 +19,4 @@ when defined case2:
     test "test require":
       require 1 == 3
       if true:
-        quit 0 # if goes here, the test will fail (as it should)
+        quit 0 # intentional
