@@ -203,45 +203,32 @@ block tupleNewLitTests:
     discard
   macro t0() : untyped =
     result = newLit(emptyT())
+  doAssert t0 == emptyT()
   macro t1() : untyped =
     result = newLit((5,))
+  doAssert t1 == (5,)
   macro t2() : untyped =
     result = newLit((a:5))
+  doAssert t2 == (a:5)
   macro t3() : untyped =
     result = newLit((5,"5"))
+  doAssert t3 == (5,"5")
   macro t4() : untyped =
     result = newLit((a:5,b:"5"))
+  doAssert t4 == (a:5,b:"5")
   macro t5() : untyped =
     result = newLit(@[(5,)])
+  doAssert t5 == @[(5,)]
   macro t6() : untyped =
     result = newLit(@[(a:5)])
+  doAssert t6 == @[(a:5)]
   macro t7() : untyped =
     result = newLit(@[(5,"5")])
+  doAssert t7 == @[(5,"5")]
   macro t8() : untyped =
     result = newLit(@[(a:5,b:"5")])
+  doAssert t8 == @[(a:5,b:"5")]
   macro t9() : untyped =
     result = newLit(@[(a:(5,6),b:emptyT())])
-  const
-    eT = emptyT()
-    x0 = t0()
-    x1 = t1()
-    x2 = t2()
-    x3 = t3()
-    x4 = t4()
-    x5 = t5()
-    x6 = t6()
-    x7 = t7()
-    x8 = t8()
-    x9 = t9()
-  doAssert x0 == eT
-  doAssert x1 == (5,)
-  doAssert x2 == (a:5)
-  doAssert x3 == (5,"5")
-  doAssert x4 == (a:5,b:"5")
-  doAssert x5 == @[(5,)]
-  doAssert x6 == @[(a:5)]
-  doAssert x7 == @[(5,"5")]
-  doAssert x8 == @[(a:5,b:"5")]
-  doAssert x9 == @[(a:(5,6),b:eT)]
-
+  doAssert t9 == @[(a:(5,6),b:emptyT())]
   echo "tupleNewLitTests ok"
