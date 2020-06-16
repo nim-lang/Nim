@@ -194,3 +194,66 @@ static:
     doAssert(v == a)
 
   echo "macrocache ok"
+  
+block tupleNewLitTests:
+  echo ""
+  echo "tupleNewLitTests"
+  type
+    EmptyT = tuple
+  proc emptyT() : EmptyT =
+    discard
+  macro t0() : untyped =
+    result = newLit(emptyT())
+  macro t1() : untyped =
+    result = newLit((5,))
+  macro t2() : untyped =
+    result = newLit((a:5))
+  macro t3() : untyped =
+    result = newLit((5,"5"))
+  macro t4() : untyped =
+    result = newLit((a:5,b:"5"))
+  macro t5() : untyped =
+    result = newLit(@[(5,)])
+  macro t6() : untyped =
+    result = newLit(@[(a:5)])
+  macro t7() : untyped =
+    result = newLit(@[(5,"5")])
+  macro t8() : untyped =
+    result = newLit(@[(a:5,b:"5")])
+  macro t9() : untyped =
+    result = newLit(@[(a:(5,6),b:emptyT())])
+  const
+    eT = emptyT()
+    x0 = t0()
+    x1 = t1()
+    x2 = t2()
+    x3 = t3()
+    x4 = t4()
+    x5 = t5()
+    x6 = t6()
+    x7 = t7()
+    x8 = t8()
+    x9 = t9()
+  doAssert(x0 == eT)
+  echo x0
+  doAssert(x1 == (5,))
+  echo x1
+  doAssert(x2 == (a:5))
+  echo x2
+  doAssert(x3 == (5,"5"))
+  echo x3
+  doAssert(x4 == (a:5,b:"5"))
+  echo x4
+  doAssert(x5 == @[(5,)])
+  echo x5
+  doAssert(x6 == @[(a:5)])
+  echo x6
+  doAssert(x7 == @[(5,"5")])
+  echo x7
+  doAssert(x8 == @[(a:5,b:"5")])
+  echo x8
+  doAssert(x9 == @[(a:(5,6),b:eT)])
+  echo x9
+
+  echo "tupleNewLitTests ok"
+  echo ""
