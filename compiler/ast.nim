@@ -1294,7 +1294,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  of tyBool,tyEnum:
+  of tyBool, tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR
