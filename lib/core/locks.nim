@@ -9,6 +9,10 @@
 
 ## This module contains Nim's support for locks and condition vars.
 
+#[
+for js, for now we treat locks as noop's to avoid pushing `when defined(js)`
+in client code that uses locks.
+]#
 
 when not compileOption("threads") and not defined(nimdoc):
   when false: # fix #12330
@@ -26,7 +30,8 @@ type
 
 proc initLock*(lock: var Lock) {.inline.} =
   ## Initializes the given lock.
-  initSysLock(lock)
+  when not defined(js):
+    initSysLock(lock)
 
 proc deinitLock*(lock: var Lock) {.inline.} =
   ## Frees the resources associated with the lock.
@@ -38,11 +43,13 @@ proc tryAcquire*(lock: var Lock): bool =
 
 proc acquire*(lock: var Lock) =
   ## Acquires the given lock.
-  acquireSys(lock)
+  when not defined(js):
+    acquireSys(lock)
 
 proc release*(lock: var Lock) =
   ## Releases the given lock.
-  releaseSys(lock)
+  when not defined(js):
+    releaseSys(lock)
 
 
 proc initCond*(cond: var Cond) {.inline.} =
