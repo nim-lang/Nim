@@ -558,12 +558,13 @@ template fatal*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
 template globalAssert*(conf: ConfigRef; cond: untyped, info: TLineInfo = unknownLineInfo, arg = "") =
   ## avoids boilerplate
   if not cond:
-    const info2 = instantiationInfo(-1, fullPaths = true)
     var arg2 = "'$1' failed" % [astToStr(cond)]
     if arg.len > 0: arg2.add "; " & astToStr(arg) & ": " & arg
-    liMessage(conf, info, errGenerated, arg2, doRaise, info2)
+    liMessage(conf, info, errGenerated, arg2, doRaise, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg = "") =
+  ## `local` means compilation keeps going until errorMax is reached (via `doNothing`),
+  ## `global` means it stops.
   liMessage(conf, info, msg, arg, doRaise, instLoc())
 
 template globalError*(conf: ConfigRef; info: TLineInfo, arg: string) =
@@ -593,7 +594,7 @@ template internalError*(conf: ConfigRef; errMsg: string) =
   internalErrorImpl(conf, unknownLineInfo, errMsg, instLoc())
 
 template internalAssert*(conf: ConfigRef, e: bool) =
-  # xxx merge with globalAssert from PR #14324
+  # xxx merge with `globalAssert`
   if not e:
     const info2 = instLoc()
     let arg = info2.toFileLineCol
