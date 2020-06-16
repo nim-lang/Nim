@@ -102,6 +102,9 @@ In addition to the standard Nim syntax (`system <system.html>`_ module),
 NimScripts support the procs and templates defined in the
 `nimscript <nimscript.html>`_ module too.
 
+See also:
+* `Check the tests for more information about modules compatible with NimScript. <https://github.com/nim-lang/Nim/blob/devel/tests/test_nimscript.nims>`_
+
 
 NimScript as a configuration file
 =================================
