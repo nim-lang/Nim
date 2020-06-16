@@ -1,4 +1,5 @@
 import asyncdispatch
+import std/unittest
 
 proc task() {.async.} =
   await sleepAsync(40)
@@ -10,6 +11,6 @@ proc main() =
     inc(counter)
     poll(10)
 
-  doAssert counter <= 4
+  check counter <= 4
 
-for i in 0 .. 4: main()
+for i in 0 .. 10: main()
