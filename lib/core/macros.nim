@@ -798,10 +798,18 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
     var typ = getTypeInst(typeof(s))[1]
     result = newCall(typ,result)
 
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  ## Return true for named tuples, false for any other type.
+
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
-  result = nnkPar.newTree
-  for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+  if isNamedTuple(typeof(arg)):
+    result = nnkTupleConstr.newTree
+    for a,b in arg.fieldPairs:
+      result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+  else:
+    result = nnkTupleConstr.newTree
+    for b in arg.fields:
+      result.add newLit(b)
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
