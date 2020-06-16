@@ -537,11 +537,6 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
   var regs: seq[TFullReg] # alias to tos.slots for performance
   move(regs, tos.slots)
   #echo "NEW RUN ------------------------"
-
-  template stackTrace(msg: string, lineInfo: TLineInfo = TLineInfo.default) =
-    stackTraceImpl(c, tos, pc, msg, lineInfo, instantiationInfo(-2, fullPaths = true))
-    return
-
   while true:
     #{.computedGoto.}
     let instr = c.code[pc]
@@ -765,7 +760,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if regs[rb].kind == rkNode:
         regs[ra].nodeAddr = addr(regs[rb].node)
       else:
-        stackTrace "limited VM support for 'addr'"
+        stackTrace(c, tos, pc, "limited VM support for 'addr'")
     of opcLdDeref:
       # a = b[]
       let ra = instr.regA
@@ -1038,7 +1033,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
       if val != int64.low:
         regs[ra].intVal = -val
       else:
-        stackTrace errOverOrUnderflow
+        stackTrace(c, tos, pc, errOverOrUnderflow)
     of opcUnaryMinusFloat:
       decodeB(rkFloat)
       assert regs[rb].kind == rkFloat
@@ -1109,7 +1104,7 @@ proc rawExecute(c: PCtx, start: int, tos: PStackFrame): TFullReg =
                         else: copyTree(a.sym.ast)
         regs[ra].node.flags.incl nfIsRef
       else:
-        stackTrace "node is not a symbol"
+        stackTrace(c, tos, pc, "node is not a symbol")
     of opcGetImplTransf:
       decodeB(rkNode)
       let a = regs[rb].node
