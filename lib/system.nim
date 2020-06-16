@@ -1426,6 +1426,20 @@ proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
+proc addQuitProc*(quitProc: proc() {.noconv.}) {. 
+  importc: "atexit", header: "<stdlib.h>".} 
+  ## Adds/registers a quit procedure.
+  ##
+  ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
+  ## procedures can be registered. They are executed on a last-in, first-out
+  ## basis (that is, the last function registered is the first to be executed).
+  ## ``addQuitProc`` raises an EOutOfIndex exception if ``quitProc`` cannot be
+  ## registered.
+
+# Support for addQuitProc() is done by Ansi C's facilities here.
+# In case of an unhandled exception the exit handlers should
+# not be called explicitly! The user may decide to do this manually though.
+
 proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
   ##
@@ -3015,9 +3029,6 @@ export widestrs
 
 import system/io
 export io
-
-import std/quitprocs
-export addQuitProc
 
 when not defined(createNimHcr) and not defined(nimscript):
   include nimhcr

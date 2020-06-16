@@ -7,6 +7,8 @@
 #    distribution, for details about the copyright.
 #
 
+import locks
+
 type
   FunKind = enum kClosure, kNoconv # extend as needed
   Fun = object
@@ -15,7 +17,10 @@ type
     of kNoconv: fun2: proc () {.noconv.}
 
 var
+  gFunsLock: Lock
   gFuns: seq[Fun]
+
+initLock(gFunsLock)
 
 when defined(js):
   proc addAtExit(quitProc: proc() {.noconv.}) =
@@ -32,26 +37,29 @@ else:
     importc: "atexit", header: "<stdlib.h>".}
 
 proc callClosures() {.noconv.} =
-  for i in countdown(gFuns.len-1, 0):
-    let fun = gFuns[i]
-    case fun.kind
-    of kClosure: fun.fun1()
-    of kNoconv: fun.fun2()
+  withLock gFunsLock:
+    for i in countdown(gFuns.len-1, 0):
+      let fun = gFuns[i]
+      case fun.kind
+      of kClosure: fun.fun1()
+      of kNoconv: fun.fun2()
 
 template fun() =
   if gFuns.len == 0:
     addAtExit(callClosures)
 
-proc addQuitProc*(cl: proc () {.closure.}) =
-  ## Adds/registers a quit procedure. Each call to `addQuitProc` registers
+proc addExitProc*(cl: proc () {.closure.}) =
+  ## Adds/registers a quit procedure. Each call to `addExitProc` registers
   ## another quit procedure. They are executed on a last-in, first-out basis.
-  # Support for `addQuitProc` is done by Ansi C's facilities here.
+  # Support for `addExitProc` is done by Ansi C's facilities here.
   # In case of an unhandled exception the exit handlers should
   # not be called explicitly! The user may decide to do this manually though.
-  fun()
-  gFuns.add Fun(kind: kClosure, fun1: cl)
+  withLock gFunsLock:
+    fun()
+    gFuns.add Fun(kind: kClosure, fun1: cl)
 
-proc addQuitProc*(cl: proc() {.noconv.}) =
+proc addExitProc*(cl: proc() {.noconv.}) =
   ## overload for `noconv` procs.
-  fun()
-  gFuns.add Fun(kind: kNoconv, fun2: cl)
+  withLock gFunsLock:
+    fun()
+    gFuns.add Fun(kind: kNoconv, fun2: cl)

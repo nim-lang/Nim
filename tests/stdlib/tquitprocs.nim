@@ -8,12 +8,14 @@ ok1
 '''
 """
 
+import std/quitprocs
+
 proc fun1() {.noconv.} = echo "ok1"
 proc fun2() = echo "ok2"
 proc fun3() {.noconv.} = echo "ok3"
 proc fun4() = echo "ok4"
 
-addQuitProc(fun1)
-addQuitProc(fun2)
-addQuitProc(fun3)
-addQuitProc(fun4)
+addExitProc(fun1)
+addExitProc(fun2)
+addExitProc(fun3)
+addExitProc(fun4)
