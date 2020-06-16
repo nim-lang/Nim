@@ -196,7 +196,6 @@ static:
   echo "macrocache ok"
   
 block tupleNewLitTests:
-  echo ""
   echo "tupleNewLitTests"
   type
     EmptyT = tuple
@@ -234,26 +233,15 @@ block tupleNewLitTests:
     x7 = t7()
     x8 = t8()
     x9 = t9()
-  doAssert(x0 == eT)
-  echo x0
-  doAssert(x1 == (5,))
-  echo x1
-  doAssert(x2 == (a:5))
-  echo x2
-  doAssert(x3 == (5,"5"))
-  echo x3
-  doAssert(x4 == (a:5,b:"5"))
-  echo x4
-  doAssert(x5 == @[(5,)])
-  echo x5
-  doAssert(x6 == @[(a:5)])
-  echo x6
-  doAssert(x7 == @[(5,"5")])
-  echo x7
-  doAssert(x8 == @[(a:5,b:"5")])
-  echo x8
-  doAssert(x9 == @[(a:(5,6),b:eT)])
-  echo x9
+  doAssert x0 == eT
+  doAssert x1 == (5,)
+  doAssert x2 == (a:5)
+  doAssert x3 == (5,"5")
+  doAssert x4 == (a:5,b:"5")
+  doAssert x5 == @[(5,)]
+  doAssert x6 == @[(a:5)]
+  doAssert x7 == @[(5,"5")]
+  doAssert x8 == @[(a:5,b:"5")]
+  doAssert x9 == @[(a:(5,6),b:eT)]
 
   echo "tupleNewLitTests ok"
-  echo ""
