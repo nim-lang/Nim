@@ -8,7 +8,7 @@ ok1
 '''
 """
 
-import std/quitprocs
+import std/exitprocs
 
 proc fun1() {.noconv.} = echo "ok1"
 proc fun2() = echo "ok2"
