@@ -760,7 +760,7 @@ proc newLit*(arg: enum): NimNode {.compileTime.} =
 proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.}
 proc newLit*[T](arg: seq[T]): NimNode {.compileTime.}
 proc newLit*[T](s: set[T]): NimNode {.compileTime.}
-proc newLit*(arg: tuple): NimNode {.compileTime.}
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.}
 
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
@@ -800,10 +800,17 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
     var typ = getTypeInst(typeof(s))[1]
     result = newCall(typ,result)
 
-proc newLit*(arg: tuple): NimNode {.compileTime.} =
-  result = nnkPar.newTree
-  for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
+  ## See typetraits.isNamedTuple
+
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
+  result = nnkTupleConstr.newTree
+  when isNamedTuple(T):
+    for a,b in arg.fieldPairs:
+      result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+  else:
+    for b in arg.fields:
+      result.add newLit(b)
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
