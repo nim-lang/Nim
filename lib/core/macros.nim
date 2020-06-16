@@ -801,7 +801,7 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
   ## Return true for named tuples, false for any other type.
 
-proc newLit*[T:tuple](arg: T): NimNode {.compileTime.} =
+proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
   when isNamedTuple(T):
     result = nnkTupleConstr.newTree
     for a,b in arg.fieldPairs:
