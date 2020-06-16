@@ -3,7 +3,3 @@
 when defined(nimHasCppDefine):
   cppDefine "errno"
   cppDefine "unix"
-
-when defined(bsd) and defined(nimSetDefaultUsrPaths):
-  switch("cincludes", "/usr/local/include")
-  switch("clibdir", "/usr/local/lib")
