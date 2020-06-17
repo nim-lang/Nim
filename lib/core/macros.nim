@@ -1689,4 +1689,3 @@ when defined(nimMacrosSizealignof):
 
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.
-
