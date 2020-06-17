@@ -466,6 +466,8 @@ proc newIdentNode*(i: string): NimNode {.magic: "StrToIdent", noSideEffect, comp
   ## Creates an identifier node from `i`. It is simply an alias for
   ## ``ident(string)``. Use that, it's shorter.
 
+proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
+  ## Create a new ident node from a string.
 
 type
   BindSymRule* = enum    ## specifies how ``bindSym`` behaves
@@ -1282,9 +1284,6 @@ proc `$`*(node: NimNode): string {.compileTime.} =
     result = $node[0]
   else:
     badNodeKind node, "$"
-
-proc ident*(name: string): NimNode {.magic: "StrToIdent", noSideEffect.}
-  ## Create a new ident node from a string.
 
 iterator items*(n: NimNode): NimNode {.inline.} =
   ## Iterates over the children of the NimNode ``n``.
