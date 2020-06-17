@@ -799,7 +799,7 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
     result = newCall(typ,result)
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
-  ## Return true for named tuples, false for any other type.
+  ## See typetraits.isNamedTuple
 
 proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
   result = nnkTupleConstr.newTree
