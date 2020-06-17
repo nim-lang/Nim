@@ -651,19 +651,16 @@ proc yamlNextToken(g: var GeneralTokenizer) =
         of 'x':
           inc(pos)
           for i in 1..2:
-            {.unroll.}
             if g.buf[pos] in hexChars: inc(pos)
           break
         of 'u':
           inc(pos)
           for i in 1..4:
-            {.unroll.}
             if g.buf[pos] in hexChars: inc(pos)
           break
         of 'U':
           inc(pos)
           for i in 1..8:
-            {.unroll.}
             if g.buf[pos] in hexChars: inc(pos)
           break
         else: inc(pos)
@@ -802,7 +799,6 @@ proc yamlNextToken(g: var GeneralTokenizer) =
       if pos == 0 or g.buf[pos - 1] in {'\x0A', '\x0D'}:
         inc(pos)
         for i in 1..2:
-          {.unroll.}
           if g.buf[pos] != '.': break
           inc(pos)
         if pos == g.start + 3:
