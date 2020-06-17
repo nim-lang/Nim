@@ -805,7 +805,7 @@ proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
   result = nnkTupleConstr.newTree
   when isNamedTuple(T):
     for a,b in arg.fieldPairs:
-      result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+      result.add nnkExprColonExpr.newTree(ident(a), newLit(b))
   else:
     for b in arg.fields:
       result.add newLit(b)
