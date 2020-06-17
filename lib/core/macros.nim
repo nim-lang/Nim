@@ -659,7 +659,7 @@ proc newCall*(theProc: string,
   ## Produces a new call node. `theProc` is the proc that is called with
   ## the arguments ``args[0..]``.
   result = newNimNode(nnkCall)
-  result.add(newIdentNode(theProc))
+  result.add(ident(theProc))
   result.add(args)
 
 proc newLit*(c: char): NimNode {.compileTime.} =
@@ -763,13 +763,13 @@ proc newLit*(arg: tuple): NimNode {.compileTime.}
 proc newLit*(arg: object): NimNode {.compileTime.} =
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
   for a, b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree( newIdentNode(a), newLit(b) )
+    result.add nnkExprColonExpr.newTree( ident(a), newLit(b) )
 
 proc newLit*(arg: ref object): NimNode {.compileTime.} =
   ## produces a new ref type literal node.
   result = nnkObjConstr.newTree(arg.type.getTypeInst[1])
   for a, b in fieldPairs(arg[]):
-    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+    result.add nnkExprColonExpr.newTree(ident(a), newLit(b))
 
 proc newLit*[N,T](arg: array[N,T]): NimNode {.compileTime.} =
   result = nnkBracket.newTree
@@ -801,7 +801,7 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
 proc newLit*(arg: tuple): NimNode {.compileTime.} =
   result = nnkPar.newTree
   for a,b in arg.fieldPairs:
-    result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
+    result.add nnkExprColonExpr.newTree(ident(a), newLit(b))
 
 proc nestList*(op: NimNode; pack: NimNode): NimNode {.compileTime.} =
   ## Nests the list `pack` into a tree of call expressions:
@@ -1166,14 +1166,14 @@ proc newEnum*(name: NimNode, fields: openArray[NimNode],
 
   if public:
     let postNode = newNimNode(nnkPostfix).add(
-      newIdentNode("*"), typeDefArgs[0])
+      ident("*"), typeDefArgs[0])
 
     typeDefArgs[0] = postNode
 
   if pure:
     let pragmaNode = newNimNode(nnkPragmaExpr).add(
       typeDefArgs[0],
-      add(newNimNode(nnkPragma), newIdentNode("pure")))
+      add(newNimNode(nnkPragma), ident("pure")))
 
     typeDefArgs[0] = pragmaNode
 
@@ -1689,3 +1689,4 @@ when defined(nimMacrosSizealignof):
 
 proc isExported*(n: NimNode): bool {.noSideEffect.} =
   ## Returns whether the symbol is exported or not.
+
