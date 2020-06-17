@@ -586,6 +586,8 @@ proc pragmaEmit(c: PContext, n: PNode) =
 proc noVal(c: PContext; n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len > 1: invalidPragma(c, n)
 
+proc pragmaUnroll(c: PContext, n: PNode) {.deprecated: "Deprecated since v1.3".} = discard #14695
+
 proc pragmaLine(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     n[1] = c.semConstExpr(c, n[1])
@@ -1053,7 +1055,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         else: sym.typ.callConv = wordToCallConv(k)
       of wEmit: pragmaEmit(c, it)
-      of wUnroll: {.deprecated: "Deprecated since v1.3".} #14695
+      of wUnroll: pragmaUnroll(c, it)
       of wLinearScanEnd, wComputedGoto: noVal(c, it)
       of wEffects:
         # is later processed in effect analysis:
