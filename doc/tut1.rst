@@ -1444,8 +1444,12 @@ string that is "useless" and replace it with "useful".
 ``b[11 .. ^2]`` is the portion "useless", and ``b[11 .. ^2] = "useful"`` replaces the
 "useless" portion with "useful", giving the result "Slices are useful."
 
-Note: alternate ways of writing this are ``b[^8 .. ^2] = "useful"`` or
+Note 1: alternate ways of writing this are ``b[^8 .. ^2] = "useful"`` or
 as ``b[11 .. b.len-2] = "useful"`` or as ``b[11 ..< b.len-1] = "useful"``.
+
+Note 2: As the ``^`` template returns a `distinct int <manual.html#types-distinct-type>`_
+of type ``BackwardsIndex``, we can have a ``lastIndex`` constant defined as ``const lastIndex = ^1``,
+and later used as ``b[0 .. lastIndex]``.
 
 Objects
 -------
