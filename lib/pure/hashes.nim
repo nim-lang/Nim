@@ -340,7 +340,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   else:
     murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
-proc hashIgnoreStyle*(x: string): Hash =
+proc hashIgnoreStyle*(x: string, idEquality = false): Hash =
   ## Efficient hashing of strings; style is ignored.
   ##
   ## **Note:** This uses different hashing algorithm than `hash(string)`.
@@ -352,7 +352,15 @@ proc hashIgnoreStyle*(x: string): Hash =
     doAssert hashIgnoreStyle("abcdefghi") != hash("abcdefghi")
 
   var h: Hash = 0
-  var i = 0
+
+  var i =
+    if idEquality:
+      if len(x) == 0:
+        return !$h
+      h = h !& ord(x[0])
+      1
+    else: 
+      0
   let xLen = x.len
   while i < xLen:
     var c = x[i]
