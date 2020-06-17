@@ -196,10 +196,6 @@ static:
   echo "macrocache ok"
   
 block tupleNewLitTests:
-  type
-    EmptyT = tuple
-  proc emptyT(): EmptyT =
-    discard
   macro t0(): untyped =
     result = newLit(())
   doAssert t0 == ()
