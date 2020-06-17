@@ -206,11 +206,11 @@ block tupleNewLitTests:
     result = newLit((a:5))
   doAssert t2 == (a:5)
   macro t3(): untyped =
-    result = newLit((5,"5"))
-  doAssert t3 == (5,"5")
+    result = newLit((5, "5"))
+  doAssert t3 == (5, "5")
   macro t4(): untyped =
-    result = newLit((a:5,b:"5"))
-  doAssert t4 == (a:5,b:"5")
+    result = newLit((a:5, b:"5"))
+  doAssert t4 == (a:5, b:"5")
   macro t5(): untyped =
     result = newLit(@[(5,)])
   doAssert t5 == @[(5,)]
@@ -218,11 +218,11 @@ block tupleNewLitTests:
     result = newLit(@[(a:5)])
   doAssert t6 == @[(a:5)]
   macro t7(): untyped =
-    result = newLit(@[(5,"5")])
-  doAssert t7 == @[(5,"5")]
+    result = newLit(@[(5, "5")])
+  doAssert t7 == @[(5, "5")]
   macro t8(): untyped =
-    result = newLit(@[(a:5,b:"5")])
-  doAssert t8 == @[(a:5,b:"5")]
+    result = newLit(@[(a:5, b:"5")])
+  doAssert t8 == @[(a:5, b:"5")]
   macro t9(): untyped =
-    result = newLit(@[(a:(5,6),b:())])
-  doAssert t9 == @[(a:(5,6),b:())]
+    result = newLit(@[(a:(5, 6), b:())])
+  doAssert t9 == @[(a:(5, 6), b:())]
