@@ -79,9 +79,8 @@ block hashForHashedSet:
   let
     seq1 = "This is the test."
     seq2 = "the test is This."
-    s1 = seq1.toSet()
-    s2 = seq2.toSet()
-  var hashSeq: seq[Hash] = @[]
+    s1 = seq1.toHashSet()
+    s2 = seq2.toHashSet()
   doAssert s1 == s2
   doAssert hash(s1) == hash(s2)
 

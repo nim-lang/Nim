@@ -34,7 +34,6 @@ pkg1 "coco", true
 pkg1 "combparser"
 pkg1 "compactdict"
 pkg1 "comprehension", false, "nimble test", "https://github.com/alehander42/comprehension"
-pkg1 "criterion"
 pkg1 "dashing", false, "nim c tests/functional.nim"
 pkg1 "delaunay"
 pkg1 "docopt"

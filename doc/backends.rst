@@ -367,7 +367,7 @@ A similar thing happens with C code invoking Nim code which returns a
 .. code-block:: nim
 
   proc gimme(): cstring {.exportc.} =
-    result = "Hey there C code! " & $random(100)
+    result = "Hey there C code! " & $rand(100)
 
 Since Nim's garbage collector is not aware of the C code, once the
 ``gimme`` proc has finished it can reclaim the memory of the ``cstring``.

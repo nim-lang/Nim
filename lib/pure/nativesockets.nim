@@ -233,22 +233,6 @@ proc createNativeSocket*(domain: Domain = AF_INET,
   ## by child processes.
   createNativeSocket(toInt(domain), toInt(sockType), toInt(protocol), inheritable)
 
-proc newNativeSocket*(domain: Domain = AF_INET,
-                      sockType: SockType = SOCK_STREAM,
-                      protocol: Protocol = IPPROTO_TCP): SocketHandle
-                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  createNativeSocket(domain, sockType, protocol)
-
-proc newNativeSocket*(domain: cint, sockType: cint,
-                      protocol: cint): SocketHandle
-                      {.deprecated: "deprecated since v0.18.0; use 'createNativeSocket' instead".} =
-  ## Creates a new socket; returns `osInvalidSocket` if an error occurs.
-  ##
-  ## Use this overload if one of the enums specified above does
-  ## not contain what you need.
-  createNativeSocket(domain, sockType, protocol)
-
 proc bindAddr*(socket: SocketHandle, name: ptr SockAddr,
     namelen: SockLen): cint =
   result = bindSocket(socket, name, namelen)

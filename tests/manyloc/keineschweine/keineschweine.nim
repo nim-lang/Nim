@@ -486,7 +486,7 @@ when defined(DebugKeys):
       activeVehicle.body.setPos mouseToSpace())
   ingameClient.registerHandler(KeyY, down, proc() =
     const looloo = ["Asteroid1", "Asteroid2"]
-    addObject(looloo[random(looloo.len)]))
+    addObject(looloo[rand(looloo.len)]))
   ingameClient.registerHandler(KeyO, down, proc() =
     if objects.len == 0:
       echo "Objects is empty"
