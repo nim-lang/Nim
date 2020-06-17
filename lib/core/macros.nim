@@ -170,10 +170,10 @@ proc sameType*(a, b: NimNode): bool {.magic: "SameNodeType", noSideEffect.} =
 proc len*(n: NimNode): int {.magic: "NLen", noSideEffect.}
   ## Returns the number of children of `n`.
 
-proc `[]`*(n: NimNode, i: int): NimNode {.magic: "NChild", noSideEffect.}
+proc `[]`*(n: NimNode, i: int): var NimNode {.magic: "NChild", noSideEffect.}
   ## Get `n`'s `i`'th child.
 
-proc `[]`*(n: NimNode, i: BackwardsIndex): NimNode = n[n.len - i.int]
+proc `[]`*(n: NimNode, i: BackwardsIndex): var NimNode = n[n.len - i.int]
   ## Get `n`'s `i`'th child.
 
 template `^^`(n: NimNode, i: untyped): untyped =
