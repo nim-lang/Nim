@@ -196,14 +196,13 @@ static:
   echo "macrocache ok"
   
 block tupleNewLitTests:
-  echo "tupleNewLitTests"
   type
     EmptyT = tuple
   proc emptyT(): EmptyT =
     discard
   macro t0(): untyped =
     result = newLit(())
-  doAssert t0 == emptyT()
+  doAssert t0 == ()
   macro t1(): untyped =
     result = newLit((5,))
   doAssert t1 == (5,)
@@ -230,5 +229,4 @@ block tupleNewLitTests:
   doAssert t8 == @[(a:5,b:"5")]
   macro t9(): untyped =
     result = newLit(@[(a:(5,6),b:())])
-  doAssert t9 == @[(a:(5,6),b:emptyT())]
-  echo "tupleNewLitTests ok"
+  doAssert t9 == @[(a:(5,6),b:())]
