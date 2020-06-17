@@ -206,30 +206,6 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc random*(max: int): int {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  while true:
-    let x = next(state)
-    if x < randMax - (randMax mod Ui(max)):
-      return int(x mod uint64(max))
-
-proc random*(max: float): float {.benign, deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  let x = next(state)
-  when defined(js):
-    result = (float(x) / float(high(uint32))) * max
-  else:
-    let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
-    result = (cast[float](u) - 1.0) * max
-
-proc random*[T](x: HSlice[T, T]): T {.deprecated:
-  "Deprecated since v0.18.0; use 'rand' instead".} =
-  result = T(random(x.b - x.a)) + x.a
-
-proc random*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.18.0; use 'sample' instead".} =
-  result = a[random(a.low..a.len)]
-
 proc rand*(r: var Rand; max: Natural): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
@@ -362,10 +338,6 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]): T =
     doAssert rand(1..6) == 6
   result = rand(state, x)
 
-proc rand*[T](r: var Rand; a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0; use 'sample' instead".} =
-  result = a[rand(r, a.low..a.high)]
-
 proc rand*[T: SomeInteger](t: typedesc[T]): T =
   ## Returns a random integer in the range `low(T)..high(T)`.
   ##
@@ -394,10 +366,6 @@ proc rand*[T: SomeInteger](t: typedesc[T]): T =
     result = rand(state, low(T)..high(T))
   else:
     result = cast[T](state.next)
-
-proc rand*[T](a: openArray[T]): T {.deprecated:
-  "Deprecated since v0.20.0; use 'sample' instead".} =
-  result = a[rand(a.low..a.high)]
 
 proc sample*[T](r: var Rand; s: set[T]): T =
   ## Returns a random element from the set ``s`` using the given state.
@@ -687,6 +655,6 @@ when isMainModule:
 
 
     # don't use causes integer overflow
-    doAssert compiles(random[int](low(int) .. high(int)))
+    doAssert compiles(rand[int](low(int) .. high(int)))
 
   main()

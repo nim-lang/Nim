@@ -47,10 +47,10 @@ test "unittest multiple requires":
   require(true)
 
 
-import math, random
+import random
 from strutils import parseInt
 proc defectiveRobot() =
-  case random(1..4)
+  case rand(1..4)
   of 1: raise newException(OSError, "CANNOT COMPUTE!")
   of 2: discard parseInt("Hello World!")
   of 3: raise newException(IOError, "I can't do that Dave.")

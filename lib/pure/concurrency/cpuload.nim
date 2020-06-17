@@ -88,7 +88,7 @@ when not defined(testing) and isMainModule and not defined(nimdoc):
 
   proc busyLoop() =
     while true:
-      discard random(80)
+      discard rand(80)
       os.sleep(100)
 
   spawn busyLoop()

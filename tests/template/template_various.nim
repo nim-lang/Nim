@@ -107,7 +107,7 @@ block tgetast_typeliar:
           error("Assertion failed: " & $(`message`) & "\n" & `line`)
           return
 
-  macro assertOrReturn(condition: bool): typed =
+  macro assertOrReturn(condition: bool) =
     var message : NimNode = newLit(condition.repr)
     # echo message
     result = getAst assertOrReturn2(condition, message)

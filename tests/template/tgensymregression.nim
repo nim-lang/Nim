@@ -57,7 +57,7 @@ converter int2string(x: int): string = $x
 template wrap(body: typed): untyped =
   body
 
-macro makeProc(): typed =
+macro makeProc() =
   # Make a template tree
   result = quote do:
     proc someProc* =
