@@ -586,16 +586,6 @@ proc pragmaEmit(c: PContext, n: PNode) =
 proc noVal(c: PContext; n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len > 1: invalidPragma(c, n)
 
-proc pragmaUnroll(c: PContext, n: PNode) =
-  if c.p.nestedLoopCounter <= 0:
-    invalidPragma(c, n)
-  elif n.kind in nkPragmaCallKinds and n.len == 2:
-    var unrollFactor = expectIntLit(c, n)
-    if unrollFactor <% 32:
-      n[1] = newIntNode(nkIntLit, unrollFactor)
-    else:
-      invalidPragma(c, n)
-
 proc pragmaLine(c: PContext, n: PNode) =
   if n.kind in nkPragmaCallKinds and n.len == 2:
     n[1] = c.semConstExpr(c, n[1])
@@ -1063,7 +1053,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
         if sym.typ == nil: invalidPragma(c, it)
         else: sym.typ.callConv = wordToCallConv(k)
       of wEmit: pragmaEmit(c, it)
-      of wUnroll: pragmaUnroll(c, it)
+      of wUnroll: {.deprecated: "Deprecated since v1.3".} #14695
       of wLinearScanEnd, wComputedGoto: noVal(c, it)
       of wEffects:
         # is later processed in effect analysis:
