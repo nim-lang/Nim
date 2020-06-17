@@ -611,13 +611,10 @@ proc getRoutineBody(n: PNode): PNode =
   (0 or more) doc comments and runnableExamples.
   ]##
   result = n[bodyPos]
-  case result.kind
-    of nkAsgn:
-      doAssert result[0].kind == nkSym
-      doAssert result.len == 2
-      result = result[1]
-    else: # eg: nkStmtList
-      discard
+  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+    doAssert result[0].kind == nkSym
+    doAssert result.len == 2
+    result = result[1]
 
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n
