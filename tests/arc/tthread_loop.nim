@@ -1,14 +1,14 @@
 discard """
   output: "test ok"
-  cmd: "nim c --gc:arc --threads:on $file"
+  cmd: "nim c --gc:arc --threads:on --stacktrace:off $file"
 """
-
-var threads: array[5, Thread[void]]
 
 proc threadFn() {.thread.} =
   discard
 
 proc main =
+  var threads: array[5, Thread[void]]
+
   for i in 0 ..< 5:
     createThread(threads[i], threadFn)
   joinThreads(threads)
