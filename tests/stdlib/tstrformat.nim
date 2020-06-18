@@ -65,8 +65,8 @@ doAssert fmt"{1.5: 08}" == " 00001.5" # works
 
 # only add explicitly requested sign if value != -0.0 (neg zero)
 doAssert fmt"{-0.0:g}" == "-0"
-doassert fmt"{-0.0:+g}" == "-0"
-doassert fmt"{-0.0: g}" == "-0"
+doAssert fmt"{-0.0:+g}" == "-0"
+doAssert fmt"{-0.0: g}" == "-0"
 doAssert fmt"{0.0:g}" == "0"
 doAssert fmt"{0.0:+g}" == "+0"
 doAssert fmt"{0.0: g}" == " 0"
