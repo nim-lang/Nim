@@ -194,35 +194,11 @@ static:
     doAssert(v == a)
 
   echo "macrocache ok"
-  
+
 block tupleNewLitTests:
-  macro t0(): untyped =
-    result = newLit(())
-  doAssert t0 == ()
-  macro t1(): untyped =
-    result = newLit((5,))
-  doAssert t1 == (5,)
-  macro t2(): untyped =
-    result = newLit((a: 5))
-  doAssert t2 == (a: 5)
-  macro t3(): untyped =
-    result = newLit((5, "5"))
-  doAssert t3 == (5, "5")
-  macro t4(): untyped =
-    result = newLit((a: 5, b: "5"))
-  doAssert t4 == (a: 5, b: "5")
-  macro t5(): untyped =
-    result = newLit(@[(5,)])
-  doAssert t5 == @[(5,)]
-  macro t6(): untyped =
-    result = newLit(@[(a: 5)])
-  doAssert t6 == @[(a: 5)]
-  macro t7(): untyped =
-    result = newLit(@[(5, "5")])
-  doAssert t7 == @[(5, "5")]
-  macro t8(): untyped =
-    result = newLit(@[(a: 5, b: "5")])
-  doAssert t8 == @[(a: 5, b: "5")]
-  macro t9(): untyped =
-    result = newLit(@[(a: (5, 6), b: ())])
-  doAssert t9 == @[(a: (5, 6), b: ())]
+  macro t(): untyped =
+    result = newLit (1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))
+  doAssert $t() == """(1, "foo", (), (1,), (a1: 'x', a2: @["ba"]))"""
+    # this `$` test is needed because tuple equality doesn't distinguish
+    # between named vs unnamed tuples
+  doAssert t() == (1, "foo", (), (1, ), (a1: 'x', a2: @["ba"]))
