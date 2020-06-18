@@ -31,6 +31,6 @@ proc resolveAliasSym*(n: PNode, forceResolve = false): PNode =
         discard
     else: # the alias is resolved
       doAssert result.typ.n != nil
-      # nil would mean a aliasSem param was not instantiated; for macros, this
+      # nil would mean a aliasSym param was not instantiated; for macros, this
       # requires macro instantiation
       result = result.typ.n.sym.nodeAliasGroup

@@ -500,7 +500,7 @@ type
     tfFromGeneric,    # type is an instantiation of a generic; this is needed
                       # because for instantiations of objects, structural
                       # type equality has to be used
-    tfUnresolved,     # marks unresolved typedesc/static/aliasSem params: e.g.
+    tfUnresolved,     # marks unresolved typedesc/static/aliasSym params: e.g.
                       # proc foo(T: typedesc, list: seq[T]): var T
                       # proc foo(L: static[int]): array[L, int]
                       # can be attached to ranges to indicate that the range
