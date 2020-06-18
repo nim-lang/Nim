@@ -43,7 +43,7 @@ pkg1 "elvis"
   # Error: cannot open 'tests/runNative.nim'
 pkg1 "fragments", false, "nim c -r fragments/dsl.nim"
 pkg1 "gara"
-pkg1 "ggplotnim", true, "nim c -d:noCairo -r -d:nimWorkaround14447 tests/tests.nim"
+pkg1 "ggplotnim", true, "nim c -d:noCairo -r -d:nimWorkaround14447 -d:nimHasWorkaround14720 tests/tests.nim"
 # pkg1 "gittyup", true, "nimble test", "https://github.com/disruptek/gittyup"
 pkg1 "glob"
 pkg1 "gnuplot"

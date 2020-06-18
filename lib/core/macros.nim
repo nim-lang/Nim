@@ -801,12 +801,14 @@ proc newLit*[T](s: set[T]): NimNode {.compileTime.} =
     result = newCall(typ,result)
 
 proc isNamedTuple(T: typedesc): bool {.magic: "TypeTrait".}
-  ## See typetraits.isNamedTuple
+  ## See `typetraits.isNamedTuple`
 
 proc newLit*[T: tuple](arg: T): NimNode {.compileTime.} =
+  ## use -d:nimHasWorkaround14720 to restore behavior prior to PR, forcing
+  ## a named tuple even when `arg` is unnamed.
   result = nnkTupleConstr.newTree
-  when isNamedTuple(T):
-    for a,b in arg.fieldPairs:
+  when defined(nimHasWorkaround14720) or isNamedTuple(T):
+    for a, b in arg.fieldPairs:
       result.add nnkExprColonExpr.newTree(newIdentNode(a), newLit(b))
   else:
     for b in arg.fields:
