@@ -609,21 +609,12 @@ proc getRoutineBody(n: PNode): PNode =
 
   so we normalize the results to get to the statement list containing the
   (0 or more) doc comments and runnableExamples.
-  (even if using `result = n[bodyPos]`, you'd still to apply similar logic).
   ]##
-  result = n[^1]
-  case result.kind
-  of nkSym:
-    result = n[^2]
-    case result.kind
-      of nkAsgn:
-        doAssert result[0].kind == nkSym
-        doAssert result.len == 2
-        result = result[1]
-      else: # eg: nkStmtList
-        discard
-  else:
-    discard
+  result = n[bodyPos]
+  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+    doAssert result[0].kind == nkSym
+    doAssert result.len == 2
+    result = result[1]
 
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n

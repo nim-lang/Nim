@@ -247,6 +247,28 @@ at indent 0
       # should be in
     # should be out
 
+when true: # methods; issue #14691
+  type Moo = object
+  method method1*(self: Moo) =
+    ## foo1
+  method method2*(self: Moo): int =
+    ## foo2
+    result = 1
+  method method3*(self: Moo): int =
+    ## foo3
+    1
+
+when true: # iterators
+  iterator iter1*(n: int): int =
+    ## foo1
+    for i in 0..<n:
+      yield i
+  iterator iter2*(n: int): int =
+    ## foo2
+    runnableExamples:
+      discard # bar
+    yield 0
+
 when true: # (most) macros
   macro bar*(): untyped =
     result = newStmtList()
