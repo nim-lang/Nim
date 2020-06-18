@@ -4,6 +4,11 @@
 
 ## Standard library additions and changes
 
+- All operations on `HashSet` and `OrderedSet` are implemented also for the
+  other set type via generic interface working with an union type `SomeSet` and
+  the newly added concepts `Iterable` and `IterableLen`.
+- Standard library concepts module is started with the `Iterable` and
+  `IterableLen` concepts.
 - Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
 - Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.

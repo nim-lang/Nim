@@ -151,3 +151,88 @@ proc exclImpl[A](s: var OrderedSet[A], key: A): bool {.inline.} =
         var j = -1 - rawGetKnownHC(s, n[h].key, n[h].hcode)
         rawInsert(s, s.data, n[h].key, n[h].hcode, j)
     h = nxt
+
+template getEx() =
+  var hc: Hash
+  var index = rawGet(s, key, hc)
+  if index >= 0: result = s.data[index].key
+  else:
+    when compiles($key):
+      raise newException(KeyError, "key not found: " & $key)
+    else:
+      raise newException(KeyError, "key not found")
+
+template hashSetItemsImpl() =
+  for h in 0 .. high(s.data):
+    if isFilled(s.data[h].hcode): yield s.data[h].key
+
+template hashSetPairsImpl() =
+  var index = 0
+  for h in 0 .. high(s.data):
+    if isFilled(s.data[h].hcode):
+      yield (index, s.data[h].key)
+      inc(index)
+
+template hashSetClearImpl() =
+  s.counter = 0
+  for i in 0 ..< s.data.len:
+    s.data[i].hcode = 0
+    s.data[i].key = default(type(s.data[i].key))
+
+template hashSetEqualImpl() =
+  s.counter == t.counter and s <= t
+
+template hashSetHashImpl() =
+  for h in 0 .. high(s.data):
+    result = result xor s.data[h].hcode
+  result = !$result
+
+template forAllOrderedPairs(yieldStmt: untyped) {.dirty.} =
+  if s.data.len > 0:
+    var h = s.first
+    var idx = 0
+    while h >= 0:
+      var nxt = s.data[h].next
+      if isFilled(s.data[h].hcode):
+        yieldStmt
+        inc(idx)
+      h = nxt
+
+template orderedSetItemsImpl() =
+  forAllOrderedPairs:
+    yield s.data[h].key
+
+template orderedSetPairsImpl() =
+  forAllOrderedPairs:
+    yield (idx, s.data[h].key)
+
+template orderedSetClearImpl() =
+  s.counter = 0
+  s.first = -1
+  s.last = -1
+  for i in 0 ..< s.data.len:
+    s.data[i].hcode = 0
+    s.data[i].next = 0
+    s.data[i].key = default(type(s.data[i].key))
+
+template orderedSetEqualImpl() =
+  if s.counter != t.counter: return false
+  var h = s.first
+  var g = t.first
+  var compared = 0
+  while h >= 0 and g >= 0:
+    var nxh = s.data[h].next
+    var nxg = t.data[g].next
+    if isFilled(s.data[h].hcode) and isFilled(t.data[g].hcode):
+      if s.data[h].key == t.data[g].key:
+        inc compared
+      else:
+        return false
+    h = nxh
+    g = nxg
+  result = compared == s.counter
+
+template orderedSetHashImpl() =
+  forAllOrderedPairs:
+    result = result !& s.data[h].hcode
+  result = !$result
