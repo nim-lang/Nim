@@ -427,20 +427,17 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOptDeprecated
-      # 'out' parameter. Comparable to a 'var' parameter but every
-      # path must assign a value to it before it can be read from.
+    tyAliasSym
+      ## type of symbol alias
 
     tyVoid
       # now different from tyEmpty, hurray!
 
-    tyAliasSym
-
 static:
-  when false:
+  assert TTypeKind.high.ord <= 63
     # remind us when TTypeKind stops to fit in a single 64-bit word
-    assert TTypeKind.high.ord <= 63
-      # consider merging some types if profiling shows a slowdown
+    # consider merging some types if profiling shows a slowdown (though it's
+    # unlikely)
 
 const
   tyPureObject* = tyTuple

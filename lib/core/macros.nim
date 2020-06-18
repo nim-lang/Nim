@@ -106,7 +106,7 @@ type
     ntyError,
     ntyBuiltinTypeClass, ntyUserTypeClass, ntyUserTypeClassInst,
     ntyCompositeTypeClass, ntyInferred, ntyAnd, ntyOr, ntyNot,
-    ntyAnything, ntyStatic, ntyFromExpr, ntyOptDeprecated, ntyVoid
+    ntyAnything, ntyStatic, ntyFromExpr, ntyAliasSym, ntyVoid
 
   TNimTypeKinds* {.deprecated.} = set[NimTypeKind]
   NimSymKind* = enum

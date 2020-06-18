@@ -459,8 +459,8 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "out",
-    "void", "aliasSym"]
+    "and", "or", "not", "any", "static", "TypeFromExpr", "aliasSym",
+    "void"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,
   preferGenericArg, preferResolved, preferMixed}
@@ -1204,7 +1204,6 @@ proc sameTypeAux(x, y: PType, c: var TSameTypeClosure): bool =
     cycleCheck()
     result = sameTypeAux(a.lastSon, b.lastSon, c)
   of tyNone: result = false
-  of tyOptDeprecated: doAssert false
 
 proc sameBackendType*(x, y: PType): bool =
   var c = initSameTypeClosure()
