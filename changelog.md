@@ -112,6 +112,7 @@
 - new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
 - Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
 - Add `os.normalizeExe`, eg: `koch` => `./koch`.
+- Add `rstgen.rstToJson` convenience proc for `renderRstToJson` and `rstParse` with JSON output.
 
 
 ## Language changes

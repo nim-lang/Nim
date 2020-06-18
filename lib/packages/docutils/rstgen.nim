@@ -1355,6 +1355,14 @@ proc rstToLatex*(rstSource: string; options: RstParseOptions): string {.inline, 
   rstGenera.renderRstToOut(rstParse(rstSource, "", 1, 1, option, options), result)
 
 
+proc rstToJson*(rstSource: string; options: RstParseOptions): string {.inline, since: (1, 3).} =
+  ## Convenience proc for `renderRstToJson` and `rstParse`.
+  runnableExamples: echo rstToJson("*Hello* **world**", {})
+  if rstSource.len == 0: return
+  var option: bool
+  result = renderRstToJson(rstParse(rstSource, "", 1, 1, option, options))
+
+
 when isMainModule:
   assert rstToHtml("*Hello* **world**!", {},
     newStringTable(modeStyleInsensitive)) ==
