@@ -110,21 +110,21 @@ block t6154:
   doAssert ps[0].attrsLen == 2
   doAssert ps[0].attr("class") == "foo"
   doAssert ps[0].attr("id") == "bar"
-  doassert ps[0].len == 0
+  doAssert ps[0].len == 0
 
   doAssert ps[1].attrsLen == 1
   doAssert ps[1].attr("something") == "\tfoo\tbar²"
-  doassert ps[1].len == 0
+  doAssert ps[1].len == 0
 
   doAssert ps[2].attrsLen == 2
   doAssert ps[2].attr("something") == "\tfoo\tbar²"
   doAssert ps[2].attr("foo") == "bloo"
-  doassert ps[2].len == 0
+  doAssert ps[2].len == 0
 
   doAssert ps[3].attrsLen == 2
   doAssert ps[3].attr("class") == "foo2"
   doAssert ps[3].attr("id") == "bar2"
-  doassert ps[3].len == 0
+  doAssert ps[3].len == 0
 
   doAssert ps[4].attrsLen == 1
   doAssert ps[4].attr("wrong") == ""
@@ -133,12 +133,12 @@ block t6154:
   doAssert ps[5].attr("data-foo") == ""
   doAssert ps[5].attr("data-bar") == "correct!"
   doAssert ps[5].attr("enabled") == ""
-  doassert ps[5].len == 0
+  doAssert ps[5].len == 0
 
   doAssert ps[6].attrsLen == 2
   doAssert ps[6].attr("quux") == ""
   doAssert ps[6].attr("whatever") == ""
-  doassert ps[6].len == 0
+  doAssert ps[6].len == 0
 
 # bug #11713, #1034
 var content = """
