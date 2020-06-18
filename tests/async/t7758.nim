@@ -2,7 +2,8 @@ import asyncdispatch
 import std/unittest
 
 proc task() {.async.} =
-  await sleepAsync(40)
+  let t = 40
+  await sleepAsync(t)
 
 proc main() =
   var counter = 0
@@ -11,6 +12,10 @@ proc main() =
     inc(counter)
     poll(10)
 
-  check counter <= 4
+  let slack = 1
+    # because there is overhead in `async` + `sleepAsync`
+    # as can be seen by increasing `t` from 40 to 49, which increases the number
+    # of failures.
+  check counter <= 4 + slack
 
 for i in 0 .. 10: main()
