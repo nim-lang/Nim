@@ -639,13 +639,13 @@ proc xzDist(c: var ConfigData; windowsZip=false) =
   proc processFile(destFile, src: string) =
     let dest = tmpDir / destFile
     when false: echo "Copying ", src, " to ", dest
-    if not existsFile(src):
+    if not fileExists(src):
       echo "[Warning] Source file doesn't exist: ", src
     let destDir = dest.splitFile.dir
     if not dirExists(destDir): createDir(destDir)
     copyFileWithPermissions(src, dest)
 
-  if not windowsZip and not existsFile("build" / buildBatFile):
+  if not windowsZip and not fileExists("build" / buildBatFile):
     quit("No C sources found in ./build/, please build by running " &
          "./koch csource -d:release.")
 
@@ -708,8 +708,8 @@ RunProgram="tools\downloader.exe"
 # -- prepare build files for .deb creation
 
 proc debDist(c: var ConfigData) =
-  if not existsFile(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
-  if not existsFile(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
+  if not fileExists(getOutputDir(c) / "build.sh"): quit("No build.sh found.")
+  if not fileExists(getOutputDir(c) / "install.sh"): quit("No install.sh found.")
 
   if c.debOpts.shortDesc == "": quit("shortDesc must be set in the .ini file.")
   if c.debOpts.licenses.len == 0:

@@ -740,7 +740,7 @@ proc getRelativePathFromConfigPath*(conf: ConfigRef; f: AbsoluteFile): RelativeF
 
 proc findFile*(conf: ConfigRef; f: string; suppressStdlib = false): AbsoluteFile =
   if f.isAbsolute:
-    result = if f.existsFile: AbsoluteFile(f) else: AbsoluteFile""
+    result = if f.fileExists: AbsoluteFile(f) else: AbsoluteFile""
   else:
     result = rawFindFile(conf, RelativeFile f, suppressStdlib)
     if result.isEmpty:

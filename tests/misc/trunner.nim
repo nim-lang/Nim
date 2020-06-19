@@ -26,7 +26,7 @@ const
 
 proc runCmd(file, options = ""): auto =
   let fileabs = testsDir / file.unixToNativePath
-  doAssert fileabs.existsFile, fileabs
+  doAssert fileabs.fileExists, fileabs
   let cmd = fmt"{nim} {mode} {options} --hints:off {fileabs}"
   result = execCmdEx(cmd)
   when false:  echo result[0] & "\n" & result[1] # for debugging

@@ -7344,9 +7344,9 @@ string expressions in general:
 
   proc getDllName: string =
     result = "mylib.dll"
-    if existsFile(result): return
+    if fileExists(result): return
     result = "mylib2.dll"
-    if existsFile(result): return
+    if fileExists(result): return
     quit("could not load dynamic library")
 
   proc myImport(s: cstring) {.cdecl, importc, dynlib: getDllName().}

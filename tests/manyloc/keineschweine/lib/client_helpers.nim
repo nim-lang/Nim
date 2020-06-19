@@ -127,7 +127,7 @@ proc handleFileChallenge*(serv: PServer; buffer: PBuffer) =
     challenge = readScFileChallenge(buffer)
     path = expandPath(challenge)
     resp: CsFileChallenge
-  if not existsFile(path):
+  if not fileExists(path):
     resp.needFile = true
     echo "Got file challenge, need file."
   else:

@@ -572,7 +572,7 @@ proc `&.?`(a, b: string): string =
 proc processSingleTest(r: var TResults, cat: Category, options, test: string) =
   let test = testsDir &.? cat.string / test
   let target = if cat.string.normalize == "js": targetJS else: targetC
-  if existsFile(test):
+  if fileExists(test):
     testSpec r, makeTest(test, options, cat), {target}
   else:
     doAssert false, test & " test does not exist"

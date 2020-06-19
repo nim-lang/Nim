@@ -1127,7 +1127,7 @@ proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect]
   ## is returned. Follows symlinks.
   ##
   ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
+  ## * `fileExists proc <#fileExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     when useWinUnicode:
@@ -1147,7 +1147,7 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
   ## regardless of whether the link points to a directory or file.
   ##
   ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
+  ## * `fileExists proc <#fileExists,string>`_
   ## * `existsDir proc <#existsDir,string>`_
   when defined(windows):
     when useWinUnicode:
@@ -1165,7 +1165,7 @@ proc dirExists*(dir: string): bool {.inline, noNimJs.} =
   ## Alias for `existsDir proc <#existsDir,string>`_.
   ##
   ## See also:
-  ## * `existsFile proc <#existsFile,string>`_
+  ## * `fileExists proc <#fileExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   existsDir(dir)
 
@@ -1197,7 +1197,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
   template checkCurrentDir() =
     for ext in extensions:
       result = addFileExt(exe, ext)
-      if existsFile(result): return
+      if fileExists(result): return
   when defined(posix):
     if '/' in exe: checkCurrentDir()
   else:
@@ -1213,7 +1213,7 @@ proc findExe*(exe: string, followSymlinks: bool = true;
       var x = expandTilde(candidate) / exe
     for ext in extensions:
       var x = addFileExt(x, ext)
-      if existsFile(x):
+      if fileExists(x):
         when not defined(windows):
           while followSymlinks: # doubles as if here
             if x.checkSymlink:
@@ -2024,7 +2024,7 @@ proc expandFilename*(filename: string): string {.rtl, extern: "nos$1",
     # way of retrieving the true filename
     for x in walkFiles(result):
       result = x
-    if not existsFile(result) and not existsDir(result):
+    if not fileExists(result) and not existsDir(result):
       # consider using: `raiseOSError(osLastError(), result)`
       raise newException(OSError, "file '" & result & "' does not exist")
   else:
@@ -2890,7 +2890,7 @@ when not weirdTarget and defined(openbsd):
       # search in path
       for p in split(string(getEnv("PATH")), {PathSep}):
         var x = joinPath(p, exePath)
-        if existsFile(x):
+        if fileExists(x):
           return expandFilename(x)
     else:
       result = ""
@@ -2905,7 +2905,7 @@ when not (defined(windows) or defined(macosx) or weirdTarget):
         # iterate over any path in the $PATH environment variable
         for p in split(string(getEnv("PATH")), {PathSep}):
           var x = joinPath(p, result)
-          if existsFile(x): return x
+          if fileExists(x): return x
     else:
       result = ""
 

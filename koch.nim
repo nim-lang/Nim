@@ -113,7 +113,7 @@ proc tryExec(cmd: string): bool =
   result = execShellCmd(cmd) == 0
 
 proc safeRemove(filename: string) =
-  if existsFile(filename): removeFile(filename)
+  if fileExists(filename): removeFile(filename)
 
 proc overwriteFile(source, dest: string) =
   safeRemove(dest)
@@ -280,11 +280,11 @@ proc findStartNim: string =
   if ok: return nim
   when defined(Posix):
     const buildScript = "build.sh"
-    if existsFile(buildScript):
+    if fileExists(buildScript):
       if tryExec("./" & buildScript): return "bin" / nim
   else:
     const buildScript = "build.bat"
-    if existsFile(buildScript):
+    if fileExists(buildScript):
       if tryExec(buildScript): return "bin" / nim
 
   echo("Found no nim compiler and every attempt to build one failed!")
