@@ -97,6 +97,7 @@ type                          # please make sure we have under 32 options
     optPanics                 # turn panics (sysFatal) into a process termination
     optNimV1Emulation         # emulate Nim v1.0
     optSourcemap
+    optPatchToFunc            # produce a patch file to turn 'proc' into 'func'
 
   TGlobalOptions* = set[TGlobalOption]
 

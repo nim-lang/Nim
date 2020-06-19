@@ -1226,6 +1226,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
     s.typ.flags.incl tfGcSafe
   if not t.hasSideEffect and sfSideEffect notin s.flags:
     s.typ.flags.incl tfNoSideEffect
+    if optPatchToFunc in g.config.globalOptions and s.kind == skProc:
+      echo toFilenameOption(g.config, s.info.fileIndex, foAbs), " ",
+          s.info.line, " ", s.info.col - 5, " 4 func"
   if s.typ.lockLevel == UnspecifiedLockLevel:
     s.typ.lockLevel = t.maxLockLevel
   elif t.maxLockLevel > s.typ.lockLevel:

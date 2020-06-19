@@ -907,6 +907,8 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     conf.globalOptions.incl optSourcemap
     conf.options.incl optLineDir
     # processOnOffSwitchG(conf, {optSourcemap, opt}, arg, pass, info)
+  of "patchfunc":
+    conf.globalOptions.incl optPatchToFunc
   of "": # comes from "-" in for example: `nim c -r -` (gets stripped from -)
     handleStdinInput(conf)
   else:
