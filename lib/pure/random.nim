@@ -79,6 +79,7 @@
 ##   in the standard library
 
 import algorithm, math
+import std/private/since
 
 include "system/inclrtl"
 {.push debugger: off.}
@@ -516,7 +517,7 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     doAssert sample(marbles, cdf) == "blue"
   state.sample(a, cdf)
 
-proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float =
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float {.since: (1, 3).} =
   ## Returns a Gaussian random variate,
   ## with mean ``mu`` and standard deviation ``sigma``
   ## using the given state.
@@ -532,7 +533,7 @@ proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float =
     if  b * b <= -4.0 * a * a * ln(a): break
   result = mu + sigma * (b / a)
 
-proc gauss*(mu = 0.0, sigma = 1.0): float =
+proc gauss*(mu = 0.0, sigma = 1.0): float {.since: (1, 3).} =
   ## Returns a Gaussian random variate,
   ## with mean ``mu`` and standard deviation ``sigma``.
   ##
