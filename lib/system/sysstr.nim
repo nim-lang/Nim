@@ -16,13 +16,13 @@
 # the programmer may not want
 
 
-proc dataPointer(a: PGenericSeq, elemAlign: int): pointer =
+func dataPointer(a: PGenericSeq, elemAlign: int): pointer =
   cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign))
 
-proc dataPointer(a: PGenericSeq, elemAlign, elemSize, index: int): pointer =
+func dataPointer(a: PGenericSeq, elemAlign, elemSize, index: int): pointer =
   cast[pointer](cast[ByteAddress](a) +% align(GenericSeqSize, elemAlign) +% (index*%elemSize))
 
-proc resize(old: int): int {.inline.} =
+func resize(old: int): int {.inline.} =
   if old <= 0: result = 4
   elif old < 65536: result = old * 2
   else: result = old * 3 div 2 # for large arrays * 3/2 is better
@@ -89,7 +89,7 @@ proc copyStr(s: NimString, start: int): NimString {.compilerproc.} =
   if s == nil: return nil
   result = copyStrLast(s, start, s.len-1)
 
-proc nimToCStringConv(s: NimString): cstring {.compilerproc, nonReloadable, inline.} =
+func nimToCStringConv(s: NimString): cstring {.compilerproc, nonReloadable, inline.} =
   if s == nil or s.len == 0: result = cstring""
   else: result = cstring(addr s.data)
 
@@ -221,12 +221,12 @@ proc resizeString(dest: NimString, addlen: int): NimString {.compilerRtl.} =
     #copyMem(result, dest, dest.len + sizeof(TGenericSeq))
     # DO NOT UPDATE LEN YET: dest.len = newLen
 
-proc appendString(dest, src: NimString) {.compilerproc, inline.} =
+func appendString(dest, src: NimString) {.compilerproc, inline.} =
   if src != nil:
     copyMem(addr(dest.data[dest.len]), addr(src.data), src.len + 1)
     inc(dest.len, src.len)
 
-proc appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
+func appendChar(dest: NimString, c: char) {.compilerproc, inline.} =
   dest.data[dest.len] = c
   dest.data[dest.len+1] = '\0'
   inc(dest.len)

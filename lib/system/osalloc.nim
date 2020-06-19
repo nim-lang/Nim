@@ -7,7 +7,7 @@
 #    distribution, for details about the copyright.
 #
 
-proc roundup(x, v: int): int {.inline.} =
+func roundup(x, v: int): int {.inline.} =
   result = (x + (v-1)) and not (v-1)
   sysAssert(result >= x, "roundup: result < x")
   #return ((-x) and (v-1)) +% x
@@ -263,11 +263,11 @@ elif defined(windows) and not defined(StandaloneHeapSize):
                           PAGE_READWRITE)
     if result == nil: raiseOutOfMem()
 
-  proc osTryAllocPages(size: int): pointer {.inline.} =
+  func osTryAllocPages(size: int): pointer {.inline.} =
     result = virtualAlloc(nil, size, MEM_RESERVE or MEM_COMMIT,
                           PAGE_READWRITE)
 
-  proc osDeallocPages(p: pointer, size: int) {.inline.} =
+  func osDeallocPages(p: pointer, size: int) {.inline.} =
     # according to Microsoft, 0 is the only correct value for MEM_RELEASE:
     # This means that the OS has some different view over how big the block is
     # that we want to free! So, we cannot reliably release the memory back to

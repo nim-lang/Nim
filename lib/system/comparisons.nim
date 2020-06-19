@@ -175,23 +175,23 @@ proc `<`*(x, y: uint16): bool {.magic: "LtU", noSideEffect.}
 proc `<`*(x, y: uint32): bool {.magic: "LtU", noSideEffect.}
 proc `<`*(x, y: uint64): bool {.magic: "LtU", noSideEffect.}
 
-proc `<=%`*(x, y: int): bool {.inline.} =
+func `<=%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) <= unsigned(y)``.
   cast[uint](x) <= cast[uint](y)
-proc `<=%`*(x, y: int8): bool {.inline.} = cast[uint8](x) <= cast[uint8](y)
-proc `<=%`*(x, y: int16): bool {.inline.} = cast[uint16](x) <= cast[uint16](y)
-proc `<=%`*(x, y: int32): bool {.inline.} = cast[uint32](x) <= cast[uint32](y)
-proc `<=%`*(x, y: int64): bool {.inline.} = cast[uint64](x) <= cast[uint64](y)
+func `<=%`*(x, y: int8): bool {.inline.} = cast[uint8](x) <= cast[uint8](y)
+func `<=%`*(x, y: int16): bool {.inline.} = cast[uint16](x) <= cast[uint16](y)
+func `<=%`*(x, y: int32): bool {.inline.} = cast[uint32](x) <= cast[uint32](y)
+func `<=%`*(x, y: int64): bool {.inline.} = cast[uint64](x) <= cast[uint64](y)
 
-proc `<%`*(x, y: int): bool {.inline.} =
+func `<%`*(x, y: int): bool {.inline.} =
   ## Treats `x` and `y` as unsigned and compares them.
   ## Returns true if ``unsigned(x) < unsigned(y)``.
   cast[uint](x) < cast[uint](y)
-proc `<%`*(x, y: int8): bool {.inline.} = cast[uint8](x) < cast[uint8](y)
-proc `<%`*(x, y: int16): bool {.inline.} = cast[uint16](x) < cast[uint16](y)
-proc `<%`*(x, y: int32): bool {.inline.} = cast[uint32](x) < cast[uint32](y)
-proc `<%`*(x, y: int64): bool {.inline.} = cast[uint64](x) < cast[uint64](y)
+func `<%`*(x, y: int8): bool {.inline.} = cast[uint8](x) < cast[uint8](y)
+func `<%`*(x, y: int16): bool {.inline.} = cast[uint16](x) < cast[uint16](y)
+func `<%`*(x, y: int32): bool {.inline.} = cast[uint32](x) < cast[uint32](y)
+func `<%`*(x, y: int64): bool {.inline.} = cast[uint64](x) < cast[uint64](y)
 
 template `>=%`*(x, y: untyped): untyped = y <=% x
   ## Treats `x` and `y` as unsigned and compares them.
@@ -211,27 +211,27 @@ proc `==`*(x, y: uint64): bool {.magic: "EqI", noSideEffect.}
 
 {.push stackTrace: off.}
 
-proc min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int): int {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
-proc min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int8): int8 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
-proc min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int16): int16 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
-proc min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int32): int32 {.magic: "MinI", noSideEffect.} =
   if x <= y: x else: y
-proc min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
+func min*(x, y: int64): int64 {.magic: "MinI", noSideEffect.} =
   ## The minimum value of two integers.
   if x <= y: x else: y
 
-proc max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int): int {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
-proc max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int8): int8 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
-proc max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int16): int16 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
-proc max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int32): int32 {.magic: "MaxI", noSideEffect.} =
   if y <= x: x else: y
-proc max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
+func max*(x, y: int64): int64 {.magic: "MaxI", noSideEffect.} =
   ## The maximum value of two integers.
   if y <= x: x else: y
 
@@ -251,7 +251,7 @@ proc max*[T](x: openArray[T]): T =
 {.pop.} # stackTrace: off
 
 
-proc clamp*[T](x, a, b: T): T =
+func clamp*[T](x, a, b: T): T =
   ## Limits the value ``x`` within the interval [a, b].
   ##
   ## .. code-block:: Nim

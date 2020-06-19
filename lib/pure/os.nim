@@ -88,7 +88,7 @@ elif defined(js):
 else:
   {.pragma: noNimJs.}
 
-proc normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
+func normalizePathAux(path: var string){.inline, raises: [], noSideEffect.}
 
 type
   ReadEnvEffect* = object of ReadIOEffect   ## Effect that denotes a read
@@ -109,7 +109,7 @@ include "includes/osseps"
 
 proc absolutePathInternal(path: string): string {.gcsafe.}
 
-proc normalizePathEnd(path: var string, trailingSep = false) =
+func normalizePathEnd(path: var string, trailingSep = false) =
   ## Ensures ``path`` has exactly 0 or 1 trailing `DirSep`, depending on
   ## ``trailingSep``, and taking care of edge cases: it preservers whether
   ## a path is absolute or relative, and makes sure trailing sep is `DirSep`,
@@ -132,7 +132,7 @@ proc normalizePathEnd(path: var string, trailingSep = false) =
     # // => / (empty case was already taken care of)
     path = $DirSep
 
-proc normalizePathEnd(path: string, trailingSep = false): string =
+func normalizePathEnd(path: string, trailingSep = false): string =
   ## outplace overload
   runnableExamples:
     when defined(posix):
@@ -150,13 +150,13 @@ since((1, 1)):
 template endsWith(a: string, b: set[char]): bool =
   a.len > 0 and a[^1] in b
 
-proc joinPathImpl(result: var string, state: var int, tail: string) =
+func joinPathImpl(result: var string, state: var int, tail: string) =
   let trailingSep = tail.endsWith({DirSep, AltSep}) or tail.len == 0 and result.endsWith({DirSep, AltSep})
   normalizePathEnd(result, trailingSep=false)
   addNormalizePath(tail, result, state, DirSep)
   normalizePathEnd(result, trailingSep=trailingSep)
 
-proc joinPath*(head, tail: string): string {.
+func joinPath*(head, tail: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Joins two directory names to one.
   ##
@@ -200,7 +200,7 @@ proc joinPath*(head, tail: string): string {.
       else:
         result = head & DirSep & tail
 
-proc joinPath*(parts: varargs[string]): string {.noSideEffect,
+func joinPath*(parts: varargs[string]): string {.noSideEffect,
   rtl, extern: "nos$1OpenArray".} =
   ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_,
   ## but works with any number of directory parts.
@@ -226,7 +226,7 @@ proc joinPath*(parts: varargs[string]): string {.noSideEffect,
   for i in 0..high(parts):
     joinPathImpl(result, state, parts[i])
 
-proc `/`*(head, tail: string): string {.noSideEffect.} =
+func `/`*(head, tail: string): string {.noSideEffect.} =
   ## The same as `joinPath(head, tail) proc <#joinPath,string,string>`_.
   ##
   ## See also:
@@ -246,7 +246,7 @@ proc `/`*(head, tail: string): string {.noSideEffect.} =
 
   return joinPath(head, tail)
 
-proc splitPath*(path: string): tuple[head, tail: string] {.
+func splitPath*(path: string): tuple[head, tail: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a directory into `(head, tail)` tuple, so that
   ## ``head / tail == path`` (except for edge cases like "/usr").
@@ -285,7 +285,7 @@ proc splitPath*(path: string): tuple[head, tail: string] {.
     result.head = ""
     result.tail = path
 
-proc isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
+func isAbsolute*(path: string): bool {.rtl, noSideEffect, extern: "nos$1", raises: [].} =
   ## Checks whether a given `path` is absolute.
   ##
   ## On Windows, network paths are considered absolute too.
@@ -321,17 +321,17 @@ else:
   template `!=?`(a, b: char): bool = toLowerAscii(a) != toLowerAscii(b)
 
 when doslikeFileSystem:
-  proc isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
+  func isAbsFromCurrentDrive(path: string): bool {.noSideEffect, raises: []} =
     ## An absolute path from the root of the current drive (e.g. "\foo")
     path.len > 0 and
     (path[0] == AltSep or
      (path[0] == DirSep and
       (path.len == 1 or path[1] notin {DirSep, AltSep, ':'})))
 
-  proc isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
+  func isUNCPrefix(path: string): bool {.noSideEffect, raises: []} =
     path[0] == DirSep and path[1] == DirSep
 
-  proc sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
+  func sameRoot(path1, path2: string): bool {.noSideEffect, raises: []} =
     ## Return true if path1 and path2 have a same root.
     ##
     ## Detail of windows path formats:
@@ -475,14 +475,14 @@ proc isRelativeTo*(path: string, base: string): bool {.since: (1, 1).} =
   let ret = relativePath(path, base)
   result = path.len > 0 and not ret.startsWith ".."
 
-proc parentDirPos(path: string): int =
+func parentDirPos(path: string): int =
   var q = 1
   if len(path) >= 1 and path[len(path)-1] in {DirSep, AltSep}: q = 2
   for i in countdown(len(path)-q, 0):
     if path[i] in {DirSep, AltSep}: return i
   result = -1
 
-proc parentDir*(path: string): string {.
+func parentDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the parent directory of `path`.
   ##
@@ -518,7 +518,7 @@ proc parentDir*(path: string): string {.
   else:
     result = "."
 
-proc tailDir*(path: string): string {.
+func tailDir*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Returns the tail part of `path`.
   ##
@@ -543,7 +543,7 @@ proc tailDir*(path: string): string {.
     inc i
   result = ""
 
-proc isRootDir*(path: string): bool {.
+func isRootDir*(path: string): bool {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Checks whether a given `path` is a root directory.
   runnableExamples:
@@ -608,7 +608,7 @@ iterator parentDirs*(path: string, fromRoot=false, inclusive=true): string =
 
     if inclusive: yield path
 
-proc `/../`*(head, tail: string): string {.noSideEffect.} =
+func `/../`*(head, tail: string): string {.noSideEffect.} =
   ## The same as ``parentDir(head) / tail``, unless there is no parent
   ## directory. Then ``head / tail`` is performed instead.
   ##
@@ -626,11 +626,11 @@ proc `/../`*(head, tail: string): string {.noSideEffect.} =
   else:
     result = head / tail
 
-proc normExt(ext: string): string =
+func normExt(ext: string): string =
   if ext == "" or ext[0] == ExtSep: result = ext # no copy needed here
   else: result = ExtSep & ext
 
-proc searchExtPos*(path: string): int =
+func searchExtPos*(path: string): int =
   ## Returns index of the `'.'` char in `path` if it signifies the beginning
   ## of extension. Returns -1 otherwise.
   ##
@@ -655,7 +655,7 @@ proc searchExtPos*(path: string): int =
     elif path[i] in {DirSep, AltSep}:
       break # do not skip over path
 
-proc splitFile*(path: string): tuple[dir, name, ext: string] {.
+func splitFile*(path: string): tuple[dir, name, ext: string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a filename into `(dir, name, extension)` tuple.
   ##
@@ -708,7 +708,7 @@ proc splitFile*(path: string): tuple[dir, name, ext: string] {.
          path[i + 1] != ExtSep and dotPos == 0:
       dotPos = i
 
-proc extractFilename*(path: string): string {.
+func extractFilename*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Extracts the filename of a given `path`.
   ##
@@ -731,7 +731,7 @@ proc extractFilename*(path: string): string {.
   else:
     result = splitPath(path).tail
 
-proc lastPathPart*(path: string): string {.
+func lastPathPart*(path: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Like `extractFilename proc <#extractFilename,string>`_, but ignores
   ## trailing dir separator; aka: `baseName`:idx: in some other languages.
@@ -749,7 +749,7 @@ proc lastPathPart*(path: string): string {.
   let path = path.normalizePathEnd(trailingSep = false)
   result = extractFilename(path)
 
-proc changeFileExt*(filename, ext: string): string {.
+func changeFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Changes the file extension to `ext`.
   ##
@@ -775,7 +775,7 @@ proc changeFileExt*(filename, ext: string): string {.
   if extPos < 0: result = filename & normExt(ext)
   else: result = substr(filename, 0, extPos-1) & normExt(ext)
 
-proc addFileExt*(filename, ext: string): string {.
+func addFileExt*(filename, ext: string): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Adds the file extension `ext` to `filename`, unless
   ## `filename` already has an extension.
@@ -799,7 +799,7 @@ proc addFileExt*(filename, ext: string): string {.
   if extPos < 0: result = filename & normExt(ext)
   else: result = filename
 
-proc cmpPaths*(pathA, pathB: string): int {.
+func cmpPaths*(pathA, pathB: string): int {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Compares two paths.
   ##
@@ -826,7 +826,7 @@ proc cmpPaths*(pathA, pathB: string): int {.
     else:
       result = cmpIgnoreCase(a, b)
 
-proc unixToNativePath*(path: string, drive=""): string {.
+func unixToNativePath*(path: string, drive=""): string {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Converts an UNIX-like path to a native one.
   ##
@@ -987,7 +987,7 @@ proc expandTilde*(path: string): string {.
 
 # TODO: consider whether quoteShellPosix, quoteShellWindows, quoteShell, quoteShellCommand
 # belong in `strutils` instead; they are not specific to paths
-proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+func quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote `s`, so it can be safely passed to Windows API.
   ##
   ## Based on Python's `subprocess.list2cmdline`.
@@ -1017,7 +1017,7 @@ proc quoteShellWindows*(s: string): string {.noSideEffect, rtl, extern: "nosp$1"
   if needQuote:
     result.add("\"")
 
-proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+func quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
   ## Quote ``s``, so it can be safely passed to POSIX shell.
   ## Based on Python's `pipes.quote`.
   const safeUnixChars = {'%', '+', '-', '.', '/', '_', ':', '=', '@',
@@ -1033,7 +1033,7 @@ proc quoteShellPosix*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".}
     return "'" & s.replace("'", "'\"'\"'") & "'"
 
 when defined(windows) or defined(posix) or defined(nintendoswitch):
-  proc quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
+  func quoteShell*(s: string): string {.noSideEffect, rtl, extern: "nosp$1".} =
     ## Quote ``s``, so it can be safely passed to shell.
     ##
     ## When on Windows, it calls `quoteShellWindows proc
@@ -1044,7 +1044,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
     else:
       return quoteShellPosix(s)
 
-  proc quoteShellCommand*(args: openArray[string]): string =
+  func quoteShellCommand*(args: openArray[string]): string =
     ## Concatenates and quotes shell arguments `args`.
     runnableExamples:
       when defined(posix):
@@ -1089,7 +1089,7 @@ when defined(windows) and not weirdTarget:
 
     template getFilename(f: untyped): untyped = $cstring(addr f.cFileName)
 
-  proc skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
+  func skipFindData(f: WIN32_FIND_DATA): bool {.inline.} =
     # Note - takes advantage of null delimiter in the cstring
     const dot = ord('.')
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
@@ -1395,7 +1395,7 @@ proc setCurrentDir*(newDir: string) {.inline, tags: [], noWeirdTarget.} =
     if chdir(newDir) != 0'i32: raiseOSError(osLastError(), newDir)
 
 
-proc absolutePath*(path: string, root = getCurrentDir()): string =
+func absolutePath*(path: string, root = getCurrentDir()): string =
   ## Returns the absolute path of `path`, rooted at `root` (which must be absolute;
   ## default: current directory).
   ## If `path` is absolute, return it, ignoring `root`.
@@ -1415,7 +1415,7 @@ proc absolutePath*(path: string, root = getCurrentDir()): string =
 proc absolutePathInternal(path: string): string =
   absolutePath(path, getCurrentDir())
 
-proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
+func normalizeExe*(file: var string) {.since: (1, 3, 5).} =
   ## on posix, prepends `./` if `file` doesn't contain `/` and is not `"", ".", ".."`.
   runnableExamples:
     import sugar
@@ -1427,7 +1427,7 @@ proc normalizeExe*(file: var string) {.since: (1, 3, 5).} =
     if file.len > 0 and DirSep notin file and file != "." and file != "..":
       file = "./" & file
 
-proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
+func normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
   ## Normalize a path.
   ##
   ## Consecutive directory separators are collapsed, including an initial double slash.
@@ -1476,9 +1476,9 @@ proc normalizePath*(path: var string) {.rtl, extern: "nos$1", tags: [].} =
     else:
       path = "."
 
-proc normalizePathAux(path: var string) = normalizePath(path)
+func normalizePathAux(path: var string) = normalizePath(path)
 
-proc normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
+func normalizedPath*(path: string): string {.rtl, extern: "nos$1", tags: [].} =
   ## Returns a normalized path for the current OS.
   ##
   ## See also:
@@ -1860,7 +1860,7 @@ proc moveFile*(source, dest: string) {.rtl, extern: "nos$1",
         discard tryRemoveFile(dest)
         raise
 
-proc exitStatusLikeShell*(status: cint): cint =
+func exitStatusLikeShell*(status: cint): cint =
   ## Converts exit code from `c_system` into a shell exit code.
   when defined(posix) and not weirdTarget:
     if WIFSIGNALED(status):
@@ -2569,7 +2569,7 @@ proc expandSymlink*(symlinkPath: string): string {.noWeirdTarget.} =
       len = readlink(symlinkPath, result, len)
     setLen(result, len)
 
-proc parseCmdLine*(c: string): seq[string] {.
+func parseCmdLine*(c: string): seq[string] {.
   noSideEffect, rtl, extern: "nos$1".} =
   ## Splits a `command line`:idx: into several components.
   ##

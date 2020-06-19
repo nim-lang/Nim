@@ -157,7 +157,7 @@ when nimCoroutines:
 else:
   # This iterator gets optimized out in forEachStackSlot().
   iterator items(first: var GcStack): ptr GcStack = yield addr(first)
-  proc len(stack: var GcStack): int = 1
+  func len(stack: var GcStack): int = 1
 
 when defined(nimdoc):
   proc setupForeignThreadGc*() {.gcsafe.} =
@@ -213,7 +213,7 @@ elif defined(hppa) or defined(hp9000) or defined(hp9000s300) or
 else:
   const stackIncreases = false
 
-proc stackSize(stack: ptr GcStack): int {.noinline.} =
+func stackSize(stack: ptr GcStack): int {.noinline.} =
   when nimCoroutines:
     var pos = stack.pos
   else:
@@ -247,11 +247,11 @@ when nimCoroutines:
     return gch.activeStack == stack
 else:
   # Stack positions do not need to be tracked if coroutines are not used.
-  proc setPosition(stack: ptr GcStack, position: pointer) = discard
-  proc setPosition(stack: var GcStack, position: pointer) = discard
+  func setPosition(stack: ptr GcStack, position: pointer) = discard
+  func setPosition(stack: var GcStack, position: pointer) = discard
   # There is just one stack - main stack of the thread. It is active always.
-  proc getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
-  proc isActiveStack(stack: ptr GcStack): bool = true
+  func getActiveStack(gch: var GcHeap): ptr GcStack = addr(gch.stack)
+  func isActiveStack(stack: ptr GcStack): bool = true
 
 {.push stack_trace: off.}
 when nimCoroutines:

@@ -50,7 +50,7 @@ type
   SortOrder* = enum
     Descending, Ascending
 
-proc `*`*(x: int, order: SortOrder): int {.inline.} =
+func `*`*(x: int, order: SortOrder): int {.inline.} =
   ## Flips ``x`` if ``order == Descending``.
   ## If ``order == Ascending`` then ``x`` is returned.
   ##
@@ -96,7 +96,7 @@ proc fill*[T](a: var openArray[T], value: T) =
   fillImpl(a, 0, a.high, value)
 
 
-proc reverse*[T](a: var openArray[T], first, last: Natural) =
+func reverse*[T](a: var openArray[T], first, last: Natural) =
   ## Reverses the slice ``a[first..last]``.
   ##
   ## If an invalid range is passed, it raises IndexDefect.
@@ -118,7 +118,7 @@ proc reverse*[T](a: var openArray[T], first, last: Natural) =
     dec(y)
     inc(x)
 
-proc reverse*[T](a: var openArray[T]) =
+func reverse*[T](a: var openArray[T]) =
   ## Reverses the contents of the container ``a``.
   ##
   ## **See also:**

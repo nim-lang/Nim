@@ -1,7 +1,7 @@
 
 include prelude
 
-proc positionToOffset(content: string; line, col: int): int =
+func positionToOffset(content: string; line, col: int): int =
   var line = line-1
   var col = col
   var i = 0

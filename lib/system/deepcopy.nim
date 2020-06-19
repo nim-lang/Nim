@@ -40,7 +40,7 @@ proc initPtrTable(): PtrTable =
 
 template deinit(t: PtrTable) = dealloc(t)
 
-proc get(t: PtrTable; key: pointer): pointer =
+func get(t: PtrTable; key: pointer): pointer =
   var h = hashPtr(key)
   while true:
     let k = t.data[h and t.max][0]

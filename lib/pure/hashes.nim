@@ -51,7 +51,7 @@ type
                ## always have a size of a power of two and can use the ``and``
                ## operator instead of ``mod`` for truncation of the hash value.
 
-proc `!&`*(h: Hash, val: int): Hash {.inline.} =
+func `!&`*(h: Hash, val: int): Hash {.inline.} =
   ## Mixes a hash value `h` with `val` to produce a new hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
@@ -62,7 +62,7 @@ proc `!&`*(h: Hash, val: int): Hash {.inline.} =
   res = res xor (res shr 6)
   result = cast[Hash](res)
 
-proc `!$`*(h: Hash): Hash {.inline.} =
+func `!$`*(h: Hash): Hash {.inline.} =
   ## Finishes the computation of the hash value.
   ##
   ## This is only needed if you need to implement a hash proc for a new datatype.
@@ -72,7 +72,7 @@ proc `!$`*(h: Hash): Hash {.inline.} =
   res = res + res shl 15
   result = cast[Hash](res)
 
-proc hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
+func hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
   let # Fall back in 64-bit arithmetic
     aH = a shr 32
     aL = a and 0xFFFFFFFF'u64
@@ -89,7 +89,7 @@ proc hiXorLoFallback64(a, b: uint64): uint64 {.inline.} =
   let hi = rHH + (rHL shr 32) + (rLH shr 32) + c
   return hi xor lo
 
-proc hiXorLo(a, b: uint64): uint64 {.inline.} =
+func hiXorLo(a, b: uint64): uint64 {.inline.} =
   # Xor of high & low 8B of full 16B product
   when nimvm:
     result = hiXorLoFallback64(a, b) # `result =` is necessary here.
@@ -106,7 +106,7 @@ proc hiXorLo(a, b: uint64): uint64 {.inline.} =
     else:
       result = hiXorLoFallback64(a, b)
 
-proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
+func hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
   ## Wang Yi's hash_v1 for 8B int.  https://github.com/rurban/smhasher has more
   ## details.  This passed all scrambling tests in Spring 2019 and is simple.
   ## NOTE: It's ok to define ``proc(x: int16): Hash = hashWangYi1(Hash(x))``.
@@ -135,7 +135,7 @@ proc hashWangYi1*(x: int64|uint64|Hash): Hash {.inline.} =
     else:
       cast[Hash](hiXorLo(hiXorLo(P0, uint64(x) xor P1), P58))
 
-proc hashData*(data: pointer, size: int): Hash =
+func hashData*(data: pointer, size: int): Hash =
   ## Hashes an array of bytes of size `size`.
   var h: Hash = 0
   when defined(js):
@@ -154,7 +154,7 @@ proc hashData*(data: pointer, size: int): Hash =
 when defined(js):
   var objectID = 0
 
-proc hash*(x: pointer): Hash {.inline.} =
+func hash*(x: pointer): Hash {.inline.} =
   ## Efficient hashing of pointers.
   when defined(js):
     asm """
@@ -186,11 +186,11 @@ when defined(nimIntHash1):
     ## Efficient hashing of integers.
     cast[Hash](ord(x))
 else:
-  proc hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
+  func hash*[T: Ordinal|enum](x: T): Hash {.inline.} =
     ## Efficient hashing of integers.
     hashWangYi1(uint64(ord(x)))
 
-proc hash*(x: float): Hash {.inline.} =
+func hash*(x: float): Hash {.inline.} =
   ## Efficient hashing of floats.
   var y = x + 0.0 # for denormalization
   result = hash(cast[ptr Hash](addr(y))[])
@@ -214,10 +214,10 @@ when defined(js):
 else:
   template imul(a, b: uint32): untyped = a * b
 
-proc rotl32(x: uint32, r: int): uint32 {.inline.} =
+func rotl32(x: uint32, r: int): uint32 {.inline.} =
   (x shl r) or (x shr (32 - r))
 
-proc murmurHash(x: openArray[byte]): Hash =
+func murmurHash(x: openArray[byte]): Hash =
   # https://github.com/PeterScott/murmur3/blob/master/murmur3.c
   const
     c1 = 0xcc9e2d51'u32
@@ -273,16 +273,16 @@ proc murmurHash(x: openArray[byte]): Hash =
   h1 = h1 xor (h1 shr 16)
   return cast[Hash](h1)
 
-proc hashVmImpl(x: string, sPos, ePos: int): Hash =
+func hashVmImpl(x: string, sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
+func hashVmImplChar(x: openArray[char], sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
+func hashVmImplByte(x: openArray[byte], sPos, ePos: int): Hash =
   doAssert false, "implementation override in compiler/vmops.nim"
 
-proc hash*(x: string): Hash =
+func hash*(x: string): Hash =
   ## Efficient hashing of strings.
   ##
   ## See also:
@@ -302,7 +302,7 @@ proc hash*(x: string): Hash =
     else:
       result = murmurHash(toOpenArrayByte(x, 0, high(x)))
 
-proc hash*(x: cstring): Hash =
+func hash*(x: cstring): Hash =
   ## Efficient hashing of null-terminated strings.
   runnableExamples:
     doAssert hash(cstring"abracadabra") == hash("abracadabra")
@@ -323,7 +323,7 @@ proc hash*(x: cstring): Hash =
       let xx = $x
       murmurHash(toOpenArrayByte(xx, 0, high(xx)))
 
-proc hash*(sBuf: string, sPos, ePos: int): Hash =
+func hash*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included).
   ##
@@ -340,7 +340,7 @@ proc hash*(sBuf: string, sPos, ePos: int): Hash =
   else:
     murmurHash(toOpenArrayByte(sBuf, sPos, ePos))
 
-proc hashIgnoreStyle*(x: string): Hash =
+func hashIgnoreStyle*(x: string): Hash =
   ## Efficient hashing of strings; style is ignored.
   ##
   ## **Note:** This uses different hashing algorithm than `hash(string)`.
@@ -365,7 +365,7 @@ proc hashIgnoreStyle*(x: string): Hash =
       inc(i)
   result = !$h
 
-proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
+func hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); style is ignored.
   ##
@@ -390,7 +390,7 @@ proc hashIgnoreStyle*(sBuf: string, sPos, ePos: int): Hash =
       inc(i)
   result = !$h
 
-proc hashIgnoreCase*(x: string): Hash =
+func hashIgnoreCase*(x: string): Hash =
   ## Efficient hashing of strings; case is ignored.
   ##
   ## **Note:** This uses different hashing algorithm than `hash(string)`.
@@ -409,7 +409,7 @@ proc hashIgnoreCase*(x: string): Hash =
     h = h !& ord(c)
   result = !$h
 
-proc hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
+func hashIgnoreCase*(sBuf: string, sPos, ePos: int): Hash =
   ## Efficient hashing of a string buffer, from starting
   ## position `sPos` to ending position `ePos` (included); case is ignored.
   ##

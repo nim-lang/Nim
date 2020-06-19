@@ -12,10 +12,10 @@
 when not defined(useNimRtl):
   proc reprAny(p: pointer, typ: PNimType): string {.compilerRtl, gcsafe.}
 
-proc reprInt(x: int64): string {.compilerproc.} = return $x
-proc reprFloat(x: float): string {.compilerproc.} = return $x
+func reprInt(x: int64): string {.compilerproc.} = return $x
+func reprFloat(x: float): string {.compilerproc.} = return $x
 
-proc reprPointer(x: pointer): string {.compilerproc.} =
+func reprPointer(x: pointer): string {.compilerproc.} =
   when defined(nimNoArrayToCstringConversion):
     result = newString(60)
     let n = c_sprintf(addr result[0], "%p", x)
@@ -25,7 +25,7 @@ proc reprPointer(x: pointer): string {.compilerproc.} =
     discard c_sprintf(buf, "%p", x)
     return $buf
 
-proc reprStrAux(result: var string, s: cstring; len: int) =
+func reprStrAux(result: var string, s: cstring; len: int) =
   if cast[pointer](s) == nil:
     add result, "nil"
     return
@@ -44,15 +44,15 @@ proc reprStrAux(result: var string, s: cstring; len: int) =
       result.add(c)
   add result, "\""
 
-proc reprStr(s: string): string {.compilerRtl.} =
+func reprStr(s: string): string {.compilerRtl.} =
   result = ""
   reprStrAux(result, s, s.len)
 
-proc reprBool(x: bool): string {.compilerRtl.} =
+func reprBool(x: bool): string {.compilerRtl.} =
   if x: result = "true"
   else: result = "false"
 
-proc reprChar(x: char): string {.compilerRtl.} =
+func reprChar(x: char): string {.compilerRtl.} =
   result = "\'"
   case x
   of '"': add result, "\\\""
@@ -61,7 +61,7 @@ proc reprChar(x: char): string {.compilerRtl.} =
   else: add result, x
   add result, "\'"
 
-proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
+func reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
   ## Return string representation for enumeration values
   var n = typ.node
   if ntfEnumHole notin typ.flags:
@@ -80,7 +80,7 @@ proc reprEnum(e: int, typ: PNimType): string {.compilerRtl.} =
 type
   PByteArray = ptr UncheckedArray[byte] # array[0xffff, byte]
 
-proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
+func addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   case typ.kind
   of tyEnum: add result, reprEnum(elem, typ)
   of tyBool: add result, reprBool(bool(elem))
@@ -90,7 +90,7 @@ proc addSetElem(result: var string, elem: int, typ: PNimType) {.benign.} =
   else: # data corrupt --> inform the user
     add result, " (invalid data!)"
 
-proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
+func reprSetAux(result: var string, p: pointer, typ: PNimType) =
   # "typ.slots.len" field is for sets the "first" field
   var elemCounter = 0  # we need this flag for adding the comma at
                        # the right places
@@ -116,7 +116,7 @@ proc reprSetAux(result: var string, p: pointer, typ: PNimType) =
         inc(elemCounter)
   add result, "}"
 
-proc reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
+func reprSet(p: pointer, typ: PNimType): string {.compilerRtl.} =
   result = ""
   reprSetAux(result, p, typ)
 
@@ -144,7 +144,7 @@ when not defined(useNimRtl):
     when hasThreadSupport and hasSharedHeap and declared(heapLock):
       ReleaseSys(HeapLock)
 
-  proc reprBreak(result: var string, cl: ReprClosure) =
+  func reprBreak(result: var string, cl: ReprClosure) =
     add result, "\n"
     for i in 0..cl.indent-1: add result, ' '
 
@@ -238,7 +238,7 @@ when not defined(useNimRtl):
         add result, " --> "
         reprAux(result, p, typ.base, cl)
 
-  proc getInt(p: pointer, size: int): int =
+  func getInt(p: pointer, size: int): int =
     case size
     of 1: return int(cast[ptr uint8](p)[])
     of 2: return int(cast[ptr uint16](p)[])

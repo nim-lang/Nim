@@ -211,11 +211,11 @@ elif someVcc and hasThreadSupport:
         importc: "_InterlockedExchangeAdd", header: "<intrin.h>".}
 
 else:
-  proc addAndFetch*(p: ptr int, val: int): int {.inline.} =
+  func addAndFetch*(p: ptr int, val: int): int {.inline.} =
     inc(p[], val)
     result = p[]
 
-proc atomicInc*(memLoc: var int, x: int = 1): int =
+func atomicInc*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     result = atomicAddFetch(memLoc.addr, x, ATOMIC_RELAXED)
   elif someVcc and hasThreadSupport:
@@ -225,7 +225,7 @@ proc atomicInc*(memLoc: var int, x: int = 1): int =
     inc(memLoc, x)
     result = memLoc
 
-proc atomicDec*(memLoc: var int, x: int = 1): int =
+func atomicDec*(memLoc: var int, x: int = 1): int =
   when someGcc and hasThreadSupport:
     when declared(atomicSubFetch):
       result = atomicSubFetch(memLoc.addr, x, ATOMIC_RELAXED)
@@ -319,7 +319,7 @@ else:
 when (defined(x86) or defined(amd64)) and someVcc:
   proc cpuRelax* {.importc: "YieldProcessor", header: "<windows.h>".}
 elif (defined(x86) or defined(amd64)) and (someGcc or defined(bcc)):
-  proc cpuRelax* {.inline.} =
+  func cpuRelax* {.inline.} =
     {.emit: """asm volatile("pause" ::: "memory");""".}
 elif someGcc or defined(tcc):
   proc cpuRelax* {.inline.} =

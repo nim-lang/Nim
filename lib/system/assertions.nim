@@ -8,7 +8,7 @@ import std/private/miscdollars
 type InstantiationInfo = tuple[filename: string, line: int, column: int]
 
 proc `$`(x: int): string {.magic: "IntToStr", noSideEffect.}
-proc `$`(info: InstantiationInfo): string =
+func `$`(info: InstantiationInfo): string =
   # The +1 is needed here
   # instead of overriding `$` (and changing its meaning), consider explicit name.
   result.toLocation(info.filename, info.line, info.column+1)
@@ -18,10 +18,10 @@ proc `$`(info: InstantiationInfo): string =
 when not defined(nimHasSinkInference):
   {.pragma: nosinks.}
 
-proc raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
+func raiseAssert*(msg: string) {.noinline, noreturn, nosinks.} =
   sysFatal(AssertionDefect, msg)
 
-proc failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
+func failedAssertImpl*(msg: string) {.raises: [], tags: [].} =
   # trick the compiler to not list ``AssertionDefect`` when called
   # by ``assert``.
   type Hide = proc (msg: string) {.noinline, raises: [], noSideEffect,

@@ -10,13 +10,13 @@
 proc c_sprintf(buf, frmt: cstring): cint {.header: "<stdio.h>",
                                     importc: "sprintf", varargs, noSideEffect.}
 
-proc writeToBuffer(buf: var array[65, char]; value: cstring) =
+func writeToBuffer(buf: var array[65, char]; value: cstring) =
   var i = 0
   while value[i] != '\0':
     buf[i] = value[i]
     inc i
 
-proc writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
+func writeFloatToBuffer*(buf: var array[65, char]; value: BiggestFloat): int =
   ## This is the implementation to format floats in the Nim
   ## programming language. The specific format for floating point
   ## numbers is not specified in the Nim programming language and

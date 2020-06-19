@@ -84,7 +84,7 @@ type
 proc `<`(a, b: TLockLevel): bool {.borrow.}
 proc `<=`(a, b: TLockLevel): bool {.borrow.}
 proc `==`(a, b: TLockLevel): bool {.borrow.}
-proc max(a, b: TLockLevel): TLockLevel {.borrow.}
+func max(a, b: TLockLevel): TLockLevel {.borrow.}
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
   s.kind in {skVar, skResult} and sfGlobal notin s.flags and

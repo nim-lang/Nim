@@ -405,10 +405,10 @@ else:
   proc getCommandLineA*(): cstring {.
     importc: "GetCommandLineA", stdcall, dynlib: "kernel32", sideEffect.}
 
-proc rdFileTime*(f: FILETIME): int64 =
+func rdFileTime*(f: FILETIME): int64 =
   result = ze64(f.dwLowDateTime) or (ze64(f.dwHighDateTime) shl 32)
 
-proc rdFileSize*(f: WIN32_FIND_DATA): int64 =
+func rdFileSize*(f: WIN32_FIND_DATA): int64 =
   result = ze64(f.nFileSizeLow) or (ze64(f.nFileSizeHigh) shl 32)
 
 proc getSystemTimeAsFileTime*(lpSystemTimeAsFileTime: var FILETIME) {.
@@ -628,15 +628,15 @@ proc inet_addr*(cp: cstring): uint32 {.
 proc WSAFDIsSet(s: SocketHandle, set: var TFdSet): bool {.
   stdcall, importc: "__WSAFDIsSet", dynlib: ws2dll, noSideEffect.}
 
-proc FD_ISSET*(socket: SocketHandle, set: var TFdSet): cint =
+func FD_ISSET*(socket: SocketHandle, set: var TFdSet): cint =
   result = if WSAFDIsSet(socket, set): 1'i32 else: 0'i32
 
-proc FD_SET*(socket: SocketHandle, s: var TFdSet) =
+func FD_SET*(socket: SocketHandle, s: var TFdSet) =
   if s.fd_count < FD_SETSIZE:
     s.fd_array[int(s.fd_count)] = socket
     inc(s.fd_count)
 
-proc FD_ZERO*(s: var TFdSet) =
+func FD_ZERO*(s: var TFdSet) =
   s.fd_count = 0
 
 proc wsaStartup*(wVersionRequired: int16, WSData: ptr WSAData): cint {.
@@ -1103,7 +1103,7 @@ proc DeleteFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel3
 proc SwitchToFiber*(fiber: pointer): void {.stdcall, discardable, dynlib: "kernel32", importc.}
 proc GetCurrentFiber*(): pointer {.stdcall, importc, header: "windows.h".}
 
-proc toFILETIME*(t: int64): FILETIME =
+func toFILETIME*(t: int64): FILETIME =
   ## Convert the Windows file time timestamp ``t`` to ``FILETIME``.
   result = FILETIME(dwLowDateTime: cast[DWORD](t), dwHighDateTime: DWORD(t shr 32))
 

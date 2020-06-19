@@ -378,7 +378,7 @@ when defined(nimHasalignOf):
 
 # #### Pure Nim version ####
 
-proc firstSetBitNim(x: uint32): int {.inline, noSideEffect.} =
+func firstSetBitNim(x: uint32): int {.inline, noSideEffect.} =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   const lookup: array[32, uint8] = [0'u8, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15,
@@ -387,7 +387,7 @@ proc firstSetBitNim(x: uint32): int {.inline, noSideEffect.} =
   var k = not v + 1 # get two's complement # cast[uint32](-cast[int32](v))
   result = 1 + lookup[uint32((v and k) * 0x077CB531'u32) shr 27].int
 
-proc firstSetBitNim(x: uint64): int {.inline, noSideEffect.} =
+func firstSetBitNim(x: uint64): int {.inline, noSideEffect.} =
   ## Returns the 1-based index of the least significant set bit of x, or if x is zero, returns zero.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#ZerosOnRightMultLookup
   var v = uint64(x)
@@ -397,7 +397,7 @@ proc firstSetBitNim(x: uint64): int {.inline, noSideEffect.} =
     result = 32
   result += firstSetBitNim(k)
 
-proc fastlog2Nim(x: uint32): int {.inline, noSideEffect.} =
+func fastlog2Nim(x: uint32): int {.inline, noSideEffect.} =
   ## Quickly find the log base 2 of a 32-bit or less integer.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   # https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
@@ -411,7 +411,7 @@ proc fastlog2Nim(x: uint32): int {.inline, noSideEffect.} =
   v = v or v shr 16
   result = lookup[uint32(v * 0x07C4ACDD'u32) shr 27].int
 
-proc fastlog2Nim(x: uint64): int {.inline, noSideEffect.} =
+func fastlog2Nim(x: uint64): int {.inline, noSideEffect.} =
   ## Quickly find the log base 2 of a 64-bit integer.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   # https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
@@ -726,7 +726,7 @@ proc countTrailingZeroBits*(x: SomeInteger): int {.inline, noSideEffect.} =
       result = firstSetBit(x) - 1
 
 
-proc rotateLeftBits*(value: uint8;
+func rotateLeftBits*(value: uint8;
            amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 8-bits value.
   runnableExamples:
@@ -742,7 +742,7 @@ proc rotateLeftBits*(value: uint8;
   let amount = amount and 7
   result = (value shl amount) or (value shr ( (-amount) and 7))
 
-proc rotateLeftBits*(value: uint16;
+func rotateLeftBits*(value: uint16;
            amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 16-bits value.
   ##
@@ -751,7 +751,7 @@ proc rotateLeftBits*(value: uint16;
   let amount = amount and 15
   result = (value shl amount) or (value shr ( (-amount) and 15))
 
-proc rotateLeftBits*(value: uint32;
+func rotateLeftBits*(value: uint32;
            amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 32-bits value.
   ##
@@ -760,7 +760,7 @@ proc rotateLeftBits*(value: uint32;
   let amount = amount and 31
   result = (value shl amount) or (value shr ( (-amount) and 31))
 
-proc rotateLeftBits*(value: uint64;
+func rotateLeftBits*(value: uint64;
            amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Left-rotate bits in a 64-bits value.
   ##
@@ -770,7 +770,7 @@ proc rotateLeftBits*(value: uint64;
   result = (value shl amount) or (value shr ( (-amount) and 63))
 
 
-proc rotateRightBits*(value: uint8;
+func rotateRightBits*(value: uint8;
             amount: range[0..8]): uint8 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 8-bits value.
   runnableExamples:
@@ -782,7 +782,7 @@ proc rotateRightBits*(value: uint8;
   let amount = amount and 7
   result = (value shr amount) or (value shl ( (-amount) and 7))
 
-proc rotateRightBits*(value: uint16;
+func rotateRightBits*(value: uint16;
             amount: range[0..16]): uint16 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 16-bits value.
   ##
@@ -791,7 +791,7 @@ proc rotateRightBits*(value: uint16;
   let amount = amount and 15
   result = (value shr amount) or (value shl ( (-amount) and 15))
 
-proc rotateRightBits*(value: uint32;
+func rotateRightBits*(value: uint32;
             amount: range[0..32]): uint32 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 32-bits value.
   ##
@@ -800,7 +800,7 @@ proc rotateRightBits*(value: uint32;
   let amount = amount and 31
   result = (value shr amount) or (value shl ( (-amount) and 31))
 
-proc rotateRightBits*(value: uint64;
+func rotateRightBits*(value: uint64;
             amount: range[0..64]): uint64 {.inline, noSideEffect.} =
   ## Right-rotate bits in a 64-bits value.
   ##

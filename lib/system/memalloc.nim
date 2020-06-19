@@ -24,7 +24,7 @@ when notJSnotNims:
     ## and is thus somewhat more safe than ``copyMem``. Like any procedure
     ## dealing with raw memory this is still **unsafe**, though.
 
-  proc equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
+  func equalMem*(a, b: pointer, size: Natural): bool {.inline, noSideEffect,
     tags: [], locks: 0, raises: [].}
     ## Compares the memory blocks ``a`` and ``b``. ``size`` bytes will
     ## be compared.
@@ -55,7 +55,7 @@ when hasAlloc and not defined(js):
     allocCount: int
     deallocCount: int
 
-  proc `-`*(a, b: AllocStats): AllocStats =
+  func `-`*(a, b: AllocStats): AllocStats =
     result.allocCount = a.allocCount - b.allocCount
     result.deallocCount = a.deallocCount - b.deallocCount
 
@@ -72,7 +72,7 @@ when hasAlloc and not defined(js):
 
   else:
     template incStat(what: untyped) = discard
-    proc getAllocStats*(): AllocStats = discard
+    func getAllocStats*(): AllocStats = discard
 
   template alloc*(size: Natural): pointer =
     ## Allocates a new memory block with at least ``size`` bytes.

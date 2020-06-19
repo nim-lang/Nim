@@ -50,56 +50,56 @@ proc dec*[T: Ordinal](x: var T, y = 1) {.magic: "Dec", noSideEffect.}
 # built-in operators
 
 when defined(nimNoZeroExtendMagic):
-  proc ze*(x: int8): int {.deprecated.} =
+  func ze*(x: int8): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int](uint(cast[uint8](x)))
 
-  proc ze*(x: int16): int {.deprecated.} =
+  func ze*(x: int16): int {.deprecated.} =
     ## zero extends a smaller integer type to ``int``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int](uint(cast[uint16](x)))
 
-  proc ze64*(x: int8): int64 {.deprecated.} =
+  func ze64*(x: int8): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint8](x)))
 
-  proc ze64*(x: int16): int64 {.deprecated.} =
+  func ze64*(x: int16): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint16](x)))
 
-  proc ze64*(x: int32): int64 {.deprecated.} =
+  func ze64*(x: int32): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint32](x)))
 
-  proc ze64*(x: int): int64 {.deprecated.} =
+  func ze64*(x: int): int64 {.deprecated.} =
     ## zero extends a smaller integer type to ``int64``. This treats `x` as
     ## unsigned. Does nothing if the size of an ``int`` is the same as ``int64``.
     ## (This is the case on 64 bit processors.)
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int64](uint64(cast[uint](x)))
 
-  proc toU8*(x: int): int8 {.deprecated.} =
+  func toU8*(x: int): int8 {.deprecated.} =
     ## treats `x` as unsigned and converts it to a byte by taking the last 8 bits
     ## from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int8](x)
 
-  proc toU16*(x: int): int16 {.deprecated.} =
+  func toU16*(x: int): int16 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int16`` by taking the last
     ## 16 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
     cast[int16](x)
 
-  proc toU32*(x: int64): int32 {.deprecated.} =
+  func toU32*(x: int64): int32 {.deprecated.} =
     ## treats `x` as unsigned and converts it to an ``int32`` by taking the
     ## last 32 bits from `x`.
     ## **Deprecated since version 0.19.9**: Use unsigned integers instead.
@@ -422,60 +422,60 @@ proc `mod`*(x, y: uint16): uint16 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint32): uint32 {.magic: "ModU", noSideEffect.}
 proc `mod`*(x, y: uint64): uint64 {.magic: "ModU", noSideEffect.}
 
-proc `+%`*(x, y: int): int {.inline.} =
+func `+%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and adds them.
   ##
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic. No overflow errors are possible.
   cast[int](cast[uint](x) + cast[uint](y))
-proc `+%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) + cast[uint8](y))
-proc `+%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) + cast[uint16](y))
-proc `+%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) + cast[uint32](y))
-proc `+%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) + cast[uint64](y))
+func `+%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) + cast[uint8](y))
+func `+%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) + cast[uint16](y))
+func `+%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) + cast[uint32](y))
+func `+%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) + cast[uint64](y))
 
-proc `-%`*(x, y: int): int {.inline.} =
+func `-%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and subtracts them.
   ##
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic. No overflow errors are possible.
   cast[int](cast[uint](x) - cast[uint](y))
-proc `-%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) - cast[uint8](y))
-proc `-%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) - cast[uint16](y))
-proc `-%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) - cast[uint32](y))
-proc `-%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) - cast[uint64](y))
+func `-%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) - cast[uint8](y))
+func `-%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) - cast[uint16](y))
+func `-%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) - cast[uint32](y))
+func `-%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) - cast[uint64](y))
 
-proc `*%`*(x, y: int): int {.inline.} =
+func `*%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and multiplies them.
   ##
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic. No overflow errors are possible.
   cast[int](cast[uint](x) * cast[uint](y))
-proc `*%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) * cast[uint8](y))
-proc `*%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) * cast[uint16](y))
-proc `*%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) * cast[uint32](y))
-proc `*%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) * cast[uint64](y))
+func `*%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) * cast[uint8](y))
+func `*%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) * cast[uint16](y))
+func `*%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) * cast[uint32](y))
+func `*%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) * cast[uint64](y))
 
-proc `/%`*(x, y: int): int {.inline.} =
+func `/%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and divides them.
   ##
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic. No overflow errors are possible.
   cast[int](cast[uint](x) div cast[uint](y))
-proc `/%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) div cast[uint8](y))
-proc `/%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) div cast[uint16](y))
-proc `/%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) div cast[uint32](y))
-proc `/%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) div cast[uint64](y))
+func `/%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) div cast[uint8](y))
+func `/%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) div cast[uint16](y))
+func `/%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) div cast[uint32](y))
+func `/%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) div cast[uint64](y))
 
-proc `%%`*(x, y: int): int {.inline.} =
+func `%%`*(x, y: int): int {.inline.} =
   ## Treats `x` and `y` as unsigned and compute the modulo of `x` and `y`.
   ##
   ## The result is truncated to fit into the result.
   ## This implements modulo arithmetic. No overflow errors are possible.
   cast[int](cast[uint](x) mod cast[uint](y))
-proc `%%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) mod cast[uint8](y))
-proc `%%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) mod cast[uint16](y))
-proc `%%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) mod cast[uint32](y))
-proc `%%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) mod cast[uint64](y))
+func `%%`*(x, y: int8): int8 {.inline.}   = cast[int8](cast[uint8](x) mod cast[uint8](y))
+func `%%`*(x, y: int16): int16 {.inline.} = cast[int16](cast[uint16](x) mod cast[uint16](y))
+func `%%`*(x, y: int32): int32 {.inline.} = cast[int32](cast[uint32](x) mod cast[uint32](y))
+func `%%`*(x, y: int64): int64 {.inline.} = cast[int64](cast[uint64](x) mod cast[uint64](y))
 
 proc `+=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Inc", noSideEffect.}
@@ -485,7 +485,7 @@ proc `-=`*[T: SomeInteger](x: var T, y: T) {.
   magic: "Dec", noSideEffect.}
   ## Decrements an integer.
 
-proc `*=`*[T: SomeInteger](x: var T, y: T) {.
+func `*=`*[T: SomeInteger](x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Binary `*=` operator for integers.
   x = x * y

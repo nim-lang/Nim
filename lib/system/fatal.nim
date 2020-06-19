@@ -45,10 +45,10 @@ elif (defined(nimQuirky) or defined(nimPanics)) and not defined(nimscript):
     sysFatal(exceptn, message, "")
 
 else:
-  proc sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
+  func sysFatal(exceptn: typedesc, message: string) {.inline, noreturn.} =
     raise (ref exceptn)(msg: message)
 
-  proc sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
+  func sysFatal(exceptn: typedesc, message, arg: string) {.inline, noreturn.} =
     raise (ref exceptn)(msg: message & arg)
 
 {.pop.}

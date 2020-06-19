@@ -9,7 +9,7 @@
 
 # Compilerprocs for strings that do not depend on the string implementation.
 
-proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
+func cmpStrings(a, b: string): int {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
   let minlen = min(alen, blen)
@@ -20,14 +20,14 @@ proc cmpStrings(a, b: string): int {.inline, compilerproc.} =
   else:
     result = alen - blen
 
-proc eqStrings(a, b: string): bool {.inline, compilerproc.} =
+func eqStrings(a, b: string): bool {.inline, compilerproc.} =
   let alen = a.len
   let blen = b.len
   if alen == blen:
     if alen == 0: return true
     return equalMem(unsafeAddr(a[0]), unsafeAddr(b[0]), alen)
 
-proc hashString(s: string): int {.compilerproc.} =
+func hashString(s: string): int {.compilerproc.} =
   # the compiler needs exactly the same hash function!
   # this used to be used for efficient generation of string case statements
   var h : uint = 0
@@ -40,7 +40,7 @@ proc hashString(s: string): int {.compilerproc.} =
   h = h + h shl 15
   result = cast[int](h)
 
-proc addInt*(result: var string; x: int64) =
+func addInt*(result: var string; x: int64) =
   ## Converts integer to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
@@ -66,15 +66,15 @@ proc addInt*(result: var string; x: int64) =
   for j in 0..i div 2 - 1:
     swap(result[base+j], result[base+i-j-1])
 
-proc add*(result: var string; x: int64) {.deprecated:
+func add*(result: var string; x: int64) {.deprecated:
   "Deprecated since v0.20, use 'addInt'".} =
   addInt(result, x)
 
-proc nimIntToStr(x: int): string {.compilerRtl.} =
+func nimIntToStr(x: int): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
 
-proc addCstringN(result: var string, buf: cstring; buflen: int) =
+func addCstringN(result: var string, buf: cstring; buflen: int) =
   # no nimvm support needed, so it doesn't need to be fast here either
   let oldLen = result.len
   let newLen = oldLen + buflen
@@ -83,7 +83,7 @@ proc addCstringN(result: var string, buf: cstring; buflen: int) =
 
 import formatfloat
 
-proc addFloat*(result: var string; x: float) =
+func addFloat*(result: var string; x: float) =
   ## Converts float to its string representation and appends it to `result`.
   ##
   ## .. code-block:: Nim
@@ -98,11 +98,11 @@ proc addFloat*(result: var string; x: float) =
     let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
-proc add*(result: var string; x: float) {.deprecated:
+func add*(result: var string; x: float) {.deprecated:
   "Deprecated since v0.20, use 'addFloat'".} =
   addFloat(result, x)
 
-proc nimFloatToStr(f: float): string {.compilerproc.} =
+func nimFloatToStr(f: float): string {.compilerproc.} =
   result = newStringOfCap(8)
   result.addFloat f
 
@@ -118,7 +118,7 @@ const
 when defined(nimHasInvariant):
   {.push staticBoundChecks: off.}
 
-proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
+func nimParseBiggestFloat(s: string, number: var BiggestFloat,
                           start = 0): int {.compilerproc.} =
   # This routine attempt to parse float that can parsed quickly.
   # ie whose integer part can fit inside a 53bits integer.
@@ -280,18 +280,18 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
 when defined(nimHasInvariant):
   {.pop.} # staticBoundChecks
 
-proc nimInt64ToStr(x: int64): string {.compilerRtl.} =
+func nimInt64ToStr(x: int64): string {.compilerRtl.} =
   result = newStringOfCap(sizeof(x)*4)
   result.addInt x
 
-proc nimBoolToStr(x: bool): string {.compilerRtl.} =
+func nimBoolToStr(x: bool): string {.compilerRtl.} =
   return if x: "true" else: "false"
 
-proc nimCharToStr(x: char): string {.compilerRtl.} =
+func nimCharToStr(x: char): string {.compilerRtl.} =
   result = newString(1)
   result[0] = x
 
-proc `$`*(x: uint64): string {.noSideEffect, raises: [].} =
+func `$`*(x: uint64): string {.noSideEffect, raises: [].} =
   ## The stringify operator for an unsigned integer argument. Returns `x`
   ## converted to a decimal string.
   if x == 0:

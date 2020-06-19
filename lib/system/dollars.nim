@@ -83,7 +83,7 @@ else:
       return false
 
 
-proc `$`*[T: tuple|object](x: T): string =
+func `$`*[T: tuple|object](x: T): string =
   ## Generic ``$`` operator for tuples that is lifted from the components
   ## of `x`. Example:
   ##
@@ -114,7 +114,7 @@ proc `$`*[T: tuple|object](x: T): string =
   result.add(")")
 
 
-proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
+func collectionToString[T](x: T, prefix, separator, suffix: string): string =
   result = prefix
   var firstElement = true
   for value in items(x):
@@ -133,7 +133,7 @@ proc collectionToString[T](x: T, prefix, separator, suffix: string): string =
       result.addQuoted(value)
   result.add(suffix)
 
-proc `$`*[T](x: set[T]): string =
+func `$`*[T](x: set[T]): string =
   ## Generic ``$`` operator for sets that is lifted from the components
   ## of `x`. Example:
   ##

@@ -263,7 +263,7 @@ template get(t, key): untyped =
     else:
       raise newException(KeyError, "key not found")
 
-proc enlarge[A, B](t: var Table[A, B]) =
+func enlarge[A, B](t: var Table[A, B]) =
   var n: KeyValuePairSeq[A, B]
   newSeq(n, len(t.data) * growthFactor)
   swap(t.data, n)
@@ -285,7 +285,7 @@ proc enlarge[A, B](t: var Table[A, B]) =
 # ------------------------------ Table ------------------------------
 # -------------------------------------------------------------------
 
-proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
+func initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
   ## Creates a new hash table that is empty.
   ##
   ## ``initialSize`` must be a power of two (default: 64).
@@ -306,7 +306,7 @@ proc initTable*[A, B](initialSize = defaultInitialSize): Table[A, B] =
       b = initTable[char, seq[int]]()
   initImpl(result, initialSize)
 
-proc `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
+func `[]=`*[A, B](t: var Table[A, B], key: A, val: B) =
   ## Inserts a ``(key, value)`` pair into ``t``.
   ##
   ## See also:
@@ -361,7 +361,7 @@ proc `[]`*[A, B](t: Table[A, B], key: A): B =
       echo a['z']
   get(t, key)
 
-proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
+func `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ## Retrieves the value at ``t[key]``. The value can be modified.
   ##
   ## If ``key`` is not in ``t``, the ``KeyError`` exception is raised.
@@ -377,7 +377,7 @@ proc `[]`*[A, B](t: var Table[A, B], key: A): var B =
   ##   the table
   get(t, key)
 
-proc hasKey*[A, B](t: Table[A, B], key: A): bool =
+func hasKey*[A, B](t: Table[A, B], key: A): bool =
   ## Returns true if ``key`` is in the table ``t``.
   ##
   ## See also:
@@ -395,7 +395,7 @@ proc hasKey*[A, B](t: Table[A, B], key: A): bool =
   var hc: Hash
   result = rawGet(t, key, hc) >= 0
 
-proc contains*[A, B](t: Table[A, B], key: A): bool =
+func contains*[A, B](t: Table[A, B], key: A): bool =
   ## Alias of `hasKey proc<#hasKey,Table[A,B],A>`_ for use with
   ## the ``in`` operator.
   runnableExamples:
@@ -482,7 +482,7 @@ proc mgetOrPut*[A, B](t: var Table[A, B], key: A, val: B): var B =
 
   mgetOrPutImpl(enlarge)
 
-proc len*[A, B](t: Table[A, B]): int =
+func len*[A, B](t: Table[A, B]): int =
   ## Returns the number of keys in ``t``.
   runnableExamples:
     let a = {'a': 5, 'b': 9}.toTable

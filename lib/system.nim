@@ -249,13 +249,13 @@ when true:
     ## **Note**: The `finalizer` refers to the type `T`, not to the object!
     ## This means that for each object of type `T` the finalizer will be called!
 
-proc wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
+func wasMoved*[T](obj: var T) {.magic: "WasMoved", noSideEffect.} =
   ## Resets an object `obj` to its initial (binary zero) value to signify
   ## it was "moved" and to signify its destructor should do nothing and
   ## ideally be optimized away.
   discard
 
-proc move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
+func move*[T](x: var T): T {.magic: "Move", noSideEffect.} =
   result = x
   wasMoved(x)
 
@@ -448,7 +448,7 @@ when defined(nimArrIdx):
   proc arrPut[I: Ordinal;T,S](a: T; i: I;
     x: S) {.noSideEffect, magic: "ArrPut".}
 
-  proc `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
+  func `=destroy`*[T](x: var T) {.inline, magic: "Destroy".} =
     ## Generic `destructor`:idx: implementation that can be overridden.
     discard
   proc `=sink`*[T](x: var T; y: T) {.inline, magic: "Asgn".} =
@@ -461,7 +461,7 @@ type
     b*: U                  ## The upper bound (inclusive).
   Slice*[T] = HSlice[T, T] ## An alias for ``HSlice[T, T]``.
 
-proc `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
+func `..`*[T, U](a: sink T, b: sink U): HSlice[T, U] {.noSideEffect, inline, magic: "DotDot".} =
   ## Binary `slice`:idx: operator that constructs an interval ``[a, b]``, both `a`
   ## and `b` are inclusive.
   ##
@@ -628,7 +628,7 @@ proc newSeq*[T](s: var seq[T], len: Natural) {.magic: "NewSeq", noSideEffect.}
   ##   inputStrings[2] = "would crash"
   ##   #inputStrings[3] = "out of bounds"
 
-proc newSeq*[T](len = 0.Natural): seq[T] =
+func newSeq*[T](len = 0.Natural): seq[T] =
   ## Creates a new sequence of type ``seq[T]`` with length ``len``.
   ##
   ## Note that the sequence will be filled with zeroed entries.
@@ -766,7 +766,7 @@ proc `<`*(x, y: float): bool {.magic: "LtF64", noSideEffect.}
 include "system/setops"
 
 
-proc contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.} =
+func contains*[U, V, W](s: HSlice[U, V], value: W): bool {.noSideEffect, inline.} =
   ## Checks if `value` is within the range of `s`; returns true if
   ## `value >= s.a and value <= s.b`
   ##
@@ -881,7 +881,7 @@ proc `of`*[T, S](x: T, y: S): bool {.magic: "Of", noSideEffect.}
   ##   assert(FloatingPointDefect of Exception)
   ##   assert(DivByZeroDefect of Exception)
 
-proc cmp*[T](x, y: T): int =
+func cmp*[T](x, y: T): int =
   ## Generic compare proc.
   ##
   ## Returns:
@@ -899,14 +899,14 @@ proc cmp*[T](x, y: T): int =
   if x < y: return -1
   return 1
 
-proc cmp*(x, y: string): int {.noSideEffect.}
+func cmp*(x, y: string): int {.noSideEffect.}
   ## Compare proc for strings. More efficient than the generic version.
   ##
   ## **Note**: The precise result values depend on the used C runtime library and
   ## can differ between operating systems!
 
 when defined(nimHasDefault):
-  proc `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
+  func `@`* [IDX, T](a: sink array[IDX, T]): seq[T] {.
     magic: "ArrToSeq", noSideEffect.}
     ## Turns an array into a sequence.
     ##
@@ -922,22 +922,22 @@ when defined(nimHasDefault):
     ##   echo @a # => @[1, 3, 5]
     ##   echo @b # => @['f', 'o', 'o']
 
-  proc default*(T: typedesc): T {.magic: "Default", noSideEffect.}
+  func default*(T: typedesc): T {.magic: "Default", noSideEffect.}
     ## returns the default value of the type ``T``.
 
-  proc reset*[T](obj: var T) {.noSideEffect.} =
+  func reset*[T](obj: var T) {.noSideEffect.} =
     ## Resets an object `obj` to its default value.
     obj = default(typeof(obj))
 
 else:
-  proc `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
+  func `@`* [IDX, T](a: array[IDX, T]): seq[T] {.
     magic: "ArrToSeq", noSideEffect.}
   when defined(nimV2):
-    proc reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
+    func reset*[T](obj: var T) {.magic: "Destroy", noSideEffect.}
   else:
-    proc reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
+    func reset*[T](obj: var T) {.magic: "Reset", noSideEffect.}
 
-proc setLen*[T](s: var seq[T], newlen: Natural) {.
+func setLen*[T](s: var seq[T], newlen: Natural) {.
   magic: "SetLengthSeq", noSideEffect.}
   ## Sets the length of seq `s` to `newlen`. ``T`` may be any sequence type.
   ##
@@ -952,7 +952,7 @@ proc setLen*[T](s: var seq[T], newlen: Natural) {.
   ##   x.setLen(1)
   ##   assert x == @[10]
 
-proc setLen*(s: var string, newlen: Natural) {.
+func setLen*(s: var string, newlen: Natural) {.
   magic: "SetLengthStr", noSideEffect.}
   ## Sets the length of string `s` to `newlen`.
   ##
@@ -964,7 +964,7 @@ proc setLen*(s: var string, newlen: Natural) {.
   ##  myS.setLen(3) # myS <- "Nim"
   ##  echo myS, " is fantastic!!"
 
-proc newString*(len: Natural): string {.
+func newString*(len: Natural): string {.
   magic: "NewString", importc: "mnewString", noSideEffect.}
   ## Returns a new string of length ``len`` but with uninitialized
   ## content. One needs to fill the string character after character
@@ -973,32 +973,32 @@ proc newString*(len: Natural): string {.
   ## This procedure exists only for optimization purposes;
   ## the same effect can be achieved with the ``&`` operator or with ``add``.
 
-proc newStringOfCap*(cap: Natural): string {.
+func newStringOfCap*(cap: Natural): string {.
   magic: "NewStringOfCap", importc: "rawNewString", noSideEffect.}
   ## Returns a new string of length ``0`` but with capacity `cap`.
   ##
   ## This procedure exists only for optimization purposes; the same effect can
   ## be achieved with the ``&`` operator or with ``add``.
 
-proc `&`*(x: string, y: char): string {.
+func `&`*(x: string, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` with `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & 'c' == "abc")
-proc `&`*(x, y: char): string {.
+func `&`*(x, y: char): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates characters `x` and `y` into a string.
   ##
   ## .. code-block:: Nim
   ##   assert('a' & 'b' == "ab")
-proc `&`*(x, y: string): string {.
+func `&`*(x, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates strings `x` and `y`.
   ##
   ## .. code-block:: Nim
   ##   assert("ab" & "cd" == "abcd")
-proc `&`*(x: char, y: string): string {.
+func `&`*(x: char, y: string): string {.
   magic: "ConStrStr", noSideEffect, merge.}
   ## Concatenates `x` with `y`.
   ##
@@ -1008,7 +1008,7 @@ proc `&`*(x: char, y: string): string {.
 # implementation note: These must all have the same magic value "ConStrStr" so
 # that the merge optimization works properly.
 
-proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
+func add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ## Appends `y` to `x` in place.
   ##
   ## .. code-block:: Nim
@@ -1016,7 +1016,7 @@ proc add*(x: var string, y: char) {.magic: "AppendStrCh", noSideEffect.}
   ##   tmp.add('a')
   ##   tmp.add('b')
   ##   assert(tmp == "ab")
-proc add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+func add*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ## Concatenates `x` and `y` in place.
   ##
   ## .. code-block:: Nim
@@ -1136,7 +1136,7 @@ elif hostOS != "standalone":
 
 import std/private/since
 
-proc align(address, alignment: int): int =
+func align(address, alignment: int): int =
   if alignment == 0: # Actually, this is illegal. This branch exists to actively
                      # hide problems.
     result = address
@@ -1203,7 +1203,7 @@ when notJSnotNims and hasAlloc and not defined(nimSeqsV2):
   proc addChar(s: NimString, c: char): NimString {.compilerproc, benign.}
 
 when defined(nimscript) or not defined(nimSeqsV2):
-  proc add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.}
+  func add*[T](x: var seq[T], y: sink T) {.magic: "AppendSeqElem", noSideEffect.}
     ## Generic proc for adding a data item `y` to a container `x`.
     ##
     ## For containers that have an order, `add` means *append*. New generic
@@ -1211,7 +1211,7 @@ when defined(nimscript) or not defined(nimSeqsV2):
     ## Generic code becomes much easier to write if the Nim naming scheme is
     ## respected.
 
-proc add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
+func add*[T](x: var seq[T], y: openArray[T]) {.noSideEffect.} =
   ## Generic proc for adding a container `y` to a container `x`.
   ##
   ## For containers that have an order, `add` means *append*. New generic
@@ -1236,7 +1236,7 @@ else:
   template movingCopy(a, b) =
     shallowCopy(a, b)
 
-proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+func del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by putting ``x[high(x)]`` into position `i`.
   ##
   ## This is an `O(1)` operation.
@@ -1251,7 +1251,7 @@ proc del*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   movingCopy(x[i], x[xl])
   setLen(x, xl)
 
-proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
+func delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
   ## Deletes the item at index `i` by moving all ``x[i+1..]`` items by one position.
   ##
   ## This is an `O(n)` operation.
@@ -1275,7 +1275,7 @@ proc delete*[T](x: var seq[T], i: Natural) {.noSideEffect.} =
     else:
       defaultImpl()
 
-proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
+func insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   ## Inserts `item` into `x` at position `i`.
   ##
   ## .. code-block:: Nim
@@ -1299,7 +1299,7 @@ proc insert*[T](x: var seq[T], item: sink T, i = 0.Natural) {.noSideEffect.} =
   x[i] = item
 
 when not defined(nimV2):
-  proc repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
+  func repr*[T](x: T): string {.magic: "Repr", noSideEffect.}
     ## Takes any Nim variable and returns its string representation.
     ##
     ## It works even for complex data graphs with cycles. This is a great
@@ -1388,7 +1388,7 @@ type # these work for most platforms:
   PInt64* = ptr int64        ## An alias for ``ptr int64``.
   PInt32* = ptr int32        ## An alias for ``ptr int32``.
 
-proc toFloat*(i: int): float {.noSideEffect, inline.} =
+func toFloat*(i: int): float {.noSideEffect, inline.} =
   ## Converts an integer `i` into a ``float``.
   ##
   ## If the conversion fails, `ValueError` is raised.
@@ -1402,11 +1402,11 @@ proc toFloat*(i: int): float {.noSideEffect, inline.} =
   ##   echo a.toFloat + b # => 5.7
   float(i)
 
-proc toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
+func toBiggestFloat*(i: BiggestInt): BiggestFloat {.noSideEffect, inline.} =
   ## Same as `toFloat <#toFloat,int>`_ but for ``BiggestInt`` to ``BiggestFloat``.
   BiggestFloat(i)
 
-proc toInt*(f: float): int {.noSideEffect.} =
+func toInt*(f: float): int {.noSideEffect.} =
   ## Converts a floating point number `f` into an ``int``.
   ##
   ## Conversion rounds `f` half away from 0, see
@@ -1422,12 +1422,12 @@ proc toInt*(f: float): int {.noSideEffect.} =
   ##   doAssert toInt(-0.5) == -1 # rounding is symmetrical
   if f >= 0: int(f+0.5) else: int(f-0.5)
 
-proc toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
+func toBiggestInt*(f: BiggestFloat): BiggestInt {.noSideEffect.} =
   ## Same as `toInt <#toInt,float>`_ but for ``BiggestFloat`` to ``BiggestInt``.
   if f >= 0: BiggestInt(f+0.5) else: BiggestInt(f-0.5)
 
-proc addQuitProc*(quitProc: proc() {.noconv.}) {. 
-  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".} 
+proc addQuitProc*(quitProc: proc() {.noconv.}) {.
+  importc: "atexit", header: "<stdlib.h>", deprecated: "use exitprocs.addExitProc".}
   ## Adds/registers a quit procedure.
   ##
   ## Each call to ``addQuitProc`` registers another quit procedure. Up to 30
@@ -1440,7 +1440,7 @@ proc addQuitProc*(quitProc: proc() {.noconv.}) {.
 # In case of an unhandled exception the exit handlers should
 # not be called explicitly! The user may decide to do this manually though.
 
-proc swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
+func swap*[T](a, b: var T) {.magic: "Swap", noSideEffect.}
   ## Swaps the values `a` and `b`.
   ##
   ## This is often more efficient than ``tmp = a; a = b; b = tmp``.
@@ -1486,30 +1486,30 @@ include "system/iterators_1"
 
 {.push stackTrace: off.}
 
-proc abs*(x: float64): float64 {.noSideEffect, inline.} =
+func abs*(x: float64): float64 {.noSideEffect, inline.} =
   if x < 0.0: -x else: x
-proc abs*(x: float32): float32 {.noSideEffect, inline.} =
+func abs*(x: float32): float32 {.noSideEffect, inline.} =
   if x < 0.0: -x else: x
-proc min*(x, y: float32): float32 {.noSideEffect, inline.} =
+func min*(x, y: float32): float32 {.noSideEffect, inline.} =
   if x <= y or y != y: x else: y
-proc min*(x, y: float64): float64 {.noSideEffect, inline.} =
+func min*(x, y: float64): float64 {.noSideEffect, inline.} =
   if x <= y or y != y: x else: y
-proc max*(x, y: float32): float32 {.noSideEffect, inline.} =
+func max*(x, y: float32): float32 {.noSideEffect, inline.} =
   if y <= x or y != y: x else: y
-proc max*(x, y: float64): float64 {.noSideEffect, inline.} =
+func max*(x, y: float64): float64 {.noSideEffect, inline.} =
   if y <= x or y != y: x else: y
-proc min*[T: not SomeFloat](x, y: T): T {.inline.} =
+func min*[T: not SomeFloat](x, y: T): T {.inline.} =
   if x <= y: x else: y
-proc max*[T: not SomeFloat](x, y: T): T {.inline.} =
+func max*[T: not SomeFloat](x, y: T): T {.inline.} =
   if y <= x: x else: y
 
 {.pop.} # stackTrace: off
 
 
-proc high*(T: typedesc[SomeFloat]): T = Inf
-proc low*(T: typedesc[SomeFloat]): T = NegInf
+func high*(T: typedesc[SomeFloat]): T = Inf
+func low*(T: typedesc[SomeFloat]): T = NegInf
 
-proc len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.} =
+func len*[U: Ordinal; V: Ordinal](x: HSlice[U, V]): int {.noSideEffect, inline.} =
   ## Length of ordinal slice. When x.b < x.a returns zero length.
   ##
   ## .. code-block:: Nim
@@ -1525,7 +1525,7 @@ when defined(nimNoNilSeqs2):
 else:
   {.pragma: nilError.}
 
-proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
+func isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on` since 0.19.
   ##
   ## Seqs are no longer nil by default, but set and empty.
@@ -1534,22 +1534,22 @@ proc isNil*[T](x: seq[T]): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## See also:
   ## * `isNil(string) <#isNil,string>`_
 
-proc isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
+func isNil*[T](x: ref T): bool {.noSideEffect, magic: "IsNil".}
+func isNil*(x: string): bool {.noSideEffect, magic: "IsNil", nilError.}
   ## Requires `--nilseqs:on`.
   ##
   ## See also:
   ## * `isNil(seq[T]) <#isNil,seq[T][T]>`_
 
-proc isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
-proc isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
+func isNil*[T](x: ptr T): bool {.noSideEffect, magic: "IsNil".}
+func isNil*(x: pointer): bool {.noSideEffect, magic: "IsNil".}
+func isNil*(x: cstring): bool {.noSideEffect, magic: "IsNil".}
+func isNil*[T: proc](x: T): bool {.noSideEffect, magic: "IsNil".}
   ## Fast check whether `x` is nil. This is sometimes more efficient than
   ## ``== nil``.
 
 
-proc `@`*[T](a: openArray[T]): seq[T] =
+func `@`*[T](a: openArray[T]): seq[T] =
   ## Turns an *openArray* into a sequence.
   ##
   ## This is not as efficient as turning a fixed length array into a sequence
@@ -1560,7 +1560,7 @@ proc `@`*[T](a: openArray[T]): seq[T] =
 
 when defined(nimSeqsV2):
 
-  proc `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
+  func `&`*[T](x, y: sink seq[T]): seq[T] {.noSideEffect.} =
     ## Concatenates two sequences.
     ##
     ## Requires copying of the sequences.
@@ -1576,7 +1576,7 @@ when defined(nimSeqsV2):
     for i in 0..y.len-1:
       result[i+x.len] = move(y[i])
 
-  proc `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
+  func `&`*[T](x: sink seq[T], y: sink T): seq[T] {.noSideEffect.} =
     ## Appends element y to the end of the sequence.
     ##
     ## Requires copying of the sequence.
@@ -1591,7 +1591,7 @@ when defined(nimSeqsV2):
       result[i] = move(x[i])
     result[x.len] = move(y)
 
-  proc `&`*[T](x: sink T, y: sink seq[T]): seq[T] {.noSideEffect.} =
+  func `&`*[T](x: sink T, y: sink seq[T]): seq[T] {.noSideEffect.} =
     ## Prepends the element x to the beginning of the sequence.
     ##
     ## Requires copying of the sequence.
@@ -1605,7 +1605,7 @@ when defined(nimSeqsV2):
 
 else:
 
-  proc `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
+  func `&`*[T](x, y: seq[T]): seq[T] {.noSideEffect.} =
     ## Concatenates two sequences.
     ##
     ## Requires copying of the sequences.
@@ -1621,7 +1621,7 @@ else:
     for i in 0..y.len-1:
       result[i+x.len] = y[i]
 
-  proc `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
+  func `&`*[T](x: seq[T], y: T): seq[T] {.noSideEffect.} =
     ## Appends element y to the end of the sequence.
     ##
     ## Requires copying of the sequence.
@@ -1649,11 +1649,11 @@ else:
       result[i+1] = y[i]
 
 
-proc astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
+func astToStr*[T](x: T): string {.magic: "AstToStr", noSideEffect.}
   ## Converts the AST of `x` into a string representation. This is very useful
   ## for debugging.
 
-proc instantiationInfo*(index = -1, fullPaths = false): tuple[
+func instantiationInfo*(index = -1, fullPaths = false): tuple[
   filename: string, line: int, column: int] {.magic: "InstantiationInfo", noSideEffect.}
   ## Provides access to the compiler's instantiation stack line information
   ## of a template.
@@ -1688,7 +1688,7 @@ proc instantiationInfo*(index = -1, fullPaths = false): tuple[
   ##     testException(IndexDefect, tester(1))
   ##     # --> Test failure at example.nim:20 with 'tester(1)'
 
-proc compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
+func compiles*(x: untyped): bool {.magic: "Compiles", noSideEffect, compileTime.} =
   ## Special compile-time procedure that checks whether `x` can be compiled
   ## without any semantic error.
   ## This can be used to check whether a type supports some operation:
@@ -1741,11 +1741,11 @@ when not declared(sysFatal):
 when notJSnotNims:
   {.push stackTrace: off, profiler: off.}
 
-  proc atomicInc*(memLoc: var int, x: int = 1): int {.inline,
+  func atomicInc*(memLoc: var int, x: int = 1): int {.inline,
     discardable, benign.}
     ## Atomic increment of `memLoc`. Returns the value after the operation.
 
-  proc atomicDec*(memLoc: var int, x: int = 1): int {.inline,
+  func atomicDec*(memLoc: var int, x: int = 1): int {.inline,
     discardable, benign.}
     ## Atomic decrement of `memLoc`. Returns the value after the operation.
 
@@ -1764,7 +1764,7 @@ import system/iterators
 export iterators
 
 
-proc find*[T, S](a: T, item: S): int {.inline.}=
+func find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
   ## appropriate `items` and `==` operations to work.
   for i in items(a):
@@ -1772,7 +1772,7 @@ proc find*[T, S](a: T, item: S): int {.inline.}=
     inc(result)
   result = -1
 
-proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
+func contains*[T](a: openArray[T], item: T): bool {.inline.}=
   ## Returns true if `item` is in `a` or false if not found. This is a shortcut
   ## for ``find(a, item) >= 0``.
   ##
@@ -1786,7 +1786,7 @@ proc contains*[T](a: openArray[T], item: T): bool {.inline.}=
   ##   assert 99 notin a
   return find(a, item) >= 0
 
-proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
+func pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
   ## Returns the last item of `s` and decreases ``s.len`` by one. This treats
   ## `s` as a stack and implements the common *pop* operation.
   runnableExamples:
@@ -1803,14 +1803,14 @@ proc pop*[T](s: var seq[T]): T {.inline, noSideEffect.} =
     result = s[L]
     setLen(s, L)
 
-proc `==`*[T: tuple|object](x, y: T): bool =
+func `==`*[T: tuple|object](x, y: T): bool =
   ## Generic ``==`` operator for tuples that is lifted from the components.
   ## of `x` and `y`.
   for a, b in fields(x, y):
     if a != b: return false
   return true
 
-proc `<=`*[T: tuple](x, y: T): bool =
+func `<=`*[T: tuple](x, y: T): bool =
   ## Generic lexicographic ``<=`` operator for tuples that is lifted from the
   ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
@@ -1819,7 +1819,7 @@ proc `<=`*[T: tuple](x, y: T): bool =
     if c > 0: return false
   return true
 
-proc `<`*[T: tuple](x, y: T): bool =
+func `<`*[T: tuple](x, y: T): bool =
   ## Generic lexicographic ``<`` operator for tuples that is lifted from the
   ## components of `x` and `y`. This implementation uses `cmp`.
   for a, b in fields(x, y):
@@ -1923,7 +1923,7 @@ type
       frameMsgLen*: int   ## end position in frameMsgBuf for this frame.
 
 when defined(js):
-  proc add*(x: var string, y: cstring) {.asmNoStackFrame.} =
+  func add*(x: var string, y: cstring) {.asmNoStackFrame.} =
     asm """
       if (`x` === null) { `x` = []; }
       var off = `x`.length;
@@ -1932,11 +1932,11 @@ when defined(js):
         `x`[off+i] = `y`.charCodeAt(i);
       }
     """
-  proc add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
+  func add*(x: var cstring, y: cstring) {.magic: "AppendStrStr".}
 
 elif hasAlloc:
   {.push stackTrace: off, profiler: off.}
-  proc add*(x: var string, y: cstring) =
+  func add*(x: var string, y: cstring) =
     var i = 0
     if y != nil:
       while y[i] != '\0':
@@ -1980,26 +1980,26 @@ template newException*(exceptn: typedesc, message: string;
   (ref exceptn)(msg: message, parent: parentException)
 
 when hostOS == "standalone" and defined(nogc):
-  proc nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
+  func nimToCStringConv(s: NimString): cstring {.compilerproc, inline.} =
     if s == nil or s.len == 0: result = cstring""
     else: result = cstring(addr s.data)
 
-proc getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
+func getTypeInfo*[T](x: T): pointer {.magic: "GetTypeInfo", benign.}
   ## Get type information for `x`.
   ##
   ## Ordinary code should not use this, but the `typeinfo module
   ## <typeinfo.html>`_ instead.
 
 {.push stackTrace: off.}
-proc abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int): int {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
-proc abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int8): int8 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
-proc abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int16): int16 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
-proc abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int32): int32 {.magic: "AbsI", noSideEffect.} =
   if x < 0: -x else: x
-proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
+func abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
   ## Returns the absolute value of `x`.
   ##
   ## If `x` is ``low(x)`` (that is -MININT for its type),
@@ -2009,8 +2009,8 @@ proc abs*(x: int64): int64 {.magic: "AbsI", noSideEffect.} =
 
 when not defined(js):
 
-  proc likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
-  proc unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
+  func likelyProc(val: bool): bool {.importc: "NIM_LIKELY", nodecl, noSideEffect.}
+  func unlikelyProc(val: bool): bool {.importc: "NIM_UNLIKELY", nodecl, noSideEffect.}
 
 template likely*(val: bool): bool =
   ## Hints the optimizer that `val` is likely going to be true.
@@ -2142,11 +2142,11 @@ when notJSnotNims:
     c_memmove(dest, source, csize_t(size))
     when declared(memTrackerOp):
       memTrackerOp("moveMem", dest, size)
-  proc equalMem(a, b: pointer, size: Natural): bool =
+  func equalMem(a, b: pointer, size: Natural): bool =
     nimCmpMem(a, b, size) == 0
 
 when not defined(js):
-  proc cmp(x, y: string): int =
+  func cmp(x, y: string): int =
     when nimvm:
       if x < y: result = -1
       elif x > y: result = 1
@@ -2159,13 +2159,13 @@ when not defined(js):
           result = x.len - y.len
 
   when declared(newSeq):
-    proc cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
+    func cstringArrayToSeq*(a: cstringArray, len: Natural): seq[string] =
       ## Converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
       ## of length ``len``.
       newSeq(result, len)
       for i in 0..len-1: result[i] = $a[i]
 
-    proc cstringArrayToSeq*(a: cstringArray): seq[string] =
+    func cstringArrayToSeq*(a: cstringArray): seq[string] =
       ## Converts a ``cstringArray`` to a ``seq[string]``. `a` is supposed to be
       ## terminated by ``nil``.
       var L = 0
@@ -2223,7 +2223,7 @@ when notJSnotNims:
     proc getStackTrace*(): string {.gcsafe.}
       ## Gets the current stack trace. This only works for debug builds.
 
-    proc getStackTrace*(e: ref Exception): string {.gcsafe.}
+    func getStackTrace*(e: ref Exception): string {.gcsafe.}
       ## Gets the stack trace associated with `e`, which is the stack that
       ## lead to the ``raise`` statement. This only works for debug builds.
 
@@ -2265,7 +2265,7 @@ when notJSnotNims:
     const GenericSeqSize = (2 * sizeof(int))
 
   when not defined(nimV2):
-    proc getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
+    func getDiscriminant(aa: pointer, n: ptr TNimNode): uint =
       sysAssert(n.kind == nkCase, "getDiscriminant: node != nkCase")
       var d: uint
       var a = cast[uint](aa)
@@ -2277,7 +2277,7 @@ when notJSnotNims:
       else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 
-    proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
+    func selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =
       var discr = getDiscriminant(aa, n)
       if discr < cast[uint](n.len):
         result = n.sons[discr]
@@ -2333,21 +2333,21 @@ when notJSnotNims:
     include "system/profiler"
   {.pop.}
 
-  proc rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+  func rawProc*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw proc pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
     {.emit: """
     `result` = `x`.ClP_0;
     """.}
 
-  proc rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
+  func rawEnv*[T: proc](x: T): pointer {.noSideEffect, inline.} =
     ## Retrieves the raw environment pointer of the closure `x`. This is
     ## useful for interfacing closures with C.
     {.emit: """
     `result` = `x`.ClE_0;
     """.}
 
-  proc finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
+  func finished*[T: proc](x: T): bool {.noSideEffect, inline.} =
     ## can be used to determine if a first class iterator has finished.
     {.emit: """
     `result` = ((NI*) `x`.ClE_0)[1] < 0;
@@ -2364,10 +2364,10 @@ when defined(js):
       return 1
 
 when defined(js) or defined(nimscript):
-  proc addInt*(result: var string; x: int64) =
+  func addInt*(result: var string; x: int64) =
     result.add $x
 
-  proc addFloat*(result: var string; x: float) =
+  func addFloat*(result: var string; x: float) =
     result.add $x
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
@@ -2385,7 +2385,7 @@ proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
 {.pop.} # checks: off
 {.pop.} # hints: off
 
-proc `/`*(x, y: int): float {.inline, noSideEffect.} =
+func `/`*(x, y: int): float {.inline, noSideEffect.} =
   ## Division of integers that results in a float.
   ##
   ## See also:
@@ -2447,7 +2447,7 @@ template `^^`(s, i: untyped): untyped =
 template `[]`*(s: string; i: int): char = arrGet(s, i)
 template `[]=`*(s: string; i: int; val: char) = arrPut(s, i, val)
 
-proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
+func `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
   ## Slice operation for strings.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2459,7 +2459,7 @@ proc `[]`*[T, U](s: string, x: HSlice[T, U]): string {.inline.} =
   result = newString(L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
+func `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
   ## Slice assignment for strings.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2477,7 +2477,7 @@ proc `[]=`*[T, U](s: var string, x: HSlice[T, U], b: string) =
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
+func `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for arrays.
   ## Returns the inclusive range `[a[x.a], a[x.b]]`:
   ##
@@ -2489,7 +2489,7 @@ proc `[]`*[Idx, T, U, V](a: array[Idx, T], x: HSlice[U, V]): seq[T] =
   result = newSeq[T](L)
   for i in 0..<L: result[i] = a[Idx(i + xa)]
 
-proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
+func `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for arrays.
   ##
   ## .. code-block:: Nim
@@ -2503,7 +2503,7 @@ proc `[]=`*[Idx, T, U, V](a: var array[Idx, T], x: HSlice[U, V], b: openArray[T]
   else:
     sysFatal(RangeDefect, "different lengths for slice assignment")
 
-proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
+func `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   ## Slice operation for sequences.
   ## Returns the inclusive range `[s[x.a], s[x.b]]`:
   ##
@@ -2515,7 +2515,7 @@ proc `[]`*[T, U, V](s: openArray[T], x: HSlice[U, V]): seq[T] =
   newSeq(result, L)
   for i in 0 ..< L: result[i] = s[i + a]
 
-proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
+func `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   ## Slice assignment for sequences.
   ##
   ## If ``b.len`` is not exactly the number of elements that are referred to
@@ -2532,23 +2532,23 @@ proc `[]=`*[T, U, V](s: var seq[T], x: HSlice[U, V], b: openArray[T]) =
   else:
     spliceImpl(s, a, L, b)
 
-proc `[]`*[T](s: openArray[T]; i: BackwardsIndex): T {.inline.} =
+func `[]`*[T](s: openArray[T]; i: BackwardsIndex): T {.inline.} =
   system.`[]`(s, s.len - int(i))
 
-proc `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T {.inline.} =
+func `[]`*[Idx, T](a: array[Idx, T]; i: BackwardsIndex): T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
-proc `[]`*(s: string; i: BackwardsIndex): char {.inline.} = s[s.len - int(i)]
+func `[]`*(s: string; i: BackwardsIndex): char {.inline.} = s[s.len - int(i)]
 
-proc `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
+func `[]`*[T](s: var openArray[T]; i: BackwardsIndex): var T {.inline.} =
   system.`[]`(s, s.len - int(i))
-proc `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
+func `[]`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex): var T {.inline.} =
   a[Idx(a.len - int(i) + int low(a))]
 
-proc `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
+func `[]=`*[T](s: var openArray[T]; i: BackwardsIndex; x: T) {.inline.} =
   system.`[]=`(s, s.len - int(i), x)
-proc `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) {.inline.} =
+func `[]=`*[Idx, T](a: var array[Idx, T]; i: BackwardsIndex; x: T) {.inline.} =
   a[Idx(a.len - int(i) + int low(a))] = x
-proc `[]=`*(s: var string; i: BackwardsIndex; x: char) {.inline.} =
+func `[]=`*(s: var string; i: BackwardsIndex; x: char) {.inline.} =
   s[s.len - int(i)] = x
 
 proc slurp*(filename: string): string {.magic: "Slurp".}
@@ -2604,7 +2604,7 @@ proc gorgeEx*(command: string, input = "", cache = ""): tuple[output: string,
   discard
 
 
-proc `+=`*[T: float|float32|float64] (x: var T, y: T) {.
+func `+=`*[T: float|float32|float64] (x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Increments in place a floating point number.
   x = x + y
@@ -2614,20 +2614,20 @@ proc `-=`*[T: float|float32|float64] (x: var T, y: T) {.
   ## Decrements in place a floating point number.
   x = x - y
 
-proc `*=`*[T: float|float32|float64] (x: var T, y: T) {.
+func `*=`*[T: float|float32|float64] (x: var T, y: T) {.
   inline, noSideEffect.} =
   ## Multiplies in place a floating point number.
   x = x * y
 
-proc `/=`*(x: var float64, y: float64) {.inline, noSideEffect.} =
+func `/=`*(x: var float64, y: float64) {.inline, noSideEffect.} =
   ## Divides in place a floating point number.
   x = x / y
 
-proc `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
+func `/=`*[T: float|float32](x: var T, y: T) {.inline, noSideEffect.} =
   ## Divides in place a floating point number.
   x = x / y
 
-proc `&=`*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
+func `&=`*(x: var string, y: string) {.magic: "AppendStrStr", noSideEffect.}
   ## Appends in place to a string.
   ##
   ## .. code-block:: Nim
@@ -2670,7 +2670,7 @@ else:
 when not defined(nimhygiene):
   {.pragma: inject.}
 
-proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
+func shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
   ## Marks a sequence `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`.
   ##
@@ -2680,7 +2680,7 @@ proc shallow*[T](s: var seq[T]) {.noSideEffect, inline.} =
     var s = cast[PGenericSeq](s)
     s.reserved = s.reserved or seqShallowFlag
 
-proc shallow*(s: var string) {.noSideEffect, inline.} =
+func shallow*(s: var string) {.noSideEffect, inline.} =
   ## Marks a string `s` as `shallow`:idx:. Subsequent assignments will not
   ## perform deep copies of `s`.
   ##
@@ -2705,7 +2705,7 @@ when defined(nimV2):
 
 macro varargsLen*(x: varargs[untyped]): int {.since: (1, 1).} =
   ## returns number of variadic arguments in `x`
-  proc varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
+  func varargsLenImpl(x: NimNode): NimNode {.magic: "LengthOpenArray", noSideEffect.}
   varargsLenImpl(x)
 
 when false:
@@ -2718,7 +2718,7 @@ when false:
     payload()
 
 when hasAlloc or defined(nimscript):
-  proc insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
+  func insert*(x: var string, item: string, i = 0.Natural) {.noSideEffect.} =
     ## Inserts `item` into `x` at position `i`.
     ##
     ## .. code-block:: Nim
@@ -2738,7 +2738,7 @@ when hasAlloc or defined(nimscript):
 when declared(initDebugger):
   initDebugger()
 
-proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
+func addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
   ## Adds a char to string `s` and applies the following escaping:
   ##
   ## * replaces any ``\`` by ``\\``
@@ -2779,7 +2779,7 @@ proc addEscapedChar*(s: var string, c: char) {.noSideEffect, inline.} =
     s.add(HexChars[int((n and 0xF0) shr 4)])
     s.add(HexChars[int(n and 0xF)])
 
-proc addQuoted*[T](s: var string, x: T) =
+func addQuoted*[T](s: var string, x: T) =
   ## Appends `x` to string `s` in place, applying quoting and escaping
   ## if `x` is a string or char.
   ##
@@ -2827,7 +2827,7 @@ proc addQuoted*[T](s: var string, x: T) =
   else:
     s.add($x)
 
-proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
+func locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
   ## Generates a tuple constructor expression listing all the local variables
   ## in the current scope.
   ##
@@ -2855,20 +2855,20 @@ proc locals*(): RootObj {.magic: "Plugin", noSideEffect.} =
 
 when hasAlloc and notJSnotNims and not usesDestructors:
   # XXX how to implement 'deepCopy' is an open problem.
-  proc deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
+  func deepCopy*[T](x: var T, y: T) {.noSideEffect, magic: "DeepCopy".} =
     ## Performs a deep copy of `y` and copies it into `x`.
     ##
     ## This is also used by the code generator
     ## for the implementation of ``spawn``.
     discard
 
-  proc deepCopy*[T](y: T): T =
+  func deepCopy*[T](y: T): T =
     ## Convenience wrapper around `deepCopy` overload.
     deepCopy(result, y)
 
   include "system/deepcopy"
 
-proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
+func procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   ## Special magic to prohibit dynamic binding for `method`:idx: calls.
   ## This is similar to `super`:idx: in ordinary OO languages.
   ##
@@ -2878,7 +2878,7 @@ proc procCall*(x: untyped) {.magic: "ProcCall", compileTime.} =
   discard
 
 
-proc `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
+func `==`*(x, y: cstring): bool {.magic: "EqCString", noSideEffect,
                                    inline.} =
   ## Checks for equality between two `cstring` variables.
   proc strcmp(a, b: cstring): cint {.noSideEffect,
@@ -2891,15 +2891,15 @@ when defined(nimNoNilSeqs2) and not compileOption("nilseqs"):
   when defined(nimHasUserErrors):
     # bug #9149; ensure that 'type(nil)' does not match *too* well by using 'type(nil) | type(nil)'.
     # Eventually (in 0.20?) we will be able to remove this hack completely.
-    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.
+    func `==`*(x: string; y: type(nil) | type(nil)): bool {.
         error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
       discard
-    proc `==`*(x: type(nil) | type(nil); y: string): bool {.
+    func `==`*(x: type(nil) | type(nil); y: string): bool {.
         error: "'nil' is now invalid for 'string'; compile with --nilseqs:on for a migration period".} =
       discard
   else:
-    proc `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
-    proc `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
+    func `==`*(x: string; y: type(nil) | type(nil)): bool {.error.} = discard
+    func `==`*(x: type(nil) | type(nil); y: string): bool {.error.} = discard
 
 template closureScope*(body: untyped): untyped =
   ## Useful when creating a closure in a loop to capture local loop variables by
@@ -2946,7 +2946,7 @@ template once*(body: untyped): untyped =
 
 {.pop.} # warning[GcMem]: off, warning[Uninit]: off
 
-proc substr*(s: string, first, last: int): string =
+func substr*(s: string, first, last: int): string =
   ## Copies a slice of `s` into a new string and returns this new
   ## string.
   ##
@@ -2967,35 +2967,35 @@ proc substr*(s: string, first, last: int): string =
   for i in 0 .. L-1:
     result[i] = s[i+first]
 
-proc substr*(s: string, first = 0): string =
+func substr*(s: string, first = 0): string =
   result = substr(s, first, high(s))
 
 when defined(nimconfig):
   include "system/nimscript"
 
 when not defined(js):
-  proc toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
+  func toOpenArray*[T](x: ptr UncheckedArray[T]; first, last: int): openArray[T] {.
     magic: "Slice".}
   when defined(nimToOpenArrayCString):
-    proc toOpenArray*(x: cstring; first, last: int): openArray[char] {.
+    func toOpenArray*(x: cstring; first, last: int): openArray[char] {.
       magic: "Slice".}
-    proc toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
+    func toOpenArrayByte*(x: cstring; first, last: int): openArray[byte] {.
       magic: "Slice".}
 
-proc toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
+func toOpenArray*[T](x: seq[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
-proc toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
+func toOpenArray*[T](x: openArray[T]; first, last: int): openArray[T] {.
   magic: "Slice".}
-proc toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
+func toOpenArray*[I, T](x: array[I, T]; first, last: I): openArray[T] {.
   magic: "Slice".}
-proc toOpenArray*(x: string; first, last: int): openArray[char] {.
+func toOpenArray*(x: string; first, last: int): openArray[char] {.
   magic: "Slice".}
 
-proc toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
+func toOpenArrayByte*(x: string; first, last: int): openArray[byte] {.
   magic: "Slice".}
-proc toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
+func toOpenArrayByte*(x: openArray[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
-proc toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
+func toOpenArrayByte*(x: seq[char]; first, last: int): openArray[byte] {.
   magic: "Slice".}
 
 type

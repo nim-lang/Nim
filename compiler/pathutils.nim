@@ -30,15 +30,15 @@ proc splitFile*(x: AbsoluteFile): tuple[dir: AbsoluteDir, name, ext: string] =
   let (a, b, c) = splitFile(x.string)
   result = (dir: AbsoluteDir(a), name: b, ext: c)
 
-proc extractFilename*(x: AbsoluteFile): string {.borrow.}
+func extractFilename*(x: AbsoluteFile): string {.borrow.}
 
 proc fileExists*(x: AbsoluteFile): bool {.borrow.}
 proc dirExists*(x: AbsoluteDir): bool {.borrow.}
 
-proc quoteShell*(x: AbsoluteFile): string {.borrow.}
-proc quoteShell*(x: AbsoluteDir): string {.borrow.}
+func quoteShell*(x: AbsoluteFile): string {.borrow.}
+func quoteShell*(x: AbsoluteDir): string {.borrow.}
 
-proc cmpPaths*(x, y: AbsoluteDir): int {.borrow.}
+func cmpPaths*(x, y: AbsoluteDir): int {.borrow.}
 
 proc createDir*(x: AbsoluteDir) {.borrow.}
 
@@ -46,7 +46,7 @@ proc toAbsoluteDir*(path: string): AbsoluteDir =
   result = if path.isAbsolute: AbsoluteDir(path)
            else: AbsoluteDir(getCurrentDir() / path)
 
-proc `$`*(x: AnyPath): string = x.string
+func `$`*(x: AnyPath): string = x.string
 
 when true:
   proc eqImpl(x, y: string): bool {.inline.} =
@@ -92,11 +92,11 @@ when true:
     if isAbsolute(file): result = AbsoluteFile(file)
     else: result = base / RelativeFile file
 
-  proc changeFileExt*(x: AbsoluteFile; ext: string): AbsoluteFile {.borrow.}
-  proc changeFileExt*(x: RelativeFile; ext: string): RelativeFile {.borrow.}
+  func changeFileExt*(x: AbsoluteFile; ext: string): AbsoluteFile {.borrow.}
+  func changeFileExt*(x: RelativeFile; ext: string): RelativeFile {.borrow.}
 
-  proc addFileExt*(x: AbsoluteFile; ext: string): AbsoluteFile {.borrow.}
-  proc addFileExt*(x: RelativeFile; ext: string): RelativeFile {.borrow.}
+  func addFileExt*(x: AbsoluteFile; ext: string): AbsoluteFile {.borrow.}
+  func addFileExt*(x: RelativeFile; ext: string): RelativeFile {.borrow.}
 
   proc writeFile*(x: AbsoluteFile; content: string) {.borrow.}
 

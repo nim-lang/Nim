@@ -142,23 +142,23 @@ const
     7, 7, 7, 7, 7, 7, 7, 7
   ]
 
-proc msbit(x: uint32): int {.inline.} =
+func msbit(x: uint32): int {.inline.} =
   let a = if x <= 0xff_ff'u32:
             (if x <= 0xff: 0 else: 8)
           else:
             (if x <= 0xff_ff_ff'u32: 16 else: 24)
   result = int(fsLookupTable[byte(x shr a)]) + a
 
-proc lsbit(x: uint32): int {.inline.} =
+func lsbit(x: uint32): int {.inline.} =
   msbit(x and ((not x) + 1))
 
-proc setBit(nr: int; dest: var uint32) {.inline.} =
+func setBit(nr: int; dest: var uint32) {.inline.} =
   dest = dest or (1u32 shl (nr and 0x1f))
 
-proc clearBit(nr: int; dest: var uint32) {.inline.} =
+func clearBit(nr: int; dest: var uint32) {.inline.} =
   dest = dest and not (1u32 shl (nr and 0x1f))
 
-proc mappingSearch(r, fl, sl: var int) {.inline.} =
+func mappingSearch(r, fl, sl: var int) {.inline.} =
   #let t = (1 shl (msbit(uint32 r) - MaxLog2Sli)) - 1
   # This diverges from the standard TLSF algorithm because we need to ensure
   # PageSize alignment:
@@ -174,7 +174,7 @@ proc mappingSearch(r, fl, sl: var int) {.inline.} =
 # See http://www.gii.upv.es/tlsf/files/papers/tlsf_desc.pdf for details of
 # this algorithm.
 
-proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
+func mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
   sysAssert((r and PageMask) == 0, "mappingInsert: still not aligned")
   result.fl = msbit(uint32 r)
   result.sl = (r shr (result.fl - MaxLog2Sli)) - MaxSli
@@ -182,7 +182,7 @@ proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
 
 template mat(): untyped = a.matrix[fl][sl]
 
-proc findSuitableBlock(a: MemRegion; fl, sl: var int): PBigChunk {.inline.} =
+func findSuitableBlock(a: MemRegion; fl, sl: var int): PBigChunk {.inline.} =
   let tmp = a.slBitmap[fl] and (not 0u32 shl sl)
   result = nil
   if tmp != 0:
@@ -200,7 +200,7 @@ template clearBits(sl, fl) =
     # do not forget to cascade:
     clearBit(fl, a.flBitmap)
 
-proc removeChunkFromMatrix(a: var MemRegion; b: PBigChunk) =
+func removeChunkFromMatrix(a: var MemRegion; b: PBigChunk) =
   let (fl, sl) = mappingInsert(b.size)
   if b.next != nil: b.next.prev = b.prev
   if b.prev != nil: b.prev.next = b.next
@@ -211,7 +211,7 @@ proc removeChunkFromMatrix(a: var MemRegion; b: PBigChunk) =
   b.prev = nil
   b.next = nil
 
-proc removeChunkFromMatrix2(a: var MemRegion; b: PBigChunk; fl, sl: int) =
+func removeChunkFromMatrix2(a: var MemRegion; b: PBigChunk; fl, sl: int) =
   mat() = b.next
   if mat() != nil:
     mat().prev = nil
@@ -220,7 +220,7 @@ proc removeChunkFromMatrix2(a: var MemRegion; b: PBigChunk; fl, sl: int) =
   b.prev = nil
   b.next = nil
 
-proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
+func addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   let (fl, sl) = mappingInsert(b.size)
   b.prev = nil
   b.next = mat()
@@ -230,14 +230,14 @@ proc addChunkToMatrix(a: var MemRegion; b: PBigChunk) =
   setBit(sl, a.slBitmap[fl])
   setBit(fl, a.flBitmap)
 
-proc incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
+func incCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   inc(a.currMem, bytes)
 
-proc decCurrMem(a: var MemRegion, bytes: int) {.inline.} =
+func decCurrMem(a: var MemRegion, bytes: int) {.inline.} =
   a.maxMem = max(a.maxMem, a.currMem)
   dec(a.currMem, bytes)
 
-proc getMaxMem(a: var MemRegion): int =
+func getMaxMem(a: var MemRegion): int =
   # Since we update maxPagesCount only when freeing pages,
   # maxPagesCount may not be up to date. Thus we use the
   # maximum of these both values here:
@@ -264,7 +264,7 @@ proc llAlloc(a: var MemRegion, size: int): pointer =
   inc(a.llmem.acc, size)
   zeroMem(result, size)
 
-proc getBottom(a: var MemRegion): PAvlNode =
+func getBottom(a: var MemRegion): PAvlNode =
   result = addr(a.bottomData)
   if result.link[0] == nil:
     result.link[0] = result
@@ -290,7 +290,7 @@ proc allocAvlNode(a: var MemRegion, key, upperBound: int): PAvlNode =
   sysAssert(bottom.link[0] == bottom, "bottom link[0]")
   sysAssert(bottom.link[1] == bottom, "bottom link[1]")
 
-proc deallocAvlNode(a: var MemRegion, n: PAvlNode) {.inline.} =
+func deallocAvlNode(a: var MemRegion, n: PAvlNode) {.inline.} =
   n.link[0] = a.freeAvlNodes
   a.freeAvlNodes = n
 
@@ -310,7 +310,7 @@ proc addHeapLink(a: var MemRegion; p: PBigChunk, size: int) =
 
 include "system/avltree"
 
-proc llDeallocAll(a: var MemRegion) =
+func llDeallocAll(a: var MemRegion) =
   var it = a.llmem
   while it != nil:
     # we know each block in the list has the size of 1 page:
@@ -319,7 +319,7 @@ proc llDeallocAll(a: var MemRegion) =
     it = next
   a.llmem = nil
 
-proc intSetGet(t: IntSet, key: int): PTrunk =
+func intSetGet(t: IntSet, key: int): PTrunk =
   var it = t.data[key and high(t.data)]
   while it != nil:
     if it.key == key: return it
@@ -334,7 +334,7 @@ proc intSetPut(a: var MemRegion, t: var IntSet, key: int): PTrunk =
     t.data[key and high(t.data)] = result
     result.key = key
 
-proc contains(s: IntSet, key: int): bool =
+func contains(s: IntSet, key: int): bool =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
@@ -347,7 +347,7 @@ proc incl(a: var MemRegion, s: var IntSet, key: int) =
   var u = key and TrunkMask
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or (uint(1) shl (u and IntMask))
 
-proc excl(s: var IntSet, key: int) =
+func excl(s: var IntSet, key: int) =
   var t = intSetGet(s, key shr TrunkShift)
   if t != nil:
     var u = key and TrunkMask
@@ -372,10 +372,10 @@ iterator elements(t: IntSet): int {.inline.} =
         inc(i)
       r = r.next
 
-proc isSmallChunk(c: PChunk): bool {.inline.} =
+func isSmallChunk(c: PChunk): bool {.inline.} =
   return c.size <= SmallChunkSize-smallChunkOverhead()
 
-proc chunkUnused(c: PChunk): bool {.inline.} =
+func chunkUnused(c: PChunk): bool {.inline.} =
   result = (c.prevSize and 1) == 0
 
 iterator allObjects(m: var MemRegion): pointer {.inline.} =
@@ -403,17 +403,17 @@ proc iterToProc*(iter: typed, envType: typedesc; procName: untyped) {.
                       magic: "Plugin", compileTime.}
 
 when not defined(gcDestructors):
-  proc isCell(p: pointer): bool {.inline.} =
+  func isCell(p: pointer): bool {.inline.} =
     result = cast[ptr FreeCell](p).zeroField >% 1
 
 # ------------- chunk management ----------------------------------------------
-proc pageIndex(c: PChunk): int {.inline.} =
+func pageIndex(c: PChunk): int {.inline.} =
   result = cast[ByteAddress](c) shr PageShift
 
-proc pageIndex(p: pointer): int {.inline.} =
+func pageIndex(p: pointer): int {.inline.} =
   result = cast[ByteAddress](p) shr PageShift
 
-proc pageAddr(p: pointer): PChunk {.inline.} =
+func pageAddr(p: pointer): PChunk {.inline.} =
   result = cast[PChunk](cast[ByteAddress](p) and not PageMask)
   #sysAssert(Contains(allocator.chunkStarts, pageIndex(result)))
 
@@ -488,16 +488,16 @@ proc requestOsChunks(a: var MemRegion, size: int): PBigChunk =
   a.lastSize = size # for next request
   sysAssert((cast[int](result) and PageMask) == 0, "requestOschunks: unaligned chunk")
 
-proc isAccessible(a: MemRegion, p: pointer): bool {.inline.} =
+func isAccessible(a: MemRegion, p: pointer): bool {.inline.} =
   result = contains(a.chunkStarts, pageIndex(p))
 
-proc contains[T](list, x: T): bool =
+func contains[T](list, x: T): bool =
   var it = list
   while it != nil:
     if it == x: return true
     it = it.next
 
-proc listAdd[T](head: var T, c: T) {.inline.} =
+func listAdd[T](head: var T, c: T) {.inline.} =
   sysAssert(c notin head, "listAdd 1")
   sysAssert c.prev == nil, "listAdd 2"
   sysAssert c.next == nil, "listAdd 3"
@@ -507,7 +507,7 @@ proc listAdd[T](head: var T, c: T) {.inline.} =
     head.prev = c
   head = c
 
-proc listRemove[T](head: var T, c: T) {.inline.} =
+func listRemove[T](head: var T, c: T) {.inline.} =
   sysAssert(c in head, "listRemove")
   if c == head:
     head = c.next
@@ -520,7 +520,7 @@ proc listRemove[T](head: var T, c: T) {.inline.} =
   c.next = nil
   c.prev = nil
 
-proc updatePrevSize(a: var MemRegion, c: PBigChunk,
+func updatePrevSize(a: var MemRegion, c: PBigChunk,
                     prevSize: int) {.inline.} =
   var ri = cast[PChunk](cast[ByteAddress](c) +% c.size)
   sysAssert((cast[ByteAddress](ri) and PageMask) == 0, "updatePrevSize")
@@ -623,7 +623,7 @@ proc getHugeChunk(a: var MemRegion; size: int): PBigChunk =
   result.prevSize = 1
   incl(a, a.chunkStarts, pageIndex(result))
 
-proc freeHugeChunk(a: var MemRegion; c: PBigChunk) =
+func freeHugeChunk(a: var MemRegion; c: PBigChunk) =
   let size = c.size
   sysAssert(size >= HugeChunkSize, "freeHugeChunk: invalid size")
   excl(a.chunkStarts, pageIndex(c))
@@ -888,11 +888,11 @@ when not defined(gcDestructors):
           var c = cast[PBigChunk](c)
           result = p == addr(c.data) and cast[ptr FreeCell](p).zeroField >% 1
 
-  proc prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
+  func prepareForInteriorPointerChecking(a: var MemRegion) {.inline.} =
     a.minLargeObj = lowGauge(a.root)
     a.maxLargeObj = highGauge(a.root)
 
-  proc interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
+  func interiorAllocatedPtr(a: MemRegion, p: pointer): pointer =
     if isAccessible(a, p):
       var c = pageAddr(p)
       if not chunkUnused(c):
@@ -928,7 +928,7 @@ when not defined(gcDestructors):
             result = k
             sysAssert isAllocatedPtr(a, result), " result wrong pointer!"
 
-proc ptrSize(p: pointer): int =
+func ptrSize(p: pointer): int =
   when not defined(gcDestructors):
     var x = cast[pointer](cast[ByteAddress](p) -% sizeof(FreeCell))
     var c = pageAddr(p)
@@ -1001,9 +1001,9 @@ proc deallocOsPages(a: var MemRegion) =
   # And then we free the pages that are in use for the page bits:
   llDeallocAll(a)
 
-proc getFreeMem(a: MemRegion): int {.inline.} = result = a.freeMem
-proc getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem
-proc getOccupiedMem(a: MemRegion): int {.inline.} =
+func getFreeMem(a: MemRegion): int {.inline.} = result = a.freeMem
+func getTotalMem(a: MemRegion): int {.inline.} = result = a.currMem
+func getOccupiedMem(a: MemRegion): int {.inline.} =
   result = a.occ
   # a.currMem - a.freeMem
 

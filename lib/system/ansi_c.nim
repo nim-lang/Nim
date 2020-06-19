@@ -154,7 +154,7 @@ proc c_fwrite*(buf: pointer, size, n: csize_t, f: CFilePtr): cint {.
 proc c_fflush(f: CFilePtr): cint {.
   importc: "fflush", header: "<stdio.h>".}
 
-proc rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
+func rawWrite*(f: CFilePtr, s: cstring) {.compilerproc, nonReloadable, inline.} =
   # we cannot throw an exception here!
   discard c_fwrite(s, 1, cast[csize_t](s.len), f)
   discard c_fflush(f)

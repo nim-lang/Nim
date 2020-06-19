@@ -15,7 +15,7 @@ type
     len, cap: int
     d: PCellArray
 
-proc contains(s: CellSeq, c: PCell): bool {.inline.} =
+func contains(s: CellSeq, c: PCell): bool {.inline.} =
   for i in 0 .. s.len-1:
     if s.d[i] == c: return true
   return false

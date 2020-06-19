@@ -20,20 +20,20 @@ when not defined(nimHasDefault):
 
 # hcode for real keys cannot be zero.  hcode==0 signifies an empty slot.  These
 # two procs retain clarity of that encoding without the space cost of an enum.
-proc isEmpty(hcode: Hash): bool {.inline.} =
+func isEmpty(hcode: Hash): bool {.inline.} =
   result = hcode == 0
 
-proc isFilled(hcode: Hash): bool {.inline.} =
+func isFilled(hcode: Hash): bool {.inline.} =
   result = hcode != 0
 
-proc nextTry(h, maxHash: Hash): Hash {.inline.} =
+func nextTry(h, maxHash: Hash): Hash {.inline.} =
   result = (h + 1) and maxHash
 
-proc mustRehash[T](t: T): bool {.inline.} =
+func mustRehash[T](t: T): bool {.inline.} =
   assert(t.dataLen > t.counter)
   result = (t.dataLen * 2 < t.counter * 3) or (t.dataLen - t.counter < 4)
 
-proc rightSize*(count: Natural): int {.inline.} =
+func rightSize*(count: Natural): int {.inline.} =
   ## Return the value of ``initialSize`` to support ``count`` items.
   ##
   ## If more items are expected to be added, simply add that
@@ -56,7 +56,7 @@ template rawGetKnownHCImpl() {.dirty.} =
     h = nextTry(h, maxHash(t))
   result = -1 - h # < 0 => MISSING; insert idx = -1 - result
 
-proc rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
+func rawGetKnownHC[X, A](t: X, key: A, hc: Hash): int {.inline.} =
   rawGetKnownHCImpl()
 
 template genHashImpl(key, hc: typed) =
@@ -73,5 +73,5 @@ template rawGetImpl() {.dirty.} =
   genHashImpl(key, hc)
   rawGetKnownHCImpl()
 
-proc rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
+func rawGet[X, A](t: X, key: A, hc: var Hash): int {.inline.} =
   rawGetImpl()

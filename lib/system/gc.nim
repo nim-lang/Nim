@@ -121,19 +121,19 @@ proc addZCT(s: var CellSeq, c: PCell) {.noinline.} =
     c.refcount = c.refcount or ZctFlag
     add(s, c)
 
-proc cellToUsr(cell: PCell): pointer {.inline.} =
+func cellToUsr(cell: PCell): pointer {.inline.} =
   # convert object (=pointer to refcount) to pointer to userdata
   result = cast[pointer](cast[ByteAddress](cell)+%ByteAddress(sizeof(Cell)))
 
-proc usrToCell(usr: pointer): PCell {.inline.} =
+func usrToCell(usr: pointer): PCell {.inline.} =
   # convert pointer to userdata to object (=pointer to refcount)
   result = cast[PCell](cast[ByteAddress](usr)-%ByteAddress(sizeof(Cell)))
 
-proc extGetCellType(c: pointer): PNimType {.compilerproc.} =
+func extGetCellType(c: pointer): PNimType {.compilerproc.} =
   # used for code generation concerning debugging
   result = usrToCell(c).typ
 
-proc internRefcount(p: pointer): int {.exportc: "getRefcount".} =
+func internRefcount(p: pointer): int {.exportc: "getRefcount".} =
   result = usrToCell(p).refcount shr rcShift
 
 # this that has to equals zero, otherwise we have to round up UnitsPerPage:
@@ -179,7 +179,7 @@ proc doOperation(p: pointer, op: WalkOp) {.benign.}
 proc forAllChildrenAux(dest: pointer, mt: PNimType, op: WalkOp) {.benign.}
 # we need the prototype here for debugging purposes
 
-proc incRef(c: PCell) {.inline.} =
+func incRef(c: PCell) {.inline.} =
   gcAssert(isAllocatedPtr(gch.region, c), "incRef: interiorPtr")
   c.refcount = c.refcount +% rcIncrement
   # and not colorMask
@@ -387,7 +387,7 @@ proc addNewObjToZCT(res: PCell, gch: var GcHeap) {.inline.} =
     add(gch.zct, res)
 
 {.push stackTrace: off, profiler:off.}
-proc gcInvariant*() =
+func gcInvariant*() =
   sysAssert(allocInv(gch.region), "injected")
   when declared(markForDebug):
     markForDebug(gch)
@@ -849,7 +849,7 @@ when not defined(useNimRtl):
             "API usage error: GC_enable called but GC is already enabled")
     dec(gch.recGcLock)
 
-  proc GC_setStrategy(strategy: GC_Strategy) =
+  func GC_setStrategy(strategy: GC_Strategy) =
     discard
 
   proc GC_enableMarkAndSweep() =

@@ -109,10 +109,10 @@ else:
     nativeAfInet6 = posix.AF_INET6
     nativeAfUnix = posix.AF_UNIX
 
-proc `==`*(a, b: Port): bool {.borrow.}
+func `==`*(a, b: Port): bool {.borrow.}
   ## ``==`` for ports.
 
-proc `$`*(p: Port): string {.borrow.}
+func `$`*(p: Port): string {.borrow.}
   ## returns the port number as a string
 
 proc toInt*(domain: Domain): cint

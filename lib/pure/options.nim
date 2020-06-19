@@ -98,7 +98,7 @@ proc option*[T](val: T): Option[T] {.inline.} =
   when T isnot SomePointer:
     result.has = true
 
-proc some*[T](val: T): Option[T] {.inline.} =
+func some*[T](val: T): Option[T] {.inline.} =
   ## Returns an `Option` that has the value `val`.
   ##
   ## See also:
@@ -140,7 +140,7 @@ proc none*[T]: Option[T] {.inline.} =
   ## Alias for `none(T) proc <#none,typedesc>`_.
   none(T)
 
-proc isSome*[T](self: Option[T]): bool {.inline.} =
+func isSome*[T](self: Option[T]): bool {.inline.} =
   ## Checks if an `Option` contains a value.
   runnableExamples:
     var
@@ -154,7 +154,7 @@ proc isSome*[T](self: Option[T]): bool {.inline.} =
   else:
     self.has
 
-proc isNone*[T](self: Option[T]): bool {.inline.} =
+func isNone*[T](self: Option[T]): bool {.inline.} =
   ## Checks if an `Option` is empty.
   runnableExamples:
     var
@@ -167,7 +167,7 @@ proc isNone*[T](self: Option[T]): bool {.inline.} =
   else:
     not self.has
 
-proc get*[T](self: Option[T]): lent T {.inline.} =
+func get*[T](self: Option[T]): lent T {.inline.} =
   ## Returns contents of an `Option`. If it is `None`, then an exception is
   ## thrown.
   ##
@@ -185,7 +185,7 @@ proc get*[T](self: Option[T]): lent T {.inline.} =
     raise newException(UnpackDefect, "Can't obtain a value from a `none`")
   result = self.val
 
-proc get*[T](self: Option[T], otherwise: T): T {.inline.} =
+func get*[T](self: Option[T], otherwise: T): T {.inline.} =
   ## Returns the contents of the `Option` or an `otherwise` value if
   ## the `Option` is `None`.
   runnableExamples:

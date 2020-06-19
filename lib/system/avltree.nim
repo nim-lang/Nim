@@ -11,39 +11,39 @@
 
 template isBottom(n: PAvlNode): bool = n.link[0] == n
 
-proc lowGauge(n: PAvlNode): int =
+func lowGauge(n: PAvlNode): int =
   var it = n
   while not isBottom(it):
     result = it.key
     it = it.link[0]
 
-proc highGauge(n: PAvlNode): int =
+func highGauge(n: PAvlNode): int =
   result = -1
   var it = n
   while not isBottom(it):
     result = it.upperBound
     it = it.link[1]
 
-proc find(root: PAvlNode, key: int): PAvlNode =
+func find(root: PAvlNode, key: int): PAvlNode =
   var it = root
   while not isBottom(it):
     if it.key == key: return it
     it = it.link[ord(it.key <% key)]
 
-proc inRange(root: PAvlNode, key: int): PAvlNode =
+func inRange(root: PAvlNode, key: int): PAvlNode =
   var it = root
   while not isBottom(it):
     if it.key <=% key and key <% it.upperBound: return it
     it = it.link[ord(it.key <% key)]
 
-proc skew(t: var PAvlNode) =
+func skew(t: var PAvlNode) =
   if t.link[0].level == t.level:
     var temp = t
     t = t.link[0]
     temp.link[0] = t.link[1]
     t.link[1] = temp
 
-proc split(t: var PAvlNode) =
+func split(t: var PAvlNode) =
   if t.link[1].link[1].level == t.level:
     var temp = t
     t = t.link[1]
@@ -70,7 +70,7 @@ proc add(a: var MemRegion, t: var PAvlNode, key, upperBound: int) {.benign.} =
     skew(t)
     split(t)
 
-proc del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
+func del(a: var MemRegion, t: var PAvlNode, x: int) {.benign.} =
   if isBottom(t): return
   a.last = t
   if x <% t.key:

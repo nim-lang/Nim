@@ -58,9 +58,9 @@ else:
   template createWide(a; L) =
     unsafeNew(a, L * 4 + 2)
 
-proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
+func ord(arg: Utf16Char): int = int(cast[uint16](arg))
 
-proc len*(w: WideCString): int =
+func len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
   ## find the binary zero end marker!
   while int16(w[result]) != 0'i16: inc result
@@ -136,7 +136,7 @@ iterator runes(s: cstring, L: int): int =
     fastRuneAt(s, i, L, result, true)
     yield result
 
-proc newWideCString*(source: cstring, L: int): WideCStringObj =
+func newWideCString*(source: cstring, L: int): WideCStringObj =
   createWide(result, L * 4 + 2)
   #result = cast[wideCString](alloc(L * 4 + 2))
   var d = 0
@@ -157,15 +157,15 @@ proc newWideCString*(source: cstring, L: int): WideCStringObj =
     inc d
   result[d] = Utf16Char(0)
 
-proc newWideCString*(s: cstring): WideCStringObj =
+func newWideCString*(s: cstring): WideCStringObj =
   if s.isNil: return nullWide
 
   result = newWideCString(s, s.len)
 
-proc newWideCString*(s: string): WideCStringObj =
+func newWideCString*(s: string): WideCStringObj =
   result = newWideCString(s, s.len)
 
-proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
+func `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
   result = newStringOfCap(estimate + estimate shr 2)
 
   var i = 0
@@ -207,5 +207,5 @@ proc `$`*(w: WideCString, estimate: int, replacement: int = 0xFFFD): string =
       result.add chr(0xFFFD shr 6 and ones(6) or 0b10_0000_00)
       result.add chr(0xFFFD and ones(6) or 0b10_0000_00)
 
-proc `$`*(s: WideCString): string =
+func `$`*(s: WideCString): string =
   result = s $ 80

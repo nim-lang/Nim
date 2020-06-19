@@ -15,7 +15,7 @@ when not defined(nimscript):
 proc `==`*(err1, err2: OSErrorCode): bool {.borrow.}
 proc `$`*(err: OSErrorCode): string {.borrow.}
 
-proc osErrorMsg*(errorCode: OSErrorCode): string =
+func osErrorMsg*(errorCode: OSErrorCode): string =
   ## Converts an OS error code into a human readable string.
   ##
   ## The error code can be retrieved using the `osLastError proc <#osLastError>`_.
@@ -57,7 +57,7 @@ proc osErrorMsg*(errorCode: OSErrorCode): string =
     if errorCode != OSErrorCode(0'i32):
       result = $c_strerror(errorCode.int32)
 
-proc newOSError*(
+func newOSError*(
   errorCode: OSErrorCode, additionalInfo = ""
 ): owned(ref OSError) {.noinline.} =
   ## Creates a new `OSError exception <system.html#OSError>`_.
@@ -86,7 +86,7 @@ proc newOSError*(
     e.msg = "unknown OS error"
   return e
 
-proc raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
+func raiseOSError*(errorCode: OSErrorCode, additionalInfo = "") {.noinline.} =
   ## Raises an `OSError exception <system.html#OSError>`_.
   ##
   ## Read the description of the `newOSError proc <#newOSError,OSErrorCode,string>`_ to learn

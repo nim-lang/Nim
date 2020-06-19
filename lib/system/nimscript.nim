@@ -26,60 +26,60 @@ template builtin = discard
 # We know the effects better than the compiler:
 {.push hint[XDeclaredButNotUsed]: off.}
 
-proc listDirsImpl(dir: string): seq[string] {.
+func listDirsImpl(dir: string): seq[string] {.
   tags: [ReadIOEffect], raises: [OSError].} = builtin
-proc listFilesImpl(dir: string): seq[string] {.
+func listFilesImpl(dir: string): seq[string] {.
   tags: [ReadIOEffect], raises: [OSError].} = builtin
-proc removeDir(dir: string, checkDir = true) {.
+func removeDir(dir: string, checkDir = true) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc removeFile(dir: string) {.
+func removeFile(dir: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc moveFile(src, dest: string) {.
+func moveFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc moveDir(src, dest: string) {.
+func moveDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc copyFile(src, dest: string) {.
+func copyFile(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc copyDir(src, dest: string) {.
+func copyDir(src, dest: string) {.
   tags: [ReadIOEffect, WriteIOEffect], raises: [OSError].} = builtin
-proc createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
+func createDir(dir: string) {.tags: [WriteIOEffect], raises: [OSError].} =
   builtin
 
-proc getError: string = builtin
-proc setCurrentDir(dir: string) = builtin
-proc getCurrentDir*(): string =
+func getError: string = builtin
+func setCurrentDir(dir: string) = builtin
+func getCurrentDir*(): string =
   ## Retrieves the current working directory.
   builtin
-proc rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
+func rawExec(cmd: string): int {.tags: [ExecIOEffect], raises: [OSError].} =
   builtin
 
-proc warningImpl(arg, orig: string) = discard
-proc hintImpl(arg, orig: string) = discard
+func warningImpl(arg, orig: string) = discard
+func hintImpl(arg, orig: string) = discard
 
-proc paramStr*(i: int): string =
+func paramStr*(i: int): string =
   ## Retrieves the ``i``'th command line parameter.
   builtin
 
-proc paramCount*(): int =
+func paramCount*(): int =
   ## Retrieves the number of command line parameters.
   builtin
 
-proc switch*(key: string, val="") =
+func switch*(key: string, val="") =
   ## Sets a Nim compiler command line switch, for
   ## example ``switch("checks", "on")``.
   builtin
 
-proc warning*(name: string; val: bool) =
+func warning*(name: string; val: bool) =
   ## Disables or enables a specific warning.
   let v = if val: "on" else: "off"
   warningImpl(name & ":" & v, "warning:" & name & ":" & v)
 
-proc hint*(name: string; val: bool) =
+func hint*(name: string; val: bool) =
   ## Disables or enables a specific hint.
   let v = if val: "on" else: "off"
   hintImpl(name & ":" & v, "hint:" & name & ":" & v)
 
-proc patchFile*(package, filename, replacement: string) =
+func patchFile*(package, filename, replacement: string) =
   ## Overrides the location of a given file belonging to the
   ## passed package.
   ## If the ``replacement`` is not an absolute path, the path
@@ -94,70 +94,70 @@ proc patchFile*(package, filename, replacement: string) =
   ##   patchFile("stdlib", "asyncdispatch", "patches/replacement")
   discard
 
-proc getCommand*(): string =
+func getCommand*(): string =
   ## Gets the Nim command that the compiler has been invoked with, for example
   ## "c", "js", "build", "help".
   builtin
 
-proc setCommand*(cmd: string; project="") =
+func setCommand*(cmd: string; project="") =
   ## Sets the Nim command that should be continued with after this Nimscript
   ## has finished.
   builtin
 
-proc cmpIgnoreStyle(a, b: string): int = builtin
-proc cmpIgnoreCase(a, b: string): int = builtin
+func cmpIgnoreStyle(a, b: string): int = builtin
+func cmpIgnoreCase(a, b: string): int = builtin
 
-proc cmpic*(a, b: string): int =
+func cmpic*(a, b: string): int =
   ## Compares `a` and `b` ignoring case.
   cmpIgnoreCase(a, b)
 
-proc getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
+func getEnv*(key: string; default = ""): string {.tags: [ReadIOEffect].} =
   ## Retrieves the environment variable of name ``key``.
   builtin
 
-proc existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
+func existsEnv*(key: string): bool {.tags: [ReadIOEffect].} =
   ## Checks for the existence of an environment variable named ``key``.
   builtin
 
-proc putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
+func putEnv*(key, val: string) {.tags: [WriteIOEffect].} =
   ## Sets the value of the environment variable named ``key`` to ``val``.
   builtin
 
-proc delEnv*(key: string) {.tags: [WriteIOEffect].} =
+func delEnv*(key: string) {.tags: [WriteIOEffect].} =
   ## Deletes the environment variable named ``key``.
   builtin
 
-proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
+func fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
   ## Checks if the file exists.
   builtin
 
-proc dirExists*(dir: string): bool {.
+func dirExists*(dir: string): bool {.
   tags: [ReadIOEffect].} =
   ## Checks if the directory `dir` exists.
   builtin
 
-proc existsFile*(filename: string): bool =
+func existsFile*(filename: string): bool =
   ## An alias for ``fileExists``.
   fileExists(filename)
 
-proc existsDir*(dir: string): bool =
+func existsDir*(dir: string): bool =
   ## An alias for ``dirExists``.
   dirExists(dir)
 
-proc selfExe*(): string =
+func selfExe*(): string =
   ## Returns the currently running nim or nimble executable.
   # TODO: consider making this as deprecated alias of `getCurrentCompilerExe`
   builtin
 
-proc toExe*(filename: string): string =
+func toExe*(filename: string): string =
   ## On Windows adds ".exe" to `filename`, else returns `filename` unmodified.
   (when defined(windows): filename & ".exe" else: filename)
 
-proc toDll*(filename: string): string =
+func toDll*(filename: string): string =
   ## On Windows adds ".dll" to `filename`, on Posix produces "lib$filename.so".
   (when defined(windows): filename & ".dll" else: "lib" & filename & ".so")
 
-proc strip(s: string): string =
+func strip(s: string): string =
   var i = 0
   while s[i] in {' ', '\c', '\L'}: inc i
   result = s.substr(i)
@@ -194,12 +194,12 @@ template log(msg: string, body: untyped) =
   if mode != ScriptMode.WhatIf:
     body
 
-proc listDirs*(dir: string): seq[string] =
+func listDirs*(dir: string): seq[string] =
   ## Lists all the subdirectories (non-recursively) in the directory `dir`.
   result = listDirsImpl(dir)
   checkOsError()
 
-proc listFiles*(dir: string): seq[string] =
+func listFiles*(dir: string): seq[string] =
   ## Lists all the files (non-recursively) in the directory `dir`.
   result = listFilesImpl(dir)
   checkOsError()
@@ -280,42 +280,42 @@ proc selfExec*(command: string) {.
       raise newException(OSError, "FAILED: " & c)
     checkOsError()
 
-proc put*(key, value: string) =
+func put*(key, value: string) =
   ## Sets a configuration 'key' like 'gcc.options.always' to its value.
   builtin
 
-proc get*(key: string): string =
+func get*(key: string): string =
   ## Retrieves a configuration 'key' like 'gcc.options.always'.
   builtin
 
-proc exists*(key: string): bool =
+func exists*(key: string): bool =
   ## Checks for the existence of a configuration 'key'
   ## like 'gcc.options.always'.
   builtin
 
-proc nimcacheDir*(): string =
+func nimcacheDir*(): string =
   ## Retrieves the location of 'nimcache'.
   builtin
 
-proc projectName*(): string =
+func projectName*(): string =
   ## Retrieves the name of the current project
   builtin
 
-proc projectDir*(): string =
+func projectDir*(): string =
   ## Retrieves the absolute directory of the current project
   builtin
 
-proc projectPath*(): string =
+func projectPath*(): string =
   ## Retrieves the absolute path of the current project
   builtin
 
-proc thisDir*(): string =
+func thisDir*(): string =
   ## Retrieves the directory of the current ``nims`` script file. Its path is
   ## obtained via ``currentSourcePath`` (although, currently,
   ## ``currentSourcePath`` resolves symlinks, unlike ``thisDir``).
   builtin
 
-proc cd*(dir: string) {.raises: [OSError].} =
+func cd*(dir: string) {.raises: [OSError].} =
   ## Changes the current directory.
   ##
   ## The change is permanent for the rest of the execution, since this is just
@@ -325,7 +325,7 @@ proc cd*(dir: string) {.raises: [OSError].} =
   setCurrentDir(dir)
   checkOsError()
 
-proc findExe*(bin: string): string =
+func findExe*(bin: string): string =
   ## Searches for bin in the current working directory and then in directories
   ## listed in the PATH environment variable. Returns "" if the exe cannot be
   ## found.
@@ -355,16 +355,16 @@ proc writeTask(name, desc: string) =
     for i in 0 ..< 20 - name.len: spaces.add ' '
     echo name, spaces, desc
 
-proc cppDefine*(define: string) =
+func cppDefine*(define: string) =
   ## tell Nim that ``define`` is a C preprocessor ``#define`` and so always
   ## needs to be mangled.
   builtin
 
-proc stdinReadLine(): TaintedString {.
+func stdinReadLine(): TaintedString {.
   tags: [ReadIOEffect], raises: [IOError].} =
   builtin
 
-proc stdinReadAll(): TaintedString {.
+func stdinReadAll(): TaintedString {.
   tags: [ReadIOEffect], raises: [IOError].} =
   builtin
 

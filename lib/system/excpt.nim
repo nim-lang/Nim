@@ -124,7 +124,7 @@ proc popCurrentException {.compilerRtl, inl.} =
   currException = currException.up
   #showErrorMessage "B"
 
-proc popCurrentExceptionEx(id: uint) {.compilerRtl.} =
+func popCurrentExceptionEx(id: uint) {.compilerRtl.} =
   discard "only for bootstrapping compatbility"
 
 proc closureIterSetupExc(e: ref Exception) {.compilerproc, inline.} =
@@ -211,7 +211,7 @@ const
 template reraisedFrom(z): untyped =
   StackTraceEntry(procname: nil, line: z, filename: nil)
 
-proc auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
+func auxWriteStackTrace(f: PFrame; s: var seq[StackTraceEntry]) =
   var
     it = f
     i = 0
@@ -253,7 +253,7 @@ template addFrameEntry(s: var string, f: StackTraceEntry|PFrame) =
       for i in first..<f.frameMsgLen: add(s, frameMsgBuf[i])
   add(s, "\n")
 
-proc `$`(s: seq[StackTraceEntry]): string =
+func `$`(s: seq[StackTraceEntry]): string =
   result = newStringOfCap(2000)
   for i in 0 .. s.len-1:
     if s[i].line == reraisedFromBegin: result.add "[[reraised from:\n"
@@ -516,13 +516,13 @@ proc getStackTrace(): string =
   else:
     result = "No stack traceback available\n"
 
-proc getStackTrace(e: ref Exception): string =
+func getStackTrace(e: ref Exception): string =
   if not isNil(e):
     result = $e.trace
   else:
     result = ""
 
-proc getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
+func getStackTraceEntries*(e: ref Exception): seq[StackTraceEntry] =
   ## Returns the attached stack trace to the exception ``e`` as
   ## a ``seq``. This is not yet available for the JS backend.
   when not defined(nimSeqsV2):

@@ -71,20 +71,20 @@ proc deinit(s: var CellSet) =
   s.data = nil
   s.counter = 0
 
-proc nextTry(h, maxHash: int): int {.inline.} =
+func nextTry(h, maxHash: int): int {.inline.} =
   result = ((5*h) + 1) and maxHash
   # For any initial h in range(maxHash), repeating that maxHash times
   # generates each int in range(maxHash) exactly once (see any text on
   # random-number generation for proof).
 
-proc cellSetGet(t: CellSet, key: uint): PPageDesc =
+func cellSetGet(t: CellSet, key: uint): PPageDesc =
   var h = cast[int](key) and t.max
   while t.data[h] != nil:
     if t.data[h].key == key: return t.data[h]
     h = nextTry(h, t.max)
   return nil
 
-proc cellSetRawInsert(t: CellSet, data: PPageDescArray, desc: PPageDesc) =
+func cellSetRawInsert(t: CellSet, data: PPageDescArray, desc: PPageDesc) =
   var h = cast[int](desc.key) and t.max
   while data[h] != nil:
     sysAssert(data[h] != desc, "CellSetRawInsert 1")
@@ -125,7 +125,7 @@ proc cellSetPut(t: var CellSet, key: uint): PPageDesc =
 
 # ---------- slightly higher level procs --------------------------------------
 
-proc contains(s: CellSet, cell: PCell): bool =
+func contains(s: CellSet, cell: PCell): bool =
   var u = cast[uint](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:
@@ -140,7 +140,7 @@ proc incl(s: var CellSet, cell: PCell) =
   u = (u mod PageSize) div MemAlign
   t.bits[u shr IntShift] = t.bits[u shr IntShift] or (1 shl (u and IntMask))
 
-proc excl(s: var CellSet, cell: PCell) =
+func excl(s: var CellSet, cell: PCell) =
   var u = cast[uint](cell)
   var t = cellSetGet(s, u shr PageShift)
   if t != nil:

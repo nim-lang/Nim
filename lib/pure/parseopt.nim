@@ -176,7 +176,7 @@ type
                                  ## or the argument, and the value is not "" if
                                  ## the option was given a value
 
-proc parseWord(s: string, i: int, w: var string,
+func parseWord(s: string, i: int, w: var string,
                delim: set[char] = {'\t', ' '}): int =
   result = i
   if result < s.len and s[result] == '\"':
@@ -270,7 +270,7 @@ when declared(os.paramCount):
     result.key = TaintedString""
     result.val = TaintedString""
 
-proc handleShortOption(p: var OptParser; cmd: string) =
+func handleShortOption(p: var OptParser; cmd: string) =
   var i = p.pos
   p.kind = cmdShortOption
   if i < cmd.len:
@@ -296,7 +296,7 @@ proc handleShortOption(p: var OptParser; cmd: string) =
     p.pos = 0
     inc p.idx
 
-proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
+func next*(p: var OptParser) {.rtl, extern: "npo$1".} =
   ## Parses the next token.
   ##
   ## ``p.kind`` describes what kind of token has been parsed. ``p.key`` and
@@ -366,7 +366,7 @@ proc next*(p: var OptParser) {.rtl, extern: "npo$1".} =
     inc p.idx
     p.pos = 0
 
-proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
+func cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
   ## Retrieves the rest of the command line that has not been parsed yet.
   ##
   ## See also:
@@ -384,7 +384,7 @@ proc cmdLineRest*(p: OptParser): TaintedString {.rtl, extern: "npo$1".} =
   ##   doAssert p.cmdLineRest == "foo.txt bar.txt"
   result = p.cmds[p.idx .. ^1].quoteShellCommand.TaintedString
 
-proc remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
+func remainingArgs*(p: OptParser): seq[TaintedString] {.rtl, extern: "npo$1".} =
   ## Retrieves a sequence of the arguments that have not been parsed yet.
   ##
   ## See also:

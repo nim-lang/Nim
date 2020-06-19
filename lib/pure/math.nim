@@ -58,7 +58,7 @@ import std/private/since
 
 import bitops
 
-proc binom*(n, k: int): int {.noSideEffect.} =
+func binom*(n, k: int): int {.noSideEffect.} =
   ## Computes the `binomial coefficient <https://en.wikipedia.org/wiki/Binomial_coefficient>`_.
   runnableExamples:
     doAssert binom(6, 2) == binom(6, 4)
@@ -71,12 +71,12 @@ proc binom*(n, k: int): int {.noSideEffect.} =
   for i in countup(2, k):
     result = (result * (n + 1 - i)) div i
 
-proc createFactTable[N: static[int]]: array[N, int] =
+func createFactTable[N: static[int]]: array[N, int] =
   result[0] = 1
   for i in 1 ..< N:
     result[i] = result[i - 1] * i
 
-proc fac*(n: int): int =
+func fac*(n: int): int =
   ## Computes the `factorial <https://en.wikipedia.org/wiki/Factorial>`_ of
   ## a non-negative integer ``n``.
   ##
@@ -133,7 +133,7 @@ type
     fcInf,           ## value is positive infinity
     fcNegInf         ## value is negative infinity
 
-proc classify*(x: float): FloatClass =
+func classify*(x: float): FloatClass =
   ## Classifies a floating point value.
   ##
   ## Returns ``x``'s class as specified by `FloatClass enum<#FloatClass>`_.
@@ -158,7 +158,7 @@ proc classify*(x: float): FloatClass =
     return fcSubnormal
   return fcNormal
 
-proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
+func isPowerOfTwo*(x: int): bool {.noSideEffect.} =
   ## Returns ``true``, if ``x`` is a power of two, ``false`` otherwise.
   ##
   ## Zero and negative numbers are not a power of two.
@@ -172,7 +172,7 @@ proc isPowerOfTwo*(x: int): bool {.noSideEffect.} =
     doAssert isPowerOfTwo(-16) == false
   return (x > 0) and ((x and (x - 1)) == 0)
 
-proc nextPowerOfTwo*(x: int): int {.noSideEffect.} =
+func nextPowerOfTwo*(x: int): int {.noSideEffect.} =
   ## Returns ``x`` rounded up to the nearest power of two.
   ##
   ## Zero and negative numbers get rounded up to 1.
@@ -790,7 +790,7 @@ proc round*[T: float32|float64](x: T, places: int): T {.
     var mult = pow(10.0, places.T)
     result = round(x*mult)/mult
 
-proc floorDiv*[T: SomeInteger](x, y: T): T =
+func floorDiv*[T: SomeInteger](x, y: T): T =
   ## Floor division is conceptually defined as ``floor(x / y)``.
   ##
   ## This is different from the `system.div <system.html#div,int,int>`_
@@ -810,7 +810,7 @@ proc floorDiv*[T: SomeInteger](x, y: T): T =
   let r = x mod y
   if (r > 0 and y < 0) or (r < 0 and y > 0): result.dec 1
 
-proc floorMod*[T: SomeNumber](x, y: T): T =
+func floorMod*[T: SomeNumber](x, y: T): T =
   ## Floor modulus is conceptually defined as ``x - (floorDiv(x, y) * y)``.
   ##
   ## This proc behaves the same as the ``%`` operator in Python.
@@ -958,7 +958,7 @@ proc sgn*[T: SomeNumber](x: T): int {.inline.} =
 {.pop.}
 {.pop.}
 
-proc `^`*[T](x: T, y: Natural): T =
+func `^`*[T](x: T, y: Natural): T =
   ## Computes ``x`` to the power ``y``.
   ##
   ## Exponent ``y`` must be non-negative, use

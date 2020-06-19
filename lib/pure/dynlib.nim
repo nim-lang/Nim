@@ -70,7 +70,7 @@ proc loadLib*(): LibHandle {.gcsafe.}
 proc unloadLib*(lib: LibHandle) {.gcsafe.}
   ## unloads the library `lib`
 
-proc raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
+func raiseInvalidLibrary*(name: cstring) {.noinline, noreturn.} =
   ## raises an `EInvalidLibrary` exception.
   raise newException(LibraryError, "could not find symbol: " & $name)
 
@@ -84,7 +84,7 @@ proc checkedSymAddr*(lib: LibHandle, name: cstring): pointer =
   result = symAddr(lib, name)
   if result == nil: raiseInvalidLibrary(name)
 
-proc libCandidates*(s: string, dest: var seq[string]) =
+func libCandidates*(s: string, dest: var seq[string]) =
   ## given a library name pattern `s` write possible library names to `dest`.
   var le = strutils.find(s, '(')
   var ri = strutils.find(s, ')', le+1)
