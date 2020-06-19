@@ -618,7 +618,7 @@ other binary operators are left-associative.
 Precedence
 ----------
 
-Unary operators always bind stronger than any binary
+Unary operators except for ``not`` always bind stronger than any binary
 operator: ``$a + b`` is ``($a) + b`` and not ``$(a + b)``.
 
 If an unary operator's first character is ``@`` it is a `sigil-like`:idx:
@@ -641,12 +641,13 @@ Otherwise precedence is determined by the first character.
 ================  =======================================================  ==================  ===============
 Precedence level    Operators                                              First character     Terminal symbol
 ================  =======================================================  ==================  ===============
- 10 (highest)                                                              ``$  ^``            OP10
-  9               ``*    /    div   mod   shl  shr  %``                    ``*  %  \  /``      OP9
-  8               ``+    -``                                               ``+  -  ~  |``      OP8
-  7               ``&``                                                    ``&``               OP7
-  6               ``..``                                                   ``.``               OP6
-  5               ``==  <= < >= > !=  in notin is isnot not of as from``   ``=  <  >  !``      OP5
+ 11 (highest)                                                              ``$  ^``            OP11
+ 10               ``*    /    div   mod   shl  shr  %``                    ``*  %  \  /``      OP10
+  9               ``+    -``                                               ``+  -  ~  |``      OP9
+  8               ``&``                                                    ``&``               OP8
+  7               ``..``                                                   ``.``               OP7
+  6               ``==  <= < >= > !=  in notin is isnot not of as from``   ``=  <  >  !``      OP6
+  5               ``not``                                                                      OP5
   4               ``and``                                                                      OP4
   3               ``or xor``                                                                   OP3
   2                                                                        ``@  :  ?``         OP2

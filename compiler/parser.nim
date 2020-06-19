@@ -286,7 +286,7 @@ proc checkBinary(p: TParser) {.inline.} =
 #| colon = ':' COMMENT?
 #| colcom = ':' COMMENT?
 #|
-#| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9
+#| operator =  OP0 | OP1 | OP2 | OP3 | OP4 | OP5 | OP6 | OP7 | OP8 | OP9 | OP10 | OP11
 #|          | 'or' | 'xor' | 'and'
 #|          | 'is' | 'isnot' | 'in' | 'notin' | 'of' | 'as' | 'from'
 #|          | 'div' | 'mod' | 'shl' | 'shr' | 'not' | 'static' | '..'
@@ -300,13 +300,14 @@ proc checkBinary(p: TParser) {.inline.} =
 #| arrowExpr = assignExpr (OP1 optInd assignExpr)*
 #| assignExpr = orExpr (OP2 optInd orExpr)*
 #| orExpr = andExpr (OP3 optInd andExpr)*
-#| andExpr = cmpExpr (OP4 optInd cmpExpr)*
-#| cmpExpr = sliceExpr (OP5 optInd sliceExpr)*
-#| sliceExpr = ampExpr (OP6 optInd ampExpr)*
-#| ampExpr = plusExpr (OP7 optInd plusExpr)*
-#| plusExpr = mulExpr (OP8 optInd mulExpr)*
-#| mulExpr = dollarExpr (OP9 optInd dollarExpr)*
-#| dollarExpr = primary (OP10 optInd primary)*
+#| andExpr = notExpr (OP4 optInd notExpr)*
+#| notExpr = (OP5 optInd)* cmpExpr
+#| cmpExpr = sliceExpr (OP6 optInd sliceExpr)*
+#| sliceExpr = ampExpr (OP7 optInd ampExpr)*
+#| ampExpr = plusExpr (OP8 optInd plusExpr)*
+#| plusExpr = mulExpr (OP9 optInd mulExpr)*
+#| mulExpr = dollarExpr (OP10 optInd dollarExpr)*
+#| dollarExpr = primary (OP11 optInd primary)*
 
 proc colcom(p: var TParser, n: PNode) =
   eat(p, tkColon)
