@@ -368,6 +368,25 @@ proc test5702() = # fix https://github.com/nim-lang/Nim/issues/5702
   foo(1,2,3,4)
   bar(1,2,3,4)
 
+proc test9679() = # closes https://github.com/nim-lang/Nim/issues/9679
+  type
+    Foo[T] = object
+      bar*: int
+      dummy: T
+
+  proc initFoo(T: type, bar: int): Foo[T] =
+    result.bar = 1
+
+  proc fails[T](x: static Foo[T]) =
+    const y = x.bar
+
+  proc works[T](x: T) =
+    const y = x.bar
+
+  const foo = initFoo(int, 2)
+  # fails(foo) # fails with static
+  works(alias2 foo) # works with alias
+
 proc testAll*() =
   testAlias()
   testAliasReturn()
@@ -382,6 +401,7 @@ proc testAll*() =
   testMacro()
   testTemplate()
   test5702()
+  test9679()
 
 when isMainModule:
   testAll()
