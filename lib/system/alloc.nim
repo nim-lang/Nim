@@ -749,7 +749,7 @@ proc rawAlloc(a: var MemRegion, requestedSize: int): pointer =
   sysAssert(allocInv(a), "rawAlloc: begin")
   sysAssert(roundup(65, 8) == 72, "rawAlloc: roundup broken")
   sysAssert(requestedSize >= sizeof(FreeCell), "rawAlloc: requested size too small")
-  var size = roundup(requestedSize, MemAlign)
+  var size = roundup(max(1, requestedSize), MemAlign)
   sysAssert(size >= requestedSize, "insufficient allocated size!")
   #c_fprintf(stdout, "alloc; size: %ld; %ld\n", requestedSize, size)
   if size <= SmallChunkSize-smallChunkOverhead():
