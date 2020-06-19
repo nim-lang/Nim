@@ -907,16 +907,16 @@ macro mkHandlerTplts(handlers: untyped): untyped =
 
   result = newStmtList()
   for topCall in handlers[0]:
-    if nnkCall != topCall.kind:
+    if topCall.kind notin nnkCallKinds:
       error("Call syntax expected.", topCall)
     let pegKind = topCall[0]
-    if nnkIdent != pegKind.kind:
+    if pegKind.kind notin {nnkIdent, nnkSym}:
       error("PegKind expected.", pegKind)
     if 2 == topCall.len:
       for hdDef in topCall[1]:
-        if nnkCall != hdDef.kind:
+        if hdDef.kind notin nnkCallKinds:
           error("Call syntax expected.", hdDef)
-        if nnkIdent != hdDef[0].kind:
+        if hdDef[0].kind notin {nnkIdent, nnkSym}:
           error("Handler identifier expected.", hdDef[0])
         if 2 == hdDef.len:
           let hdPostf = substr(pegKind.strVal, 2)
