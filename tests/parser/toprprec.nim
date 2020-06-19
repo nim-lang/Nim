@@ -1,5 +1,11 @@
 discard """
-  output: "done"
+  output: '''
+done
+not -1.0
+not 1.0 and not 1.0
+Q: did we have success? A: yes we did!!
+not -1.0 == not -1.0
+'''
 """
 # Test operator precedence:
 
@@ -35,3 +41,25 @@ var s: TA
 assert init(s) == "4"
 
 echo "done"
+
+
+proc `not`(f: float): string =
+  "not " & $f
+
+echo not -1 / 1
+
+proc `and`(s1, s2: string): string =
+  $s1 & " and " & s2
+
+echo not 1f and not 1f
+
+proc contains(f1, f2: float): string =
+  "Q: did we have success?"
+
+proc `not`(s: string): string =
+  s & " A: yes we did!!"
+
+echo not 1f in 1f
+
+echo not -1 / 1, " == not -1.0"
+
