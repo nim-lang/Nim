@@ -6210,25 +6210,6 @@ the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
 
 
-unroll pragma
--------------
-The ``unroll`` pragma can be used to tell the compiler that it should unroll
-a `for`:idx: or `while`:idx: loop for execution efficiency:
-
-.. code-block:: nim
-  proc searchChar(s: string, c: char): int =
-    for i in 0 .. s.high:
-      {.unroll: 4.}
-      if s[i] == c: return i
-    result = -1
-
-In the above example, the search loop is unrolled by a factor 4. The unroll
-factor can be left out too; the compiler then chooses an appropriate unroll
-factor.
-
-**Note**: Currently the compiler recognizes but ignores this pragma.
-
-
 immediate pragma
 ----------------
 
