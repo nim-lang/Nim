@@ -516,6 +516,32 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]): T =
     doAssert sample(marbles, cdf) == "blue"
   state.sample(a, cdf)
 
+proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``
+  ## using the given state.
+  # Ratio of uniforms method for normal, original version
+  const nvMagic = 4.0 * exp(-0.5) / sqrt(2.0)
+  var
+    x = 0.0
+  while true:
+    let u = 1.0 - rand(r, 1.0)
+    let v = rand(r, 1.0)
+    x = nvMagic * (v - 0.5) / u
+    if x * x <= -4.0 * ln(u): break
+  result = mu + x * sigma
+
+proc gauss*(mu = 0.0, sigma = 1.0): float =
+  ## Returns a Gaussian random variate,
+  ## with mean ``mu`` and standard deviation ``sigma``.
+  ##
+  ## If `randomize<#randomize>`_ has not been called, the order of outcomes
+  ## from this proc will always be the same.
+  ##
+  ## This proc uses the default random number generator. Thus, it is **not**
+  ## thread-safe.
+  result = gauss(state, mu, sigma)
+
 proc initRand*(seed: int64): Rand =
   ## Initializes a new `Rand<#Rand>`_ state using the given seed.
   ##
@@ -619,6 +645,8 @@ when not defined(nimscript) and not defined(standalone):
 {.pop.}
 
 when isMainModule:
+  import stats
+
   proc main =
     var occur: array[1000, int]
 
@@ -631,6 +659,17 @@ when isMainModule:
         doAssert false, "too few occurrences of " & $i
       elif oc > 150:
         doAssert false, "too many occurrences of " & $i
+
+    when false:
+      var rs: RunningStat
+      for j in 1..5:
+        for i in 1 .. 1_000:
+          rs.push(gauss())
+        echo("mean: ", rs.mean,
+          " stdDev: ", rs.standardDeviation(),
+          " min: ", rs.min,
+          " max: ", rs.max)
+        rs.clear()
 
     var a = [0, 1]
     shuffle(a)
