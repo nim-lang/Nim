@@ -207,6 +207,9 @@ proc asyncSingleProc(prc: NimNode): NimNode {.compileTime.} =
                                     futureVarIdents)
   # don't do anything with forward bodies (empty)
   if procBody.kind != nnkEmpty:
+    # fix #13899, defer should not escape its original scope
+    procBody = newStmtList(newTree(nnkBlockStmt, newEmptyNode(), procBody))
+
     procBody.add(createFutureVarCompletions(futureVarIdents, nil))
 
     if not subtypeIsVoid:
