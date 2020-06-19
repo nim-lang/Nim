@@ -1097,14 +1097,14 @@ when defined(windows) and not weirdTarget:
     result = f.cFileName[0].int == dot and (f.cFileName[1].int == 0 or
              f.cFileName[1].int == dot and f.cFileName[2].int == 0)
 
-proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
+proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
                                           tags: [ReadDirEffect], noNimJs.} =
   ## Returns true if `filename` exists and is a regular file or symlink.
   ##
   ## Directories, device files, named pipes and sockets return false.
   ##
   ## See also:
-  ## * `existsDir proc <#existsDir,string>`_
+  ## * `dirExists proc <#dirExists,string>`_
   ## * `symlinkExists proc <#symlinkExists,string>`_
   when defined(windows):
     when useWinUnicode:
@@ -1116,6 +1116,10 @@ proc existsFile*(filename: string): bool {.rtl, extern: "nos$1",
   else:
     var res: Stat
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
+
+when not defined(nimscript):
+  {.deprecated: [existsFile: fileExists].}
+  # refs: https://github.com/nim-lang/Nim/pull/14732
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
@@ -1156,13 +1160,6 @@ proc symlinkExists*(link: string): bool {.rtl, extern: "nos$1",
     var res: Stat
     return lstat(link, res) >= 0'i32 and S_ISLNK(res.st_mode)
 
-proc fileExists*(filename: string): bool {.inline, noNimJs.} =
-  ## Alias for `existsFile proc <#existsFile,string>`_.
-  ##
-  ## See also:
-  ## * `existsDir proc <#existsDir,string>`_
-  ## * `symlinkExists proc <#symlinkExists,string>`_
-  existsFile(filename)
 
 proc dirExists*(dir: string): bool {.inline, noNimJs.} =
   ## Alias for `existsDir proc <#existsDir,string>`_.

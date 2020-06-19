@@ -131,14 +131,14 @@ proc fileExists*(filename: string): bool {.tags: [ReadIOEffect].} =
   ## Checks if the file exists.
   builtin
 
+{.deprecated: [existsFile: fileExists].}
+  # xxx: warning won't be shown for nimsscript because of current logic handling
+  # `foreignPackageNotes`
+
 proc dirExists*(dir: string): bool {.
   tags: [ReadIOEffect].} =
   ## Checks if the directory `dir` exists.
   builtin
-
-proc existsFile*(filename: string): bool =
-  ## An alias for ``fileExists``.
-  fileExists(filename)
 
 proc existsDir*(dir: string): bool =
   ## An alias for ``dirExists``.
