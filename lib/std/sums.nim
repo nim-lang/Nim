@@ -9,7 +9,7 @@
 ## Fast sumation functions.
 
 
-func sumKbn*[T](x: openArray[T]): T =
+func sumKahan*[T](x: openArray[T]): T {.deprecated: [sumKbn: sumKahan].} =
   ## Kahan (compensated) summation: O(1) error growth, at the expense
   ## of a considerable increase in computational expense.
   if len(x) == 0: return
@@ -58,7 +58,7 @@ runnableExamples:
   static:
     block:
       const data = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-      doAssert sumKbn(data) == 45
+      doAssert sumKahan(data) == 45
       doAssert sumPairs(data) == 45
 
 
@@ -69,18 +69,18 @@ when isMainModule:
   while 1.0 + epsilon != 1.0:
     epsilon /= 2.0
   let data = @[1.0, epsilon, -epsilon]
-  assert sumKbn(data) == 1.0
+  assert sumKahan(data) == 1.0
   assert sumPairs(data) != 1.0 # known to fail
   assert (1.0 + epsilon) - epsilon != 1.0
 
   var tc1: seq[float]
   for n in 1 .. 1000:
     tc1.add 1.0 / n.float
-  assert sumKbn(tc1) == 7.485470860550345
+  assert sumKahan(tc1) == 7.485470860550345
   assert sumPairs(tc1) == 7.485470860550345
 
   var tc2: seq[float]
   for n in 1 .. 1000:
     tc2.add pow(-1.0, n.float) / n.float
-  assert sumKbn(tc2) == -0.6926474305598203
+  assert sumKahan(tc2) == -0.6926474305598203
   assert sumPairs(tc2) == -0.6926474305598204
