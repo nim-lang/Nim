@@ -78,7 +78,7 @@
 ##   <lib.html#pure-libraries-hashing>`_
 ##   in the standard library
 
-import algorithm #For upperBound
+import algorithm, math
 
 include "system/inclrtl"
 {.push debugger: off.}
@@ -520,16 +520,17 @@ proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float =
   ## Returns a Gaussian random variate,
   ## with mean ``mu`` and standard deviation ``sigma``
   ## using the given state.
-  # Ratio of uniforms method for normal, original version
-  const nvMagic = 4.0 * exp(-0.5) / sqrt(2.0)
+  # Ratio of uniforms method for normal
+  # http://www2.econ.osaka-u.ac.jp/~tanizaki/class/2013/econome3/13.pdf
+  const K = sqrt(2 / E)
   var
-    x = 0.0
+    a = 0.0
+    b = 0.0
   while true:
-    let u = 1.0 - rand(r, 1.0)
-    let v = rand(r, 1.0)
-    x = nvMagic * (v - 0.5) / u
-    if x * x <= -4.0 * ln(u): break
-  result = mu + x * sigma
+    a = rand(1.0)
+    b = (2.0 * rand(1.0) - 1.0) * K
+    if  b * b <= -4.0 * a * a * ln(a): break
+  result = mu + sigma * (b / a)
 
 proc gauss*(mu = 0.0, sigma = 1.0): float =
   ## Returns a Gaussian random variate,
