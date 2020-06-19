@@ -12,7 +12,7 @@ proc main() =
     inc(counter)
     poll(10)
 
-  let slack = 1
+  const slack = 1
     # because there is overhead in `async` + `sleepAsync`
     # as can be seen by increasing `tSleep` from 40 to 49, which increases the number
     # of failures.
