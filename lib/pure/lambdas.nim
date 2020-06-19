@@ -23,11 +23,23 @@ template lambdaIt*(a: untyped): untyped =
         a
     alias2(lambdaItImpl)
 
+proc replaceSym(body: NimNode, sym: NimNode): NimNode =
+  ## xxx expose in macros.nim
+  case body.kind
+  of nnkSym:
+    if body == sym:
+      return ident(sym.strVal)
+  else:
+    for i in 0..<len(body):
+      body[i] = replaceSym(body[i], sym)
+  return body
+
 macro `~>`*(lhs, rhs: untyped): untyped =
   #[
   note: side effect safe (ie, arguments will be evaluated just once, unlike templates)
   could also allow param constraints, eg: (a, b: int, c) ~> a*b+c
   ]#
+  var rhs = rhs
   let name = genSym(nskTemplate, "lambdaArrow")
   let formatParams2 = nnkFormalParams.newTree()
   formatParams2.add ident("untyped")
@@ -43,19 +55,24 @@ macro `~>`*(lhs, rhs: untyped): untyped =
 
     formatParams2.add newTree(nnkIdentDefs, arg, ident("untyped"), newEmptyNode())
     # CHECKME: let or var?, eg var could be needed?
-    body2.add newLetStmt(argInject, arg)
+    var argInject2 = argInject
+    if argInject2.kind == nnkSym:
+      # needed, see `testArrowWrongSym`, `testArrowWrongSym2`
+      rhs = replaceSym(rhs, argInject)
+      argInject2 = ident(argInject2.strVal)
+    body2.add newLetStmt(argInject2, arg)
 
   let kind = lhs.kind
   case kind
   of nnkPar: # (a, b) ~> expr
     for i in 0..<lhs.len:
       addArg(lhs[i])
-  of nnkIdent: # a ~> expr
+  of nnkIdent, nnkSym: # a ~> expr
     addArg(lhs)
   else:
     # TODO: (a,b,) tuple?
     # see D20181129T193310
-    error("expected " & ${nnkPar,nnkIdent} & " got `" & $kind & "`")
+    error("expected " & ${nnkPar,nnkIdent,nnkSym} & " got `" & $kind & "`")
 
   body2.add rhs
   body2 = quote do: # TODO: option whether to use a block?
@@ -72,7 +89,6 @@ macro `~>`*(lhs, rhs: untyped): untyped =
     body2
   )
   result.add newCall(bindSym"alias2", name)
-  # echo result.repr
 
 template lambdaStatic*(a: untyped): untyped =
   block:

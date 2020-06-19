@@ -152,10 +152,17 @@ proc testIterator2*() =
       const i5 = alias2 iterAux5(lambdaIter iota3(), lambdaIter iota3())
       doAssert toSeq(alias2 i5) == @[0, 1, 2, 0, 1, 2]
 
+proc testArrowWrongSym2() =
+  # similar to `testArrowWrongSym`
+  template a(): untyped = discard # distractor
+  template c(): untyped = discard # distractor
+  doAssert toSeq(lambdaIter map(lambdaIter map(lambdaIter iota(3), a~>a*10), c~>c*4)) == @[0, 1*10*4, 2*10*4]
+
 proc testAll*() =
   testIterator()
   testIterator2()
   testIssue4516()
+  testArrowWrongSym2()
 
 when isMainModule:
   testAll()
