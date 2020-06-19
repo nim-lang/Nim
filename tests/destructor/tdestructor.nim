@@ -155,3 +155,13 @@ proc caseobj_test_sink: TCaseObj =
 
 echo "---"
 discard caseobj_test_sink()
+
+# issue #14315
+
+type Vector*[T] = object
+  x1: int
+  # x2: T # uncomment will remove error
+
+# proc `=destroy`*(x: var Vector[int]) = discard # this will remove error
+proc `=destroy`*[T](x: var Vector[T]) = discard
+var a: Vector[int] # Error: unresolved generic parameter
