@@ -527,8 +527,8 @@ proc gauss*(r: var Rand; mu = 0.0; sigma = 1.0): float =
     a = 0.0
     b = 0.0
   while true:
-    a = rand(1.0)
-    b = (2.0 * rand(1.0) - 1.0) * K
+    a = rand(r, 1.0)
+    b = (2.0 * rand(r, 1.0) - 1.0) * K
     if  b * b <= -4.0 * a * a * ln(a): break
   result = mu + sigma * (b / a)
 
