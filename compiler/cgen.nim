@@ -1092,7 +1092,9 @@ proc genProcAux(m: BModule, prc: PSym) =
       var procname = makeCString(prc.name.s)
       generatedProc.add(initFrame(p, procname, quotedFilename(p.config, prc.info)))
     else:
-      generatedProc.add(p.s(cpsLocals))
+      generatedProc.add(p.s(cpsLocals)) # TODO: factor
+    if optExecTraceTrace in prc.options:
+      generatedProc.add(initExecTrace(p, procname, quotedFilename(p.config, prc.info)))
     if optProfiler in prc.options:
       # invoke at proc entry for recursion:
       appcg(p, cpsInit, "\t#nimProfile();$n", [])
