@@ -6,7 +6,6 @@ type TraceData = object
   depth: int
 
 var traceData {.threadvar.}: TraceData
-# traceData.depth = 0
 
 # {.pragma: prag, exportc, compilerRtl, inl, raises: [].}
 {.push exectrace:off.}

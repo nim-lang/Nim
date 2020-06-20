@@ -1898,6 +1898,7 @@ include "system/gc_interface"
 
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
+const NimExecTrace = compileOption("exectrace")
 
 import system/coro_detection
 
@@ -2303,15 +2304,7 @@ when not defined(js):
     when not defined(useNimRtl) and not defined(createNimRtl): initStackBottom()
     when declared(initGC): initGC()
 
-
 when notJSnotNims:
-  {.push exectrace:off.}
-  proc nimExecTraceEnter(s: PFrame) {.compilerproc, importc.}
-  proc nimExecTraceExit {.compilerproc, importc.}
-  # proc nimExecTraceEnter(s: PFrame) {.compilerRtl, inl, raises: [], importc.}
-  # proc nimExecTraceExit {.compilerRtl, inl, importc.}
-  {.pop.}
-
   proc setControlCHook*(hook: proc () {.noconv.})
     ## Allows you to override the behaviour of your application when CTRL+C
     ## is pressed. Only one such hook is supported.
@@ -2347,12 +2340,10 @@ when notJSnotNims:
     include "system/arithm"
   {.pop.}
 
-
 when not defined(js):
   # this is a hack: without this when statement, you would get:
   # Error: system module needs: nimGCvisit
   {.pop.} # stackTrace: off, profiler: off
-
 
 when notJSnotNims:
   when hostOS != "standalone" and hostOS != "any":
@@ -2478,6 +2469,12 @@ when defined(js):
 when defined(js) or defined(nimscript):
   proc addInt*(result: var string; x: int64) =
     result.add $x
+
+when notJSnotNims and NimExecTrace:
+  # move somewhere?
+  # {.compilerRtl, inl, raises: [], importc.}
+  proc nimExecTraceEnter(s: PFrame) {.compilerproc, importc.}
+  proc nimExecTraceExit {.compilerproc, importc.}
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.
@@ -3153,6 +3150,3 @@ when notJSnotNims and not defined(nimSeqsV2):
       moveMem(addr y[0], addr x[0], x.len)
       assert y == "abcgh"
     discard
-
-# when notJSnotNims:
-#   import system/exectrace_aux
