@@ -39,8 +39,7 @@ pkg1 "delaunay"
 pkg1 "docopt"
 pkg1 "easygl", true, "nim c -o:egl -r src/easygl.nim", "https://github.com/jackmott/easygl"
 pkg1 "elvis"
-# pkg1 "fidget", true, "nim c -d:release -r tests/runNative.nim"
-  # Error: cannot open 'tests/runNative.nim'
+pkg1 "fidget", true
 pkg1 "fragments", false, "nim c -r fragments/dsl.nim"
 pkg1 "gara"
 pkg1 "ggplotnim", true, "nim c -d:noCairo -r -d:nimWorkaround14447 -d:nimHasWorkaround14720 tests/tests.nim"
