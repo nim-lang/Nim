@@ -331,13 +331,22 @@ proc phase*[T](z: Complex[T]): T =
 
 proc polar*[T](z: Complex[T]): tuple[r, phi: T] =
   ## Returns ``z`` in polar coordinates.
+  ##
+  ## See also:
+  ## * `fromPolar proc <#fromPolar,tuple[T,T]>`_ for the inverse operation
   (r: abs(z), phi: phase(z))
 
-proc rect*[T](r, phi: T): Complex[T] =
+proc fromPolar*[T](z: tuple[r, phi: T]): Complex[T] =
   ## Returns the complex number with polar coordinates ``r`` and ``phi``.
   ##
   ## | ``result.re = r * cos(phi)``
   ## | ``result.im = r * sin(phi)``
+  ##
+  ## See also:
+  ## * `polar proc <#polar,Complex[T]>`_ for the inverse operation
+  complex(z.r * cos(z.phi), z.r * sin(z.phi))
+
+proc rect*[T](r, phi: T): Complex[T] {.deprecated: "use 'fromPolar' instead".} =
   complex(r * cos(phi), r * sin(phi))
 
 
@@ -425,8 +434,8 @@ when isMainModule:
 
   doAssert(phase(a) == 1.1071487177940904)
   var t = polar(a)
-  doAssert(rect(t.r, t.phi) =~ a)
-  doAssert(rect(1.0, 2.0) =~ complex(-0.4161468365471424, 0.9092974268256817))
+  doAssert(fromPolar(t) =~ a)
+  doAssert(fromPolar((1.0, 2.0)) =~ complex(-0.4161468365471424, 0.9092974268256817))
 
 
   var
@@ -445,8 +454,8 @@ when isMainModule:
 
   doAssert(phase(a64) - 1.107149f < 1e-6)
   var t64 = polar(a64)
-  doAssert(rect(t64.r, t64.phi) =~ a64)
-  doAssert(rect(1.0f, 2.0f) =~ complex(-0.4161468f, 0.90929742f))
+  doAssert(fromPolar(t64) =~ a64)
+  doAssert(fromPolar((1.0f, 2.0f)) =~ complex(-0.4161468f, 0.90929742f))
   doAssert(sizeof(a64) == 8)
   doAssert(sizeof(a) == 16)
 
