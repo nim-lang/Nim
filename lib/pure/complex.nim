@@ -10,6 +10,7 @@
 ## This module implements complex numbers.
 ## Complex numbers are currently implemented as generic on a 64-bit or 32-bit float.
 
+import std/private/since
 {.push checks: off, line_dir: off, stack_trace: off, debugger: off.}
 # the user does not want to trace a part of the standard library!
 
@@ -336,8 +337,9 @@ proc polar*[T](z: Complex[T]): tuple[r, phi: T] =
   ## * `fromPolar proc <#fromPolar,tuple[T,T]>`_ for the inverse operation
   (r: abs(z), phi: phase(z))
 
-proc fromPolar*[T](z: tuple[r, phi: T]): Complex[T] =
+proc fromPolar*[T](z: tuple[r, phi: T]): Complex[T] {.since: (1, 3).} =
   ## Returns the complex number with polar coordinates ``r`` and ``phi``.
+  ## **Since**: Version 1.3.
   ##
   ## | ``result.re = r * cos(phi)``
   ## | ``result.im = r * sin(phi)``
@@ -347,6 +349,9 @@ proc fromPolar*[T](z: tuple[r, phi: T]): Complex[T] =
   complex(z.r * cos(z.phi), z.r * sin(z.phi))
 
 proc rect*[T](r, phi: T): Complex[T] {.deprecated: "use 'fromPolar' instead".} =
+  ## Returns the complex number with polar coordinates `r` and `phi`.
+  ## **Deprecated since version 1.3**:
+  ## Use the `fromPolar proc <#fromPolar,tuple[T,T]>`_ instead.
   complex(r * cos(phi), r * sin(phi))
 
 
