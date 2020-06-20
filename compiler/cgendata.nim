@@ -110,6 +110,7 @@ type
     usesThreadVars,     # true if the module uses a thread var
     frameDeclared,      # hack for ROD support so that we don't declare
                         # a frame var twice in an init proc
+    frameDeclared2,     # ditto for exectrace
     isHeaderFile,       # C source file is the header file
     includesStringh,    # C source file already includes ``<string.h>``
     objHasKidsValid     # whether we can rely on tfObjHasKids

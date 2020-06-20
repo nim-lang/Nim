@@ -1898,7 +1898,7 @@ include "system/gc_interface"
 
 # we have to compute this here before turning it off in except.nim anyway ...
 const NimStackTrace = compileOption("stacktrace")
-const NimExecTrace = compileOption("exectrace")
+const NimExecTrace = when defined(nimHasExecTrace): compileOption("exectrace") else: false
 
 import system/coro_detection
 
@@ -2475,6 +2475,8 @@ when notJSnotNims and NimExecTrace:
   # {.compilerRtl, inl, raises: [], importc.}
   proc nimExecTraceEnter(s: PFrame) {.compilerproc, importc.}
   proc nimExecTraceExit {.compilerproc, importc.}
+  # TODO: allow enable/disable
+  proc nimExecTraceLine(s: PFrame, line: int16) {.compilerproc, importc.}
 
 proc quit*(errormsg: string, errorcode = QuitFailure) {.noreturn.} =
   ## A shorthand for `echo(errormsg); quit(errorcode)`.

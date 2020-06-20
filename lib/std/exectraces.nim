@@ -15,4 +15,4 @@ type TraceAction* = enum
   kstart
   kstop
 
-proc traceControl*(action: TraceAction) {.magic: "ExecTraceControl".} = discard
+proc traceControl*(action: TraceAction) {.magic: "ExecTraceControl", compileTime.} = discard
