@@ -280,7 +280,7 @@ proc genLineDir(p: BProc, t: PNode) =
   if isTrace(optStackTrace) and freshLineInfo(p, t.info):
     linefmt(p, cpsStmts, "nimln_($1, $2);$n", [line, quotedFilename(p.config, t.info)])
   if isTrace(optExecTrace) and freshLineInfo(p, t.info):
-    linefmt(p, cpsStmts, "$3($1, $2);$n", [line, quotedFilename(p.config, t.info), nimExecTraceLine])
+    linefmt(p, cpsStmts, "$3($1, $2);$n", [line, quotedFilename(p.config, t.info), nimExecTraceLineDefine])
 
 proc postStmtActions(p: BProc) {.inline.} =
   p.s(cpsStmts).add(p.module.injectStmt)
@@ -686,6 +686,7 @@ when true:
       p.module.s[cfsExecTraceDefines].add frameDefines
     discard cgsym(p.module, nimExecTraceEnter)
     discard cgsym(p.module, nimExecTraceExit)
+    discard cgsym(p.module, nimExecTraceLine)
     # let line = 0
     result = ropecg(p.module, "\t$1($2, $3, $4);$n", [nimExecTraceDefine, procname, filename, line.`$`.rope])
 

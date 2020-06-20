@@ -34,18 +34,12 @@ proc nimExecTraceEnter(s: PFrame) {.prag.} =
   # if s.calldepth == nimCallDepthLimit: callDepthLimitReached()
 
 proc nimExecTraceLine(s: PFrame, line: int16) {.prag.} =
-  # if s == nil:
-  #   # TODO; maybe the init procs? or the very first frame? handle it
-  #   return
-  # if traceData.numEnter < 346: return
-  # let line = s.line.cint
-  let line = line.cint
   let depth2 = cast[cint](traceData.depth)
-  # c_printf "[%2d]%*s | %s %d %s:%d\n", depth2, depth2*2, " ", s.procname, traceData.numEnter.cint, s.filename, s.line.cint
+  c_printf "[%2d]%*s | %s %d %s:%d\n", depth2, depth2*2, " ", s.procname, traceData.numEnter.cint, s.filename, s.line.cint
   # c_printf "| %d\n", s.line.cint
   # c_printf "| %d ok:%d\n", depth2, cint(ok)
   # c_printf "| %d \n", depth2
-  c_printf "| %d\n", line.cint
+  # c_printf "| %d %d\n", line.cint, line2
 
 proc nimExecTraceExit {.prag.} =
   if false:
