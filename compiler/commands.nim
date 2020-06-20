@@ -301,6 +301,7 @@ proc testCompileOption*(conf: ConfigRef; switch: string, info: TLineInfo): bool 
   of "threadanalysis": result = contains(conf.globalOptions, optThreadAnalysis)
   of "stacktrace": result = contains(conf.options, optStackTrace)
   of "stacktracemsgs": result = contains(conf.options, optStackTraceMsgs)
+  of "exectrace": result = contains(conf.options, optExecTrace)
   of "linetrace": result = contains(conf.options, optLineTrace)
   of "debugger": result = contains(conf.globalOptions, optCDebug)
   of "profiler": result = contains(conf.options, optProfiler)
@@ -657,6 +658,7 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     if conf.backend == backendJs: discard
     else: processOnOffSwitchG(conf, {optThreadAnalysis}, arg, pass, info)
   of "stacktrace": processOnOffSwitch(conf, {optStackTrace}, arg, pass, info)
+  of "exectrace": processOnOffSwitch(conf, {optExecTrace}, arg, pass, info)
   of "stacktracemsgs": processOnOffSwitch(conf, {optStackTraceMsgs}, arg, pass, info)
   of "excessivestacktrace": processOnOffSwitchG(conf, {optExcessiveStackTrace}, arg, pass, info)
   of "linetrace": processOnOffSwitch(conf, {optLineTrace}, arg, pass, info)

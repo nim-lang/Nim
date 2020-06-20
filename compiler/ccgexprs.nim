@@ -2536,17 +2536,22 @@ template genStmtListExprImpl(exprOrStmt) {.dirty.} =
       sfSystemModule notin p.module.module.flags and
       optStackTrace in p.prc.options
 
+  if p.prc != nil:
+    dbg p.prc.options
   let hasNimExecTrace = p.prc != nil and optExecTrace in p.prc.options
 
   var frameName: Rope = nil
   var frameNameExecTrace: Rope = nil
   for i in 0..<n.len - 1:
     let it = n[i]
+    dbg it.kind, i, n.len
     if it.kind == nkComesFrom:
+      dbg "D20200619T215212"
       if hasNimFrame and frameName == nil:
         inc p.labels
         frameName = "FR" & rope(p.labels) & "_"
         let theMacro = it[0].sym
+        dbg theMacro.name.s
         add p.s(cpsStmts), initFrameNoDebug(p, frameName,
            makeCString theMacro.name.s,
            quotedFilename(p.config, theMacro.info), it.info.line.int)
@@ -2554,6 +2559,7 @@ template genStmtListExprImpl(exprOrStmt) {.dirty.} =
         inc p.labels
         frameNameExecTrace = "ExecTraceFr_" & rope(p.labels) & "_"
         let theMacro = it[0].sym
+        dbg theMacro.name.s
         add p.s(cpsStmts), initExecTrace(p, frameNameExecTrace,
            makeCString theMacro.name.s,
            quotedFilename(p.config, theMacro.info), it.info.line.int)

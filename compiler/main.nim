@@ -25,6 +25,8 @@ import
 import ic / [cbackend, integrity, navigator]
 from ic / ic import rodViewer
 
+import exectraceimpl
+
 when not defined(leanCompiler):
   import jsgen, docgen, docgen2
 

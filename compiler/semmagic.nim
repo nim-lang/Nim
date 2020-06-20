@@ -585,10 +585,8 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
       n[0].sym.magic = mSubU
     result = n
   of mExecTraceControl:
-    result = tranceControlImpl(c, n)
+    result = nimExecTraceControl(c, n)
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
   else:
     result = n
-
-import traceimpl
