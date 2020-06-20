@@ -55,7 +55,8 @@ type
     wHintAsError = "hintAsError",
     wLine = "line", wPush = "push",
     wPop = "pop", wDefine = "define", wUndef = "undef", wLineDir = "lineDir",
-    wStackTrace = "stackTrace", wLineTrace = "lineTrace", wLink = "link", wCompile = "compile",
+    wStackTrace = "stackTrace", wExecTrace = "exectrace",
+    wLineTrace = "lineTrace", wLink = "link", wCompile = "compile",
     wLinksys = "linksys", wDeprecated = "deprecated", wVarargs = "varargs", wCallconv = "callconv",
     wDebugger = "debugger", wNimcall = "nimcall", wStdcall = "stdcall", wCdecl = "cdecl",
     wSafecall = "safecall", wSyscall = "syscall", wInline = "inline", wNoInline = "noinline",
@@ -126,7 +127,6 @@ const
   cppNimSharedKeywords* = {
     wAsm, wBreak, wCase, wConst, wContinue, wDo, wElse, wEnum, wExport,
     wFor, wIf, wReturn, wStatic, wTemplate, wTry, wWhile, wUsing}
-
 
 const enumUtilsExist = compiles:
   import std/enumutils

@@ -30,7 +30,7 @@ const
     wBorrow, wImportCompilerProc, wThread,
     wAsmNoStackFrame, wDiscardable, wNoInit, wCodegenDecl,
     wGensym, wInject, wRaises, wTags, wLocks, wDelegator, wGcSafe,
-    wConstructor, wLiftLocals, wStackTrace, wLineTrace, wNoDestroy,
+    wConstructor, wLiftLocals, wStackTrace, wExecTrace, wLineTrace, wNoDestroy,
     wRequires, wEnsures}
   converterPragmas* = procPragmas
   methodPragmas* = procPragmas+{wBase}-{wImportCpp}
@@ -48,7 +48,7 @@ const
     wBoundChecks, wOverflowChecks, wNilChecks, wStaticBoundchecks,
     wStyleChecks, wAssertions,
     wWarnings, wHints,
-    wLineDir, wStackTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
+    wLineDir, wStackTrace, wExecTrace, wLineTrace, wOptimization, wHint, wWarning, wError,
     wFatal, wDefine, wUndef, wCompile, wLink, wLinksys, wPure, wPush, wPop,
     wPassl, wPassc, wLocalPassc,
     wDeadCodeElimUnused,  # deprecated, always on
@@ -375,6 +375,7 @@ proc pragmaToOptions(w: TSpecialWord): TOptions {.inline.} =
   of wHints: {optHints}
   of wLineDir: {optLineDir}
   of wStackTrace: {optStackTrace}
+  of wExecTrace: {optExecTrace}
   of wLineTrace: {optLineTrace}
   of wDebugger: {optNone}
   of wProfiler: {optProfiler, optMemTracker}

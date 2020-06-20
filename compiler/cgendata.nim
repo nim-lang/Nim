@@ -19,6 +19,7 @@ type
     cfsMergeInfo,             # section containing merge information
     cfsHeaders,               # section for C include file headers
     cfsFrameDefines           # section for nim frame macros
+    cfsExecTraceDefines       # section for execTrace macros
     cfsForwardTypes,          # section for C forward typedefs
     cfsTypes,                 # section for C typedefs
     cfsSeqTypes,              # section for sequence types only

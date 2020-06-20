@@ -99,6 +99,8 @@ proc getFrame*(): PFrame {.compilerRtl, inl.} = framePtr
 proc popFrame {.compilerRtl, inl.} =
   framePtr = framePtr.prev
 
+template nimGetFramePtrInternal*(): untyped = framePtr
+
 when false:
   proc popFrameOfAddr(s: PFrame) {.compilerRtl.} =
     var it = framePtr
