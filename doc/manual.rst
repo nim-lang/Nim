@@ -3579,10 +3579,25 @@ procedures:
 
 
 Procs as expressions can appear both as nested procs and inside top level
-executable code. The  `sugar <sugar.html>`_ module contains the `=>` macro
+executable code. The `sugar <sugar.html>`_ module contains the `=>` macro
 which enables a more succinct syntax for anonymous procedures resembling
 lambdas as they are in languages like JavaScript, C#, etc.
 
+Lambdas
+-------
+
+The `lambdas <lambdas.html>`_ module contains `~>` which enables anonymous
+templates, avoiding some limitations of anonymous procs, in particular, optional
+typing, and offers performance advantage since it enables inlining, unlike
+callbacks which are passed as function pointers.
+
+.. code-block:: nim
+  
+  func isSorted[T, Fun](a: openArray[T], cmp: Fun): bool =
+    for i in 0..<len(a)-1:
+      if not cmp(a[i],a[i+1]): return false
+    result = true
+  doAssert isSorted(@[(1, 10), (0, 11)], (a,b) ~> a[1]<b[1])
 
 Func
 ----
@@ -5465,6 +5480,145 @@ powerful programming construct that still suffices. So the "check list" is:
 (3) Else: Use a template, if possible.
 (4) Else: Use a macro.
 
+
+Alias Declaration
+=================
+
+An alias declaration creates a symbol that is an alias (alternative name)
+for another symbol and can be used transparently in its place. Any symbol can
+be aliased: templates, modules, types, etc; even overloaded symbols can be
+aliased (see `ast.nkClosedSymChoice`).
+The closest equivalent would be D's [alias](https://dlang.org/spec/declaration.html#alias).
+Examples:
+
+.. code-block:: nim
+  
+  when defined(customEcho): alias myecho = myechoImpl
+  else: alias myecho = echo
+  myecho "foo: ", 12
+  doAssert myecho is proc
+
+  alias
+    system2 = system # module
+    SSInt = system2.SomeSignedInt # fully qualified
+    dollar = `$` # overloaded operator
+
+Note that aliases are resolved upon use, creating a transparent abstraction
+(unlike a typedef declaration for types):
+
+.. code-block:: nim
+
+  type Foo = object
+  type Foo2 = Foo
+  alias Foo3 = Foo
+  doAssert $Foo2 == "Foo2" # `nkTypeDef` is not transparent
+  doAssert $Foo3 == "Foo" # alias is transparent
+
+Aliases can only be used for symbols, not expressions:
+
+.. code-block:: nim
+
+    :test: "nim c $1"
+    :status: 1
+
+  import os
+  # these are all invalid
+  alias foo1 = 1+2
+  alias foo2 = typeof(1+2)
+  alias foo3 = walkDir(".")
+  alias foo4 = template(a, b): untyped = a*b
+
+but you can use an auxiliary template to achieve the same goal, for example
+the ones defined in std/lambdas.
+This is useful for writing anynymous aliases or lambdas.
+
+.. code-block:: nim
+
+  import std/[lambdas, os]
+  alias foo1 = lambdaStatic 1+2
+  alias foo2 = lambdaType typeof(1+2)
+  alias foo3 = lambdaIter walkDir(".")
+  alias foo4 = (a,b) ~> a*b
+
+
+Alias parameters
+================
+
+An `alias expression` is defined as `alias expr` where `expr` resolves to some
+symbol, for example `alias system.echo`.
+
+A symbol captured in an `alias expression` can be passed to any routine via
+an alias parameter:
+
+.. code-block:: nim
+
+  proc callFun(fun: alias, val: int): auto = fun(val)
+  var b = 2
+  template timesB(a): untyped = a*b
+  doAssert callFun(alias timesB, 3) == 3*b
+  # or simply, using anonymous lambdas:
+  import std/lambdas
+  doAssert callFun(a ~> a*b, 3) == 3*b
+
+Anonymous alias expressions built on top of an `alias expression` can be defined
+in library code to make it easier to pass symbols to routines, via `lambdas`.
+
+Any `alias` parameter makes that routine implicitly generic. Aliases are bind
+many, not bind once, unlike `seq` meta type:
+
+.. code-block:: nim
+
+  proc callFun(fun1, fun2: alias): auto = fun1(fun2())
+  doAssert callFun(a~>a*2, ()~>3) == 2*3
+
+An `alias` parameter matches a generic type; this allows reusing generic
+code with alias parameters.
+
+.. code-block:: nim
+
+    import std/lambdas
+    proc callFun[T](fun: T, val: int): auto = fun(val)
+    doAssert callFun(a ~> a*2, 3) == 3*2
+
+    proc timesTwo(a: int): int = a*2
+    doAssert callFun(timesTwo, 3) == 3*2 # passed as callback
+    doAssert callFun(alias timesTwo, 3) == 3*2 # passed inline
+
+    import std/sugar
+    doAssert callFun((a: int) => a*2, 3) == 3*2
+      # unlike with `~>`, param type is required for `=>` as it can't be deduced
+
+In particular, this allows passing types, const expressions, iterators, templates
+etc to any routine:
+
+.. code-block:: nim
+
+  type
+    Foo[T] = object
+      a: T
+  proc fails[T](x: static Foo[T]) = const y = x
+  proc works[T](x: T) = const y = x
+  const foo = Foo[int](a: 2)
+  # fails(foo) # doesn't work with `static[T]`
+  works(alias foo) # works with `alias`
+  works(lambdaStatic Foo[int](a: 2)) # or via anonymous alias
+
+As another example, aliases can be composed, enabling zero-cost
+functional style programming with iterators:
+
+.. code-block:: nim
+
+  doAssert toSeq(lambdaIter map(lambdaIter iota(3), a~>a*10)) == @[0, 10, 20]
+
+Likewise, generic types can be instantiated by alias parameters.
+
+.. code-block:: nim
+
+  type A[T] = object
+    fun: T
+  proc initA[T](fun: T): A[T] = typeof(result)(fun: alias fun)
+  const a = initA(x~>x*2) # later this will work too: const a = A(fun: x~>x*2)
+  doAssert a.fun(3) == 3*2
 
 Special Types
 =============
