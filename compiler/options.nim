@@ -34,6 +34,7 @@ type                          # please make sure we have under 32 options
     optStackTrace, # stack tracing support
     optStackTraceMsgs, # enable custom runtime msgs via `setFrameMsg`
     optLineTrace,             # line tracing support (includes stack tracing)
+    optExecTrace,             # execution trace
     optByRef,                 # use pass by ref for objects
                               # (for interfacing with C)
     optProfiler,              # profiler turned on

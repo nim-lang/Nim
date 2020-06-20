@@ -584,7 +584,11 @@ proc magicsAfterOverloadResolution(c: PContext, n: PNode,
     if n[1].typ.skipTypes(abstractInst).kind in {tyUInt..tyUInt64}:
       n[0].sym.magic = mSubU
     result = n
+  of mExecTraceControl:
+    result = tranceControlImpl(c, n)
   of mPrivateAccess:
     result = semPrivateAccess(c, n)
   else:
     result = n
+
+import traceimpl

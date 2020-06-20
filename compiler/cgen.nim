@@ -659,6 +659,18 @@ proc initFrame(p: BProc, procname, filename: Rope): Rope =
   discard cgsym(p.module, "nimFrame")
   result = ropecg(p.module, "\tnimfr_($1, $2);$n", [procname, filename])
 
+when true:
+  const nimExecTraceEnter = "nimExecTraceEnter"
+  const nimExecTraceExit = "nimExecTraceExit"
+  proc initExecTrace(p: BProc; frame, procname, filename: Rope; line: int): Rope =
+    discard cgsym(p.module, nimExecTraceEnter)
+    p.blocks[0].sections[cpsLocals].addf("TFrame $1;$n", [frame])
+    result = ropecg(p.module, "\t$1.procname = $2; $1.filename = $3; $1.line = $4; $1.len = -1; $5(&$1);$n",
+      [frame, procname, filename, line, nimExecTraceEnter])
+
+  proc deinitExecTrace(p: BProc; frame: Rope): Rope =
+    result = ropecg(p.module, "\t#$2(&$1);$n", [frame, nimExecTraceExit])
+
 proc initFrameNoDebug(p: BProc; frame, procname, filename: Rope; line: int): Rope =
   discard cgsym(p.module, "nimFrame")
   p.blocks[0].sections[cpsLocals].addf("TFrame $1;$n", [frame])
