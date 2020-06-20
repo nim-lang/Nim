@@ -9,7 +9,7 @@
 ## Fast sumation functions.
 
 
-func sumKahan*[T](x: openArray[T]): T {.deprecated: [sumKbn: sumKahan].} =
+func sumKahan*[T](x: openArray[T]): T =
   ## Kahan (compensated) summation: O(1) error growth, at the expense
   ## of a considerable increase in computational expense.
   if len(x) == 0: return
@@ -24,6 +24,8 @@ func sumKahan*[T](x: openArray[T]): T {.deprecated: [sumKbn: sumKahan].} =
       c += (xi - t) + sum
     sum = t
   result = sum + c
+
+{.deprecated: [sumKbn: sumKahan].}
 
 func sumPairwise[T](x: openArray[T], i0, n: int): T =
   if n < 128:
