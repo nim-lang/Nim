@@ -43,17 +43,17 @@ To choose the memory management strategy use the ``--gc:`` switch.
   simply never freed. You should use ``--gc:arc`` instead.
 
 
-================== ======== ================= ======================
-Memory Management  Heap     Reference Cycles  Command line switch
-================== ======== ================= ======================
-RefC               Local    Cycle Collector   ``--gc:refc``
-Mark & Sweep       Local    Cycle Collector   ``--gc:markAndSweep``
-ARC                Shared   Leak              ``--gc:arc``
-ORC                Shared   Cycle Collector   ``--gc:orc``
-Boehm              Shared   Cycle Collector   ``--gc:boehm``
-Go                 Shared   Cycle Collector   ``--gc:go``
-None               Manual   Manual            ``--gc:none``
-================== ======== ================= ======================
+================== ======== ================= ============== ===================
+Memory Management  Heap     Reference Cycles  Stop-The-World Command line switch
+================== ======== ================= ============== ===================
+RefC               Local    Cycle Collector   No             ``--gc:refc``
+Mark & Sweep       Local    Cycle Collector   No             ``--gc:markAndSweep``
+ARC                Shared   Leak              No             ``--gc:arc``
+ORC                Shared   Cycle Collector   No             ``--gc:orc``
+Boehm              Shared   Cycle Collector   Yes            ``--gc:boehm``
+Go                 Shared   Cycle Collector   Yes            ``--gc:go``
+None               Manual   Manual            Manual         ``--gc:none``
+================== ======== ================= ============== ===================
 
 JavaScript's garbage collector is used for the `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.
