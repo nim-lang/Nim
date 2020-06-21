@@ -341,11 +341,10 @@ since (1, 3):
     ## Wont match `"str".c` nor `c("str")`, just `c"str"`, to allow functions named `c()`.
     ## Meant for working with JavaScript or C or C++ interoperability with lots of `cstring`.
     runnableExamples:
-      static:
-        proc c(s: string) = doAssert false, "Must not match this"
-        doAssert c"Nim" == cstring("Nim")
-        doAssert c" " == cstring(" ")
-        doAssert c"" == cstring("")
+      proc c(s: string) = doAssert false, "Must not match this"
+      doAssert c"Nim" is cstring
+      doAssert c" " is cstring
+      doAssert c"" is cstring
     bind cstring
     cstring(s)
 
