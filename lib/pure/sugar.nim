@@ -346,7 +346,8 @@ since (1, 3):
         doAssert c"Nim" == cstring("Nim")
         doAssert c" " == cstring(" ")
         doAssert c"" == cstring("")
-    system.cstring(s)
+    bind cstring
+    cstring(s)
 
 
 when isMainModule:
