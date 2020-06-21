@@ -335,6 +335,19 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
       call.add init[i]
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
+template c*(s: string{nkRStrLit}): cstring {.since: (1, 3).} =
+  ## Convenience template for `cstring("some string")`, *only for Literal* `string`.
+  ## Wont match `"str".c` nor `c("str")`, just `c"str"`, to allow functions named `c()`.
+  ## Meant for working with JavaScript or C or C++ interoperability with lots of `cstring`.
+  runnableExamples:
+    static:
+      proc c(s: string) = doAssert false, "Must not match this"
+      doAssert c"Nim" == cstring("Nim")
+      doAssert c" " == cstring(" ")
+      doAssert c"" == cstring("")
+  system.cstring(s)
+
+
 when isMainModule:
   since (1, 1):
     import algorithm
