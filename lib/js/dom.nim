@@ -107,6 +107,13 @@ type
     timing*: PerformanceTiming
 
   Selection* {.importc.} = ref object ## see `docs<https://developer.mozilla.org/en-US/docs/Web/API/Selection>`_
+    anchorNode*: Node
+    anchorOffset*: int
+    focusNode*: Node
+    focusOffset*: int
+    isCollapsed*: bool
+    rangeCount*: int
+    `type`*: cstring
 
   LocalStorage* {.importc.} = ref object
 
