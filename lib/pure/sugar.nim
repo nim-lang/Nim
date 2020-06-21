@@ -340,11 +340,6 @@ since (1, 3):
     ## Convenience template for `cstring("some string")`, *only for Literal* `string`.
     ## Wont match `"str".c` nor `c("str")`, just `c"str"`, to allow functions named `c()`.
     ## Meant for working with JavaScript or C or C++ interoperability with lots of `cstring`.
-    runnableExamples:
-      proc c(s: string) = doAssert false, "Must not match this"
-      doAssert c"Nim" is cstring
-      doAssert c" " is cstring
-      doAssert c"" is cstring
     bind cstring
     cstring(s)
 
@@ -408,3 +403,10 @@ when isMainModule:
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
+
+  since (1, 3):
+    block:
+      proc c(s: string) = doAssert false, "Must not match this"
+      doAssert c"Nim" is cstring
+      doAssert c" " is cstring
+      doAssert c"" is cstring
