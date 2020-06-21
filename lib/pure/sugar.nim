@@ -336,7 +336,7 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
 since (1, 3):
-  template c*(s: string{nkRStrLit}): cstring  =
+  template c*(s: string{nkRStrLit}): cstring =
     ## Convenience template for `cstring("some string")`, *only for Literal* `string`.
     ## Wont match `"str".c` nor `c("str")`, just `c"str"`, to allow functions named `c()`.
     ## Meant for working with JavaScript or C or C++ interoperability with lots of `cstring`.
