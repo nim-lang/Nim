@@ -113,7 +113,7 @@
 - Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
 - Add `os.normalizeExe`, eg: `koch` => `./koch`.
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
-- Add `sugar.c` convenience template for `cstring("some string")`, *only for Literal* `string`, still allows functions named `c()`.
+- Add `sugar.cs` convenience template for `cstring("some string")`, *only for Literal* `string`, still allows functions named `cs()`.
 
 
 ## Language changes

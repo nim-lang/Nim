@@ -336,10 +336,15 @@ macro collect*(init, body: untyped): untyped {.since: (1, 1).} =
   result = newTree(nnkStmtListExpr, newVarStmt(res, call), resBody, res)
 
 since (1, 3):
-  template c*(s: string{nkRStrLit}): cstring =
+  template cs*(s: string{nkRStrLit}): cstring =
     ## Convenience template for `cstring("some string")`, *only for Literal* `string`.
-    ## Wont match `"str".c` nor `c("str")`, just `c"str"`, to allow functions named `c()`.
+    ## Wont match `"str".cs` nor `cs("str")`, just `cs"str"`, to allow functions named `cs()`.
     ## Meant for working with JavaScript or C or C++ interoperability with lots of `cstring`.
+    runnableExamples:
+      proc cs(s: string) = doAssert false, "Must not match this"
+      doAssert cs"Nim" == cstring("Nim")
+      doAssert cs" " is cstring(" ")
+      doAssert cs"" is cstring("")
     bind cstring
     cstring(s)
 
@@ -403,10 +408,3 @@ when isMainModule:
         of "bird": "word"
         else: d
     assert z == @["word", "word"]
-
-  since (1, 3):
-    block:
-      # proc c(s: string) = doAssert false, "Must not match this"
-      doAssert c"Nim" is cstring
-      doAssert c" " is cstring
-      doAssert c"" is cstring
