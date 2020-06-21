@@ -129,11 +129,11 @@ proc next*(r: var Rand): uint64 =
   ## Computes a random ``uint64`` number using the given state.
   ##
   ## See also:
-  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer between zero and
+  ## * `rand proc<#rand,Natural,Rand>`_ that returns an integer between zero and
   ##   a given upper bound
-  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
+  ## * `rand proc<#rand,range[],Rand>`_ that returns a float
+  ## * `rand proc<#rand,HSlice[T,T],Rand>`_ that accepts a slice
+  ## * `rand proc<#rand,typedesc[T],Rand>`_ that accepts an integer or range type
   ## * `skipRandomNumbers proc<#skipRandomNumbers,Rand>`_
   runnableExamples:
     var r = initRand(2019)
@@ -181,7 +181,7 @@ proc skipRandomNumbers*(s: var Rand) =
   ##   proc randomSum(rand: Rand): int =
   ##     var r = rand
   ##     for i in 1..numbers:
-  ##       result += rand(1..10)
+  ##       result += rand(1..10, r)
   ##
   ##   var r = initRand(2019)
   ##   var vals: array[spawns, FlowVar[int]]
@@ -255,9 +255,9 @@ proc rand*(max: range[0.0 .. high(float)]; r: var Rand = state): float {.benign.
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,int>`_ that returns an integer
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
+  ## * `rand proc<#rand,int,Rand>`_ that returns an integer
+  ## * `rand proc<#rand,HSlice[T,T],Rand>`_ that accepts a slice
+  ## * `rand proc<#rand,typedesc[T],Rand>`_ that accepts an integer or range type
   runnableExamples:
     randomize(234)
     let f1 = rand(1.0)
@@ -293,9 +293,9 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]; r: var Rand = state): T =
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,int>`_ that returns an integer
-  ## * `rand proc<#rand,float>`_ that returns a floating point number
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
+  ## * `rand proc<#rand,int,Rand>`_ that returns an integer
+  ## * `rand proc<#rand,float,Rand>`_ that returns a floating point number
+  ## * `rand proc<#rand,typedesc[T],Rand>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
     doAssert rand(1..6) == 4
@@ -335,9 +335,9 @@ proc rand*[T: SomeInteger](t: typedesc[T]; r: var Rand = state): T =
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,int>`_ that returns an integer
-  ## * `rand proc<#rand,float>`_ that returns a floating point number
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
+  ## * `rand proc<#rand,int,Rand>`_ that returns an integer
+  ## * `rand proc<#rand,float,Rand>`_ that returns a floating point number
+  ## * `rand proc<#rand,HSlice[T,T],Rand>`_ that accepts a slice
   runnableExamples:
     randomize(567)
     doAssert rand(int8) == 55
@@ -363,8 +363,8 @@ proc sample*[T](s: set[T]; r: var Rand = state): T =
   ## from this proc will always be the same.
   ##
   ## See also:
-  ## * `sample proc<#sample,openArray[T]>`_ for openarrays
-  ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
+  ## * `sample proc<#sample,openArray[T],Rand>`_ for openarrays
+  ## * `sample proc<#sample,openArray[T],openArray[U],Rand>`_ that uses a
   ##   cumulative distribution function
   runnableExamples:
     randomize(987)
@@ -400,10 +400,9 @@ proc sample*[T](a: openArray[T]; r: var Rand = state): T =
   ## from this proc will always be the same.
   ##
   ## See also:
-  ## * `sample proc<#sample,Rand,openArray[T]>`_ that uses a provided state
-  ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
+  ## * `sample proc<#sample,openArray[T],openArray[U],Rand>`_ that uses a
   ##   cumulative distribution function
-  ## * `sample proc<#sample,set[T]>`_ for sets
+  ## * `sample proc<#sample,set[T],Rand>`_ for sets
   runnableExamples:
     let marbles = ["red", "blue", "green", "yellow", "purple"]
     randomize(456)
@@ -444,8 +443,8 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]; r: var Rand = state): T =
   ## from this proc will always be the same.
   ##
   ## See also:
-  ## * `sample proc<#sample,openArray[T]>`_ that does not use a CDF
-  ## * `sample proc<#sample,set[T]>`_ for sets
+  ## * `sample proc<#sample,openArray[T],Rand>`_ that does not use a CDF
+  ## * `sample proc<#sample,set[T],Rand>`_ for sets
   runnableExamples:
     from math import cumsummed
 
@@ -474,7 +473,7 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T {.depreca
   ## (CDF) and the given state.
   ##
   ## **Deprecated since version 1.3**:
-  ## Use the `sample proc<#sample,openArray[T],openArray[U]>`_ instead.
+  ## Use the `sample proc<#sample,openArray[T],openArray[U],Rand>`_ instead.
   sample(a, cdf, r)
 
 proc shuffle*[T](x: var openArray[T]; r: var Rand = state) =
