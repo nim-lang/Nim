@@ -343,8 +343,8 @@ since (1, 3):
     runnableExamples:
       proc cs(s: string) = doAssert false, "Must not match this"
       doAssert cs"Nim" == cstring("Nim")
-      doAssert cs" " is cstring(" ")
-      doAssert cs"" is cstring("")
+      doAssert cs" " == cstring(" ")
+      doAssert cs"" == cstring("")
     bind cstring
     cstring(s)
 
