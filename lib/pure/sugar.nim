@@ -406,7 +406,7 @@ when isMainModule:
 
   since (1, 3):
     block:
-      proc c(s: string) = doAssert false, "Must not match this"
+      # proc c(s: string) = doAssert false, "Must not match this"
       doAssert c"Nim" is cstring
       doAssert c" " is cstring
       doAssert c"" is cstring
