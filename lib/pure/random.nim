@@ -103,9 +103,9 @@ type
                  ## `randomize proc<#randomize>`_ can be used to seed the default generator
                  ## with a value based on the current time.
                  ##
-                 ## Many procs have two variations: one that takes in a Rand parameter and
-                 ## another that uses the default generator. The procs that use the default
-                 ## generator are **not** thread-safe!
+                 ## Procs in this module take in a Rand parameter, which is always the last
+                 ## one and defaults to that generator. Not providing another generator makes
+                 ## them **not** thread-safe!
     a0, a1: Ui
 
 when defined(js):
@@ -120,6 +120,10 @@ else:
 
 proc rotl(x, k: Ui): Ui =
   result = (x shl k) or (x shr (Ui(64) - k))
+
+template randState*(): untyped =
+  ## Makes the default Rand state accessible from other modules.
+  state
 
 proc next*(r: var Rand): uint64 =
   ## Computes a random ``uint64`` number using the given state.
@@ -206,14 +210,13 @@ proc skipRandomNumbers*(s: var Rand) =
   s.a0 = s0
   s.a1 = s1
 
-proc rand*(max: int; r: var Rand = state): int {.benign.} =
+proc rand*(max: Natural; r: var Rand = state): int {.benign.} =
   ## Returns a random integer in the range `0..max` using the optionally given
   ## state. If a state is not provided, this proc uses the default random
   ## number generator. In that case it is **not** thread-safe.
   ##
   ## If `randomize<#randomize>`_ has not been called, the sequence of random
   ## numbers returned from this proc will always be the same.
-  ##
   ##
   ## See also:
   ## * `rand proc<#rand,float,Rand>`_ that returns a float
@@ -230,7 +233,7 @@ proc rand*(max: int; r: var Rand = state): int {.benign.} =
     if x <= randMax - (randMax mod Ui(max)):
       return int(x mod (uint64(max)+1u64))
 
-proc rand*(r: var Rand; max: Natural): int {.benign, deprecated.} =
+proc rand*(r: var Rand; max: int): int {.benign, deprecated.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## See also:
@@ -246,7 +249,7 @@ proc rand*(r: var Rand; max: Natural): int {.benign, deprecated.} =
     doAssert r.rand(100) == 66
   rand(max, r)
 
-proc rand*(max: float; r: var Rand = state): float {.benign.} =
+proc rand*(max: range[0.0 .. high(float)]; r: var Rand = state): float {.benign.} =
   ## Returns a random floating point number in the range `0.0..max` using the
   ## optionally given state. If a state is not provided, this proc uses the
   ## default random number generator. In that case it is **not** thread-safe.
@@ -271,7 +274,7 @@ proc rand*(max: float; r: var Rand = state): float {.benign.} =
     let u = (0x3FFu64 shl 52u64) or (x shr 12u64)
     result = (cast[float](u) - 1.0) * max
 
-proc rand*(r: var Rand; max: range[0.0 .. high(float)]): float {.benign, deprecated.} =
+proc rand*(r: var Rand; max: float): float {.benign, deprecated.} =
   ## Returns a random floating point number in the range `0.0..max`
   ## using the given state.
   ##
@@ -380,7 +383,7 @@ proc sample*[T](s: set[T]; r: var Rand = state): T =
     doAssert sample(s) == 7
     doAssert sample(s) == 1
   assert card(s) != 0
-  var i = rand(r, card(s) - 1)
+  var i = rand(card(s) - 1, r)
   for e in s:
     if i == 0: return e
     dec(i)
@@ -473,7 +476,7 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]; r: var Rand = state): T =
   assert(float(cdf[^1]) > 0.0)
   #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
   #awfully expensive even in debugging modes.
-  let u = r.rand(float(cdf[^1]))
+  let u = rand(float(cdf[^1]), r)
   a[cdf.upperBound(U(u))]
 
 proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T {.deprecated.} =
@@ -522,7 +525,7 @@ proc shuffle*[T](x: var openArray[T]; r: var Rand = state) =
     shuffle(cards)
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   for i in countdown(x.high, 1):
-    let j = r.rand(i)
+    let j = rand(i, r)
     swap(x[i], x[j])
 
 proc shuffle*[T](r: var Rand; x: var openArray[T]) {.deprecated.} =
@@ -630,22 +633,20 @@ when isMainModule:
     doAssert sample("a") == 'a'
 
     when compileOption("rangeChecks"):
+      var r = initRand(124)
       try:
-        discard rand(-1)
+        discard rand(r, -1)
         doAssert false
       except RangeDefect:
         discard
 
       try:
-        discard rand(-1.0)
+        discard rand(r, -1.0)
         doAssert false
       except RangeDefect:
         discard
-
 
     # don't use causes integer overflow
     doAssert compiles(rand[int](low(int) .. high(int)))
-    var d = initRand(123)
-    echo rand(1, d)
 
   main()
