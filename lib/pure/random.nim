@@ -227,6 +227,12 @@ proc rand*(max: Natural; r: var Rand = state): int {.benign.} =
     doAssert rand(100) == 0
     doAssert rand(100) == 96
     doAssert rand(100) == 66
+
+    # using the provided state
+    var r = initRand(123)
+    doAssert rand(100, r) == 0
+    doAssert rand(100, r) == 96
+    doAssert rand(100, r) == 66
   if max == 0: return
   while true:
     let x = next(r)
@@ -236,17 +242,8 @@ proc rand*(max: Natural; r: var Rand = state): int {.benign.} =
 proc rand*(r: var Rand; max: int): int {.benign, deprecated.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
-  ## See also:
-  ## * `rand proc<#rand,int>`_ that returns an integer using the default
-  ##   random number generator
-  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples:
-    var r = initRand(123)
-    doAssert r.rand(100) == 0
-    doAssert r.rand(100) == 96
-    doAssert r.rand(100) == 66
+  ## **Deprecated since version 1.3**:
+  ## Use the `rand proc<#rand,int,Rand>`_ instead.
   rand(max, r)
 
 proc rand*(max: range[0.0 .. high(float)]; r: var Rand = state): float {.benign.} =
@@ -258,15 +255,18 @@ proc rand*(max: range[0.0 .. high(float)]; r: var Rand = state): float {.benign.
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float using a
-  ##   provided state
   ## * `rand proc<#rand,int>`_ that returns an integer
   ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
     randomize(234)
-    let f = rand(1.0)
-    ## f = 8.717181376738381e-07
+    let f1 = rand(1.0)
+    # f1 = 8.717181376738381e-07
+
+    # using the provided state
+    var r = initRand(234)
+    let f2 = rand(1.0, r)
+    # f2 = 8.717181376738381e-07
   let x = next(r)
   when defined(js):
     result = (float(x) / float(high(uint32))) * max
@@ -278,16 +278,8 @@ proc rand*(r: var Rand; max: float): float {.benign, deprecated.} =
   ## Returns a random floating point number in the range `0.0..max`
   ## using the given state.
   ##
-  ## See also:
-  ## * `rand proc<#rand,float>`_ that returns a float using the default
-  ##   random number generator
-  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
-  ## * `rand proc<#rand,Rand,HSlice[T,T]>`_ that accepts a slice
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples:
-    var r = initRand(234)
-    let f = r.rand(1.0)
-    ## f = 8.717181376738381e-07
+  ## **Deprecated since version 1.3**:
+  ## Use the `rand proc<#rand,float,Rand>`_ instead.
   rand(max, r)
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]; r: var Rand = state): T =
@@ -305,12 +297,20 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]; r: var Rand = state): T =
   ## * `rand proc<#rand,float>`_ that returns a floating point number
   ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
   runnableExamples:
+    randomize(345)
+    doAssert rand(1..6) == 4
+    doAssert rand(1..6) == 4
+    doAssert rand(1..6) == 6
+    let f1 = rand(-1.0..1.0)
+    # f1 = 0.8741183448756229
+
+    # using the provided state
     var r = initRand(345)
-    doAssert r.rand(1..6) == 4
-    doAssert r.rand(1..6) == 4
-    doAssert r.rand(1..6) == 6
-    let f = r.rand(-1.0 .. 1.0)
-    ## f = 0.8741183448756229
+    doAssert rand(1..6, r) == 4
+    doAssert rand(1..6, r) == 4
+    doAssert rand(1..6, r) == 6
+    let f2 = rand(-1.0..1.0, r)
+    # f2 = 0.8741183448756229
   when T is SomeFloat:
     result = rand(x.b - x.a, r) + x.a
   else: # Integers and Enum types
@@ -322,17 +322,8 @@ proc rand*[T: Ordinal or SomeFloat](r: var Rand; x: HSlice[T, T]): T {.deprecate
   ##
   ## Allowed types for `T` are integers, floats, and enums without holes.
   ##
-  ## See also:
-  ## * `rand proc<#rand,HSlice[T,T]>`_ that accepts a slice and uses the
-  ##   default random number generator
-  ## * `rand proc<#rand,Rand,Natural>`_ that returns an integer
-  ## * `rand proc<#rand,Rand,range[]>`_ that returns a float
-  ## * `rand proc<#rand,typedesc[T]>`_ that accepts an integer or range type
-  runnableExamples:
-    randomize(345)
-    doAssert rand(1..6) == 4
-    doAssert rand(1..6) == 4
-    doAssert rand(1..6) == 6
+  ## **Deprecated since version 1.3**:
+  ## Use the `rand proc<#rand,HSlice[T,T],Rand>`_ instead.
   result = rand(x, r)
 
 proc rand*[T: SomeInteger](t: typedesc[T]; r: var Rand = state): T =
@@ -372,7 +363,6 @@ proc sample*[T](s: set[T]; r: var Rand = state): T =
   ## from this proc will always be the same.
   ##
   ## See also:
-  ## * `sample proc<#sample,Rand,set[T]>`_ that uses a provided state
   ## * `sample proc<#sample,openArray[T]>`_ for openarrays
   ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that uses a
   ##   cumulative distribution function
@@ -382,6 +372,12 @@ proc sample*[T](s: set[T]; r: var Rand = state): T =
     doAssert sample(s) == 5
     doAssert sample(s) == 7
     doAssert sample(s) == 1
+
+    # using the provided state
+    var r = initRand(987)
+    doAssert sample(s, r) == 5
+    doAssert sample(s, r) == 7
+    doAssert sample(s, r) == 1
   assert card(s) != 0
   var i = rand(card(s) - 1, r)
   for e in s:
@@ -391,18 +387,8 @@ proc sample*[T](s: set[T]; r: var Rand = state): T =
 proc sample*[T](r: var Rand; s: set[T]): T {.deprecated.} =
   ## Returns a random element from the set ``s`` using the given state.
   ##
-  ## See also:
-  ## * `sample proc<#sample,set[T]>`_ that uses the default random number
-  ##   generator
-  ## * `sample proc<#sample,Rand,openArray[T]>`_ for openarrays
-  ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
-  ##   cumulative distribution function
-  runnableExamples:
-    var r = initRand(987)
-    let s = {1, 3, 5, 7, 9}
-    doAssert r.sample(s) == 5
-    doAssert r.sample(s) == 7
-    doAssert r.sample(s) == 1
+  ## **Deprecated since version 1.3**:
+  ## Use the `sample proc<#sample,set[T],Rand>`_ instead.
   sample(s, r)
 
 proc sample*[T](a: openArray[T]; r: var Rand = state): T =
@@ -424,23 +410,19 @@ proc sample*[T](a: openArray[T]; r: var Rand = state): T =
     doAssert sample(marbles) == "blue"
     doAssert sample(marbles) == "yellow"
     doAssert sample(marbles) == "red"
+
+    # using the provided state
+    var r = initRand(456)
+    doAssert sample(marbles, r) == "blue"
+    doAssert sample(marbles, r) == "yellow"
+    doAssert sample(marbles, r) == "red"
   result = a[rand(a.low..a.high, r)]
 
 proc sample*[T](r: var Rand; a: openArray[T]): T {.deprecated.} =
   ## Returns a random element from ``a`` using the given state.
   ##
-  ## See also:
-  ## * `sample proc<#sample,openArray[T]>`_ that uses the default
-  ##   random number generator
-  ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that uses a
-  ##   cumulative distribution function
-  ## * `sample proc<#sample,Rand,set[T]>`_ for sets
-  runnableExamples:
-    let marbles = ["red", "blue", "green", "yellow", "purple"]
-    var r = initRand(456)
-    doAssert r.sample(marbles) == "blue"
-    doAssert r.sample(marbles) == "yellow"
-    doAssert r.sample(marbles) == "red"
+  ## **Deprecated since version 1.3**:
+  ## Use the `sample proc<#sample,openArray[T],Rand>`_ instead.
   result = a[rand(a.low..a.high, r)]
 
 proc sample*[T, U](a: openArray[T]; cdf: openArray[U]; r: var Rand = state): T =
@@ -449,17 +431,19 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]; r: var Rand = state): T =
   ## If a state is not provided, this proc uses the default random number
   ## generator. In that case it is **not** thread-safe.
   ##
-  ## This proc works similarly to
-  ## `sample[T, U](Rand, openArray[T], openArray[U])
-  ## <#sample,Rand,openArray[T],openArray[U]>`_.
-  ## See that proc's documentation for more details.
+  ## The ``cdf`` argument does not have to be normalized, and it could contain
+  ## any type of elements that can be converted to a ``float``. It must be
+  ## the same length as ``a``. Each element in ``cdf`` should be greater than
+  ## or equal to the previous element.
+  ##
+  ## The outcome of the `cumsum<math.html#cumsum,openArray[T]>`_ proc and the
+  ## return value of the `cumsummed<math.html#cumsummed,openArray[T]>`_ proc,
+  ## which are both in the math module, can be used as the ``cdf`` argument.
   ##
   ## If `randomize<#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
   ##
   ## See also:
-  ## * `sample proc<#sample,Rand,openArray[T],openArray[U]>`_ that also utilizes
-  ##   a CDF but uses a provided state
   ## * `sample proc<#sample,openArray[T]>`_ that does not use a CDF
   ## * `sample proc<#sample,set[T]>`_ for sets
   runnableExamples:
@@ -472,6 +456,12 @@ proc sample*[T, U](a: openArray[T]; cdf: openArray[U]; r: var Rand = state): T =
     doAssert sample(marbles, cdf) == "red"
     doAssert sample(marbles, cdf) == "green"
     doAssert sample(marbles, cdf) == "blue"
+
+    # using the provided state
+    var r = initRand(789)
+    doAssert sample(marbles, cdf, r) == "red"
+    doAssert sample(marbles, cdf, r) == "green"
+    doAssert sample(marbles, cdf, r) == "blue"
   assert(cdf.len == a.len) # Two basic sanity checks.
   assert(float(cdf[^1]) > 0.0)
   #While we could check cdf[i-1] <= cdf[i] for i in 1..cdf.len, that could get
@@ -483,30 +473,8 @@ proc sample*[T, U](r: var Rand; a: openArray[T]; cdf: openArray[U]): T {.depreca
   ## Returns an element from ``a`` using a cumulative distribution function
   ## (CDF) and the given state.
   ##
-  ## The ``cdf`` argument does not have to be normalized, and it could contain
-  ## any type of elements that can be converted to a ``float``. It must be
-  ## the same length as ``a``. Each element in ``cdf`` should be greater than
-  ## or equal to the previous element.
-  ##
-  ## The outcome of the `cumsum<math.html#cumsum,openArray[T]>`_ proc and the
-  ## return value of the `cumsummed<math.html#cumsummed,openArray[T]>`_ proc,
-  ## which are both in the math module, can be used as the ``cdf`` argument.
-  ##
-  ## See also:
-  ## * `sample proc<#sample,openArray[T],openArray[U]>`_ that also utilizes
-  ##   a CDF but uses the default random number generator
-  ## * `sample proc<#sample,Rand,openArray[T]>`_ that does not use a CDF
-  ## * `sample proc<#sample,Rand,set[T]>`_ for sets
-  runnableExamples:
-    from math import cumsummed
-
-    let marbles = ["red", "blue", "green", "yellow", "purple"]
-    let count = [1, 6, 8, 3, 4]
-    let cdf = count.cumsummed
-    var r = initRand(789)
-    doAssert r.sample(marbles, cdf) == "red"
-    doAssert r.sample(marbles, cdf) == "green"
-    doAssert r.sample(marbles, cdf) == "blue"
+  ## **Deprecated since version 1.3**:
+  ## Use the `sample proc<#sample,openArray[T],openArray[U]>`_ instead.
   sample(a, cdf, r)
 
 proc shuffle*[T](x: var openArray[T]; r: var Rand = state) =
@@ -516,13 +484,16 @@ proc shuffle*[T](x: var openArray[T]; r: var Rand = state) =
   ##
   ## If `randomize<#randomize>`_ has not been called, the order of outcomes
   ## from this proc will always be the same.
-  ##
-  ## See also:
-  ## * `shuffle proc<#shuffle,Rand,openArray[T]>`_ that uses a provided state
   runnableExamples:
     var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
     randomize(678)
     shuffle(cards)
+    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+
+    # using the provided state
+    cards = ["Ace", "King", "Queen", "Jack", "Ten"]
+    var r = initRand(678)
+    shuffle(cards, r)
     doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
   for i in countdown(x.high, 1):
     let j = rand(i, r)
@@ -531,14 +502,8 @@ proc shuffle*[T](x: var openArray[T]; r: var Rand = state) =
 proc shuffle*[T](r: var Rand; x: var openArray[T]) {.deprecated.} =
   ## Shuffles a sequence of elements in-place using the given state.
   ##
-  ## See also:
-  ## * `shuffle proc<#shuffle,openArray[T]>`_ that uses the default
-  ##   random number generator
-  runnableExamples:
-    var cards = ["Ace", "King", "Queen", "Jack", "Ten"]
-    var r = initRand(678)
-    r.shuffle(cards)
-    doAssert cards == ["King", "Ace", "Queen", "Ten", "Jack"]
+  ## **Deprecated since version 1.3**:
+  ## Use the `shuffle proc<#shuffle,openArray[T],Rand>`_ instead.
   shuffle(x, r)
 
 proc initRand*(seed: int64): Rand =

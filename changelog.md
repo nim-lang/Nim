@@ -4,6 +4,9 @@
 
 ## Standard library additions and changes
 
+- All `proc`s in `random` accept an optional `Rand` state parameter which
+  defaults to the default generator. This change avoids api duplication since
+  `proc`s that accept a `Rand` first parameter are deprecated.
 - Added `bindParams`, `bindParam` to `db_sqlite` for binding parameters into a `SqlPrepared` statement.
 - Add `tryInsert`,`insert` procs to db_* libs accept primary key column name.
 - Added `xmltree.newVerbatimText` support create `style`'s,`script`'s text.
