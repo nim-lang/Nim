@@ -123,6 +123,7 @@ proc rotl(x, k: Ui): Ui =
 
 template randState*(): untyped =
   ## Makes the default Rand state accessible from other modules.
+  ## Useful for module authors.
   state
 
 proc next*(r: var Rand): uint64 =
@@ -219,7 +220,7 @@ proc rand*(max: Natural; r: var Rand = state): int {.benign.} =
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,float,Rand>`_ that returns a float
+  ## * `rand proc<#rand,range[],Rand>`_ that returns a float
   ## * `rand proc<#rand,HSlice[T,T],Rand>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T],Rand>`_ that accepts an integer or range type
   runnableExamples:
@@ -243,7 +244,7 @@ proc rand*(r: var Rand; max: int): int {.benign, deprecated.} =
   ## Returns a random integer in the range `0..max` using the given state.
   ##
   ## **Deprecated since version 1.3**:
-  ## Use the `rand proc<#rand,int,Rand>`_ instead.
+  ## Use the `rand proc<#rand,Natural,Rand>`_ instead.
   rand(max, r)
 
 proc rand*(max: range[0.0 .. high(float)]; r: var Rand = state): float {.benign.} =
@@ -255,18 +256,16 @@ proc rand*(max: range[0.0 .. high(float)]; r: var Rand = state): float {.benign.
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,int,Rand>`_ that returns an integer
+  ## * `rand proc<#rand,Natural,Rand>`_ that returns an integer
   ## * `rand proc<#rand,HSlice[T,T],Rand>`_ that accepts a slice
   ## * `rand proc<#rand,typedesc[T],Rand>`_ that accepts an integer or range type
   runnableExamples:
     randomize(234)
     let f1 = rand(1.0)
-    # f1 = 8.717181376738381e-07
-
     # using the provided state
     var r = initRand(234)
     let f2 = rand(1.0, r)
-    # f2 = 8.717181376738381e-07
+    doAssert f1 == f2
   let x = next(r)
   when defined(js):
     result = (float(x) / float(high(uint32))) * max
@@ -279,7 +278,7 @@ proc rand*(r: var Rand; max: float): float {.benign, deprecated.} =
   ## using the given state.
   ##
   ## **Deprecated since version 1.3**:
-  ## Use the `rand proc<#rand,float,Rand>`_ instead.
+  ## Use the `rand proc<#rand,range[],Rand>`_ instead.
   rand(max, r)
 
 proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]; r: var Rand = state): T =
@@ -293,8 +292,8 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]; r: var Rand = state): T =
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,int,Rand>`_ that returns an integer
-  ## * `rand proc<#rand,float,Rand>`_ that returns a floating point number
+  ## * `rand proc<#rand,Natural,Rand>`_ that returns an integer
+  ## * `rand proc<#rand,range[],Rand>`_ that returns a floating point number
   ## * `rand proc<#rand,typedesc[T],Rand>`_ that accepts an integer or range type
   runnableExamples:
     randomize(345)
@@ -302,15 +301,13 @@ proc rand*[T: Ordinal or SomeFloat](x: HSlice[T, T]; r: var Rand = state): T =
     doAssert rand(1..6) == 4
     doAssert rand(1..6) == 6
     let f1 = rand(-1.0..1.0)
-    # f1 = 0.8741183448756229
-
     # using the provided state
     var r = initRand(345)
     doAssert rand(1..6, r) == 4
     doAssert rand(1..6, r) == 4
     doAssert rand(1..6, r) == 6
     let f2 = rand(-1.0..1.0, r)
-    # f2 = 0.8741183448756229
+    doAssert f1 == f2
   when T is SomeFloat:
     result = rand(x.b - x.a, r) + x.a
   else: # Integers and Enum types
@@ -335,8 +332,8 @@ proc rand*[T: SomeInteger](t: typedesc[T]; r: var Rand = state): T =
   ## numbers returned from this proc will always be the same.
   ##
   ## See also:
-  ## * `rand proc<#rand,int,Rand>`_ that returns an integer
-  ## * `rand proc<#rand,float,Rand>`_ that returns a floating point number
+  ## * `rand proc<#rand,Natural,Rand>`_ that returns an integer
+  ## * `rand proc<#rand,range[],Rand>`_ that returns a floating point number
   ## * `rand proc<#rand,HSlice[T,T],Rand>`_ that accepts a slice
   runnableExamples:
     randomize(567)
