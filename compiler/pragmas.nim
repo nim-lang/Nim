@@ -904,7 +904,7 @@ proc singlePragma(c: PContext, sym: PSym, n: PNode, i: var int,
       of wNoreturn:
         noVal(c, it)
         # Disable the 'noreturn' annotation when in the "Quirky Exceptions" mode!
-        if c.config.exc notin {excQuirky, excGoto}:
+        if c.config.exc != excQuirky:
           incl(sym.flags, sfNoReturn)
         if sym.typ[0] != nil:
           localError(c.config, sym.ast[paramsPos][0].info,
