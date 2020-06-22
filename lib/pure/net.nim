@@ -68,6 +68,7 @@ import std/private/since
 
 import nativesockets, os, strutils, times, sets, options, std/monotimes
 from ssl_certs import scanSSLCertificates
+import ssl_config
 export nativesockets.Port, nativesockets.`$`, nativesockets.`==`
 export Domain, SockType, Protocol
 
@@ -479,8 +480,6 @@ when defineSsl:
     let err = ERR_peek_last_error()
     if err == 0:
       raise newException(SslError, "No error reported.")
-    if err == -1:
-      raiseOSError(osLastError())
     var errStr = $ERR_error_string(err, nil)
     case err
     of 336032814, 336032784:
@@ -535,7 +534,7 @@ when defineSsl:
         raiseSSLError("Verification of private key file failed.")
 
   proc newContext*(protVersion = protSSLv23, verifyMode = CVerifyPeer,
-                   certFile = "", keyFile = "", cipherList = "ALL",
+                   certFile = "", keyFile = "", cipherList = CiphersIntermediate,
                    caDir = "", caFile = ""): SSLContext =
     ## Creates an SSL context.
     ##
@@ -580,6 +579,20 @@ when defineSsl:
       newCTX = SSL_CTX_new(TLSv1_method())
 
     if newCTX.SSL_CTX_set_cipher_list(cipherList) != 1:
+      raiseSSLError()
+    when not defined(openssl10) and not defined(libressl):
+      let sslVersion = getOpenSSLVersion()
+      if sslVersion >= 0x010101000 and not sslVersion == 0x020000000:
+        # In OpenSSL >= 1.1.1, TLSv1.3 cipher suites can only be configured via
+        # this API.
+        if newCTX.SSL_CTX_set_ciphersuites(cipherList) != 1:
+          raiseSSLError()
+    # Automatically the best ECDH curve for client exchange. Without this, ECDH
+    # ciphers will be ignored by the server.
+    #
+    # From OpenSSL >= 1.1.0, this setting is set by default and can't be
+    # overriden.
+    if newCTX.SSL_CTX_set_ecdh_auto(1) != 1:
       raiseSSLError()
 
     when defined(nimDisableCertificateValidation) or defined(windows):
@@ -754,12 +767,14 @@ when defineSsl:
         # Discard result in case OpenSSL version doesn't support SNI, or we're
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, hostname)
+      ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation) and not defined(windows):
         if hostname.len > 0 and not isIpAddress(hostname):
           socket.checkCertName(hostname)
     of handshakeAsServer:
+      ErrClearError()
       let ret = SSL_accept(socket.sslHandle)
       socketError(socket, ret)
 
@@ -928,6 +943,7 @@ proc acceptAddr*(server: Socket, client: var owned(Socket), address: var string,
         # We must wrap the client sock in a ssl context.
 
         server.sslContext.wrapSocket(client)
+        ErrClearError()
         let ret = SSL_accept(client.sslHandle)
         socketError(client, ret, false)
 
@@ -957,6 +973,7 @@ when false: #defineSsl:
 
           if not client.isSsl or client.sslHandle == nil:
             server.sslContext.wrapSocket(client)
+          ErrClearError()
           let ret = SSL_accept(client.sslHandle)
           while ret <= 0:
             let err = SSL_get_error(client.sslHandle, ret)
@@ -1006,16 +1023,20 @@ proc close*(socket: Socket) =
   try:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
-        ErrClearError()
-        # As we are closing the underlying socket immediately afterwards,
-        # it is valid, under the TLS standard, to perform a unidirectional
-        # shutdown i.e not wait for the peers "close notify" alert with a second
-        # call to SSL_shutdown
-        let res = SSL_shutdown(socket.sslHandle)
-        if res == 0:
-          discard
-        elif res != 1:
-          socketError(socket, res)
+        # Don't call SSL_shutdown if the connection has not been fully
+        # established, see:
+        # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
+        if SSL_in_init(socket.sslHandle) == 0:
+          # As we are closing the underlying socket immediately afterwards,
+          # it is valid, under the TLS standard, to perform a unidirectional
+          # shutdown i.e not wait for the peers "close notify" alert with a second
+          # call to SSL_shutdown
+          ErrClearError()
+          let res = SSL_shutdown(socket.sslHandle)
+          if res == 0:
+            discard
+          elif res != 1:
+            socketError(socket, res)
   finally:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
@@ -1133,6 +1154,7 @@ proc uniRecv(socket: Socket, buffer: pointer, size, flags: cint): int =
   assert(not socket.isClosed, "Cannot `recv` on a closed socket")
   when defineSsl:
     if socket.isSsl:
+      ErrClearError()
       return SSL_read(socket.sslHandle, buffer, size)
 
   return recv(socket.fd, buffer, size, flags)
@@ -1482,6 +1504,7 @@ proc send*(socket: Socket, data: pointer, size: int): int {.
   assert(not socket.isClosed, "Cannot `send` on a closed socket")
   when defineSsl:
     if socket.isSsl:
+      ErrClearError()
       return SSL_write(socket.sslHandle, cast[cstring](data), size)
 
   when useWinVersion or defined(macosx):
@@ -1766,6 +1789,7 @@ proc connect*(socket: Socket, address: string,
         # not using TLSv1+
         discard SSL_set_tlsext_host_name(socket.sslHandle, address)
 
+      ErrClearError()
       let ret = SSL_connect(socket.sslHandle)
       socketError(socket, ret)
       when not defined(nimDisableCertificateValidation) and not defined(windows):

@@ -198,6 +198,8 @@ function main() {
     title="low[T: Ordinal | enum | range](x: T): T"><wbr />low<span class="attachedType"></span></a></li>
   <li><a class="reference" href="#low2%2CT"
     title="low2[T: Ordinal | enum | range](x: T): T"><wbr />low2<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#tripleStrLitTest"
+    title="tripleStrLitTest()"><wbr />triple<wbr />Str<wbr />Lit<wbr />Test<span class="attachedType"></span></a></li>
 
   </ul>
 </li>
@@ -210,10 +212,26 @@ function main() {
   </ul>
 </li>
 <li>
+  <a class="reference reference-toplevel" href="#14" id="64">Methods</a>
+  <ul class="simple simple-toc-section">
+      <li><a class="reference" href="#method1.e%2CMoo"
+    title="method1(self: Moo)"><wbr />method1<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#method2.e%2CMoo"
+    title="method2(self: Moo): int"><wbr />method2<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#method3.e%2CMoo"
+    title="method3(self: Moo): int"><wbr />method3<span class="attachedType"></span></a></li>
+
+  </ul>
+</li>
+<li>
   <a class="reference reference-toplevel" href="#15" id="65">Iterators</a>
   <ul class="simple simple-toc-section">
       <li><a class="reference" href="#fromUtils1.i"
     title="fromUtils1(): int"><wbr />from<wbr />Utils1<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#iter1.i%2Cint"
+    title="iter1(n: int): int"><wbr />iter1<span class="attachedType"></span></a></li>
+  <li><a class="reference" href="#iter2.i%2Cint"
+    title="iter2(n: int): int"><wbr />iter2<span class="attachedType"></span></a></li>
 
   </ul>
 </li>
@@ -595,6 +613,49 @@ the c printf. etc.
 <pre class="listing"><span class="Keyword">discard</span><span class="Whitespace"> </span><span class="StringLit">&quot;in low2&quot;</span></pre>
 
 </dd>
+<a id="tripleStrLitTest"></a>
+<dt><pre><span class="Keyword">proc</span> <a href="#tripleStrLitTest"><span class="Identifier">tripleStrLitTest</span></a><span class="Other">(</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Comment">## mullitline string litterals are tricky as their indentation can span</span><span class="Whitespace">
+</span><span class="Comment">## below that of the runnableExamples</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s1a</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;
+should appear at indent 0
+  at indent 2
+at indent 0
+&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Comment"># make sure this works too</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s1b</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;start at same line
+  at indent 2
+at indent 0
+&quot;&quot;&quot;</span><span class="Whitespace"> </span><span class="Comment"># comment after</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s2</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;sandwich &quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s3</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">when</span><span class="Whitespace"> </span><span class="Identifier">false</span><span class="Punctuation">:</span><span class="Whitespace">
+  </span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s5</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;
+        in s5 &quot;&quot;&quot;</span><span class="Whitespace">
+
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s3b</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="Punctuation">[</span><span class="LongStringLit">&quot;&quot;&quot;
+%!? #[...] # inside a multiline ...
+&quot;&quot;&quot;</span><span class="Punctuation">,</span><span class="Whitespace"> </span><span class="StringLit">&quot;foo&quot;</span><span class="Punctuation">]</span><span class="Whitespace">
+
+</span><span class="Comment">## make sure handles trailing spaces</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s4</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot; 
+&quot;&quot;&quot;</span><span class="Whitespace">
+
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s5</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot; x
+&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s6</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot; &quot;&quot;
+&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s7</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;</span><span class="Whitespace">
+</span><span class="Keyword">let</span><span class="Whitespace"> </span><span class="Identifier">s8</span><span class="Whitespace"> </span><span class="Operator">=</span><span class="Whitespace"> </span><span class="Punctuation">[</span><span class="LongStringLit">&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;&quot;</span><span class="Punctuation">,</span><span class="Whitespace"> </span><span class="LongStringLit">&quot;&quot;&quot;
+  &quot;&quot;&quot;</span><span class="Whitespace"> </span><span class="Punctuation">]</span><span class="Whitespace">
+</span><span class="Keyword">discard</span><span class="Whitespace">
+</span><span class="Comment"># should be in</span></pre>
+
+</dd>
 
 </dl></div>
 <div class="section" id="13">
@@ -605,6 +666,32 @@ the c printf. etc.
 <dd>
 
 My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</span></tt> here. <a class="reference external" href="https://nim-lang.org">Some link</a>
+
+</dd>
+
+</dl></div>
+<div class="section" id="14">
+<h1><a class="toc-backref" href="#14">Methods</a></h1>
+<dl class="item">
+<a id="method1.e,Moo"></a>
+<dt><pre><span class="Keyword">method</span> <a href="#method1.e%2CMoo"><span class="Identifier">method1</span></a><span class="Other">(</span><span class="Identifier">self</span><span class="Other">:</span> <span class="Identifier">Moo</span><span class="Other">)</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+foo1
+
+</dd>
+<a id="method2.e,Moo"></a>
+<dt><pre><span class="Keyword">method</span> <a href="#method2.e%2CMoo"><span class="Identifier">method2</span></a><span class="Other">(</span><span class="Identifier">self</span><span class="Other">:</span> <span class="Identifier">Moo</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+foo2
+
+</dd>
+<a id="method3.e,Moo"></a>
+<dt><pre><span class="Keyword">method</span> <a href="#method3.e%2CMoo"><span class="Identifier">method3</span></a><span class="Other">(</span><span class="Identifier">self</span><span class="Other">:</span> <span class="Identifier">Moo</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+foo3
 
 </dd>
 
@@ -621,6 +708,22 @@ My someFunc. Stuff in <tt class="docutils literal"><span class="pre">quotes</spa
 <pre class="listing"><span class="Comment"># ok1</span><span class="Whitespace">
 </span><span class="Identifier">assert</span><span class="Whitespace"> </span><span class="DecNumber">1</span><span class="Whitespace"> </span><span class="Operator">==</span><span class="Whitespace"> </span><span class="DecNumber">1</span><span class="Whitespace">
 </span><span class="Comment"># ok2</span></pre>
+
+</dd>
+<a id="iter1.i,int"></a>
+<dt><pre><span class="Keyword">iterator</span> <a href="#iter1.i%2Cint"><span class="Identifier">iter1</span></a><span class="Other">(</span><span class="Identifier">n</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+foo1
+
+</dd>
+<a id="iter2.i,int"></a>
+<dt><pre><span class="Keyword">iterator</span> <a href="#iter2.i%2Cint"><span class="Identifier">iter2</span></a><span class="Other">(</span><span class="Identifier">n</span><span class="Other">:</span> <span class="Identifier">int</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">int</span> <span><span class="Other">{</span><span class="Other pragmadots">...</span><span class="Other">}</span></span><span class="pragmawrap"><span class="Other">{.</span><span class="pragma"><span class="Identifier">raises</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span><span class="Other">,</span> <span class="Identifier">tags</span><span class="Other">:</span> <span class="Other">[</span><span class="Other">]</span></span><span class="Other">.}</span></span></pre></dt>
+<dd>
+
+foo2
+<p><strong class="examples_text">Example:</strong></p>
+<pre class="listing"><span class="Keyword">discard</span><span class="Whitespace"> </span><span class="Comment"># bar</span></pre>
 
 </dd>
 

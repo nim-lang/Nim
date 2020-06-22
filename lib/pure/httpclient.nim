@@ -25,13 +25,13 @@
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
-## import asyncdispatch, httpclient
+##   import asyncdispatch, httpclient
 ##
-## proc asyncProc(): Future[string] {.async.} =
-##   var client = newAsyncHttpClient()
-##   return await client.getContent("http://example.com")
+##   proc asyncProc(): Future[string] {.async.} =
+##     var client = newAsyncHttpClient()
+##     return await client.getContent("http://example.com")
 ##
-## echo waitFor asyncProc()
+##   echo waitFor asyncProc()
 ##
 ## The functionality implemented by ``HttpClient`` and ``AsyncHttpClient``
 ## is the same, so you can use whichever one suits you best in the examples
@@ -435,7 +435,7 @@ proc `[]=`*(p: MultipartData, name: string,
 proc getBoundary(p: MultipartData): string =
   if p == nil or p.content.len == 0: return
   while true:
-    result = $random(int.high)
+    result = $rand(int.high)
     for i, entry in p.content:
       if result in entry.content: break
       elif i == p.content.high: return
@@ -457,7 +457,7 @@ proc sendFile(socket: Socket | AsyncSocket,
   file.close()
 
 proc redirection(status: string): bool =
-  const redirectionNRs = ["301", "302", "303", "307"]
+  const redirectionNRs = ["301", "302", "303", "307", "308"]
   for i in items(redirectionNRs):
     if status.startsWith(i):
       return true

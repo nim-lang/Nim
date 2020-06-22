@@ -63,7 +63,7 @@ task "release", "release build":
     ## zip up all the files and such or something useful here
 
 task "testskel", "create skeleton test dir for testing":
-  let dirname = "test-" & $random(5000)
+  let dirname = "test-" & $rand(5000)
   removeDir dirName
   createDir dirName/"data/fnt"
   copyFile "data/fnt/LiberationMono-Regular", dirName/"data/fnt/LiberationMono-Regular.ttf"
@@ -133,7 +133,7 @@ task "download", "download game assets":
   else:  ## this crashes, dunno why
     var
       z: TZipArchive
-      destDir = getCurrentDir()/("unzip" & $random(5000))
+      destDir = getCurrentDir()/("unzip" & $rand(5000))
     if not z.open(path, fmRead):
       echo "Could not open zip, bad download?"
       return

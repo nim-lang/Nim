@@ -110,7 +110,7 @@ proc lookup(typeMap: LayeredIdTable, key: PType): PType =
 template put(typeMap: LayeredIdTable, key, value: PType) =
   idTablePut(typeMap.topLayer, key, value)
 
-template checkMetaInvariants(cl: TReplTypeVars, t: PType) =
+template checkMetaInvariants(cl: TReplTypeVars, t: PType) = # noop code
   when false:
     if t != nil and tfHasMeta in t.flags and
        cl.allowMetaTypes == false:
@@ -390,7 +390,6 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
 
   let bbody = lastSon body
   var newbody = replaceTypeVarsT(cl, bbody)
-  let bodyIsNew = newbody != bbody
   cl.skipTypedesc = oldSkipTypedesc
   newbody.flags = newbody.flags + (t.flags + body.flags - tfInstClearedFlags)
   result.flags = result.flags + newbody.flags - tfInstClearedFlags
@@ -412,8 +411,8 @@ proc handleGenericInvocation(cl: var TReplTypeVars, t: PType): PType =
       # generics *when the type is constructed*:
       newbody.attachedOps[attachedDeepCopy] = cl.c.instTypeBoundOp(cl.c, dc, result, cl.info,
                                                                    attachedDeepCopy, 1)
-    if bodyIsNew and newbody.typeInst == nil:
-      #doassert newbody.typeInst == nil
+    if newbody.typeInst == nil:
+      # doAssert newbody.typeInst == nil
       newbody.typeInst = result
       if tfRefsAnonObj in newbody.flags and newbody.kind != tyGenericInst:
         # can come here for tyGenericInst too, see tests/metatype/ttypeor.nim
@@ -671,14 +670,16 @@ proc replaceTypesInBody*(p: PContext, pt: TIdTable, n: PNode;
   result = replaceTypeVarsN(cl, n)
   popInfoContext(p.config)
 
-proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
-                            original, new: PSym): PNode =
-  var typeMap = initLayeredTypeMap(pt)
-  var cl = initTypeVars(p, typeMap, n.info, original)
-  idTablePut(cl.symMap, original, new)
-  pushInfoContext(p.config, n.info)
-  result = replaceTypeVarsN(cl, n)
-  popInfoContext(p.config)
+when false:
+  # deadcode
+  proc replaceTypesForLambda*(p: PContext, pt: TIdTable, n: PNode;
+                              original, new: PSym): PNode =
+    var typeMap = initLayeredTypeMap(pt)
+    var cl = initTypeVars(p, typeMap, n.info, original)
+    idTablePut(cl.symMap, original, new)
+    pushInfoContext(p.config, n.info)
+    result = replaceTypeVarsN(cl, n)
+    popInfoContext(p.config)
 
 proc recomputeFieldPositions*(t: PType; obj: PNode; currPosition: var int) =
   if t != nil and t.len > 0 and t[0] != nil:

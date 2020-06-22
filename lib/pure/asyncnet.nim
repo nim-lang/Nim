@@ -253,6 +253,7 @@ when defineSsl:
                    op: untyped) =
     var opResult {.inject.} = -1.cint
     while opResult < 0:
+      ErrClearError()
       # Call the desired operation.
       opResult = op
       # Bit hackish here.
@@ -713,7 +714,15 @@ proc close*(socket: AsyncSocket) =
     socket.fd.AsyncFD.closeSocket()
   when defineSsl:
     if socket.isSsl:
-      let res = SSL_shutdown(socket.sslHandle)
+      let res =
+        # Don't call SSL_shutdown if the connection has not been fully
+        # established, see:
+        # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
+        if SSL_in_init(socket.sslHandle) == 0:
+          ErrClearError()
+          SSL_shutdown(socket.sslHandle)
+        else:
+          0
       SSL_free(socket.sslHandle)
       if res == 0:
         discard

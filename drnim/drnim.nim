@@ -1192,7 +1192,7 @@ proc mainCommand(graph: ModuleGraph) =
   graph.strongSemCheck = strongSemCheck
   graph.compatibleProps = compatibleProps
 
-  graph.config.errorMax = high(int)  # do not stop after first error
+  graph.config.setErrorMaxHighMaybe
   defineSymbol(graph.config.symbols, "nimcheck")
   defineSymbol(graph.config.symbols, "nimDrNim")
 

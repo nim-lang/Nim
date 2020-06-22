@@ -13,6 +13,7 @@
 # included from testament.nim
 
 import important_packages
+import std/private/nimbleutils
 
 const
   specialCategories = [
@@ -34,7 +35,6 @@ const
     "niminaction",
     "threads",
     "untestable",
-    "stdlib",
     "testdata",
     "nimcache",
     "coroutines",
@@ -269,8 +269,8 @@ proc debuggerTests(r: var TResults, cat: Category, options: string) =
 
 proc jsTests(r: var TResults, cat: Category, options: string) =
   template test(filename: untyped) =
-    testSpec r, makeTest(filename, options & " -d:nodejs", cat), {targetJS}
-    testSpec r, makeTest(filename, options & " -d:nodejs -d:release", cat), {targetJS}
+    testSpec r, makeTest(filename, options, cat), {targetJS}
+    testSpec r, makeTest(filename, options & " -d:release", cat), {targetJS}
 
   for t in os.walkFiles("tests/js/t*.nim"):
     test(t)
@@ -501,9 +501,9 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       if not existsDir(buildPath):
         if hasDep:
           let installName = if url.len != 0: url else: name
-          let (nimbleCmdLine, nimbleOutput, nimbleStatus) = execCmdEx2("nimble", ["install", "-y", installName])
-          if nimbleStatus != QuitSuccess:
-            let message = "nimble install failed:\n$ " & nimbleCmdLine & "\n" & nimbleOutput
+          var message: string
+          if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
+            (proc(): bool = nimbleInstall(installName, message))):
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
@@ -572,6 +572,9 @@ proc isJoinableSpec(spec: TSpec): bool =
     spec.outputCheck != ocSubstr and
     spec.ccodeCheck.len == 0 and
     (spec.targets == {} or spec.targets == {targetC})
+  if result:
+    if spec.file.readFile.contains "when isMainModule":
+      result = false
 
 proc norm(s: var string) =
   while true:
@@ -583,6 +586,13 @@ proc norm(s: var string) =
 proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
+
+proc normalizeExe(file: string): string =
+  # xxx common pattern, should be exposed in std/os, even if simple (error prone)
+  when defined(posix):
+    if file.len == 0: ""
+    elif DirSep in file: file else: "./" & file
+  else: file
 
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returns a list of tests that have problems
@@ -619,26 +629,24 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   for i, runSpec in specs:
     let file = runSpec.file
-    let file2 = outDir / ("megatest_" & $i & ".nim")
+    let file2 = outDir / ("megatest_$1.nim" % $i)
     # `include` didn't work with `trecmod2.nim`, so using `import`
-    let code = "echo \"" & marker & "\", " & quoted(file) & "\n"
+    let code = "echo \"$1\", $2\n" % [marker, quoted(file)]
     createDir(file2.parentDir)
     writeFile(file2, code)
-    megatest.add "import " & quoted(file2) & "\n"
-    megatest.add "import " & quoted(file) & "\n"
+    megatest.add "import $1\nimport $2\n" % [quoted(file2), quoted(file)]
 
-  writeFile("megatest.nim", megatest)
+  let megatestFile = testsDir / "megatest.nim" # so it uses testsDir / "config.nims"
+  writeFile(megatestFile, megatest)
 
-  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd",
-              "--listFullPaths:off", "--excessiveStackTrace:off", "megatest.nim"]
-
+  let root = getCurrentDir()
+  let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
-    echo "$ ", cmdLine
-    echo buf.string
+    echo "$ " & cmdLine & "\n" & buf.string
     quit("megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx("./megatest")
+  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).normalizeExe)
   if exitCode != 0:
     echo buf.string
     quit("megatest execution failed")
@@ -661,7 +669,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   else:
     echo "output OK"
     removeFile("outputGotten.txt")
-    removeFile("megatest.nim")
+    removeFile(megatestFile)
   #testSpec r, makeTest("megatest", options, cat)
 
 # ---------------------------------------------------------------------------

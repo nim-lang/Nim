@@ -51,7 +51,7 @@ proc commandGenDepend(graph: ModuleGraph) =
       ' ' & changeFileExt(project, "dot").string)
 
 proc commandCheck(graph: ModuleGraph) =
-  graph.config.errorMax = high(int)  # do not stop after first error
+  graph.config.setErrorMaxHighMaybe
   defineSymbol(graph.config.symbols, "nimcheck")
   semanticPasses(graph)  # use an empty backend for semantic checking only
   compileProject(graph)
@@ -59,15 +59,14 @@ proc commandCheck(graph: ModuleGraph) =
 when not defined(leanCompiler):
   proc commandDoc2(graph: ModuleGraph; json: bool) =
     handleDocOutputOptions graph.config
-    graph.config.errorMax = high(int)  # do not stop after first error
+    graph.config.setErrorMaxHighMaybe
     semanticPasses(graph)
     if json: registerPass(graph, docgen2JsonPass)
     else: registerPass(graph, docgen2Pass)
     compileProject(graph)
     finishDoc2Pass(graph.config.projectName)
 
-proc commandCompileToC(graph: ModuleGraph) =
-  let conf = graph.config
+proc setOutFile(conf: ConfigRef) =
   if conf.outFile.isEmpty:
     let base = conf.projectName
     let targetName = if optGenDynLib in conf.globalOptions:
@@ -76,6 +75,9 @@ proc commandCompileToC(graph: ModuleGraph) =
       base & platform.OS[conf.target.targetOS].exeExt
     conf.outFile = RelativeFile targetName
 
+proc commandCompileToC(graph: ModuleGraph) =
+  let conf = graph.config
+  setOutFile(conf)
   extccomp.initVars(conf)
   semanticPasses(graph)
   registerPass(graph, cgenPass)
@@ -136,7 +138,7 @@ proc interactivePasses(graph: ModuleGraph) =
   registerPass(graph, evalPass)
 
 proc commandInteractive(graph: ModuleGraph) =
-  graph.config.errorMax = high(int)  # do not stop after first error
+  graph.config.setErrorMaxHighMaybe
   interactivePasses(graph)
   compileSystemModule(graph)
   if graph.config.commandArgs.len > 0:
@@ -370,6 +372,7 @@ proc mainCommand*(graph: ModuleGraph) =
     conf.cmd = cmdDump
   of "jsonscript":
     conf.cmd = cmdJsonScript
+    setOutFile(graph.config)
     commandJsonScript(graph)
   elif commandAlreadyProcessed: discard # already handled
   else:
@@ -386,7 +389,15 @@ proc mainCommand*(graph: ModuleGraph) =
                 else: "Debug"
     let sec = formatFloat(epochTime() - conf.lastCmdTime, ffDecimal, 3)
     let project = if optListFullPaths in conf.globalOptions: $conf.projectFull else: $conf.projectName
-    var output = $conf.absOutFile
+
+    var output: string
+    if optCompileOnly in conf.globalOptions and conf.cmd != cmdJsonScript:
+      output = $conf.jsonBuildFile
+    elif conf.outFile.isEmpty and conf.cmd notin {cmdJsonScript, cmdCompileToBackend, cmdDoc}:
+      # for some cmd we expect a valid absOutFile
+      output = "unknownOutput"
+    else:
+      output = $conf.absOutFile
     if optListFullPaths notin conf.globalOptions: output = output.AbsoluteFile.extractFilename
     rawMessage(conf, hintSuccessX, [
       "loc", loc,

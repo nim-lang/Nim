@@ -1,4 +1,11 @@
-# test the osproc module
+discard """
+joinable: false
+"""
+
+#[
+joinable: false
+because it'd need cleanup up stdout
+]#
 
 import stdtest/[specialpaths, unittest_light]
 

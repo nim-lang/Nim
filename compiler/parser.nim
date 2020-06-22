@@ -793,8 +793,8 @@ proc primarySuffix(p: var TParser, r: PNode,
         break
       result = namedParams(p, result, nkCurlyExpr, tkCurlyRi)
     of tkSymbol, tkAccent, tkIntLit..tkCharLit, tkNil, tkCast,
-       tkOpr, tkDotDot, tkVar, tkOut, tkStatic, tkType,
-       tkEnum, tkTuple, tkObject, tkProc:
+       tkOpr, tkDotDot, tkVar, tkStatic, tkType, tkEnum, tkTuple,
+       tkObject, tkProc:
       # XXX: In type sections we allow the free application of the
       # command syntax, with the exception of expressions such as
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
@@ -1390,7 +1390,7 @@ proc postExprBlocks(p: var TParser, x: PNode): PNode =
         getTok(p)
         nextBlock = parseDoBlock(p, info)
       else:
-        case nextToken:
+        case nextToken
         of tkOf:
           nextBlock = newNodeP(nkOfBranch, p)
           exprList(p, tkColon, nextBlock)
@@ -1988,8 +1988,8 @@ proc parseObject(p: var TParser): PNode =
   # an initial IND{>} HAS to follow:
   if not realInd(p):
     result.add(p.emptyNode)
-    return
-  result.add(parseObjectPart(p))
+  else:
+    result.add(parseObjectPart(p))
 
 proc parseTypeClassParam(p: var TParser): PNode =
   let modifier = case p.tok.tokType
@@ -2286,7 +2286,7 @@ proc parseStmt(p: var TParser): PNode =
     case p.tok.tokType
     of tkIf, tkWhile, tkCase, tkTry, tkFor, tkBlock, tkAsm, tkProc, tkFunc,
        tkIterator, tkMacro, tkType, tkConst, tkWhen, tkVar:
-      parMessage(p, "complex statement requires indentation")
+      parMessage(p, "nestable statement requires indentation")
       result = p.emptyNode
     else:
       if p.inSemiStmtList > 0:

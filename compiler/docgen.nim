@@ -17,7 +17,9 @@ import
   packages/docutils/rst, packages/docutils/rstgen,
   json, xmltree, cgi, trees, types,
   typesrenderer, astalgo, lineinfos, intsets,
-  pathutils, trees, tables, nimpaths, renderverbatim
+  pathutils, trees, tables, nimpaths, renderverbatim, osproc
+
+from std/private/globs import nativeToUnixPath
 
 const
   exportSection = skField
@@ -52,15 +54,6 @@ type
     wroteSupportFiles*: bool
 
   PDoc* = ref TDocumentor ## Alias to type less.
-
-proc nativeToUnix(path: string): string =
-  doAssert not path.isAbsolute # absolute files need more care for the drive
-  when DirSep == '\\':
-    result = replace(path, '\\', '/')
-  else: result = path
-
-proc docOutDir(conf: ConfigRef, subdir: RelativeDir = RelativeDir""): AbsoluteDir =
-  if not conf.outDir.isEmpty: conf.outDir else: conf.projectPath / subdir
 
 proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): RelativeFile =
   ## returns a relative file that will be appended to outDir
@@ -97,7 +90,7 @@ proc presentationPath*(conf: ConfigRef, file: AbsoluteFile, isTitle = false): Re
   if isAbsolute(result.string):
     result = file.string.splitPath()[1].RelativeFile
   if isTitle:
-    result = result.string.nativeToUnix.RelativeFile
+    result = result.string.nativeToUnixPath.RelativeFile
   else:
     result = result.string.replace("..", dotdotMangle).RelativeFile
   doAssert not result.isEmpty
@@ -158,13 +151,9 @@ proc parseRst(text, filename: string,
                     docgenFindFile, compilerMsgHandler)
 
 proc getOutFile2(conf: ConfigRef; filename: RelativeFile,
-                 ext: string, dir: RelativeDir; guessTarget: bool): AbsoluteFile =
-  if optWholeProject in conf.globalOptions:
-    let d = conf.docOutDir(dir)
-    createDir(d)
-    result = d / changeFileExt(filename, ext)
-  elif guessTarget:
-    let d = conf.docOutDir
+                 ext: string, guessTarget: bool): AbsoluteFile =
+  if optWholeProject in conf.globalOptions or guessTarget:
+    let d = conf.outDir
     createDir(d)
     result = d / changeFileExt(filename, ext)
   elif not conf.outFile.isEmpty:
@@ -236,11 +225,11 @@ proc newDocumentor*(filename: AbsoluteFile; cache: IdentCache; conf: ConfigRef, 
         ]
       let cmd = cmd.interpSnippetCmd
       rawMessage(conf, hintExecuting, cmd)
-      if execShellCmd(cmd) != status:
-        rawMessage(conf, errGenerated, "executing of external program failed: " & cmd)
+      let (output, gotten) = execCmdEx(cmd)
+      if gotten != status:
+        rawMessage(conf, errGenerated, "snippet failed: cmd: '$1' status: $2 expected: $3 output: $4" % [cmd, $gotten, $status, output])
   result.emitted = initIntSet()
-  result.destFile = getOutFile2(conf, presentationPath(conf, filename),
-                                outExt, htmldocsDir, false)
+  result.destFile = getOutFile2(conf, presentationPath(conf, filename), outExt, false)
   result.thisDir = result.destFile.splitFile.dir
 
 template dispA(conf: ConfigRef; dest: var Rope, xml, tex: string, args: openArray[Rope]) =
@@ -368,8 +357,7 @@ proc belongsToPackage(conf: ConfigRef; module: PSym): bool =
 proc externalDep(d: PDoc; module: PSym): string =
   if optWholeProject in d.conf.globalOptions or d.conf.docRoot.len > 0:
     let full = AbsoluteFile toFullPath(d.conf, FileIndex module.position)
-    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt,
-                          htmldocsDir, sfMainModule notin module.flags)
+    let tmp = getOutFile2(d.conf, presentationPath(d.conf, full), HtmlExt, sfMainModule notin module.flags)
     result = relativeTo(tmp, d.thisDir, '/').string
   else:
     result = extractFilename toFullPath(d.conf, FileIndex module.position)
@@ -621,21 +609,12 @@ proc getRoutineBody(n: PNode): PNode =
 
   so we normalize the results to get to the statement list containing the
   (0 or more) doc comments and runnableExamples.
-  (even if using `result = n[bodyPos]`, you'd still to apply similar logic).
   ]##
-  result = n[^1]
-  case result.kind
-  of nkSym:
-    result = n[^2]
-    case result.kind
-      of nkAsgn:
-        doAssert result[0].kind == nkSym
-        doAssert result.len == 2
-        result = result[1]
-      else: # eg: nkStmtList
-        discard
-  else:
-    discard
+  result = n[bodyPos]
+  if result.kind == nkAsgn and n.len > bodyPos+1 and n[bodyPos+1].kind == nkSym:
+    doAssert result[0].kind == nkSym
+    doAssert result.len == 2
+    result = result[1]
 
 proc getAllRunnableExamples(d: PDoc, n: PNode, dest: var Rope) =
   var n = n
@@ -1244,20 +1223,23 @@ proc genOutFile(d: PDoc): Rope =
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:
     title = d.meta[metaTitle]
-    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnix
+    let external = presentationPath(d.conf, AbsoluteFile d.filename).changeFileExt(HtmlExt).string.nativeToUnixPath
     setIndexTerm(d[], external, "", title)
   else:
     # Modules get an automatic title for the HTML, but no entry in the index.
     # better than `extractFilename(changeFileExt(d.filename, ""))` as it disambiguates dups
     title = $presentationPath(d.conf, AbsoluteFile d.filename, isTitle = true).changeFileExt("")
 
-  let bodyname = if d.hasToc and not d.isPureRst: "doc.body_toc_group"
+  var groupsection = getConfigVar(d.conf, "doc.body_toc_groupsection")
+  let bodyname = if d.hasToc and not d.isPureRst:
+                   groupsection.setLen 0
+                   "doc.body_toc_group"
                  elif d.hasToc: "doc.body_toc"
                  else: "doc.body_no_toc"
   content = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, bodyname), ["title",
-      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref"],
+      "tableofcontents", "moduledesc", "date", "time", "content", "deprecationMsg", "theindexhref", "body_toc_groupsection"],
       [title.rope, toc, d.modDesc, rope(getDateStr()),
-      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile)])
+      rope(getClockStr()), code, d.modDeprecationMsg, relLink(d.conf.outDir, d.destFile, theindexFname.RelativeFile), groupsection.rope])
   if optCompileOnly notin d.conf.globalOptions:
     # XXX what is this hack doing here? 'optCompileOnly' means raw output!?
     code = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.file"), [
@@ -1273,14 +1255,13 @@ proc genOutFile(d: PDoc): Rope =
 
 proc generateIndex*(d: PDoc) =
   if optGenIndex in d.conf.globalOptions:
-    let dir = d.conf.docOutDir(htmldocsDir)
+    let dir = d.conf.outDir
     createDir(dir)
     let dest = dir / changeFileExt(presentationPath(d.conf, AbsoluteFile d.filename), IndexExt)
     writeIndexFile(d[], dest.string)
 
 proc updateOutfile(d: PDoc, outfile: AbsoluteFile) =
   if d.module == nil or sfMainModule in d.module.flags: # nil for eg for commandRst2Html
-    if d.conf.outDir.isEmpty: d.conf.outDir = d.conf.docOutDir
     if d.conf.outFile.isEmpty:
       d.conf.outFile = outfile.relativeTo(d.conf.outDir)
       if isAbsolute(d.conf.outFile.string):
@@ -1293,7 +1274,7 @@ proc writeOutput*(d: PDoc, useWarning = false) =
     writeRope(stdout, content)
   else:
     template outfile: untyped = d.destFile
-    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt, htmldocsDir)
+    #let outfile = getOutFile2(d.conf, shortenDir(d.conf, filename), outExt)
     let dir = outfile.splitFile.dir
     createDir(dir)
     updateOutfile(d, outfile)

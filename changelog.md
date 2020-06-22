@@ -62,7 +62,6 @@
 
 - Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom` UDP functionality.
 
-- `paramCount` & `paramStr` are now defined in os.nim instead of nimscript.nim for nimscript/nimble.
 - `dollars.$` now works for unsigned ints with `nim js`
 
 - Improvements to the `bitops` module, including bitslices, non-mutating versions
@@ -98,6 +97,23 @@
 
 - `osproc.execCmdEx` now takes an optional `input` for stdin, `workingDir` and `env`
   parameters.
+
+- Add `ssl_config` module containing lists of secure ciphers as recommended by
+  [Mozilla OpSec](https://wiki.mozilla.org/Security/Server_Side_TLS)
+
+- `net.newContext` now defaults to the list of ciphers targeting
+  ["Intermediate compatibility"](https://wiki.mozilla.org/Security/Server_Side_TLS#Intermediate_compatibility_.28recommended.29)
+  per Mozilla's recommendation instead of `ALL`. This change should protect
+  users from the use of weak and insecure ciphers while still provides
+  adequate compatiblity with the majority of the Internet.
+
+- new module `std/jsonutils` with hookable `jsonTo,toJson,fromJson` for json serialization/deserialization of custom types.
+
+- new proc `heapqueue.find[T](heap: HeapQueue[T], x: T): int` to get index of element ``x``.
+- Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
+- Add `os.normalizeExe`, eg: `koch` => `./koch`.
+- `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
+
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
@@ -168,6 +184,8 @@ proc mydiv(a, b): int {.raises: [].} =
 - Added a new parameter mode, `out T` in order to strengthen the language's
   "definite assignment checking". Definite assignment checking is now turned
   on by default.
+- Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
+- Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
 
 ## Compiler changes

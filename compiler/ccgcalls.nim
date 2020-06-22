@@ -22,14 +22,20 @@ proc canRaiseDisp(p: BProc; n: PNode): bool =
     result = canRaiseConservative(n)
 
 proc preventNrvo(p: BProc; le, ri: PNode): bool =
-  proc locationEscapes(p: BProc; le: PNode): bool =
+  proc locationEscapes(p: BProc; le: PNode; inTryStmt: bool): bool =
     var n = le
     while true:
       # do NOT follow nkHiddenDeref here!
       case n.kind
       of nkSym:
         # we don't own the location so it escapes:
-        return n.sym.owner != p.prc
+        if n.sym.owner != p.prc:
+          return true
+        elif inTryStmt and sfUsedInFinallyOrExcept in n.sym.flags:
+          # it is also an observable store if the location is used
+          # in 'except' or 'finally'
+          return true
+        return false
       of nkDotExpr, nkBracketExpr, nkObjUpConv, nkObjDownConv,
           nkCheckedFieldExpr:
         n = n[0]
@@ -43,8 +49,10 @@ proc preventNrvo(p: BProc; le, ri: PNode): bool =
     for i in 1..<ri.len:
       let r = ri[i]
       if isPartOf(le, r) != arNo: return true
-    if canRaiseDisp(p, ri[0]) and
-        (p.nestedTryStmts.len > 0 or locationEscapes(p, le)):
+    # we use the weaker 'canRaise' here in order to prevent too many
+    # annoying warnings, see #14514
+    if canRaise(ri[0]) and
+        locationEscapes(p, le, p.nestedTryStmts.len > 0):
       message(p.config, le.info, warnObservableStores, $le)
 
 proc hasNoInit(call: PNode): bool {.inline.} =

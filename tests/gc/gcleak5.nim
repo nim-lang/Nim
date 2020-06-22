@@ -9,7 +9,7 @@ proc main =
   for ii in 0..50_000:
     #while true:
     var t = getTime()
-    var g = t.getGMTime()
+    var g = t.utc()
     #echo isOnStack(addr g)
 
     if i mod 100 == 0:

@@ -50,6 +50,7 @@
 
     assert jobs[0].priority == 1
 ]##
+import std/private/since
 
 type HeapQueue*[T] = object
   ## A heap queue, commonly known as a priority queue.
@@ -125,6 +126,12 @@ proc pop*[T](heap: var HeapQueue[T]): T =
   else:
     result = lastelt
 
+proc find*[T](heap: HeapQueue[T], x: T): int {.since: (1, 3).} =
+  ## Linear scan to find index of item ``x`` or -1 if not found.
+  result = -1
+  for i in 0 ..< heap.len:
+    if heap[i] == x: return i
+
 proc del*[T](heap: var HeapQueue[T], index: Natural) =
   ## Removes the element at `index` from `heap`, maintaining the heap invariant.
   swap(heap.data[^1], heap.data[index])
@@ -176,14 +183,6 @@ proc `$`*[T](heap: HeapQueue[T]): string =
     result.addQuoted(x)
   result.add("]")
 
-proc newHeapQueue*[T](): HeapQueue[T] {.deprecated:
-  "Deprecated since v0.20.0: use 'initHeapQueue' instead.".} =
-  initHeapQueue[T]()
-
-proc newHeapQueue*[T](heap: var HeapQueue[T]) {.deprecated:
-  "Deprecated since v0.20.0: use 'clear' instead.".} =
-  heap.clear()
-
 when isMainModule:
   proc toSortedSeq[T](h: HeapQueue[T]): seq[T] =
     var tmp = h
@@ -207,17 +206,19 @@ when isMainModule:
     heap.del(0)
     doAssert(heap[0] == 1)
 
-    heap.del(heap.data.find(7))
+    heap.del(heap.find(7))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 5, 6, 8, 9])
 
-    heap.del(heap.data.find(5))
+    heap.del(heap.find(5))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 6, 8, 9])
 
-    heap.del(heap.data.find(6))
+    heap.del(heap.find(6))
     doAssert(heap.toSortedSeq == @[1, 2, 3, 4, 8, 9])
 
-    heap.del(heap.data.find(2))
+    heap.del(heap.find(2))
     doAssert(heap.toSortedSeq == @[1, 3, 4, 8, 9])
+
+    doAssert(heap.find(2) == -1)
 
   block: # Test del last
     var heap = initHeapQueue[int]()

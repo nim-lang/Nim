@@ -4404,7 +4404,7 @@ caught by reference. Example:
   fn()
 
 **Note:** `getCurrentException()` and `getCurrentExceptionMsg()` are not available
-for imported exceptions. One needs to use the `except ImportedException as x:` syntax
+for imported exceptions from C++. One needs to use the `except ImportedException as x:` syntax
 and rely on functionality of the `x` object to get exception details.
 
 
@@ -5355,8 +5355,7 @@ twice:
   this process iterates.
 
 While macros enable advanced compile-time code transformations, they
-cannot change Nim's syntax. However, this is no real restriction because
-Nim's syntax is flexible enough anyway.
+cannot change Nim's syntax.
 
 Debug Example
 -------------
@@ -6259,25 +6258,6 @@ Syntactically it has to be used as a statement inside the loop:
 As the example shows ``computedGoto`` is mostly useful for interpreters. If
 the underlying backend (C compiler) does not support the computed goto
 extension the pragma is simply ignored.
-
-
-unroll pragma
--------------
-The ``unroll`` pragma can be used to tell the compiler that it should unroll
-a `for`:idx: or `while`:idx: loop for execution efficiency:
-
-.. code-block:: nim
-  proc searchChar(s: string, c: char): int =
-    for i in 0 .. s.high:
-      {.unroll: 4.}
-      if s[i] == c: return i
-    result = -1
-
-In the above example, the search loop is unrolled by a factor 4. The unroll
-factor can be left out too; the compiler then chooses an appropriate unroll
-factor.
-
-**Note**: Currently the compiler recognizes but ignores this pragma.
 
 
 immediate pragma
@@ -7500,9 +7480,9 @@ be used:
       deepCopy(perThread, someGlobal)
 
 
-Future directions:
+See also:
 
-- A shared GC'ed heap might be provided.
+- `Shared heap memory management. <gc.html>`_.
 
 
 Threadvar pragma

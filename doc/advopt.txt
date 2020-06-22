@@ -113,7 +113,7 @@ Advanced options:
   --skipUserCfg:on|off      do not read the user's configuration file
   --skipParentCfg:on|off    do not read the parent dirs' configuration files
   --skipProjCfg:on|off      do not read the project's configuration file
-  --gc:refc|markAndSweep|boehm|go|none|regions
+  --gc:refc|arc|orc|markAndSweep|boehm|go|none|regions
                             select the GC to use; default is 'refc'
   --exceptions:setjmp|cpp|goto|quirky
                             select the exception handling implementation

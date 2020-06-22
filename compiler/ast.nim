@@ -293,6 +293,7 @@ type
     sfInjectDestructors # whether the proc needs the 'injectdestructors' transformation
     sfNeverRaises     # proc can never raise an exception, not even OverflowDefect
                       # or out-of-memory
+    sfUsedInFinallyOrExcept  # symbol is used inside an 'except' or 'finally'
 
   TSymFlags* = set[TSymFlag]
 
@@ -658,7 +659,7 @@ type
     mNewString, mNewStringOfCap, mParseBiggestFloat,
     mMove, mWasMoved, mDestroy,
     mDefault, mUnown, mAccessEnv, mReset,
-    mArray, mOpenArray, mRange, mSet, mSeq, mOut, mVarargs,
+    mArray, mOpenArray, mRange, mSet, mSeq, mVarargs,
     mRef, mPtr, mVar, mDistinct, mVoid, mTuple,
     mOrdinal,
     mInt, mInt8, mInt16, mInt32, mInt64,
@@ -1294,7 +1295,7 @@ proc newIntTypeNode*(intVal: BiggestInt, typ: PType): PNode =
   of tyUInt16:  result = newNode(nkUInt16Lit)
   of tyUInt32:  result = newNode(nkUInt32Lit)
   of tyUInt64:  result = newNode(nkUInt64Lit)
-  of tyBool,tyEnum:
+  of tyBool, tyEnum:
     # XXX: does this really need to be the kind nkIntLit?
     result = newNode(nkIntLit)
   of tyStatic: # that's a pre-existing bug, will fix in another PR

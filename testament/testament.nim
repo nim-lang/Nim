@@ -13,8 +13,8 @@ import
   strutils, pegs, os, osproc, streams, json,
   backend, parseopt, specs, htmlgen, browsers, terminal,
   algorithm, times, md5, sequtils, azure
-
-include compiler/nodejs
+from std/sugar import dup
+import compiler/nodejs
 
 var useColors = true
 var backendLogging = true
@@ -135,7 +135,10 @@ proc nimcacheDir(filename, options: string, target: TTarget): string =
 
 proc prepareTestArgs(cmdTemplate, filename, options, nimcache: string,
                      target: TTarget, extraOptions = ""): seq[string] =
-  let options = options & " " & quoteShell("--nimCache:" & nimcache) & " " & extraOptions
+  var options = target.defaultOptions & " " & options
+  # improve pending https://github.com/nim-lang/Nim/issues/14343
+  if nimcache.len > 0: options.add " " & ("--nimCache:" & nimcache).quoteShell
+  options.add " " & extraOptions
   result = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
                       "options", options, "file", filename.quoteShell,
                       "filedir", filename.getFileDir()])
@@ -192,9 +195,7 @@ proc callCompiler(cmdTemplate, filename, options, nimcache: string,
 
 proc callCCompiler(cmdTemplate, filename, options: string,
                   target: TTarget): TSpec =
-  let c = parseCmdLine(cmdTemplate % ["target", targetToCmd[target],
-                       "options", options, "file", filename.quoteShell,
-                       "filedir", filename.getFileDir()])
+  let c = prepareTestArgs(cmdTemplate, filename, options, nimcache = "", target)
   var p = startProcess(command="gcc", args=c[5 .. ^1],
                        options={poStdErrToStdOut, poUsePath})
   let outp = p.outputStream
@@ -254,7 +255,8 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   # test.name is easier to find than test.name.extractFilename
   # A bit hacky but simple and works with tests/testament/tshould_not_work.nim
   var name = test.name.replace(DirSep, '/')
-  name.add " " & $target & test.options
+  name.add " " & $target
+  if test.options.len > 0: name.add " " & test.options
 
   let duration = epochTime() - test.startTime
   let success = if test.spec.timeout > 0.0 and duration > test.spec.timeout: reTimeout
@@ -450,12 +452,7 @@ proc testSpecHelper(r: var TResults, test: TTest, expected: TSpec,
             exeCmd = nodejs
             args = concat(@[exeFile], args)
           else:
-            if defined(posix) and not exeFile.contains('/'):
-              # "security" in Posix is actually just a euphemism
-              # for "unproductive arbitrary shit"
-              exeCmd = "./" & exeFile
-            else:
-              exeCmd = exeFile
+            exeCmd = exeFile.dup(normalizeExe)
             if expected.useValgrind:
               args = @["--error-exitcode=1"] & exeCmd & args
               exeCmd = "valgrind"

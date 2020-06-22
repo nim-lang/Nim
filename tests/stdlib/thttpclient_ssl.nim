@@ -61,6 +61,7 @@ when not defined(windows):
     var ssl: SslPtr = SSL_new(ctx.context)
     discard SSL_set_fd(ssl, client.getFd())
     log "server: accepting connection"
+    ErrClearError()
     if SSL_accept(ssl) <= 0:
       ERR_print_errors_fp(stderr)
     else:
@@ -124,7 +125,7 @@ when not defined(windows):
         let msg = getCurrentExceptionMsg()
         log "client: exception: " & msg
         # SSL_shutdown:shutdown while in init
-        if not (msg.contains("shutdown while in init") or msg.contains("alert number 48") or
-          msg.contains("routines:CONNECT_CR_CERT:certificate verify failed")):
+        if not (msg.contains("alert number 48") or
+          msg.contains("certificate verify failed")):
           echo "CVerifyPeer exception: " & msg
           check(false)

@@ -279,10 +279,10 @@ elif defined(posix) and not defined(nimscript):
     importc: "fcntl", header: "<fcntl.h>", varargs.}
 elif defined(windows):
   const HANDLE_FLAG_INHERIT = culong 0x1
-  proc getOsfhandle(fd: cint): FileHandle {.
+  proc getOsfhandle(fd: cint): int {.
     importc: "_get_osfhandle", header: "<io.h>".}
 
-  proc setHandleInformation(handle: FileHandle, mask, flags: culong): cint {.
+  proc setHandleInformation(handle: int, mask, flags: culong): cint {.
     importc: "SetHandleInformation", header: "<handleapi.h>".}
 
 const
@@ -318,7 +318,7 @@ proc getOsFileHandle*(f: File): FileHandle =
   ## returns the OS file handle of the file ``f``. This is only useful for
   ## platform specific programming.
   when defined(windows):
-    result = getOsfhandle(getFileHandle(f))
+    result = FileHandle getOsfhandle(cint getFileHandle(f))
   else:
     result = c_fileno(f)
 
@@ -339,7 +339,7 @@ when defined(nimdoc) or (defined(posix) and not defined(nimscript)) or defined(w
       flags = if inheritable: flags and not FD_CLOEXEC else: flags or FD_CLOEXEC
       result = c_fcntl(f, F_SETFD, flags) != -1
     else:
-      result = setHandleInformation(f, HANDLE_FLAG_INHERIT, culong inheritable) != 0
+      result = setHandleInformation(f.int, HANDLE_FLAG_INHERIT, culong inheritable) != 0
 
 proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
               benign.} =
@@ -647,7 +647,7 @@ proc open*(f: var File, filehandle: FileHandle,
   ##
   ## The passed file handle will no longer be inheritable.
   when not defined(nimInheritHandles) and declared(setInheritable):
-    let oshandle = when defined(windows): getOsfhandle(filehandle) else: filehandle
+    let oshandle = when defined(windows): FileHandle getOsfhandle(filehandle) else: filehandle
     if not setInheritable(oshandle, false):
       return false
   f = c_fdopen(filehandle, FormatOpen[mode])

@@ -36,12 +36,24 @@ To choose the memory management strategy use the ``--gc:`` switch.
   cause memory leaks, beware.
 
 - ``--gc:orc``. Same as ``-gc:arc`` but adds a cycle collector based on "trial deletion".
-  Unforunately that makes its performance profile hard to reason about so it is less
+  Unfortunately that makes its performance profile hard to reason about so it is less
   useful for hard realtime systems.
 
 - ``--gc:none``. No memory management strategy nor garbage collector. Allocated memory is
   simply never freed. You should use ``--gc:arc`` instead.
 
+
+================== ======== ================= ======================
+Memory Management  Heap     Reference Cycles  Command line switch
+================== ======== ================= ======================
+RefC               Local    Cycle Collector   ``--gc:refc``
+Mark & Sweep       Local    Cycle Collector   ``--gc:markAndSweep``
+ARC                Shared   Leak              ``--gc:arc``
+ORC                Shared   Cycle Collector   ``--gc:orc``
+Boehm              Shared   Cycle Collector   ``--gc:boehm``
+Go                 Shared   Cycle Collector   ``--gc:go``
+None               Manual   Manual            ``--gc:none``
+================== ======== ================= ======================
 
 JavaScript's garbage collector is used for the `JavaScript and NodeJS
 <backends.html#backends-the-javascript-target>`_ compilation targets.

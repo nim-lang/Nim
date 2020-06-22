@@ -87,6 +87,13 @@ const
   targetToExt*: array[TTarget, string] = ["nim.c", "nim.cpp", "nim.m", "js"]
   targetToCmd*: array[TTarget, string] = ["c", "cpp", "objc", "js"]
 
+proc defaultOptions*(a: TTarget): string =
+  case a
+  of targetJS: "-d:nodejs"
+    # once we start testing for `nim js -d:nimbrowser` (eg selenium or similar),
+    # we can adapt this logic; or a given js test can override with `-u:nodejs`.
+  else: ""
+
 when not declared(parseCfgBool):
   # candidate for the stdlib:
   proc parseCfgBool(s: string): bool =

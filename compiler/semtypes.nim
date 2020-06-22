@@ -905,8 +905,7 @@ proc semAnyRef(c: PContext; n: PNode; kind: TTypeKind; prev: PType): PType =
     if t.kind == tyTypeDesc and tfUnresolved notin t.flags:
       t = t.base
     if t.kind == tyVoid:
-      const kindToStr: array[tyPtr..tyRef, string] = ["ptr", "ref"]
-      localError(c.config, n.info, "type '$1 void' is not allowed" % kindToStr[kind])
+      localError(c.config, n.info, "type '$1 void' is not allowed" % kind.toHumanStr)
     result = newOrPrevType(kind, prev, c)
     var isNilable = false
     var wrapperKind = tyNone
@@ -1400,7 +1399,7 @@ proc semObjectTypeForInheritedGenericInst(c: PContext, n: PNode, t: PType) =
 proc semGeneric(c: PContext, n: PNode, s: PSym, prev: PType): PType =
   if s.typ == nil:
     localError(c.config, n.info, "cannot instantiate the '$1' $2" %
-                       [s.name.s, ($s.kind).substr(2).toLowerAscii])
+               [s.name.s, s.kind.toHumanStr])
     return newOrPrevType(tyError, prev, c)
 
   var t = s.typ
@@ -1815,7 +1814,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
       result = semContainer(c, n, tySequence, "seq", prev)
       if optSeqDestructors in c.config.globalOptions:
         incl result.flags, tfHasAsgn
-    of mOut: result = semContainer(c, n, tyOut, "out", prev)
     of mVarargs: result = semVarargs(c, n, prev)
     of mTypeDesc, mType, mTypeOf:
       result = makeTypeDesc(c, semTypeNode(c, n[1], nil))

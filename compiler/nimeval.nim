@@ -137,6 +137,7 @@ proc destroyInterpreter*(i: Interpreter) =
 proc runRepl*(r: TLLRepl;
               searchPaths: openArray[string];
               supportNimscript: bool) =
+  ## deadcode but please don't remove... might be revived
   var conf = newConfigRef()
   var cache = newIdentCache()
   var graph = newModuleGraph(cache, conf)
@@ -146,7 +147,7 @@ proc runRepl*(r: TLLRepl;
     if conf.libpath.isEmpty: conf.libpath = AbsoluteDir p
 
   conf.cmd = cmdInteractive
-  conf.errorMax = high(int)
+  conf.setErrorMaxHighMaybe
   initDefines(conf.symbols)
   defineSymbol(conf.symbols, "nimscript")
   if supportNimscript: defineSymbol(conf.symbols, "nimconfig")

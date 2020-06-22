@@ -330,7 +330,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
           sym.offset = accum.offset
         accum.inc(int(child.size))
       typ.paddingAtEnd = int16(accum.finish())
-      typ.size = accum.offset
+      typ.size = if accum.offset == 0: 1 else: accum.offset
       typ.align = int16(accum.maxAlign)
     except IllegalTypeRecursionError:
       typ.paddingAtEnd = szIllegalRecursion
@@ -388,7 +388,7 @@ proc computeSizeAlign(conf: ConfigRef; typ: PType) =
         typ.align = szUnknownSize
         typ.paddingAtEnd = szUnknownSize
       else:
-        typ.size = accum.offset
+        typ.size = if accum.offset == 0: 1 else: accum.offset
         typ.align = int16(accum.maxAlign)
         typ.paddingAtEnd = paddingAtEnd
     except IllegalTypeRecursionError:

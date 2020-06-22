@@ -140,6 +140,7 @@ proc genSetNode(p: BProc, n: PNode): Rope =
     result = genRawSetData(cs, size)
 
 proc getStorageLoc(n: PNode): TStorageLoc =
+  ## deadcode
   case n.kind
   of nkSym:
     case n.sym.kind

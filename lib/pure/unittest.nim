@@ -416,8 +416,7 @@ proc ensureInitialized() =
   if formatters.len == 0:
     formatters = @[OutputFormatter(defaultConsoleFormatter())]
 
-  if not disabledParamFiltering and not testsFilters.isValid:
-    testsFilters.init()
+  if not disabledParamFiltering:
     when declared(paramCount):
       # Read tests to run from the command line.
       for i in 1 .. paramCount():
@@ -712,7 +711,7 @@ macro expect*(exceptions: varargs[typed], body: untyped): untyped =
   ##  import math, random
   ##  proc defectiveRobot() =
   ##    randomize()
-  ##    case random(1..4)
+  ##    case rand(1..4)
   ##    of 1: raise newException(OSError, "CANNOT COMPUTE!")
   ##    of 2: discard parseInt("Hello World!")
   ##    of 3: raise newException(IOError, "I can't do that Dave.")
