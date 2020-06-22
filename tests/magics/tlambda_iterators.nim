@@ -5,6 +5,8 @@ D20190811T003919
 import std/lambdas
 import ./mlambda
 
+{.push experimental:"alias".}
+
 const elementType = alias2 lambdas.elementType2
 
 proc toSeq[T](a: T): auto =
@@ -164,5 +166,6 @@ proc testAll*() =
   testIssue4516()
   testArrowWrongSym2()
 
-when isMainModule:
-  testAll()
+testAll()
+
+{.pop.}

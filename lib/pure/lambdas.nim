@@ -3,10 +3,15 @@ D20190811T003919
 ]#
 
 type aliassym* {.magic: AliasSym.} # RENAME
+  # this does not require `experimental:"alias"`; doing so would
+  # prevent `{.push experimental:"alias".}` from working with `alias2`. However,
+  # it's harmless as `aliassym` can only be used with `alias2`, which itself
+  # requires `experimental:"alias"`.
 
 proc alias2*[T](x: T): aliassym {.magic: "Alias2", compileTime.} # TODO: RENAME
-  # Declares `name` as alias of `expr`, which must resolve to a symbol.
-  # Works with any symbol, e.g. iterator, template, macro, module, proc etc.
+  ## Declares `name` as alias of `expr`, which must resolve to a symbol.
+  ## Works with any symbol, e.g. iterator, template, macro, module, proc etc.
+  ## Requires {.push experimental:"alias".}
 
 import std/macros
 

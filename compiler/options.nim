@@ -166,7 +166,8 @@ type
       ## Note: this feature can't be localized with {.push.}
     vmopsDanger,
     strictFuncs,
-    views
+    views,
+    featureAlias = "alias",
 
   LegacyFeature* = enum
     allowSemcheckedAstModification,

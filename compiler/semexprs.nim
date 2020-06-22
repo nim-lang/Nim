@@ -2185,6 +2185,9 @@ proc semSizeof(c: PContext, n: PNode): PNode =
   result = foldSizeOf(c.config, n, n)
 
 proc semAlias2(c: PContext, n: PNode): PNode =
+  if featureAlias notin c.features:
+    localError(c.config, n.info, "requires '--experimental:$1'" % [$featureAlias])
+    return errorNode(c, n)
   var nodeOrigin = n[1]
   if nodeOrigin.kind == nkOpenSymChoice:
     # might originate from `semGenericStmtSymbol` which generates symChoice

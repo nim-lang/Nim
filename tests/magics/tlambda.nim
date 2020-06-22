@@ -1,5 +1,19 @@
 import std/lambdas
 
+template identity1(x): untyped = x
+template testAliasCompiles =
+  const identity2 = alias2 identity1
+  doAssert identity2(2) == identity1(2)
+
+doAssert not compiles(testAliasCompiles())
+
+{.push experimental:"alias".}
+
+block:
+  doAssert compiles(testAliasCompiles())
+  testAliasCompiles()
+  doAssert not compiles(identity2(2)) # alias is `gensym`, not `inject`
+
 # test import of alias
 from ./mlambda import mbar
 const mbar2 = alias2 mbar
@@ -413,5 +427,6 @@ proc testAll*() =
   test5702()
   test9679()
 
-when isMainModule:
-  testAll()
+testAll()
+
+{.pop.}
