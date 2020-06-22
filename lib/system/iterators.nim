@@ -1,21 +1,12 @@
 when defined(nimHasLentIterators) and not defined(nimWorkaround14447):
-  template lent2(T): untyped =
-    # xxx this should actually depend on T.sizeof >= thresLentSizeof
-    # with for example `thresLentSizeof ~= int.sizeof`:
-    # it may be faster to return by value for small sizes compared to
-    # forcing a deref; this could be adjusted using profiling.
-    # However, `simply using `when T.sizeof >= thresLentSizeof: lent T else: T`
-    # does not work, for a few reasons (eg importc types would cause CT error
-    # and we can't filter them out without compiles() or some magic.
-    lent T
+  template lent2(T): untyped = lent T
 else:
   template lent2(T): untyped = T
 
 iterator items*[T: not char](a: openArray[T]): lent2 T {.inline.} =
   ## Iterates over each item of `a`.
   var i = 0
-  let n = len(a)
-  while i < n:
+  while i < len(a):
     yield a[i]
     inc(i)
 
@@ -25,8 +16,7 @@ iterator items*[T: char](a: openArray[T]): T {.inline.} =
   # elements converted from a string (would fail in `tests/misc/thallo.nim`)
   # in any case there's no performance advantage of returning char by address.
   var i = 0
-  let n = len(a)
-  while i < n:
+  while i < len(a):
     yield a[i]
     inc(i)
 
