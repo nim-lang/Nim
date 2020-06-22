@@ -113,7 +113,7 @@
 - Add `rstgen.rstToLatex` convenience proc for `renderRstToOut` and `initRstGenerator` with `outLatex` output.
 - Add `os.normalizeExe`, eg: `koch` => `./koch`.
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
-
+- Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 
 ## Language changes
 - In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
