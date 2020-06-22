@@ -25,13 +25,13 @@
 ## ``AsyncHttpClient``:
 ##
 ## .. code-block:: Nim
-## import asyncdispatch, httpclient
+##   import asyncdispatch, httpclient
 ##
-## proc asyncProc(): Future[string] {.async.} =
-##   var client = newAsyncHttpClient()
-##   return await client.getContent("http://example.com")
+##   proc asyncProc(): Future[string] {.async.} =
+##     var client = newAsyncHttpClient()
+##     return await client.getContent("http://example.com")
 ##
-## echo waitFor asyncProc()
+##   echo waitFor asyncProc()
 ##
 ## The functionality implemented by ``HttpClient`` and ``AsyncHttpClient``
 ## is the same, so you can use whichever one suits you best in the examples
