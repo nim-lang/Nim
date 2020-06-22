@@ -181,9 +181,6 @@ proc mydiv(a, b): int {.raises: [].} =
 
 - Added the `thiscall` calling convention as specified by Microsoft.
 
-- Added a new parameter mode, `out T` in order to strengthen the language's
-  "definite assignment checking". Definite assignment checking is now turned
-  on by default.
 - Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
