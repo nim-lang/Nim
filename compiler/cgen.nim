@@ -682,6 +682,7 @@ proc loadDynamicLib(m: BModule, lib: PLib) =
     else:
       var p = newProc(nil, m)
       p.options = p.options - {optStackTrace}
+      p.flags.incl nimErrorFlagDisabled
       var dest: TLoc
       initLoc(dest, locTemp, lib.path, OnStack)
       dest.r = getTempName(m)

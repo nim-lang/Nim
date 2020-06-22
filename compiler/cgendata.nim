@@ -70,7 +70,8 @@ type
     hasCurFramePointer,
     noSafePoints,
     nimErrorFlagAccessed,
-    nimErrorFlagDeclared
+    nimErrorFlagDeclared,
+    nimErrorFlagDisabled
 
   TCProc = object             # represents C proc that is currently generated
     prc*: PSym                # the Nim proc that this C proc belongs to

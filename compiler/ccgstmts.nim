@@ -688,14 +688,15 @@ proc genBreakStmt(p: BProc, t: PNode) =
 
 proc raiseExit(p: BProc) =
   assert p.config.exc == excGoto
-  p.flags.incl nimErrorFlagAccessed
-  if p.nestedTryStmts.len == 0:
-    p.flags.incl beforeRetNeeded
-    # easy case, simply goto 'ret':
-    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
-  else:
-    lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
-      [p.nestedTryStmts[^1].label])
+  if nimErrorFlagDisabled notin p.flags:
+    p.flags.incl nimErrorFlagAccessed
+    if p.nestedTryStmts.len == 0:
+      p.flags.incl beforeRetNeeded
+      # easy case, simply goto 'ret':
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto BeforeRet_;$n", [])
+    else:
+      lineCg(p, cpsStmts, "if (NIM_UNLIKELY(*nimErr_)) goto LA$1_;$n",
+        [p.nestedTryStmts[^1].label])
 
 proc finallyActions(p: BProc) =
   if p.config.exc != excGoto and p.nestedTryStmts.len > 0 and p.nestedTryStmts[^1].inExcept:
