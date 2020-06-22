@@ -870,26 +870,26 @@ macro mkHandlerTplts(handlers: untyped): untyped =
   # The AST structure of *handlers[0]*:
   #
   # .. code-block::
-  # StmtList
-  #   Call
-  #     Ident "pkNonTerminal"
-  #     StmtList
-  #       Call
-  #         Ident "enter"
-  #         StmtList
-  #           <handler code block>
-  #       Call
-  #         Ident "leave"
-  #         StmtList
-  #           <handler code block>
-  #   Call
-  #     Ident "pkChar"
-  #     StmtList
-  #       Call
-  #         Ident "leave"
-  #         StmtList
-  #           <handler code block>
-  #   ...
+  #   StmtList
+  #     Call
+  #       Ident "pkNonTerminal"
+  #       StmtList
+  #         Call
+  #           Ident "enter"
+  #           StmtList
+  #             <handler code block>
+  #         Call
+  #           Ident "leave"
+  #           StmtList
+  #             <handler code block>
+  #     Call
+  #       Ident "pkChar"
+  #       StmtList
+  #         Call
+  #           Ident "leave"
+  #           StmtList
+  #             <handler code block>
+  #     ...
   proc mkEnter(hdName, body: NimNode): NimNode =
     template helper(hdName, body) {.dirty.} =
       template hdName(s, p, start) =
