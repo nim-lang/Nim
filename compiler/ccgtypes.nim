@@ -176,7 +176,7 @@ proc mapType(conf: ConfigRef; typ: PType): TCTypeKind =
       of 8: result = ctInt64
       else: result = ctInt32
   of tyRange: result = mapType(conf, typ[0])
-  of tyPtr, tyVar, tyOut, tyLent, tyRef:
+  of tyPtr, tyVar, tyLent, tyRef:
     var base = skipTypes(typ.lastSon, typedescInst)
     case base.kind
     of tyOpenArray, tyArray, tyVarargs, tyUncheckedArray: result = ctPtrToArray
@@ -225,7 +225,7 @@ proc isInvalidReturnType(conf: ConfigRef; rettype: PType): bool =
     case mapType(conf, rettype)
     of ctArray:
       result = not (skipTypes(rettype, typedescInst).kind in
-          {tyVar, tyOut, tyLent, tyRef, tyPtr})
+          {tyVar, tyLent, tyRef, tyPtr})
     of ctStruct:
       let t = skipTypes(rettype, typedescInst)
       if rettype.isImportedCppType or t.isImportedCppType: return false
@@ -440,7 +440,7 @@ $3endif$N
       """, [getTypeDescAux(m, t.skipTypes(abstractInst)[0], check), result, rope"#"])
 
 proc paramStorageLoc(param: PSym): TStorageLoc =
-  if param.typ.skipTypes({tyVar, tyOut, tyLent, tyTypeDesc}).kind notin {
+  if param.typ.skipTypes({tyVar, tyLent, tyTypeDesc}).kind notin {
           tyArray, tyOpenArray, tyVarargs}:
     result = OnStack
   else:
@@ -474,11 +474,11 @@ proc genProcParams(m: BModule, t: PType, rettype, params: var Rope,
     params.add(param.loc.r)
     # declare the len field for open arrays:
     var arr = param.typ
-    if arr.kind in {tyVar, tyOut, tyLent, tySink}: arr = arr.lastSon
+    if arr.kind in {tyVar, tyLent, tySink}: arr = arr.lastSon
     var j = 0
     while arr.kind in {tyOpenArray, tyVarargs}:
       # this fixes the 'sort' bug:
-      if param.typ.kind in {tyVar, tyOut, tyLent}: param.loc.storage = OnUnknown
+      if param.typ.kind in {tyVar, tyLent}: param.loc.storage = OnUnknown
       # need to pass hidden parameter:
       params.addf(", NI $1Len_$2", [param.loc.r, j.rope])
       inc(j)
@@ -700,8 +700,8 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     excl(check, t.id)
     return
   case t.kind
-  of tyRef, tyPtr, tyVar, tyOut, tyLent:
-    var star = if t.kind in {tyVar, tyOut} and tfVarIsPtr notin origTyp.flags and
+  of tyRef, tyPtr, tyVar, tyLent:
+    var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)
@@ -1372,7 +1372,7 @@ proc genTypeInfo(m: BModule, t: PType; info: TLineInfo): Rope =
   else:
     case t.kind
     of tyEmpty, tyVoid: result = rope"0"
-    of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyOut, tyLent:
+    of tyPointer, tyBool, tyChar, tyCString, tyString, tyInt..tyUInt64, tyVar, tyLent:
       genTypeInfoAuxBase(m, t, t, result, rope"0", info)
     of tyStatic:
       if t.n != nil: result = genTypeInfo(m, lastSon t, info)

@@ -102,7 +102,7 @@ proc semExprBranch(c: PContext, n: PNode; flags: TExprFlags = {}): PNode =
   result = semExpr(c, n, flags)
   if result.typ != nil:
     # XXX tyGenericInst here?
-    if result.typ.kind in {tyVar, tyOut, tyLent}: result = newDeref(result)
+    if result.typ.kind in {tyVar, tyLent}: result = newDeref(result)
 
 proc semExprBranchScope(c: PContext, n: PNode): PNode =
   openScope(c)
@@ -391,7 +391,7 @@ proc makeDeref(n: PNode): PNode =
     t = t.lastSon
   t = skipTypes(t, {tyGenericInst, tyAlias, tySink, tyOwned})
   result = n
-  if t.kind in {tyVar, tyOut, tyLent}:
+  if t.kind in {tyVar, tyLent}:
     result = newNodeIT(nkHiddenDeref, n.info, t[0])
     result.add n
     t = skipTypes(t[0], {tyGenericInst, tyAlias, tySink, tyOwned})
@@ -719,7 +719,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
   result = n
   let iterBase = n[^2].typ
   var iter = skipTypes(iterBase, {tyGenericInst, tyAlias, tySink, tyOwned})
-  var iterAfterVarLent = iter.skipTypes({tyLent, tyVar, tyOut})
+  var iterAfterVarLent = iter.skipTypes({tyLent, tyVar})
   # n.len == 3 means that there is one for loop variable
   # and thus no tuple unpacking:
   if iterAfterVarLent.kind != tyTuple or n.len == 3:
@@ -731,7 +731,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
           case iter.kind
-          of tyVar, tyOut, tyLent:
+          of tyVar, tyLent:
             v.typ = newTypeS(iter.kind, c)
             v.typ.add iterAfterVarLent[i]
             if tfVarIsPtr in iter.flags:
@@ -761,9 +761,9 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         var mutable = false
         var isLent = false
         case iter[i].kind
-        of tyVar, tyOut:
+        of tyVar:
           mutable = true
-          iter[i] = iter[i].skipTypes({tyVar, tyOut})
+          iter[i] = iter[i].skipTypes({tyVar})
         of tyLent:
           isLent = true
           iter[i] = iter[i].skipTypes({tyLent})
@@ -789,7 +789,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         var v = symForVar(c, n[i])
         if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
         case iter.kind
-        of tyVar, tyOut, tyLent:
+        of tyVar, tyLent:
           v.typ = newTypeS(iter.kind, c)
           v.typ.add iterAfterVarLent[i]
           if tfVarIsPtr in iter.flags:
@@ -811,7 +811,7 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
 proc implicitIterator(c: PContext, it: string, arg: PNode): PNode =
   result = newNodeI(nkCall, arg.info)
   result.add(newIdentNode(getIdent(c.cache, it), arg.info))
-  if arg.typ != nil and arg.typ.kind in {tyVar, tyOut, tyLent}:
+  if arg.typ != nil and arg.typ.kind in {tyVar, tyLent}:
     result.add newDeref(arg)
   else:
     result.add arg
@@ -1175,7 +1175,7 @@ proc checkCovariantParamsUsages(c: PContext; genericType: PType) =
     of tyTuple:
       for fieldType in t.sons:
         subresult traverseSubTypes(c, fieldType)
-    of tyPtr, tyRef, tyVar, tyOut, tyLent:
+    of tyPtr, tyRef, tyVar, tyLent:
       if t.base.kind == tyGenericParam: return true
       return traverseSubTypes(c, t.base)
     of tyDistinct, tyAlias, tySink, tyOwned:
@@ -1303,7 +1303,7 @@ proc checkForMetaFields(c: PContext; n: PNode) =
   of nkSym:
     let t = n.sym.typ
     case t.kind
-    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyOut, tyLent, tyPtr, tyRef,
+    of tySequence, tySet, tyArray, tyOpenArray, tyVar, tyLent, tyPtr, tyRef,
        tyProc, tyGenericInvocation, tyGenericInst, tyAlias, tySink, tyOwned:
       let start = ord(t.kind in {tyGenericInvocation, tyGenericInst})
       for i in start..<t.len:
@@ -1677,7 +1677,7 @@ proc bindTypeHook(c: PContext; s: PSym; n: PNode; op: TTypeAttachedOp) =
                t.len >= 2 and t[0] == nil
 
   if cond:
-    var obj = t[1].skipTypes({tyVar, tyOut})
+    var obj = t[1].skipTypes({tyVar})
     while true:
       incl(obj.flags, tfHasAsgn)
       if obj.kind in {tyGenericBody, tyGenericInst}: obj = obj.lastSon
@@ -1814,7 +1814,7 @@ proc semMethodPrototype(c: PContext; s: PSym; n: PNode) =
     for col in 1..<tt.len:
       let t = tt[col]
       if t != nil and t.kind == tyGenericInvocation:
-        var x = skipTypes(t[0], {tyVar, tyOut, tyLent, tyPtr, tyRef, tyGenericInst,
+        var x = skipTypes(t[0], {tyVar, tyLent, tyPtr, tyRef, tyGenericInst,
                                       tyGenericInvocation, tyGenericBody,
                                       tyAlias, tySink, tyOwned})
         if x.kind == tyObject and t.len-1 == n[genericParamsPos].len:

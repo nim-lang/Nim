@@ -50,7 +50,7 @@ proc typeNeedsNoDeepCopy(t: PType): bool =
   # note that seq[T] is fine, but 'var seq[T]' is not, so we need to skip 'var'
   # for the stricter check and likewise we can skip 'seq' for a less
   # strict check:
-  if t.kind in {tyVar, tyOut, tyLent, tySequence}: t = t.lastSon
+  if t.kind in {tyVar, tyLent, tySequence}: t = t.lastSon
   result = not containsGarbageCollectedRef(t)
 
 proc addLocalVar(g: ModuleGraph; varSection, varInit: PNode; owner: PSym; typ: PType;
@@ -202,7 +202,7 @@ proc setupArgsForConcurrency(g: ModuleGraph; n: PNode; objType: PType;
     # 'tyOpenArray':
     var argType = n[i].typ.skipTypes(abstractInst)
     if i < formals.len:
-      if formals[i].typ.kind in {tyVar, tyOut, tyLent}:
+      if formals[i].typ.kind in {tyVar, tyLent}:
         localError(g.config, n[i].info, "'spawn'ed function cannot have a 'var' parameter")
       if formals[i].typ.kind in {tyTypeDesc, tyStatic}:
         continue

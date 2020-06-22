@@ -92,7 +92,7 @@ proc mapType(conf: ConfigRef, t: ast.PType): ptr libffi.Type =
     else: result = nil
   of tyFloat, tyFloat64: result = addr libffi.type_double
   of tyFloat32: result = addr libffi.type_float
-  of tyVar, tyOut, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyUntyped,
+  of tyVar, tyLent, tyPointer, tyPtr, tyRef, tyCString, tySequence, tyString, tyUntyped,
      tyTyped, tyTypeDesc, tyProc, tyArray, tyStatic, tyNil:
     result = addr libffi.type_pointer
   of tyDistinct, tyAlias, tySink:
@@ -118,7 +118,7 @@ template `+!`(x, y: untyped): untyped =
 proc packSize(conf: ConfigRef, v: PNode, typ: PType): int =
   ## computes the size of the blob
   case typ.kind
-  of tyPtr, tyRef, tyVar, tyOut, tyLent:
+  of tyPtr, tyRef, tyVar, tyLent:
     if v.kind in {nkNilLit, nkPtrLit}:
       result = sizeof(pointer)
     else:
@@ -215,7 +215,7 @@ proc pack(conf: ConfigRef, v: PNode, typ: PType, res: pointer) =
       awr(cstring, cstring(v.strVal))
     else:
       globalError(conf, v.info, "cannot map pointer/proc value to FFI")
-  of tyPtr, tyRef, tyVar, tyOut, tyLent:
+  of tyPtr, tyRef, tyVar, tyLent:
     if v.kind == nkNilLit:
       # nothing to do since the memory is 0 initialized anyway
       discard
@@ -370,7 +370,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
       result = n
     else:
       awi(nkPtrLit, cast[ByteAddress](p))
-  of tyPtr, tyRef, tyVar, tyOut, tyLent:
+  of tyPtr, tyRef, tyVar, tyLent:
     let p = rd(pointer, x)
     if p.isNil:
       setNil()
@@ -401,7 +401,7 @@ proc unpack(conf: ConfigRef, x: pointer, typ: PType, n: PNode): PNode =
     globalError(conf, n.info, "cannot map value from FFI " & typeToString(typ))
 
 proc fficast*(conf: ConfigRef, x: PNode, destTyp: PType): PNode =
-  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyOut, tyLent, tyPointer,
+  if x.kind == nkPtrLit and x.typ.kind in {tyPtr, tyRef, tyVar, tyLent, tyPointer,
                                            tyProc, tyCString, tyString,
                                            tySequence}:
     result = newNodeIT(x.kind, x.info, destTyp)

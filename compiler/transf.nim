@@ -422,7 +422,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       result = n[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
-      elif n.typ.skipTypes(abstractInst).kind in {tyVar, tyOut}:
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
         result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
@@ -432,7 +432,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       result = n[0]
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
-      elif n.typ.skipTypes(abstractInst).kind in {tyVar, tyOut}:
+      elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
         result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   else:
     if n[0].kind == a or n[0].kind == b:
@@ -580,7 +580,7 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
         return paFastAsgn
     result = paDirectMapping
   else:
-    if skipTypes(formal, abstractInst).kind in {tyVar, tyOut, tyLent}: result = paVarAsgn
+    if skipTypes(formal, abstractInst).kind in {tyVar, tyLent}: result = paVarAsgn
     else: result = paFastAsgn
 
 proc findWrongOwners(c: PTransf, n: PNode) =
@@ -667,7 +667,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
-      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar, tyOut})
+      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:

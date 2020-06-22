@@ -197,7 +197,7 @@ proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   if n.len == 1:
     result = newOrPrevType(kind, prev, c)
     var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
-    if base.kind in {tyVar, tyOut}:
+    if base.kind == tyVar:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
     addSonSkipIntLit(result, base)
@@ -1057,7 +1057,7 @@ proc liftParamType(c: PContext, procKind: TSymKind, genericParams: PNode,
     result = recurse(paramType.base)
 
   of tySequence, tySet, tyArray, tyOpenArray,
-     tyVar, tyOut, tyLent, tyPtr, tyRef, tyProc:
+     tyVar, tyLent, tyPtr, tyRef, tyProc:
     # XXX: this is a bit strange, but proc(s: seq)
     # produces tySequence(tyGenericParam, tyNone).
     # This also seems to be true when creating aliases
@@ -1521,7 +1521,6 @@ proc freshType(res, prev: PType): PType {.inline.} =
 template modifierTypeKindOfNode(n: PNode): TTypeKind =
   case n.kind
   of nkVarTy: tyVar
-  of nkOutTy: tyOut
   of nkRefTy: tyRef
   of nkPtrTy: tyPtr
   of nkStaticTy: tyStatic
@@ -1832,7 +1831,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
     of mVar:
       result = newOrPrevType(tyVar, prev, c)
       var base = semTypeNode(c, n[1], nil)
-      if base.kind in {tyVar, tyOut, tyLent}:
+      if base.kind in {tyVar, tyLent}:
         localError(c.config, n.info, "type 'var var' is not allowed")
         base = base[0]
       addSonSkipIntLit(result, base)
@@ -1917,7 +1916,6 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
   of nkVarTy: result = semVarOutType(c, n, prev, tyVar)
-  of nkOutTy: result = semVarOutType(c, n, prev, tyOut)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy: result = semStaticType(c, n[0], prev)
   of nkIteratorTy:
@@ -2047,8 +2045,6 @@ proc processMagicType(c: PContext, m: PSym) =
     of "owned":
       setMagicType(c.config, m, tyOwned, c.config.target.ptrSize)
       incl m.typ.flags, tfHasOwned
-    of "out":
-      setMagicType(c.config, m, tyOut, c.config.target.ptrSize)
     else: localError(c.config, m.info, errTypeExpected)
   else: localError(c.config, m.info, errTypeExpected)
 

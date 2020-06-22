@@ -50,7 +50,7 @@ proc fillBodyTup(c: var TLiftCtx; t: PType; body, x, y: PNode) =
 
 proc dotField(x: PNode, f: PSym): PNode =
   result = newNodeI(nkDotExpr, x.info, 2)
-  if x.typ.skipTypes(abstractInst).kind in {tyVar, tyOut}:
+  if x.typ.skipTypes(abstractInst).kind == tyVar:
     result[0] = x.newDeref
   else:
     result[0] = x
@@ -248,7 +248,7 @@ proc newHookCall(g: ModuleGraph; op: PSym; x, y: PNode): PNode =
   #  localError(c.config, x.info, "usage of '$1' is a user-defined error" % op.name.s)
   result = newNodeI(nkCall, x.info)
   result.add newSymNode(op)
-  if op.typ.sons[1].kind in {tyVar, tyOut}:
+  if op.typ.sons[1].kind == tyVar:
     result.add genAddr(g, x)
   else:
     result.add x

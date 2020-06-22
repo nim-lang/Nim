@@ -249,7 +249,7 @@ proc semConstructFields(c: PContext, recNode: PNode,
           else:
             badDiscriminatorError()
         elif discriminatorVal.sym.kind notin {skLet, skParam} or
-            discriminatorVal.sym.typ.kind in {tyVar, tyOut}:
+            discriminatorVal.sym.typ.kind in {tyVar}:
           localError(c.config, discriminatorVal.info,
             "runtime discriminator must be immutable if branch fields are " &
             "initialized, a 'let' binding is required.")

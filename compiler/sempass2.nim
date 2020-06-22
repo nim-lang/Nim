@@ -87,8 +87,9 @@ proc `==`(a, b: TLockLevel): bool {.borrow.}
 proc max(a, b: TLockLevel): TLockLevel {.borrow.}
 
 proc isLocalVar(a: PEffects, s: PSym): bool =
-  s.kind in {skVar, skResult, skParam} and sfGlobal notin s.flags and
-    s.owner == a.owner and s.typ != nil and (s.kind != skParam or s.typ.kind == tyOut)
+  # and (s.kind != skParam or s.typ.kind == tyOut)
+  s.kind in {skVar, skResult} and sfGlobal notin s.flags and
+    s.owner == a.owner and s.typ != nil
 
 proc getLockLevel(t: PType): TLockLevel =
   var t = t
@@ -575,7 +576,7 @@ proc trackOperandForIndirectCall(tracked: PEffects, n: PNode, paramType: PType; 
         markGcUnsafe(tracked, a)
       elif tfNoSideEffect notin op.flags:
         markSideEffect(tracked, a)
-  if paramType != nil and paramType.kind in {tyVar, tyOut}:
+  if paramType != nil and paramType.kind in {tyVar}:
     invalidateFacts(tracked.guards, n)
     if n.kind == nkSym and isLocalVar(tracked, n.sym):
       makeVolatile(tracked, n.sym)
@@ -813,7 +814,7 @@ proc trackCall(tracked: PEffects; n: PNode) =
     let opKind = find(AttachedOpToStr, a.sym.name.s.normalize)
     if opKind != -1:
       # rebind type bounds operations after createTypeBoundOps call
-      let t = n[1].typ.skipTypes({tyAlias, tyVar, tyOut})
+      let t = n[1].typ.skipTypes({tyAlias, tyVar})
       if a.sym != t.attachedOps[TTypeAttachedOp(opKind)]:
         createTypeBoundOps(tracked, t, n.info)
         let op = t.attachedOps[TTypeAttachedOp(opKind)]
@@ -828,11 +829,11 @@ proc trackCall(tracked: PEffects; n: PNode) =
       case op[i].kind
       of tySink:
         checkForSink(tracked.config, tracked.owner, n[i])
-      of tyOut:
-        # consider this case: p(out x, x); we want to remark that 'x' is not
-        # initialized until after the call. Since we do this after we analysed the
-        # call, this is fine.
-        initVar(tracked, n[i].skipAddr, false)
+      #of tyOut:
+      # consider this case: p(out x, x); we want to remark that 'x' is not
+      # initialized until after the call. Since we do this after we analysed the
+      # call, this is fine.
+      # initVar(tracked, n[i].skipAddr, false)
       else: discard
 
 proc track(tracked: PEffects, n: PNode) =
@@ -1203,8 +1204,9 @@ proc trackProc*(c: PContext; s: PSym, body: PNode) =
       if isSinkTypeForParam(typ) or
           (t.config.selectedGC in {gcArc, gcOrc} and isClosure(typ.skipTypes(abstractInst))):
         createTypeBoundOps(t, typ, param.info)
-      if typ.kind == tyOut and param.id notin t.init:
-        message(g.config, param.info, warnProveInit, param.name.s)
+      when false:
+        if typ.kind == tyOut and param.id notin t.init:
+          message(g.config, param.info, warnProveInit, param.name.s)
 
   if not isEmptyType(s.typ[0]) and
      (s.typ[0].requiresInit or s.typ[0].skipTypes(abstractInst).kind == tyVar) and

@@ -209,7 +209,7 @@ type
     nkPtrTy,              # ``ptr T``
     nkVarTy,              # ``var T``
     nkConstTy,            # ``const T``
-    nkOutTy,              # ``out T``
+    nkMutableTy,          # ``mutable T``
     nkDistinctTy,         # distinct type
     nkProcTy,             # proc type
     nkIteratorTy,         # iterator type
@@ -434,7 +434,7 @@ type
       # instantiation and prior to this it has the potential to
       # be any type.
 
-    tyOut
+    tyOptDeprecated
       # 'out' parameter. Comparable to a 'var' parameter but every
       # path must assign a value to it before it can be read from.
 
@@ -460,7 +460,7 @@ const
   tyMetaTypes* = {tyGenericParam, tyTypeDesc, tyUntyped} + tyTypeClasses
   tyUserTypeClasses* = {tyUserTypeClass, tyUserTypeClassInst}
   # consider renaming as `tyAbstractVarRange`
-  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyOut, tyDistinct, tyOrdinal,
+  abstractVarRange* = {tyGenericInst, tyRange, tyVar, tyDistinct, tyOrdinal,
                        tyTypeDesc, tyAlias, tyInferred, tySink, tyOwned}
 
 type
@@ -985,13 +985,13 @@ const
     tyGenericParam}
 
   StructuralEquivTypes*: TTypeKinds = {tyNil, tyTuple, tyArray,
-    tySet, tyRange, tyPtr, tyRef, tyVar, tyOut, tyLent, tySequence, tyProc, tyOpenArray,
+    tySet, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc, tyOpenArray,
     tyVarargs}
 
   ConcreteTypes*: TTypeKinds = { # types of the expr that may occur in::
                                  # var x = expr
     tyBool, tyChar, tyEnum, tyArray, tyObject,
-    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyOut, tyLent, tySequence, tyProc,
+    tySet, tyTuple, tyRange, tyPtr, tyRef, tyVar, tyLent, tySequence, tyProc,
     tyPointer,
     tyOpenArray, tyString, tyCString, tyInt..tyInt64, tyFloat..tyFloat128,
     tyUInt..tyUInt64}
