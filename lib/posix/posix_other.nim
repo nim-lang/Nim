@@ -32,7 +32,12 @@ type
   SocketHandle* = distinct cint # The type used to represent socket descriptors
 
 type
-  Time* {.importc: "time_t", header: "<time.h>".} = distinct clong
+  Time* {.importc: "time_t", header: "<time.h>".} = distinct (
+    when defined(nimUse64BitCTime):
+      int64
+    else:
+      clong
+  )
 
   Timespec* {.importc: "struct timespec",
                header: "<time.h>", final, pure.} = object ## struct timespec
