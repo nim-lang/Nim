@@ -977,6 +977,9 @@ proc genProcBody(p: BProc; procBody: PNode) =
     p.blocks[0].sections[cpsLocals].add(ropecg(p.module, "NIM_BOOL* nimErr_;$n", []))
     p.blocks[0].sections[cpsInit].add(ropecg(p.module, "nimErr_ = #nimErrorFlag();$n", []))
 
+proc isNoReturn(m: BModule; s: PSym): bool {.inline.} =
+  sfNoReturn in s.flags and m.config.exc != excGoto
+
 proc genProcAux(m: BModule, prc: PSym) =
   var p = newProc(prc, m)
   var header = genProcHeader(m, prc)
@@ -1031,7 +1034,7 @@ proc genProcAux(m: BModule, prc: PSym) =
 
   var generatedProc: Rope
   generatedProc.genCLineDir prc.info, m.config
-  if sfNoReturn in prc.flags:
+  if isNoReturn(p.module, prc):
     if hasDeclspec in extccomp.CC[p.config.cCompiler].props:
       header = "__declspec(noreturn) " & header
   if sfPure in prc.flags:
@@ -1094,13 +1097,13 @@ proc genProcPrototype(m: BModule, sym: PSym) =
     let asPtr = isReloadable(m, sym)
     var header = genProcHeader(m, sym, asPtr)
     if not asPtr:
-      if sfNoReturn in sym.flags and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
+      if isNoReturn(m, sym) and hasDeclspec in extccomp.CC[m.config.cCompiler].props:
         header = "__declspec(noreturn) " & header
       if sym.typ.callConv != ccInline and requiresExternC(m, sym):
         header = "extern \"C\" " & header
       if sfPure in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
         header.add(" __attribute__((naked))")
-      if sfNoReturn in sym.flags and hasAttribute in CC[m.config.cCompiler].props:
+      if isNoReturn(m, sym) and hasAttribute in CC[m.config.cCompiler].props:
         header.add(" __attribute__((noreturn))")
     m.s[cfsProcHeaders].add(ropecg(m, "$1;$N", [header]))
 
