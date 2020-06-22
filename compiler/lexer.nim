@@ -946,11 +946,11 @@ proc isUnary*(tok: TToken): bool =
   tok.strongSpaceB == 0 and
   tok.strongSpaceA > 0
 
-proc getPrecedence*(tok: TToken): int =
+proc getPrecedence*(tok: TToken, isUnary = false): int =
   ## Calculates the precedence of the given token.
   case tok.tokType
   of tkOpr:
-    if isUnary(tok): return 12
+    if isUnary(tok) or isUnary: return 12
     let relevantChar = tok.ident.s[0]
 
     # arrow like?

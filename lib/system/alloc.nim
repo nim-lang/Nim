@@ -183,13 +183,13 @@ proc mappingInsert(r: int): tuple[fl, sl: int] {.inline.} =
 template mat(): untyped = a.matrix[fl][sl]
 
 proc findSuitableBlock(a: MemRegion; fl, sl: var int): PBigChunk {.inline.} =
-  let tmp = a.slBitmap[fl] and (not 0u32 shl sl)
+  let tmp = a.slBitmap[fl] and ((not 0u32) shl sl)
   result = nil
   if tmp != 0:
     sl = lsbit(tmp)
     result = mat()
   else:
-    fl = lsbit(a.flBitmap and (not 0u32 shl (fl + 1)))
+    fl = lsbit(a.flBitmap and ((not 0u32) shl (fl + 1)))
     if fl > 0:
       sl = lsbit(a.slBitmap[fl])
       result = mat()

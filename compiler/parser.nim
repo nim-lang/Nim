@@ -1247,7 +1247,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
   #|         / 'bind' primary
   if isOperator(p.tok):
     let isSigil = isSigilLike(p.tok)
-    let opPrec = getPrecedence(p.tok)
+    let opPrec = getPrecedence(p.tok, true)
     result = newNodeP(nkPrefix, p)
     var a = newIdentNodeP(p.tok.ident, p)
     result.add(a)
@@ -1259,9 +1259,7 @@ proc primary(p: var TParser, mode: TPrimaryMode): PNode =
       result.add(primary(p, pmSkipSuffix))
       result = primarySuffix(p, result, baseInd, mode)
     else:
-      result.add(primary(p, pmNormal))
-      if getPrecedence(p.tok) >= opPrec:
-        result[^1] = parseOperators(p, result[^1], getPrecedence(p.tok), mode)
+      result.add simpleExprAux(p, opPrec, pmNormal)
     return
 
   case p.tok.tokType
