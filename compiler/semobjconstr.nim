@@ -137,7 +137,6 @@ iterator directFieldsInRecList(recList: PNode): PNode =
 template quoteStr(s: string): string = "'" & s & "'"
 
 proc fieldsPresentInInitExpr(c: PContext, fieldsRecList, initExpr: PNode): string =
-  result = ""
   for field in directFieldsInRecList(fieldsRecList):
     let assignment = locateFieldInInitExpr(c, field.sym, initExpr)
     if assignment != nil:

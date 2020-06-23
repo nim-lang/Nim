@@ -339,7 +339,6 @@ proc argTypeToString(arg: PNode; prefer: TPreferedDesc): string =
 
 proc describeArgs*(c: PContext, n: PNode, startIdx = 1;
                    prefer: TPreferedDesc = preferName): string =
-  result = ""
   for i in startIdx..<n.len:
     var arg = n[i]
     if n[i].kind == nkExprEqExpr:

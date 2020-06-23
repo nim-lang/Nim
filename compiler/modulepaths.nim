@@ -91,8 +91,7 @@ when false:
             if result.len > 0: return result
 
   proc scriptableImport(pkg, sub: string; info: TLineInfo): string =
-    result = resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
-    if result.isNil: result = ""
+    resolveDollar(gProjectFull, info.toFullPath(), pkg, sub, info)
 
   proc lookupPackage(pkg, subdir: PNode): string =
     let sub = if subdir != nil: renderTree(subdir, {renderNoComments}).replace(" ") else: ""
@@ -103,7 +102,6 @@ when false:
       result = scriptableImport(pkg.ident.s, sub, pkg.info)
     else:
       localError(pkg.info, "package name must be an identifier or string literal")
-      result = ""
 
 proc getModuleName*(conf: ConfigRef; n: PNode): string =
   # This returns a short relative module name without the nim extension
@@ -130,7 +128,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
           result = lookupPackage(n1[1], n[2])
         else:
           localError(n.info, "only '/' supported with $package notation")
-          result = ""
     else:
       let modname = getModuleName(conf, n[2])
       # hacky way to implement 'x / y /../ z':
@@ -152,7 +149,6 @@ proc getModuleName*(conf: ConfigRef; n: PNode): string =
     result = getModuleName(conf, n[0])
   else:
     localError(conf, n.info, "invalid module name: '$1'" % n.renderTree)
-    result = ""
 
 proc checkModuleName*(conf: ConfigRef; n: PNode; doLocalError=true): FileIndex =
   # This returns the full canonical path for a given module import

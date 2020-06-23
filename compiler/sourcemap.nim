@@ -89,7 +89,6 @@ let integers = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
 
 
 proc encode*(i: int): string =
-  result = ""
   var n = i
   if n < 0:
     n = (-n shl 1) or 1
@@ -244,7 +243,6 @@ proc serializeMappings(map: SourceMapGenerator, mappings: seq[Mapping]): string 
   var previous = Mapping(generated: (line: 1, column: 0), original: (line: 0, column: 0), name: "", source: "")
   var previousSourceId = 0
   var previousNameId = 0
-  result = ""
   var next = ""
   var nameId = 0
   var sourceId = 0

@@ -65,7 +65,6 @@ proc hexChar(c: char, xi: var int) =
 
 proc decodeStr*(s: cstring, pos: var int): string =
   var i = pos
-  result = ""
   while true:
     case s[i]
     of '\\':

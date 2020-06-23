@@ -471,7 +471,6 @@ proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
   proc typeToString(typ: PType, prefer: TPreferedDesc = preferName): string =
     let prefer = getPrefer(prefer)
     let t = typ
-    result = ""
     if t == nil: return
     if prefer in preferToResolveSymbols and t.sym != nil and
          sfAnon notin t.sym.flags and t.kind != tySequence:

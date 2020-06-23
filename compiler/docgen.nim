@@ -301,7 +301,6 @@ proc ropeFormatNamedVars(conf: ConfigRef; frmt: FormatStr,
     if i - 1 >= start: result.add(substr(frmt, start, i - 1))
 
 proc genComment(d: PDoc, n: PNode): string =
-  result = ""
   var dummyHasToc: bool
   if n.comment.len > 0:
     var comment2 = n.comment
@@ -342,7 +341,6 @@ proc getPlainDocstring(n: PNode): string =
   ## You need to call this before genRecComment, whose side effects are removal
   ## of comments from the tree. The proc will recursively scan and return all
   ## the concatenated ``##`` comments of the node.
-  result = ""
   if n == nil: return
   if startsWith(n.comment, "##"):
     result = n.comment
@@ -458,7 +456,6 @@ proc writeExample(d: PDoc; ex: PNode, rdoccmd: string) =
   d.exampleGroups[rdoccmd].code.add "import r\"$1\"\n" % outp.string
 
 proc runAllExamples(d: PDoc) =
-  let backend = d.conf.backend
   # This used to be: `let backend = if isDefined(d.conf, "js"): "js"` (etc), however
   # using `-d:js` (etc) cannot work properly, eg would fail with `importjs`
   # since semantics are affected by `config.backend`, not by isDefined(d.conf, "js")
@@ -522,20 +519,6 @@ proc prepareExample(d: PDoc; n: PNode): tuple[rdoccmd: string, code: string] =
     for imp in imports: runnableExamples.add imp
     runnableExamples.add newTree(nkBlockStmt, newNode(nkEmpty), copyTree savedLastSon)
 
-proc renderNimCodeOld(d: PDoc, n: PNode, dest: var Rope) =
-  ## this is a rather hacky way to get rid of the initial indentation
-  ## that the renderer currently produces:
-  # deadcode
-  var i = 0
-  var body = n.lastSon
-  if body.len == 1 and body.kind == nkStmtList and
-      body.lastSon.kind == nkStmtList:
-    body = body.lastSon
-  for b in body:
-    if i > 0: dest.add "\n"
-    inc i
-    nodeToHighlightedHtml(d, b, dest, {renderRunnableExamples}, nil)
-
 type RunnableState = enum
   rsStart
   rsComment
@@ -575,12 +558,9 @@ proc getAllRunnableExamplesImpl(d: PDoc; n: PNode, dest: var Rope, state: Runnab
       inc d.listingCounter
       let id = $d.listingCounter
       dest.add(d.config.getOrDefault"doc.listing_start" % [id, "langNim"])
-      when true:
-        var dest2 = ""
-        renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
-        dest.add dest2
-      else:
-        renderNimCodeOld(d, n, dest)
+      var dest2 = ""
+      renderNimCode(dest2, code, isLatex = d.conf.cmd == cmdRst2tex)
+      dest.add dest2
       dest.add(d.config.getOrDefault"doc.listing_end" % id)
       return rsRunnable
   else: discard

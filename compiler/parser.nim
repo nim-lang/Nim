@@ -187,7 +187,6 @@ const
   errInvalidIndentation = "invalid indentation"
   errIdentifierExpected = "identifier expected, but got '$1'"
   errExprExpected = "expression expected, but found '$1'"
-  errTokenExpected = "'$1' expected"
 
 proc skipInd(p: var Parser) =
   if p.tok.indent >= 0:

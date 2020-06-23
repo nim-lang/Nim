@@ -199,7 +199,7 @@ proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
     result.commentOffsetB = tok.commentOffsetB
 
 proc isKeyword*(kind: TokType): bool =
-  result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
+  (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
 template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
 
@@ -215,20 +215,19 @@ proc isNimIdentifier*(s: string): bool =
 
 proc `$`*(tok: Token): string =
   case tok.tokType
-  of tkIntLit..tkInt64Lit: result = $tok.iNumber
-  of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
-  of tkInvalid, tkStrLit..tkCharLit, tkComment: result = tok.literal
-  of tkParLe..tkColon, tkEof, tkAccent:
-    result = $tok.tokType
+  of tkIntLit..tkInt64Lit: $tok.iNumber
+  of tkFloatLit..tkFloat64Lit: $tok.fNumber
+  of tkInvalid, tkStrLit..tkCharLit, tkComment: tok.literal
+  of tkParLe..tkColon, tkEof, tkAccent: $tok.tokType
   else:
     if tok.ident != nil:
-      result = tok.ident.s
+      tok.ident.s
     else:
-      result = ""
+      ""
 
 proc prettyTok*(tok: Token): string =
-  if isKeyword(tok.tokType): result = "keyword " & tok.ident.s
-  else: result = $tok
+  if isKeyword(tok.tokType): "keyword " & tok.ident.s
+  else: $tok
 
 proc printTok*(conf: ConfigRef; tok: Token) =
   msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
@@ -801,12 +800,6 @@ proc getEscapedChar(L: var Lexer, tok: var Token) =
     if (xi <= 255): tok.literal.add(chr(xi))
     else: lexMessage(L, errGenerated, "invalid character constant")
   else: lexMessage(L, errGenerated, "invalid character constant")
-
-proc newString(s: cstring, len: int): string =
-  ## XXX, how come there is no support for this?
-  result = newString(len)
-  for i in 0..<len:
-    result[i] = s[i]
 
 proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
