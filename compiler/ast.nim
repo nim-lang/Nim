@@ -1756,7 +1756,7 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
-           s.kind == skProc and sfCompileTime in s.flags
+           s.kind in {skProc, skFunc} and sfCompileTime in s.flags
 
 proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
