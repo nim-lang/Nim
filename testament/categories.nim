@@ -499,19 +499,24 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
-        if hasDep:
-          let installName = if url.len != 0: url else: name
-          var message: string
-          if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
-            (proc(): bool = nimbleInstall(installName, message))):
-            r.addResult(test, targetC, "", message, reInstallFailed)
-            continue
-
         let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
         if installStatus != QuitSuccess:
           let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
           r.addResult(test, targetC, "", message, reInstallFailed)
           continue
+
+        if hasDep:
+          var message: string
+          if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
+            (proc(): bool =
+               let (outp, status) = execCmdEx("nimble install -y", workingDir = buildPath)
+               if status != 0:
+                 message = "'$1' failed:\n$2" % [cmd, outp]
+                 false
+               else: true
+            )):
+            r.addResult(test, targetC, "", message, reInstallFailed)
+            continue
 
       let cmdArgs = parseCmdLine(cmd)
 

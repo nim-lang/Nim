@@ -15,18 +15,10 @@ proc actionRetry*(maxRetry: int, backoffDuration: float, action: proc(): bool): 
     t = t * 2 # exponential backoff
   return false
 
-proc nimbleInstall*(name: string, message: var string): bool =
-  let cmd = "nimble install -y " & name
-  let (outp, status) = execCmdEx(cmd)
-  if status != 0:
-    message = "'$1' failed:\n$2" % [cmd, outp]
-    result = false
-  else: result = true
-
 when isMainModule:
   block:
     var msg: string
     let ok = actionRetry(maxRetry = 2, backoffDuration = 0.1):
-      (proc(): bool = nimbleInstall("nonexistant", msg))
+      (proc(): bool = msg = "Package not found"; false)
     doAssert "Package not found" in msg
     doAssert not ok
