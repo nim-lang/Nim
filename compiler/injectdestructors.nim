@@ -1005,6 +1005,10 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       result = shallowCopy(n)
       result[0] = n[0]
       result[1] = p(n[1], c, mode)
+    of nkCheckedFieldExpr:
+      result = shallowCopy(n)
+      result[0] = p(n[0], c, mode)
+      result[1] = n[1]
     else:
       result = shallowCopy(n)
       for i in 0..<n.len:
