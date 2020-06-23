@@ -199,8 +199,8 @@ proc parseLine(p: var TTmplParser) =
           inc(j)
     llStreamWrite(p.outp, "\\n\"")
 
-proc filterTmpl*(stdin: PLLStream, filename: AbsoluteFile,
-                 call: PNode; conf: ConfigRef): PLLStream =
+proc filterTmpl*(conf: ConfigRef, stdin: PLLStream, filename: AbsoluteFile,
+                 call: PNode): PLLStream =
   var p: TTmplParser
   p.config = conf
   p.info = newLineInfo(conf, filename, 0, 0)
