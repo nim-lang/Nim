@@ -3,11 +3,11 @@ D20190811T003919
 ]#
 
 import std/lambdas
-import ./mlambda
+import ./mlambda except elementType
 
 {.push experimental:"alias".}
 
-const elementType = alias2 lambdas.elementType2
+const elementType = alias2 mlambda.elementType
 
 proc toSeq[T](a: T): auto =
   type T = elementType(a)

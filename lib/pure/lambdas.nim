@@ -1,3 +1,7 @@
+##[
+This module defines lambdas, or anonymous aliases that can be passed to routines.
+]##
+
 type aliassym* {.magic: AliasSym.} # RENAME
   ## type of symbol aliases
   # this does not require `experimental:"alias"`; doing so would
@@ -150,11 +154,3 @@ template lambdaType*(t: typedesc): untyped =
   # type T = t
     # this would create a visible abstraction, eg `$` would give  "T`gensym37245237"
   alias2(T)
-
-macro elementType2*(a: untyped): untyped =
-# macro elementType2*(a: aliassym): untyped =
-# macro elementType2*(a: typed): untyped =
-  ## FACTOR D20190814T001035 elementType
-  template fun(b): untyped =
-    typeof(block: (for ai in b: ai))
-  getAst(fun(a))

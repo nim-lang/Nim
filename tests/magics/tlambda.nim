@@ -15,7 +15,7 @@ block:
   doAssert not compiles(identity2(2)) # alias is `gensym`, not `inject`
 
 # test import of alias
-from ./mlambda import mbar
+from ./mlambda import mbar, elementType
 const mbar2 = alias2 mbar
 
 ## templates with all optional params
@@ -220,7 +220,7 @@ proc testArrow() =
 
   block: # passing a lambda to a proc
     proc mapSum[T, Fun](a: T, fun: Fun): auto =
-      result = default elementType2(a)
+      result = default elementType(a)
       for ai in a: result += fun(ai)
     doAssert mapSum(@[1,2,3], x~>x*10) == 10 + 20 + 30
     doAssert mapSum(@[1,2,3], lambdaIt it*10) == 10 + 20 + 30
