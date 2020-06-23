@@ -44,10 +44,11 @@ type
     graph: ModuleGraph
     emptyNode: PNode
     otherRead: PNode
-    inLoop, inSpawn, hasUnstructuredCf, inDangerousBranch: int
+    inLoop, inSpawn, hasUnstructuredCf, inDangerousBranch, delayWasMoved: int
     declaredVars: IntSet # variables we already moved to the top level
     uninit: IntSet # set of uninit'ed vars
     uninitComputed: bool
+    wasMovedTasks: seq[PNode]
 
   ProcessMode = enum
     normal
@@ -384,7 +385,11 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
     v.add(vpart)
 
     result.add v
-    result.add genWasMoved(skipConv(n), c)
+    let wasMovedCall = genWasMoved(skipConv(n), c)
+    if c.delayWasMoved > 0:
+      c.wasMovedTasks.add wasMovedCall
+    else:
+      result.add wasMovedCall
     result.add tempAsNode
 
 proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
@@ -568,17 +573,21 @@ proc handleNested(n, dest: PNode; c: var Con; mode: ProcessMode): PNode =
     dec c.inLoop
   else: assert(false)
 
-proc ensureDestruction(arg: PNode; c: var Con): PNode =
+proc ensureDestruction(arg: PNode; c: var Con; toDestroy: bool): PNode =
   # it can happen that we need to destroy expression contructors
   # like [], (), closures explicitly in order to not leak them.
-  if arg.typ != nil and hasDestructor(arg.typ):
+  if toDestroy and arg.typ != nil and hasDestructor(arg.typ):
     # produce temp creation for (fn, env). But we need to move 'env'?
     # This was already done in the sink parameter handling logic.
     result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
+
     let tmp = getTemp(c, arg.typ, arg.info)
     when not scopeBasedDestruction:
       c.addTopVar(tmp)
       result.add genSink(c, tmp, arg, isDecl = true)
+      for toMove in c.wasMovedTasks:
+        result.add toMove
+      c.wasMovedTasks.setLen 0
       result.add tmp
       c.destroys.add genDestroy(c, tmp)
     else:
@@ -591,8 +600,27 @@ proc ensureDestruction(arg: PNode; c: var Con): PNode =
       # since we do not initialize these temporaries anymore, we
       # use raw assignments instead of =sink:
       result.add newTree(nkFastAsgn, tmp, arg)
+      for toMove in c.wasMovedTasks:
+        result.add toMove
+      c.wasMovedTasks.setLen 0
       result.add tmp
       c.scopeDestroys.add genDestroy(c, tmp)
+  if c.wasMovedTasks.len > 0:
+    var tmp: PNode = nil
+    if arg.typ != nil:
+      result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
+      # XXX port this to 'scopeBasedDestruction'!
+      tmp = getTemp(c, arg.typ, arg.info)
+      c.addTopVar(tmp)
+      result.add genSink(c, tmp, arg, isDecl = true)
+    else:
+      result = newNodeI(nkStmtList, arg.info)
+      result.add arg
+    for toMove in c.wasMovedTasks:
+      result.add toMove
+    c.wasMovedTasks.setLen 0
+    if tmp != nil:
+      result.add tmp
   else:
     result = arg
 
@@ -830,15 +858,17 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
               elif mode == normal: normal
               else: sinkArg
 
+      inc c.delayWasMoved
       result = copyTree(n)
       for i in ord(n.kind in {nkObjConstr, nkClosure})..<n.len:
         if n[i].kind == nkExprColonExpr:
           result[i][1] = p(n[i][1], c, m)
         else:
           result[i] = p(n[i], c, m)
-      if mode == normal and isRefConstr:
-        result = ensureDestruction(result, c)
+      dec c.delayWasMoved
+      result = ensureDestruction(result, c, mode == normal and isRefConstr)
     of nkCallKinds:
+      inc c.delayWasMoved
       let inSpawn = c.inSpawn
       if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
         c.inSpawn.inc
@@ -872,8 +902,8 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         result[0] = p(n[0], c, normal)
       when scopeBasedDestruction:
         if canRaise(n[0]): inc c.hasUnstructuredCf
-      if mode == normal:
-        result = ensureDestruction(result, c)
+      dec c.delayWasMoved
+      result = ensureDestruction(result, c, mode == normal)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
       if n[0].kind != nkEmpty:
