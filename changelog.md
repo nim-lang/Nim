@@ -213,4 +213,7 @@ proc mydiv(a, b): int {.raises: [].} =
   passing `--project` now automatically generates an index and enables search.
   See [docgen](docgen.html#introduction-quick-start) for details.
 
+- Deprecated `--laxStrings` for mutating the internal zero terminator on strings and its Deprecated code cleaned out.
+
+
 ## Tool changes
