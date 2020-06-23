@@ -585,9 +585,10 @@ proc ensureDestruction(arg: PNode; c: var Con; toDestroy: bool): PNode =
     when not scopeBasedDestruction:
       c.addTopVar(tmp)
       result.add genSink(c, tmp, arg, isDecl = true)
-      for toMove in c.wasMovedTasks:
-        result.add toMove
-      c.wasMovedTasks.setLen 0
+      if c.delayWasMoved == 0:
+        for toMove in c.wasMovedTasks:
+          result.add toMove
+        c.wasMovedTasks.setLen 0
       result.add tmp
       c.destroys.add genDestroy(c, tmp)
     else:
@@ -600,12 +601,13 @@ proc ensureDestruction(arg: PNode; c: var Con; toDestroy: bool): PNode =
       # since we do not initialize these temporaries anymore, we
       # use raw assignments instead of =sink:
       result.add newTree(nkFastAsgn, tmp, arg)
-      for toMove in c.wasMovedTasks:
-        result.add toMove
-      c.wasMovedTasks.setLen 0
+      if c.delayWasMoved == 0:
+        for toMove in c.wasMovedTasks:
+          result.add toMove
+        c.wasMovedTasks.setLen 0
       result.add tmp
       c.scopeDestroys.add genDestroy(c, tmp)
-  elif c.wasMovedTasks.len > 0:
+  elif c.wasMovedTasks.len > 0 and c.delayWasMoved == 0:
     var tmp: PNode = nil
     if arg.typ != nil:
       result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
@@ -1017,7 +1019,9 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
 proc moveOrCopy(dest, ri: PNode; c: var Con, isDecl = false): PNode =
   case ri.kind
   of nkCallKinds:
+    inc c.delayWasMoved
     result = genSink(c, dest, p(ri, c, consumed), isDecl)
+    dec c.delayWasMoved
   of nkBracketExpr:
     if isUnpackedTuple(ri[0]):
       # unpacking of tuple: take over the elements
