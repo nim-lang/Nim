@@ -16,7 +16,7 @@ import
 export Parser, parseAll, parseTopLevelStmt, closeParser
 
 type
-  TFilterKind* = enum
+  FilterKind = enum
     filtNone = "none"
     filtTemplate = "stdtmpl"
     filtReplace = "replace"
@@ -60,8 +60,8 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
         closeParser(p)
     llStreamClose(s)
 
-proc getFilter(ident: PIdent): TFilterKind =
-  for i in low(TFilterKind)..high(TFilterKind):
+proc getFilter(ident: PIdent): FilterKind =
+  for i in FilterKind:
     if cmpIgnoreStyle(ident.s, $i) == 0:
       return i
 

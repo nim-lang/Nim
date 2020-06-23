@@ -1193,12 +1193,12 @@ proc genOutFile(d: PDoc): Rope =
   var tmp = ""
   renderTocEntries(d[], j, 1, tmp)
   var toc = tmp.rope
-  for i in low(TSymKind)..high(TSymKind):
+  for i in TSymKind:
     genSection(d, i)
     toc.add(d.toc[i])
   if toc != nil:
     toc = ropeFormatNamedVars(d.conf, getConfigVar(d.conf, "doc.toc"), ["content"], [toc])
-  for i in low(TSymKind)..high(TSymKind): code.add(d.section[i])
+  for i in TSymKind: code.add(d.section[i])
 
   # Extract the title. Non API modules generate an entry in the index table.
   if d.meta[metaTitle].len != 0:

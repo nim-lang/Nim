@@ -53,11 +53,9 @@ const
       "Copyright (c) 2006-" & copyrightYear & " by Andreas Rumpf\n"
 
 proc genFeatureDesc[T: enum](t: typedesc[T]): string {.compileTime.} =
-  var x = ""
-  for f in low(T)..high(T):
-    if x.len > 0: x.add "|"
-    x.add $f
-  x
+  for f in T:
+    if result.len > 0: result.add "|"
+    result.add $f
 
 const
   Usage = slurp"../doc/basicopt.txt".replace(" //", " ")

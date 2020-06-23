@@ -126,6 +126,7 @@ proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
+    p: Parser
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx
@@ -163,7 +164,6 @@ proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {
     else:
       s = stream
     while true:
-      var p: Parser
       openParser(p, fileIdx, s, graph.cache, graph.config)
 
       if module.owner == nil or module.owner.name.s != "stdlib" or module.name.s == "distros":
