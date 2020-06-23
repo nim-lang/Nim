@@ -101,8 +101,6 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --laxStrings:on|off       when turned on, accessing the zero terminator in
-                            strings is allowed; only for backwards compatibility
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
   --seqsv2:on|off           use the new string/seq implementation based on
