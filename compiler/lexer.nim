@@ -684,12 +684,7 @@ proc getEscapedChar(L: var TLexer, tok: var TToken) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
-    if L.config.oldNewlines:
-      if tok.tokType == tkCharLit:
-        lexMessage(L, errGenerated, "\\n not allowed in character literal")
-      tok.literal.add(L.config.target.tnl)
-    else:
-      tok.literal.add('\L')
+    tok.literal.add('\L')
     inc(L.bufpos)
   of 'p', 'P':
     if tok.tokType == tkCharLit:
