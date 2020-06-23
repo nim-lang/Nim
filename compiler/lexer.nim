@@ -157,9 +157,6 @@ type
                               # so that it is the correct default value
     base2, base8, base16
 
-  CursorPosition* {.pure.} = enum ## XXX remove this again
-    None, InToken, BeforeToken, AfterToken
-
   Token* = object             # a Nim token
     tokType*: TokType         # the type of the token
     indent*: int              # the indentation; != -1 if the token has been
@@ -187,7 +184,6 @@ type
                               # needs so much look-ahead
     currLineIndent*: int
     strongSpaces*, allowTabs*: bool
-    cursor*: CursorPosition
     errorHandler*: ErrorHandler
     cache*: IdentCache
     when defined(nimsuggest):
@@ -319,7 +315,6 @@ template tokenEnd(tok, pos) {.dirty.} =
     let colB = getColNumber(L, pos)+1
     if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
         L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
-      L.cursor = CursorPosition.InToken
       L.config.m.trackPos.col = colA.int16
     colA = 0
   when defined(nimpretty):
@@ -344,7 +339,6 @@ template tokenEndPrevious(tok, pos) =
     let colB = getColNumber(L, pos)
     if L.fileIdx == L.config.m.trackPos.fileIndex and L.config.m.trackPos.col in colA..colB and
         L.lineNumber == L.config.m.trackPos.line.int and L.config.ideCmd in {ideSug, ideCon}:
-      L.cursor = CursorPosition.BeforeToken
       L.config.m.trackPos = L.previousToken
       L.config.m.trackPosAttached = true
     colA = 0
@@ -1224,8 +1218,6 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         L.previousToken.line = tok.line.uint16
         L.previousToken.col = tok.col.int16
 
-  when defined(nimsuggest):
-    L.cursor = CursorPosition.None
   fillToken(tok)
   if L.indentAhead >= 0:
     tok.indent = L.indentAhead
