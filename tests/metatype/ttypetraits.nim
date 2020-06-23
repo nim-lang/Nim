@@ -231,3 +231,19 @@ block genericHead:
   type Bar = object
   doAssert not compiles(genericHead(Bar))
   # doAssert seq[int].genericHead is seq
+
+block: # elementType
+  iterator myiter(n: int): auto =
+    for i in 0..<n: yield i
+  iterator myiter3(): int = yield 10
+  iterator myiter2(n: int): auto {.closure.} =
+    for i in 0..<n: yield i
+  doAssert elementType(@[1,2]) is int
+  doAssert elementType("asdf") is char
+  doAssert elementType(myiter(3)) is int
+  doAssert elementType(myiter2(3)) is int
+  doAssert elementType([1.1]) is float
+  doAssert compiles elementType([1])
+  doAssert not compiles elementType(1)
+  doAssert compiles elementType(myiter3())
+  doAssert not compiles elementType(myiter3)
