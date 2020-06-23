@@ -587,13 +587,6 @@ proc quoted(a: string): string =
   # todo: consider moving to system.nim
   result.addQuoted(a)
 
-proc normalizeExe(file: string): string =
-  # xxx common pattern, should be exposed in std/os, even if simple (error prone)
-  when defined(posix):
-    if file.len == 0: ""
-    elif DirSep in file: file else: "./" & file
-  else: file
-
 proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   ## returns a list of tests that have problems
   var specs: seq[TSpec] = @[]
@@ -618,12 +611,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  #[
-  TODO(minor):
-  get from Nim cmd
-  put outputGotten.txt, outputGotten.txt, megatest.nim there too
-  delete upon completion, maybe
-  ]#
+  # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
@@ -644,15 +632,17 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf.string
-    quit("megatest compilation failed")
+    quit(failString & "megatest compilation failed")
 
-  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).normalizeExe)
+  (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   if exitCode != 0:
     echo buf.string
-    quit("megatest execution failed")
+    quit(failString & "megatest execution failed")
 
   norm buf.string
-  writeFile("outputGotten.txt", buf.string)
+  const outputExceptedFile = "outputExpected.txt"
+  const outputGottenFile = "outputGotten.txt"
+  writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
     outputExpected.add marker & runSpec.file & "\n"
@@ -661,14 +651,14 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   norm outputExpected
 
   if buf.string != outputExpected:
-    writeFile("outputExpected.txt", outputExpected)
-    discard execShellCmd("diff -uNdr outputExpected.txt outputGotten.txt")
-    echo "output different!"
-    # outputGotten.txt, outputExpected.txt not removed on purpose for debugging.
+    writeFile(outputExceptedFile, outputExpected)
+    discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
+    echo failString & "megatest output different!"
+    # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:
-    echo "output OK"
-    removeFile("outputGotten.txt")
+    echo "megatest output OK"
+    removeFile(outputGottenFile)
     removeFile(megatestFile)
   #testSpec r, makeTest("megatest", options, cat)
 
