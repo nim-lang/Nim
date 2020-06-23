@@ -2,7 +2,7 @@
 internal API for now, API subject to change
 ]##
 
-import std/[os,osproc,sugar,strutils]
+import std/os
 
 proc actionRetry*(maxRetry: int, backoffDuration: float, action: proc(): bool): bool =
   ## retry `action` up to `maxRetry` times with exponential backoff and initial
@@ -20,5 +20,5 @@ when isMainModule:
     var msg: string
     let ok = actionRetry(maxRetry = 2, backoffDuration = 0.1):
       (proc(): bool = msg = "Package not found"; false)
-    doAssert "Package not found" in msg
+    doAssert "Package not found" == msg
     doAssert not ok
