@@ -14,6 +14,11 @@ include inclrtl
 import std/private/since
 import formatfloat
 
+when defined(windows) and not defined(useWinAnsi):
+  import os
+  import system/widestrs
+  import terminal
+
 # ----------------- IO Part ------------------------------------------------
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
@@ -351,6 +356,37 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
   ## ``false`` is returned `line` contains no new data.
   proc c_memchr(s: pointer, c: cint, n: csize_t): pointer {.
     importc: "memchr", header: "<string.h>".}
+
+  when defined(windows) and not defined(useWinAnsi):
+    proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
+                     nNumberOfCharsToRead: uint32,
+                     lpNumberOfCharsRead: ptr uint32,
+                     pInputControl: pointer): int32 {.
+      stdcall, dynlib: "kernel32", importc: "ReadConsoleW".}
+
+    if f.isatty:
+      if c_feof(f) < 0:
+        return false
+      const numberOfCharsToRead = 2048
+      var numberOfCharsRead = 0'u32
+      var buffer = newWideCString("", numberOfCharsToRead)
+      if readConsole(getOsFileHandle(f), addr(buffer[0]),
+        numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
+        var error = osLastError()
+        raiseEIO("error: " & $error & " `" & osErrorMsg(error) & "`")
+      # input always ends with "\r\n"
+      numberOfCharsRead -= 2
+      # handle Ctrl+Z as EOF
+      for i in 0'u32..<numberOfCharsRead:
+        if buffer[i].uint16 == 26:  #Ctrl+Z
+          close(f)  #has the same effect as setting EOF
+          if i == 0:
+            return false
+          numberOfCharsRead = i
+          break
+      buffer[numberOfCharsRead] = 0.Utf16Char
+      line = TaintedString($buffer)
+      return(true)
 
   var pos = 0
 
