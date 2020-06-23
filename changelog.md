@@ -218,9 +218,8 @@ proc mydiv(a, b): int {.raises: [].} =
 - `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
   passing `--project` now automatically generates an index and enables search.
   See [docgen](docgen.html#introduction-quick-start) for details.
-- Deprecated `--oldNewlines` and its Deprecated code cleaned out.
-
-- Deprecated `--laxStrings` for mutating the internal zero terminator on strings and its Deprecated code cleaned out.
+- Removed the `--oldNewlines` switch.
+- Removed the `--laxStrings` switch for mutating the internal zero terminator on strings.
 
 
 ## Tool changes
