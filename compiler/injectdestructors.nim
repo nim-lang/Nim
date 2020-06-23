@@ -605,7 +605,7 @@ proc ensureDestruction(arg: PNode; c: var Con; toDestroy: bool): PNode =
       c.wasMovedTasks.setLen 0
       result.add tmp
       c.scopeDestroys.add genDestroy(c, tmp)
-  if c.wasMovedTasks.len > 0:
+  elif c.wasMovedTasks.len > 0:
     var tmp: PNode = nil
     if arg.typ != nil:
       result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
@@ -868,12 +868,14 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
       dec c.delayWasMoved
       result = ensureDestruction(result, c, mode == normal and isRefConstr)
     of nkCallKinds:
-      inc c.delayWasMoved
       let inSpawn = c.inSpawn
+      var spawnIncValue = 1
       if n[0].kind == nkSym and n[0].sym.magic == mSpawn:
         c.inSpawn.inc
+        spawnIncValue = -100
       elif c.inSpawn > 0:
         c.inSpawn.dec
+      inc c.delayWasMoved, spawnIncValue
 
       let parameters = n[0].typ
       let L = if parameters != nil: parameters.len else: 0
@@ -902,7 +904,7 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
         result[0] = p(n[0], c, normal)
       when scopeBasedDestruction:
         if canRaise(n[0]): inc c.hasUnstructuredCf
-      dec c.delayWasMoved
+      dec c.delayWasMoved, spawnIncValue
       result = ensureDestruction(result, c, mode == normal)
     of nkDiscardStmt: # Small optimization
       result = shallowCopy(n)
@@ -1152,6 +1154,7 @@ proc injectDestructorCalls*(g: ModuleGraph; owner: PSym; n: PNode): PNode =
     result.add fin
   else:
     result.add body
+  assert c.wasMovedTasks.len == 0
   dbg:
     echo ">---------transformed-to--------->"
     echo renderTree(result, {renderIds})
