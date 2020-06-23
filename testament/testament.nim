@@ -21,6 +21,7 @@ var backendLogging = true
 var simulate = false
 
 const
+  failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
   testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
@@ -279,7 +280,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   elif success == reJoined:
     maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
   else:
-    maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
+    maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:
@@ -701,7 +702,7 @@ proc main() =
       cmds.add(myself & runtype & quoteShell(cat) & rest)
 
     proc progressStatus(idx: int) =
-      echo "progress[all]: i: " & $idx & " / " & $cats.len & " cat: " & cats[idx]
+      echo "progress[all]: $1/$2 starting: cat: $3" % [$idx, $cats.len, cats[idx]]
 
     if simulate:
       skips = loadSkipFrom(skipFrom)
