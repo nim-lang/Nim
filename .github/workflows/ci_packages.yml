@@ -33,7 +33,7 @@ jobs:
           DEBIAN_FRONTEND='noninteractive' \
             sudo apt-fast install --no-install-recommends -yq \
               libcurl4-openssl-dev libgc-dev libsdl1.2-dev libsfml-dev \
-              valgrind libc6-dbg libblas-dev
+              valgrind libc6-dbg libblas-dev xorg-dev
       - name: 'Install dependencies (macOS)'
         if: runner.os == 'macOS'
         run: brew install boehmgc make sfml gtk+3
