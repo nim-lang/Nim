@@ -136,6 +136,6 @@ proc styleCheckUse*(conf: ConfigRef; info: TLineInfo; s: PSym) =
     lintReport(conf, info, newName, oldName)
 
 proc checkPragmaUse*(conf: ConfigRef; info: TLineInfo; w: TSpecialWord; pragmaName: string) =
-  let wanted = canonPragmaSpelling(w)
+  let wanted = $w
   if pragmaName != wanted:
     lintReport(conf, info, wanted, pragmaName)

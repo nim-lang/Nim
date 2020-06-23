@@ -377,15 +377,7 @@ template styledMsgWriteln*(args: varargs[typed]) =
     when defined(windows):
       flushFile(stderr)
 
-proc msgKindToString*(kind: TMsgKind): string =
-  # later versions may provide translated error messages
-  result = MsgKindToStr[kind]
-
-proc getMessageStr(msg: TMsgKind, arg: string): string =
-  result = msgKindToString(msg) % [arg]
-
-type
-  TErrorHandling* = enum doNothing, doAbort, doRaise
+type TErrorHandling* = enum doNothing, doAbort, doRaise
 
 proc log*(s: string) =
   var f: File
@@ -483,7 +475,7 @@ proc formatMsg*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string): s
               of warnMin..warnMax: WarningTitle
               of hintMin..hintMax: HintTitle
               else: ErrorTitle
-  conf.toFileLineCol(info) & " " & title & getMessageStr(msg, arg)
+  conf.toFileLineCol(info) & " " & title & $msg % [arg]
 
 proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
                eh: TErrorHandling, info2: InstantiationInfo, isRaw = false) {.noinline.} =
@@ -523,7 +515,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
     color = HintColor
     inc(conf.hintCounter)
 
-  let s = if isRaw: arg else: getMessageStr(msg, arg)
+  let s = if isRaw: arg else: $msg % [arg]
   if not ignoreMsg:
     let loc = if info != unknownLineInfo: conf.toFileLineCol(info) & " " else: ""
     var kindmsg = if kind.len > 0: KindFormat % kind else: ""
@@ -544,7 +536,7 @@ proc liMessage*(conf: ConfigRef; info: TLineInfo, msg: TMsgKind, arg: string,
   handleError(conf, msg, eh, s)
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, args: openArray[string]) =
-  let arg = msgKindToString(msg) % args
+  let arg = $msg % args
   liMessage(conf, unknownLineInfo, msg, arg, eh = doAbort, instLoc(), isRaw = true)
 
 template rawMessage*(conf: ConfigRef; msg: TMsgKind, arg: string) =
