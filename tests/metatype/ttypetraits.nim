@@ -247,3 +247,7 @@ block: # elementType
   doAssert not compiles elementType(1)
   doAssert compiles elementType(myiter3())
   doAssert not compiles elementType(myiter3)
+  # check that it also works for 0-sized seq:
+  var a: seq[int]
+  doAssert elementType(a) is int
+  doAssert elementType(seq[char].default) is char
