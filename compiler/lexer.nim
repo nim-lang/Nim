@@ -1281,7 +1281,6 @@ proc rawGetTok*(L: var Lexer, tok: var Token) =
         if L.fileIdx == L.config.m.trackPos.fileIndex and tok.col+1 == L.config.m.trackPos.col and
             tok.line == L.config.m.trackPos.line.int and L.config.ideCmd == ideSug:
           tok.tokType = tkDot
-          L.cursor = CursorPosition.InToken
           L.config.m.trackPos.col = tok.col.int16
           inc(L.bufpos)
           atTokenEnd()
