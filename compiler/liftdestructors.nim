@@ -797,7 +797,7 @@ proc produceSymDistinctType(g: ModuleGraph; c: PContext; typ: PType;
 proc symPrototype(g: ModuleGraph; typ: PType; owner: PSym; kind: TTypeAttachedOp;
               info: TLineInfo): PSym =
 
-  let procname = getIdent(g.cache, $kind)
+  let procname = getIdent(g.cache, AttachedOpToStr[kind])
   result = newSym(skProc, procname, owner, info)
   let dest = newSym(skParam, getIdent(g.cache, "dest"), result, info)
   let src = newSym(skParam, getIdent(g.cache, if kind == attachedTrace: "env" else: "src"), result, info)
