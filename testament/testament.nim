@@ -21,6 +21,7 @@ var backendLogging = true
 var simulate = false
 
 const
+  failString* = "FAIL: " # ensures all failures can be searched with 1 keyword in CI logs
   testsDir = "tests" & DirSep
   resultsFile = "testresults.html"
   #jsonFile = "testresults.json" # not used
@@ -279,7 +280,7 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   elif success == reJoined:
     maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
   else:
-    maybeStyledEcho styleBright, fgRed, "FAIL: ", fgCyan, name
+    maybeStyledEcho styleBright, fgRed, failString, fgCyan, name
     maybeStyledEcho styleBright, fgCyan, "Test \"", test.name, "\"", " in category \"", test.cat.string, "\""
     maybeStyledEcho styleBright, fgRed, "Failure: ", $success
     if success in {reBuildFailed, reNimcCrash, reInstallFailed}:

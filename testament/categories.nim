@@ -611,12 +611,7 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
     return
 
   var megatest: string
-  #[
-  TODO(minor):
-  get from Nim cmd
-  put outputExceptedFile, outputGottenFile, megatest.nim there too
-  delete upon completion, maybe
-  ]#
+  # xxx (minor) put outputExceptedFile, outputGottenFile, megatestFile under here or `buildDir`
   var outDir = nimcacheDir(testsDir / "megatest", "", targetC)
   const marker = "megatest:processing: "
 
@@ -634,20 +629,19 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
 
   let root = getCurrentDir()
   let args = ["c", "--nimCache:" & outDir, "-d:testing", "--listCmd", "--path:" & root, megatestFile]
-
   var (cmdLine, buf, exitCode) = execCmdEx2(command = compilerPrefix, args = args, input = "")
   if exitCode != 0:
     echo "$ " & cmdLine & "\n" & buf.string
-    quit("megatest compilation failed")
+    quit(failString & "megatest compilation failed")
 
   (buf, exitCode) = execCmdEx(megatestFile.changeFileExt(ExeExt).dup normalizeExe)
   if exitCode != 0:
     echo buf.string
-    quit("megatest execution failed")
+    quit(failString & "megatest execution failed")
 
   norm buf.string
-  let outputExceptedFile = "outputExpected.txt"
-  let outputGottenFile = "outputGotten.txt"
+  const outputExceptedFile = "outputExpected.txt"
+  const outputGottenFile = "outputGotten.txt"
   writeFile(outputGottenFile, buf.string)
   var outputExpected = ""
   for i, runSpec in specs:
@@ -659,11 +653,11 @@ proc runJoinedTest(r: var TResults, cat: Category, testsDir: string) =
   if buf.string != outputExpected:
     writeFile(outputExceptedFile, outputExpected)
     discard execShellCmd("diff -uNdr $1 $2" % [outputExceptedFile, outputGottenFile])
-    echo "output different!"
+    echo failString & "megatest output different!"
     # outputGottenFile, outputExceptedFile not removed on purpose for debugging.
     quit 1
   else:
-    echo "output OK"
+    echo "megatest output OK"
     removeFile(outputGottenFile)
     removeFile(megatestFile)
   #testSpec r, makeTest("megatest", options, cat)
