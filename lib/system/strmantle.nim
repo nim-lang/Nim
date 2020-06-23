@@ -94,7 +94,7 @@ proc addFloat*(result: var string; x: float) =
   when nimvm:
     result.add $x
   else:
-    var buffer: array[65, char]
+    var buffer {.noinit.}: array[65, char]
     let n = writeFloatToBuffer(buffer, x)
     result.addCstringN(cstring(buffer[0].addr), n)
 
@@ -131,8 +131,8 @@ proc nimParseBiggestFloat(s: string, number: var BiggestFloat,
     i = start
     sign = 1.0
     kdigits, fdigits = 0
-    exponent: int
-    integer: uint64
+    exponent = 0
+    integer = uint64(0)
     fracExponent = 0
     expSign = 1
     firstDigit = -1

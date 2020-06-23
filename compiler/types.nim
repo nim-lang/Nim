@@ -438,7 +438,7 @@ const
     "lent ", "varargs[$1]", "UncheckedArray[$1]", "Error Type",
     "BuiltInTypeClass", "UserTypeClass",
     "UserTypeClassInst", "CompositeTypeClass", "inferred",
-    "and", "or", "not", "any", "static", "TypeFromExpr", "FieldAccessor",
+    "and", "or", "not", "any", "static", "TypeFromExpr", "out ",
     "void"]
 
 const preferToResolveSymbols = {preferName, preferTypeName, preferModuleInfo,

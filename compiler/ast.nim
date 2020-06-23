@@ -435,7 +435,8 @@ type
       # be any type.
 
     tyOptDeprecated
-      # deadcode: was `tyOpt`, Builtin optional type
+      # 'out' parameter. Comparable to a 'var' parameter but every
+      # path must assign a value to it before it can be read from.
 
     tyVoid
       # now different from tyEmpty, hurray!
@@ -1755,7 +1756,7 @@ proc isRoutine*(s: PSym): bool {.inline.} =
 
 proc isCompileTimeProc*(s: PSym): bool {.inline.} =
   result = s.kind == skMacro or
-           s.kind == skProc and sfCompileTime in s.flags
+           s.kind in {skProc, skFunc} and sfCompileTime in s.flags
 
 proc isRunnableExamples*(n: PNode): bool =
   # Templates and generics don't perform symbol lookups.
@@ -1802,12 +1803,12 @@ proc skipStmtList*(n: PNode): PNode =
   else:
     result = n
 
-proc toVar*(typ: PType): PType =
+proc toVar*(typ: PType; kind: TTypeKind): PType =
   ## If ``typ`` is not a tyVar then it is converted into a `var <typ>` and
   ## returned. Otherwise ``typ`` is simply returned as-is.
   result = typ
-  if typ.kind != tyVar:
-    result = newType(tyVar, typ.owner)
+  if typ.kind != kind:
+    result = newType(kind, typ.owner)
     rawAddSon(result, typ)
 
 proc toRef*(typ: PType): PType =
@@ -1934,3 +1935,6 @@ proc toHumanStr*(kind: TSymKind): string =
 proc toHumanStr*(kind: TTypeKind): string =
   ## strips leading `tk`
   result = toHumanStrImpl(kind, 2)
+
+proc skipAddr*(n: PNode): PNode {.inline.} =
+  (if n.kind == nkHiddenAddr: n[0] else: n)

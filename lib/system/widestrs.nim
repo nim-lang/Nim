@@ -63,6 +63,7 @@ proc ord(arg: Utf16Char): int = int(cast[uint16](arg))
 proc len*(w: WideCString): int =
   ## returns the length of a widestring. This traverses the whole string to
   ## find the binary zero end marker!
+  result = 0
   while int16(w[result]) != 0'i16: inc result
 
 const

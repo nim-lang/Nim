@@ -91,6 +91,16 @@ when true: # runnableExamples with rdoccmd
   proc fun2*() =
     runnableExamples "-d:foo": discard # checks that it also works inside procs
 
+  template fun3Impl(): untyped =
+    runnableExamples(rdoccmd="-d:foo"):
+      nonexistant
+        # bugfix: this shouldn't be semchecked when `runnableExamples`
+        # has more than 1 argument
+    discard
+
+  proc fun3*[T]() =
+    fun3Impl()
+
   when false: # future work
     # passing non-string-litterals (for reuse)
     const a = "-b:cpp"

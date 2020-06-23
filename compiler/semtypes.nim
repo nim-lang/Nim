@@ -193,16 +193,16 @@ proc semVarargs(c: PContext, n: PNode, prev: PType): PType =
     localError(c.config, n.info, errXExpectsOneTypeParam % "varargs")
     addSonSkipIntLit(result, errorType(c))
 
-proc semVarType(c: PContext, n: PNode, prev: PType): PType =
+proc semVarOutType(c: PContext, n: PNode, prev: PType; kind: TTypeKind): PType =
   if n.len == 1:
-    result = newOrPrevType(tyVar, prev, c)
+    result = newOrPrevType(kind, prev, c)
     var base = semTypeNode(c, n[0], nil).skipTypes({tyTypeDesc})
     if base.kind == tyVar:
       localError(c.config, n.info, "type 'var var' is not allowed")
       base = base[0]
     addSonSkipIntLit(result, base)
   else:
-    result = newConstraint(c, tyVar)
+    result = newConstraint(c, kind)
 
 proc semDistinct(c: PContext, n: PNode, prev: PType): PType =
   if n.len == 0: return newConstraint(c, tyDistinct)
@@ -1915,7 +1915,7 @@ proc semTypeNode(c: PContext, n: PNode, prev: PType): PType =
   of nkTypeClassTy: result = semTypeClass(c, n, prev)
   of nkRefTy: result = semAnyRef(c, n, tyRef, prev)
   of nkPtrTy: result = semAnyRef(c, n, tyPtr, prev)
-  of nkVarTy: result = semVarType(c, n, prev)
+  of nkVarTy: result = semVarOutType(c, n, prev, tyVar)
   of nkDistinctTy: result = semDistinct(c, n, prev)
   of nkStaticTy: result = semStaticType(c, n[0], prev)
   of nkIteratorTy:

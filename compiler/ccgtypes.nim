@@ -701,7 +701,7 @@ proc getTypeDescAux(m: BModule, origTyp: PType, check: var IntSet): Rope =
     return
   case t.kind
   of tyRef, tyPtr, tyVar, tyLent:
-    var star = if t.kind == tyVar and tfVarIsPtr notin origTyp.flags and
+    var star = if t.kind in {tyVar} and tfVarIsPtr notin origTyp.flags and
                     compileToCpp(m): "&" else: "*"
     var et = origTyp.skipTypes(abstractInst).lastSon
     var etB = et.skipTypes(abstractInst)

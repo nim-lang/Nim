@@ -101,7 +101,6 @@ Advanced options:
   --excessiveStackTrace:on|off
                             stack traces use full file paths
   --stackTraceMsgs:on|off   enable user defined stack frame msgs via `setFrameMsg`
-  --oldNewlines:on|off      turn on|off the old behaviour of "\n"
   --nilseqs:on|off          allow 'nil' for strings/seqs for
                             backwards compatibility
   --seqsv2:on|off           use the new string/seq implementation based on

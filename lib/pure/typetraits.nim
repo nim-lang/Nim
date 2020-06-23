@@ -112,7 +112,7 @@ macro genericParamsImpl(T: typedesc): untyped =
       of nnkBracketExpr:
         for i in 1..<impl.len:
           let ai = impl[i]
-          var ret: NimNode
+          var ret: NimNode = nil
           case ai.typeKind
           of ntyTypeDesc:
             ret = ai

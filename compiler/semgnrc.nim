@@ -265,7 +265,7 @@ proc semGenericStmt(c: PContext, n: PNode,
         # We're not interested in the example code during this pass so let's
         # skip it
         if s.magic == mRunnableExamples:
-          inc first
+          first = result.safeLen # see trunnableexamples.fun3
       of skGenericParam:
         result[0] = newSymNodeTypeDesc(s, fn.info)
         onUse(fn.info, s)

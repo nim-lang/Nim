@@ -676,13 +676,14 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:
-      x = newTypeS(tyVar, c)
+      x = newTypeS(param.typ.kind, c)
       x.addSonSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct
     call.add(newNodeIT(nkEmpty, fn.info, x))
   if hasDistinct:
-    var resolved = semOverloadedCall(c, call, call, {fn.kind}, {})
+    let filter = if fn.kind in {skProc, skFunc}: {skProc, skFunc} else: {fn.kind}
+    var resolved = semOverloadedCall(c, call, call, filter, {})
     if resolved != nil:
       result = resolved[0].sym
       if not compareTypes(result.typ[0], fn.typ[0], dcEqIgnoreDistinct):

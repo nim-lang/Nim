@@ -60,7 +60,7 @@
   accept an existing string to modify, which avoids memory
   allocations, similar to `streams.readLine` (#13857).
 
-- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom`. UDP functionality.
+- Added high-level `asyncnet.sendTo` and `asyncnet.recvFrom` UDP functionality.
 
 - `dollars.$` now works for unsigned ints with `nim js`
 
@@ -116,7 +116,11 @@
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 
 ## Language changes
-- In the newruntime it is now allowed to assign discriminator field without restrictions as long as case object doesn't have custom destructor. Discriminator value doesn't have to be a constant either. If you have custom destructor for case object and you do want to freely assign discriminator fields, it is recommended to refactor object into 2 objects like this:
+- In the newruntime it is now allowed to assign to the discriminator field
+  without restrictions as long as case object doesn't have custom destructor.
+  The discriminator value doesn't have to be a constant either. If you have a
+  custom destructor for a case object and you do want to freely assign discriminator
+  fields, it is recommended to refactor object into 2 objects like this:
 
   ```nim
   type
@@ -175,6 +179,8 @@ proc mydiv(a, b): int {.raises: [].} =
   The reason for this is that `DivByZeroDefect` inherits from `Defect` and
   with `--panics:on` `Defects` become unrecoverable errors.
 
+- Added the `thiscall` calling convention as specified by Microsoft.
+
 - Added `thiscall` calling convention as specified by Microsoft, mostly for hooking purpose
 - Deprecated `{.unroll.}` pragma, was ignored by the compiler anyways, was a nop.
 
@@ -212,6 +218,7 @@ proc mydiv(a, b): int {.raises: [].} =
 - `nim doc` now outputs under `$projectPath/htmldocs` when `--outdir` is unspecified (with or without `--project`);
   passing `--project` now automatically generates an index and enables search.
   See [docgen](docgen.html#introduction-quick-start) for details.
+- Deprecated `--oldNewlines` and its Deprecated code cleaned out.
 
 - Deprecated `--laxStrings` for mutating the internal zero terminator on strings and its Deprecated code cleaned out.
 

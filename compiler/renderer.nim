@@ -309,8 +309,8 @@ proc lsub(g: TSrcGen; n: PNode): int
 proc litAux(g: TSrcGen; n: PNode, x: BiggestInt, size: int): string =
   proc skip(t: PType): PType =
     result = t
-    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar, tyLent, tyDistinct,
-                          tyOrdinal, tyAlias, tySink}:
+    while result != nil and result.kind in {tyGenericInst, tyRange, tyVar,
+                          tyLent, tyDistinct, tyOrdinal, tyAlias, tySink}:
       result = lastSon(result)
 
   let typ = n.typ.skip
@@ -883,7 +883,7 @@ proc bracketKind*(g: TSrcGen, n: PNode): BracketKind =
     case n.kind
     of nkClosedSymChoice, nkOpenSymChoice:
       if n.len > 0: result = bracketKind(g, n[0])
-    of nkSym: 
+    of nkSym:
       result = case n.sym.name.s
         of "[]": bkBracket
         of "[]=": bkBracketAsgn
@@ -974,7 +974,7 @@ proc gsub(g: var TSrcGen, n: PNode, c: TContext) =
         put(g, tkParRi, ")")
       put(g, tkColon, ":")
       gsub(g, n, n.len-1)
-    elif n.len >= 1:     
+    elif n.len >= 1:
       case bracketKind(g, n[0])
       of bkBracket:
         gsub(g, n, 1)
