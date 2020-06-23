@@ -53,6 +53,10 @@ Options:
   --latest                 bundle the installers with a bleeding edge Nimble
   --stable                 bundle the installers with a stable Nimble (default)
   --nim:path               use specified path for nim binary
+  --localdocs[:path]       only build local documentations. If a path is not
+                           specified (or empty), the default is used.
+                           Additionally options passed to docs will be used to
+                           build local documentation.
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers
@@ -642,7 +646,10 @@ proc showHelp() =
 
 when isMainModule:
   var op = initOptParser()
-  var latest = false
+  var
+    latest = false
+    localDocsOnly = false
+    localDocsOut = ""
   while true:
     op.next()
     case op.kind
@@ -651,19 +658,16 @@ when isMainModule:
       of "latest": latest = true
       of "stable": latest = false
       of "nim": nimExe = op.val.absolutePath # absolute so still works with changeDir
-      of "docslocal":
-        # undocumented for now, allows to rebuild local docs in < 40s as follows:
-        # `./koch --nim:$nimb --docslocal:htmldocs2 --doccmd:skip --warnings:off --hints:off`
-        # whereas `./koch docs` takes 190s; useful for development.
-        doAssert op.val.len > 0
-        buildDocsDir(op.cmdLineRest, op.val)
-        break
+      of "localdocs":
+        localDocsOnly = true
+        if op.val.len > 0:
+          localDocsOut = op.val.absolutePath
       else: showHelp()
     of cmdArgument:
       case normalize(op.key)
       of "boot": boot(op.cmdLineRest)
       of "clean": clean(op.cmdLineRest)
-      of "doc", "docs": buildDocs(op.cmdLineRest)
+      of "doc", "docs": buildDocs(op.cmdLineRest, localDocsOnly, localDocsOut)
       of "doc0", "docs0":
         # undocumented command for Araq-the-merciful:
         buildDocs(op.cmdLineRest & gaCode)
