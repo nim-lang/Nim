@@ -13,7 +13,6 @@
 # included from testament.nim
 
 import important_packages
-import std/private/nimbleutils
 
 const
   specialCategories = [
@@ -480,6 +479,16 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.options = options
   result.startTime = epochTime()
 
+proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): bool =
+  ## retry `action` up to `maxRetry` times with exponential backoff and initial
+  ## duraton of `backoffDuration` seconds
+  var t = backoffDuration
+  for i in 0..<maxRetry:
+    if action(): return true
+    if i == maxRetry - 1: break
+    sleep(int(t * 1000))
+    t *= 2 # exponential backoff
+
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
     echo "[Warning] - Cannot run nimble tests: Nimble binary not found."
@@ -508,13 +517,13 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
         if hasDep:
           var message: string
           if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
-            (proc(): bool =
+            proc: bool =
                let (outp, status) = execCmdEx("nimble install -y", workingDir = buildPath)
                if status != 0:
                  message = "'$1' failed:\n$2" % [cmd, outp]
                  false
                else: true
-            )):
+            ):
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
