@@ -49,7 +49,7 @@ pkg1 "gnuplot"
 pkg1 "hts", false, "nim c -o:htss src/hts.nim"
 # pkg1 "httpauth", true
 pkg1 "illwill", false, "nimble examples"
-pkg1 "inim", true # pending https://github.com/inim-repl/INim/issues/74
+pkg1 "inim", true
 pkg1 "itertools", false, "nim doc src/itertools.nim"
 pkg1 "iterutils"
 pkg1 "jstin"
@@ -89,10 +89,8 @@ pkg2 "nimsvg"
 # pkg2 "nimterop", true
 pkg2 "nimwc", true, "nim c nimwc.nim"
 # pkg2 "nimx", true, "nim c --threads:on test/main.nim"
-# pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
-  # pending https://github.com/timotheecour/Nim/issues/167 or new git tag for nitter
+pkg2 "nitter", true, "nim c src/nitter.nim", "https://github.com/zedeus/nitter"
 pkg2 "norm", true, "nim c -r tests/tsqliterows.nim"
-  # pending https://github.com/timotheecour/Nim/issues/167
 pkg2 "npeg", false, "nimble testarc"
 pkg2 "numericalnim", true, "nim c -r tests/test_integrate.nim"
 pkg2 "optionsutils"
