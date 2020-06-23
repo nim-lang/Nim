@@ -192,3 +192,20 @@ proc start*(spinny: sink Spinny) =
 
 var spinner1 = newSpinny()
 spinner1.start()
+
+# bug #14345
+
+type
+  SimpleLoopB = ref object
+    children: seq[SimpleLoopB]
+    parent: SimpleLoopB
+
+proc addChildLoop(self: SimpleLoopB, loop: SimpleLoopB) =
+  self.children.add loop
+
+proc setParent(self: SimpleLoopB, parent: SimpleLoopB) =
+  self.parent = parent
+  self.parent.addChildLoop(self)
+
+var l = SimpleLoopB()
+l.setParent(l)
