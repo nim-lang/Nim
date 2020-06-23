@@ -46,7 +46,7 @@ proc isLet(n: PNode): bool =
     if n.sym.kind in {skLet, skTemp, skForVar}:
       result = true
     elif n.sym.kind == skParam and skipTypes(n.sym.typ,
-                                             abstractInst).kind != tyVar:
+                                             abstractInst).kind notin {tyVar}:
       result = true
 
 proc isVar(n: PNode): bool =

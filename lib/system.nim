@@ -1767,6 +1767,7 @@ export iterators
 proc find*[T, S](a: T, item: S): int {.inline.}=
   ## Returns the first index of `item` in `a` or -1 if not found. This requires
   ## appropriate `items` and `==` operations to work.
+  result = 0
   for i in items(a):
     if i == item: return
     inc(result)
@@ -2105,7 +2106,7 @@ when not defined(js):
       # Linux 64bit system. -- That's because the stack direction is the other
       # way around.
       when declared(nimGC_setStackBottom):
-        var locals {.volatile.}: pointer
+        var locals {.volatile, noinit.}: pointer
         locals = addr(locals)
         nimGC_setStackBottom(locals)
 
@@ -2274,7 +2275,9 @@ when notJSnotNims:
       of 2: d = uint(cast[ptr uint16](a + uint(n.offset))[])
       of 4: d = uint(cast[ptr uint32](a + uint(n.offset))[])
       of 8: d = uint(cast[ptr uint64](a + uint(n.offset))[])
-      else: sysAssert(false, "getDiscriminant: invalid n.typ.size")
+      else:
+        d = 0'u
+        sysAssert(false, "getDiscriminant: invalid n.typ.size")
       return d
 
     proc selectBranch(aa: pointer, n: ptr TNimNode): ptr TNimNode =

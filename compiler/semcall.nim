@@ -676,7 +676,7 @@ proc searchForBorrowProc(c: PContext, startScope: PScope, fn: PSym): PSym =
     if t.kind == tyDistinct or param.typ.kind == tyDistinct: hasDistinct = true
     var x: PType
     if param.typ.kind == tyVar:
-      x = newTypeS(tyVar, c)
+      x = newTypeS(param.typ.kind, c)
       x.addSonSkipIntLit t.baseOfDistinct
     else:
       x = t.baseOfDistinct

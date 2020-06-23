@@ -417,7 +417,8 @@ proc relativePath*(path, base: string, sep = DirSep): string {.
       if not sameRoot(path, base):
         return path
 
-  var f, b: PathIter
+  var f = default PathIter
+  var b = default PathIter
   var ff = (0, -1)
   var bb = (0, -1) # (int, int)
   result = newStringOfCap(path.len)
@@ -1053,6 +1054,7 @@ when defined(windows) or defined(posix) or defined(nintendoswitch):
         assert quoteShellCommand(["aaa", "", "c d"]) == "aaa \"\" \"c d\""
 
     # can't use `map` pending https://github.com/nim-lang/Nim/issues/8303
+    result = ""
     for i in 0..<args.len:
       if i > 0: result.add " "
       result.add quoteShell(args[i])
@@ -2981,7 +2983,7 @@ proc getAppFilename*(): string {.rtl, extern: "nos$1", tags: [ReadIOEffect], noW
           setLen(result, L)
           break
   elif defined(macosx):
-    var size: cuint32
+    var size = cuint32(0)
     getExecPath1(nil, size)
     result = newString(int(size))
     if getExecPath2(result, size):

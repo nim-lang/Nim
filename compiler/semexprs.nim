@@ -712,7 +712,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
     # note sometimes this is eval'ed twice so we check for nkHiddenAddr here:
     for i in 1..<n.len:
       if i < t.len and t[i] != nil and
-          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+          skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
         let it = n[i]
         if isAssignable(c, it) notin {arLValue, arLocalLValue}:
           if it.kind != nkHiddenAddr:
@@ -733,7 +733,7 @@ proc analyseIfAddressTakenInCall(c: PContext, n: PNode) =
       # calls and then they wouldn't be analysed otherwise
       analyseIfAddressTakenInCall(c, n[i])
     if i < t.len and
-        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind == tyVar:
+        skipTypes(t[i], abstractInst-{tyTypeDesc}).kind in {tyVar}:
       if n[i].kind != nkHiddenAddr:
         n[i] = analyseIfAddressTaken(c, n[i])
 
@@ -1711,7 +1711,7 @@ proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode =
   var le = a.typ
   if le == nil:
     localError(c.config, a.info, "expression has no type")
-  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind != tyVar and
+  elif (skipTypes(le, {tyGenericInst, tyAlias, tySink}).kind notin {tyVar} and
         isAssignable(c, a) in {arNone, arLentValue}) or
       skipTypes(le, abstractVar).kind in {tyOpenArray, tyVarargs}:
     # Direct assignment to a discriminant is allowed!

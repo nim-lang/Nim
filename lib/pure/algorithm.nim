@@ -187,6 +187,7 @@ proc binarySearch*[T, K](a: openArray[T], key: K,
     else:
       return -1
 
+  result = 0
   if (len and (len - 1)) == 0:
     # when `len` is a power of 2, a faster shr can be used.
     var step = len shr 1

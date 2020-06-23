@@ -113,7 +113,7 @@ const
     warnStaticIndexCheck: "$1",
     warnGcUnsafe: "not GC-safe: '$1'",
     warnGcUnsafe2: "$1",
-    warnUninit: "'$1' might not have been initialized",
+    warnUninit: "use explicit initialization of '$1' for clarity",
     warnGcMem: "'$1' uses GC'ed memory",
     warnDestructor: "usage of a type with a destructor in a non destructible context. This will become a compile time error in the future.",
     warnLockLevel: "$1",

@@ -731,13 +731,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
           var v = symForVar(c, n[0][i])
           if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
           case iter.kind
-          of tyVar:
-            v.typ = newTypeS(tyVar, c)
-            v.typ.add iterAfterVarLent[i]
-            if tfVarIsPtr in iter.flags:
-              v.typ.flags.incl tfVarIsPtr
-          of tyLent:
-            v.typ = newTypeS(tyLent, c)
+          of tyVar, tyLent:
+            v.typ = newTypeS(iter.kind, c)
             v.typ.add iterAfterVarLent[i]
             if tfVarIsPtr in iter.flags:
               v.typ.flags.incl tfVarIsPtr
@@ -794,13 +789,8 @@ proc semForVars(c: PContext, n: PNode; flags: TExprFlags): PNode =
         var v = symForVar(c, n[i])
         if getCurrOwner(c).kind == skModule: incl(v.flags, sfGlobal)
         case iter.kind
-        of tyVar:
-          v.typ = newTypeS(tyVar, c)
-          v.typ.add iterAfterVarLent[i]
-          if tfVarIsPtr in iter.flags:
-            v.typ.flags.incl tfVarIsPtr
-        of tyLent:
-          v.typ = newTypeS(tyLent, c)
+        of tyVar, tyLent:
+          v.typ = newTypeS(iter.kind, c)
           v.typ.add iterAfterVarLent[i]
           if tfVarIsPtr in iter.flags:
             v.typ.flags.incl tfVarIsPtr
