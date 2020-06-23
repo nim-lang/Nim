@@ -16,30 +16,30 @@ import
 type
   TFilterKind* = enum
     filtNone, filtTemplate, filtReplace, filtStrip
-  TParserKind* = enum
+  ParserKind* = enum
     skinStandard, skinEndX
 
 const
-  parserNames*: array[TParserKind, string] = ["standard",
+  parserNames*: array[ParserKind, string] = ["standard",
                                               "endx"]
   filterNames*: array[TFilterKind, string] = ["none", "stdtmpl", "replace",
                                               "strip"]
 
 type
-  TParsers* = object
-    skin*: TParserKind
-    parser*: TParser
+  Parsers* = object
+    skin*: ParserKind
+    parser*: Parser
 
-template config(p: TParsers): ConfigRef = p.parser.lex.config
+template config(p: Parsers): ConfigRef = p.parser.lex.config
 
-proc parseAll*(p: var TParsers): PNode =
+proc parseAll*(p: var Parsers): PNode =
   case p.skin
   of skinStandard:
     result = parser.parseAll(p.parser)
   of skinEndX:
     internalError(p.config, "parser to implement")
 
-proc parseTopLevelStmt*(p: var TParsers): PNode =
+proc parseTopLevelStmt*(p: var Parsers): PNode =
   case p.skin
   of skinStandard:
     result = parser.parseTopLevelStmt(p.parser)
@@ -78,7 +78,7 @@ proc parsePipe(filename: AbsoluteFile, inputStream: PLLStream; cache: IdentCache
       else:
         inc(i, 2)
         while i < line.len and line[i] in Whitespace: inc(i)
-        var q: TParser
+        var q: Parser
         parser.openParser(q, filename, llStreamOpen(substr(line, i)), cache, config)
         result = parser.parseAll(q)
         parser.closeParser(q)
@@ -90,8 +90,8 @@ proc getFilter(ident: PIdent): TFilterKind =
       return i
   result = filtNone
 
-proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): TParserKind =
-  for i in low(TParserKind)..high(TParserKind):
+proc getParser(conf: ConfigRef; n: PNode; ident: PIdent): ParserKind =
+  for i in low(ParserKind)..high(ParserKind):
     if cmpIgnoreStyle(ident.s, parserNames[i]) == 0:
       return i
   localError(conf, n.info, "unknown parser: " & ident.s)
@@ -104,7 +104,7 @@ proc getCallee(conf: ConfigRef; n: PNode): PIdent =
   else:
     localError(conf, n.info, "invalid filter: " & renderTree(n))
 
-proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
+proc applyFilter(p: var Parsers, n: PNode, filename: AbsoluteFile,
                  stdin: PLLStream): PLLStream =
   var ident = getCallee(p.config, n)
   var f = getFilter(ident)
@@ -125,7 +125,7 @@ proc applyFilter(p: var TParsers, n: PNode, filename: AbsoluteFile,
       msgWriteln(p.config, result.s)
       rawMessage(p.config, hintCodeEnd, "")
 
-proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
+proc evalPipe(p: var Parsers, n: PNode, filename: AbsoluteFile,
               start: PLLStream): PLLStream =
   assert p.config != nil
   result = start
@@ -141,7 +141,7 @@ proc evalPipe(p: var TParsers, n: PNode, filename: AbsoluteFile,
   else:
     result = applyFilter(p, n, filename, result)
 
-proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
+proc openParsers*(p: var Parsers, fileIdx: FileIndex, inputstream: PLLStream;
                   cache: IdentCache; config: ConfigRef) =
   assert config != nil
   var s: PLLStream
@@ -155,10 +155,10 @@ proc openParsers*(p: var TParsers, fileIdx: FileIndex, inputstream: PLLStream;
   of skinStandard, skinEndX:
     parser.openParser(p.parser, fileIdx, s, cache, config)
 
-proc closeParsers*(p: var TParsers) =
+proc closeParsers*(p: var Parsers) =
   parser.closeParser(p.parser)
 
-proc setupParsers*(p: var TParsers; fileIdx: FileIndex; cache: IdentCache;
+proc setupParsers*(p: var Parsers; fileIdx: FileIndex; cache: IdentCache;
                    config: ConfigRef): bool =
   var f: File
   let filename = toFullPathConsiderDirty(config, fileIdx)
@@ -169,7 +169,7 @@ proc setupParsers*(p: var TParsers; fileIdx: FileIndex; cache: IdentCache;
   result = true
 
 proc parseFile*(fileIdx: FileIndex; cache: IdentCache; config: ConfigRef): PNode =
-  var p: TParsers
+  var p: Parsers
   if setupParsers(p, fileIdx, cache, config):
     result = parseAll(p)
     closeParsers(p)

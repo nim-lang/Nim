@@ -126,7 +126,7 @@ proc moduleHasChanged*(graph: ModuleGraph; module: PSym): bool {.inline.} =
 proc processModule*(graph: ModuleGraph; module: PSym, stream: PLLStream): bool {.discardable.} =
   if graph.stopCompile(): return true
   var
-    p: TParsers
+    p: Parsers
     a: TPassContextArray
     s: PLLStream
     fileIdx = module.fileIdx

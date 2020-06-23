@@ -30,7 +30,7 @@ const
 # don't forget to update the 'highlite' module if these charsets should change
 
 type
-  TTokType* = enum
+  TokType* = enum
     tkInvalid = "tkInvalid", tkEof = "[EOF]"
     # order is important here!
     tkSymbol = "tkSymbol"
@@ -141,7 +141,7 @@ type
     tkPrefixOpr = "tkPrefixOpr"
     tkPostfixOpr = "tkPostfixOpr"
 
-  TTokTypes* = set[TTokType]
+  TokTypes* = set[TokType]
 
 const
   weakTokens = {tkComma, tkSemiColon, tkColon,
@@ -152,7 +152,7 @@ const
   tokKeywordHigh* = pred(tkIntLit)
 
 type
-  TNumericalBase* = enum
+  NumericalBase* = enum
     base10,                   # base10 is listed as the first element,
                               # so that it is the correct default value
     base2, base8, base16
@@ -160,14 +160,14 @@ type
   CursorPosition* {.pure.} = enum ## XXX remove this again
     None, InToken, BeforeToken, AfterToken
 
-  TToken* = object            # a Nim token
-    tokType*: TTokType        # the type of the token
+  Token* = object             # a Nim token
+    tokType*: TokType         # the type of the token
     indent*: int              # the indentation; != -1 if the token has been
                               # preceded with indentation
     ident*: PIdent            # the parsed identifier
     iNumber*: BiggestInt      # the parsed integer literal
     fNumber*: BiggestFloat    # the parsed floating point literal
-    base*: TNumericalBase     # the numerical base; only valid for int
+    base*: NumericalBase      # the numerical base; only valid for int
                               # or float literals
     strongSpaceA*: int8       # leading spaces of an operator
     strongSpaceB*: int8       # trailing spaces of an operator
@@ -175,12 +175,12 @@ type
                               # documentation comments are here too
     line*, col*: int
     when defined(nimpretty):
-      offsetA*, offsetB*: int   # used for pretty printing so that literals
-                                # like 0b01 or  r"\L" are unaffected
+      offsetA*, offsetB*: int # used for pretty printing so that literals
+                              # like 0b01 or  r"\L" are unaffected
       commentOffsetA*, commentOffsetB*: int
 
-  TErrorHandler* = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string)
-  TLexer* = object of TBaseLexer
+  ErrorHandler* = proc (conf: ConfigRef; info: TLineInfo; msg: TMsgKind; arg: string)
+  Lexer* = object of TBaseLexer
     fileIdx*: FileIndex
     indentAhead*: int         # if > 0 an indentation has already been read
                               # this is needed because scanning comments
@@ -188,13 +188,13 @@ type
     currLineIndent*: int
     strongSpaces*, allowTabs*: bool
     cursor*: CursorPosition
-    errorHandler*: TErrorHandler
+    errorHandler*: ErrorHandler
     cache*: IdentCache
     when defined(nimsuggest):
       previousToken: TLineInfo
     config*: ConfigRef
 
-proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
+proc getLineInfo*(L: Lexer, tok: Token): TLineInfo {.inline.} =
   result = newLineInfo(L.fileIdx, tok.line, tok.col)
   when defined(nimpretty):
     result.offsetA = tok.offsetA
@@ -202,7 +202,7 @@ proc getLineInfo*(L: TLexer, tok: TToken): TLineInfo {.inline.} =
     result.commentOffsetA = tok.commentOffsetA
     result.commentOffsetB = tok.commentOffsetB
 
-proc isKeyword*(kind: TTokType): bool =
+proc isKeyword*(kind: TokType): bool =
   result = (kind >= tokKeywordLow) and (kind <= tokKeywordHigh)
 
 template ones(n): untyped = ((1 shl n)-1) # for utf-8 conversion
@@ -217,7 +217,7 @@ proc isNimIdentifier*(s: string): bool =
       inc(i)
     result = true
 
-proc `$`*(tok: TToken): string =
+proc `$`*(tok: Token): string =
   case tok.tokType
   of tkIntLit..tkInt64Lit: result = $tok.iNumber
   of tkFloatLit..tkFloat64Lit: result = $tok.fNumber
@@ -230,15 +230,15 @@ proc `$`*(tok: TToken): string =
     else:
       result = ""
 
-proc prettyTok*(tok: TToken): string =
+proc prettyTok*(tok: Token): string =
   if isKeyword(tok.tokType): result = "keyword " & tok.ident.s
   else: result = $tok
 
-proc printTok*(conf: ConfigRef; tok: TToken) =
+proc printTok*(conf: ConfigRef; tok: Token) =
   msgWriteln(conf, $tok.line & ":" & $tok.col & "\t" &
       $tok.tokType & " " & $tok)
 
-proc initToken*(L: var TToken) =
+proc initToken*(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
@@ -251,7 +251,7 @@ proc initToken*(L: var TToken) =
     L.commentOffsetA = 0
     L.commentOffsetB = 0
 
-proc fillToken(L: var TToken) =
+proc fillToken(L: var Token) =
   L.tokType = tkInvalid
   L.iNumber = 0
   L.indent = 0
@@ -264,7 +264,7 @@ proc fillToken(L: var TToken) =
     L.commentOffsetA = 0
     L.commentOffsetB = 0
 
-proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
+proc openLexer*(lex: var Lexer, fileIdx: FileIndex, inputstream: PLLStream;
                  cache: IdentCache; config: ConfigRef) =
   openBaseLexer(lex, inputstream)
   lex.fileIdx = fileIdx
@@ -276,36 +276,36 @@ proc openLexer*(lex: var TLexer, fileIdx: FileIndex, inputstream: PLLStream;
     lex.previousToken.fileIndex = fileIdx
   lex.config = config
 
-proc openLexer*(lex: var TLexer, filename: AbsoluteFile, inputstream: PLLStream;
+proc openLexer*(lex: var Lexer, filename: AbsoluteFile, inputstream: PLLStream;
                 cache: IdentCache; config: ConfigRef) =
   openLexer(lex, fileInfoIdx(config, filename), inputstream, cache, config)
 
-proc closeLexer*(lex: var TLexer) =
+proc closeLexer*(lex: var Lexer) =
   if lex.config != nil:
     inc(lex.config.linesCompiled, lex.lineNumber)
   closeBaseLexer(lex)
 
-proc getLineInfo(L: TLexer): TLineInfo =
+proc getLineInfo(L: Lexer): TLineInfo =
   result = newLineInfo(L.fileIdx, L.lineNumber, getColNumber(L, L.bufpos))
 
-proc dispMessage(L: TLexer; info: TLineInfo; msg: TMsgKind; arg: string) =
+proc dispMessage(L: Lexer; info: TLineInfo; msg: TMsgKind; arg: string) =
   if L.errorHandler.isNil:
     msgs.message(L.config, info, msg, arg)
   else:
     L.errorHandler(L.config, info, msg, arg)
 
-proc lexMessage*(L: TLexer, msg: TMsgKind, arg = "") =
+proc lexMessage*(L: Lexer, msg: TMsgKind, arg = "") =
   L.dispMessage(getLineInfo(L), msg, arg)
 
-proc lexMessageTok*(L: TLexer, msg: TMsgKind, tok: TToken, arg = "") =
+proc lexMessageTok*(L: Lexer, msg: TMsgKind, tok: Token, arg = "") =
   var info = newLineInfo(L.fileIdx, tok.line, tok.col)
   L.dispMessage(info, msg, arg)
 
-proc lexMessagePos(L: var TLexer, msg: TMsgKind, pos: int, arg = "") =
+proc lexMessagePos(L: var Lexer, msg: TMsgKind, pos: int, arg = "") =
   var info = newLineInfo(L.fileIdx, L.lineNumber, pos - L.lineStart)
   L.dispMessage(info, msg, arg)
 
-proc matchTwoChars(L: TLexer, first: char, second: set[char]): bool =
+proc matchTwoChars(L: Lexer, first: char, second: set[char]): bool =
   result = (L.buf[L.bufpos] == first) and (L.buf[L.bufpos + 1] in second)
 
 template tokenBegin(tok, pos) {.dirty.} =
@@ -351,16 +351,16 @@ template tokenEndPrevious(tok, pos) =
   when defined(nimpretty):
     tok.offsetB = L.offsetBase + pos
 
-template eatChar(L: var TLexer, t: var TToken, replacementChar: char) =
+template eatChar(L: var Lexer, t: var Token, replacementChar: char) =
   t.literal.add(replacementChar)
   inc(L.bufpos)
 
-template eatChar(L: var TLexer, t: var TToken) =
+template eatChar(L: var Lexer, t: var Token) =
   t.literal.add(L.buf[L.bufpos])
   inc(L.bufpos)
 
-proc getNumber(L: var TLexer, result: var TToken) =
-  proc matchUnderscoreChars(L: var TLexer, tok: var TToken, chars: set[char]): Natural =
+proc getNumber(L: var Lexer, result: var Token) =
+  proc matchUnderscoreChars(L: var Lexer, tok: var Token, chars: set[char]): Natural =
     var pos = L.bufpos              # use registers for pos, buf
     result = 0
     while true:
@@ -380,19 +380,19 @@ proc getNumber(L: var TLexer, result: var TToken) =
         inc(pos)
     L.bufpos = pos
 
-  proc matchChars(L: var TLexer, tok: var TToken, chars: set[char]) =
+  proc matchChars(L: var Lexer, tok: var Token, chars: set[char]) =
     var pos = L.bufpos              # use registers for pos, buf
     while L.buf[pos] in chars:
       tok.literal.add(L.buf[pos])
       inc(pos)
     L.bufpos = pos
 
-  proc lexMessageLitNum(L: var TLexer, msg: string, startpos: int, msgKind = errGenerated) =
+  proc lexMessageLitNum(L: var Lexer, msg: string, startpos: int, msgKind = errGenerated) =
     # Used to get slightly human friendlier err messages.
     const literalishChars = {'A'..'F', 'a'..'f', '0'..'9', 'X', 'x', 'o', 'O',
       'c', 'C', 'b', 'B', '_', '.', '\'', 'd', 'i', 'u'}
     var msgPos = L.bufpos
-    var t: TToken
+    var t: Token
     t.literal = ""
     L.bufpos = startpos # Use L.bufpos as pos because of matchChars
     matchChars(L, t, literalishChars)
@@ -660,7 +660,7 @@ proc getNumber(L: var TLexer, result: var TToken) =
   tokenEnd(result, postPos-1)
   L.bufpos = postPos
 
-proc handleHexChar(L: var TLexer, xi: var int; position: range[0..4]) =
+proc handleHexChar(L: var Lexer, xi: var int; position: range[0..4]) =
   template invalid() =
     lexMessage(L, errGenerated,
       "expected a hex digit, but found: " & L.buf[L.bufpos] &
@@ -685,7 +685,7 @@ proc handleHexChar(L: var TLexer, xi: var int; position: range[0..4]) =
     # Need to progress for `nim check`
     inc(L.bufpos)
 
-proc handleDecChars(L: var TLexer, xi: var int) =
+proc handleDecChars(L: var Lexer, xi: var int) =
   while L.buf[L.bufpos] in {'0'..'9'}:
     xi = (xi * 10) + (ord(L.buf[L.bufpos]) - ord('0'))
     inc(L.bufpos)
@@ -728,7 +728,7 @@ proc addUnicodeCodePoint(s: var string, i: int) =
     s[pos+4] = chr(i shr 6 and ones(6) or 0b10_0000_00)
     s[pos+5] = chr(i and ones(6) or 0b10_0000_00)
 
-proc getEscapedChar(L: var TLexer, tok: var TToken) =
+proc getEscapedChar(L: var Lexer, tok: var Token) =
   inc(L.bufpos)               # skip '\'
   case L.buf[L.bufpos]
   of 'n', 'N':
@@ -814,7 +814,7 @@ proc newString(s: cstring, len: int): string =
   for i in 0..<len:
     result[i] = s[i]
 
-proc handleCRLF(L: var TLexer, pos: int): int =
+proc handleCRLF(L: var Lexer, pos: int): int =
   template registerLine =
     let col = L.getColNumber(pos)
 
@@ -836,7 +836,7 @@ type
     raw,
     generalized
 
-proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
+proc getString(L: var Lexer, tok: var Token, mode: StringMode) =
   var pos = L.bufpos
   var line = L.lineNumber         # save linenumber for better error message
   tokenBegin(tok, pos - ord(mode == raw))
@@ -902,7 +902,7 @@ proc getString(L: var TLexer, tok: var TToken, mode: StringMode) =
         inc(pos)
     L.bufpos = pos
 
-proc getCharacter(L: var TLexer, tok: var TToken) =
+proc getCharacter(L: var Lexer, tok: var Token) =
   tokenBegin(tok, L.bufpos)
   inc(L.bufpos)               # skip '
   var c = L.buf[L.bufpos]
@@ -919,7 +919,7 @@ proc getCharacter(L: var TLexer, tok: var TToken) =
   tokenEndIgnore(tok, L.bufpos)
   inc(L.bufpos)               # skip '
 
-proc getSymbol(L: var TLexer, tok: var TToken) =
+proc getSymbol(L: var Lexer, tok: var Token) =
   var h: Hash = 0
   var pos = L.bufpos
   tokenBegin(tok, pos)
@@ -949,21 +949,21 @@ proc getSymbol(L: var TLexer, tok: var TToken) =
       (tok.ident.id > ord(tokKeywordHigh) - ord(tkSymbol)):
     tok.tokType = tkSymbol
   else:
-    tok.tokType = TTokType(tok.ident.id + ord(tkSymbol))
+    tok.tokType = TokType(tok.ident.id + ord(tkSymbol))
     if suspicious and {optStyleHint, optStyleError} * L.config.globalOptions != {}:
       lintReport(L.config, getLineInfo(L), tok.ident.s.normalize, tok.ident.s)
   L.bufpos = pos
 
 
-proc endOperator(L: var TLexer, tok: var TToken, pos: int,
+proc endOperator(L: var Lexer, tok: var Token, pos: int,
                  hash: Hash) {.inline.} =
   var h = !$hash
   tok.ident = L.cache.getIdent(addr(L.buf[L.bufpos]), pos - L.bufpos, h)
   if (tok.ident.id < oprLow) or (tok.ident.id > oprHigh): tok.tokType = tkOpr
-  else: tok.tokType = TTokType(tok.ident.id - oprLow + ord(tkColon))
+  else: tok.tokType = TokType(tok.ident.id - oprLow + ord(tkColon))
   L.bufpos = pos
 
-proc getOperator(L: var TLexer, tok: var TToken) =
+proc getOperator(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
   var h: Hash = 0
@@ -983,7 +983,7 @@ proc getOperator(L: var TLexer, tok: var TToken) =
   if L.buf[pos] in {CR, LF, nimlexbase.EndOfFile}:
     tok.strongSpaceB = -1
 
-proc getPrecedence*(tok: TToken): int =
+proc getPrecedence*(tok: Token): int =
   ## Calculates the precedence of the given token.
   case tok.tokType
   of tkOpr:
@@ -1013,7 +1013,7 @@ proc getPrecedence*(tok: TToken): int =
   of tkOr, tkXor, tkPtr, tkRef: result = 3
   else: return -10
 
-proc newlineFollows*(L: TLexer): bool =
+proc newlineFollows*(L: Lexer): bool =
   var pos = L.bufpos
   while true:
     case L.buf[pos]
@@ -1029,7 +1029,7 @@ proc newlineFollows*(L: TLexer): bool =
     else:
       break
 
-proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
+proc skipMultiLineComment(L: var Lexer; tok: var Token; start: int;
                           isDoc: bool) =
   var pos = start
   var toStrip = 0
@@ -1094,7 +1094,7 @@ proc skipMultiLineComment(L: var TLexer; tok: var TToken; start: int;
   when defined(nimpretty):
     tok.commentOffsetB = L.offsetBase + pos - 1
 
-proc scanComment(L: var TLexer, tok: var TToken) =
+proc scanComment(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tok.tokType = tkComment
   # iNumber contains the number of '\n' in the token
@@ -1144,7 +1144,7 @@ proc scanComment(L: var TLexer, tok: var TToken) =
   when defined(nimpretty):
     tok.commentOffsetB = L.offsetBase + pos - 1
 
-proc skip(L: var TLexer, tok: var TToken) =
+proc skip(L: var Lexer, tok: var Token) =
   var pos = L.bufpos
   tokenBegin(tok, pos)
   tok.strongSpaceA = 0
@@ -1216,7 +1216,7 @@ proc skip(L: var TLexer, tok: var TToken) =
       tok.tokType = tkComment
       tok.indent = commentIndent
 
-proc rawGetTok*(L: var TLexer, tok: var TToken) =
+proc rawGetTok*(L: var Lexer, tok: var Token) =
   template atTokenEnd() {.dirty.} =
     when defined(nimsuggest):
       # we attach the cursor to the last *strong* token
@@ -1369,8 +1369,8 @@ proc rawGetTok*(L: var TLexer, tok: var TToken) =
 
 proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
                      cache: IdentCache; config: ConfigRef): int =
-  var lex: TLexer
-  var tok: TToken
+  var lex: Lexer
+  var tok: Token
   initToken(tok)
   openLexer(lex, fileIdx, inputstream, cache, config)
   var prevToken = tkEof
@@ -1384,11 +1384,11 @@ proc getIndentWidth*(fileIdx: FileIndex, inputstream: PLLStream;
 
 proc getPrecedence*(ident: PIdent): int =
   ## assumes ident is binary operator already
-  var tok: TToken
+  var tok: Token
   initToken(tok)
   tok.ident = ident
   tok.tokType =
     if tok.ident.id in ord(tokKeywordLow) - ord(tkSymbol)..ord(tokKeywordHigh) - ord(tkSymbol):
-      TTokType(tok.ident.id + ord(tkSymbol))
+      TokType(tok.ident.id + ord(tkSymbol))
     else: tkOpr
   getPrecedence(tok)
