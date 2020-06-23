@@ -582,7 +582,6 @@ proc processSwitch*(switch, arg: string, pass: TCmdLinePass, info: TLineInfo;
     else:
       undefSymbol(conf.symbols, "hotcodereloading")
       undefSymbol(conf.symbols, "useNimRtl")
-  of "laxstrings": processOnOffSwitch(conf, {optLaxStrings}, arg, pass, info)
   of "nilseqs": processOnOffSwitch(conf, {optNilSeqs}, arg, pass, info)
   of "oldast": processOnOffSwitch(conf, {optOldAst}, arg, pass, info)
   of "checks", "x": processOnOffSwitch(conf, ChecksOptions, arg, pass, info)

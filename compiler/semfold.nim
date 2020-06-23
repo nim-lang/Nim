@@ -482,8 +482,6 @@ proc foldArrayAccess(m: PSym, n: PNode; g: ModuleGraph): PNode =
     result = newNodeIT(nkCharLit, x.info, n.typ)
     if idx >= 0 and idx < x.strVal.len:
       result.intVal = ord(x.strVal[int(idx)])
-    elif idx == x.strVal.len and optLaxStrings in g.config.options:
-      discard
     else:
       localError(g.config, n.info, formatErrorIndexBound(idx, x.strVal.len-1) & $n)
   else: discard

@@ -220,4 +220,7 @@ proc mydiv(a, b): int {.raises: [].} =
   See [docgen](docgen.html#introduction-quick-start) for details.
 - Deprecated `--oldNewlines` and its Deprecated code cleaned out.
 
+- Deprecated `--laxStrings` for mutating the internal zero terminator on strings and its Deprecated code cleaned out.
+
+
 ## Tool changes
