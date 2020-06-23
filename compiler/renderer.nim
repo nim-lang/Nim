@@ -589,7 +589,7 @@ proc gcommaAux(g: var TSrcGen, n: PNode, ind: int, start: int = 0,
     gsub(g, n[i])
     if c:
       if g.tokens.len > oldLen:
-        putWithSpace(g, separator, TokTypeToStr[separator])
+        putWithSpace(g, separator, $separator)
       if hasCom(n[i]):
         gcoms(g)
         optNL(g, ind)

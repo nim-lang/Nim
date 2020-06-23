@@ -220,7 +220,7 @@ proc eat(p: var TParser, tokType: TTokType) =
     getTok(p)
   else:
     lexMessage(p.lex, errGenerated,
-      "expected: '" & TokTypeToStr[tokType] & "', but got: '" & prettyTok(p.tok) & "'")
+      "expected: '" & $tokType & "', but got: '" & prettyTok(p.tok) & "'")
 
 proc parLineInfo(p: TParser): TLineInfo =
   ## Retrieve the line information associated with the parser's current state.
@@ -272,12 +272,11 @@ proc isOperator(tok: TToken): bool =
                   tkIsnot, tkNot, tkOf, tkAs, tkFrom, tkDotDot, tkAnd,
                   tkOr, tkXor}
 
-proc isUnary(p: TParser): bool =
-  ## Check if the current parser token is a unary operator
-  if p.tok.tokType in {tkOpr, tkDotDot} and
-     p.tok.strongSpaceB == 0 and
-     p.tok.strongSpaceA > 0:
-      result = true
+proc isUnary(tok: TToken): bool =
+  ## Check if the given token is a unary operator
+  tok.tokType in {tkOpr, tkDotDot} and
+  tok.strongSpaceB == 0 and
+  tok.strongSpaceA > 0
 
 proc checkBinary(p: TParser) {.inline.} =
   ## Check if the current parser token is a binary operator.
@@ -800,7 +799,7 @@ proc primarySuffix(p: var TParser, r: PNode,
       # `foo ref` or `foo ptr`. Unfortunately, these two are also
       # used as infix operators for the memory regions feature and
       # the current parsing rules don't play well here.
-      if p.inPragma == 0 and (isUnary(p) or p.tok.tokType notin {tkOpr, tkDotDot}):
+      if p.inPragma == 0 and (isUnary(p.tok) or p.tok.tokType notin {tkOpr, tkDotDot}):
         # actually parsing {.push hints:off.} as {.push(hints:off).} is a sweet
         # solution, but pragmas.nim can't handle that
         result = commandExpr(p, result, mode)
@@ -812,13 +811,13 @@ proc parseOperators(p: var TParser, headNode: PNode,
                     limit: int, mode: TPrimaryMode): PNode =
   result = headNode
   # expand while operators have priorities higher than 'limit'
-  var opPrec = getPrecedence(p.tok, false)
+  var opPrec = getPrecedence(p.tok)
   let modeB = if mode == pmTypeDef: pmTypeDesc else: mode
   # the operator itself must not start on a new line:
   # progress guaranteed
-  while opPrec >= limit and p.tok.indent < 0 and not isUnary(p):
+  while opPrec >= limit and p.tok.indent < 0 and not isUnary(p.tok):
     checkBinary(p)
-    var leftAssoc = 1-ord(isRightAssociative(p.tok))
+    let leftAssoc = ord(not isRightAssociative(p.tok))
     var a = newNodeP(nkInfix, p)
     var opNode = newIdentNodeP(p.tok.ident, p) # skip operator:
     getTok(p)
@@ -830,7 +829,7 @@ proc parseOperators(p: var TParser, headNode: PNode,
     a.add(result)
     a.add(b)
     result = a
-    opPrec = getPrecedence(p.tok, false)
+    opPrec = getPrecedence(p.tok)
 
 proc simpleExprAux(p: var TParser, limit: int, mode: TPrimaryMode): PNode =
   result = primary(p, mode)
