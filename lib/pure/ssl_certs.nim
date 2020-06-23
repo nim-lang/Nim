@@ -11,7 +11,7 @@
 ## SSL_CERT_DIR environment variables.
 
 import os, strutils
-from ospaths import existsEnv, getEnv
+from os import existsEnv, getEnv
 import strutils
 
 # SECURITY: this unnecessarily scans through dirs/files regardless of the
