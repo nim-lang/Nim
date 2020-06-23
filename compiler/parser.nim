@@ -38,13 +38,13 @@ when defined(nimpretty):
 
 type
   Parser* = object            # A Parser object represents a file that
-                               # is being parsed
-    currInd: int               # current indentation level
-    firstTok: bool             # Has the first token been read?
-    hasProgress: bool          # some while loop requires progress ensurance
+                              # is being parsed
+    currInd: int              # current indentation level
+    firstTok: bool            # Has the first token been read?
+    hasProgress: bool         # some while loop requires progress ensurance
     lex*: Lexer               # The lexer that is used for parsing
     tok*: Token               # The current token
-    inPragma*: int             # Pragma level
+    inPragma*: int            # Pragma level
     inSemiStmtList*: int
     emptyNode: PNode
     when defined(nimpretty):
