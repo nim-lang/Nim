@@ -13,6 +13,11 @@ macros api OK
 when defined(cpp) and not defined(windows):
   {.passC: "-std=c++11".}
 
+{.emit:"""
+#define c_astToStrImpl(T) #T
+"""
+.}
+
 # Object offsets are different for inheritance objects when compiling
 # to c++.
 
@@ -36,6 +41,16 @@ doAssert mysize2 == 12
 doAssert mysize3 == 32
 
 import macros, typetraits
+from strutils import `%`
+
+template c_astToStr(T: typedesc): string =
+  block:
+    # proc needed pending https://github.com/nim-lang/Nim/issues/13943 D20200409T215527
+    proc fun2(): string =
+      var s: cstring
+      {.emit:[s, "= c_astToStrImpl(", T, ");"].}
+      $s
+    fun2()
 
 macro testSizeAlignOf(args: varargs[untyped]): untyped =
   result = newStmtList()
@@ -687,10 +702,56 @@ reject:
 reject:
   const off8 = offsetof(MyPackedCaseObject, val5)
 
+template c_sizeof2(T: typedesc): int =
+  block:
+    # proc needed pending https://github.com/nim-lang/Nim/issues/13943
+    proc fun2(): int =
+      {.emit:[result," = sizeof(", T, ");"].}
+    fun2()
 
-type
-  O0 = object
-  T0 = tuple[]
+macro testSizeofVsCsizeof(body: untyped): untyped =
+  result = newStmtList()
+  for T in body:
+    result.add quote do:
+      let s1 = `T`.sizeof
+      let s2 = `T`.c_sizeof2
+      if s1 != s2:
+        doAssert false, "$1 $2 => sizeof: $3 vs c_sizeof: $4" % [$astToStr(`T`), c_astToStr(`T`), $s1, $s2]
 
-doAssert sizeof(O0) == 1
-doAssert sizeof(T0) == 1
+{.emit:"""
+enum CFoo {cfoo0,cfoo1};
+typedef enum CFoo CFoo;
+""".}
+
+block: # issue #13945
+  type
+    O0 = object
+    T0 = tuple[]
+    O0Arr = array[10, O0]
+    ArrEmpty = array[0, float]
+    Bar2 = object
+      x: O0
+      y: cint
+    BarTup = (O0, cint)
+    BarTup2 = (T0, T0)
+    FooEnum = enum
+      k0 = 1.cint
+      k1, k2, k3
+    CFoo {.importc: "CFoo".} = enum cfoo0, cfoo1
+
+  doAssert sizeof(O0) == 1
+  doAssert sizeof(T0) == 1
+  static:
+    doAssert sizeof(O0) == 1
+    doAssert sizeof(T0) == 1
+
+  testSizeofVsCsizeof:
+    O0
+    T0
+    O0Arr
+    Bar2
+    BarTup
+    BarTup2
+    FooEnum 
+    # ArrEmpty # fails: sizeof: 0 vs c_sizeof: 8 pending https://github.com/nim-lang/Nim/issues/14786
+    # CFoo # pending https://github.com/nim-lang/Nim/issues/13927
