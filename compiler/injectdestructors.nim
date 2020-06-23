@@ -612,7 +612,10 @@ proc ensureDestruction(arg: PNode; c: var Con; toDestroy: bool): PNode =
       # XXX port this to 'scopeBasedDestruction'!
       tmp = getTemp(c, arg.typ, arg.info)
       c.addTopVar(tmp)
-      result.add genSink(c, tmp, arg, isDecl = true)
+      if hasDestructor(arg.typ):
+        result.add genSink(c, tmp, arg, isDecl = true)
+      else:
+        result.add newTree(nkFastAsgn, tmp, arg)
     else:
       result = newNodeI(nkStmtList, arg.info)
       result.add arg
