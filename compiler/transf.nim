@@ -423,7 +423,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ = toVar(result.typ)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   of nkHiddenStdConv, nkHiddenSubConv, nkConv:
     var m = n[0][1]
     if m.kind == a or m.kind == b:
@@ -433,7 +433,7 @@ proc transformAddrDeref(c: PTransf, n: PNode, a, b: TNodeKind): PNode =
       if n.typ.skipTypes(abstractVar).kind != tyOpenArray:
         result.typ = n.typ
       elif n.typ.skipTypes(abstractInst).kind in {tyVar}:
-        result.typ = toVar(result.typ)
+        result.typ = toVar(result.typ, n.typ.skipTypes(abstractInst).kind)
   else:
     if n[0].kind == a or n[0].kind == b:
       # addr ( deref ( x )) --> x
@@ -569,14 +569,14 @@ proc putArgInto(arg: PNode, formal: PType): TPutArgInto =
     result = putArgInto(arg[0], formal)
   of nkCurly, nkBracket:
     for i in 0..<arg.len:
-      if putArgInto(arg[i], formal) != paDirectMapping: 
+      if putArgInto(arg[i], formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   of nkPar, nkTupleConstr, nkObjConstr:
     for i in 0..<arg.len:
       let a = if arg[i].kind == nkExprColonExpr: arg[i][1]
               else: arg[0]
-      if putArgInto(a, formal) != paDirectMapping: 
+      if putArgInto(a, formal) != paDirectMapping:
         return paFastAsgn
     result = paDirectMapping
   else:
@@ -667,7 +667,7 @@ proc transformFor(c: PTransf, n: PNode): PNode =
       stmtList.add(newAsgnStmt(c, nkFastAsgn, temp, arg))
       idNodeTablePut(newC.mapping, formal, temp)
     of paVarAsgn:
-      assert(skipTypes(formal.typ, abstractInst).kind == tyVar)
+      assert(skipTypes(formal.typ, abstractInst).kind in {tyVar})
       idNodeTablePut(newC.mapping, formal, arg)
       # XXX BUG still not correct if the arg has a side effect!
     of paComplexOpenarray:

@@ -586,7 +586,8 @@ proc freeBigChunk(a: var MemRegion, c: PBigChunk) =
 proc getBigChunk(a: var MemRegion, size: int): PBigChunk =
   sysAssert(size > 0, "getBigChunk 2")
   var size = size # roundup(size, PageSize)
-  var fl, sl: int
+  var fl = 0
+  var sl = 0
   mappingSearch(size, fl, sl)
   sysAssert((size and PageMask) == 0, "getBigChunk: unaligned chunk")
   result = findSuitableBlock(a, fl, sl)

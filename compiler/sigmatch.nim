@@ -1902,7 +1902,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
     if destIsGeneric:
       dest = generateTypeInstance(c, m.bindings, arg, dest)
     let fdest = typeRel(m, f, dest)
-    if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind == tyVar):
+    if fdest in {isEqual, isGeneric} and not (dest.kind == tyLent and f.kind in {tyVar}):
       markUsed(c, arg.info, c.converters[i])
       var s = newSymNode(c.converters[i])
       s.typ = c.converters[i].typ
@@ -1915,7 +1915,7 @@ proc userConvMatch(c: PContext, m: var TCandidate, f, a: PType,
       var param: PNode = nil
       if srca == isSubtype:
         param = implicitConv(nkHiddenSubConv, src, copyTree(arg), m, c)
-      elif src.kind == tyVar:
+      elif src.kind in {tyVar}:
         # Analyse the converter return type
         param = newNodeIT(nkHiddenAddr, arg.info, s.typ[1])
         param.add copyTree(arg)
@@ -2082,7 +2082,7 @@ proc paramTypesMatchAux(m: var TCandidate, f, a: PType,
       result = implicitConv(nkHiddenSubConv, f, arg, m, c)
   of isSubrange:
     inc(m.subtypeMatches)
-    if f.kind == tyVar:
+    if f.kind in {tyVar}:
       result = arg
     else:
       result = implicitConv(nkHiddenStdConv, f, arg, m, c)
@@ -2327,10 +2327,10 @@ proc matchesAux(c: PContext, n, nOrig: PNode,
         noMatch()
         return
 
-    if formal.typ.kind == tyVar:
+    if formal.typ.kind in {tyVar}:
       let argConverter = if arg.kind == nkHiddenDeref: arg[0] else: arg
       if argConverter.kind == nkHiddenCallConv:
-        if argConverter.typ.kind != tyVar:
+        if argConverter.typ.kind notin {tyVar}:
           m.firstMismatch.kind = kVarNeeded
           noMatch()
           return
@@ -2604,7 +2604,7 @@ proc instTypeBoundOp*(c: PContext; dc: PSym; t: PType; info: TLineInfo;
   if op == attachedDeepCopy:
     if f.kind in {tyRef, tyPtr}: f = f.lastSon
   else:
-    if f.kind == tyVar: f = f.lastSon
+    if f.kind in {tyVar}: f = f.lastSon
   if typeRel(m, f, t) == isNone:
     localError(c.config, info, "cannot instantiate: '" & dc.name.s & "'")
   else:

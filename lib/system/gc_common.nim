@@ -217,7 +217,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
   when nimCoroutines:
     var pos = stack.pos
   else:
-    var pos {.volatile.}: pointer
+    var pos {.volatile, noinit.}: pointer
     pos = addr(pos)
 
   if pos != nil:
@@ -229,6 +229,7 @@ proc stackSize(stack: ptr GcStack): int {.noinline.} =
     result = 0
 
 proc stackSize(): int {.noinline.} =
+  result = 0
   for stack in gch.stack.items():
     result = result + stack.stackSize()
 
@@ -303,7 +304,7 @@ when not defined(useNimRtl):
 {.pop.}
 
 proc isOnStack(p: pointer): bool =
-  var stackTop {.volatile.}: pointer
+  var stackTop {.volatile, noinit.}: pointer
   stackTop = addr(stackTop)
   var a = cast[ByteAddress](gch.getActiveStack().bottom)
   var b = cast[ByteAddress](stackTop)

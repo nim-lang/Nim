@@ -42,9 +42,6 @@ type
 proc semAsgn(c: PContext, n: PNode; mode=asgnNormal): PNode
 proc semSubscript(c: PContext, n: PNode, flags: TExprFlags): PNode
 
-proc skipAddr(n: PNode): PNode {.inline.} =
-  (if n.kind == nkHiddenAddr: n[0] else: n)
-
 proc semArrGet(c: PContext; n: PNode; flags: TExprFlags): PNode =
   result = newNodeI(nkBracketExpr, n.info)
   for i in 1..<n.len: result.add(n[i])
