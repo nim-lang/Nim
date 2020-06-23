@@ -3723,46 +3723,6 @@ location is derived from the second parameter (called
 ``varTy[T, 2]`` which is incompatible with ``varTy[T, 1]``.
 
 
-Out parameters
---------------
-
-The type of a parameter may be ``out T``:
-
-.. code-block:: nim
-  proc divmod(a, b: int; res, remainder: out int) =
-    res = a div b
-    remainder = a mod b
-
-  var
-    x, y: int
-
-  divmod(8, 5, x, y) # modifies x and y
-  assert x == 1
-  assert y == 3
-
-In the example, ``res`` and ``remainder`` are `out parameters`.
-Out parameters can be modified by the procedure and the changes are
-visible to the caller. The argument passed to an out parameter has to be
-an l-value. It is enforced that every code path assigns a value to
-every `out` parameter before the routine returns and before a read from
-the `out` parameter can be performed. This is the distinguishing difference
-between an `out` parameter and a `var` parameter. An `out` parameter is an
-output parameter, a `var` parameter is an input-output parameter.
-
-There is no semantic difference
-between ``proc p(x: out T) {.raises: [].}`` and ``proc p(): T {.raises: [].}``
-but how these constructs are mapped to machine code might differ.
-An `out` parameter is mapped to a pointer for a routine imported from C/C++,
-for example:
-
-.. code-block:: nim
-
-  type Stat {.importc: "stat_t", header: "stat.h".} = object
-  proc stat(path: cstring; result: out Stat) {.importc, header: "stat.h".}
-    ## mapped to 'ptr Stat'
-
-
-
 NRVO
 ----
 
