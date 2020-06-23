@@ -19,7 +19,7 @@ proc resolveAliasSym*(n: PNode, forceResolve = false): PNode =
   if result!=nil and result.typ != nil and result.typ.kind == tyAliasSym:
     case result.kind
     of {nkStmtListExpr, nkBlockExpr}:
-      # allows defining things like lambdaIter, lambdaIt, a~>a*2 sugar
+      # allows defining lambdaIter, lambdaIt, a~>a*2 etc in std/lambdas
       let typ = result.typ
       result = newSymNode(typ.n.sym)
       result.info = typ.n.info

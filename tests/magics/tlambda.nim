@@ -381,16 +381,16 @@ proc test5702() = # fix https://github.com/nim-lang/Nim/issues/5702
     for i,j in zip(a,b):
       yield f(i,j)
 
-  proc foo(args: varargs[int]) =
-    for i in zip(args,args):
-      echo i
+  proc foo(args: varargs[int]): seq[(int, int)] =
+    for i in zip(args, args):
+      result.add i
 
-  proc bar(args: varargs[int]) =
-    for i in zipWith(alias2 `+`,args,args):
-      echo i
+  proc bar(args: varargs[int]): seq[int] =
+    for i in zipWith(alias2 `+`, args, args):
+      result.add i
 
-  foo(1,2,3,4)
-  bar(1,2,3,4)
+  doAssert foo(1,2,3,4) == @[(1, 1), (2, 2), (3, 3), (4, 4)]
+  doAssert bar(1,2,3,4) == @[2, 4, 6, 8]
 
 proc test9679() = # closes https://github.com/nim-lang/Nim/issues/9679
   type
