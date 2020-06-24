@@ -519,7 +519,7 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
             var message: string
             if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
               proc: bool =
-                 let (outp, status) = execCmdEx("nimble develop -y", workingDir = buildPath)
+                 let (outp, status) = execCmdEx("nimble install -y", workingDir = buildPath)
                  if status != 0:
                    message = "'$1' failed:\n$2" % [cmd, outp]
                    false
