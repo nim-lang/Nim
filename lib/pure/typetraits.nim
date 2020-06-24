@@ -110,7 +110,7 @@ macro genericParamsImpl(T: typedesc): untyped =
         impl = impl[2]
         continue
       of nnkTypeOfExpr:
-        impl = getType(impl[0])
+        impl = getTypeInst(impl[0])
         continue
       of nnkBracketExpr:
         for i in 1..<impl.len:
@@ -123,7 +123,9 @@ macro genericParamsImpl(T: typedesc): untyped =
           else:
             # getType from a resolved symbol might return a typedesc symbol.
             # If so, use it directly instead of wrapping it in StaticParam.
-            if ai.kind == nnkSym and ai.symKind == nskType:
+            if (ai.kind == nnkSym and ai.symKind == nskType) or
+               (ai.kind == nnkBracketExpr and ai[0].kind == nnkSym and
+                ai[0].symKind == nskType):
               ret = ai
             else:
               since (1, 1):
@@ -137,11 +139,15 @@ since (1, 1):
   template genericParams*(T: typedesc): untyped =
     ## return tuple of generic params for generic `T`
     runnableExamples:
-      type Foo[T1, T2]=object
+      type Foo[T1, T2] = object
       doAssert genericParams(Foo[float, string]) is (float, string)
       type Bar[N: static float, T] = object
       doAssert genericParams(Bar[1.0, string]) is (StaticParam[1.0], string)
       doAssert genericParams(Bar[1.0, string]).get(0).value == 1.0
+      doAssert genericParams(seq[Bar[2.0, string]]).get(0) is Bar[2.0, string]
+      var s: seq[Bar[3.0, string]]
+      doAssert genericParams(typeof(s)) is (Bar[3.0, string],)
+      doAssert genericParams(typedesc[genericParams(typeof s).get(0)]) is (StaticParam[3.0], string)
 
     type T2 = T
     genericParamsImpl(T2)
