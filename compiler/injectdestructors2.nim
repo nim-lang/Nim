@@ -396,6 +396,17 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     result = shallowCopy(n)
     result[0] = n[0]
     result[1] = st(n[1], c, s, flags)
+
+  of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange:
+    result = shallowCopy(n)
+    for i in 0 ..< n.len:
+      result[i] = st(n[i], c, s, {})
+    if hasDestructor(n.typ):
+      if sinkArg in flags:
+        discard "created string is taken over"
+      else:
+        result = ensureDestruction(result, c, s)
+
   of nkCheckedFieldExpr, nkDotExpr:
     result = shallowCopy(n)
     result[0] = st(n[0], c, s, {})
@@ -538,8 +549,16 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
           {}
       result[i] = st(n[i], c, s, argflags)
 
+    if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
+      result[0] = copyTree(n[0])
+      if c.graph.config.selectedGC in {gcHooks, gcArc, gcOrc}:
+        let destroyOld = genDestroy(c, result[1])
+        result = newTree(nkStmtList, destroyOld, result)
+    else:
+      result[0] = st(n[0], c, s, {})
+
     if canRaise(n[0]): s.needsTry = true
-    if hasDestructor(n.typ):
+    if n.typ != nil and hasDestructor(n.typ):
       if sinkArg in flags:
         discard "construction passed to a sink parameter: nothing to do"
       else:
