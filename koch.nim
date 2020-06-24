@@ -55,8 +55,6 @@ Options:
   --nim:path               use specified path for nim binary
   --localdocs[:path]       only build local documentations. If a path is not
                            specified (or empty), the default is used.
-                           Additionally options passed to docs will be used to
-                           build local documentation.
 Possible Commands:
   boot [options]           bootstraps with given command line options
   distrohelper [bindir]    helper for distro packagers

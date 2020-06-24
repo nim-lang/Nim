@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm
+import os, strutils, osproc, sets, pathnorm, pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -329,7 +329,8 @@ proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
 
   if not localOnly:
     buildDocsDir(args, webUploadOutput / NimVersion)
-    # no `args` to avoid offline docs containing the 'gaCode'!
-    args.setLen(0)
+
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
 
   buildDocsDir(args, localOutDir)
