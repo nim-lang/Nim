@@ -36,8 +36,7 @@ type
     errGeneralParseError = "general parse error"
     errNewSectionExpected = "new section expected"
     errInvalidDirectiveX = "invalid directive: '$1'"
-    errProveInit = "Cannot prove that '$1' is initialized."
-    # deadcode
+    errProveInit = "Cannot prove that '$1' is initialized." # deadcode
     errGenerated = "$1"
     errUser = "$1"
     warnCannotOpenFile = "cannot open '$1'"
