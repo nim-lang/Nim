@@ -1,0 +1,7 @@
+discard """
+  output: '''@[]
+@[]
+'''
+"""
+
+import seq
