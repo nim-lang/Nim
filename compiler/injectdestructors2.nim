@@ -189,21 +189,19 @@ proc getTemp(c: var Con; s: var Scope; typ: PType; info: TLineInfo): PNode =
   s.temps.add(sym)
   result = newSymNode(sym)
 
-proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode
+proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode
 
 proc genDiscriminantAsgn(c: var Con; s: var Scope; n: PNode): PNode =
   # discriminator is ordinal value that doesn't need sink destroy
   # but fields within active case branch might need destruction
 
   # tmp to support self assignments
-  let tmp = getTemp(c, s, n[1].typ, n.info)
+  let tmp = getTemp(c, n[1].typ, n.info)
 
   result = newTree(nkStmtList)
+  result.add newTree(nkFastAsgn, tmp, st(n[1], c, s, {willBeConsumedAnyway}))
 
-  let le = st(n[0], nil, c, s)
-
-  result.add st(n[1], tmp, c, s)
-  #result.add le
+  let le = st(n[0], c, s, {})
 
   let leDotExpr = if le.kind == nkCheckedFieldExpr: le[0] else: le
   let objType = leDotExpr[0].typ
@@ -286,7 +284,7 @@ proc storeInto(dest, n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNod
   else:
     result = genSink(c, dest, n, flags)
 
-proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
+proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
   # It handles a statement and can create a new scope.
   case n.kind
   of nkCast:
@@ -294,22 +292,13 @@ proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     result = shallowCopy(n)
     result[0] = n[0]
     result[1] = st(n[1], nil, c, s, {})
-    if dest != nil:
-      result = storeInto(dest, result, c, s, flags)
   of nkCheckedFieldExpr, nkDotExpr:
     result = shallowCopy(n)
     result[0] = st(n[0], nil, c, s, {})
     result[1] = n[1]
-    if dest != nil:
-      result = storeInto(dest, result, c, s, flags)
   of nkCaseStmt:
     result = copyNode(n)
-    if dest != nil:
-      # we sinked the destination into all the branches so
-      # this construct does not produce a value anymore:
-      result.typ = nil
-
-    result.add st(n[0], nil, c, s)
+    result.add st(n[0], c, s)
     for i in 1..<n.len:
       let it = n[i]
       assert it.kind in {nkOfBranch, nkElse}
@@ -318,50 +307,42 @@ proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       for j in 0 ..< it.len-1:
         branch[j] = copyTree(it[j])
       var ofScope: Scope
-      let ofResult = st(it[^1], dest, c, ofScope, flags)
+      let ofResult = st(it[^1], c, ofScope, flags)
       branch[^1] = toTree(ofScope, ofResult)
       result.add branch
 
   of nkWhileStmt:
     result = copyNode(n)
-    result.add st(n[0], nil, c, s)
+    result.add st(n[0], c, s, {})
     var bodyScope: Scope
-    let bodyResult = st(n[1], nil, c, bodyScope, {})
+    let bodyResult = st(n[1], c, bodyScope, {})
     result.add toTree(bodyScope, bodyResult)
 
   of nkBlockStmt, nkBlockExpr:
-    if dest != nil:
-      # does not produce a value anymore!
-      result = newNodeI(nkBlockStmt, n.info)
-    else:
-      result = copyNode(n)
+    result = copyNode(n)
     result.add n[0]
     var bodyScope: Scope
-    let bodyResult = st(n[1], dest, c, bodyScope, flags)
+    let bodyResult = st(n[1], c, bodyScope, flags)
     result.add toTree(bodyScope, bodyResult)
 
   of nkIfStmt, nkIfExpr:
-    if dest != nil:
-      # does not produce a value anymore!
-      result = newNodeI(nkIfStmt, n.info)
-    else:
-      result = copyNode(n)
+    result = copyNode(n)
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
       if it.kind in {nkElifBranch, nkElifExpr}:
         var condScope: Scope
-        var condResult = st(it[0], nil, c, condScope)
+        var condResult = st(it[0], c, condScope, {})
         branch[0] = toTree(condScope, condResult)
 
       var branchScope: Scope
-      var branchResult = st(it[0], dest, c, branchScope, flags)
+      var branchResult = st(it[0], c, branchScope, flags)
       branch[^1] = toTree(branchScope, branchResult)
 
   of nkWhen:
     # This should be a "when nimvm" node.
     result = copyTree(n)
-    result[1][0] = st(n[1][0], dest, c, s, flags)
+    result[1][0] = st(n[1][0], c, s, flags)
   of nkStmtList, nkStmtListExpr:
     # a statement list does not introduce a new scope:
     if not isEmptyType(n.typ) and n.len > 0:
@@ -386,7 +367,7 @@ proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
   of nkDiscardStmt:
     result = shallowCopy(n)
     if n[0].kind != nkEmpty:
-      result[0] = st(n[0], nil, c, s, {})
+      result[0] = st(n[0], c, s, {})
     else:
       result[0] = copyNode(n[0])
 
@@ -402,12 +383,11 @@ proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
   of nkReturnStmt:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
-      result[i] = st(n[i], nil, c, s)
+      result[i] = st(n[i], c, s, {})
     s.needsTry = true
 
   of nkAsgn, nkFastAsgn:
-    if hasDestructor(n[0].typ) and n[1].kind notin {nkProcDef, nkDo, nkLambda} and
-        not isCursor(n[0]):
+    if hasDestructor(n[0].typ) and not isCursor(n[0]):
       # rule (self-assignment-removal):
       if n[1].kind == nkSym and n[0].kind == nkSym and n[0].sym == n[1].sym:
         result = newNodeI(nkEmpty, n.info)
@@ -471,29 +451,21 @@ proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
           identDefs.add it[j]
           identDefs.add it[it.len-2] # type
 
-          let initExpr = st(it[^1], v, c, s)
-          # now the fun starts:
-          if not isEmptyType(initExpr.typ):
-            # aka 'if it is still an expression'
-            identDefs.add initExpr
-            varSection.add identDefs
-            result.add varSection
-          else:
-            identDefs.add newNodeI(nkEmpty, it.info)
-            varSection.add identDefs
-            result.add varSection
-            result.add initExpr
+          let initExpr = st(it[^1], c, s)
+          identDefs.add initExpr
+          varSection.add identDefs
+          result.add varSection
 
   of nkRaiseStmt:
     if optOwnedRefs in c.graph.config.globalOptions and n[0].kind != nkEmpty:
       if n[0].kind in nkCallKinds:
-        let call = st(n[0], nil, c, s)
+        let call = st(n[0], c, s, {})
         result = copyNode(n)
         result.add call
       else:
         let tmp = getTemp(c, s, n[0].typ, n.info)
         var m = genCopyNoCheck(c, tmp, n[0])
-        m.add st(n[0], nil, c, s)
+        m.add st(n[0], c, s, {})
         result = newTree(nkStmtList, genWasMoved(tmp, c), m)
         var toDisarm = n[0]
         if toDisarm.kind == nkStmtListExpr: toDisarm = toDisarm.lastSon
@@ -503,7 +475,7 @@ proc st(n, dest: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     else:
       result = copyNode(n)
       if n[0].kind != nkEmpty:
-        result.add st(n[0], nil, c, s, {willBeConsumedAnyway})
+        result.add st(n[0], c, s, {willBeConsumedAnyway})
       else:
         result.add copyNode(n[0])
     s.needsTry = true
