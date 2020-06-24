@@ -250,6 +250,28 @@ proc maxLineLength(s: string): int =
       inc(lineLen)
       inc(i)
 
+proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
+  var i = 0
+  let hi = s.len - 1
+  var str = ""
+  while i <= hi:
+    case s[i]
+    of '\x0D':
+      put(g, kind, str)
+      str = ""
+      inc(i)
+      if i <= hi and s[i] == '\x0A': inc(i)
+      optNL(g, 0)
+    of '\x0A':
+      put(g, kind, str)
+      str = ""
+      inc(i)
+      optNL(g, 0)
+    else:
+      str.add(s[i])
+      inc(i)
+  put(g, kind, str)
+
 proc containsNL(s: string): bool =
   for i in 0..<s.len:
     case s[i]
