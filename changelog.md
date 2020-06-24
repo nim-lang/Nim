@@ -114,6 +114,7 @@
 - Add `os.normalizeExe`, eg: `koch` => `./koch`.
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
+- Add `typetraits.elementType` to get element type of an iterable.
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
