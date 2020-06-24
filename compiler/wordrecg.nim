@@ -119,8 +119,7 @@ type
     wExportc = "exportc"
     wExportCpp = "exportcpp"
     wExportNims = "exportnims"
-    wIncompleteStruct = "incompleteStruct"
-    # deprecated
+    wIncompleteStruct = "incompleteStruct" # deprecated
     wCompleteStruct = "completeStruct"
     wRequiresInit = "requiresInit"
     wAlign = "align"
