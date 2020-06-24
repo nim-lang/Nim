@@ -98,8 +98,8 @@ proc main =
     f.write(nimfile % [other])
     close(f)
 
-  let cCompile = defined(openbsd) or defined(freebsd) or defined(netbsd): ccLinkMath else: cc
-  let cppCompile = defined(openbsd) or defined(freebsd) or defined(netbsd): cppLinkMath else: cpp
+  let cCompile = when defined(openbsd) or defined(freebsd) or defined(netbsd): ccLinkMath else: cc
+  let cppCompile = when defined(openbsd) or defined(freebsd) or defined(netbsd): cppLinkMath else: cpp
   if not myExec(cCompile % [gen.addFileExt(ExeExt), gen]): quit(1)
   if not myExec(cppCompile % [pre.addFileExt(ExeExt), pre]): quit(1)
   when defined(windows):
