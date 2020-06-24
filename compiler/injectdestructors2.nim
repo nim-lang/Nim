@@ -258,7 +258,7 @@ proc genCopy(c: var Con; dest, src: PNode): PNode =
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
   result.add(newSymNode(createMagic(c.graph, "wasMoved", mWasMoved)))
-  result.add copyTree(n) #mWasMoved does not take the address
+  result.add copyTree(n) # mWasMoved does not take the address
   #if n.kind != nkSym:
   #  message(c.graph.config, n.info, warnUser, "wasMoved(" & $n & ")")
 
@@ -360,6 +360,8 @@ proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
   let tmp = getTemp(c, s, arg.typ, arg.info)
   result.add newTree(nkFastAsgn, tmp, arg)
+  #result.add genWasMoved(tmp, c)
+  #result.add genMoveOrCopy(tmp, arg, c, s, {isDefinition})
   result.add tmp
   s.final.add genDestroy(c, tmp)
 
@@ -508,7 +510,8 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
   of nkStmtList, nkStmtListExpr:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
-      result[i] = st(n[i], c, s, {})
+      let f = if i == n.len-1 and not isEmptyType(n.typ): flags else: {}
+      result[i] = st(n[i], c, s, f)
 
   of nkDiscardStmt:
     result = shallowCopy(n)
