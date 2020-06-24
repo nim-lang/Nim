@@ -606,7 +606,13 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       else:
         result[i] = st(n[i], c, s, argflags)
 
-    if sinkArg notin argflags:
+    if sinkArg in flags:
+      if containsConstSeq(result):
+        # const sequences are not mutable and so we need to pass a copy to the
+        # sink parameter (bug #11524). Note that the string implementation is
+        # different and can deal with 'const string sunk into var'.
+        result = passCopyToSink(result, c, s)
+    elif n.typ != nil and hasDestructor(n.typ) and isRefConstr:
       result = ensureDestruction(result, c, s)
 
   of nkVarSection, nkLetSection:
