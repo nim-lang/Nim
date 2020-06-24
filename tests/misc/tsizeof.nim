@@ -3,7 +3,6 @@ discard """
   output: '''
 body executed
 body executed
-OK
 macros api OK
 '''
 """
@@ -12,11 +11,6 @@ macros api OK
 # and newer. On Azure gcc does not default to c++11 yet.
 when defined(cpp) and not defined(windows):
   {.passC: "-std=c++11".}
-
-{.emit:"""
-#define c_astToStrImpl(T) #T
-"""
-.}
 
 # Object offsets are different for inheritance objects when compiling
 # to c++.
@@ -41,25 +35,16 @@ doAssert mysize2 == 12
 doAssert mysize3 == 32
 
 import macros, typetraits
-from strutils import `%`
 
-template c_astToStr(T: typedesc): string =
-  block:
-    # proc needed pending https://github.com/nim-lang/Nim/issues/13943 D20200409T215527
-    proc fun2(): string =
-      var s: cstring
-      {.emit:[s, "= c_astToStrImpl(", T, ");"].}
-      $s
-    fun2()
-
-macro testSizeAlignOf(args: varargs[untyped]): untyped =
+macro testSizeAlignOf(args: untyped): untyped =
+  ## accepts values or types
   result = newStmtList()
   for arg in args:
     result.add quote do:
       let
         c_size = c_sizeof(`arg`)
         nim_size = sizeof(`arg`)
-        c_align = c_alignof(type(`arg`))
+        c_align = c_alignof(`arg`)
         nim_align = alignof(`arg`)
 
       if nim_size != c_size or nim_align != c_align:
@@ -106,25 +91,35 @@ template c_offsetof(t: typedesc, a: untyped): int32 =
   var x: ptr t
   c_offsetof(x[].a)
 
-macro c_sizeof(a: typed): int32 =
+template c_sizeof(a: typed): int =
   ## Bullet proof implementation that works using the sizeof operator
   ## in the c backend. Assuming of course this implementation is
   ## correct.
-  result = quote do:
-    var res: int32
-    {.emit: [res, " = sizeof(", `a`, ");"] .}
-    res
+  block: # refs #13943
+    proc impl(): csize_t =
+      {.emit:[result," = sizeof(", a, ");"].}
+    impl().int
 
-macro c_alignof(arg: untyped): untyped =
-  ## Bullet proof implementation that works on actual alignment
-  ## behavior measured at runtime.
-  let typeSym = genSym(nskType, "AlignTestType"&arg.repr)
-  result = quote do:
-    type
-      `typeSym` = object
-        causeAlign: byte
-        member: `arg`
-    c_offsetof(`typeSym`, member)
+template c_alignof(a: typed): int =
+  ## Bullet proof implementation that works using the sizeof operator
+  ## in the c backend. Assuming of course this implementation is
+  ## correct.
+  block: # refs #13943
+    proc fun2(): csize_t =
+      {.emit:[result," = _Alignof(", a, ");"].}
+    fun2().int
+
+when false: # old implementation
+  macro c_alignof(arg: untyped): untyped =
+    ## Bullet proof implementation that works on actual alignment
+    ## behavior measured at runtime.
+    let typeSym = genSym(nskType, "AlignTestType"&arg.repr)
+    result = quote do:
+      type
+        `typeSym` = object
+          causeAlign: byte
+          member: `arg`
+      c_offsetof(`typeSym`, member)
 
 macro testAlign(arg:untyped):untyped =
   let prefix = newLit(arg.lineinfo & "  alignof " & arg.repr & " ")
@@ -394,7 +389,7 @@ testinstance:
     else:
       doAssert sizeof(SimpleAlignment) > 10
 
-    testSizeAlignOf(t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo)
+    testSizeAlignOf [t,a,b,c,d,e,f,g,ro,go,po, e1, e2, e4, e8, eoa, eob, capo]
 
     type
       WithBitsize {.objectconfig.} = object
@@ -553,11 +548,6 @@ proc foobar() =
   doAssert alignof(Pod) == alignof(Pod2)
 foobar()
 
-if failed:
-  quit("FAIL")
-else:
-  echo "OK"
-
 ##########################################
 # sizeof macros API
 ##########################################
@@ -702,22 +692,6 @@ reject:
 reject:
   const off8 = offsetof(MyPackedCaseObject, val5)
 
-template c_sizeof2(T: typedesc): int =
-  block:
-    # proc needed pending https://github.com/nim-lang/Nim/issues/13943
-    proc fun2(): int =
-      {.emit:[result," = sizeof(", T, ");"].}
-    fun2()
-
-macro testSizeofVsCsizeof(body: untyped): untyped =
-  result = newStmtList()
-  for T in body:
-    result.add quote do:
-      let s1 = `T`.sizeof
-      let s2 = `T`.c_sizeof2
-      if s1 != s2:
-        doAssert false, "$1 $2 => sizeof: $3 vs c_sizeof: $4" % [$astToStr(`T`), c_astToStr(`T`), $s1, $s2]
-
 {.emit:"""
 enum CFoo {cfoo0,cfoo1};
 typedef enum CFoo CFoo;
@@ -745,13 +719,15 @@ block: # issue #13945
     doAssert sizeof(O0) == 1
     doAssert sizeof(T0) == 1
 
-  testSizeofVsCsizeof:
-    O0
-    T0
-    O0Arr
-    Bar2
-    BarTup
-    BarTup2
-    FooEnum 
-    # ArrEmpty # fails: sizeof: 0 vs c_sizeof: 8 pending https://github.com/nim-lang/Nim/issues/14786
-    # CFoo # pending https://github.com/nim-lang/Nim/issues/13927
+  testSizeAlignOf [
+    O0,
+    T0,
+    O0Arr,
+    Bar2,
+    BarTup,
+    BarTup2,
+    FooEnum,
+    # ArrEmpty, # fails: sizeof: 0 vs c_sizeof: 8 pending https://github.com/nim-lang/Nim/issues/14786
+    # CFoo, # pending https://github.com/nim-lang/Nim/issues/13927
+  ]
+doAssert not failed # make sure it's the last statement to be safe
