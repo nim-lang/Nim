@@ -217,21 +217,30 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
         internalError(p.config, "openArrayLoc: " & typeToString(a.t))
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
-proc genArgStringToCString(p: BProc, n: PNode): Rope {.inline.} =
+template withTmpIfNeeded(a): TLoc =
+  if needsTmp:
+    var tmp: TLoc
+    getTemp(p, n.typ, tmp, needsInit=false)
+    genAssignment(p, tmp, a, {})
+    tmp
+  else:
+    a
+
+template genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope =
   var a: TLoc
   initLocExpr(p, n[0], a)
-  result = ropecg(p.module, "#nimToCStringConv($1)", [a.rdLoc])
+  ropecg(p.module, "#nimToCStringConv($1)", [withTmpIfNeeded(a).rdLoc])
 
-proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
+proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rope =
   var a: TLoc
   if n.kind == nkStringToCString:
-    result = genArgStringToCString(p, n)
+    result = genArgStringToCString(p, n, needsTmp)
   elif skipTypes(param.typ, abstractVar).kind in {tyOpenArray, tyVarargs}:
     var n = if n.kind != nkHiddenAddr: n else: n[0]
     result = openArrayLoc(p, param.typ, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
-    result = addrLoc(p.config, a)
+    result = addrLoc(p.config, withTmpIfNeeded(a))
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)
@@ -241,31 +250,49 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode): Rope =
     if callee.kind == nkSym and
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
-      result = addrLoc(p.config, a)
+      result = addrLoc(p.config, withTmpIfNeeded(a))
     else:
-      result = rdLoc(a)
+      result = rdLoc(withTmpIfNeeded(a))
   else:
     initLocExprSingleUse(p, n, a)
-    result = rdLoc(a)
+    result = rdLoc(withTmpIfNeeded(a))
 
-proc genArgNoParam(p: BProc, n: PNode): Rope =
+proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
   var a: TLoc
   if n.kind == nkStringToCString:
-    result = genArgStringToCString(p, n)
+    result = genArgStringToCString(p, n, needsTmp)
   else:
     initLocExprSingleUse(p, n, a)
-    result = rdLoc(a)
+    result = rdLoc(withTmpIfNeeded(a))
 
-template genParamLoop(params) {.dirty.} =
-  if i < typ.len:
-    assert(typ.n[i].kind == nkSym)
-    let paramType = typ.n[i]
-    if not paramType.typ.isCompileTimeOnly:
+template genParams(): Rope =
+  var params: Rope
+  # getUniqueType() is too expensive here:
+  var typ {.inject.} = skipTypes(ri[0].typ, abstractInstOwned)
+  assert(typ.kind == tyProc)
+  assert(typ.len == typ.n.len)
+
+  # We must generate temporaries in cases like #14396
+  # to keep the strict Left-To-Right evaluation, this
+  # is a bit pessimistic currently
+  var dangerousStmtExpr = 0
+  for i in countdown(ri.len - 1, 1):
+    if ri[i].kind == nkStmtListExpr:
+      dangerousStmtExpr = i
+      break
+
+  for i in 1..<ri.len:
+    if i < typ.len:
+      assert(typ.n[i].kind == nkSym)
+      let paramType = typ.n[i]
+      if not paramType.typ.isCompileTimeOnly:
+        if params != nil: params.add(~", ")
+        params.add(genArg(p, ri[i], paramType.sym, ri, i < dangerousStmtExpr))
+    else:
       if params != nil: params.add(~", ")
-      params.add(genArg(p, ri[i], paramType.sym, ri))
-  else:
-    if params != nil: params.add(~", ")
-    params.add(genArgNoParam(p, ri[i]))
+      params.add(genArgNoParam(p, ri[i], i < dangerousStmtExpr))
+
+  params
 
 proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
   if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
@@ -276,13 +303,9 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   # this is a hotspot in the compiler
   initLocExpr(p, ri[0], op)
-  var params: Rope
-  # getUniqueType() is too expensive here:
-  var typ = skipTypes(ri[0].typ, abstractInstOwned)
-  assert(typ.kind == tyProc)
-  assert(typ.len == typ.n.len)
-  for i in 1..<ri.len:
-    genParamLoop(params)
+
+  var params = genParams
+
   var callee = rdLoc(op)
   if p.hcrOn and ri[0].kind == nkSym:
     callee.addActualSuffixForHCR(p.module.module, ri[0].sym)
@@ -290,23 +313,16 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
 proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
 
-  proc getRawProcType(p: BProc, t: PType): Rope =
-    result = getClosureType(p.module, t, clHalf)
-
   proc addComma(r: Rope): Rope =
-    result = if r == nil: r else: r & ~", "
+    if r == nil: r else: r & ~", "
 
   const PatProc = "$1.ClE_0? $1.ClP_0($3$1.ClE_0):(($4)($1.ClP_0))($2)"
   const PatIter = "$1.ClP_0($3$1.ClE_0)" # we know the env exists
+
   var op: TLoc
   initLocExpr(p, ri[0], op)
-  var pl: Rope
 
-  var typ = skipTypes(ri[0].typ, abstractInst)
-  assert(typ.kind == tyProc)
-  for i in 1..<ri.len:
-    assert(typ.len == typ.n.len)
-    genParamLoop(pl)
+  var pl = genParams
 
   template genCallPattern {.dirty.} =
     if tfIterator in typ.flags:
@@ -314,7 +330,7 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
     else:
       lineF(p, cpsStmts, PatProc & ";$n", [rdLoc(op), pl, pl.addComma, rawProc])
 
-  let rawProc = getRawProcType(p, typ)
+  let rawProc = getClosureType(p.module, typ, clHalf)
   let canRaise = p.config.exc == excGoto and canRaiseDisp(p, ri[0])
   if typ[0] != nil:
     if isInvalidReturnType(p.config, typ[0]):
@@ -668,20 +684,9 @@ proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
   result = e.len == 2 and e[0].kind == nkSym and
     e[0].sym.name.s == "=destroy" and notYetAlive(e[1].skipAddr)
 
-proc genCall(p: BProc, e: PNode, d: var TLoc) =
+proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, e):
     return
-  if e[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
-    genClosureCall(p, nil, e, d)
-  elif e[0].kind == nkSym and sfInfixCall in e[0].sym.flags:
-    genInfixCall(p, nil, e, d)
-  elif e[0].kind == nkSym and sfNamedParamCall in e[0].sym.flags:
-    genNamedParamCall(p, e, d)
-  else:
-    genPrefixCall(p, nil, e, d)
-  postStmtActions(p)
-
-proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   if ri[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, le, ri, d)
   elif ri[0].kind == nkSym and sfInfixCall in ri[0].sym.flags:
@@ -691,3 +696,5 @@ proc genAsgnCall(p: BProc, le, ri: PNode, d: var TLoc) =
   else:
     genPrefixCall(p, le, ri, d)
   postStmtActions(p)
+
+proc genCall(p: BProc, e: PNode, d: var TLoc) = genAsgnCall(p, nil, e, d)
