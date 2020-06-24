@@ -610,7 +610,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
           identDefs.add it[j]
           identDefs.add it[it.len-2] # type
 
-          let initExpr = st(it[^1], c, s, {sinkArg})
+          let initExpr = st(it[^1], c, s, {sinkArg, isDefinition})
           identDefs.add initExpr
           varSection.add identDefs
           result.add varSection
