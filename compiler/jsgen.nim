@@ -33,7 +33,7 @@ import
   nversion, msgs, idents, types, tables,
   ropes, math, passes, ccgutils, wordrecg, renderer,
   intsets, cgmeth, lowerings, sighashes, modulegraphs, lineinfos, rodutils,
-  transf, injectdestructors, sourcemap, json, sets
+  transf, injectdestructors2, sourcemap, json, sets
 
 
 from modulegraphs import ModuleGraph, PPassContext

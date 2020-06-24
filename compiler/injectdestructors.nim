@@ -262,15 +262,6 @@ proc genDestroy(c: Con; dest: PNode): PNode =
   let t = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
   result = genOp(c, t, attachedDestructor, dest, nil)
 
-when false:
-  proc preventMoveRef(dest, ri: PNode): bool =
-    let lhs = dest.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    var ri = ri
-    if ri.kind in nkCallKinds and ri[0].kind == nkSym and ri[0].sym.magic == mUnown:
-      ri = ri[1]
-    let rhs = ri.typ.skipTypes({tyGenericInst, tyAlias, tySink})
-    result = lhs.kind == tyRef and rhs.kind == tyOwned
-
 proc canBeMoved(c: Con; t: PType): bool {.inline.} =
   let t = t.skipTypes({tyGenericInst, tyAlias, tySink})
   if optOwnedRefs in c.graph.config.globalOptions:
@@ -282,7 +273,9 @@ proc isNoInit(dest: PNode): bool {.inline.} =
   result = dest.kind == nkSym and sfNoInit in dest.sym.flags
 
 proc genSink(c: var Con; dest, ri: PNode, isDecl = false): PNode =
-  if isUnpackedTuple(dest) or (isDecl and c.inLoop <= 0) or (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or isNoInit(dest):
+  if isUnpackedTuple(dest) or (isDecl and c.inLoop <= 0) or
+      (isAnalysableFieldAccess(dest, c.owner) and isFirstWrite(dest, c)) or
+      isNoInit(dest):
     # optimize sink call into a bitwise memcopy
     result = newTree(nkFastAsgn, dest, ri)
   else:
@@ -335,7 +328,7 @@ proc genDiscriminantAsgn(c: var Con; n: PNode): PNode =
   if hasDestructor(objType):
     if objType.attachedOps[attachedDestructor] != nil and
         sfOverriden in objType.attachedOps[attachedDestructor].flags:
-      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for object's with user defined destructor is not supported, object must have default destructor.
+      localError(c.graph.config, n.info, errGenerated, """Assignment to discriminant for objects with user defined destructor is not supported, object must have default destructor.
 It is best to factor out piece of object that needs custom destructor into separate object or not use discriminator assignment""")
       result.add newTree(nkFastAsgn, le, tmp)
       return
@@ -350,9 +343,7 @@ It is best to factor out piece of object that needs custom destructor into separ
     notExpr.add newSymNode(createMagic(c.graph, "not", mNot))
     notExpr.add cond
     result.add newTree(nkIfStmt, newTree(nkElifBranch, notExpr, genOp(c, branchDestructor, le)))
-    result.add newTree(nkFastAsgn, le, tmp)
-  else:
-    result.add newTree(nkFastAsgn, le, tmp)
+  result.add newTree(nkFastAsgn, le, tmp)
 
 proc genWasMoved(n: PNode; c: var Con): PNode =
   result = newNodeI(nkCall, n.info)
@@ -391,12 +382,6 @@ proc destructiveMoveVar(n: PNode; c: var Con): PNode =
     else:
       result.add wasMovedCall
     result.add tempAsNode
-
-proc sinkParamIsLastReadCheck(c: var Con, s: PNode) =
-  assert s.kind == nkSym and s.sym.kind == skParam
-  if not isLastRead(s, c):
-    localError(c.graph.config, c.otherRead.info, "sink parameter `" & $s.sym.name.s &
-        "` is already consumed at " & toFileLineCol(c. graph.config, s.info))
 
 proc isCapturedVar(n: PNode): bool =
   let root = getRoot(n)
@@ -774,32 +759,6 @@ template handleNestedTempl(n: untyped, processCall: untyped) =
     dec c.inLoop
   else: assert(false)
 
-when false:
-  proc eqTrees*(a, b: PNode): bool =
-    if a == b:
-      result = true
-    elif (a != nil) and (b != nil) and (a.kind == b.kind):
-      case a.kind
-      of nkSym:
-        #result = a.sym == b.sym or (a.sym.kind == skTemp and b.sym.kind == skTemp)
-        result = true
-      of nkIdent: result = a.ident.id == b.ident.id
-      of nkCharLit..nkUInt64Lit: result = a.intVal == b.intVal
-      of nkFloatLit..nkFloat64Lit:
-        result = cast[uint64](a.floatVal) == cast[uint64](b.floatVal)
-      of nkStrLit..nkTripleStrLit: result = a.strVal == b.strVal
-      of nkCommentStmt: result = a.comment == b.comment
-      of nkEmpty, nkNilLit, nkType: result = true
-      else:
-        if a.len == b.len:
-          for i in 0..<a.len:
-            if not eqTrees(a[i], b[i]): return
-          result = true
-    if not result:
-      #if a.kind == nkFloat64Lit and b.kind == nkFloat64Lit:
-      echo "not the same ", a.kind, " ", b.kind
-      #echo a.floatVal, "##", b.floatVal, "##"
-
 proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
   if n.kind in {nkStmtList, nkStmtListExpr, nkBlockStmt, nkBlockExpr, nkIfStmt,
                 nkIfExpr, nkCaseStmt, nkWhen, nkWhileStmt}:
@@ -819,7 +778,6 @@ proc p(n: PNode; c: var Con; mode: ProcessMode): PNode =
     elif n.kind == nkSym and isSinkParam(n.sym) and isLastRead(n, c):
       # Sinked params can be consumed only once. We need to reset the memory
       # to disable the destructor which we have not elided
-      #sinkParamIsLastReadCheck(c, n)
       result = destructiveMoveVar(n, c)
     elif isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
       # it is the last read, can be sinkArg. We need to reset the memory
@@ -1046,7 +1004,6 @@ proc moveOrCopy(dest, ri: PNode; c: var Con, isDecl = false): PNode =
   of nkSym:
     if isSinkParam(ri.sym) and isLastRead(ri, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      #sinkParamIsLastReadCheck(c, ri)
       let snk = genSink(c, dest, ri, isDecl)
       result = newTree(nkStmtList, snk, genWasMoved(ri, c))
     elif ri.sym.kind != skParam and ri.sym.owner == c.owner and
@@ -1057,23 +1014,8 @@ proc moveOrCopy(dest, ri: PNode; c: var Con, isDecl = false): PNode =
     else:
       result = genCopy(c, dest, ri)
       result.add p(ri, c, consumed)
-  of nkHiddenSubConv, nkHiddenStdConv, nkConv:
-    when false:
-      result = moveOrCopy(dest, ri[1], c, isDecl)
-      if not sameType(ri.typ, ri[1].typ):
-        let copyRi = copyTree(ri)
-        copyRi[1] = result[^1]
-        result[^1] = copyRi
-    else:
-      result = genSink(c, dest, p(ri, c, sinkArg), isDecl)
-  of nkObjDownConv, nkObjUpConv:
-    when false:
-      result = moveOrCopy(dest, ri[0], c, isDecl)
-      let copyRi = copyTree(ri)
-      copyRi[0] = result[^1]
-      result[^1] = copyRi
-    else:
-      result = genSink(c, dest, p(ri, c, sinkArg), isDecl)
+  of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:
+    result = genSink(c, dest, p(ri, c, sinkArg), isDecl)
   of nkStmtListExpr, nkBlockExpr, nkIfExpr, nkCaseStmt:
     when scopeBasedDestruction:
       result = handleNested(ri, dest, c, normal)
