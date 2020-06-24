@@ -229,8 +229,8 @@ proc semTry(c: PContext, n: PNode; flags: TExprFlags): PNode =
         a[0][2] = newSymNode(symbol, a[0][2].info)
 
       elif a.len == 1:
-          # count number of ``except: body`` blocks
-          inc catchAllExcepts
+        # count number of ``except: body`` blocks
+        inc catchAllExcepts
 
       else:
         # support ``except KeyError, ValueError, ... : body``

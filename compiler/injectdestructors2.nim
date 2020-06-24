@@ -360,6 +360,7 @@ proc ensureDestruction(arg: PNode; c: var Con; s: var Scope): PNode =
   result = newNodeIT(nkStmtListExpr, arg.info, arg.typ)
   let tmp = getTemp(c, s, arg.typ, arg.info)
   result.add newTree(nkFastAsgn, tmp, arg)
+  result.add tmp
   s.final.add genDestroy(c, tmp)
 
 proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
@@ -397,11 +398,11 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     result[0] = n[0]
     result[1] = st(n[1], c, s, flags)
 
-  of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange:
+  of nkStringToCString, nkCStringToString, nkChckRangeF, nkChckRange64, nkChckRange, nkPragmaBlock:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
       result[i] = st(n[i], c, s, {})
-    if hasDestructor(n.typ):
+    if n.typ != nil and hasDestructor(n.typ):
       if sinkArg in flags:
         discard "created string is taken over"
       else:
@@ -478,8 +479,27 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
         branch[0] = toTree(condScope, condResult)
 
       var branchScope: Scope
-      var branchResult = st(it[0], c, branchScope, flags)
+      var branchResult = st(it[^1], c, branchScope, flags)
       branch[^1] = toTree(branchScope, branchResult)
+      result.add branch
+
+  of nkTryStmt:
+    result = copyNode(n)
+    var tryScope: Scope
+    var tryResult = st(n[0], c, tryScope, flags)
+    result.add toTree(tryScope, tryResult)
+    for i in 1..<n.len:
+      let it = n[i]
+      var branch = copyTree(it)
+      var branchScope: Scope
+      var branchResult = st(it[^1], c, branchScope, if it.kind == nkFinally: {} else: flags)
+      branch[^1] = toTree(branchScope, branchResult)
+      result.add branch
+
+  of nkDefer:
+    result = shallowCopy(n)
+    for i in 0 ..< n.len:
+      result[i] = st(n[i], c, s, {})
 
   of nkWhen:
     # This should be a "when nimvm" node.
