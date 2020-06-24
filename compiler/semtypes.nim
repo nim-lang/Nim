@@ -1211,11 +1211,9 @@ proc semProcTypeNode(c: PContext, n, genericParams: PNode,
 
     if hasType:
       typ = semParamType(c, a[^2], constraint)
-      let sym = getCurrOwner(c)
-      var owner = sym.owner
       # TODO: Disallow typed/untyped in procs in the compiler/stdlib
       if kind == skProc and (typ.kind == tyTyped or typ.kind == tyUntyped):
-        if not isMagic(sym):
+        if not isMagic(getCurrOwner(c)):
           localError(c.config, a[^2].info, "'" & typ.sym.name.s & "' is only allowed in templates and macros or magic procs")
 
     if hasDefault:

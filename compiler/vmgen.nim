@@ -1360,19 +1360,6 @@ proc genMarshalStore(c: PCtx, n: PNode, dest: var TDest) =
   c.gABx(n, opcMarshalStore, 0, c.genType(n[1].typ))
   c.freeTemp(tmp)
 
-const
-  atomicTypes = {tyBool, tyChar,
-    tyUntyped, tyTyped, tyTypeDesc, tyStatic,
-    tyEnum,
-    tyOrdinal,
-    tyRange,
-    tyProc,
-    tyPointer, tyOpenArray,
-    tyString, tyCString,
-    tyInt, tyInt8, tyInt16, tyInt32, tyInt64,
-    tyFloat, tyFloat32, tyFloat64, tyFloat128,
-    tyUInt, tyUInt8, tyUInt16, tyUInt32, tyUInt64}
-
 proc unneededIndirection(n: PNode): bool =
   n.typ.skipTypes(abstractInstOwned-{tyTypeDesc}).kind == tyRef
 

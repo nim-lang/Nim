@@ -336,7 +336,6 @@ proc semTemplBody(c: var TemplCtx, n: PNode): PNode =
     let s = qualifiedLookUp(c.c, n, {})
     if s != nil:
       if s.owner == c.owner and s.kind == skParam and sfTemplateParam in s.flags:
-        # oldCheck(c, sfGenSym notin s.flags or c.noGenSym == 0):
         incl(s.flags, sfUsed)
         result = newSymNode(s, n.info)
         onUse(n.info, s)
