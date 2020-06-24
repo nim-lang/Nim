@@ -191,6 +191,8 @@ proc isCastable(conf: ConfigRef; dst, src: PType): bool =
     return false
   if skipTypes(src, abstractInst-{tyTypeDesc}).kind == tyTypeDesc:
     return false
+  if skipTypes(dst, abstractInst).kind == tyBuiltInTypeClass:
+    return false
   if conf.selectedGC in {gcArc, gcOrc}:
     let d = skipTypes(dst, abstractInst)
     let s = skipTypes(src, abstractInst)
