@@ -250,7 +250,7 @@ proc maxLineLength(s: string): int =
       inc(lineLen)
       inc(i)
 
-proc putRawStr(g: var TSrcGen, kind: TTokType, s: string) =
+proc putRawStr(g: var TSrcGen, kind: TokType, s: string) =
   var i = 0
   let hi = s.len - 1
   var str = ""
