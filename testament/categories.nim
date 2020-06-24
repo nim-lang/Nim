@@ -13,7 +13,6 @@
 # included from testament.nim
 
 import important_packages
-import std/private/nimbleutils
 
 const
   specialCategories = [
@@ -453,15 +452,15 @@ type
     ppOne
     ppTwo
 
-iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool] =
+iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: bool, useHead: bool] =
   let packageList = parseFile(packageIndex)
   let importantList =
     case part
     of ppOne: important_packages.packages1
     of ppTwo: important_packages.packages2
-  for n, cmd, hasDeps, url in importantList.items:
+  for n, cmd, hasDeps, url, useHead in importantList.items:
     if url.len != 0:
-      yield (n, url, cmd, hasDeps)
+      yield (n, url, cmd, hasDeps, useHead)
     else:
       var found = false
       for package in packageList.items:
@@ -469,7 +468,7 @@ iterator listPackages(part: PkgPart): tuple[name, url, cmd: string, hasDeps: boo
         if name == n:
           found = true
           let pUrl = package["url"].str
-          yield (name, pUrl, cmd, hasDeps)
+          yield (name, pUrl, cmd, hasDeps, useHead)
           break
       if not found:
         raise newException(ValueError, "Cannot find package '$#'." % n)
@@ -479,6 +478,16 @@ proc makeSupTest(test, options: string, cat: Category): TTest =
   result.name = test
   result.options = options
   result.startTime = epochTime()
+
+proc actionRetry(maxRetry: int, backoffDuration: float, action: proc: bool): bool =
+  ## retry `action` up to `maxRetry` times with exponential backoff and initial
+  ## duraton of `backoffDuration` seconds
+  var t = backoffDuration
+  for i in 0..<maxRetry:
+    if action(): return true
+    if i == maxRetry - 1: break
+    sleep(int(t * 1000))
+    t *= 2 # exponential backoff
 
 proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, part: PkgPart) =
   if nimbleExe == "":
@@ -492,26 +501,38 @@ proc testNimblePackages(r: var TResults; cat: Category; packageFilter: string, p
   let packagesDir = "pkgstemp"
   var errors = 0
   try:
-    for name, url, cmd, hasDep in listPackages(part):
+    for name, url, cmd, hasDep, useHead in listPackages(part):
       if packageFilter notin name:
         continue
       inc r.total
       var test = makeSupTest(url, "", cat)
       let buildPath = packagesDir / name
       if not existsDir(buildPath):
-        if hasDep:
-          let installName = if url.len != 0: url else: name
-          var message: string
-          if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
-            (proc(): bool = nimbleInstall(installName, message))):
+        if useHead:
+          let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
+          if installStatus != QuitSuccess:
+            let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
             r.addResult(test, targetC, "", message, reInstallFailed)
             continue
 
-        let (installCmdLine, installOutput, installStatus) = execCmdEx2("git", ["clone", url, buildPath])
-        if installStatus != QuitSuccess:
-          let message = "git clone failed:\n$ " & installCmdLine & "\n" & installOutput
-          r.addResult(test, targetC, "", message, reInstallFailed)
-          continue
+          if hasDep:
+            var message: string
+            if not actionRetry(maxRetry = 3, backoffDuration = 1.0,
+              proc: bool =
+                 let (outp, status) = execCmdEx("nimble install -y", workingDir = buildPath)
+                 if status != 0:
+                   message = "'$1' failed:\n$2" % [cmd, outp]
+                   false
+                 else: true
+              ):
+              r.addResult(test, targetC, "", message, reInstallFailed)
+              continue
+        else:
+          let (installCmdLine, installOutput, installStatus) = execCmdEx2("nimble", ["develop", name, "-y"])
+          if installStatus != QuitSuccess:
+            let message = "nimble develop failed:\n$ " & installCmdLine & "\n" & installOutput
+            r.addResult(test, targetC, "", message, reInstallFailed)
+            continue
 
       let cmdArgs = parseCmdLine(cmd)
 
