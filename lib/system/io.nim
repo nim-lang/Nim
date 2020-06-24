@@ -14,11 +14,6 @@ include inclrtl
 import std/private/since
 import formatfloat
 
-when defined(windows) and not defined(useWinAnsi):
-  import os
-  import system/widestrs
-  import terminal
-
 # ----------------- IO Part ------------------------------------------------
 type
   CFile {.importc: "FILE", header: "<stdio.h>",
@@ -367,18 +362,44 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
                      nNumberOfCharsToRead: uint32,
                      lpNumberOfCharsRead: ptr uint32,
                      pInputControl: pointer): int32 {.
-      stdcall, dynlib: "kernel32", importc: "ReadConsoleW".}
+      importc: "ReadConsoleW", stdcall, dynlib: "kernel32".}
 
+    proc getLastError(): int32 {.
+      importc: "GetLastError", stdcall, dynlib: "kernel32", sideEffect.}
+
+    proc formatMessageW(dwFlags: int32, lpSource: pointer,
+                        dwMessageId, dwLanguageId: int32,
+                        lpBuffer: pointer, nSize: int32,
+                        arguments: pointer): int32 {.
+      importc: "FormatMessageW", stdcall, dynlib: "kernel32".}
+
+    proc localFree(p: pointer) {.
+      importc: "LocalFree", stdcall, dynlib: "kernel32".}
+
+    proc isatty(f: File): bool =
+      when defined(posix):
+        proc isatty(fildes: FileHandle): cint {.
+          importc: "isatty", header: "<unistd.h>".}
+      else:
+        proc isatty(fildes: FileHandle): cint {.
+          importc: "_isatty", header: "<io.h>".}
+      result = isatty(getFileHandle(f)) != 0'i32
+
+    # this implies the file is open
     if f.isatty:
-      if c_feof(f) < 0:
-        return false
       const numberOfCharsToRead = 2048
       var numberOfCharsRead = 0'u32
       var buffer = newWideCString("", numberOfCharsToRead)
       if readConsole(getOsFileHandle(f), addr(buffer[0]),
         numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
-        var error = osLastError()
-        raiseEIO("error: " & $error & " `" & osErrorMsg(error) & "`")
+        var error = getLastError()
+        var errorMsg: string
+        var msgbuf: WideCString
+        if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
+                        nil, error, 0, addr(msgbuf), 0, nil) != 0'i32:
+          errorMsg = $msgbuf
+          if msgbuf != nil: localFree(cast[pointer](msgbuf))
+        raiseEIO("error: " & $error & " `" & errorMsg & "`")
       # input always ends with "\r\n"
       numberOfCharsRead -= 2
       # handle Ctrl+Z as EOF
