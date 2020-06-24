@@ -41,6 +41,9 @@ type
     sinkArg
   SinkFlags = set[SinkFlag]
 
+proc rememberParent(parent: var Scope; inner: Scope) {.inline.} =
+  parent.needsTry = parent.needsTry or inner.needsTry
+
 proc toTree(s: Scope; ret: PNode): PNode =
   assert ret != nil
   if s.temps.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
@@ -455,6 +458,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       let ofResult = st(it[^1], c, ofScope, flags)
       branch[^1] = toTree(ofScope, ofResult)
       result.add branch
+      rememberParent(s, ofScope)
 
   of nkWhileStmt:
     result = copyNode(n)
@@ -462,6 +466,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     var bodyScope: Scope
     let bodyResult = st(n[1], c, bodyScope, {})
     result.add toTree(bodyScope, bodyResult)
+    rememberParent(s, bodyScope)
 
   of nkBlockStmt, nkBlockExpr:
     result = copyNode(n)
@@ -469,6 +474,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     var bodyScope: Scope
     let bodyResult = st(n[1], c, bodyScope, flags)
     result.add toTree(bodyScope, bodyResult)
+    rememberParent(s, bodyScope)
 
   of nkIfStmt, nkIfExpr:
     result = copyNode(n)
@@ -479,17 +485,21 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
         var condScope: Scope
         var condResult = st(it[0], c, condScope, {})
         branch[0] = toTree(condScope, condResult)
+        rememberParent(s, condScope)
 
       var branchScope: Scope
       var branchResult = st(it[^1], c, branchScope, flags)
       branch[^1] = toTree(branchScope, branchResult)
       result.add branch
+      rememberParent(s, branchScope)
 
   of nkTryStmt:
     result = copyNode(n)
     var tryScope: Scope
     var tryResult = st(n[0], c, tryScope, flags)
     result.add toTree(tryScope, tryResult)
+    rememberParent(s, tryScope)
+
     for i in 1..<n.len:
       let it = n[i]
       var branch = copyTree(it)
@@ -497,6 +507,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       var branchResult = st(it[^1], c, branchScope, if it.kind == nkFinally: {} else: flags)
       branch[^1] = toTree(branchScope, branchResult)
       result.add branch
+      rememberParent(s, branchScope)
 
   of nkDefer:
     result = shallowCopy(n)
