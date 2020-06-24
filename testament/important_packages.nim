@@ -1,17 +1,17 @@
-template pkg1(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
-  packages1.add((name, cmd, hasDeps, url))
+template pkg1(name: string; hasDeps = false; cmd = "nimble test"; url = "", useHead = true): untyped =
+  packages1.add((name, cmd, hasDeps, url, useHead))
 
-template pkg2(name: string; hasDeps = false; cmd = "nimble test"; url = ""): untyped =
-  packages2.add((name, cmd, hasDeps, url))
+template pkg2(name: string; hasDeps = false; cmd = "nimble test"; url = "", useHead = true): untyped =
+  packages2.add((name, cmd, hasDeps, url, useHead))
 
-var packages1*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
-var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string]] = @[]
+var packages1*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead: bool]] = @[]
+var packages2*: seq[tuple[name, cmd: string; hasDeps: bool; url: string, useHead: bool]] = @[]
 
 
 # packages A-M
 pkg1 "alea", true
 pkg1 "argparse"
-# pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim"
+pkg1 "arraymancer", true, "nim c tests/tests_cpu.nim", useHead = false
 pkg1 "ast_pattern_matching", false, "nim c -r --oldgensym:on tests/test1.nim"
 pkg1 "asyncmysql", true
 pkg1 "awk", true
