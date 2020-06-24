@@ -109,6 +109,9 @@ macro genericParamsImpl(T: typedesc): untyped =
       of nnkTypeDef:
         impl = impl[2]
         continue
+      of nnkTypeOfExpr:
+        impl = getType(impl[0])
+        continue
       of nnkBracketExpr:
         for i in 1..<impl.len:
           let ai = impl[i]
@@ -158,3 +161,6 @@ when isMainModule:
     doAssert a2 == "int"
     doAssert a3 == "int"
   fun(int)
+
+  var a: seq[int]
+  doAssert typeof(a).genericParams.get(0).value is int
