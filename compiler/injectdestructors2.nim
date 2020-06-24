@@ -727,6 +727,8 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       else:
         result.add copyNode(n[0])
     s.needsTry = true
+  of nkGotoState, nkState:
+    result = n
   else:
     internalError(c.graph.config, n.info, "cannot inject destructors to node kind: " & $n.kind)
 
