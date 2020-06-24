@@ -121,8 +121,13 @@ macro genericParamsImpl(T: typedesc): untyped =
             ret = ai
           of ntyStatic: doAssert false
           else:
-            since (1, 1):
-              ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
+            # getType from a resolved symbol might return a typedesc symbol.
+            # If so, use it directly instead of wrapping it in StaticParam.
+            if ai.kind == nnkSym and ai.symKind == nskType:
+              ret = ai
+            else:
+              since (1, 1):
+                ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
           result.add ret
         break
       else:
@@ -163,4 +168,4 @@ when isMainModule:
   fun(int)
 
   var a: seq[int]
-  doAssert typeof(a).genericParams.get(0).value is int
+  doAssert typeof(a).genericParams.get(0) is int
