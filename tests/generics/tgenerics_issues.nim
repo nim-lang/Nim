@@ -765,7 +765,7 @@ block t3717:
 
 
 
-block t9458:
+block: # issue #9458
   type
     Option[T] = object
       val: T

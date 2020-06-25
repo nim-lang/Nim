@@ -60,7 +60,7 @@ reject:
 reject:
   foo seq[int], ss
 
-# t12398
+# issue #12398
 reject:
   let xs = [int, float, string]
 
