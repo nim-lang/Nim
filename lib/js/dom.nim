@@ -1190,6 +1190,7 @@ proc deleteData*(n: Node, start, len: int)
 proc focus*(e: Node)
 proc getAttribute*(n: Node, attr: cstring): cstring
 proc getAttributeNode*(n: Node, attr: cstring): Node
+proc hasAttribute*(n: Node; attr: cstring): bool
 proc hasChildNodes*(n: Node): bool
 proc insertData*(n: Node, position: int, data: cstring)
 proc removeAttribute*(n: Node, attr: cstring)
