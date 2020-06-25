@@ -1446,6 +1446,7 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## A convenience proc that runs the `command`, and returns its `output` and
   ## `exitCode`. `env` and `workingDir` params behave as for `startProcess`.
   ## If `input.len > 0`, it is passed as stdin.
+  ##
   ## Note: this could block if `input.len` is greater than your OS's maximum
   ## pipe buffer size.
   ##
@@ -1456,15 +1457,17 @@ proc execCmdEx*(command: string, options: set[ProcessOption] = {
   ## * `execProcess proc
   ##   <#execProcess,string,string,openArray[string],StringTableRef,set[ProcessOption]>`_
   ##
-  runnableExamples:
-    var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
-    import strutils, strtabs
-    stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
-    doAssert result == ("12", 0)
-    doAssert execCmdEx("ls --nonexistant").exitCode != 0
-    when defined(posix):
-      assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
-      assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
+  ## Example:
+  ##
+  ## .. code-block:: Nim
+  ##   var result = execCmdEx("nim r --hints:off -", options = {}, input = "echo 3*4")
+  ##   import strutils, strtabs
+  ##   stripLineEnd(result[0]) ## portable way to remove trailing newline, if any
+  ##   doAssert result == ("12", 0)
+  ##   doAssert execCmdEx("ls --nonexistant").exitCode != 0
+  ##   when defined(posix):
+  ##     assert execCmdEx("echo $FO", env = newStringTable({"FO": "B"})) == ("B\n", 0)
+  ##     assert execCmdEx("echo $PWD", workingDir = "/") == ("/\n", 0)
 
   when (NimMajor, NimMinor, NimPatch) < (1, 3, 5):
     doAssert input.len == 0
