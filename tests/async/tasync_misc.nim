@@ -74,3 +74,10 @@ block: # issue #13899
       result = true
   doAssert waitFor testFooSucceed()
   doAssert waitFor testFooFails()
+
+block: # 9313
+  doAssert compiles(block:
+    proc a() {.async.} =
+      echo "Hi"
+      quit(0)
+  )
