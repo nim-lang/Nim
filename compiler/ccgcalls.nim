@@ -217,10 +217,10 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
         internalError(p.config, "openArrayLoc: " & typeToString(a.t))
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
-proc withTmpIfNeeded(p: BProc, a: TLoc, typ: PType, needsTmp: bool): TLoc =
+proc withTmpIfNeeded(p: BProc, a: TLoc, needsTmp: bool): TLoc =
   if needsTmp:
     var tmp: TLoc
-    getTemp(p, typ, tmp, needsInit=false)
+    getTemp(p, a.lode.typ, tmp, needsInit=false)
     genAssignment(p, tmp, a, {})
     tmp
   else:
@@ -229,7 +229,7 @@ proc withTmpIfNeeded(p: BProc, a: TLoc, typ: PType, needsTmp: bool): TLoc =
 proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n[0], a)
-  ropecg(p.module, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, n[0].typ, needsTmp).rdLoc])
+  ropecg(p.module, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, needsTmp).rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rope =
   var a: TLoc
@@ -240,7 +240,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
     result = openArrayLoc(p, param.typ, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
-    result = addrLoc(p.config, withTmpIfNeeded(p, a, n.typ, needsTmp))
+    result = addrLoc(p.config, withTmpIfNeeded(p, a, needsTmp))
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)
@@ -255,7 +255,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
       result = rdLoc(a)
   else:
     initLocExprSingleUse(p, n, a)
-    result = rdLoc(withTmpIfNeeded(p, a, n.typ, needsTmp))
+    result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
 
 proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
   var a: TLoc
@@ -263,7 +263,7 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     result = genArgStringToCString(p, n, needsTmp)
   else:
     initLocExprSingleUse(p, n, a)
-    result = rdLoc(withTmpIfNeeded(p, a, n.typ, needsTmp))
+    result = rdLoc(withTmpIfNeeded(p, a, needsTmp))
 
 import dfa
 from patterns import sameTrees
