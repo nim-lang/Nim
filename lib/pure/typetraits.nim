@@ -165,8 +165,8 @@ since (1, 1):
       var s: seq[Bar[3.0, string]]
       doAssert genericParams(typeof(s)) is (Bar[3.0, string],)
 
-      # NOTE: For the builtin array type, the index range will **always**
-      #       become a range type after typecheck occurred.
+      # NOTE: For the builtin array type, the index generic param will
+      #       **always** become a range type after it's bound to a variable.
       doAssert genericParams(array[10, int]) is (StaticParam[10], int)
       var a: array[10, int]
       doAssert genericParams(typeof(a)) is (range[0..9], int)
