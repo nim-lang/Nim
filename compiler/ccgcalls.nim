@@ -226,7 +226,7 @@ template withTmpIfNeeded(a, typ): TLoc =
   else:
     a
 
-template genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope =
+proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n[0], a)
   ropecg(p.module, "#nimToCStringConv($1)", [withTmpIfNeeded(a, n[0].typ).rdLoc])
@@ -253,10 +253,6 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
       result = addrLoc(p.config, a)
     else:
       result = rdLoc(a)
-  elif n.kind == nkHiddenAddr:
-    # Optimization: don't use a temp, if we would only take the adress anyway
-    initLocExprSingleUse(p, n, a)
-    result = rdLoc(a)
   else:
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(a, n.typ))
@@ -279,11 +275,19 @@ template genParams(): Rope =
   # We must generate temporaries in cases like #14396
   # to keep the strict Left-To-Right evaluation, this
   # is a bit pessimistic currently
+  var needTmp = newSeq[bool](ri.len - 1)
   var dangerousStmtExpr = 0
   for i in countdown(ri.len - 1, 1):
     if ri[i].kind == nkStmtListExpr:
       dangerousStmtExpr = i
-      break
+    if i < dangerousStmtExpr:
+      needTmp[i - 1] = true
+    if ri[i].kind in nkLiterals:
+      # Optimization: literals can't get modified, so no need to use a temp
+      needTmp[i - 1] = false
+    if ri[i].kind == nkHiddenAddr:
+      # Optimization: don't use a temp, if we would only take the adress anyway
+      needTmp[i - 1] = false
 
   for i in 1..<ri.len:
     if i < typ.len:
@@ -291,10 +295,10 @@ template genParams(): Rope =
       let paramType = typ.n[i]
       if not paramType.typ.isCompileTimeOnly:
         if params != nil: params.add(~", ")
-        params.add(genArg(p, ri[i], paramType.sym, ri, i < dangerousStmtExpr))
+        params.add(genArg(p, ri[i], paramType.sym, ri, needTmp[i-1]))
     else:
       if params != nil: params.add(~", ")
-      params.add(genArgNoParam(p, ri[i], i < dangerousStmtExpr))
+      params.add(genArgNoParam(p, ri[i], needTmp[i-1]))
 
   params
 

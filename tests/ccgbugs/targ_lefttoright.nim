@@ -2,11 +2,13 @@ discard """
   nimout: '''1,2
 2,3
 2,2
+1,2
 '''
   output: '''1,2
 2,3
 1,2
 2,2
+1,2
 '''
 """
 
@@ -39,6 +41,9 @@ template test =
 
   var d = 1
   sayVar d, (d += 1; d)
+
+  var e = 1
+  say (addr e)[], (e += 1; e)
 
 test
 
