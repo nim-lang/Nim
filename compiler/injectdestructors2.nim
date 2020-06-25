@@ -366,8 +366,8 @@ proc genMoveOrCopy(dest, src: PNode; c: var Con, s: var Scope; flags: SinkFlags)
     elif isAnalysableFieldAccess(src, c.owner) and isLastRead(src, c) and
         not aliases(dest, src):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      result = genSink(c, dest, src, flags)
-      s.wasMoved.add genWasMoved(src, c)
+      let snk = genSink(c, dest, src, flags)
+      result = newTree(nkStmtList, snk, genWasMoved(src, c))
     else:
       result = genCopy(c, dest, src)
   of nkBracket:
@@ -381,13 +381,13 @@ proc genMoveOrCopy(dest, src: PNode; c: var Con, s: var Scope; flags: SinkFlags)
   of nkSym:
     if isSinkParam(src.sym) and isLastRead(src, c):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      result = genSink(c, dest, src, flags)
-      s.wasMoved.add genWasMoved(src, c)
+      let snk = genSink(c, dest, src, flags)
+      result = newTree(nkStmtList, snk, genWasMoved(src, c))
     elif src.sym.kind != skParam and src.sym.owner == c.owner and
         isLastRead(src, c) and canBeMoved(c, dest.typ):
       # Rule 3: `=sink`(x, z); wasMoved(z)
-      result = genSink(c, dest, src, flags)
-      s.wasMoved.add genWasMoved(src, c)
+      let snk = genSink(c, dest, src, flags)
+      result = newTree(nkStmtList, snk, genWasMoved(src, c))
     else:
       result = genCopy(c, dest, src)
   of nkHiddenSubConv, nkHiddenStdConv, nkConv, nkObjDownConv, nkObjUpConv:

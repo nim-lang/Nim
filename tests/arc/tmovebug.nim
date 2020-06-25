@@ -318,10 +318,10 @@ proc `=sink`(dest: var O2, src: O2) =
 
 var testSeq: O2
 
-proc Update(): void =
+proc update() =
   # testSeq.add(0) # uncommenting this line fixes the leak
   testSeq = O2(s: @[])
   testSeq.s.add(0)
 
 for i in 1..3:
-  Update()
+  update()
