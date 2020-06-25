@@ -127,6 +127,23 @@ macro genericParamsImpl(T: typedesc): untyped =
                (ai.kind == nnkBracketExpr and ai[0].kind == nnkSym and
                 ai[0].symKind == nskType):
               ret = ai
+            elif ai.kind == nnkInfix and ai[0].kind == nnkIdent and
+                 ai[0].strVal == "..":
+              # For built-in array types, the "2" is translated to "0..1" then
+              # automagically translated to "range[0..1]". However this is not
+              # reflected in the AST, thus requiring manual transformation here.
+              #
+              # We will also be losing some context here:
+              #   var a: array[10, int]
+              # will be translated to:
+              #   var a: array[0..9, int]
+              # after typecheck. This means that we can't get the exact
+              # definition as typed by the user, which will cause confusion for
+              # users expecting:
+              #   genericParams(typeof(a)) is (StaticParam(10), int)
+              # to be true while in fact the result will be:
+              #   genericParams(typeof(a)) is (range[0..9], int)
+              ret = newTree(nnkBracketExpr, @[bindSym"range", ai])
             else:
               since (1, 1):
                 ret = newTree(nnkBracketExpr, @[bindSym"StaticParam", ai])
@@ -147,7 +164,12 @@ since (1, 1):
       doAssert genericParams(seq[Bar[2.0, string]]).get(0) is Bar[2.0, string]
       var s: seq[Bar[3.0, string]]
       doAssert genericParams(typeof(s)) is (Bar[3.0, string],)
-      doAssert genericParams(typedesc[genericParams(typeof s).get(0)]) is (StaticParam[3.0], string)
+
+      # NOTE: For the builtin array type, the index range will **always**
+      #       become a range type after typecheck occurred.
+      doAssert genericParams(array[10, int]) is (StaticParam[10], int)
+      var a: array[10, int]
+      doAssert genericParams(typeof(a)) is (range[0..9], int)
 
     type T2 = T
     genericParamsImpl(T2)
@@ -172,6 +194,3 @@ when isMainModule:
     doAssert a2 == "int"
     doAssert a3 == "int"
   fun(int)
-
-  var a: seq[int]
-  doAssert typeof(a).genericParams.get(0) is int
