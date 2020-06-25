@@ -68,9 +68,9 @@ proc run(data: Control) =
   evt.control = data
   if evt.button == 1:
     discard
-  else: 
+  else:
     return
-  
+
   echo data.x
 
 var c = Control(x: 7)

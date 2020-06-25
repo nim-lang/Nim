@@ -531,13 +531,10 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
     for i in 0..<n.len:
       let it = n[i]
       var branch = shallowCopy(it)
-      if it.kind in {nkElifBranch, nkElifExpr}:
-        var condScope: Scope
-        var condResult = st(it[0], c, condScope, {})
-        branch[0] = toTree(condScope, condResult)
-        rememberParent(s, condScope)
-
       var branchScope: Scope
+      if it.kind in {nkElifBranch, nkElifExpr}:
+        branch[0] = st(it[0], c, branchScope, {})
+
       var branchResult = st(it[^1], c, branchScope, flags)
       branch[^1] = toTree(branchScope, branchResult)
       result.add branch
