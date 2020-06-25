@@ -768,3 +768,12 @@ proc constructCfg*(s: PSym; body: PNode): ControlFlowGraph =
     result = c.code # will move
   else:
     shallowCopy(result, c.code)
+
+proc constructCfg*(body: PNode): ControlFlowGraph =
+  ## constructs a control flow graph for ``body``.
+  var c = Con(code: @[], blocks: @[])
+  gen(c, body)
+  when defined(gcArc) or defined(gcOrc):
+    result = c.code # will move
+  else:
+    shallowCopy(result, c.code)

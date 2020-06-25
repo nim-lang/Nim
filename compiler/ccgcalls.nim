@@ -265,6 +265,26 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(a, n.typ))
 
+import dfa
+from patterns import sameTrees
+
+proc potentialAlias(n: PNode, potentialWrites: seq[PNode]): bool =
+  for p in potentialWrites:
+    if sameTrees(p, n) or p.aliases(n) or n.aliases(p):
+      return true
+
+proc skipTrivialIndirections(n: PNode): PNode =
+  result = n
+  while true:
+    case result.kind
+    of {nkBracketExpr, nkDerefExpr, nkHiddenDeref,
+        nkAddr, nkHiddenAddr,
+        nkObjDownConv, nkObjUpConv}:
+      result = result[0]
+    of {nkHiddenStdConv, nkHiddenSubConv}:
+      result = result[1]
+    else: break
+
 template genParams(): Rope =
   var params: Rope
   # getUniqueType() is too expensive here:
@@ -276,18 +296,26 @@ template genParams(): Rope =
   # to keep the strict Left-To-Right evaluation, this
   # is a bit pessimistic currently
   var needTmp = newSeq[bool](ri.len - 1)
-  var dangerousStmtExpr = 0
+  var potentialWrites: seq[PNode]
   for i in countdown(ri.len - 1, 1):
-    if dangerousStmtExpr == 0 and ri[i].kind == nkStmtListExpr:
-      dangerousStmtExpr = i
-    if i < dangerousStmtExpr:
-      needTmp[i - 1] = true
-    if ri[i].kind in nkLiterals:
-      # Optimization: literals can't get modified, so no need to use a temp
-      needTmp[i - 1] = false
+    if ri[i].skipTrivialIndirections.kind == nkSym:
+      needTmp[i - 1] = potentialAlias(ri[i], potentialWrites)
+    else:
+      let cfg = constructCfg(ri[i])
+      var newPotentialWrites: seq[PNode]
+      # Simple linear pass, ignoring forks and gotos
+      for pc in 0..<cfg.len:
+        if cfg[pc].kind in {def, use}:
+          newPotentialWrites.add cfg[pc].n
+          if not needTmp[i - 1] and potentialAlias(cfg[pc].n, potentialWrites):
+            needTmp[i - 1] = true
+
+      potentialWrites.add newPotentialWrites
+
     if ri[i].kind == nkHiddenAddr:
       # Optimization: don't use a temp, if we would only take the adress anyway
       needTmp[i - 1] = false
+
 
   for i in 1..<ri.len:
     if i < typ.len:
