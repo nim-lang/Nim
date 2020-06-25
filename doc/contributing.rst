@@ -25,11 +25,9 @@ There are 4 types of tests:
 
 2. separate test files, e.g.: ``tests/stdlib/tos.nim``.
    In nim repo, `testament` (see below) runs all `$nim/tests/*/t*.nim` test files;
-   in nimble packages, `nimble test` by default runs all `$pkg/tests/t*.nim`
-   test files when no `task "test"` is specified.
-   (see https://github.com/nim-lang/nimble#tests for latest instructions).
+   for nimble packages, see https://github.com/nim-lang/nimble#tests.
 
-3. (not preferred) tests in ``when isMainModule:`` block, ran by ``nim r mymod.nim``.
+3. (deprecated) tests in ``when isMainModule:`` block, ran by ``nim r mymod.nim``.
    ``nimble test`` can run those in nimble packages when specified in a
    `task "test"`.
 
