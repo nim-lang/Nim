@@ -278,7 +278,7 @@ template genParams(): Rope =
   var needTmp = newSeq[bool](ri.len - 1)
   var dangerousStmtExpr = 0
   for i in countdown(ri.len - 1, 1):
-    if ri[i].kind == nkStmtListExpr:
+    if dangerousStmtExpr == 0 and ri[i].kind == nkStmtListExpr:
       dangerousStmtExpr = i
     if i < dangerousStmtExpr:
       needTmp[i - 1] = true
