@@ -49,6 +49,12 @@ block: # typeToString
   doAssert (tuple[a: C2b[MyInt, C4[cstring]], b: cint, c: float]).name3 ==
     "tuple[a: C[MyInt{int}, C4[cstring]], b: cint{int32}, c: float]"
 
+  macro fn(): string =
+    # not 100% sure whether this should even compile; if some PR breaks this test,
+    # this could be revisited, maybe.
+    newLit $($getType(untyped), $getType(typed))
+  doAssert fn() == """("untyped", "typed")"""
+
 block distinctBase:
   block:
     type
