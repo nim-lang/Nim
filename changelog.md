@@ -115,7 +115,9 @@
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 - Add `typetraits.elementType` to get element type of an iterable.
-- `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
+- `typetraits.$` changes: `$(int,)` is now `"(int,)"` instead of `"(int)"`;
+  `$tuple[]` is now `"tuple[]"` instead of `"tuple"`;
+  `$((int, float), int)` is now `"((int, float), int)"` instead of `"(tuple of (int, float), int)"`
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
