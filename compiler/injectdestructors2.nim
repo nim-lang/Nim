@@ -465,7 +465,8 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
   of nkCheckedFieldExpr, nkDotExpr:
     result = shallowCopy(n)
     result[0] = st(n[0], c, s, {})
-    result[1] = n[1]
+    for i in 1 ..< n.len:
+      result[i] = n[i]
     if sinkArg in flags and hasDestructor(n.typ):
       if isAnalysableFieldAccess(n, c.owner) and isLastRead(n, c):
         s.wasMoved.add genWasMoved(n, c)
