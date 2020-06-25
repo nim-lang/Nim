@@ -250,9 +250,13 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
     if callee.kind == nkSym and
         {sfImportc, sfInfixCall, sfCompilerProc} * callee.sym.flags == {sfImportc} and
         {lfHeader, lfNoDecl} * callee.sym.loc.flags != {}:
-      result = addrLoc(p.config, withTmpIfNeeded(a, n[0].typ))
+      result = addrLoc(p.config, a)
     else:
-      result = rdLoc(withTmpIfNeeded(a, n[0].typ))
+      result = rdLoc(a)
+  elif n.kind == nkHiddenAddr:
+    # Optimization: don't use a temp, if we would only take the adress anyway
+    initLocExprSingleUse(p, n, a)
+    result = rdLoc(a)
   else:
     initLocExprSingleUse(p, n, a)
     result = rdLoc(withTmpIfNeeded(a, n.typ))
