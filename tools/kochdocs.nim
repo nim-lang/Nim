@@ -1,6 +1,6 @@
 ## Part of 'koch' responsible for the documentation generation.
 
-import os, strutils, osproc, sets, pathnorm
+import os, strutils, osproc, sets, pathnorm, pegs
 from std/private/globs import nativeToUnixPath, walkDirRecFilter, PathEntry
 import "../compiler/nimpaths"
 
@@ -182,7 +182,7 @@ lib/system/iterators.nim
 lib/system/dollars.nim
 lib/system/widestrs.nim
 """.splitWhitespace()
-  
+
   proc follow(a: PathEntry): bool =
     a.path.lastPathPart notin ["nimcache", "htmldocs", "includes", "deprecated", "genode"]
   for entry in walkDirRecFilter("lib", follow = follow):
@@ -318,6 +318,19 @@ proc buildDocsDir*(args: string, dir: string) =
   buildDocPackages(args, dir)
   copyFile(docHackJsSource, dir / docHackJsSource.lastPathPart)
 
-proc buildDocs*(args: string) =
-  buildDocsDir(args, webUploadOutput / NimVersion)
-  buildDocsDir("", docHtmlOutput) # no `args` to avoid offline docs containing the 'gaCode'!
+proc buildDocs*(args: string, localOnly = false, localOutDir = "") =
+  let localOutDir =
+    if localOutDir.len == 0:
+      docHtmlOutput
+    else:
+      localOutDir
+
+  var args = args
+
+  if not localOnly:
+    buildDocsDir(args, webUploadOutput / NimVersion)
+
+    let gaFilter = peg"@( y'--doc.googleAnalytics:' @(\s / $) )"
+    args = args.replace(gaFilter)
+
+  buildDocsDir(args, localOutDir)
