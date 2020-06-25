@@ -8,14 +8,6 @@ proc test(foo: Foo[int])
   required type for foo: Foo[int]
   but expression 'bar' is of type: Bar[system.int]
 t3330.nim(63, 8) Hint: Non-matching candidates for add(k, string, T)
-proc add(result: var string; x: float)
-  first type mismatch at position: 1
-  required type for result: var string
-  but expression 'k' is of type: Alias
-proc add(result: var string; x: int64)
-  first type mismatch at position: 1
-  required type for result: var string
-  but expression 'k' is of type: Alias
 proc add(x: var string; y: char)
   first type mismatch at position: 1
   required type for x: var string
@@ -76,4 +68,3 @@ proc test(foo: Foo[int]) =
 
 var bar = Bar[int]()
 bar.test()
-
