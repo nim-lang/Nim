@@ -200,6 +200,7 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
 
   var stack = newSeq[tuple[fin: PNode, inExcept: bool, label: Natural]](0)
 
+  inc p.withinBlockLeaveActions
   for i in 1..howManyTrys:
     let tryStmt = p.nestedTryStmts.pop
     if p.config.exc == excSetjmp:
@@ -216,6 +217,8 @@ proc blockLeaveActions(p: BProc, howManyTrys, howManyExcepts: int) =
     var finallyStmt = tryStmt.fin
     if finallyStmt != nil:
       genStmts(p, finallyStmt[0])
+
+  dec p.withinBlockLeaveActions
 
   # push old elements again:
   for i in countdown(howManyTrys-1, 0):

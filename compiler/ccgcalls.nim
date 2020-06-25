@@ -644,7 +644,32 @@ proc genNamedParamCall(p: BProc, ri: PNode, d: var TLoc) =
     pl.add(~"];$n")
     line(p, cpsStmts, pl)
 
+proc isInactiveDestructorCall(p: BProc, e: PNode): bool =
+  proc notYetAlive(n: PNode): bool {.inline.} =
+    n.kind == nkSym and n.sym.loc.lode == nil
+
+  #[ Consider this example.
+
+    var :tmpD_3281815
+    try:
+      if true:
+        return
+      let args_3280013 =
+        wasMoved_3281816(:tmpD_3281815)
+        `=_3280036`(:tmpD_3281815, [1])
+        :tmpD_3281815
+    finally:
+      `=destroy_3280027`(args_3280013)
+
+  We want to return early but the 'finally' section is traversed before
+  the 'let args = ...' statement. We exploit this to generate better
+  code for 'return'. ]#
+  result = e.len == 2 and e[0].kind == nkSym and
+    e[0].sym.name.s == "=destroy" and notYetAlive(e[1].skipAddr)
+
 proc genCall(p: BProc, e: PNode, d: var TLoc) =
+  if p.withinBlockLeaveActions > 0 and isInactiveDestructorCall(p, e):
+    return
   if e[0].typ.skipTypes({tyGenericInst, tyAlias, tySink, tyOwned}).callConv == ccClosure:
     genClosureCall(p, nil, e, d)
   elif e[0].kind == nkSym and sfInfixCall in e[0].sym.flags:
