@@ -359,8 +359,8 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
 
   when defined(windows) and not defined(useWinAnsi):
     proc readConsole(hConsoleInput: FileHandle, lpBuffer: pointer,
-                     nNumberOfCharsToRead: uint32,
-                     lpNumberOfCharsRead: ptr uint32,
+                     nNumberOfCharsToRead: int32,
+                     lpNumberOfCharsRead: ptr int32,
                      pInputControl: pointer): int32 {.
       importc: "ReadConsoleW", stdcall, dynlib: "kernel32".}
 
@@ -388,7 +388,7 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
     # this implies the file is open
     if f.isatty:
       const numberOfCharsToRead = 2048
-      var numberOfCharsRead = 0'u32
+      var numberOfCharsRead = 0'i32
       var buffer = newWideCString("", numberOfCharsToRead)
       if readConsole(getOsFileHandle(f), addr(buffer[0]),
         numberOfCharsToRead, addr(numberOfCharsRead), nil) == 0:
@@ -398,20 +398,25 @@ proc readLine*(f: File, line: var TaintedString): bool {.tags: [ReadIOEffect],
         if formatMessageW(0x00000100 or 0x00001000 or 0x00000200,
                         nil, error, 0, addr(msgbuf), 0, nil) != 0'i32:
           errorMsg = $msgbuf
-          if msgbuf != nil: localFree(cast[pointer](msgbuf))
+          if msgbuf != nil:
+            localFree(cast[pointer](msgbuf))
         raiseEIO("error: " & $error & " `" & errorMsg & "`")
       # input always ends with "\r\n"
       numberOfCharsRead -= 2
       # handle Ctrl+Z as EOF
-      for i in 0'u32..<numberOfCharsRead:
+      for i in 0..<numberOfCharsRead:
         if buffer[i].uint16 == 26:  #Ctrl+Z
           close(f)  #has the same effect as setting EOF
           if i == 0:
+            line = TaintedString("")
             return false
           numberOfCharsRead = i
           break
       buffer[numberOfCharsRead] = 0.Utf16Char
-      line = TaintedString($buffer)
+      when defined(nimv2):
+        line = TaintedString($toWideCString(buffer))
+      else:
+        line = TaintedString($buffer)
       return(true)
 
   var pos = 0
