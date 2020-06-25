@@ -83,6 +83,10 @@ proc stringCompare() =
   doAssert b == "bee"
   b.add g
   doAssert b == "bee"
+  c.addFloat 123.456
+  doAssert c == "123.456"
+  d.addInt 123456
+  doAssert d == "123456"
 
   doAssert e == ""
   doAssert "" == e
