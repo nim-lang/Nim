@@ -626,12 +626,15 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
 
     result = shallowCopy(n)
     for i in 1..<n.len:
-      let argflags =
-        if i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
-          {sinkArg}
-        else:
-          {}
-      result[i] = st(n[i], c, s, argflags)
+      if i < L and isCompileTimeOnly(parameters[i]):
+        result[i] = n[i]
+      else:
+        let argflags =
+          if i < L and (isSinkTypeForParam(parameters[i]) or inSpawn > 0):
+            {sinkArg}
+          else:
+            {}
+        result[i] = st(n[i], c, s, argflags)
 
     if n[0].kind == nkSym and n[0].sym.magic in {mNew, mNewFinalize}:
       result[0] = copyTree(n[0])
