@@ -217,7 +217,7 @@ proc openArrayLoc(p: BProc, formalType: PType, n: PNode): Rope =
         internalError(p.config, "openArrayLoc: " & typeToString(a.t))
     else: internalError(p.config, "openArrayLoc: " & typeToString(a.t))
 
-template withTmpIfNeeded(a, typ): TLoc =
+proc withTmpIfNeeded(p: BProc, a: TLoc, typ: PType, needsTmp: bool): TLoc =
   if needsTmp:
     var tmp: TLoc
     getTemp(p, typ, tmp, needsInit=false)
@@ -229,7 +229,7 @@ template withTmpIfNeeded(a, typ): TLoc =
 proc genArgStringToCString(p: BProc, n: PNode, needsTmp: bool): Rope {.inline.} =
   var a: TLoc
   initLocExpr(p, n[0], a)
-  ropecg(p.module, "#nimToCStringConv($1)", [withTmpIfNeeded(a, n[0].typ).rdLoc])
+  ropecg(p.module, "#nimToCStringConv($1)", [withTmpIfNeeded(p, a, n[0].typ, needsTmp).rdLoc])
 
 proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rope =
   var a: TLoc
@@ -240,7 +240,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
     result = openArrayLoc(p, param.typ, n)
   elif ccgIntroducedPtr(p.config, param, call[0].typ[0]):
     initLocExpr(p, n, a)
-    result = addrLoc(p.config, withTmpIfNeeded(a, n.typ))
+    result = addrLoc(p.config, withTmpIfNeeded(p, a, n.typ, needsTmp))
   elif p.module.compileToCpp and param.typ.kind in {tyVar} and
       n.kind == nkHiddenAddr:
     initLocExprSingleUse(p, n[0], a)
@@ -255,7 +255,7 @@ proc genArg(p: BProc, n: PNode, param: PSym; call: PNode, needsTmp = false): Rop
       result = rdLoc(a)
   else:
     initLocExprSingleUse(p, n, a)
-    result = rdLoc(withTmpIfNeeded(a, n.typ))
+    result = rdLoc(withTmpIfNeeded(p, a, n.typ, needsTmp))
 
 proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
   var a: TLoc
@@ -263,7 +263,7 @@ proc genArgNoParam(p: BProc, n: PNode, needsTmp = false): Rope =
     result = genArgStringToCString(p, n, needsTmp)
   else:
     initLocExprSingleUse(p, n, a)
-    result = rdLoc(withTmpIfNeeded(a, n.typ))
+    result = rdLoc(withTmpIfNeeded(p, a, n.typ, needsTmp))
 
 import dfa
 from patterns import sameTrees
