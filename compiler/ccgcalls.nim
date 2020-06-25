@@ -285,13 +285,7 @@ proc skipTrivialIndirections(n: PNode): PNode =
       result = result[1]
     else: break
 
-template genParams(): Rope =
-  var params: Rope
-  # getUniqueType() is too expensive here:
-  var typ {.inject.} = skipTypes(ri[0].typ, abstractInstOwned)
-  assert(typ.kind == tyProc)
-  assert(typ.len == typ.n.len)
-
+proc genParams(p: BProc, ri: PNode, typ: PType): Rope =
   # We must generate temporaries in cases like #14396
   # to keep the strict Left-To-Right evaluation, this
   # is a bit pessimistic currently
@@ -322,13 +316,11 @@ template genParams(): Rope =
       assert(typ.n[i].kind == nkSym)
       let paramType = typ.n[i]
       if not paramType.typ.isCompileTimeOnly:
-        if params != nil: params.add(~", ")
-        params.add(genArg(p, ri[i], paramType.sym, ri, needTmp[i-1]))
+        if result != nil: result.add(~", ")
+        result.add(genArg(p, ri[i], paramType.sym, ri, needTmp[i-1]))
     else:
-      if params != nil: params.add(~", ")
-      params.add(genArgNoParam(p, ri[i], needTmp[i-1]))
-
-  params
+      if result != nil: result.add(~", ")
+      result.add(genArgNoParam(p, ri[i], needTmp[i-1]))
 
 proc addActualSuffixForHCR(res: var Rope, module: PSym, sym: PSym) =
   if sym.flags * {sfImportc, sfNonReloadable} == {} and sym.loc.k == locProc and
@@ -340,7 +332,12 @@ proc genPrefixCall(p: BProc, le, ri: PNode, d: var TLoc) =
   # this is a hotspot in the compiler
   initLocExpr(p, ri[0], op)
 
-  var params = genParams
+  # getUniqueType() is too expensive here:
+  var typ {.inject.} = skipTypes(ri[0].typ, abstractInstOwned)
+  assert(typ.kind == tyProc)
+  assert(typ.len == typ.n.len)
+
+  var params = genParams(p, ri, typ)
 
   var callee = rdLoc(op)
   if p.hcrOn and ri[0].kind == nkSym:
@@ -358,7 +355,12 @@ proc genClosureCall(p: BProc, le, ri: PNode, d: var TLoc) =
   var op: TLoc
   initLocExpr(p, ri[0], op)
 
-  var pl = genParams
+  # getUniqueType() is too expensive here:
+  var typ {.inject.} = skipTypes(ri[0].typ, abstractInstOwned)
+  assert(typ.kind == tyProc)
+  assert(typ.len == typ.n.len)
+
+  var pl = genParams(p, ri, typ)
 
   template genCallPattern {.dirty.} =
     if tfIterator in typ.flags:
