@@ -277,14 +277,3 @@ Conventions for multi-line statements and expressions
   .. code-block:: nim
     startProcess(nimExecutable, currentDirectory, compilerArguments
                  environment, processOptions)
-
-Test conventions
------------------------------------------------------
-
-- use `issue #1234` to refer to issue https://github.com/nim-lang/Nim/issues/1234:
-
-  .. code-block:: nim
-    block: # issue #1234
-      doAssert 1+1 == 2
-
-this is so that it's consistent and easier to search.
