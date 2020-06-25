@@ -558,7 +558,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       result.add branch
       rememberParent(s, branchScope)
 
-  of nkDefer:
+  of nkDefer, nkRange:
     result = shallowCopy(n)
     for i in 0 ..< n.len:
       result[i] = st(n[i], c, s, {})
@@ -647,7 +647,7 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       else:
         result = ensureDestruction(result, c, s)
 
-  of nkBracket, nkObjConstr, nkTupleConstr, nkClosure:
+  of nkBracket, nkObjConstr, nkTupleConstr, nkClosure, nkCurly:
     # Let C(x) be the construction, 'x' the vector of arguments.
     # C(x) either owns 'x' or it doesn't.
     # If C(x) owns its data, we must consume C(x).
