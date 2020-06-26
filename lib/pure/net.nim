@@ -78,6 +78,10 @@ const defineSsl = defined(ssl) or defined(nimdoc)
 when defineSsl:
   import openssl
 
+when defined(posix):
+  from posix import SIGPIPE
+  from posix_utils import ignoreSignals
+
 # Note: The enumerations are mapped to Window's constants.
 
 when defineSsl:
@@ -1028,21 +1032,38 @@ proc close*(socket: Socket) =
   ## Closes a socket.
   try:
     when defineSsl:
+      template doSSLShutdown(): untyped =
+        # As we are closing the underlying socket immediately afterwards, it is
+        # valid, under the TLS standard, to perform a unidirectional shutdown
+        # i.e not wait for the peers "close notify" alert with a second call to
+        # SSL_shutdown
+        let wasNotified = (SSL_get_shutdown(socket.sslHandle) and SSL_RECEIVED_SHUTDOWN) != 0
+        ErrClearError()
+        let res = SSL_shutdown(socket.sslHandle)
+        if res == 0 or res == 1:
+          discard
+        elif wasNotified and
+             SSL_get_error(socket.sslHandle, res) == SSL_ERROR_SYSCALL and
+             isDisconnectionError({SocketFlag.SafeDisconn}, osLastError()):
+          # If we received a shutdown notification, then the failed call
+          # earlier would be to complete our side of the negotiation.
+          #
+          # However it's allowed by the TLS spec that the notifier just close
+          # the connection immediately, so our side of the negotiation might
+          # fail. Ignore if this is the case.
+          discard
+        else:
+          socketError(socket, res)
+
       if socket.isSsl and socket.sslHandle != nil:
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
         if SSL_in_init(socket.sslHandle) == 0 and not socket.sslInhibitShutdown:
-          # As we are closing the underlying socket immediately afterwards,
-          # it is valid, under the TLS standard, to perform a unidirectional
-          # shutdown i.e not wait for the peers "close notify" alert with a second
-          # call to SSL_shutdown
-          ErrClearError()
-          let res = SSL_shutdown(socket.sslHandle)
-          if res == 0:
-            discard
-          elif res != 1:
-            socketError(socket, res)
+          when defined(posix):
+            ignoreSignals(SIGPIPE): doSSLShutdown()
+          else:
+            doSSLShutdown()
   finally:
     when defineSsl:
       if socket.isSsl and socket.sslHandle != nil:
