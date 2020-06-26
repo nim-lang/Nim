@@ -11,7 +11,7 @@
 
 # Where possible, contribute OS-independent procs in `os <os.html>`_ instead.
 
-import posix
+import posix, os, macros
 
 type Uname* = object
   sysname*, nodename*, release*, version*, machine*: string
@@ -107,3 +107,75 @@ proc mkdtemp*(prefix: string): string =
   if mkdtemp(tmpl) == nil:
     raise newException(OSError, $strerror(errno))
   return $tmpl
+
+template ignoreSignalsImpl(sigmask, sigs, body: untyped): untyped =
+  var oldSet, watchSet: Sigset
+  let signals = sigs
+  if sigemptyset(oldSet) == -1:
+    raiseOSError(osLastError())
+  if sigemptyset(watchSet) == -1:
+    raiseOSError(osLastError())
+
+  for s in signals:
+    if sigaddset(watchSet, s) == -1:
+      raiseOSError(osLastError(), "Couldn't add signal " & $s & " to Sigset")
+
+  if sigmask(SIG_BLOCK, watchSet, oldSet) == -1:
+    raiseOSError(osLastError(), "Couldn't block specified signals")
+
+  try:
+    body
+  finally:
+    for s in signals:
+      # We are ignoring errors here since the signals must be correct to pass
+      # the earlier initialization, thus it's safe to assume that the following
+      # calls won't fail.
+      if sigismember(oldSet, s) == 1:
+        discard sigdelset(watchSet, s)
+
+    try:
+      var
+        info: Siginfo
+        tmspec: Timespec
+      while true:
+        # Clear all pending signals from the queue before we unblock them.
+        while sigtimedwait(watchSet, info, tmspec) != -1:
+          discard
+
+        let err = cint osLastError()
+        if err == EINTR:
+          discard "Interrupted by a signal we didn't block, ignore."
+        elif err == EAGAIN:
+          break # No signal pending
+        else:
+          raiseOSError(OSErrorCode err, "Couldn't wait for signals")
+    finally:
+      if sigmask(SIG_UNBLOCK, watchSet, oldSet) == -1:
+        raiseOSError(osLastError(), "Couldn't restore the signal mask")
+
+macro ignoreSignals*(signals: varargs[cint], body: untyped): untyped =
+  ## Ignore the specified ``signals`` until the end of the code block.
+  ##
+  ## It's not guaranteed that synchronous signals (``SIGSEGV``, ``SIGFPE``,
+  ## ``SIGILL`` and ``SIGBUS``) can be ignored in all cases. It's recommended
+  ## that a signal handler should be installed and used instead of this
+  ## template to handle those signals reliably.
+  ##
+  ## Only signals targeting the calling thread will be ignored.
+  runnableExamples:
+    import posix
+
+    ignoreSignals(SIGTERM, SIGINT, SIGPIPE):
+      discard posix.raise(SIGTERM)
+      discard posix.raise(SIGINT)
+      discard posix.raise(SIGPIPE)
+
+  let sigmask =
+    when compileOption("threads"):
+      bindSym"pthread_sigmask"
+    else:
+      bindSym"sigprocmask"
+
+  # Implemented as a template for auto bindSym support. This helper macro
+  # serves more or less as a way to support `varargs`.
+  result = getAst ignoreSignalsImpl(sigmask, signals, body)

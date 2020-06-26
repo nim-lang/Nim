@@ -115,6 +115,7 @@
 - `macros.newLit` now preserves named vs unnamed tuples; use `-d:nimHasWorkaround14720` to keep old behavior
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 - Add `typetraits.elementType` to get element type of an iterable.
+- Add `posix_utils.ignoreSignals`, a macro that allows external signals to be temporary ignored.
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
