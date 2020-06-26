@@ -123,6 +123,7 @@ type
       sslContext: SslContext
       bioIn: BIO
       bioOut: BIO
+      sslInhibitShutdown: bool
     domain: Domain
     sockType: SockType
     protocol: Protocol
@@ -200,9 +201,9 @@ proc newAsyncSocket*(domain, sockType, protocol: cint,
                           Protocol(protocol), buffered, inheritable)
 
 when defineSsl:
-  proc getSslError(handle: SslPtr, err: cint): cint =
+  proc getSslError(socket: AsyncSocket, err: cint): cint =
     assert err < 0
-    var ret = SSL_get_error(handle, err.cint)
+    var ret = SSL_get_error(socket.sslHandle, err.cint)
     case ret
     of SSL_ERROR_ZERO_RETURN:
       raiseSSLError("TLS/SSL connection failed to initiate, socket closed prematurely.")
@@ -213,6 +214,7 @@ when defineSsl:
     of SSL_ERROR_WANT_X509_LOOKUP:
       raiseSSLError("Function for x509 lookup has been called.")
     of SSL_ERROR_SYSCALL, SSL_ERROR_SSL:
+      socket.sslInhibitShutdown = true
       raiseSSLError()
     else: raiseSSLError("Unknown Error")
 
@@ -265,7 +267,7 @@ when defineSsl:
       # If the operation failed, try to see if SSL has some data to read
       # or write.
       if opResult < 0:
-        let err = getSslError(socket.sslHandle, opResult.cint)
+        let err = getSslError(socket, opResult.cint)
         let fut = appeaseSsl(socket, flags, err.cint)
         yield fut
         if not fut.read():
@@ -718,7 +720,7 @@ proc close*(socket: AsyncSocket) =
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
-        if SSL_in_init(socket.sslHandle) == 0:
+        if SSL_in_init(socket.sslHandle) == 0 and not socket.sslInhibitShutdown:
           ErrClearError()
           SSL_shutdown(socket.sslHandle)
         else:
@@ -740,6 +742,7 @@ when defineSsl:
     socket.isSsl = true
     socket.sslContext = ctx
     socket.sslHandle = SSL_new(socket.sslContext.context)
+    socket.sslInhibitShutdown = false
     if socket.sslHandle == nil:
       raiseSSLError()
 

@@ -133,6 +133,7 @@ type
       sslNoHandshake: bool # True if needs handshake.
       sslHasPeekChar: bool
       sslPeekChar: char
+      sslInhibitShutdown: bool
     lastError: OSErrorCode ## stores the last error on this socket
     domain: Domain
     sockType: SockType
@@ -722,6 +723,7 @@ when defineSsl:
     socket.sslHandle = SSL_new(socket.sslContext.context)
     socket.sslNoHandshake = false
     socket.sslHasPeekChar = false
+    socket.sslInhibitShutdown = false
     if socket.sslHandle == nil:
       raiseSSLError()
 
@@ -844,6 +846,8 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
         of SSL_ERROR_WANT_X509_LOOKUP:
           raiseSSLError("Function for x509 lookup has been called.")
         of SSL_ERROR_SYSCALL:
+          # SSL_shutdown must not be initiated if a fatal error occurred.
+          socket.sslInhibitShutdown = true
           var errStr = "IO error has occurred "
           let sslErr = ERR_peek_last_error()
           if sslErr == 0 and err == 0:
@@ -856,6 +860,8 @@ proc socketError*(socket: Socket, err: int = -1, async = false,
           let osErr = osLastError()
           raiseOSError(osErr, errStr)
         of SSL_ERROR_SSL:
+          # SSL_shutdown must not be initiated if a fatal error occurred.
+          socket.sslInhibitShutdown = true
           raiseSSLError()
         else: raiseSSLError("Unknown Error")
 
@@ -1026,7 +1032,7 @@ proc close*(socket: Socket) =
         # Don't call SSL_shutdown if the connection has not been fully
         # established, see:
         # https://github.com/openssl/openssl/issues/710#issuecomment-253897666
-        if SSL_in_init(socket.sslHandle) == 0:
+        if SSL_in_init(socket.sslHandle) == 0 and not socket.sslInhibitShutdown:
           # As we are closing the underlying socket immediately afterwards,
           # it is valid, under the TLS standard, to perform a unidirectional
           # shutdown i.e not wait for the peers "close notify" alert with a second
