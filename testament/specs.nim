@@ -8,6 +8,15 @@
 #
 
 import sequtils, parseutils, strutils, os, streams, parsecfg
+from hashes import hash
+
+type TestamentData* = ref object
+  # better to group globals under 1 object; could group the other ones here too
+  batchArg*: string
+  testamentNumBatch*: int
+  testamentBatch*: int
+
+let testamentData0* = TestamentData()
 
 var compilerPrefix* = findExe("nim")
 
@@ -68,6 +77,7 @@ type
     ccodeCheck*: string
     maxCodeSize*: int
     err*: TResultEnum
+    inCurrentBatch*: bool
     targets*: set[TTarget]
     matrix*: seq[string]
     nimout*: string
@@ -137,6 +147,13 @@ proc addLine*(self: var string; a,b: string) =
 
 proc initSpec*(filename: string): TSpec =
   result.file = filename
+
+
+proc isCurrentBatch(testamentData: TestamentData, filename: string): bool =
+  if testamentData.testamentNumBatch != 0:
+    hash(filename) mod testamentData.testamentNumBatch == testamentData.testamentBatch
+  else:
+    true
 
 proc parseSpec*(filename: string): TSpec =
   result.file = filename
@@ -296,4 +313,8 @@ proc parseSpec*(filename: string): TSpec =
   close(p)
 
   if skips.anyIt(it in result.file):
+    result.err = reDisabled
+
+  result.inCurrentBatch = isCurrentBatch(testamentData0, filename)
+  if not result.inCurrentBatch:
     result.err = reDisabled

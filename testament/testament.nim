@@ -276,7 +276,8 @@ proc addResult(r: var TResults, test: TTest, target: TTarget,
   if success == reSuccess:
     maybeStyledEcho fgGreen, "PASS: ", fgCyan, alignLeft(name, 60), fgBlue, " (", durationStr, " sec)"
   elif success == reDisabled:
-    maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
+    if test.spec.inCurrentBatch:
+      maybeStyledEcho styleDim, fgYellow, "SKIP: ", styleBright, fgCyan, name
   elif success == reJoined:
     maybeStyledEcho styleDim, fgYellow, "JOINED: ", styleBright, fgCyan, name
   else:
@@ -645,6 +646,15 @@ proc main() =
         useColors = false
       else:
         quit Usage
+    of "batch":
+      testamentData0.batchArg = p.val
+      if p.val != "_":
+        let s = p.val.split("_")
+        doAssert s.len == 2, $(p.val, s)
+        testamentData0.testamentBatch = s[0].parseInt
+        testamentData0.testamentNumBatch = s[1].parseInt
+        doAssert testamentData0.testamentNumBatch > 0
+        doAssert testamentData0.testamentBatch >= 0 and testamentData0.testamentBatch < testamentData0.testamentNumBatch
     of "simulate":
       simulate = true
     of "megatest":
@@ -682,6 +692,7 @@ proc main() =
       myself &= " " & quoteShell("--targets:" & targetsStr)
 
     myself &= " " & quoteShell("--nim:" & compilerPrefix)
+    myself &= " --batch:" & testamentData0.batchArg
 
     if skipFrom.len > 0:
       myself &= " " & quoteShell("--skipFrom:" & skipFrom)
