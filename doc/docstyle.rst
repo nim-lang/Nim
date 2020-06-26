@@ -4,10 +4,17 @@ Documentation Style
 General Guidelines
 ------------------
 
+* See also `nep1<https://nim-lang.github.io/Nim/nep1.html>`_ which should probably be merged here.
 * Authors should document anything that is exported; documentation for private
   procs can be useful too (visible via ``nim doc --docInternal foo.nim``).
-* Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block. The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation, each sentence after the first should be complete and in present tense.
+* Within documentation, a period (`.`) should follow each sentence (or sentence fragment) in a comment block.
+  The documentation may be limited to one sentence fragment, but if multiple sentences are within the documentation,
+  each sentence after the first should be complete and in present tense.
 * Documentation is parsed as a custom ReStructuredText (RST) with partial markdown support.
+* In nim sources, prefer single backticks to double backticks since it's simpler
+  and `nim doc` supports it (even in rst files with `nim rst2html`).
+* In nim sources, for links, prefer `[link text](link.html)` to ``` `link text<link.html>`_ ```
+  since the syntax is simpler and markdown is more common (likewise, `nim rst2html` also supports it in rst files).
 
 .. code-block:: nim
 

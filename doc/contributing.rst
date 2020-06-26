@@ -18,15 +18,23 @@ See `codeowners <codeowners.html>`_ for more details.
 Writing tests
 =============
 
-There are 3 types of tests:
+There are 4 types of tests:
 
 1. ``runnableExamples`` documentation comment tests, ran by ``nim doc mymod.nim``
    These end up in documentation and ensure documentation stays in sync with code.
 
-2. tests in ``when isMainModule:`` block, ran by ``nim c mymod.nim``
-   ``nimble test`` also typially runs these in external nimble packages.
+2. separate test files, e.g.: ``tests/stdlib/tos.nim``.
+   In nim repo, `testament` (see below) runs all `$nim/tests/*/t*.nim` test files;
+   for nimble packages, see https://github.com/nim-lang/nimble#tests.
 
-3. testament tests, e.g.: ``tests/stdlib/tos.nim`` (only used for Nim repo).
+3. (deprecated) tests in ``when isMainModule:`` block, ran by ``nim r mymod.nim``.
+   ``nimble test`` can run those in nimble packages when specified in a
+   `task "test"`.
+
+4. (not preferred) `.. code-block:: nim` RST snippets; these should only be used in rst sources,
+   in nim sources `runnableExamples` should now always be preferred to those for
+   several reasons (cleaner syntax, syntax highlights, batched testing, and
+   `rdoccmd` allows customization).
 
 Not all the tests follow the convention here, feel free to change the ones
 that don't. Always leave the code cleaner than you found it.
@@ -34,31 +42,43 @@ that don't. Always leave the code cleaner than you found it.
 Stdlib
 ------
 
-If you change the stdlib (anything under ``lib/``, e.g. ``lib/pure/os.nim``),
-put a test in the file you changed. Add the tests under a ``when isMainModule:``
-condition so they only get executed when the tester is building the
-file. Each test should be in a separate ``block:`` statement, such that
+Each stdlib module (anything under ``lib/``, e.g. ``lib/pure/os.nim``) should
+preferably have a corresponding separate test file, eg `tests/stdlib/tos.nim`.
+The old convention was to add a ``when isMainModule:`` block in the source file,
+which only gets executed when the tester is building the file.
+
+Each test should be in a separate ``block:`` statement, such that
 each has its own scope. Use boolean conditions and ``doAssert`` for the
-testing by itself, don't rely on echo statements or similar.
+testing by itself, don't rely on echo statements or similar; in particular avoid
+things like `echo "done"`.
 
 Sample test:
 
 .. code-block:: nim
 
-  when isMainModule:
-    block: # newSeqWith tests
-      var seq2D = newSeqWith(4, newSeq[bool](2))
-      seq2D[0][0] = true
-      seq2D[1][0] = true
-      seq2D[0][1] = true
-      doAssert seq2D == @[@[true, true], @[true, false],
-                          @[false, false], @[false, false]]
-      # doAssert with `not` can now be done as follows:
-      doAssert not (1 == 2)
+  block: # bug #1234
+    static: doAssert 1+1 == 2
 
-Newer tests tend to be run via ``testament`` rather than via ``when isMainModule:``,
-e.g. ``tests/stdlib/tos.nim``; this allows additional features such as custom
-compiler flags; for more details see below.
+  block: # bug #1235
+    var seq2D = newSeqWith(4, newSeq[bool](2))
+    seq2D[0][0] = true
+    seq2D[1][0] = true
+    seq2D[0][1] = true
+    doAssert seq2D == @[@[true, true], @[true, false],
+                        @[false, false], @[false, false]]
+    # doAssert with `not` can now be done as follows:
+    doAssert not (1 == 2)
+
+Always refer to a github issue using the following exact syntax: `bug #1234` as shown
+above, so that it's consistent and easier to search or for tooling. Some browser
+extensions (eg https://github.com/sindresorhus/refined-github) will even turn those
+in clickable links when it works.
+
+Rationale for using a separate test file instead of `when isMainModule:` block:
+* allows custom compiler flags or testing options (see details below)
+* faster CI since they can be joined in `megatest` (combined into a single test)
+* avoids making the parser do un-necessary work when a source file is merely imported
+* avoids mixing source and test code when reporting line of code statistics or code coverage
 
 Compiler
 --------
