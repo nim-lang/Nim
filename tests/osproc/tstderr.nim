@@ -13,7 +13,6 @@ echo "start tstderr"
 import osproc, os, streams
 
 const filename = "ta_out".addFileExt(ExeExt)
-
 doAssert fileExists(getCurrentDir() / "tests" / "osproc" / filename)
 
 var p = startProcess(filename, getCurrentDir() / "tests" / "osproc",

@@ -4,7 +4,7 @@ discard """
 
 import osproc, os
 
-const filename = when defined(Windows): "tafalse.exe" else: "tafalse"
+const filename = "tafalse".addFileExt(ExeExt)
 let dir = getCurrentDir() / "tests" / "osproc"
 doAssert fileExists(dir / filename)
 

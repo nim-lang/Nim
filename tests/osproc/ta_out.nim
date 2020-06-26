@@ -9,6 +9,7 @@ to stdout
 to stdout
 end ta_out
 '''
+joinable: false
 """
 
 echo "start ta_out"

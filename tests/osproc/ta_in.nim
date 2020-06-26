@@ -1,5 +1,6 @@
 discard """
 action: compile
+joinable: false
 """
 
 # This file is prefixed with an "a", because other tests
