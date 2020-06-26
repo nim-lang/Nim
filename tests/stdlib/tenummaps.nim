@@ -41,6 +41,32 @@ block:
   doAssert MyHoly.vals == [1,4,1]
 
 block:
+  # example that could be used in compiler code
+  block: # simplest apporach: val = string
+    enumMap:
+      type TCallingConvention = enum
+        ccDefault = ""   # proc has no explicit calling convention
+        ccStdCall  = "stdcall" # procedure is stdcall
+
+    template name(a: TCallingConvention): string = a.val
+    doAssert $ccStdCall == "ccStdCall"
+    doAssert ccStdCall.val == "stdcall"
+    doAssert ccStdCall.name == "stdcall"
+
+  block:
+    # more future proof approach: val = tuple[name: string]
+    # this allows adding fields without beaking client code
+    enumMap:
+      type TCallingConvention = enum
+        ccDefault = (name: "", doc = "proc has no explicit calling convention")
+        ccStdCall  = ("stdcall", "procedure is stdcall")
+
+    template name(a: TCallingConvention): string = a.val.name
+    doAssert $ccStdCall == "ccStdCall"
+    doAssert ccStdCall.val.name == "stdcall"
+    doAssert ccStdCall.name == "stdcall"
+
+block:
   enumMap:
     type MyHoly2 = enum
       k1 = (1.3, 'x', @[10]) # any type is ok

@@ -9,11 +9,22 @@ Note: experimental module, unstable API
 
 #[
 ## TODO
-suport implicit consecutives when `=` not specified eg:
+* suport implicit consecutives when `=` not specified eg:
 enumMap:
   type Foo = enum
     k1 = 10
     k2 # assumes equal to 11
+
+* support:
+type Foo = object
+  name: string
+  baz: int
+
+enumMap(Foo):
+  type Bar* = enum
+    bar1 = (name = "", baz = 2)
+
+* support `when` which would reduce need for https://github.com/nim-lang/RFCs/issues/190
 ]#
 
 import macros

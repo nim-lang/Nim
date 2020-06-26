@@ -12,27 +12,28 @@
 import
   lineinfos, hashes, options, ropes, idents, idgen, int128
 from strutils import toLowerAscii
+import std/enummaps
 
 export int128
 
-type
-  TCallingConvention* = enum
-    ccDefault,                # proc has no explicit calling convention
-    ccStdCall,                # procedure is stdcall
-    ccCDecl,                  # cdecl
-    ccSafeCall,               # safecall
-    ccSysCall,                # system call
-    ccInline,                 # proc should be inlined
-    ccNoInline,               # proc should not be inlined
-    ccFastCall,               # fastcall (pass parameters in registers)
-    ccThisCall,               # thiscall (parameters are pushed right-to-left)
-    ccClosure,                # proc has a closure
-    ccNoConvention            # needed for generating proper C procs sometimes
+enumMap:
+  type TCallingConvention* = enum
+    ccDefault = (name: "", cname: "N_NIMCALL")   # proc has no explicit calling convention
+    ccStdCall  = ("stdcall", "N_STDCALL")        # procedure is stdcall
+    ccCDecl = ("cdecl", "N_CDECL")               # cdecl
+    ccSafeCall = ("safecall", "N_SAFECALL")      # safecall
+    ccSysCall = ("syscall", "N_SYSCALL")         # system call
+      # this is probably not correct for all platforms,
+      # but one can `#define` it to what one wants
+    ccInline = ("inline", "N_INLINE")            # proc should be inlined
+    ccNoInline = ("noinline", "N_NOINLINE")      # proc should not be inlined
+    ccFastCall = ("fastcall", "N_FASTCALL")      # fastcall (pass parameters in registers)
+    ccThisCall = ("thiscall", "N_THISCALL")      # thiscall (parameters are pushed right-to-left)
+    ccClosure = ("closure", "N_CLOSURE")         # proc has a closure
+    ccNoConvention = ("noconv", "N_NOCONV")      # needed for generating proper C procs sometimes
 
-const
-  CallingConvToStr*: array[TCallingConvention, string] = ["", "stdcall",
-    "cdecl", "safecall", "syscall", "inline", "noinline", "fastcall", "thiscall",
-    "closure", "noconv"]
+proc name*(a: TCallingConvention): string {.inline.} = a.val.name
+proc cname*(a: TCallingConvention): string {.inline.} = a.val.cname
 
 type
   TNodeKind* = enum # order is extremely important, because ranges are used
