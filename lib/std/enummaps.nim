@@ -29,6 +29,11 @@ enumMap(Foo):
 
 import macros
 
+const nimHasArrayEnumIndex = compiles(block:
+  type Foo = enum foo0
+  discard [foo0: 0][foo0])
+  # for bootstrap; remove pending csources2 https://github.com/timotheecour/Nim/issues/251
+
 runnableExamples:
   ## See `tests/stdlib/tenummaps.nim` for more examples.
   enumMap:
@@ -84,11 +89,15 @@ macro enumMap*(body): untyped =
       v.add newTree(nnkExprColonExpr, elems[i], ai[^1])
   let vals = ident"vals".maybeExport(isExported)
   let val = ident"val".maybeExport(isExported)
+  let nimHasArrayEnumIndex2 = newLit nimHasArrayEnumIndex
   result = quote do:
     `body2`
     const varr = `v`
-    template `val`(a: `name`): untyped = varr[a]
     template `vals`(t: type `name`): untyped = varr
+    when `nimHasArrayEnumIndex2`:
+      template `val`(a: `name`): untyped = varr[a]
+    else:
+      template `val`(a: `name`): untyped = varr[a.ord]
 
 when false:
   # broken pending https://github.com/nim-lang/Nim/issues/13747

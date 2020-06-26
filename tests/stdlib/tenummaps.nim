@@ -58,7 +58,7 @@ block:
     # this allows adding fields without beaking client code
     enumMap:
       type TCallingConvention = enum
-        ccDefault = (name: "", doc = "proc has no explicit calling convention")
+        ccDefault = (name: "", doc: "proc has no explicit calling convention")
         ccStdCall  = ("stdcall", "procedure is stdcall")
 
     template name(a: TCallingConvention): string = a.val.name

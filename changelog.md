@@ -116,6 +116,7 @@
 - Add `random.gauss`, that uses the ratio of uniforms method of sampling from a Gaussian distribution.
 - Add `typetraits.elementType` to get element type of an iterable.
 - `typetraits.$`: `$(int,)` is now `"(int,)"`; `$tuple[]` is now `"tuple[]"`
+- Add `std/enummaps` module which enables a DRY and flexible syntax to attach metadata to enums.
 
 ## Language changes
 - In the newruntime it is now allowed to assign to the discriminator field
