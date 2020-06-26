@@ -91,7 +91,7 @@ proc optimize(s: var Scope) =
     filterNil(wasMoved)
     filterNil(final)
 
-proc toTree(s: var Scope; ret: PNode): PNode =
+proc toTree(s: var Scope; ret: PNode; onlyCareAboutVars = false): PNode =
   if not s.needsTry: optimize(s)
   assert ret != nil
   if s.temps.len == 0 and s.final.len == 0 and s.wasMoved.len == 0:
@@ -109,7 +109,10 @@ proc toTree(s: var Scope; ret: PNode): PNode =
         varSection.add newTree(nkIdentDefs, newSymNode(tmp), newNodeI(nkEmpty, ret.info),
                                                               newNodeI(nkEmpty, ret.info))
       result.add varSection
-    if s.needsTry:
+    if onlyCareAboutVars:
+      result.add ret
+      s.temps.setLen 0
+    elif s.needsTry:
       # XXX wasMoved calls should be outside the 'finally' section!
       var finSection = newNodeI(nkStmtList, ret.info)
       for m in s.wasMoved: finSection.add m
@@ -533,7 +536,8 @@ proc st(n: PNode; c: var Con; s: var Scope; flags: SinkFlags): PNode =
       var branch = shallowCopy(it)
       var branchScope: Scope
       if it.kind in {nkElifBranch, nkElifExpr}:
-        branch[0] = st(it[0], c, branchScope, {})
+        let cond = st(it[0], c, branchScope, {})
+        branch[0] = toTree(branchScope, cond, onlyCareAboutVars = true)
 
       var branchResult = st(it[^1], c, branchScope, flags)
       branch[^1] = toTree(branchScope, branchResult)
