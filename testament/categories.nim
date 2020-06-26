@@ -37,7 +37,6 @@ const
     "testdata",
     "nimcache",
     "coroutines",
-    "osproc",
     "shouldfail",
     "dir with space",
     "destructor"
