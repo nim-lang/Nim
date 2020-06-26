@@ -57,7 +57,7 @@ type
 
   Con = object
     code: ControlFlowGraph
-    inCall, inTryStmt: int
+    inTryStmt: int
     blocks: seq[TBlock]
     owner: PSym
 
@@ -597,36 +597,24 @@ proc skipConvDfa*(n: PNode): PNode =
       result = result[1]
     else: break
 
-proc genUse(c: var Con; orig: PNode) =
-  var n = orig
+proc aliases*(obj, field: PNode): bool =
+  var n = field
+  var obj = obj
   while true:
+    case obj.kind
+    of {nkObjDownConv, nkObjUpConv, nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
+      obj = obj[0]
+    of PathKinds1:
+      obj = obj[1]
+    else: break
+  while true:
+    if sameTrees(obj, n): return true
     case n.kind
-    of PathKinds0 - {nkBracketExpr}:
-      n = n[0]
-    of nkBracketExpr:
-      gen(c, n[1])
+    of PathKinds0:
       n = n[0]
     of PathKinds1:
       n = n[1]
     else: break
-    if n.kind in nkCallKinds:
-      gen(c, n)
-  if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: orig, kind: use)
-
-proc aliases*(obj, field: PNode): bool =
-  var n = field
-  var obj = obj
-  while obj.kind in {nkHiddenSubConv, nkHiddenStdConv, nkObjDownConv, nkObjUpConv,
-                     nkAddr, nkHiddenAddr, nkDerefExpr, nkHiddenDeref}:
-    obj = obj[0]
-  while true:
-    if sameTrees(obj, n): return true
-    case n.kind
-    of PathKinds0, PathKinds1:
-      n = n[0]
-    else:
-      break
 
 proc useInstrTargets*(ins: Instr; loc: PNode): bool =
   assert ins.kind == use
@@ -647,9 +635,10 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   var n = orig
   while true:
     case n.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-       nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
+    of PathKinds0 - {nkBracketExpr, nkHiddenDeref, nkDerefExpr}:
       n = n[0]
+    of PathKinds1:
+      n = n[1]
     of nkBracketExpr:
       # in a[i] the 'i' must be known
       if n.len > 1 and n[1].kind in {nkCharLit..nkUInt64Lit}:
@@ -664,8 +653,7 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
       n = n[0]
       return n.kind == nkSym and n.sym.owner == owner and (
           n.sym.typ.skipTypes(abstractInst-{tyOwned}).kind in {tyOwned})
-    else:
-      break
+    else: break
   # XXX Allow closure deref operations here if we know
   # the owner controlled the closure allocation?
   result = n.kind == nkSym and n.sym.owner == owner and
@@ -682,36 +670,43 @@ proc isAnalysableFieldAccess*(orig: PNode; owner: PSym): bool =
   # free the old data and all is lost! Lesson: Don't be too smart, trust the
   # lower level C++ optimizer to specialize this code.
 
-proc genDef(c: var Con; n: PNode) =
-  var m = n
-  # XXX do something about this duplicated logic here.
+proc skipTrivials(c: var Con, n: PNode): PNode =
+  result = n
   while true:
-    case m.kind
-    of nkDotExpr, nkCheckedFieldExpr, nkHiddenSubConv, nkHiddenStdConv,
-        nkObjDownConv, nkObjUpConv, nkHiddenAddr, nkAddr:
-      m = m[0]
+    case result.kind
+    of PathKinds0 - {nkBracketExpr}:
+      result = result[0]
     of nkBracketExpr:
-      gen(c, m[1])
-      m = m[0]
-    of nkHiddenDeref, nkDerefExpr:
-      m = m[0]
-    else:
-      break
+      gen(c, result[1])
+      result = result[0]
+    of PathKinds1:
+      result = result[1]
+    else: break
+
+proc genUse(c: var Con; orig: PNode) =
+  var n = c.skipTrivials(orig)
 
   if n.kind == nkSym and n.sym.kind in InterestingSyms:
-    c.code.add Instr(n: n, kind: def)
-  elif isAnalysableFieldAccess(n, c.owner):
-    c.code.add Instr(n: n, kind: def)
+    c.code.add Instr(n: orig, kind: use)
+  elif n.kind in nkCallKinds:
+    gen(c, n)
+
+proc genDef(c: var Con; orig: PNode) =
+  var n = c.skipTrivials(orig)
+
+  if n.kind == nkSym and n.sym.kind in InterestingSyms:
+    c.code.add Instr(n: orig, kind: def)
+  elif isAnalysableFieldAccess(orig, c.owner):
+    c.code.add Instr(n: orig, kind: def)
   else:
     # bug #13314: An assignment to t5.w = -5 is a usage of 't5'
     # we still need to gather the use information:
-    gen(c, n)
+    gen(c, orig)
 
 proc genCall(c: var Con; n: PNode) =
   gen(c, n[0])
   var t = n[0].typ
   if t != nil: t = t.skipTypes(abstractInst)
-  inc c.inCall
   for i in 1..<n.len:
     gen(c, n[i])
     when false:
@@ -731,7 +726,6 @@ proc genCall(c: var Con; n: PNode) =
         genBreakOrRaiseAux(c, i, n)
         break
     c.patch(endGoto)
-  dec c.inCall
 
 proc genMagic(c: var Con; n: PNode; m: TMagic) =
   case m
@@ -775,7 +769,7 @@ proc gen(c: var Con; n: PNode) =
     # "uses" 'i'. But we are only talking about builtin array indexing so
     # it doesn't matter and 'x = 34' is NOT a usage of 'x'.
     genDef(c, n[0])
-  of PathKinds0 - {nkHiddenStdConv, nkHiddenSubConv, nkObjDownConv, nkObjUpConv}:
+  of PathKinds0 - {nkObjDownConv, nkObjUpConv}:
     genUse(c, n)
   of nkIfStmt, nkIfExpr: genIf(c, n)
   of nkWhenStmt:
@@ -793,7 +787,7 @@ proc gen(c: var Con; n: PNode) =
     for x in n: gen(c, x)
   of nkPragmaBlock: gen(c, n.lastSon)
   of nkDiscardStmt, nkObjDownConv, nkObjUpConv: gen(c, n[0])
-  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, nkHiddenSubConv, nkHiddenStdConv:
+  of nkConv, nkExprColonExpr, nkExprEqExpr, nkCast, PathKinds1:
     gen(c, n[1])
   of nkStringToCString, nkCStringToString: gen(c, n[0])
   of nkVarSection, nkLetSection: genVarSection(c, n)
