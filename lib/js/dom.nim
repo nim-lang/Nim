@@ -740,7 +740,6 @@ type
     writingMode*: cstring
     zIndex*: cstring
 
-
   EventPhase* = enum
     None = 0,
     CapturingPhase,
