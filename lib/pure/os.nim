@@ -1118,8 +1118,9 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
 when not defined(nimscript):
-  {.deprecated: [existsFile: fileExists].}
-  # refs: https://github.com/nim-lang/Nim/pull/14732
+  template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+    fileExists(args)
+  # {.deprecated: [existsFile: fileExists].} # pending bug #14819
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
