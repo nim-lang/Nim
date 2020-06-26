@@ -1118,9 +1118,10 @@ proc fileExists*(filename: string): bool {.rtl, extern: "nos$1",
     return stat(filename, res) >= 0'i32 and S_ISREG(res.st_mode)
 
 when not defined(nimscript):
-  template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
-    fileExists(args)
-  # {.deprecated: [existsFile: fileExists].} # pending bug #14819
+  when not defined(js): # `noNimJs` doesn't work with templates, this should improve.
+    template existsFile*(args: varargs[untyped]): untyped {.deprecated: "use fileExists".} =
+      fileExists(args)
+  # {.deprecated: [existsFile: fileExists].} # pending bug #14819; this would avoid above mentioned issue
 
 proc existsDir*(dir: string): bool {.rtl, extern: "nos$1", tags: [ReadDirEffect],
                                      noNimJs.} =
